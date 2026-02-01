@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Drop the database"
+#MISE dir="{{config_root}}/backend"
+
+bundle exec rake db:drop

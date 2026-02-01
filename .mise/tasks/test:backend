@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run backend tests"
+#MISE dir="{{config_root}}/backend"
+
+bundle exec rspec

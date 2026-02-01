@@ -1,0 +1,81 @@
+require "bundler/setup"
+require "dotenv/load"
+require "sequel"
+
+namespace :db do
+  desc "Create the database"
+  task :create do
+    database_url = ENV.fetch("DATABASE_URL")
+    db_name = database_url.split("/").last
+
+    # Connect to postgres database to create our database
+    maintenance_url = database_url.sub(/\/[^\/]+$/, "/postgres")
+    db = Sequel.connect(maintenance_url)
+
+    begin
+      db.execute "CREATE DATABASE #{db_name}"
+      puts "Created database: #{db_name}"
+    rescue Sequel::DatabaseError => e
+      if e.message.include?("already exists")
+        puts "Database #{db_name} already exists"
+      else
+        raise
+      end
+    ensure
+      db.disconnect
+    end
+  end
+
+  desc "Drop the database"
+  task :drop do
+    database_url = ENV.fetch("DATABASE_URL")
+    db_name = database_url.split("/").last
+
+    maintenance_url = database_url.sub(/\/[^\/]+$/, "/postgres")
+    db = Sequel.connect(maintenance_url)
+
+    begin
+      db.execute "DROP DATABASE IF EXISTS #{db_name}"
+      puts "Dropped database: #{db_name}"
+    ensure
+      db.disconnect
+    end
+  end
+
+  desc "Run database migrations"
+  task :migrate do
+    require_relative "config/database"
+
+    Sequel.extension :migration
+    Sequel::Migrator.run(DB, "db/migrations")
+    puts "Migrations complete"
+  end
+
+  desc "Rollback the last migration"
+  task :rollback do
+    require_relative "config/database"
+
+    Sequel.extension :migration
+    Sequel::Migrator.run(DB, "db/migrations", target: Sequel::Migrator.run(DB, "db/migrations", target: 0) - 1)
+    puts "Rollback complete"
+  end
+
+  desc "Reset the database"
+  task reset: [:drop, :create, :migrate]
+
+  desc "Seed the database"
+  task :seed do
+    require_relative "config/database"
+    require_relative "db/seeds"
+
+    puts "Seeding complete"
+  end
+end
+
+namespace :sorbet do
+  desc "Update Sorbet RBI files"
+  task :update do
+    sh "bundle exec tapioca gems"
+    sh "bundle exec tapioca dsl"
+  end
+end

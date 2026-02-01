@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run backend type checker"
+#MISE dir="{{config_root}}/backend"
+
+bundle exec srb tc

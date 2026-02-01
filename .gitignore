@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Test outputs
+coverage/
+playwright-report/
+test-results/
+
+# Ruby
+backend/.bundle/
+backend/vendor/bundle/
+*.gem
+
+# Sorbet
+backend/sorbet/rbi/gems/
+backend/sorbet/rbi/todo.rbi
+
+# Misc
+*.pid
+*.seed
+.cache/

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Start backend dev server"
+#MISE dir="{{config_root}}/backend"
+
+bundle exec puma -p 9292

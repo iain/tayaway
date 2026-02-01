@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Run E2E tests"
+
+pnpm exec playwright test

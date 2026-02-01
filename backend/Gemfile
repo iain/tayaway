@@ -1,0 +1,37 @@
+source "https://rubygems.org"
+
+ruby "~> 4.0.0"
+
+# Web framework
+gem "roda", "~> 3.98"
+gem "puma"
+
+# Database
+gem "sequel"
+gem "sequel_pg", require: "sequel"
+gem "pg"
+
+# JSON
+gem "json"
+
+# Environment
+gem "dotenv"
+
+group :development do
+  gem "rubocop", require: false
+  gem "rubocop-rspec", require: false
+  gem "rubocop-sequel", require: false
+  gem "rubocop-sorbet", require: false
+end
+
+group :development, :test do
+  gem "sorbet", require: false
+  gem "tapioca", require: false
+end
+
+group :test do
+  gem "rspec"
+  gem "rack-test"
+  gem "database_cleaner-sequel"
+  gem "factory_bot"
+end

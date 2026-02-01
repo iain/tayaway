@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run all tests"
+#MISE depends=["test_frontend", "test_backend"]
+
+echo "All tests complete"

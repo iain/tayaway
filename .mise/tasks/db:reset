@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Reset the database"
+#MISE dir="{{config_root}}/backend"
+
+bundle exec rake db:reset

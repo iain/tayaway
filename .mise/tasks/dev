@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Start both frontend and backend dev servers"
+#MISE depends=["dev_backend", "dev_frontend"]
+#MISE wait_for=["dev_backend"]
+
+echo "Development servers started"

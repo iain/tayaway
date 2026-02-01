@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run database migrations"
+#MISE dir="{{config_root}}/backend"
+
+bundle exec rake db:migrate

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run frontend linter"
+#MISE dir="{{config_root}}/frontend"
+
+pnpm run lint

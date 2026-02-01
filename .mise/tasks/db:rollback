@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Rollback the last migration"
+#MISE dir="{{config_root}}/backend"
+
+bundle exec rake db:rollback

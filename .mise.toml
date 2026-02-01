@@ -1,0 +1,10 @@
+[settings]
+experimental = true
+
+[tools]
+node = "24.13.0"
+ruby = "4.0.1"
+pnpm = "9"
+
+[env]
+_.file = [".env.development"]

@@ -1,0 +1,26 @@
+require:
+  - rubocop-rspec
+  - rubocop-sequel
+  - rubocop-sorbet
+
+AllCops:
+  TargetRubyVersion: 4.0
+  NewCops: enable
+  Exclude:
+    - "db/migrations/**/*"
+    - "vendor/**/*"
+    - "sorbet/**/*"
+
+Style/Documentation:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+Metrics/BlockLength:
+  Exclude:
+    - "spec/**/*"
+    - "Rakefile"
+
+Layout/LineLength:
+  Max: 120

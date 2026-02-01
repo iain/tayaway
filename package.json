@@ -1,0 +1,17 @@
+{
+  "name": "tayaway",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "mise run dev",
+    "build": "mise run build",
+    "test": "mise run test",
+    "test:e2e": "mise run test:e2e",
+    "lint": "mise run lint",
+    "typecheck": "mise run typecheck"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.0",
+    "@types/node": "^22.15.0"
+  }
+}
