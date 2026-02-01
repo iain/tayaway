@@ -1,11 +1,8 @@
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch } from 'vue'
 
 type DarkModePreference = 'light' | 'dark' | 'system'
 
 const STORAGE_KEY = 'dark_mode'
-
-const preference = ref<DarkModePreference>('system')
-const isDark = ref(false)
 
 function getSystemPreference(): boolean {
   return window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -26,36 +23,37 @@ function computeIsDark(pref: DarkModePreference): boolean {
   return pref === 'dark'
 }
 
+function getInitialPreference(): DarkModePreference {
+  const saved = localStorage.getItem(STORAGE_KEY)
+  if (saved === 'light' || saved === 'dark') {
+    return saved
+  }
+  return 'system'
+}
+
+const preference = ref<DarkModePreference>(getInitialPreference())
+const isDark = ref(computeIsDark(preference.value))
+
+updateDarkClass(isDark.value)
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (preference.value === 'system') {
+    isDark.value = getSystemPreference()
+    updateDarkClass(isDark.value)
+  }
+})
+
+watch(preference, (newPref) => {
+  if (newPref === 'system') {
+    localStorage.removeItem(STORAGE_KEY)
+  } else {
+    localStorage.setItem(STORAGE_KEY, newPref)
+  }
+  isDark.value = computeIsDark(newPref)
+  updateDarkClass(isDark.value)
+})
+
 export function useDarkMode() {
-  onMounted(() => {
-    const saved = localStorage.getItem(STORAGE_KEY) as DarkModePreference | null
-    if (saved === 'light' || saved === 'dark') {
-      preference.value = saved
-    } else {
-      preference.value = 'system'
-    }
-    isDark.value = computeIsDark(preference.value)
-    updateDarkClass(isDark.value)
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    mediaQuery.addEventListener('change', () => {
-      if (preference.value === 'system') {
-        isDark.value = getSystemPreference()
-        updateDarkClass(isDark.value)
-      }
-    })
-  })
-
-  watch(preference, (newPref) => {
-    if (newPref === 'system') {
-      localStorage.removeItem(STORAGE_KEY)
-    } else {
-      localStorage.setItem(STORAGE_KEY, newPref)
-    }
-    isDark.value = computeIsDark(newPref)
-    updateDarkClass(isDark.value)
-  })
-
   function toggle(): void {
     preference.value = isDark.value ? 'light' : 'dark'
   }
