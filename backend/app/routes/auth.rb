@@ -20,6 +20,8 @@ class App
         puts "MAGIC LINK FOR #{email}:"
         puts magic_link
         puts ("=" * 60) + "\n"
+      else
+        puts "No user found for email #{email}"
       end
 
       response.status = 200

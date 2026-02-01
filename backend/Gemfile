@@ -13,15 +13,26 @@ gem "sequel_pg", require: "sequel"
 
 # JSON
 gem "json"
+gem "jwt"
 
 # Environment
 gem "dotenv"
+
+# Autoloading
+gem "zeitwerk"
 
 # Tasks
 gem "rake"
 
 group :development do
+  gem "concurrent-ruby-ext", require: false
+
+  # listen for file changes
+  gem "listen", require: false
+
   gem "rubocop", require: false
+  gem "rubocop-factory_bot", require: false
+  gem "rubocop-performance", require: false
   gem "rubocop-rspec", require: false
   gem "rubocop-sequel", require: false
   gem "rubocop-sorbet", require: false
@@ -38,7 +49,3 @@ group :test do
   gem "rack-test"
   gem "rspec"
 end
-
-gem "rubocop-performance", "~> 1.26"
-
-gem "rubocop-factory_bot", "~> 2.28"

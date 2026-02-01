@@ -2,4 +2,4 @@
 #MISE description="Run backend tests"
 #MISE dir="{{config_root}}/backend"
 
-bundle exec rspec
+RACK_ENV=test bundle exec rspec

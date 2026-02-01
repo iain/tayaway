@@ -1,13 +1,20 @@
 # typed: true
 # frozen_string_literal: true
 
-require "bundler/setup"
-Bundler.require(:default, ENV.fetch("RACK_ENV", "development"))
+APP_ENV = ENV.fetch("RACK_ENV", "development")
+APP_DIR = Pathname(File.expand_path("..", __dir__))
 
-require "dotenv/load" unless ENV["RACK_ENV"] == "production"
+require "bundler/setup"
+Bundler.require(:default, APP_ENV)
+
+Dotenv.overload("#{APP_DIR}/.env.#{APP_ENV}") unless APP_ENV == "production"
 
 require_relative "database"
 
-Dir[File.expand_path("../app/models/**/*.rb", __dir__)].each { |f| require f }
+LOADER = Zeitwerk::Loader.new
+LOADER.push_dir(File.expand_path("../app/models", __dir__))
+LOADER.enable_reloading if APP_ENV == "development"
+LOADER.setup
+LOADER.eager_load if APP_ENV == "production"
 
 require_relative "../app/app"

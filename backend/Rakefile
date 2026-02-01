@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 require "bundler/setup"
-require "dotenv/load"
+require "dotenv"
+Dotenv.overload(".env.#{ENV.fetch("RACK_ENV", "development")}")
 require "sequel"
 
 namespace :db do

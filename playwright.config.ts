@@ -8,7 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:5174',
     trace: 'on-first-retry',
   },
   projects: [
@@ -19,14 +19,14 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'cd backend && bundle exec puma -p 9292',
-      url: 'http://localhost:9292/health',
+      command: 'cd backend && RACK_ENV=test bundle exec puma',
+      url: 'http://localhost:9293/health',
       reuseExistingServer: !process.env.CI,
       timeout: 120000,
     },
     {
-      command: 'cd frontend && pnpm run dev',
-      url: 'http://localhost:5173',
+      command: 'cd frontend && PORT=5174 API_PORT=9293 pnpm run dev',
+      url: 'http://localhost:5174',
       reuseExistingServer: !process.env.CI,
       timeout: 120000,
     },

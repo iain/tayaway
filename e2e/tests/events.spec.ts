@@ -1,6 +1,6 @@
 import { test, expect, Page, APIRequestContext } from '@playwright/test'
 
-const API_BASE = 'http://localhost:9292'
+const API_BASE = 'http://localhost:9293'
 const TEST_EMAIL = 'e2e-events@example.com'
 const TEST_NAME = 'E2E Events User'
 
