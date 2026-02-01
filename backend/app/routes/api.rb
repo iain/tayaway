@@ -1,3 +1,6 @@
+# typed: true
+# frozen_string_literal: true
+
 class App
   hash_branch "api" do |r|
     r.on "health" do

@@ -3,13 +3,13 @@ source "https://rubygems.org"
 ruby "~> 4.0.0"
 
 # Web framework
-gem "roda", "~> 3.98"
 gem "puma"
+gem "roda", "~> 3.98"
 
 # Database
+gem "pg"
 gem "sequel"
 gem "sequel_pg", require: "sequel"
-gem "pg"
 
 # JSON
 gem "json"
@@ -30,8 +30,12 @@ group :development, :test do
 end
 
 group :test do
-  gem "rspec"
-  gem "rack-test"
   gem "database_cleaner-sequel"
   gem "factory_bot"
+  gem "rack-test"
+  gem "rspec"
 end
+
+gem "rubocop-performance", "~> 1.26"
+
+gem "rubocop-factory_bot", "~> 2.28"

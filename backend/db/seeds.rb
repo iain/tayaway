@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Seed data for development
 
 # Example:

@@ -1,3 +1,6 @@
+# typed: true
+# frozen_string_literal: true
+
 class App
   hash_path "/health" do |r|
     r.get do

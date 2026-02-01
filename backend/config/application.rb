@@ -1,3 +1,6 @@
+# typed: true
+# frozen_string_literal: true
+
 # Application-wide configuration
 
 module Tayaway

@@ -1,26 +1,94 @@
-require:
+plugins:
+  - rubocop-performance
   - rubocop-rspec
   - rubocop-sequel
   - rubocop-sorbet
+  - rubocop-factory_bot
 
 AllCops:
-  TargetRubyVersion: 4.0
   NewCops: enable
+  DisplayCopNames: true
+  ExtraDetails: true
   Exclude:
-    - "db/migrations/**/*"
-    - "vendor/**/*"
-    - "sorbet/**/*"
+    - sorbet/**/*.rbi
 
-Style/Documentation:
+Sorbet/FalseSigil:
+  Enabled: false
+
+Sorbet/ValidSigil:
+  Enabled: true
+  SuggestedStrictness: "true"
+  RequireSigilOnAllFiles: true
+
+Sorbet/ConstantsFromStrings:
+  Enabled: false
+
+Performance:
+  Enabled: true
+
+Layout:
+  Enabled: true
+
+Layout/LineLength:
+  Enabled: false
+
+Layout/HashAlignment:
+  Enabled: false
+
+Layout/FirstHashElementIndentation:
+  EnforcedStyle: consistent
+
+Layout/MultilineMethodCallBraceLayout:
+  EnforcedStyle: new_line
+
+Layout/EmptyLineAfterGuardClause:
+  Enabled: false
+
+Lint/AssignmentInCondition:
+  Enabled: true
+
+Lint/Debugger:
+  Enabled: true
+
+Lint/UnusedMethodArgument:
+  Enabled: false
+
+Metrics:
+  Enabled: false
+
+Naming/MemoizedInstanceVariableName:
+  EnforcedStyleForLeadingUnderscores: required
+
+Naming/BlockForwarding:
+  Enabled: false
+
+Style:
+  Enabled: false
+
+Style/StringLiterals:
+  Enabled: true
+  EnforcedStyle: double_quotes
+
+Style/TrailingCommaInHashLiteral:
+  Enabled: false
+
+Style/TrailingCommaInArrayLiteral:
   Enabled: false
 
 Style/FrozenStringLiteralComment:
+  Enabled: true
+  EnforcedStyle: always_true
+  Exclude:
+    - Gemfile
+
+RSpec/MultipleDescribes:
   Enabled: false
 
-Metrics/BlockLength:
-  Exclude:
-    - "spec/**/*"
-    - "Rakefile"
+RSpec/MultipleExpectations:
+  Enabled: false
 
-Layout/LineLength:
-  Max: 120
+RSpec/ExampleLength:
+  Max: 50
+
+RSpec/DescribeClass:
+  Enabled: false

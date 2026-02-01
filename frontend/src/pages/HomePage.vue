@@ -14,7 +14,7 @@ onMounted(async () => {
   try {
     const response = await api.get<HealthResponse>('/health')
     healthStatus.value = response.data.status
-  } catch (e) {
+  } catch {
     error.value = 'Failed to connect to API'
   } finally {
     loading.value = false
@@ -25,10 +25,25 @@ onMounted(async () => {
 <template>
   <main class="min-h-screen bg-gray-100 flex items-center justify-center">
     <div class="bg-white p-8 rounded-lg shadow-md text-center">
-      <h1 class="text-3xl font-bold text-gray-900 mb-4">Tayaway</h1>
-      <div v-if="loading" class="text-gray-500">Checking API status...</div>
-      <div v-else-if="error" class="text-red-500">{{ error }}</div>
-      <div v-else class="text-green-600">
+      <h1 class="text-3xl font-bold text-gray-900 mb-4">
+        Tayaway
+      </h1>
+      <div
+        v-if="loading"
+        class="text-gray-500"
+      >
+        Checking API status...
+      </div>
+      <div
+        v-else-if="error"
+        class="text-red-500"
+      >
+        {{ error }}
+      </div>
+      <div
+        v-else
+        class="text-green-600"
+      >
         API Status: {{ healthStatus }}
       </div>
     </div>

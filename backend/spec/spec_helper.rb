@@ -1,3 +1,6 @@
+# typed: true
+# frozen_string_literal: true
+
 ENV["RACK_ENV"] = "test"
 
 require_relative "../config/environment"
@@ -25,7 +28,7 @@ RSpec.configure do |config|
   config.order = :random
   Kernel.srand config.seed
 
-  def app
+  define_method(:app) do
     App.freeze.app
   end
 
