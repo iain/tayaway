@@ -29,7 +29,7 @@ const navigation = [
 ]
 
 const userNavigation = [
-  { name: 'Your Profile', href: '#' },
+  { name: 'Your Profile', href: '/profile' },
   { name: 'Settings', href: '#' },
 ]
 
@@ -131,17 +131,18 @@ function getInitials(email: string | undefined): string {
                     <MenuItem
                       v-for="item in userNavigation"
                       :key="item.name"
-                      v-slot="{ active }"
+                      v-slot="{ active, close }"
                     >
-                      <a
-                        :href="item.href"
+                      <router-link
+                        :to="item.href"
                         :class="[
                           active ? 'bg-gray-100 dark:bg-gray-700' : '',
                           'block px-4 py-2 text-sm text-gray-700 dark:text-gray-300',
                         ]"
+                        @click="close"
                       >
                         {{ item.name }}
-                      </a>
+                      </router-link>
                     </MenuItem>
                     <MenuItem v-slot="{ active }">
                       <button
@@ -232,11 +233,14 @@ function getInitials(email: string | undefined): string {
             <DisclosureButton
               v-for="item in userNavigation"
               :key="item.name"
-              as="a"
-              :href="item.href"
-              class="block rounded-md px-3 py-2 text-base font-medium text-white hover:bg-indigo-500 dark:hover:bg-indigo-700 hover:bg-opacity-75"
+              as="template"
             >
-              {{ item.name }}
+              <router-link
+                :to="item.href"
+                class="block rounded-md px-3 py-2 text-base font-medium text-white hover:bg-indigo-500 dark:hover:bg-indigo-700 hover:bg-opacity-75"
+              >
+                {{ item.name }}
+              </router-link>
             </DisclosureButton>
             <DisclosureButton
               as="button"

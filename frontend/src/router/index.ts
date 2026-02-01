@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import AuthenticatedLayout from '@/layouts/AuthenticatedLayout.vue'
 import HomePage from '@/pages/HomePage.vue'
+import ProfilePage from '@/pages/ProfilePage.vue'
 import LoginPage from '@/pages/LoginPage.vue'
 import AuthVerifyPage from '@/pages/AuthVerifyPage.vue'
 
@@ -17,6 +18,11 @@ const router = createRouter({
           path: '',
           name: 'home',
           component: HomePage,
+        },
+        {
+          path: 'profile',
+          name: 'profile',
+          component: ProfilePage,
         },
       ],
     },
