@@ -43,51 +43,50 @@ test.describe('Authentication', () => {
   })
 
   test.describe('Full auth flow', () => {
-    test('complete magic link login and logout', async ({ page, request }) => {
+    test('complete magic link request flow', async ({ page, request }) => {
       // Step 1: Request magic link via API
       const magicLinkResponse = await request.post(`${API_BASE}/api/auth/magic-link`, {
         data: { email: TEST_EMAIL }
       })
       expect(magicLinkResponse.ok()).toBeTruthy()
 
-      // Step 2: Get the token from database via a test endpoint or direct DB query
-      // For this test, we'll verify the API flow works by calling verify with the actual token
-      // We need to get the token - in a real scenario we'd have a test helper endpoint
-      // For now, we'll test the flow by directly calling the API
-
-      // Step 3: Visit home page - should show sign in link (not authenticated)
+      // Step 2: Visit home page - should redirect to login (not authenticated)
       await page.goto('/')
-      await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible()
+      await expect(page).toHaveURL('/login')
 
-      // Step 4: Go to login, request magic link via UI
-      await page.goto('/login')
+      // Step 3: Request magic link via UI
       await page.fill('input[type="email"]', TEST_EMAIL)
       await page.click('button[type="submit"]')
       await expect(page.getByText('If an account exists with this email')).toBeVisible()
     })
 
     test('authenticated user sees their email and can logout', async ({ page, request }) => {
-      // Create a session directly via API for testing
-      const magicLinkResponse = await request.post(`${API_BASE}/api/auth/magic-link`, {
-        data: { email: TEST_EMAIL }
+      // Create a session using the test helper endpoint
+      const sessionResponse = await request.post(`${API_BASE}/api/test/session`, {
+        data: { email: TEST_EMAIL, name: 'Test User' }
       })
-      expect(magicLinkResponse.ok()).toBeTruthy()
+      expect(sessionResponse.ok()).toBeTruthy()
+      const { session_token } = await sessionResponse.json()
 
-      // For a complete e2e test, we need a way to get the magic link token
-      // In production, this would be emailed. For testing, we query the latest token
-      // Since we can't easily do that here, we'll test the session-based auth flow
-
-      // Simulate having a valid session by using the verify endpoint
-      // This requires knowing the token, which we'd need a test helper for
-      // For now, test that the logout flow works with a mocked session
-
+      // Set up authenticated session
       await page.goto('/')
-      // If not authenticated, we should see sign in link
-      const signInLink = page.getByRole('link', { name: 'Sign in' })
-      if (await signInLink.isVisible()) {
-        // Not authenticated, which is expected without a real magic link
-        expect(true).toBeTruthy()
-      }
+      await page.evaluate((token) => {
+        localStorage.setItem('session_token', token)
+      }, session_token)
+
+      // Navigate to home page - should now be authenticated
+      await page.goto('/')
+      await expect(page.locator('h1')).toContainText('Dashboard')
+
+      // User menu should show their email initial
+      await expect(page.locator('text=T')).toBeVisible() // First letter of "Test"
+
+      // Click user menu and logout
+      await page.locator('button:has-text("T")').click()
+      await page.getByRole('button', { name: 'Sign out' }).click()
+
+      // Should redirect to login
+      await expect(page).toHaveURL('/login')
     })
   })
 
@@ -162,9 +161,9 @@ test.describe('Authentication', () => {
   })
 
   test.describe('Protected routes', () => {
-    test('home page shows sign in link when not authenticated', async ({ page }) => {
+    test('home page redirects to login when not authenticated', async ({ page }) => {
       await page.goto('/')
-      await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible()
+      await expect(page).toHaveURL('/login')
     })
 
     test('login page redirects to home if already has session token', async ({ page }) => {

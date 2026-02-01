@@ -26,6 +26,7 @@ const { isDark, toggle: toggleDarkMode } = useDarkMode()
 
 const navigation = [
   { name: 'Dashboard', href: '/', routeName: 'home' },
+  { name: 'Events', href: '/events', routeName: 'events' },
 ]
 
 const userNavigation = [

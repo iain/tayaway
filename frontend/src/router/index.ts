@@ -3,6 +3,9 @@ import { useAuth } from '@/composables/useAuth'
 import AuthenticatedLayout from '@/layouts/AuthenticatedLayout.vue'
 import HomePage from '@/pages/HomePage.vue'
 import ProfilePage from '@/pages/ProfilePage.vue'
+import EventsPage from '@/pages/EventsPage.vue'
+import EventCreatePage from '@/pages/EventCreatePage.vue'
+import EventEditPage from '@/pages/EventEditPage.vue'
 import LoginPage from '@/pages/LoginPage.vue'
 import AuthVerifyPage from '@/pages/AuthVerifyPage.vue'
 
@@ -23,6 +26,21 @@ const router = createRouter({
           path: 'profile',
           name: 'profile',
           component: ProfilePage,
+        },
+        {
+          path: 'events',
+          name: 'events',
+          component: EventsPage,
+        },
+        {
+          path: 'events/new',
+          name: 'events-new',
+          component: EventCreatePage,
+        },
+        {
+          path: 'events/:id/edit',
+          name: 'events-edit',
+          component: EventEditPage,
         },
       ],
     },
