@@ -9,8 +9,9 @@
 - [ ] Consider deployment automation
 
 ### Documentation
-- [ ] Add root README.md with project overview, setup instructions, and architecture diagram
-- [ ] Document API endpoints (consider OpenAPI/Swagger spec)
+- [x] Add root README.md with project overview, setup instructions, and architecture diagram
+- [x] Add CLAUDE.md with API endpoint documentation
+- [ ] Document API endpoints formally (consider OpenAPI/Swagger spec)
 
 ### Pre-commit Hooks
 - [ ] Add husky for git hooks
@@ -30,10 +31,10 @@
 
 ### Database
 - [ ] Add meaningful seed data for development
-- [ ] Consider adding database schema documentation
+- [x] Database schema documented in CLAUDE.md
 
 ### Testing
-- [ ] Expand E2E test coverage beyond example.spec.ts
+- [x] Expand E2E test coverage (auth and events tests added)
 - [ ] Add test coverage reporting (Vitest coverage, SimpleCov for Ruby)
 - [ ] Consider adding API integration tests
 
