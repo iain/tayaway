@@ -46,6 +46,7 @@ function handleRemove(index: number): void {
       </label>
       <button
         type="button"
+        data-testid="add-date-range-button"
         class="inline-flex items-center gap-1 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-500"
         @click="handleAdd"
       >

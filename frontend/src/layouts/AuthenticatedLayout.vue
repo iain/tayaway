@@ -110,10 +110,13 @@ function getInitials(email: string | undefined): string {
                 class="relative ml-3"
               >
                 <div>
-                  <MenuButton class="relative flex max-w-xs items-center rounded-full bg-indigo-600 dark:bg-indigo-800 text-sm focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-indigo-600 focus:outline-hidden">
+                  <MenuButton
+                    data-testid="user-menu-button"
+                    class="relative flex max-w-xs items-center rounded-full bg-indigo-600 dark:bg-indigo-800 text-sm focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-indigo-600 focus:outline-hidden"
+                  >
                     <span class="sr-only">Open user menu</span>
                     <span class="inline-flex size-8 items-center justify-center rounded-full bg-indigo-500 dark:bg-indigo-700">
-                      <span class="text-sm font-medium text-white">{{ getInitials(user?.email) }}</span>
+                      <span data-testid="user-initial" class="text-sm font-medium text-white">{{ getInitials(user?.email) }}</span>
                     </span>
                   </MenuButton>
                 </div>
@@ -148,6 +151,7 @@ function getInitials(email: string | undefined): string {
                     <MenuItem v-slot="{ active }">
                       <button
                         type="button"
+                        data-testid="sign-out-button"
                         :class="[
                           active ? 'bg-gray-100 dark:bg-gray-700' : '',
                           'block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300',

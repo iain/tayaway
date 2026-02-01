@@ -9,9 +9,7 @@ class App
       end
     end
 
-    # Add API routes here
-    # r.on "users" do
-    #   r.get { User.all.map(&:to_hash) }
-    # end
+    # Dispatch to nested branches (events, etc.)
+    r.hash_branches("api")
   end
 end

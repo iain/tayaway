@@ -37,11 +37,15 @@ function formatDateRangeSummary(ranges: { start_date: string; end_date: string }
 <template>
   <div>
     <header class="mb-6 flex items-center justify-between">
-      <h1 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+      <h1
+        data-testid="page-title"
+        class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white"
+      >
         Events
       </h1>
       <button
         type="button"
+        data-testid="new-event-button"
         class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
         @click="handleCreate"
       >
@@ -89,17 +93,22 @@ function formatDateRangeSummary(ranges: { start_date: string; end_date: string }
 
     <ul
       v-else
+      data-testid="events-list"
       class="divide-y divide-gray-200 dark:divide-gray-700"
     >
       <li
         v-for="event in events"
         :key="event.id"
+        :data-testid="`event-item-${event.id}`"
         class="bg-white dark:bg-gray-800 shadow rounded-lg mb-4 overflow-hidden"
       >
         <div class="px-4 py-5 sm:px-6">
           <div class="flex items-center justify-between">
             <div class="min-w-0 flex-1">
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white truncate">
+              <h2
+                data-testid="event-name"
+                class="text-lg font-semibold text-gray-900 dark:text-white truncate"
+              >
                 {{ event.name }}
               </h2>
               <p

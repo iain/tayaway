@@ -70,6 +70,7 @@ function handleMouseLeave(): void {
       <button
         v-for="day in days"
         :key="day.dateString"
+        :data-testid="`calendar-day-${day.dateString}`"
         type="button"
         class="relative py-2 text-sm focus:z-10 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         :class="[

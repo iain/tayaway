@@ -7,25 +7,25 @@ test.describe('Authentication', () => {
   test.describe('Login page', () => {
     test('displays the login form', async ({ page }) => {
       await page.goto('/login')
-      await expect(page.locator('h1')).toContainText('Sign in to Tayaway')
-      await expect(page.locator('input[type="email"]')).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Send magic link' })).toBeVisible()
+      await expect(page.getByTestId('login-title')).toContainText('Sign in to Tayaway')
+      await expect(page.getByTestId('email-input')).toBeVisible()
+      await expect(page.getByTestId('submit-button')).toBeVisible()
     })
 
     test('shows success message after requesting magic link', async ({ page }) => {
       await page.goto('/login')
-      await page.fill('input[type="email"]', TEST_EMAIL)
-      await page.click('button[type="submit"]')
+      await page.getByTestId('email-input').fill(TEST_EMAIL)
+      await page.getByTestId('submit-button').click()
 
-      await expect(page.getByText('If an account exists with this email')).toBeVisible()
+      await expect(page.getByTestId('success-message')).toBeVisible()
     })
 
     test('shows success message for unknown email (no enumeration)', async ({ page }) => {
       await page.goto('/login')
-      await page.fill('input[type="email"]', 'unknown@example.com')
-      await page.click('button[type="submit"]')
+      await page.getByTestId('email-input').fill('unknown@example.com')
+      await page.getByTestId('submit-button').click()
 
-      await expect(page.getByText('If an account exists with this email')).toBeVisible()
+      await expect(page.getByTestId('success-message')).toBeVisible()
     })
   })
 
@@ -55,9 +55,9 @@ test.describe('Authentication', () => {
       await expect(page).toHaveURL('/login')
 
       // Step 3: Request magic link via UI
-      await page.fill('input[type="email"]', TEST_EMAIL)
-      await page.click('button[type="submit"]')
-      await expect(page.getByText('If an account exists with this email')).toBeVisible()
+      await page.getByTestId('email-input').fill(TEST_EMAIL)
+      await page.getByTestId('submit-button').click()
+      await expect(page.getByTestId('success-message')).toBeVisible()
     })
 
     test('authenticated user sees their email and can logout', async ({ page, request }) => {
@@ -79,11 +79,14 @@ test.describe('Authentication', () => {
       await expect(page.locator('h1')).toContainText('Dashboard')
 
       // User menu should show their email initial
-      await expect(page.locator('text=T')).toBeVisible() // First letter of "Test"
+      await expect(page.getByTestId('user-initial')).toBeVisible()
+      await expect(page.getByTestId('user-initial')).toHaveText('T') // First letter of "Test"
 
       // Click user menu and logout
-      await page.locator('button:has-text("T")').click()
-      await page.getByRole('button', { name: 'Sign out' }).click()
+      await page.getByTestId('user-menu-button').click()
+      // Wait for dropdown menu to be visible
+      await expect(page.getByText(TEST_EMAIL)).toBeVisible()
+      await page.getByTestId('sign-out-button').click()
 
       // Should redirect to login
       await expect(page).toHaveURL('/login')
@@ -178,7 +181,7 @@ test.describe('Authentication', () => {
       await page.goto('/login')
 
       // Should stay on login since the fake token is invalid
-      await expect(page.locator('h1')).toContainText('Sign in to Tayaway')
+      await expect(page.getByTestId('login-title')).toContainText('Sign in to Tayaway')
     })
   })
 })

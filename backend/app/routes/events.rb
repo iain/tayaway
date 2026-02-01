@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 class App
-  hash_branch "api/events" do |r|
+  hash_branch("api", "events") do |r|
       response.status = 401
       next { error: "Authorization required" } unless current_user
 

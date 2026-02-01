@@ -106,6 +106,7 @@ function handleCancel(): void {
         type="text"
         required
         maxlength="255"
+        data-testid="event-name-input"
         class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white"
         placeholder="Enter event name"
       >
@@ -122,6 +123,7 @@ function handleCancel(): void {
         id="description"
         v-model="description"
         rows="3"
+        data-testid="event-description-input"
         class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white"
         placeholder="Enter event description"
       />
@@ -136,6 +138,7 @@ function handleCancel(): void {
     <div class="flex justify-end gap-3 pt-4">
       <button
         type="button"
+        data-testid="cancel-button"
         class="rounded-md bg-white dark:bg-gray-700 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
         @click="handleCancel"
       >
@@ -143,6 +146,7 @@ function handleCancel(): void {
       </button>
       <button
         type="submit"
+        data-testid="submit-button"
         :disabled="!canSubmit"
         class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
       >
