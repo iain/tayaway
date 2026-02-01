@@ -144,7 +144,7 @@ const selectionText = computed(() => {
         leave-from="opacity-100"
         leave-to="opacity-0"
       >
-        <div class="fixed inset-0 bg-gray-500/75 dark:bg-gray-900/75 transition-opacity" />
+        <div class="fixed inset-0 bg-gray-900/75 transition-opacity" />
       </TransitionChild>
 
       <div class="fixed inset-0 z-10 overflow-y-auto">
@@ -158,11 +158,11 @@ const selectionText = computed(() => {
             leave-from="opacity-100 translate-y-0 sm:scale-100"
             leave-to="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
           >
-            <DialogPanel class="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:p-6">
+            <DialogPanel class="relative transform overflow-hidden rounded-lg bg-gray-900 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:p-6">
               <div class="absolute right-0 top-0 pr-4 pt-4">
                 <button
                   type="button"
-                  class="rounded-md bg-white dark:bg-gray-800 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                  class="rounded-md bg-gray-900 text-gray-400 hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900"
                   @click="handleClose"
                 >
                   <span class="sr-only">Close</span>
@@ -177,12 +177,12 @@ const selectionText = computed(() => {
                 <div class="w-full">
                   <DialogTitle
                     as="h3"
-                    class="text-lg font-semibold text-gray-900 dark:text-white mb-4"
+                    class="text-lg font-semibold text-white mb-4"
                   >
                     Select Date Range
                   </DialogTitle>
 
-                  <div class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  <div class="text-sm text-gray-400 mb-4">
                     {{ selectionText }}
                   </div>
 
@@ -190,14 +190,14 @@ const selectionText = computed(() => {
                   <div class="flex items-center justify-between mb-4">
                     <button
                       type="button"
-                      class="p-2 rounded-md text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      class="p-2 rounded-md text-gray-400 hover:text-gray-300 hover:bg-white/10"
                       @click="navigatePrev"
                     >
                       <ChevronLeftIcon class="size-5" />
                     </button>
                     <button
                       type="button"
-                      class="p-2 rounded-md text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      class="p-2 rounded-md text-gray-400 hover:text-gray-300 hover:bg-white/10"
                       @click="navigateNext"
                     >
                       <ChevronRightIcon class="size-5" />
@@ -228,22 +228,22 @@ const selectionText = computed(() => {
                 </div>
               </div>
 
-              <div class="mt-6 sm:flex sm:flex-row-reverse gap-3">
+              <div class="mt-6 flex items-center justify-end gap-x-6">
+                <button
+                  type="button"
+                  class="text-sm/6 font-semibold text-white"
+                  @click="handleClose"
+                >
+                  Cancel
+                </button>
                 <button
                   type="button"
                   data-testid="modal-save-button"
-                  class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
+                  class="rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   :disabled="!canSave"
                   @click="handleSave"
                 >
                   Add Range
-                </button>
-                <button
-                  type="button"
-                  class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-700 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 sm:mt-0 sm:w-auto"
-                  @click="handleClose"
-                >
-                  Cancel
                 </button>
               </div>
             </DialogPanel>

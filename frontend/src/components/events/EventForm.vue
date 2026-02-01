@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import DateRangeList, { type DateRangeItem } from './DateRangeList.vue'
 import DateRangeModal from './DateRangeModal.vue'
+import { FormInput, FormTextarea, FormActions } from '@/components/form'
 import { useCalendar } from '@/composables/useCalendar'
 
 export interface EventFormData {
@@ -90,69 +91,43 @@ function handleCancel(): void {
 
 <template>
   <form
-    class="space-y-6"
+    class="space-y-8"
     @submit.prevent="handleSubmit"
   >
-    <div>
-      <label
-        for="name"
-        class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-      >
-        Event Name
-      </label>
-      <input
+    <div class="space-y-8">
+      <FormInput
         id="name"
         v-model="name"
-        type="text"
-        required
-        maxlength="255"
-        data-testid="event-name-input"
-        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white"
+        label="Event Name"
         placeholder="Enter event name"
-      >
-    </div>
+        required
+        :maxlength="255"
+        data-testid="event-name-input"
+      />
 
-    <div>
-      <label
-        for="description"
-        class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-      >
-        Description (optional)
-      </label>
-      <textarea
+      <FormTextarea
         id="description"
         v-model="description"
-        rows="3"
-        data-testid="event-description-input"
-        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white"
+        label="Description (optional)"
         placeholder="Enter event description"
+        :rows="3"
+        data-testid="event-description-input"
+      />
+
+      <DateRangeList
+        :ranges="dateRanges"
+        @add="handleAddRange"
+        @remove="handleRemoveRange"
       />
     </div>
 
-    <DateRangeList
-      :ranges="dateRanges"
-      @add="handleAddRange"
-      @remove="handleRemoveRange"
+    <FormActions
+      :submit-label="submitLabel"
+      :loading="loading"
+      :disabled="!canSubmit"
+      data-testid="form-actions"
+      @cancel="handleCancel"
     />
-
-    <div class="flex justify-end gap-3 pt-4">
-      <button
-        type="button"
-        data-testid="cancel-button"
-        class="rounded-md bg-white dark:bg-gray-700 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
-        @click="handleCancel"
-      >
-        Cancel
-      </button>
-      <button
-        type="submit"
-        data-testid="submit-button"
-        :disabled="!canSubmit"
-        class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {{ loading ? 'Saving...' : (submitLabel || 'Save') }}
-      </button>
-    </div>
 
     <DateRangeModal
       :open="showModal"

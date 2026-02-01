@@ -52,11 +52,11 @@ function handleMouseLeave(): void {
 
 <template>
   <div class="w-full">
-    <div class="text-center font-semibold text-gray-900 dark:text-white mb-4">
+    <div class="text-center font-semibold text-white mb-4">
       {{ monthName }} {{ year }}
     </div>
 
-    <div class="grid grid-cols-7 gap-px text-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+    <div class="grid grid-cols-7 gap-px text-center text-xs font-medium text-gray-400 mb-2">
       <div
         v-for="day in weekDays"
         :key="day"
@@ -75,15 +75,15 @@ function handleMouseLeave(): void {
         class="relative py-2 text-sm focus:z-10 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         :class="[
           day.isCurrentMonth
-            ? 'text-gray-900 dark:text-gray-100'
-            : 'text-gray-400 dark:text-gray-600',
+            ? 'text-white'
+            : 'text-gray-600',
           isSelected(day.dateString)
-            ? 'bg-indigo-600 text-white font-semibold'
+            ? 'bg-indigo-500 text-white font-semibold'
             : isInRange(day.dateString)
-              ? 'bg-indigo-100 dark:bg-indigo-900/50'
+              ? 'bg-indigo-500/30'
               : isInHoverRange(day.dateString)
-                ? 'bg-indigo-50 dark:bg-indigo-900/30'
-                : 'hover:bg-gray-100 dark:hover:bg-gray-700',
+                ? 'bg-indigo-500/20'
+                : 'hover:bg-white/10',
         ]"
         @click="handleClick(day)"
         @mouseenter="handleMouseEnter(day)"

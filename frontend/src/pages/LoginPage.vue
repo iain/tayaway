@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useAuth } from '@/composables/useAuth'
+import { FormInput } from '@/components/form'
 
 const { requestMagicLink } = useAuth()
 
@@ -27,43 +28,39 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <main class="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
-    <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md w-full max-w-md">
+  <main class="min-h-screen bg-gray-900 flex items-center justify-center">
+    <div class="w-full max-w-md px-6">
       <h1
         data-testid="login-title"
-        class="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center"
+        class="text-2xl font-bold text-white mb-2 text-center"
       >
         Sign in to Tayaway
       </h1>
+      <p class="text-sm/6 text-gray-400 text-center mb-8">
+        We'll send you a magic link to sign in without a password.
+      </p>
 
       <form
-        class="space-y-4"
+        class="space-y-6"
         @submit.prevent="handleSubmit"
       >
-        <div>
-          <label
-            for="email"
-            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-          >
-            Email address
-          </label>
-          <input
-            id="email"
-            v-model="email"
-            type="email"
-            required
-            data-testid="email-input"
-            placeholder="you@example.com"
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            :disabled="loading"
-          >
-        </div>
+        <FormInput
+          id="email"
+          v-model="email"
+          label="Email address"
+          type="email"
+          placeholder="you@example.com"
+          autocomplete="email"
+          required
+          :disabled="loading"
+          data-testid="email-input"
+        />
 
         <button
           type="submit"
           data-testid="submit-button"
           :disabled="loading || !email"
-          class="w-full py-2 px-4 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="w-full rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {{ loading ? 'Sending...' : 'Send magic link' }}
         </button>
@@ -72,21 +69,17 @@ async function handleSubmit() {
       <div
         v-if="message"
         data-testid="success-message"
-        class="mt-4 p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-md text-green-700 dark:text-green-400 text-sm"
+        class="mt-6 rounded-md bg-green-500/10 p-4 border border-green-500/20"
       >
-        {{ message }}
+        <p class="text-sm text-green-400">{{ message }}</p>
       </div>
 
       <div
         v-if="error"
-        class="mt-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-md text-red-700 dark:text-red-400 text-sm"
+        class="mt-6 rounded-md bg-red-500/10 p-4 border border-red-500/20"
       >
-        {{ error }}
+        <p class="text-sm text-red-400">{{ error }}</p>
       </div>
-
-      <p class="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
-        We'll send you a magic link to sign in without a password.
-      </p>
     </div>
   </main>
 </template>

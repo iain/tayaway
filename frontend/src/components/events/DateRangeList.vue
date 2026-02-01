@@ -41,13 +41,13 @@ function handleRemove(index: number): void {
 <template>
   <div>
     <div class="flex items-center justify-between mb-3">
-      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+      <label class="block text-sm/6 font-medium text-white">
         Date Ranges
       </label>
       <button
         type="button"
         data-testid="add-date-range-button"
-        class="inline-flex items-center gap-1 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-500"
+        class="inline-flex items-center gap-1 text-sm text-indigo-400 hover:text-indigo-300"
         @click="handleAdd"
       >
         <PlusIcon class="size-4" />
@@ -57,7 +57,7 @@ function handleRemove(index: number): void {
 
     <div
       v-if="sortedRanges.length === 0"
-      class="text-sm text-gray-500 dark:text-gray-400 italic"
+      class="text-sm text-gray-400 italic"
     >
       No date ranges added yet. Click "Add Range" to add potential dates.
     </div>
@@ -69,14 +69,14 @@ function handleRemove(index: number): void {
       <li
         v-for="(range, index) in sortedRanges"
         :key="`${range.start_date}-${range.end_date}`"
-        class="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 rounded-md px-3 py-2"
+        class="flex items-center justify-between bg-white/5 rounded-md px-3 py-2"
       >
-        <span class="text-sm text-gray-900 dark:text-gray-100">
+        <span class="text-sm text-white">
           {{ formatDateDisplay(range.start_date) }} - {{ formatDateDisplay(range.end_date) }}
         </span>
         <button
           type="button"
-          class="text-gray-400 hover:text-red-500 dark:hover:text-red-400"
+          class="text-gray-400 hover:text-red-400"
           @click="handleRemove(index)"
         >
           <TrashIcon class="size-4" />
