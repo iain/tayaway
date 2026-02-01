@@ -9,3 +9,4 @@ DB.extension :pg_json
 DB.extension :pg_array
 
 Sequel::Model.plugin :json_serializer
+Sequel::Model.plugin :validation_helpers

@@ -8,6 +8,20 @@ export interface ApiError {
   status: number
 }
 
+const SESSION_TOKEN_KEY = 'session_token'
+
+export function getSessionToken(): string | null {
+  return localStorage.getItem(SESSION_TOKEN_KEY)
+}
+
+export function setSessionToken(token: string): void {
+  localStorage.setItem(SESSION_TOKEN_KEY, token)
+}
+
+export function clearSessionToken(): void {
+  localStorage.removeItem(SESSION_TOKEN_KEY)
+}
+
 class ApiClient {
   private baseUrl: string
 
@@ -43,6 +57,11 @@ class ApiClient {
     const url = `${this.baseUrl}${path}`
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
+    }
+
+    const sessionToken = getSessionToken()
+    if (sessionToken) {
+      headers['Authorization'] = `Bearer ${sessionToken}`
     }
 
     const response = await fetch(url, {

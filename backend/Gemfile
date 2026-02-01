@@ -17,6 +17,9 @@ gem "json"
 # Environment
 gem "dotenv"
 
+# Tasks
+gem "rake"
+
 group :development do
   gem "rubocop", require: false
   gem "rubocop-rspec", require: false

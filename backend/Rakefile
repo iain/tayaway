@@ -68,6 +68,7 @@ namespace :db do
   desc "Seed the database"
   task :seed do
     require_relative "config/database"
+    Dir[File.expand_path("app/models/**/*.rb", __dir__)].each { |f| require f }
     require_relative "db/seeds"
 
     puts "Seeding complete"
