@@ -31,27 +31,27 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="min-h-screen bg-gray-100 flex items-center justify-center">
-    <div class="bg-white p-8 rounded-lg shadow-md text-center">
+  <main class="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
+    <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md text-center">
       <div v-if="verifying">
-        <h1 class="text-2xl font-bold text-gray-900 mb-4">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
           Verifying...
         </h1>
-        <p class="text-gray-500">
+        <p class="text-gray-500 dark:text-gray-400">
           Please wait while we sign you in.
         </p>
       </div>
 
       <div v-else-if="error">
-        <h1 class="text-2xl font-bold text-gray-900 mb-4">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
           Verification Failed
         </h1>
-        <p class="text-red-600 mb-4">
+        <p class="text-red-600 dark:text-red-400 mb-4">
           {{ error }}
         </p>
         <router-link
           to="/login"
-          class="inline-block py-2 px-4 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700"
+          class="inline-block py-2 px-4 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700"
         >
           Back to login
         </router-link>

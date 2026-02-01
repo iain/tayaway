@@ -1,19 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 
-const router = useRouter()
-const { isAuthenticated, requestMagicLink } = useAuth()
+const { requestMagicLink } = useAuth()
 
 const email = ref('')
 const message = ref('')
 const error = ref('')
 const loading = ref(false)
-
-if (isAuthenticated.value) {
-  router.push('/')
-}
 
 async function handleSubmit() {
   error.value = ''
@@ -33,9 +27,9 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <main class="min-h-screen bg-gray-100 flex items-center justify-center">
-    <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-      <h1 class="text-2xl font-bold text-gray-900 mb-6 text-center">
+  <main class="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
+    <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md w-full max-w-md">
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">
         Sign in to Tayaway
       </h1>
 
@@ -46,7 +40,7 @@ async function handleSubmit() {
         <div>
           <label
             for="email"
-            class="block text-sm font-medium text-gray-700 mb-1"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
             Email address
           </label>
@@ -56,7 +50,7 @@ async function handleSubmit() {
             type="email"
             required
             placeholder="you@example.com"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             :disabled="loading"
           >
         </div>
@@ -64,7 +58,7 @@ async function handleSubmit() {
         <button
           type="submit"
           :disabled="loading || !email"
-          class="w-full py-2 px-4 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="w-full py-2 px-4 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {{ loading ? 'Sending...' : 'Send magic link' }}
         </button>
@@ -72,19 +66,19 @@ async function handleSubmit() {
 
       <div
         v-if="message"
-        class="mt-4 p-3 bg-green-50 border border-green-200 rounded-md text-green-700 text-sm"
+        class="mt-4 p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-md text-green-700 dark:text-green-400 text-sm"
       >
         {{ message }}
       </div>
 
       <div
         v-if="error"
-        class="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm"
+        class="mt-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-md text-red-700 dark:text-red-400 text-sm"
       >
         {{ error }}
       </div>
 
-      <p class="mt-6 text-center text-sm text-gray-500">
+      <p class="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
         We'll send you a magic link to sign in without a password.
       </p>
     </div>
