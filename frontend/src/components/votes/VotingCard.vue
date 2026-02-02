@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/vue/24/outline'
-import type { DateRange, VoteResponse, User } from '@/types'
+import type { DateRange, Vote, VoteResponse, User } from '@/types'
 import { useCalendar } from '@/composables/useCalendar'
 import { useVotes } from '@/composables/useVotes'
 import VoteSummaryBar from './VoteSummaryBar.vue'
@@ -14,7 +14,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  voteUpdated: []
+  voteUpdated: [vote: Vote, dateRangeId: string]
 }>()
 
 const { formatDateDisplay } = useCalendar()
@@ -48,13 +48,13 @@ const hasCommentChanges = computed(() => {
 
 async function handleVote(response: VoteResponse) {
   try {
-    await submitVote(
+    const vote = await submitVote(
       props.eventId,
       props.dateRange.id,
       response,
       currentUserVote.value?.comment || undefined
     )
-    emit('voteUpdated')
+    emit('voteUpdated', vote, props.dateRange.id)
   } catch {
     // Error is handled by the composable
   }
@@ -63,13 +63,13 @@ async function handleVote(response: VoteResponse) {
 async function handleCommentSubmit() {
   if (!currentUserVote.value) return
   try {
-    await submitVote(
+    const vote = await submitVote(
       props.eventId,
       props.dateRange.id,
       currentUserVote.value.response,
       comment.value || undefined
     )
-    emit('voteUpdated')
+    emit('voteUpdated', vote, props.dateRange.id)
   } catch {
     // Error is handled by the composable
   }

@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
-import type { Event } from '@/types'
+import type { Event, Vote, VoteSummary } from '@/types'
 import { useEvents } from '@/composables/useEvents'
 import { useAuth } from '@/composables/useAuth'
 import VotingCard from '@/components/votes/VotingCard.vue'
@@ -23,9 +23,31 @@ onMounted(async () => {
   }
 })
 
-async function handleVoteUpdated(): Promise<void> {
-  const id = route.params.id as string
-  event.value = await fetchEvent(id)
+function handleVoteUpdated(vote: Vote, dateRangeId: string): void {
+  if (!event.value) return
+
+  const dateRange = event.value.date_ranges.find(dr => dr.id === dateRangeId)
+  if (!dateRange) return
+
+  // Find existing vote by this user or add new one
+  const existingIndex = dateRange.votes.findIndex(v => v.user_id === vote.user_id)
+  if (existingIndex >= 0) {
+    dateRange.votes[existingIndex] = vote
+  } else {
+    dateRange.votes.push(vote)
+  }
+
+  // Recalculate vote summary
+  dateRange.vote_summary = calculateVoteSummary(dateRange.votes)
+}
+
+function calculateVoteSummary(votes: Vote[]): VoteSummary {
+  return {
+    yes: votes.filter(v => v.response === 'yes').length,
+    no: votes.filter(v => v.response === 'no').length,
+    preferably_not: votes.filter(v => v.response === 'preferably_not').length,
+    total: votes.length,
+  }
 }
 
 function handleBack(): void {
@@ -110,7 +132,7 @@ function handleBack(): void {
             :date-range="dateRange"
             :event-id="event.id"
             :current-user="user"
-            @vote-updated="handleVoteUpdated"
+            @vote-updated="(vote, drId) => handleVoteUpdated(vote, drId)"
           />
         </div>
       </section>
