@@ -69,20 +69,45 @@ module Events
             description: description&.empty? ? nil : description
           )
 
-          event.date_ranges_dataset.delete
-
-          date_ranges.each do |dr|
-            DateRange.create(
-              event_id: event.id,
-              start_date: Date.parse(dr["start_date"]),
-              end_date: Date.parse(dr["end_date"])
-            )
-          end
+          sync_date_ranges(event, date_ranges)
 
           event.reload
         end
 
         Success({ event: updated_event.to_api_hash })
+      end
+
+      sig do
+        params(
+          event: Event,
+          date_ranges: T::Array[T::Hash[String, String]]
+        ).void
+      end
+      def sync_date_ranges(event, date_ranges)
+        incoming = date_ranges.map do |dr|
+          [Date.parse(dr["start_date"]), Date.parse(dr["end_date"])]
+        end.to_set
+
+        existing = event.date_ranges.map do |dr|
+          [[dr.start_date, dr.end_date], dr]
+        end.to_h
+
+        # Delete date ranges that are no longer in the incoming list
+        existing.each do |(key, dr)|
+          dr.delete unless incoming.include?(key)
+        end
+
+        # Create new date ranges that don't exist yet
+        existing_keys = existing.keys.to_set
+        incoming.each do |(start_date, end_date)|
+          next if existing_keys.include?([start_date, end_date])
+
+          DateRange.create(
+            event_id: event.id,
+            start_date: start_date,
+            end_date: end_date
+          )
+        end
       end
     end
   end
