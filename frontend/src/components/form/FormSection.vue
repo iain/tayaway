@@ -8,7 +8,9 @@ defineProps<{
 
 <template>
   <div :class="border ? 'border-b border-white/10 pb-12' : ''">
-    <h2 class="text-base/7 font-semibold text-white">{{ title }}</h2>
+    <h2 class="text-base/7 font-semibold text-white">
+      {{ title }}
+    </h2>
     <p
       v-if="description"
       class="mt-1 text-sm/6 text-gray-400"

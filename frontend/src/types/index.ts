@@ -65,3 +65,17 @@ export interface UpdateEventRequest {
   description?: string
   date_ranges: { start_date: string; end_date: string }[]
 }
+
+// User management types
+export interface UsersResponse {
+  users: User[]
+}
+
+export interface UserResponse {
+  user: User
+}
+
+export interface CreateUserRequest {
+  name?: string
+  email: string
+}

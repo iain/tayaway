@@ -27,6 +27,7 @@ const { isDark, toggle: toggleDarkMode } = useDarkMode()
 const navigation = [
   { name: 'Dashboard', href: '/', routeName: 'home' },
   { name: 'Events', href: '/events', routeName: 'events' },
+  { name: 'Users', href: '/users', routeName: 'users' },
 ]
 
 const userNavigation = [
@@ -116,7 +117,10 @@ function getInitials(email: string | undefined): string {
                   >
                     <span class="sr-only">Open user menu</span>
                     <span class="inline-flex size-8 items-center justify-center rounded-full bg-indigo-500 dark:bg-indigo-700">
-                      <span data-testid="user-initial" class="text-sm font-medium text-white">{{ getInitials(user?.email) }}</span>
+                      <span
+                        data-testid="user-initial"
+                        class="text-sm font-medium text-white"
+                      >{{ getInitials(user?.email) }}</span>
                     </span>
                   </MenuButton>
                 </div>

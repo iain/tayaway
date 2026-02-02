@@ -6,6 +6,7 @@ import ProfilePage from '@/pages/ProfilePage.vue'
 import EventsPage from '@/pages/EventsPage.vue'
 import EventCreatePage from '@/pages/EventCreatePage.vue'
 import EventEditPage from '@/pages/EventEditPage.vue'
+import UsersPage from '@/pages/UsersPage.vue'
 import LoginPage from '@/pages/LoginPage.vue'
 import AuthVerifyPage from '@/pages/AuthVerifyPage.vue'
 
@@ -41,6 +42,11 @@ const router = createRouter({
           path: 'events/:id/edit',
           name: 'events-edit',
           component: EventEditPage,
+        },
+        {
+          path: 'users',
+          name: 'users',
+          component: UsersPage,
         },
       ],
     },

@@ -15,7 +15,9 @@ defineEmits<{
 
 <template>
   <fieldset>
-    <legend class="text-sm/6 font-semibold text-white">{{ legend }}</legend>
+    <legend class="text-sm/6 font-semibold text-white">
+      {{ legend }}
+    </legend>
     <p
       v-if="description"
       class="mt-1 text-sm/6 text-gray-400"

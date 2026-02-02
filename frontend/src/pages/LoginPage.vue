@@ -71,14 +71,18 @@ async function handleSubmit() {
         data-testid="success-message"
         class="mt-6 rounded-md bg-green-500/10 p-4 border border-green-500/20"
       >
-        <p class="text-sm text-green-400">{{ message }}</p>
+        <p class="text-sm text-green-400">
+          {{ message }}
+        </p>
       </div>
 
       <div
         v-if="error"
         class="mt-6 rounded-md bg-red-500/10 p-4 border border-red-500/20"
       >
-        <p class="text-sm text-red-400">{{ error }}</p>
+        <p class="text-sm text-red-400">
+          {{ error }}
+        </p>
       </div>
     </div>
   </main>
