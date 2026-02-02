@@ -1,0 +1,102 @@
+# typed: true
+# frozen_string_literal: true
+
+module Votes
+  # Service to create or update a vote for an event date range.
+  #
+  # @example
+  #   result = Votes::Upsert.call(
+  #     event: event,
+  #     user_id: "uuid",
+  #     date_range_id: "dr-uuid",
+  #     vote_response: "yes",
+  #     comment: "Looks good!"
+  #   )
+  #   result.success?  # => true
+  #   result.value!    # => { vote: {...}, created: true }
+  module Upsert
+    class << self
+      extend T::Sig
+      include Result::Methods
+
+      sig do
+        params(
+          event: Event,
+          user_id: String,
+          date_range_id: T.nilable(String),
+          vote_response: T.nilable(String),
+          comment: T.nilable(String)
+        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
+      end
+      def call(event:, user_id:, date_range_id:, vote_response:, comment:)
+        validate_params(date_range_id, vote_response)
+          .bind { |params| find_date_range(params[:date_range_id]) }
+          .bind { |date_range| validate_date_range_belongs_to_event(date_range, event) }
+          .bind { |date_range| upsert_vote(date_range, user_id, T.must(vote_response), comment) }
+      end
+
+      private
+
+      sig do
+        params(date_range_id: T.nilable(String), vote_response: T.nilable(String))
+          .returns(Result[T::Hash[Symbol, String], ServiceError])
+      end
+      def validate_params(date_range_id, vote_response)
+        if date_range_id.nil? || date_range_id.empty?
+          Failure(ServiceError.validation("date_range_id is required"))
+        elsif vote_response.nil? || vote_response.empty?
+          Failure(ServiceError.validation("response is required"))
+        elsif !Vote::VALID_RESPONSES.include?(vote_response)
+          Failure(ServiceError.validation("Invalid response value"))
+        else
+          Success({ date_range_id: date_range_id, vote_response: vote_response })
+        end
+      end
+
+      sig { params(date_range_id: String).returns(Result[DateRange, ServiceError]) }
+      def find_date_range(date_range_id)
+        date_range = DateRange.first(id: date_range_id)
+        if date_range
+          Success(date_range)
+        else
+          Failure(ServiceError.validation("Date range not found"))
+        end
+      end
+
+      sig { params(date_range: DateRange, event: Event).returns(Result[DateRange, ServiceError]) }
+      def validate_date_range_belongs_to_event(date_range, event)
+        if date_range.event_id == event.id
+          Success(date_range)
+        else
+          Failure(ServiceError.validation("Date range does not belong to this event"))
+        end
+      end
+
+      sig do
+        params(
+          date_range: DateRange,
+          user_id: String,
+          vote_response: String,
+          comment: T.nilable(String)
+        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
+      end
+      def upsert_vote(date_range, user_id, vote_response, comment)
+        existing_vote = Vote.first(date_range_id: date_range.id, user_id: user_id)
+        clean_comment = comment&.empty? ? nil : comment
+
+        if existing_vote
+          existing_vote.update(response: vote_response, comment: clean_comment)
+          Success({ vote: existing_vote.to_api_hash, created: false })
+        else
+          vote = Vote.create(
+            date_range_id: date_range.id,
+            user_id: user_id,
+            response: vote_response,
+            comment: clean_comment
+          )
+          Success({ vote: vote.to_api_hash, created: true })
+        end
+      end
+    end
+  end
+end

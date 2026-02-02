@@ -12,29 +12,11 @@ class App
     end
 
     r.post do
-      email = r.params["email"]&.strip&.downcase
-      name = r.params["name"]&.strip
-
-      response.status = 400
-      next { error: "Email is required" } if email.nil? || email.empty?
-
-      # Find or create user
-      user = User.first(Sequel.lit("LOWER(email) = ?", email))
-      user ||= User.create(email: email, name: name)
-
-      # Update name if provided and different
-      if name && user.name != name
-        user.update(name: name)
-      end
-
-      # Create session
-      session = Session.create_for_user(user)
-
-      response.status = 200
-      {
-        session_token: session.token,
-        user: user.to_api_hash
-      }
+      result = Test::CreateSession.call(
+        email: r.params["email"]&.strip&.downcase,
+        name: r.params["name"]&.strip
+      )
+      handle_result(result)
     end
   end
 end

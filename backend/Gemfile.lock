@@ -207,7 +207,7 @@ DEPENDENCIES
   rubocop-sorbet
   sequel
   sequel_pg
-  sorbet
+  sorbet-static-and-runtime
   tapioca
   zeitwerk
 

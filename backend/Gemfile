@@ -21,6 +21,9 @@ gem "dotenv"
 # Autoloading
 gem "zeitwerk"
 
+# Runtime type checking
+gem "sorbet-static-and-runtime", require: "sorbet-runtime"
+
 # Tasks
 gem "rake"
 
@@ -39,7 +42,6 @@ group :development do
 end
 
 group :development, :test do
-  gem "sorbet", require: false
   gem "tapioca", require: false
 end
 

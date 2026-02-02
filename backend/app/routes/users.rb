@@ -15,24 +15,11 @@ class App
 
       # POST /api/users - Create a new user
       r.post do
-        name = r.params["name"]&.strip
-        email = r.params["email"]&.strip&.downcase
-
-        response.status = 400
-        next { error: "Email is required" } if email.nil? || email.empty?
-
-        if User.first(email: email)
-          response.status = 400
-          next { error: "A user with this email already exists" }
-        end
-
-        user = User.create(
-          name: name&.empty? ? nil : name,
-          email: email
+        result = Users::Create.call(
+          name: r.params["name"]&.strip,
+          email: r.params["email"]&.strip&.downcase
         )
-
-        response.status = 201
-        { user: user.to_api_hash }
+        handle_result(result, success_status: 201)
       end
     end
   end

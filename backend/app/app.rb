@@ -4,6 +4,8 @@
 require "roda"
 
 class App < Roda
+  include ResultHandler
+
   plugin :json
   plugin :json_parser
   plugin :hash_routes
