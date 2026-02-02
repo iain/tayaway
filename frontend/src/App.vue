@@ -2,6 +2,7 @@
 import { onMounted } from 'vue'
 import { RouterView } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
+import ToastContainer from '@/components/common/ToastContainer.vue'
 
 const { initialize, initialized } = useAuth()
 
@@ -20,4 +21,5 @@ onMounted(() => {
       Loading...
     </div>
   </div>
+  <ToastContainer />
 </template>

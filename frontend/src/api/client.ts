@@ -1,3 +1,5 @@
+import { useNotifications } from '@/composables/useNotifications'
+
 export interface ApiResponse<T> {
   data: T
   status: number
@@ -20,6 +22,29 @@ export function setSessionToken(token: string): void {
 
 export function clearSessionToken(): void {
   localStorage.removeItem(SESSION_TOKEN_KEY)
+}
+
+function getErrorMessage(status: number): string {
+  switch (status) {
+    case 400:
+      return 'Invalid request. Please check your input and try again.'
+    case 401:
+      return 'You need to sign in to continue.'
+    case 403:
+      return 'You don\'t have permission to perform this action.'
+    case 404:
+      return 'The requested resource was not found.'
+    case 422:
+      return 'The request could not be processed. Please check your input.'
+    case 500:
+      return 'Something went wrong on our end. Please try again later.'
+    case 502:
+    case 503:
+    case 504:
+      return 'The server is temporarily unavailable. Please try again later.'
+    default:
+      return 'An unexpected error occurred. Please try again.'
+  }
 }
 
 class ApiClient {
@@ -75,6 +100,8 @@ class ApiClient {
         message: response.statusText,
         status: response.status,
       }
+      const { showError } = useNotifications()
+      showError(getErrorMessage(response.status))
       throw error
     }
 
