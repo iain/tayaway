@@ -41,13 +41,13 @@ function handleClose(): void {
 <template>
   <dialog
     ref="dialogRef"
-    class="m-auto rounded-lg bg-gray-900 p-6 text-left shadow-xl backdrop:bg-gray-900/75 sm:w-full sm:max-w-md"
+    class="m-auto rounded-lg bg-white dark:bg-gray-900 p-6 text-left shadow-xl backdrop:bg-gray-500/75 dark:backdrop:bg-gray-900/75 sm:w-full sm:max-w-md"
     @close="handleClose"
   >
     <div class="absolute right-0 top-0 pr-4 pt-4">
       <button
         type="button"
-        class="rounded-md bg-gray-900 text-gray-400 hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+        class="rounded-md bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900"
         @click="handleClose"
       >
         <span class="sr-only">Close</span>
@@ -58,7 +58,7 @@ function handleClose(): void {
       </button>
     </div>
 
-    <h3 class="text-lg font-semibold text-white mb-6">
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">
       Add New User
     </h3>
 
@@ -89,7 +89,7 @@ function handleClose(): void {
       <div class="mt-6 flex items-center justify-end gap-x-6">
         <button
           type="button"
-          class="text-sm/6 font-semibold text-white"
+          class="text-sm/6 font-semibold text-gray-900 dark:text-white"
           :disabled="loading"
           @click="handleClose"
         >

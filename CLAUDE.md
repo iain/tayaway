@@ -84,3 +84,4 @@ Frontend dev server proxies `/api/*` requests to the backend.
 - Vue components use `<script setup lang="ts">` syntax
 - Tailwind CSS for styling
 - Use composables for shared state/logic
+- Always support both light and dark mode using Tailwind's `dark:` prefix
