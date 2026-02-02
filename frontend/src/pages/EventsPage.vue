@@ -4,10 +4,16 @@ import { useRouter } from 'vue-router'
 import { PlusIcon, PencilIcon, TrashIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline'
 import { useEvents } from '@/composables/useEvents'
 import { useCalendar } from '@/composables/useCalendar'
+import { useAuth } from '@/composables/useAuth'
 
 const router = useRouter()
 const { events, loading, error, fetchEvents, deleteEvent } = useEvents()
 const { formatDateDisplay } = useCalendar()
+const { user } = useAuth()
+
+function isOwner(eventUserId: string): boolean {
+  return user.value?.id === eventUserId
+}
 
 onMounted(() => {
   fetchEvents()
@@ -15,6 +21,10 @@ onMounted(() => {
 
 function handleCreate(): void {
   router.push('/events/new')
+}
+
+function handleView(id: string): void {
+  router.push(`/events/${id}`)
 }
 
 function handleEdit(id: string): void {
@@ -100,7 +110,8 @@ function formatDateRangeSummary(ranges: { start_date: string; end_date: string }
         v-for="event in events"
         :key="event.id"
         :data-testid="`event-item-${event.id}`"
-        class="bg-white dark:bg-gray-800 shadow rounded-lg mb-4 overflow-hidden"
+        class="bg-white dark:bg-gray-800 shadow rounded-lg mb-4 overflow-hidden hover:ring-2 hover:ring-indigo-500 transition-all cursor-pointer"
+        @click="handleView(event.id)"
       >
         <div class="px-4 py-5 sm:px-6">
           <div class="flex items-center justify-between">
@@ -117,15 +128,19 @@ function formatDateRangeSummary(ranges: { start_date: string; end_date: string }
               >
                 {{ event.description }}
               </p>
-              <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                {{ formatDateRangeSummary(event.date_ranges) }}
-              </p>
+              <div class="mt-2 flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
+                <span>{{ formatDateRangeSummary(event.date_ranges) }}</span>
+                <span class="text-gray-400 dark:text-gray-500">by {{ event.user?.name || event.user?.email || 'Unknown' }}</span>
+              </div>
             </div>
-            <div class="ml-4 flex items-center gap-2">
+            <div
+              v-if="isOwner(event.user_id)"
+              class="ml-4 flex items-center gap-2"
+            >
               <button
                 type="button"
                 class="p-2 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400"
-                @click="handleEdit(event.id)"
+                @click.stop="handleEdit(event.id)"
               >
                 <PencilIcon class="size-5" />
                 <span class="sr-only">Edit</span>
@@ -133,7 +148,7 @@ function formatDateRangeSummary(ranges: { start_date: string; end_date: string }
               <button
                 type="button"
                 class="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
-                @click="handleDelete(event.id)"
+                @click.stop="handleDelete(event.id)"
               >
                 <TrashIcon class="size-5" />
                 <span class="sr-only">Delete</span>

@@ -5,6 +5,7 @@ class User < Sequel::Model
   one_to_many :magic_link_tokens
   one_to_many :sessions
   one_to_many :events
+  one_to_many :votes
 
   def validate
     super

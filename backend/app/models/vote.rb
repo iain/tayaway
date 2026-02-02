@@ -1,15 +1,18 @@
 # typed: true
 # frozen_string_literal: true
 
-class Event < Sequel::Model
+class Vote < Sequel::Model
+  many_to_one :date_range
   many_to_one :user
-  one_to_many :date_ranges, order: :start_date
+
+  VALID_RESPONSES = %w[yes no preferably_not].freeze
 
   def validate
     super
-    validates_presence :name
-    validates_max_length 255, :name
+    validates_presence :date_range_id
     validates_presence :user_id
+    validates_presence :response
+    validates_includes VALID_RESPONSES, :response, message: "must be yes, no, or preferably_not"
   end
 
   def before_save
@@ -20,11 +23,11 @@ class Event < Sequel::Model
   def to_api_hash
     {
       id: id,
-      name: name,
-      description: description,
+      date_range_id: date_range_id,
       user_id: user_id,
       user: user&.to_api_hash,
-      date_ranges: date_ranges.map(&:to_api_hash),
+      response: response,
+      comment: comment,
       created_at: created_at&.iso8601,
       updated_at: updated_at&.iso8601
     }

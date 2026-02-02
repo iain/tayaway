@@ -3,6 +3,7 @@
 
 class DateRange < Sequel::Model
   many_to_one :event
+  one_to_many :votes
 
   def validate
     super
@@ -24,7 +25,20 @@ class DateRange < Sequel::Model
     {
       id: id,
       start_date: start_date&.iso8601,
-      end_date: end_date&.iso8601
+      end_date: end_date&.iso8601,
+      votes: votes.map(&:to_api_hash),
+      vote_summary: vote_summary
+    }
+  end
+
+  def vote_summary
+    counts = { "yes" => 0, "no" => 0, "preferably_not" => 0 }
+    votes.each { |v| counts[v.response] += 1 }
+    {
+      yes: counts["yes"],
+      no: counts["no"],
+      preferably_not: counts["preferably_not"],
+      total: votes.count
     }
   end
 end
