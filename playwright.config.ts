@@ -25,7 +25,7 @@ export default defineConfig({
       timeout: 120000,
     },
     {
-      command: 'cd frontend && PORT=5174 API_PORT=9293 pnpm run dev',
+      command: 'cd frontend && FRONTEND_PORT=5174 API_PORT=9293 pnpm run dev',
       url: 'http://localhost:5174',
       reuseExistingServer: !process.env.CI,
       timeout: 120000,
