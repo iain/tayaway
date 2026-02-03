@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
-import type { Event, Vote, VoteSummary } from '@/types'
+import type { Vote } from '@/types'
 import { useEventsStore, useAuthStore } from '@/stores'
 import VotingCard from '@/components/votes/VotingCard.vue'
 
@@ -14,42 +14,19 @@ const authStore = useAuthStore()
 const { loading, error } = storeToRefs(eventsStore)
 const { user } = storeToRefs(authStore)
 
-const event = ref<Event | null>(null)
+const eventId = computed(() => route.params.id as string)
+const event = computed(() => eventsStore.getEvent(eventId.value))
 
 onMounted(async () => {
-  const id = route.params.id as string
   try {
-    event.value = await eventsStore.fetchEvent(id)
+    await eventsStore.fetchEvent(eventId.value)
   } catch {
     // Error handled by store
   }
 })
 
 function handleVoteUpdated(vote: Vote, dateRangeId: string): void {
-  if (!event.value) return
-
-  const dateRange = event.value.date_ranges.find(dr => dr.id === dateRangeId)
-  if (!dateRange) return
-
-  // Find existing vote by this user or add new one
-  const existingIndex = dateRange.votes.findIndex(v => v.user_id === vote.user_id)
-  if (existingIndex >= 0) {
-    dateRange.votes[existingIndex] = vote
-  } else {
-    dateRange.votes.push(vote)
-  }
-
-  // Recalculate vote summary
-  dateRange.vote_summary = calculateVoteSummary(dateRange.votes)
-}
-
-function calculateVoteSummary(votes: Vote[]): VoteSummary {
-  return {
-    yes: votes.filter(v => v.response === 'yes').length,
-    no: votes.filter(v => v.response === 'no').length,
-    preferably_not: votes.filter(v => v.response === 'preferably_not').length,
-    total: votes.length,
-  }
+  eventsStore.updateEventVote(eventId.value, dateRangeId, vote)
 }
 
 function handleBack(): void {

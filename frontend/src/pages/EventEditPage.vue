@@ -1,27 +1,25 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter, useRoute } from 'vue-router'
 import EventForm, { type EventFormData } from '@/components/events/EventForm.vue'
 import { useEventsStore } from '@/stores'
-import type { Event } from '@/types'
 
 const router = useRouter()
 const route = useRoute()
 const eventsStore = useEventsStore()
 const { loading, error } = storeToRefs(eventsStore)
 
-const event = ref<Event | null>(null)
 const formError = ref<string | null>(null)
 const initialLoading = ref(true)
 const initialData = ref<EventFormData | undefined>(undefined)
 
 const eventId = route.params.id as string
+const event = computed(() => eventsStore.getEvent(eventId))
 
 onMounted(async () => {
   try {
     const e = await eventsStore.fetchEvent(eventId)
-    event.value = e
     initialData.value = {
       name: e.name,
       description: e.description || '',
