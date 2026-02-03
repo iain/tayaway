@@ -1,11 +1,12 @@
 import { ref } from 'vue'
+import { defineStore } from 'pinia'
 import { api } from '@/api/client'
 import type { Vote, VoteResponse, VoteRequestBody, VoteApiResponse } from '@/types'
 
-const loading = ref(false)
-const error = ref<string | null>(null)
+export const useVotesStore = defineStore('votes', () => {
+  const loading = ref(false)
+  const error = ref<string | null>(null)
 
-export function useVotes() {
   async function submitVote(
     eventId: string,
     dateRangeId: string,
@@ -43,10 +44,16 @@ export function useVotes() {
     }
   }
 
+  function $reset() {
+    loading.value = false
+    error.value = null
+  }
+
   return {
     loading,
     error,
     submitVote,
     deleteVote,
+    $reset,
   }
-}
+})

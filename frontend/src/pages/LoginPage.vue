@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useAuth } from '@/composables/useAuth'
+import { useAuthStore } from '@/stores'
 import { FormInput } from '@/components/form'
 
-const { requestMagicLink } = useAuth()
+const authStore = useAuthStore()
 
 const email = ref('')
 const message = ref('')
@@ -16,7 +16,7 @@ async function handleSubmit() {
   loading.value = true
 
   try {
-    const response = await requestMagicLink(email.value)
+    const response = await authStore.requestMagicLink(email.value)
     message.value = response
     email.value = ''
   } catch {

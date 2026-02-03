@@ -1,12 +1,13 @@
 import { ref } from 'vue'
+import { defineStore } from 'pinia'
 import { api } from '@/api/client'
 import type { Event, EventsResponse, EventResponse, CreateEventRequest, UpdateEventRequest } from '@/types'
 
-const events = ref<Event[]>([])
-const loading = ref(false)
-const error = ref<string | null>(null)
+export const useEventsStore = defineStore('events', () => {
+  const events = ref<Event[]>([])
+  const loading = ref(false)
+  const error = ref<string | null>(null)
 
-export function useEvents() {
   async function fetchEvents(): Promise<Event[]> {
     loading.value = true
     error.value = null
@@ -82,6 +83,12 @@ export function useEvents() {
     }
   }
 
+  function $reset() {
+    events.value = []
+    loading.value = false
+    error.value = null
+  }
+
   return {
     events,
     loading,
@@ -91,5 +98,6 @@ export function useEvents() {
     createEvent,
     updateEvent,
     deleteEvent,
+    $reset,
   }
-}
+})

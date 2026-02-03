@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import EventForm, { type EventFormData } from '@/components/events/EventForm.vue'
-import { useEvents } from '@/composables/useEvents'
+import { useEventsStore } from '@/stores'
 
 const router = useRouter()
-const { createEvent, loading, error } = useEvents()
+const eventsStore = useEventsStore()
+const { loading, error } = storeToRefs(eventsStore)
 const formError = ref<string | null>(null)
 
 async function handleSubmit(data: EventFormData): Promise<void> {
   formError.value = null
   try {
-    await createEvent({
+    await eventsStore.createEvent({
       name: data.name,
       description: data.description || undefined,
       date_ranges: data.date_ranges,

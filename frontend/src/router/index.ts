@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuth } from '@/composables/useAuth'
+import { useAuthStore } from '@/stores'
 import AuthenticatedLayout from '@/layouts/AuthenticatedLayout.vue'
 import HomePage from '@/pages/HomePage.vue'
 import ProfilePage from '@/pages/ProfilePage.vue'
@@ -71,15 +71,15 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, _from, next) => {
-  const { isAuthenticated, initialized, initialize } = useAuth()
+  const authStore = useAuthStore()
 
-  if (!initialized.value) {
-    await initialize()
+  if (!authStore.initialized) {
+    await authStore.initialize()
   }
 
-  if (to.meta.requiresAuth && !isAuthenticated.value) {
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next({ name: 'login' })
-  } else if (to.meta.requiresGuest && isAuthenticated.value) {
+  } else if (to.meta.requiresGuest && authStore.isAuthenticated) {
     next({ name: 'home' })
   } else {
     next()

@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter, useRoute } from 'vue-router'
 import EventForm, { type EventFormData } from '@/components/events/EventForm.vue'
-import { useEvents } from '@/composables/useEvents'
+import { useEventsStore } from '@/stores'
 import type { Event } from '@/types'
 
 const router = useRouter()
 const route = useRoute()
-const { fetchEvent, updateEvent, loading, error } = useEvents()
+const eventsStore = useEventsStore()
+const { loading, error } = storeToRefs(eventsStore)
 
 const event = ref<Event | null>(null)
 const formError = ref<string | null>(null)
@@ -18,7 +20,7 @@ const eventId = route.params.id as string
 
 onMounted(async () => {
   try {
-    const e = await fetchEvent(eventId)
+    const e = await eventsStore.fetchEvent(eventId)
     event.value = e
     initialData.value = {
       name: e.name,
@@ -38,7 +40,7 @@ onMounted(async () => {
 async function handleSubmit(data: EventFormData): Promise<void> {
   formError.value = null
   try {
-    await updateEvent(eventId, {
+    await eventsStore.updateEvent(eventId, {
       name: data.name,
       description: data.description || undefined,
       date_ranges: data.date_ranges,

@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { RouterView } from 'vue-router'
-import { useAuth } from '@/composables/useAuth'
+import { useAuthStore } from '@/stores'
 import ToastContainer from '@/components/common/ToastContainer.vue'
 
-const { initialize, initialized } = useAuth()
+const authStore = useAuthStore()
+const { initialized } = storeToRefs(authStore)
 
 onMounted(() => {
-  initialize()
+  authStore.initialize()
 })
 </script>
 

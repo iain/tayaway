@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { useAuth } from '@/composables/useAuth'
+import { storeToRefs } from 'pinia'
+import { useAuthStore } from '@/stores'
 
-const { user } = useAuth()
+const authStore = useAuthStore()
+const { user } = storeToRefs(authStore)
 </script>
 
 <template>

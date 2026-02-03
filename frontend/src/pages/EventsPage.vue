@@ -1,22 +1,24 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { PlusIcon, PencilIcon, TrashIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline'
-import { useEvents } from '@/composables/useEvents'
+import { useEventsStore, useAuthStore } from '@/stores'
 import { useCalendar } from '@/composables/useCalendar'
-import { useAuth } from '@/composables/useAuth'
 
 const router = useRouter()
-const { events, loading, error, fetchEvents, deleteEvent } = useEvents()
+const eventsStore = useEventsStore()
+const authStore = useAuthStore()
+const { events, loading, error } = storeToRefs(eventsStore)
 const { formatDateDisplay } = useCalendar()
-const { user } = useAuth()
+const { user } = storeToRefs(authStore)
 
 function isOwner(eventUserId: string): boolean {
   return user.value?.id === eventUserId
 }
 
 onMounted(() => {
-  fetchEvents()
+  eventsStore.fetchEvents()
 })
 
 function handleCreate(): void {
@@ -33,7 +35,7 @@ function handleEdit(id: string): void {
 
 async function handleDelete(id: string): Promise<void> {
   if (confirm('Are you sure you want to delete this event?')) {
-    await deleteEvent(id)
+    await eventsStore.deleteEvent(id)
   }
 }
 

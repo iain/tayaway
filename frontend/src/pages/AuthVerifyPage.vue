@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useAuth } from '@/composables/useAuth'
+import { useAuthStore } from '@/stores'
 
 const route = useRoute()
 const router = useRouter()
-const { verifyToken } = useAuth()
+const authStore = useAuthStore()
 
 const verifying = ref(true)
 const error = ref('')
@@ -21,7 +21,7 @@ onMounted(async () => {
   }
 
   try {
-    await verifyToken(token, email)
+    await authStore.verifyToken(token, email)
     router.push('/')
   } catch {
     error.value = 'Invalid or expired magic link. Please request a new one.'

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/vue/24/outline'
 import type { DateRange, Vote, VoteResponse, User } from '@/types'
 import { useCalendar } from '@/composables/useCalendar'
-import { useVotes } from '@/composables/useVotes'
+import { useVotesStore } from '@/stores'
 import VoteSummaryBar from './VoteSummaryBar.vue'
 import VotersList from './VotersList.vue'
 
@@ -18,7 +19,8 @@ const emit = defineEmits<{
 }>()
 
 const { formatDateDisplay } = useCalendar()
-const { submitVote, loading } = useVotes()
+const votesStore = useVotesStore()
+const { loading } = storeToRefs(votesStore)
 
 const showVoters = ref(false)
 const comment = ref('')
@@ -48,7 +50,7 @@ const hasCommentChanges = computed(() => {
 
 async function handleVote(response: VoteResponse) {
   try {
-    const vote = await submitVote(
+    const vote = await votesStore.submitVote(
       props.eventId,
       props.dateRange.id,
       response,
@@ -56,14 +58,14 @@ async function handleVote(response: VoteResponse) {
     )
     emit('voteUpdated', vote, props.dateRange.id)
   } catch {
-    // Error is handled by the composable
+    // Error is handled by the store
   }
 }
 
 async function handleCommentSubmit() {
   if (!currentUserVote.value) return
   try {
-    const vote = await submitVote(
+    const vote = await votesStore.submitVote(
       props.eventId,
       props.dateRange.id,
       currentUserVote.value.response,
@@ -71,7 +73,7 @@ async function handleCommentSubmit() {
     )
     emit('voteUpdated', vote, props.dateRange.id)
   } catch {
-    // Error is handled by the composable
+    // Error is handled by the store
   }
 }
 

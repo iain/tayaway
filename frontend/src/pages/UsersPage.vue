@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { UserIcon, PlusIcon } from '@heroicons/vue/24/outline'
-import { useUsers } from '@/composables/useUsers'
+import { useUsersStore } from '@/stores'
 import AddUserModal from '@/components/users/AddUserModal.vue'
 
-const { users, loading, error, fetchUsers, createUser } = useUsers()
+const usersStore = useUsersStore()
+const { users, loading, error } = storeToRefs(usersStore)
 
 const isModalOpen = ref(false)
 const isSubmitting = ref(false)
 const formError = ref<string | null>(null)
 
 onMounted(() => {
-  fetchUsers()
+  usersStore.fetchUsers()
 })
 
 function openModal(): void {
@@ -28,7 +30,7 @@ async function handleSave(name: string, email: string): Promise<void> {
   isSubmitting.value = true
 
   try {
-    await createUser({
+    await usersStore.createUser({
       name: name || undefined,
       email: email
     })

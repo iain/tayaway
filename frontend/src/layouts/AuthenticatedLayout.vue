@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter, useRoute } from 'vue-router'
 import {
   Disclosure,
@@ -16,12 +17,13 @@ import {
   SunIcon,
   MoonIcon,
 } from '@heroicons/vue/24/outline'
-import { useAuth } from '@/composables/useAuth'
+import { useAuthStore } from '@/stores'
 import { useDarkMode } from '@/composables/useDarkMode'
 
 const router = useRouter()
 const route = useRoute()
-const { user, logout } = useAuth()
+const authStore = useAuthStore()
+const { user } = storeToRefs(authStore)
 const { isDark, toggle: toggleDarkMode } = useDarkMode()
 
 const navigation = [
@@ -42,7 +44,7 @@ function isActive(routeName: string): boolean {
 }
 
 async function handleSignOut() {
-  await logout()
+  await authStore.logout()
   router.push('/login')
 }
 

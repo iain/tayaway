@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { useNotifications } from '@/composables/useNotifications'
+import { storeToRefs } from 'pinia'
+import { useNotificationsStore } from '@/stores'
 import ToastNotification from './ToastNotification.vue'
 
-const { notifications, dismiss } = useNotifications()
+const notificationsStore = useNotificationsStore()
+const { notifications } = storeToRefs(notificationsStore)
 </script>
 
 <template>
@@ -24,7 +26,7 @@ const { notifications, dismiss } = useNotifications()
         v-for="notification in notifications"
         :key="notification.id"
         :notification="notification"
-        @dismiss="dismiss"
+        @dismiss="notificationsStore.dismiss"
       />
     </TransitionGroup>
   </div>

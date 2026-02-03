@@ -1,12 +1,13 @@
 import { ref, computed } from 'vue'
+import { defineStore } from 'pinia'
 import { api, setSessionToken, clearSessionToken, getSessionToken } from '@/api/client'
 import type { User, MagicLinkResponse, VerifyResponse, MeResponse, LogoutResponse } from '@/types'
 
-const user = ref<User | null>(null)
-const loading = ref(false)
-const initialized = ref(false)
+export const useAuthStore = defineStore('auth', () => {
+  const user = ref<User | null>(null)
+  const loading = ref(false)
+  const initialized = ref(false)
 
-export function useAuth() {
   const isAuthenticated = computed(() => user.value !== null)
 
   async function initialize(): Promise<void> {
@@ -52,6 +53,12 @@ export function useAuth() {
     }
   }
 
+  function $reset() {
+    user.value = null
+    loading.value = false
+    initialized.value = false
+  }
+
   return {
     user,
     loading,
@@ -61,5 +68,6 @@ export function useAuth() {
     requestMagicLink,
     verifyToken,
     logout,
+    $reset,
   }
-}
+})

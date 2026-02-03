@@ -1,9 +1,10 @@
 import { ref } from 'vue'
+import { defineStore } from 'pinia'
 import type { Notification } from '@/types/notification'
 
-const notifications = ref<Notification[]>([])
+export const useNotificationsStore = defineStore('notifications', () => {
+  const notifications = ref<Notification[]>([])
 
-export function useNotifications() {
   function showError(message: string): void {
     const id = crypto.randomUUID()
     const notification: Notification = {
@@ -25,9 +26,14 @@ export function useNotifications() {
     }
   }
 
+  function $reset() {
+    notifications.value = []
+  }
+
   return {
     notifications,
     showError,
     dismiss,
+    $reset,
   }
-}
+})

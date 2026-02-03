@@ -1,25 +1,27 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
 import type { Event, Vote, VoteSummary } from '@/types'
-import { useEvents } from '@/composables/useEvents'
-import { useAuth } from '@/composables/useAuth'
+import { useEventsStore, useAuthStore } from '@/stores'
 import VotingCard from '@/components/votes/VotingCard.vue'
 
 const route = useRoute()
 const router = useRouter()
-const { fetchEvent, loading, error } = useEvents()
-const { user } = useAuth()
+const eventsStore = useEventsStore()
+const authStore = useAuthStore()
+const { loading, error } = storeToRefs(eventsStore)
+const { user } = storeToRefs(authStore)
 
 const event = ref<Event | null>(null)
 
 onMounted(async () => {
   const id = route.params.id as string
   try {
-    event.value = await fetchEvent(id)
+    event.value = await eventsStore.fetchEvent(id)
   } catch {
-    // Error handled by composable
+    // Error handled by store
   }
 })
 

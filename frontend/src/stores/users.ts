@@ -1,12 +1,13 @@
 import { ref } from 'vue'
+import { defineStore } from 'pinia'
 import { api } from '@/api/client'
 import type { User, UsersResponse, UserResponse, CreateUserRequest } from '@/types'
 
-const users = ref<User[]>([])
-const loading = ref(false)
-const error = ref<string | null>(null)
+export const useUsersStore = defineStore('users', () => {
+  const users = ref<User[]>([])
+  const loading = ref(false)
+  const error = ref<string | null>(null)
 
-export function useUsers() {
   async function fetchUsers(): Promise<User[]> {
     loading.value = true
     error.value = null
@@ -42,11 +43,18 @@ export function useUsers() {
     }
   }
 
+  function $reset() {
+    users.value = []
+    loading.value = false
+    error.value = null
+  }
+
   return {
     users,
     loading,
     error,
     fetchUsers,
     createUser,
+    $reset,
   }
-}
+})

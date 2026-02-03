@@ -1,4 +1,4 @@
-import { useNotifications } from '@/composables/useNotifications'
+import { useNotificationsStore } from '@/stores'
 
 export interface ApiResponse<T> {
   data: T
@@ -100,8 +100,8 @@ class ApiClient {
         message: response.statusText,
         status: response.status,
       }
-      const { showError } = useNotifications()
-      showError(getErrorMessage(response.status))
+      const notificationsStore = useNotificationsStore()
+      notificationsStore.showError(getErrorMessage(response.status))
       throw error
     }
 
