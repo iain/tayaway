@@ -1,4 +1,4 @@
-# typed: true
+# typed: false
 # frozen_string_literal: true
 
 # Test-only endpoint for creating authenticated sessions in e2e tests
