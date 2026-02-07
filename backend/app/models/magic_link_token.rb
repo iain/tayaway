@@ -23,7 +23,7 @@ class MagicLinkToken < T::Struct
       row = DB[:magic_link_tokens]
         .where(token: token, email: email)
         .where(used_at: nil)
-        .where { expires_at > Time.now }
+        .where(Sequel[:expires_at] > Time.now)
         .first
 
       return nil unless row

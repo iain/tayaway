@@ -20,7 +20,7 @@ class Session < T::Struct
     def find_valid(token)
       DB[:sessions]
         .where(token: token)
-        .where { expires_at > Time.now }
+        .where(Sequel[:expires_at] > Time.now)
         .with_row_proc(method(:from_row))
         .first
     end

@@ -23,7 +23,9 @@ class DateRangeInput
 
   sig { params(other: T.untyped).returns(T::Boolean) }
   def ==(other)
-    other.is_a?(DateRangeInput) && other.start_date == @start_date && other.end_date == @end_date
+    return false unless other.is_a?(DateRangeInput)
+
+    other.start_date == @start_date && other.end_date == @end_date
   end
 
   sig { params(other: T.untyped).returns(T::Boolean) }
@@ -43,23 +45,24 @@ class DateRangeInput
     sig { params(start_date: T.nilable(Date), end_date: T.nilable(Date)).returns(Result[DateRangeInput, ServiceError]) }
     def parse(start_date, end_date)
       if start_date.nil?
-        Failure(ServiceError.validation("Start date is required"))
-      elsif end_date.nil?
-        Failure(ServiceError.validation("End date is required"))
-      else
-        Success(new(start_date, end_date))
+        return T.cast(Failure(ServiceError.validation("Start date is required")), Result[DateRangeInput, ServiceError])
       end
+      if end_date.nil?
+        return T.cast(Failure(ServiceError.validation("End date is required")), Result[DateRangeInput, ServiceError])
+      end
+
+      T.cast(Success(new(start_date, end_date)), Result[DateRangeInput, ServiceError])
     rescue Invalid => e
-      Failure(ServiceError.validation(e.message))
+      T.cast(Failure(ServiceError.validation(e.message)), Result[DateRangeInput, ServiceError])
     end
 
     sig { params(start_str: T.nilable(String), end_str: T.nilable(String)).returns(Result[DateRangeInput, ServiceError]) }
     def parse_strings(start_str, end_str)
       if start_str.nil? || start_str.empty?
-        return Failure(ServiceError.validation("Start date is required"))
+        return T.cast(Failure(ServiceError.validation("Start date is required")), Result[DateRangeInput, ServiceError])
       end
       if end_str.nil? || end_str.empty?
-        return Failure(ServiceError.validation("End date is required"))
+        return T.cast(Failure(ServiceError.validation("End date is required")), Result[DateRangeInput, ServiceError])
       end
 
       begin
@@ -67,7 +70,7 @@ class DateRangeInput
         end_date = Date.parse(end_str)
         parse(start_date, end_date)
       rescue Date::Error
-        Failure(ServiceError.validation("Invalid date format"))
+        T.cast(Failure(ServiceError.validation("Invalid date format")), Result[DateRangeInput, ServiceError])
       end
     end
   end

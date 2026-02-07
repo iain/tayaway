@@ -61,12 +61,12 @@ class EmailAddress
     sig { params(value: T.nilable(String)).returns(Result[EmailAddress, ServiceError]) }
     def parse(value)
       if value.nil? || value.empty?
-        Failure(ServiceError.validation("Email is required"))
-      else
-        Success(new(value))
+        return T.cast(Failure(ServiceError.validation("Email is required")), Result[EmailAddress, ServiceError])
       end
+
+      T.cast(Success(new(value)), Result[EmailAddress, ServiceError])
     rescue Invalid => e
-      Failure(ServiceError.validation(e.message))
+      T.cast(Failure(ServiceError.validation(e.message)), Result[EmailAddress, ServiceError])
     end
   end
 end

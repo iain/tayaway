@@ -56,12 +56,12 @@ class UUID
     sig { params(value: T.nilable(String)).returns(Result[UUID, ServiceError]) }
     def parse(value)
       if value.nil? || value.empty?
-        Failure(ServiceError.validation("ID is required"))
-      else
-        Success(new(value))
+        return T.cast(Failure(ServiceError.validation("ID is required")), Result[UUID, ServiceError])
       end
+
+      T.cast(Success(new(value)), Result[UUID, ServiceError])
     rescue Invalid => e
-      Failure(ServiceError.validation(e.message))
+      T.cast(Failure(ServiceError.validation(e.message)), Result[UUID, ServiceError])
     end
 
     sig { returns(UUID) }
