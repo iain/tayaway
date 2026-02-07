@@ -51,6 +51,9 @@ module Test
                     id
                   end
 
+        # Ensure user has at least one workspace
+        ensure_default_workspace(user_id)
+
         session = create_session_for_user(user_id)
 
         T.cast(Success({
@@ -77,6 +80,32 @@ module Test
         )
 
         T.must(DB[:sessions].where(id: id).first)
+      end
+
+      sig { params(user_id: T.any(String, UUID)).void }
+      def ensure_default_workspace(user_id)
+        # Check if user already has a workspace
+        existing = DB[:workspace_memberships].where(user_id: user_id).first
+        return if existing
+
+        # Create a default workspace for the user
+        now = Time.now
+        workspace_id = SecureRandom.uuid
+
+        DB[:workspaces].insert(
+          id: workspace_id,
+          name: "Personal",
+          created_at: now,
+          updated_at: now
+        )
+
+        DB[:workspace_memberships].insert(
+          id: SecureRandom.uuid,
+          workspace_id: workspace_id,
+          user_id: user_id,
+          role: "owner",
+          created_at: now
+        )
       end
     end
   end

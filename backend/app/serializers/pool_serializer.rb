@@ -91,6 +91,14 @@ class PoolSerializer
     add_user(user) if user
   end
 
+  # Adds workspace with all its events (cascading to date_ranges, votes, users)
+  sig { params(workspace: Workspace).void }
+  def add_workspace_with_events(workspace)
+    add_workspace(workspace)
+    events = Event.for_workspace(workspace.id)
+    events.each { |e| add_event(e) }
+  end
+
   sig { params(items: T::Enumerable[T.untyped], type: Symbol).void }
   def add_all(items, type:)
     items.each do |item|

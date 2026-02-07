@@ -18,7 +18,7 @@ interface PoolObjectBase<T extends string> {
 // OBJECT TYPE REGISTRY - Add new models here
 // ============================================================================
 
-export const OBJECT_TYPES = ['user', 'event', 'dateRange', 'vote'] as const
+export const OBJECT_TYPES = ['user', 'event', 'dateRange', 'vote', 'workspace', 'workspaceMembership'] as const
 
 export interface ObjectTypeMap {
   user: PoolObjectBase<'user'> & {
@@ -29,6 +29,7 @@ export interface ObjectTypeMap {
   event: PoolObjectBase<'event'> & {
     name: string
     description: string | null
+    workspaceId: string
     userId: string
     dateRangeIds: string[]
     createdAt: string
@@ -46,6 +47,17 @@ export interface ObjectTypeMap {
     comment: string | null
     createdAt: string
   }
+  workspace: PoolObjectBase<'workspace'> & {
+    name: string
+    membershipIds: string[]
+    createdAt: string
+  }
+  workspaceMembership: PoolObjectBase<'workspaceMembership'> & {
+    workspaceId: string
+    userId: string
+    role: string
+    createdAt: string
+  }
 }
 
 // ============================================================================
@@ -60,6 +72,8 @@ export type PoolUser = ObjectTypeMap['user']
 export type PoolEvent = ObjectTypeMap['event']
 export type PoolDateRange = ObjectTypeMap['dateRange']
 export type PoolVote = ObjectTypeMap['vote']
+export type PoolWorkspace = ObjectTypeMap['workspace']
+export type PoolWorkspaceMembership = ObjectTypeMap['workspaceMembership']
 
 // API response wrapper - all endpoints include objects array
 export interface PoolApiResponse {

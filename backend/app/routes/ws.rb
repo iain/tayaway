@@ -23,8 +23,18 @@ class App
     r.websocket do |connection|
       connection_id = Websocket::ConnectionManager.instance.register(connection, user_id)
 
-      # Send authenticated message
-      connection.write({ type: "authenticated", userId: user_id.to_s }.to_json)
+      # Load workspaces for user and set up workspace subscriptions
+      workspaces = Workspace.for_user(user_id)
+      workspace_ids = workspaces.map { |w| w.id.to_s }
+      Websocket::ConnectionManager.instance.set_workspaces(connection_id, workspace_ids)
+
+      # Send authenticated message with workspace IDs
+      connection.write({ type: "authenticated", userId: user_id.to_s, workspaceIds: workspace_ids }.to_json)
+
+      # Build and send initial sync with all workspace data
+      pool = PoolSerializer.new
+      workspaces.each { |w| pool.add_workspace_with_events(w) }
+      connection.write({ type: "sync", data: { objects: pool.to_a } }.to_json)
 
       begin
         while (message = connection.read)

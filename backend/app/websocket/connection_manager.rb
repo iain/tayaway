@@ -21,6 +21,7 @@ module Websocket
       @mutex = Mutex.new
       @connections = T.let({}, T::Hash[String, Connection])
       @subscriptions = T.let({}, T::Hash[String, T::Set[String]])
+      @workspace_connections = T.let({}, T::Hash[String, T::Set[String]])
     end
 
     sig { params(websocket: T.untyped, user_id: T.any(String, UUID)).returns(String) }
@@ -77,6 +78,63 @@ module Websocket
           subs.delete(connection_id)
           @subscriptions.delete(channel) if subs.empty?
         end
+
+        # Clean up workspace associations
+        connection.workspace_ids.each do |workspace_id|
+          ws_conns = @workspace_connections[workspace_id]
+          next unless ws_conns
+
+          ws_conns.delete(connection_id)
+          @workspace_connections.delete(workspace_id) if ws_conns.empty?
+        end
+      end
+    end
+
+    sig { params(connection_id: String, workspace_ids: T::Array[String]).void }
+    def set_workspaces(connection_id, workspace_ids)
+      @mutex.synchronize do
+        connection = @connections[connection_id]
+        return unless connection
+
+        # Clear old workspace associations
+        connection.workspace_ids.each do |old_ws_id|
+          ws_conns = @workspace_connections[old_ws_id]
+          next unless ws_conns
+
+          ws_conns.delete(connection_id)
+          @workspace_connections.delete(old_ws_id) if ws_conns.empty?
+        end
+
+        # Set new workspace associations
+        connection.workspace_ids = workspace_ids.to_set
+        workspace_ids.each do |ws_id|
+          @workspace_connections[ws_id] ||= Set.new
+          T.must(@workspace_connections[ws_id]).add(connection_id)
+        end
+      end
+    end
+
+    sig { params(workspace_id: String, message: T::Hash[Symbol, T.untyped]).void }
+    def broadcast_to_workspace(workspace_id, message)
+      connection_ids = @mutex.synchronize { (@workspace_connections[workspace_id] || Set.new).to_a }
+      json_message = message.to_json
+
+      connection_ids.each do |connection_id|
+        connection = @mutex.synchronize { @connections[connection_id] }
+        next unless connection
+
+        begin
+          connection.websocket.write(json_message)
+        rescue StandardError => e
+          warn "[ConnectionManager] Error broadcasting to workspace #{workspace_id}, conn #{connection_id}: #{e.message}"
+        end
+      end
+    end
+
+    sig { params(user_id: String).returns(T::Array[String]) }
+    def connections_for_user(user_id)
+      @mutex.synchronize do
+        @connections.values.select { |c| c.user_id == user_id }.map(&:id)
       end
     end
 
@@ -114,6 +172,7 @@ module Websocket
       const :websocket, Object
       const :user_id, String
       prop :channels, T::Set[String], default: Set.new
+      prop :workspace_ids, T::Set[String], default: Set.new
     end
   end
 end

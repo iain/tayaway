@@ -19,8 +19,20 @@ class App
 
       # POST /api/events - Create a new event
       r.post do
+        # Use provided workspace_id or get user's first workspace
+        workspace_id = r.params["workspace_id"]
+        unless workspace_id
+          first_workspace = Workspace.for_user(current_user.id).first
+          workspace_id = first_workspace&.id
+        end
+
+        unless workspace_id
+          response.status = 400
+          next { error: "No workspace available. Please create a workspace first." }
+        end
+
         result = Events::Create.call(
-          workspace_id: r.params["workspace_id"],
+          workspace_id: workspace_id,
           user_id: current_user.id,
           name: r.params["name"]&.strip,
           description: r.params["description"]&.strip,

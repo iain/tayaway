@@ -59,9 +59,13 @@ module Votes
       def delete_vote(vote, event_id)
         vote_id = vote.id
 
+        # Get workspace_id from the event
+        event = Event.find(event_id)
+        workspace_id = T.must(event).workspace_id
+
         DB.transaction do
           DB[:votes].where(id: vote_id).delete
-          Broadcaster.object_deleted("vote", vote_id)
+          Broadcaster.object_deleted("vote", vote_id, workspace_id: workspace_id)
         end
 
         T.cast(Success({ deleted: [{ objectType: "vote", id: vote_id.to_s }] }), Result[T::Hash[Symbol, T.untyped], ServiceError])

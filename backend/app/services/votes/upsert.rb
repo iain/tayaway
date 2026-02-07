@@ -98,6 +98,10 @@ module Votes
         result_vote_id = T.let(nil, T.nilable(T.any(String, UUID)))
         created = T.let(false, T::Boolean)
 
+        # Get workspace_id by traversing: date_range -> event -> workspace_id
+        event = Event.find(date_range.event_id)
+        workspace_id = T.must(event).workspace_id
+
         DB.transaction do
           if existing_vote
             DB[:votes].where(id: existing_vote.id).update(
@@ -123,7 +127,7 @@ module Votes
             created = true
           end
 
-          Broadcaster.object_changed("vote", T.must(result_vote_id))
+          Broadcaster.object_changed("vote", T.must(result_vote_id), workspace_id: workspace_id)
         end
 
         T.cast(Success({ vote_id: result_vote_id, created: created }), Result[T::Hash[Symbol, T.untyped], ServiceError])

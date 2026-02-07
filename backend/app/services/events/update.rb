@@ -31,8 +31,8 @@ module Events
       def call(event_id:, current_user_id:, name:, description:, date_ranges:)
         find_event(event_id)
           .bind { |event| authorize_owner(event, current_user_id) }
-          .bind { validate_name(name) }
-          .bind { |valid_name| update_event(event_id, valid_name, description, date_ranges) }
+          .bind { |event| validate_name_with_event(name, event) }
+          .bind { |event| update_event(event, name, description, date_ranges) }
       end
 
       private
@@ -56,24 +56,27 @@ module Events
         end
       end
 
-      sig { params(name: T.nilable(String)).returns(Result[String, ServiceError]) }
-      def validate_name(name)
+      sig { params(name: T.nilable(String), event: Event).returns(Result[Event, ServiceError]) }
+      def validate_name_with_event(name, event)
         if name.nil? || name.empty?
-          T.cast(Failure(ServiceError.validation("Name is required")), Result[String, ServiceError])
+          T.cast(Failure(ServiceError.validation("Name is required")), Result[Event, ServiceError])
         else
-          T.cast(Success(name), Result[String, ServiceError])
+          T.cast(Success(event), Result[Event, ServiceError])
         end
       end
 
       sig do
         params(
-          event_id: T.any(String, UUID),
-          name: String,
+          event: Event,
+          name: T.nilable(String),
           description: T.nilable(String),
           date_ranges: T::Array[T::Hash[String, String]]
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def update_event(event_id, name, description, date_ranges)
+      def update_event(event, name, description, date_ranges)
+        event_id = event.id
+        workspace_id = event.workspace_id
+
         updated_event = DB.transaction do
           DB[:events].where(id: event_id).update(
             name: name,
@@ -83,7 +86,7 @@ module Events
 
           sync_date_ranges(event_id, date_ranges)
 
-          Broadcaster.object_changed("event", event_id)
+          Broadcaster.object_changed("event", event_id, workspace_id: workspace_id)
 
           Event.find(event_id)
         end

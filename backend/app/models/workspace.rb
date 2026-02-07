@@ -33,8 +33,8 @@ class Workspace < T::Struct
     sig { params(user_id: T.any(String, UUID)).returns(T::Array[Workspace]) }
     def for_user(user_id)
       workspace_ids = DB[:workspace_memberships]
-        .where(user_id: user_id)
-        .select(:workspace_id)
+                      .where(user_id: user_id)
+                      .select(:workspace_id)
       dataset.where(id: workspace_ids).order(:name).all
     end
 

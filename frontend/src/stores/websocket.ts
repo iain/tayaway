@@ -6,28 +6,47 @@ import type { PoolObject, ObjectType } from "@/types/pool"
 
 type ConnectionState = "disconnected" | "connecting" | "connected" | "authenticated"
 
+interface DeletedObject {
+  objectType: ObjectType
+  id: string
+}
+
 interface BroadcastMessage {
   type: "broadcast"
-  channel: string
+  workspaceId: string
   action: "update" | "delete"
+  data: {
+    objects?: PoolObject[]
+    deleted?: DeletedObject[]
+  }
+}
+
+interface SyncMessage {
+  type: "sync"
   data: {
     objects: PoolObject[]
   }
 }
 
+interface AuthenticatedMessage {
+  type: "authenticated"
+  userId: string
+  workspaceIds: string[]
+}
+
 interface ServerMessage {
   type: string
-  channel?: string
+  workspaceId?: string
   action?: string
   data?: unknown
   userId?: string
+  workspaceIds?: string[]
   message?: string
 }
 
 export const useWebSocketStore = defineStore("websocket", () => {
   const state = ref<ConnectionState>("disconnected")
-  const subscribedChannels = ref<Set<string>>(new Set())
-  const pendingSubscriptions = ref<Set<string>>(new Set())
+  const workspaceIds = ref<string[]>([])
 
   let socket: WebSocket | null = null
   let reconnectAttempts = 0
@@ -89,13 +108,10 @@ export const useWebSocketStore = defineStore("websocket", () => {
 
     switch (message.type) {
       case "authenticated":
-        handleAuthenticated()
+        handleAuthenticated(message as unknown as AuthenticatedMessage)
         break
-      case "subscribed":
-        handleSubscribed(message.channel!)
-        break
-      case "unsubscribed":
-        handleUnsubscribed(message.channel!)
+      case "sync":
+        handleSync(message as unknown as SyncMessage)
         break
       case "broadcast":
         handleBroadcast(message as unknown as BroadcastMessage)
@@ -109,36 +125,31 @@ export const useWebSocketStore = defineStore("websocket", () => {
     }
   }
 
-  function handleAuthenticated(): void {
+  function handleAuthenticated(message: AuthenticatedMessage): void {
     state.value = "authenticated"
+    workspaceIds.value = message.workspaceIds
 
     // Start ping interval to keep connection alive
     pingInterval = setInterval(() => {
       send({ type: "ping" })
     }, 30000)
+  }
 
-    // Resubscribe to any pending channels
-    for (const channel of pendingSubscriptions.value) {
-      send({ type: "subscribe", channel })
+  function handleSync(message: SyncMessage): void {
+    const pool = useObjectPoolStore()
+    if (message.data?.objects) {
+      pool.importObjects(message.data.objects)
     }
-  }
-
-  function handleSubscribed(channel: string): void {
-    subscribedChannels.value.add(channel)
-    pendingSubscriptions.value.delete(channel)
-  }
-
-  function handleUnsubscribed(channel: string): void {
-    subscribedChannels.value.delete(channel)
   }
 
   function handleBroadcast(message: BroadcastMessage): void {
     const pool = useObjectPoolStore()
 
-    if (message.action === "delete") {
-      // Extract type and id from channel (e.g., "event:uuid")
-      const [objectType, objectId] = message.channel.split(":", 2)
-      pool.remove(objectType as ObjectType, objectId)
+    if (message.action === "delete" && message.data?.deleted) {
+      // Handle deletions from the deleted array
+      for (const item of message.data.deleted) {
+        pool.remove(item.objectType, item.id)
+      }
     } else if (message.action === "update" && message.data?.objects) {
       pool.importObjects(message.data.objects)
     }
@@ -150,45 +161,11 @@ export const useWebSocketStore = defineStore("websocket", () => {
     }
   }
 
-  function subscribe(channel: string): void {
-    if (subscribedChannels.value.has(channel)) return
-
-    pendingSubscriptions.value.add(channel)
-
-    if (state.value === "authenticated") {
-      send({ type: "subscribe", channel })
-    }
-  }
-
-  function unsubscribe(channel: string): void {
-    pendingSubscriptions.value.delete(channel)
-
-    if (subscribedChannels.value.has(channel) && state.value === "authenticated") {
-      send({ type: "unsubscribe", channel })
-    }
-
-    subscribedChannels.value.delete(channel)
-  }
-
-  function subscribeToEvent(eventId: string): void {
-    subscribe(`event:${eventId}`)
-  }
-
-  function unsubscribeFromEvent(eventId: string): void {
-    unsubscribe(`event:${eventId}`)
-  }
-
   function cleanup(): void {
     if (pingInterval) {
       clearInterval(pingInterval)
       pingInterval = null
     }
-
-    // Move active subscriptions to pending for reconnect
-    for (const channel of subscribedChannels.value) {
-      pendingSubscriptions.value.add(channel)
-    }
-    subscribedChannels.value.clear()
 
     socket = null
     state.value = "disconnected"
@@ -223,8 +200,7 @@ export const useWebSocketStore = defineStore("websocket", () => {
       socket = null
     }
 
-    subscribedChannels.value.clear()
-    pendingSubscriptions.value.clear()
+    workspaceIds.value = []
     state.value = "disconnected"
     reconnectAttempts = 0
   }
@@ -233,12 +209,35 @@ export const useWebSocketStore = defineStore("websocket", () => {
     disconnect()
   }
 
+  // Deprecated - kept for backwards compatibility during migration
+  // These are now no-ops since subscriptions are automatic based on workspace membership
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  function subscribe(channel: string): void {
+    // No-op: subscriptions are now automatic based on workspace membership
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  function unsubscribe(channel: string): void {
+    // No-op: subscriptions are now automatic based on workspace membership
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  function subscribeToEvent(eventId: string): void {
+    // No-op: subscriptions are now automatic based on workspace membership
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  function unsubscribeFromEvent(eventId: string): void {
+    // No-op: subscriptions are now automatic based on workspace membership
+  }
+
   return {
     state,
-    subscribedChannels,
+    workspaceIds,
     isConnected,
     connect,
     disconnect,
+    // Deprecated - kept for backwards compatibility
     subscribe,
     unsubscribe,
     subscribeToEvent,

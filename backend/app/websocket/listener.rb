@@ -24,7 +24,9 @@ module Websocket
         "event" => { model: "Event", pool_method: :add_event },
         "user" => { model: "User", pool_method: :add_user },
         "date_range" => { model: "DateRange", pool_method: :add_date_range },
-        "vote" => { model: "Vote", pool_method: :add_vote }
+        "vote" => { model: "Vote", pool_method: :add_vote },
+        "workspace" => { model: "Workspace", pool_method: :add_workspace },
+        "workspace_membership" => { model: "WorkspaceMembership", pool_method: :add_workspace_membership }
       }.freeze,
       T::Hash[String, T::Hash[Symbol, T.untyped]]
     )
@@ -103,11 +105,11 @@ module Websocket
       sig { params(payload: String).void }
       def handle_notification(payload)
         data = JSON.parse(payload, symbolize_names: true)
-        channel = data[:channel]
+        workspace_id = data[:workspaceId]
         object_type = data[:objectType]
         object_id = data[:objectId]
         action = data[:action]
-        return unless channel && object_type && object_id && action
+        return unless workspace_id && object_type && object_id && action
 
         config = type_config(object_type)
         unless config
@@ -115,7 +117,7 @@ module Websocket
           return
         end
 
-        message = { type: "broadcast", channel: channel, action: action }
+        message = { type: "broadcast", workspaceId: workspace_id, action: action }
 
         case action
         when "update"
@@ -133,7 +135,7 @@ module Websocket
           message[:data] = { deleted: [{ objectType: object_type, id: object_id }] }
         end
 
-        Websocket::ConnectionManager.instance.broadcast(channel, message)
+        Websocket::ConnectionManager.instance.broadcast_to_workspace(workspace_id, message)
       rescue JSON::ParserError => e
         warn "[Listener] Invalid JSON payload: #{e.message}"
       rescue StandardError => e
