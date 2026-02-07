@@ -70,8 +70,10 @@ RSpec.describe Votes::Upsert do
 
     expect(result.success?).to be true
     expect(result.value![:created]).to be true
-    expect(result.value![:vote][:response]).to eq("yes")
-    expect(result.value![:vote][:comment]).to eq("Looks good!")
+    expect(result.value![:vote_id]).to be_a(String)
+    vote = Vote.first(id: result.value![:vote_id])
+    expect(vote.response).to eq("yes")
+    expect(vote.comment).to eq("Looks good!")
   end
 
   it "updates existing vote and returns created: false" do
@@ -90,7 +92,8 @@ RSpec.describe Votes::Upsert do
 
     expect(result.success?).to be true
     expect(result.value![:created]).to be false
-    expect(result.value![:vote][:response]).to eq("no")
+    vote = Vote.first(id: result.value![:vote_id])
+    expect(vote.response).to eq("no")
     expect(Vote.count).to eq(1)
   end
 end

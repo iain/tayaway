@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/vue/24/outline'
-import type { User } from '@/types'
+import type { AuthUser } from '@/types'
 import type { PoolApiResponse, VoteResponse } from '@/types/pool'
 import type { HydratedDateRange } from '@/composables/useHydratedEvent'
 import { useCalendar } from '@/composables/useCalendar'
@@ -14,7 +14,7 @@ import VotersList from './VotersList.vue'
 const props = defineProps<{
   dateRange: HydratedDateRange
   eventId: string
-  currentUser: User | null
+  currentUser: AuthUser | null
 }>()
 
 const { formatDateDisplay } = useCalendar()

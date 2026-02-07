@@ -13,7 +13,7 @@ module Votes
   #     comment: "Looks good!"
   #   )
   #   result.success?  # => true
-  #   result.value!    # => { vote: {...}, created: true }
+  #   result.value!    # => { vote_id: "uuid", created: true }
   module Upsert
     class << self
       extend T::Sig
@@ -97,7 +97,7 @@ module Votes
 
         if existing_vote
           existing_vote.update(response: vote_response, comment: clean_comment)
-          Success({ vote: existing_vote.to_api_hash, created: false })
+          Success({ vote_id: existing_vote.id, created: false })
         else
           # Use client-provided ID if given, otherwise generate one
           create_params = {
@@ -109,7 +109,7 @@ module Votes
           create_params[:id] = vote_id if vote_id
 
           vote = Vote.create(create_params)
-          Success({ vote: vote.to_api_hash, created: true })
+          Success({ vote_id: vote.id, created: true })
         end
       end
     end

@@ -28,7 +28,7 @@ async function getTestSession(request: APIRequestContext): Promise<{ token: stri
     throw new Error(`Failed to create test session: ${response.status()}`)
   }
   const body = await response.json()
-  return { token: body.session_token, userId: body.user.id }
+  return { token: body.session_token, userId: body.user_id }
 }
 
 // Helper to make authenticated API requests

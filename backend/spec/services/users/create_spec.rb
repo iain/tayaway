@@ -25,8 +25,11 @@ RSpec.describe Users::Create do
     result = described_class.call(name: "New User", email: "new@example.com")
 
     expect(result.success?).to be true
-    expect(result.value![:user][:email]).to eq("new@example.com")
-    expect(result.value![:user][:name]).to eq("New User")
+    expect(result.value![:user_id]).to be_a(String)
+    expect(result.value![:objects]).to be_an(Array)
+    user = User.first(id: result.value![:user_id])
+    expect(user.email).to eq("new@example.com")
+    expect(user.name).to eq("New User")
     expect(User.where(email: "new@example.com").count).to eq(1)
   end
 
@@ -34,6 +37,7 @@ RSpec.describe Users::Create do
     result = described_class.call(name: "", email: "noname@example.com")
 
     expect(result.success?).to be true
-    expect(result.value![:user][:name]).to be_nil
+    user = User.first(id: result.value![:user_id])
+    expect(user.name).to be_nil
   end
 end

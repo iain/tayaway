@@ -91,7 +91,7 @@ class App
 
             result.either(
               ->(value) {
-                vote = Vote.first(id: value[:vote][:id])
+                vote = Vote.first(id: value[:vote_id])
                 pool = PoolSerializer.new
                 pool.add(vote)
 

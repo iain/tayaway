@@ -17,19 +17,6 @@ class Event < Sequel::Model
     super
   end
 
-  def to_api_hash
-    {
-      id: id,
-      name: name,
-      description: description,
-      user_id: user_id,
-      user: user&.to_api_hash,
-      date_ranges: date_ranges.map(&:to_api_hash),
-      created_at: created_at&.iso8601,
-      updated_at: updated_at&.iso8601
-    }
-  end
-
   def to_pool_hash
     {
       id: id,

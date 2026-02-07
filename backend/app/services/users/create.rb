@@ -7,7 +7,7 @@ module Users
   # @example
   #   result = Users::Create.call(name: "John", email: "john@example.com")
   #   result.success?  # => true
-  #   result.value!    # => { user: {...} }
+  #   result.value!    # => { user_id: "uuid", objects: [...] }
   module Create
     class << self
       extend T::Sig
@@ -53,7 +53,7 @@ module Users
         pool = PoolSerializer.new
         pool.add(user)
 
-        Success({ user: user.to_api_hash, objects: pool.to_a })
+        Success({ user_id: user.id, objects: pool.to_a })
       end
     end
   end

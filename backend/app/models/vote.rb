@@ -23,19 +23,6 @@ class Vote < Sequel::Model
     super
   end
 
-  def to_api_hash
-    {
-      id: id,
-      date_range_id: date_range_id,
-      user_id: user_id,
-      user: user&.to_api_hash,
-      response: response,
-      comment: comment,
-      created_at: created_at&.iso8601,
-      updated_at: updated_at&.iso8601
-    }
-  end
-
   def to_pool_hash
     {
       id: id,

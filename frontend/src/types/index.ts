@@ -14,11 +14,20 @@ export interface MagicLinkResponse {
 
 export interface VerifyResponse {
   session_token: string
-  user: User
+  user_id: string
 }
 
 export interface MeResponse {
-  user: User
+  user_id: string
+  email: string
+  name: string | null
+}
+
+// Simple user type for auth responses (outside the object pool)
+export interface AuthUser {
+  id: string
+  email: string
+  name: string | null
 }
 
 export interface LogoutResponse {
@@ -105,12 +114,8 @@ export interface UpdateEventRequest {
 }
 
 // User management types
-export interface UsersResponse {
-  users: User[]
-}
-
-export interface UserResponse {
-  user: User
+export interface CreateUserResponse {
+  user_id: string
 }
 
 export interface CreateUserRequest {

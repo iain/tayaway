@@ -1,37 +1,34 @@
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { api } from '@/api/client'
 import { useObjectPoolStore } from './objectPool'
-import type { User, UsersResponse, UserResponse, CreateUserRequest } from '@/types'
-import type { PoolObject } from '@/types/pool'
+import type { CreateUserRequest, CreateUserResponse } from '@/types'
+import type { PoolApiResponse, PoolUser } from '@/types/pool'
 
-// Extended response types that include pool objects
-interface UsersResponseWithPool extends UsersResponse {
-  objects?: PoolObject[]
-}
-
-interface UserResponseWithPool extends UserResponse {
-  objects?: PoolObject[]
+interface CreateUserResponseWithPool extends CreateUserResponse {
+  objects?: PoolApiResponse['objects']
 }
 
 export const useUsersStore = defineStore('users', () => {
-  const users = ref<User[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  async function fetchUsers(): Promise<User[]> {
+  // Users are derived from the pool
+  const users = computed((): PoolUser[] => {
+    const pool = useObjectPoolStore()
+    return pool.getAll('user').sort((a, b) => {
+      const nameA = a.name || a.email
+      const nameB = b.name || b.email
+      return nameA.localeCompare(nameB)
+    })
+  })
+
+  async function fetchUsers(): Promise<PoolUser[]> {
     loading.value = true
     error.value = null
     try {
-      const response = await api.get<UsersResponseWithPool>('/users')
-
-      // Import objects to pool if present
-      if (response.data.objects) {
-        const pool = useObjectPoolStore()
-        pool.importObjects(response.data.objects)
-      }
-
-      users.value = response.data.users
+      // Response objects are automatically imported by API client
+      await api.get<PoolApiResponse>('/users')
       return users.value
     } catch (e) {
       error.value = 'Failed to fetch users'
@@ -41,24 +38,18 @@ export const useUsersStore = defineStore('users', () => {
     }
   }
 
-  async function createUser(data: CreateUserRequest): Promise<User> {
+  async function createUser(data: CreateUserRequest): Promise<PoolUser> {
     loading.value = true
     error.value = null
     try {
-      const response = await api.post<UserResponseWithPool>('/users', data)
+      const response = await api.post<CreateUserResponseWithPool>('/users', data)
 
-      // Import objects to pool if present
-      if (response.data.objects) {
-        const pool = useObjectPoolStore()
-        pool.importObjects(response.data.objects)
+      // Get created user from pool
+      const pool = useObjectPoolStore()
+      const newUser = pool.get('user', response.data.user_id)
+      if (!newUser) {
+        throw new Error('User not found in pool after creation')
       }
-
-      const newUser = response.data.user
-      users.value = [...users.value, newUser].sort((a, b) => {
-        const nameA = a.name || a.email
-        const nameB = b.name || b.email
-        return nameA.localeCompare(nameB)
-      })
       return newUser
     } catch (e) {
       error.value = 'Failed to create user'
@@ -69,7 +60,6 @@ export const useUsersStore = defineStore('users', () => {
   }
 
   function $reset() {
-    users.value = []
     loading.value = false
     error.value = null
   }

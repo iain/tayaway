@@ -14,16 +14,6 @@ class User < Sequel::Model
     validates_format(/\A[^@\s]+@[^@\s]+\z/, :email, message: "is not a valid email")
   end
 
-  def to_api_hash
-    {
-      id: id,
-      email: email,
-      name: name,
-      created_at: created_at&.iso8601,
-      updated_at: updated_at&.iso8601
-    }
-  end
-
   def to_pool_hash
     {
       id: id,

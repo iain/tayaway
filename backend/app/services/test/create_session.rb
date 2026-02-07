@@ -8,7 +8,7 @@ module Test
   # @example
   #   result = Test::CreateSession.call(email: "test@example.com", name: "Test User")
   #   result.success?  # => true
-  #   result.value!    # => { session_token: "...", user: {...} }
+  #   result.value!    # => { session_token: "...", user_id: "uuid" }
   module CreateSession
     class << self
       extend T::Sig
@@ -47,7 +47,7 @@ module Test
 
         Success({
           session_token: session.token,
-          user: user.to_api_hash
+          user_id: user.id
         })
       end
     end

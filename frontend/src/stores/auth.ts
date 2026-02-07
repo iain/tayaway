@@ -2,20 +2,10 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { api, setSessionToken, clearSessionToken, getSessionToken } from '@/api/client'
 import { useObjectPoolStore } from './objectPool'
-import type { User, MagicLinkResponse, VerifyResponse, MeResponse, LogoutResponse } from '@/types'
-import type { PoolObject } from '@/types/pool'
-
-// Extended response types that include pool objects
-interface MeResponseWithPool extends MeResponse {
-  objects?: PoolObject[]
-}
-
-interface VerifyResponseWithPool extends VerifyResponse {
-  objects?: PoolObject[]
-}
+import type { AuthUser, MagicLinkResponse, VerifyResponse, MeResponse, LogoutResponse } from '@/types'
 
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref<User | null>(null)
+  const user = ref<AuthUser | null>(null)
   const loading = ref(false)
   const initialized = ref(false)
 
@@ -32,15 +22,14 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       loading.value = true
-      const response = await api.get<MeResponseWithPool>('/auth/me')
+      const response = await api.get<MeResponse>('/auth/me')
 
-      // Import objects to pool if present
-      if (response.data.objects) {
-        const pool = useObjectPoolStore()
-        pool.importObjects(response.data.objects)
+      // Auth endpoints return user info directly (not via pool)
+      user.value = {
+        id: response.data.user_id,
+        email: response.data.email,
+        name: response.data.name
       }
-
-      user.value = response.data.user
     } catch {
       clearSessionToken()
       user.value = null
@@ -55,18 +44,20 @@ export const useAuthStore = defineStore('auth', () => {
     return response.data.message
   }
 
-  async function verifyToken(token: string, email: string): Promise<User> {
-    const response = await api.post<VerifyResponseWithPool>('/auth/verify', { token, email })
-
-    // Import objects to pool if present
-    if (response.data.objects) {
-      const pool = useObjectPoolStore()
-      pool.importObjects(response.data.objects)
-    }
+  async function verifyToken(token: string, email: string): Promise<AuthUser> {
+    const response = await api.post<VerifyResponse>('/auth/verify', { token, email })
 
     setSessionToken(response.data.session_token)
-    user.value = response.data.user
-    return response.data.user
+
+    // After verify, we need to fetch user info
+    const meResponse = await api.get<MeResponse>('/auth/me')
+    const verifiedUser: AuthUser = {
+      id: meResponse.data.user_id,
+      email: meResponse.data.email,
+      name: meResponse.data.name
+    }
+    user.value = verifiedUser
+    return verifiedUser
   }
 
   async function logout(): Promise<void> {

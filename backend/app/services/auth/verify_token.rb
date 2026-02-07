@@ -7,7 +7,7 @@ module Auth
   # @example
   #   result = Auth::VerifyToken.call(token: "abc123", email: "user@example.com")
   #   result.success?  # => true
-  #   result.value!    # => { session_token: "...", user: {...} }
+  #   result.value!    # => { session_token: "...", user_id: "uuid" }
   module VerifyToken
     class << self
       extend T::Sig
@@ -54,7 +54,7 @@ module Auth
 
         Success({
           session_token: session.token,
-          user: magic_token.user.to_api_hash
+          user_id: magic_token.user.id
         })
       end
     end

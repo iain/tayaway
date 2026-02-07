@@ -29,7 +29,7 @@ RSpec.describe Auth::VerifyToken do
 
     expect(result.success?).to be true
     expect(result.value![:session_token]).to be_a(String)
-    expect(result.value![:user][:email]).to eq("test@example.com")
+    expect(result.value![:user_id]).to eq(user.id)
     expect(magic_token.reload.used_at).not_to be_nil
     expect(Session.where(user_id: user.id).count).to eq(1)
   end
