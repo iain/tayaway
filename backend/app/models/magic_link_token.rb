@@ -21,10 +21,10 @@ class MagicLinkToken < T::Struct
     sig { params(token: String, email: String).returns(T.nilable(MagicLinkToken)) }
     def find_valid(token, email)
       row = DB[:magic_link_tokens]
-        .where(token: token, email: email)
-        .where(used_at: nil)
-        .where(Sequel[:expires_at] > Time.now)
-        .first
+            .where(token: token, email: email)
+            .where(used_at: nil)
+            .where(Sequel[:expires_at] > Time.now)
+            .first
 
       return nil unless row
 

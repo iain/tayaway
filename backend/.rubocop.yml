@@ -1,9 +1,10 @@
 plugins:
+  - rubocop-factory_bot
   - rubocop-performance
+  - rubocop-rake
   - rubocop-rspec
   - rubocop-sequel
   - rubocop-sorbet
-  - rubocop-factory_bot
 
 AllCops:
   NewCops: enable

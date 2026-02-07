@@ -30,7 +30,7 @@ FactoryBot.define do
     transient do
       id { SecureRandom.uuid }
     end
-    association :user
+    user
     sequence(:name) { |n| "Event #{n}" }
     description { "Test description" }
 
@@ -54,7 +54,7 @@ FactoryBot.define do
     transient do
       id { SecureRandom.uuid }
     end
-    association :event
+    event
     start_date { Date.today }
     end_date { Date.today + 7 }
 
@@ -78,8 +78,8 @@ FactoryBot.define do
     transient do
       id { SecureRandom.uuid }
     end
-    association :date_range
-    association :user
+    date_range
+    user
     response { "yes" }
     comment { nil }
 
@@ -104,7 +104,7 @@ FactoryBot.define do
     transient do
       id { SecureRandom.uuid }
     end
-    association :user
+    user
     token { SecureRandom.hex(32) }
     expires_at { Time.now + (30 * 24 * 60 * 60) }
 
@@ -127,7 +127,7 @@ FactoryBot.define do
     transient do
       id { SecureRandom.uuid }
     end
-    association :user
+    user
     token { SecureRandom.hex(32) }
     email { nil }
     expires_at { Time.now + (15 * 60) }
