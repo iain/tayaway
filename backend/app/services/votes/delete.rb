@@ -14,7 +14,7 @@ module Votes
       include Result::Methods
 
       sig do
-        params(event_id: String, vote_id: String, user_id: String)
+        params(event_id: T.any(String, UUID), vote_id: String, user_id: T.any(String, UUID))
           .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
       def call(event_id:, vote_id:, user_id:)
@@ -36,7 +36,7 @@ module Votes
         end
       end
 
-      sig { params(vote: Vote, user_id: String).returns(Result[Vote, ServiceError]) }
+      sig { params(vote: Vote, user_id: T.any(String, UUID)).returns(Result[Vote, ServiceError]) }
       def authorize_owner(vote, user_id)
         if vote.user_id == user_id
           T.cast(Success(vote), Result[Vote, ServiceError])
@@ -45,7 +45,7 @@ module Votes
         end
       end
 
-      sig { params(vote: Vote, event_id: String).returns(Result[Vote, ServiceError]) }
+      sig { params(vote: Vote, event_id: T.any(String, UUID)).returns(Result[Vote, ServiceError]) }
       def validate_vote_belongs_to_event(vote, event_id)
         date_range = DateRange.find(vote.date_range_id)
         if date_range && date_range.event_id == event_id

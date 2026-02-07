@@ -21,8 +21,8 @@ module Events
 
       sig do
         params(
-          event_id: String,
-          current_user_id: String,
+          event_id: T.any(String, UUID),
+          current_user_id: T.any(String, UUID),
           name: T.nilable(String),
           description: T.nilable(String),
           date_ranges: T::Array[T::Hash[String, String]]
@@ -37,7 +37,7 @@ module Events
 
       private
 
-      sig { params(event_id: String).returns(Result[Event, ServiceError]) }
+      sig { params(event_id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }
       def find_event(event_id)
         event = Event.find(event_id)
         if event
@@ -47,7 +47,7 @@ module Events
         end
       end
 
-      sig { params(event: Event, current_user_id: String).returns(Result[Event, ServiceError]) }
+      sig { params(event: Event, current_user_id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }
       def authorize_owner(event, current_user_id)
         if event.user_id == current_user_id
           T.cast(Success(event), Result[Event, ServiceError])
@@ -67,7 +67,7 @@ module Events
 
       sig do
         params(
-          event_id: String,
+          event_id: T.any(String, UUID),
           name: String,
           description: T.nilable(String),
           date_ranges: T::Array[T::Hash[String, String]]
@@ -94,7 +94,7 @@ module Events
 
       sig do
         params(
-          event_id: String,
+          event_id: T.any(String, UUID),
           date_ranges: T::Array[T::Hash[String, String]]
         ).void
       end

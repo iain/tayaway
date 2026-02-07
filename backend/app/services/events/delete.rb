@@ -14,7 +14,7 @@ module Events
       include Result::Methods
 
       sig do
-        params(event_id: String, current_user_id: String)
+        params(event_id: T.any(String, UUID), current_user_id: T.any(String, UUID))
           .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
       def call(event_id:, current_user_id:)
@@ -25,7 +25,7 @@ module Events
 
       private
 
-      sig { params(event_id: String).returns(Result[Event, ServiceError]) }
+      sig { params(event_id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }
       def find_event(event_id)
         event = Event.find(event_id)
         if event
@@ -35,7 +35,7 @@ module Events
         end
       end
 
-      sig { params(event: Event, current_user_id: String).returns(Result[Event, ServiceError]) }
+      sig { params(event: Event, current_user_id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }
       def authorize_owner(event, current_user_id)
         if event.user_id == current_user_id
           T.cast(Success(event), Result[Event, ServiceError])

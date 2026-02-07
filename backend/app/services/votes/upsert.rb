@@ -24,8 +24,8 @@ module Votes
 
       sig do
         params(
-          event_id: String,
-          user_id: String,
+          event_id: T.any(String, UUID),
+          user_id: T.any(String, UUID),
           date_range_id: T.nilable(String),
           vote_response: T.nilable(String),
           comment: T.nilable(String),
@@ -74,7 +74,7 @@ module Votes
         end
       end
 
-      sig { params(date_range: DateRange, event_id: String).returns(Result[DateRange, ServiceError]) }
+      sig { params(date_range: DateRange, event_id: T.any(String, UUID)).returns(Result[DateRange, ServiceError]) }
       def validate_date_range_belongs_to_event(date_range, event_id)
         if date_range.event_id == event_id
           T.cast(Success(date_range), Result[DateRange, ServiceError])
@@ -86,7 +86,7 @@ module Votes
       sig do
         params(
           date_range: DateRange,
-          user_id: String,
+          user_id: T.any(String, UUID),
           vote_response: String,
           comment: T.nilable(String),
           vote_id: T.nilable(String)

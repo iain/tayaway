@@ -20,7 +20,7 @@ module Events
 
       sig do
         params(
-          user_id: String,
+          user_id: T.any(String, UUID),
           name: T.nilable(String),
           description: T.nilable(String),
           date_ranges: T::Array[T::Hash[String, String]]
@@ -43,7 +43,7 @@ module Events
 
       sig do
         params(
-          user_id: String,
+          user_id: T.any(String, UUID),
           name: String,
           description: T.nilable(String),
           date_ranges: T::Array[T::Hash[String, String]]
