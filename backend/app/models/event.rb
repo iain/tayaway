@@ -31,20 +31,25 @@ class Event < T::Struct
 
     sig { params(id: T.any(String, UUID)).returns(T.nilable(Event)) }
     def find(id)
-      DB[:events].where(id: id).with_row_proc(method(:from_row)).first
+      dataset.where(id: id).first
     end
 
     sig { params(user_id: T.any(String, UUID)).returns(T::Array[Event]) }
     def for_user(user_id)
-      DB[:events].where(user_id: user_id).order(:created_at).with_row_proc(method(:from_row)).all
+      dataset.where(user_id: user_id).order(:created_at).all
     end
 
     sig { returns(T::Array[Event]) }
     def all_ordered
-      DB[:events].order(:created_at).with_row_proc(method(:from_row)).all
+      dataset.order(:created_at).all
     end
 
     private
+
+    sig { returns(Sequel::Dataset) }
+    def dataset
+      DB[:events].with_row_proc(method(:from_row))
+    end
 
     sig { params(row: T::Hash[Symbol, T.untyped]).returns(Event) }
     def from_row(row)

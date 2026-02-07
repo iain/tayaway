@@ -30,12 +30,12 @@ class DateRange < T::Struct
 
     sig { params(id: T.any(String, UUID)).returns(T.nilable(DateRange)) }
     def find(id)
-      DB[:date_ranges].where(id: id).with_row_proc(method(:from_row)).first
+      dataset.where(id: id).first
     end
 
     sig { params(event_id: T.any(String, UUID)).returns(T::Array[DateRange]) }
     def for_event(event_id)
-      DB[:date_ranges].where(event_id: event_id).order(:start_date).with_row_proc(method(:from_row)).all
+      dataset.where(event_id: event_id).order(:start_date).all
     end
 
     sig { params(event_id: T.any(String, UUID)).returns(T::Array[String]) }
@@ -44,6 +44,11 @@ class DateRange < T::Struct
     end
 
     private
+
+    sig { returns(Sequel::Dataset) }
+    def dataset
+      DB[:date_ranges].with_row_proc(method(:from_row))
+    end
 
     sig { params(row: T::Hash[Symbol, T.untyped]).returns(DateRange) }
     def from_row(row)

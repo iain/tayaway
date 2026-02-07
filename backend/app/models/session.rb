@@ -18,19 +18,23 @@ class Session < T::Struct
 
     sig { params(token: String).returns(T.nilable(Session)) }
     def find_valid(token)
-      DB[:sessions]
+      dataset
         .where(token: token)
         .where(Sequel[:expires_at] > Time.now)
-        .with_row_proc(method(:from_row))
         .first
     end
 
     sig { params(token: String).returns(T.nilable(Session)) }
     def find_by_token(token)
-      DB[:sessions].where(token: token).with_row_proc(method(:from_row)).first
+      dataset.where(token: token).first
     end
 
     private
+
+    sig { returns(Sequel::Dataset) }
+    def dataset
+      DB[:sessions].with_row_proc(method(:from_row))
+    end
 
     sig { params(row: T::Hash[Symbol, T.untyped]).returns(Session) }
     def from_row(row)

@@ -32,12 +32,12 @@ class Vote < T::Struct
 
     sig { params(id: T.any(String, UUID)).returns(T.nilable(Vote)) }
     def find(id)
-      DB[:votes].where(id: id).with_row_proc(method(:from_row)).first
+      dataset.where(id: id).first
     end
 
     sig { params(date_range_id: T.any(String, UUID)).returns(T::Array[Vote]) }
     def for_date_range(date_range_id)
-      DB[:votes].where(date_range_id: date_range_id).with_row_proc(method(:from_row)).all
+      dataset.where(date_range_id: date_range_id).all
     end
 
     sig { params(date_range_id: T.any(String, UUID)).returns(T::Array[String]) }
@@ -49,15 +49,20 @@ class Vote < T::Struct
     def for_date_range_ids(date_range_ids)
       return [] if date_range_ids.empty?
 
-      DB[:votes].where(date_range_id: date_range_ids).with_row_proc(method(:from_row)).all
+      dataset.where(date_range_id: date_range_ids).all
     end
 
     sig { params(date_range_id: T.any(String, UUID), user_id: T.any(String, UUID)).returns(T.nilable(Vote)) }
     def find_by_date_range_and_user(date_range_id, user_id)
-      DB[:votes].where(date_range_id: date_range_id, user_id: user_id).with_row_proc(method(:from_row)).first
+      dataset.where(date_range_id: date_range_id, user_id: user_id).first
     end
 
     private
+
+    sig { returns(Sequel::Dataset) }
+    def dataset
+      DB[:votes].with_row_proc(method(:from_row))
+    end
 
     sig { params(row: T::Hash[Symbol, T.untyped]).returns(Vote) }
     def from_row(row)
