@@ -5,7 +5,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   reporter: 'html',
   use: {
     baseURL: 'http://localhost:5174',
@@ -19,7 +19,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'cd backend && RACK_ENV=test bundle exec falcon serve --bind http://localhost:9293',
+      command: 'cd backend && RACK_ENV=test bundle exec falcon serve --bind http://localhost:9293 --threaded',
       url: 'http://localhost:9293/health',
       reuseExistingServer: !process.env.CI,
       timeout: 120000,
