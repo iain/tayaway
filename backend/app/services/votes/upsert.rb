@@ -6,7 +6,7 @@ module Votes
   #
   # @example
   #   result = Votes::Upsert.call(
-  #     event: event,
+  #     event_id: "event-uuid",
   #     user_id: "uuid",
   #     date_range_id: "dr-uuid",
   #     vote_response: "yes",
@@ -21,7 +21,7 @@ module Votes
 
       sig do
         params(
-          event: Event,
+          event_id: String,
           user_id: String,
           date_range_id: T.nilable(String),
           vote_response: T.nilable(String),
@@ -29,10 +29,10 @@ module Votes
           vote_id: T.nilable(String)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def call(event:, user_id:, date_range_id:, vote_response:, comment:, vote_id: nil)
+      def call(event_id:, user_id:, date_range_id:, vote_response:, comment:, vote_id: nil)
         validate_params(date_range_id, vote_response, vote_id)
           .bind { |params| find_date_range(params[:date_range_id]) }
-          .bind { |date_range| validate_date_range_belongs_to_event(date_range, event) }
+          .bind { |date_range| validate_date_range_belongs_to_event(date_range, event_id) }
           .bind { |date_range| upsert_vote(date_range, user_id, T.must(vote_response), comment, vote_id) }
       end
 
@@ -52,11 +52,11 @@ module Votes
           Failure(ServiceError.validation("date_range_id is required"))
         elsif vote_response.nil? || vote_response.empty?
           Failure(ServiceError.validation("response is required"))
-        elsif !Vote::VALID_RESPONSES.include?(vote_response)
+        elsif !VoteResponse.valid?(vote_response)
           Failure(ServiceError.validation("Invalid response value"))
         elsif vote_id && !UUID_REGEX.match?(vote_id)
           Failure(ServiceError.validation("Invalid vote ID format"))
-        elsif vote_id && Vote.first(id: vote_id)
+        elsif vote_id && Vote.find(vote_id)
           Failure(ServiceError.conflict("Vote ID already exists"))
         else
           Success({ date_range_id: date_range_id, vote_response: vote_response })
@@ -65,7 +65,7 @@ module Votes
 
       sig { params(date_range_id: String).returns(Result[DateRange, ServiceError]) }
       def find_date_range(date_range_id)
-        date_range = DateRange.first(id: date_range_id)
+        date_range = DateRange.find(date_range_id)
         if date_range
           Success(date_range)
         else
@@ -73,9 +73,9 @@ module Votes
         end
       end
 
-      sig { params(date_range: DateRange, event: Event).returns(Result[DateRange, ServiceError]) }
-      def validate_date_range_belongs_to_event(date_range, event)
-        if date_range.event_id == event.id
+      sig { params(date_range: DateRange, event_id: String).returns(Result[DateRange, ServiceError]) }
+      def validate_date_range_belongs_to_event(date_range, event_id)
+        if date_range.event_id == event_id
           Success(date_range)
         else
           Failure(ServiceError.validation("Date range does not belong to this event"))
@@ -92,24 +92,30 @@ module Votes
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
       def upsert_vote(date_range, user_id, vote_response, comment, vote_id)
-        existing_vote = Vote.first(date_range_id: date_range.id, user_id: user_id)
+        existing_vote = Vote.find_by_date_range_and_user(date_range.id, user_id)
         clean_comment = comment&.empty? ? nil : comment
 
         if existing_vote
-          existing_vote.update(response: vote_response, comment: clean_comment)
+          DB[:votes].where(id: existing_vote.id).update(
+            response: vote_response,
+            comment: clean_comment,
+            updated_at: Time.now
+          )
           Success({ vote_id: existing_vote.id, created: false })
         else
-          # Use client-provided ID if given, otherwise generate one
-          create_params = {
+          now = Time.now
+          new_vote_id = vote_id || SecureRandom.uuid
+
+          DB[:votes].insert(
+            id: new_vote_id,
             date_range_id: date_range.id,
             user_id: user_id,
             response: vote_response,
-            comment: clean_comment
-          }
-          create_params[:id] = vote_id if vote_id
-
-          vote = Vote.create(create_params)
-          Success({ vote_id: vote.id, created: true })
+            comment: clean_comment,
+            created_at: now,
+            updated_at: now
+          )
+          Success({ vote_id: new_vote_id, created: true })
         end
       end
     end

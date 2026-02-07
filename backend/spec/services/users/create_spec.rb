@@ -27,17 +27,17 @@ RSpec.describe Users::Create do
     expect(result.success?).to be true
     expect(result.value![:user_id]).to be_a(String)
     expect(result.value![:objects]).to be_an(Array)
-    user = User.first(id: result.value![:user_id])
-    expect(user.email).to eq("new@example.com")
-    expect(user.name).to eq("New User")
-    expect(User.where(email: "new@example.com").count).to eq(1)
+    user = DB[:users].where(id: result.value![:user_id]).first
+    expect(user[:email]).to eq("new@example.com")
+    expect(user[:name]).to eq("New User")
+    expect(DB[:users].where(email: "new@example.com").count).to eq(1)
   end
 
   it "creates user with nil name when name is empty" do
     result = described_class.call(name: "", email: "noname@example.com")
 
     expect(result.success?).to be true
-    user = User.first(id: result.value![:user_id])
-    expect(user.name).to be_nil
+    user = DB[:users].where(id: result.value![:user_id]).first
+    expect(user[:name]).to be_nil
   end
 end

@@ -9,9 +9,9 @@ class App
     # GET /api/users - List all users
     r.is do
       r.get do
-        users = User.order(:name, :email).all
+        users = User.all_ordered
         pool = PoolSerializer.new
-        pool.add_all(users)
+        pool.add_all(users, type: :user)
 
         response.status = 200
         { objects: pool.to_a }

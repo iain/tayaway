@@ -14,13 +14,13 @@ RSpec.describe Auth::Logout do
 
   it "destroys session and returns success" do
     user = create(:user)
-    session = Session.create_for_user(user)
+    session = create(:session, user: user)
 
-    result = described_class.call(auth_header: "Bearer #{session.token}")
+    result = described_class.call(auth_header: "Bearer #{session[:token]}")
 
     expect(result.success?).to be true
     expect(result.value![:message]).to eq("Logged out successfully")
-    expect(Session.where(id: session.id).count).to eq(0)
+    expect(DB[:sessions].where(id: session[:id]).count).to eq(0)
   end
 
   it "returns success even when session does not exist" do

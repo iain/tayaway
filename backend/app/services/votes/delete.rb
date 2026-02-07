@@ -5,7 +5,7 @@ module Votes
   # Service to delete a vote.
   #
   # @example
-  #   result = Votes::Delete.call(event: event, vote_id: "uuid", user_id: "uuid")
+  #   result = Votes::Delete.call(event_id: "event-uuid", vote_id: "uuid", user_id: "uuid")
   #   result.success?  # => true
   #   result.value!    # => { message: "Vote deleted successfully" }
   module Delete
@@ -14,13 +14,13 @@ module Votes
       include Result::Methods
 
       sig do
-        params(event: Event, vote_id: String, user_id: String)
+        params(event_id: String, vote_id: String, user_id: String)
           .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def call(event:, vote_id:, user_id:)
+      def call(event_id:, vote_id:, user_id:)
         find_vote(vote_id)
           .bind { |vote| authorize_owner(vote, user_id) }
-          .bind { |vote| validate_vote_belongs_to_event(vote, event) }
+          .bind { |vote| validate_vote_belongs_to_event(vote, event_id) }
           .bind { |vote| delete_vote(vote) }
       end
 
@@ -28,7 +28,7 @@ module Votes
 
       sig { params(vote_id: String).returns(Result[Vote, ServiceError]) }
       def find_vote(vote_id)
-        vote = Vote.first(id: vote_id)
+        vote = Vote.find(vote_id)
         if vote
           Success(vote)
         else
@@ -45,10 +45,10 @@ module Votes
         end
       end
 
-      sig { params(vote: Vote, event: Event).returns(Result[Vote, ServiceError]) }
-      def validate_vote_belongs_to_event(vote, event)
-        date_range = vote.date_range
-        if date_range&.event_id == event.id
+      sig { params(vote: Vote, event_id: String).returns(Result[Vote, ServiceError]) }
+      def validate_vote_belongs_to_event(vote, event_id)
+        date_range = DateRange.find(vote.date_range_id)
+        if date_range && date_range.event_id == event_id
           Success(vote)
         else
           Failure(ServiceError.validation("Vote does not belong to this event"))
@@ -58,7 +58,7 @@ module Votes
       sig { params(vote: Vote).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
       def delete_vote(vote)
         vote_id = vote.id
-        vote.destroy
+        DB[:votes].where(id: vote_id).delete
         Success({ deleted: [{ objectType: "vote", id: vote_id }] })
       end
     end

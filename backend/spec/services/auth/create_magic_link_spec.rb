@@ -18,7 +18,7 @@ RSpec.describe Auth::CreateMagicLink do
 
     expect(result.success?).to be true
     expect(result.value![:message]).to include("If an account exists")
-    expect(MagicLinkToken.where(user_id: user.id).count).to eq(1)
+    expect(DB[:magic_link_tokens].where(user_id: user[:id]).count).to eq(1)
   end
 
   it "returns success without creating token for non-existent user" do
@@ -26,6 +26,6 @@ RSpec.describe Auth::CreateMagicLink do
 
     expect(result.success?).to be true
     expect(result.value![:message]).to include("If an account exists")
-    expect(MagicLinkToken.count).to eq(0)
+    expect(DB[:magic_link_tokens].count).to eq(0)
   end
 end

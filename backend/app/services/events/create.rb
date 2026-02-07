@@ -51,25 +51,35 @@ module Events
       end
       def create_event(user_id, name, description, date_ranges)
         event = DB.transaction do
-          new_event = Event.create(
+          now = Time.now
+          event_id = SecureRandom.uuid
+
+          DB[:events].insert(
+            id: event_id,
             user_id: user_id,
             name: name,
-            description: description&.empty? ? nil : description
+            description: description&.empty? ? nil : description,
+            created_at: now,
+            updated_at: now
           )
 
           date_ranges.each do |dr|
-            DateRange.create(
-              event_id: new_event.id,
+            dr_now = Time.now
+            DB[:date_ranges].insert(
+              id: SecureRandom.uuid,
+              event_id: event_id,
               start_date: Date.parse(dr["start_date"]),
-              end_date: Date.parse(dr["end_date"])
+              end_date: Date.parse(dr["end_date"]),
+              created_at: dr_now,
+              updated_at: dr_now
             )
           end
 
-          new_event.reload
+          Event.find(event_id)
         end
 
         pool = PoolSerializer.new
-        pool.add(event)
+        pool.add_event(event)
 
         Success({ objects: pool.to_a })
       end

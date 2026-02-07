@@ -9,9 +9,9 @@ class App
     # GET /api/events - List all events
     r.is do
       r.get do
-        events = Event.order(:created_at).all
+        events = Event.all_ordered
         pool = PoolSerializer.new
-        pool.add_all(events)
+        pool.add_all(events, type: :event)
 
         response.status = 200
         { objects: pool.to_a }
@@ -31,7 +31,7 @@ class App
 
     # /api/events/:id routes
     r.on String do |id|
-      event = Event.first(id: id)
+      event = Event.find(id)
 
       response.status = 404
       next { error: "Event not found" } unless event
@@ -40,7 +40,7 @@ class App
       r.is do
         r.get do
           pool = PoolSerializer.new
-          pool.add(event)
+          pool.add_event(event)
 
           response.status = 200
           { objects: pool.to_a }
@@ -49,7 +49,7 @@ class App
         # PUT /api/events/:id - Update event (owner only)
         r.put do
           result = Events::Update.call(
-            event: event,
+            event_id: event.id,
             current_user_id: current_user.id,
             name: r.params["name"]&.strip,
             description: r.params["description"]&.strip,
@@ -60,7 +60,7 @@ class App
 
         # DELETE /api/events/:id - Delete event (owner only)
         r.delete do
-          result = Events::Delete.call(event: event, current_user_id: current_user.id)
+          result = Events::Delete.call(event_id: event.id, current_user_id: current_user.id)
           handle_result(result)
         end
       end
@@ -70,9 +70,10 @@ class App
         # GET /api/events/:id/votes - Get all votes for an event
         r.is do
           r.get do
-            votes = Vote.where(date_range_id: event.date_ranges.map(&:id)).all
+            date_range_ids = DateRange.ids_for_event(event.id)
+            votes = Vote.for_date_range_ids(date_range_ids)
             pool = PoolSerializer.new
-            pool.add_all(votes)
+            pool.add_all(votes, type: :vote)
 
             response.status = 200
             { objects: pool.to_a }
@@ -81,7 +82,7 @@ class App
           # POST /api/events/:id/votes - Create or update vote
           r.post do
             result = Votes::Upsert.call(
-              event: event,
+              event_id: event.id,
               user_id: current_user.id,
               date_range_id: r.params["date_range_id"],
               vote_response: r.params["response"],
@@ -91,9 +92,9 @@ class App
 
             result.either(
               ->(value) {
-                vote = Vote.first(id: value[:vote_id])
+                vote = Vote.find(value[:vote_id])
                 pool = PoolSerializer.new
-                pool.add(vote)
+                pool.add_vote(vote)
 
                 response.status = value[:created] ? 201 : 200
                 { objects: pool.to_a }
@@ -109,7 +110,7 @@ class App
         # DELETE /api/events/:id/votes/:vote_id - Remove vote
         r.on String do |vote_id|
           r.delete do
-            result = Votes::Delete.call(event: event, vote_id: vote_id, user_id: current_user.id)
+            result = Votes::Delete.call(event_id: event.id, vote_id: vote_id, user_id: current_user.id)
             handle_result(result)
           end
         end

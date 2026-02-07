@@ -36,7 +36,7 @@ module Users
 
       sig { params(email: String).returns(Result[String, ServiceError]) }
       def check_email_uniqueness(email)
-        if User.first(email: email)
+        if User.find_by_email_exact(email)
           Failure(ServiceError.validation("A user with this email already exists"))
         else
           Success(email)
@@ -45,15 +45,22 @@ module Users
 
       sig { params(name: T.nilable(String), email: String).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
       def create_user(name, email)
-        user = User.create(
+        now = Time.now
+        id = SecureRandom.uuid
+
+        DB[:users].insert(
+          id: id,
+          email: email,
           name: name&.empty? ? nil : name,
-          email: email
+          created_at: now,
+          updated_at: now
         )
 
+        user = T.must(User.find(id))
         pool = PoolSerializer.new
-        pool.add(user)
+        pool.add_user(user)
 
-        Success({ user_id: user.id, objects: pool.to_a })
+        Success({ user_id: id, objects: pool.to_a })
       end
     end
   end

@@ -7,7 +7,7 @@ RSpec.describe Events::Create do
   it "returns failure when name is missing" do
     user = create(:user)
 
-    result = described_class.call(user_id: user.id, name: nil, description: nil, date_ranges: [])
+    result = described_class.call(user_id: user[:id], name: nil, description: nil, date_ranges: [])
 
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("Name is required")
@@ -21,7 +21,7 @@ RSpec.describe Events::Create do
     ]
 
     result = described_class.call(
-      user_id: user.id,
+      user_id: user[:id],
       name: "Team Meeting",
       description: "Weekly sync",
       date_ranges: date_ranges
@@ -37,7 +37,7 @@ RSpec.describe Events::Create do
   it "sets description to nil when empty" do
     user = create(:user)
 
-    result = described_class.call(user_id: user.id, name: "Event", description: "", date_ranges: [])
+    result = described_class.call(user_id: user[:id], name: "Event", description: "", date_ranges: [])
 
     expect(result.success?).to be true
     event = result.value![:objects].find { |o| o[:objectType] == "event" }

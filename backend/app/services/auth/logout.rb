@@ -31,8 +31,7 @@ module Auth
 
       sig { params(token: String).returns(Result[T::Hash[Symbol, String], ServiceError]) }
       def destroy_session(token)
-        session = Session.first(token: token)
-        session&.destroy
+        DB[:sessions].where(token: token).delete
         Success({ message: "Logged out successfully" })
       end
     end

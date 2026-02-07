@@ -39,7 +39,7 @@ module Auth
 
       sig { params(token: String, email: String).returns(Result[MagicLinkToken, ServiceError]) }
       def find_magic_token(token, email)
-        magic_token = MagicLinkToken.find_valid_token(token, email)
+        magic_token = MagicLinkToken.find_valid(token, email)
         if magic_token
           Success(magic_token)
         else
@@ -49,12 +49,24 @@ module Auth
 
       sig { params(magic_token: MagicLinkToken).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
       def create_session(magic_token)
-        magic_token.mark_used!
-        session = Session.create_for_user(magic_token.user)
+        DB[:magic_link_tokens].where(id: magic_token.id).update(used_at: Time.now)
+
+        now = Time.now
+        id = SecureRandom.uuid
+        token = SecureRandom.hex(32)
+        expires_at = now + (Session::EXPIRY_DAYS * 24 * 60 * 60)
+
+        DB[:sessions].insert(
+          id: id,
+          user_id: magic_token.user_id,
+          token: token,
+          expires_at: expires_at,
+          created_at: now
+        )
 
         Success({
-          session_token: session.token,
-          user_id: magic_token.user.id
+          session_token: token,
+          user_id: magic_token.user_id
         })
       end
     end

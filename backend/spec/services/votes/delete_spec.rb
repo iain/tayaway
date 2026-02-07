@@ -8,7 +8,7 @@ RSpec.describe Votes::Delete do
     user = create(:user)
     event = create(:event, user: user)
 
-    result = described_class.call(event: event, vote_id: "00000000-0000-0000-0000-000000000000", user_id: user.id)
+    result = described_class.call(event_id: event[:id], vote_id: "00000000-0000-0000-0000-000000000000", user_id: user[:id])
 
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("Vote not found")
@@ -22,7 +22,7 @@ RSpec.describe Votes::Delete do
     date_range = create(:date_range, event: event)
     vote = create(:vote, user: owner, date_range: date_range)
 
-    result = described_class.call(event: event, vote_id: vote.id, user_id: other_user.id)
+    result = described_class.call(event_id: event[:id], vote_id: vote[:id], user_id: other_user[:id])
 
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("Access denied")
@@ -36,7 +36,7 @@ RSpec.describe Votes::Delete do
     date_range = create(:date_range, event: event2)
     vote = create(:vote, user: user, date_range: date_range)
 
-    result = described_class.call(event: event1, vote_id: vote.id, user_id: user.id)
+    result = described_class.call(event_id: event1[:id], vote_id: vote[:id], user_id: user[:id])
 
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("Vote does not belong to this event")
@@ -47,12 +47,12 @@ RSpec.describe Votes::Delete do
     event = create(:event, user: user)
     date_range = create(:date_range, event: event)
     vote = create(:vote, user: user, date_range: date_range)
-    vote_id = vote.id
+    vote_id = vote[:id]
 
-    result = described_class.call(event: event, vote_id: vote.id, user_id: user.id)
+    result = described_class.call(event_id: event[:id], vote_id: vote[:id], user_id: user[:id])
 
     expect(result.success?).to be true
     expect(result.value![:deleted]).to eq([{ objectType: "vote", id: vote_id }])
-    expect(Vote.where(id: vote_id).count).to eq(0)
+    expect(DB[:votes].where(id: vote_id).count).to eq(0)
   end
 end

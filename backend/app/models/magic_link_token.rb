@@ -1,41 +1,53 @@
 # typed: true
 # frozen_string_literal: true
 
-require "securerandom"
+# Read-only magic link token model.
+class MagicLinkToken < T::Struct
+  extend T::Sig
 
-class MagicLinkToken < Sequel::Model
-  many_to_one :user
+  EXPIRY_MINUTES = 15
 
-  TOKEN_EXPIRY_MINUTES = 15
+  const :id, UUID
+  const :user_id, UUID
+  const :token, String
+  const :email, EmailAddress
+  const :expires_at, Time
+  const :used_at, T.nilable(Time)
+  const :created_at, Time
 
-  def self.generate_for_user(user)
-    create(
-      user_id: user.id,
-      token: SecureRandom.hex(32),
-      email: user.email,
-      expires_at: Time.now + (TOKEN_EXPIRY_MINUTES * 60)
-    )
-  end
+  class << self
+    extend T::Sig
 
-  def self.find_valid_token(token, email)
-    magic_token = where(token: token, email: email)
-                  .where(used_at: nil)
-                  .where { expires_at > Time.now }
-                  .first
+    sig { params(token: String, email: String).returns(T.nilable(MagicLinkToken)) }
+    def find_valid(token, email)
+      row = DB[:magic_link_tokens]
+        .where(token: token, email: email)
+        .where(used_at: nil)
+        .where { expires_at > Time.now }
+        .first
 
-    return nil unless magic_token
+      return nil unless row
 
-    user = magic_token.user
-    return nil unless user.email.downcase == email.downcase
+      user = User.find(row[:user_id])
+      return nil unless user
+      return nil unless user.email.to_s.downcase == email.downcase
 
-    magic_token
-  end
+      from_row(row)
+    end
 
-  def mark_used!
-    update(used_at: Time.now)
-  end
+    private
 
-  def magic_link_url(frontend_url)
-    "#{frontend_url}/auth/verify?token=#{token}&email=#{CGI.escape(email)}"
+    sig { params(row: T::Hash[Symbol, T.untyped]).returns(MagicLinkToken) }
+    def from_row(row)
+      MagicLinkToken.new(
+        id: UUID.new(row[:id]),
+        user_id: UUID.new(row[:user_id]),
+        token: row[:token],
+        email: EmailAddress.new(row[:email]),
+        expires_at: row[:expires_at],
+        used_at: row[:used_at],
+        created_at: row[:created_at]
+      )
+    end
   end
 end

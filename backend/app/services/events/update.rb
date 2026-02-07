@@ -6,7 +6,7 @@ module Events
   #
   # @example
   #   result = Events::Update.call(
-  #     event: event,
+  #     event_id: "uuid",
   #     current_user_id: "uuid",
   #     name: "Updated Name",
   #     description: "Updated description",
@@ -21,20 +21,31 @@ module Events
 
       sig do
         params(
-          event: Event,
+          event_id: String,
           current_user_id: String,
           name: T.nilable(String),
           description: T.nilable(String),
           date_ranges: T::Array[T::Hash[String, String]]
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def call(event:, current_user_id:, name:, description:, date_ranges:)
-        authorize_owner(event, current_user_id)
+      def call(event_id:, current_user_id:, name:, description:, date_ranges:)
+        find_event(event_id)
+          .bind { |event| authorize_owner(event, current_user_id) }
           .bind { validate_name(name) }
-          .bind { |valid_name| update_event(event, valid_name, description, date_ranges) }
+          .bind { |valid_name| update_event(event_id, valid_name, description, date_ranges) }
       end
 
       private
+
+      sig { params(event_id: String).returns(Result[Event, ServiceError]) }
+      def find_event(event_id)
+        event = Event.find(event_id)
+        if event
+          Success(event)
+        else
+          Failure(ServiceError.not_found("Event not found"))
+        end
+      end
 
       sig { params(event: Event, current_user_id: String).returns(Result[Event, ServiceError]) }
       def authorize_owner(event, current_user_id)
@@ -56,48 +67,49 @@ module Events
 
       sig do
         params(
-          event: Event,
+          event_id: String,
           name: String,
           description: T.nilable(String),
           date_ranges: T::Array[T::Hash[String, String]]
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def update_event(event, name, description, date_ranges)
+      def update_event(event_id, name, description, date_ranges)
         updated_event = DB.transaction do
-          event.update(
+          DB[:events].where(id: event_id).update(
             name: name,
-            description: description&.empty? ? nil : description
+            description: description&.empty? ? nil : description,
+            updated_at: Time.now
           )
 
-          sync_date_ranges(event, date_ranges)
+          sync_date_ranges(event_id, date_ranges)
 
-          event.reload
+          Event.find(event_id)
         end
 
         pool = PoolSerializer.new
-        pool.add(updated_event)
+        pool.add_event(updated_event)
 
         Success({ objects: pool.to_a })
       end
 
       sig do
         params(
-          event: Event,
+          event_id: String,
           date_ranges: T::Array[T::Hash[String, String]]
         ).void
       end
-      def sync_date_ranges(event, date_ranges)
+      def sync_date_ranges(event_id, date_ranges)
         incoming = date_ranges.map do |dr|
           [Date.parse(dr["start_date"]), Date.parse(dr["end_date"])]
         end.to_set
 
-        existing = event.date_ranges.map do |dr|
+        existing = DateRange.for_event(event_id).map do |dr|
           [[dr.start_date, dr.end_date], dr]
         end.to_h
 
         # Delete date ranges that are no longer in the incoming list
         existing.each do |(key, dr)|
-          dr.delete unless incoming.include?(key)
+          DB[:date_ranges].where(id: dr.id).delete unless incoming.include?(key)
         end
 
         # Create new date ranges that don't exist yet
@@ -105,10 +117,14 @@ module Events
         incoming.each do |(start_date, end_date)|
           next if existing_keys.include?([start_date, end_date])
 
-          DateRange.create(
-            event_id: event.id,
+          now = Time.now
+          DB[:date_ranges].insert(
+            id: SecureRandom.uuid,
+            event_id: event_id,
             start_date: start_date,
-            end_date: end_date
+            end_date: end_date,
+            created_at: now,
+            updated_at: now
           )
         end
       end

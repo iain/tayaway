@@ -9,7 +9,7 @@ RSpec.describe Votes::Upsert do
     event = create(:event, user: user)
 
     result = described_class.call(
-      event: event, user_id: user.id, date_range_id: nil, vote_response: "yes", comment: nil
+      event_id: event[:id], user_id: user[:id], date_range_id: nil, vote_response: "yes", comment: nil
     )
 
     expect(result.failure?).to be true
@@ -22,7 +22,7 @@ RSpec.describe Votes::Upsert do
     date_range = create(:date_range, event: event)
 
     result = described_class.call(
-      event: event, user_id: user.id, date_range_id: date_range.id, vote_response: "invalid", comment: nil
+      event_id: event[:id], user_id: user[:id], date_range_id: date_range[:id], vote_response: "invalid", comment: nil
     )
 
     expect(result.failure?).to be true
@@ -34,7 +34,7 @@ RSpec.describe Votes::Upsert do
     event = create(:event, user: user)
 
     result = described_class.call(
-      event: event, user_id: user.id, date_range_id: "00000000-0000-0000-0000-000000000000", vote_response: "yes", comment: nil
+      event_id: event[:id], user_id: user[:id], date_range_id: "00000000-0000-0000-0000-000000000000", vote_response: "yes", comment: nil
     )
 
     expect(result.failure?).to be true
@@ -48,7 +48,7 @@ RSpec.describe Votes::Upsert do
     date_range = create(:date_range, event: event2)
 
     result = described_class.call(
-      event: event1, user_id: user.id, date_range_id: date_range.id, vote_response: "yes", comment: nil
+      event_id: event1[:id], user_id: user[:id], date_range_id: date_range[:id], vote_response: "yes", comment: nil
     )
 
     expect(result.failure?).to be true
@@ -61,9 +61,9 @@ RSpec.describe Votes::Upsert do
     date_range = create(:date_range, event: event)
 
     result = described_class.call(
-      event: event,
-      user_id: user.id,
-      date_range_id: date_range.id,
+      event_id: event[:id],
+      user_id: user[:id],
+      date_range_id: date_range[:id],
       vote_response: "yes",
       comment: "Looks good!"
     )
@@ -71,9 +71,9 @@ RSpec.describe Votes::Upsert do
     expect(result.success?).to be true
     expect(result.value![:created]).to be true
     expect(result.value![:vote_id]).to be_a(String)
-    vote = Vote.first(id: result.value![:vote_id])
-    expect(vote.response).to eq("yes")
-    expect(vote.comment).to eq("Looks good!")
+    vote = DB[:votes].where(id: result.value![:vote_id]).first
+    expect(vote[:response]).to eq("yes")
+    expect(vote[:comment]).to eq("Looks good!")
   end
 
   it "updates existing vote and returns created: false" do
@@ -83,17 +83,17 @@ RSpec.describe Votes::Upsert do
     create(:vote, user: user, date_range: date_range, response: "yes")
 
     result = described_class.call(
-      event: event,
-      user_id: user.id,
-      date_range_id: date_range.id,
+      event_id: event[:id],
+      user_id: user[:id],
+      date_range_id: date_range[:id],
       vote_response: "no",
       comment: "Changed my mind"
     )
 
     expect(result.success?).to be true
     expect(result.value![:created]).to be false
-    vote = Vote.first(id: result.value![:vote_id])
-    expect(vote.response).to eq("no")
-    expect(Vote.count).to eq(1)
+    vote = DB[:votes].where(id: result.value![:vote_id]).first
+    expect(vote[:response]).to eq("no")
+    expect(DB[:votes].count).to eq(1)
   end
 end

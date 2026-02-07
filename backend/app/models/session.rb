@@ -1,28 +1,46 @@
 # typed: true
 # frozen_string_literal: true
 
-require "securerandom"
+# Read-only session model.
+class Session < T::Struct
+  extend T::Sig
 
-class Session < Sequel::Model
-  many_to_one :user
+  EXPIRY_DAYS = 30
 
-  SESSION_EXPIRY_DAYS = 30
+  const :id, UUID
+  const :user_id, UUID
+  const :token, String
+  const :expires_at, Time
+  const :created_at, Time
 
-  def self.create_for_user(user)
-    create(
-      user_id: user.id,
-      token: SecureRandom.hex(32),
-      expires_at: Time.now + (SESSION_EXPIRY_DAYS * 24 * 60 * 60)
-    )
-  end
+  class << self
+    extend T::Sig
 
-  def self.find_valid_session(token)
-    where(token: token)
-      .where { expires_at > Time.now }
-      .first
-  end
+    sig { params(token: String).returns(T.nilable(Session)) }
+    def find_valid(token)
+      DB[:sessions]
+        .where(token: token)
+        .where { expires_at > Time.now }
+        .with_row_proc(method(:from_row))
+        .first
+    end
 
-  def valid?
-    expires_at > Time.now
+    sig { params(token: String).returns(T.nilable(Session)) }
+    def find_by_token(token)
+      DB[:sessions].where(token: token).with_row_proc(method(:from_row)).first
+    end
+
+    private
+
+    sig { params(row: T::Hash[Symbol, T.untyped]).returns(Session) }
+    def from_row(row)
+      Session.new(
+        id: UUID.new(row[:id]),
+        user_id: UUID.new(row[:user_id]),
+        token: row[:token],
+        expires_at: row[:expires_at],
+        created_at: row[:created_at]
+      )
+    end
   end
 end

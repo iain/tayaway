@@ -33,12 +33,12 @@ class App
       next { error: "Authorization required" } unless auth_header
 
       token = auth_header.sub(/^Bearer\s+/, "")
-      session = Session.find_valid_session(token)
+      session = Session.find_valid(token)
 
       response.status = 401
       next { error: "Invalid or expired session" } unless session
 
-      user = session.user
+      user = User.find(session.user_id)
       response.status = 200
       {
         user_id: user.id,

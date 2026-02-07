@@ -21,8 +21,10 @@ class App < Roda
     return nil unless auth_header
 
     token = auth_header.sub(/^Bearer\s+/, "")
-    session = Session.find_valid_session(token)
-    session&.user
+    session = Session.find_valid(token)
+    return nil unless session
+
+    User.find(session.user_id)
   end
 
   route do |r|

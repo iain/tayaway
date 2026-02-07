@@ -38,17 +38,43 @@ module Test
           .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
       def find_or_create_user_and_session(email, name)
-        user = User.first(Sequel.lit("LOWER(email) = ?", email))
-        user ||= User.create(email: email, name: name)
+        user = User.find_by_email(email)
+        user_id = if user
+          if name && user.name != name
+            DB[:users].where(id: user.id).update(name: name, updated_at: Time.now)
+          end
+          user.id
+        else
+          now = Time.now
+          id = SecureRandom.uuid
+          DB[:users].insert(id: id, email: email, name: name, created_at: now, updated_at: now)
+          id
+        end
 
-        user.update(name: name) if name && user.name != name
-
-        session = Session.create_for_user(user)
+        session = create_session_for_user(user_id)
 
         Success({
-          session_token: session.token,
-          user_id: user.id
+          session_token: session[:token],
+          user_id: user_id
         })
+      end
+
+      sig { params(user_id: T.any(String, UUID)).returns(T::Hash[Symbol, T.untyped]) }
+      def create_session_for_user(user_id)
+        now = Time.now
+        id = SecureRandom.uuid
+        token = SecureRandom.hex(32)
+        expires_at = now + (Session::EXPIRY_DAYS * 24 * 60 * 60)
+
+        DB[:sessions].insert(
+          id: id,
+          user_id: user_id,
+          token: token,
+          expires_at: expires_at,
+          created_at: now
+        )
+
+        T.must(DB[:sessions].where(id: id).first)
       end
     end
   end

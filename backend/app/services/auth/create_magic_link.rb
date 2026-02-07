@@ -31,12 +31,12 @@ module Auth
 
       sig { params(email: String).returns(Result[T::Hash[Symbol, String], ServiceError]) }
       def generate_magic_link(email)
-        user = User.first(Sequel.lit("LOWER(email) = ?", email))
+        user = User.find_by_email(email)
 
         if user
-          magic_token = MagicLinkToken.generate_for_user(user)
+          token = create_magic_link_token(user.id, user.email)
           frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:5173")
-          magic_link = magic_token.magic_link_url(frontend_url)
+          magic_link = "#{frontend_url}/auth/verify?token=#{token}&email=#{CGI.escape(user.email.to_s)}"
 
           puts "\n" + ("=" * 60)
           puts "MAGIC LINK FOR #{email}:"
@@ -47,6 +47,25 @@ module Auth
         end
 
         Success({ message: "If an account exists with this email, a magic link has been sent." })
+      end
+
+      sig { params(user_id: T.any(String, UUID), email: T.any(String, EmailAddress)).returns(String) }
+      def create_magic_link_token(user_id, email)
+        now = Time.now
+        id = SecureRandom.uuid
+        token = SecureRandom.hex(32)
+        expires_at = now + (MagicLinkToken::EXPIRY_MINUTES * 60)
+
+        DB[:magic_link_tokens].insert(
+          id: id,
+          user_id: user_id,
+          token: token,
+          email: email,
+          expires_at: expires_at,
+          created_at: now
+        )
+
+        token
       end
     end
   end

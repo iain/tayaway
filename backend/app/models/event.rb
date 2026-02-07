@@ -1,32 +1,61 @@
 # typed: true
 # frozen_string_literal: true
 
-class Event < Sequel::Model
-  many_to_one :user
-  one_to_many :date_ranges, order: :start_date
+# Read-only event model.
+class Event < T::Struct
+  extend T::Sig
 
-  def validate
-    super
-    validates_presence :name
-    validates_max_length 255, :name
-    validates_presence :user_id
-  end
+  const :id, UUID
+  const :user_id, UUID
+  const :name, String
+  const :description, T.nilable(String)
+  const :created_at, Time
+  const :updated_at, Time
 
-  def before_save
-    self.updated_at = Time.now
-    super
-  end
-
-  def to_pool_hash
+  sig { params(date_range_ids: T::Array[String]).returns(T::Hash[Symbol, T.untyped]) }
+  def to_api_hash(date_range_ids:)
     {
-      id: id,
+      id: id.to_s,
       objectType: "event",
       name: name,
       description: description,
-      userId: user_id,
-      dateRangeIds: date_ranges.map(&:id),
-      createdAt: created_at&.iso8601(3),
-      updatedAt: updated_at&.iso8601(3)
+      userId: user_id.to_s,
+      dateRangeIds: date_range_ids,
+      createdAt: created_at.iso8601(3),
+      updatedAt: updated_at.iso8601(3)
     }
+  end
+
+  class << self
+    extend T::Sig
+
+    sig { params(id: T.any(String, UUID)).returns(T.nilable(Event)) }
+    def find(id)
+      DB[:events].where(id: id).with_row_proc(method(:from_row)).first
+    end
+
+    sig { params(user_id: T.any(String, UUID)).returns(T::Array[Event]) }
+    def for_user(user_id)
+      DB[:events].where(user_id: user_id).order(:created_at).with_row_proc(method(:from_row)).all
+    end
+
+    sig { returns(T::Array[Event]) }
+    def all_ordered
+      DB[:events].order(:created_at).with_row_proc(method(:from_row)).all
+    end
+
+    private
+
+    sig { params(row: T::Hash[Symbol, T.untyped]).returns(Event) }
+    def from_row(row)
+      Event.new(
+        id: UUID.new(row[:id]),
+        user_id: UUID.new(row[:user_id]),
+        name: row[:name],
+        description: row[:description],
+        created_at: row[:created_at],
+        updated_at: row[:updated_at]
+      )
+    end
   end
 end
