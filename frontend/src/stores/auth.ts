@@ -2,6 +2,7 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { api, setSessionToken, clearSessionToken, getSessionToken } from '@/api/client'
 import { useObjectPoolStore } from './objectPool'
+import { useWebSocketStore } from './websocket'
 import type { AuthUser, MagicLinkResponse, VerifyResponse, MeResponse, LogoutResponse } from '@/types'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -30,6 +31,10 @@ export const useAuthStore = defineStore('auth', () => {
         email: response.data.email,
         name: response.data.name
       }
+
+      // Connect WebSocket after successful auth
+      const ws = useWebSocketStore()
+      ws.connect()
     } catch {
       clearSessionToken()
       user.value = null
@@ -57,6 +62,11 @@ export const useAuthStore = defineStore('auth', () => {
       name: meResponse.data.name
     }
     user.value = verifiedUser
+
+    // Connect WebSocket after successful verification
+    const ws = useWebSocketStore()
+    ws.connect()
+
     return verifiedUser
   }
 
@@ -64,6 +74,10 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       await api.post<LogoutResponse>('/auth/logout')
     } finally {
+      // Disconnect WebSocket first
+      const ws = useWebSocketStore()
+      ws.disconnect()
+
       clearSessionToken()
       user.value = null
       // Reset pool on logout
