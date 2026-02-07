@@ -11,6 +11,7 @@ class App < Roda
   plugin :hash_routes
   plugin :request_headers
   plugin :all_verbs
+  plugin :websockets
 
   Sequel.extension(:pg_json_ops)
 
