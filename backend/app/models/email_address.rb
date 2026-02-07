@@ -49,9 +49,9 @@ class EmailAddress
   end
 
   # Sequel integration - allows EmailAddress to be used directly in queries
-  sig { params(ds: T.untyped, sql: String).void }
-  def sql_literal_append(ds, sql)
-    ds.literal_append(sql, @value)
+  sig { params(dataset: T.untyped, sql: String).void }
+  def sql_literal_append(dataset, sql)
+    dataset.literal_append(sql, @value)
   end
 
   class << self

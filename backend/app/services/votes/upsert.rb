@@ -15,6 +15,9 @@ module Votes
   #   result.success?  # => true
   #   result.value!    # => { vote_id: "uuid", created: true }
   module Upsert
+    UUID_REGEX = /\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/i
+    private_constant :UUID_REGEX
+
     class << self
       extend T::Sig
       include Result::Methods
@@ -37,8 +40,6 @@ module Votes
       end
 
       private
-
-      UUID_REGEX = /\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/i
 
       sig do
         params(
