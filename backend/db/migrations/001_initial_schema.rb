@@ -29,6 +29,34 @@ Sequel.migration do
       DateTime :updated_at, null: false, default: Sequel::CURRENT_TIMESTAMP
     end
 
+    # Workspaces table
+    create_table(:workspaces) do
+      column :id, :uuid, primary_key: true, default: Sequel.lit("gen_random_uuid()")
+      String :name, null: false, size: 255
+      DateTime :created_at, null: false, default: Sequel::CURRENT_TIMESTAMP
+      DateTime :updated_at, null: false, default: Sequel::CURRENT_TIMESTAMP
+    end
+
+    # Add trigger for workspaces updated_at
+    run <<~SQL
+      CREATE TRIGGER update_workspaces_updated_at
+      BEFORE UPDATE ON workspaces
+      FOR EACH ROW
+      EXECUTE FUNCTION update_updated_at_column();
+    SQL
+
+    # Workspace memberships (users can belong to many workspaces)
+    create_table(:workspace_memberships) do
+      column :id, :uuid, primary_key: true, default: Sequel.lit("gen_random_uuid()")
+      foreign_key :workspace_id, :workspaces, type: :uuid, null: false, on_delete: :cascade
+      foreign_key :user_id, :users, type: :uuid, null: false, on_delete: :cascade
+      String :role, null: false, default: "member", size: 50
+      DateTime :created_at, null: false, default: Sequel::CURRENT_TIMESTAMP
+
+      index [:workspace_id, :user_id], unique: true
+      index :user_id
+    end
+
     # Magic link tokens table
     create_table(:magic_link_tokens) do
       column :id, :uuid, primary_key: true, default: Sequel.lit("gen_random_uuid()")
@@ -55,12 +83,14 @@ Sequel.migration do
     # Events table
     create_table(:events) do
       column :id, :uuid, primary_key: true, default: Sequel.lit("gen_random_uuid()")
+      foreign_key :workspace_id, :workspaces, type: :uuid, null: false, on_delete: :cascade
       foreign_key :user_id, :users, type: :uuid, null: false, on_delete: :cascade
       String :name, null: false, size: 255
       String :description, text: true
       DateTime :created_at, null: false, default: Sequel::CURRENT_TIMESTAMP
       DateTime :updated_at, null: false, default: Sequel::CURRENT_TIMESTAMP
 
+      index :workspace_id
       index :user_id
     end
 
@@ -120,6 +150,8 @@ Sequel.migration do
     drop_table(:votes)
     drop_table(:date_ranges)
     drop_table(:events)
+    drop_table(:workspace_memberships)
+    drop_table(:workspaces)
     drop_table(:sessions)
     drop_table(:magic_link_tokens)
     drop_table(:users)

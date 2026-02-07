@@ -20,6 +20,7 @@ class App
       # POST /api/events - Create a new event
       r.post do
         result = Events::Create.call(
+          workspace_id: r.params["workspace_id"],
           user_id: current_user.id,
           name: r.params["name"]&.strip,
           description: r.params["description"]&.strip,

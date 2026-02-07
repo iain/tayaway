@@ -26,10 +26,54 @@ FactoryBot.define do
     to_create { |instance| instance }
   end
 
+  factory :workspace, class: Hash do
+    transient do
+      id { SecureRandom.uuid }
+    end
+    sequence(:name) { |n| "Workspace #{n}" }
+
+    initialize_with do
+      now = Time.now
+      DB[:workspaces].insert(
+        id: id,
+        name: name,
+        created_at: now,
+        updated_at: now
+      )
+      DB[:workspaces].where(id: id).first
+    end
+
+    to_create { |instance| instance }
+  end
+
+  factory :workspace_membership, class: Hash do
+    transient do
+      id { SecureRandom.uuid }
+    end
+    workspace
+    user
+    role { "member" }
+
+    initialize_with do
+      now = Time.now
+      DB[:workspace_memberships].insert(
+        id: id,
+        workspace_id: workspace[:id],
+        user_id: user[:id],
+        role: role,
+        created_at: now
+      )
+      DB[:workspace_memberships].where(id: id).first
+    end
+
+    to_create { |instance| instance }
+  end
+
   factory :event, class: Hash do
     transient do
       id { SecureRandom.uuid }
     end
+    workspace
     user
     sequence(:name) { |n| "Event #{n}" }
     description { "Test description" }
@@ -38,6 +82,7 @@ FactoryBot.define do
       now = Time.now
       DB[:events].insert(
         id: id,
+        workspace_id: workspace[:id],
         user_id: user[:id],
         name: name,
         description: description,

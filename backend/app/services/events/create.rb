@@ -20,14 +20,15 @@ module Events
 
       sig do
         params(
+          workspace_id: T.any(String, UUID),
           user_id: T.any(String, UUID),
           name: T.nilable(String),
           description: T.nilable(String),
           date_ranges: T::Array[T::Hash[String, String]]
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def call(user_id:, name:, description:, date_ranges:)
-        validate_name(name).bind { |valid_name| create_event(user_id, valid_name, description, date_ranges) }
+      def call(workspace_id:, user_id:, name:, description:, date_ranges:)
+        validate_name(name).bind { |valid_name| create_event(workspace_id, user_id, valid_name, description, date_ranges) }
       end
 
       private
@@ -43,19 +44,21 @@ module Events
 
       sig do
         params(
+          workspace_id: T.any(String, UUID),
           user_id: T.any(String, UUID),
           name: String,
           description: T.nilable(String),
           date_ranges: T::Array[T::Hash[String, String]]
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def create_event(user_id, name, description, date_ranges)
+      def create_event(workspace_id, user_id, name, description, date_ranges)
         event = DB.transaction do
           now = Time.now
           event_id = SecureRandom.uuid
 
           DB[:events].insert(
             id: event_id,
+            workspace_id: workspace_id,
             user_id: user_id,
             name: name,
             description: description&.empty? ? nil : description,

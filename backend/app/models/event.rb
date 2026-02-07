@@ -6,6 +6,7 @@ class Event < T::Struct
   extend T::Sig
 
   const :id, UUID
+  const :workspace_id, UUID
   const :user_id, UUID
   const :name, String
   const :description, T.nilable(String)
@@ -19,6 +20,7 @@ class Event < T::Struct
       objectType: "event",
       name: name,
       description: description,
+      workspaceId: workspace_id.to_s,
       userId: user_id.to_s,
       dateRangeIds: date_range_ids,
       createdAt: created_at.iso8601(3),
@@ -39,6 +41,11 @@ class Event < T::Struct
       dataset.where(user_id: user_id).order(:created_at).all
     end
 
+    sig { params(workspace_id: T.any(String, UUID)).returns(T::Array[Event]) }
+    def for_workspace(workspace_id)
+      dataset.where(workspace_id: workspace_id).order(:created_at).all
+    end
+
     sig { returns(T::Array[Event]) }
     def all_ordered
       dataset.order(:created_at).all
@@ -55,6 +62,7 @@ class Event < T::Struct
     def from_row(row)
       Event.new(
         id: UUID.new(row[:id]),
+        workspace_id: UUID.new(row[:workspace_id]),
         user_id: UUID.new(row[:user_id]),
         name: row[:name],
         description: row[:description],

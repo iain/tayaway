@@ -6,8 +6,9 @@ require "spec_helper"
 RSpec.describe Events::Create do
   it "returns failure when name is missing" do
     user = create(:user)
+    workspace = create(:workspace)
 
-    result = described_class.call(user_id: user[:id], name: nil, description: nil, date_ranges: [])
+    result = described_class.call(workspace_id: workspace[:id], user_id: user[:id], name: nil, description: nil, date_ranges: [])
 
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("Name is required")
@@ -15,12 +16,14 @@ RSpec.describe Events::Create do
 
   it "creates event with date ranges and returns success" do
     user = create(:user)
+    workspace = create(:workspace)
     date_ranges = [
       { "start_date" => "2024-01-01", "end_date" => "2024-01-05" },
       { "start_date" => "2024-01-10", "end_date" => "2024-01-15" }
     ]
 
     result = described_class.call(
+      workspace_id: workspace[:id],
       user_id: user[:id],
       name: "Team Meeting",
       description: "Weekly sync",
@@ -36,8 +39,9 @@ RSpec.describe Events::Create do
 
   it "sets description to nil when empty" do
     user = create(:user)
+    workspace = create(:workspace)
 
-    result = described_class.call(user_id: user[:id], name: "Event", description: "", date_ranges: [])
+    result = described_class.call(workspace_id: workspace[:id], user_id: user[:id], name: "Event", description: "", date_ranges: [])
 
     expect(result.success?).to be true
     event = result.value![:objects].find { |o| o[:objectType] == "event" }
