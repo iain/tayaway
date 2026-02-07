@@ -28,9 +28,10 @@ RSpec.describe Events::Create do
     )
 
     expect(result.success?).to be true
-    expect(result.value![:event][:name]).to eq("Team Meeting")
-    expect(result.value![:event][:description]).to eq("Weekly sync")
-    expect(result.value![:event][:date_ranges].length).to eq(2)
+    event = result.value![:objects].find { |o| o[:objectType] == "event" }
+    expect(event[:name]).to eq("Team Meeting")
+    expect(event[:description]).to eq("Weekly sync")
+    expect(event[:dateRangeIds].length).to eq(2)
   end
 
   it "sets description to nil when empty" do
@@ -39,6 +40,7 @@ RSpec.describe Events::Create do
     result = described_class.call(user_id: user.id, name: "Event", description: "", date_ranges: [])
 
     expect(result.success?).to be true
-    expect(result.value![:event][:description]).to be_nil
+    event = result.value![:objects].find { |o| o[:objectType] == "event" }
+    expect(event[:description]).to be_nil
   end
 end

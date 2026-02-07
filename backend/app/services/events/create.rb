@@ -71,7 +71,7 @@ module Events
         pool = PoolSerializer.new
         pool.add(event)
 
-        Success({ event: event.to_api_hash, objects: pool.to_a })
+        Success({ objects: pool.to_a })
       end
     end
   end

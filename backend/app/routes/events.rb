@@ -14,10 +14,7 @@ class App
         pool.add_all(events)
 
         response.status = 200
-        {
-          events: events.map(&:to_api_hash),
-          objects: pool.to_a
-        }
+        { objects: pool.to_a }
       end
 
       # POST /api/events - Create a new event
@@ -46,10 +43,7 @@ class App
           pool.add(event)
 
           response.status = 200
-          {
-            event: event.to_api_hash,
-            objects: pool.to_a
-          }
+          { objects: pool.to_a }
         end
 
         # PUT /api/events/:id - Update event (owner only)
@@ -81,10 +75,7 @@ class App
             pool.add_all(votes)
 
             response.status = 200
-            {
-              votes: votes.map(&:to_api_hash),
-              objects: pool.to_a
-            }
+            { objects: pool.to_a }
           end
 
           # POST /api/events/:id/votes - Create or update vote
@@ -105,10 +96,7 @@ class App
                 pool.add(vote)
 
                 response.status = value[:created] ? 201 : 200
-                {
-                  vote: value[:vote],
-                  objects: pool.to_a
-                }
+                { objects: pool.to_a }
               },
               ->(error) {
                 response.status = error.http_status

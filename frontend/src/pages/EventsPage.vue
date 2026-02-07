@@ -1,20 +1,37 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { PlusIcon, PencilIcon, TrashIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline'
-import { useEventsStore, useAuthStore } from '@/stores'
+import { useEventsStore, useAuthStore, useObjectPoolStore } from '@/stores'
 import { useCalendar } from '@/composables/useCalendar'
 
 const router = useRouter()
 const eventsStore = useEventsStore()
 const authStore = useAuthStore()
-const { events, loading, error } = storeToRefs(eventsStore)
+const pool = useObjectPoolStore()
+const { loading, error } = storeToRefs(eventsStore)
 const { formatDateDisplay } = useCalendar()
 const { user } = storeToRefs(authStore)
 
+// Get events from pool, sorted by createdAt
+const events = computed(() => {
+  void pool.version // reactivity dependency
+  return pool.getAll('event').sort((a, b) =>
+    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  )
+})
+
 function isOwner(eventUserId: string): boolean {
   return user.value?.id === eventUserId
+}
+
+function getEventOwner(userId: string) {
+  return pool.get('user', userId)
+}
+
+function getDateRanges(dateRangeIds: string[]) {
+  return pool.getMany('dateRange', dateRangeIds)
 }
 
 onMounted(() => {
@@ -39,9 +56,9 @@ async function handleDelete(id: string): Promise<void> {
   }
 }
 
-function formatDateRangeSummary(ranges: { start_date: string; end_date: string }[]): string {
+function formatDateRangeSummary(ranges: { startDate: string; endDate: string }[]): string {
   if (ranges.length === 0) return 'No dates'
-  if (ranges.length === 1) return `${formatDateDisplay(ranges[0].start_date)} - ${formatDateDisplay(ranges[0].end_date)}`
+  if (ranges.length === 1) return `${formatDateDisplay(ranges[0].startDate)} - ${formatDateDisplay(ranges[0].endDate)}`
   return `${ranges.length} date ranges`
 }
 </script>
@@ -131,12 +148,12 @@ function formatDateRangeSummary(ranges: { start_date: string; end_date: string }
                 {{ event.description }}
               </p>
               <div class="mt-2 flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
-                <span>{{ formatDateRangeSummary(event.date_ranges) }}</span>
-                <span class="text-gray-400 dark:text-gray-500">by {{ event.user?.name || event.user?.email || 'Unknown' }}</span>
+                <span>{{ formatDateRangeSummary(getDateRanges(event.dateRangeIds)) }}</span>
+                <span class="text-gray-400 dark:text-gray-500">by {{ getEventOwner(event.userId)?.name || getEventOwner(event.userId)?.email || 'Unknown' }}</span>
               </div>
             </div>
             <div
-              v-if="isOwner(event.user_id)"
+              v-if="isOwner(event.userId)"
               class="ml-4 flex items-center gap-2"
             >
               <button

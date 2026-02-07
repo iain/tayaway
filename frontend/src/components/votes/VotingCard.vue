@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/vue/24/outline'
 import type { User } from '@/types'
-import type { PoolObject, VoteResponse } from '@/types/pool'
+import type { PoolApiResponse, VoteResponse } from '@/types/pool'
 import type { HydratedDateRange } from '@/composables/useHydratedEvent'
 import { useCalendar } from '@/composables/useCalendar'
 import { useObjectPoolStore } from '@/stores/objectPool'
@@ -61,7 +61,7 @@ async function handleVote(response: VoteResponse) {
         'vote',
         existingVote.id,
         { response },
-        () => api.post<{ vote: unknown; objects: PoolObject[] }>(
+        () => api.post<PoolApiResponse>(
           `/events/${props.eventId}/votes`,
           {
             date_range_id: props.dateRange.id,
@@ -96,7 +96,7 @@ async function handleVote(response: VoteResponse) {
       }
 
       try {
-        const apiResponse = await api.post<{ vote: unknown; objects: PoolObject[] }>(
+        const apiResponse = await api.post<PoolApiResponse>(
           `/events/${props.eventId}/votes`,
           {
             id: voteId,
@@ -106,9 +106,7 @@ async function handleVote(response: VoteResponse) {
         )
 
         // Server response confirms optimistic update
-        if (apiResponse.data.objects) {
-          pool.importObjects(apiResponse.data.objects)
-        }
+        pool.importObjects(apiResponse.data.objects)
       } catch {
         // Rollback: remove vote and restore dateRange
         pool.remove('vote', voteId)
@@ -136,7 +134,7 @@ async function handleCommentSubmit() {
       'vote',
       vote.id,
       { comment: comment.value || null },
-      () => api.post<{ vote: unknown; objects: PoolObject[] }>(
+      () => api.post<PoolApiResponse>(
         `/events/${props.eventId}/votes`,
         {
           date_range_id: props.dateRange.id,

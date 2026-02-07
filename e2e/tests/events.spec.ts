@@ -4,6 +4,21 @@ const API_BASE = 'http://localhost:9293'
 const TEST_EMAIL = 'e2e-events@example.com'
 const TEST_NAME = 'E2E Events User'
 
+// Helper to extract objects from pool response by type
+interface PoolObject {
+  id: string
+  objectType: string
+  [key: string]: unknown
+}
+
+function getObjectsByType<T extends PoolObject>(objects: PoolObject[], type: string): T[] {
+  return objects.filter(o => o.objectType === type) as T[]
+}
+
+function getObjectByType<T extends PoolObject>(objects: PoolObject[], type: string): T | undefined {
+  return objects.find(o => o.objectType === type) as T | undefined
+}
+
 // Helper to get an authenticated session for testing
 async function getTestSession(request: APIRequestContext): Promise<{ token: string; userId: string }> {
   const response = await request.post(`${API_BASE}/api/test/session`, {
@@ -79,8 +94,8 @@ test.describe('Events Feature', () => {
       })
       expect(response.ok()).toBeTruthy()
       const body = await response.json()
-      expect(body).toHaveProperty('events')
-      expect(Array.isArray(body.events)).toBeTruthy()
+      expect(body).toHaveProperty('objects')
+      expect(Array.isArray(body.objects)).toBeTruthy()
     })
 
     test('POST /api/events creates a new event', async ({ request }) => {
@@ -97,12 +112,14 @@ test.describe('Events Feature', () => {
       })
       expect(response.status()).toBe(201)
       const body = await response.json()
-      expect(body.event).toHaveProperty('id')
-      expect(body.event.name).toBe('Test Event')
-      expect(body.event.description).toBe('A test event description')
-      expect(body.event.date_ranges).toHaveLength(1)
-      expect(body.event.date_ranges[0].start_date).toBe('2025-03-01')
-      expect(body.event.date_ranges[0].end_date).toBe('2025-03-07')
+      const event = getObjectByType(body.objects, 'event')
+      expect(event).toHaveProperty('id')
+      expect(event?.name).toBe('Test Event')
+      expect(event?.description).toBe('A test event description')
+      const dateRanges = getObjectsByType(body.objects, 'dateRange')
+      expect(dateRanges).toHaveLength(1)
+      expect(dateRanges[0]?.startDate).toBe('2025-03-01')
+      expect(dateRanges[0]?.endDate).toBe('2025-03-07')
     })
 
     test('POST /api/events requires name', async ({ request }) => {
@@ -130,16 +147,18 @@ test.describe('Events Feature', () => {
         }
       })
       expect(createResponse.status()).toBe(201)
-      const { event: createdEvent } = await createResponse.json()
-      const eventId = createdEvent.id
+      const createBody = await createResponse.json()
+      const createdEvent = getObjectByType(createBody.objects, 'event')
+      const eventId = createdEvent!.id
 
       // Read
       const getResponse = await request.get(`${API_BASE}/api/events/${eventId}`, {
         headers: authHeaders(token)
       })
       expect(getResponse.ok()).toBeTruthy()
-      const { event: fetchedEvent } = await getResponse.json()
-      expect(fetchedEvent.name).toBe('CRUD Test Event')
+      const getBody = await getResponse.json()
+      const fetchedEvent = getObjectByType(getBody.objects, 'event')
+      expect(fetchedEvent?.name).toBe('CRUD Test Event')
 
       // Update
       const updateResponse = await request.put(`${API_BASE}/api/events/${eventId}`, {
@@ -154,10 +173,12 @@ test.describe('Events Feature', () => {
         }
       })
       expect(updateResponse.ok()).toBeTruthy()
-      const { event: updatedEvent } = await updateResponse.json()
-      expect(updatedEvent.name).toBe('Updated CRUD Event')
-      expect(updatedEvent.description).toBe('Now with a description')
-      expect(updatedEvent.date_ranges).toHaveLength(2)
+      const updateBody = await updateResponse.json()
+      const updatedEvent = getObjectByType(updateBody.objects, 'event')
+      expect(updatedEvent?.name).toBe('Updated CRUD Event')
+      expect(updatedEvent?.description).toBe('Now with a description')
+      const updatedDateRanges = getObjectsByType(updateBody.objects, 'dateRange')
+      expect(updatedDateRanges).toHaveLength(2)
 
       // Delete
       const deleteResponse = await request.delete(`${API_BASE}/api/events/${eventId}`, {

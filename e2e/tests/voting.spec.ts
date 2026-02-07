@@ -6,6 +6,21 @@ const TEST_EMAIL_2 = 'e2e-voting-2@example.com'
 const TEST_NAME = 'E2E Voting User'
 const TEST_NAME_2 = 'E2E Voting User 2'
 
+// Helper to extract objects from pool response by type
+interface PoolObject {
+  id: string
+  objectType: string
+  [key: string]: unknown
+}
+
+function getObjectsByType<T extends PoolObject>(objects: PoolObject[], type: string): T[] {
+  return objects.filter(o => o.objectType === type) as T[]
+}
+
+function getObjectByType<T extends PoolObject>(objects: PoolObject[], type: string): T | undefined {
+  return objects.find(o => o.objectType === type) as T | undefined
+}
+
 // Helper to get an authenticated session for testing
 async function getTestSession(request: APIRequestContext, email = TEST_EMAIL, name = TEST_NAME): Promise<{ token: string; userId: string }> {
   const response = await request.post(`${API_BASE}/api/test/session`, {
@@ -45,9 +60,11 @@ async function createTestEvent(request: APIRequestContext, token: string): Promi
     }
   })
   const body = await response.json()
+  const event = getObjectByType(body.objects, 'event')
+  const dateRanges = getObjectsByType(body.objects, 'dateRange')
   return {
-    eventId: body.event.id,
-    dateRangeId: body.event.date_ranges[0].id
+    eventId: event!.id,
+    dateRangeId: dateRanges[0]!.id
   }
 }
 
@@ -93,10 +110,11 @@ test.describe('Voting Feature', () => {
 
       expect(response.status()).toBe(201)
       const body = await response.json()
-      expect(body.vote).toHaveProperty('id')
-      expect(body.vote.response).toBe('yes')
-      expect(body.vote.comment).toBe('This date works great!')
-      expect(body.vote.date_range_id).toBe(dateRangeId)
+      const vote = getObjectByType(body.objects, 'vote')
+      expect(vote).toHaveProperty('id')
+      expect(vote?.response).toBe('yes')
+      expect(vote?.comment).toBe('This date works great!')
+      expect(vote?.dateRangeId).toBe(dateRangeId)
     })
 
     test('POST /api/events/:id/votes updates existing vote', async ({ request }) => {
@@ -124,8 +142,9 @@ test.describe('Voting Feature', () => {
 
       expect(response.status()).toBe(200)
       const body = await response.json()
-      expect(body.vote.response).toBe('no')
-      expect(body.vote.comment).toBe('Changed my mind')
+      const vote = getObjectByType(body.objects, 'vote')
+      expect(vote?.response).toBe('no')
+      expect(vote?.comment).toBe('Changed my mind')
     })
 
     test('POST /api/events/:id/votes validates response value', async ({ request }) => {
@@ -210,8 +229,9 @@ test.describe('Voting Feature', () => {
 
       expect(response.ok()).toBeTruthy()
       const body = await response.json()
-      expect(body.votes).toHaveLength(1)
-      expect(body.votes[0].response).toBe('yes')
+      const votes = getObjectsByType(body.objects, 'vote')
+      expect(votes).toHaveLength(1)
+      expect(votes[0]?.response).toBe('yes')
     })
 
     test('DELETE /api/events/:id/votes/:vote_id removes vote', async ({ request }) => {
@@ -226,10 +246,11 @@ test.describe('Voting Feature', () => {
           response: 'yes'
         }
       })
-      const { vote } = await createResponse.json()
+      const createBody = await createResponse.json()
+      const vote = getObjectByType(createBody.objects, 'vote')
 
       // Delete the vote
-      const deleteResponse = await request.delete(`${API_BASE}/api/events/${eventId}/votes/${vote.id}`, {
+      const deleteResponse = await request.delete(`${API_BASE}/api/events/${eventId}/votes/${vote!.id}`, {
         headers: authHeaders(token)
       })
 
@@ -241,7 +262,8 @@ test.describe('Voting Feature', () => {
       const getResponse = await request.get(`${API_BASE}/api/events/${eventId}/votes`, {
         headers: authHeaders(token)
       })
-      const { votes } = await getResponse.json()
+      const getBody = await getResponse.json()
+      const votes = getObjectsByType(getBody.objects, 'vote')
       expect(votes).toHaveLength(0)
     })
 
@@ -258,10 +280,11 @@ test.describe('Voting Feature', () => {
           response: 'yes'
         }
       })
-      const { vote } = await createResponse.json()
+      const createBody = await createResponse.json()
+      const vote = getObjectByType(createBody.objects, 'vote')
 
       // User 2 tries to delete User 1's vote
-      const deleteResponse = await request.delete(`${API_BASE}/api/events/${eventId}/votes/${vote.id}`, {
+      const deleteResponse = await request.delete(`${API_BASE}/api/events/${eventId}/votes/${vote!.id}`, {
         headers: authHeaders(token2)
       })
 
@@ -284,20 +307,21 @@ test.describe('Voting Feature', () => {
         }
       })
 
-      // Get event and verify votes are included
+      // Get event and verify votes are included in pool
       const response = await request.get(`${API_BASE}/api/events/${eventId}`, {
         headers: authHeaders(token)
       })
-      const { event } = await response.json()
+      const body = await response.json()
 
-      expect(event.date_ranges[0].votes).toHaveLength(1)
-      expect(event.date_ranges[0].votes[0].response).toBe('preferably_not')
-      expect(event.date_ranges[0].vote_summary).toEqual({
-        yes: 0,
-        no: 0,
-        preferably_not: 1,
-        total: 1
-      })
+      // Find the date range and verify it has the vote ID
+      const dateRanges = getObjectsByType(body.objects, 'dateRange')
+      const dateRange = dateRanges.find((dr: PoolObject) => dr.id === dateRangeId)
+      expect((dateRange as { voteIds: string[] })?.voteIds).toHaveLength(1)
+
+      // Find the vote and verify its data
+      const votes = getObjectsByType(body.objects, 'vote')
+      expect(votes).toHaveLength(1)
+      expect(votes[0]?.response).toBe('preferably_not')
     })
 
     test('any authenticated user can view any event', async ({ request }) => {
@@ -311,8 +335,9 @@ test.describe('Voting Feature', () => {
       })
 
       expect(response.ok()).toBeTruthy()
-      const { event } = await response.json()
-      expect(event.name).toBe('Voting Test Event')
+      const body = await response.json()
+      const event = getObjectByType(body.objects, 'event')
+      expect(event?.name).toBe('Voting Test Event')
     })
 
     test('any authenticated user can vote on any event', async ({ request }) => {

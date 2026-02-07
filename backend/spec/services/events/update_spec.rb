@@ -53,8 +53,9 @@ RSpec.describe Events::Update do
     )
 
     expect(result.success?).to be true
-    expect(result.value![:event][:name]).to eq("Updated Name")
-    expect(result.value![:event][:date_ranges].length).to eq(1)
+    updated_event = result.value![:objects].find { |o| o[:objectType] == "event" }
+    expect(updated_event[:name]).to eq("Updated Name")
+    expect(updated_event[:dateRangeIds].length).to eq(1)
     expect(DateRange.where(event_id: event.id).count).to eq(1)
   end
 
