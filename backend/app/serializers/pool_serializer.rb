@@ -66,6 +66,31 @@ class PoolSerializer
     add_user(user) if user
   end
 
+  sig { params(workspace: Workspace).void }
+  def add_workspace(workspace)
+    key = "workspace:#{workspace.id}"
+    return if @objects.key?(key)
+
+    membership_ids = WorkspaceMembership.ids_for_workspace(workspace.id)
+    @objects[key] = workspace.to_api_hash(membership_ids: membership_ids)
+
+    # Add memberships
+    memberships = WorkspaceMembership.for_workspace(workspace.id)
+    memberships.each { |m| add_workspace_membership(m) }
+  end
+
+  sig { params(membership: WorkspaceMembership).void }
+  def add_workspace_membership(membership)
+    key = "workspace_membership:#{membership.id}"
+    return if @objects.key?(key)
+
+    @objects[key] = membership.to_api_hash
+
+    # Add user
+    user = User.find(membership.user_id)
+    add_user(user) if user
+  end
+
   sig { params(items: T::Enumerable[T.untyped], type: Symbol).void }
   def add_all(items, type:)
     items.each do |item|
@@ -74,6 +99,8 @@ class PoolSerializer
       when :event then add_event(item)
       when :date_range then add_date_range(item)
       when :vote then add_vote(item)
+      when :workspace then add_workspace(item)
+      when :workspace_membership then add_workspace_membership(item)
       end
     end
   end
