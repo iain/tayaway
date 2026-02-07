@@ -3,8 +3,16 @@
 
 # Seed data for development
 
-User.find_or_create(email: "test@example.com") do |user|
-  user.name = "Test User"
-end
+now = Time.now
+DB[:users].insert_conflict(
+  target: :email,
+  update: { name: "Test User", updated_at: now }
+).insert(
+  id: SecureRandom.uuid,
+  email: "test@example.com",
+  name: "Test User",
+  created_at: now,
+  updated_at: now
+)
 
 puts "Created test user: test@example.com"

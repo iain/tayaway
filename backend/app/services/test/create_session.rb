@@ -27,9 +27,9 @@ module Test
       sig { params(email: T.nilable(String)).returns(Result[String, ServiceError]) }
       def validate_email(email)
         if email.nil? || email.empty?
-          Failure(ServiceError.validation("Email is required"))
+          T.cast(Failure(ServiceError.validation("Email is required")), Result[String, ServiceError])
         else
-          Success(email)
+          T.cast(Success(email), Result[String, ServiceError])
         end
       end
 
@@ -53,10 +53,10 @@ module Test
 
         session = create_session_for_user(user_id)
 
-        Success({
+        T.cast(Success({
           session_token: session[:token],
           user_id: user_id
-        })
+        }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
 
       sig { params(user_id: T.any(String, UUID)).returns(T::Hash[Symbol, T.untyped]) }

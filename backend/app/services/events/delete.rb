@@ -29,18 +29,18 @@ module Events
       def find_event(event_id)
         event = Event.find(event_id)
         if event
-          Success(event)
+          T.cast(Success(event), Result[Event, ServiceError])
         else
-          Failure(ServiceError.not_found("Event not found"))
+          T.cast(Failure(ServiceError.not_found("Event not found")), Result[Event, ServiceError])
         end
       end
 
       sig { params(event: Event, current_user_id: String).returns(Result[Event, ServiceError]) }
       def authorize_owner(event, current_user_id)
         if event.user_id == current_user_id
-          Success(event)
+          T.cast(Success(event), Result[Event, ServiceError])
         else
-          Failure(ServiceError.forbidden("Access denied"))
+          T.cast(Failure(ServiceError.forbidden("Access denied")), Result[Event, ServiceError])
         end
       end
 
@@ -48,7 +48,7 @@ module Events
       def delete_event(event)
         event_id = event.id
         DB[:events].where(id: event_id).delete
-        Success({ deleted: [{ objectType: "event", id: event_id }] })
+        T.cast(Success({ deleted: [{ objectType: "event", id: event_id }] }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
     end
   end

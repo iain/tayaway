@@ -23,16 +23,16 @@ module Auth
       sig { params(auth_header: T.nilable(String)).returns(Result[String, ServiceError]) }
       def validate_auth_header(auth_header)
         if auth_header.nil? || auth_header.empty?
-          Failure(ServiceError.unauthorized("Authorization required"))
+          T.cast(Failure(ServiceError.unauthorized("Authorization required")), Result[String, ServiceError])
         else
-          Success(auth_header.sub(/^Bearer\s+/, ""))
+          T.cast(Success(auth_header.sub(/^Bearer\s+/, "")), Result[String, ServiceError])
         end
       end
 
       sig { params(token: String).returns(Result[T::Hash[Symbol, String], ServiceError]) }
       def destroy_session(token)
         DB[:sessions].where(token: token).delete
-        Success({ message: "Logged out successfully" })
+        T.cast(Success({ message: "Logged out successfully" }), Result[T::Hash[Symbol, String], ServiceError])
       end
     end
   end

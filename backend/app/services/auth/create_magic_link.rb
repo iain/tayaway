@@ -23,9 +23,9 @@ module Auth
       sig { params(email: T.nilable(String)).returns(Result[String, ServiceError]) }
       def validate_email(email)
         if email.nil? || email.empty?
-          Failure(ServiceError.validation("Email is required"))
+          T.cast(Failure(ServiceError.validation("Email is required")), Result[String, ServiceError])
         else
-          Success(email)
+          T.cast(Success(email), Result[String, ServiceError])
         end
       end
 
@@ -46,7 +46,7 @@ module Auth
           puts "No user found for email #{email}"
         end
 
-        Success({ message: "If an account exists with this email, a magic link has been sent." })
+        T.cast(Success({ message: "If an account exists with this email, a magic link has been sent." }), Result[T::Hash[Symbol, String], ServiceError])
       end
 
       sig { params(user_id: T.any(String, UUID), email: T.any(String, EmailAddress)).returns(String) }

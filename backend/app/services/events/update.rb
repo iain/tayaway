@@ -41,27 +41,27 @@ module Events
       def find_event(event_id)
         event = Event.find(event_id)
         if event
-          Success(event)
+          T.cast(Success(event), Result[Event, ServiceError])
         else
-          Failure(ServiceError.not_found("Event not found"))
+          T.cast(Failure(ServiceError.not_found("Event not found")), Result[Event, ServiceError])
         end
       end
 
       sig { params(event: Event, current_user_id: String).returns(Result[Event, ServiceError]) }
       def authorize_owner(event, current_user_id)
         if event.user_id == current_user_id
-          Success(event)
+          T.cast(Success(event), Result[Event, ServiceError])
         else
-          Failure(ServiceError.forbidden("Access denied"))
+          T.cast(Failure(ServiceError.forbidden("Access denied")), Result[Event, ServiceError])
         end
       end
 
       sig { params(name: T.nilable(String)).returns(Result[String, ServiceError]) }
       def validate_name(name)
         if name.nil? || name.empty?
-          Failure(ServiceError.validation("Name is required"))
+          T.cast(Failure(ServiceError.validation("Name is required")), Result[String, ServiceError])
         else
-          Success(name)
+          T.cast(Success(name), Result[String, ServiceError])
         end
       end
 
@@ -89,7 +89,7 @@ module Events
         pool = PoolSerializer.new
         pool.add_event(updated_event)
 
-        Success({ objects: pool.to_a })
+        T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
 
       sig do

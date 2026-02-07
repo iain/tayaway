@@ -19,7 +19,7 @@ module Auth
       end
       def call(token:, email:)
         validate_params(token, email)
-          .bind { |params| find_magic_token(params[:token], params[:email]) }
+          .bind { |params| find_magic_token(T.must(params[:token]), T.must(params[:email])) }
           .bind { |magic_token| create_session(magic_token) }
       end
 
@@ -31,9 +31,9 @@ module Auth
       end
       def validate_params(token, email)
         if token.nil? || email.nil?
-          Failure(ServiceError.validation("Token and email are required"))
+          T.cast(Failure(ServiceError.validation("Token and email are required")), Result[T::Hash[Symbol, String], ServiceError])
         else
-          Success({ token: token, email: email })
+          T.cast(Success({ token: token, email: email }), Result[T::Hash[Symbol, String], ServiceError])
         end
       end
 
@@ -41,9 +41,9 @@ module Auth
       def find_magic_token(token, email)
         magic_token = MagicLinkToken.find_valid(token, email)
         if magic_token
-          Success(magic_token)
+          T.cast(Success(magic_token), Result[MagicLinkToken, ServiceError])
         else
-          Failure(ServiceError.unauthorized("Invalid or expired magic link"))
+          T.cast(Failure(ServiceError.unauthorized("Invalid or expired magic link")), Result[MagicLinkToken, ServiceError])
         end
       end
 
@@ -64,10 +64,10 @@ module Auth
           created_at: now
         )
 
-        Success({
+        T.cast(Success({
           session_token: token,
           user_id: magic_token.user_id
-        })
+        }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
     end
   end

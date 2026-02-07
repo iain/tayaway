@@ -35,9 +35,9 @@ module Events
       sig { params(name: T.nilable(String)).returns(Result[String, ServiceError]) }
       def validate_name(name)
         if name.nil? || name.empty?
-          Failure(ServiceError.validation("Name is required"))
+          T.cast(Failure(ServiceError.validation("Name is required")), Result[String, ServiceError])
         else
-          Success(name)
+          T.cast(Success(name), Result[String, ServiceError])
         end
       end
 
@@ -81,7 +81,7 @@ module Events
         pool = PoolSerializer.new
         pool.add_event(event)
 
-        Success({ objects: pool.to_a })
+        T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
     end
   end

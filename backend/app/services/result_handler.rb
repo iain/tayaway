@@ -29,11 +29,11 @@ module ResultHandler
   def handle_result(result, success_status: 200)
     result.either(
       ->(value) {
-        response.status = success_status
+        T.unsafe(self).response.status = success_status
         value
       },
       ->(error) {
-        response.status = error.http_status
+        T.unsafe(self).response.status = error.http_status
         error.to_api_hash
       }
     )

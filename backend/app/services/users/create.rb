@@ -28,18 +28,18 @@ module Users
       sig { params(email: T.nilable(String)).returns(Result[String, ServiceError]) }
       def validate_email(email)
         if email.nil? || email.empty?
-          Failure(ServiceError.validation("Email is required"))
+          T.cast(Failure(ServiceError.validation("Email is required")), Result[String, ServiceError])
         else
-          Success(email)
+          T.cast(Success(email), Result[String, ServiceError])
         end
       end
 
       sig { params(email: String).returns(Result[String, ServiceError]) }
       def check_email_uniqueness(email)
         if User.find_by_email_exact(email)
-          Failure(ServiceError.validation("A user with this email already exists"))
+          T.cast(Failure(ServiceError.validation("A user with this email already exists")), Result[String, ServiceError])
         else
-          Success(email)
+          T.cast(Success(email), Result[String, ServiceError])
         end
       end
 
@@ -60,7 +60,7 @@ module Users
         pool = PoolSerializer.new
         pool.add_user(user)
 
-        Success({ user_id: id, objects: pool.to_a })
+        T.cast(Success({ user_id: id, objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
     end
   end

@@ -31,7 +31,7 @@ module Votes
       end
       def call(event_id:, user_id:, date_range_id:, vote_response:, comment:, vote_id: nil)
         validate_params(date_range_id, vote_response, vote_id)
-          .bind { |params| find_date_range(params[:date_range_id]) }
+          .bind { |params| find_date_range(T.must(params[:date_range_id])) }
           .bind { |date_range| validate_date_range_belongs_to_event(date_range, event_id) }
           .bind { |date_range| upsert_vote(date_range, user_id, T.must(vote_response), comment, vote_id) }
       end
@@ -49,17 +49,17 @@ module Votes
       end
       def validate_params(date_range_id, vote_response, vote_id)
         if date_range_id.nil? || date_range_id.empty?
-          Failure(ServiceError.validation("date_range_id is required"))
+          T.cast(Failure(ServiceError.validation("date_range_id is required")), Result[T::Hash[Symbol, String], ServiceError])
         elsif vote_response.nil? || vote_response.empty?
-          Failure(ServiceError.validation("response is required"))
+          T.cast(Failure(ServiceError.validation("response is required")), Result[T::Hash[Symbol, String], ServiceError])
         elsif !VoteResponse.valid?(vote_response)
-          Failure(ServiceError.validation("Invalid response value"))
+          T.cast(Failure(ServiceError.validation("Invalid response value")), Result[T::Hash[Symbol, String], ServiceError])
         elsif vote_id && !UUID_REGEX.match?(vote_id)
-          Failure(ServiceError.validation("Invalid vote ID format"))
+          T.cast(Failure(ServiceError.validation("Invalid vote ID format")), Result[T::Hash[Symbol, String], ServiceError])
         elsif vote_id && Vote.find(vote_id)
-          Failure(ServiceError.conflict("Vote ID already exists"))
+          T.cast(Failure(ServiceError.conflict("Vote ID already exists")), Result[T::Hash[Symbol, String], ServiceError])
         else
-          Success({ date_range_id: date_range_id, vote_response: vote_response })
+          T.cast(Success({ date_range_id: date_range_id, vote_response: vote_response }), Result[T::Hash[Symbol, String], ServiceError])
         end
       end
 
@@ -67,18 +67,18 @@ module Votes
       def find_date_range(date_range_id)
         date_range = DateRange.find(date_range_id)
         if date_range
-          Success(date_range)
+          T.cast(Success(date_range), Result[DateRange, ServiceError])
         else
-          Failure(ServiceError.validation("Date range not found"))
+          T.cast(Failure(ServiceError.validation("Date range not found")), Result[DateRange, ServiceError])
         end
       end
 
       sig { params(date_range: DateRange, event_id: String).returns(Result[DateRange, ServiceError]) }
       def validate_date_range_belongs_to_event(date_range, event_id)
         if date_range.event_id == event_id
-          Success(date_range)
+          T.cast(Success(date_range), Result[DateRange, ServiceError])
         else
-          Failure(ServiceError.validation("Date range does not belong to this event"))
+          T.cast(Failure(ServiceError.validation("Date range does not belong to this event")), Result[DateRange, ServiceError])
         end
       end
 
@@ -101,7 +101,7 @@ module Votes
             comment: clean_comment,
             updated_at: Time.now
           )
-          Success({ vote_id: existing_vote.id, created: false })
+          T.cast(Success({ vote_id: existing_vote.id, created: false }), Result[T::Hash[Symbol, T.untyped], ServiceError])
         else
           now = Time.now
           new_vote_id = vote_id || SecureRandom.uuid
@@ -115,7 +115,7 @@ module Votes
             created_at: now,
             updated_at: now
           )
-          Success({ vote_id: new_vote_id, created: true })
+          T.cast(Success({ vote_id: new_vote_id, created: true }), Result[T::Hash[Symbol, T.untyped], ServiceError])
         end
       end
     end
