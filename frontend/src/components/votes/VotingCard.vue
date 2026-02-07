@@ -2,10 +2,11 @@
 import { ref, computed, watch } from 'vue'
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/vue/24/outline'
 import type { User } from '@/types'
-import type { VoteResponse } from '@/types/pool'
+import type { PoolObject, VoteResponse } from '@/types/pool'
 import type { HydratedDateRange } from '@/composables/useHydratedEvent'
 import { useCalendar } from '@/composables/useCalendar'
 import { useObjectPoolStore } from '@/stores/objectPool'
+import { useOptimistic } from '@/composables/useOptimistic'
 import { api } from '@/api/client'
 import VoteSummaryBar from './VoteSummaryBar.vue'
 import VotersList from './VotersList.vue'
@@ -18,6 +19,7 @@ const props = defineProps<{
 
 const { formatDateDisplay } = useCalendar()
 const pool = useObjectPoolStore()
+const { execute } = useOptimistic()
 
 const loading = ref(false)
 const showVoters = ref(false)
@@ -50,64 +52,71 @@ async function handleVote(response: VoteResponse) {
   if (!props.currentUser) return
 
   const existingVote = currentUserVote.value
-  // Use existing ID or generate a new UUID (client-generated, sent to backend)
-  const voteId = existingVote?.id ?? crypto.randomUUID()
-
-  if (existingVote) {
-    // Update existing vote optimistically
-    pool.addPending('vote', existingVote.id, { response })
-  } else {
-    // Create new vote optimistically with client-generated ID
-    pool.set({
-      id: voteId,
-      objectType: 'vote',
-      dateRangeId: props.dateRange.id,
-      userId: props.currentUser.id,
-      response,
-      comment: null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    })
-    // Add vote to date range's voteIds
-    const dateRange = pool.get('dateRange', props.dateRange.id)
-    if (dateRange) {
-      pool.addPending('dateRange', props.dateRange.id, {
-        voteIds: [...dateRange.voteIds, voteId],
-      })
-    }
-  }
 
   loading.value = true
   try {
-    const apiResponse = await api.post<{ vote: unknown; objects: import('@/types/pool').PoolObject[] }>(
-      `/events/${props.eventId}/votes`,
-      {
-        id: existingVote ? undefined : voteId, // Send client ID for new votes
-        date_range_id: props.dateRange.id,
-        response,
-        comment: existingVote?.comment || undefined,
-      }
-    )
-
-    // Import server response - confirms the optimistic update
-    if (apiResponse.data.objects) {
-      pool.importObjects(apiResponse.data.objects)
-    }
-  } catch {
-    // Rollback optimistic update
     if (existingVote) {
-      // Clear pending update on existing vote
-      pool.removePending(`pending_${voteId}`)
+      // Update existing vote using optimistic helper
+      await execute(
+        'vote',
+        existingVote.id,
+        { response },
+        () => api.post<{ vote: unknown; objects: PoolObject[] }>(
+          `/events/${props.eventId}/votes`,
+          {
+            date_range_id: props.dateRange.id,
+            response,
+            comment: existingVote.comment || undefined,
+          }
+        )
+      )
     } else {
-      // Remove the optimistically created vote
-      pool.remove('vote', voteId)
-      // Restore date range's original voteIds
-      const dateRange = pool.getServer('dateRange', props.dateRange.id)
+      // Create new vote with client-generated ID
+      // Manual handling needed because we update multiple pool objects
+      const voteId = crypto.randomUUID()
+
+      // Optimistically add vote to pool
+      pool.set({
+        id: voteId,
+        objectType: 'vote',
+        dateRangeId: props.dateRange.id,
+        userId: props.currentUser.id,
+        response,
+        comment: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+
+      // Optimistically update dateRange's voteIds
+      const dateRange = pool.get('dateRange', props.dateRange.id)
       if (dateRange) {
-        pool.set({
-          ...dateRange,
-          voteIds: dateRange.voteIds.filter(id => id !== voteId),
+        pool.addPending('dateRange', props.dateRange.id, {
+          voteIds: [...dateRange.voteIds, voteId],
         })
+      }
+
+      try {
+        const apiResponse = await api.post<{ vote: unknown; objects: PoolObject[] }>(
+          `/events/${props.eventId}/votes`,
+          {
+            id: voteId,
+            date_range_id: props.dateRange.id,
+            response,
+          }
+        )
+
+        // Server response confirms optimistic update
+        if (apiResponse.data.objects) {
+          pool.importObjects(apiResponse.data.objects)
+        }
+      } catch {
+        // Rollback: remove vote and restore dateRange
+        pool.remove('vote', voteId)
+        const serverDateRange = pool.getServer('dateRange', props.dateRange.id)
+        if (serverDateRange) {
+          pool.set(serverDateRange)
+        }
+        throw new Error('Failed to create vote')
       }
     }
   } finally {
@@ -118,29 +127,27 @@ async function handleVote(response: VoteResponse) {
 async function handleCommentSubmit() {
   if (!currentUserVote.value || !props.currentUser) return
 
-  // Apply optimistic update for comment
-  pool.addPending('vote', currentUserVote.value.id, { comment: comment.value || null })
+  const vote = currentUserVote.value
+  const originalComment = vote.comment || ''
 
   loading.value = true
   try {
-    const apiResponse = await api.post<{ vote: unknown; objects: import('@/types/pool').PoolObject[] }>(
-      `/events/${props.eventId}/votes`,
-      {
-        date_range_id: props.dateRange.id,
-        response: currentUserVote.value.response,
-        comment: comment.value || undefined,
-      }
+    await execute(
+      'vote',
+      vote.id,
+      { comment: comment.value || null },
+      () => api.post<{ vote: unknown; objects: PoolObject[] }>(
+        `/events/${props.eventId}/votes`,
+        {
+          date_range_id: props.dateRange.id,
+          response: vote.response,
+          comment: comment.value || undefined,
+        }
+      )
     )
-
-    if (apiResponse.data.objects) {
-      pool.importObjects(apiResponse.data.objects)
-    }
   } catch {
-    // Pending update is automatically cleared on failure since we use addPending
-    // but we need to restore the original comment in the input
-    if (currentUserVote.value) {
-      comment.value = currentUserVote.value.comment || ''
-    }
+    // Restore original comment in input on failure
+    comment.value = originalComment
   } finally {
     loading.value = false
   }

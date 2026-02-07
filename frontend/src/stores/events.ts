@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { api } from '@/api/client'
 import { useObjectPoolStore } from './objectPool'
@@ -15,14 +15,10 @@ interface EventResponseWithPool extends EventResponse {
 }
 
 export const useEventsStore = defineStore('events', () => {
+  // Event list for list views - kept separate from pool for list-specific ordering
   const events = ref<Event[]>([])
-  const eventCache = ref<Record<string, Event>>({})
   const loading = ref(false)
   const error = ref<string | null>(null)
-
-  const getEvent = computed(() => (id: string): Event | undefined => {
-    return eventCache.value[id]
-  })
 
   async function fetchEvents(): Promise<Event[]> {
     loading.value = true
@@ -37,10 +33,6 @@ export const useEventsStore = defineStore('events', () => {
       }
 
       events.value = response.data.events
-      // Populate cache with list data
-      for (const event of events.value) {
-        eventCache.value[event.id] = event
-      }
       return events.value
     } catch (e) {
       error.value = 'Failed to fetch events'
@@ -62,9 +54,7 @@ export const useEventsStore = defineStore('events', () => {
         pool.importObjects(response.data.objects)
       }
 
-      const event = response.data.event
-      eventCache.value[id] = event
-      return event
+      return response.data.event
     } catch (e) {
       error.value = 'Failed to fetch event'
       throw e
@@ -87,7 +77,6 @@ export const useEventsStore = defineStore('events', () => {
 
       const newEvent = response.data.event
       events.value = [...events.value, newEvent]
-      eventCache.value[newEvent.id] = newEvent
       return newEvent
     } catch (e) {
       error.value = 'Failed to create event'
@@ -111,7 +100,6 @@ export const useEventsStore = defineStore('events', () => {
 
       const updatedEvent = response.data.event
       events.value = events.value.map(e => e.id === id ? updatedEvent : e)
-      eventCache.value[id] = updatedEvent
       return updatedEvent
     } catch (e) {
       error.value = 'Failed to update event'
@@ -127,7 +115,6 @@ export const useEventsStore = defineStore('events', () => {
     try {
       await api.delete(`/events/${id}`)
       events.value = events.value.filter(e => e.id !== id)
-      delete eventCache.value[id]
 
       // Also remove from pool
       const pool = useObjectPoolStore()
@@ -142,7 +129,6 @@ export const useEventsStore = defineStore('events', () => {
 
   function $reset() {
     events.value = []
-    eventCache.value = {}
     loading.value = false
     error.value = null
   }
@@ -151,7 +137,6 @@ export const useEventsStore = defineStore('events', () => {
     events,
     loading,
     error,
-    getEvent,
     fetchEvents,
     fetchEvent,
     createEvent,

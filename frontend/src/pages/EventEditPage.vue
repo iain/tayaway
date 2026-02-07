@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter, useRoute } from 'vue-router'
 import EventForm, { type EventFormData } from '@/components/events/EventForm.vue'
 import { useEventsStore } from '@/stores'
+import { useHydratedEvent } from '@/composables/useHydratedEvent'
 
 const router = useRouter()
 const route = useRoute()
@@ -15,19 +16,27 @@ const initialLoading = ref(true)
 const initialData = ref<EventFormData | undefined>(undefined)
 
 const eventId = route.params.id as string
-const event = computed(() => eventsStore.getEvent(eventId))
 
-onMounted(async () => {
-  try {
-    const e = await eventsStore.fetchEvent(eventId)
+// Get event reactively from pool - benefits from optimistic updates
+const { event } = useHydratedEvent(eventId)
+
+// Populate initial form data when event is loaded
+watch(event, (e) => {
+  if (e && !initialData.value) {
     initialData.value = {
       name: e.name,
       description: e.description || '',
-      date_ranges: e.date_ranges.map(r => ({
-        start_date: r.start_date,
-        end_date: r.end_date,
+      date_ranges: e.dateRanges.map(r => ({
+        start_date: r.startDate,
+        end_date: r.endDate,
       })),
     }
+  }
+}, { immediate: true })
+
+onMounted(async () => {
+  try {
+    await eventsStore.fetchEvent(eventId)
   } catch {
     formError.value = 'Failed to load event'
   } finally {

@@ -1,59 +1,65 @@
 // Pool object types - matches backend pool serialization format
-
-export type ObjectType = 'user' | 'event' | 'dateRange' | 'vote'
+//
+// TO ADD A NEW MODEL:
+// 1. Add the type name to OBJECT_TYPES array
+// 2. Add the interface to ObjectTypeMap
+// That's it! PoolObject and ObjectType are derived automatically.
 
 export type VoteResponse = 'yes' | 'no' | 'preferably_not'
 
-// Base interface for all pool objects
-export interface PoolObjectBase {
+// Base fields all pool objects must have
+interface PoolObjectBase<T extends string> {
   id: string
-  objectType: ObjectType
+  objectType: T
   updatedAt: string // ISO8601 with milliseconds
 }
 
-export interface PoolUser extends PoolObjectBase {
-  objectType: 'user'
-  email: string
-  name: string | null
-  createdAt: string
-}
+// ============================================================================
+// OBJECT TYPE REGISTRY - Add new models here
+// ============================================================================
 
-export interface PoolEvent extends PoolObjectBase {
-  objectType: 'event'
-  name: string
-  description: string | null
-  userId: string
-  dateRangeIds: string[]
-  createdAt: string
-}
+export const OBJECT_TYPES = ['user', 'event', 'dateRange', 'vote'] as const
 
-export interface PoolDateRange extends PoolObjectBase {
-  objectType: 'dateRange'
-  eventId: string
-  startDate: string
-  endDate: string
-  voteIds: string[]
-}
-
-export interface PoolVote extends PoolObjectBase {
-  objectType: 'vote'
-  dateRangeId: string
-  userId: string
-  response: VoteResponse
-  comment: string | null
-  createdAt: string
-}
-
-// Union type of all pool objects
-export type PoolObject = PoolUser | PoolEvent | PoolDateRange | PoolVote
-
-// Type mapping for generic access
 export interface ObjectTypeMap {
-  user: PoolUser
-  event: PoolEvent
-  dateRange: PoolDateRange
-  vote: PoolVote
+  user: PoolObjectBase<'user'> & {
+    email: string
+    name: string | null
+    createdAt: string
+  }
+  event: PoolObjectBase<'event'> & {
+    name: string
+    description: string | null
+    userId: string
+    dateRangeIds: string[]
+    createdAt: string
+  }
+  dateRange: PoolObjectBase<'dateRange'> & {
+    eventId: string
+    startDate: string
+    endDate: string
+    voteIds: string[]
+  }
+  vote: PoolObjectBase<'vote'> & {
+    dateRangeId: string
+    userId: string
+    response: VoteResponse
+    comment: string | null
+    createdAt: string
+  }
 }
+
+// ============================================================================
+// DERIVED TYPES - Don't modify these
+// ============================================================================
+
+export type ObjectType = (typeof OBJECT_TYPES)[number]
+export type PoolObject = ObjectTypeMap[ObjectType]
+
+// Convenience aliases for accessing specific pool types
+export type PoolUser = ObjectTypeMap['user']
+export type PoolEvent = ObjectTypeMap['event']
+export type PoolDateRange = ObjectTypeMap['dateRange']
+export type PoolVote = ObjectTypeMap['vote']
 
 // API response wrapper - all endpoints include objects array
 export interface PoolApiResponse {

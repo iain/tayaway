@@ -1,10 +1,11 @@
 import { ref, computed, triggerRef } from 'vue'
 import { defineStore } from 'pinia'
-import type {
-  ObjectType,
-  ObjectTypeMap,
-  PoolObject,
-  PendingUpdate,
+import {
+  OBJECT_TYPES,
+  type ObjectType,
+  type ObjectTypeMap,
+  type PoolObject,
+  type PendingUpdate,
 } from '@/types/pool'
 
 // Helper to compare ISO8601 timestamps
@@ -18,14 +19,14 @@ function generatePendingId(): string {
   return `pending_${++pendingIdCounter}_${Date.now()}`
 }
 
+// Create empty storage maps from OBJECT_TYPES
+function createEmptyStorage(): Map<ObjectType, Map<string, PoolObject>> {
+  return new Map(OBJECT_TYPES.map(type => [type, new Map()]))
+}
+
 export const useObjectPoolStore = defineStore('objectPool', () => {
   // Storage: Map<ObjectType, Map<id, object>>
-  const objects = ref(new Map<ObjectType, Map<string, PoolObject>>([
-    ['user', new Map()],
-    ['event', new Map()],
-    ['dateRange', new Map()],
-    ['vote', new Map()],
-  ]))
+  const objects = ref(createEmptyStorage())
 
   // Pending optimistic updates: Map<"type:id", PendingUpdate[]>
   const pendingUpdates = ref(new Map<string, PendingUpdate[]>())
@@ -192,26 +193,16 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
 
   // Computed to get pool stats (useful for debugging)
   const stats = computed(() => {
-    const result: Record<ObjectType, number> = {
-      user: 0,
-      event: 0,
-      dateRange: 0,
-      vote: 0,
-    }
-    for (const [type, map] of objects.value.entries()) {
-      result[type] = map.size
+    const result = {} as Record<ObjectType, number>
+    for (const type of OBJECT_TYPES) {
+      result[type] = objects.value.get(type)?.size ?? 0
     }
     return result
   })
 
   // Reset the store
   function $reset(): void {
-    objects.value = new Map([
-      ['user', new Map()],
-      ['event', new Map()],
-      ['dateRange', new Map()],
-      ['vote', new Map()],
-    ])
+    objects.value = createEmptyStorage()
     pendingUpdates.value = new Map()
   }
 
