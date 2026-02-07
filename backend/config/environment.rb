@@ -14,6 +14,7 @@ require_relative "database"
 LOADER = Zeitwerk::Loader.new
 LOADER.inflector.inflect("uuid" => "UUID")
 LOADER.push_dir(File.expand_path("../lib", __dir__))
+LOADER.push_dir(File.expand_path("../app", __dir__))
 LOADER.push_dir(File.expand_path("../app/models", __dir__))
 LOADER.push_dir(File.expand_path("../app/serializers", __dir__))
 LOADER.push_dir(File.expand_path("../app/services", __dir__))

@@ -83,6 +83,8 @@ module Events
 
           sync_date_ranges(event_id, date_ranges)
 
+          Broadcaster.object_changed("event", event_id)
+
           Event.find(event_id)
         end
 

@@ -21,7 +21,7 @@ module Votes
         find_vote(vote_id)
           .bind { |vote| authorize_owner(vote, user_id) }
           .bind { |vote| validate_vote_belongs_to_event(vote, event_id) }
-          .bind { |vote| delete_vote(vote) }
+          .bind { |vote| delete_vote(vote, event_id) }
       end
 
       private
@@ -55,11 +55,16 @@ module Votes
         end
       end
 
-      sig { params(vote: Vote).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
-      def delete_vote(vote)
+      sig { params(vote: Vote, event_id: T.any(String, UUID)).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
+      def delete_vote(vote, event_id)
         vote_id = vote.id
-        DB[:votes].where(id: vote_id).delete
-        T.cast(Success({ deleted: [{ objectType: "vote", id: vote_id }] }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+
+        DB.transaction do
+          DB[:votes].where(id: vote_id).delete
+          Broadcaster.object_deleted("vote", vote_id)
+        end
+
+        T.cast(Success({ deleted: [{ objectType: "vote", id: vote_id.to_s }] }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
     end
   end

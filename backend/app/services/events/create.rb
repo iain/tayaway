@@ -75,6 +75,8 @@ module Events
             )
           end
 
+          Broadcaster.object_changed("event", event_id)
+
           Event.find(event_id)
         end
 

@@ -5,6 +5,11 @@ require_relative "config/environment"
 
 use Rack::CommonLogger
 
+# Start WebSocket listener for PostgreSQL NOTIFY (skip in test environment)
+unless APP_ENV == "test"
+  Websocket::Listener.start
+end
+
 if APP_ENV == "development"
   require_relative "lib/reloading"
   lock = Reloading.new_lock

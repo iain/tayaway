@@ -47,8 +47,13 @@ module Events
       sig { params(event: Event).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
       def delete_event(event)
         event_id = event.id
-        DB[:events].where(id: event_id).delete
-        T.cast(Success({ deleted: [{ objectType: "event", id: event_id }] }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+
+        DB.transaction do
+          DB[:events].where(id: event_id).delete
+          Broadcaster.object_deleted("event", event_id)
+        end
+
+        T.cast(Success({ deleted: [{ objectType: "event", id: event_id.to_s }] }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
     end
   end

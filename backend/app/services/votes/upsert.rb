@@ -95,29 +95,38 @@ module Votes
       def upsert_vote(date_range, user_id, vote_response, comment, vote_id)
         existing_vote = Vote.find_by_date_range_and_user(date_range.id, user_id)
         clean_comment = comment&.empty? ? nil : comment
+        result_vote_id = T.let(nil, T.nilable(T.any(String, UUID)))
+        created = T.let(false, T::Boolean)
 
-        if existing_vote
-          DB[:votes].where(id: existing_vote.id).update(
-            response: vote_response,
-            comment: clean_comment,
-            updated_at: Time.now
-          )
-          T.cast(Success({ vote_id: existing_vote.id, created: false }), Result[T::Hash[Symbol, T.untyped], ServiceError])
-        else
-          now = Time.now
-          new_vote_id = vote_id || SecureRandom.uuid
+        DB.transaction do
+          if existing_vote
+            DB[:votes].where(id: existing_vote.id).update(
+              response: vote_response,
+              comment: clean_comment,
+              updated_at: Time.now
+            )
+            result_vote_id = existing_vote.id
+            created = false
+          else
+            now = Time.now
+            result_vote_id = vote_id || SecureRandom.uuid
 
-          DB[:votes].insert(
-            id: new_vote_id,
-            date_range_id: date_range.id,
-            user_id: user_id,
-            response: vote_response,
-            comment: clean_comment,
-            created_at: now,
-            updated_at: now
-          )
-          T.cast(Success({ vote_id: new_vote_id, created: true }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+            DB[:votes].insert(
+              id: result_vote_id,
+              date_range_id: date_range.id,
+              user_id: user_id,
+              response: vote_response,
+              comment: clean_comment,
+              created_at: now,
+              updated_at: now
+            )
+            created = true
+          end
+
+          Broadcaster.object_changed("vote", T.must(result_vote_id))
         end
+
+        T.cast(Success({ vote_id: result_vote_id, created: created }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
     end
   end
