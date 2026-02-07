@@ -1,7 +1,18 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { api } from '@/api/client'
-import type { Event, EventsResponse, EventResponse, CreateEventRequest, UpdateEventRequest, Vote, VoteSummary } from '@/types'
+import { useObjectPoolStore } from './objectPool'
+import type { Event, EventsResponse, EventResponse, CreateEventRequest, UpdateEventRequest } from '@/types'
+import type { PoolObject } from '@/types/pool'
+
+// Extended response types that include pool objects
+interface EventsResponseWithPool extends EventsResponse {
+  objects?: PoolObject[]
+}
+
+interface EventResponseWithPool extends EventResponse {
+  objects?: PoolObject[]
+}
 
 export const useEventsStore = defineStore('events', () => {
   const events = ref<Event[]>([])
@@ -17,7 +28,14 @@ export const useEventsStore = defineStore('events', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.get<EventsResponse>('/events')
+      const response = await api.get<EventsResponseWithPool>('/events')
+
+      // Import objects to pool if present
+      if (response.data.objects) {
+        const pool = useObjectPoolStore()
+        pool.importObjects(response.data.objects)
+      }
+
       events.value = response.data.events
       // Populate cache with list data
       for (const event of events.value) {
@@ -36,7 +54,14 @@ export const useEventsStore = defineStore('events', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.get<EventResponse>(`/events/${id}`)
+      const response = await api.get<EventResponseWithPool>(`/events/${id}`)
+
+      // Import objects to pool if present
+      if (response.data.objects) {
+        const pool = useObjectPoolStore()
+        pool.importObjects(response.data.objects)
+      }
+
       const event = response.data.event
       eventCache.value[id] = event
       return event
@@ -52,7 +77,14 @@ export const useEventsStore = defineStore('events', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.post<EventResponse>('/events', data)
+      const response = await api.post<EventResponseWithPool>('/events', data)
+
+      // Import objects to pool if present
+      if (response.data.objects) {
+        const pool = useObjectPoolStore()
+        pool.importObjects(response.data.objects)
+      }
+
       const newEvent = response.data.event
       events.value = [...events.value, newEvent]
       eventCache.value[newEvent.id] = newEvent
@@ -69,7 +101,14 @@ export const useEventsStore = defineStore('events', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.put<EventResponse>(`/events/${id}`, data)
+      const response = await api.put<EventResponseWithPool>(`/events/${id}`, data)
+
+      // Import objects to pool if present
+      if (response.data.objects) {
+        const pool = useObjectPoolStore()
+        pool.importObjects(response.data.objects)
+      }
+
       const updatedEvent = response.data.event
       events.value = events.value.map(e => e.id === id ? updatedEvent : e)
       eventCache.value[id] = updatedEvent
@@ -89,39 +128,15 @@ export const useEventsStore = defineStore('events', () => {
       await api.delete(`/events/${id}`)
       events.value = events.value.filter(e => e.id !== id)
       delete eventCache.value[id]
+
+      // Also remove from pool
+      const pool = useObjectPoolStore()
+      pool.remove('event', id)
     } catch (e) {
       error.value = 'Failed to delete event'
       throw e
     } finally {
       loading.value = false
-    }
-  }
-
-  function updateEventVote(eventId: string, dateRangeId: string, vote: Vote): void {
-    const event = eventCache.value[eventId]
-    if (!event) return
-
-    const dateRange = event.date_ranges.find(dr => dr.id === dateRangeId)
-    if (!dateRange) return
-
-    // Update or add the vote
-    const existingIndex = dateRange.votes.findIndex(v => v.user_id === vote.user_id)
-    if (existingIndex >= 0) {
-      dateRange.votes[existingIndex] = vote
-    } else {
-      dateRange.votes.push(vote)
-    }
-
-    // Recalculate vote summary
-    dateRange.vote_summary = calculateVoteSummary(dateRange.votes)
-  }
-
-  function calculateVoteSummary(votes: Vote[]): VoteSummary {
-    return {
-      yes: votes.filter(v => v.response === 'yes').length,
-      no: votes.filter(v => v.response === 'no').length,
-      preferably_not: votes.filter(v => v.response === 'preferably_not').length,
-      total: votes.length,
     }
   }
 
@@ -141,7 +156,6 @@ export const useEventsStore = defineStore('events', () => {
     fetchEvent,
     createEvent,
     updateEvent,
-    updateEventVote,
     deleteEvent,
     $reset,
   }

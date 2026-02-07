@@ -1,7 +1,18 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { api } from '@/api/client'
+import { useObjectPoolStore } from './objectPool'
 import type { User, UsersResponse, UserResponse, CreateUserRequest } from '@/types'
+import type { PoolObject } from '@/types/pool'
+
+// Extended response types that include pool objects
+interface UsersResponseWithPool extends UsersResponse {
+  objects?: PoolObject[]
+}
+
+interface UserResponseWithPool extends UserResponse {
+  objects?: PoolObject[]
+}
 
 export const useUsersStore = defineStore('users', () => {
   const users = ref<User[]>([])
@@ -12,7 +23,14 @@ export const useUsersStore = defineStore('users', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.get<UsersResponse>('/users')
+      const response = await api.get<UsersResponseWithPool>('/users')
+
+      // Import objects to pool if present
+      if (response.data.objects) {
+        const pool = useObjectPoolStore()
+        pool.importObjects(response.data.objects)
+      }
+
       users.value = response.data.users
       return users.value
     } catch (e) {
@@ -27,7 +45,14 @@ export const useUsersStore = defineStore('users', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.post<UserResponse>('/users', data)
+      const response = await api.post<UserResponseWithPool>('/users', data)
+
+      // Import objects to pool if present
+      if (response.data.objects) {
+        const pool = useObjectPoolStore()
+        pool.importObjects(response.data.objects)
+      }
+
       const newUser = response.data.user
       users.value = [...users.value, newUser].sort((a, b) => {
         const nameA = a.name || a.email

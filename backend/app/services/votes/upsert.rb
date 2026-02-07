@@ -25,29 +25,39 @@ module Votes
           user_id: String,
           date_range_id: T.nilable(String),
           vote_response: T.nilable(String),
-          comment: T.nilable(String)
+          comment: T.nilable(String),
+          vote_id: T.nilable(String)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def call(event:, user_id:, date_range_id:, vote_response:, comment:)
-        validate_params(date_range_id, vote_response)
+      def call(event:, user_id:, date_range_id:, vote_response:, comment:, vote_id: nil)
+        validate_params(date_range_id, vote_response, vote_id)
           .bind { |params| find_date_range(params[:date_range_id]) }
           .bind { |date_range| validate_date_range_belongs_to_event(date_range, event) }
-          .bind { |date_range| upsert_vote(date_range, user_id, T.must(vote_response), comment) }
+          .bind { |date_range| upsert_vote(date_range, user_id, T.must(vote_response), comment, vote_id) }
       end
 
       private
 
+      UUID_REGEX = /\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/i
+
       sig do
-        params(date_range_id: T.nilable(String), vote_response: T.nilable(String))
-          .returns(Result[T::Hash[Symbol, String], ServiceError])
+        params(
+          date_range_id: T.nilable(String),
+          vote_response: T.nilable(String),
+          vote_id: T.nilable(String)
+        ).returns(Result[T::Hash[Symbol, String], ServiceError])
       end
-      def validate_params(date_range_id, vote_response)
+      def validate_params(date_range_id, vote_response, vote_id)
         if date_range_id.nil? || date_range_id.empty?
           Failure(ServiceError.validation("date_range_id is required"))
         elsif vote_response.nil? || vote_response.empty?
           Failure(ServiceError.validation("response is required"))
         elsif !Vote::VALID_RESPONSES.include?(vote_response)
           Failure(ServiceError.validation("Invalid response value"))
+        elsif vote_id && !UUID_REGEX.match?(vote_id)
+          Failure(ServiceError.validation("Invalid vote ID format"))
+        elsif vote_id && Vote.first(id: vote_id)
+          Failure(ServiceError.conflict("Vote ID already exists"))
         else
           Success({ date_range_id: date_range_id, vote_response: vote_response })
         end
@@ -77,10 +87,11 @@ module Votes
           date_range: DateRange,
           user_id: String,
           vote_response: String,
-          comment: T.nilable(String)
+          comment: T.nilable(String),
+          vote_id: T.nilable(String)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def upsert_vote(date_range, user_id, vote_response, comment)
+      def upsert_vote(date_range, user_id, vote_response, comment, vote_id)
         existing_vote = Vote.first(date_range_id: date_range.id, user_id: user_id)
         clean_comment = comment&.empty? ? nil : comment
 
@@ -88,12 +99,16 @@ module Votes
           existing_vote.update(response: vote_response, comment: clean_comment)
           Success({ vote: existing_vote.to_api_hash, created: false })
         else
-          vote = Vote.create(
+          # Use client-provided ID if given, otherwise generate one
+          create_params = {
             date_range_id: date_range.id,
             user_id: user_id,
             response: vote_response,
             comment: clean_comment
-          )
+          }
+          create_params[:id] = vote_id if vote_id
+
+          vote = Vote.create(create_params)
           Success({ vote: vote.to_api_hash, created: true })
         end
       end

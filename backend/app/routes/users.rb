@@ -9,8 +9,15 @@ class App
     # GET /api/users - List all users
     r.is do
       r.get do
+        users = User.order(:name, :email).all
+        pool = PoolSerializer.new
+        pool.add_all(users)
+
         response.status = 200
-        { users: User.order(:name, :email).all.map(&:to_api_hash) }
+        {
+          users: users.map(&:to_api_hash),
+          objects: pool.to_a
+        }
       end
 
       # POST /api/users - Create a new user

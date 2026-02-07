@@ -9,8 +9,15 @@ class App
     # GET /api/events - List all events
     r.is do
       r.get do
+        events = Event.order(:created_at).all
+        pool = PoolSerializer.new
+        pool.add_all(events)
+
         response.status = 200
-        { events: Event.order(:created_at).all.map(&:to_api_hash) }
+        {
+          events: events.map(&:to_api_hash),
+          objects: pool.to_a
+        }
       end
 
       # POST /api/events - Create a new event
@@ -35,8 +42,14 @@ class App
       # GET /api/events/:id - Get event details (any authenticated user can view)
       r.is do
         r.get do
+          pool = PoolSerializer.new
+          pool.add(event)
+
           response.status = 200
-          { event: event.to_api_hash }
+          {
+            event: event.to_api_hash,
+            objects: pool.to_a
+          }
         end
 
         # PUT /api/events/:id - Update event (owner only)
@@ -64,8 +77,14 @@ class App
         r.is do
           r.get do
             votes = Vote.where(date_range_id: event.date_ranges.map(&:id)).all
+            pool = PoolSerializer.new
+            pool.add_all(votes)
+
             response.status = 200
-            { votes: votes.map(&:to_api_hash) }
+            {
+              votes: votes.map(&:to_api_hash),
+              objects: pool.to_a
+            }
           end
 
           # POST /api/events/:id/votes - Create or update vote
@@ -75,13 +94,21 @@ class App
               user_id: current_user.id,
               date_range_id: r.params["date_range_id"],
               vote_response: r.params["response"],
-              comment: r.params["comment"]&.strip
+              comment: r.params["comment"]&.strip,
+              vote_id: r.params["id"]
             )
 
             result.either(
               ->(value) {
+                vote = Vote.first(id: value[:vote][:id])
+                pool = PoolSerializer.new
+                pool.add(vote)
+
                 response.status = value[:created] ? 201 : 200
-                { vote: value[:vote] }
+                {
+                  vote: value[:vote],
+                  objects: pool.to_a
+                }
               },
               ->(error) {
                 response.status = error.http_status

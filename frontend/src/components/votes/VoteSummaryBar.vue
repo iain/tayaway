@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { VoteSummary } from '@/types'
+import type { VoteSummary } from '@/composables/useHydratedEvent'
 
 const props = defineProps<{
   summary: VoteSummary

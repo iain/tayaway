@@ -50,7 +50,10 @@ module Users
           email: email
         )
 
-        Success({ user: user.to_api_hash })
+        pool = PoolSerializer.new
+        pool.add(user)
+
+        Success({ user: user.to_api_hash, objects: pool.to_a })
       end
     end
   end

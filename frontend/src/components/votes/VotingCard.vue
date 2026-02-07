@@ -1,34 +1,32 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { storeToRefs } from 'pinia'
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/vue/24/outline'
-import type { DateRange, Vote, VoteResponse, User } from '@/types'
+import type { User } from '@/types'
+import type { VoteResponse } from '@/types/pool'
+import type { HydratedDateRange } from '@/composables/useHydratedEvent'
 import { useCalendar } from '@/composables/useCalendar'
-import { useVotesStore } from '@/stores'
+import { useObjectPoolStore } from '@/stores/objectPool'
+import { api } from '@/api/client'
 import VoteSummaryBar from './VoteSummaryBar.vue'
 import VotersList from './VotersList.vue'
 
 const props = defineProps<{
-  dateRange: DateRange
+  dateRange: HydratedDateRange
   eventId: string
   currentUser: User | null
 }>()
 
-const emit = defineEmits<{
-  voteUpdated: [vote: Vote, dateRangeId: string]
-}>()
-
 const { formatDateDisplay } = useCalendar()
-const votesStore = useVotesStore()
-const { loading } = storeToRefs(votesStore)
+const pool = useObjectPoolStore()
 
+const loading = ref(false)
 const showVoters = ref(false)
 const comment = ref('')
 const showCommentInput = ref(false)
 
 const currentUserVote = computed(() => {
   if (!props.currentUser) return null
-  return props.dateRange.votes.find(v => v.user_id === props.currentUser?.id) ?? null
+  return props.dateRange.votes.find(v => v.userId === props.currentUser?.id) ?? null
 })
 
 // Initialize comment from existing vote and keep section open if comment exists
@@ -49,31 +47,102 @@ const hasCommentChanges = computed(() => {
 })
 
 async function handleVote(response: VoteResponse) {
-  try {
-    const vote = await votesStore.submitVote(
-      props.eventId,
-      props.dateRange.id,
+  if (!props.currentUser) return
+
+  const existingVote = currentUserVote.value
+  // Use existing ID or generate a new UUID (client-generated, sent to backend)
+  const voteId = existingVote?.id ?? crypto.randomUUID()
+
+  if (existingVote) {
+    // Update existing vote optimistically
+    pool.addPending('vote', existingVote.id, { response })
+  } else {
+    // Create new vote optimistically with client-generated ID
+    pool.set({
+      id: voteId,
+      objectType: 'vote',
+      dateRangeId: props.dateRange.id,
+      userId: props.currentUser.id,
       response,
-      currentUserVote.value?.comment || undefined
+      comment: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+    // Add vote to date range's voteIds
+    const dateRange = pool.get('dateRange', props.dateRange.id)
+    if (dateRange) {
+      pool.addPending('dateRange', props.dateRange.id, {
+        voteIds: [...dateRange.voteIds, voteId],
+      })
+    }
+  }
+
+  loading.value = true
+  try {
+    const apiResponse = await api.post<{ vote: unknown; objects: import('@/types/pool').PoolObject[] }>(
+      `/events/${props.eventId}/votes`,
+      {
+        id: existingVote ? undefined : voteId, // Send client ID for new votes
+        date_range_id: props.dateRange.id,
+        response,
+        comment: existingVote?.comment || undefined,
+      }
     )
-    emit('voteUpdated', vote, props.dateRange.id)
+
+    // Import server response - confirms the optimistic update
+    if (apiResponse.data.objects) {
+      pool.importObjects(apiResponse.data.objects)
+    }
   } catch {
-    // Error is handled by the store
+    // Rollback optimistic update
+    if (existingVote) {
+      // Clear pending update on existing vote
+      pool.removePending(`pending_${voteId}`)
+    } else {
+      // Remove the optimistically created vote
+      pool.remove('vote', voteId)
+      // Restore date range's original voteIds
+      const dateRange = pool.getServer('dateRange', props.dateRange.id)
+      if (dateRange) {
+        pool.set({
+          ...dateRange,
+          voteIds: dateRange.voteIds.filter(id => id !== voteId),
+        })
+      }
+    }
+  } finally {
+    loading.value = false
   }
 }
 
 async function handleCommentSubmit() {
-  if (!currentUserVote.value) return
+  if (!currentUserVote.value || !props.currentUser) return
+
+  // Apply optimistic update for comment
+  pool.addPending('vote', currentUserVote.value.id, { comment: comment.value || null })
+
+  loading.value = true
   try {
-    const vote = await votesStore.submitVote(
-      props.eventId,
-      props.dateRange.id,
-      currentUserVote.value.response,
-      comment.value || undefined
+    const apiResponse = await api.post<{ vote: unknown; objects: import('@/types/pool').PoolObject[] }>(
+      `/events/${props.eventId}/votes`,
+      {
+        date_range_id: props.dateRange.id,
+        response: currentUserVote.value.response,
+        comment: comment.value || undefined,
+      }
     )
-    emit('voteUpdated', vote, props.dateRange.id)
+
+    if (apiResponse.data.objects) {
+      pool.importObjects(apiResponse.data.objects)
+    }
   } catch {
-    // Error is handled by the store
+    // Pending update is automatically cleared on failure since we use addPending
+    // but we need to restore the original comment in the input
+    if (currentUserVote.value) {
+      comment.value = currentUserVote.value.comment || ''
+    }
+  } finally {
+    loading.value = false
   }
 }
 
@@ -88,14 +157,14 @@ function toggleCommentInput() {
       <!-- Left side: Date range info and stats -->
       <div class="flex-1 mb-4 md:mb-0">
         <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">
-          {{ formatDateDisplay(dateRange.start_date) }}
-          <span v-if="dateRange.start_date !== dateRange.end_date">
-            - {{ formatDateDisplay(dateRange.end_date) }}
+          {{ formatDateDisplay(dateRange.startDate) }}
+          <span v-if="dateRange.startDate !== dateRange.endDate">
+            - {{ formatDateDisplay(dateRange.endDate) }}
           </span>
         </h3>
 
         <!-- Vote Summary -->
-        <VoteSummaryBar :summary="dateRange.vote_summary" />
+        <VoteSummaryBar :summary="dateRange.voteSummary" />
 
         <!-- Voters List Toggle -->
         <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
@@ -108,7 +177,7 @@ function toggleCommentInput() {
               :is="showVoters ? ChevronUpIcon : ChevronDownIcon"
               class="size-4"
             />
-            {{ showVoters ? 'Hide' : 'Show' }} votes ({{ dateRange.vote_summary.total }})
+            {{ showVoters ? 'Hide' : 'Show' }} votes ({{ dateRange.voteSummary.total }})
           </button>
           <div
             v-if="showVoters"

@@ -29,4 +29,17 @@ class Event < Sequel::Model
       updated_at: updated_at&.iso8601
     }
   end
+
+  def to_pool_hash
+    {
+      id: id,
+      objectType: "event",
+      name: name,
+      description: description,
+      userId: user_id,
+      dateRangeIds: date_ranges.map(&:id),
+      createdAt: created_at&.iso8601(3),
+      updatedAt: updated_at&.iso8601(3)
+    }
+  end
 end

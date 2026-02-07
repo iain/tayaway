@@ -1,7 +1,18 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { api, setSessionToken, clearSessionToken, getSessionToken } from '@/api/client'
+import { useObjectPoolStore } from './objectPool'
 import type { User, MagicLinkResponse, VerifyResponse, MeResponse, LogoutResponse } from '@/types'
+import type { PoolObject } from '@/types/pool'
+
+// Extended response types that include pool objects
+interface MeResponseWithPool extends MeResponse {
+  objects?: PoolObject[]
+}
+
+interface VerifyResponseWithPool extends VerifyResponse {
+  objects?: PoolObject[]
+}
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
@@ -21,7 +32,14 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       loading.value = true
-      const response = await api.get<MeResponse>('/auth/me')
+      const response = await api.get<MeResponseWithPool>('/auth/me')
+
+      // Import objects to pool if present
+      if (response.data.objects) {
+        const pool = useObjectPoolStore()
+        pool.importObjects(response.data.objects)
+      }
+
       user.value = response.data.user
     } catch {
       clearSessionToken()
@@ -38,7 +56,14 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function verifyToken(token: string, email: string): Promise<User> {
-    const response = await api.post<VerifyResponse>('/auth/verify', { token, email })
+    const response = await api.post<VerifyResponseWithPool>('/auth/verify', { token, email })
+
+    // Import objects to pool if present
+    if (response.data.objects) {
+      const pool = useObjectPoolStore()
+      pool.importObjects(response.data.objects)
+    }
+
     setSessionToken(response.data.session_token)
     user.value = response.data.user
     return response.data.user
@@ -50,6 +75,9 @@ export const useAuthStore = defineStore('auth', () => {
     } finally {
       clearSessionToken()
       user.value = null
+      // Reset pool on logout
+      const pool = useObjectPoolStore()
+      pool.$reset()
     }
   }
 

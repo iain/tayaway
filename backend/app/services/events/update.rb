@@ -74,7 +74,10 @@ module Events
           event.reload
         end
 
-        Success({ event: updated_event.to_api_hash })
+        pool = PoolSerializer.new
+        pool.add(updated_event)
+
+        Success({ event: updated_event.to_api_hash, objects: pool.to_a })
       end
 
       sig do

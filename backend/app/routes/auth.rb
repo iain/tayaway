@@ -38,8 +38,14 @@ class App
       response.status = 401
       next { error: "Invalid or expired session" } unless session
 
+      pool = PoolSerializer.new
+      pool.add(session.user)
+
       response.status = 200
-      { user: session.user.to_api_hash }
+      {
+        user: session.user.to_api_hash,
+        objects: pool.to_a
+      }
     end
   end
 end

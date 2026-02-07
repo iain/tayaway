@@ -23,7 +23,8 @@ class ServiceError < T::Struct
       validation_error: 400,
       unauthorized: 401,
       forbidden: 403,
-      not_found: 404
+      not_found: 404,
+      conflict: 409
     }.freeze, T::Hash[Symbol, Integer]
   )
 
@@ -58,6 +59,11 @@ class ServiceError < T::Struct
     sig { params(message: String).returns(ServiceError) }
     def forbidden(message)
       new(code: :forbidden, message: message)
+    end
+
+    sig { params(message: String).returns(ServiceError) }
+    def conflict(message)
+      new(code: :conflict, message: message)
     end
   end
 end

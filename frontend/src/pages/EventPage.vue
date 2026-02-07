@@ -3,8 +3,8 @@ import { computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
-import type { Vote } from '@/types'
 import { useEventsStore, useAuthStore } from '@/stores'
+import { useHydratedEvent } from '@/composables/useHydratedEvent'
 import VotingCard from '@/components/votes/VotingCard.vue'
 
 const route = useRoute()
@@ -15,7 +15,9 @@ const { loading, error } = storeToRefs(eventsStore)
 const { user } = storeToRefs(authStore)
 
 const eventId = computed(() => route.params.id as string)
-const event = computed(() => eventsStore.getEvent(eventId.value))
+
+// Use hydrated event from pool for reactive updates
+const { event } = useHydratedEvent(eventId)
 
 onMounted(async () => {
   try {
@@ -24,10 +26,6 @@ onMounted(async () => {
     // Error handled by store
   }
 })
-
-function handleVoteUpdated(vote: Vote, dateRangeId: string): void {
-  eventsStore.updateEventVote(eventId.value, dateRangeId, vote)
-}
 
 function handleBack(): void {
   router.push('/events')
@@ -95,7 +93,7 @@ function handleBack(): void {
         </h2>
 
         <div
-          v-if="event.date_ranges.length === 0"
+          v-if="event.dateRanges.length === 0"
           class="text-gray-500 dark:text-gray-400 italic"
         >
           No date ranges have been added to this event yet.
@@ -106,12 +104,11 @@ function handleBack(): void {
           class="space-y-4"
         >
           <VotingCard
-            v-for="dateRange in event.date_ranges"
+            v-for="dateRange in event.dateRanges"
             :key="dateRange.id"
             :date-range="dateRange"
             :event-id="event.id"
             :current-user="user"
-            @vote-updated="(vote, drId) => handleVoteUpdated(vote, drId)"
           />
         </div>
       </section>

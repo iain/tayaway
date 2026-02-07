@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { Vote } from '@/types'
+import type { HydratedVote } from '@/composables/useHydratedEvent'
 import { CheckCircleIcon, XCircleIcon, MinusCircleIcon } from '@heroicons/vue/24/solid'
 
 const props = defineProps<{
-  votes: Vote[]
+  votes: HydratedVote[]
 }>()
 
 const sortedVotes = computed(() => {
