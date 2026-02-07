@@ -256,7 +256,9 @@ test.describe('Voting Feature', () => {
 
       expect(deleteResponse.ok()).toBeTruthy()
       const body = await deleteResponse.json()
-      expect(body.message).toBe('Vote deleted successfully')
+      expect(body.deleted).toHaveLength(1)
+      expect(body.deleted[0].objectType).toBe('vote')
+      expect(body.deleted[0].id).toBe(vote!.id)
 
       // Verify vote is gone
       const getResponse = await request.get(`${API_BASE}/api/events/${eventId}/votes`, {

@@ -1,8 +1,33 @@
-import { useNotificationsStore } from '@/stores'
+import { useNotificationsStore, useObjectPoolStore } from '@/stores'
+import type { PoolObject, ObjectType } from '@/types/pool'
 
 export interface ApiResponse<T> {
   data: T
   status: number
+}
+
+interface DeletedObject {
+  objectType: ObjectType
+  id: string
+}
+
+// Process API response: import objects and remove deletions
+function processPoolResponse(data: unknown): void {
+  if (!data || typeof data !== 'object') return
+
+  const pool = useObjectPoolStore()
+
+  // Import new/updated objects
+  if ('objects' in data && Array.isArray((data as { objects: unknown }).objects)) {
+    pool.importObjects((data as { objects: PoolObject[] }).objects)
+  }
+
+  // Remove deleted objects
+  if ('deleted' in data && Array.isArray((data as { deleted: unknown }).deleted)) {
+    for (const item of (data as { deleted: DeletedObject[] }).deleted) {
+      pool.remove(item.objectType, item.id)
+    }
+  }
 }
 
 export interface ApiError {
@@ -106,6 +131,7 @@ class ApiClient {
     }
 
     const data = await response.json() as T
+    processPoolResponse(data)
     return { data, status: response.status }
   }
 }

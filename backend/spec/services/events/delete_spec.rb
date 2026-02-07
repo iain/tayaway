@@ -19,11 +19,12 @@ RSpec.describe Events::Delete do
   it "deletes event when user is owner" do
     user = create(:user)
     event = create(:event, user: user)
+    event_id = event.id
 
     result = described_class.call(event: event, current_user_id: user.id)
 
     expect(result.success?).to be true
-    expect(result.value![:message]).to eq("Event deleted successfully")
-    expect(Event.where(id: event.id).count).to eq(0)
+    expect(result.value![:deleted]).to eq([{ objectType: "event", id: event_id }])
+    expect(Event.where(id: event_id).count).to eq(0)
   end
 end

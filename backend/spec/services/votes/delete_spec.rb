@@ -47,11 +47,12 @@ RSpec.describe Votes::Delete do
     event = create(:event, user: user)
     date_range = create(:date_range, event: event)
     vote = create(:vote, user: user, date_range: date_range)
+    vote_id = vote.id
 
     result = described_class.call(event: event, vote_id: vote.id, user_id: user.id)
 
     expect(result.success?).to be true
-    expect(result.value![:message]).to eq("Vote deleted successfully")
-    expect(Vote.where(id: vote.id).count).to eq(0)
+    expect(result.value![:deleted]).to eq([{ objectType: "vote", id: vote_id }])
+    expect(Vote.where(id: vote_id).count).to eq(0)
   end
 end

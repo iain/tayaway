@@ -1,7 +1,6 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { api } from '@/api/client'
-import { useObjectPoolStore } from './objectPool'
 import type { VoteResponse, VoteRequestBody } from '@/types'
 import type { PoolApiResponse } from '@/types/pool'
 
@@ -24,10 +23,6 @@ export const useVotesStore = defineStore('votes', () => {
         comment,
       }
       const apiResponse = await api.post<PoolApiResponse>(`/events/${eventId}/votes`, body)
-      const pool = useObjectPoolStore()
-      pool.importObjects(apiResponse.data.objects)
-
-      // Find the vote in the response objects
       const vote = apiResponse.data.objects.find(o => o.objectType === 'vote')
       if (!vote) throw new Error('No vote in response')
       return vote.id
@@ -44,8 +39,6 @@ export const useVotesStore = defineStore('votes', () => {
     error.value = null
     try {
       await api.delete(`/events/${eventId}/votes/${voteId}`)
-      const pool = useObjectPoolStore()
-      pool.remove('vote', voteId)
     } catch (e) {
       error.value = 'Failed to delete vote'
       throw e

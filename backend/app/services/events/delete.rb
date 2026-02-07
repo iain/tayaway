@@ -15,7 +15,7 @@ module Events
 
       sig do
         params(event: Event, current_user_id: String)
-          .returns(Result[T::Hash[Symbol, String], ServiceError])
+          .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
       def call(event:, current_user_id:)
         authorize_owner(event, current_user_id).bind { |evt| delete_event(evt) }
@@ -32,10 +32,11 @@ module Events
         end
       end
 
-      sig { params(event: Event).returns(Result[T::Hash[Symbol, String], ServiceError]) }
+      sig { params(event: Event).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
       def delete_event(event)
+        event_id = event.id
         event.destroy
-        Success({ message: "Event deleted successfully" })
+        Success({ deleted: [{ objectType: "event", id: event_id }] })
       end
     end
   end

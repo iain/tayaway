@@ -48,8 +48,7 @@ export function useOptimistic() {
 
     try {
       const result = await apiCall()
-      // Server response is authoritative - import objects clears pending
-      pool.importObjects(result.data.objects)
+      // Server response is automatically imported by API client, which clears pending
       return result.data
     } catch (error) {
       // Rollback on failure
@@ -77,9 +76,7 @@ export function useOptimistic() {
 
     try {
       const result = await apiCall()
-      // Remove temp object and import server response
-      pool.remove(tempObject.objectType, tempObject.id)
-      pool.importObjects(result.data.objects)
+      // Server response is automatically imported by API client, replacing temp object
       return result.data
     } catch (error) {
       // Rollback - remove temp object

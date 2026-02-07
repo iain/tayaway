@@ -96,7 +96,7 @@ async function handleVote(response: VoteResponse) {
       }
 
       try {
-        const apiResponse = await api.post<PoolApiResponse>(
+        await api.post<PoolApiResponse>(
           `/events/${props.eventId}/votes`,
           {
             id: voteId,
@@ -104,9 +104,7 @@ async function handleVote(response: VoteResponse) {
             response,
           }
         )
-
-        // Server response confirms optimistic update
-        pool.importObjects(apiResponse.data.objects)
+        // Server response automatically imported by API client
       } catch {
         // Rollback: remove vote and restore dateRange
         pool.remove('vote', voteId)

@@ -186,7 +186,9 @@ test.describe('Events Feature', () => {
       })
       expect(deleteResponse.ok()).toBeTruthy()
       const deleteBody = await deleteResponse.json()
-      expect(deleteBody.message).toBe('Event deleted successfully')
+      expect(deleteBody.deleted).toHaveLength(1)
+      expect(deleteBody.deleted[0].objectType).toBe('event')
+      expect(deleteBody.deleted[0].id).toBe(eventId)
 
       // Verify deleted
       const verifyResponse = await request.get(`${API_BASE}/api/events/${eventId}`, {

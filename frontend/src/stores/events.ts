@@ -1,7 +1,6 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { api } from '@/api/client'
-import { useObjectPoolStore } from './objectPool'
 import type { CreateEventRequest, UpdateEventRequest } from '@/types'
 import type { PoolApiResponse } from '@/types/pool'
 
@@ -13,9 +12,7 @@ export const useEventsStore = defineStore('events', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.get<PoolApiResponse>('/events')
-      const pool = useObjectPoolStore()
-      pool.importObjects(response.data.objects)
+      await api.get<PoolApiResponse>('/events')
     } catch (e) {
       error.value = 'Failed to fetch events'
       throw e
@@ -28,9 +25,7 @@ export const useEventsStore = defineStore('events', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.get<PoolApiResponse>(`/events/${id}`)
-      const pool = useObjectPoolStore()
-      pool.importObjects(response.data.objects)
+      await api.get<PoolApiResponse>(`/events/${id}`)
     } catch (e) {
       error.value = 'Failed to fetch event'
       throw e
@@ -44,10 +39,6 @@ export const useEventsStore = defineStore('events', () => {
     error.value = null
     try {
       const response = await api.post<PoolApiResponse>('/events', data)
-      const pool = useObjectPoolStore()
-      pool.importObjects(response.data.objects)
-
-      // Find the new event in the response objects
       const newEvent = response.data.objects.find(o => o.objectType === 'event')
       if (!newEvent) throw new Error('No event in response')
       return newEvent.id
@@ -63,9 +54,7 @@ export const useEventsStore = defineStore('events', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.put<PoolApiResponse>(`/events/${id}`, data)
-      const pool = useObjectPoolStore()
-      pool.importObjects(response.data.objects)
+      await api.put<PoolApiResponse>(`/events/${id}`, data)
     } catch (e) {
       error.value = 'Failed to update event'
       throw e
@@ -79,8 +68,6 @@ export const useEventsStore = defineStore('events', () => {
     error.value = null
     try {
       await api.delete(`/events/${id}`)
-      const pool = useObjectPoolStore()
-      pool.remove('event', id)
     } catch (e) {
       error.value = 'Failed to delete event'
       throw e

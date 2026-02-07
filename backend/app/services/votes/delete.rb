@@ -15,7 +15,7 @@ module Votes
 
       sig do
         params(event: Event, vote_id: String, user_id: String)
-          .returns(Result[T::Hash[Symbol, String], ServiceError])
+          .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
       def call(event:, vote_id:, user_id:)
         find_vote(vote_id)
@@ -55,10 +55,11 @@ module Votes
         end
       end
 
-      sig { params(vote: Vote).returns(Result[T::Hash[Symbol, String], ServiceError]) }
+      sig { params(vote: Vote).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
       def delete_vote(vote)
+        vote_id = vote.id
         vote.destroy
-        Success({ message: "Vote deleted successfully" })
+        Success({ deleted: [{ objectType: "vote", id: vote_id }] })
       end
     end
   end
