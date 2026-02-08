@@ -25,16 +25,16 @@ Sequel.migration do
       column :id, :uuid, primary_key: true, default: Sequel.lit("gen_random_uuid()")
       column :email, :citext, null: false, unique: true
       String :name
-      DateTime :created_at, null: false, default: Sequel::CURRENT_TIMESTAMP
-      DateTime :updated_at, null: false, default: Sequel::CURRENT_TIMESTAMP
+      column :created_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
+      column :updated_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
     end
 
     # Workspaces table
     create_table(:workspaces) do
       column :id, :uuid, primary_key: true, default: Sequel.lit("gen_random_uuid()")
       String :name, null: false, size: 255
-      DateTime :created_at, null: false, default: Sequel::CURRENT_TIMESTAMP
-      DateTime :updated_at, null: false, default: Sequel::CURRENT_TIMESTAMP
+      column :created_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
+      column :updated_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
     end
 
     # Add trigger for workspaces updated_at
@@ -51,7 +51,7 @@ Sequel.migration do
       foreign_key :workspace_id, :workspaces, type: :uuid, null: false, on_delete: :cascade
       foreign_key :user_id, :users, type: :uuid, null: false, on_delete: :cascade
       String :role, null: false, default: "member", size: 50
-      DateTime :created_at, null: false, default: Sequel::CURRENT_TIMESTAMP
+      column :created_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
 
       index [:workspace_id, :user_id], unique: true
       index :user_id
@@ -63,9 +63,9 @@ Sequel.migration do
       foreign_key :user_id, :users, type: :uuid, null: false, on_delete: :cascade, on_update: :cascade
       String :token, null: false, unique: true, size: 64
       column :email, :citext, null: false
-      DateTime :expires_at, null: false
-      DateTime :used_at
-      DateTime :created_at, null: false, default: Sequel::CURRENT_TIMESTAMP
+      column :expires_at, :timestamptz, null: false
+      column :used_at, :timestamptz
+      column :created_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
       index :token
     end
 
@@ -74,8 +74,8 @@ Sequel.migration do
       column :id, :uuid, primary_key: true, default: Sequel.lit("gen_random_uuid()")
       foreign_key :user_id, :users, type: :uuid, null: false, on_delete: :cascade, on_update: :cascade
       String :token, null: false, unique: true, size: 64
-      DateTime :expires_at, null: false
-      DateTime :created_at, null: false, default: Sequel::CURRENT_TIMESTAMP
+      column :expires_at, :timestamptz, null: false
+      column :created_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
       index :token
       index :user_id
     end
@@ -87,8 +87,8 @@ Sequel.migration do
       foreign_key :user_id, :users, type: :uuid, null: false, on_delete: :cascade
       String :name, null: false, size: 255
       String :description, text: true
-      DateTime :created_at, null: false, default: Sequel::CURRENT_TIMESTAMP
-      DateTime :updated_at, null: false, default: Sequel::CURRENT_TIMESTAMP
+      column :created_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
+      column :updated_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
 
       index :workspace_id
       index :user_id
@@ -108,8 +108,8 @@ Sequel.migration do
       foreign_key :event_id, :events, type: :uuid, null: false, on_delete: :cascade
       Date :start_date, null: false
       Date :end_date, null: false
-      DateTime :created_at, null: false, default: Sequel::CURRENT_TIMESTAMP
-      DateTime :updated_at, null: false, default: Sequel::CURRENT_TIMESTAMP
+      column :created_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
+      column :updated_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
 
       index :event_id
       index [:event_id, :start_date]
@@ -130,8 +130,8 @@ Sequel.migration do
       foreign_key :user_id, :users, type: :uuid, null: false, on_delete: :cascade
       column :response, :vote_response, null: false
       String :comment, text: true
-      DateTime :created_at, null: false, default: Sequel::CURRENT_TIMESTAMP
-      DateTime :updated_at, null: false, default: Sequel::CURRENT_TIMESTAMP
+      column :created_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
+      column :updated_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
 
       index [:date_range_id, :user_id], unique: true
       index :user_id
