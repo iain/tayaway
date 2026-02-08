@@ -27,7 +27,7 @@ const attrs = useAttrs()
   <div>
     <label
       :for="id"
-      class="block text-sm/6 font-medium text-white"
+      class="block text-sm/6 font-medium text-gray-900 dark:text-white"
     >
       {{ label }}
     </label>
@@ -40,7 +40,7 @@ const attrs = useAttrs()
         :disabled="disabled"
         :rows="rows ?? 3"
         v-bind="attrs"
-        class="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 sm:text-sm/6"
+        class="block w-full rounded-md bg-gray-100 dark:bg-white/5 px-3 py-1.5 text-base text-gray-900 dark:text-white outline-1 -outline-offset-1 outline-gray-300 dark:outline-white/10 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 sm:text-sm/6"
         @input="$emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
       />
     </div>

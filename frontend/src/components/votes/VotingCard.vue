@@ -10,6 +10,7 @@ import { useOptimistic } from '@/composables/useOptimistic'
 import { api } from '@/api/client'
 import VoteSummaryBar from './VoteSummaryBar.vue'
 import VotersList from './VotersList.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
 
 const props = defineProps<{
   dateRange: HydratedDateRange
@@ -256,11 +257,12 @@ function toggleCommentInput() {
             v-if="showCommentInput"
             class="mt-2"
           >
-            <textarea
+            <FormTextarea
+              :id="`comment-${dateRange.id}`"
               v-model="comment"
+              label="Comment"
               placeholder="Optional comment..."
-              rows="2"
-              class="block w-full rounded-md bg-gray-100 dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-rose-500"
+              :rows="2"
             />
             <button
               type="button"
