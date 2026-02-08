@@ -49,14 +49,14 @@ async function handleSubmit(data: EventFormData): Promise<void> {
       description: data.description || undefined,
       date_ranges: data.date_ranges,
     })
-    router.push('/events')
+    router.push(`/events/${eventId}`)
   } catch {
     formError.value = error.value || 'Failed to update event'
   }
 }
 
 function handleCancel(): void {
-  router.push('/events')
+  router.push(`/events/${eventId}`)
 }
 </script>
 
