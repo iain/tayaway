@@ -1,26 +1,81 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
-import { useAuthStore, useWebSocketStore } from '@/stores'
+import { ArrowLeftIcon, PlusIcon } from '@heroicons/vue/24/outline'
+import { useAuthStore, useWebSocketStore, useEventsStore } from '@/stores'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
+import { useCalendar } from '@/composables/useCalendar'
 import VotingCard from '@/components/votes/VotingCard.vue'
+import DateRangeModal from '@/components/events/DateRangeModal.vue'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const wsStore = useWebSocketStore()
+const eventsStore = useEventsStore()
 const { user } = storeToRefs(authStore)
 const { hasSynced } = storeToRefs(wsStore)
+const { loading } = storeToRefs(eventsStore)
+const { getNextMonday, addDays } = useCalendar()
 
 const eventId = computed(() => route.params.id as string)
 
 // Use hydrated event from pool for reactive updates
 const { event } = useHydratedEvent(eventId)
 
+const showDateRangeModal = ref(false)
+const modalPreselectedStart = ref<string | null>(null)
+const modalPreselectedEnd = ref<string | null>(null)
+
+const isOwner = computed(() => {
+  return user.value?.id === event.value?.userId
+})
+
 function handleBack(): void {
   router.push('/events')
+}
+
+function handleAddDateRange(): void {
+  // Smart preselection: if we have existing ranges, preselect next week after latest end date
+  if (event.value && event.value.dateRanges.length > 0) {
+    const latestEndDate = event.value.dateRanges
+      .map(r => r.endDate)
+      .sort()
+      .pop()!
+    const nextMonday = getNextMonday(latestEndDate)
+    const nextSunday = addDays(nextMonday, 6)
+    modalPreselectedStart.value = nextMonday
+    modalPreselectedEnd.value = nextSunday
+  } else {
+    modalPreselectedStart.value = null
+    modalPreselectedEnd.value = null
+  }
+  showDateRangeModal.value = true
+}
+
+async function handleDateRangeModalSave(startDate: string, endDate: string): Promise<void> {
+  if (!event.value) return
+
+  try {
+    const existingRanges = event.value.dateRanges.map(r => ({
+      start_date: r.startDate,
+      end_date: r.endDate,
+    }))
+
+    await eventsStore.updateEvent(event.value.id, {
+      name: event.value.name,
+      description: event.value.description || undefined,
+      date_ranges: [...existingRanges, { start_date: startDate, end_date: endDate }],
+    })
+    showDateRangeModal.value = false
+  } catch {
+    // Error is handled by the store
+  }
+}
+
+function handleDateRangeModalClose(): void {
+  showDateRangeModal.value = false
 }
 </script>
 
@@ -73,15 +128,39 @@ function handleBack(): void {
 
       <!-- Date Ranges with Voting -->
       <section>
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Vote on Date Options
-        </h2>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+            Vote on Date Options
+          </h2>
+          <button
+            v-if="isOwner"
+            type="button"
+            class="inline-flex items-center gap-2 rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-500"
+            :disabled="loading"
+            @click="handleAddDateRange"
+          >
+            <PlusIcon class="size-4" />
+            Add Date Range
+          </button>
+        </div>
 
         <div
           v-if="event.dateRanges.length === 0"
-          class="text-gray-500 dark:text-gray-400 italic"
+          class="text-center py-8"
         >
-          No date ranges have been added to this event yet.
+          <p class="text-gray-500 dark:text-gray-400 mb-4">
+            No date ranges have been added to this event yet.
+          </p>
+          <button
+            v-if="isOwner"
+            type="button"
+            class="inline-flex items-center gap-2 rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-500"
+            :disabled="loading"
+            @click="handleAddDateRange"
+          >
+            <PlusIcon class="size-4" />
+            Add Date Range
+          </button>
         </div>
 
         <div
@@ -98,5 +177,13 @@ function handleBack(): void {
         </div>
       </section>
     </div>
+
+    <DateRangeModal
+      :open="showDateRangeModal"
+      :preselected-start="modalPreselectedStart"
+      :preselected-end="modalPreselectedEnd"
+      @save="handleDateRangeModalSave"
+      @close="handleDateRangeModalClose"
+    />
   </div>
 </template>

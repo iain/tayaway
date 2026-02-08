@@ -1,20 +1,23 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { PlusIcon, PencilIcon, TrashIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline'
 import { useEventsStore, useAuthStore, useObjectPoolStore, useWebSocketStore } from '@/stores'
 import { useCalendar } from '@/composables/useCalendar'
+import AddEventModal from '@/components/events/AddEventModal.vue'
 
 const router = useRouter()
 const eventsStore = useEventsStore()
 const authStore = useAuthStore()
 const pool = useObjectPoolStore()
 const wsStore = useWebSocketStore()
-const { error } = storeToRefs(eventsStore)
+const { loading, error } = storeToRefs(eventsStore)
 const { hasSynced } = storeToRefs(wsStore)
 const { formatDateDisplay } = useCalendar()
 const { user } = storeToRefs(authStore)
+
+const showModal = ref(false)
 
 // Get events from pool, sorted by createdAt
 const events = computed(() => {
@@ -37,7 +40,24 @@ function getDateRanges(dateRangeIds: string[]) {
 }
 
 function handleCreate(): void {
-  router.push('/events/new')
+  showModal.value = true
+}
+
+async function handleModalSave(name: string, description: string): Promise<void> {
+  try {
+    const eventId = await eventsStore.createEvent({
+      name,
+      description: description || undefined,
+    })
+    showModal.value = false
+    router.push(`/events/${eventId}`)
+  } catch {
+    // Error is handled by the store
+  }
+}
+
+function handleModalClose(): void {
+  showModal.value = false
 }
 
 function handleView(id: string): void {
@@ -175,5 +195,12 @@ function formatDateRangeSummary(ranges: { startDate: string; endDate: string }[]
         </div>
       </li>
     </ul>
+
+    <AddEventModal
+      :open="showModal"
+      :loading="loading"
+      @save="handleModalSave"
+      @close="handleModalClose"
+    />
   </div>
 </template>

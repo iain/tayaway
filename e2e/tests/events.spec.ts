@@ -243,66 +243,48 @@ test.describe('Events Feature', () => {
       await expect(page.getByRole('link', { name: 'Events' })).toBeVisible()
     })
 
-    test('can navigate to create event page', async ({ page, request }) => {
+    test('new event button opens modal', async ({ page, request }) => {
       const { token } = await getTestSession(request)
       await setupAuthenticatedPage(page, token)
       await page.goto('/events')
 
       await page.getByTestId('new-event-button').click()
-      await expect(page).toHaveURL('/events/new')
-      await expect(page.locator('h1')).toContainText('Create Event')
+      await expect(page.getByRole('dialog')).toBeVisible()
+      await expect(page.getByRole('dialog').getByRole('heading', { name: 'New Event' })).toBeVisible()
     })
 
-    test('create event form has required fields', async ({ page, request }) => {
+    test('create event modal has required fields', async ({ page, request }) => {
       const { token } = await getTestSession(request)
       await setupAuthenticatedPage(page, token)
-      await page.goto('/events/new')
+      await page.goto('/events')
 
-      await expect(page.getByTestId('event-name-input')).toBeVisible()
-      await expect(page.getByTestId('event-description-input')).toBeVisible()
-      await expect(page.getByText('Date Ranges', { exact: true })).toBeVisible()
-      await expect(page.getByTestId('add-date-range-button')).toBeVisible()
+      await page.getByTestId('new-event-button').click()
+      await expect(page.getByLabel('Name')).toBeVisible()
+      await expect(page.getByLabel(/Description/)).toBeVisible()
+      await expect(page.getByTestId('modal-save-button')).toBeVisible()
     })
 
-    test('can create an event through UI', async ({ page, request }) => {
+    test('can create an event through modal', async ({ page, request }) => {
       const { token } = await getTestSession(request)
       await setupAuthenticatedPage(page, token)
-      await page.goto('/events/new')
+      await page.goto('/events')
+
+      // Open the create event modal
+      await page.getByTestId('new-event-button').click()
+      await expect(page.getByRole('dialog')).toBeVisible()
 
       // Fill in the form
-      await page.getByTestId('event-name-input').fill('UI Test Event')
-      await page.getByTestId('event-description-input').fill('Created via UI test')
-
-      // Add a date range
-      await page.getByTestId('add-date-range-button').click()
-
-      // Wait for modal to appear with transition
-      await expect(page.getByText('Select Date Range')).toBeVisible({ timeout: 10000 })
-
-      // Click on two dates to select a range using specific date test IDs
-      // Use dates from next month to ensure they're always in the future
-      const today = new Date()
-      const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1)
-      const startDate = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}-10`
-      const endDate = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}-15`
-
-      await page.getByTestId(`calendar-day-${startDate}`).click()
-      await page.getByTestId(`calendar-day-${endDate}`).click()
-
-      // Save the range
-      await page.getByTestId('modal-save-button').click()
-
-      // Verify the range was added (modal should close)
-      await expect(page.getByText('Select Date Range')).not.toBeVisible({ timeout: 5000 })
+      await page.getByLabel('Name').fill('Modal Test Event')
+      await page.getByLabel(/Description/).fill('Created via modal test')
 
       // Submit the form
-      await page.getByTestId('submit-button').click()
+      await page.getByTestId('modal-save-button').click()
 
-      // Should redirect to events list
-      await expect(page).toHaveURL('/events', { timeout: 10000 })
+      // Should redirect to the event page
+      await expect(page).toHaveURL(/\/events\/[\w-]+$/, { timeout: 10000 })
 
-      // Event should appear in the list (use first() since previous runs may have created duplicates)
-      await expect(page.getByTestId('events-list').getByTestId('event-name').filter({ hasText: 'UI Test Event' }).first()).toBeVisible()
+      // Event name should be visible on the event page
+      await expect(page.getByTestId('event-name')).toContainText('Modal Test Event')
     })
   })
 })
