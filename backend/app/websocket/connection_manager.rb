@@ -125,6 +125,7 @@ module Websocket
 
         begin
           connection.websocket.write(json_message)
+          connection.websocket.flush
         rescue StandardError => e
           warn "[ConnectionManager] Error broadcasting to workspace #{workspace_id}, conn #{connection_id}: #{e.message}"
         end
@@ -149,6 +150,7 @@ module Websocket
 
         begin
           connection.websocket.write(json_message)
+          connection.websocket.flush
         rescue StandardError => e
           # Connection might be closed; log and continue
           warn "[ConnectionManager] Error broadcasting to #{connection_id}: #{e.message}"
