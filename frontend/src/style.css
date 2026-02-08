@@ -6,6 +6,10 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+html {
+  @apply bg-gray-100 dark:bg-gray-900;
+}
+
 body {
-  @apply bg-gray-100 dark:bg-gray-900 font-sans antialiased;
+  @apply bg-gray-100 dark:bg-gray-900 font-sans antialiased min-h-screen;
 }
