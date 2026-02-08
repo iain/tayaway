@@ -252,15 +252,38 @@ function handleVote(): void {
             <li
               v-for="member in membersWhoHaventVoted"
               :key="member.id"
-              class="flex items-center gap-3 rounded-md bg-gray-50 px-3 py-2 dark:bg-gray-700/50"
+              class="flex items-center gap-3 rounded-md px-3 py-2"
+              :class="
+                member.user?.id === user?.id
+                  ? 'bg-amber-50 ring-1 ring-amber-200 dark:bg-amber-900/20 dark:ring-amber-800'
+                  : 'bg-gray-50 dark:bg-gray-700/50'
+              "
             >
               <div
-                class="flex size-8 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-600"
+                class="flex size-8 items-center justify-center rounded-full"
+                :class="
+                  member.user?.id === user?.id
+                    ? 'bg-amber-200 dark:bg-amber-800'
+                    : 'bg-gray-200 dark:bg-gray-600'
+                "
               >
-                <UserIcon class="size-4 text-gray-500 dark:text-gray-400" />
+                <UserIcon
+                  class="size-4"
+                  :class="
+                    member.user?.id === user?.id
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-gray-500 dark:text-gray-400'
+                  "
+                />
               </div>
               <span class="text-gray-900 dark:text-white">
                 {{ member.user?.name || member.user?.email || 'Unknown' }}
+                <span
+                  v-if="member.user?.id === user?.id"
+                  class="text-sm text-amber-600 dark:text-amber-400"
+                >
+                  (you)
+                </span>
               </span>
             </li>
           </ul>
@@ -270,9 +293,7 @@ function handleVote(): void {
             class="mt-4 text-sm text-gray-500 dark:text-gray-400"
           >
             {{ membersWhoHaventVoted.length }}
-            {{
-              membersWhoHaventVoted.length === 1 ? 'person' : 'people'
-            }}
+            {{ membersWhoHaventVoted.length === 1 ? 'person' : 'people' }}
             haven't voted yet
           </p>
         </section>
