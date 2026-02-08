@@ -22,7 +22,7 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
-const { getNextMonday, addDays } = useCalendar()
+const { addDays } = useCalendar()
 
 const name = ref('')
 const description = ref('')
@@ -49,16 +49,18 @@ const showDateRangeWarning = computed(() => {
 })
 
 function handleAddRange(): void {
-  // Smart preselection: if we have existing ranges, preselect next week after latest end date
+  // Smart preselection: if we have existing ranges, shift the last range by 7 days
+  // This preserves the day of week and length
   if (dateRanges.value.length > 0) {
-    const latestEndDate = dateRanges.value
-      .map(r => r.end_date)
-      .sort()
-      .pop()!
-    const nextMonday = getNextMonday(latestEndDate)
-    const nextSunday = addDays(nextMonday, 6)
-    modalPreselectedStart.value = nextMonday
-    modalPreselectedEnd.value = nextSunday
+    // Find the last range by end date
+    const sortedRanges = [...dateRanges.value].sort((a, b) =>
+      a.end_date.localeCompare(b.end_date)
+    )
+    const lastRange = sortedRanges[sortedRanges.length - 1]
+
+    // Shift by 7 days to preserve day of week
+    modalPreselectedStart.value = addDays(lastRange.start_date, 7)
+    modalPreselectedEnd.value = addDays(lastRange.end_date, 7)
   } else {
     modalPreselectedStart.value = null
     modalPreselectedEnd.value = null

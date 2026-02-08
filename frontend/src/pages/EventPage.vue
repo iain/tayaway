@@ -17,7 +17,7 @@ const eventsStore = useEventsStore()
 const { user } = storeToRefs(authStore)
 const { hasSynced } = storeToRefs(wsStore)
 const { loading } = storeToRefs(eventsStore)
-const { getNextMonday, addDays } = useCalendar()
+const { addDays } = useCalendar()
 
 const eventId = computed(() => route.params.id as string)
 
@@ -37,16 +37,18 @@ function handleBack(): void {
 }
 
 function handleAddDateRange(): void {
-  // Smart preselection: if we have existing ranges, preselect next week after latest end date
+  // Smart preselection: if we have existing ranges, shift the last range by 7 days
+  // This preserves the day of week and length
   if (event.value && event.value.dateRanges.length > 0) {
-    const latestEndDate = event.value.dateRanges
-      .map(r => r.endDate)
-      .sort()
-      .pop()!
-    const nextMonday = getNextMonday(latestEndDate)
-    const nextSunday = addDays(nextMonday, 6)
-    modalPreselectedStart.value = nextMonday
-    modalPreselectedEnd.value = nextSunday
+    // Find the last range by end date
+    const sortedRanges = [...event.value.dateRanges].sort((a, b) =>
+      a.endDate.localeCompare(b.endDate)
+    )
+    const lastRange = sortedRanges[sortedRanges.length - 1]
+
+    // Shift by 7 days to preserve day of week
+    modalPreselectedStart.value = addDays(lastRange.startDate, 7)
+    modalPreselectedEnd.value = addDays(lastRange.endDate, 7)
   } else {
     modalPreselectedStart.value = null
     modalPreselectedEnd.value = null
