@@ -22,7 +22,7 @@ defineEmits<{
           :checked="modelValue"
           :disabled="disabled"
           :aria-describedby="description ? `${id}-description` : undefined"
-          class="col-start-1 row-start-1 appearance-none rounded-sm border border-white/10 bg-white/5 checked:border-indigo-500 checked:bg-indigo-500 indeterminate:border-indigo-500 indeterminate:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:border-white/5 disabled:bg-white/10 disabled:checked:bg-white/10 forced-colors:appearance-auto"
+          class="col-start-1 row-start-1 appearance-none rounded-sm border border-white/10 bg-white/5 checked:border-rose-500 checked:bg-rose-500 indeterminate:border-rose-500 indeterminate:bg-rose-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:border-white/5 disabled:bg-white/10 disabled:checked:bg-white/10 forced-colors:appearance-auto"
           @change="$emit('update:modelValue', ($event.target as HTMLInputElement).checked)"
         >
         <svg

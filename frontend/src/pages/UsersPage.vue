@@ -53,7 +53,7 @@ async function handleSave(name: string, email: string): Promise<void> {
       <button
         type="button"
         data-testid="add-user-button"
-        class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+        class="inline-flex items-center gap-2 rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-500"
         @click="openModal"
       >
         <PlusIcon class="size-5" />
@@ -89,7 +89,7 @@ async function handleSave(name: string, email: string): Promise<void> {
       <div class="mt-6">
         <button
           type="button"
-          class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+          class="inline-flex items-center gap-2 rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-500"
           @click="openModal"
         >
           <PlusIcon class="size-5" />

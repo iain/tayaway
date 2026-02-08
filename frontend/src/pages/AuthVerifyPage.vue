@@ -51,7 +51,7 @@ onMounted(async () => {
         </p>
         <router-link
           to="/login"
-          class="inline-block py-2 px-4 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700"
+          class="inline-block py-2 px-4 bg-rose-600 text-white font-medium rounded-md hover:bg-rose-700"
         >
           Back to login
         </router-link>

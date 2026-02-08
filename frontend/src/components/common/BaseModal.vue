@@ -47,7 +47,7 @@ const sizeClasses: Record<string, string> = {
     <div class="absolute right-0 top-0 pr-4 pt-4">
       <button
         type="button"
-        class="rounded-md bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900"
+        class="rounded-md bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900"
         @click="handleClose"
       >
         <span class="sr-only">Close</span>

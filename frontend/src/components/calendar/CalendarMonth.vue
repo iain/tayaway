@@ -72,17 +72,17 @@ function handleMouseLeave(): void {
         :key="day.dateString"
         :data-testid="`calendar-day-${day.dateString}`"
         type="button"
-        class="relative py-2 text-sm focus:z-10 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        class="relative py-2 text-sm focus:z-10 focus:outline-none focus:ring-2 focus:ring-rose-500"
         :class="[
           day.isCurrentMonth
             ? 'text-white'
             : 'text-gray-600',
           isSelected(day.dateString)
-            ? 'bg-indigo-500 text-white font-semibold'
+            ? 'bg-rose-500 text-white font-semibold'
             : isInRange(day.dateString)
-              ? 'bg-indigo-500/30'
+              ? 'bg-rose-500/30'
               : isInHoverRange(day.dateString)
-                ? 'bg-indigo-500/20'
+                ? 'bg-rose-500/20'
                 : 'hover:bg-white/10',
         ]"
         @click="handleClick(day)"

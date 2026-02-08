@@ -247,7 +247,7 @@ function toggleCommentInput() {
         <div v-if="currentUserVote">
           <button
             type="button"
-            class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+            class="text-sm text-rose-600 dark:text-rose-400 hover:underline"
             @click="toggleCommentInput"
           >
             {{ showCommentInput ? 'Hide comment' : (currentUserVote.comment ? 'Edit comment' : 'Add a comment') }}
@@ -260,7 +260,7 @@ function toggleCommentInput() {
               v-model="comment"
               placeholder="Optional comment..."
               rows="2"
-              class="block w-full rounded-md bg-gray-100 dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              class="block w-full rounded-md bg-gray-100 dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-rose-500"
             />
             <button
               type="button"
@@ -268,7 +268,7 @@ function toggleCommentInput() {
               class="mt-2 px-4 py-2 text-sm font-medium rounded-md transition-colors"
               :class="[
                 hasCommentChanges
-                  ? 'bg-indigo-600 text-white hover:bg-indigo-500 disabled:bg-indigo-400'
+                  ? 'bg-rose-600 text-white hover:bg-rose-500 disabled:bg-rose-400'
                   : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
               ]"
               @click="handleCommentSubmit"

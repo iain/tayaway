@@ -36,7 +36,7 @@ const attrs = useAttrs()
     <div class="mt-2">
       <div
         v-if="prefix"
-        class="flex items-center rounded-md bg-gray-100 dark:bg-white/5 pl-3 outline-1 -outline-offset-1 outline-gray-300 dark:outline-white/10 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-indigo-500"
+        class="flex items-center rounded-md bg-gray-100 dark:bg-white/5 pl-3 outline-1 -outline-offset-1 outline-gray-300 dark:outline-white/10 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-rose-500"
       >
         <div class="shrink-0 text-base text-gray-500 dark:text-gray-400 select-none sm:text-sm/6">
           {{ prefix }}
@@ -66,7 +66,7 @@ const attrs = useAttrs()
         :maxlength="maxlength"
         :autocomplete="autocomplete"
         v-bind="attrs"
-        class="block w-full rounded-md bg-gray-100 dark:bg-white/5 px-3 py-1.5 text-base text-gray-900 dark:text-white outline-1 -outline-offset-1 outline-gray-300 dark:outline-white/10 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6"
+        class="block w-full rounded-md bg-gray-100 dark:bg-white/5 px-3 py-1.5 text-base text-gray-900 dark:text-white outline-1 -outline-offset-1 outline-gray-300 dark:outline-white/10 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 sm:text-sm/6"
         @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
       >
     </div>

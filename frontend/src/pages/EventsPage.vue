@@ -73,7 +73,7 @@ function formatDateRangeSummary(ranges: { startDate: string; endDate: string }[]
       <button
         type="button"
         data-testid="new-event-button"
-        class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+        class="inline-flex items-center gap-2 rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-500"
         @click="handleCreate"
       >
         <PlusIcon class="size-5" />
@@ -109,7 +109,7 @@ function formatDateRangeSummary(ranges: { startDate: string; endDate: string }[]
       <div class="mt-6">
         <button
           type="button"
-          class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+          class="inline-flex items-center gap-2 rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-500"
           @click="handleCreate"
         >
           <PlusIcon class="size-5" />
@@ -127,7 +127,7 @@ function formatDateRangeSummary(ranges: { startDate: string; endDate: string }[]
         v-for="event in events"
         :key="event.id"
         :data-testid="`event-item-${event.id}`"
-        class="bg-white dark:bg-gray-800 shadow rounded-lg mb-4 overflow-hidden hover:ring-2 hover:ring-indigo-500 transition-all cursor-pointer"
+        class="bg-white dark:bg-gray-800 shadow rounded-lg mb-4 overflow-hidden hover:ring-2 hover:ring-rose-500 transition-all cursor-pointer"
         @click="handleView(event.id)"
       >
         <div class="px-4 py-5 sm:px-6">
@@ -156,7 +156,7 @@ function formatDateRangeSummary(ranges: { startDate: string; endDate: string }[]
             >
               <button
                 type="button"
-                class="p-2 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400"
+                class="p-2 text-gray-400 hover:text-rose-600 dark:hover:text-rose-400"
                 @click.stop="handleEdit(event.id)"
               >
                 <PencilIcon class="size-5" />

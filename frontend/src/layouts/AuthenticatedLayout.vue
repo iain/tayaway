@@ -63,7 +63,7 @@ function getInitials(email: string | undefined): string {
     class="min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900"
   >
     <div class="text-center">
-      <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent" />
+      <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-rose-600 border-t-transparent" />
       <p class="mt-4 text-lg font-medium text-gray-700 dark:text-gray-300">
         Loading...
       </p>
@@ -77,7 +77,7 @@ function getInitials(email: string | undefined): string {
     <Disclosure
       v-slot="{ open, close }"
       as="nav"
-      class="bg-indigo-600 dark:bg-indigo-800"
+      class="bg-rose-600 dark:bg-rose-800"
     >
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="flex h-16 items-center justify-between">
@@ -93,8 +93,8 @@ function getInitials(email: string | undefined): string {
                   :to="item.href"
                   :class="[
                     isActive(item.routeName)
-                      ? 'bg-indigo-700 dark:bg-indigo-900 text-white'
-                      : 'text-white hover:bg-indigo-500 dark:hover:bg-indigo-700 hover:bg-opacity-75',
+                      ? 'bg-rose-700 dark:bg-rose-900 text-white'
+                      : 'text-white hover:bg-rose-500 dark:hover:bg-rose-700 hover:bg-opacity-75',
                     'rounded-md px-3 py-2 text-sm font-medium',
                   ]"
                   :aria-current="isActive(item.routeName) ? 'page' : undefined"
@@ -109,7 +109,7 @@ function getInitials(email: string | undefined): string {
               <!-- Dark mode toggle -->
               <button
                 type="button"
-                class="relative rounded-full bg-indigo-600 dark:bg-indigo-800 p-1 text-indigo-200 hover:text-white focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-indigo-600 focus:outline-hidden"
+                class="relative rounded-full bg-rose-600 dark:bg-rose-800 p-1 text-rose-200 hover:text-white focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-rose-600 focus:outline-hidden"
                 @click="toggleDarkMode"
               >
                 <span class="sr-only">Toggle dark mode</span>
@@ -133,10 +133,10 @@ function getInitials(email: string | undefined): string {
                 <div>
                   <MenuButton
                     data-testid="user-menu-button"
-                    class="relative flex max-w-xs items-center rounded-full bg-indigo-600 dark:bg-indigo-800 text-sm focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-indigo-600 focus:outline-hidden"
+                    class="relative flex max-w-xs items-center rounded-full bg-rose-600 dark:bg-rose-800 text-sm focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-rose-600 focus:outline-hidden"
                   >
                     <span class="sr-only">Open user menu</span>
-                    <span class="inline-flex size-8 items-center justify-center rounded-full bg-indigo-500 dark:bg-indigo-700">
+                    <span class="inline-flex size-8 items-center justify-center rounded-full bg-rose-500 dark:bg-rose-700">
                       <span
                         data-testid="user-initial"
                         class="text-sm font-medium text-white"
@@ -192,7 +192,7 @@ function getInitials(email: string | undefined): string {
           </div>
           <div class="-mr-2 flex md:hidden">
             <!-- Mobile menu button -->
-            <DisclosureButton class="group relative inline-flex items-center justify-center rounded-md bg-indigo-600 dark:bg-indigo-800 p-2 text-indigo-200 hover:bg-indigo-500 dark:hover:bg-indigo-700 hover:bg-opacity-75 hover:text-white focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-indigo-600 focus:outline-hidden">
+            <DisclosureButton class="group relative inline-flex items-center justify-center rounded-md bg-rose-600 dark:bg-rose-800 p-2 text-rose-200 hover:bg-rose-500 dark:hover:bg-rose-700 hover:bg-opacity-75 hover:text-white focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-rose-600 focus:outline-hidden">
               <span class="sr-only">Open main menu</span>
               <Bars3Icon
                 :class="['size-6', open ? 'hidden' : 'block']"
@@ -215,8 +215,8 @@ function getInitials(email: string | undefined): string {
             :to="item.href"
             :class="[
               isActive(item.routeName)
-                ? 'bg-indigo-700 dark:bg-indigo-900 text-white'
-                : 'text-white hover:bg-indigo-500 dark:hover:bg-indigo-700 hover:bg-opacity-75',
+                ? 'bg-rose-700 dark:bg-rose-900 text-white'
+                : 'text-white hover:bg-rose-500 dark:hover:bg-rose-700 hover:bg-opacity-75',
               'block rounded-md px-3 py-2 text-base font-medium',
             ]"
             :aria-current="isActive(item.routeName) ? 'page' : undefined"
@@ -225,10 +225,10 @@ function getInitials(email: string | undefined): string {
             {{ item.name }}
           </router-link>
         </div>
-        <div class="border-t border-indigo-700 dark:border-indigo-900 pt-4 pb-3">
+        <div class="border-t border-rose-700 dark:border-rose-900 pt-4 pb-3">
           <div class="flex items-center px-5">
             <div class="shrink-0">
-              <span class="inline-flex size-10 items-center justify-center rounded-full bg-indigo-500 dark:bg-indigo-700">
+              <span class="inline-flex size-10 items-center justify-center rounded-full bg-rose-500 dark:bg-rose-700">
                 <span class="text-sm font-medium text-white">{{ getInitials(user?.email) }}</span>
               </span>
             </div>
@@ -239,7 +239,7 @@ function getInitials(email: string | undefined): string {
             </div>
             <button
               type="button"
-              class="relative ml-auto shrink-0 rounded-full bg-indigo-600 dark:bg-indigo-800 p-1 text-indigo-200 hover:text-white focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-indigo-600 focus:outline-hidden"
+              class="relative ml-auto shrink-0 rounded-full bg-rose-600 dark:bg-rose-800 p-1 text-rose-200 hover:text-white focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-rose-600 focus:outline-hidden"
               @click="toggleDarkMode"
             >
               <span class="sr-only">Toggle dark mode</span>
@@ -260,14 +260,14 @@ function getInitials(email: string | undefined): string {
               v-for="item in userNavigation"
               :key="item.name"
               :to="item.href"
-              class="block rounded-md px-3 py-2 text-base font-medium text-white hover:bg-indigo-500 dark:hover:bg-indigo-700 hover:bg-opacity-75"
+              class="block rounded-md px-3 py-2 text-base font-medium text-white hover:bg-rose-500 dark:hover:bg-rose-700 hover:bg-opacity-75"
               @click="close"
             >
               {{ item.name }}
             </router-link>
             <button
               type="button"
-              class="block w-full text-left rounded-md px-3 py-2 text-base font-medium text-white hover:bg-indigo-500 dark:hover:bg-indigo-700 hover:bg-opacity-75"
+              class="block w-full text-left rounded-md px-3 py-2 text-base font-medium text-white hover:bg-rose-500 dark:hover:bg-rose-700 hover:bg-opacity-75"
               @click="close(); handleSignOut()"
             >
               Sign out

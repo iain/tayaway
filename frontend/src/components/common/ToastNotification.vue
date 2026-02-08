@@ -34,7 +34,7 @@ const emit = defineEmits<{
         <div class="ml-4 flex shrink-0">
           <button
             type="button"
-            class="inline-flex rounded-md bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+            class="inline-flex rounded-md bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
             @click="emit('dismiss', notification.id)"
           >
             <span class="sr-only">Close</span>
