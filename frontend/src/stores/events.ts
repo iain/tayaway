@@ -8,32 +8,6 @@ export const useEventsStore = defineStore('events', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  async function fetchEvents(): Promise<void> {
-    loading.value = true
-    error.value = null
-    try {
-      await api.get<PoolApiResponse>('/events')
-    } catch (e) {
-      error.value = 'Failed to fetch events'
-      throw e
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function fetchEvent(id: string): Promise<void> {
-    loading.value = true
-    error.value = null
-    try {
-      await api.get<PoolApiResponse>(`/events/${id}`)
-    } catch (e) {
-      error.value = 'Failed to fetch event'
-      throw e
-    } finally {
-      loading.value = false
-    }
-  }
-
   async function createEvent(data: CreateEventRequest): Promise<string> {
     loading.value = true
     error.value = null
@@ -84,8 +58,6 @@ export const useEventsStore = defineStore('events', () => {
   return {
     loading,
     error,
-    fetchEvents,
-    fetchEvent,
     createEvent,
     updateEvent,
     deleteEvent,

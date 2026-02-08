@@ -47,6 +47,7 @@ interface ServerMessage {
 export const useWebSocketStore = defineStore("websocket", () => {
   const state = ref<ConnectionState>("disconnected")
   const workspaceIds = ref<string[]>([])
+  const hasSynced = ref(false)
 
   let socket: WebSocket | null = null
   let reconnectAttempts = 0
@@ -140,6 +141,7 @@ export const useWebSocketStore = defineStore("websocket", () => {
     if (message.data?.objects) {
       pool.importObjects(message.data.objects)
     }
+    hasSynced.value = true
   }
 
   function handleBroadcast(message: BroadcastMessage): void {
@@ -169,6 +171,7 @@ export const useWebSocketStore = defineStore("websocket", () => {
 
     socket = null
     state.value = "disconnected"
+    hasSynced.value = false
   }
 
   function scheduleReconnect(): void {
@@ -235,6 +238,7 @@ export const useWebSocketStore = defineStore("websocket", () => {
     state,
     workspaceIds,
     isConnected,
+    hasSynced,
     connect,
     disconnect,
     // Deprecated - kept for backwards compatibility

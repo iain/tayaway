@@ -1,31 +1,23 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
-import { useEventsStore, useAuthStore } from '@/stores'
+import { useAuthStore, useWebSocketStore } from '@/stores'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
 import VotingCard from '@/components/votes/VotingCard.vue'
 
 const route = useRoute()
 const router = useRouter()
-const eventsStore = useEventsStore()
 const authStore = useAuthStore()
-const { loading, error } = storeToRefs(eventsStore)
+const wsStore = useWebSocketStore()
 const { user } = storeToRefs(authStore)
+const { hasSynced } = storeToRefs(wsStore)
 
 const eventId = computed(() => route.params.id as string)
 
 // Use hydrated event from pool for reactive updates
 const { event } = useHydratedEvent(eventId)
-
-onMounted(async () => {
-  try {
-    await eventsStore.fetchEvent(eventId.value)
-  } catch {
-    // Error handled by store
-  }
-})
 
 function handleBack(): void {
   router.push('/events')
@@ -46,17 +38,10 @@ function handleBack(): void {
     </div>
 
     <div
-      v-if="loading"
+      v-if="!hasSynced"
       class="text-gray-500 dark:text-gray-400"
     >
-      Loading event...
-    </div>
-
-    <div
-      v-else-if="error"
-      class="text-red-600 dark:text-red-400"
-    >
-      {{ error }}
+      Loading...
     </div>
 
     <div

@@ -13,14 +13,18 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => user.value !== null)
 
   async function initialize(): Promise<void> {
-    if (initialized.value) return
-
     const token = getSessionToken()
+
+    // If already initialized with a valid user, skip unless token changed
+    if (initialized.value && user.value) return
+
+    // If no token, mark as initialized and done
     if (!token) {
       initialized.value = true
       return
     }
 
+    // Token exists but no user - (re)initialize auth
     try {
       loading.value = true
       const response = await api.get<MeResponse>('/auth/me')

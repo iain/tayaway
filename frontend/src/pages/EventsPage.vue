@@ -1,16 +1,18 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { PlusIcon, PencilIcon, TrashIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline'
-import { useEventsStore, useAuthStore, useObjectPoolStore } from '@/stores'
+import { useEventsStore, useAuthStore, useObjectPoolStore, useWebSocketStore } from '@/stores'
 import { useCalendar } from '@/composables/useCalendar'
 
 const router = useRouter()
 const eventsStore = useEventsStore()
 const authStore = useAuthStore()
 const pool = useObjectPoolStore()
-const { loading, error } = storeToRefs(eventsStore)
+const wsStore = useWebSocketStore()
+const { error } = storeToRefs(eventsStore)
+const { hasSynced } = storeToRefs(wsStore)
 const { formatDateDisplay } = useCalendar()
 const { user } = storeToRefs(authStore)
 
@@ -33,10 +35,6 @@ function getEventOwner(userId: string) {
 function getDateRanges(dateRangeIds: string[]) {
   return pool.getMany('dateRange', dateRangeIds)
 }
-
-onMounted(() => {
-  eventsStore.fetchEvents()
-})
 
 function handleCreate(): void {
   router.push('/events/new')
@@ -84,7 +82,7 @@ function formatDateRangeSummary(ranges: { startDate: string; endDate: string }[]
     </header>
 
     <div
-      v-if="loading"
+      v-if="!hasSynced"
       class="text-gray-500 dark:text-gray-400"
     >
       Loading events...

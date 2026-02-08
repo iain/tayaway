@@ -23,21 +23,6 @@ export const useUsersStore = defineStore('users', () => {
     })
   })
 
-  async function fetchUsers(): Promise<PoolUser[]> {
-    loading.value = true
-    error.value = null
-    try {
-      // Response objects are automatically imported by API client
-      await api.get<PoolApiResponse>('/users')
-      return users.value
-    } catch (e) {
-      error.value = 'Failed to fetch users'
-      throw e
-    } finally {
-      loading.value = false
-    }
-  }
-
   async function createUser(data: CreateUserRequest): Promise<PoolUser> {
     loading.value = true
     error.value = null
@@ -68,7 +53,6 @@ export const useUsersStore = defineStore('users', () => {
     users,
     loading,
     error,
-    fetchUsers,
     createUser,
     $reset,
   }

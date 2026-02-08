@@ -1,20 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { UserIcon, PlusIcon } from '@heroicons/vue/24/outline'
-import { useUsersStore } from '@/stores'
+import { useUsersStore, useWebSocketStore } from '@/stores'
 import AddUserModal from '@/components/users/AddUserModal.vue'
 
 const usersStore = useUsersStore()
-const { users, loading, error } = storeToRefs(usersStore)
+const wsStore = useWebSocketStore()
+const { users } = storeToRefs(usersStore)
+const { hasSynced } = storeToRefs(wsStore)
 
 const isModalOpen = ref(false)
 const isSubmitting = ref(false)
 const formError = ref<string | null>(null)
-
-onMounted(() => {
-  usersStore.fetchUsers()
-})
 
 function openModal(): void {
   formError.value = null
@@ -71,17 +69,10 @@ async function handleSave(name: string, email: string): Promise<void> {
     </div>
 
     <div
-      v-if="loading && users.length === 0"
+      v-if="!hasSynced"
       class="text-gray-500 dark:text-gray-400"
     >
       Loading users...
-    </div>
-
-    <div
-      v-else-if="error && users.length === 0"
-      class="text-red-600 dark:text-red-400"
-    >
-      {{ error }}
     </div>
 
     <div

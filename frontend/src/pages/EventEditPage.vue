@@ -1,18 +1,19 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter, useRoute } from 'vue-router'
 import EventForm, { type EventFormData } from '@/components/events/EventForm.vue'
-import { useEventsStore } from '@/stores'
+import { useEventsStore, useWebSocketStore } from '@/stores'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
 
 const router = useRouter()
 const route = useRoute()
 const eventsStore = useEventsStore()
+const wsStore = useWebSocketStore()
 const { loading, error } = storeToRefs(eventsStore)
+const { hasSynced } = storeToRefs(wsStore)
 
 const formError = ref<string | null>(null)
-const initialLoading = ref(true)
 const initialData = ref<EventFormData | undefined>(undefined)
 
 const eventId = route.params.id as string
@@ -33,16 +34,6 @@ watch(event, (e) => {
     }
   }
 }, { immediate: true })
-
-onMounted(async () => {
-  try {
-    await eventsStore.fetchEvent(eventId)
-  } catch {
-    formError.value = 'Failed to load event'
-  } finally {
-    initialLoading.value = false
-  }
-})
 
 async function handleSubmit(data: EventFormData): Promise<void> {
   formError.value = null
@@ -74,17 +65,17 @@ function handleCancel(): void {
     <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
       <div class="px-4 py-5 sm:p-6">
         <div
-          v-if="initialLoading"
+          v-if="!hasSynced"
           class="text-gray-500 dark:text-gray-400"
         >
-          Loading event...
+          Loading...
         </div>
 
         <div
-          v-else-if="formError && !event"
-          class="text-red-600 dark:text-red-400"
+          v-else-if="!event"
+          class="text-gray-500 dark:text-gray-400"
         >
-          {{ formError }}
+          Event not found
         </div>
 
         <template v-else>
