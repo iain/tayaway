@@ -32,20 +32,21 @@ const isOwner = computed(() => {
   return user.value?.id === event.value?.userId
 })
 
-// Sort date ranges by popularity (yes votes, then preferably_not, then total)
+// Sort date ranges by popularity using Olympic medal ordering:
+// Most yes (gold), then most preferably_not (silver), then most no (bronze)
 const rankedDateRanges = computed(() => {
   if (!event.value) return []
   return [...event.value.dateRanges].sort((a, b) => {
-    // First by yes votes
+    // First by yes votes (most wins)
     if (b.voteSummary.yes !== a.voteSummary.yes) {
       return b.voteSummary.yes - a.voteSummary.yes
     }
-    // Then by preferably_not (fewer is better)
-    if (a.voteSummary.preferably_not !== b.voteSummary.preferably_not) {
-      return a.voteSummary.preferably_not - b.voteSummary.preferably_not
+    // Then by preferably_not votes (most wins)
+    if (b.voteSummary.preferably_not !== a.voteSummary.preferably_not) {
+      return b.voteSummary.preferably_not - a.voteSummary.preferably_not
     }
-    // Then by total participation
-    return b.voteSummary.total - a.voteSummary.total
+    // Then by no votes (most wins, for consistent tiebreaking)
+    return b.voteSummary.no - a.voteSummary.no
   })
 })
 
