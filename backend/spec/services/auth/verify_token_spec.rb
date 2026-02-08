@@ -12,7 +12,7 @@ RSpec.describe Auth::VerifyToken do
   end
 
   it "returns failure for invalid token" do
-    create(:user, email: "test@example.com")
+    TestFactories.user(email: "test@example.com")
 
     result = described_class.call(token: "invalid", email: "test@example.com")
 
@@ -22,8 +22,8 @@ RSpec.describe Auth::VerifyToken do
   end
 
   it "returns session token for valid magic link and marks token as used" do
-    user = create(:user, email: "test@example.com")
-    magic_token = create(:magic_link_token, user: user)
+    user = TestFactories.user(email: "test@example.com")
+    magic_token = TestFactories.magic_link_token(user: user)
 
     result = described_class.call(token: magic_token[:token], email: "test@example.com")
 

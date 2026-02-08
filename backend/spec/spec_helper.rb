@@ -6,11 +6,10 @@ ENV["RACK_ENV"] = "test"
 require_relative "../config/environment"
 require "rack/test"
 require "database_cleaner/sequel"
-require "factory_bot"
+require_relative "support/test_factories"
 
 RSpec.configure do |config|
   config.include Rack::Test::Methods
-  config.include FactoryBot::Syntax::Methods
 
   config.expect_with :rspec do |expectations|
     expectations.include_chain_clauses_in_custom_matcher_descriptions = true
@@ -33,9 +32,12 @@ RSpec.configure do |config|
   end
 
   config.before(:suite) do
-    FactoryBot.find_definitions
     DatabaseCleaner[:sequel].strategy = :transaction
     DatabaseCleaner[:sequel].clean_with(:truncation)
+  end
+
+  config.before do
+    TestFactories.reset_sequences!
   end
 
   config.around do |example|

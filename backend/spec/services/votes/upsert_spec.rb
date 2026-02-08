@@ -5,8 +5,8 @@ require "spec_helper"
 
 RSpec.describe Votes::Upsert do
   it "returns failure when date_range_id is missing" do
-    user = create(:user)
-    event = create(:event, user: user)
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
 
     result = described_class.call(
       event_id: event[:id], user_id: user[:id], date_range_id: nil, vote_response: "yes", comment: nil
@@ -17,9 +17,9 @@ RSpec.describe Votes::Upsert do
   end
 
   it "returns failure when response is invalid" do
-    user = create(:user)
-    event = create(:event, user: user)
-    date_range = create(:date_range, event: event)
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
+    date_range = TestFactories.date_range(event: event)
 
     result = described_class.call(
       event_id: event[:id], user_id: user[:id], date_range_id: date_range[:id], vote_response: "invalid", comment: nil
@@ -30,8 +30,8 @@ RSpec.describe Votes::Upsert do
   end
 
   it "returns failure when date range not found" do
-    user = create(:user)
-    event = create(:event, user: user)
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
 
     result = described_class.call(
       event_id: event[:id], user_id: user[:id], date_range_id: "00000000-0000-0000-0000-000000000000", vote_response: "yes", comment: nil
@@ -42,10 +42,10 @@ RSpec.describe Votes::Upsert do
   end
 
   it "returns failure when date range belongs to different event" do
-    user = create(:user)
-    event1 = create(:event, user: user)
-    event2 = create(:event, user: user)
-    date_range = create(:date_range, event: event2)
+    user = TestFactories.user
+    event1 = TestFactories.event(user: user)
+    event2 = TestFactories.event(user: user)
+    date_range = TestFactories.date_range(event: event2)
 
     result = described_class.call(
       event_id: event1[:id], user_id: user[:id], date_range_id: date_range[:id], vote_response: "yes", comment: nil
@@ -56,9 +56,9 @@ RSpec.describe Votes::Upsert do
   end
 
   it "creates new vote and returns created: true" do
-    user = create(:user)
-    event = create(:event, user: user)
-    date_range = create(:date_range, event: event)
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
+    date_range = TestFactories.date_range(event: event)
 
     result = described_class.call(
       event_id: event[:id],
@@ -77,10 +77,10 @@ RSpec.describe Votes::Upsert do
   end
 
   it "updates existing vote and returns created: false" do
-    user = create(:user)
-    event = create(:event, user: user)
-    date_range = create(:date_range, event: event)
-    create(:vote, user: user, date_range: date_range, response: "yes")
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
+    date_range = TestFactories.date_range(event: event)
+    TestFactories.vote(user: user, date_range: date_range, response: "yes")
 
     result = described_class.call(
       event_id: event[:id],

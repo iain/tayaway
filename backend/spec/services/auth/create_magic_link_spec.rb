@@ -12,7 +12,7 @@ RSpec.describe Auth::CreateMagicLink do
   end
 
   it "returns success and creates magic link token for existing user" do
-    user = create(:user, email: "test@example.com")
+    user = TestFactories.user(email: "test@example.com")
 
     result = described_class.call(email: "test@example.com")
 

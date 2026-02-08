@@ -3,15 +3,10 @@
 
 require "securerandom"
 
-FactoryBot.define do
-  factory :user, class: Hash do
-    transient do
-      id { SecureRandom.uuid }
-    end
-    sequence(:email) { |n| "user#{n}@example.com" }
-    name { "Test User" }
-
-    initialize_with do
+module TestFactories
+  class << self
+    def user(email: nil, name: "Test User", id: SecureRandom.uuid)
+      email ||= "user#{next_sequence(:user)}@example.com"
       now = Time.now
       DB[:users].insert(
         id: id,
@@ -23,16 +18,8 @@ FactoryBot.define do
       DB[:users].where(id: id).first
     end
 
-    to_create { |instance| instance }
-  end
-
-  factory :workspace, class: Hash do
-    transient do
-      id { SecureRandom.uuid }
-    end
-    sequence(:name) { |n| "Workspace #{n}" }
-
-    initialize_with do
+    def workspace(name: nil, id: SecureRandom.uuid)
+      name ||= "Workspace #{next_sequence(:workspace)}"
       now = Time.now
       DB[:workspaces].insert(
         id: id,
@@ -43,18 +30,9 @@ FactoryBot.define do
       DB[:workspaces].where(id: id).first
     end
 
-    to_create { |instance| instance }
-  end
-
-  factory :workspace_membership, class: Hash do
-    transient do
-      id { SecureRandom.uuid }
-    end
-    workspace
-    user
-    role { "member" }
-
-    initialize_with do
+    def workspace_membership(workspace: nil, user: nil, role: "member", id: SecureRandom.uuid)
+      workspace ||= self.workspace
+      user ||= self.user
       now = Time.now
       DB[:workspace_memberships].insert(
         id: id,
@@ -66,19 +44,10 @@ FactoryBot.define do
       DB[:workspace_memberships].where(id: id).first
     end
 
-    to_create { |instance| instance }
-  end
-
-  factory :event, class: Hash do
-    transient do
-      id { SecureRandom.uuid }
-    end
-    workspace
-    user
-    sequence(:name) { |n| "Event #{n}" }
-    description { "Test description" }
-
-    initialize_with do
+    def event(workspace: nil, user: nil, name: nil, description: "Test description", id: SecureRandom.uuid)
+      workspace ||= self.workspace
+      user ||= self.user
+      name ||= "Event #{next_sequence(:event)}"
       now = Time.now
       DB[:events].insert(
         id: id,
@@ -92,18 +61,8 @@ FactoryBot.define do
       DB[:events].where(id: id).first
     end
 
-    to_create { |instance| instance }
-  end
-
-  factory :date_range, class: Hash do
-    transient do
-      id { SecureRandom.uuid }
-    end
-    event
-    start_date { Date.today }
-    end_date { Date.today + 7 }
-
-    initialize_with do
+    def date_range(event: nil, start_date: Date.today, end_date: Date.today + 7, id: SecureRandom.uuid)
+      event ||= self.event
       now = Time.now
       DB[:date_ranges].insert(
         id: id,
@@ -116,19 +75,9 @@ FactoryBot.define do
       DB[:date_ranges].where(id: id).first
     end
 
-    to_create { |instance| instance }
-  end
-
-  factory :vote, class: Hash do
-    transient do
-      id { SecureRandom.uuid }
-    end
-    date_range
-    user
-    response { "yes" }
-    comment { nil }
-
-    initialize_with do
+    def vote(date_range: nil, user: nil, response: "yes", comment: nil, id: SecureRandom.uuid)
+      date_range ||= self.date_range
+      user ||= self.user
       now = Time.now
       DB[:votes].insert(
         id: id,
@@ -142,18 +91,8 @@ FactoryBot.define do
       DB[:votes].where(id: id).first
     end
 
-    to_create { |instance| instance }
-  end
-
-  factory :session, class: Hash do
-    transient do
-      id { SecureRandom.uuid }
-    end
-    user
-    token { SecureRandom.hex(32) }
-    expires_at { Time.now + (30 * 24 * 60 * 60) }
-
-    initialize_with do
+    def session(user: nil, token: SecureRandom.hex(32), expires_at: Time.now + (30 * 24 * 60 * 60), id: SecureRandom.uuid)
+      user ||= self.user
       now = Time.now
       DB[:sessions].insert(
         id: id,
@@ -165,27 +104,15 @@ FactoryBot.define do
       DB[:sessions].where(id: id).first
     end
 
-    to_create { |instance| instance }
-  end
-
-  factory :magic_link_token, class: Hash do
-    transient do
-      id { SecureRandom.uuid }
-    end
-    user
-    token { SecureRandom.hex(32) }
-    email { nil }
-    expires_at { Time.now + (15 * 60) }
-    used_at { nil }
-
-    initialize_with do
+    def magic_link_token(user: nil, token: SecureRandom.hex(32), email: nil, expires_at: Time.now + (15 * 60), used_at: nil, id: SecureRandom.uuid)
+      user ||= self.user
+      email ||= user[:email]
       now = Time.now
-      actual_email = email || user[:email]
       DB[:magic_link_tokens].insert(
         id: id,
         user_id: user[:id],
         token: token,
-        email: actual_email,
+        email: email,
         expires_at: expires_at,
         used_at: used_at,
         created_at: now
@@ -193,6 +120,16 @@ FactoryBot.define do
       DB[:magic_link_tokens].where(id: id).first
     end
 
-    to_create { |instance| instance }
+    def reset_sequences!
+      @sequences = {}
+    end
+
+    private
+
+    def next_sequence(name)
+      @sequences ||= {}
+      @sequences[name] ||= 0
+      @sequences[name] += 1
+    end
   end
 end

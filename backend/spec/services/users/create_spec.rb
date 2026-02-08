@@ -12,7 +12,7 @@ RSpec.describe Users::Create do
   end
 
   it "returns failure when email already exists" do
-    create(:user, email: "existing@example.com")
+    TestFactories.user(email: "existing@example.com")
 
     result = described_class.call(name: "Test", email: "existing@example.com")
 

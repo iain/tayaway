@@ -25,7 +25,7 @@ RSpec.describe Test::CreateSession do
   end
 
   it "uses existing user and updates name when different" do
-    create(:user, email: "existing@example.com", name: "Old Name")
+    TestFactories.user(email: "existing@example.com", name: "Old Name")
 
     result = described_class.call(email: "existing@example.com", name: "Updated Name")
 

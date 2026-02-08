@@ -13,8 +13,8 @@ RSpec.describe Auth::Logout do
   end
 
   it "destroys session and returns success" do
-    user = create(:user)
-    session = create(:session, user: user)
+    user = TestFactories.user
+    session = TestFactories.session(user: user)
 
     result = described_class.call(auth_header: "Bearer #{session[:token]}")
 
