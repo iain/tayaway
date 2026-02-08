@@ -50,15 +50,11 @@ class App
 
   private
 
-  def handle_message(connection, connection_id, user_id, raw_message)
+  def handle_message(connection, _connection_id, _user_id, raw_message)
     data = JSON.parse(raw_message, symbolize_names: true)
     type = data[:type]
 
     case type
-    when "subscribe"
-      handle_subscribe(connection, connection_id, user_id, data[:channel])
-    when "unsubscribe"
-      handle_unsubscribe(connection, connection_id, data[:channel])
     when "ping"
       connection.write({ type: "pong" }.to_json)
     else
@@ -68,40 +64,5 @@ class App
     connection.write({ type: "error", message: "Invalid JSON" }.to_json)
   rescue StandardError => e
     connection.write({ type: "error", message: e.message }.to_json)
-  end
-
-  def handle_subscribe(connection, connection_id, user_id, channel)
-    unless channel&.include?(":")
-      connection.write({ type: "error", message: "Invalid channel format. Expected {objectType}:{id}" }.to_json)
-      return
-    end
-
-    object_type, object_id = channel.split(":", 2)
-
-    # Verify object type is supported
-    unless Websocket::Listener.type_config(object_type)
-      connection.write({ type: "error", message: "Unknown object type: #{object_type}" }.to_json)
-      return
-    end
-
-    # Verify object exists
-    object = Websocket::Listener.find_object(object_type, object_id)
-    unless object
-      connection.write({ type: "error", message: "#{object_type.capitalize} not found" }.to_json)
-      return
-    end
-
-    Websocket::ConnectionManager.instance.subscribe(connection_id, channel)
-    connection.write({ type: "subscribed", channel: channel }.to_json)
-  end
-
-  def handle_unsubscribe(connection, connection_id, channel)
-    unless channel
-      connection.write({ type: "error", message: "Channel is required" }.to_json)
-      return
-    end
-
-    Websocket::ConnectionManager.instance.unsubscribe(connection_id, channel)
-    connection.write({ type: "unsubscribed", channel: channel }.to_json)
   end
 end

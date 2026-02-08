@@ -28,6 +28,12 @@ class App < Roda
     User.find(session.user_id)
   end
 
+  def member_of_workspace?(workspace_id)
+    return false unless current_user
+
+    WorkspaceMembership.find_by_workspace_and_user(workspace_id, current_user.id) != nil
+  end
+
   route do |r|
     r.hash_routes
   end

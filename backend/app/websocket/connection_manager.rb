@@ -4,13 +4,13 @@
 require "json"
 
 module Websocket
-  # Singleton that tracks WebSocket connections and their channel subscriptions.
+  # Singleton that tracks WebSocket connections and their workspace associations.
   # Thread-safe through mutex-protected operations.
   #
   # @example
   #   conn_id = ConnectionManager.instance.register(connection, user_id)
-  #   ConnectionManager.instance.subscribe(conn_id, "event:uuid")
-  #   ConnectionManager.instance.broadcast("event:uuid", { type: "update", data: {...} })
+  #   ConnectionManager.instance.set_workspaces(conn_id, ["workspace-uuid"])
+  #   ConnectionManager.instance.broadcast_to_workspace("workspace-uuid", { type: "update", data: {...} })
   #   ConnectionManager.instance.unregister(conn_id)
   class ConnectionManager
     extend T::Sig
@@ -20,7 +20,6 @@ module Websocket
     def initialize
       @mutex = Mutex.new
       @connections = T.let({}, T::Hash[String, Connection])
-      @subscriptions = T.let({}, T::Hash[String, T::Set[String]])
       @workspace_connections = T.let({}, T::Hash[String, T::Set[String]])
     end
 
@@ -31,38 +30,10 @@ module Websocket
         @connections[connection_id] = Connection.new(
           id: connection_id,
           websocket: websocket,
-          user_id: user_id.to_s,
-          channels: Set.new
+          user_id: user_id.to_s
         )
       end
       connection_id
-    end
-
-    sig { params(connection_id: String, channel: String).void }
-    def subscribe(connection_id, channel)
-      @mutex.synchronize do
-        connection = @connections[connection_id]
-        return unless connection
-
-        connection.channels.add(channel)
-        @subscriptions[channel] ||= Set.new
-        T.must(@subscriptions[channel]).add(connection_id)
-      end
-    end
-
-    sig { params(connection_id: String, channel: String).void }
-    def unsubscribe(connection_id, channel)
-      @mutex.synchronize do
-        connection = @connections[connection_id]
-        return unless connection
-
-        connection.channels.delete(channel)
-        subs = @subscriptions[channel]
-        return unless subs
-
-        subs.delete(connection_id)
-        @subscriptions.delete(channel) if subs.empty?
-      end
     end
 
     sig { params(connection_id: String).void }
@@ -70,14 +41,6 @@ module Websocket
       @mutex.synchronize do
         connection = @connections.delete(connection_id)
         return unless connection
-
-        connection.channels.each do |channel|
-          subs = @subscriptions[channel]
-          next unless subs
-
-          subs.delete(connection_id)
-          @subscriptions.delete(channel) if subs.empty?
-        end
 
         # Clean up workspace associations
         connection.workspace_ids.each do |workspace_id|
@@ -139,33 +102,9 @@ module Websocket
       end
     end
 
-    sig { params(channel: String, message: T::Hash[Symbol, T.untyped]).void }
-    def broadcast(channel, message)
-      connection_ids = @mutex.synchronize { (@subscriptions[channel] || Set.new).to_a }
-      json_message = message.to_json
-
-      connection_ids.each do |connection_id|
-        connection = @mutex.synchronize { @connections[connection_id] }
-        next unless connection
-
-        begin
-          connection.websocket.write(json_message)
-          connection.websocket.flush
-        rescue StandardError => e
-          # Connection might be closed; log and continue
-          warn "[ConnectionManager] Error broadcasting to #{connection_id}: #{e.message}"
-        end
-      end
-    end
-
     sig { returns(Integer) }
     def connection_count
       @mutex.synchronize { @connections.size }
-    end
-
-    sig { returns(Integer) }
-    def subscription_count
-      @mutex.synchronize { @subscriptions.values.sum(&:size) }
     end
 
     # Internal connection struct
@@ -173,7 +112,6 @@ module Websocket
       const :id, String
       const :websocket, Object
       const :user_id, String
-      prop :channels, T::Set[String], default: Set.new
       prop :workspace_ids, T::Set[String], default: Set.new
     end
   end

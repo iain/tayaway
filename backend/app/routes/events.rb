@@ -6,10 +6,11 @@ class App
     response.status = 401
     next { error: "Authorization required" } unless current_user
 
-    # GET /api/events - List all events
+    # GET /api/events - List events in user's workspaces
     r.is do
       r.get do
-        events = Event.all_ordered
+        workspace_ids = Workspace.for_user(current_user.id).map(&:id)
+        events = Event.for_workspace_ids(workspace_ids)
         pool = PoolSerializer.new
         pool.add_all(events, type: :event)
 
@@ -31,6 +32,12 @@ class App
           next { error: "No workspace available. Please create a workspace first." }
         end
 
+        # Verify user is a member of the target workspace
+        unless member_of_workspace?(workspace_id)
+          response.status = 403
+          next { error: "Access denied" }
+        end
+
         result = Events::Create.call(
           workspace_id: workspace_id,
           user_id: current_user.id,
@@ -48,6 +55,10 @@ class App
 
       response.status = 404
       next { error: "Event not found" } unless event
+
+      # Verify user is a member of the event's workspace
+      response.status = 403
+      next { error: "Access denied" } unless member_of_workspace?(event.workspace_id)
 
       # GET /api/events/:id - Get event details (any authenticated user can view)
       r.is do
