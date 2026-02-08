@@ -498,7 +498,7 @@ test.describe('Voting Feature', () => {
       )
     })
 
-    test('event page shows date ranges with voting buttons', async ({
+    test('vote page shows date ranges with voting buttons', async ({
       page,
       request,
     }) => {
@@ -506,7 +506,7 @@ test.describe('Voting Feature', () => {
       const { eventId } = await createTestEvent(request, token)
       await setupAuthenticatedPage(page, token)
 
-      await page.goto(`/events/${eventId}`)
+      await page.goto(`/events/${eventId}/vote`)
 
       // Should see vote buttons
       await expect(
@@ -527,7 +527,7 @@ test.describe('Voting Feature', () => {
       const { eventId } = await createTestEvent(request, token)
       await setupAuthenticatedPage(page, token)
 
-      await page.goto(`/events/${eventId}`)
+      await page.goto(`/events/${eventId}/vote`)
 
       // Click Yes button on first date range
       await page
@@ -551,7 +551,7 @@ test.describe('Voting Feature', () => {
       const { eventId } = await createTestEvent(request, token)
       await setupAuthenticatedPage(page, token)
 
-      await page.goto(`/events/${eventId}`)
+      await page.goto(`/events/${eventId}/vote`)
 
       // Vote Yes first
       await page
@@ -585,7 +585,7 @@ test.describe('Voting Feature', () => {
       const { eventId } = await createTestEvent(request, token)
       await setupAuthenticatedPage(page, token)
 
-      await page.goto(`/events/${eventId}`)
+      await page.goto(`/events/${eventId}/vote`)
 
       // Vote first
       await page
@@ -612,6 +612,47 @@ test.describe('Voting Feature', () => {
       await page.getByRole('button', { name: 'Back to Events' }).click()
 
       await expect(page).toHaveURL('/events')
+    })
+
+    test('event page shows new user in awaiting votes section', async ({
+      page,
+      request,
+    }) => {
+      const { token } = await getTestSession(request)
+      const { eventId } = await createTestEvent(request, token)
+      await setupAuthenticatedPage(page, token)
+
+      // Navigate to the event page first
+      await page.goto(`/events/${eventId}`)
+
+      // Wait for the event name to be visible (indicates page is loaded)
+      await expect(page.getByTestId('event-name')).toBeVisible({
+        timeout: 10000,
+      })
+
+      // The awaiting votes section should show initially (just the creator)
+      const awaitingSection = page.locator('section', {
+        has: page.getByRole('heading', { name: 'Awaiting Votes' }),
+      })
+      await expect(
+        page.getByRole('heading', { name: 'Awaiting Votes' })
+      ).toBeVisible({ timeout: 10000 })
+
+      // Now add a new user via API (simulating another tab/user adding someone)
+      const newUserName = `New User ${Date.now()}`
+      const newUserEmail = `new-user-${Date.now()}@example.com`
+      await request.post('http://localhost:9293/api/users', {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { name: newUserName, email: newUserEmail },
+      })
+
+      // The new user should appear in real-time via WebSocket (no page refresh)
+      await expect(awaitingSection.getByText(newUserName)).toBeVisible({
+        timeout: 10000,
+      })
+
+      // Should show count of people who haven't voted
+      await expect(awaitingSection.getByText(/haven't voted yet/)).toBeVisible()
     })
   })
 })

@@ -24,8 +24,8 @@ class PoolSerializer
     @objects[key] = user.to_api_hash
   end
 
-  sig { params(event: Event).void }
-  def add_event(event)
+  sig { params(event: Event, include_workspace: T::Boolean).void }
+  def add_event(event, include_workspace: false)
     key = "event:#{event.id}"
     return if @objects.key?(key)
 
@@ -39,6 +39,12 @@ class PoolSerializer
     # Add date ranges
     date_ranges = DateRange.for_event(event.id)
     date_ranges.each { |dr| add_date_range(dr) }
+
+    # Add workspace with members if requested
+    if include_workspace
+      workspace = Workspace.find(event.workspace_id)
+      add_workspace(workspace) if workspace
+    end
   end
 
   sig { params(date_range: DateRange).void }

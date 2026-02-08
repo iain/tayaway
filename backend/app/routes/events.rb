@@ -64,7 +64,7 @@ class App
       r.is do
         r.get do
           pool = PoolSerializer.new
-          pool.add_event(event)
+          pool.add_event(event, include_workspace: true)
 
           response.status = 200
           { objects: pool.to_a }

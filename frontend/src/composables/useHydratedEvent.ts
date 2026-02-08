@@ -5,6 +5,7 @@ import type {
   PoolDateRange,
   PoolVote,
   PoolUser,
+  PoolWorkspaceMembership,
   VoteResponse,
 } from '@/types/pool'
 
@@ -36,10 +37,24 @@ export interface HydratedDateRange {
   voteSummary: VoteSummary
 }
 
+export interface HydratedMember {
+  id: string
+  user: PoolUser | undefined
+  role: string
+}
+
+export interface HydratedWorkspace {
+  id: string
+  name: string
+  members: HydratedMember[]
+}
+
 export interface HydratedEvent {
   id: string
   name: string
   description: string | null
+  workspaceId: string
+  workspace: HydratedWorkspace | undefined
   userId: string
   user: PoolUser | undefined
   dateRanges: HydratedDateRange[]
@@ -96,17 +111,56 @@ function hydrateEvent(
 ): HydratedEvent {
   const user = pool.get('user', poolEvent.userId)
   const dateRanges = hydrateDateRanges(poolEvent.dateRangeIds, pool)
+  const workspace = hydrateWorkspace(poolEvent.workspaceId, pool)
 
   return {
     id: poolEvent.id,
     name: poolEvent.name,
     description: poolEvent.description,
+    workspaceId: poolEvent.workspaceId,
+    workspace,
     userId: poolEvent.userId,
     user,
     dateRanges,
     createdAt: poolEvent.createdAt,
     updatedAt: poolEvent.updatedAt,
   }
+}
+
+/**
+ * Hydrate a workspace with its members.
+ */
+function hydrateWorkspace(
+  workspaceId: string,
+  pool: ReturnType<typeof useObjectPoolStore>
+): HydratedWorkspace | undefined {
+  const workspace = pool.get('workspace', workspaceId)
+  if (!workspace) return undefined
+
+  const members = hydrateMembers(workspace.membershipIds, pool)
+
+  return {
+    id: workspace.id,
+    name: workspace.name,
+    members,
+  }
+}
+
+/**
+ * Hydrate workspace memberships into members with user objects.
+ */
+function hydrateMembers(
+  membershipIds: string[],
+  pool: ReturnType<typeof useObjectPoolStore>
+): HydratedMember[] {
+  return membershipIds
+    .map((id) => pool.get('workspaceMembership', id))
+    .filter((m): m is PoolWorkspaceMembership => m !== undefined)
+    .map((membership) => ({
+      id: membership.id,
+      user: pool.get('user', membership.userId),
+      role: membership.role,
+    }))
 }
 
 /**

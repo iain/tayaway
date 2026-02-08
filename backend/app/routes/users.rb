@@ -17,11 +17,16 @@ class App
         { objects: pool.to_a }
       end
 
-      # POST /api/users - Create a new user
+      # POST /api/users - Create a new user in current user's workspace
       r.post do
+        # Get current user's first workspace
+        first_workspace = Workspace.for_user(current_user.id).first
+        workspace_id = first_workspace&.id
+
         result = Users::Create.call(
           name: r.params["name"]&.strip,
-          email: r.params["email"]&.strip&.downcase
+          email: r.params["email"]&.strip&.downcase,
+          workspace_id: workspace_id
         )
         handle_result(result, success_status: 201)
       end

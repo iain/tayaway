@@ -2,10 +2,14 @@
 # frozen_string_literal: true
 
 module Users
-  # Service to create a new user.
+  # Service to create a new user and add them to a workspace.
   #
   # @example
-  #   result = Users::Create.call(name: "John", email: "john@example.com")
+  #   result = Users::Create.call(
+  #     name: "John",
+  #     email: "john@example.com",
+  #     workspace_id: "uuid"
+  #   )
   #   result.success?  # => true
   #   result.value!    # => { user_id: "uuid", objects: [...] }
   module Create
@@ -14,13 +18,16 @@ module Users
       include Result::Methods
 
       sig do
-        params(name: T.nilable(String), email: T.nilable(String))
-          .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
+        params(
+          name: T.nilable(String),
+          email: T.nilable(String),
+          workspace_id: T.nilable(T.any(String, UUID))
+        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def call(name:, email:)
+      def call(name:, email:, workspace_id: nil)
         validate_email(email)
           .bind { |valid_email| check_email_uniqueness(valid_email) }
-          .bind { |valid_email| create_user(name, valid_email) }
+          .bind { |valid_email| create_user(name, valid_email, workspace_id) }
       end
 
       private
@@ -43,22 +50,53 @@ module Users
         end
       end
 
-      sig { params(name: T.nilable(String), email: String).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
-      def create_user(name, email)
+      sig do
+        params(
+          name: T.nilable(String),
+          email: String,
+          workspace_id: T.nilable(T.any(String, UUID))
+        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
+      end
+      def create_user(name, email, workspace_id)
         now = Time.now
         id = SecureRandom.uuid
 
-        DB[:users].insert(
-          id: id,
-          email: email,
-          name: name&.empty? ? nil : name,
-          created_at: now,
-          updated_at: now
-        )
+        DB.transaction do
+          DB[:users].insert(
+            id: id,
+            email: email,
+            name: name&.empty? ? nil : name,
+            created_at: now,
+            updated_at: now
+          )
+
+          # Add user to workspace if provided
+          if workspace_id
+            DB[:workspace_memberships].insert(
+              id: SecureRandom.uuid,
+              workspace_id: workspace_id.to_s,
+              user_id: id,
+              role: "member",
+              created_at: now
+            )
+
+            # Update workspace timestamp so pool knows it changed
+            DB[:workspaces].where(id: workspace_id.to_s).update(updated_at: now)
+
+            # Broadcast workspace change so other clients see new member
+            Broadcaster.object_changed("workspace", workspace_id.to_s, workspace_id: workspace_id.to_s)
+          end
+        end
 
         user = T.must(User.find(id))
         pool = PoolSerializer.new
         pool.add_user(user)
+
+        # Include workspace membership in response if created
+        if workspace_id
+          membership = WorkspaceMembership.find_by_workspace_and_user(workspace_id, id)
+          pool.add_workspace_membership(membership) if membership
+        end
 
         T.cast(Success({ user_id: id, objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
