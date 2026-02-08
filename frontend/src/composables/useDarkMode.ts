@@ -4,8 +4,11 @@ type DarkModePreference = 'light' | 'dark' | 'system'
 
 const STORAGE_KEY = 'dark_mode'
 
+// Store media query reference to avoid creating multiple listeners
+const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+
 function getSystemPreference(): boolean {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
+  return darkModeMediaQuery.matches
 }
 
 function updateDarkClass(dark: boolean): void {
@@ -36,12 +39,20 @@ const isDark = ref(computeIsDark(preference.value))
 
 updateDarkClass(isDark.value)
 
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+// Track if listener is already attached to prevent duplicates on HMR
+let listenerAttached = false
+
+function handleSystemPreferenceChange(): void {
   if (preference.value === 'system') {
     isDark.value = getSystemPreference()
     updateDarkClass(isDark.value)
   }
-})
+}
+
+if (!listenerAttached) {
+  darkModeMediaQuery.addEventListener('change', handleSystemPreferenceChange)
+  listenerAttached = true
+}
 
 watch(preference, (newPref) => {
   if (newPref === 'system') {

@@ -125,6 +125,13 @@ class ApiClient {
         message: response.statusText,
         status: response.status,
       }
+
+      // On 401 Unauthorized, clear the session token
+      // The router guard will redirect to login on next navigation
+      if (response.status === 401) {
+        clearSessionToken()
+      }
+
       const notificationsStore = useNotificationsStore()
       notificationsStore.showError(getErrorMessage(response.status))
       throw error

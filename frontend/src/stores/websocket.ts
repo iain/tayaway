@@ -53,6 +53,7 @@ export const useWebSocketStore = defineStore("websocket", () => {
   let reconnectAttempts = 0
   let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
   let pingInterval: ReturnType<typeof setInterval> | null = null
+  let currentToken: string | null = null // Track token used for current connection
 
   const isConnected = computed(() => state.value === "authenticated")
 
@@ -66,12 +67,19 @@ export const useWebSocketStore = defineStore("websocket", () => {
   }
 
   function connect(): void {
-    if (state.value !== "disconnected") return
-
     const token = getSessionToken()
     if (!token) return
 
+    // If already connecting or connected with same token, skip
+    if (state.value !== "disconnected" && currentToken === token) return
+
+    // If connected with different token, disconnect first to reconnect with new token
+    if (state.value !== "disconnected" && currentToken !== token) {
+      disconnect()
+    }
+
     state.value = "connecting"
+    currentToken = token
 
     try {
       socket = new WebSocket(getWebSocketUrl())
@@ -94,6 +102,7 @@ export const useWebSocketStore = defineStore("websocket", () => {
       }
     } catch {
       state.value = "disconnected"
+      currentToken = null
       scheduleReconnect()
     }
   }
@@ -172,6 +181,7 @@ export const useWebSocketStore = defineStore("websocket", () => {
     socket = null
     state.value = "disconnected"
     hasSynced.value = false
+    currentToken = null
   }
 
   function scheduleReconnect(): void {
@@ -206,6 +216,7 @@ export const useWebSocketStore = defineStore("websocket", () => {
     workspaceIds.value = []
     state.value = "disconnected"
     reconnectAttempts = 0
+    currentToken = null
   }
 
   function $reset(): void {

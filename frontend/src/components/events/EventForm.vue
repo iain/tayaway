@@ -41,7 +41,11 @@ watch(() => props.initialData, (data) => {
 }, { immediate: true })
 
 const canSubmit = computed(() => {
-  return name.value.trim().length > 0 && !props.loading
+  return name.value.trim().length > 0 && dateRanges.value.length > 0 && !props.loading
+})
+
+const showDateRangeWarning = computed(() => {
+  return name.value.trim().length > 0 && dateRanges.value.length === 0
 })
 
 function handleAddRange(): void {
@@ -119,6 +123,12 @@ function handleCancel(): void {
         @add="handleAddRange"
         @remove="handleRemoveRange"
       />
+      <p
+        v-if="showDateRangeWarning"
+        class="text-sm text-amber-600 dark:text-amber-400"
+      >
+        Add at least one date range to create the event.
+      </p>
     </div>
 
     <FormActions

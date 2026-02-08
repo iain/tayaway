@@ -75,6 +75,9 @@ async function handleVote(response: VoteResponse) {
       // Manual handling needed because we update multiple pool objects
       const voteId = crypto.randomUUID()
 
+      // Capture server state before optimistic update for rollback
+      const serverDateRange = pool.getServer('dateRange', props.dateRange.id)
+
       // Optimistically add vote to pool
       pool.set({
         id: voteId,
@@ -106,9 +109,8 @@ async function handleVote(response: VoteResponse) {
         )
         // Server response automatically imported by API client
       } catch {
-        // Rollback: remove vote and restore dateRange
+        // Rollback: remove vote and restore dateRange to pre-optimistic state
         pool.remove('vote', voteId)
-        const serverDateRange = pool.getServer('dateRange', props.dateRange.id)
         if (serverDateRange) {
           pool.set(serverDateRange)
         }
@@ -123,21 +125,26 @@ async function handleVote(response: VoteResponse) {
 async function handleCommentSubmit() {
   if (!currentUserVote.value || !props.currentUser) return
 
-  const vote = currentUserVote.value
-  const originalComment = vote.comment || ''
+  // Capture all values at start to avoid stale closures during async operation
+  const voteId = currentUserVote.value.id
+  const voteResponse = currentUserVote.value.response
+  const dateRangeId = props.dateRange.id
+  const eventId = props.eventId
+  const originalComment = currentUserVote.value.comment || ''
+  const newComment = comment.value || null
 
   loading.value = true
   try {
     await execute(
       'vote',
-      vote.id,
-      { comment: comment.value || null },
+      voteId,
+      { comment: newComment },
       () => api.post<PoolApiResponse>(
-        `/events/${props.eventId}/votes`,
+        `/events/${eventId}/votes`,
         {
-          date_range_id: props.dateRange.id,
-          response: vote.response,
-          comment: comment.value || undefined,
+          date_range_id: dateRangeId,
+          response: voteResponse,
+          comment: newComment || undefined,
         }
       )
     )
