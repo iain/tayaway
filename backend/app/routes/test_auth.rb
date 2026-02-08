@@ -5,8 +5,8 @@
 # This endpoint should NOT be enabled in production
 class App
   hash_path "/api/test/session" do |r|
-    # Only allow in test/development environments
-    unless ENV["RACK_ENV"] == "test" || ENV["RACK_ENV"] == "development"
+    # Only allow in test/development/e2e environments
+    unless %w[test development e2e].include?(ENV["RACK_ENV"])
       response.status = 404
       next { error: "Not found" }
     end

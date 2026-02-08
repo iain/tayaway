@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
 #MISE description="Run E2E tests"
+#MISE depends=["db_setup_e2e"]
 
 pnpm exec playwright test

@@ -19,7 +19,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'cd backend && RACK_ENV=test bundle exec falcon serve --bind http://localhost:9293 --threaded',
+      command: 'cd backend && RACK_ENV=e2e bundle exec falcon serve --bind http://localhost:9293 --threaded',
       url: 'http://localhost:9293/health',
       reuseExistingServer: !process.env.CI,
       timeout: 120000,
