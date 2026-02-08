@@ -14,13 +14,16 @@ const emit = defineEmits<{
 
 const dialogRef = ref<HTMLDialogElement | null>(null)
 
-watch(() => props.open, (isOpen) => {
-  if (isOpen) {
-    dialogRef.value?.showModal()
-  } else {
-    dialogRef.value?.close()
+watch(
+  () => props.open,
+  (isOpen) => {
+    if (isOpen) {
+      dialogRef.value?.showModal()
+    } else {
+      dialogRef.value?.close()
+    }
   }
-})
+)
 
 function handleClose(): void {
   emit('close')
@@ -39,26 +42,23 @@ const sizeClasses: Record<string, string> = {
   <dialog
     ref="dialogRef"
     :class="[
-      'm-auto rounded-lg bg-white dark:bg-gray-900 p-6 text-left shadow-lg ring-1 ring-gray-600 dark:ring-gray-800 backdrop:bg-gray-500/85 backdrop:backdrop-blur-[2px] dark:backdrop:bg-gray-900/80 sm:w-full',
-      sizeClasses[size ?? 'md']
+      'm-auto rounded-lg bg-white p-6 text-left shadow-lg ring-1 ring-gray-600 backdrop:bg-gray-500/85 backdrop:backdrop-blur-[2px] sm:w-full dark:bg-gray-900 dark:ring-gray-800 dark:backdrop:bg-gray-900/80',
+      sizeClasses[size ?? 'md'],
     ]"
     @close="handleClose"
   >
-    <div class="absolute right-0 top-0 pr-4 pt-4">
+    <div class="absolute top-0 right-0 pt-4 pr-4">
       <button
         type="button"
-        class="rounded-md bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900"
+        class="rounded-md bg-white text-gray-500 hover:text-gray-700 focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 focus:ring-offset-white focus:outline-none dark:bg-gray-900 dark:text-gray-400 dark:hover:text-gray-300 dark:focus:ring-offset-gray-900"
         @click="handleClose"
       >
         <span class="sr-only">Close</span>
-        <XMarkIcon
-          class="size-6"
-          aria-hidden="true"
-        />
+        <XMarkIcon class="size-6" aria-hidden="true" />
       </button>
     </div>
 
-    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">
+    <h3 class="mb-6 text-lg font-semibold text-gray-900 dark:text-white">
       {{ title }}
     </h3>
 

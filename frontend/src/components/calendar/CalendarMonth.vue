@@ -15,9 +15,12 @@ const emit = defineEmits<{
   hover: [date: string | null]
 }>()
 
-const { getDaysInMonth, getMonthName, isDateInRange, isDateInHoverRange } = useCalendar()
+const { getDaysInMonth, getMonthName, isDateInRange, isDateInHoverRange } =
+  useCalendar()
 
-const days = computed<CalendarDay[]>(() => getDaysInMonth(props.year, props.month))
+const days = computed<CalendarDay[]>(() =>
+  getDaysInMonth(props.year, props.month)
+)
 
 const monthName = computed(() => getMonthName(props.month))
 
@@ -52,16 +55,14 @@ function handleMouseLeave(): void {
 
 <template>
   <div class="w-full">
-    <div class="text-center font-semibold text-white mb-4">
+    <div class="mb-4 text-center font-semibold text-white">
       {{ monthName }} {{ year }}
     </div>
 
-    <div class="grid grid-cols-7 gap-px text-center text-xs font-medium text-gray-400 mb-2">
-      <div
-        v-for="day in weekDays"
-        :key="day"
-        class="py-2"
-      >
+    <div
+      class="mb-2 grid grid-cols-7 gap-px text-center text-xs font-medium text-gray-400"
+    >
+      <div v-for="day in weekDays" :key="day" class="py-2">
         {{ day }}
       </div>
     </div>
@@ -72,13 +73,11 @@ function handleMouseLeave(): void {
         :key="day.dateString"
         :data-testid="`calendar-day-${day.dateString}`"
         type="button"
-        class="relative py-2 text-sm focus:z-10 focus:outline-none focus:ring-2 focus:ring-rose-500"
+        class="relative py-2 text-sm focus:z-10 focus:ring-2 focus:ring-rose-500 focus:outline-none"
         :class="[
-          day.isCurrentMonth
-            ? 'text-white'
-            : 'text-gray-600',
+          day.isCurrentMonth ? 'text-white' : 'text-gray-600',
           isSelected(day.dateString)
-            ? 'bg-rose-500 text-white font-semibold'
+            ? 'bg-rose-500 font-semibold text-white'
             : isInRange(day.dateString)
               ? 'bg-rose-500/30'
               : isInHoverRange(day.dateString)

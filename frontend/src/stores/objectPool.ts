@@ -21,7 +21,7 @@ function generatePendingId(): string {
 
 // Create empty storage maps from OBJECT_TYPES
 function createEmptyStorage(): Map<ObjectType, Map<string, PoolObject>> {
-  return new Map(OBJECT_TYPES.map(type => [type, new Map()]))
+  return new Map(OBJECT_TYPES.map((type) => [type, new Map()]))
 }
 
 export const useObjectPoolStore = defineStore('objectPool', () => {
@@ -66,7 +66,10 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   }
 
   // Get an object by type and id, with pending updates merged
-  function get<T extends ObjectType>(type: T, id: string): ObjectTypeMap[T] | undefined {
+  function get<T extends ObjectType>(
+    type: T,
+    id: string
+  ): ObjectTypeMap[T] | undefined {
     // Access version to establish reactivity dependency
     void version.value
 
@@ -88,7 +91,10 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   }
 
   // Get raw server object without pending updates
-  function getServer<T extends ObjectType>(type: T, id: string): ObjectTypeMap[T] | undefined {
+  function getServer<T extends ObjectType>(
+    type: T,
+    id: string
+  ): ObjectTypeMap[T] | undefined {
     const typeMap = objects.value.get(type)
     return typeMap?.get(id) as ObjectTypeMap[T] | undefined
   }
@@ -98,7 +104,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     const typeMap = objects.value.get(type)
     if (!typeMap) return []
 
-    return Array.from(typeMap.values()).map(obj => {
+    return Array.from(typeMap.values()).map((obj) => {
       const pendingKey = `${type}:${obj.id}`
       const pending = pendingUpdates.value.get(pendingKey)
       if (!pending?.length) return obj as ObjectTypeMap[T]
@@ -111,9 +117,12 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   }
 
   // Get multiple objects by IDs
-  function getMany<T extends ObjectType>(type: T, ids: string[]): ObjectTypeMap[T][] {
+  function getMany<T extends ObjectType>(
+    type: T,
+    ids: string[]
+  ): ObjectTypeMap[T][] {
     return ids
-      .map(id => get(type, id))
+      .map((id) => get(type, id))
       .filter((obj): obj is ObjectTypeMap[T] => obj !== undefined)
   }
 
@@ -146,7 +155,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   function removePending(pendingId: string): void {
     let changed = false
     for (const [key, updates] of pendingUpdates.value.entries()) {
-      const filtered = updates.filter(u => u.id !== pendingId)
+      const filtered = updates.filter((u) => u.id !== pendingId)
       if (filtered.length === 0) {
         pendingUpdates.value.delete(key)
         changed = true

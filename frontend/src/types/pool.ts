@@ -18,7 +18,14 @@ interface PoolObjectBase<T extends string> {
 // OBJECT TYPE REGISTRY - Add new models here
 // ============================================================================
 
-export const OBJECT_TYPES = ['user', 'event', 'dateRange', 'vote', 'workspace', 'workspaceMembership'] as const
+export const OBJECT_TYPES = [
+  'user',
+  'event',
+  'dateRange',
+  'vote',
+  'workspace',
+  'workspaceMembership',
+] as const
 
 export interface ObjectTypeMap {
   user: PoolObjectBase<'user'> & {

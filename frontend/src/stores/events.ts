@@ -13,7 +13,9 @@ export const useEventsStore = defineStore('events', () => {
     error.value = null
     try {
       const response = await api.post<PoolApiResponse>('/events', data)
-      const newEvent = response.data.objects.find(o => o.objectType === 'event')
+      const newEvent = response.data.objects.find(
+        (o) => o.objectType === 'event'
+      )
       if (!newEvent) throw new Error('No event in response')
       return newEvent.id
     } catch (e) {
@@ -24,7 +26,10 @@ export const useEventsStore = defineStore('events', () => {
     }
   }
 
-  async function updateEvent(id: string, data: UpdateEventRequest): Promise<void> {
+  async function updateEvent(
+    id: string,
+    data: UpdateEventRequest
+  ): Promise<void> {
     loading.value = true
     error.value = null
     try {

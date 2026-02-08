@@ -7,12 +7,16 @@ test.describe('Authentication', () => {
   test.describe('Login page', () => {
     test('displays the login form', async ({ page }) => {
       await page.goto('/login')
-      await expect(page.getByTestId('login-title')).toContainText('Sign in to Tayaway')
+      await expect(page.getByTestId('login-title')).toContainText(
+        'Sign in to Tayaway'
+      )
       await expect(page.getByTestId('email-input')).toBeVisible()
       await expect(page.getByTestId('submit-button')).toBeVisible()
     })
 
-    test('shows success message after requesting magic link', async ({ page }) => {
+    test('shows success message after requesting magic link', async ({
+      page,
+    }) => {
       await page.goto('/login')
       await page.getByTestId('email-input').fill(TEST_EMAIL)
       await page.getByTestId('submit-button').click()
@@ -20,7 +24,9 @@ test.describe('Authentication', () => {
       await expect(page.getByTestId('success-message')).toBeVisible()
     })
 
-    test('shows success message for unknown email (no enumeration)', async ({ page }) => {
+    test('shows success message for unknown email (no enumeration)', async ({
+      page,
+    }) => {
       await page.goto('/login')
       await page.getByTestId('email-input').fill('unknown@example.com')
       await page.getByTestId('submit-button').click()
@@ -32,8 +38,12 @@ test.describe('Authentication', () => {
   test.describe('Magic link verification', () => {
     test('shows error for invalid token', async ({ page }) => {
       await page.goto('/auth/verify?token=invalid&email=test@example.com')
-      await expect(page.getByText('Invalid or expired magic link')).toBeVisible()
-      await expect(page.getByRole('link', { name: 'Back to login' })).toBeVisible()
+      await expect(
+        page.getByText('Invalid or expired magic link')
+      ).toBeVisible()
+      await expect(
+        page.getByRole('link', { name: 'Back to login' })
+      ).toBeVisible()
     })
 
     test('shows error for missing parameters', async ({ page }) => {
@@ -45,9 +55,12 @@ test.describe('Authentication', () => {
   test.describe('Full auth flow', () => {
     test('complete magic link request flow', async ({ page, request }) => {
       // Step 1: Request magic link via API
-      const magicLinkResponse = await request.post(`${API_BASE}/api/auth/magic-link`, {
-        data: { email: TEST_EMAIL }
-      })
+      const magicLinkResponse = await request.post(
+        `${API_BASE}/api/auth/magic-link`,
+        {
+          data: { email: TEST_EMAIL },
+        }
+      )
       expect(magicLinkResponse.ok()).toBeTruthy()
 
       // Step 2: Visit home page - should redirect to login (not authenticated)
@@ -60,11 +73,17 @@ test.describe('Authentication', () => {
       await expect(page.getByTestId('success-message')).toBeVisible()
     })
 
-    test('authenticated user sees their email and can logout', async ({ page, request }) => {
+    test('authenticated user sees their email and can logout', async ({
+      page,
+      request,
+    }) => {
       // Create a session using the test helper endpoint
-      const sessionResponse = await request.post(`${API_BASE}/api/test/session`, {
-        data: { email: TEST_EMAIL, name: 'Test User' }
-      })
+      const sessionResponse = await request.post(
+        `${API_BASE}/api/test/session`,
+        {
+          data: { email: TEST_EMAIL, name: 'Test User' },
+        }
+      )
       expect(sessionResponse.ok()).toBeTruthy()
       const { session_token } = await sessionResponse.json()
 
@@ -94,68 +113,84 @@ test.describe('Authentication', () => {
   })
 
   test.describe('Auth API endpoints', () => {
-    test('POST /api/auth/magic-link returns success for valid email', async ({ request }) => {
+    test('POST /api/auth/magic-link returns success for valid email', async ({
+      request,
+    }) => {
       const response = await request.post(`${API_BASE}/api/auth/magic-link`, {
-        data: { email: TEST_EMAIL }
+        data: { email: TEST_EMAIL },
       })
       expect(response.ok()).toBeTruthy()
       const body = await response.json()
       expect(body.message).toContain('If an account exists')
     })
 
-    test('POST /api/auth/magic-link returns success for unknown email', async ({ request }) => {
+    test('POST /api/auth/magic-link returns success for unknown email', async ({
+      request,
+    }) => {
       const response = await request.post(`${API_BASE}/api/auth/magic-link`, {
-        data: { email: 'nonexistent@example.com' }
+        data: { email: 'nonexistent@example.com' },
       })
       expect(response.ok()).toBeTruthy()
       const body = await response.json()
       expect(body.message).toContain('If an account exists')
     })
 
-    test('POST /api/auth/magic-link returns error for missing email', async ({ request }) => {
+    test('POST /api/auth/magic-link returns error for missing email', async ({
+      request,
+    }) => {
       const response = await request.post(`${API_BASE}/api/auth/magic-link`, {
-        data: {}
+        data: {},
       })
       expect(response.status()).toBe(400)
       const body = await response.json()
       expect(body.error).toBe('Email is required')
     })
 
-    test('POST /api/auth/verify returns error for invalid token', async ({ request }) => {
+    test('POST /api/auth/verify returns error for invalid token', async ({
+      request,
+    }) => {
       const response = await request.post(`${API_BASE}/api/auth/verify`, {
-        data: { token: 'invalid-token', email: TEST_EMAIL }
+        data: { token: 'invalid-token', email: TEST_EMAIL },
       })
       expect(response.status()).toBe(401)
       const body = await response.json()
       expect(body.error).toBe('Invalid or expired magic link')
     })
 
-    test('POST /api/auth/verify returns error for missing params', async ({ request }) => {
+    test('POST /api/auth/verify returns error for missing params', async ({
+      request,
+    }) => {
       const response = await request.post(`${API_BASE}/api/auth/verify`, {
-        data: {}
+        data: {},
       })
       expect(response.status()).toBe(400)
       const body = await response.json()
       expect(body.error).toBe('Token and email are required')
     })
 
-    test('GET /api/auth/me returns error without auth header', async ({ request }) => {
+    test('GET /api/auth/me returns error without auth header', async ({
+      request,
+    }) => {
       const response = await request.get(`${API_BASE}/api/auth/me`)
       expect(response.status()).toBe(401)
       const body = await response.json()
       expect(body.error).toBe('Authorization required')
     })
 
-    test('GET /api/auth/me returns error with invalid token', async ({ request }) => {
+    test('GET /api/auth/me returns error with invalid token', async ({
+      request,
+    }) => {
       const response = await request.get(`${API_BASE}/api/auth/me`, {
-        headers: { Authorization: 'Bearer invalid-token' }
+        headers: { Authorization: 'Bearer invalid-token' },
       })
       expect(response.status()).toBe(401)
       const body = await response.json()
       expect(body.error).toBe('Invalid or expired session')
     })
 
-    test('POST /api/auth/logout returns error without auth header', async ({ request }) => {
+    test('POST /api/auth/logout returns error without auth header', async ({
+      request,
+    }) => {
       const response = await request.post(`${API_BASE}/api/auth/logout`)
       expect(response.status()).toBe(401)
       const body = await response.json()
@@ -164,12 +199,16 @@ test.describe('Authentication', () => {
   })
 
   test.describe('Protected routes', () => {
-    test('home page redirects to login when not authenticated', async ({ page }) => {
+    test('home page redirects to login when not authenticated', async ({
+      page,
+    }) => {
       await page.goto('/')
       await expect(page).toHaveURL('/login')
     })
 
-    test('login page redirects to home if already has session token', async ({ page }) => {
+    test('login page redirects to home if already has session token', async ({
+      page,
+    }) => {
       // Set a fake session token (won't be valid but tests the redirect logic)
       await page.goto('/')
       await page.evaluate(() => {
@@ -181,7 +220,9 @@ test.describe('Authentication', () => {
       await page.goto('/login')
 
       // Should stay on login since the fake token is invalid
-      await expect(page.getByTestId('login-title')).toContainText('Sign in to Tayaway')
+      await expect(page.getByTestId('login-title')).toContainText(
+        'Sign in to Tayaway'
+      )
     })
   })
 })

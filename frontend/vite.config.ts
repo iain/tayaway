@@ -11,21 +11,21 @@ export default defineConfig({
   plugins: [vue(), tailwindcss()],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
-    }
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
   },
   server: {
     port,
     proxy: {
       '/api': {
         target: `http://localhost:${apiPort}`,
-        changeOrigin: true
+        changeOrigin: true,
       },
       '/ws': {
         target: `http://localhost:${apiPort}`,
         changeOrigin: true,
-        ws: true
-      }
-    }
-  }
+        ws: true,
+      },
+    },
+  },
 })

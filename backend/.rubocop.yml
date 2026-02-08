@@ -17,7 +17,7 @@ Sorbet/FalseSigil:
 
 Sorbet/ValidSigil:
   Enabled: true
-  SuggestedStrictness: "true"
+  SuggestedStrictness: 'true'
   RequireSigilOnAllFiles: true
 
 Sorbet/ConstantsFromStrings:

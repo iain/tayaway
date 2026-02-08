@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { HydratedVote } from '@/composables/useHydratedEvent'
-import { CheckCircleIcon, XCircleIcon, MinusCircleIcon } from '@heroicons/vue/24/solid'
+import {
+  CheckCircleIcon,
+  XCircleIcon,
+  MinusCircleIcon,
+} from '@heroicons/vue/24/solid'
 
 const props = defineProps<{
   votes: HydratedVote[]
@@ -50,14 +54,11 @@ function getResponseLabel(response: string) {
   <div>
     <div
       v-if="votes.length === 0"
-      class="text-sm text-gray-500 dark:text-gray-400 italic"
+      class="text-sm text-gray-500 italic dark:text-gray-400"
     >
       No votes yet
     </div>
-    <ul
-      v-else
-      class="space-y-2"
-    >
+    <ul v-else class="space-y-2">
       <li
         v-for="vote in sortedVotes"
         :key="vote.id"
@@ -65,7 +66,7 @@ function getResponseLabel(response: string) {
       >
         <component
           :is="getResponseIcon(vote.response)"
-          class="size-5 shrink-0 mt-0.5"
+          class="mt-0.5 size-5 shrink-0"
           :class="getResponseColor(vote.response)"
         />
         <div class="min-w-0 flex-1">
@@ -77,7 +78,7 @@ function getResponseLabel(response: string) {
           </div>
           <div
             v-if="vote.comment"
-            class="text-xs text-gray-500 dark:text-gray-400 mt-0.5"
+            class="mt-0.5 text-xs text-gray-500 dark:text-gray-400"
           >
             "{{ vote.comment }}"
           </div>

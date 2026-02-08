@@ -2,7 +2,9 @@
 import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
-import EventForm, { type EventFormData } from '@/components/events/EventForm.vue'
+import EventForm, {
+  type EventFormData,
+} from '@/components/events/EventForm.vue'
 import { useEventsStore } from '@/stores'
 
 const router = useRouter()
@@ -32,17 +34,16 @@ function handleCancel(): void {
 <template>
   <div>
     <header class="mb-6">
-      <h1 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+      <h1
+        class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white"
+      >
         Create Event
       </h1>
     </header>
 
-    <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+    <div class="rounded-lg bg-white shadow dark:bg-gray-800">
       <div class="px-4 py-5 sm:p-6">
-        <div
-          v-if="formError"
-          class="mb-4 text-red-600 dark:text-red-400"
-        >
+        <div v-if="formError" class="mb-4 text-red-600 dark:text-red-400">
           {{ formError }}
         </div>
 

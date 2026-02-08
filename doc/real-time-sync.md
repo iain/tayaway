@@ -60,6 +60,7 @@ if (!existing || isNewer(obj.updatedAt, existing.updatedAt)) {
 ```
 
 **Key methods:**
+
 - `importObjects(objects)` - Merge server objects into pool
 - `get(type, id)` - Get object with pending updates merged
 - `addPending(type, id, changes)` - Add optimistic update
@@ -72,12 +73,14 @@ if (!existing || isNewer(obj.updatedAt, existing.updatedAt)) {
 Manages the WebSocket connection lifecycle and message handling.
 
 **Connection flow:**
+
 1. Client connects with session token: `ws://host/ws?token=<token>`
 2. Server authenticates and sends `authenticated` message with workspace IDs
 3. Server sends `sync` message with all objects for user's workspaces
 4. Client sets `hasSynced = true` to indicate ready state
 
 **Message types:**
+
 ```typescript
 // Server → Client
 { type: "authenticated", userId: string, workspaceIds: string[] }
@@ -103,6 +106,7 @@ Broadcaster.object_deleted("vote", vote_id, workspace_id: workspace_id)
 ```
 
 **Payload format (kept small for pg_notify's 8KB limit):**
+
 ```json
 {
   "workspaceId": "uuid",
@@ -119,6 +123,7 @@ Broadcaster.object_deleted("vote", vote_id, workspace_id: workspace_id)
 Background thread that listens for PostgreSQL NOTIFY events, fetches full object data, and broadcasts to WebSocket clients.
 
 **Flow:**
+
 1. Receives minimal notification from `pg_notify`
 2. Fetches full object from database
 3. Serializes via `PoolSerializer`
@@ -141,6 +146,7 @@ end
 Thread-safe singleton that tracks WebSocket connections and their workspace associations.
 
 **Key methods:**
+
 - `register(websocket, user_id)` - Register new connection
 - `set_workspaces(connection_id, workspace_ids)` - Associate workspaces
 - `broadcast_to_workspace(workspace_id, message)` - Send to all workspace members
@@ -221,6 +227,7 @@ function isNewer(a: string, b: string): boolean {
 ```
 
 This means:
+
 - If server timestamp equals client timestamp, object is **not** updated
 - Pending updates are cleared regardless of timestamp comparison
 - Parent objects must have their `updated_at` touched when child relationships change
@@ -256,8 +263,12 @@ Without `flush()`, messages buffer and only send on pings or connection close.
 
 ```typescript
 export const OBJECT_TYPES = [
-  'user', 'event', 'dateRange', 'vote',
-  'workspace', 'workspaceMembership'
+  'user',
+  'event',
+  'dateRange',
+  'vote',
+  'workspace',
+  'workspaceMembership',
 ] as const
 ```
 
@@ -286,23 +297,26 @@ OBJECT_TYPES = {
 ## Debugging
 
 ### Check pool stats
+
 ```javascript
 // In browser console
 const pool = useObjectPoolStore()
-console.log(pool.stats)  // { user: 5, event: 3, dateRange: 10, ... }
+console.log(pool.stats) // { user: 5, event: 3, dateRange: 10, ... }
 ```
 
 ### Monitor WebSocket messages
+
 ```javascript
 // In browser console - before connecting
 const originalSend = WebSocket.prototype.send
-WebSocket.prototype.send = function(data) {
+WebSocket.prototype.send = function (data) {
   console.log('WS SEND:', data)
   return originalSend.apply(this, arguments)
 }
 ```
 
 ### Check listener status
+
 ```ruby
 # In Rails console
 Websocket::Listener.running?  # => true/false

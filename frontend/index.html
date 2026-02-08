@@ -1,17 +1,22 @@
 <!doctype html>
-<html lang="en" class="h-full bg-white dark:bg-gray-950 scheme-light dark:scheme-dark">
+<html
+  lang="en"
+  class="h-full bg-white scheme-light dark:bg-gray-950 dark:scheme-dark"
+>
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tayaway</title>
     <script>
-      (function() {
-        const saved = localStorage.getItem('dark_mode');
-        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const isDark = saved === 'dark' || (saved !== 'light' && systemDark);
-        if (isDark) document.documentElement.classList.add('dark');
-      })();
+      ;(function () {
+        const saved = localStorage.getItem('dark_mode')
+        const systemDark = window.matchMedia(
+          '(prefers-color-scheme: dark)'
+        ).matches
+        const isDark = saved === 'dark' || (saved !== 'light' && systemDark)
+        if (isDark) document.documentElement.classList.add('dark')
+      })()
     </script>
   </head>
   <body class="h-full">

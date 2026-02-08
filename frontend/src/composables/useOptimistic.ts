@@ -42,7 +42,7 @@ export function useOptimistic() {
     objectType: T,
     objectId: string,
     optimisticChanges: Partial<ObjectTypeMap[T]>,
-    apiCall: () => Promise<ApiResponse<R>>,
+    apiCall: () => Promise<ApiResponse<R>>
   ): Promise<R> {
     const pendingId = pool.addPending(objectType, objectId, optimisticChanges)
 
@@ -69,7 +69,7 @@ export function useOptimistic() {
    */
   async function executeCreate<T extends ObjectType, R extends PoolResponse>(
     tempObject: ObjectTypeMap[T],
-    apiCall: () => Promise<ApiResponse<R>>,
+    apiCall: () => Promise<ApiResponse<R>>
   ): Promise<R> {
     // Add temp object to pool
     pool.set(tempObject)
@@ -97,7 +97,7 @@ export function useOptimistic() {
   async function executeDelete<T extends ObjectType, R = unknown>(
     objectType: T,
     objectId: string,
-    apiCall: () => Promise<ApiResponse<R>>,
+    apiCall: () => Promise<ApiResponse<R>>
   ): Promise<R> {
     // Save current state for potential rollback
     const currentObject = pool.getServer(objectType, objectId)

@@ -21,7 +21,9 @@ const { formatDateDisplay } = useCalendar()
 
 // Sort ranges by start_date for display
 const sortedRanges = computed(() => {
-  return [...props.ranges].sort((a, b) => a.start_date.localeCompare(b.start_date))
+  return [...props.ranges].sort((a, b) =>
+    a.start_date.localeCompare(b.start_date)
+  )
 })
 
 function handleAdd(): void {
@@ -32,7 +34,9 @@ function handleRemove(index: number): void {
   // Find the original index in props.ranges
   const sortedRange = sortedRanges.value[index]
   const originalIndex = props.ranges.findIndex(
-    r => r.start_date === sortedRange.start_date && r.end_date === sortedRange.end_date
+    (r) =>
+      r.start_date === sortedRange.start_date &&
+      r.end_date === sortedRange.end_date
   )
   emit('remove', originalIndex)
 }
@@ -40,7 +44,7 @@ function handleRemove(index: number): void {
 
 <template>
   <div>
-    <div class="flex items-center justify-between mb-3">
+    <div class="mb-3 flex items-center justify-between">
       <label class="block text-sm/6 font-medium text-white">
         Date Ranges
       </label>
@@ -55,24 +59,19 @@ function handleRemove(index: number): void {
       </button>
     </div>
 
-    <div
-      v-if="sortedRanges.length === 0"
-      class="text-sm text-gray-400 italic"
-    >
+    <div v-if="sortedRanges.length === 0" class="text-sm text-gray-400 italic">
       No date ranges added yet. Click "Add Range" to add potential dates.
     </div>
 
-    <ul
-      v-else
-      class="space-y-2"
-    >
+    <ul v-else class="space-y-2">
       <li
         v-for="(range, index) in sortedRanges"
         :key="`${range.start_date}-${range.end_date}`"
-        class="flex items-center justify-between bg-white/5 rounded-md px-3 py-2"
+        class="flex items-center justify-between rounded-md bg-white/5 px-3 py-2"
       >
         <span class="text-sm text-white">
-          {{ formatDateDisplay(range.start_date) }} - {{ formatDateDisplay(range.end_date) }}
+          {{ formatDateDisplay(range.start_date) }} -
+          {{ formatDateDisplay(range.end_date) }}
         </span>
         <button
           type="button"

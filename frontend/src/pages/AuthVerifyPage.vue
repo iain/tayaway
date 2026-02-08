@@ -31,10 +31,12 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
-    <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md text-center">
+  <main
+    class="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-900"
+  >
+    <div class="rounded-lg bg-white p-8 text-center shadow-md dark:bg-gray-800">
       <div v-if="verifying">
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+        <h1 class="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
           Verifying...
         </h1>
         <p class="text-gray-500 dark:text-gray-400">
@@ -43,15 +45,15 @@ onMounted(async () => {
       </div>
 
       <div v-else-if="error">
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+        <h1 class="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
           Verification Failed
         </h1>
-        <p class="text-red-600 dark:text-red-400 mb-4">
+        <p class="mb-4 text-red-600 dark:text-red-400">
           {{ error }}
         </p>
         <router-link
           to="/login"
-          class="inline-block py-2 px-4 bg-rose-600 text-white font-medium rounded-md hover:bg-rose-700"
+          class="inline-block rounded-md bg-rose-600 px-4 py-2 font-medium text-white hover:bg-rose-700"
         >
           Back to login
         </router-link>

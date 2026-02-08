@@ -2,7 +2,7 @@
 import { useAttrs } from 'vue'
 
 defineOptions({
-  inheritAttrs: false
+  inheritAttrs: false,
 })
 
 defineProps<{
@@ -40,14 +40,16 @@ const attrs = useAttrs()
         :disabled="disabled"
         :rows="rows ?? 3"
         v-bind="attrs"
-        class="block w-full rounded-md bg-gray-100 dark:bg-white/5 px-3 py-1.5 text-base text-gray-900 dark:text-white outline-1 -outline-offset-1 outline-gray-300 dark:outline-white/10 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 sm:text-sm/6"
-        @input="$emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
+        class="block w-full rounded-md bg-gray-100 px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500"
+        @input="
+          $emit(
+            'update:modelValue',
+            ($event.target as HTMLTextAreaElement).value
+          )
+        "
       />
     </div>
-    <p
-      v-if="hint"
-      class="mt-3 text-sm/6 text-gray-400"
-    >
+    <p v-if="hint" class="mt-3 text-sm/6 text-gray-400">
       {{ hint }}
     </p>
   </div>

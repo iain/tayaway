@@ -24,7 +24,7 @@ const percentages = computed(() => {
   <div>
     <div
       v-if="hasVotes"
-      class="h-2 rounded-full overflow-hidden flex bg-gray-200 dark:bg-gray-700"
+      class="flex h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700"
     >
       <div
         v-if="percentages.yes > 0"
@@ -42,17 +42,13 @@ const percentages = computed(() => {
         :style="{ width: `${percentages.no}%` }"
       />
     </div>
-    <div
-      v-else
-      class="h-2 rounded-full bg-gray-200 dark:bg-gray-700"
-    />
+    <div v-else class="h-2 rounded-full bg-gray-200 dark:bg-gray-700" />
     <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
       <span v-if="hasVotes">
-        {{ summary.yes }} yes, {{ summary.preferably_not }} preferably not, {{ summary.no }} no
+        {{ summary.yes }} yes, {{ summary.preferably_not }} preferably not,
+        {{ summary.no }} no
       </span>
-      <span v-else>
-        No votes yet
-      </span>
+      <span v-else> No votes yet </span>
     </div>
   </div>
 </template>

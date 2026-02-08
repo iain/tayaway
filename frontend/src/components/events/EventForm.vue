@@ -32,16 +32,24 @@ const modalPreselectedStart = ref<string | null>(null)
 const modalPreselectedEnd = ref<string | null>(null)
 
 // Initialize form with initial data if provided
-watch(() => props.initialData, (data) => {
-  if (data) {
-    name.value = data.name
-    description.value = data.description
-    dateRanges.value = [...data.date_ranges]
-  }
-}, { immediate: true })
+watch(
+  () => props.initialData,
+  (data) => {
+    if (data) {
+      name.value = data.name
+      description.value = data.description
+      dateRanges.value = [...data.date_ranges]
+    }
+  },
+  { immediate: true }
+)
 
 const canSubmit = computed(() => {
-  return name.value.trim().length > 0 && dateRanges.value.length > 0 && !props.loading
+  return (
+    name.value.trim().length > 0 &&
+    dateRanges.value.length > 0 &&
+    !props.loading
+  )
 })
 
 const showDateRangeWarning = computed(() => {
@@ -96,10 +104,7 @@ function handleCancel(): void {
 </script>
 
 <template>
-  <form
-    class="space-y-8"
-    @submit.prevent="handleSubmit"
-  >
+  <form class="space-y-8" @submit.prevent="handleSubmit">
     <div class="space-y-8">
       <FormInput
         id="name"

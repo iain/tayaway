@@ -30,7 +30,7 @@ async function handleSave(name: string, email: string): Promise<void> {
   try {
     await usersStore.createUser({
       name: name || undefined,
-      email: email
+      email: email,
     })
     isModalOpen.value = false
   } catch {
@@ -68,17 +68,11 @@ async function handleSave(name: string, email: string): Promise<void> {
       {{ formError }}
     </div>
 
-    <div
-      v-if="!hasSynced"
-      class="text-gray-500 dark:text-gray-400"
-    >
+    <div v-if="!hasSynced" class="text-gray-500 dark:text-gray-400">
       Loading users...
     </div>
 
-    <div
-      v-else-if="users.length === 0"
-      class="text-center py-12"
-    >
+    <div v-else-if="users.length === 0" class="py-12 text-center">
       <UserIcon class="mx-auto size-12 text-gray-400" />
       <h3 class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
         No users
@@ -107,15 +101,15 @@ async function handleSave(name: string, email: string): Promise<void> {
         v-for="user in users"
         :key="user.id"
         :data-testid="`user-item-${user.id}`"
-        class="bg-white dark:bg-gray-800 shadow rounded-lg mb-4 overflow-hidden"
+        class="mb-4 overflow-hidden rounded-lg bg-white shadow dark:bg-gray-800"
       >
         <div class="px-4 py-5 sm:px-6">
           <div class="flex items-center">
-            <UserIcon class="size-10 text-gray-400 mr-4" />
+            <UserIcon class="mr-4 size-10 text-gray-400" />
             <div class="min-w-0 flex-1">
               <h2
                 data-testid="user-name"
-                class="text-lg font-semibold text-gray-900 dark:text-white truncate"
+                class="truncate text-lg font-semibold text-gray-900 dark:text-white"
               >
                 {{ user.name || 'No name' }}
               </h2>

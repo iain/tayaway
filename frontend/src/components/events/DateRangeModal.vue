@@ -40,23 +40,27 @@ const selectedEnd = ref<string | null>(null)
 const hoverDate = ref<string | null>(null)
 
 // Watch for preselected values
-watch(() => props.open, (isOpen) => {
-  if (isOpen) {
-    selectedStart.value = props.preselectedStart ?? null
-    selectedEnd.value = props.preselectedEnd ?? null
+watch(
+  () => props.open,
+  (isOpen) => {
+    if (isOpen) {
+      selectedStart.value = props.preselectedStart ?? null
+      selectedEnd.value = props.preselectedEnd ?? null
 
-    // If we have a preselected start, navigate to that month
-    if (props.preselectedStart) {
-      const [year, month] = props.preselectedStart.split('-').map(Number)
-      leftYear.value = year
-      leftMonth.value = month - 1
-    } else {
-      // Reset to current month
-      leftYear.value = today.getFullYear()
-      leftMonth.value = today.getMonth()
+      // If we have a preselected start, navigate to that month
+      if (props.preselectedStart) {
+        const [year, month] = props.preselectedStart.split('-').map(Number)
+        leftYear.value = year
+        leftMonth.value = month - 1
+      } else {
+        // Reset to current month
+        leftYear.value = today.getFullYear()
+        leftMonth.value = today.getMonth()
+      }
     }
-  }
-}, { immediate: true })
+  },
+  { immediate: true }
+)
 
 function navigatePrev(): void {
   if (leftMonth.value === 0) {
@@ -127,22 +131,22 @@ const selectionText = computed(() => {
     size="2xl"
     @close="handleClose"
   >
-    <div class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+    <div class="mb-4 text-sm text-gray-500 dark:text-gray-400">
       {{ selectionText }}
     </div>
 
     <!-- Navigation -->
-    <div class="flex items-center justify-between mb-4">
+    <div class="mb-4 flex items-center justify-between">
       <button
         type="button"
-        class="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10"
+        class="rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-300"
         @click="navigatePrev"
       >
         <ChevronLeftIcon class="size-5" />
       </button>
       <button
         type="button"
-        class="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10"
+        class="rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-300"
         @click="navigateNext"
       >
         <ChevronRightIcon class="size-5" />
@@ -150,7 +154,7 @@ const selectionText = computed(() => {
     </div>
 
     <!-- Two calendars side by side -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
+    <div class="grid grid-cols-1 gap-8 sm:grid-cols-2">
       <CalendarMonth
         :year="leftYear"
         :month="leftMonth"
@@ -182,7 +186,7 @@ const selectionText = computed(() => {
       <button
         type="button"
         data-testid="modal-save-button"
-        class="rounded-md bg-rose-500 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        class="rounded-md bg-rose-500 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
         :disabled="!canSave"
         @click="handleSave"
       >

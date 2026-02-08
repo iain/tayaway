@@ -25,33 +25,26 @@ onMounted(async () => {
 <template>
   <div>
     <header class="mb-6">
-      <h1 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+      <h1
+        class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white"
+      >
         Dashboard
       </h1>
     </header>
 
-    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+    <div class="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-800">
       <div class="px-4 py-5 sm:p-6">
-        <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+        <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
           API Status
         </h2>
 
-        <div
-          v-if="loading"
-          class="text-gray-500 dark:text-gray-400"
-        >
+        <div v-if="loading" class="text-gray-500 dark:text-gray-400">
           Checking API status...
         </div>
-        <div
-          v-else-if="error"
-          class="text-red-600 dark:text-red-400"
-        >
+        <div v-else-if="error" class="text-red-600 dark:text-red-400">
           {{ error }}
         </div>
-        <div
-          v-else
-          class="text-green-600 dark:text-green-400"
-        >
+        <div v-else class="text-green-600 dark:text-green-400">
           Status: {{ healthStatus }}
         </div>
       </div>

@@ -61,7 +61,11 @@ export function useCalendar() {
     return new Date(year, month - 1, day)
   }
 
-  function isDateInRange(dateString: string, startString: string | null, endString: string | null): boolean {
+  function isDateInRange(
+    dateString: string,
+    startString: string | null,
+    endString: string | null
+  ): boolean {
     if (!startString || !endString) return false
     return dateString >= startString && dateString <= endString
   }
@@ -96,8 +100,18 @@ export function useCalendar() {
 
   function getMonthName(month: number): string {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ]
     return months[month]
   }
@@ -108,7 +122,7 @@ export function useCalendar() {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
-      year: 'numeric'
+      year: 'numeric',
     })
   }
 

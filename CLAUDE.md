@@ -49,12 +49,14 @@ Frontend dev server proxies `/api/*` requests to the backend.
 ## API Endpoints
 
 **Authentication (`/api/auth`)**
+
 - `POST /magic-link` - Request magic link email
 - `POST /verify` - Verify token and get session
 - `GET /me` - Get current user (requires auth)
 - `POST /logout` - End session (requires auth)
 
 **Events (`/api/events`)** - All require authentication
+
 - `GET /` - List user's events
 - `POST /` - Create event with name, description, date_ranges
 - `GET /:id` - Get event details
@@ -62,6 +64,7 @@ Frontend dev server proxies `/api/*` requests to the backend.
 - `DELETE /:id` - Delete event
 
 **Health**
+
 - `GET /health` - Health check
 - `GET /api/health` - API health check
 
@@ -76,11 +79,13 @@ Frontend dev server proxies `/api/*` requests to the backend.
 ## Code Style Requirements
 
 **Backend (Ruby):**
+
 - Every file must have `# typed: true` (Sorbet sigil) and `# frozen_string_literal: true`
 - Use double quotes for strings
 - Roda routes use `hash_routes` plugin pattern
 
 **Frontend (TypeScript/Vue):**
+
 - Vue components use `<script setup lang="ts">` syntax
 - Tailwind CSS for styling
 - Use composables for shared state/logic

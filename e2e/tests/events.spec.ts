@@ -11,18 +11,26 @@ interface PoolObject {
   [key: string]: unknown
 }
 
-function getObjectsByType<T extends PoolObject>(objects: PoolObject[], type: string): T[] {
-  return objects.filter(o => o.objectType === type) as T[]
+function getObjectsByType<T extends PoolObject>(
+  objects: PoolObject[],
+  type: string
+): T[] {
+  return objects.filter((o) => o.objectType === type) as T[]
 }
 
-function getObjectByType<T extends PoolObject>(objects: PoolObject[], type: string): T | undefined {
-  return objects.find(o => o.objectType === type) as T | undefined
+function getObjectByType<T extends PoolObject>(
+  objects: PoolObject[],
+  type: string
+): T | undefined {
+  return objects.find((o) => o.objectType === type) as T | undefined
 }
 
 // Helper to get an authenticated session for testing
-async function getTestSession(request: APIRequestContext): Promise<{ token: string; userId: string }> {
+async function getTestSession(
+  request: APIRequestContext
+): Promise<{ token: string; userId: string }> {
   const response = await request.post(`${API_BASE}/api/test/session`, {
-    data: { email: TEST_EMAIL, name: TEST_NAME }
+    data: { email: TEST_EMAIL, name: TEST_NAME },
   })
   if (!response.ok()) {
     throw new Error(`Failed to create test session: ${response.status()}`)
@@ -37,7 +45,10 @@ function authHeaders(token: string): { Authorization: string } {
 }
 
 // Helper to set up authenticated page
-async function setupAuthenticatedPage(page: Page, token: string): Promise<void> {
+async function setupAuthenticatedPage(
+  page: Page,
+  token: string
+): Promise<void> {
   await page.goto('/')
   await page.evaluate((t) => {
     localStorage.setItem('session_token', t)
@@ -55,30 +66,36 @@ test.describe('Events Feature', () => {
 
     test('POST /api/events returns 401 without auth', async ({ request }) => {
       const response = await request.post(`${API_BASE}/api/events`, {
-        data: { name: 'Test Event' }
+        data: { name: 'Test Event' },
       })
       expect(response.status()).toBe(401)
       const body = await response.json()
       expect(body.error).toBe('Authorization required')
     })
 
-    test('GET /api/events/:id returns 401 without auth', async ({ request }) => {
+    test('GET /api/events/:id returns 401 without auth', async ({
+      request,
+    }) => {
       const response = await request.get(`${API_BASE}/api/events/some-id`)
       expect(response.status()).toBe(401)
       const body = await response.json()
       expect(body.error).toBe('Authorization required')
     })
 
-    test('PUT /api/events/:id returns 401 without auth', async ({ request }) => {
+    test('PUT /api/events/:id returns 401 without auth', async ({
+      request,
+    }) => {
       const response = await request.put(`${API_BASE}/api/events/some-id`, {
-        data: { name: 'Updated Event' }
+        data: { name: 'Updated Event' },
       })
       expect(response.status()).toBe(401)
       const body = await response.json()
       expect(body.error).toBe('Authorization required')
     })
 
-    test('DELETE /api/events/:id returns 401 without auth', async ({ request }) => {
+    test('DELETE /api/events/:id returns 401 without auth', async ({
+      request,
+    }) => {
       const response = await request.delete(`${API_BASE}/api/events/some-id`)
       expect(response.status()).toBe(401)
       const body = await response.json()
@@ -90,7 +107,7 @@ test.describe('Events Feature', () => {
     test('GET /api/events returns list of events', async ({ request }) => {
       const { token } = await getTestSession(request)
       const response = await request.get(`${API_BASE}/api/events`, {
-        headers: authHeaders(token)
+        headers: authHeaders(token),
       })
       expect(response.ok()).toBeTruthy()
       const body = await response.json()
@@ -105,10 +122,8 @@ test.describe('Events Feature', () => {
         data: {
           name: 'Test Event',
           description: 'A test event description',
-          date_ranges: [
-            { start_date: '2025-03-01', end_date: '2025-03-07' }
-          ]
-        }
+          date_ranges: [{ start_date: '2025-03-01', end_date: '2025-03-07' }],
+        },
       })
       expect(response.status()).toBe(201)
       const body = await response.json()
@@ -126,7 +141,7 @@ test.describe('Events Feature', () => {
       const { token } = await getTestSession(request)
       const response = await request.post(`${API_BASE}/api/events`, {
         headers: authHeaders(token),
-        data: { description: 'No name provided' }
+        data: { description: 'No name provided' },
       })
       expect(response.status()).toBe(400)
       const body = await response.json()
@@ -141,10 +156,8 @@ test.describe('Events Feature', () => {
         headers: authHeaders(token),
         data: {
           name: 'CRUD Test Event',
-          date_ranges: [
-            { start_date: '2025-04-01', end_date: '2025-04-05' }
-          ]
-        }
+          date_ranges: [{ start_date: '2025-04-01', end_date: '2025-04-05' }],
+        },
       })
       expect(createResponse.status()).toBe(201)
       const createBody = await createResponse.json()
@@ -152,38 +165,50 @@ test.describe('Events Feature', () => {
       const eventId = createdEvent!.id
 
       // Read
-      const getResponse = await request.get(`${API_BASE}/api/events/${eventId}`, {
-        headers: authHeaders(token)
-      })
+      const getResponse = await request.get(
+        `${API_BASE}/api/events/${eventId}`,
+        {
+          headers: authHeaders(token),
+        }
+      )
       expect(getResponse.ok()).toBeTruthy()
       const getBody = await getResponse.json()
       const fetchedEvent = getObjectByType(getBody.objects, 'event')
       expect(fetchedEvent?.name).toBe('CRUD Test Event')
 
       // Update
-      const updateResponse = await request.put(`${API_BASE}/api/events/${eventId}`, {
-        headers: authHeaders(token),
-        data: {
-          name: 'Updated CRUD Event',
-          description: 'Now with a description',
-          date_ranges: [
-            { start_date: '2025-04-01', end_date: '2025-04-05' },
-            { start_date: '2025-04-10', end_date: '2025-04-12' }
-          ]
+      const updateResponse = await request.put(
+        `${API_BASE}/api/events/${eventId}`,
+        {
+          headers: authHeaders(token),
+          data: {
+            name: 'Updated CRUD Event',
+            description: 'Now with a description',
+            date_ranges: [
+              { start_date: '2025-04-01', end_date: '2025-04-05' },
+              { start_date: '2025-04-10', end_date: '2025-04-12' },
+            ],
+          },
         }
-      })
+      )
       expect(updateResponse.ok()).toBeTruthy()
       const updateBody = await updateResponse.json()
       const updatedEvent = getObjectByType(updateBody.objects, 'event')
       expect(updatedEvent?.name).toBe('Updated CRUD Event')
       expect(updatedEvent?.description).toBe('Now with a description')
-      const updatedDateRanges = getObjectsByType(updateBody.objects, 'dateRange')
+      const updatedDateRanges = getObjectsByType(
+        updateBody.objects,
+        'dateRange'
+      )
       expect(updatedDateRanges).toHaveLength(2)
 
       // Delete
-      const deleteResponse = await request.delete(`${API_BASE}/api/events/${eventId}`, {
-        headers: authHeaders(token)
-      })
+      const deleteResponse = await request.delete(
+        `${API_BASE}/api/events/${eventId}`,
+        {
+          headers: authHeaders(token),
+        }
+      )
       expect(deleteResponse.ok()).toBeTruthy()
       const deleteBody = await deleteResponse.json()
       expect(deleteBody.deleted).toHaveLength(1)
@@ -191,17 +216,25 @@ test.describe('Events Feature', () => {
       expect(deleteBody.deleted[0].id).toBe(eventId)
 
       // Verify deleted
-      const verifyResponse = await request.get(`${API_BASE}/api/events/${eventId}`, {
-        headers: authHeaders(token)
-      })
+      const verifyResponse = await request.get(
+        `${API_BASE}/api/events/${eventId}`,
+        {
+          headers: authHeaders(token),
+        }
+      )
       expect(verifyResponse.status()).toBe(404)
     })
 
-    test('GET /api/events/:id returns 404 for non-existent event', async ({ request }) => {
+    test('GET /api/events/:id returns 404 for non-existent event', async ({
+      request,
+    }) => {
       const { token } = await getTestSession(request)
-      const response = await request.get(`${API_BASE}/api/events/00000000-0000-0000-0000-000000000000`, {
-        headers: authHeaders(token)
-      })
+      const response = await request.get(
+        `${API_BASE}/api/events/00000000-0000-0000-0000-000000000000`,
+        {
+          headers: authHeaders(token),
+        }
+      )
       expect(response.status()).toBe(404)
       const body = await response.json()
       expect(body.error).toBe('Event not found')
@@ -209,24 +242,33 @@ test.describe('Events Feature', () => {
   })
 
   test.describe('Events UI - Unauthenticated Navigation', () => {
-    test('events page redirects to login when not authenticated', async ({ page }) => {
+    test('events page redirects to login when not authenticated', async ({
+      page,
+    }) => {
       await page.goto('/events')
       await expect(page).toHaveURL('/login')
     })
 
-    test('events/new page redirects to login when not authenticated', async ({ page }) => {
+    test('events/new page redirects to login when not authenticated', async ({
+      page,
+    }) => {
       await page.goto('/events/new')
       await expect(page).toHaveURL('/login')
     })
 
-    test('events edit page redirects to login when not authenticated', async ({ page }) => {
+    test('events edit page redirects to login when not authenticated', async ({
+      page,
+    }) => {
       await page.goto('/events/some-id/edit')
       await expect(page).toHaveURL('/login')
     })
   })
 
   test.describe('Events UI - Authenticated', () => {
-    test('events page displays header and new event button', async ({ page, request }) => {
+    test('events page displays header and new event button', async ({
+      page,
+      request,
+    }) => {
       const { token } = await getTestSession(request)
       await setupAuthenticatedPage(page, token)
       await page.goto('/events')
@@ -250,10 +292,15 @@ test.describe('Events Feature', () => {
 
       await page.getByTestId('new-event-button').click()
       await expect(page.getByRole('dialog')).toBeVisible()
-      await expect(page.getByRole('dialog').getByRole('heading', { name: 'New Event' })).toBeVisible()
+      await expect(
+        page.getByRole('dialog').getByRole('heading', { name: 'New Event' })
+      ).toBeVisible()
     })
 
-    test('create event modal has required fields', async ({ page, request }) => {
+    test('create event modal has required fields', async ({
+      page,
+      request,
+    }) => {
       const { token } = await getTestSession(request)
       await setupAuthenticatedPage(page, token)
       await page.goto('/events')
@@ -284,7 +331,9 @@ test.describe('Events Feature', () => {
       await expect(page).toHaveURL(/\/events\/[\w-]+$/, { timeout: 10000 })
 
       // Event name should be visible on the event page
-      await expect(page.getByTestId('event-name')).toContainText('Modal Test Event')
+      await expect(page.getByTestId('event-name')).toContainText(
+        'Modal Test Event'
+      )
     })
   })
 })

@@ -29,16 +29,23 @@ const showCommentInput = ref(false)
 
 const currentUserVote = computed(() => {
   if (!props.currentUser) return null
-  return props.dateRange.votes.find(v => v.userId === props.currentUser?.id) ?? null
+  return (
+    props.dateRange.votes.find((v) => v.userId === props.currentUser?.id) ??
+    null
+  )
 })
 
 // Initialize comment from existing vote and keep section open if comment exists
-watch(currentUserVote, (vote) => {
-  if (vote?.comment) {
-    comment.value = vote.comment
-    showCommentInput.value = true
-  }
-}, { immediate: true })
+watch(
+  currentUserVote,
+  (vote) => {
+    if (vote?.comment) {
+      comment.value = vote.comment
+      showCommentInput.value = true
+    }
+  },
+  { immediate: true }
+)
 
 const isSelected = computed(() => (response: VoteResponse) => {
   return currentUserVote.value?.response === response
@@ -58,18 +65,12 @@ async function handleVote(response: VoteResponse) {
   try {
     if (existingVote) {
       // Update existing vote using optimistic helper
-      await execute(
-        'vote',
-        existingVote.id,
-        { response },
-        () => api.post<PoolApiResponse>(
-          `/events/${props.eventId}/votes`,
-          {
-            date_range_id: props.dateRange.id,
-            response,
-            comment: existingVote.comment || undefined,
-          }
-        )
+      await execute('vote', existingVote.id, { response }, () =>
+        api.post<PoolApiResponse>(`/events/${props.eventId}/votes`, {
+          date_range_id: props.dateRange.id,
+          response,
+          comment: existingVote.comment || undefined,
+        })
       )
     } else {
       // Create new vote with client-generated ID
@@ -100,14 +101,11 @@ async function handleVote(response: VoteResponse) {
       }
 
       try {
-        await api.post<PoolApiResponse>(
-          `/events/${props.eventId}/votes`,
-          {
-            id: voteId,
-            date_range_id: props.dateRange.id,
-            response,
-          }
-        )
+        await api.post<PoolApiResponse>(`/events/${props.eventId}/votes`, {
+          id: voteId,
+          date_range_id: props.dateRange.id,
+          response,
+        })
         // Server response automatically imported by API client
       } catch {
         // Rollback: remove vote and restore dateRange to pre-optimistic state
@@ -136,18 +134,12 @@ async function handleCommentSubmit() {
 
   loading.value = true
   try {
-    await execute(
-      'vote',
-      voteId,
-      { comment: newComment },
-      () => api.post<PoolApiResponse>(
-        `/events/${eventId}/votes`,
-        {
-          date_range_id: dateRangeId,
-          response: voteResponse,
-          comment: newComment || undefined,
-        }
-      )
+    await execute('vote', voteId, { comment: newComment }, () =>
+      api.post<PoolApiResponse>(`/events/${eventId}/votes`, {
+        date_range_id: dateRangeId,
+        response: voteResponse,
+        comment: newComment || undefined,
+      })
     )
   } catch {
     // Restore original comment in input on failure
@@ -163,11 +155,11 @@ function toggleCommentInput() {
 </script>
 
 <template>
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+  <div class="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
     <div class="flex flex-col md:flex-row md:gap-6">
       <!-- Left side: Date range info and stats -->
-      <div class="flex-1 mb-4 md:mb-0">
-        <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">
+      <div class="mb-4 flex-1 md:mb-0">
+        <h3 class="mb-3 text-sm font-medium text-gray-900 dark:text-white">
           {{ formatDateDisplay(dateRange.startDate) }}
           <span v-if="dateRange.startDate !== dateRange.endDate">
             - {{ formatDateDisplay(dateRange.endDate) }}
@@ -178,39 +170,40 @@ function toggleCommentInput() {
         <VoteSummaryBar :summary="dateRange.voteSummary" />
 
         <!-- Voters List Toggle -->
-        <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+        <div class="mt-3 border-t border-gray-200 pt-3 dark:border-gray-700">
           <button
             type="button"
-            class="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+            class="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
             @click="showVoters = !showVoters"
           >
             <component
               :is="showVoters ? ChevronUpIcon : ChevronDownIcon"
               class="size-4"
             />
-            {{ showVoters ? 'Hide' : 'Show' }} votes ({{ dateRange.voteSummary.total }})
+            {{ showVoters ? 'Hide' : 'Show' }} votes ({{
+              dateRange.voteSummary.total
+            }})
           </button>
-          <div
-            v-if="showVoters"
-            class="mt-3"
-          >
+          <div v-if="showVoters" class="mt-3">
             <VotersList :votes="dateRange.votes" />
           </div>
         </div>
       </div>
 
       <!-- Right side: Voting elements -->
-      <div class="flex-1 md:border-l md:border-gray-200 md:dark:border-gray-700 md:pl-6">
+      <div
+        class="flex-1 md:border-l md:border-gray-200 md:pl-6 md:dark:border-gray-700"
+      >
         <!-- Vote Buttons -->
-        <div class="flex gap-2 mb-4">
+        <div class="mb-4 flex gap-2">
           <button
             type="button"
             :disabled="loading"
-            class="flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors"
+            class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors"
             :class="[
               isSelected('yes')
                 ? 'bg-green-600 text-white'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-green-100 dark:hover:bg-green-900/30 hover:text-green-700 dark:hover:text-green-400'
+                : 'bg-gray-100 text-gray-700 hover:bg-green-100 hover:text-green-700 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-green-900/30 dark:hover:text-green-400',
             ]"
             @click="handleVote('yes')"
           >
@@ -219,11 +212,11 @@ function toggleCommentInput() {
           <button
             type="button"
             :disabled="loading"
-            class="flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors"
+            class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors"
             :class="[
               isSelected('preferably_not')
                 ? 'bg-yellow-500 text-white'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 hover:text-yellow-700 dark:hover:text-yellow-400'
+                : 'bg-gray-100 text-gray-700 hover:bg-yellow-100 hover:text-yellow-700 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-yellow-900/30 dark:hover:text-yellow-400',
             ]"
             @click="handleVote('preferably_not')"
           >
@@ -232,11 +225,11 @@ function toggleCommentInput() {
           <button
             type="button"
             :disabled="loading"
-            class="flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors"
+            class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors"
             :class="[
               isSelected('no')
                 ? 'bg-red-600 text-white'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-400'
+                : 'bg-gray-100 text-gray-700 hover:bg-red-100 hover:text-red-700 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-red-900/30 dark:hover:text-red-400',
             ]"
             @click="handleVote('no')"
           >
@@ -248,15 +241,18 @@ function toggleCommentInput() {
         <div v-if="currentUserVote">
           <button
             type="button"
-            class="text-sm text-rose-600 dark:text-rose-400 hover:underline"
+            class="text-sm text-rose-600 hover:underline dark:text-rose-400"
             @click="toggleCommentInput"
           >
-            {{ showCommentInput ? 'Hide comment' : (currentUserVote.comment ? 'Edit comment' : 'Add a comment') }}
+            {{
+              showCommentInput
+                ? 'Hide comment'
+                : currentUserVote.comment
+                  ? 'Edit comment'
+                  : 'Add a comment'
+            }}
           </button>
-          <div
-            v-if="showCommentInput"
-            class="mt-2"
-          >
+          <div v-if="showCommentInput" class="mt-2">
             <FormTextarea
               :id="`comment-${dateRange.id}`"
               v-model="comment"
@@ -267,11 +263,11 @@ function toggleCommentInput() {
             <button
               type="button"
               :disabled="loading || !hasCommentChanges"
-              class="mt-2 px-4 py-2 text-sm font-medium rounded-md transition-colors"
+              class="mt-2 rounded-md px-4 py-2 text-sm font-medium transition-colors"
               :class="[
                 hasCommentChanges
                   ? 'bg-rose-600 text-white hover:bg-rose-500 disabled:bg-rose-400'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                  : 'cursor-not-allowed bg-gray-200 text-gray-400 dark:bg-gray-700 dark:text-gray-500',
               ]"
               @click="handleCommentSubmit"
             >

@@ -22,8 +22,11 @@ export const useVotesStore = defineStore('votes', () => {
         response,
         comment,
       }
-      const apiResponse = await api.post<PoolApiResponse>(`/events/${eventId}/votes`, body)
-      const vote = apiResponse.data.objects.find(o => o.objectType === 'vote')
+      const apiResponse = await api.post<PoolApiResponse>(
+        `/events/${eventId}/votes`,
+        body
+      )
+      const vote = apiResponse.data.objects.find((o) => o.objectType === 'vote')
       if (!vote) throw new Error('No vote in response')
       return vote.id
     } catch (e) {

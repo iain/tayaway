@@ -1,10 +1,14 @@
-import { ref, computed } from "vue"
-import { defineStore } from "pinia"
-import { getSessionToken } from "@/api/client"
-import { useObjectPoolStore } from "./objectPool"
-import type { PoolObject, ObjectType } from "@/types/pool"
+import { ref, computed } from 'vue'
+import { defineStore } from 'pinia'
+import { getSessionToken } from '@/api/client'
+import { useObjectPoolStore } from './objectPool'
+import type { PoolObject, ObjectType } from '@/types/pool'
 
-type ConnectionState = "disconnected" | "connecting" | "connected" | "authenticated"
+type ConnectionState =
+  | 'disconnected'
+  | 'connecting'
+  | 'connected'
+  | 'authenticated'
 
 interface DeletedObject {
   objectType: ObjectType
@@ -12,9 +16,9 @@ interface DeletedObject {
 }
 
 interface BroadcastMessage {
-  type: "broadcast"
+  type: 'broadcast'
   workspaceId: string
-  action: "update" | "delete"
+  action: 'update' | 'delete'
   data: {
     objects?: PoolObject[]
     deleted?: DeletedObject[]
@@ -22,14 +26,14 @@ interface BroadcastMessage {
 }
 
 interface SyncMessage {
-  type: "sync"
+  type: 'sync'
   data: {
     objects: PoolObject[]
   }
 }
 
 interface AuthenticatedMessage {
-  type: "authenticated"
+  type: 'authenticated'
   userId: string
   workspaceIds: string[]
 }
@@ -44,8 +48,8 @@ interface ServerMessage {
   message?: string
 }
 
-export const useWebSocketStore = defineStore("websocket", () => {
-  const state = ref<ConnectionState>("disconnected")
+export const useWebSocketStore = defineStore('websocket', () => {
+  const state = ref<ConnectionState>('disconnected')
   const workspaceIds = ref<string[]>([])
   const hasSynced = ref(false)
 
@@ -55,13 +59,13 @@ export const useWebSocketStore = defineStore("websocket", () => {
   let pingInterval: ReturnType<typeof setInterval> | null = null
   let currentToken: string | null = null // Track token used for current connection
 
-  const isConnected = computed(() => state.value === "authenticated")
+  const isConnected = computed(() => state.value === 'authenticated')
 
   function getWebSocketUrl(): string {
     const token = getSessionToken()
-    if (!token) throw new Error("No session token available")
+    if (!token) throw new Error('No session token available')
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
     return `${protocol}//${host}/ws?token=${encodeURIComponent(token)}`
   }
@@ -71,14 +75,14 @@ export const useWebSocketStore = defineStore("websocket", () => {
     if (!token) return
 
     // If already connecting or connected with same token, skip
-    if (state.value !== "disconnected" && currentToken === token) return
+    if (state.value !== 'disconnected' && currentToken === token) return
 
     // If connected with different token, disconnect first to reconnect with new token
-    if (state.value !== "disconnected" && currentToken !== token) {
+    if (state.value !== 'disconnected' && currentToken !== token) {
       disconnect()
     }
 
-    state.value = "connecting"
+    state.value = 'connecting'
     currentToken = token
 
     try {
@@ -101,7 +105,7 @@ export const useWebSocketStore = defineStore("websocket", () => {
         // Error will trigger close event
       }
     } catch {
-      state.value = "disconnected"
+      state.value = 'disconnected'
       currentToken = null
       scheduleReconnect()
     }
@@ -112,36 +116,36 @@ export const useWebSocketStore = defineStore("websocket", () => {
     try {
       message = JSON.parse(raw) as ServerMessage
     } catch {
-      console.warn("[WebSocket] Invalid JSON received")
+      console.warn('[WebSocket] Invalid JSON received')
       return
     }
 
     switch (message.type) {
-      case "authenticated":
+      case 'authenticated':
         handleAuthenticated(message as unknown as AuthenticatedMessage)
         break
-      case "sync":
+      case 'sync':
         handleSync(message as unknown as SyncMessage)
         break
-      case "broadcast":
+      case 'broadcast':
         handleBroadcast(message as unknown as BroadcastMessage)
         break
-      case "pong":
+      case 'pong':
         // Keep-alive response, nothing to do
         break
-      case "error":
-        console.warn("[WebSocket] Server error:", message.message)
+      case 'error':
+        console.warn('[WebSocket] Server error:', message.message)
         break
     }
   }
 
   function handleAuthenticated(message: AuthenticatedMessage): void {
-    state.value = "authenticated"
+    state.value = 'authenticated'
     workspaceIds.value = message.workspaceIds
 
     // Start ping interval to keep connection alive
     pingInterval = setInterval(() => {
-      send({ type: "ping" })
+      send({ type: 'ping' })
     }, 30000)
   }
 
@@ -156,12 +160,12 @@ export const useWebSocketStore = defineStore("websocket", () => {
   function handleBroadcast(message: BroadcastMessage): void {
     const pool = useObjectPoolStore()
 
-    if (message.action === "delete" && message.data?.deleted) {
+    if (message.action === 'delete' && message.data?.deleted) {
       // Handle deletions from the deleted array
       for (const item of message.data.deleted) {
         pool.remove(item.objectType, item.id)
       }
-    } else if (message.action === "update" && message.data?.objects) {
+    } else if (message.action === 'update' && message.data?.objects) {
       pool.importObjects(message.data.objects)
     }
   }
@@ -179,7 +183,7 @@ export const useWebSocketStore = defineStore("websocket", () => {
     }
 
     socket = null
-    state.value = "disconnected"
+    state.value = 'disconnected'
     hasSynced.value = false
     currentToken = null
   }
@@ -214,7 +218,7 @@ export const useWebSocketStore = defineStore("websocket", () => {
     }
 
     workspaceIds.value = []
-    state.value = "disconnected"
+    state.value = 'disconnected'
     reconnectAttempts = 0
     currentToken = null
   }

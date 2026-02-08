@@ -2,7 +2,9 @@
 import { ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter, useRoute } from 'vue-router'
-import EventForm, { type EventFormData } from '@/components/events/EventForm.vue'
+import EventForm, {
+  type EventFormData,
+} from '@/components/events/EventForm.vue'
 import { useEventsStore, useWebSocketStore } from '@/stores'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
 
@@ -22,18 +24,22 @@ const eventId = route.params.id as string
 const { event } = useHydratedEvent(eventId)
 
 // Populate initial form data when event is loaded
-watch(event, (e) => {
-  if (e && !initialData.value) {
-    initialData.value = {
-      name: e.name,
-      description: e.description || '',
-      date_ranges: e.dateRanges.map(r => ({
-        start_date: r.startDate,
-        end_date: r.endDate,
-      })),
+watch(
+  event,
+  (e) => {
+    if (e && !initialData.value) {
+      initialData.value = {
+        name: e.name,
+        description: e.description || '',
+        date_ranges: e.dateRanges.map((r) => ({
+          start_date: r.startDate,
+          end_date: r.endDate,
+        })),
+      }
     }
-  }
-}, { immediate: true })
+  },
+  { immediate: true }
+)
 
 async function handleSubmit(data: EventFormData): Promise<void> {
   formError.value = null
@@ -57,32 +63,25 @@ function handleCancel(): void {
 <template>
   <div>
     <header class="mb-6">
-      <h1 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+      <h1
+        class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white"
+      >
         Edit Event
       </h1>
     </header>
 
-    <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+    <div class="rounded-lg bg-white shadow dark:bg-gray-800">
       <div class="px-4 py-5 sm:p-6">
-        <div
-          v-if="!hasSynced"
-          class="text-gray-500 dark:text-gray-400"
-        >
+        <div v-if="!hasSynced" class="text-gray-500 dark:text-gray-400">
           Loading...
         </div>
 
-        <div
-          v-else-if="!event"
-          class="text-gray-500 dark:text-gray-400"
-        >
+        <div v-else-if="!event" class="text-gray-500 dark:text-gray-400">
           Event not found
         </div>
 
         <template v-else>
-          <div
-            v-if="formError"
-            class="mb-4 text-red-600 dark:text-red-400"
-          >
+          <div v-if="formError" class="mb-4 text-red-600 dark:text-red-400">
             {{ formError }}
           </div>
 

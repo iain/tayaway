@@ -27,7 +27,10 @@ export const useUsersStore = defineStore('users', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.post<CreateUserResponseWithPool>('/users', data)
+      const response = await api.post<CreateUserResponseWithPool>(
+        '/users',
+        data
+      )
 
       // Get created user from pool
       const pool = useObjectPoolStore()

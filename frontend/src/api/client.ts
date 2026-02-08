@@ -18,12 +18,18 @@ function processPoolResponse(data: unknown): void {
   const pool = useObjectPoolStore()
 
   // Import new/updated objects
-  if ('objects' in data && Array.isArray((data as { objects: unknown }).objects)) {
+  if (
+    'objects' in data &&
+    Array.isArray((data as { objects: unknown }).objects)
+  ) {
     pool.importObjects((data as { objects: PoolObject[] }).objects)
   }
 
   // Remove deleted objects
-  if ('deleted' in data && Array.isArray((data as { deleted: unknown }).deleted)) {
+  if (
+    'deleted' in data &&
+    Array.isArray((data as { deleted: unknown }).deleted)
+  ) {
     for (const item of (data as { deleted: DeletedObject[] }).deleted) {
       pool.remove(item.objectType, item.id)
     }
@@ -56,7 +62,7 @@ function getErrorMessage(status: number): string {
     case 401:
       return 'You need to sign in to continue.'
     case 403:
-      return 'You don\'t have permission to perform this action.'
+      return "You don't have permission to perform this action."
     case 404:
       return 'The requested resource was not found.'
     case 422:
@@ -137,7 +143,7 @@ class ApiClient {
       throw error
     }
 
-    const data = await response.json() as T
+    const data = (await response.json()) as T
     processPoolResponse(data)
     return { data, status: response.status }
   }

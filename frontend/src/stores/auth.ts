@@ -1,9 +1,20 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import { api, setSessionToken, clearSessionToken, getSessionToken } from '@/api/client'
+import {
+  api,
+  setSessionToken,
+  clearSessionToken,
+  getSessionToken,
+} from '@/api/client'
 import { useObjectPoolStore } from './objectPool'
 import { useWebSocketStore } from './websocket'
-import type { AuthUser, MagicLinkResponse, VerifyResponse, MeResponse, LogoutResponse } from '@/types'
+import type {
+  AuthUser,
+  MagicLinkResponse,
+  VerifyResponse,
+  MeResponse,
+  LogoutResponse,
+} from '@/types'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthUser | null>(null)
@@ -33,7 +44,7 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = {
         id: response.data.user_id,
         email: response.data.email,
-        name: response.data.name
+        name: response.data.name,
       }
 
       // Connect WebSocket after successful auth
@@ -49,12 +60,17 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function requestMagicLink(email: string): Promise<string> {
-    const response = await api.post<MagicLinkResponse>('/auth/magic-link', { email })
+    const response = await api.post<MagicLinkResponse>('/auth/magic-link', {
+      email,
+    })
     return response.data.message
   }
 
   async function verifyToken(token: string, email: string): Promise<AuthUser> {
-    const response = await api.post<VerifyResponse>('/auth/verify', { token, email })
+    const response = await api.post<VerifyResponse>('/auth/verify', {
+      token,
+      email,
+    })
 
     setSessionToken(response.data.session_token)
 
@@ -63,7 +79,7 @@ export const useAuthStore = defineStore('auth', () => {
     const verifiedUser: AuthUser = {
       id: meResponse.data.user_id,
       email: meResponse.data.email,
-      name: meResponse.data.name
+      name: meResponse.data.name,
     }
     user.value = verifiedUser
 

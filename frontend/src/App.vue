@@ -15,13 +15,8 @@ onMounted(() => {
 
 <template>
   <RouterView v-if="initialized" />
-  <div
-    v-else
-    class="min-h-screen bg-gray-100 flex items-center justify-center"
-  >
-    <div class="text-gray-500">
-      Loading...
-    </div>
+  <div v-else class="flex min-h-screen items-center justify-center bg-gray-100">
+    <div class="text-gray-500">Loading...</div>
   </div>
   <ToastContainer />
 </template>

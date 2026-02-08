@@ -25,14 +25,22 @@ export const relationshipSchema: RelationshipSchema = {
   user: {},
   event: {
     user: { type: 'belongsTo', foreignKey: 'userId', targetType: 'user' },
-    dateRanges: { type: 'hasMany', foreignKey: 'dateRangeIds', targetType: 'dateRange' },
+    dateRanges: {
+      type: 'hasMany',
+      foreignKey: 'dateRangeIds',
+      targetType: 'dateRange',
+    },
   },
   dateRange: {
     event: { type: 'belongsTo', foreignKey: 'eventId', targetType: 'event' },
     votes: { type: 'hasMany', foreignKey: 'voteIds', targetType: 'vote' },
   },
   vote: {
-    dateRange: { type: 'belongsTo', foreignKey: 'dateRangeId', targetType: 'dateRange' },
+    dateRange: {
+      type: 'belongsTo',
+      foreignKey: 'dateRangeId',
+      targetType: 'dateRange',
+    },
     user: { type: 'belongsTo', foreignKey: 'userId', targetType: 'user' },
   },
 } as const

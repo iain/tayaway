@@ -19,13 +19,13 @@ export function usePoolObject<T extends ObjectType>(
 } {
   const pool = useObjectPoolStore()
 
-  const resolvedId = computed(() =>
-    typeof id === 'string' ? id : id.value
-  )
+  const resolvedId = computed(() => (typeof id === 'string' ? id : id.value))
 
   const object = computed(() => pool.get(objectType, resolvedId.value))
 
-  const isPending = computed(() => pool.hasPending(objectType, resolvedId.value))
+  const isPending = computed(() =>
+    pool.hasPending(objectType, resolvedId.value)
+  )
 
   return {
     object,
@@ -47,9 +47,7 @@ export function usePoolObjects<T extends ObjectType>(
 } {
   const pool = useObjectPoolStore()
 
-  const resolvedIds = computed(() =>
-    Array.isArray(ids) ? ids : ids.value
-  )
+  const resolvedIds = computed(() => (Array.isArray(ids) ? ids : ids.value))
 
   const objects = computed(() => pool.getMany(objectType, resolvedIds.value))
 

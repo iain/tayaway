@@ -1,6 +1,12 @@
 import { computed, type ComputedRef } from 'vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
-import type { PoolEvent, PoolDateRange, PoolVote, PoolUser, VoteResponse } from '@/types/pool'
+import type {
+  PoolEvent,
+  PoolDateRange,
+  PoolVote,
+  PoolUser,
+  VoteResponse,
+} from '@/types/pool'
 
 // Hydrated types - these match the nested structure components expect
 export interface HydratedVote {
@@ -51,9 +57,7 @@ export interface HydratedEvent {
  * const { event, isLoading } = useHydratedEvent(eventId)
  * // event.value.dateRanges[0].votes[0].user - fully hydrated
  */
-export function useHydratedEvent(
-  eventId: ComputedRef<string> | string
-): {
+export function useHydratedEvent(eventId: ComputedRef<string> | string): {
   event: ComputedRef<HydratedEvent | undefined>
   isLoading: ComputedRef<boolean>
 } {
@@ -113,9 +117,9 @@ function hydrateDateRanges(
   pool: ReturnType<typeof useObjectPoolStore>
 ): HydratedDateRange[] {
   return dateRangeIds
-    .map(id => pool.get('dateRange', id))
+    .map((id) => pool.get('dateRange', id))
     .filter((dr): dr is PoolDateRange => dr !== undefined)
-    .map(dr => hydrateDateRange(dr, pool))
+    .map((dr) => hydrateDateRange(dr, pool))
 }
 
 /**
@@ -146,9 +150,9 @@ function hydrateVotes(
   pool: ReturnType<typeof useObjectPoolStore>
 ): HydratedVote[] {
   return voteIds
-    .map(id => pool.get('vote', id))
+    .map((id) => pool.get('vote', id))
     .filter((v): v is PoolVote => v !== undefined)
-    .map(vote => ({
+    .map((vote) => ({
       id: vote.id,
       dateRangeId: vote.dateRangeId,
       userId: vote.userId,
@@ -165,9 +169,9 @@ function hydrateVotes(
  */
 function calculateVoteSummary(votes: HydratedVote[]): VoteSummary {
   return {
-    yes: votes.filter(v => v.response === 'yes').length,
-    no: votes.filter(v => v.response === 'no').length,
-    preferably_not: votes.filter(v => v.response === 'preferably_not').length,
+    yes: votes.filter((v) => v.response === 'yes').length,
+    no: votes.filter((v) => v.response === 'no').length,
+    preferably_not: votes.filter((v) => v.response === 'preferably_not').length,
     total: votes.length,
   }
 }

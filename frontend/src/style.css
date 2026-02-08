@@ -1,7 +1,9 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-sans:
+    'Inter Variable', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -11,7 +13,7 @@ html {
 }
 
 body {
-  @apply bg-gray-100 dark:bg-gray-900 font-sans antialiased min-h-screen;
+  @apply min-h-screen bg-gray-100 font-sans antialiased dark:bg-gray-900;
 }
 
 body:has(dialog[open]) {

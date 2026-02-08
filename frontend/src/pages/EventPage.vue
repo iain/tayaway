@@ -56,11 +56,14 @@ function handleAddDateRange(): void {
   showDateRangeModal.value = true
 }
 
-async function handleDateRangeModalSave(startDate: string, endDate: string): Promise<void> {
+async function handleDateRangeModalSave(
+  startDate: string,
+  endDate: string
+): Promise<void> {
   if (!event.value) return
 
   try {
-    const existingRanges = event.value.dateRanges.map(r => ({
+    const existingRanges = event.value.dateRanges.map((r) => ({
       start_date: r.startDate,
       end_date: r.endDate,
     }))
@@ -68,7 +71,10 @@ async function handleDateRangeModalSave(startDate: string, endDate: string): Pro
     await eventsStore.updateEvent(event.value.id, {
       name: event.value.name,
       description: event.value.description || undefined,
-      date_ranges: [...existingRanges, { start_date: startDate, end_date: endDate }],
+      date_ranges: [
+        ...existingRanges,
+        { start_date: startDate, end_date: endDate },
+      ],
     })
     showDateRangeModal.value = false
   } catch {
@@ -86,7 +92,7 @@ function handleDateRangeModalClose(): void {
     <div class="mb-6">
       <button
         type="button"
-        class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+        class="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
         @click="handleBack"
       >
         <ArrowLeftIcon class="size-4" />
@@ -94,17 +100,11 @@ function handleDateRangeModalClose(): void {
       </button>
     </div>
 
-    <div
-      v-if="!hasSynced"
-      class="text-gray-500 dark:text-gray-400"
-    >
+    <div v-if="!hasSynced" class="text-gray-500 dark:text-gray-400">
       Loading...
     </div>
 
-    <div
-      v-else-if="!event"
-      class="text-gray-500 dark:text-gray-400"
-    >
+    <div v-else-if="!event" class="text-gray-500 dark:text-gray-400">
       Event not found
     </div>
 
@@ -130,7 +130,7 @@ function handleDateRangeModalClose(): void {
 
       <!-- Date Ranges with Voting -->
       <section>
-        <div class="flex items-center justify-between mb-4">
+        <div class="mb-4 flex items-center justify-between">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
             Vote on Date Options
           </h2>
@@ -146,11 +146,8 @@ function handleDateRangeModalClose(): void {
           </button>
         </div>
 
-        <div
-          v-if="event.dateRanges.length === 0"
-          class="text-center py-8"
-        >
-          <p class="text-gray-500 dark:text-gray-400 mb-4">
+        <div v-if="event.dateRanges.length === 0" class="py-8 text-center">
+          <p class="mb-4 text-gray-500 dark:text-gray-400">
             No date ranges have been added to this event yet.
           </p>
           <button
@@ -165,10 +162,7 @@ function handleDateRangeModalClose(): void {
           </button>
         </div>
 
-        <div
-          v-else
-          class="space-y-4"
-        >
+        <div v-else class="space-y-4">
           <VotingCard
             v-for="dateRange in event.dateRanges"
             :key="dateRange.id"
