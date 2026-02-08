@@ -262,8 +262,10 @@ function getInitials(email: string | undefined): string {
               type="button"
               class="hover:bg-opacity-75 block w-full rounded-md px-3 py-2 text-left text-base font-medium text-white hover:bg-rose-500 dark:hover:bg-rose-700"
               @click="
-                close()
-                handleSignOut()
+                () => {
+                  close()
+                  handleSignOut()
+                }
               "
             >
               Sign out
