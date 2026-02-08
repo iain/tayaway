@@ -125,6 +125,13 @@ module Websocket
           if object
             pool = PoolSerializer.new
             pool.send(config[:pool_method], object)
+
+            # For votes, also include the parent date_range so voteIds gets updated
+            if object_type == "vote"
+              date_range = DateRange.find(object.date_range_id)
+              pool.add_date_range(date_range) if date_range
+            end
+
             message[:data] = { objects: pool.to_a }
           else
             # Object was deleted between notify and fetch

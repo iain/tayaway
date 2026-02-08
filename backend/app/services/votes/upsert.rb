@@ -103,16 +103,17 @@ module Votes
         workspace_id = T.must(event).workspace_id
 
         DB.transaction do
+          now = Time.now
+
           if existing_vote
             DB[:votes].where(id: existing_vote.id).update(
               response: vote_response,
               comment: clean_comment,
-              updated_at: Time.now
+              updated_at: now
             )
             result_vote_id = existing_vote.id
             created = false
           else
-            now = Time.now
             result_vote_id = vote_id || SecureRandom.uuid
 
             DB[:votes].insert(
@@ -125,6 +126,9 @@ module Votes
               updated_at: now
             )
             created = true
+
+            # Touch the date_range so its updated_at changes when voteIds change
+            DB[:date_ranges].where(id: date_range.id).update(updated_at: now)
           end
 
           Broadcaster.object_changed("vote", T.must(result_vote_id), workspace_id: workspace_id)

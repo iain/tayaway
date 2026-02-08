@@ -58,6 +58,7 @@ module Votes
       sig { params(vote: Vote, event_id: T.any(String, UUID)).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
       def delete_vote(vote, event_id)
         vote_id = vote.id
+        date_range_id = vote.date_range_id
 
         # Get workspace_id from the event
         event = Event.find(event_id)
@@ -65,7 +66,11 @@ module Votes
 
         DB.transaction do
           DB[:votes].where(id: vote_id).delete
+          # Touch the date_range so its updated_at changes when voteIds change
+          DB[:date_ranges].where(id: date_range_id).update(updated_at: Time.now)
           Broadcaster.object_deleted("vote", vote_id, workspace_id: workspace_id)
+          # Also broadcast the date_range update so voteIds gets refreshed
+          Broadcaster.object_changed("date_range", date_range_id, workspace_id: workspace_id)
         end
 
         T.cast(Success({ deleted: [{ objectType: "vote", id: vote_id.to_s }] }), Result[T::Hash[Symbol, T.untyped], ServiceError])
