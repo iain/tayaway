@@ -17,13 +17,15 @@ import {
   SunIcon,
   MoonIcon,
 } from '@heroicons/vue/24/outline'
-import { useAuthStore } from '@/stores'
+import { useAuthStore, useWebSocketStore } from '@/stores'
 import { useDarkMode } from '@/composables/useDarkMode'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const wsStore = useWebSocketStore()
 const { user } = storeToRefs(authStore)
+const { hasSynced } = storeToRefs(wsStore)
 const { isDark, toggle: toggleDarkMode } = useDarkMode()
 
 const navigation = [
@@ -55,7 +57,23 @@ function getInitials(email: string | undefined): string {
 </script>
 
 <template>
-  <div class="min-h-full">
+  <!-- Loading screen while waiting for initial sync -->
+  <div
+    v-if="!hasSynced"
+    class="min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900"
+  >
+    <div class="text-center">
+      <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent" />
+      <p class="mt-4 text-lg font-medium text-gray-700 dark:text-gray-300">
+        Loading...
+      </p>
+    </div>
+  </div>
+
+  <div
+    v-else
+    class="min-h-full"
+  >
     <Disclosure
       v-slot="{ open }"
       as="nav"
