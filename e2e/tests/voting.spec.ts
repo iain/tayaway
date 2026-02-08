@@ -326,28 +326,27 @@ test.describe('Voting Feature', () => {
       expect(votes[0]?.response).toBe('preferably_not')
     })
 
-    test('any authenticated user can view any event', async ({ request }) => {
+    test('non-workspace-member cannot view event', async ({ request }) => {
       const { token: ownerToken } = await getTestSession(request, TEST_EMAIL, TEST_NAME)
       const { token: otherToken } = await getTestSession(request, TEST_EMAIL_2, TEST_NAME_2)
       const { eventId } = await createTestEvent(request, ownerToken)
 
-      // Other user can view the event
+      // Other user (not in workspace) cannot view the event
       const response = await request.get(`${API_BASE}/api/events/${eventId}`, {
         headers: authHeaders(otherToken)
       })
 
-      expect(response.ok()).toBeTruthy()
+      expect(response.status()).toBe(403)
       const body = await response.json()
-      const event = getObjectByType(body.objects, 'event')
-      expect(event?.name).toBe('Voting Test Event')
+      expect(body.error).toBe('Access denied')
     })
 
-    test('any authenticated user can vote on any event', async ({ request }) => {
+    test('non-workspace-member cannot vote on event', async ({ request }) => {
       const { token: ownerToken } = await getTestSession(request, TEST_EMAIL, TEST_NAME)
       const { token: otherToken } = await getTestSession(request, TEST_EMAIL_2, TEST_NAME_2)
       const { eventId, dateRangeId } = await createTestEvent(request, ownerToken)
 
-      // Other user can vote on the event
+      // Other user (not in workspace) cannot vote on the event
       const response = await request.post(`${API_BASE}/api/events/${eventId}/votes`, {
         headers: authHeaders(otherToken),
         data: {
@@ -356,7 +355,9 @@ test.describe('Voting Feature', () => {
         }
       })
 
-      expect(response.status()).toBe(201)
+      expect(response.status()).toBe(403)
+      const body = await response.json()
+      expect(body.error).toBe('Access denied')
     })
   })
 
