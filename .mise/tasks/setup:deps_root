@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Install root dependencies (Playwright)"
+
+pnpm install

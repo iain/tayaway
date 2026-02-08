@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Install backend dependencies"
+#MISE dir="{{config_root}}/backend"
+
+bundle install

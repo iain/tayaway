@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Install frontend dependencies"
+#MISE dir="{{config_root}}/frontend"
+
+pnpm install

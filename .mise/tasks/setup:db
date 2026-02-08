@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+#MISE description="Create and migrate all databases"
+#MISE dir="{{config_root}}/backend"
+
+echo "Setting up development database..."
+RACK_ENV=development bundle exec rake db:create db:migrate
+
+echo "Setting up test database..."
+RACK_ENV=test bundle exec rake db:create db:migrate
+
+echo "Setting up e2e database..."
+RACK_ENV=e2e bundle exec rake db:create db:migrate
+
+echo "All databases ready"
