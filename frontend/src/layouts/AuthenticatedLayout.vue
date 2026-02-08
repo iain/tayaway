@@ -75,7 +75,7 @@ function getInitials(email: string | undefined): string {
     class="min-h-full"
   >
     <Disclosure
-      v-slot="{ open }"
+      v-slot="{ open, close }"
       as="nav"
       class="bg-indigo-600 dark:bg-indigo-800"
     >
@@ -209,24 +209,21 @@ function getInitials(email: string | undefined): string {
 
       <DisclosurePanel class="md:hidden">
         <div class="space-y-1 px-2 pt-2 pb-3 sm:px-3">
-          <DisclosureButton
+          <router-link
             v-for="item in navigation"
             :key="item.name"
-            as="template"
+            :to="item.href"
+            :class="[
+              isActive(item.routeName)
+                ? 'bg-indigo-700 dark:bg-indigo-900 text-white'
+                : 'text-white hover:bg-indigo-500 dark:hover:bg-indigo-700 hover:bg-opacity-75',
+              'block rounded-md px-3 py-2 text-base font-medium',
+            ]"
+            :aria-current="isActive(item.routeName) ? 'page' : undefined"
+            @click="close"
           >
-            <router-link
-              :to="item.href"
-              :class="[
-                isActive(item.routeName)
-                  ? 'bg-indigo-700 dark:bg-indigo-900 text-white'
-                  : 'text-white hover:bg-indigo-500 dark:hover:bg-indigo-700 hover:bg-opacity-75',
-                'block rounded-md px-3 py-2 text-base font-medium',
-              ]"
-              :aria-current="isActive(item.routeName) ? 'page' : undefined"
-            >
-              {{ item.name }}
-            </router-link>
-          </DisclosureButton>
+            {{ item.name }}
+          </router-link>
         </div>
         <div class="border-t border-indigo-700 dark:border-indigo-900 pt-4 pb-3">
           <div class="flex items-center px-5">
@@ -259,25 +256,22 @@ function getInitials(email: string | undefined): string {
             </button>
           </div>
           <div class="mt-3 space-y-1 px-2">
-            <DisclosureButton
+            <router-link
               v-for="item in userNavigation"
               :key="item.name"
-              as="template"
+              :to="item.href"
+              class="block rounded-md px-3 py-2 text-base font-medium text-white hover:bg-indigo-500 dark:hover:bg-indigo-700 hover:bg-opacity-75"
+              @click="close"
             >
-              <router-link
-                :to="item.href"
-                class="block rounded-md px-3 py-2 text-base font-medium text-white hover:bg-indigo-500 dark:hover:bg-indigo-700 hover:bg-opacity-75"
-              >
-                {{ item.name }}
-              </router-link>
-            </DisclosureButton>
-            <DisclosureButton
-              as="button"
+              {{ item.name }}
+            </router-link>
+            <button
+              type="button"
               class="block w-full text-left rounded-md px-3 py-2 text-base font-medium text-white hover:bg-indigo-500 dark:hover:bg-indigo-700 hover:bg-opacity-75"
-              @click="handleSignOut"
+              @click="close(); handleSignOut()"
             >
               Sign out
-            </DisclosureButton>
+            </button>
           </div>
         </div>
       </DisclosurePanel>
