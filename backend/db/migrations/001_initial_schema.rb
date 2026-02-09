@@ -17,8 +17,9 @@ Sequel.migration do
       $$ language 'plpgsql';
     SQL
 
-    # Create enum type for vote responses
+    # Create enum types
     run "CREATE TYPE vote_response AS ENUM ('yes', 'no', 'preferably_not')"
+    run "CREATE TYPE workspace_role AS ENUM ('owner', 'admin', 'member')"
 
     # Users table
     create_table(:users) do
@@ -50,7 +51,7 @@ Sequel.migration do
       column :id, :uuid, primary_key: true, default: Sequel.lit("gen_random_uuid()")
       foreign_key :workspace_id, :workspaces, type: :uuid, null: false, on_delete: :cascade
       foreign_key :user_id, :users, type: :uuid, null: false, on_delete: :cascade
-      String :role, null: false, default: "member", size: 50
+      column :role, :workspace_role, null: false, default: "member"
       column :created_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
 
       index [:workspace_id, :user_id], unique: true
@@ -157,6 +158,7 @@ Sequel.migration do
     drop_table(:users)
 
     run "DROP TYPE vote_response"
+    run "DROP TYPE workspace_role"
     run "DROP FUNCTION update_updated_at_column"
   end
 end
