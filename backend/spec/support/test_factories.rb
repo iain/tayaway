@@ -61,12 +61,27 @@ module TestFactories
       DB[:events].where(id: id).first
     end
 
-    def date_range(event: nil, start_date: Date.today, end_date: Date.today + 7, id: SecureRandom.uuid)
+    def date_poll(event: nil, deadline: Time.now + (7 * 24 * 60 * 60), selected_date_range_id: nil, closed_at: nil, id: SecureRandom.uuid)
       event ||= self.event
+      now = Time.now
+      DB[:date_polls].insert(
+        id: id,
+        event_id: event[:id],
+        deadline: deadline,
+        selected_date_range_id: selected_date_range_id,
+        closed_at: closed_at,
+        created_at: now,
+        updated_at: now
+      )
+      DB[:date_polls].where(id: id).first
+    end
+
+    def date_range(date_poll: nil, start_date: Date.today, end_date: Date.today + 7, id: SecureRandom.uuid)
+      date_poll ||= self.date_poll
       now = Time.now
       DB[:date_ranges].insert(
         id: id,
-        event_id: event[:id],
+        date_poll_id: date_poll[:id],
         start_date: start_date,
         end_date: end_date,
         created_at: now,

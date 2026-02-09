@@ -1,4 +1,5 @@
 export { useAuthStore } from './auth'
+export { useDatePollsStore } from './datePolls'
 export { useEventsStore } from './events'
 export { useUsersStore } from './users'
 export { useVotesStore } from './votes'

@@ -1,0 +1,104 @@
+# typed: true
+# frozen_string_literal: true
+
+module DatePolls
+  # Service to create a date poll for an event.
+  module Create
+    class << self
+      extend T::Sig
+      include Result::Methods
+
+      sig do
+        params(
+          event_id: T.any(String, UUID),
+          current_user_id: T.any(String, UUID),
+          deadline: T.nilable(String)
+        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
+      end
+      def call(event_id:, current_user_id:, deadline:)
+        find_event(event_id)
+          .bind { |event| authorize_owner(event, current_user_id) }
+          .bind { |event| validate_no_existing_poll(event) }
+          .bind { |event| validate_deadline(deadline, event) }
+          .bind { |(event, parsed_deadline)| create_poll(event, parsed_deadline) }
+      end
+
+      private
+
+      sig { params(event_id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }
+      def find_event(event_id)
+        event = Event.find(event_id)
+        if event
+          T.cast(Success(event), Result[Event, ServiceError])
+        else
+          T.cast(Failure(ServiceError.not_found("Event not found")), Result[Event, ServiceError])
+        end
+      end
+
+      sig { params(event: Event, current_user_id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }
+      def authorize_owner(event, current_user_id)
+        if event.user_id == current_user_id
+          T.cast(Success(event), Result[Event, ServiceError])
+        else
+          T.cast(Failure(ServiceError.forbidden("Access denied")), Result[Event, ServiceError])
+        end
+      end
+
+      sig { params(event: Event).returns(Result[Event, ServiceError]) }
+      def validate_no_existing_poll(event)
+        existing = DatePoll.find_by_event(event.id)
+        if existing
+          T.cast(Failure(ServiceError.conflict("A date poll already exists for this event")), Result[Event, ServiceError])
+        else
+          T.cast(Success(event), Result[Event, ServiceError])
+        end
+      end
+
+      sig { params(deadline: T.nilable(String), event: Event).returns(Result[T::Array[T.untyped], ServiceError]) }
+      def validate_deadline(deadline, event)
+        if deadline.nil? || deadline.empty?
+          return T.cast(Failure(ServiceError.validation("Deadline is required")), Result[T::Array[T.untyped], ServiceError])
+        end
+
+        begin
+          parsed = Time.parse(deadline)
+        rescue ArgumentError
+          return T.cast(Failure(ServiceError.validation("Invalid deadline format")), Result[T::Array[T.untyped], ServiceError])
+        end
+
+        if parsed <= Time.now
+          return T.cast(Failure(ServiceError.validation("Deadline must be in the future")), Result[T::Array[T.untyped], ServiceError])
+        end
+
+        T.cast(Success([event, parsed]), Result[T::Array[T.untyped], ServiceError])
+      end
+
+      sig { params(event: Event, deadline: Time).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
+      def create_poll(event, deadline)
+        poll_id = SecureRandom.uuid
+        now = Time.now
+
+        DB.transaction do
+          DB[:date_polls].insert(
+            id: poll_id,
+            event_id: event.id,
+            deadline: deadline,
+            created_at: now,
+            updated_at: now
+          )
+
+          # Touch event so pool timestamp check picks up the new datePollId
+          DB[:events].where(id: event.id).update(updated_at: now)
+
+          Broadcaster.object_changed("date_poll", poll_id, workspace_id: event.workspace_id)
+          Broadcaster.object_changed("event", event.id, workspace_id: event.workspace_id)
+        end
+
+        pool = PoolSerializer.new
+        pool.add_event(T.must(Event.find(event.id)))
+
+        T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+      end
+    end
+  end
+end

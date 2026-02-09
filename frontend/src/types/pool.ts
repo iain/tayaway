@@ -18,9 +18,12 @@ interface PoolObjectBase<T extends string> {
 // OBJECT TYPE REGISTRY - Add new models here
 // ============================================================================
 
+export type DatePollStatus = 'open' | 'expired' | 'resolved'
+
 export const OBJECT_TYPES = [
   'user',
   'event',
+  'datePoll',
   'dateRange',
   'vote',
   'workspace',
@@ -38,11 +41,20 @@ export interface ObjectTypeMap {
     description: string | null
     workspaceId: string
     userId: string
+    datePollId: string | null
+    createdAt: string
+  }
+  datePoll: PoolObjectBase<'datePoll'> & {
+    eventId: string
+    deadline: string
+    selectedDateRangeId: string | null
+    closedAt: string | null
+    status: DatePollStatus
     dateRangeIds: string[]
     createdAt: string
   }
   dateRange: PoolObjectBase<'dateRange'> & {
-    eventId: string
+    datePollId: string
     startDate: string
     endDate: string
     voteIds: string[]
@@ -77,6 +89,7 @@ export type PoolObject = ObjectTypeMap[ObjectType]
 // Convenience aliases for accessing specific pool types
 export type PoolUser = ObjectTypeMap['user']
 export type PoolEvent = ObjectTypeMap['event']
+export type PoolDatePoll = ObjectTypeMap['datePoll']
 export type PoolDateRange = ObjectTypeMap['dateRange']
 export type PoolVote = ObjectTypeMap['vote']
 export type PoolWorkspace = ObjectTypeMap['workspace']

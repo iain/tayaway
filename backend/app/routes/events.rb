@@ -42,8 +42,7 @@ class App
           workspace_id: workspace_id,
           user_id: current_user.id,
           name: r.params["name"]&.strip,
-          description: r.params["description"]&.strip,
-          date_ranges: r.params["date_ranges"] || []
+          description: r.params["description"]&.strip
         )
         handle_result(result, success_status: 201)
       end
@@ -76,8 +75,7 @@ class App
             event_id: event.id,
             current_user_id: current_user.id,
             name: r.params["name"]&.strip,
-            description: r.params["description"]&.strip,
-            date_ranges: r.params["date_ranges"] || []
+            description: r.params["description"]&.strip
           )
           handle_result(result)
         end
@@ -89,12 +87,80 @@ class App
         end
       end
 
+      # /api/events/:id/poll routes
+      r.on "poll" do
+        # POST /api/events/:id/poll - Create a date poll
+        r.is do
+          r.post do
+            result = DatePolls::Create.call(
+              event_id: event.id,
+              current_user_id: current_user.id,
+              deadline: r.params["deadline"]
+            )
+            handle_result(result, success_status: 201)
+          end
+        end
+
+        # POST /api/events/:id/poll/close - Close poll with winner
+        r.on "close" do
+          r.post do
+            result = DatePolls::Close.call(
+              event_id: event.id,
+              current_user_id: current_user.id,
+              selected_date_range_id: r.params["selected_date_range_id"]
+            )
+            handle_result(result)
+          end
+        end
+
+        # POST /api/events/:id/poll/reopen - Reopen a resolved poll
+        r.on "reopen" do
+          r.post do
+            result = DatePolls::Reopen.call(
+              event_id: event.id,
+              current_user_id: current_user.id,
+              deadline: r.params["deadline"]
+            )
+            handle_result(result)
+          end
+        end
+
+        # /api/events/:id/poll/date-ranges routes
+        r.on "date-ranges" do
+          # POST /api/events/:id/poll/date-ranges - Add a date range
+          r.is do
+            r.post do
+              result = DatePolls::AddDateRange.call(
+                event_id: event.id,
+                current_user_id: current_user.id,
+                start_date: r.params["start_date"],
+                end_date: r.params["end_date"]
+              )
+              handle_result(result, success_status: 201)
+            end
+          end
+
+          # DELETE /api/events/:id/poll/date-ranges/:dr_id - Remove a date range
+          r.on String do |dr_id|
+            r.delete do
+              result = DatePolls::RemoveDateRange.call(
+                event_id: event.id,
+                current_user_id: current_user.id,
+                date_range_id: dr_id
+              )
+              handle_result(result)
+            end
+          end
+        end
+      end
+
       # /api/events/:id/votes routes
       r.on "votes" do
         # GET /api/events/:id/votes - Get all votes for an event
         r.is do
           r.get do
-            date_range_ids = DateRange.ids_for_event(event.id)
+            poll = DatePoll.find_by_event(event.id)
+            date_range_ids = poll ? DateRange.ids_for_date_poll(poll.id) : []
             votes = Vote.for_date_range_ids(date_range_ids)
             pool = PoolSerializer.new
             pool.add_all(votes, type: :vote)

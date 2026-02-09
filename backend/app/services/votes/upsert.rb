@@ -36,6 +36,7 @@ module Votes
         validate_params(date_range_id, vote_response, vote_id)
           .bind { |params| find_date_range(T.must(params[:date_range_id])) }
           .bind { |date_range| validate_date_range_belongs_to_event(date_range, event_id) }
+          .bind { |date_range| validate_poll_open(date_range) }
           .bind { |date_range| upsert_vote(date_range, user_id, T.must(vote_response), comment, vote_id) }
       end
 
@@ -76,10 +77,21 @@ module Votes
 
       sig { params(date_range: DateRange, event_id: T.any(String, UUID)).returns(Result[DateRange, ServiceError]) }
       def validate_date_range_belongs_to_event(date_range, event_id)
-        if date_range.event_id == event_id
+        poll = DatePoll.find(date_range.date_poll_id)
+        if poll && poll.event_id == event_id
           T.cast(Success(date_range), Result[DateRange, ServiceError])
         else
           T.cast(Failure(ServiceError.validation("Date range does not belong to this event")), Result[DateRange, ServiceError])
+        end
+      end
+
+      sig { params(date_range: DateRange).returns(Result[DateRange, ServiceError]) }
+      def validate_poll_open(date_range)
+        poll = DatePoll.find(date_range.date_poll_id)
+        if poll && poll.open?
+          T.cast(Success(date_range), Result[DateRange, ServiceError])
+        else
+          T.cast(Failure(ServiceError.validation("Poll is not open for voting")), Result[DateRange, ServiceError])
         end
       end
 
@@ -98,9 +110,10 @@ module Votes
         result_vote_id = T.let(nil, T.nilable(T.any(String, UUID)))
         created = T.let(false, T::Boolean)
 
-        # Get workspace_id by traversing: date_range -> event -> workspace_id
-        event = Event.find(date_range.event_id)
-        workspace_id = T.must(event).workspace_id
+        # Get workspace_id by traversing: date_range -> date_poll -> event -> workspace_id
+        poll = T.must(DatePoll.find(date_range.date_poll_id))
+        event = T.must(Event.find(poll.event_id))
+        workspace_id = event.workspace_id
 
         DB.transaction do
           now = Time.now

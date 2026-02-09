@@ -7,6 +7,7 @@ import type {
   PoolUser,
   PoolWorkspaceMembership,
   VoteResponse,
+  DatePollStatus,
 } from '@/types/pool'
 
 // Hydrated types - these match the nested structure components expect
@@ -30,11 +31,24 @@ export interface VoteSummary {
 
 export interface HydratedDateRange {
   id: string
-  eventId: string
+  datePollId: string
   startDate: string
   endDate: string
   votes: HydratedVote[]
   voteSummary: VoteSummary
+}
+
+export interface HydratedDatePoll {
+  id: string
+  eventId: string
+  deadline: string
+  status: DatePollStatus
+  selectedDateRangeId: string | null
+  selectedDateRange: HydratedDateRange | undefined
+  closedAt: string | null
+  dateRanges: HydratedDateRange[]
+  createdAt: string
+  updatedAt: string
 }
 
 export interface HydratedMember {
@@ -57,7 +71,7 @@ export interface HydratedEvent {
   workspace: HydratedWorkspace | undefined
   userId: string
   user: PoolUser | undefined
-  dateRanges: HydratedDateRange[]
+  datePoll: HydratedDatePoll | null
   createdAt: string
   updatedAt: string
 }
@@ -70,7 +84,7 @@ export interface HydratedEvent {
  *
  * @example
  * const { event, isLoading } = useHydratedEvent(eventId)
- * // event.value.dateRanges[0].votes[0].user - fully hydrated
+ * // event.value.datePoll?.dateRanges[0].votes[0].user - fully hydrated
  */
 export function useHydratedEvent(eventId: ComputedRef<string> | string): {
   event: ComputedRef<HydratedEvent | undefined>
@@ -110,7 +124,9 @@ function hydrateEvent(
   pool: ReturnType<typeof useObjectPoolStore>
 ): HydratedEvent {
   const user = pool.get('user', poolEvent.userId)
-  const dateRanges = hydrateDateRanges(poolEvent.dateRangeIds, pool)
+  const datePoll = poolEvent.datePollId
+    ? hydrateDatePoll(poolEvent.datePollId, pool)
+    : null
   const workspace = hydrateWorkspace(poolEvent.workspaceId, pool)
 
   return {
@@ -121,9 +137,38 @@ function hydrateEvent(
     workspace,
     userId: poolEvent.userId,
     user,
-    dateRanges,
+    datePoll,
     createdAt: poolEvent.createdAt,
     updatedAt: poolEvent.updatedAt,
+  }
+}
+
+/**
+ * Hydrate a date poll with its date ranges.
+ */
+function hydrateDatePoll(
+  datePollId: string,
+  pool: ReturnType<typeof useObjectPoolStore>
+): HydratedDatePoll | null {
+  const pollData = pool.get('datePoll', datePollId)
+  if (!pollData) return null
+
+  const dateRanges = hydrateDateRanges(pollData.dateRangeIds, pool)
+  const selectedDateRange = pollData.selectedDateRangeId
+    ? dateRanges.find((dr) => dr.id === pollData.selectedDateRangeId)
+    : undefined
+
+  return {
+    id: pollData.id,
+    eventId: pollData.eventId,
+    deadline: pollData.deadline,
+    status: pollData.status,
+    selectedDateRangeId: pollData.selectedDateRangeId,
+    selectedDateRange,
+    closedAt: pollData.closedAt,
+    dateRanges,
+    createdAt: pollData.createdAt,
+    updatedAt: pollData.updatedAt,
   }
 }
 
@@ -188,7 +233,7 @@ function hydrateDateRange(
 
   return {
     id: dateRange.id,
-    eventId: dateRange.eventId,
+    datePollId: dateRange.datePollId,
     startDate: dateRange.startDate,
     endDate: dateRange.endDate,
     votes,

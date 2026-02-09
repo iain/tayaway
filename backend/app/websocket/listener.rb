@@ -23,6 +23,7 @@ module Websocket
       {
         "event" => { model: "Event", pool_method: :add_event },
         "user" => { model: "User", pool_method: :add_user },
+        "date_poll" => { model: "DatePoll", pool_method: :add_date_poll },
         "date_range" => { model: "DateRange", pool_method: :add_date_range },
         "vote" => { model: "Vote", pool_method: :add_vote },
         "workspace" => { model: "Workspace", pool_method: :add_workspace },

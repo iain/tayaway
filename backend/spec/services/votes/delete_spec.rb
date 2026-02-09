@@ -19,7 +19,8 @@ RSpec.describe Votes::Delete do
     owner = TestFactories.user
     other_user = TestFactories.user
     event = TestFactories.event(user: owner)
-    date_range = TestFactories.date_range(event: event)
+    date_poll = TestFactories.date_poll(event: event)
+    date_range = TestFactories.date_range(date_poll: date_poll)
     vote = TestFactories.vote(user: owner, date_range: date_range)
 
     result = described_class.call(event_id: event[:id], vote_id: vote[:id], user_id: other_user[:id])
@@ -33,7 +34,8 @@ RSpec.describe Votes::Delete do
     user = TestFactories.user
     event1 = TestFactories.event(user: user)
     event2 = TestFactories.event(user: user)
-    date_range = TestFactories.date_range(event: event2)
+    date_poll = TestFactories.date_poll(event: event2)
+    date_range = TestFactories.date_range(date_poll: date_poll)
     vote = TestFactories.vote(user: user, date_range: date_range)
 
     result = described_class.call(event_id: event1[:id], vote_id: vote[:id], user_id: user[:id])
@@ -42,10 +44,24 @@ RSpec.describe Votes::Delete do
     expect(result.failure.message).to eq("Vote does not belong to this event")
   end
 
+  it "returns failure when poll is not open" do
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
+    date_poll = TestFactories.date_poll(event: event, closed_at: Time.now)
+    date_range = TestFactories.date_range(date_poll: date_poll)
+    vote = TestFactories.vote(user: user, date_range: date_range)
+
+    result = described_class.call(event_id: event[:id], vote_id: vote[:id], user_id: user[:id])
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Poll is not open for voting")
+  end
+
   it "deletes vote and returns success" do
     user = TestFactories.user
     event = TestFactories.event(user: user)
-    date_range = TestFactories.date_range(event: event)
+    date_poll = TestFactories.date_poll(event: event)
+    date_range = TestFactories.date_range(date_poll: date_poll)
     vote = TestFactories.vote(user: user, date_range: date_range)
     vote_id = vote[:id]
 

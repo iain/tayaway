@@ -11,13 +11,6 @@ interface PoolObject {
   [key: string]: unknown
 }
 
-function getObjectsByType<T extends PoolObject>(
-  objects: PoolObject[],
-  type: string
-): T[] {
-  return objects.filter((o) => o.objectType === type) as T[]
-}
-
 function getObjectByType<T extends PoolObject>(
   objects: PoolObject[],
   type: string
@@ -122,7 +115,6 @@ test.describe('Events Feature', () => {
         data: {
           name: 'Test Event',
           description: 'A test event description',
-          date_ranges: [{ start_date: '2025-03-01', end_date: '2025-03-07' }],
         },
       })
       expect(response.status()).toBe(201)
@@ -131,10 +123,7 @@ test.describe('Events Feature', () => {
       expect(event).toHaveProperty('id')
       expect(event?.name).toBe('Test Event')
       expect(event?.description).toBe('A test event description')
-      const dateRanges = getObjectsByType(body.objects, 'dateRange')
-      expect(dateRanges).toHaveLength(1)
-      expect(dateRanges[0]?.startDate).toBe('2025-03-01')
-      expect(dateRanges[0]?.endDate).toBe('2025-03-07')
+      expect(event?.datePollId).toBeNull()
     })
 
     test('POST /api/events requires name', async ({ request }) => {
@@ -156,7 +145,6 @@ test.describe('Events Feature', () => {
         headers: authHeaders(token),
         data: {
           name: 'CRUD Test Event',
-          date_ranges: [{ start_date: '2025-04-01', end_date: '2025-04-05' }],
         },
       })
       expect(createResponse.status()).toBe(201)
@@ -184,10 +172,6 @@ test.describe('Events Feature', () => {
           data: {
             name: 'Updated CRUD Event',
             description: 'Now with a description',
-            date_ranges: [
-              { start_date: '2025-04-01', end_date: '2025-04-05' },
-              { start_date: '2025-04-10', end_date: '2025-04-12' },
-            ],
           },
         }
       )
@@ -196,11 +180,6 @@ test.describe('Events Feature', () => {
       const updatedEvent = getObjectByType(updateBody.objects, 'event')
       expect(updatedEvent?.name).toBe('Updated CRUD Event')
       expect(updatedEvent?.description).toBe('Now with a description')
-      const updatedDateRanges = getObjectsByType(
-        updateBody.objects,
-        'dateRange'
-      )
-      expect(updatedDateRanges).toHaveLength(2)
 
       // Delete
       const deleteResponse = await request.delete(

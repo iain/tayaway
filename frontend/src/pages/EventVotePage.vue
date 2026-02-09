@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeftIcon, PlusIcon } from '@heroicons/vue/24/outline'
-import { useAuthStore, useWebSocketStore, useEventsStore } from '@/stores'
+import { useAuthStore, useWebSocketStore, useDatePollsStore } from '@/stores'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
 import { useCalendar } from '@/composables/useCalendar'
 import VotingCard from '@/components/votes/VotingCard.vue'
@@ -13,10 +13,9 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const wsStore = useWebSocketStore()
-const eventsStore = useEventsStore()
+const datePollsStore = useDatePollsStore()
 const { user } = storeToRefs(authStore)
 const { hasSynced } = storeToRefs(wsStore)
-const { loading } = storeToRefs(eventsStore)
 const { addDays } = useCalendar()
 
 const eventId = computed(() => route.params.id as string)
@@ -32,21 +31,24 @@ const isOwner = computed(() => {
   return user.value?.id === event.value?.userId
 })
 
+const pollOpen = computed(() => {
+  return event.value?.datePoll?.status === 'open'
+})
+
+const dateRanges = computed(() => {
+  return event.value?.datePoll?.dateRanges ?? []
+})
+
 function handleBack(): void {
   router.push(`/events/${eventId.value}`)
 }
 
 function handleAddDateRange(): void {
-  // Smart preselection: if we have existing ranges, shift the last range by 7 days
-  // This preserves the day of week and length
-  if (event.value && event.value.dateRanges.length > 0) {
-    // Find the last range by end date
-    const sortedRanges = [...event.value.dateRanges].sort((a, b) =>
+  if (dateRanges.value.length > 0) {
+    const sortedRanges = [...dateRanges.value].sort((a, b) =>
       a.endDate.localeCompare(b.endDate)
     )
     const lastRange = sortedRanges[sortedRanges.length - 1]
-
-    // Shift by 7 days to preserve day of week
     modalPreselectedStart.value = addDays(lastRange.startDate, 7)
     modalPreselectedEnd.value = addDays(lastRange.endDate, 7)
   } else {
@@ -63,22 +65,10 @@ async function handleDateRangeModalSave(
   if (!event.value) return
 
   try {
-    const existingRanges = event.value.dateRanges.map((r) => ({
-      start_date: r.startDate,
-      end_date: r.endDate,
-    }))
-
-    await eventsStore.updateEvent(event.value.id, {
-      name: event.value.name,
-      description: event.value.description || undefined,
-      date_ranges: [
-        ...existingRanges,
-        { start_date: startDate, end_date: endDate },
-      ],
-    })
+    await datePollsStore.addDateRange(event.value.id, startDate, endDate)
     showDateRangeModal.value = false
   } catch {
-    // Error is handled by the store
+    // Error handled by store
   }
 }
 
@@ -108,6 +98,22 @@ function handleDateRangeModalClose(): void {
       Event not found
     </div>
 
+    <div
+      v-else-if="!event.datePoll || !pollOpen"
+      class="py-8 text-center text-gray-500 dark:text-gray-400"
+    >
+      <p class="mb-2 text-lg font-medium">Voting is closed</p>
+      <p>The date poll is no longer accepting votes.</p>
+      <button
+        type="button"
+        class="mt-4 inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+        @click="handleBack"
+      >
+        <ArrowLeftIcon class="size-4" />
+        Back to Event
+      </button>
+    </div>
+
     <div v-else>
       <!-- Event Header -->
       <header class="mb-8">
@@ -131,7 +137,7 @@ function handleDateRangeModalClose(): void {
             v-if="isOwner"
             type="button"
             class="inline-flex items-center gap-2 rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-500"
-            :disabled="loading"
+            :disabled="datePollsStore.loading"
             @click="handleAddDateRange"
           >
             <PlusIcon class="size-4" />
@@ -139,7 +145,7 @@ function handleDateRangeModalClose(): void {
           </button>
         </div>
 
-        <div v-if="event.dateRanges.length === 0" class="py-8 text-center">
+        <div v-if="dateRanges.length === 0" class="py-8 text-center">
           <p class="mb-4 text-gray-500 dark:text-gray-400">
             No date ranges have been added to this event yet.
           </p>
@@ -147,7 +153,7 @@ function handleDateRangeModalClose(): void {
             v-if="isOwner"
             type="button"
             class="inline-flex items-center gap-2 rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-500"
-            :disabled="loading"
+            :disabled="datePollsStore.loading"
             @click="handleAddDateRange"
           >
             <PlusIcon class="size-4" />
@@ -157,7 +163,7 @@ function handleDateRangeModalClose(): void {
 
         <div v-else class="space-y-4">
           <VotingCard
-            v-for="dateRange in event.dateRanges"
+            v-for="dateRange in dateRanges"
             :key="dateRange.id"
             :date-range="dateRange"
             :event-id="event.id"

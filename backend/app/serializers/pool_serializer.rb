@@ -29,22 +29,34 @@ class PoolSerializer
     key = "event:#{event.id}"
     return if @objects.key?(key)
 
-    date_range_ids = DateRange.ids_for_event(event.id)
-    @objects[key] = event.to_api_hash(date_range_ids: date_range_ids)
+    date_poll = DatePoll.find_by_event(event.id)
+    @objects[key] = event.to_api_hash(date_poll_id: date_poll&.id&.to_s)
 
     # Add user
     user = User.find(event.user_id)
     add_user(user) if user
 
-    # Add date ranges
-    date_ranges = DateRange.for_event(event.id)
-    date_ranges.each { |dr| add_date_range(dr) }
+    # Add date poll (cascades to date ranges, votes)
+    add_date_poll(date_poll) if date_poll
 
     # Add workspace with members if requested
     if include_workspace
       workspace = Workspace.find(event.workspace_id)
       add_workspace(workspace) if workspace
     end
+  end
+
+  sig { params(date_poll: DatePoll).void }
+  def add_date_poll(date_poll)
+    key = "date_poll:#{date_poll.id}"
+    return if @objects.key?(key)
+
+    date_range_ids = DateRange.ids_for_date_poll(date_poll.id)
+    @objects[key] = date_poll.to_api_hash(date_range_ids: date_range_ids)
+
+    # Add date ranges
+    date_ranges = DateRange.for_date_poll(date_poll.id)
+    date_ranges.each { |dr| add_date_range(dr) }
   end
 
   sig { params(date_range: DateRange).void }
@@ -111,6 +123,7 @@ class PoolSerializer
       case type
       when :user then add_user(item)
       when :event then add_event(item)
+      when :date_poll then add_date_poll(item)
       when :date_range then add_date_range(item)
       when :vote then add_vote(item)
       when :workspace then add_workspace(item)

@@ -13,8 +13,8 @@ class Event < T::Struct
   const :created_at, Time
   const :updated_at, Time
 
-  sig { params(date_range_ids: T::Array[String]).returns(T::Hash[Symbol, T.untyped]) }
-  def to_api_hash(date_range_ids:)
+  sig { params(date_poll_id: T.nilable(String)).returns(T::Hash[Symbol, T.untyped]) }
+  def to_api_hash(date_poll_id:)
     {
       id: id.to_s,
       objectType: "event",
@@ -22,7 +22,7 @@ class Event < T::Struct
       description: description,
       workspaceId: workspace_id.to_s,
       userId: user_id.to_s,
-      dateRangeIds: date_range_ids,
+      datePollId: date_poll_id,
       createdAt: created_at.iso8601(3),
       updatedAt: updated_at.iso8601(3)
     }

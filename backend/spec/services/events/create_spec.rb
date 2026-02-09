@@ -8,40 +8,35 @@ RSpec.describe Events::Create do
     user = TestFactories.user
     workspace = TestFactories.workspace
 
-    result = described_class.call(workspace_id: workspace[:id], user_id: user[:id], name: nil, description: nil, date_ranges: [])
+    result = described_class.call(workspace_id: workspace[:id], user_id: user[:id], name: nil, description: nil)
 
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("Name is required")
   end
 
-  it "creates event with date ranges and returns success" do
+  it "creates event and returns success" do
     user = TestFactories.user
     workspace = TestFactories.workspace
-    date_ranges = [
-      { "start_date" => "2024-01-01", "end_date" => "2024-01-05" },
-      { "start_date" => "2024-01-10", "end_date" => "2024-01-15" }
-    ]
 
     result = described_class.call(
       workspace_id: workspace[:id],
       user_id: user[:id],
       name: "Team Meeting",
-      description: "Weekly sync",
-      date_ranges: date_ranges
+      description: "Weekly sync"
     )
 
     expect(result.success?).to be true
     event = result.value![:objects].find { |o| o[:objectType] == "event" }
     expect(event[:name]).to eq("Team Meeting")
     expect(event[:description]).to eq("Weekly sync")
-    expect(event[:dateRangeIds].length).to eq(2)
+    expect(event[:datePollId]).to be_nil
   end
 
   it "sets description to nil when empty" do
     user = TestFactories.user
     workspace = TestFactories.workspace
 
-    result = described_class.call(workspace_id: workspace[:id], user_id: user[:id], name: "Event", description: "", date_ranges: [])
+    result = described_class.call(workspace_id: workspace[:id], user_id: user[:id], name: "Event", description: "")
 
     expect(result.success?).to be true
     event = result.value![:objects].find { |o| o[:objectType] == "event" }

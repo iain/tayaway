@@ -18,7 +18,6 @@ async function handleSubmit(data: EventFormData): Promise<void> {
     await eventsStore.createEvent({
       name: data.name,
       description: data.description || undefined,
-      date_ranges: data.date_ranges,
     })
     router.push('/events')
   } catch {

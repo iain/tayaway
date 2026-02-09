@@ -59,28 +59,49 @@ async function setupAuthenticatedPage(
   }, token)
 }
 
-// Helper to create an event with date ranges
+// Helper to create an event with a date poll and date ranges
 async function createTestEvent(
   request: APIRequestContext,
   token: string
 ): Promise<{ eventId: string; dateRangeId: string }> {
-  const response = await request.post(`${API_BASE}/api/events`, {
+  // 1. Create the event
+  const eventResponse = await request.post(`${API_BASE}/api/events`, {
     headers: authHeaders(token),
     data: {
       name: 'Voting Test Event',
       description: 'An event for testing voting',
-      date_ranges: [
-        { start_date: '2025-06-01', end_date: '2025-06-07' },
-        { start_date: '2025-06-15', end_date: '2025-06-20' },
-      ],
     },
   })
-  const body = await response.json()
-  const event = getObjectByType(body.objects, 'event')
-  const dateRanges = getObjectsByType(body.objects, 'dateRange')
+  const eventBody = await eventResponse.json()
+  const event = getObjectByType(eventBody.objects, 'event')
+  const eventId = event!.id
+
+  // 2. Open a date poll
+  const deadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+  await request.post(`${API_BASE}/api/events/${eventId}/poll`, {
+    headers: authHeaders(token),
+    data: { deadline },
+  })
+
+  // 3. Add date ranges
+  const dr1Response = await request.post(
+    `${API_BASE}/api/events/${eventId}/poll/date-ranges`,
+    {
+      headers: authHeaders(token),
+      data: { start_date: '2025-06-01', end_date: '2025-06-07' },
+    }
+  )
+  const dr1Body = await dr1Response.json()
+  const dateRange1 = getObjectByType(dr1Body.objects, 'dateRange')
+
+  await request.post(`${API_BASE}/api/events/${eventId}/poll/date-ranges`, {
+    headers: authHeaders(token),
+    data: { start_date: '2025-06-15', end_date: '2025-06-20' },
+  })
+
   return {
-    eventId: event!.id,
-    dateRangeId: dateRanges[0]!.id,
+    eventId,
+    dateRangeId: dateRange1!.id,
   }
 }
 
@@ -469,6 +490,119 @@ test.describe('Voting Feature', () => {
       expect(response.status()).toBe(403)
       const body = await response.json()
       expect(body.error).toBe('Access denied')
+    })
+  })
+
+  test.describe('Date Poll API', () => {
+    test('POST /api/events/:id/poll creates a date poll', async ({
+      request,
+    }) => {
+      const { token } = await getTestSession(request)
+
+      // Create event without poll
+      const eventResponse = await request.post(`${API_BASE}/api/events`, {
+        headers: authHeaders(token),
+        data: { name: 'Poll Test Event' },
+      })
+      const eventBody = await eventResponse.json()
+      const event = getObjectByType(eventBody.objects, 'event')
+
+      // Create poll
+      const deadline = new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000
+      ).toISOString()
+      const pollResponse = await request.post(
+        `${API_BASE}/api/events/${event!.id}/poll`,
+        {
+          headers: authHeaders(token),
+          data: { deadline },
+        }
+      )
+
+      expect(pollResponse.status()).toBe(201)
+      const pollBody = await pollResponse.json()
+      const poll = getObjectByType(pollBody.objects, 'datePoll')
+      expect(poll).toHaveProperty('id')
+      expect(poll?.status).toBe('open')
+    })
+
+    test('POST /api/events/:id/poll/close selects a winner', async ({
+      request,
+    }) => {
+      const { token } = await getTestSession(request)
+      const { eventId, dateRangeId } = await createTestEvent(request, token)
+
+      const closeResponse = await request.post(
+        `${API_BASE}/api/events/${eventId}/poll/close`,
+        {
+          headers: authHeaders(token),
+          data: { selected_date_range_id: dateRangeId },
+        }
+      )
+
+      expect(closeResponse.ok()).toBeTruthy()
+      const closeBody = await closeResponse.json()
+      const poll = getObjectByType(closeBody.objects, 'datePoll')
+      expect(poll?.status).toBe('resolved')
+      expect(poll?.selectedDateRangeId).toBe(dateRangeId)
+    })
+
+    test('POST /api/events/:id/poll/reopen reopens a resolved poll', async ({
+      request,
+    }) => {
+      const { token } = await getTestSession(request)
+      const { eventId, dateRangeId } = await createTestEvent(request, token)
+
+      // Close the poll
+      await request.post(`${API_BASE}/api/events/${eventId}/poll/close`, {
+        headers: authHeaders(token),
+        data: { selected_date_range_id: dateRangeId },
+      })
+
+      // Reopen
+      const newDeadline = new Date(
+        Date.now() + 14 * 24 * 60 * 60 * 1000
+      ).toISOString()
+      const reopenResponse = await request.post(
+        `${API_BASE}/api/events/${eventId}/poll/reopen`,
+        {
+          headers: authHeaders(token),
+          data: { deadline: newDeadline },
+        }
+      )
+
+      expect(reopenResponse.ok()).toBeTruthy()
+      const reopenBody = await reopenResponse.json()
+      const poll = getObjectByType(reopenBody.objects, 'datePoll')
+      expect(poll?.status).toBe('open')
+      expect(poll?.selectedDateRangeId).toBeNull()
+    })
+
+    test('voting fails on a closed poll', async ({ request }) => {
+      const { token } = await getTestSession(request)
+      const { eventId, dateRangeId } = await createTestEvent(request, token)
+
+      // Close the poll
+      await request.post(`${API_BASE}/api/events/${eventId}/poll/close`, {
+        headers: authHeaders(token),
+        data: { selected_date_range_id: dateRangeId },
+      })
+
+      // Try to vote
+      const voteResponse = await request.post(
+        `${API_BASE}/api/events/${eventId}/votes`,
+        {
+          headers: authHeaders(token),
+          data: {
+            date_range_id: dateRangeId,
+            response: 'yes',
+          },
+        }
+      )
+
+      expect(voteResponse.status()).toBe(400)
+      const body = await voteResponse.json()
+      expect(body.error).toBe('Poll is not open for voting')
     })
   })
 

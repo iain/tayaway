@@ -19,7 +19,8 @@ RSpec.describe Votes::Upsert do
   it "returns failure when response is invalid" do
     user = TestFactories.user
     event = TestFactories.event(user: user)
-    date_range = TestFactories.date_range(event: event)
+    date_poll = TestFactories.date_poll(event: event)
+    date_range = TestFactories.date_range(date_poll: date_poll)
 
     result = described_class.call(
       event_id: event[:id], user_id: user[:id], date_range_id: date_range[:id], vote_response: "invalid", comment: nil
@@ -45,7 +46,8 @@ RSpec.describe Votes::Upsert do
     user = TestFactories.user
     event1 = TestFactories.event(user: user)
     event2 = TestFactories.event(user: user)
-    date_range = TestFactories.date_range(event: event2)
+    date_poll = TestFactories.date_poll(event: event2)
+    date_range = TestFactories.date_range(date_poll: date_poll)
 
     result = described_class.call(
       event_id: event1[:id], user_id: user[:id], date_range_id: date_range[:id], vote_response: "yes", comment: nil
@@ -55,10 +57,25 @@ RSpec.describe Votes::Upsert do
     expect(result.failure.message).to eq("Date range does not belong to this event")
   end
 
+  it "returns failure when poll is not open" do
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
+    date_poll = TestFactories.date_poll(event: event, closed_at: Time.now)
+    date_range = TestFactories.date_range(date_poll: date_poll)
+
+    result = described_class.call(
+      event_id: event[:id], user_id: user[:id], date_range_id: date_range[:id], vote_response: "yes", comment: nil
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Poll is not open for voting")
+  end
+
   it "creates new vote and returns created: true" do
     user = TestFactories.user
     event = TestFactories.event(user: user)
-    date_range = TestFactories.date_range(event: event)
+    date_poll = TestFactories.date_poll(event: event)
+    date_range = TestFactories.date_range(date_poll: date_poll)
 
     result = described_class.call(
       event_id: event[:id],
@@ -79,7 +96,8 @@ RSpec.describe Votes::Upsert do
   it "updates existing vote and returns created: false" do
     user = TestFactories.user
     event = TestFactories.event(user: user)
-    date_range = TestFactories.date_range(event: event)
+    date_poll = TestFactories.date_poll(event: event)
+    date_range = TestFactories.date_range(date_poll: date_poll)
     TestFactories.vote(user: user, date_range: date_range, response: "yes")
 
     result = described_class.call(

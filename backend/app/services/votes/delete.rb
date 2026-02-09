@@ -21,6 +21,7 @@ module Votes
         find_vote(vote_id)
           .bind { |vote| authorize_owner(vote, user_id) }
           .bind { |vote| validate_vote_belongs_to_event(vote, event_id) }
+          .bind { |vote| validate_poll_open(vote) }
           .bind { |vote| delete_vote(vote, event_id) }
       end
 
@@ -48,11 +49,25 @@ module Votes
       sig { params(vote: Vote, event_id: T.any(String, UUID)).returns(Result[Vote, ServiceError]) }
       def validate_vote_belongs_to_event(vote, event_id)
         date_range = DateRange.find(vote.date_range_id)
-        if date_range && date_range.event_id == event_id
-          T.cast(Success(vote), Result[Vote, ServiceError])
-        else
-          T.cast(Failure(ServiceError.validation("Vote does not belong to this event")), Result[Vote, ServiceError])
+        if date_range
+          poll = DatePoll.find(date_range.date_poll_id)
+          if poll && poll.event_id == event_id
+            return T.cast(Success(vote), Result[Vote, ServiceError])
+          end
         end
+        T.cast(Failure(ServiceError.validation("Vote does not belong to this event")), Result[Vote, ServiceError])
+      end
+
+      sig { params(vote: Vote).returns(Result[Vote, ServiceError]) }
+      def validate_poll_open(vote)
+        date_range = DateRange.find(vote.date_range_id)
+        if date_range
+          poll = DatePoll.find(date_range.date_poll_id)
+          if poll && poll.open?
+            return T.cast(Success(vote), Result[Vote, ServiceError])
+          end
+        end
+        T.cast(Failure(ServiceError.validation("Poll is not open for voting")), Result[Vote, ServiceError])
       end
 
       sig { params(vote: Vote, event_id: T.any(String, UUID)).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }

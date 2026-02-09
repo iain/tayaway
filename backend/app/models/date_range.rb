@@ -6,7 +6,7 @@ class DateRange < T::Struct
   extend T::Sig
 
   const :id, UUID
-  const :event_id, UUID
+  const :date_poll_id, UUID
   const :start_date, Date
   const :end_date, Date
   const :created_at, Time
@@ -17,7 +17,7 @@ class DateRange < T::Struct
     {
       id: id.to_s,
       objectType: "dateRange",
-      eventId: event_id.to_s,
+      datePollId: date_poll_id.to_s,
       startDate: start_date.iso8601,
       endDate: end_date.iso8601,
       voteIds: vote_ids,
@@ -33,14 +33,14 @@ class DateRange < T::Struct
       dataset.where(id: id).first
     end
 
-    sig { params(event_id: T.any(String, UUID)).returns(T::Array[DateRange]) }
-    def for_event(event_id)
-      dataset.where(event_id: event_id).order(:start_date).all
+    sig { params(date_poll_id: T.any(String, UUID)).returns(T::Array[DateRange]) }
+    def for_date_poll(date_poll_id)
+      dataset.where(date_poll_id: date_poll_id).order(:start_date).all
     end
 
-    sig { params(event_id: T.any(String, UUID)).returns(T::Array[String]) }
-    def ids_for_event(event_id)
-      DB[:date_ranges].where(event_id: event_id).order(:start_date).select_map(:id)
+    sig { params(date_poll_id: T.any(String, UUID)).returns(T::Array[String]) }
+    def ids_for_date_poll(date_poll_id)
+      DB[:date_ranges].where(date_poll_id: date_poll_id).order(:start_date).select_map(:id)
     end
 
     private
@@ -54,7 +54,7 @@ class DateRange < T::Struct
     def from_row(row)
       DateRange.new(
         id: UUID.new(row[:id]),
-        event_id: UUID.new(row[:event_id]),
+        date_poll_id: UUID.new(row[:date_poll_id]),
         start_date: row[:start_date],
         end_date: row[:end_date],
         created_at: row[:created_at],

@@ -104,13 +104,11 @@ export interface EventResponse {
 export interface CreateEventRequest {
   name: string
   description?: string
-  date_ranges?: { start_date: string; end_date: string }[]
 }
 
 export interface UpdateEventRequest {
   name: string
   description?: string
-  date_ranges: { start_date: string; end_date: string }[]
 }
 
 // User management types
