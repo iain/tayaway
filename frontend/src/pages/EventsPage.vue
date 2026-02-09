@@ -48,8 +48,11 @@ function getEventOwner(userId: string) {
   return pool.get('user', userId)
 }
 
-function getDateRanges(dateRangeIds: string[]) {
-  return pool.getMany('dateRange', dateRangeIds)
+function getDateRanges(datePollId: string | null) {
+  if (!datePollId) return []
+  const datePoll = pool.get('datePoll', datePollId)
+  if (!datePoll) return []
+  return pool.getMany('dateRange', datePoll.dateRangeIds)
 }
 
 function handleCreate(): void {
@@ -179,7 +182,7 @@ function formatDateRangeSummary(
                 class="mt-2 flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300"
               >
                 <span>{{
-                  formatDateRangeSummary(getDateRanges(event.dateRangeIds))
+                  formatDateRangeSummary(getDateRanges(event.datePollId))
                 }}</span>
                 <span class="text-gray-400 dark:text-gray-500"
                   >by

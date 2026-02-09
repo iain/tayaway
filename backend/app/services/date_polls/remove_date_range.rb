@@ -94,6 +94,7 @@ module DatePolls
       def delete_date_range(event, poll, date_range_id)
         DB.transaction do
           DB[:date_ranges].where(id: date_range_id).delete
+          DB[:date_polls].where(id: poll.id).update(updated_at: Time.now)
           Broadcaster.object_changed("date_poll", poll.id, workspace_id: event.workspace_id)
           Broadcaster.object_deleted("date_range", date_range_id, workspace_id: event.workspace_id)
         end

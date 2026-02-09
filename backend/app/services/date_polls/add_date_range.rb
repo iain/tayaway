@@ -98,6 +98,8 @@ module DatePolls
             updated_at: now
           )
 
+          DB[:date_polls].where(id: poll.id).update(updated_at: now)
+
           Broadcaster.object_changed("date_poll", poll.id, workspace_id: event.workspace_id)
         end
 
