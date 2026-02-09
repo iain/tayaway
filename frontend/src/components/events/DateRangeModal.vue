@@ -5,10 +5,16 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import CalendarMonth from '@/components/calendar/CalendarMonth.vue'
 import { useCalendar } from '@/composables/useCalendar'
 
+export interface DateRangeItem {
+  start_date: string
+  end_date: string
+}
+
 const props = defineProps<{
   open: boolean
   preselectedStart?: string | null
   preselectedEnd?: string | null
+  existingRanges?: DateRangeItem[]
 }>()
 
 const emit = defineEmits<{
@@ -87,13 +93,16 @@ function handleDateSelect(dateString: string): void {
     selectedEnd.value = null
   } else {
     // Complete selection
+    let start = selectedStart.value
+    let end = dateString
     if (dateString < selectedStart.value) {
-      // User clicked earlier date, swap them
-      selectedEnd.value = selectedStart.value
-      selectedStart.value = dateString
-    } else {
-      selectedEnd.value = dateString
+      start = dateString
+      end = selectedStart.value
     }
+    selectedStart.value = start
+    selectedEnd.value = end
+    // Auto-save and close
+    emit('save', start, end)
   }
 }
 
@@ -161,6 +170,7 @@ const selectionText = computed(() => {
         :selected-start="selectedStart"
         :selected-end="selectedEnd"
         :hover-date="hoverDate"
+        :existing-ranges="existingRanges"
         @select="handleDateSelect"
         @hover="handleHover"
       />
@@ -170,6 +180,7 @@ const selectionText = computed(() => {
         :selected-start="selectedStart"
         :selected-end="selectedEnd"
         :hover-date="hoverDate"
+        :existing-ranges="existingRanges"
         @select="handleDateSelect"
         @hover="handleHover"
       />

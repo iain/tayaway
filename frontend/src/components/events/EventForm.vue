@@ -150,6 +150,7 @@ function handleCancel(): void {
       :open="showModal"
       :preselected-start="modalPreselectedStart"
       :preselected-end="modalPreselectedEnd"
+      :existing-ranges="dateRanges"
       @save="handleModalSave"
       @close="handleModalClose"
     />
