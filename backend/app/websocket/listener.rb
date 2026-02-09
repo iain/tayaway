@@ -18,16 +18,17 @@ module Websocket
     CHANNEL = "tayaway_objects"
     RETRY_DELAY = 5 # seconds
 
-    # Registry mapping object types to their model class and pool serializer method
+    # Registry mapping object types to their model class and pool serializer method.
+    # client_type is the camelCase name used by the frontend pool.
     OBJECT_TYPES = T.let(
       {
-        "event" => { model: "Event", pool_method: :add_event },
-        "user" => { model: "User", pool_method: :add_user },
-        "date_poll" => { model: "DatePoll", pool_method: :add_date_poll },
-        "date_range" => { model: "DateRange", pool_method: :add_date_range },
-        "vote" => { model: "Vote", pool_method: :add_vote },
-        "workspace" => { model: "Workspace", pool_method: :add_workspace },
-        "workspace_membership" => { model: "WorkspaceMembership", pool_method: :add_workspace_membership }
+        "event" => { model: "Event", pool_method: :add_event, client_type: "event" },
+        "user" => { model: "User", pool_method: :add_user, client_type: "user" },
+        "date_poll" => { model: "DatePoll", pool_method: :add_date_poll, client_type: "datePoll" },
+        "date_range" => { model: "DateRange", pool_method: :add_date_range, client_type: "dateRange" },
+        "vote" => { model: "Vote", pool_method: :add_vote, client_type: "vote" },
+        "workspace" => { model: "Workspace", pool_method: :add_workspace, client_type: "workspace" },
+        "workspace_membership" => { model: "WorkspaceMembership", pool_method: :add_workspace_membership, client_type: "workspaceMembership" }
       }.freeze,
       T::Hash[String, T::Hash[Symbol, T.untyped]]
     )
@@ -126,21 +127,14 @@ module Websocket
           if object
             pool = PoolSerializer.new
             pool.send(config[:pool_method], object)
-
-            # For votes, also include the parent date_range so voteIds gets updated
-            if object_type == "vote"
-              date_range = DateRange.find(object.date_range_id)
-              pool.add_date_range(date_range) if date_range
-            end
-
             message[:data] = { objects: pool.to_a }
           else
             # Object was deleted between notify and fetch
             message[:action] = "delete"
-            message[:data] = { deleted: [{ objectType: object_type, id: object_id }] }
+            message[:data] = { deleted: [{ objectType: config[:client_type], id: object_id }] }
           end
         when "delete"
-          message[:data] = { deleted: [{ objectType: object_type, id: object_id }] }
+          message[:data] = { deleted: [{ objectType: config[:client_type], id: object_id }] }
         end
 
         Websocket::ConnectionManager.instance.broadcast_to_workspace(workspace_id, message)

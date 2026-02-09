@@ -72,19 +72,17 @@ module Users
 
           # Add user to workspace if provided
           if workspace_id
+            membership_id = SecureRandom.uuid
             DB[:workspace_memberships].insert(
-              id: SecureRandom.uuid,
+              id: membership_id,
               workspace_id: workspace_id.to_s,
               user_id: id,
               role: "member",
               created_at: now
             )
 
-            # Update workspace timestamp so pool knows it changed
-            DB[:workspaces].where(id: workspace_id.to_s).update(updated_at: now)
-
-            # Broadcast workspace change so other clients see new member
-            Broadcaster.object_changed("workspace", workspace_id.to_s, workspace_id: workspace_id.to_s)
+            # Broadcast new membership so other clients see new member
+            Broadcaster.object_changed("workspace_membership", membership_id, workspace_id: workspace_id.to_s)
           end
         end
 

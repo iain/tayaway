@@ -3,9 +3,7 @@ import { useObjectPoolStore } from '@/stores/objectPool'
 import type {
   PoolEvent,
   PoolDateRange,
-  PoolVote,
   PoolUser,
-  PoolWorkspaceMembership,
   VoteResponse,
   DatePollStatus,
 } from '@/types/pool'
@@ -124,9 +122,10 @@ function hydrateEvent(
   pool: ReturnType<typeof useObjectPoolStore>
 ): HydratedEvent {
   const user = pool.get('user', poolEvent.userId)
-  const datePoll = poolEvent.datePollId
-    ? hydrateDatePoll(poolEvent.datePollId, pool)
-    : null
+  const datePollObj = pool
+    .getAll('datePoll')
+    .find((dp) => dp.eventId === poolEvent.id)
+  const datePoll = datePollObj ? hydrateDatePoll(datePollObj.id, pool) : null
   const workspace = hydrateWorkspace(poolEvent.workspaceId, pool)
 
   return {
@@ -153,7 +152,7 @@ function hydrateDatePoll(
   const pollData = pool.get('datePoll', datePollId)
   if (!pollData) return null
 
-  const dateRanges = hydrateDateRanges(pollData.dateRangeIds, pool)
+  const dateRanges = hydrateDateRanges(pollData.id, pool)
   const selectedDateRange = pollData.selectedDateRangeId
     ? dateRanges.find((dr) => dr.id === pollData.selectedDateRangeId)
     : undefined
@@ -182,7 +181,7 @@ function hydrateWorkspace(
   const workspace = pool.get('workspace', workspaceId)
   if (!workspace) return undefined
 
-  const members = hydrateMembers(workspace.membershipIds, pool)
+  const members = hydrateMembers(workspace.id, pool)
 
   return {
     id: workspace.id,
@@ -193,14 +192,15 @@ function hydrateWorkspace(
 
 /**
  * Hydrate workspace memberships into members with user objects.
+ * Derives membership list from foreign key instead of explicit ID array.
  */
 function hydrateMembers(
-  membershipIds: string[],
+  workspaceId: string,
   pool: ReturnType<typeof useObjectPoolStore>
 ): HydratedMember[] {
-  return membershipIds
-    .map((id) => pool.get('workspaceMembership', id))
-    .filter((m): m is PoolWorkspaceMembership => m !== undefined)
+  return pool
+    .getAll('workspaceMembership')
+    .filter((m) => m.workspaceId === workspaceId)
     .map((membership) => ({
       id: membership.id,
       user: pool.get('user', membership.userId),
@@ -209,15 +209,16 @@ function hydrateMembers(
 }
 
 /**
- * Hydrate date ranges with their votes.
+ * Hydrate date ranges for a date poll.
+ * Derives date range list from foreign key instead of explicit ID array.
  */
 function hydrateDateRanges(
-  dateRangeIds: string[],
+  datePollId: string,
   pool: ReturnType<typeof useObjectPoolStore>
 ): HydratedDateRange[] {
-  return dateRangeIds
-    .map((id) => pool.get('dateRange', id))
-    .filter((dr): dr is PoolDateRange => dr !== undefined)
+  return pool
+    .getAll('dateRange')
+    .filter((dr) => dr.datePollId === datePollId)
     .map((dr) => hydrateDateRange(dr, pool))
 }
 
@@ -228,7 +229,7 @@ function hydrateDateRange(
   dateRange: PoolDateRange,
   pool: ReturnType<typeof useObjectPoolStore>
 ): HydratedDateRange {
-  const votes = hydrateVotes(dateRange.voteIds, pool)
+  const votes = hydrateVotes(dateRange.id, pool)
   const voteSummary = calculateVoteSummary(votes)
 
   return {
@@ -242,15 +243,16 @@ function hydrateDateRange(
 }
 
 /**
- * Hydrate votes with their user objects.
+ * Hydrate votes for a date range.
+ * Derives vote list from foreign key instead of explicit ID array.
  */
 function hydrateVotes(
-  voteIds: string[],
+  dateRangeId: string,
   pool: ReturnType<typeof useObjectPoolStore>
 ): HydratedVote[] {
-  return voteIds
-    .map((id) => pool.get('vote', id))
-    .filter((v): v is PoolVote => v !== undefined)
+  return pool
+    .getAll('vote')
+    .filter((v) => v.dateRangeId === dateRangeId)
     .map((vote) => ({
       id: vote.id,
       dateRangeId: vote.dateRangeId,

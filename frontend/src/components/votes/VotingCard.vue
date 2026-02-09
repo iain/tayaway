@@ -77,9 +77,6 @@ async function handleVote(response: VoteResponse) {
       // Manual handling needed because we update multiple pool objects
       const voteId = crypto.randomUUID()
 
-      // Capture server state before optimistic update for rollback
-      const serverDateRange = pool.getServer('dateRange', props.dateRange.id)
-
       // Optimistically add vote to pool
       pool.set({
         id: voteId,
@@ -92,14 +89,6 @@ async function handleVote(response: VoteResponse) {
         updatedAt: new Date().toISOString(),
       })
 
-      // Optimistically update dateRange's voteIds
-      const dateRange = pool.get('dateRange', props.dateRange.id)
-      if (dateRange) {
-        pool.addPending('dateRange', props.dateRange.id, {
-          voteIds: [...dateRange.voteIds, voteId],
-        })
-      }
-
       try {
         await api.post<PoolApiResponse>(`/events/${props.eventId}/votes`, {
           id: voteId,
@@ -108,11 +97,8 @@ async function handleVote(response: VoteResponse) {
         })
         // Server response automatically imported by API client
       } catch {
-        // Rollback: remove vote and restore dateRange to pre-optimistic state
+        // Rollback: remove optimistic vote from pool
         pool.remove('vote', voteId)
-        if (serverDateRange) {
-          pool.set(serverDateRange)
-        }
         throw new Error('Failed to create vote')
       }
     }

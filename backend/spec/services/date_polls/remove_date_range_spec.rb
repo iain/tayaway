@@ -69,7 +69,7 @@ RSpec.describe DatePolls::RemoveDateRange do
     )
 
     expect(result.success?).to be true
-    expect(result.value![:deleted]).to eq([{ objectType: "date_range", id: dr_id }])
+    expect(result.value![:deleted]).to eq([{ objectType: "dateRange", id: dr_id }])
     expect(DB[:date_ranges].where(id: dr_id).count).to eq(0)
   end
 end

@@ -87,11 +87,7 @@ module DatePolls
             updated_at: now
           )
 
-          # Touch event so pool timestamp check picks up the new datePollId
-          DB[:events].where(id: event.id).update(updated_at: now)
-
           Broadcaster.object_changed("date_poll", poll_id, workspace_id: event.workspace_id)
-          Broadcaster.object_changed("event", event.id, workspace_id: event.workspace_id)
         end
 
         pool = PoolSerializer.new
