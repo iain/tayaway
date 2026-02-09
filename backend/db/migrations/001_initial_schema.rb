@@ -30,6 +30,14 @@ Sequel.migration do
       column :updated_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
     end
 
+    # Add trigger for users updated_at
+    run <<~SQL
+      CREATE TRIGGER update_users_updated_at
+      BEFORE UPDATE ON users
+      FOR EACH ROW
+      EXECUTE FUNCTION update_updated_at_column();
+    SQL
+
     # Workspaces table
     create_table(:workspaces) do
       column :id, :uuid, primary_key: true, default: Sequel.lit("gen_random_uuid()")
@@ -53,10 +61,19 @@ Sequel.migration do
       foreign_key :user_id, :users, type: :uuid, null: false, on_delete: :cascade
       column :role, :workspace_role, null: false, default: "member"
       column :created_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
+      column :updated_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
 
       index [:workspace_id, :user_id], unique: true
       index :user_id
     end
+
+    # Add trigger for workspace_memberships updated_at
+    run <<~SQL
+      CREATE TRIGGER update_workspace_memberships_updated_at
+      BEFORE UPDATE ON workspace_memberships
+      FOR EACH ROW
+      EXECUTE FUNCTION update_updated_at_column();
+    SQL
 
     # Magic link tokens table
     create_table(:magic_link_tokens) do
@@ -67,8 +84,17 @@ Sequel.migration do
       column :expires_at, :timestamptz, null: false
       column :used_at, :timestamptz
       column :created_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
+      column :updated_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
       index :token
     end
+
+    # Add trigger for magic_link_tokens updated_at
+    run <<~SQL
+      CREATE TRIGGER update_magic_link_tokens_updated_at
+      BEFORE UPDATE ON magic_link_tokens
+      FOR EACH ROW
+      EXECUTE FUNCTION update_updated_at_column();
+    SQL
 
     # Sessions table
     create_table(:sessions) do
@@ -77,15 +103,24 @@ Sequel.migration do
       String :token, null: false, unique: true, size: 64
       column :expires_at, :timestamptz, null: false
       column :created_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
+      column :updated_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
       index :token
       index :user_id
     end
+
+    # Add trigger for sessions updated_at
+    run <<~SQL
+      CREATE TRIGGER update_sessions_updated_at
+      BEFORE UPDATE ON sessions
+      FOR EACH ROW
+      EXECUTE FUNCTION update_updated_at_column();
+    SQL
 
     # Events table
     create_table(:events) do
       column :id, :uuid, primary_key: true, default: Sequel.lit("gen_random_uuid()")
       foreign_key :workspace_id, :workspaces, type: :uuid, null: false, on_delete: :cascade
-      foreign_key :user_id, :users, type: :uuid, null: false, on_delete: :cascade
+      foreign_key :user_id, :users, type: :uuid, on_delete: :set_null
       String :name, null: false, size: 255
       String :description, text: true
       column :created_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
@@ -112,6 +147,7 @@ Sequel.migration do
       column :created_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
       column :updated_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
 
+      constraint(:valid_date_range, Sequel.lit("start_date <= end_date"))
       index :event_id
       index [:event_id, :start_date]
     end
