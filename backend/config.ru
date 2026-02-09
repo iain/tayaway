@@ -1,6 +1,8 @@
 # typed: true
 # frozen_string_literal: true
 
+$stdout.sync = true
+
 require_relative "config/environment"
 
 use Rack::CommonLogger
