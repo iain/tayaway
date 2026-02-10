@@ -15,6 +15,7 @@ import type {
   MeResponse,
   LogoutResponse,
 } from '@/types'
+import type { PoolApiResponse } from '@/types/pool'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthUser | null>(null)
@@ -106,6 +107,20 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function updateName(name: string): Promise<void> {
+    if (!user.value) return
+    const response = await api.put<PoolApiResponse>(`/users/${user.value.id}`, {
+      name,
+    })
+    // Update the auth store's user ref (pool auto-imports via client interceptor)
+    const updatedUser = response.data.objects.find(
+      (o) => o.objectType === 'user'
+    )
+    if (updatedUser && 'name' in updatedUser) {
+      user.value.name = updatedUser.name
+    }
+  }
+
   function $reset() {
     user.value = null
     loading.value = false
@@ -121,6 +136,7 @@ export const useAuthStore = defineStore('auth', () => {
     requestMagicLink,
     verifyToken,
     logout,
+    updateName,
     $reset,
   }
 })
