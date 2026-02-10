@@ -34,6 +34,17 @@ export interface LogoutResponse {
   message: string
 }
 
+export interface Session {
+  id: string
+  created_at: string
+  expires_at: string
+  current: boolean
+}
+
+export interface SessionsResponse {
+  sessions: Session[]
+}
+
 export interface AuthError {
   error: string
 }

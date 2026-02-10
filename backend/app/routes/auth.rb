@@ -26,6 +26,50 @@ class App
     end
   end
 
+  hash_branch("api", "auth") do |r|
+    r.hash_routes("api/auth")
+  end
+
+  hash_branch("api/auth", "sessions") do |r|
+    session = current_session
+    unless session
+      response.status = 401
+      next { error: "Authorization required" }
+    end
+
+    user = User.find(session.user_id)
+    unless user
+      response.status = 401
+      next { error: "Invalid or expired session" }
+    end
+
+    r.is do
+      r.get do
+        sessions = Session.for_user(user.id)
+        response.status = 200
+        {
+          sessions: sessions.map do |s|
+            s.to_api_hash.merge(current: s.id == session.id)
+          end
+        }
+      end
+    end
+
+    r.on String do |session_id|
+      r.is do
+        r.delete do
+          if session_id == session.id.to_s
+            response.status = 400
+            next { error: "Cannot delete current session. Use logout instead." }
+          end
+
+          result = Auth::DeleteSession.call(session_id: session_id, user_id: user.id)
+          handle_result(result)
+        end
+      end
+    end
+  end
+
   hash_path "/api/auth/me" do |r|
     r.get do
       auth_header = r.headers["Authorization"]

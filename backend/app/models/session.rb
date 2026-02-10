@@ -13,6 +13,15 @@ class Session < T::Struct
   const :expires_at, Time
   const :created_at, Time
 
+  sig { returns(T::Hash[Symbol, T.untyped]) }
+  def to_api_hash
+    {
+      id: id.to_s,
+      created_at: created_at.iso8601,
+      expires_at: expires_at.iso8601
+    }
+  end
+
   class << self
     extend T::Sig
 
@@ -27,6 +36,23 @@ class Session < T::Struct
     sig { params(token: String).returns(T.nilable(Session)) }
     def find_by_token(token)
       dataset.where(token: token).first
+    end
+
+    sig { params(id: String).returns(T.nilable(Session)) }
+    def find_valid_by_id(id)
+      dataset
+        .where(id: id)
+        .where(Sequel[:expires_at] > Time.now)
+        .first
+    end
+
+    sig { params(user_id: UUID).returns(T::Array[Session]) }
+    def for_user(user_id)
+      dataset
+        .where(user_id: user_id.to_s)
+        .where(Sequel[:expires_at] > Time.now)
+        .order(Sequel.desc(:created_at))
+        .all
     end
 
     private

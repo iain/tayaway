@@ -155,6 +155,37 @@ test.describe('Profile Feature', () => {
       await expect(input).toHaveValue(TEST_NAME)
     })
 
+    test('can end a non-current session from the sessions list', async ({
+      page,
+      request,
+    }) => {
+      // Create two sessions so there's at least one non-current session
+      const { token: currentToken } = await getTestSession(request)
+      await getTestSession(request)
+
+      // Authenticate as the current session and visit profile
+      await setupAuthenticatedPage(page, currentToken)
+      await page.goto('/profile')
+
+      // Should see the Active Sessions section with current badge
+      await expect(page.getByText('Active Sessions')).toBeVisible()
+      await expect(page.getByText('Current session')).toBeVisible()
+
+      // Should see at least one "End session" button (for non-current sessions)
+      const endButtons = page.getByRole('button', { name: 'End session' })
+      await expect(endButtons.first()).toBeVisible()
+      const countBefore = await endButtons.count()
+
+      // Click the first "End session" button
+      await endButtons.first().click()
+
+      // The session should be removed from the list
+      await expect(endButtons).toHaveCount(countBefore - 1)
+
+      // Current session badge should still be visible (we didn't delete our own)
+      await expect(page.getByText('Current session')).toBeVisible()
+    })
+
     test('can update name through the modal', async ({ page, request }) => {
       const { token } = await getTestSession(request)
       await setupAuthenticatedPage(page, token)

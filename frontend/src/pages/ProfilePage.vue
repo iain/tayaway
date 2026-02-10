@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores'
 import EditNameModal from '@/components/profile/EditNameModal.vue'
+import SessionsList from '@/components/profile/SessionsList.vue'
 
 const authStore = useAuthStore()
 const { user } = storeToRefs(authStore)
@@ -85,6 +86,7 @@ async function handleSaveName(name: string): Promise<void> {
         </div>
       </div>
     </div>
+    <SessionsList class="mt-6" />
     <EditNameModal
       :open="editNameOpen"
       :loading="editNameLoading"

@@ -17,12 +17,16 @@ class App < Roda
 
   Dir[File.expand_path("routes/**/*.rb", __dir__)].each { |f| require f }
 
-  def current_user
+  def current_session
     auth_header = request.headers["Authorization"]
     return nil unless auth_header
 
     token = auth_header.sub(/^Bearer\s+/, "")
-    session = Session.find_valid(token)
+    Session.find_valid(token)
+  end
+
+  def current_user
+    session = current_session
     return nil unless session
 
     User.find(session.user_id)
