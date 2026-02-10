@@ -25,7 +25,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 const wsStore = useWebSocketStore()
 const { user } = storeToRefs(authStore)
-const { hasSynced } = storeToRefs(wsStore)
+const { hasSynced, isReconnecting } = storeToRefs(wsStore)
 const { isDark, toggle: toggleDarkMode } = useDarkMode()
 
 const navigation = [
@@ -286,4 +286,28 @@ function getInitials(email: string | undefined): string {
       </div>
     </main>
   </div>
+
+  <!-- Reconnecting indicator -->
+  <Transition
+    enter-active-class="transition ease-out duration-300"
+    enter-from-class="translate-y-full opacity-0"
+    enter-to-class="translate-y-0 opacity-100"
+    leave-active-class="transition ease-in duration-200"
+    leave-from-class="translate-y-0 opacity-100"
+    leave-to-class="translate-y-full opacity-0"
+  >
+    <div
+      v-if="isReconnecting"
+      class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2"
+    >
+      <div
+        class="flex items-center gap-2 rounded-full bg-gray-800 px-4 py-2 text-sm font-medium text-white shadow-lg dark:bg-gray-700"
+      >
+        <div
+          class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
+        />
+        Reconnecting...
+      </div>
+    </div>
+  </Transition>
 </template>

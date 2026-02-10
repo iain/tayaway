@@ -60,6 +60,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
   let currentToken: string | null = null // Track token used for current connection
 
   const isConnected = computed(() => state.value === 'authenticated')
+  const isReconnecting = computed(
+    () => hasSynced.value && state.value !== 'authenticated'
+  )
 
   function getWebSocketUrl(): string {
     const token = getSessionToken()
@@ -184,7 +187,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
     socket = null
     state.value = 'disconnected'
-    hasSynced.value = false
     currentToken = null
   }
 
@@ -219,6 +221,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
     workspaceIds.value = []
     state.value = 'disconnected'
+    hasSynced.value = false
     reconnectAttempts = 0
     currentToken = null
   }
@@ -253,6 +256,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     state,
     workspaceIds,
     isConnected,
+    isReconnecting,
     hasSynced,
     connect,
     disconnect,
