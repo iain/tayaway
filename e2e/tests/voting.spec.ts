@@ -786,7 +786,9 @@ test.describe('Voting Feature', () => {
       })
 
       // Should show count of people who haven't voted
-      await expect(awaitingSection.getByText(/haven't voted yet/)).toBeVisible()
+      await expect(
+        awaitingSection.getByText(/haven't fully voted yet/)
+      ).toBeVisible()
     })
   })
 })
