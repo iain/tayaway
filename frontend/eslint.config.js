@@ -1,3 +1,4 @@
+import eslintConfigPrettier from 'eslint-config-prettier'
 import pluginVue from 'eslint-plugin-vue'
 import tseslint from 'typescript-eslint'
 
@@ -14,5 +15,6 @@ export default tseslint.config(
         parser: tseslint.parser,
       },
     },
-  }
+  },
+  eslintConfigPrettier
 )
