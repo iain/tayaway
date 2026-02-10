@@ -16,5 +16,5 @@ DB.extension :pg_array
 # that compare `server_version >= 80400`. By resolving it here (outside the
 # fiber scheduler), we get the correct Integer and then disconnect so forked
 # workers create their own connections.
-# DB.server_version
-# DB.disconnect
+DB.server_version
+DB.disconnect
