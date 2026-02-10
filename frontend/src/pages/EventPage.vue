@@ -24,23 +24,51 @@ const isOwner = computed(() => {
   return user.value?.id === event.value?.userId
 })
 
-// Get workspace members who haven't voted on ANY date range
-const membersWhoHaventVoted = computed(() => {
+// Categorize workspace members by voting completeness
+const membersNotVoted = computed(() => {
   if (!event.value?.workspace || !event.value.datePoll) return []
 
-  // Get all unique user IDs who have voted on at least one date range
+  const dateRanges = event.value.datePoll.dateRanges
   const voterUserIds = new Set<string>()
-  for (const dateRange of event.value.datePoll.dateRanges) {
+  for (const dateRange of dateRanges) {
     for (const vote of dateRange.votes) {
       voterUserIds.add(vote.userId)
     }
   }
 
-  // Filter workspace members to those who haven't voted
   return event.value.workspace.members.filter(
     (member) => member.user && !voterUserIds.has(member.user.id)
   )
 })
+
+const membersPartiallyVoted = computed(() => {
+  if (!event.value?.workspace || !event.value.datePoll) return []
+
+  const dateRanges = event.value.datePoll.dateRanges
+  if (dateRanges.length <= 1) return []
+
+  // Count how many date ranges each user has voted on
+  const voteCountByUser = new Map<string, number>()
+  for (const dateRange of dateRanges) {
+    for (const vote of dateRange.votes) {
+      voteCountByUser.set(
+        vote.userId,
+        (voteCountByUser.get(vote.userId) || 0) + 1
+      )
+    }
+  }
+
+  return event.value.workspace.members.filter(
+    (member) =>
+      member.user &&
+      voteCountByUser.has(member.user.id) &&
+      voteCountByUser.get(member.user.id)! < dateRanges.length
+  )
+})
+
+const awaitingVotesCount = computed(
+  () => membersNotVoted.value.length + membersPartiallyVoted.value.length
+)
 
 function handleBack(): void {
   router.push('/events')
@@ -138,62 +166,116 @@ function handleVote(): void {
             Open a date poll to start collecting votes.
           </div>
 
-          <div
-            v-else-if="membersWhoHaventVoted.length === 0"
-            class="py-4 text-center"
-          >
+          <div v-else-if="awaitingVotesCount === 0" class="py-4 text-center">
             <CheckCircleIcon class="mx-auto mb-2 size-8 text-green-500" />
             <p class="text-gray-600 dark:text-gray-400">Everyone has voted!</p>
           </div>
 
-          <ul v-else class="space-y-2">
-            <li
-              v-for="member in membersWhoHaventVoted"
-              :key="member.id"
-              class="flex items-center gap-3 rounded-md px-3 py-2"
-              :class="
-                member.user?.id === user?.id
-                  ? 'bg-amber-50 ring-1 ring-amber-200 dark:bg-amber-900/20 dark:ring-amber-800'
-                  : 'bg-gray-50 dark:bg-gray-700/50'
-              "
-            >
-              <div
-                class="flex size-8 items-center justify-center rounded-full"
-                :class="
-                  member.user?.id === user?.id
-                    ? 'bg-amber-200 dark:bg-amber-800'
-                    : 'bg-gray-200 dark:bg-gray-600'
-                "
+          <div v-else class="space-y-4">
+            <!-- Not voted at all -->
+            <div v-if="membersNotVoted.length > 0">
+              <h3
+                class="mb-2 text-sm font-medium text-gray-500 dark:text-gray-400"
               >
-                <UserIcon
-                  class="size-4"
+                Not voted yet
+              </h3>
+              <ul class="space-y-2">
+                <li
+                  v-for="member in membersNotVoted"
+                  :key="member.id"
+                  class="flex items-center gap-3 rounded-md px-3 py-2"
                   :class="
                     member.user?.id === user?.id
-                      ? 'text-amber-600 dark:text-amber-400'
-                      : 'text-gray-500 dark:text-gray-400'
+                      ? 'bg-amber-50 ring-1 ring-amber-200 dark:bg-amber-900/20 dark:ring-amber-800'
+                      : 'bg-gray-50 dark:bg-gray-700/50'
                   "
-                />
-              </div>
-              <span class="text-gray-900 dark:text-white">
-                {{ member.user?.name || member.user?.email || 'Unknown' }}
-                <span
-                  v-if="member.user?.id === user?.id"
-                  class="text-sm text-amber-600 dark:text-amber-400"
                 >
-                  (you)
-                </span>
-              </span>
-            </li>
-          </ul>
+                  <div
+                    class="flex size-8 items-center justify-center rounded-full"
+                    :class="
+                      member.user?.id === user?.id
+                        ? 'bg-amber-200 dark:bg-amber-800'
+                        : 'bg-gray-200 dark:bg-gray-600'
+                    "
+                  >
+                    <UserIcon
+                      class="size-4"
+                      :class="
+                        member.user?.id === user?.id
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-gray-500 dark:text-gray-400'
+                      "
+                    />
+                  </div>
+                  <span class="text-gray-900 dark:text-white">
+                    {{ member.user?.name || member.user?.email || 'Unknown' }}
+                    <span
+                      v-if="member.user?.id === user?.id"
+                      class="text-sm text-amber-600 dark:text-amber-400"
+                    >
+                      (you)
+                    </span>
+                  </span>
+                </li>
+              </ul>
+            </div>
 
-          <p
-            v-if="membersWhoHaventVoted.length > 0"
-            class="mt-4 text-sm text-gray-500 dark:text-gray-400"
-          >
-            {{ membersWhoHaventVoted.length }}
-            {{ membersWhoHaventVoted.length === 1 ? 'person' : 'people' }}
-            haven't voted yet
-          </p>
+            <!-- Voted on some but not all date ranges -->
+            <div v-if="membersPartiallyVoted.length > 0">
+              <h3
+                class="mb-2 text-sm font-medium text-gray-500 dark:text-gray-400"
+              >
+                Incomplete votes
+              </h3>
+              <ul class="space-y-2">
+                <li
+                  v-for="member in membersPartiallyVoted"
+                  :key="member.id"
+                  class="flex items-center gap-3 rounded-md px-3 py-2"
+                  :class="
+                    member.user?.id === user?.id
+                      ? 'bg-amber-50 ring-1 ring-amber-200 dark:bg-amber-900/20 dark:ring-amber-800'
+                      : 'bg-gray-50 dark:bg-gray-700/50'
+                  "
+                >
+                  <div
+                    class="flex size-8 items-center justify-center rounded-full"
+                    :class="
+                      member.user?.id === user?.id
+                        ? 'bg-amber-200 dark:bg-amber-800'
+                        : 'bg-gray-200 dark:bg-gray-600'
+                    "
+                  >
+                    <UserIcon
+                      class="size-4"
+                      :class="
+                        member.user?.id === user?.id
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-gray-500 dark:text-gray-400'
+                      "
+                    />
+                  </div>
+                  <span class="text-gray-900 dark:text-white">
+                    {{ member.user?.name || member.user?.email || 'Unknown' }}
+                    <span
+                      v-if="member.user?.id === user?.id"
+                      class="text-sm text-amber-600 dark:text-amber-400"
+                    >
+                      (you)
+                    </span>
+                  </span>
+                </li>
+              </ul>
+            </div>
+
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              {{ awaitingVotesCount }}
+              {{
+                awaitingVotesCount === 1 ? "person hasn't" : "people haven't"
+              }}
+              fully voted yet
+            </p>
+          </div>
         </section>
       </div>
     </div>
