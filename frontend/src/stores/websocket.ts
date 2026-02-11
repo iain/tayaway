@@ -2,6 +2,7 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { getSessionToken } from '@/api/client'
 import { useObjectPoolStore } from './objectPool'
+import { useWorkspaceStore } from './workspace'
 import type { PoolObject, ObjectType } from '@/types/pool'
 
 type ConnectionState =
@@ -146,6 +147,16 @@ export const useWebSocketStore = defineStore('websocket', () => {
     state.value = 'authenticated'
     workspaceIds.value = message.workspaceIds
 
+    // Initialize workspace selection and request data for it
+    const workspaceStore = useWorkspaceStore()
+    workspaceStore.initialize(message.workspaceIds)
+    if (workspaceStore.currentWorkspaceId) {
+      send({
+        type: 'switch_workspace',
+        workspaceId: workspaceStore.currentWorkspaceId,
+      })
+    }
+
     // Start ping interval to keep connection alive
     pingInterval = setInterval(() => {
       send({ type: 'ping' })
@@ -171,6 +182,11 @@ export const useWebSocketStore = defineStore('websocket', () => {
     } else if (message.action === 'update' && message.data?.objects) {
       pool.importObjects(message.data.objects)
     }
+  }
+
+  function sendSwitchWorkspace(workspaceId: string): void {
+    hasSynced.value = false
+    send({ type: 'switch_workspace', workspaceId })
   }
 
   function send(data: object): void {
@@ -260,6 +276,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     hasSynced,
     connect,
     disconnect,
+    sendSwitchWorkspace,
     // Deprecated - kept for backwards compatibility
     subscribe,
     unsubscribe,

@@ -8,6 +8,7 @@ import {
 } from '@/api/client'
 import { useObjectPoolStore } from './objectPool'
 import { useWebSocketStore } from './websocket'
+import { useWorkspaceStore } from './workspace'
 import type {
   AuthUser,
   MagicLinkResponse,
@@ -101,9 +102,11 @@ export const useAuthStore = defineStore('auth', () => {
 
       clearSessionToken()
       user.value = null
-      // Reset pool on logout
+      // Reset stores on logout
       const pool = useObjectPoolStore()
       pool.$reset()
+      const workspaceStore = useWorkspaceStore()
+      workspaceStore.$reset()
     }
   }
 

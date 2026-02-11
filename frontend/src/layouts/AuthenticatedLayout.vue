@@ -16,16 +16,24 @@ import {
   XMarkIcon,
   SunIcon,
   MoonIcon,
+  ChevronDownIcon,
 } from '@heroicons/vue/24/outline'
-import { useAuthStore, useWebSocketStore } from '@/stores'
+import { useAuthStore, useWebSocketStore, useWorkspaceStore } from '@/stores'
 import { useDarkMode } from '@/composables/useDarkMode'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const wsStore = useWebSocketStore()
+const workspaceStore = useWorkspaceStore()
 const { user } = storeToRefs(authStore)
 const { hasSynced, isReconnecting } = storeToRefs(wsStore)
+const { currentWorkspace, otherWorkspaces } = storeToRefs(workspaceStore)
+
+function handleSwitchWorkspace(workspaceId: string) {
+  workspaceStore.switchWorkspace(workspaceId)
+  wsStore.sendSwitchWorkspace(workspaceId)
+}
 const { isDark, toggle: toggleDarkMode } = useDarkMode()
 
 const navigation = [
@@ -82,7 +90,51 @@ function getInitials(email: string | undefined): string {
         <div class="flex h-16 items-center justify-between">
           <div class="flex items-center">
             <div class="shrink-0">
-              <span class="text-xl font-bold text-white">Tayaway</span>
+              <!-- Single workspace: just show name -->
+              <span
+                v-if="otherWorkspaces.length === 0"
+                class="text-xl font-bold text-white"
+              >
+                {{ currentWorkspace?.name ?? 'Tayaway' }}
+              </span>
+              <!-- Multiple workspaces: dropdown -->
+              <Menu v-else as="div" class="relative">
+                <MenuButton
+                  class="flex items-center gap-1 text-xl font-bold text-white hover:text-rose-100 focus:outline-hidden"
+                >
+                  {{ currentWorkspace?.name ?? 'Tayaway' }}
+                  <ChevronDownIcon class="size-5" aria-hidden="true" />
+                </MenuButton>
+                <transition
+                  enter-active-class="transition ease-out duration-100"
+                  enter-from-class="transform opacity-0 scale-95"
+                  enter-to-class="transform opacity-100 scale-100"
+                  leave-active-class="transition ease-in duration-75"
+                  leave-from-class="transform opacity-100 scale-100"
+                  leave-to-class="transform opacity-0 scale-95"
+                >
+                  <MenuItems
+                    class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5 focus:outline-hidden dark:bg-gray-800"
+                  >
+                    <MenuItem
+                      v-for="ws in otherWorkspaces"
+                      :key="ws.id"
+                      v-slot="{ active }"
+                    >
+                      <button
+                        type="button"
+                        :class="[
+                          active ? 'bg-gray-100 dark:bg-gray-700' : '',
+                          'block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300',
+                        ]"
+                        @click="handleSwitchWorkspace(ws.id)"
+                      >
+                        {{ ws.name }}
+                      </button>
+                    </MenuItem>
+                  </MenuItems>
+                </transition>
+              </Menu>
             </div>
             <div class="hidden md:block">
               <div class="ml-10 flex items-baseline space-x-4">
@@ -205,6 +257,31 @@ function getInitials(email: string | undefined): string {
       </div>
 
       <DisclosurePanel class="md:hidden">
+        <!-- Mobile workspace switcher -->
+        <div
+          v-if="otherWorkspaces.length > 0"
+          class="border-b border-rose-700 px-3 pt-2 pb-3 dark:border-rose-900"
+        >
+          <p
+            class="px-2 text-xs font-semibold tracking-wide text-rose-200 uppercase"
+          >
+            Switch workspace
+          </p>
+          <button
+            v-for="ws in otherWorkspaces"
+            :key="ws.id"
+            type="button"
+            class="hover:bg-opacity-75 mt-1 block w-full rounded-md px-3 py-2 text-left text-base font-medium text-white hover:bg-rose-500 dark:hover:bg-rose-700"
+            @click="
+              () => {
+                close()
+                handleSwitchWorkspace(ws.id)
+              }
+            "
+          >
+            {{ ws.name }}
+          </button>
+        </div>
         <div class="space-y-1 px-2 pt-2 pb-3 sm:px-3">
           <router-link
             v-for="item in navigation"

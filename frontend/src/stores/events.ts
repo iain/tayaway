@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { api } from '@/api/client'
+import { useWorkspaceStore } from './workspace'
 import type { CreateEventRequest, UpdateEventRequest } from '@/types'
 import type { PoolApiResponse } from '@/types/pool'
 
@@ -12,7 +13,11 @@ export const useEventsStore = defineStore('events', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.post<PoolApiResponse>('/events', data)
+      const workspaceStore = useWorkspaceStore()
+      const response = await api.post<PoolApiResponse>('/events', {
+        ...data,
+        workspace_id: workspaceStore.currentWorkspaceId,
+      })
       const newEvent = response.data.objects.find(
         (o) => o.objectType === 'event'
       )

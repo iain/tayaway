@@ -209,6 +209,26 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     return result
   })
 
+  // Clear all object types except specified ones (used during workspace switch)
+  function clearExcept(...keepTypes: ObjectType[]): void {
+    const keepSet = new Set(keepTypes)
+    for (const type of OBJECT_TYPES) {
+      if (!keepSet.has(type)) {
+        objects.value.get(type)?.clear()
+      }
+    }
+    // Clear pending updates for cleared types
+    for (const [key] of pendingUpdates.value) {
+      const objectType = key.split(':')[0] as ObjectType
+      if (!keepSet.has(objectType)) {
+        pendingUpdates.value.delete(key)
+      }
+    }
+    version.value++
+    triggerRef(objects)
+    triggerRef(pendingUpdates)
+  }
+
   // Reset the store
   function $reset(): void {
     objects.value = createEmptyStorage()
@@ -233,6 +253,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     hasPending,
     set,
     remove,
+    clearExcept,
     $reset,
   }
 })

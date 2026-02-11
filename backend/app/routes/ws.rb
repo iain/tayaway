@@ -23,17 +23,16 @@ class App
     r.websocket do |connection|
       connection_id = Websocket::ConnectionManager.instance.register(connection, user_id)
 
-      # Load workspaces for user and set up workspace subscriptions
+      # Load workspaces for user (don't subscribe yet — wait for switch_workspace)
       workspaces = Workspace.for_user(user_id)
       workspace_ids = workspaces.map { |w| w.id.to_s }
-      Websocket::ConnectionManager.instance.set_workspaces(connection_id, workspace_ids)
 
       # Send authenticated message with workspace IDs
       connection.write({ type: "authenticated", userId: user_id.to_s, workspaceIds: workspace_ids }.to_json)
 
-      # Build and send initial sync with all workspace data
+      # Send only workspace + membership objects (not full event data)
       pool = PoolSerializer.new
-      workspaces.each { |w| pool.add_workspace_with_events(w) }
+      workspaces.each { |w| pool.add_workspace(w) }
       connection.write({ type: "sync", data: { objects: pool.to_a } }.to_json)
 
       begin
@@ -50,13 +49,15 @@ class App
 
   private
 
-  def handle_message(connection, _connection_id, _user_id, raw_message)
+  def handle_message(connection, connection_id, user_id, raw_message)
     data = JSON.parse(raw_message, symbolize_names: true)
     type = data[:type]
 
     case type
     when "ping"
       connection.write({ type: "pong" }.to_json)
+    when "switch_workspace"
+      handle_switch_workspace(connection, connection_id, user_id, data[:workspaceId])
     else
       connection.write({ type: "error", message: "Unknown message type" }.to_json)
     end
@@ -64,5 +65,28 @@ class App
     connection.write({ type: "error", message: "Invalid JSON" }.to_json)
   rescue StandardError => e
     connection.write({ type: "error", message: e.message }.to_json)
+  end
+
+  def handle_switch_workspace(connection, connection_id, user_id, workspace_id)
+    unless workspace_id
+      connection.write({ type: "error", message: "Missing workspaceId" }.to_json)
+      return
+    end
+
+    # Validate user is a member of this workspace
+    membership = WorkspaceMembership.find_by_workspace_and_user(workspace_id, user_id)
+    unless membership
+      connection.write({ type: "error", message: "Not a member of this workspace" }.to_json)
+      return
+    end
+
+    # Subscribe only to this workspace
+    Websocket::ConnectionManager.instance.set_workspaces(connection_id, [workspace_id.to_s])
+
+    # Send full workspace data
+    workspace = Workspace.find(workspace_id)
+    pool = PoolSerializer.new
+    pool.add_workspace_with_events(workspace)
+    connection.write({ type: "sync", data: { objects: pool.to_a } }.to_json)
   end
 end
