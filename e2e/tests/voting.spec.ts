@@ -53,8 +53,9 @@ async function setupAuthenticatedPage(
   page: Page,
   token: string
 ): Promise<void> {
-  await page.goto('/')
-  await page.evaluate((t) => {
+  // Use addInitScript to set the token before any page JS runs,
+  // avoiding race conditions with the Vue app's auth initialization
+  await page.addInitScript((t) => {
     localStorage.setItem('session_token', t)
   }, token)
 }
@@ -63,7 +64,7 @@ async function setupAuthenticatedPage(
 async function createTestEvent(
   request: APIRequestContext,
   token: string
-): Promise<{ eventId: string; dateRangeId: string }> {
+): Promise<{ eventId: string; dateRangeId: string; workspaceId: string }> {
   // 1. Create the event
   const eventResponse = await request.post(`${API_BASE}/api/events`, {
     headers: authHeaders(token),
@@ -102,6 +103,7 @@ async function createTestEvent(
   return {
     eventId,
     dateRangeId: dateRange1!.id,
+    workspaceId: event!.workspaceId as string,
   }
 }
 
@@ -753,7 +755,7 @@ test.describe('Voting Feature', () => {
       request,
     }) => {
       const { token } = await getTestSession(request)
-      const { eventId } = await createTestEvent(request, token)
+      const { eventId, workspaceId } = await createTestEvent(request, token)
       await setupAuthenticatedPage(page, token)
 
       // Navigate to the event page first
@@ -777,7 +779,11 @@ test.describe('Voting Feature', () => {
       const newUserEmail = `new-user-${Date.now()}@example.com`
       await request.post('http://localhost:9293/api/users', {
         headers: { Authorization: `Bearer ${token}` },
-        data: { name: newUserName, email: newUserEmail },
+        data: {
+          name: newUserName,
+          email: newUserEmail,
+          workspace_id: workspaceId,
+        },
       })
 
       // The new user should appear in real-time via WebSocket (no page refresh)
