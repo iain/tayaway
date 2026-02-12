@@ -97,6 +97,17 @@ class PoolSerializer
     memberships.each { |m| add_workspace_membership(m) }
   end
 
+  # Adds only the workspace object (no memberships/users). Used for the initial
+  # sync where we need workspace names for the selector but not full member data.
+  sig { params(workspace: Workspace).void }
+  def add_workspace_summary(workspace)
+    key = "workspace:#{workspace.id}"
+    return if @objects.key?(key)
+
+    membership_ids = WorkspaceMembership.ids_for_workspace(workspace.id)
+    @objects[key] = workspace.to_api_hash(membership_ids: membership_ids)
+  end
+
   sig { params(membership: WorkspaceMembership).void }
   def add_workspace_membership(membership)
     key = "workspace_membership:#{membership.id}"

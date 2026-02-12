@@ -30,9 +30,9 @@ class App
       # Send authenticated message with workspace IDs
       connection.write({ type: "authenticated", userId: user_id.to_s, workspaceIds: workspace_ids }.to_json)
 
-      # Send only workspace + membership objects (not full event data)
+      # Send only workspace objects for the selector (members come with switch_workspace)
       pool = PoolSerializer.new
-      workspaces.each { |w| pool.add_workspace(w) }
+      workspaces.each { |w| pool.add_workspace_summary(w) }
       connection.write({ type: "sync", data: { objects: pool.to_a } }.to_json)
 
       begin

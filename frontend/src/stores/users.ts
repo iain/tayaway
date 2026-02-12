@@ -2,6 +2,7 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { api } from '@/api/client'
 import { useObjectPoolStore } from './objectPool'
+import { useWorkspaceStore } from './workspace'
 import type { CreateUserRequest, CreateUserResponse } from '@/types'
 import type { PoolApiResponse, PoolUser } from '@/types/pool'
 
@@ -27,10 +28,11 @@ export const useUsersStore = defineStore('users', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.post<CreateUserResponseWithPool>(
-        '/users',
-        data
-      )
+      const workspaceStore = useWorkspaceStore()
+      const response = await api.post<CreateUserResponseWithPool>('/users', {
+        ...data,
+        workspace_id: workspaceStore.currentWorkspaceId,
+      })
 
       // Get created user from pool
       const pool = useObjectPoolStore()

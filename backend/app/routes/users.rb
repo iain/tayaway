@@ -6,22 +6,25 @@ class App
     response.status = 401
     next { error: "Authorization required" } unless current_user
 
-    # GET /api/users - List all users
+    # GET /api/users - List users in the current user's workspaces
     r.is do
       r.get do
-        users = User.all_ordered
+        workspaces = Workspace.for_user(current_user.id)
         pool = PoolSerializer.new
-        pool.add_all(users, type: :user)
+        workspaces.each { |w| pool.add_workspace(w) }
 
         response.status = 200
         { objects: pool.to_a }
       end
 
-      # POST /api/users - Create a new user in current user's workspace
+      # POST /api/users - Create a new user (or add existing) in the specified workspace
       r.post do
-        # Get current user's first workspace
-        first_workspace = Workspace.for_user(current_user.id).first
-        workspace_id = first_workspace&.id
+        workspace_id = r.params["workspace_id"]
+
+        unless workspace_id && member_of_workspace?(workspace_id)
+          response.status = 403
+          next { error: "Access denied" }
+        end
 
         result = Users::Create.call(
           name: r.params["name"]&.strip,

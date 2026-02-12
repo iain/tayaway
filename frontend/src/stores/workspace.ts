@@ -37,8 +37,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     currentWorkspaceId.value = id
     localStorage.setItem(STORAGE_KEY, id)
 
-    // Clear pool data except workspace/membership/user objects
-    pool.clearExcept('workspace', 'workspaceMembership', 'user')
+    // Clear pool data except workspace objects (needed for the workspace selector)
+    pool.clearExcept('workspace')
   }
 
   function $reset(): void {
