@@ -5,7 +5,7 @@ module Auth
   # Service to verify a magic link token and create a session.
   #
   # @example
-  #   result = Auth::VerifyToken.call(token: "abc123", email: "user@example.com")
+  #   result = Auth::VerifyToken.call(token: "<jwt>")
   #   result.success?  # => true
   #   result.value!    # => { session_token: "...", user_id: "uuid" }
   module VerifyToken
@@ -14,11 +14,11 @@ module Auth
       include Result::Methods
 
       sig do
-        params(token: T.nilable(String), email: T.nilable(String))
+        params(token: T.nilable(String))
           .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def call(token:, email:)
-        validate_params(token, email)
+      def call(token:)
+        decode_jwt(token)
           .bind { |params| find_magic_token(T.must(params[:token]), T.must(params[:email])) }
           .bind { |magic_token| create_session(magic_token) }
       end
@@ -26,15 +26,18 @@ module Auth
       private
 
       sig do
-        params(token: T.nilable(String), email: T.nilable(String))
+        params(jwt: T.nilable(String))
           .returns(Result[T::Hash[Symbol, String], ServiceError])
       end
-      def validate_params(token, email)
-        if token.nil? || email.nil?
-          T.cast(Failure(ServiceError.validation("Token and email are required")), Result[T::Hash[Symbol, String], ServiceError])
-        else
-          T.cast(Success({ token: token, email: email }), Result[T::Hash[Symbol, String], ServiceError])
+      def decode_jwt(jwt)
+        if jwt.nil?
+          return T.cast(Failure(ServiceError.validation("Token is required")), Result[T::Hash[Symbol, String], ServiceError])
         end
+
+        decoded = Auth::Token.decode_magic_link(jwt)
+        T.cast(Success(decoded), Result[T::Hash[Symbol, String], ServiceError])
+      rescue JWT::DecodeError
+        T.cast(Failure(ServiceError.unauthorized("Invalid or expired magic link")), Result[T::Hash[Symbol, String], ServiceError])
       end
 
       sig { params(token: String, email: String).returns(Result[MagicLinkToken, ServiceError]) }

@@ -11,10 +11,7 @@ class App
 
   hash_path "/api/auth/verify" do |r|
     r.post do
-      result = Auth::VerifyToken.call(
-        token: r.params["token"],
-        email: r.params["email"]&.strip&.downcase
-      )
+      result = Auth::VerifyToken.call(token: r.params["token"])
       handle_result(result)
     end
   end

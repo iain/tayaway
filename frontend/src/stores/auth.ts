@@ -68,10 +68,9 @@ export const useAuthStore = defineStore('auth', () => {
     return response.data.message
   }
 
-  async function verifyToken(token: string, email: string): Promise<AuthUser> {
+  async function verifyToken(token: string): Promise<AuthUser> {
     const response = await api.post<VerifyResponse>('/auth/verify', {
       token,
-      email,
     })
 
     setSessionToken(response.data.session_token)

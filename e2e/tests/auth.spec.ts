@@ -48,7 +48,7 @@ test.describe('Authentication', () => {
 
     test('shows error for missing parameters', async ({ page }) => {
       await page.goto('/auth/verify')
-      await expect(page.getByText('Missing token or email')).toBeVisible()
+      await expect(page.getByText('Missing token')).toBeVisible()
     })
   })
 
@@ -165,7 +165,7 @@ test.describe('Authentication', () => {
       })
       expect(response.status()).toBe(400)
       const body = await response.json()
-      expect(body.error).toBe('Token and email are required')
+      expect(body.error).toBe('Token is required')
     })
 
     test('GET /api/auth/me returns error without auth header', async ({

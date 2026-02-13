@@ -34,9 +34,10 @@ module Auth
         user = User.find_by_email(email)
 
         if user
-          token = create_magic_link_token(user.id, user.email)
+          raw_token = create_magic_link_token(user.id, user.email)
+          jwt = Auth::Token.encode_magic_link(token: raw_token, email: user.email.to_s)
           frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:5173")
-          magic_link = "#{frontend_url}/auth/verify?token=#{token}&email=#{CGI.escape(user.email.to_s)}"
+          magic_link = "#{frontend_url}/auth/verify?token=#{jwt}"
 
           puts "\n" + ("=" * 60)
           puts "MAGIC LINK FOR #{email}:"

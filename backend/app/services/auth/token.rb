@@ -3,6 +3,7 @@
 
 require "openssl"
 require "base64"
+require "jwt"
 
 module Auth
   module Token
@@ -12,6 +13,23 @@ module Auth
     def self.digest(message)
       digest = OpenSSL::HMAC.digest("SHA3-512", APP_SECRET, message)
       Base64.urlsafe_encode64(digest[0, 32], padding: false)
+    end
+
+    sig { params(token: String, email: String).returns(String) }
+    def self.encode_magic_link(token:, email:)
+      payload = {
+        token: token,
+        email: email,
+        exp: (Time.now + (MagicLinkToken::EXPIRY_MINUTES * 60)).to_i
+      }
+      JWT.encode(payload, APP_SECRET, "HS256")
+    end
+
+    sig { params(jwt: String).returns(T::Hash[Symbol, String]) }
+    def self.decode_magic_link(jwt)
+      decoded = JWT.decode(jwt, APP_SECRET, true, algorithm: "HS256")
+      payload = decoded.first
+      { token: payload["token"], email: payload["email"] }
     end
   end
 end

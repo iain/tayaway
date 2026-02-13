@@ -12,16 +12,15 @@ const error = ref('')
 
 onMounted(async () => {
   const token = route.query.token as string | undefined
-  const email = route.query.email as string | undefined
 
-  if (!token || !email) {
-    error.value = 'Invalid magic link. Missing token or email.'
+  if (!token) {
+    error.value = 'Invalid magic link. Missing token.'
     verifying.value = false
     return
   }
 
   try {
-    await authStore.verifyToken(token, email)
+    await authStore.verifyToken(token)
     router.push('/')
   } catch {
     error.value = 'Invalid or expired magic link. Please request a new one.'
