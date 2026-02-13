@@ -74,12 +74,12 @@ module Test
         DB[:sessions].insert(
           id: id,
           user_id: user_id,
-          token: token,
+          token: Auth::Token.digest(token),
           expires_at: expires_at,
           created_at: now
         )
 
-        T.must(DB[:sessions].where(id: id).first)
+        { id: id, token: token, user_id: user_id, expires_at: expires_at, created_at: now }
       end
 
       sig { params(user_id: T.any(String, UUID)).void }

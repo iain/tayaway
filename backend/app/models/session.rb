@@ -28,14 +28,14 @@ class Session < T::Struct
     sig { params(token: String).returns(T.nilable(Session)) }
     def find_valid(token)
       dataset
-        .where(token: token)
+        .where(token: Auth::Token.digest(token))
         .where(Sequel[:expires_at] > Time.now)
         .first
     end
 
     sig { params(token: String).returns(T.nilable(Session)) }
     def find_by_token(token)
-      dataset.where(token: token).first
+      dataset.where(token: Auth::Token.digest(token)).first
     end
 
     sig { params(id: String).returns(T.nilable(Session)) }

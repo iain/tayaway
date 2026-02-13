@@ -112,11 +112,11 @@ module TestFactories
       DB[:sessions].insert(
         id: id,
         user_id: user[:id],
-        token: token,
+        token: Auth::Token.digest(token),
         expires_at: expires_at,
         created_at: now
       )
-      DB[:sessions].where(id: id).first
+      DB[:sessions].where(id: id).first.merge(token: token)
     end
 
     class TokenResult < T::Struct

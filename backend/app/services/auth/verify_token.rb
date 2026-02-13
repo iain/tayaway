@@ -62,7 +62,7 @@ module Auth
         DB[:sessions].insert(
           id: id,
           user_id: magic_token.user_id,
-          token: token,
+          token: Auth::Token.digest(token),
           expires_at: expires_at,
           created_at: now
         )
