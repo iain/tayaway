@@ -9,6 +9,9 @@ Bundler.require(:default, APP_ENV)
 
 Dotenv.overload("#{APP_DIR}/.env.#{APP_ENV}") unless APP_ENV == "production"
 
+require "base64"
+APP_SECRET = Base64.strict_decode64(ENV.fetch("APP_SECRET"))
+
 require_relative "database"
 
 LOADER = Zeitwerk::Loader.new

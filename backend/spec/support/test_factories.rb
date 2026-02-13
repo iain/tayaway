@@ -119,6 +119,11 @@ module TestFactories
       DB[:sessions].where(id: id).first
     end
 
+    class MagicTokenResult < T::Struct
+      const :token, String
+      const :record, MagicLinkToken
+    end
+
     def magic_link_token(user: nil, token: SecureRandom.hex(32), email: nil, expires_at: Time.now + (15 * 60), used_at: nil, id: SecureRandom.uuid)
       user ||= self.user
       email ||= user[:email]
@@ -126,13 +131,14 @@ module TestFactories
       DB[:magic_link_tokens].insert(
         id: id,
         user_id: user[:id],
-        token: token,
+        token: Auth::Token.digest(token),
         email: email,
         expires_at: expires_at,
         used_at: used_at,
         created_at: now
       )
-      DB[:magic_link_tokens].where(id: id).first
+      record = MagicLinkToken.find(id)
+      MagicTokenResult.new(token:, record:)
     end
 
     def reset_sequences!

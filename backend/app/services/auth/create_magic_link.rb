@@ -59,7 +59,7 @@ module Auth
         DB[:magic_link_tokens].insert(
           id: id,
           user_id: user_id,
-          token: token,
+          token: Auth::Token.digest(token),
           email: email,
           expires_at: expires_at,
           created_at: now

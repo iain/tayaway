@@ -18,28 +18,33 @@ class MagicLinkToken < T::Struct
   class << self
     extend T::Sig
 
+    sig { params(id: T.any(UUID, String)).returns(T.nilable(MagicLinkToken)) }
+    def find(id)
+      dataset.where(id: id).first
+    end
+
     sig { params(token: String, email: String).returns(T.nilable(MagicLinkToken)) }
     def find_valid(token, email)
-      row = DB[:magic_link_tokens]
-            .where(token: token, email: email)
-            .where(used_at: nil)
-            .where(Sequel[:expires_at] > Time.now)
-            .first
+      record = dataset
+               .where(token: Auth::Token.digest(token), email: email)
+               .where(used_at: nil)
+               .where(Sequel[:expires_at] > Time.now)
+               .first
 
-      return nil unless row
+      return nil unless record
 
-      user = User.find(row[:user_id])
+      user = User.find(record.user_id)
       return nil unless user
       return nil unless user.email.to_s.downcase == email.downcase
 
-      from_row(row)
+      record
     end
 
     private
 
     sig { params(row: T::Hash[Symbol, T.untyped]).returns(MagicLinkToken) }
     def from_row(row)
-      MagicLinkToken.new(
+      new(
         id: UUID.new(row[:id]),
         user_id: UUID.new(row[:user_id]),
         token: row[:token],
@@ -48,6 +53,11 @@ class MagicLinkToken < T::Struct
         used_at: row[:used_at],
         created_at: row[:created_at]
       )
+    end
+
+    sig { returns(Sequel::Dataset) }
+    def dataset
+      DB[:magic_link_tokens].with_row_proc(method(:from_row))
     end
   end
 end
