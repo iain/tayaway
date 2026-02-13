@@ -113,12 +113,29 @@ async function handleSave(name: string, email: string): Promise<void> {
               >
                 {{ user.name || 'No name' }}
               </h2>
-              <p
-                data-testid="user-email"
-                class="text-sm text-gray-500 dark:text-gray-400"
-              >
-                {{ user.email }}
-              </p>
+              <div class="flex items-center gap-2">
+                <p
+                  data-testid="user-email"
+                  class="text-sm text-gray-500 dark:text-gray-400"
+                >
+                  {{ user.email }}
+                </p>
+                <span
+                  v-if="user.role"
+                  data-testid="user-role"
+                  class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                  :class="{
+                    'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400':
+                      user.role === 'owner',
+                    'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400':
+                      user.role === 'admin',
+                    'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300':
+                      user.role === 'member',
+                  }"
+                >
+                  {{ user.role }}
+                </span>
+              </div>
             </div>
           </div>
         </div>

@@ -14,14 +14,32 @@ export const useUsersStore = defineStore('users', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  // Users are derived from the pool
-  const users = computed((): PoolUser[] => {
+  // Users are derived from the pool, enriched with their workspace role
+  const users = computed((): (PoolUser & { role: string | null })[] => {
     const pool = useObjectPoolStore()
-    return pool.getAll('user').sort((a, b) => {
-      const nameA = a.name || a.email
-      const nameB = b.name || b.email
-      return nameA.localeCompare(nameB)
-    })
+    const workspaceStore = useWorkspaceStore()
+    const workspace = workspaceStore.currentWorkspace
+
+    // Build a userId → role map from workspace memberships
+    const roleByUserId = new Map<string, string>()
+    if (workspace) {
+      const memberships = pool.getMany(
+        'workspaceMembership',
+        workspace.membershipIds
+      )
+      for (const m of memberships) {
+        roleByUserId.set(m.userId, m.role)
+      }
+    }
+
+    return pool
+      .getAll('user')
+      .map((user) => ({ ...user, role: roleByUserId.get(user.id) ?? null }))
+      .sort((a, b) => {
+        const nameA = a.name || a.email
+        const nameB = b.name || b.email
+        return nameA.localeCompare(nameB)
+      })
   })
 
   async function createUser(data: CreateUserRequest): Promise<PoolUser> {
