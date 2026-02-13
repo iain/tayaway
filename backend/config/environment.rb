@@ -12,6 +12,14 @@ Dotenv.overload("#{APP_DIR}/.env.#{APP_ENV}") unless APP_ENV == "production"
 require "base64"
 APP_SECRET = Base64.strict_decode64(ENV.fetch("APP_SECRET"))
 
+require "logger"
+APP_LOGGER = Logger.new($stdout)
+APP_LOGGER.level = APP_ENV == "production" ? Logger::INFO : Logger::DEBUG
+APP_LOGGER.formatter = proc { |severity, _time, _progname, msg|
+  label = severity == "DEBUG" ? "" : "[#{severity}] "
+  "#{label}#{msg}\n"
+}
+
 require_relative "database"
 
 LOADER = Zeitwerk::Loader.new

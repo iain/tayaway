@@ -43,7 +43,7 @@ module Websocket
         @running = true
         @thread = Thread.new { run_loop }
         @thread.abort_on_exception = true
-        puts "[Listener] Started PostgreSQL LISTEN on #{CHANNEL}"
+        APP_LOGGER.info { "[Listener] Started PostgreSQL LISTEN on #{CHANNEL}" }
       end
 
       sig { void }
@@ -53,7 +53,7 @@ module Websocket
         @running = false
         @thread&.kill
         @thread = nil
-        puts "[Listener] Stopped"
+        APP_LOGGER.info { "[Listener] Stopped" }
       end
 
       sig { returns(T::Boolean) }
@@ -96,8 +96,8 @@ module Websocket
             handle_notification(payload)
           end
         rescue StandardError => e
-          warn "[Listener] Error in listen loop: #{e.message}"
-          warn "[Listener] Retrying in #{RETRY_DELAY} seconds..."
+          APP_LOGGER.error { "[Listener] Error in listen loop: #{e.message}" }
+          APP_LOGGER.info { "[Listener] Retrying in #{RETRY_DELAY} seconds..." }
           sleep RETRY_DELAY if @running
         ensure
           db.disconnect
@@ -115,7 +115,7 @@ module Websocket
 
         config = type_config(object_type)
         unless config
-          warn "[Listener] Unknown object type: #{object_type}"
+          APP_LOGGER.warn { "[Listener] Unknown object type: #{object_type}" }
           return
         end
 
@@ -139,9 +139,9 @@ module Websocket
 
         Websocket::ConnectionManager.instance.broadcast_to_workspace(workspace_id, message)
       rescue JSON::ParserError => e
-        warn "[Listener] Invalid JSON payload: #{e.message}"
+        APP_LOGGER.error { "[Listener] Invalid JSON payload: #{e.message}" }
       rescue StandardError => e
-        warn "[Listener] Error handling notification: #{e.message}"
+        APP_LOGGER.error { "[Listener] Error handling notification: #{e.message}" }
       end
     end
   end

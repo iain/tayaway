@@ -40,7 +40,7 @@ class App
           handle_message(connection, connection_id, user_id, message)
         end
       rescue StandardError => e
-        warn "[WebSocket] Error in message loop: #{e.message}"
+        APP_LOGGER.error { "[WebSocket] Error in message loop: #{e.message}" }
       ensure
         Websocket::ConnectionManager.instance.unregister(connection_id)
       end

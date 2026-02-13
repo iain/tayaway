@@ -46,7 +46,7 @@ module Broadcaster
       }.to_json
       DB.run(Sequel.lit("SELECT pg_notify(?, ?)", CHANNEL, payload))
     rescue StandardError => e
-      warn "[Broadcaster] Error sending notification: #{e.message}"
+      APP_LOGGER.error { "[Broadcaster] Error sending notification: #{e.message}" }
     end
   end
 end

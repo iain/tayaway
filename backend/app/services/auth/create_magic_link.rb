@@ -39,12 +39,9 @@ module Auth
           frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:5173")
           magic_link = "#{frontend_url}/auth/verify?token=#{jwt}"
 
-          puts "\n" + ("=" * 60)
-          puts "MAGIC LINK FOR #{email}:"
-          puts magic_link
-          puts ("=" * 60) + "\n"
+          APP_LOGGER.debug { "MAGIC LINK FOR #{email}: #{magic_link}" }
         else
-          puts "No user found for email #{email}"
+          APP_LOGGER.debug { "No user found for email #{email}" }
         end
 
         T.cast(Success({ message: "If an account exists with this email, a magic link has been sent." }), Result[T::Hash[Symbol, String], ServiceError])

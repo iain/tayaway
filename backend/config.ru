@@ -5,7 +5,7 @@ $stdout.sync = true
 
 require_relative "config/environment"
 
-use Rack::CommonLogger
+use RequestLogger
 
 # Start WebSocket listener for PostgreSQL NOTIFY (skip in test environment)
 unless APP_ENV == "test"
