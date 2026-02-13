@@ -22,10 +22,13 @@ module Reloading
     Concurrent::ReadWriteLock.new
   end
 
-  def self.start_listener(lock:, loader:, code_dirs:)
-    listener = Listen.to(*code_dirs) do |_modified, _added, _removed|
+  def self.start_listener(lock:, loader:, code_dirs:, &on_reload)
+    listener = Listen.to(*code_dirs) do |modified, added, removed|
       lock.with_write_lock do
+        changed = modified + added + removed
+        APP_LOGGER.info("Reloading: #{changed.map { |f| f.delete_prefix("#{APP_DIR}/") }.join(", ")}")
         loader.reload
+        on_reload&.call
       end
     end
     listener.start

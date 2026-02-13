@@ -15,7 +15,10 @@ end
 if APP_ENV == "development"
   require_relative "lib/reloading"
   lock = Reloading.new_lock
-  Reloading.start_listener(lock:, loader: LOADER, code_dirs: [APP_DIR.join("app/models")])
+  route_dir = APP_DIR.join("app/routes")
+  Reloading.start_listener(lock:, loader: LOADER, code_dirs: [APP_DIR.join("app"), APP_DIR.join("lib")]) do
+    Dir[route_dir.join("**/*.rb")].each { |f| load f }
+  end
   use Reloading::Middleware, lock
   run ->(env) { App.app.call(env) }
 else

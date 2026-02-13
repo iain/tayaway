@@ -29,6 +29,8 @@ LOADER.push_dir(File.expand_path("../app", __dir__))
 LOADER.push_dir(File.expand_path("../app/models", __dir__))
 LOADER.push_dir(File.expand_path("../app/serializers", __dir__))
 LOADER.push_dir(File.expand_path("../app/services", __dir__))
+LOADER.ignore(File.expand_path("../app/app.rb", __dir__))
+LOADER.ignore(File.expand_path("../app/routes", __dir__))
 LOADER.enable_reloading if APP_ENV == "development"
 LOADER.setup
 LOADER.eager_load if APP_ENV == "production"
