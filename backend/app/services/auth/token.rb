@@ -31,5 +31,21 @@ module Auth
       payload = decoded.first
       { token: payload["token"], email: payload["email"] }
     end
+
+    sig { params(token: String).returns(String) }
+    def self.encode_ws_ticket(token:)
+      payload = {
+        token: token,
+        exp: (Time.now + WsTicket::EXPIRY_SECONDS).to_i
+      }
+      JWT.encode(payload, APP_SECRET, "HS256")
+    end
+
+    sig { params(jwt: String).returns(T::Hash[Symbol, String]) }
+    def self.decode_ws_ticket(jwt)
+      decoded = JWT.decode(jwt, APP_SECRET, true, algorithm: "HS256")
+      payload = decoded.first
+      { token: payload["token"] }
+    end
   end
 end

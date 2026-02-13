@@ -119,9 +119,27 @@ module TestFactories
       DB[:sessions].where(id: id).first
     end
 
+    class TokenResult < T::Struct
+      const :token, String
+    end
+
     class MagicTokenResult < T::Struct
       const :token, String
       const :record, MagicLinkToken
+    end
+
+    def ws_ticket(user: nil, token: SecureRandom.hex(32), expires_at: Time.now + WsTicket::EXPIRY_SECONDS, used_at: nil, id: SecureRandom.uuid)
+      user ||= self.user
+      now = Time.now
+      DB[:ws_tickets].insert(
+        id: id,
+        user_id: user[:id],
+        token: Auth::Token.digest(token),
+        expires_at: expires_at,
+        used_at: used_at,
+        created_at: now
+      )
+      TokenResult.new(token: token)
     end
 
     def magic_link_token(user: nil, token: SecureRandom.hex(32), email: nil, expires_at: Time.now + (15 * 60), used_at: nil, id: SecureRandom.uuid)

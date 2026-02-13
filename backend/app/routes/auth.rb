@@ -23,6 +23,13 @@ class App
     end
   end
 
+  hash_path "/api/auth/ws-ticket" do |r|
+    r.post do
+      result = Auth::CreateWsTicket.call(auth_header: r.headers["Authorization"])
+      handle_result(result)
+    end
+  end
+
   hash_branch("api", "auth") do |r|
     r.hash_routes("api/auth")
   end

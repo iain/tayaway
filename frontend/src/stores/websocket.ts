@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import { getSessionToken } from '@/api/client'
+import { api, getSessionToken } from '@/api/client'
 import { useObjectPoolStore } from './objectPool'
 import { useWorkspaceStore } from './workspace'
 import type { PoolObject, ObjectType } from '@/types/pool'
@@ -58,39 +58,31 @@ export const useWebSocketStore = defineStore('websocket', () => {
   let reconnectAttempts = 0
   let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
   let pingInterval: ReturnType<typeof setInterval> | null = null
-  let currentToken: string | null = null // Track token used for current connection
 
   const isConnected = computed(() => state.value === 'authenticated')
   const isReconnecting = computed(
     () => hasSynced.value && state.value !== 'authenticated'
   )
 
-  function getWebSocketUrl(): string {
-    const token = getSessionToken()
-    if (!token) throw new Error('No session token available')
-
+  async function getWebSocketUrl(): Promise<string> {
+    const { data } = await api.post<{ ticket: string }>('/auth/ws-ticket')
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
-    return `${protocol}//${host}/ws?token=${encodeURIComponent(token)}`
+    return `${protocol}//${host}/ws?ticket=${encodeURIComponent(data.ticket)}`
   }
 
-  function connect(): void {
+  async function connect(): Promise<void> {
     const token = getSessionToken()
     if (!token) return
 
-    // If already connecting or connected with same token, skip
-    if (state.value !== 'disconnected' && currentToken === token) return
-
-    // If connected with different token, disconnect first to reconnect with new token
-    if (state.value !== 'disconnected' && currentToken !== token) {
-      disconnect()
-    }
+    // If already connecting or connected, skip
+    if (state.value !== 'disconnected') return
 
     state.value = 'connecting'
-    currentToken = token
 
     try {
-      socket = new WebSocket(getWebSocketUrl())
+      const url = await getWebSocketUrl()
+      socket = new WebSocket(url)
 
       socket.onopen = () => {
         reconnectAttempts = 0
@@ -110,7 +102,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
       }
     } catch {
       state.value = 'disconnected'
-      currentToken = null
       scheduleReconnect()
     }
   }
@@ -203,7 +194,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
     socket = null
     state.value = 'disconnected'
-    currentToken = null
   }
 
   function scheduleReconnect(): void {
@@ -239,7 +229,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
     state.value = 'disconnected'
     hasSynced.value = false
     reconnectAttempts = 0
-    currentToken = null
   }
 
   function $reset(): void {

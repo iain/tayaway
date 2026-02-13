@@ -5,20 +5,17 @@ require "json"
 
 class App
   hash_branch "ws" do |r|
-    # Authenticate via query param: ws://host/ws?token=session_token
-    token = r.params["token"]
+    # Authenticate via single-use ticket: ws://host/ws?ticket=<jwt>
+    ticket_jwt = r.params["ticket"]
 
-    unless token
-      r.halt [401, { "Content-Type" => "application/json" }, ['{"error":"Missing token"}']]
+    result = Auth::ConsumeWsTicket.call(ticket_jwt: ticket_jwt)
+
+    unless result.success?
+      error_msg = result.failure.message
+      r.halt [401, { "Content-Type" => "application/json" }, ["{\"error\":\"#{error_msg}\"}"]]
     end
 
-    session = Session.find_valid(token)
-
-    unless session
-      r.halt [401, { "Content-Type" => "application/json" }, ['{"error":"Invalid or expired token"}']]
-    end
-
-    user_id = session.user_id
+    user_id = result.value![:user_id]
 
     r.websocket do |connection|
       connection_id = Websocket::ConnectionManager.instance.register(connection, user_id)
