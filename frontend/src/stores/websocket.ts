@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import { api, getSessionToken } from '@/api/client'
+import { api } from '@/api/client'
 import { useObjectPoolStore } from './objectPool'
 import { useWorkspaceStore } from './workspace'
 import type { PoolObject, ObjectType } from '@/types/pool'
@@ -72,8 +72,10 @@ export const useWebSocketStore = defineStore('websocket', () => {
   }
 
   async function connect(): Promise<void> {
-    const token = getSessionToken()
-    if (!token) return
+    // Don't connect if not authenticated (cookie-based, no token to check)
+    const { useAuthStore } = await import('./auth')
+    const authStore = useAuthStore()
+    if (!authStore.isAuthenticated) return
 
     // If already connecting or connected, skip
     if (state.value !== 'disconnected') return
@@ -197,13 +199,15 @@ export const useWebSocketStore = defineStore('websocket', () => {
   }
 
   function scheduleReconnect(): void {
-    const token = getSessionToken()
-    if (!token) return // Don't reconnect if logged out
-
     const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000)
     reconnectAttempts++
 
-    reconnectTimeout = setTimeout(() => {
+    reconnectTimeout = setTimeout(async () => {
+      // Don't reconnect if logged out — dynamic import avoids circular deps
+      const { useAuthStore } = await import('./auth')
+      const authStore = useAuthStore()
+      if (!authStore.isAuthenticated) return
+
       connect()
     }, delay)
   }

@@ -87,11 +87,17 @@ test.describe('Authentication', () => {
       expect(sessionResponse.ok()).toBeTruthy()
       const { session_token } = await sessionResponse.json()
 
-      // Set up authenticated session
-      await page.goto('/')
-      await page.evaluate((token) => {
-        localStorage.setItem('session_token', token)
-      }, session_token)
+      // Set up authenticated session via cookie
+      await page.context().addCookies([
+        {
+          name: 'session_token',
+          value: session_token,
+          domain: 'localhost',
+          path: '/',
+          httpOnly: true,
+          sameSite: 'Lax',
+        },
+      ])
 
       // Navigate to home page - should now be authenticated
       await page.goto('/')
@@ -177,15 +183,15 @@ test.describe('Authentication', () => {
       expect(body.error).toBe('Authorization required')
     })
 
-    test('GET /api/auth/me returns error with invalid token', async ({
+    test('GET /api/auth/me returns error with invalid session cookie', async ({
       request,
     }) => {
       const response = await request.get(`${API_BASE}/api/auth/me`, {
-        headers: { Authorization: 'Bearer invalid-token' },
+        headers: { Cookie: 'session_token=invalid-token' },
       })
       expect(response.status()).toBe(401)
       const body = await response.json()
-      expect(body.error).toBe('Invalid or expired session')
+      expect(body.error).toBe('Authorization required')
     })
 
     test('POST /api/auth/logout returns error without auth header', async ({
@@ -206,17 +212,23 @@ test.describe('Authentication', () => {
       await expect(page).toHaveURL('/login')
     })
 
-    test('login page redirects to home if already has session token', async ({
+    test('login page stays on login with invalid session cookie', async ({
       page,
     }) => {
-      // Set a fake session token (won't be valid but tests the redirect logic)
-      await page.goto('/')
-      await page.evaluate(() => {
-        localStorage.setItem('session_token', 'fake-token')
-      })
+      // Set a fake session cookie (won't be valid but tests the redirect logic)
+      await page.context().addCookies([
+        {
+          name: 'session_token',
+          value: 'fake-token',
+          domain: 'localhost',
+          path: '/',
+          httpOnly: true,
+          sameSite: 'Lax',
+        },
+      ])
 
       // The login page checks isAuthenticated which requires a valid session
-      // With a fake token, the /me call will fail and clear the token
+      // With a fake cookie, the /me call will fail
       await page.goto('/login')
 
       // Should stay on login since the fake token is invalid

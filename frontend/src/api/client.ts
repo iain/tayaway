@@ -41,20 +41,6 @@ export interface ApiError {
   status: number
 }
 
-const SESSION_TOKEN_KEY = 'session_token'
-
-export function getSessionToken(): string | null {
-  return localStorage.getItem(SESSION_TOKEN_KEY)
-}
-
-export function setSessionToken(token: string): void {
-  localStorage.setItem(SESSION_TOKEN_KEY, token)
-}
-
-export function clearSessionToken(): void {
-  localStorage.removeItem(SESSION_TOKEN_KEY)
-}
-
 function getErrorMessage(status: number): string {
   switch (status) {
     case 400:
@@ -115,11 +101,6 @@ class ApiClient {
       'Content-Type': 'application/json',
     }
 
-    const sessionToken = getSessionToken()
-    if (sessionToken) {
-      headers['Authorization'] = `Bearer ${sessionToken}`
-    }
-
     const response = await fetch(url, {
       method,
       headers,
@@ -130,12 +111,6 @@ class ApiClient {
       const error: ApiError = {
         message: response.statusText,
         status: response.status,
-      }
-
-      // On 401 Unauthorized, clear the session token
-      // The router guard will redirect to login on next navigation
-      if (response.status === 401) {
-        clearSessionToken()
       }
 
       const notificationsStore = useNotificationsStore()

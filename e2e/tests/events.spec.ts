@@ -32,20 +32,21 @@ async function getTestSession(
   return { token: body.session_token, userId: body.user_id }
 }
 
-// Helper to make authenticated API requests
-function authHeaders(token: string): { Authorization: string } {
-  return { Authorization: `Bearer ${token}` }
-}
-
-// Helper to set up authenticated page
+// Helper to set up authenticated page via cookie
 async function setupAuthenticatedPage(
   page: Page,
   token: string
 ): Promise<void> {
-  await page.goto('/')
-  await page.evaluate((t) => {
-    localStorage.setItem('session_token', t)
-  }, token)
+  await page.context().addCookies([
+    {
+      name: 'session_token',
+      value: token,
+      domain: 'localhost',
+      path: '/',
+      httpOnly: true,
+      sameSite: 'Lax',
+    },
+  ])
 }
 
 test.describe('Events Feature', () => {
@@ -98,10 +99,8 @@ test.describe('Events Feature', () => {
 
   test.describe('Events API - Authenticated', () => {
     test('GET /api/events returns list of events', async ({ request }) => {
-      const { token } = await getTestSession(request)
-      const response = await request.get(`${API_BASE}/api/events`, {
-        headers: authHeaders(token),
-      })
+      await getTestSession(request)
+      const response = await request.get(`${API_BASE}/api/events`)
       expect(response.ok()).toBeTruthy()
       const body = await response.json()
       expect(body).toHaveProperty('objects')
@@ -109,9 +108,8 @@ test.describe('Events Feature', () => {
     })
 
     test('POST /api/events creates a new event', async ({ request }) => {
-      const { token } = await getTestSession(request)
+      await getTestSession(request)
       const response = await request.post(`${API_BASE}/api/events`, {
-        headers: authHeaders(token),
         data: {
           name: 'Test Event',
           description: 'A test event description',
@@ -127,9 +125,8 @@ test.describe('Events Feature', () => {
     })
 
     test('POST /api/events requires name', async ({ request }) => {
-      const { token } = await getTestSession(request)
+      await getTestSession(request)
       const response = await request.post(`${API_BASE}/api/events`, {
-        headers: authHeaders(token),
         data: { description: 'No name provided' },
       })
       expect(response.status()).toBe(400)
@@ -138,11 +135,10 @@ test.describe('Events Feature', () => {
     })
 
     test('full CRUD lifecycle for events', async ({ request }) => {
-      const { token } = await getTestSession(request)
+      await getTestSession(request)
 
       // Create
       const createResponse = await request.post(`${API_BASE}/api/events`, {
-        headers: authHeaders(token),
         data: {
           name: 'CRUD Test Event',
         },
@@ -153,12 +149,7 @@ test.describe('Events Feature', () => {
       const eventId = createdEvent!.id
 
       // Read
-      const getResponse = await request.get(
-        `${API_BASE}/api/events/${eventId}`,
-        {
-          headers: authHeaders(token),
-        }
-      )
+      const getResponse = await request.get(`${API_BASE}/api/events/${eventId}`)
       expect(getResponse.ok()).toBeTruthy()
       const getBody = await getResponse.json()
       const fetchedEvent = getObjectByType(getBody.objects, 'event')
@@ -168,7 +159,6 @@ test.describe('Events Feature', () => {
       const updateResponse = await request.put(
         `${API_BASE}/api/events/${eventId}`,
         {
-          headers: authHeaders(token),
           data: {
             name: 'Updated CRUD Event',
             description: 'Now with a description',
@@ -183,10 +173,7 @@ test.describe('Events Feature', () => {
 
       // Delete
       const deleteResponse = await request.delete(
-        `${API_BASE}/api/events/${eventId}`,
-        {
-          headers: authHeaders(token),
-        }
+        `${API_BASE}/api/events/${eventId}`
       )
       expect(deleteResponse.ok()).toBeTruthy()
       const deleteBody = await deleteResponse.json()
@@ -196,10 +183,7 @@ test.describe('Events Feature', () => {
 
       // Verify deleted
       const verifyResponse = await request.get(
-        `${API_BASE}/api/events/${eventId}`,
-        {
-          headers: authHeaders(token),
-        }
+        `${API_BASE}/api/events/${eventId}`
       )
       expect(verifyResponse.status()).toBe(404)
     })
@@ -207,12 +191,9 @@ test.describe('Events Feature', () => {
     test('GET /api/events/:id returns 404 for non-existent event', async ({
       request,
     }) => {
-      const { token } = await getTestSession(request)
+      await getTestSession(request)
       const response = await request.get(
-        `${API_BASE}/api/events/00000000-0000-0000-0000-000000000000`,
-        {
-          headers: authHeaders(token),
-        }
+        `${API_BASE}/api/events/00000000-0000-0000-0000-000000000000`
       )
       expect(response.status()).toBe(404)
       const body = await response.json()

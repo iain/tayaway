@@ -1,11 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import {
-  api,
-  setSessionToken,
-  clearSessionToken,
-  getSessionToken,
-} from '@/api/client'
+import { api } from '@/api/client'
 import { useObjectPoolStore } from './objectPool'
 import { useWebSocketStore } from './websocket'
 import { useWorkspaceStore } from './workspace'
@@ -26,34 +21,29 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => user.value !== null)
 
   async function initialize(): Promise<void> {
-    const token = getSessionToken()
-
-    // If already initialized with a valid user, skip unless token changed
+    // If already initialized with a valid user, skip
     if (initialized.value && user.value) return
 
-    // If no token, mark as initialized and done
-    if (!token) {
-      initialized.value = true
-      return
-    }
-
-    // Token exists but no user - (re)initialize auth
     try {
       loading.value = true
-      const response = await api.get<MeResponse>('/auth/me')
+      // Use raw fetch to silently probe — avoids error notification on 401
+      const response = await fetch('/api/auth/me')
 
-      // Auth endpoints return user info directly (not via pool)
-      user.value = {
-        id: response.data.user_id,
-        email: response.data.email,
-        name: response.data.name,
+      if (response.ok) {
+        const data = (await response.json()) as MeResponse
+        user.value = {
+          id: data.user_id,
+          email: data.email,
+          name: data.name,
+        }
+
+        // Connect WebSocket after successful auth
+        const ws = useWebSocketStore()
+        ws.connect()
+      } else {
+        user.value = null
       }
-
-      // Connect WebSocket after successful auth
-      const ws = useWebSocketStore()
-      ws.connect()
     } catch {
-      clearSessionToken()
       user.value = null
     } finally {
       loading.value = false
@@ -69,11 +59,9 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function verifyToken(token: string): Promise<AuthUser> {
-    const response = await api.post<VerifyResponse>('/auth/verify', {
-      token,
-    })
+    await api.post<VerifyResponse>('/auth/verify', { token })
 
-    setSessionToken(response.data.session_token)
+    // Cookie is set by the backend response — no localStorage needed
 
     // After verify, we need to fetch user info
     const meResponse = await api.get<MeResponse>('/auth/me')
@@ -99,7 +87,7 @@ export const useAuthStore = defineStore('auth', () => {
       const ws = useWebSocketStore()
       ws.disconnect()
 
-      clearSessionToken()
+      // Cookie is cleared by the backend response — no localStorage needed
       user.value = null
       // Reset stores on logout
       const pool = useObjectPoolStore()

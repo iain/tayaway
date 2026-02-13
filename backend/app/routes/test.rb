@@ -17,6 +17,9 @@ class App
           email: r.params["email"]&.strip&.downcase,
           name: r.params["name"]&.strip
         )
+        if result.success?
+          set_session_cookie(result.value![:session_token], Time.now + (Session::EXPIRY_DAYS * 24 * 60 * 60))
+        end
         handle_result(result)
       end
     end

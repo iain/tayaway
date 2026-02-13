@@ -4,27 +4,10 @@
 require "spec_helper"
 
 RSpec.describe Auth::CreateWsTicket do
-  it "returns failure when auth header is missing" do
-    result = described_class.call(auth_header: nil)
-
-    expect(result.failure?).to be true
-    expect(result.failure.message).to eq("Authorization required")
-    expect(result.failure.http_status).to eq(401)
-  end
-
-  it "returns failure for invalid session token" do
-    result = described_class.call(auth_header: "Bearer invalid-token")
-
-    expect(result.failure?).to be true
-    expect(result.failure.message).to eq("Invalid or expired session")
-    expect(result.failure.http_status).to eq(401)
-  end
-
-  it "returns a JWT ticket for a valid session" do
+  it "returns a JWT ticket for a valid user" do
     user = TestFactories.user
-    session = TestFactories.session(user: user)
 
-    result = described_class.call(auth_header: "Bearer #{session[:token]}")
+    result = described_class.call(user_id: user[:id])
 
     expect(result.success?).to be true
     expect(result.value![:ticket]).to be_a(String)

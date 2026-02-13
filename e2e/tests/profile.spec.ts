@@ -32,20 +32,21 @@ async function getTestSession(
   return { token: body.session_token, userId: body.user_id }
 }
 
-// Helper to make authenticated API requests
-function authHeaders(token: string): { Authorization: string } {
-  return { Authorization: `Bearer ${token}` }
-}
-
-// Helper to set up authenticated page
+// Helper to set up authenticated page via cookie
 async function setupAuthenticatedPage(
   page: Page,
   token: string
 ): Promise<void> {
-  await page.goto('/')
-  await page.evaluate((t) => {
-    localStorage.setItem('session_token', t)
-  }, token)
+  await page.context().addCookies([
+    {
+      name: 'session_token',
+      value: token,
+      domain: 'localhost',
+      path: '/',
+      httpOnly: true,
+      sameSite: 'Lax',
+    },
+  ])
 }
 
 test.describe('Profile Feature', () => {
@@ -62,12 +63,11 @@ test.describe('Profile Feature', () => {
     test('PUT /api/users/:id returns 403 when updating another user', async ({
       request,
     }) => {
-      const { token } = await getTestSession(request)
+      await getTestSession(request)
 
       const response = await request.put(
         `${API_BASE}/api/users/00000000-0000-0000-0000-000000000000`,
         {
-          headers: authHeaders(token),
           data: { name: 'Hacked Name' },
         }
       )
@@ -78,10 +78,9 @@ test.describe('Profile Feature', () => {
     test('PUT /api/users/:id returns 400 when name is empty', async ({
       request,
     }) => {
-      const { token, userId } = await getTestSession(request)
+      const { userId } = await getTestSession(request)
 
       const response = await request.put(`${API_BASE}/api/users/${userId}`, {
-        headers: authHeaders(token),
         data: { name: '' },
       })
       expect(response.status()).toBe(400)
@@ -92,10 +91,9 @@ test.describe('Profile Feature', () => {
     test('PUT /api/users/:id successfully updates name', async ({
       request,
     }) => {
-      const { token, userId } = await getTestSession(request)
+      const { userId } = await getTestSession(request)
 
       const response = await request.put(`${API_BASE}/api/users/${userId}`, {
-        headers: authHeaders(token),
         data: { name: 'Updated Profile Name' },
       })
       expect(response.ok()).toBeTruthy()

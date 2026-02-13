@@ -39,28 +39,28 @@ async function getTestSession(
   return { token: body.session_token, userId: body.user_id }
 }
 
-function authHeaders(token: string): { Authorization: string } {
-  return { Authorization: `Bearer ${token}` }
-}
-
 async function setupAuthenticatedPage(
   page: Page,
   token: string
 ): Promise<void> {
-  await page.goto('/')
-  await page.evaluate((t) => {
-    localStorage.setItem('session_token', t)
-  }, token)
+  await page.context().addCookies([
+    {
+      name: 'session_token',
+      value: token,
+      domain: 'localhost',
+      path: '/',
+      httpOnly: true,
+      sameSite: 'Lax',
+    },
+  ])
 }
 
 // Create a bare event (no poll) via API
 async function createBareEvent(
   request: APIRequestContext,
-  token: string,
   name = 'Poll Lifecycle Event'
 ): Promise<string> {
   const response = await request.post(`${API_BASE}/api/events`, {
-    headers: authHeaders(token),
     data: { name, description: 'Testing poll lifecycle' },
   })
   const body = await response.json()
@@ -70,15 +70,13 @@ async function createBareEvent(
 
 // Create an event with an open poll and date ranges via API
 async function createEventWithPoll(
-  request: APIRequestContext,
-  token: string
+  request: APIRequestContext
 ): Promise<{ eventId: string; dateRangeIds: string[] }> {
-  const eventId = await createBareEvent(request, token)
+  const eventId = await createBareEvent(request)
 
   // Open poll
   const deadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
   await request.post(`${API_BASE}/api/events/${eventId}/poll`, {
-    headers: authHeaders(token),
     data: { deadline },
   })
 
@@ -86,7 +84,6 @@ async function createEventWithPoll(
   const dr1Response = await request.post(
     `${API_BASE}/api/events/${eventId}/poll/date-ranges`,
     {
-      headers: authHeaders(token),
       data: { start_date: '2026-06-01', end_date: '2026-06-07' },
     }
   )
@@ -96,7 +93,6 @@ async function createEventWithPoll(
   const dr2Response = await request.post(
     `${API_BASE}/api/events/${eventId}/poll/date-ranges`,
     {
-      headers: authHeaders(token),
       data: { start_date: '2026-06-15', end_date: '2026-06-20' },
     }
   )
@@ -108,20 +104,17 @@ async function createEventWithPoll(
 
 // Create an event with a poll that has votes and is closed (winner selected)
 async function createResolvedEvent(
-  request: APIRequestContext,
-  token: string
+  request: APIRequestContext
 ): Promise<{ eventId: string; winnerDateRangeId: string }> {
-  const { eventId, dateRangeIds } = await createEventWithPoll(request, token)
+  const { eventId, dateRangeIds } = await createEventWithPoll(request)
 
   // Vote on the first date range
   await request.post(`${API_BASE}/api/events/${eventId}/votes`, {
-    headers: authHeaders(token),
     data: { date_range_id: dateRangeIds[0], response: 'yes' },
   })
 
   // Close poll with the first date range as winner
   await request.post(`${API_BASE}/api/events/${eventId}/poll/close`, {
-    headers: authHeaders(token),
     data: { selected_date_range_id: dateRangeIds[0] },
   })
 
@@ -135,7 +128,7 @@ test.describe('Poll Lifecycle UI', () => {
       request,
     }) => {
       const { token } = await getTestSession(request)
-      const eventId = await createBareEvent(request, token)
+      const eventId = await createBareEvent(request)
       await setupAuthenticatedPage(page, token)
 
       await page.goto(`/events/${eventId}`)
@@ -153,7 +146,7 @@ test.describe('Poll Lifecycle UI', () => {
       request,
     }) => {
       const { token } = await getTestSession(request)
-      const eventId = await createBareEvent(request, token)
+      const eventId = await createBareEvent(request)
       await setupAuthenticatedPage(page, token)
 
       await page.goto(`/events/${eventId}`)
@@ -176,7 +169,7 @@ test.describe('Poll Lifecycle UI', () => {
       request,
     }) => {
       const { token } = await getTestSession(request)
-      const eventId = await createBareEvent(request, token)
+      const eventId = await createBareEvent(request)
       await setupAuthenticatedPage(page, token)
 
       await page.goto(`/events/${eventId}`)
@@ -209,7 +202,7 @@ test.describe('Poll Lifecycle UI', () => {
       request,
     }) => {
       const { token } = await getTestSession(request)
-      const { eventId } = await createEventWithPoll(request, token)
+      const { eventId } = await createEventWithPoll(request)
       await setupAuthenticatedPage(page, token)
 
       await page.goto(`/events/${eventId}`)
@@ -231,7 +224,7 @@ test.describe('Poll Lifecycle UI', () => {
       request,
     }) => {
       const { token } = await getTestSession(request)
-      const { eventId } = await createEventWithPoll(request, token)
+      const { eventId } = await createEventWithPoll(request)
       await setupAuthenticatedPage(page, token)
 
       await page.goto(`/events/${eventId}`)
@@ -277,7 +270,7 @@ test.describe('Poll Lifecycle UI', () => {
 
     test('can remove a date range', async ({ page, request }) => {
       const { token } = await getTestSession(request)
-      const { eventId } = await createEventWithPoll(request, token)
+      const { eventId } = await createEventWithPoll(request)
       await setupAuthenticatedPage(page, token)
 
       await page.goto(`/events/${eventId}`)
@@ -305,7 +298,7 @@ test.describe('Poll Lifecycle UI', () => {
   test.describe('Poll status display', () => {
     test('open poll shows remaining time', async ({ page, request }) => {
       const { token } = await getTestSession(request)
-      const { eventId } = await createEventWithPoll(request, token)
+      const { eventId } = await createEventWithPoll(request)
       await setupAuthenticatedPage(page, token)
 
       await page.goto(`/events/${eventId}`)
@@ -322,7 +315,7 @@ test.describe('Poll Lifecycle UI', () => {
       request,
     }) => {
       const { token } = await getTestSession(request)
-      const { eventId } = await createEventWithPoll(request, token)
+      const { eventId } = await createEventWithPoll(request)
       await setupAuthenticatedPage(page, token)
 
       await page.goto(`/events/${eventId}`)
@@ -337,7 +330,7 @@ test.describe('Poll Lifecycle UI', () => {
 
     test('resolved poll shows winner badge', async ({ page, request }) => {
       const { token } = await getTestSession(request)
-      const { eventId } = await createResolvedEvent(request, token)
+      const { eventId } = await createResolvedEvent(request)
       await setupAuthenticatedPage(page, token)
 
       await page.goto(`/events/${eventId}`)
@@ -358,7 +351,7 @@ test.describe('Poll Lifecycle UI', () => {
       request,
     }) => {
       const { token } = await getTestSession(request)
-      const { eventId } = await createEventWithPoll(request, token)
+      const { eventId } = await createEventWithPoll(request)
       await setupAuthenticatedPage(page, token)
 
       await page.goto(`/events/${eventId}`)
@@ -386,7 +379,7 @@ test.describe('Poll Lifecycle UI', () => {
       request,
     }) => {
       const { token } = await getTestSession(request)
-      const { eventId } = await createEventWithPoll(request, token)
+      const { eventId } = await createEventWithPoll(request)
       await setupAuthenticatedPage(page, token)
 
       await page.goto(`/events/${eventId}`)
@@ -435,7 +428,7 @@ test.describe('Poll Lifecycle UI', () => {
       request,
     }) => {
       const { token } = await getTestSession(request)
-      const { eventId } = await createResolvedEvent(request, token)
+      const { eventId } = await createResolvedEvent(request)
       await setupAuthenticatedPage(page, token)
 
       await page.goto(`/events/${eventId}`)
@@ -453,7 +446,7 @@ test.describe('Poll Lifecycle UI', () => {
       request,
     }) => {
       const { token } = await getTestSession(request)
-      const { eventId } = await createResolvedEvent(request, token)
+      const { eventId } = await createResolvedEvent(request)
       await setupAuthenticatedPage(page, token)
 
       await page.goto(`/events/${eventId}`)
@@ -472,7 +465,7 @@ test.describe('Poll Lifecycle UI', () => {
 
     test('can reopen a resolved poll', async ({ page, request }) => {
       const { token } = await getTestSession(request)
-      const { eventId } = await createResolvedEvent(request, token)
+      const { eventId } = await createResolvedEvent(request)
       await setupAuthenticatedPage(page, token)
 
       await page.goto(`/events/${eventId}`)
@@ -517,7 +510,7 @@ test.describe('Poll Lifecycle UI', () => {
       request,
     }) => {
       const { token } = await getTestSession(request)
-      const { eventId } = await createResolvedEvent(request, token)
+      const { eventId } = await createResolvedEvent(request)
       await setupAuthenticatedPage(page, token)
 
       await page.goto(`/events/${eventId}/vote`)
@@ -535,7 +528,7 @@ test.describe('Poll Lifecycle UI', () => {
       request,
     }) => {
       const { token } = await getTestSession(request)
-      const { eventId } = await createEventWithPoll(request, token)
+      const { eventId } = await createEventWithPoll(request)
       await setupAuthenticatedPage(page, token)
 
       await page.goto(`/events/${eventId}`)
@@ -561,11 +554,7 @@ test.describe('Poll Lifecycle UI', () => {
       request,
     }) => {
       const { token } = await getTestSession(request)
-      const eventId = await createBareEvent(
-        request,
-        token,
-        'Full Lifecycle Event'
-      )
+      const eventId = await createBareEvent(request, 'Full Lifecycle Event')
       await setupAuthenticatedPage(page, token)
 
       // 1. Navigate to event page

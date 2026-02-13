@@ -43,31 +43,29 @@ async function getTestSession(
   return { token: body.session_token, userId: body.user_id }
 }
 
-// Helper to make authenticated API requests
-function authHeaders(token: string): { Authorization: string } {
-  return { Authorization: `Bearer ${token}` }
-}
-
-// Helper to set up authenticated page
+// Helper to set up authenticated page via cookie
 async function setupAuthenticatedPage(
   page: Page,
   token: string
 ): Promise<void> {
-  // Use addInitScript to set the token before any page JS runs,
-  // avoiding race conditions with the Vue app's auth initialization
-  await page.addInitScript((t) => {
-    localStorage.setItem('session_token', t)
-  }, token)
+  await page.context().addCookies([
+    {
+      name: 'session_token',
+      value: token,
+      domain: 'localhost',
+      path: '/',
+      httpOnly: true,
+      sameSite: 'Lax',
+    },
+  ])
 }
 
 // Helper to create an event with a date poll and date ranges
 async function createTestEvent(
-  request: APIRequestContext,
-  token: string
+  request: APIRequestContext
 ): Promise<{ eventId: string; dateRangeId: string; workspaceId: string }> {
   // 1. Create the event
   const eventResponse = await request.post(`${API_BASE}/api/events`, {
-    headers: authHeaders(token),
     data: {
       name: 'Voting Test Event',
       description: 'An event for testing voting',
@@ -80,7 +78,6 @@ async function createTestEvent(
   // 2. Open a date poll
   const deadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
   await request.post(`${API_BASE}/api/events/${eventId}/poll`, {
-    headers: authHeaders(token),
     data: { deadline },
   })
 
@@ -88,7 +85,6 @@ async function createTestEvent(
   const dr1Response = await request.post(
     `${API_BASE}/api/events/${eventId}/poll/date-ranges`,
     {
-      headers: authHeaders(token),
       data: { start_date: '2025-06-01', end_date: '2025-06-07' },
     }
   )
@@ -96,7 +92,6 @@ async function createTestEvent(
   const dateRange1 = getObjectByType(dr1Body.objects, 'dateRange')
 
   await request.post(`${API_BASE}/api/events/${eventId}/poll/date-ranges`, {
-    headers: authHeaders(token),
     data: { start_date: '2025-06-15', end_date: '2025-06-20' },
   })
 
@@ -146,13 +141,12 @@ test.describe('Voting Feature', () => {
 
   test.describe('Votes API - Authenticated', () => {
     test('POST /api/events/:id/votes creates a vote', async ({ request }) => {
-      const { token } = await getTestSession(request)
-      const { eventId, dateRangeId } = await createTestEvent(request, token)
+      await getTestSession(request)
+      const { eventId, dateRangeId } = await createTestEvent(request)
 
       const response = await request.post(
         `${API_BASE}/api/events/${eventId}/votes`,
         {
-          headers: authHeaders(token),
           data: {
             date_range_id: dateRangeId,
             response: 'yes',
@@ -173,12 +167,11 @@ test.describe('Voting Feature', () => {
     test('POST /api/events/:id/votes updates existing vote', async ({
       request,
     }) => {
-      const { token } = await getTestSession(request)
-      const { eventId, dateRangeId } = await createTestEvent(request, token)
+      await getTestSession(request)
+      const { eventId, dateRangeId } = await createTestEvent(request)
 
       // Create initial vote
       await request.post(`${API_BASE}/api/events/${eventId}/votes`, {
-        headers: authHeaders(token),
         data: {
           date_range_id: dateRangeId,
           response: 'yes',
@@ -189,7 +182,6 @@ test.describe('Voting Feature', () => {
       const response = await request.post(
         `${API_BASE}/api/events/${eventId}/votes`,
         {
-          headers: authHeaders(token),
           data: {
             date_range_id: dateRangeId,
             response: 'no',
@@ -208,13 +200,12 @@ test.describe('Voting Feature', () => {
     test('POST /api/events/:id/votes validates response value', async ({
       request,
     }) => {
-      const { token } = await getTestSession(request)
-      const { eventId, dateRangeId } = await createTestEvent(request, token)
+      await getTestSession(request)
+      const { eventId, dateRangeId } = await createTestEvent(request)
 
       const response = await request.post(
         `${API_BASE}/api/events/${eventId}/votes`,
         {
-          headers: authHeaders(token),
           data: {
             date_range_id: dateRangeId,
             response: 'invalid_response',
@@ -230,13 +221,12 @@ test.describe('Voting Feature', () => {
     test('POST /api/events/:id/votes requires date_range_id', async ({
       request,
     }) => {
-      const { token } = await getTestSession(request)
-      const { eventId } = await createTestEvent(request, token)
+      await getTestSession(request)
+      const { eventId } = await createTestEvent(request)
 
       const response = await request.post(
         `${API_BASE}/api/events/${eventId}/votes`,
         {
-          headers: authHeaders(token),
           data: { response: 'yes' },
         }
       )
@@ -249,13 +239,12 @@ test.describe('Voting Feature', () => {
     test('POST /api/events/:id/votes requires response', async ({
       request,
     }) => {
-      const { token } = await getTestSession(request)
-      const { eventId, dateRangeId } = await createTestEvent(request, token)
+      await getTestSession(request)
+      const { eventId, dateRangeId } = await createTestEvent(request)
 
       const response = await request.post(
         `${API_BASE}/api/events/${eventId}/votes`,
         {
-          headers: authHeaders(token),
           data: { date_range_id: dateRangeId },
         }
       )
@@ -268,14 +257,13 @@ test.describe('Voting Feature', () => {
     test('POST /api/events/:id/votes rejects date_range from different event', async ({
       request,
     }) => {
-      const { token } = await getTestSession(request)
-      const { dateRangeId } = await createTestEvent(request, token)
-      const { eventId: otherEventId } = await createTestEvent(request, token)
+      await getTestSession(request)
+      const { dateRangeId } = await createTestEvent(request)
+      const { eventId: otherEventId } = await createTestEvent(request)
 
       const response = await request.post(
         `${API_BASE}/api/events/${otherEventId}/votes`,
         {
-          headers: authHeaders(token),
           data: {
             date_range_id: dateRangeId,
             response: 'yes',
@@ -291,12 +279,11 @@ test.describe('Voting Feature', () => {
     test('GET /api/events/:id/votes returns all votes for event', async ({
       request,
     }) => {
-      const { token } = await getTestSession(request)
-      const { eventId, dateRangeId } = await createTestEvent(request, token)
+      await getTestSession(request)
+      const { eventId, dateRangeId } = await createTestEvent(request)
 
       // Create a vote
       await request.post(`${API_BASE}/api/events/${eventId}/votes`, {
-        headers: authHeaders(token),
         data: {
           date_range_id: dateRangeId,
           response: 'yes',
@@ -304,10 +291,7 @@ test.describe('Voting Feature', () => {
       })
 
       const response = await request.get(
-        `${API_BASE}/api/events/${eventId}/votes`,
-        {
-          headers: authHeaders(token),
-        }
+        `${API_BASE}/api/events/${eventId}/votes`
       )
 
       expect(response.ok()).toBeTruthy()
@@ -320,14 +304,13 @@ test.describe('Voting Feature', () => {
     test('DELETE /api/events/:id/votes/:vote_id removes vote', async ({
       request,
     }) => {
-      const { token } = await getTestSession(request)
-      const { eventId, dateRangeId } = await createTestEvent(request, token)
+      await getTestSession(request)
+      const { eventId, dateRangeId } = await createTestEvent(request)
 
       // Create a vote
       const createResponse = await request.post(
         `${API_BASE}/api/events/${eventId}/votes`,
         {
-          headers: authHeaders(token),
           data: {
             date_range_id: dateRangeId,
             response: 'yes',
@@ -339,10 +322,7 @@ test.describe('Voting Feature', () => {
 
       // Delete the vote
       const deleteResponse = await request.delete(
-        `${API_BASE}/api/events/${eventId}/votes/${vote!.id}`,
-        {
-          headers: authHeaders(token),
-        }
+        `${API_BASE}/api/events/${eventId}/votes/${vote!.id}`
       )
 
       expect(deleteResponse.ok()).toBeTruthy()
@@ -353,10 +333,7 @@ test.describe('Voting Feature', () => {
 
       // Verify vote is gone
       const getResponse = await request.get(
-        `${API_BASE}/api/events/${eventId}/votes`,
-        {
-          headers: authHeaders(token),
-        }
+        `${API_BASE}/api/events/${eventId}/votes`
       )
       const getBody = await getResponse.json()
       const votes = getObjectsByType(getBody.objects, 'vote')
@@ -365,24 +342,16 @@ test.describe('Voting Feature', () => {
 
     test('DELETE /api/events/:id/votes/:vote_id returns 403 for other user vote', async ({
       request,
+      playwright,
     }) => {
-      const { token: token1 } = await getTestSession(
-        request,
-        TEST_EMAIL,
-        TEST_NAME
-      )
-      const { token: token2 } = await getTestSession(
-        request,
-        TEST_EMAIL_2,
-        TEST_NAME_2
-      )
-      const { eventId, dateRangeId } = await createTestEvent(request, token1)
+      // User 1 on default request context
+      await getTestSession(request, TEST_EMAIL, TEST_NAME)
+      const { eventId, dateRangeId } = await createTestEvent(request)
 
       // User 1 creates a vote
       const createResponse = await request.post(
         `${API_BASE}/api/events/${eventId}/votes`,
         {
-          headers: authHeaders(token1),
           data: {
             date_range_id: dateRangeId,
             response: 'yes',
@@ -392,26 +361,28 @@ test.describe('Voting Feature', () => {
       const createBody = await createResponse.json()
       const vote = getObjectByType(createBody.objects, 'vote')
 
+      // User 2 on separate request context
+      const user2Request = await playwright.request.newContext()
+      await getTestSession(user2Request, TEST_EMAIL_2, TEST_NAME_2)
+
       // User 2 tries to delete User 1's vote
-      const deleteResponse = await request.delete(
-        `${API_BASE}/api/events/${eventId}/votes/${vote!.id}`,
-        {
-          headers: authHeaders(token2),
-        }
+      const deleteResponse = await user2Request.delete(
+        `${API_BASE}/api/events/${eventId}/votes/${vote!.id}`
       )
 
       expect(deleteResponse.status()).toBe(403)
       const body = await deleteResponse.json()
       expect(body.error).toBe('Access denied')
+
+      await user2Request.dispose()
     })
 
     test('event includes votes in response', async ({ request }) => {
-      const { token } = await getTestSession(request)
-      const { eventId, dateRangeId } = await createTestEvent(request, token)
+      await getTestSession(request)
+      const { eventId, dateRangeId } = await createTestEvent(request)
 
       // Create a vote
       await request.post(`${API_BASE}/api/events/${eventId}/votes`, {
-        headers: authHeaders(token),
         data: {
           date_range_id: dateRangeId,
           response: 'preferably_not',
@@ -420,9 +391,7 @@ test.describe('Voting Feature', () => {
       })
 
       // Get event and verify votes are included in pool
-      const response = await request.get(`${API_BASE}/api/events/${eventId}`, {
-        headers: authHeaders(token),
-      })
+      const response = await request.get(`${API_BASE}/api/events/${eventId}`)
       const body = await response.json()
 
       // Find the date range and verify it has the vote ID
@@ -438,50 +407,46 @@ test.describe('Voting Feature', () => {
       expect(votes[0]?.response).toBe('preferably_not')
     })
 
-    test('non-workspace-member cannot view event', async ({ request }) => {
-      const { token: ownerToken } = await getTestSession(
-        request,
-        TEST_EMAIL,
-        TEST_NAME
-      )
-      const { token: otherToken } = await getTestSession(
-        request,
-        TEST_EMAIL_2,
-        TEST_NAME_2
-      )
-      const { eventId } = await createTestEvent(request, ownerToken)
+    test('non-workspace-member cannot view event', async ({
+      request,
+      playwright,
+    }) => {
+      // Owner on default request context
+      await getTestSession(request, TEST_EMAIL, TEST_NAME)
+      const { eventId } = await createTestEvent(request)
+
+      // Other user on separate request context
+      const user2Request = await playwright.request.newContext()
+      await getTestSession(user2Request, TEST_EMAIL_2, TEST_NAME_2)
 
       // Other user (not in workspace) cannot view the event
-      const response = await request.get(`${API_BASE}/api/events/${eventId}`, {
-        headers: authHeaders(otherToken),
-      })
+      const response = await user2Request.get(
+        `${API_BASE}/api/events/${eventId}`
+      )
 
       expect(response.status()).toBe(403)
       const body = await response.json()
       expect(body.error).toBe('Access denied')
+
+      await user2Request.dispose()
     })
 
-    test('non-workspace-member cannot vote on event', async ({ request }) => {
-      const { token: ownerToken } = await getTestSession(
-        request,
-        TEST_EMAIL,
-        TEST_NAME
-      )
-      const { token: otherToken } = await getTestSession(
-        request,
-        TEST_EMAIL_2,
-        TEST_NAME_2
-      )
-      const { eventId, dateRangeId } = await createTestEvent(
-        request,
-        ownerToken
-      )
+    test('non-workspace-member cannot vote on event', async ({
+      request,
+      playwright,
+    }) => {
+      // Owner on default request context
+      await getTestSession(request, TEST_EMAIL, TEST_NAME)
+      const { eventId, dateRangeId } = await createTestEvent(request)
+
+      // Other user on separate request context
+      const user2Request = await playwright.request.newContext()
+      await getTestSession(user2Request, TEST_EMAIL_2, TEST_NAME_2)
 
       // Other user (not in workspace) cannot vote on the event
-      const response = await request.post(
+      const response = await user2Request.post(
         `${API_BASE}/api/events/${eventId}/votes`,
         {
-          headers: authHeaders(otherToken),
           data: {
             date_range_id: dateRangeId,
             response: 'yes',
@@ -492,6 +457,8 @@ test.describe('Voting Feature', () => {
       expect(response.status()).toBe(403)
       const body = await response.json()
       expect(body.error).toBe('Access denied')
+
+      await user2Request.dispose()
     })
   })
 
@@ -499,11 +466,10 @@ test.describe('Voting Feature', () => {
     test('POST /api/events/:id/poll creates a date poll', async ({
       request,
     }) => {
-      const { token } = await getTestSession(request)
+      await getTestSession(request)
 
       // Create event without poll
       const eventResponse = await request.post(`${API_BASE}/api/events`, {
-        headers: authHeaders(token),
         data: { name: 'Poll Test Event' },
       })
       const eventBody = await eventResponse.json()
@@ -516,7 +482,6 @@ test.describe('Voting Feature', () => {
       const pollResponse = await request.post(
         `${API_BASE}/api/events/${event!.id}/poll`,
         {
-          headers: authHeaders(token),
           data: { deadline },
         }
       )
@@ -531,13 +496,12 @@ test.describe('Voting Feature', () => {
     test('POST /api/events/:id/poll/close selects a winner', async ({
       request,
     }) => {
-      const { token } = await getTestSession(request)
-      const { eventId, dateRangeId } = await createTestEvent(request, token)
+      await getTestSession(request)
+      const { eventId, dateRangeId } = await createTestEvent(request)
 
       const closeResponse = await request.post(
         `${API_BASE}/api/events/${eventId}/poll/close`,
         {
-          headers: authHeaders(token),
           data: { selected_date_range_id: dateRangeId },
         }
       )
@@ -552,12 +516,11 @@ test.describe('Voting Feature', () => {
     test('POST /api/events/:id/poll/reopen reopens a resolved poll', async ({
       request,
     }) => {
-      const { token } = await getTestSession(request)
-      const { eventId, dateRangeId } = await createTestEvent(request, token)
+      await getTestSession(request)
+      const { eventId, dateRangeId } = await createTestEvent(request)
 
       // Close the poll
       await request.post(`${API_BASE}/api/events/${eventId}/poll/close`, {
-        headers: authHeaders(token),
         data: { selected_date_range_id: dateRangeId },
       })
 
@@ -568,7 +531,6 @@ test.describe('Voting Feature', () => {
       const reopenResponse = await request.post(
         `${API_BASE}/api/events/${eventId}/poll/reopen`,
         {
-          headers: authHeaders(token),
           data: { deadline: newDeadline },
         }
       )
@@ -581,12 +543,11 @@ test.describe('Voting Feature', () => {
     })
 
     test('voting fails on a closed poll', async ({ request }) => {
-      const { token } = await getTestSession(request)
-      const { eventId, dateRangeId } = await createTestEvent(request, token)
+      await getTestSession(request)
+      const { eventId, dateRangeId } = await createTestEvent(request)
 
       // Close the poll
       await request.post(`${API_BASE}/api/events/${eventId}/poll/close`, {
-        headers: authHeaders(token),
         data: { selected_date_range_id: dateRangeId },
       })
 
@@ -594,7 +555,6 @@ test.describe('Voting Feature', () => {
       const voteResponse = await request.post(
         `${API_BASE}/api/events/${eventId}/votes`,
         {
-          headers: authHeaders(token),
           data: {
             date_range_id: dateRangeId,
             response: 'yes',
@@ -621,7 +581,7 @@ test.describe('Voting Feature', () => {
       request,
     }) => {
       const { token } = await getTestSession(request)
-      await createTestEvent(request, token)
+      await createTestEvent(request)
       await setupAuthenticatedPage(page, token)
 
       await page.goto('/events')
@@ -639,7 +599,7 @@ test.describe('Voting Feature', () => {
       request,
     }) => {
       const { token } = await getTestSession(request)
-      const { eventId } = await createTestEvent(request, token)
+      const { eventId } = await createTestEvent(request)
       await setupAuthenticatedPage(page, token)
 
       await page.goto(`/events/${eventId}/vote`)
@@ -660,7 +620,7 @@ test.describe('Voting Feature', () => {
 
     test('can vote on a date range', async ({ page, request }) => {
       const { token } = await getTestSession(request)
-      const { eventId } = await createTestEvent(request, token)
+      const { eventId } = await createTestEvent(request)
       await setupAuthenticatedPage(page, token)
 
       await page.goto(`/events/${eventId}/vote`)
@@ -684,7 +644,7 @@ test.describe('Voting Feature', () => {
 
     test('can change vote', async ({ page, request }) => {
       const { token } = await getTestSession(request)
-      const { eventId } = await createTestEvent(request, token)
+      const { eventId } = await createTestEvent(request)
       await setupAuthenticatedPage(page, token)
 
       await page.goto(`/events/${eventId}/vote`)
@@ -718,7 +678,7 @@ test.describe('Voting Feature', () => {
 
     test('can expand voters list', async ({ page, request }) => {
       const { token } = await getTestSession(request)
-      const { eventId } = await createTestEvent(request, token)
+      const { eventId } = await createTestEvent(request)
       await setupAuthenticatedPage(page, token)
 
       await page.goto(`/events/${eventId}/vote`)
@@ -741,7 +701,7 @@ test.describe('Voting Feature', () => {
 
     test('back button returns to events list', async ({ page, request }) => {
       const { token } = await getTestSession(request)
-      const { eventId } = await createTestEvent(request, token)
+      const { eventId } = await createTestEvent(request)
       await setupAuthenticatedPage(page, token)
 
       await page.goto(`/events/${eventId}`)
@@ -755,7 +715,7 @@ test.describe('Voting Feature', () => {
       request,
     }) => {
       const { token } = await getTestSession(request)
-      const { eventId, workspaceId } = await createTestEvent(request, token)
+      const { eventId, workspaceId } = await createTestEvent(request)
       await setupAuthenticatedPage(page, token)
 
       // Navigate to the event page first
@@ -777,8 +737,7 @@ test.describe('Voting Feature', () => {
       // Now add a new user via API (simulating another tab/user adding someone)
       const newUserName = `New User ${Date.now()}`
       const newUserEmail = `new-user-${Date.now()}@example.com`
-      await request.post('http://localhost:9293/api/users', {
-        headers: { Authorization: `Bearer ${token}` },
+      await request.post(`${API_BASE}/api/users`, {
         data: {
           name: newUserName,
           email: newUserEmail,

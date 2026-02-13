@@ -11,17 +11,33 @@ class App < Roda
   plugin :hash_routes
   plugin :request_headers
   plugin :all_verbs
+  plugin :cookies
   plugin :websockets
 
   Sequel.extension(:pg_json_ops)
 
   Dir[File.expand_path("routes/**/*.rb", __dir__)].each { |f| require f }
 
-  def current_session
-    auth_header = request.headers["Authorization"]
-    return nil unless auth_header
+  def set_session_cookie(token, expires_at)
+    response.set_cookie(
+      "session_token",
+      value: token,
+      path: "/",
+      httponly: true,
+      secure: ENV["RACK_ENV"] == "production",
+      same_site: :lax,
+      expires: expires_at
+    )
+  end
 
-    token = auth_header.sub(/^Bearer\s+/, "")
+  def clear_session_cookie
+    response.delete_cookie("session_token", path: "/")
+  end
+
+  def current_session
+    token = request.cookies["session_token"]
+    return nil unless token
+
     Session.find_valid(token)
   end
 
