@@ -3,16 +3,20 @@ import { onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { RouterView } from 'vue-router'
 import { useAuthStore, useCommandQueueStore } from '@/stores'
+import { usePoolPersistence } from '@/composables/usePoolPersistence'
 import ToastContainer from '@/components/common/ToastContainer.vue'
 
 const authStore = useAuthStore()
 const commandQueueStore = useCommandQueueStore()
 const { initialized } = storeToRefs(authStore)
+const { loadFromCache, startPersisting } = usePoolPersistence()
 
 onMounted(async () => {
   await authStore.initialize()
   if (authStore.isAuthenticated) {
     commandQueueStore.initialize()
+    await loadFromCache()
+    startPersisting()
   }
 })
 </script>

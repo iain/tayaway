@@ -5,15 +5,13 @@ import { useRouter, useRoute } from 'vue-router'
 import EventForm, {
   type EventFormData,
 } from '@/components/events/EventForm.vue'
-import { useEventsStore, useWebSocketStore } from '@/stores'
+import { useEventsStore } from '@/stores'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
 
 const router = useRouter()
 const route = useRoute()
 const eventsStore = useEventsStore()
-const wsStore = useWebSocketStore()
 const { loading, error } = storeToRefs(eventsStore)
-const { hasSynced } = storeToRefs(wsStore)
 
 const formError = ref<string | null>(null)
 const initialData = ref<EventFormData | undefined>(undefined)
@@ -67,11 +65,7 @@ function handleCancel(): void {
 
     <div class="rounded-lg bg-white shadow dark:bg-gray-800">
       <div class="px-4 py-5 sm:p-6">
-        <div v-if="!hasSynced" class="text-gray-500 dark:text-gray-400">
-          Loading...
-        </div>
-
-        <div v-else-if="!event" class="text-gray-500 dark:text-gray-400">
+        <div v-if="!event" class="text-gray-500 dark:text-gray-400">
           Event not found
         </div>
 

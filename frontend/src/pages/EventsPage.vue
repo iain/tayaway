@@ -12,7 +12,6 @@ import {
   useEventsStore,
   useAuthStore,
   useObjectPoolStore,
-  useWebSocketStore,
   useNotificationsStore,
   CommandQueuedError,
 } from '@/stores'
@@ -23,9 +22,7 @@ const router = useRouter()
 const eventsStore = useEventsStore()
 const authStore = useAuthStore()
 const pool = useObjectPoolStore()
-const wsStore = useWebSocketStore()
 const { loading, error } = storeToRefs(eventsStore)
-const { hasSynced } = storeToRefs(wsStore)
 const { formatDateDisplay } = useCalendar()
 const { user } = storeToRefs(authStore)
 
@@ -130,11 +127,7 @@ function formatDateRangeSummary(
       </button>
     </header>
 
-    <div v-if="!hasSynced" class="text-gray-500 dark:text-gray-400">
-      Loading events...
-    </div>
-
-    <div v-else-if="error" class="text-red-600 dark:text-red-400">
+    <div v-if="error" class="text-red-600 dark:text-red-400">
       {{ error }}
     </div>
 

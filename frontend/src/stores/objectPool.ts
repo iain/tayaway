@@ -19,6 +19,52 @@ function generatePendingId(): string {
   return `pending_${++pendingIdCounter}_${Date.now()}`
 }
 
+// Pool change notification types
+export interface PoolChangeImport {
+  type: 'import'
+  objects: PoolObject[]
+}
+
+export interface PoolChangeSet {
+  type: 'set'
+  object: PoolObject
+}
+
+export interface PoolChangeRemove {
+  type: 'remove'
+  objectType: ObjectType
+  id: string
+}
+
+export interface PoolChangeReplace {
+  type: 'replace'
+  objects: PoolObject[]
+}
+
+export type PoolChange =
+  | PoolChangeImport
+  | PoolChangeSet
+  | PoolChangeRemove
+  | PoolChangeReplace
+
+type PoolChangeCallback = (change: PoolChange) => void
+
+const changeCallbacks = new Set<PoolChangeCallback>()
+
+export function onPoolChange(callback: PoolChangeCallback): void {
+  changeCallbacks.add(callback)
+}
+
+export function offPoolChange(callback: PoolChangeCallback): void {
+  changeCallbacks.delete(callback)
+}
+
+function notifyChange(change: PoolChange): void {
+  for (const callback of changeCallbacks) {
+    callback(change)
+  }
+}
+
 // Create empty storage maps from OBJECT_TYPES
 function createEmptyStorage(): Map<ObjectType, Map<string, PoolObject>> {
   return new Map(OBJECT_TYPES.map((type) => [type, new Map()]))
@@ -37,6 +83,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   // Import objects from API response - no parsing needed
   function importObjects(poolObjects: PoolObject[]): void {
     let changed = false
+    const imported: PoolObject[] = []
     for (const obj of poolObjects) {
       const typeMap = objects.value.get(obj.objectType)
       if (!typeMap) continue
@@ -54,6 +101,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       // Update pool object if newer or doesn't exist
       if (!existing || isNewer(obj.updatedAt, existing.updatedAt)) {
         typeMap.set(obj.id, obj)
+        imported.push(obj)
         changed = true
       }
     }
@@ -62,6 +110,9 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       version.value++
       triggerRef(objects)
       triggerRef(pendingUpdates)
+    }
+    if (imported.length > 0) {
+      notifyChange({ type: 'import', objects: imported })
     }
   }
 
@@ -184,6 +235,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       typeMap.set(object.id, object)
       version.value++
       triggerRef(objects)
+      notifyChange({ type: 'set', object })
     }
   }
 
@@ -198,6 +250,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     version.value++
     triggerRef(objects)
     triggerRef(pendingUpdates)
+    notifyChange({ type: 'remove', objectType, id: objectId })
   }
 
   // Computed to get pool stats (useful for debugging)
@@ -229,6 +282,30 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     triggerRef(pendingUpdates)
   }
 
+  // Replace all objects — clears existing data then imports.
+  // Used on sync to ensure server-side deletions are reflected.
+  function replaceObjects(poolObjects: PoolObject[]): void {
+    // Clear all type maps
+    for (const typeMap of objects.value.values()) {
+      typeMap.clear()
+    }
+    // Clear pending updates
+    pendingUpdates.value.clear()
+
+    // Import the new objects
+    for (const obj of poolObjects) {
+      const typeMap = objects.value.get(obj.objectType)
+      if (typeMap) {
+        typeMap.set(obj.id, obj)
+      }
+    }
+
+    version.value++
+    triggerRef(objects)
+    triggerRef(pendingUpdates)
+    notifyChange({ type: 'replace', objects: poolObjects })
+  }
+
   // Reset the store
   function $reset(): void {
     objects.value = createEmptyStorage()
@@ -253,6 +330,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     hasPending,
     set,
     remove,
+    replaceObjects,
     clearExcept,
     $reset,
   }

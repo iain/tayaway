@@ -53,6 +53,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
   const state = ref<ConnectionState>('disconnected')
   const workspaceIds = ref<string[]>([])
   const hasSynced = ref(false)
+  const hasCachedData = ref(false)
 
   let socket: WebSocket | null = null
   let reconnectAttempts = 0
@@ -165,7 +166,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
   function handleSync(message: SyncMessage): void {
     const pool = useObjectPoolStore()
     if (message.data?.objects) {
-      pool.importObjects(message.data.objects)
+      pool.replaceObjects(message.data.objects)
     }
     hasSynced.value = true
   }
@@ -185,6 +186,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
   function sendSwitchWorkspace(workspaceId: string): void {
     hasSynced.value = false
+    hasCachedData.value = false
     send({ type: 'switch_workspace', workspaceId })
   }
 
@@ -238,6 +240,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     workspaceIds.value = []
     state.value = 'disconnected'
     hasSynced.value = false
+    hasCachedData.value = false
     reconnectAttempts = 0
   }
 
@@ -273,6 +276,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     isConnected,
     isReconnecting,
     hasSynced,
+    hasCachedData,
     connect,
     disconnect,
     sendSwitchWorkspace,

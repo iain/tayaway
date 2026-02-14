@@ -5,6 +5,7 @@ import { useCommandQueueStore, CommandQueuedError } from './commandQueue'
 import { useObjectPoolStore } from './objectPool'
 import { useWebSocketStore } from './websocket'
 import { useWorkspaceStore } from './workspace'
+import * as poolDb from '@/api/poolDb'
 import type {
   AuthUser,
   MagicLinkResponse,
@@ -88,9 +89,10 @@ export const useAuthStore = defineStore('auth', () => {
       const ws = useWebSocketStore()
       ws.disconnect()
 
-      // Clear command queue
+      // Clear command queue and pool cache
       const commandQueue = useCommandQueueStore()
       await commandQueue.reset()
+      await poolDb.clearAll()
 
       // Cookie is cleared by the backend response — no localStorage needed
       user.value = null

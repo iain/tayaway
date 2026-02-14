@@ -4,16 +4,13 @@ import { storeToRefs } from 'pinia'
 import { UserIcon, PlusIcon } from '@heroicons/vue/24/outline'
 import {
   useUsersStore,
-  useWebSocketStore,
   useNotificationsStore,
   CommandQueuedError,
 } from '@/stores'
 import AddUserModal from '@/components/users/AddUserModal.vue'
 
 const usersStore = useUsersStore()
-const wsStore = useWebSocketStore()
 const { users } = storeToRefs(usersStore)
-const { hasSynced } = storeToRefs(wsStore)
 
 const isModalOpen = ref(false)
 const isSubmitting = ref(false)
@@ -79,11 +76,7 @@ async function handleSave(name: string, email: string): Promise<void> {
       {{ formError }}
     </div>
 
-    <div v-if="!hasSynced" class="text-gray-500 dark:text-gray-400">
-      Loading users...
-    </div>
-
-    <div v-else-if="users.length === 0" class="py-12 text-center">
+    <div v-if="users.length === 0" class="py-12 text-center">
       <UserIcon class="mx-auto size-12 text-gray-400" />
       <h3 class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
         No users

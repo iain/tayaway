@@ -4,16 +4,14 @@ import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeftIcon, PencilIcon, UserIcon } from '@heroicons/vue/24/outline'
 import { CheckCircleIcon } from '@heroicons/vue/24/solid'
-import { useAuthStore, useWebSocketStore } from '@/stores'
+import { useAuthStore } from '@/stores'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
 import DatePollSection from '@/components/events/DatePollSection.vue'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-const wsStore = useWebSocketStore()
 const { user } = storeToRefs(authStore)
-const { hasSynced } = storeToRefs(wsStore)
 
 const eventId = computed(() => route.params.id as string)
 
@@ -105,11 +103,7 @@ function handleVote(): void {
       </button>
     </div>
 
-    <div v-if="!hasSynced" class="text-gray-500 dark:text-gray-400">
-      Loading...
-    </div>
-
-    <div v-else-if="!event" class="text-gray-500 dark:text-gray-400">
+    <div v-if="!event" class="text-gray-500 dark:text-gray-400">
       Event not found
     </div>
 

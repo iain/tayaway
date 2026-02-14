@@ -33,7 +33,7 @@ const wsStore = useWebSocketStore()
 const workspaceStore = useWorkspaceStore()
 const commandQueueStore = useCommandQueueStore()
 const { user } = storeToRefs(authStore)
-const { hasSynced, isReconnecting } = storeToRefs(wsStore)
+const { hasSynced, hasCachedData, isReconnecting } = storeToRefs(wsStore)
 const { pendingCount, isOnline } = storeToRefs(commandQueueStore)
 const { currentWorkspace, otherWorkspaces } = storeToRefs(workspaceStore)
 
@@ -74,7 +74,7 @@ function getInitials(email: string | undefined): string {
 <template>
   <!-- Loading screen while waiting for initial sync -->
   <div
-    v-if="!hasSynced"
+    v-if="!hasSynced && !hasCachedData"
     class="flex min-h-screen flex-col items-center justify-center bg-gray-50 dark:bg-gray-900"
   >
     <div class="text-center">

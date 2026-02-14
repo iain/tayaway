@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeftIcon, PlusIcon } from '@heroicons/vue/24/outline'
-import { useAuthStore, useWebSocketStore, useDatePollsStore } from '@/stores'
+import { useAuthStore, useDatePollsStore } from '@/stores'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
 import { useCalendar } from '@/composables/useCalendar'
 import VotingCard from '@/components/votes/VotingCard.vue'
@@ -12,10 +12,8 @@ import DateRangeModal from '@/components/events/DateRangeModal.vue'
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-const wsStore = useWebSocketStore()
 const datePollsStore = useDatePollsStore()
 const { user } = storeToRefs(authStore)
-const { hasSynced } = storeToRefs(wsStore)
 const { addDays } = useCalendar()
 
 const eventId = computed(() => route.params.id as string)
@@ -90,11 +88,7 @@ function handleDateRangeModalClose(): void {
       </button>
     </div>
 
-    <div v-if="!hasSynced" class="text-gray-500 dark:text-gray-400">
-      Loading...
-    </div>
-
-    <div v-else-if="!event" class="text-gray-500 dark:text-gray-400">
+    <div v-if="!event" class="text-gray-500 dark:text-gray-400">
       Event not found
     </div>
 
