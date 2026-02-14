@@ -154,6 +154,12 @@ export const useWebSocketStore = defineStore('websocket', () => {
     pingInterval = setInterval(() => {
       send({ type: 'ping' })
     }, 30000)
+
+    // Process any queued commands on reconnect
+    import('./commandQueue').then(({ useCommandQueueStore }) => {
+      const commandQueue = useCommandQueueStore()
+      commandQueue.processQueue()
+    })
   }
 
   function handleSync(message: SyncMessage): void {

@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import { api } from '@/api/client'
+import { useCommandQueueStore, CommandQueuedError } from './commandQueue'
 import type { PoolApiResponse } from '@/types/pool'
 
 export const useDatePollsStore = defineStore('datePolls', () => {
@@ -11,8 +11,14 @@ export const useDatePollsStore = defineStore('datePolls', () => {
     loading.value = true
     error.value = null
     try {
-      await api.post<PoolApiResponse>(`/events/${eventId}/poll`, { deadline })
+      const commandQueue = useCommandQueueStore()
+      await commandQueue.enqueue<PoolApiResponse>(
+        'POST',
+        `/events/${eventId}/poll`,
+        { deadline }
+      )
     } catch (e) {
+      if (e instanceof CommandQueuedError) return
       error.value = 'Failed to create poll'
       throw e
     } finally {
@@ -27,10 +33,14 @@ export const useDatePollsStore = defineStore('datePolls', () => {
     loading.value = true
     error.value = null
     try {
-      await api.post<PoolApiResponse>(`/events/${eventId}/poll/close`, {
-        selected_date_range_id: selectedDateRangeId,
-      })
+      const commandQueue = useCommandQueueStore()
+      await commandQueue.enqueue<PoolApiResponse>(
+        'POST',
+        `/events/${eventId}/poll/close`,
+        { selected_date_range_id: selectedDateRangeId }
+      )
     } catch (e) {
+      if (e instanceof CommandQueuedError) return
       error.value = 'Failed to close poll'
       throw e
     } finally {
@@ -42,10 +52,14 @@ export const useDatePollsStore = defineStore('datePolls', () => {
     loading.value = true
     error.value = null
     try {
-      await api.post<PoolApiResponse>(`/events/${eventId}/poll/reopen`, {
-        deadline,
-      })
+      const commandQueue = useCommandQueueStore()
+      await commandQueue.enqueue<PoolApiResponse>(
+        'POST',
+        `/events/${eventId}/poll/reopen`,
+        { deadline }
+      )
     } catch (e) {
+      if (e instanceof CommandQueuedError) return
       error.value = 'Failed to reopen poll'
       throw e
     } finally {
@@ -61,11 +75,14 @@ export const useDatePollsStore = defineStore('datePolls', () => {
     loading.value = true
     error.value = null
     try {
-      await api.post<PoolApiResponse>(`/events/${eventId}/poll/date-ranges`, {
-        start_date: startDate,
-        end_date: endDate,
-      })
+      const commandQueue = useCommandQueueStore()
+      await commandQueue.enqueue<PoolApiResponse>(
+        'POST',
+        `/events/${eventId}/poll/date-ranges`,
+        { start_date: startDate, end_date: endDate }
+      )
     } catch (e) {
+      if (e instanceof CommandQueuedError) return
       error.value = 'Failed to add date range'
       throw e
     } finally {
@@ -80,10 +97,13 @@ export const useDatePollsStore = defineStore('datePolls', () => {
     loading.value = true
     error.value = null
     try {
-      await api.delete<PoolApiResponse>(
+      const commandQueue = useCommandQueueStore()
+      await commandQueue.enqueue<PoolApiResponse>(
+        'DELETE',
         `/events/${eventId}/poll/date-ranges/${dateRangeId}`
       )
     } catch (e) {
+      if (e instanceof CommandQueuedError) return
       error.value = 'Failed to remove date range'
       throw e
     } finally {

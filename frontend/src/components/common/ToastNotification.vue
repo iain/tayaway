@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { ExclamationCircleIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import {
+  ExclamationCircleIcon,
+  InformationCircleIcon,
+  XMarkIcon,
+} from '@heroicons/vue/24/outline'
 import type { Notification } from '@/types/notification'
 
 defineProps<{
@@ -18,13 +22,21 @@ const emit = defineEmits<{
     <div class="p-4">
       <div class="flex items-start">
         <div class="shrink-0">
+          <InformationCircleIcon
+            v-if="notification.type === 'info'"
+            class="size-6 text-blue-500 dark:text-blue-400"
+            aria-hidden="true"
+          />
           <ExclamationCircleIcon
+            v-else
             class="size-6 text-red-500 dark:text-red-400"
             aria-hidden="true"
           />
         </div>
         <div class="ml-3 w-0 flex-1 pt-0.5">
-          <p class="text-sm font-medium text-gray-900 dark:text-white">Error</p>
+          <p class="text-sm font-medium text-gray-900 dark:text-white">
+            {{ notification.type === 'info' ? 'Info' : 'Error' }}
+          </p>
           <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
             {{ notification.message }}
           </p>

@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import { api } from '@/api/client'
+import { useCommandQueueStore, CommandQueuedError } from './commandQueue'
 import type { VoteResponse, VoteRequestBody } from '@/types'
 import type { PoolApiResponse } from '@/types/pool'
 
@@ -17,12 +17,14 @@ export const useVotesStore = defineStore('votes', () => {
     loading.value = true
     error.value = null
     try {
+      const commandQueue = useCommandQueueStore()
       const body: VoteRequestBody = {
         date_range_id: dateRangeId,
         response,
         comment,
       }
-      const apiResponse = await api.post<PoolApiResponse>(
+      const apiResponse = await commandQueue.enqueue<PoolApiResponse>(
+        'POST',
         `/events/${eventId}/votes`,
         body
       )
@@ -30,6 +32,7 @@ export const useVotesStore = defineStore('votes', () => {
       if (!vote) throw new Error('No vote in response')
       return vote.id
     } catch (e) {
+      if (e instanceof CommandQueuedError) throw e
       error.value = 'Failed to submit vote'
       throw e
     } finally {
@@ -41,8 +44,10 @@ export const useVotesStore = defineStore('votes', () => {
     loading.value = true
     error.value = null
     try {
-      await api.delete(`/events/${eventId}/votes/${voteId}`)
+      const commandQueue = useCommandQueueStore()
+      await commandQueue.enqueue('DELETE', `/events/${eventId}/votes/${voteId}`)
     } catch (e) {
+      if (e instanceof CommandQueuedError) return
       error.value = 'Failed to delete vote'
       throw e
     } finally {

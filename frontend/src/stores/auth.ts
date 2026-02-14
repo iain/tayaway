@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { api } from '@/api/client'
+import { useCommandQueueStore, CommandQueuedError } from './commandQueue'
 import { useObjectPoolStore } from './objectPool'
 import { useWebSocketStore } from './websocket'
 import { useWorkspaceStore } from './workspace'
@@ -87,6 +88,10 @@ export const useAuthStore = defineStore('auth', () => {
       const ws = useWebSocketStore()
       ws.disconnect()
 
+      // Clear command queue
+      const commandQueue = useCommandQueueStore()
+      await commandQueue.reset()
+
       // Cookie is cleared by the backend response — no localStorage needed
       user.value = null
       // Reset stores on logout
@@ -99,15 +104,30 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function updateName(name: string): Promise<void> {
     if (!user.value) return
-    const response = await api.put<PoolApiResponse>(`/users/${user.value.id}`, {
-      name,
-    })
-    // Update the auth store's user ref (pool auto-imports via client interceptor)
-    const updatedUser = response.data.objects.find(
-      (o) => o.objectType === 'user'
-    )
-    if (updatedUser && 'name' in updatedUser) {
-      user.value.name = updatedUser.name
+    const previousName = user.value.name
+    try {
+      const commandQueue = useCommandQueueStore()
+      const response = await commandQueue.enqueue<PoolApiResponse>(
+        'PUT',
+        `/users/${user.value.id}`,
+        { name }
+      )
+      // Update the auth store's user ref (pool auto-imports via client interceptor)
+      const updatedUser = response.data.objects.find(
+        (o) => o.objectType === 'user'
+      )
+      if (updatedUser && 'name' in updatedUser) {
+        user.value.name = updatedUser.name
+      }
+    } catch (e) {
+      if (e instanceof CommandQueuedError) {
+        // Optimistically keep the new name
+        user.value!.name = name
+        return
+      }
+      // Restore previous name on failure
+      if (user.value) user.value.name = previousName
+      throw e
     }
   }
 

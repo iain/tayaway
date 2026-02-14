@@ -2,14 +2,18 @@
 import { onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { RouterView } from 'vue-router'
-import { useAuthStore } from '@/stores'
+import { useAuthStore, useCommandQueueStore } from '@/stores'
 import ToastContainer from '@/components/common/ToastContainer.vue'
 
 const authStore = useAuthStore()
+const commandQueueStore = useCommandQueueStore()
 const { initialized } = storeToRefs(authStore)
 
-onMounted(() => {
-  authStore.initialize()
+onMounted(async () => {
+  await authStore.initialize()
+  if (authStore.isAuthenticated) {
+    commandQueueStore.initialize()
+  }
 })
 </script>
 

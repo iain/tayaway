@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import { api } from '@/api/client'
+import { useCommandQueueStore, CommandQueuedError } from './commandQueue'
 import { useWorkspaceStore } from './workspace'
 import type { CreateEventRequest, UpdateEventRequest } from '@/types'
 import type { PoolApiResponse } from '@/types/pool'
@@ -13,17 +13,23 @@ export const useEventsStore = defineStore('events', () => {
     loading.value = true
     error.value = null
     try {
+      const commandQueue = useCommandQueueStore()
       const workspaceStore = useWorkspaceStore()
-      const response = await api.post<PoolApiResponse>('/events', {
-        ...data,
-        workspace_id: workspaceStore.currentWorkspaceId,
-      })
+      const response = await commandQueue.enqueue<PoolApiResponse>(
+        'POST',
+        '/events',
+        {
+          ...data,
+          workspace_id: workspaceStore.currentWorkspaceId,
+        }
+      )
       const newEvent = response.data.objects.find(
         (o) => o.objectType === 'event'
       )
       if (!newEvent) throw new Error('No event in response')
       return newEvent.id
     } catch (e) {
+      if (e instanceof CommandQueuedError) throw e
       error.value = 'Failed to create event'
       throw e
     } finally {
@@ -38,8 +44,10 @@ export const useEventsStore = defineStore('events', () => {
     loading.value = true
     error.value = null
     try {
-      await api.put<PoolApiResponse>(`/events/${id}`, data)
+      const commandQueue = useCommandQueueStore()
+      await commandQueue.enqueue<PoolApiResponse>('PUT', `/events/${id}`, data)
     } catch (e) {
+      if (e instanceof CommandQueuedError) return
       error.value = 'Failed to update event'
       throw e
     } finally {
@@ -51,8 +59,10 @@ export const useEventsStore = defineStore('events', () => {
     loading.value = true
     error.value = null
     try {
-      await api.delete(`/events/${id}`)
+      const commandQueue = useCommandQueueStore()
+      await commandQueue.enqueue('DELETE', `/events/${id}`)
     } catch (e) {
+      if (e instanceof CommandQueuedError) return
       error.value = 'Failed to delete event'
       throw e
     } finally {

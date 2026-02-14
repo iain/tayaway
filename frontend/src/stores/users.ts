@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import { api } from '@/api/client'
+import { useCommandQueueStore, CommandQueuedError } from './commandQueue'
 import { useObjectPoolStore } from './objectPool'
 import { useWorkspaceStore } from './workspace'
 import type { CreateUserRequest, CreateUserResponse } from '@/types'
@@ -46,11 +46,16 @@ export const useUsersStore = defineStore('users', () => {
     loading.value = true
     error.value = null
     try {
+      const commandQueue = useCommandQueueStore()
       const workspaceStore = useWorkspaceStore()
-      const response = await api.post<CreateUserResponseWithPool>('/users', {
-        ...data,
-        workspace_id: workspaceStore.currentWorkspaceId,
-      })
+      const response = await commandQueue.enqueue<CreateUserResponseWithPool>(
+        'POST',
+        '/users',
+        {
+          ...data,
+          workspace_id: workspaceStore.currentWorkspaceId,
+        }
+      )
 
       // Get created user from pool
       const pool = useObjectPoolStore()
@@ -60,6 +65,7 @@ export const useUsersStore = defineStore('users', () => {
       }
       return newUser
     } catch (e) {
+      if (e instanceof CommandQueuedError) throw e
       error.value = 'Failed to create user'
       throw e
     } finally {

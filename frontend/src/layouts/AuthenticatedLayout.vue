@@ -18,7 +18,12 @@ import {
   MoonIcon,
   ChevronDownIcon,
 } from '@heroicons/vue/24/outline'
-import { useAuthStore, useWebSocketStore, useWorkspaceStore } from '@/stores'
+import {
+  useAuthStore,
+  useWebSocketStore,
+  useWorkspaceStore,
+  useCommandQueueStore,
+} from '@/stores'
 import { useDarkMode } from '@/composables/useDarkMode'
 
 const router = useRouter()
@@ -26,8 +31,10 @@ const route = useRoute()
 const authStore = useAuthStore()
 const wsStore = useWebSocketStore()
 const workspaceStore = useWorkspaceStore()
+const commandQueueStore = useCommandQueueStore()
 const { user } = storeToRefs(authStore)
 const { hasSynced, isReconnecting } = storeToRefs(wsStore)
+const { pendingCount, isOnline } = storeToRefs(commandQueueStore)
 const { currentWorkspace, otherWorkspaces } = storeToRefs(workspaceStore)
 
 function handleSwitchWorkspace(workspaceId: string) {
@@ -384,6 +391,27 @@ function getInitials(email: string | undefined): string {
           class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
         />
         Reconnecting...
+      </div>
+    </div>
+  </Transition>
+
+  <!-- Pending changes indicator -->
+  <Transition
+    enter-active-class="transition ease-out duration-300"
+    enter-from-class="translate-y-full opacity-0"
+    enter-to-class="translate-y-0 opacity-100"
+    leave-active-class="transition ease-in duration-200"
+    leave-from-class="translate-y-0 opacity-100"
+    leave-to-class="translate-y-full opacity-0"
+  >
+    <div
+      v-if="pendingCount > 0 && !isOnline"
+      class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2"
+    >
+      <div
+        class="flex items-center gap-2 rounded-full bg-amber-600 px-4 py-2 text-sm font-medium text-white shadow-lg dark:bg-amber-700"
+      >
+        {{ pendingCount }} pending change{{ pendingCount === 1 ? '' : 's' }}
       </div>
     </div>
   </Transition>
