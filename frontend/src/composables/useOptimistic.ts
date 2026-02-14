@@ -1,4 +1,5 @@
 import { useObjectPoolStore } from '@/stores/objectPool'
+import { CommandQueuedError } from '@/stores/commandQueue'
 import type { ObjectType, ObjectTypeMap, PoolObject } from '@/types/pool'
 import type { ApiResponse } from '@/api/client'
 
@@ -51,7 +52,11 @@ export function useOptimistic() {
       // Server response is automatically imported by API client, which clears pending
       return result.data
     } catch (error) {
-      // Rollback on failure
+      if (error instanceof CommandQueuedError) {
+        // Command queued for later — keep optimistic state
+        throw error
+      }
+      // Rollback on real failure
       pool.removePending(pendingId)
       throw error
     }
@@ -79,6 +84,10 @@ export function useOptimistic() {
       // Server response is automatically imported by API client, replacing temp object
       return result.data
     } catch (error) {
+      if (error instanceof CommandQueuedError) {
+        // Command queued for later — keep optimistic state
+        throw error
+      }
       // Rollback - remove temp object
       pool.remove(tempObject.objectType, tempObject.id)
       throw error
@@ -109,6 +118,10 @@ export function useOptimistic() {
       const result = await apiCall()
       return result.data
     } catch (error) {
+      if (error instanceof CommandQueuedError) {
+        // Command queued for later — keep optimistic state
+        throw error
+      }
       // Rollback - restore the object
       if (currentObject) {
         pool.set(currentObject)

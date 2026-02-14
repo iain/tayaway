@@ -284,19 +284,19 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
 
   // Replace all objects — clears existing data then imports.
   // Used on sync to ensure server-side deletions are reflected.
+  // Preserves pending updates for objects not yet confirmed by the server.
   function replaceObjects(poolObjects: PoolObject[]): void {
     // Clear all type maps
     for (const typeMap of objects.value.values()) {
       typeMap.clear()
     }
-    // Clear pending updates
-    pendingUpdates.value.clear()
 
-    // Import the new objects
+    // Import the new objects, clearing pending updates only for those included
     for (const obj of poolObjects) {
       const typeMap = objects.value.get(obj.objectType)
       if (typeMap) {
         typeMap.set(obj.id, obj)
+        pendingUpdates.value.delete(`${obj.objectType}:${obj.id}`)
       }
     }
 

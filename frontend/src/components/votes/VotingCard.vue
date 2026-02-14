@@ -66,17 +66,21 @@ async function handleVote(response: VoteResponse) {
   try {
     if (existingVote) {
       // Update existing vote using optimistic helper
-      await execute('vote', existingVote.id, { response }, () =>
-        commandQueue.enqueue<PoolApiResponse>(
-          'POST',
-          `/events/${props.eventId}/votes`,
-          {
-            date_range_id: props.dateRange.id,
-            response,
-            comment: existingVote.comment || undefined,
-          }
+      try {
+        await execute('vote', existingVote.id, { response }, () =>
+          commandQueue.enqueue<PoolApiResponse>(
+            'POST',
+            `/events/${props.eventId}/votes`,
+            {
+              date_range_id: props.dateRange.id,
+              response,
+              comment: existingVote.comment || undefined,
+            }
+          )
         )
-      )
+      } catch (e) {
+        if (!(e instanceof CommandQueuedError)) throw e
+      }
     } else {
       // Create new vote with client-generated ID
       // Manual handling needed because we update multiple pool objects
@@ -141,9 +145,11 @@ async function handleCommentSubmit() {
         }
       )
     )
-  } catch {
-    // Restore original comment in input on failure
-    comment.value = originalComment
+  } catch (e) {
+    if (!(e instanceof CommandQueuedError)) {
+      // Restore original comment in input on real failure
+      comment.value = originalComment
+    }
   } finally {
     loading.value = false
   }
