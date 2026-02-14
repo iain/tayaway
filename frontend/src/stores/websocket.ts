@@ -56,7 +56,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
   const hasCachedData = ref(false)
 
   let socket: WebSocket | null = null
-  let reconnectAttempts = 0
   let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
   let pingInterval: ReturnType<typeof setInterval> | null = null
 
@@ -66,7 +65,11 @@ export const useWebSocketStore = defineStore('websocket', () => {
   )
 
   async function getWebSocketUrl(): Promise<string> {
-    const { data } = await api.post<{ ticket: string }>('/auth/ws-ticket')
+    const { data } = await api.post<{ ticket: string }>(
+      '/auth/ws-ticket',
+      undefined,
+      { silent: true }
+    )
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
     return `${protocol}//${host}/ws?ticket=${encodeURIComponent(data.ticket)}`
@@ -87,9 +90,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
       const url = await getWebSocketUrl()
       socket = new WebSocket(url)
 
-      socket.onopen = () => {
-        reconnectAttempts = 0
-      }
+      socket.onopen = () => {}
 
       socket.onmessage = (event) => {
         handleMessage(event.data)
@@ -207,8 +208,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
   }
 
   function scheduleReconnect(): void {
-    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000)
-    reconnectAttempts++
+    const delay = 1000
 
     reconnectTimeout = setTimeout(async () => {
       // Don't reconnect if logged out — dynamic import avoids circular deps
@@ -219,6 +219,38 @@ export const useWebSocketStore = defineStore('websocket', () => {
       connect()
     }, delay)
   }
+
+  function reconnect(): void {
+    // Cancel any pending reconnect
+    if (reconnectTimeout) {
+      clearTimeout(reconnectTimeout)
+      reconnectTimeout = null
+    }
+
+    // Clean up ping interval
+    if (pingInterval) {
+      clearInterval(pingInterval)
+      pingInterval = null
+    }
+
+    // Close existing socket without triggering scheduleReconnect
+    if (socket) {
+      socket.onclose = null
+      socket.close()
+      socket = null
+    }
+
+    state.value = 'disconnected'
+
+    connect()
+  }
+
+  // Reconnect immediately when browser comes back online
+  window.addEventListener('online', () => {
+    if (state.value !== 'authenticated') {
+      reconnect()
+    }
+  })
 
   function disconnect(): void {
     if (reconnectTimeout) {
@@ -241,7 +273,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
     state.value = 'disconnected'
     hasSynced.value = false
     hasCachedData.value = false
-    reconnectAttempts = 0
   }
 
   function $reset(): void {
@@ -278,6 +309,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     hasSynced,
     hasCachedData,
     connect,
+    reconnect,
     disconnect,
     sendSwitchWorkspace,
     // Deprecated - kept for backwards compatibility

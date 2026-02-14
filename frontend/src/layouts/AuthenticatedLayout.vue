@@ -33,8 +33,10 @@ const wsStore = useWebSocketStore()
 const workspaceStore = useWorkspaceStore()
 const commandQueueStore = useCommandQueueStore()
 const { user } = storeToRefs(authStore)
-const { hasSynced, hasCachedData, isReconnecting } = storeToRefs(wsStore)
+const { state: wsState, hasSynced, hasCachedData } = storeToRefs(wsStore)
 const { pendingCount, isOnline } = storeToRefs(commandQueueStore)
+
+const showConnectionBadge = computed(() => wsState.value !== 'authenticated')
 const { currentWorkspace, otherWorkspaces } = storeToRefs(workspaceStore)
 
 function handleSwitchWorkspace(workspaceId: string) {
@@ -164,14 +166,23 @@ function getInitials(email: string | undefined): string {
           </div>
           <div class="hidden md:block">
             <div class="ml-4 flex items-center md:ml-6">
-              <!-- Offline indicator -->
-              <span
-                v-if="!isOnline"
-                class="mr-3 inline-flex items-center gap-1.5 rounded-full bg-gray-900/40 px-3 py-1 text-xs font-medium text-white"
+              <!-- Connection status badge -->
+              <button
+                v-if="showConnectionBadge"
+                type="button"
+                class="mr-3 inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-gray-900/40 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-gray-900/60"
+                title="Click to reconnect"
+                @click="wsStore.reconnect()"
               >
-                <span class="inline-block size-2 rounded-full bg-gray-300" />
-                Offline
-              </span>
+                <template v-if="!isOnline">
+                  <span class="inline-block size-2 rounded-full bg-gray-300" />
+                  Offline
+                </template>
+                <template v-else>
+                  <span class="inline-block size-2 rounded-full bg-amber-400" />
+                  Server offline
+                </template>
+              </button>
 
               <!-- Dark mode toggle -->
               <button
@@ -331,17 +342,26 @@ function getInitials(email: string | undefined): string {
                 {{ user?.email }}
               </div>
             </div>
-            <span
-              v-if="!isOnline"
-              class="ml-auto inline-flex items-center gap-1.5 rounded-full bg-gray-900/40 px-3 py-1 text-xs font-medium text-white"
+            <button
+              v-if="showConnectionBadge"
+              type="button"
+              class="ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-gray-900/40 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-gray-900/60"
+              title="Click to reconnect"
+              @click="wsStore.reconnect()"
             >
-              <span class="inline-block size-2 rounded-full bg-gray-300" />
-              Offline
-            </span>
+              <template v-if="!isOnline">
+                <span class="inline-block size-2 rounded-full bg-gray-300" />
+                Offline
+              </template>
+              <template v-else>
+                <span class="inline-block size-2 rounded-full bg-amber-400" />
+                Server offline
+              </template>
+            </button>
             <button
               type="button"
               class="shrink-0 rounded-full bg-rose-600 p-1 text-rose-200 hover:text-white focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-rose-600 focus:outline-hidden dark:bg-rose-800"
-              :class="isOnline ? 'relative ml-auto' : 'ml-2'"
+              :class="!showConnectionBadge ? 'relative ml-auto' : 'ml-2'"
               @click="toggleDarkMode"
             >
               <span class="sr-only">Toggle dark mode</span>
@@ -387,30 +407,6 @@ function getInitials(email: string | undefined): string {
       </div>
     </main>
   </div>
-
-  <!-- Reconnecting indicator -->
-  <Transition
-    enter-active-class="transition ease-out duration-300"
-    enter-from-class="translate-y-full opacity-0"
-    enter-to-class="translate-y-0 opacity-100"
-    leave-active-class="transition ease-in duration-200"
-    leave-from-class="translate-y-0 opacity-100"
-    leave-to-class="translate-y-full opacity-0"
-  >
-    <div
-      v-if="isReconnecting"
-      class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2"
-    >
-      <div
-        class="flex items-center gap-2 rounded-full bg-gray-800 px-4 py-2 text-sm font-medium text-white shadow-lg dark:bg-gray-700"
-      >
-        <div
-          class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
-        />
-        Reconnecting...
-      </div>
-    </div>
-  </Transition>
 
   <!-- Pending changes indicator -->
   <Transition

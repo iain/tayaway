@@ -75,8 +75,12 @@ class ApiClient {
     return this.request<T>('GET', path)
   }
 
-  async post<T>(path: string, body?: unknown): Promise<ApiResponse<T>> {
-    return this.request<T>('POST', path, body)
+  async post<T>(
+    path: string,
+    body?: unknown,
+    options?: { silent?: boolean }
+  ): Promise<ApiResponse<T>> {
+    return this.request<T>('POST', path, body, options)
   }
 
   async put<T>(path: string, body?: unknown): Promise<ApiResponse<T>> {
@@ -94,7 +98,8 @@ class ApiClient {
   private async request<T>(
     method: string,
     path: string,
-    body?: unknown
+    body?: unknown,
+    options?: { silent?: boolean }
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${path}`
     const headers: HeadersInit = {
@@ -113,8 +118,10 @@ class ApiClient {
         status: response.status,
       }
 
-      const notificationsStore = useNotificationsStore()
-      notificationsStore.showError(getErrorMessage(response.status))
+      if (!options?.silent) {
+        const notificationsStore = useNotificationsStore()
+        notificationsStore.showError(getErrorMessage(response.status))
+      }
       throw error
     }
 
