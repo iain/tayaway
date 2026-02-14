@@ -284,19 +284,21 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
 
   // Replace all objects — clears existing data then imports.
   // Used on sync to ensure server-side deletions are reflected.
-  // Preserves pending updates for objects not yet confirmed by the server.
+  // A full sync is authoritative so all pending updates are cleared.
   function replaceObjects(poolObjects: PoolObject[]): void {
     // Clear all type maps
     for (const typeMap of objects.value.values()) {
       typeMap.clear()
     }
 
-    // Import the new objects, clearing pending updates only for those included
+    // Clear all pending updates — server sync is authoritative
+    pendingUpdates.value.clear()
+
+    // Import the new objects
     for (const obj of poolObjects) {
       const typeMap = objects.value.get(obj.objectType)
       if (typeMap) {
         typeMap.set(obj.id, obj)
-        pendingUpdates.value.delete(`${obj.objectType}:${obj.id}`)
       }
     }
 
@@ -304,6 +306,16 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     triggerRef(objects)
     triggerRef(pendingUpdates)
     notifyChange({ type: 'replace', objects: poolObjects })
+  }
+
+  // Restore pending updates from cache (used on startup)
+  function restorePendingUpdates(cached: Map<string, PendingUpdate[]>): void {
+    if (cached.size === 0) return
+    for (const [key, updates] of cached) {
+      pendingUpdates.value.set(key, updates)
+    }
+    version.value++
+    triggerRef(pendingUpdates)
   }
 
   // Reset the store
@@ -331,6 +343,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     set,
     remove,
     replaceObjects,
+    restorePendingUpdates,
     clearExcept,
     $reset,
   }

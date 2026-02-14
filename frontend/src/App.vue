@@ -14,7 +14,7 @@ const { loadFromCache, startPersisting } = usePoolPersistence()
 onMounted(async () => {
   await authStore.initialize()
   if (authStore.isAuthenticated) {
-    commandQueueStore.initialize()
+    await commandQueueStore.initialize()
     await loadFromCache()
     startPersisting()
   }

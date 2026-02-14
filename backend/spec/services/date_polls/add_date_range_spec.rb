@@ -70,4 +70,49 @@ RSpec.describe DatePolls::AddDateRange do
     expect(date_range[:datePollId]).to eq(date_poll[:id])
     expect(DB[:date_ranges].where(date_poll_id: date_poll[:id]).count).to eq(1)
   end
+
+  it "uses client-provided id when given" do
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
+    TestFactories.date_poll(event: event)
+    client_id = SecureRandom.uuid
+
+    result = described_class.call(
+      event_id: event[:id],
+      current_user_id: user[:id],
+      start_date: "2024-06-01",
+      end_date: "2024-06-10",
+      id: client_id
+    )
+
+    expect(result.success?).to be true
+    date_range = result.value![:objects].find { |o| o[:objectType] == "dateRange" }
+    expect(date_range[:id]).to eq(client_id)
+  end
+
+  it "returns existing date range on idempotent replay with same id" do
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
+    TestFactories.date_poll(event: event)
+    client_id = SecureRandom.uuid
+
+    result1 = described_class.call(
+      event_id: event[:id],
+      current_user_id: user[:id],
+      start_date: "2024-06-01",
+      end_date: "2024-06-10",
+      id: client_id
+    )
+    result2 = described_class.call(
+      event_id: event[:id],
+      current_user_id: user[:id],
+      start_date: "2024-06-01",
+      end_date: "2024-06-10",
+      id: client_id
+    )
+
+    expect(result1.success?).to be true
+    expect(result2.success?).to be true
+    expect(DB[:date_ranges].where(id: client_id).count).to eq(1)
+  end
 end

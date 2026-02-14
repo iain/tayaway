@@ -1,11 +1,16 @@
 import { openDB, type IDBPDatabase } from 'idb'
-import type { PoolObject, ObjectType } from '@/types/pool'
+import type { PoolObject, ObjectType, PendingUpdate } from '@/types/pool'
 
 interface StoredObject {
   key: string
   objectType: ObjectType
   id: string
   data: PoolObject
+}
+
+interface StoredPendingEntry {
+  key: string
+  updates: PendingUpdate[]
 }
 
 interface MetaEntry {
@@ -23,17 +28,26 @@ interface PoolCacheDB {
     key: string
     value: MetaEntry
   }
+  pendingUpdates: {
+    key: string
+    value: StoredPendingEntry
+  }
 }
 
 let dbPromise: Promise<IDBPDatabase<PoolCacheDB>> | null = null
 
 function getDb(): Promise<IDBPDatabase<PoolCacheDB>> {
   if (!dbPromise) {
-    dbPromise = openDB<PoolCacheDB>('tayaway-pool-cache', 1, {
-      upgrade(db) {
-        const store = db.createObjectStore('objects', { keyPath: 'key' })
-        store.createIndex('objectType', 'objectType')
-        db.createObjectStore('meta', { keyPath: 'key' })
+    dbPromise = openDB<PoolCacheDB>('tayaway-pool-cache', 2, {
+      upgrade(db, oldVersion) {
+        if (oldVersion < 1) {
+          const store = db.createObjectStore('objects', { keyPath: 'key' })
+          store.createIndex('objectType', 'objectType')
+          db.createObjectStore('meta', { keyPath: 'key' })
+        }
+        if (oldVersion < 2) {
+          db.createObjectStore('pendingUpdates', { keyPath: 'key' })
+        }
       },
     })
   }
@@ -72,13 +86,38 @@ export async function removeObjects(
   await tx.done
 }
 
+export async function savePendingUpdates(
+  entries: Map<string, PendingUpdate[]>
+): Promise<void> {
+  const db = await getDb()
+  const tx = db.transaction('pendingUpdates', 'readwrite')
+  tx.store.clear()
+  for (const [key, updates] of entries) {
+    tx.store.put({ key, updates })
+  }
+  await tx.done
+}
+
+export async function loadPendingUpdates(): Promise<
+  Map<string, PendingUpdate[]>
+> {
+  const db = await getDb()
+  const stored = await db.getAll('pendingUpdates')
+  const map = new Map<string, PendingUpdate[]>()
+  for (const entry of stored) {
+    map.set(entry.key, entry.updates)
+  }
+  return map
+}
+
 export async function replaceAll(
   workspaceId: string,
   objects: PoolObject[]
 ): Promise<void> {
   const db = await getDb()
-  const tx = db.transaction(['objects', 'meta'], 'readwrite')
+  const tx = db.transaction(['objects', 'meta', 'pendingUpdates'], 'readwrite')
   tx.objectStore('objects').clear()
+  tx.objectStore('pendingUpdates').clear()
   tx.objectStore('meta').put({ key: 'workspace', workspaceId })
   const objectStore = tx.objectStore('objects')
   for (const obj of objects) {
@@ -95,21 +134,31 @@ export async function replaceAll(
 export async function loadAll(): Promise<{
   workspaceId: string | null
   objects: PoolObject[]
+  pendingUpdates: Map<string, PendingUpdate[]>
 }> {
   const db = await getDb()
-  const tx = db.transaction(['objects', 'meta'], 'readonly')
+  const tx = db.transaction(['objects', 'meta', 'pendingUpdates'], 'readonly')
   const meta = await tx.objectStore('meta').get('workspace')
   const stored = await tx.objectStore('objects').getAll()
+  const pendingStored = await tx.objectStore('pendingUpdates').getAll()
+
+  const pendingMap = new Map<string, PendingUpdate[]>()
+  for (const entry of pendingStored) {
+    pendingMap.set(entry.key, entry.updates)
+  }
+
   return {
     workspaceId: meta?.workspaceId ?? null,
     objects: stored.map((s) => s.data),
+    pendingUpdates: pendingMap,
   }
 }
 
 export async function clearAll(): Promise<void> {
   const db = await getDb()
-  const tx = db.transaction(['objects', 'meta'], 'readwrite')
+  const tx = db.transaction(['objects', 'meta', 'pendingUpdates'], 'readwrite')
   tx.objectStore('objects').clear()
   tx.objectStore('meta').clear()
+  tx.objectStore('pendingUpdates').clear()
   await tx.done
 }

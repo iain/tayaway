@@ -76,10 +76,11 @@ export const useDatePollsStore = defineStore('datePolls', () => {
     error.value = null
     try {
       const commandQueue = useCommandQueueStore()
+      const dateRangeId = crypto.randomUUID()
       await commandQueue.enqueue<PoolApiResponse>(
         'POST',
         `/events/${eventId}/poll/date-ranges`,
-        { start_date: startDate, end_date: endDate }
+        { id: dateRangeId, start_date: startDate, end_date: endDate }
       )
     } catch (e) {
       if (e instanceof CommandQueuedError) return

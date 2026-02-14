@@ -13,16 +13,17 @@ module DatePolls
           event_id: T.any(String, UUID),
           current_user_id: T.any(String, UUID),
           start_date: T.nilable(String),
-          end_date: T.nilable(String)
+          end_date: T.nilable(String),
+          id: T.nilable(String)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def call(event_id:, current_user_id:, start_date:, end_date:)
+      def call(event_id:, current_user_id:, start_date:, end_date:, id: nil)
         find_event(event_id)
           .bind { |event| authorize_owner(event, current_user_id) }
           .bind { |event| find_poll(event) }
           .bind { |(event, poll)| validate_poll_open(event, poll) }
           .bind { |(event, poll)| parse_dates(start_date, end_date, event, poll) }
-          .bind { |(event, poll, date_input)| insert_date_range(event, poll, date_input) }
+          .bind { |(event, poll, date_input)| insert_date_range(event, poll, date_input, id) }
       end
 
       private
@@ -81,11 +82,21 @@ module DatePolls
       end
 
       sig do
-        params(event: Event, poll: DatePoll, date_input: DateRangeInput)
+        params(event: Event, poll: DatePoll, date_input: DateRangeInput, id: T.nilable(String))
           .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def insert_date_range(event, poll, date_input)
-        dr_id = SecureRandom.uuid
+      def insert_date_range(event, poll, date_input, id)
+        # Idempotent replay: if client provided an ID and it already exists, return current state
+        if id
+          existing = DateRange.find(id)
+          if existing
+            pool = PoolSerializer.new
+            pool.add_event(T.must(Event.find(event.id)))
+            return T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+          end
+        end
+
+        dr_id = id || SecureRandom.uuid
         now = Time.now
 
         DB.transaction do

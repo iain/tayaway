@@ -33,6 +33,14 @@ module Votes
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
       def call(event_id:, user_id:, date_range_id:, vote_response:, comment:, vote_id: nil)
+        # Idempotent replay: if client provided an ID that already exists, return it
+        if vote_id
+          existing = Vote.find(vote_id)
+          if existing
+            return T.cast(Success({ vote_id: existing.id, created: false }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+          end
+        end
+
         validate_params(date_range_id, vote_response, vote_id)
           .bind { |params| find_date_range(T.must(params[:date_range_id])) }
           .bind { |date_range| validate_date_range_belongs_to_event(date_range, event_id) }
@@ -58,8 +66,6 @@ module Votes
           T.cast(Failure(ServiceError.validation("Invalid response value")), Result[T::Hash[Symbol, String], ServiceError])
         elsif vote_id && !UUID_REGEX.match?(vote_id)
           T.cast(Failure(ServiceError.validation("Invalid vote ID format")), Result[T::Hash[Symbol, String], ServiceError])
-        elsif vote_id && Vote.find(vote_id)
-          T.cast(Failure(ServiceError.conflict("Vote ID already exists")), Result[T::Hash[Symbol, String], ServiceError])
         else
           T.cast(Success({ date_range_id: date_range_id, vote_response: vote_response }), Result[T::Hash[Symbol, String], ServiceError])
         end

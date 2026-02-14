@@ -17,13 +17,17 @@ export class CommandQueuedError extends Error {
 }
 
 function isNetworkError(e: unknown): boolean {
-  return e instanceof TypeError
+  if (!(e instanceof TypeError)) return false
+  if (!navigator.onLine) return true
+  const msg = e.message.toLowerCase()
+  return msg.includes('fetch') || msg.includes('network')
 }
 
 export const useCommandQueueStore = defineStore('commandQueue', () => {
   const pendingCount = ref(0)
   const isProcessing = ref(false)
   const isOnline = ref(navigator.onLine)
+  const retryRequested = ref(false)
 
   function handleOnline() {
     isOnline.value = true
@@ -68,31 +72,37 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
   }
 
   async function processQueue(): Promise<void> {
-    if (isProcessing.value) return
+    if (isProcessing.value) {
+      retryRequested.value = true
+      return
+    }
     isProcessing.value = true
 
     try {
-      const commands = await getPendingCommands()
-      for (const command of commands) {
-        try {
-          await executeRequest(command.method, command.path, command.body)
-          await removeCommand(command.id)
-          pendingCount.value--
-        } catch (e) {
-          if (isNetworkError(e)) {
-            // Still offline, stop processing
-            break
+      do {
+        retryRequested.value = false
+        const commands = await getPendingCommands()
+        for (const command of commands) {
+          try {
+            await executeRequest(command.method, command.path, command.body)
+            await removeCommand(command.id)
+            pendingCount.value--
+          } catch (e) {
+            if (isNetworkError(e)) {
+              // Still offline, stop processing
+              break
+            }
+            // Server error — remove and notify, continue with next
+            await removeCommand(command.id)
+            pendingCount.value--
+            const { useNotificationsStore } = await import('./notifications')
+            const notifications = useNotificationsStore()
+            notifications.showError(
+              `Failed to sync offline change: ${command.method} ${command.path}`
+            )
           }
-          // Server error — remove and notify, continue with next
-          await removeCommand(command.id)
-          pendingCount.value--
-          const { useNotificationsStore } = await import('./notifications')
-          const notifications = useNotificationsStore()
-          notifications.showError(
-            `Failed to sync offline change: ${command.method} ${command.path}`
-          )
         }
-      }
+      } while (retryRequested.value)
     } finally {
       isProcessing.value = false
     }

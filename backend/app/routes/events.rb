@@ -42,7 +42,8 @@ class App
           workspace_id: workspace_id,
           user_id: current_user.id,
           name: r.params["name"]&.strip,
-          description: r.params["description"]&.strip
+          description: r.params["description"]&.strip,
+          id: r.params["id"]
         )
         handle_result(result, success_status: 201)
       end
@@ -134,7 +135,8 @@ class App
                 event_id: event.id,
                 current_user_id: current_user.id,
                 start_date: r.params["start_date"],
-                end_date: r.params["end_date"]
+                end_date: r.params["end_date"],
+                id: r.params["id"]
               )
               handle_result(result, success_status: 201)
             end

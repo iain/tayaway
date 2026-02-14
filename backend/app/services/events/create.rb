@@ -22,11 +22,12 @@ module Events
           workspace_id: T.any(String, UUID),
           user_id: T.any(String, UUID),
           name: T.nilable(String),
-          description: T.nilable(String)
+          description: T.nilable(String),
+          id: T.nilable(String)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def call(workspace_id:, user_id:, name:, description:)
-        validate_name(name).bind { |valid_name| create_event(workspace_id, user_id, valid_name, description) }
+      def call(workspace_id:, user_id:, name:, description:, id: nil)
+        validate_name(name).bind { |valid_name| create_event(workspace_id, user_id, valid_name, description, id) }
       end
 
       private
@@ -45,13 +46,24 @@ module Events
           workspace_id: T.any(String, UUID),
           user_id: T.any(String, UUID),
           name: String,
-          description: T.nilable(String)
+          description: T.nilable(String),
+          id: T.nilable(String)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def create_event(workspace_id, user_id, name, description)
+      def create_event(workspace_id, user_id, name, description, id)
+        # Idempotent replay: if client provided an ID and it already exists, return it
+        if id
+          existing = Event.find(id)
+          if existing
+            pool = PoolSerializer.new
+            pool.add_event(existing)
+            return T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+          end
+        end
+
         event = DB.transaction do
           now = Time.now
-          event_id = SecureRandom.uuid
+          event_id = id || SecureRandom.uuid
 
           DB[:events].insert(
             id: event_id,

@@ -10,19 +10,37 @@ import type { PoolChange } from '@/stores/objectPool'
 import type { PoolObject } from '@/types/pool'
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
+let pendingDebounceTimer: ReturnType<typeof setTimeout> | null = null
 let pendingSaves: PoolObject[] = []
 let pendingRemoves: { objectType: string; id: string }[] = []
 let changeHandler: ((change: PoolChange) => void) | null = null
 
-function flushWrites(): void {
+async function flushWrites(): Promise<void> {
   const saves = pendingSaves
   const removes = pendingRemoves
   pendingSaves = []
   pendingRemoves = []
   debounceTimer = null
 
-  if (saves.length > 0) poolDb.saveObjects(saves)
-  if (removes.length > 0) poolDb.removeObjects(removes)
+  try {
+    if (saves.length > 0) await poolDb.saveObjects(saves)
+    if (removes.length > 0) await poolDb.removeObjects(removes)
+  } catch (e) {
+    console.warn('Failed to persist pool objects to IndexedDB', e)
+  }
+}
+
+function schedulePendingFlush(): void {
+  if (pendingDebounceTimer) return
+  pendingDebounceTimer = setTimeout(async () => {
+    pendingDebounceTimer = null
+    try {
+      const pool = useObjectPoolStore()
+      await poolDb.savePendingUpdates(pool.pendingUpdates)
+    } catch (e) {
+      console.warn('Failed to persist pending updates to IndexedDB', e)
+    }
+  }, 500)
 }
 
 function scheduleFlush(): void {
@@ -38,15 +56,20 @@ export function usePoolPersistence() {
     if (!expectedWorkspaceId) return
 
     try {
-      const { workspaceId, objects } = await poolDb.loadAll()
+      const { workspaceId, objects, pendingUpdates } = await poolDb.loadAll()
       if (workspaceId !== expectedWorkspaceId) {
         await poolDb.clearAll()
         return
       }
-      if (objects.length === 0) return
+      if (objects.length === 0 && pendingUpdates.size === 0) return
 
       const pool = useObjectPoolStore()
-      pool.importObjects(objects)
+      if (objects.length > 0) {
+        pool.importObjects(objects)
+      }
+      if (pendingUpdates.size > 0) {
+        pool.restorePendingUpdates(pendingUpdates)
+      }
 
       const wsStore = useWebSocketStore()
       wsStore.hasCachedData = true
@@ -69,9 +92,15 @@ export function usePoolPersistence() {
             clearTimeout(debounceTimer)
             debounceTimer = null
           }
+          if (pendingDebounceTimer) {
+            clearTimeout(pendingDebounceTimer)
+            pendingDebounceTimer = null
+          }
           pendingSaves = []
           pendingRemoves = []
-          poolDb.replaceAll(workspaceId, change.objects)
+          poolDb.replaceAll(workspaceId, change.objects).catch((e) => {
+            console.warn('Failed to replace pool cache in IndexedDB', e)
+          })
         }
         return
       }
@@ -79,15 +108,18 @@ export function usePoolPersistence() {
       if (change.type === 'import') {
         pendingSaves.push(...change.objects)
         scheduleFlush()
+        schedulePendingFlush()
       } else if (change.type === 'set') {
         pendingSaves.push(change.object)
         scheduleFlush()
+        schedulePendingFlush()
       } else if (change.type === 'remove') {
         pendingRemoves.push({
           objectType: change.objectType,
           id: change.id,
         })
         scheduleFlush()
+        schedulePendingFlush()
       }
     }
 
@@ -102,6 +134,10 @@ export function usePoolPersistence() {
     if (debounceTimer) {
       clearTimeout(debounceTimer)
       debounceTimer = null
+    }
+    if (pendingDebounceTimer) {
+      clearTimeout(pendingDebounceTimer)
+      pendingDebounceTimer = null
     }
     pendingSaves = []
     pendingRemoves = []

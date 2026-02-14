@@ -114,4 +114,35 @@ RSpec.describe Votes::Upsert do
     expect(vote[:response]).to eq("no")
     expect(DB[:votes].count).to eq(1)
   end
+
+  it "returns existing vote on idempotent replay with same vote_id" do
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
+    date_poll = TestFactories.date_poll(event: event)
+    date_range = TestFactories.date_range(date_poll: date_poll)
+    client_id = SecureRandom.uuid
+
+    result1 = described_class.call(
+      event_id: event[:id],
+      user_id: user[:id],
+      date_range_id: date_range[:id],
+      vote_response: "yes",
+      comment: nil,
+      vote_id: client_id
+    )
+    result2 = described_class.call(
+      event_id: event[:id],
+      user_id: user[:id],
+      date_range_id: date_range[:id],
+      vote_response: "yes",
+      comment: nil,
+      vote_id: client_id
+    )
+
+    expect(result1.success?).to be true
+    expect(result1.value![:created]).to be true
+    expect(result2.success?).to be true
+    expect(result2.value![:created]).to be false
+    expect(DB[:votes].where(id: client_id).count).to eq(1)
+  end
 end

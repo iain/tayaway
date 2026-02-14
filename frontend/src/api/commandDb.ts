@@ -5,7 +5,6 @@ export interface StoredCommand {
   method: 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   path: string
   body?: unknown
-  status: 'pending'
   createdAt: number
 }
 
@@ -13,7 +12,7 @@ interface CommandQueueDB {
   commands: {
     key: string
     value: StoredCommand
-    indexes: { status: string; createdAt: number }
+    indexes: { createdAt: number }
   }
 }
 
@@ -21,11 +20,18 @@ let dbPromise: Promise<IDBPDatabase<CommandQueueDB>> | null = null
 
 function getDb(): Promise<IDBPDatabase<CommandQueueDB>> {
   if (!dbPromise) {
-    dbPromise = openDB<CommandQueueDB>('tayaway-command-queue', 1, {
-      upgrade(db) {
-        const store = db.createObjectStore('commands', { keyPath: 'id' })
-        store.createIndex('status', 'status')
-        store.createIndex('createdAt', 'createdAt')
+    dbPromise = openDB<CommandQueueDB>('tayaway-command-queue', 2, {
+      upgrade(db, oldVersion, _newVersion, transaction) {
+        if (oldVersion < 1) {
+          const store = db.createObjectStore('commands', { keyPath: 'id' })
+          store.createIndex('createdAt', 'createdAt')
+        }
+        if (oldVersion >= 1 && oldVersion < 2) {
+          const store = transaction.objectStore('commands')
+          if (store.indexNames.contains('status')) {
+            store.deleteIndex('status')
+          }
+        }
       },
     })
   }
@@ -33,14 +39,13 @@ function getDb(): Promise<IDBPDatabase<CommandQueueDB>> {
 }
 
 export async function addCommand(
-  command: Omit<StoredCommand, 'id' | 'status' | 'createdAt'>
+  command: Omit<StoredCommand, 'id' | 'createdAt'>
 ): Promise<string> {
   const db = await getDb()
   const id = crypto.randomUUID()
   const stored: StoredCommand = {
     ...command,
     id,
-    status: 'pending',
     createdAt: Date.now(),
   }
   await db.add('commands', stored)

@@ -15,11 +15,13 @@ export const useEventsStore = defineStore('events', () => {
     try {
       const commandQueue = useCommandQueueStore()
       const workspaceStore = useWorkspaceStore()
+      const eventId = crypto.randomUUID()
       const response = await commandQueue.enqueue<PoolApiResponse>(
         'POST',
         '/events',
         {
           ...data,
+          id: eventId,
           workspace_id: workspaceStore.currentWorkspaceId,
         }
       )

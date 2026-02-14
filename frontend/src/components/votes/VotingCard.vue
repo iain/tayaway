@@ -5,7 +5,6 @@ import type { AuthUser } from '@/types'
 import type { PoolApiResponse, VoteResponse } from '@/types/pool'
 import type { HydratedDateRange } from '@/composables/useHydratedEvent'
 import { useCalendar } from '@/composables/useCalendar'
-import { useObjectPoolStore } from '@/stores/objectPool'
 import { useCommandQueueStore, CommandQueuedError } from '@/stores/commandQueue'
 import { useOptimistic } from '@/composables/useOptimistic'
 import VoteSummaryBar from './VoteSummaryBar.vue'
@@ -19,9 +18,8 @@ const props = defineProps<{
 }>()
 
 const { formatDateDisplay } = useCalendar()
-const pool = useObjectPoolStore()
 const commandQueue = useCommandQueueStore()
-const { execute } = useOptimistic()
+const { execute, executeCreate } = useOptimistic()
 
 const loading = ref(false)
 const showVoters = ref(false)
@@ -83,37 +81,33 @@ async function handleVote(response: VoteResponse) {
       }
     } else {
       // Create new vote with client-generated ID
-      // Manual handling needed because we update multiple pool objects
       const voteId = crypto.randomUUID()
 
-      // Optimistically add vote to pool
-      pool.set({
-        id: voteId,
-        objectType: 'vote',
-        dateRangeId: props.dateRange.id,
-        userId: props.currentUser.id,
-        response,
-        comment: null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      })
-
       try {
-        await commandQueue.enqueue<PoolApiResponse>(
-          'POST',
-          `/events/${props.eventId}/votes`,
+        await executeCreate(
           {
             id: voteId,
-            date_range_id: props.dateRange.id,
+            objectType: 'vote',
+            dateRangeId: props.dateRange.id,
+            userId: props.currentUser.id,
             response,
-          }
+            comment: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          () =>
+            commandQueue.enqueue<PoolApiResponse>(
+              'POST',
+              `/events/${props.eventId}/votes`,
+              {
+                id: voteId,
+                date_range_id: props.dateRange.id,
+                response,
+              }
+            )
         )
-        // Server response automatically imported by API client
       } catch (e) {
-        if (e instanceof CommandQueuedError) return
-        // Rollback: remove optimistic vote from pool
-        pool.remove('vote', voteId)
-        throw new Error('Failed to create vote')
+        if (!(e instanceof CommandQueuedError)) throw e
       }
     }
   } finally {
