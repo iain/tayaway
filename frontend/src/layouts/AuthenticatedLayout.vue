@@ -164,6 +164,15 @@ function getInitials(email: string | undefined): string {
           </div>
           <div class="hidden md:block">
             <div class="ml-4 flex items-center md:ml-6">
+              <!-- Offline indicator -->
+              <span
+                v-if="!isOnline"
+                class="mr-3 inline-flex items-center gap-1.5 rounded-full bg-gray-900/40 px-3 py-1 text-xs font-medium text-white"
+              >
+                <span class="inline-block size-2 rounded-full bg-gray-300" />
+                Offline
+              </span>
+
               <!-- Dark mode toggle -->
               <button
                 type="button"
@@ -322,9 +331,17 @@ function getInitials(email: string | undefined): string {
                 {{ user?.email }}
               </div>
             </div>
+            <span
+              v-if="!isOnline"
+              class="ml-auto inline-flex items-center gap-1.5 rounded-full bg-gray-900/40 px-3 py-1 text-xs font-medium text-white"
+            >
+              <span class="inline-block size-2 rounded-full bg-gray-300" />
+              Offline
+            </span>
             <button
               type="button"
-              class="relative ml-auto shrink-0 rounded-full bg-rose-600 p-1 text-rose-200 hover:text-white focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-rose-600 focus:outline-hidden dark:bg-rose-800"
+              class="shrink-0 rounded-full bg-rose-600 p-1 text-rose-200 hover:text-white focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-rose-600 focus:outline-hidden dark:bg-rose-800"
+              :class="isOnline ? 'relative ml-auto' : 'ml-2'"
               @click="toggleDarkMode"
             >
               <span class="sr-only">Toggle dark mode</span>
