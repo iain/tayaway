@@ -8,6 +8,7 @@ import {
   count as dbCount,
   clearAll,
 } from '@/api/commandDb'
+import { coalesceCommands } from '@/api/coalesceCommands'
 
 export class CommandQueuedError extends Error {
   constructor() {
@@ -82,19 +83,35 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
       do {
         retryRequested.value = false
         const commands = await getPendingCommands()
-        for (const command of commands) {
+        const coalesced = coalesceCommands(commands)
+
+        // Remove cancelled-out commands from IndexedDB immediately
+        const survivingIds = new Set(coalesced.flatMap((c) => c.originalIds))
+        for (const cmd of commands) {
+          if (!survivingIds.has(cmd.id)) {
+            await removeCommand(cmd.id)
+            pendingCount.value--
+          }
+        }
+
+        // Execute coalesced commands, removing original IDs on success
+        for (const command of coalesced) {
           try {
             await executeRequest(command.method, command.path, command.body)
-            await removeCommand(command.id)
-            pendingCount.value--
+            for (const id of command.originalIds) {
+              await removeCommand(id)
+            }
+            pendingCount.value -= command.originalIds.length
           } catch (e) {
             if (isNetworkError(e)) {
               // Still offline, stop processing
               break
             }
             // Server error — remove and notify, continue with next
-            await removeCommand(command.id)
-            pendingCount.value--
+            for (const id of command.originalIds) {
+              await removeCommand(id)
+            }
+            pendingCount.value -= command.originalIds.length
             const { useNotificationsStore } = await import('./notifications')
             const notifications = useNotificationsStore()
             notifications.showError(
