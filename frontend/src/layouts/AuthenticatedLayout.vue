@@ -233,7 +233,7 @@ function getInitials(email: string | undefined): string {
                     <MenuItem
                       v-for="item in userNavigation"
                       :key="item.name"
-                      v-slot="{ active, close }"
+                      v-slot="{ active, close: closeMenu }"
                     >
                       <router-link
                         :to="item.href"
@@ -241,7 +241,7 @@ function getInitials(email: string | undefined): string {
                           active ? 'bg-gray-100 dark:bg-gray-700' : '',
                           'block px-4 py-2 text-sm text-gray-700 dark:text-gray-300',
                         ]"
-                        @click="close"
+                        @click="closeMenu"
                       >
                         {{ item.name }}
                       </router-link>
