@@ -22,6 +22,7 @@ describe('AuthenticatedLayout', () => {
       global: {
         stubs: {
           'router-link': true,
+          RouterView: true,
           Disclosure: true,
           DisclosureButton: true,
           DisclosurePanel: true,
