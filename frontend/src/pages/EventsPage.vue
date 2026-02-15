@@ -13,7 +13,6 @@ import {
   useAuthStore,
   useObjectPoolStore,
   useNotificationsStore,
-  CommandQueuedError,
 } from '@/stores'
 import { useCalendar } from '@/composables/useCalendar'
 import AddEventModal from '@/components/events/AddEventModal.vue'
@@ -62,19 +61,18 @@ async function handleModalSave(
   description: string
 ): Promise<void> {
   try {
-    const eventId = await eventsStore.createEvent({
+    const { eventId, queued } = await eventsStore.createEvent({
       name,
       description: description || undefined,
     })
     showModal.value = false
-    router.push(`/events/${eventId}`)
-  } catch (e) {
-    if (e instanceof CommandQueuedError) {
-      showModal.value = false
+    if (queued) {
       const notifications = useNotificationsStore()
       notifications.showInfo('Event will be created when back online')
-      return
+    } else {
+      router.push(`/events/${eventId}`)
     }
+  } catch {
     // Error is handled by the store
   }
 }

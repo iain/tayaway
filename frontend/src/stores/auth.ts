@@ -1,10 +1,11 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { api } from '@/api/client'
-import { useCommandQueueStore, CommandQueuedError } from './commandQueue'
+import { useCommandQueueStore } from './commandQueue'
 import { useObjectPoolStore } from './objectPool'
 import { useWebSocketStore } from './websocket'
 import { useWorkspaceStore } from './workspace'
+import { useMutation } from '@/composables/useMutation'
 import * as poolDb from '@/api/poolDb'
 import type {
   AuthUser,
@@ -107,27 +108,33 @@ export const useAuthStore = defineStore('auth', () => {
   async function updateName(name: string): Promise<void> {
     if (!user.value) return
     const previousName = user.value.name
+    const userId = user.value.id
+    const { update } = useMutation()
+
+    // Optimistically update the auth ref
+    user.value.name = name
+
     try {
-      const commandQueue = useCommandQueueStore()
-      const response = await commandQueue.enqueue<PoolApiResponse>(
-        'PUT',
-        `/users/${user.value.id}`,
-        { name }
+      const result = await update(
+        'Failed to update name',
+        'user',
+        userId,
+        { name },
+        (commandQueue) =>
+          commandQueue.enqueue<PoolApiResponse>('PUT', `/users/${userId}`, {
+            name,
+          })
       )
-      // Update the auth store's user ref (pool auto-imports via client interceptor)
-      const updatedUser = response.data.objects.find(
-        (o) => o.objectType === 'user'
-      )
-      if (updatedUser && 'name' in updatedUser) {
-        user.value.name = updatedUser.name
+      if (!result.queued && user.value) {
+        // Sync auth ref from pool (server response already imported)
+        const pool = useObjectPoolStore()
+        const poolUser = pool.get('user', userId)
+        if (poolUser) {
+          user.value.name = poolUser.name
+        }
       }
     } catch (e) {
-      if (e instanceof CommandQueuedError) {
-        // Optimistically keep the new name
-        user.value!.name = name
-        return
-      }
-      // Restore previous name on failure
+      // Restore previous name on failure (pool pending already rolled back by update())
       if (user.value) user.value.name = previousName
       throw e
     }

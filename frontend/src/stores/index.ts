@@ -1,5 +1,5 @@
 export { useAuthStore } from './auth'
-export { useCommandQueueStore, CommandQueuedError } from './commandQueue'
+export { useCommandQueueStore } from './commandQueue'
 export { useDatePollsStore } from './datePolls'
 export { useEventsStore } from './events'
 export { useUsersStore } from './users'

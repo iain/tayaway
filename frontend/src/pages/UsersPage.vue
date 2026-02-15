@@ -2,11 +2,7 @@
 import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { UserIcon, PlusIcon } from '@heroicons/vue/24/outline'
-import {
-  useUsersStore,
-  useNotificationsStore,
-  CommandQueuedError,
-} from '@/stores'
+import { useUsersStore, useNotificationsStore } from '@/stores'
 import AddUserModal from '@/components/users/AddUserModal.vue'
 
 const usersStore = useUsersStore()
@@ -30,18 +26,16 @@ async function handleSave(name: string, email: string): Promise<void> {
   isSubmitting.value = true
 
   try {
-    await usersStore.createUser({
+    const { queued } = await usersStore.createUser({
       name: name || undefined,
       email: email,
     })
     isModalOpen.value = false
-  } catch (e) {
-    if (e instanceof CommandQueuedError) {
-      isModalOpen.value = false
+    if (queued) {
       const notifications = useNotificationsStore()
       notifications.showInfo('User will be created when back online')
-      return
     }
+  } catch {
     formError.value = 'Failed to create user. The email may already exist.'
   } finally {
     isSubmitting.value = false

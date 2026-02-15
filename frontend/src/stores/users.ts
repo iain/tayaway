@@ -1,6 +1,6 @@
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { defineStore } from 'pinia'
-import { useCommandQueueStore, CommandQueuedError } from './commandQueue'
+import { useMutation } from '@/composables/useMutation'
 import { useObjectPoolStore } from './objectPool'
 import { useWorkspaceStore } from './workspace'
 import type { CreateUserRequest, CreateUserResponse } from '@/types'
@@ -11,8 +11,7 @@ interface CreateUserResponseWithPool extends CreateUserResponse {
 }
 
 export const useUsersStore = defineStore('users', () => {
-  const loading = ref(false)
-  const error = ref<string | null>(null)
+  const { loading, error, mutate } = useMutation()
 
   // Users are derived from the pool, enriched with their workspace role
   const users = computed((): (PoolUser & { role: string | null })[] => {
@@ -42,35 +41,14 @@ export const useUsersStore = defineStore('users', () => {
       })
   })
 
-  async function createUser(data: CreateUserRequest): Promise<PoolUser> {
-    loading.value = true
-    error.value = null
-    try {
-      const commandQueue = useCommandQueueStore()
-      const workspaceStore = useWorkspaceStore()
-      const response = await commandQueue.enqueue<CreateUserResponseWithPool>(
-        'POST',
-        '/users',
-        {
-          ...data,
-          workspace_id: workspaceStore.currentWorkspaceId,
-        }
-      )
-
-      // Get created user from pool
-      const pool = useObjectPoolStore()
-      const newUser = pool.get('user', response.data.user_id)
-      if (!newUser) {
-        throw new Error('User not found in pool after creation')
-      }
-      return newUser
-    } catch (e) {
-      if (e instanceof CommandQueuedError) throw e
-      error.value = 'Failed to create user'
-      throw e
-    } finally {
-      loading.value = false
-    }
+  async function createUser(data: CreateUserRequest) {
+    const result = await mutate('Failed to create user', (commandQueue) =>
+      commandQueue.enqueue<CreateUserResponseWithPool>('POST', '/users', {
+        ...data,
+        workspace_id: useWorkspaceStore().currentWorkspaceId,
+      })
+    )
+    return { queued: result.queued }
   }
 
   function $reset() {

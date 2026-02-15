@@ -5,11 +5,7 @@ import { useRouter } from 'vue-router'
 import EventForm, {
   type EventFormData,
 } from '@/components/events/EventForm.vue'
-import {
-  useEventsStore,
-  useNotificationsStore,
-  CommandQueuedError,
-} from '@/stores'
+import { useEventsStore, useNotificationsStore } from '@/stores'
 
 const router = useRouter()
 const eventsStore = useEventsStore()
@@ -19,18 +15,16 @@ const formError = ref<string | null>(null)
 async function handleSubmit(data: EventFormData): Promise<void> {
   formError.value = null
   try {
-    await eventsStore.createEvent({
+    const { queued } = await eventsStore.createEvent({
       name: data.name,
       description: data.description || undefined,
     })
-    router.push('/events')
-  } catch (e) {
-    if (e instanceof CommandQueuedError) {
+    if (queued) {
       const notifications = useNotificationsStore()
       notifications.showInfo('Event will be created when back online')
-      router.push('/events')
-      return
     }
+    router.push('/events')
+  } catch {
     formError.value = error.value || 'Failed to create event'
   }
 }

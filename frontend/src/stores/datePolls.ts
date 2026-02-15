@@ -1,89 +1,110 @@
-import { ref } from 'vue'
 import { defineStore } from 'pinia'
+import { useMutation } from '@/composables/useMutation'
+import { useObjectPoolStore } from './objectPool'
 import { useCommandQueueStore, CommandQueuedError } from './commandQueue'
-import type { PoolApiResponse } from '@/types/pool'
+import type { PoolApiResponse, PoolDateRange } from '@/types/pool'
 
 export const useDatePollsStore = defineStore('datePolls', () => {
-  const loading = ref(false)
-  const error = ref<string | null>(null)
+  const { loading, error, mutate, update } = useMutation()
 
-  async function createPoll(eventId: string, deadline: string): Promise<void> {
-    loading.value = true
-    error.value = null
-    try {
-      const commandQueue = useCommandQueueStore()
-      await commandQueue.enqueue<PoolApiResponse>(
-        'POST',
-        `/events/${eventId}/poll`,
-        { deadline }
-      )
-    } catch (e) {
-      if (e instanceof CommandQueuedError) return
-      error.value = 'Failed to create poll'
-      throw e
-    } finally {
-      loading.value = false
-    }
+  async function createPoll(eventId: string, deadline: string) {
+    await mutate('Failed to create poll', (commandQueue) =>
+      commandQueue.enqueue<PoolApiResponse>('POST', `/events/${eventId}/poll`, {
+        deadline,
+      })
+    )
   }
 
-  async function closePoll(
-    eventId: string,
-    selectedDateRangeId: string
-  ): Promise<void> {
-    loading.value = true
-    error.value = null
-    try {
-      const commandQueue = useCommandQueueStore()
-      await commandQueue.enqueue<PoolApiResponse>(
-        'POST',
-        `/events/${eventId}/poll/close`,
-        { selected_date_range_id: selectedDateRangeId }
-      )
-    } catch (e) {
-      if (e instanceof CommandQueuedError) return
-      error.value = 'Failed to close poll'
-      throw e
-    } finally {
-      loading.value = false
-    }
+  async function closePoll(eventId: string, selectedDateRangeId: string) {
+    const pool = useObjectPoolStore()
+    const poll = pool.getAll('datePoll').find((dp) => dp.eventId === eventId)
+    if (!poll) throw new Error('Poll not found')
+
+    await update(
+      'Failed to close poll',
+      'datePoll',
+      poll.id,
+      {
+        status: 'resolved',
+        selectedDateRangeId,
+        closedAt: new Date().toISOString(),
+      },
+      (commandQueue) =>
+        commandQueue.enqueue<PoolApiResponse>(
+          'POST',
+          `/events/${eventId}/poll/close`,
+          {
+            selected_date_range_id: selectedDateRangeId,
+          }
+        )
+    )
   }
 
-  async function reopenPoll(eventId: string, deadline: string): Promise<void> {
-    loading.value = true
-    error.value = null
-    try {
-      const commandQueue = useCommandQueueStore()
-      await commandQueue.enqueue<PoolApiResponse>(
-        'POST',
-        `/events/${eventId}/poll/reopen`,
-        { deadline }
-      )
-    } catch (e) {
-      if (e instanceof CommandQueuedError) return
-      error.value = 'Failed to reopen poll'
-      throw e
-    } finally {
-      loading.value = false
-    }
+  async function reopenPoll(eventId: string, deadline: string) {
+    const pool = useObjectPoolStore()
+    const poll = pool.getAll('datePoll').find((dp) => dp.eventId === eventId)
+    if (!poll) throw new Error('Poll not found')
+
+    await update(
+      'Failed to reopen poll',
+      'datePoll',
+      poll.id,
+      { status: 'open', selectedDateRangeId: null, closedAt: null, deadline },
+      (commandQueue) =>
+        commandQueue.enqueue<PoolApiResponse>(
+          'POST',
+          `/events/${eventId}/poll/reopen`,
+          {
+            deadline,
+          }
+        )
+    )
   }
 
   async function addDateRange(
     eventId: string,
     startDate: string,
     endDate: string
-  ): Promise<void> {
+  ) {
+    const pool = useObjectPoolStore()
+    const commandQueue = useCommandQueueStore()
+
+    const poll = pool.getAll('datePoll').find((dp) => dp.eventId === eventId)
+    if (!poll) throw new Error('Poll not found')
+
+    const dateRangeId = crypto.randomUUID()
+    const now = new Date().toISOString()
+    const tempDateRange: PoolDateRange = {
+      id: dateRangeId,
+      objectType: 'dateRange',
+      datePollId: poll.id,
+      startDate,
+      endDate,
+      voteIds: [],
+      updatedAt: now,
+    }
+
+    // Multi-object optimistic: add dateRange + update poll's dateRangeIds
+    pool.set(tempDateRange)
+    const pendingId = pool.addPending('datePoll', poll.id, {
+      dateRangeIds: [...poll.dateRangeIds, dateRangeId],
+    })
+
     loading.value = true
     error.value = null
     try {
-      const commandQueue = useCommandQueueStore()
-      const dateRangeId = crypto.randomUUID()
       await commandQueue.enqueue<PoolApiResponse>(
         'POST',
         `/events/${eventId}/poll/date-ranges`,
         { id: dateRangeId, start_date: startDate, end_date: endDate }
       )
     } catch (e) {
-      if (e instanceof CommandQueuedError) return
+      if (e instanceof CommandQueuedError) {
+        return
+      }
+      // Rollback both
+      pool.remove('dateRange', dateRangeId)
+      pool.removePending(pendingId)
       error.value = 'Failed to add date range'
       throw e
     } finally {
@@ -91,20 +112,38 @@ export const useDatePollsStore = defineStore('datePolls', () => {
     }
   }
 
-  async function removeDateRange(
-    eventId: string,
-    dateRangeId: string
-  ): Promise<void> {
+  async function removeDateRange(eventId: string, dateRangeId: string) {
+    const pool = useObjectPoolStore()
+    const commandQueue = useCommandQueueStore()
+
+    const poll = pool.getAll('datePoll').find((dp) => dp.eventId === eventId)
+    if (!poll) throw new Error('Poll not found')
+
+    // Save for rollback
+    const savedDateRange = pool.getServer('dateRange', dateRangeId)
+
+    // Multi-object optimistic: remove dateRange + update poll's dateRangeIds
+    pool.remove('dateRange', dateRangeId)
+    const pendingId = pool.addPending('datePoll', poll.id, {
+      dateRangeIds: poll.dateRangeIds.filter((id) => id !== dateRangeId),
+    })
+
     loading.value = true
     error.value = null
     try {
-      const commandQueue = useCommandQueueStore()
       await commandQueue.enqueue<PoolApiResponse>(
         'DELETE',
         `/events/${eventId}/poll/date-ranges/${dateRangeId}`
       )
     } catch (e) {
-      if (e instanceof CommandQueuedError) return
+      if (e instanceof CommandQueuedError) {
+        return
+      }
+      // Rollback both
+      if (savedDateRange) {
+        pool.set(savedDateRange)
+      }
+      pool.removePending(pendingId)
       error.value = 'Failed to remove date range'
       throw e
     } finally {

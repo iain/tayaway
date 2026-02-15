@@ -2,11 +2,10 @@
 import { ref, computed, watch } from 'vue'
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/vue/24/outline'
 import type { AuthUser } from '@/types'
-import type { PoolApiResponse, VoteResponse } from '@/types/pool'
+import type { VoteResponse } from '@/types/pool'
 import type { HydratedDateRange } from '@/composables/useHydratedEvent'
 import { useCalendar } from '@/composables/useCalendar'
-import { useCommandQueueStore, CommandQueuedError } from '@/stores/commandQueue'
-import { useOptimistic } from '@/composables/useOptimistic'
+import { useVotesStore } from '@/stores/votes'
 import VoteSummaryBar from './VoteSummaryBar.vue'
 import VotersList from './VotersList.vue'
 import FormTextarea from '@/components/form/FormTextarea.vue'
@@ -18,8 +17,7 @@ const props = defineProps<{
 }>()
 
 const { formatDateDisplay } = useCalendar()
-const commandQueue = useCommandQueueStore()
-const { execute, executeCreate } = useOptimistic()
+const votesStore = useVotesStore()
 
 const loading = ref(false)
 const showVoters = ref(false)
@@ -58,58 +56,14 @@ const hasCommentChanges = computed(() => {
 async function handleVote(response: VoteResponse) {
   if (!props.currentUser) return
 
-  const existingVote = currentUserVote.value
-
   loading.value = true
   try {
-    if (existingVote) {
-      // Update existing vote using optimistic helper
-      try {
-        await execute('vote', existingVote.id, { response }, () =>
-          commandQueue.enqueue<PoolApiResponse>(
-            'POST',
-            `/events/${props.eventId}/votes`,
-            {
-              date_range_id: props.dateRange.id,
-              response,
-              comment: existingVote.comment || undefined,
-            }
-          )
-        )
-      } catch (e) {
-        if (!(e instanceof CommandQueuedError)) throw e
-      }
-    } else {
-      // Create new vote with client-generated ID
-      const voteId = crypto.randomUUID()
-
-      try {
-        await executeCreate(
-          {
-            id: voteId,
-            objectType: 'vote',
-            dateRangeId: props.dateRange.id,
-            userId: props.currentUser.id,
-            response,
-            comment: null,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          () =>
-            commandQueue.enqueue<PoolApiResponse>(
-              'POST',
-              `/events/${props.eventId}/votes`,
-              {
-                id: voteId,
-                date_range_id: props.dateRange.id,
-                response,
-              }
-            )
-        )
-      } catch (e) {
-        if (!(e instanceof CommandQueuedError)) throw e
-      }
-    }
+    await votesStore.submitVote(
+      props.eventId,
+      props.dateRange.id,
+      response,
+      currentUserVote.value?.comment || undefined
+    )
   } finally {
     loading.value = false
   }
@@ -118,32 +72,21 @@ async function handleVote(response: VoteResponse) {
 async function handleCommentSubmit() {
   if (!currentUserVote.value || !props.currentUser) return
 
-  // Capture all values at start to avoid stale closures during async operation
-  const voteId = currentUserVote.value.id
   const voteResponse = currentUserVote.value.response
-  const dateRangeId = props.dateRange.id
-  const eventId = props.eventId
   const originalComment = currentUserVote.value.comment || ''
-  const newComment = comment.value || null
+  const newComment = comment.value || undefined
 
   loading.value = true
   try {
-    await execute('vote', voteId, { comment: newComment }, () =>
-      commandQueue.enqueue<PoolApiResponse>(
-        'POST',
-        `/events/${eventId}/votes`,
-        {
-          date_range_id: dateRangeId,
-          response: voteResponse,
-          comment: newComment || undefined,
-        }
-      )
+    await votesStore.submitVote(
+      props.eventId,
+      props.dateRange.id,
+      voteResponse,
+      newComment
     )
-  } catch (e) {
-    if (!(e instanceof CommandQueuedError)) {
-      // Restore original comment in input on real failure
-      comment.value = originalComment
-    }
+  } catch {
+    // Restore original comment in input on real failure
+    comment.value = originalComment
   } finally {
     loading.value = false
   }
