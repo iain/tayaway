@@ -53,7 +53,7 @@ function handleClose(): void {
     size="lg"
     @close="handleClose"
   >
-    <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+    <p class="mb-4 text-sm text-gray-500 dark:text-stone-400">
       Choose the winning date from the top-ranked options.
     </p>
 
@@ -66,7 +66,7 @@ function handleClose(): void {
         :class="
           selectedId === dateRange.id
             ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20'
-            : 'border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600'
+            : 'border-gray-200 hover:border-gray-300 dark:border-stone-700 dark:hover:border-stone-600'
         "
         @click="selectedId = dateRange.id"
       >
@@ -77,7 +77,7 @@ function handleClose(): void {
               - {{ formatDateDisplay(dateRange.endDate) }}
             </span>
           </span>
-          <span class="text-sm text-gray-500 dark:text-gray-400">
+          <span class="text-sm text-gray-500 dark:text-stone-400">
             {{ dateRange.voteSummary.total }}
             {{ dateRange.voteSummary.total === 1 ? 'vote' : 'votes' }}
           </span>

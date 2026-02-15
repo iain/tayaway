@@ -63,9 +63,9 @@ function handleCancel(): void {
       </h1>
     </header>
 
-    <div class="rounded-lg bg-white shadow dark:bg-gray-800">
+    <div class="rounded-lg bg-white shadow dark:bg-stone-800">
       <div class="px-4 py-5 sm:p-6">
-        <div v-if="!event" class="text-gray-500 dark:text-gray-400">
+        <div v-if="!event" class="text-gray-500 dark:text-stone-400">
           Event not found
         </div>
 

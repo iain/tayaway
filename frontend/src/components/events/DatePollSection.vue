@@ -157,7 +157,7 @@ function handleVote(): void {
 </script>
 
 <template>
-  <section class="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
+  <section class="rounded-lg bg-white p-6 shadow dark:bg-stone-800">
     <h2
       class="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white"
     >
@@ -167,7 +167,7 @@ function handleVote(): void {
 
     <!-- No poll yet -->
     <div v-if="!poll" class="py-4 text-center">
-      <p class="mb-4 text-gray-500 dark:text-gray-400">
+      <p class="mb-4 text-gray-500 dark:text-stone-400">
         No date poll has been created yet.
       </p>
       <button
@@ -236,7 +236,7 @@ function handleVote(): void {
         </button>
         <p
           v-if="currentUserVoteStatus.total > 0"
-          class="mt-2 text-sm text-gray-500 dark:text-gray-400"
+          class="mt-2 text-sm text-gray-500 dark:text-stone-400"
         >
           <template
             v-if="currentUserVoteStatus.voted === currentUserVoteStatus.total"
@@ -253,7 +253,7 @@ function handleVote(): void {
 
       <!-- Date ranges list -->
       <div v-if="rankedDateRanges.length === 0" class="py-4 text-center">
-        <p class="text-gray-500 dark:text-gray-400">
+        <p class="text-gray-500 dark:text-stone-400">
           No date ranges have been added yet.
         </p>
       </div>
@@ -271,7 +271,7 @@ function handleVote(): void {
               poll.status !== 'resolved' &&
               index === 0 &&
               dateRange.voteSummary.yes > 0,
-            'border-gray-200 dark:border-gray-700':
+            'border-gray-200 dark:border-stone-700':
               poll.status !== 'resolved'
                 ? index !== 0 || dateRange.voteSummary.yes === 0
                 : dateRange.id !== poll.selectedDateRangeId,
@@ -303,7 +303,7 @@ function handleVote(): void {
               </span>
             </span>
             <div class="flex items-center gap-2">
-              <span class="text-sm text-gray-500 dark:text-gray-400">
+              <span class="text-sm text-gray-500 dark:text-stone-400">
                 {{ dateRange.voteSummary.total }}
                 {{ dateRange.voteSummary.total === 1 ? 'vote' : 'votes' }}
               </span>
@@ -326,7 +326,7 @@ function handleVote(): void {
         <button
           v-if="poll.status === 'open'"
           type="button"
-          class="inline-flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+          class="inline-flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600"
           @click="handleAddDateRange"
         >
           <PlusIcon class="size-4" />
@@ -343,7 +343,7 @@ function handleVote(): void {
         <button
           v-if="poll.status === 'resolved'"
           type="button"
-          class="inline-flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+          class="inline-flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600"
           @click="handleReopenPoll"
         >
           Reopen Poll

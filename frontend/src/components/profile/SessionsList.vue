@@ -60,21 +60,21 @@ onMounted(fetchSessions)
 </script>
 
 <template>
-  <div class="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-800">
+  <div class="overflow-hidden rounded-lg bg-white shadow dark:bg-stone-800">
     <div class="px-4 py-5 sm:p-6">
       <div class="space-y-4">
         <div>
           <h3 class="text-lg font-medium text-gray-900 dark:text-white">
             Active Sessions
           </h3>
-          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <p class="mt-1 text-sm text-gray-500 dark:text-stone-400">
             Devices where you're currently signed in.
           </p>
         </div>
 
         <div
           v-if="loading"
-          class="py-4 text-sm text-gray-500 dark:text-gray-400"
+          class="py-4 text-sm text-gray-500 dark:text-stone-400"
         >
           Loading sessions...
         </div>
@@ -88,7 +88,7 @@ onMounted(fetchSessions)
 
         <ul
           v-else
-          class="divide-y divide-gray-200 border-t border-gray-200 dark:divide-gray-700 dark:border-gray-700"
+          class="divide-y divide-gray-200 border-t border-gray-200 dark:divide-stone-700 dark:border-stone-700"
         >
           <li
             v-for="session in sessions"
@@ -107,7 +107,7 @@ onMounted(fetchSessions)
                   Current session
                 </span>
               </div>
-              <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+              <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
                 Expires {{ formatDate(session.expires_at) }}
               </p>
             </div>

@@ -134,7 +134,7 @@ function formatDateRangeSummary(
       <h3 class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
         No events
       </h3>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+      <p class="mt-1 text-sm text-gray-500 dark:text-stone-400">
         Get started by creating a new event.
       </p>
       <div class="mt-6">
@@ -152,13 +152,13 @@ function formatDateRangeSummary(
     <ul
       v-else
       data-testid="events-list"
-      class="divide-y divide-gray-200 dark:divide-gray-700"
+      class="divide-y divide-gray-200 dark:divide-stone-700"
     >
       <li
         v-for="event in events"
         :key="event.id"
         :data-testid="`event-item-${event.id}`"
-        class="mb-4 cursor-pointer overflow-hidden rounded-lg bg-white shadow transition-all hover:ring-2 hover:ring-rose-500 dark:bg-gray-800"
+        class="mb-4 cursor-pointer overflow-hidden rounded-lg bg-white shadow transition-all hover:ring-2 hover:ring-rose-500 dark:bg-stone-800"
         @click="handleView(event.id)"
       >
         <div class="px-4 py-5 sm:px-6">
@@ -172,17 +172,17 @@ function formatDateRangeSummary(
               </h2>
               <p
                 v-if="event.description"
-                class="mt-1 text-sm text-gray-500 dark:text-gray-400"
+                class="mt-1 text-sm text-gray-500 dark:text-stone-400"
               >
                 {{ event.description }}
               </p>
               <div
-                class="mt-2 flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300"
+                class="mt-2 flex items-center gap-3 text-sm text-gray-600 dark:text-stone-300"
               >
                 <span>{{
                   formatDateRangeSummary(getDateRanges(event.id))
                 }}</span>
-                <span class="text-gray-400 dark:text-gray-500"
+                <span class="text-gray-400 dark:text-stone-500"
                   >by
                   {{
                     getEventOwner(event.memberId)?.name ||
@@ -198,7 +198,7 @@ function formatDateRangeSummary(
             >
               <button
                 type="button"
-                class="p-2 text-gray-400 hover:text-rose-600 dark:hover:text-rose-400"
+                class="p-2 text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400"
                 @click.stop="handleEdit(event.id)"
               >
                 <PencilIcon class="size-5" />

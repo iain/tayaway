@@ -80,7 +80,7 @@ function handleDateRangeModalClose(): void {
     <div class="mb-6">
       <button
         type="button"
-        class="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+        class="inline-flex items-center gap-2 text-sm text-cyan-600 underline hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
         @click="handleBack"
       >
         <ArrowLeftIcon class="size-4" />
@@ -88,19 +88,19 @@ function handleDateRangeModalClose(): void {
       </button>
     </div>
 
-    <div v-if="!event" class="text-gray-500 dark:text-gray-400">
+    <div v-if="!event" class="text-gray-500 dark:text-stone-400">
       Event not found
     </div>
 
     <div
       v-else-if="!event.datePoll || !pollOpen"
-      class="py-8 text-center text-gray-500 dark:text-gray-400"
+      class="py-8 text-center text-gray-500 dark:text-stone-400"
     >
       <p class="mb-2 text-lg font-medium">Voting is closed</p>
       <p>The date poll is no longer accepting votes.</p>
       <button
         type="button"
-        class="mt-4 inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+        class="mt-4 inline-flex items-center gap-2 text-sm text-cyan-600 underline hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
         @click="handleBack"
       >
         <ArrowLeftIcon class="size-4" />
@@ -116,7 +116,7 @@ function handleDateRangeModalClose(): void {
         >
           {{ event.name }}
         </h1>
-        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+        <p class="mt-2 text-sm text-gray-500 dark:text-stone-400">
           Vote on your preferred dates below
         </p>
       </header>
@@ -140,7 +140,7 @@ function handleDateRangeModalClose(): void {
         </div>
 
         <div v-if="dateRanges.length === 0" class="py-8 text-center">
-          <p class="mb-4 text-gray-500 dark:text-gray-400">
+          <p class="mb-4 text-gray-500 dark:text-stone-400">
             No date ranges have been added to this event yet.
           </p>
           <button

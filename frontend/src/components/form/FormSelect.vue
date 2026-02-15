@@ -28,7 +28,7 @@ defineEmits<{
         :required="required"
         :disabled="disabled"
         :autocomplete="autocomplete"
-        class="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white/5 py-1.5 pr-8 pl-3 text-base text-white outline-1 -outline-offset-1 outline-white/10 *:bg-gray-800 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 sm:text-sm/6"
+        class="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white/5 py-1.5 pr-8 pl-3 text-base text-white outline-1 -outline-offset-1 outline-white/10 *:bg-stone-800 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 sm:text-sm/6"
         @change="
           $emit('update:modelValue', ($event.target as HTMLSelectElement).value)
         "

@@ -32,13 +32,13 @@ onMounted(async () => {
       </h1>
     </header>
 
-    <div class="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-800">
+    <div class="overflow-hidden rounded-lg bg-white shadow dark:bg-stone-800">
       <div class="px-4 py-5 sm:p-6">
         <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
           API Status
         </h2>
 
-        <div v-if="loading" class="text-gray-500 dark:text-gray-400">
+        <div v-if="loading" class="text-gray-500 dark:text-stone-400">
           Checking API status...
         </div>
         <div v-else-if="error" class="text-red-600 dark:text-red-400">

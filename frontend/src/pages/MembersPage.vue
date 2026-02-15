@@ -75,7 +75,7 @@ async function handleSave(name: string, email: string): Promise<void> {
       <h3 class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
         No members
       </h3>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+      <p class="mt-1 text-sm text-gray-500 dark:text-stone-400">
         Get started by adding a new member.
       </p>
       <div class="mt-6">
@@ -93,13 +93,13 @@ async function handleSave(name: string, email: string): Promise<void> {
     <ul
       v-else
       data-testid="members-list"
-      class="divide-y divide-gray-200 dark:divide-gray-700"
+      class="divide-y divide-gray-200 dark:divide-stone-700"
     >
       <li
         v-for="member in members"
         :key="member.id"
         :data-testid="`member-item-${member.id}`"
-        class="mb-4 overflow-hidden rounded-lg bg-white shadow dark:bg-gray-800"
+        class="mb-4 overflow-hidden rounded-lg bg-white shadow dark:bg-stone-800"
       >
         <div class="px-4 py-5 sm:px-6">
           <div class="flex items-center">
@@ -114,7 +114,7 @@ async function handleSave(name: string, email: string): Promise<void> {
               <div class="flex items-center gap-2">
                 <p
                   data-testid="member-email"
-                  class="text-sm text-gray-500 dark:text-gray-400"
+                  class="text-sm text-gray-500 dark:text-stone-400"
                 >
                   {{ member.email }}
                 </p>
@@ -127,7 +127,7 @@ async function handleSave(name: string, email: string): Promise<void> {
                       member.role === 'owner',
                     'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400':
                       member.role === 'admin',
-                    'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300':
+                    'bg-gray-100 text-gray-600 dark:bg-stone-700 dark:text-stone-300':
                       member.role === 'member',
                   }"
                 >

@@ -97,7 +97,7 @@ function toggleCommentInput() {
 </script>
 
 <template>
-  <div class="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
+  <div class="rounded-lg bg-white p-4 shadow dark:bg-stone-800">
     <div class="flex flex-col md:flex-row md:gap-6">
       <!-- Left side: Date range info and stats -->
       <div class="mb-4 flex-1 md:mb-0">
@@ -112,10 +112,10 @@ function toggleCommentInput() {
         <VoteSummaryBar :summary="dateRange.voteSummary" />
 
         <!-- Voters List Toggle -->
-        <div class="mt-3 border-t border-gray-200 pt-3 dark:border-gray-700">
+        <div class="mt-3 border-t border-gray-200 pt-3 dark:border-stone-700">
           <button
             type="button"
-            class="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+            class="flex items-center gap-1 text-sm text-cyan-600 underline hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
             @click="showVoters = !showVoters"
           >
             <component
@@ -134,7 +134,7 @@ function toggleCommentInput() {
 
       <!-- Right side: Voting elements -->
       <div
-        class="flex-1 md:border-l md:border-gray-200 md:pl-6 md:dark:border-gray-700"
+        class="flex-1 md:border-l md:border-gray-200 md:pl-6 md:dark:border-stone-700"
       >
         <!-- Vote Buttons -->
         <div class="mb-4 flex gap-2">
@@ -145,7 +145,7 @@ function toggleCommentInput() {
             :class="[
               isSelected('yes')
                 ? 'bg-green-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-green-100 hover:text-green-700 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-green-900/30 dark:hover:text-green-400',
+                : 'bg-gray-100 text-gray-700 hover:bg-green-100 hover:text-green-700 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-green-900/30 dark:hover:text-green-400',
             ]"
             @click="handleVote('yes')"
           >
@@ -158,7 +158,7 @@ function toggleCommentInput() {
             :class="[
               isSelected('preferably_not')
                 ? 'bg-yellow-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-yellow-100 hover:text-yellow-700 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-yellow-900/30 dark:hover:text-yellow-400',
+                : 'bg-gray-100 text-gray-700 hover:bg-yellow-100 hover:text-yellow-700 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-yellow-900/30 dark:hover:text-yellow-400',
             ]"
             @click="handleVote('preferably_not')"
           >
@@ -171,7 +171,7 @@ function toggleCommentInput() {
             :class="[
               isSelected('no')
                 ? 'bg-red-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-red-100 hover:text-red-700 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-red-900/30 dark:hover:text-red-400',
+                : 'bg-gray-100 text-gray-700 hover:bg-red-100 hover:text-red-700 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-red-900/30 dark:hover:text-red-400',
             ]"
             @click="handleVote('no')"
           >
@@ -183,7 +183,7 @@ function toggleCommentInput() {
         <div v-if="currentUserVote">
           <button
             type="button"
-            class="text-sm text-rose-600 hover:underline dark:text-rose-400"
+            class="text-sm text-cyan-600 underline hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
             @click="toggleCommentInput"
           >
             {{
@@ -209,7 +209,7 @@ function toggleCommentInput() {
               :class="[
                 hasCommentChanges
                   ? 'bg-rose-600 text-white hover:bg-rose-500 disabled:bg-rose-400'
-                  : 'cursor-not-allowed bg-gray-200 text-gray-400 dark:bg-gray-700 dark:text-gray-500',
+                  : 'cursor-not-allowed bg-gray-200 text-gray-400 dark:bg-stone-700 dark:text-stone-500',
               ]"
               @click="handleCommentSubmit"
             >

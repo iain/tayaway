@@ -31,14 +31,16 @@ onMounted(async () => {
 
 <template>
   <main
-    class="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-900"
+    class="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-stone-900"
   >
-    <div class="rounded-lg bg-white p-8 text-center shadow-md dark:bg-gray-800">
+    <div
+      class="rounded-lg bg-white p-8 text-center shadow-md dark:bg-stone-800"
+    >
       <div v-if="verifying">
         <h1 class="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
           Verifying...
         </h1>
-        <p class="text-gray-500 dark:text-gray-400">
+        <p class="text-gray-500 dark:text-stone-400">
           Please wait while we sign you in.
         </p>
       </div>

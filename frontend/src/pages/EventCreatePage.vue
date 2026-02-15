@@ -44,7 +44,7 @@ function handleCancel(): void {
       </h1>
     </header>
 
-    <div class="rounded-lg bg-white shadow dark:bg-gray-800">
+    <div class="rounded-lg bg-white shadow dark:bg-stone-800">
       <div class="px-4 py-5 sm:p-6">
         <div v-if="formError" class="mb-4 text-red-600 dark:text-red-400">
           {{ formError }}

@@ -28,7 +28,7 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <main class="flex min-h-screen items-center justify-center bg-gray-900">
+  <main class="flex min-h-screen items-center justify-center bg-stone-900">
     <div class="w-full max-w-md px-6">
       <h1
         data-testid="login-title"
@@ -36,7 +36,7 @@ async function handleSubmit() {
       >
         Sign in to Tayaway
       </h1>
-      <p class="mb-8 text-center text-sm/6 text-gray-400">
+      <p class="mb-8 text-center text-sm/6 text-stone-400">
         We'll send you a magic link to sign in without a password.
       </p>
 

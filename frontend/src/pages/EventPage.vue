@@ -85,7 +85,7 @@ function handleVote(): void {
     <div class="mb-6 flex items-center justify-between">
       <button
         type="button"
-        class="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+        class="inline-flex items-center gap-2 text-sm text-cyan-600 underline hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
         @click="handleBack"
       >
         <ArrowLeftIcon class="size-4" />
@@ -94,7 +94,7 @@ function handleVote(): void {
       <button
         v-if="isOwner"
         type="button"
-        class="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+        class="inline-flex items-center gap-2 text-sm text-cyan-600 underline hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
         @click="handleEdit"
       >
         <PencilIcon class="size-4" />
@@ -102,7 +102,7 @@ function handleVote(): void {
       </button>
     </div>
 
-    <div v-if="!event" class="text-gray-500 dark:text-gray-400">
+    <div v-if="!event" class="text-gray-500 dark:text-stone-400">
       Event not found
     </div>
 
@@ -117,11 +117,11 @@ function handleVote(): void {
         </h1>
         <p
           v-if="event.description"
-          class="mt-2 text-lg text-gray-600 dark:text-gray-400"
+          class="mt-2 text-lg text-gray-600 dark:text-stone-400"
         >
           {{ event.description }}
         </p>
-        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+        <p class="mt-2 text-sm text-gray-500 dark:text-stone-400">
           Created by
           {{ event.member?.name || event.member?.email || 'Unknown' }}
         </p>
@@ -138,7 +138,7 @@ function handleVote(): void {
         />
 
         <!-- Who Hasn't Voted -->
-        <section class="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
+        <section class="rounded-lg bg-white p-6 shadow dark:bg-stone-800">
           <h2
             class="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white"
           >
@@ -148,28 +148,28 @@ function handleVote(): void {
 
           <div
             v-if="!event.workspace"
-            class="py-4 text-center text-gray-500 dark:text-gray-400"
+            class="py-4 text-center text-gray-500 dark:text-stone-400"
           >
             Loading workspace members...
           </div>
 
           <div
             v-else-if="!event.datePoll"
-            class="py-4 text-center text-gray-500 dark:text-gray-400"
+            class="py-4 text-center text-gray-500 dark:text-stone-400"
           >
             Open a date poll to start collecting votes.
           </div>
 
           <div v-else-if="awaitingVotesCount === 0" class="py-4 text-center">
             <CheckCircleIcon class="mx-auto mb-2 size-8 text-green-500" />
-            <p class="text-gray-600 dark:text-gray-400">Everyone has voted!</p>
+            <p class="text-gray-600 dark:text-stone-400">Everyone has voted!</p>
           </div>
 
           <div v-else class="space-y-4">
             <!-- Not voted at all -->
             <div v-if="membersNotVoted.length > 0">
               <h3
-                class="mb-2 text-sm font-medium text-gray-500 dark:text-gray-400"
+                class="mb-2 text-sm font-medium text-gray-500 dark:text-stone-400"
               >
                 Not voted yet
               </h3>
@@ -181,7 +181,7 @@ function handleVote(): void {
                   :class="
                     member.id === currentMemberId
                       ? 'bg-amber-50 ring-1 ring-amber-200 dark:bg-amber-900/20 dark:ring-amber-800'
-                      : 'bg-gray-50 dark:bg-gray-700/50'
+                      : 'bg-gray-50 dark:bg-stone-700/50'
                   "
                 >
                   <div
@@ -189,7 +189,7 @@ function handleVote(): void {
                     :class="
                       member.id === currentMemberId
                         ? 'bg-amber-200 dark:bg-amber-800'
-                        : 'bg-gray-200 dark:bg-gray-600'
+                        : 'bg-gray-200 dark:bg-stone-600'
                     "
                   >
                     <UserIcon
@@ -197,7 +197,7 @@ function handleVote(): void {
                       :class="
                         member.id === currentMemberId
                           ? 'text-amber-600 dark:text-amber-400'
-                          : 'text-gray-500 dark:text-gray-400'
+                          : 'text-gray-500 dark:text-stone-400'
                       "
                     />
                   </div>
@@ -217,7 +217,7 @@ function handleVote(): void {
             <!-- Voted on some but not all date ranges -->
             <div v-if="membersPartiallyVoted.length > 0">
               <h3
-                class="mb-2 text-sm font-medium text-gray-500 dark:text-gray-400"
+                class="mb-2 text-sm font-medium text-gray-500 dark:text-stone-400"
               >
                 Incomplete votes
               </h3>
@@ -229,7 +229,7 @@ function handleVote(): void {
                   :class="
                     member.id === currentMemberId
                       ? 'bg-amber-50 ring-1 ring-amber-200 dark:bg-amber-900/20 dark:ring-amber-800'
-                      : 'bg-gray-50 dark:bg-gray-700/50'
+                      : 'bg-gray-50 dark:bg-stone-700/50'
                   "
                 >
                   <div
@@ -237,7 +237,7 @@ function handleVote(): void {
                     :class="
                       member.id === currentMemberId
                         ? 'bg-amber-200 dark:bg-amber-800'
-                        : 'bg-gray-200 dark:bg-gray-600'
+                        : 'bg-gray-200 dark:bg-stone-600'
                     "
                   >
                     <UserIcon
@@ -245,7 +245,7 @@ function handleVote(): void {
                       :class="
                         member.id === currentMemberId
                           ? 'text-amber-600 dark:text-amber-400'
-                          : 'text-gray-500 dark:text-gray-400'
+                          : 'text-gray-500 dark:text-stone-400'
                       "
                     />
                   </div>
@@ -262,7 +262,7 @@ function handleVote(): void {
               </ul>
             </div>
 
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-sm text-gray-500 dark:text-stone-400">
               {{ awaitingVotesCount }}
               {{
                 awaitingVotesCount === 1 ? "person hasn't" : "people haven't"

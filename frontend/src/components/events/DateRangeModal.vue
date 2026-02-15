@@ -143,7 +143,7 @@ const selectionText = computed(() => {
     size="2xl"
     @close="handleClose"
   >
-    <div class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+    <div class="mb-4 text-sm text-gray-500 dark:text-stone-400">
       {{ selectionText }}
     </div>
 
@@ -151,14 +151,14 @@ const selectionText = computed(() => {
     <div class="mb-4 flex items-center justify-between">
       <button
         type="button"
-        class="rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-300"
+        class="rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-stone-400 dark:hover:bg-white/10 dark:hover:text-stone-300"
         @click="navigatePrev"
       >
         <ChevronLeftIcon class="size-5" />
       </button>
       <button
         type="button"
-        class="rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-300"
+        class="rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-stone-400 dark:hover:bg-white/10 dark:hover:text-stone-300"
         @click="navigateNext"
       >
         <ChevronRightIcon class="size-5" />

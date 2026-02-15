@@ -9,11 +9,11 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 html {
-  @apply bg-gray-100 dark:bg-gray-900;
+  @apply bg-gray-100 dark:bg-stone-900;
 }
 
 body {
-  @apply min-h-screen bg-gray-100 font-sans antialiased dark:bg-gray-900;
+  @apply min-h-screen bg-gray-100 font-sans antialiased dark:bg-stone-900;
 }
 
 body:has(dialog[open]) {

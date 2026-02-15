@@ -54,7 +54,7 @@ function getResponseLabel(response: string) {
   <div>
     <div
       v-if="votes.length === 0"
-      class="text-sm text-gray-500 italic dark:text-gray-400"
+      class="text-sm text-gray-500 italic dark:text-stone-400"
     >
       No votes yet
     </div>
@@ -72,13 +72,13 @@ function getResponseLabel(response: string) {
         <div class="min-w-0 flex-1">
           <div class="text-sm text-gray-900 dark:text-white">
             {{ vote.member?.name || vote.member?.email || 'Unknown member' }}
-            <span class="text-gray-500 dark:text-gray-400">
+            <span class="text-gray-500 dark:text-stone-400">
               - {{ getResponseLabel(vote.response) }}
             </span>
           </div>
           <div
             v-if="vote.comment"
-            class="mt-0.5 text-xs text-gray-500 dark:text-gray-400"
+            class="mt-0.5 text-xs text-gray-500 dark:text-stone-400"
           >
             "{{ vote.comment }}"
           </div>

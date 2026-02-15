@@ -77,13 +77,13 @@ function getInitials(email: string | undefined): string {
   <!-- Loading screen while waiting for initial sync -->
   <div
     v-if="!hasSynced && !hasCachedData"
-    class="flex min-h-screen flex-col items-center justify-center bg-gray-50 dark:bg-gray-900"
+    class="flex min-h-screen flex-col items-center justify-center bg-gray-50 dark:bg-stone-900"
   >
     <div class="text-center">
       <div
-        class="inline-block h-12 w-12 animate-spin rounded-full border-4 border-rose-600 border-t-transparent"
+        class="inline-block h-12 w-12 animate-spin rounded-full border-4 border-amber-600 border-t-transparent"
       />
-      <p class="mt-4 text-lg font-medium text-gray-700 dark:text-gray-300">
+      <p class="mt-4 text-lg font-medium text-gray-700 dark:text-stone-300">
         Loading...
       </p>
     </div>
@@ -93,7 +93,7 @@ function getInitials(email: string | undefined): string {
     <Disclosure
       v-slot="{ open, close }"
       as="nav"
-      class="bg-rose-600 dark:bg-rose-800"
+      class="bg-amber-600 dark:bg-amber-800"
     >
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="flex h-16 items-center justify-between">
@@ -109,7 +109,7 @@ function getInitials(email: string | undefined): string {
               <!-- Multiple workspaces: dropdown -->
               <Menu v-else as="div" class="relative">
                 <MenuButton
-                  class="flex items-center gap-1 text-xl font-bold text-white hover:text-rose-100 focus:outline-hidden"
+                  class="flex items-center gap-1 text-xl font-bold text-white hover:text-amber-100 focus:outline-hidden"
                 >
                   {{ currentWorkspace?.name ?? 'Tayaway' }}
                   <ChevronDownIcon class="size-5" aria-hidden="true" />
@@ -123,7 +123,7 @@ function getInitials(email: string | undefined): string {
                   leave-to-class="transform opacity-0 scale-95"
                 >
                   <MenuItems
-                    class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5 focus:outline-hidden dark:bg-gray-800"
+                    class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5 focus:outline-hidden dark:bg-stone-800"
                   >
                     <MenuItem
                       v-for="ws in otherWorkspaces"
@@ -133,8 +133,8 @@ function getInitials(email: string | undefined): string {
                       <button
                         type="button"
                         :class="[
-                          active ? 'bg-gray-100 dark:bg-gray-700' : '',
-                          'block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300',
+                          active ? 'bg-gray-100 dark:bg-stone-700' : '',
+                          'block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-stone-300',
                         ]"
                         @click="handleSwitchWorkspace(ws.id)"
                       >
@@ -153,8 +153,8 @@ function getInitials(email: string | undefined): string {
                   :to="item.href"
                   :class="[
                     isActive(item.routeName)
-                      ? 'bg-rose-700 text-white dark:bg-rose-900'
-                      : 'hover:bg-opacity-75 text-white hover:bg-rose-500 dark:hover:bg-rose-700',
+                      ? 'bg-amber-700 text-white dark:bg-amber-900'
+                      : 'hover:bg-opacity-75 text-white hover:bg-amber-500 dark:hover:bg-amber-700',
                     'rounded-md px-3 py-2 text-sm font-medium',
                   ]"
                   :aria-current="isActive(item.routeName) ? 'page' : undefined"
@@ -187,7 +187,7 @@ function getInitials(email: string | undefined): string {
               <!-- Dark mode toggle -->
               <button
                 type="button"
-                class="relative rounded-full bg-rose-600 p-1 text-rose-200 hover:text-white focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-rose-600 focus:outline-hidden dark:bg-rose-800"
+                class="relative rounded-full bg-amber-600 p-1 text-amber-200 hover:text-white focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-amber-600 focus:outline-hidden dark:bg-amber-800"
                 @click="toggleDarkMode"
               >
                 <span class="sr-only">Toggle dark mode</span>
@@ -200,11 +200,11 @@ function getInitials(email: string | undefined): string {
                 <div>
                   <MenuButton
                     data-testid="user-menu-button"
-                    class="relative flex max-w-xs items-center rounded-full bg-rose-600 text-sm focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-rose-600 focus:outline-hidden dark:bg-rose-800"
+                    class="relative flex max-w-xs items-center rounded-full bg-amber-600 text-sm focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-amber-600 focus:outline-hidden dark:bg-amber-800"
                   >
                     <span class="sr-only">Open user menu</span>
                     <span
-                      class="inline-flex size-8 items-center justify-center rounded-full bg-rose-500 dark:bg-rose-700"
+                      class="inline-flex size-8 items-center justify-center rounded-full bg-amber-500 dark:bg-amber-700"
                     >
                       <span
                         data-testid="user-initial"
@@ -223,10 +223,10 @@ function getInitials(email: string | undefined): string {
                   leave-to-class="transform opacity-0 scale-95"
                 >
                   <MenuItems
-                    class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5 focus:outline-hidden dark:bg-gray-800"
+                    class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5 focus:outline-hidden dark:bg-stone-800"
                   >
                     <div
-                      class="border-b border-gray-200 px-4 py-2 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-300"
+                      class="border-b border-gray-200 px-4 py-2 text-sm text-gray-700 dark:border-stone-700 dark:text-stone-300"
                     >
                       {{ user?.email }}
                     </div>
@@ -238,8 +238,8 @@ function getInitials(email: string | undefined): string {
                       <router-link
                         :to="item.href"
                         :class="[
-                          active ? 'bg-gray-100 dark:bg-gray-700' : '',
-                          'block px-4 py-2 text-sm text-gray-700 dark:text-gray-300',
+                          active ? 'bg-gray-100 dark:bg-stone-700' : '',
+                          'block px-4 py-2 text-sm text-gray-700 dark:text-stone-300',
                         ]"
                         @click="closeMenu"
                       >
@@ -251,8 +251,8 @@ function getInitials(email: string | undefined): string {
                         type="button"
                         data-testid="sign-out-button"
                         :class="[
-                          active ? 'bg-gray-100 dark:bg-gray-700' : '',
-                          'block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300',
+                          active ? 'bg-gray-100 dark:bg-stone-700' : '',
+                          'block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-stone-300',
                         ]"
                         @click="handleSignOut"
                       >
@@ -267,7 +267,7 @@ function getInitials(email: string | undefined): string {
           <div class="-mr-2 flex md:hidden">
             <!-- Mobile menu button -->
             <DisclosureButton
-              class="group hover:bg-opacity-75 relative inline-flex items-center justify-center rounded-md bg-rose-600 p-2 text-rose-200 hover:bg-rose-500 hover:text-white focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-rose-600 focus:outline-hidden dark:bg-rose-800 dark:hover:bg-rose-700"
+              class="group hover:bg-opacity-75 relative inline-flex items-center justify-center rounded-md bg-amber-600 p-2 text-amber-200 hover:bg-amber-500 hover:text-white focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-amber-600 focus:outline-hidden dark:bg-amber-800 dark:hover:bg-amber-700"
             >
               <span class="sr-only">Open main menu</span>
               <Bars3Icon
@@ -287,10 +287,10 @@ function getInitials(email: string | undefined): string {
         <!-- Mobile workspace switcher -->
         <div
           v-if="otherWorkspaces.length > 0"
-          class="border-b border-rose-700 px-3 pt-2 pb-3 dark:border-rose-900"
+          class="border-b border-amber-700 px-3 pt-2 pb-3 dark:border-amber-900"
         >
           <p
-            class="px-2 text-xs font-semibold tracking-wide text-rose-200 uppercase"
+            class="px-2 text-xs font-semibold tracking-wide text-amber-200 uppercase"
           >
             Switch workspace
           </p>
@@ -298,7 +298,7 @@ function getInitials(email: string | undefined): string {
             v-for="ws in otherWorkspaces"
             :key="ws.id"
             type="button"
-            class="hover:bg-opacity-75 mt-1 block w-full rounded-md px-3 py-2 text-left text-base font-medium text-white hover:bg-rose-500 dark:hover:bg-rose-700"
+            class="hover:bg-opacity-75 mt-1 block w-full rounded-md px-3 py-2 text-left text-base font-medium text-white hover:bg-amber-500 dark:hover:bg-amber-700"
             @click="
               () => {
                 close()
@@ -316,8 +316,8 @@ function getInitials(email: string | undefined): string {
             :to="item.href"
             :class="[
               isActive(item.routeName)
-                ? 'bg-rose-700 text-white dark:bg-rose-900'
-                : 'hover:bg-opacity-75 text-white hover:bg-rose-500 dark:hover:bg-rose-700',
+                ? 'bg-amber-700 text-white dark:bg-amber-900'
+                : 'hover:bg-opacity-75 text-white hover:bg-amber-500 dark:hover:bg-amber-700',
               'block rounded-md px-3 py-2 text-base font-medium',
             ]"
             :aria-current="isActive(item.routeName) ? 'page' : undefined"
@@ -326,11 +326,11 @@ function getInitials(email: string | undefined): string {
             {{ item.name }}
           </router-link>
         </div>
-        <div class="border-t border-rose-700 pt-4 pb-3 dark:border-rose-900">
+        <div class="border-t border-amber-700 pt-4 pb-3 dark:border-amber-900">
           <div class="flex items-center px-5">
             <div class="shrink-0">
               <span
-                class="inline-flex size-10 items-center justify-center rounded-full bg-rose-500 dark:bg-rose-700"
+                class="inline-flex size-10 items-center justify-center rounded-full bg-amber-500 dark:bg-amber-700"
               >
                 <span class="text-sm font-medium text-white">{{
                   getInitials(user?.email)
@@ -360,7 +360,7 @@ function getInitials(email: string | undefined): string {
             </button>
             <button
               type="button"
-              class="shrink-0 rounded-full bg-rose-600 p-1 text-rose-200 hover:text-white focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-rose-600 focus:outline-hidden dark:bg-rose-800"
+              class="shrink-0 rounded-full bg-amber-600 p-1 text-amber-200 hover:text-white focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-amber-600 focus:outline-hidden dark:bg-amber-800"
               :class="!showConnectionBadge ? 'relative ml-auto' : 'ml-2'"
               @click="toggleDarkMode"
             >
@@ -374,14 +374,14 @@ function getInitials(email: string | undefined): string {
               v-for="item in userNavigation"
               :key="item.name"
               :to="item.href"
-              class="hover:bg-opacity-75 block rounded-md px-3 py-2 text-base font-medium text-white hover:bg-rose-500 dark:hover:bg-rose-700"
+              class="hover:bg-opacity-75 block rounded-md px-3 py-2 text-base font-medium text-white hover:bg-amber-500 dark:hover:bg-amber-700"
               @click="close"
             >
               {{ item.name }}
             </router-link>
             <button
               type="button"
-              class="hover:bg-opacity-75 block w-full rounded-md px-3 py-2 text-left text-base font-medium text-white hover:bg-rose-500 dark:hover:bg-rose-700"
+              class="hover:bg-opacity-75 block w-full rounded-md px-3 py-2 text-left text-base font-medium text-white hover:bg-amber-500 dark:hover:bg-amber-700"
               @click="
                 () => {
                   close()
@@ -396,7 +396,7 @@ function getInitials(email: string | undefined): string {
       </DisclosurePanel>
     </Disclosure>
 
-    <header v-if="$slots.header" class="bg-white shadow dark:bg-gray-800">
+    <header v-if="$slots.header" class="bg-white shadow dark:bg-stone-800">
       <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <slot name="header" />
       </div>
