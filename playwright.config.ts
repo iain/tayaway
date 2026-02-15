@@ -25,12 +25,16 @@ export default defineConfig({
       url: 'http://localhost:9293/health',
       reuseExistingServer: !process.env.CI,
       timeout: 120000,
+      stdout: 'ignore',
+      stderr: 'ignore',
     },
     {
       command: 'cd frontend && FRONTEND_PORT=5174 API_PORT=9293 pnpm run dev',
       url: 'http://localhost:5174',
       reuseExistingServer: !process.env.CI,
       timeout: 120000,
+      stdout: 'ignore',
+      stderr: 'ignore',
     },
   ],
 })
