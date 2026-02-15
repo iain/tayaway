@@ -390,19 +390,21 @@ test.describe('Voting Feature', () => {
         },
       })
 
-      // Get event and verify votes are included in pool
-      const response = await request.get(`${API_BASE}/api/events/${eventId}`)
-      const body = await response.json()
-
-      // Find the date range and verify it has the vote ID
-      const dateRanges = getObjectsByType(body.objects, 'dateRange')
-      const dateRange = dateRanges.find(
-        (dr: PoolObject) => dr.id === dateRangeId
+      // GET /api/events/:id returns only the event (no cascade)
+      const eventResponse = await request.get(
+        `${API_BASE}/api/events/${eventId}`
       )
-      expect((dateRange as { voteIds: string[] })?.voteIds).toHaveLength(1)
+      const eventBody = await eventResponse.json()
+      const events = getObjectsByType(eventBody.objects, 'event')
+      expect(events).toHaveLength(1)
+      expect(events[0]?.id).toBe(eventId)
 
-      // Find the vote and verify its data
-      const votes = getObjectsByType(body.objects, 'vote')
+      // Votes are fetched separately via GET /api/events/:id/votes
+      const votesResponse = await request.get(
+        `${API_BASE}/api/events/${eventId}/votes`
+      )
+      const votesBody = await votesResponse.json()
+      const votes = getObjectsByType(votesBody.objects, 'vote')
       expect(votes).toHaveLength(1)
       expect(votes[0]?.response).toBe('preferably_not')
     })

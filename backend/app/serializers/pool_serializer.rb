@@ -14,15 +14,6 @@
 class PoolSerializer
   extend T::Sig
 
-  extend Result::Methods
-
-  sig { params(event: Event).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
-  def self.event_result(event)
-    pool = new(workspace_id: event.workspace_id)
-    pool.add_event(T.must(Event.find(event.id)))
-    T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
-  end
-
   sig { params(workspace_id: T.nilable(T.any(String, UUID))).void }
   def initialize(workspace_id: nil)
     @objects = T.let({}, T::Hash[String, T::Hash[Symbol, T.untyped]])
@@ -69,13 +60,13 @@ class PoolSerializer
   end
 
   # Public alias for add_member_from_membership
-  sig { params(membership: WorkspaceMembership, cascade: T::Boolean).void }
-  def add_member(membership, cascade: true)
+  sig { params(membership: WorkspaceMembership).void }
+  def add_member(membership)
     add_member_from_membership(membership)
   end
 
-  sig { params(event: Event, include_workspace: T::Boolean, cascade: T::Boolean).void }
-  def add_event(event, include_workspace: false, cascade: true)
+  sig { params(event: Event).void }
+  def add_event(event)
     key = "event:#{event.id}"
     return if @objects.key?(key)
 
@@ -90,55 +81,28 @@ class PoolSerializer
     end
 
     @objects[key] = hash
-
-    return unless cascade
-
-    # Add member for event creator
-    user = User.find(event.user_id)
-    add_member_from_user(user) if user
-
-    # Add date poll (cascades to date ranges, votes)
-    add_date_poll(date_poll) if date_poll
-
-    # Add workspace with members if requested
-    if include_workspace
-      workspace = Workspace.find(event.workspace_id)
-      add_workspace(workspace) if workspace
-    end
   end
 
-  sig { params(date_poll: DatePoll, cascade: T::Boolean).void }
-  def add_date_poll(date_poll, cascade: true)
+  sig { params(date_poll: DatePoll).void }
+  def add_date_poll(date_poll)
     key = "date_poll:#{date_poll.id}"
     return if @objects.key?(key)
 
     date_range_ids = DateRange.ids_for_date_poll(date_poll.id)
     @objects[key] = date_poll.to_api_hash(date_range_ids: date_range_ids)
-
-    return unless cascade
-
-    # Add date ranges
-    date_ranges = DateRange.for_date_poll(date_poll.id)
-    date_ranges.each { |dr| add_date_range(dr) }
   end
 
-  sig { params(date_range: DateRange, cascade: T::Boolean).void }
-  def add_date_range(date_range, cascade: true)
+  sig { params(date_range: DateRange).void }
+  def add_date_range(date_range)
     key = "date_range:#{date_range.id}"
     return if @objects.key?(key)
 
     vote_ids = Vote.ids_for_date_range(date_range.id)
     @objects[key] = date_range.to_api_hash(vote_ids: vote_ids)
-
-    return unless cascade
-
-    # Add votes
-    votes = Vote.for_date_range(date_range.id)
-    votes.each { |v| add_vote(v) }
   end
 
-  sig { params(vote: Vote, cascade: T::Boolean).void }
-  def add_vote(vote, cascade: true)
+  sig { params(vote: Vote).void }
+  def add_vote(vote)
     key = "vote:#{vote.id}"
     return if @objects.key?(key)
 
@@ -152,46 +116,15 @@ class PoolSerializer
     end
 
     @objects[key] = hash
-
-    return unless cascade
-
-    # Add member for voter
-    user = User.find(vote.user_id)
-    add_member_from_user(user) if user
   end
 
-  sig { params(workspace: Workspace, cascade: T::Boolean).void }
-  def add_workspace(workspace, cascade: true)
+  sig { params(workspace: Workspace).void }
+  def add_workspace(workspace)
     key = "workspace:#{workspace.id}"
     return if @objects.key?(key)
 
     member_ids = WorkspaceMembership.ids_for_workspace(workspace.id)
     @objects[key] = workspace.to_api_hash(member_ids: member_ids)
-
-    return unless cascade
-
-    # Add members
-    memberships = WorkspaceMembership.for_workspace(workspace.id)
-    memberships.each { |m| add_member_from_membership(m) }
-  end
-
-  # Adds only the workspace object (no members). Used for the initial
-  # sync where we need workspace names for the selector but not full member data.
-  sig { params(workspace: Workspace).void }
-  def add_workspace_summary(workspace)
-    key = "workspace:#{workspace.id}"
-    return if @objects.key?(key)
-
-    member_ids = WorkspaceMembership.ids_for_workspace(workspace.id)
-    @objects[key] = workspace.to_api_hash(member_ids: member_ids)
-  end
-
-  # Adds workspace with all its events (cascading to date_ranges, votes, members)
-  sig { params(workspace: Workspace).void }
-  def add_workspace_with_events(workspace)
-    add_workspace(workspace)
-    events = Event.for_workspace(workspace.id)
-    events.each { |e| add_event(e) }
   end
 
   sig { params(items: T::Enumerable[T.untyped], type: Symbol).void }

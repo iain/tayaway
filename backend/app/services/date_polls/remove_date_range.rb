@@ -61,7 +61,7 @@ module DatePolls
         end
 
         pool = PoolSerializer.new(workspace_id: event.workspace_id)
-        pool.add_event(T.must(Event.find(event.id)))
+        pool.add_date_poll(T.must(DatePoll.find(poll.id)))
 
         T.cast(
           Success({ objects: pool.to_a, deleted: [{ objectType: "dateRange", id: date_range_id }] }),

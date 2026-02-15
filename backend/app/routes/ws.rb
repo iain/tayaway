@@ -48,7 +48,7 @@ class App
 
       # Send workspace summaries for the workspace selector
       pool = PoolSerializer.new
-      workspaces.each { |w| pool.add_workspace_summary(w) }
+      workspaces.each { |w| pool.add_workspace(w) }
       connection.write({ type: "sync", data: { objects: pool.to_a } }.to_json)
 
       # If we have a valid initial workspace, subscribe and sync immediately

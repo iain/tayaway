@@ -51,7 +51,12 @@ module DatePolls
         # Idempotent replay: if client provided an ID and it already exists, return current state
         if id
           existing = DateRange.find(id)
-          return PoolSerializer.event_result(event) if existing
+          if existing
+            pool = PoolSerializer.new(workspace_id: event.workspace_id)
+            pool.add_date_poll(T.must(DatePoll.find(poll.id)))
+            pool.add_date_range(existing)
+            return T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+          end
         end
 
         dr_id = id || SecureRandom.uuid
@@ -70,7 +75,10 @@ module DatePolls
           Broadcaster.object_changed("date_range", dr_id, workspace_id: event.workspace_id)
         end
 
-        PoolSerializer.event_result(event)
+        pool = PoolSerializer.new(workspace_id: event.workspace_id)
+        pool.add_date_poll(T.must(DatePoll.find(poll.id)))
+        pool.add_date_range(T.must(DateRange.find(dr_id)))
+        T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
     end
   end
