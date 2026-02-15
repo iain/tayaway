@@ -221,6 +221,7 @@ function hydrateDateRanges(
   return pool
     .getAll('dateRange')
     .filter((dr) => dr.datePollId === datePollId)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate))
     .map((dr) => hydrateDateRange(dr, pool))
 }
 
