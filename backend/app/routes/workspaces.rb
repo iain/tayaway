@@ -3,13 +3,12 @@
 
 class App
   hash_branch("api", "workspaces") do |r|
-    response.status = 401
-    next { error: "Authorization required" } unless current_user
+    user = require_auth
 
     # GET /api/workspaces - List workspaces for current user
     r.is do
       r.get do
-        workspaces = Workspace.for_user(current_user.id)
+        workspaces = Workspace.for_user(user.id)
         pool = PoolSerializer.new
         pool.add_all(workspaces, type: :workspace)
 
@@ -26,7 +25,7 @@ class App
       next { error: "Workspace not found" } unless workspace
 
       # Check user is a member of the workspace
-      membership = WorkspaceMembership.find_by_workspace_and_user(workspace.id, current_user.id)
+      membership = WorkspaceMembership.find_by_workspace_and_user(workspace.id, user.id)
       response.status = 403
       next { error: "Access denied" } unless membership
 

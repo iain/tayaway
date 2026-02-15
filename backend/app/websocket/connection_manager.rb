@@ -112,7 +112,7 @@ module Websocket
       const :id, String
       const :websocket, Object
       const :user_id, String
-      prop :workspace_ids, T::Set[String], default: Set.new
+      prop :workspace_ids, T::Set[String], factory: -> { Set.new }
     end
   end
 end

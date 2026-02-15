@@ -3,8 +3,7 @@
 
 class App
   hash_branch("api", "users") do |r|
-    response.status = 401
-    next { error: "Authorization required" } unless current_user
+    user = require_auth
 
     # /api/users/:id routes
     r.on String do |id|
@@ -13,7 +12,7 @@ class App
         r.put do
           result = Users::UpdateName.call(
             user_id: id,
-            current_user_id: current_user.id,
+            current_user_id: user.id,
             name: r.params["name"]&.strip
           )
           handle_result(result)

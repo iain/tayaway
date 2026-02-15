@@ -3,8 +3,7 @@
 
 class App
   hash_branch("api", "members") do |r|
-    response.status = 401
-    next { error: "Authorization required" } unless current_user
+    require_auth
 
     # POST /api/members - Add a member to a workspace (create user if needed)
     r.is do

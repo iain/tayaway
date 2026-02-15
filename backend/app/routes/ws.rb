@@ -54,14 +54,14 @@ class App
       # If we have a valid initial workspace, subscribe and sync immediately
       if synced_workspace_id
         Websocket::ConnectionManager.instance.set_workspaces(connection_id, [synced_workspace_id])
-        since_time = initial_since ? Time.parse(initial_since) : nil
+        since_time = Websocket::MessageHandler.safe_parse_time(initial_since)
         sync_result = Sync::WorkspaceSync.call(workspace_id: synced_workspace_id, since: since_time)
         connection.write({ type: "sync", data: sync_result }.to_json)
       end
 
       begin
         while (message = connection.read)
-          handle_message(connection, connection_id, user_id, message)
+          Websocket::MessageHandler.handle(connection, connection_id, user_id, message)
         end
       rescue StandardError => e
         APP_LOGGER.error { "[WebSocket] Error in message loop: #{e.message}" }
@@ -69,47 +69,5 @@ class App
         Websocket::ConnectionManager.instance.unregister(connection_id)
       end
     end
-  end
-
-  private
-
-  def handle_message(connection, connection_id, user_id, raw_message)
-    data = JSON.parse(raw_message, symbolize_names: true)
-    type = data[:type]
-
-    case type
-    when "ping"
-      connection.write({ type: "pong" }.to_json)
-    when "switch_workspace"
-      handle_switch_workspace(connection, connection_id, user_id, data[:workspaceId], data[:since])
-    else
-      connection.write({ type: "error", message: "Unknown message type" }.to_json)
-    end
-  rescue JSON::ParserError
-    connection.write({ type: "error", message: "Invalid JSON" }.to_json)
-  rescue StandardError => e
-    connection.write({ type: "error", message: e.message }.to_json)
-  end
-
-  def handle_switch_workspace(connection, connection_id, user_id, workspace_id, since = nil)
-    unless workspace_id
-      connection.write({ type: "error", message: "Missing workspaceId" }.to_json)
-      return
-    end
-
-    # Validate user is a member of this workspace
-    membership = WorkspaceMembership.find_by_workspace_and_user(workspace_id, user_id)
-    unless membership
-      connection.write({ type: "error", message: "Not a member of this workspace" }.to_json)
-      return
-    end
-
-    # Subscribe only to this workspace
-    Websocket::ConnectionManager.instance.set_workspaces(connection_id, [workspace_id.to_s])
-
-    # Sync workspace data (full or partial based on since parameter)
-    since_time = since ? Time.parse(since) : nil
-    result = Sync::WorkspaceSync.call(workspace_id: workspace_id, since: since_time)
-    connection.write({ type: "sync", data: result }.to_json)
   end
 end

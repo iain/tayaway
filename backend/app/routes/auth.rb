@@ -21,11 +21,7 @@ class App
 
   hash_path "/api/auth/logout" do |r|
     r.post do
-      session = current_session
-      unless session
-        response.status = 401
-        next { error: "Authorization required" }
-      end
+      session = require_session
 
       DB[:sessions].where(id: session.id).delete
       clear_session_cookie
@@ -36,11 +32,7 @@ class App
 
   hash_path "/api/auth/ws-ticket" do |r|
     r.post do
-      session = current_session
-      unless session
-        response.status = 401
-        next { error: "Authorization required" }
-      end
+      session = require_session
 
       result = Auth::CreateWsTicket.call(user_id: session.user_id)
       handle_result(result)
@@ -52,11 +44,7 @@ class App
   end
 
   hash_branch("api/auth", "sessions") do |r|
-    session = current_session
-    unless session
-      response.status = 401
-      next { error: "Authorization required" }
-    end
+    session = require_session
 
     user = User.find(session.user_id)
     unless user
@@ -93,11 +81,7 @@ class App
 
   hash_path "/api/auth/me" do |r|
     r.get do
-      session = current_session
-      unless session
-        response.status = 401
-        next { error: "Authorization required" }
-      end
+      session = require_session
 
       user = User.find(session.user_id)
       response.status = 200

@@ -3,21 +3,25 @@
 
 class App
   hash_branch("api", "events") do |r|
-    response.status = 401
-    next { error: "Authorization required" } unless current_user
+    user = require_auth
 
     # GET /api/events - List events in user's workspaces
     r.is do
       r.get do
-        workspaces = Workspace.for_user(current_user.id)
+        workspaces = Workspace.for_user(user.id)
         workspace_ids = workspaces.map(&:id)
         events = Event.for_workspace_ids(workspace_ids)
-        # Use first workspace for member resolution (single-workspace for now)
-        pool = PoolSerializer.new(workspace_id: workspaces.first&.id)
-        pool.add_all(events, type: :event)
+
+        # Group events by workspace for correct member resolution
+        all_objects = []
+        events.group_by(&:workspace_id).each do |ws_id, ws_events|
+          pool = PoolSerializer.new(workspace_id: ws_id)
+          pool.add_all(ws_events, type: :event)
+          all_objects.concat(pool.to_a)
+        end
 
         response.status = 200
-        { objects: pool.to_a }
+        { objects: all_objects }
       end
 
       # POST /api/events - Create a new event
@@ -25,7 +29,7 @@ class App
         # Use provided workspace_id or get user's first workspace
         workspace_id = r.params["workspace_id"]
         unless workspace_id
-          first_workspace = Workspace.for_user(current_user.id).first
+          first_workspace = Workspace.for_user(user.id).first
           workspace_id = first_workspace&.id
         end
 
@@ -42,7 +46,7 @@ class App
 
         result = Events::Create.call(
           workspace_id: workspace_id,
-          user_id: current_user.id,
+          user_id: user.id,
           name: r.params["name"]&.strip,
           description: r.params["description"]&.strip,
           id: r.params["id"]
@@ -76,7 +80,7 @@ class App
         r.put do
           result = Events::Update.call(
             event_id: event.id,
-            current_user_id: current_user.id,
+            current_user_id: user.id,
             name: r.params["name"]&.strip,
             description: r.params["description"]&.strip
           )
@@ -85,7 +89,7 @@ class App
 
         # DELETE /api/events/:id - Delete event (owner only)
         r.delete do
-          result = Events::Delete.call(event_id: event.id, current_user_id: current_user.id)
+          result = Events::Delete.call(event_id: event.id, current_user_id: user.id)
           handle_result(result)
         end
       end
@@ -97,7 +101,7 @@ class App
           r.post do
             result = DatePolls::Create.call(
               event_id: event.id,
-              current_user_id: current_user.id,
+              current_user_id: user.id,
               deadline: r.params["deadline"]
             )
             handle_result(result, success_status: 201)
@@ -109,7 +113,7 @@ class App
           r.post do
             result = DatePolls::Close.call(
               event_id: event.id,
-              current_user_id: current_user.id,
+              current_user_id: user.id,
               selected_date_range_id: r.params["selected_date_range_id"]
             )
             handle_result(result)
@@ -121,7 +125,7 @@ class App
           r.post do
             result = DatePolls::Reopen.call(
               event_id: event.id,
-              current_user_id: current_user.id,
+              current_user_id: user.id,
               deadline: r.params["deadline"]
             )
             handle_result(result)
@@ -135,7 +139,7 @@ class App
             r.post do
               result = DatePolls::AddDateRange.call(
                 event_id: event.id,
-                current_user_id: current_user.id,
+                current_user_id: user.id,
                 start_date: r.params["start_date"],
                 end_date: r.params["end_date"],
                 id: r.params["id"]
@@ -149,7 +153,7 @@ class App
             r.delete do
               result = DatePolls::RemoveDateRange.call(
                 event_id: event.id,
-                current_user_id: current_user.id,
+                current_user_id: user.id,
                 date_range_id: dr_id
               )
               handle_result(result)
@@ -177,7 +181,7 @@ class App
           r.post do
             result = Votes::Upsert.call(
               event_id: event.id,
-              user_id: current_user.id,
+              user_id: user.id,
               date_range_id: r.params["date_range_id"],
               vote_response: r.params["response"],
               comment: r.params["comment"]&.strip,
@@ -204,7 +208,7 @@ class App
         # DELETE /api/events/:id/votes/:vote_id - Remove vote
         r.on String do |vote_id|
           r.delete do
-            result = Votes::Delete.call(event_id: event.id, vote_id: vote_id, user_id: current_user.id)
+            result = Votes::Delete.call(event_id: event.id, vote_id: vote_id, user_id: user.id)
             handle_result(result)
           end
         end

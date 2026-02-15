@@ -32,6 +32,10 @@ module Sync
         pool = PoolSerializer.new(workspace_id: workspace_id)
         user_ids = T.let(Set.new, T::Set[T.untyped])
 
+        # Always include workspace so memberIds stays current on partial syncs
+        # (adding a member doesn't update the workspace's updated_at)
+        pool.add_workspace(workspace)
+
         ObjectRegistry::TYPES.each do |entry|
           model = Object.const_get(entry.model)
           items = model.changed_since(workspace_id, effective_since)

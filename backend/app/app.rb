@@ -43,24 +43,40 @@ class App < Roda
     response.delete_cookie("session_token", path: "/")
   end
 
+  # Memoized per request (Roda creates a new App instance per request).
+  # Uses defined? to cache nil results (no cookie / no session).
   def current_session
-    token = request.cookies["session_token"]
-    return nil unless token
+    return @_current_session if defined?(@_current_session)
 
-    Session.find_valid(token)
+    token = request.cookies["session_token"]
+    @_current_session = token ? Session.find_valid(token) : nil
   end
 
   def current_user
-    session = current_session
-    return nil unless session
+    return @_current_user if defined?(@_current_user)
 
-    User.find(session.user_id)
+    session = current_session
+    @_current_user = session ? User.find(session.user_id) : nil
+  end
+
+  def require_auth
+    user = current_user
+    return user if user
+
+    request.halt [401, { "Content-Type" => "application/json" }, ['{"error":"Authorization required"}']]
+  end
+
+  def require_session
+    session = current_session
+    return session if session
+
+    request.halt [401, { "Content-Type" => "application/json" }, ['{"error":"Authorization required"}']]
   end
 
   def member_of_workspace?(workspace_id)
     return false unless current_user
 
-    WorkspaceMembership.find_by_workspace_and_user(workspace_id, current_user.id) != nil
+    !WorkspaceMembership.find_by_workspace_and_user(workspace_id, current_user.id).nil?
   end
 
   route do |r|

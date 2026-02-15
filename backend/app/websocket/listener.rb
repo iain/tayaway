@@ -26,6 +26,7 @@ module Websocket
         return if @running
 
         @running = true
+        @listen_db = T.let(nil, T.nilable(Sequel::Database))
         @thread = Thread.new { run_loop }
         @thread.abort_on_exception = true
         APP_LOGGER.info { "[Listener] Started PostgreSQL LISTEN on #{CHANNEL}" }
@@ -36,7 +37,9 @@ module Websocket
         return unless @running
 
         @running = false
-        @thread&.kill
+        # Disconnect the listen connection to unblock the listen loop
+        @listen_db&.disconnect
+        @thread&.join(RETRY_DELAY + 1)
         @thread = nil
         APP_LOGGER.info { "[Listener] Stopped" }
       end
@@ -71,22 +74,22 @@ module Websocket
 
       sig { void }
       def listen_with_retry
-        # Create a dedicated connection for listening
-        db = Sequel.connect(ENV.fetch("DATABASE_URL"))
+        # Create a dedicated connection for listening (stored for graceful shutdown)
+        @listen_db = Sequel.connect(ENV.fetch("DATABASE_URL"))
+        @listen_db.listen(CHANNEL, loop: true) do |_channel, _pid, payload|
+          break unless @running
 
-        begin
-          db.listen(CHANNEL, loop: true) do |_channel, _pid, payload|
-            break unless @running
-
-            handle_notification(payload)
-          end
-        rescue StandardError => e
+          handle_notification(payload)
+        end
+      rescue StandardError => e
+        if @running
           APP_LOGGER.error { "[Listener] Error in listen loop: #{e.message}" }
           APP_LOGGER.info { "[Listener] Retrying in #{RETRY_DELAY} seconds..." }
           sleep RETRY_DELAY if @running
-        ensure
-          db.disconnect
         end
+      ensure
+        @listen_db&.disconnect
+        @listen_db = nil
       end
 
       sig { params(payload: String).void }
