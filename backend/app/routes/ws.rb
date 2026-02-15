@@ -6,7 +6,10 @@ require "json"
 class App
   hash_branch "ws" do |r|
     # Authenticate via single-use ticket: ws://host/ws?ticket=<jwt>
+    # Optional: workspaceId and since query params for immediate workspace sync
     ticket_jwt = r.params["ticket"]
+    initial_workspace_id = r.params["workspaceId"]
+    initial_since = r.params["since"]
 
     result = Auth::ConsumeWsTicket.call(ticket_jwt: ticket_jwt)
 
@@ -27,20 +30,34 @@ class App
         { workspaceId: m.workspace_id.to_s, memberId: m.id.to_s }
       end
 
-      # Send authenticated message with workspace IDs and memberships
-      connection.write(
-        {
-          type: "authenticated",
-          userId: user_id.to_s,
-          workspaceIds: workspace_ids,
-          memberships: memberships
-        }.to_json
-      )
+      # If client requested an initial workspace, validate membership and prepare sync
+      synced_workspace_id = nil
+      if initial_workspace_id && workspace_ids.include?(initial_workspace_id)
+        synced_workspace_id = initial_workspace_id
+      end
 
-      # Send only workspace objects for the selector (members come with switch_workspace)
+      # Send authenticated message with workspace IDs and memberships
+      auth_message = {
+        type: "authenticated",
+        userId: user_id.to_s,
+        workspaceIds: workspace_ids,
+        memberships: memberships
+      }
+      auth_message[:initialWorkspaceId] = synced_workspace_id if synced_workspace_id
+      connection.write(auth_message.to_json)
+
+      # Send workspace summaries for the workspace selector
       pool = PoolSerializer.new
       workspaces.each { |w| pool.add_workspace_summary(w) }
       connection.write({ type: "sync", data: { objects: pool.to_a } }.to_json)
+
+      # If we have a valid initial workspace, subscribe and sync immediately
+      if synced_workspace_id
+        Websocket::ConnectionManager.instance.set_workspaces(connection_id, [synced_workspace_id])
+        since_time = initial_since ? Time.parse(initial_since) : nil
+        sync_result = Sync::WorkspaceSync.call(workspace_id: synced_workspace_id, since: since_time)
+        connection.write({ type: "sync", data: sync_result }.to_json)
+      end
 
       begin
         while (message = connection.read)

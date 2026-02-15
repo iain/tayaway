@@ -41,6 +41,7 @@ interface AuthenticatedMessage {
   userId: string
   workspaceIds: string[]
   memberships: Array<{ workspaceId: string; memberId: string }>
+  initialWorkspaceId?: string
 }
 
 interface ServerMessage {
@@ -96,7 +97,19 @@ export const useWebSocketStore = defineStore('websocket', () => {
     )
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
-    return `${protocol}//${host}/ws?ticket=${encodeURIComponent(data.ticket)}`
+    let url = `${protocol}//${host}/ws?ticket=${encodeURIComponent(data.ticket)}`
+
+    // Include current workspace so the server can sync it immediately
+    const storedWorkspaceId = localStorage.getItem('current_workspace_id')
+    if (storedWorkspaceId) {
+      url += `&workspaceId=${encodeURIComponent(storedWorkspaceId)}`
+      const since = getSyncedAt(storedWorkspaceId)
+      if (since) {
+        url += `&since=${encodeURIComponent(since)}`
+      }
+    }
+
+    return url
   }
 
   async function connect(): Promise<void> {
@@ -180,12 +193,15 @@ export const useWebSocketStore = defineStore('websocket', () => {
     const workspaceStore = useWorkspaceStore()
     workspaceStore.initialize(message.workspaceIds)
     if (workspaceStore.currentWorkspaceId) {
-      const since = getSyncedAt(workspaceStore.currentWorkspaceId)
-      send({
-        type: 'switch_workspace',
-        workspaceId: workspaceStore.currentWorkspaceId,
-        since: since ?? null,
-      })
+      // Only send switch_workspace if the server didn't already sync this workspace
+      if (message.initialWorkspaceId !== workspaceStore.currentWorkspaceId) {
+        const since = getSyncedAt(workspaceStore.currentWorkspaceId)
+        send({
+          type: 'switch_workspace',
+          workspaceId: workspaceStore.currentWorkspaceId,
+          since: since ?? null,
+        })
+      }
     }
 
     // Start ping interval to keep connection alive
