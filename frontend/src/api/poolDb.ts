@@ -15,7 +15,9 @@ interface StoredPendingEntry {
 
 interface MetaEntry {
   key: string
-  workspaceId: string
+  workspaceId?: string
+  syncedAt?: string
+  cacheVersion?: number
 }
 
 interface PoolCacheDB {
@@ -33,6 +35,9 @@ interface PoolCacheDB {
     value: StoredPendingEntry
   }
 }
+
+// Bump this when the sync protocol changes to invalidate stale caches
+const CACHE_VERSION = 2
 
 let dbPromise: Promise<IDBPDatabase<PoolCacheDB>> | null = null
 
@@ -112,13 +117,21 @@ export async function loadPendingUpdates(): Promise<
 
 export async function replaceAll(
   workspaceId: string,
-  objects: PoolObject[]
+  objects: PoolObject[],
+  syncedAt?: string
 ): Promise<void> {
   const db = await getDb()
   const tx = db.transaction(['objects', 'meta', 'pendingUpdates'], 'readwrite')
   tx.objectStore('objects').clear()
   tx.objectStore('pendingUpdates').clear()
   tx.objectStore('meta').put({ key: 'workspace', workspaceId })
+  tx.objectStore('meta').put({
+    key: 'cacheVersion',
+    cacheVersion: CACHE_VERSION,
+  })
+  if (syncedAt) {
+    tx.objectStore('meta').put({ key: 'syncedAt', syncedAt })
+  }
   const objectStore = tx.objectStore('objects')
   for (const obj of objects) {
     objectStore.put({
@@ -133,12 +146,16 @@ export async function replaceAll(
 
 export async function loadAll(): Promise<{
   workspaceId: string | null
+  syncedAt: string | null
+  cacheVersion: number | null
   objects: PoolObject[]
   pendingUpdates: Map<string, PendingUpdate[]>
 }> {
   const db = await getDb()
   const tx = db.transaction(['objects', 'meta', 'pendingUpdates'], 'readonly')
   const meta = await tx.objectStore('meta').get('workspace')
+  const syncedAtMeta = await tx.objectStore('meta').get('syncedAt')
+  const versionMeta = await tx.objectStore('meta').get('cacheVersion')
   const stored = await tx.objectStore('objects').getAll()
   const pendingStored = await tx.objectStore('pendingUpdates').getAll()
 
@@ -149,9 +166,18 @@ export async function loadAll(): Promise<{
 
   return {
     workspaceId: meta?.workspaceId ?? null,
+    syncedAt: syncedAtMeta?.syncedAt ?? null,
+    cacheVersion: versionMeta?.cacheVersion ?? null,
     objects: stored.map((s) => s.data),
     pendingUpdates: pendingMap,
   }
+}
+
+export { CACHE_VERSION }
+
+export async function saveSyncedAt(syncedAt: string): Promise<void> {
+  const db = await getDb()
+  await db.put('meta', { key: 'syncedAt', syncedAt })
 }
 
 export async function clearAll(): Promise<void> {

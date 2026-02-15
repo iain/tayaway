@@ -38,6 +38,17 @@ class DateRange < T::Struct
       dataset.where(date_poll_id: date_poll_id).order(:start_date).all
     end
 
+    sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[DateRange]) }
+    def updated_since_for_workspace(workspace_id, since)
+      dataset
+        .join(:date_polls, id: :date_poll_id)
+        .join(:events, id: Sequel[:date_polls][:event_id])
+        .where(Sequel[:events][:workspace_id] => workspace_id)
+        .where(Sequel.lit("date_ranges.updated_at > ?", since))
+        .select_all(:date_ranges)
+        .all
+    end
+
     sig { params(date_poll_id: T.any(String, UUID)).returns(T::Array[String]) }
     def ids_for_date_poll(date_poll_id)
       DB[:date_ranges].where(date_poll_id: date_poll_id).order(:start_date).select_map(:id)

@@ -46,6 +46,11 @@ class Event < T::Struct
       dataset.where(workspace_id: workspace_id).order(:created_at).all
     end
 
+    sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[Event]) }
+    def updated_since(workspace_id, since)
+      dataset.where(workspace_id: workspace_id).where(Sequel.lit("updated_at > ?", since)).all
+    end
+
     sig { params(workspace_ids: T::Array[T.any(String, UUID)]).returns(T::Array[Event]) }
     def for_workspace_ids(workspace_ids)
       return [] if workspace_ids.empty?

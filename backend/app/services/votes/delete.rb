@@ -79,6 +79,7 @@ module Votes
         workspace_id = T.must(event).workspace_id
 
         DB.transaction do
+          DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "vote", object_id: vote_id)
           DB[:votes].where(id: vote_id).delete
           Broadcaster.object_deleted("vote", vote_id, workspace_id: workspace_id)
         end

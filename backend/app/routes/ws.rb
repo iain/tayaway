@@ -54,7 +54,7 @@ class App
     when "ping"
       connection.write({ type: "pong" }.to_json)
     when "switch_workspace"
-      handle_switch_workspace(connection, connection_id, user_id, data[:workspaceId])
+      handle_switch_workspace(connection, connection_id, user_id, data[:workspaceId], data[:since])
     else
       connection.write({ type: "error", message: "Unknown message type" }.to_json)
     end
@@ -64,7 +64,7 @@ class App
     connection.write({ type: "error", message: e.message }.to_json)
   end
 
-  def handle_switch_workspace(connection, connection_id, user_id, workspace_id)
+  def handle_switch_workspace(connection, connection_id, user_id, workspace_id, since = nil)
     unless workspace_id
       connection.write({ type: "error", message: "Missing workspaceId" }.to_json)
       return
@@ -80,10 +80,9 @@ class App
     # Subscribe only to this workspace
     Websocket::ConnectionManager.instance.set_workspaces(connection_id, [workspace_id.to_s])
 
-    # Send full workspace data
-    workspace = Workspace.find(workspace_id)
-    pool = PoolSerializer.new
-    pool.add_workspace_with_events(workspace)
-    connection.write({ type: "sync", data: { objects: pool.to_a } }.to_json)
+    # Sync workspace data (full or partial based on since parameter)
+    since_time = since ? Time.parse(since) : nil
+    result = Sync::WorkspaceSync.call(workspace_id: workspace_id, since: since_time)
+    connection.write({ type: "sync", data: result }.to_json)
   end
 end

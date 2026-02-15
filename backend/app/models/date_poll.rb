@@ -53,6 +53,16 @@ class DatePoll < T::Struct
       dataset.where(id: id).first
     end
 
+    sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[DatePoll]) }
+    def updated_since_for_workspace(workspace_id, since)
+      dataset
+        .join(:events, id: :event_id)
+        .where(Sequel[:events][:workspace_id] => workspace_id)
+        .where(Sequel.lit("date_polls.updated_at > ?", since))
+        .select_all(:date_polls)
+        .all
+    end
+
     sig { params(event_id: T.any(String, UUID)).returns(T.nilable(DatePoll)) }
     def find_by_event(event_id)
       dataset.where(event_id: event_id).first

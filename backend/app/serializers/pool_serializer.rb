@@ -128,6 +128,45 @@ class PoolSerializer
     events.each { |e| add_event(e) }
   end
 
+  # Flat (non-cascading) methods for partial sync.
+  # These serialize the object with required child IDs but don't load/serialize children.
+
+  sig { params(event: Event).void }
+  def add_event_flat(event)
+    key = "event:#{event.id}"
+    return if @objects.key?(key)
+
+    date_poll = DatePoll.find_by_event(event.id)
+    @objects[key] = event.to_api_hash(date_poll_id: date_poll&.id&.to_s)
+  end
+
+  sig { params(date_poll: DatePoll).void }
+  def add_date_poll_flat(date_poll)
+    key = "date_poll:#{date_poll.id}"
+    return if @objects.key?(key)
+
+    date_range_ids = DateRange.ids_for_date_poll(date_poll.id)
+    @objects[key] = date_poll.to_api_hash(date_range_ids: date_range_ids)
+  end
+
+  sig { params(date_range: DateRange).void }
+  def add_date_range_flat(date_range)
+    key = "date_range:#{date_range.id}"
+    return if @objects.key?(key)
+
+    vote_ids = Vote.ids_for_date_range(date_range.id)
+    @objects[key] = date_range.to_api_hash(vote_ids: vote_ids)
+  end
+
+  sig { params(workspace: Workspace).void }
+  def add_workspace_flat(workspace)
+    key = "workspace:#{workspace.id}"
+    return if @objects.key?(key)
+
+    membership_ids = WorkspaceMembership.ids_for_workspace(workspace.id)
+    @objects[key] = workspace.to_api_hash(membership_ids: membership_ids)
+  end
+
   sig { params(items: T::Enumerable[T.untyped], type: Symbol).void }
   def add_all(items, type:)
     items.each do |item|

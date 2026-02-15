@@ -10,6 +10,7 @@ class WorkspaceMembership < T::Struct
   const :user_id, UUID
   const :role, String
   const :created_at, Time
+  const :updated_at, Time
 
   sig { returns(T::Hash[Symbol, T.untyped]) }
   def to_api_hash
@@ -39,6 +40,11 @@ class WorkspaceMembership < T::Struct
     sig { params(user_id: T.any(String, UUID)).returns(T::Array[WorkspaceMembership]) }
     def for_user(user_id)
       dataset.where(user_id: user_id).order(:created_at).all
+    end
+
+    sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[WorkspaceMembership]) }
+    def updated_since(workspace_id, since)
+      dataset.where(workspace_id: workspace_id).where(Sequel.lit("updated_at > ?", since)).all
     end
 
     sig { params(workspace_id: T.any(String, UUID)).returns(T::Array[String]) }
@@ -72,7 +78,8 @@ class WorkspaceMembership < T::Struct
         workspace_id: UUID.new(row[:workspace_id]),
         user_id: UUID.new(row[:user_id]),
         role: row[:role],
-        created_at: row[:created_at]
+        created_at: row[:created_at],
+        updated_at: row[:updated_at]
       )
     end
   end

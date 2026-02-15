@@ -45,6 +45,18 @@ class Vote < T::Struct
       DB[:votes].where(date_range_id: date_range_id).select_map(:id)
     end
 
+    sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[Vote]) }
+    def updated_since_for_workspace(workspace_id, since)
+      dataset
+        .join(:date_ranges, id: :date_range_id)
+        .join(:date_polls, id: Sequel[:date_ranges][:date_poll_id])
+        .join(:events, id: Sequel[:date_polls][:event_id])
+        .where(Sequel[:events][:workspace_id] => workspace_id)
+        .where(Sequel.lit("votes.updated_at > ?", since))
+        .select_all(:votes)
+        .all
+    end
+
     sig { params(date_range_ids: T::Array[String]).returns(T::Array[Vote]) }
     def for_date_range_ids(date_range_ids)
       return [] if date_range_ids.empty?

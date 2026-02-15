@@ -6,6 +6,7 @@ import {
 import { useWebSocketStore } from '@/stores/websocket'
 import { useWorkspaceStore } from '@/stores/workspace'
 import * as poolDb from '@/api/poolDb'
+import { CACHE_VERSION } from '@/api/poolDb'
 import type { PoolChange } from '@/stores/objectPool'
 import type { PoolObject } from '@/types/pool'
 
@@ -56,8 +57,12 @@ export function usePoolPersistence() {
     if (!expectedWorkspaceId) return
 
     try {
-      const { workspaceId, objects, pendingUpdates } = await poolDb.loadAll()
-      if (workspaceId !== expectedWorkspaceId) {
+      const { workspaceId, syncedAt, cacheVersion, objects, pendingUpdates } =
+        await poolDb.loadAll()
+      if (
+        workspaceId !== expectedWorkspaceId ||
+        cacheVersion !== CACHE_VERSION
+      ) {
         await poolDb.clearAll()
         return
       }
@@ -73,6 +78,11 @@ export function usePoolPersistence() {
 
       const wsStore = useWebSocketStore()
       wsStore.hasCachedData = true
+
+      // Restore syncedAt so the next sync can be partial
+      if (syncedAt && expectedWorkspaceId) {
+        wsStore.restoreSyncTimestamp(expectedWorkspaceId, syncedAt)
+      }
     } catch {
       // IndexedDB might be unavailable — proceed without cache
     }
@@ -98,9 +108,13 @@ export function usePoolPersistence() {
           }
           pendingSaves = []
           pendingRemoves = []
-          poolDb.replaceAll(workspaceId, change.objects).catch((e) => {
-            console.warn('Failed to replace pool cache in IndexedDB', e)
-          })
+          const wsStore = useWebSocketStore()
+          const syncedAt = wsStore.getSyncedAt(workspaceId)
+          poolDb
+            .replaceAll(workspaceId, change.objects, syncedAt)
+            .catch((e) => {
+              console.warn('Failed to replace pool cache in IndexedDB', e)
+            })
         }
         return
       }
@@ -109,6 +123,18 @@ export function usePoolPersistence() {
         pendingSaves.push(...change.objects)
         scheduleFlush()
         schedulePendingFlush()
+        // Persist updated syncedAt after partial sync
+        const workspaceStore = useWorkspaceStore()
+        const wId = workspaceStore.currentWorkspaceId
+        if (wId) {
+          const wsStore = useWebSocketStore()
+          const syncedAt = wsStore.getSyncedAt(wId)
+          if (syncedAt) {
+            poolDb.saveSyncedAt(syncedAt).catch((e) => {
+              console.warn('Failed to persist syncedAt to IndexedDB', e)
+            })
+          }
+        }
       } else if (change.type === 'set') {
         pendingSaves.push(change.object)
         scheduleFlush()

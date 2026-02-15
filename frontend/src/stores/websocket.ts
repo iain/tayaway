@@ -29,7 +29,10 @@ interface BroadcastMessage {
 interface SyncMessage {
   type: 'sync'
   data: {
+    syncType?: 'full' | 'partial'
+    syncedAt?: string
     objects: PoolObject[]
+    deleted?: DeletedObject[]
   }
 }
 
@@ -49,11 +52,23 @@ interface ServerMessage {
   message?: string
 }
 
+// Cascade relationship map: when an object is deleted, also remove its dependents
+const CASCADE_RELATIONS: Partial<
+  Record<ObjectType, { childType: ObjectType; foreignKey: string }[]>
+> = {
+  event: [{ childType: 'datePoll', foreignKey: 'eventId' }],
+  datePoll: [{ childType: 'dateRange', foreignKey: 'datePollId' }],
+  dateRange: [{ childType: 'vote', foreignKey: 'dateRangeId' }],
+}
+
 export const useWebSocketStore = defineStore('websocket', () => {
   const state = ref<ConnectionState>('disconnected')
   const workspaceIds = ref<string[]>([])
   const hasSynced = ref(false)
   const hasCachedData = ref(false)
+
+  // Track last sync timestamp per workspace for partial sync
+  const syncTimestamps = new Map<string, string>()
 
   let socket: WebSocket | null = null
   let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
@@ -63,6 +78,14 @@ export const useWebSocketStore = defineStore('websocket', () => {
   const isReconnecting = computed(
     () => hasSynced.value && state.value !== 'authenticated'
   )
+
+  function getSyncedAt(workspaceId: string): string | undefined {
+    return syncTimestamps.get(workspaceId)
+  }
+
+  function restoreSyncTimestamp(workspaceId: string, syncedAt: string): void {
+    syncTimestamps.set(workspaceId, syncedAt)
+  }
 
   async function getWebSocketUrl(): Promise<string> {
     const { data } = await api.post<{ ticket: string }>(
@@ -146,9 +169,11 @@ export const useWebSocketStore = defineStore('websocket', () => {
     const workspaceStore = useWorkspaceStore()
     workspaceStore.initialize(message.workspaceIds)
     if (workspaceStore.currentWorkspaceId) {
+      const since = getSyncedAt(workspaceStore.currentWorkspaceId)
       send({
         type: 'switch_workspace',
         workspaceId: workspaceStore.currentWorkspaceId,
+        since: since ?? null,
       })
     }
 
@@ -166,10 +191,63 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
   function handleSync(message: SyncMessage): void {
     const pool = useObjectPoolStore()
-    if (message.data?.objects) {
-      pool.replaceObjects(message.data.objects)
+    const workspaceStore = useWorkspaceStore()
+
+    if (message.data?.syncType === 'full') {
+      // Full sync: replace everything — server is authoritative
+      if (message.data.objects) {
+        pool.replaceObjects(message.data.objects)
+      }
+    } else if (message.data?.syncType === 'partial') {
+      // Partial sync: import changed objects, remove deleted ones
+      if (message.data.objects?.length) {
+        pool.importObjects(message.data.objects)
+      }
+      if (message.data.deleted?.length) {
+        for (const item of message.data.deleted) {
+          cascadeRemove(pool, item.objectType, item.id)
+        }
+      }
+    } else {
+      // No syncType (e.g. workspace summaries): import without clearing
+      if (message.data?.objects) {
+        pool.importObjects(message.data.objects)
+      }
     }
+
+    // Store syncedAt for next partial sync
+    if (message.data?.syncedAt && workspaceStore.currentWorkspaceId) {
+      syncTimestamps.set(
+        workspaceStore.currentWorkspaceId,
+        message.data.syncedAt
+      )
+    }
+
     hasSynced.value = true
+  }
+
+  /** Remove an object and cascade-remove its dependents from the pool. */
+  function cascadeRemove(
+    pool: ReturnType<typeof useObjectPoolStore>,
+    objectType: ObjectType,
+    id: string
+  ): void {
+    // Find children before removing (need the object's data for FK lookups)
+    const relations = CASCADE_RELATIONS[objectType]
+    if (relations) {
+      for (const rel of relations) {
+        const children = pool
+          .getAll(rel.childType)
+          .filter(
+            (obj) =>
+              (obj as unknown as Record<string, string>)[rel.foreignKey] === id
+          )
+        for (const child of children) {
+          cascadeRemove(pool, rel.childType, child.id)
+        }
+      }
+    }
+    pool.remove(objectType, id)
   }
 
   function handleBroadcast(message: BroadcastMessage): void {
@@ -178,7 +256,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     if (message.action === 'delete' && message.data?.deleted) {
       // Handle deletions from the deleted array
       for (const item of message.data.deleted) {
-        pool.remove(item.objectType, item.id)
+        cascadeRemove(pool, item.objectType, item.id)
       }
     } else if (message.action === 'update' && message.data?.objects) {
       pool.importObjects(message.data.objects)
@@ -188,7 +266,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
   function sendSwitchWorkspace(workspaceId: string): void {
     hasSynced.value = false
     hasCachedData.value = false
-    send({ type: 'switch_workspace', workspaceId })
+    const since = getSyncedAt(workspaceId)
+    send({ type: 'switch_workspace', workspaceId, since: since ?? null })
   }
 
   function send(data: object): void {
@@ -277,6 +356,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
   function $reset(): void {
     disconnect()
+    syncTimestamps.clear()
   }
 
   // Deprecated - kept for backwards compatibility during migration
@@ -312,6 +392,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
     reconnect,
     disconnect,
     sendSwitchWorkspace,
+    getSyncedAt,
+    restoreSyncTimestamp,
     // Deprecated - kept for backwards compatibility
     subscribe,
     unsubscribe,
