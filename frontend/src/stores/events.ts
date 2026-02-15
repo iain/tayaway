@@ -16,8 +16,8 @@ export const useEventsStore = defineStore('events', () => {
       objectType: 'event',
       name: data.name,
       description: data.description ?? null,
-      startDate: null,
-      endDate: null,
+      startDate: data.startDate ?? null,
+      endDate: data.endDate ?? null,
       workspaceId: useWorkspaceStore().currentWorkspaceId!,
       memberId: useAuthStore().currentMemberId!,
       datePollId: null,
@@ -30,7 +30,10 @@ export const useEventsStore = defineStore('events', () => {
       tempEvent,
       (commandQueue) =>
         commandQueue.enqueue<PoolApiResponse>('POST', '/events', {
-          ...data,
+          name: data.name,
+          description: data.description,
+          start_date: data.startDate,
+          end_date: data.endDate,
           id: eventId,
           workspace_id: useWorkspaceStore().currentWorkspaceId,
         })
@@ -40,7 +43,12 @@ export const useEventsStore = defineStore('events', () => {
 
   async function updateEvent(id: string, data: UpdateEventRequest) {
     await update('Failed to update event', 'event', id, data, (commandQueue) =>
-      commandQueue.enqueue<PoolApiResponse>('PUT', `/events/${id}`, data)
+      commandQueue.enqueue<PoolApiResponse>('PUT', `/events/${id}`, {
+        name: data.name,
+        description: data.description,
+        start_date: data.startDate,
+        end_date: data.endDate,
+      })
     )
   }
 

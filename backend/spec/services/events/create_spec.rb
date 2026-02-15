@@ -57,6 +57,74 @@ RSpec.describe Events::Create do
     expect(event[:id]).to eq(client_id)
   end
 
+  it "creates event with start and end dates" do
+    user = TestFactories.user
+    workspace = TestFactories.workspace
+
+    result = described_class.call(
+      workspace_id: workspace[:id],
+      user_id: user[:id],
+      name: "Holiday Trip",
+      description: nil,
+      start_date: "2026-03-15",
+      end_date: "2026-03-20"
+    )
+
+    expect(result.success?).to be true
+    event = result.value![:objects].find { |o| o[:objectType] == "event" }
+    expect(event[:startDate]).to eq("2026-03-15")
+    expect(event[:endDate]).to eq("2026-03-20")
+  end
+
+  it "returns failure when only start_date is provided" do
+    user = TestFactories.user
+    workspace = TestFactories.workspace
+
+    result = described_class.call(
+      workspace_id: workspace[:id],
+      user_id: user[:id],
+      name: "Event",
+      description: nil,
+      start_date: "2026-03-15"
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Both start date and end date must be provided")
+  end
+
+  it "returns failure when only end_date is provided" do
+    user = TestFactories.user
+    workspace = TestFactories.workspace
+
+    result = described_class.call(
+      workspace_id: workspace[:id],
+      user_id: user[:id],
+      name: "Event",
+      description: nil,
+      end_date: "2026-03-20"
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Both start date and end date must be provided")
+  end
+
+  it "returns failure when start_date is after end_date" do
+    user = TestFactories.user
+    workspace = TestFactories.workspace
+
+    result = described_class.call(
+      workspace_id: workspace[:id],
+      user_id: user[:id],
+      name: "Event",
+      description: nil,
+      start_date: "2026-03-20",
+      end_date: "2026-03-15"
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Start date must be before or equal to end date")
+  end
+
   it "returns existing event on idempotent replay with same id" do
     user = TestFactories.user
     workspace = TestFactories.workspace

@@ -82,12 +82,16 @@ function handleCreate(): void {
 
 async function handleModalSave(
   name: string,
-  description: string
+  description: string,
+  startDate: string | undefined,
+  endDate: string | undefined
 ): Promise<void> {
   try {
     const { eventId, queued } = await eventsStore.createEvent({
       name,
       description: description || undefined,
+      startDate,
+      endDate,
     })
     showModal.value = false
     if (queued) {

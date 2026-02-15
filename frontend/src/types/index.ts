@@ -115,11 +115,15 @@ export interface EventResponse {
 export interface CreateEventRequest {
   name: string
   description?: string
+  startDate?: string
+  endDate?: string
 }
 
 export interface UpdateEventRequest {
   name: string
   description?: string
+  startDate?: string | null
+  endDate?: string | null
 }
 
 // Member management types

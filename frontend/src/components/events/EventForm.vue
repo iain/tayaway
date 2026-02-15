@@ -5,6 +5,8 @@ import { FormInput, FormTextarea, FormActions } from '@/components/form'
 export interface EventFormData {
   name: string
   description: string
+  startDate: string
+  endDate: string
 }
 
 const props = defineProps<{
@@ -20,6 +22,8 @@ const emit = defineEmits<{
 
 const name = ref('')
 const description = ref('')
+const startDate = ref('')
+const endDate = ref('')
 
 // Initialize form with initial data if provided
 watch(
@@ -28,6 +32,8 @@ watch(
     if (data) {
       name.value = data.name
       description.value = data.description
+      startDate.value = data.startDate
+      endDate.value = data.endDate
     }
   },
   { immediate: true }
@@ -42,6 +48,8 @@ function handleSubmit(): void {
   emit('submit', {
     name: name.value.trim(),
     description: description.value.trim(),
+    startDate: startDate.value,
+    endDate: endDate.value,
   })
 }
 
@@ -71,6 +79,23 @@ function handleCancel(): void {
         :rows="3"
         data-testid="event-description-input"
       />
+
+      <div class="grid grid-cols-2 gap-4">
+        <FormInput
+          id="start-date"
+          v-model="startDate"
+          type="date"
+          label="Start date (optional)"
+          data-testid="event-start-date-input"
+        />
+        <FormInput
+          id="end-date"
+          v-model="endDate"
+          type="date"
+          label="End date (optional)"
+          data-testid="event-end-date-input"
+        />
+      </div>
     </div>
 
     <FormActions

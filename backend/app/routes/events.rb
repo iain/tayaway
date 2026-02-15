@@ -49,7 +49,9 @@ class App
           user_id: user.id,
           name: r.params["name"]&.strip,
           description: r.params["description"]&.strip,
-          id: r.params["id"]
+          id: r.params["id"],
+          start_date: r.params["start_date"]&.strip,
+          end_date: r.params["end_date"]&.strip
         )
         handle_result(result, success_status: 201)
       end
@@ -82,7 +84,9 @@ class App
             event_id: event.id,
             current_user_id: user.id,
             name: r.params["name"]&.strip,
-            description: r.params["description"]&.strip
+            description: r.params["description"]&.strip,
+            start_date: r.params["start_date"]&.strip,
+            end_date: r.params["end_date"]&.strip
           )
           handle_result(result)
         end

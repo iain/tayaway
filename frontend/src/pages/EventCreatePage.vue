@@ -18,6 +18,8 @@ async function handleSubmit(data: EventFormData): Promise<void> {
     const { queued } = await eventsStore.createEvent({
       name: data.name,
       description: data.description || undefined,
+      startDate: data.startDate || undefined,
+      endDate: data.endDate || undefined,
     })
     if (queued) {
       const notifications = useNotificationsStore()

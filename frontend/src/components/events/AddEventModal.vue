@@ -11,11 +11,19 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  save: [name: string, description: string]
+  save: [
+    name: string,
+    description: string,
+    startDate: string | undefined,
+    endDate: string | undefined,
+  ]
 }>()
 
 const name = ref('')
 const description = ref('')
+const setDates = ref(false)
+const startDate = ref('')
+const endDate = ref('')
 
 watch(
   () => props.open,
@@ -23,13 +31,22 @@ watch(
     if (isOpen) {
       name.value = ''
       description.value = ''
+      setDates.value = false
+      startDate.value = ''
+      endDate.value = ''
     }
   }
 )
 
 function handleSave(): void {
   if (name.value.trim()) {
-    emit('save', name.value.trim(), description.value.trim())
+    emit(
+      'save',
+      name.value.trim(),
+      description.value.trim(),
+      setDates.value && startDate.value ? startDate.value : undefined,
+      setDates.value && endDate.value ? endDate.value : undefined
+    )
   }
 }
 
@@ -60,6 +77,40 @@ function handleClose(): void {
         :rows="3"
         :disabled="loading"
       />
+
+      <div class="flex items-center gap-2">
+        <input
+          id="set-dates"
+          v-model="setDates"
+          type="checkbox"
+          class="size-4 rounded border-gray-300 text-rose-600 focus:ring-rose-500 dark:border-stone-600 dark:bg-stone-700"
+          :disabled="loading"
+        />
+        <label
+          for="set-dates"
+          class="text-sm font-medium text-gray-700 dark:text-stone-300"
+          >Set dates</label
+        >
+      </div>
+
+      <div v-if="setDates" class="grid grid-cols-2 gap-4">
+        <FormInput
+          id="event-start-date"
+          v-model="startDate"
+          type="date"
+          label="Start date"
+          required
+          :disabled="loading"
+        />
+        <FormInput
+          id="event-end-date"
+          v-model="endDate"
+          type="date"
+          label="End date"
+          required
+          :disabled="loading"
+        />
+      </div>
 
       <div class="mt-6 flex items-center justify-end gap-x-6">
         <button

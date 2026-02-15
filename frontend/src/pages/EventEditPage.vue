@@ -29,6 +29,8 @@ watch(
       initialData.value = {
         name: e.name,
         description: e.description || '',
+        startDate: e.startDate || '',
+        endDate: e.endDate || '',
       }
     }
   },
@@ -41,6 +43,8 @@ async function handleSubmit(data: EventFormData): Promise<void> {
     await eventsStore.updateEvent(eventId, {
       name: data.name,
       description: data.description || undefined,
+      startDate: data.startDate || undefined,
+      endDate: data.endDate || undefined,
     })
     router.push(`/events/${eventId}`)
   } catch {
