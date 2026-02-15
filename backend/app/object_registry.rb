@@ -1,0 +1,31 @@
+# typed: true
+# frozen_string_literal: true
+
+# Central registry of all pool object types. Single source of truth used by
+# Websocket::Listener, Sync::WorkspaceSync, and PoolSerializer.
+module ObjectRegistry
+  class Entry < T::Struct
+    const :key, String
+    const :model, String
+    const :client_type, String
+    const :pool_method, Symbol
+    const :tracks_user, T::Boolean
+  end
+
+  TYPES = T.let(
+    [
+      Entry.new(key: "event",       model: "Event",                client_type: "event",      pool_method: :add_event,       tracks_user: true),
+      Entry.new(key: "workspace",   model: "Workspace",            client_type: "workspace",  pool_method: :add_workspace,   tracks_user: false),
+      Entry.new(key: "member",      model: "WorkspaceMembership",  client_type: "member",     pool_method: :add_member,      tracks_user: false),
+      Entry.new(key: "date_poll",   model: "DatePoll",             client_type: "datePoll",   pool_method: :add_date_poll,   tracks_user: false),
+      Entry.new(key: "date_range",  model: "DateRange",            client_type: "dateRange",  pool_method: :add_date_range,  tracks_user: false),
+      Entry.new(key: "vote",        model: "Vote",                 client_type: "vote",       pool_method: :add_vote,        tracks_user: true)
+    ].freeze,
+    T::Array[Entry]
+  )
+
+  BY_KEY = T.let(
+    TYPES.each_with_object({}) { |t, h| h[t.key] = t }.freeze,
+    T::Hash[String, Entry]
+  )
+end

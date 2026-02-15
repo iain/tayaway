@@ -18,20 +18,6 @@ module Websocket
     CHANNEL = "tayaway_objects"
     RETRY_DELAY = 5 # seconds
 
-    # Registry mapping object types to their model class and pool serializer method.
-    # client_type is the camelCase name used by the frontend pool.
-    OBJECT_TYPES = T.let(
-      {
-        "event" => { model: "Event", pool_method: :add_event, client_type: "event" },
-        "member" => { model: "WorkspaceMembership", pool_method: :add_member, client_type: "member" },
-        "date_poll" => { model: "DatePoll", pool_method: :add_date_poll, client_type: "datePoll" },
-        "date_range" => { model: "DateRange", pool_method: :add_date_range, client_type: "dateRange" },
-        "vote" => { model: "Vote", pool_method: :add_vote, client_type: "vote" },
-        "workspace" => { model: "Workspace", pool_method: :add_workspace, client_type: "workspace" }
-      }.freeze,
-      T::Hash[String, T::Hash[Symbol, T.untyped]]
-    )
-
     class << self
       extend T::Sig
 
@@ -60,9 +46,9 @@ module Websocket
         !!@running
       end
 
-      sig { params(object_type: String).returns(T.nilable(T::Hash[Symbol, T.untyped])) }
+      sig { params(object_type: String).returns(T.nilable(ObjectRegistry::Entry)) }
       def type_config(object_type)
-        OBJECT_TYPES[object_type]
+        ObjectRegistry::BY_KEY[object_type]
       end
 
       sig { params(object_type: String, object_id: String).returns(T.untyped) }
@@ -70,7 +56,7 @@ module Websocket
         config = type_config(object_type)
         return nil unless config
 
-        model_class = Object.const_get(config[:model])
+        model_class = Object.const_get(config.model)
         model_class.find(object_id)
       end
 
@@ -125,15 +111,15 @@ module Websocket
           object = find_object(object_type, object_id)
           if object
             pool = PoolSerializer.new(workspace_id: workspace_id)
-            pool.send(config[:pool_method], object)
+            pool.send(config.pool_method, object)
             message[:data] = { objects: pool.to_a }
           else
             # Object was deleted between notify and fetch
             message[:action] = "delete"
-            message[:data] = { deleted: [{ objectType: config[:client_type], id: object_id }] }
+            message[:data] = { deleted: [{ objectType: config.client_type, id: object_id }] }
           end
         when "delete"
-          message[:data] = { deleted: [{ objectType: config[:client_type], id: object_id }] }
+          message[:data] = { deleted: [{ objectType: config.client_type, id: object_id }] }
         end
 
         Websocket::ConnectionManager.instance.broadcast_to_workspace(workspace_id, message)

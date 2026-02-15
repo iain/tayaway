@@ -39,7 +39,7 @@ class DateRange < T::Struct
     end
 
     sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[DateRange]) }
-    def updated_since_for_workspace(workspace_id, since)
+    def changed_since(workspace_id, since)
       dataset
         .join(:date_polls, id: :date_poll_id)
         .join(:events, id: Sequel[:date_polls][:event_id])

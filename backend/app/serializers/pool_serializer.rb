@@ -69,13 +69,13 @@ class PoolSerializer
   end
 
   # Public alias for add_member_from_membership
-  sig { params(membership: WorkspaceMembership).void }
-  def add_member(membership)
+  sig { params(membership: WorkspaceMembership, cascade: T::Boolean).void }
+  def add_member(membership, cascade: true)
     add_member_from_membership(membership)
   end
 
-  sig { params(event: Event, include_workspace: T::Boolean).void }
-  def add_event(event, include_workspace: false)
+  sig { params(event: Event, include_workspace: T::Boolean, cascade: T::Boolean).void }
+  def add_event(event, include_workspace: false, cascade: true)
     key = "event:#{event.id}"
     return if @objects.key?(key)
 
@@ -91,6 +91,8 @@ class PoolSerializer
 
     @objects[key] = hash
 
+    return unless cascade
+
     # Add member for event creator
     user = User.find(event.user_id)
     add_member_from_user(user) if user
@@ -105,34 +107,38 @@ class PoolSerializer
     end
   end
 
-  sig { params(date_poll: DatePoll).void }
-  def add_date_poll(date_poll)
+  sig { params(date_poll: DatePoll, cascade: T::Boolean).void }
+  def add_date_poll(date_poll, cascade: true)
     key = "date_poll:#{date_poll.id}"
     return if @objects.key?(key)
 
     date_range_ids = DateRange.ids_for_date_poll(date_poll.id)
     @objects[key] = date_poll.to_api_hash(date_range_ids: date_range_ids)
 
+    return unless cascade
+
     # Add date ranges
     date_ranges = DateRange.for_date_poll(date_poll.id)
     date_ranges.each { |dr| add_date_range(dr) }
   end
 
-  sig { params(date_range: DateRange).void }
-  def add_date_range(date_range)
+  sig { params(date_range: DateRange, cascade: T::Boolean).void }
+  def add_date_range(date_range, cascade: true)
     key = "date_range:#{date_range.id}"
     return if @objects.key?(key)
 
     vote_ids = Vote.ids_for_date_range(date_range.id)
     @objects[key] = date_range.to_api_hash(vote_ids: vote_ids)
 
+    return unless cascade
+
     # Add votes
     votes = Vote.for_date_range(date_range.id)
     votes.each { |v| add_vote(v) }
   end
 
-  sig { params(vote: Vote).void }
-  def add_vote(vote)
+  sig { params(vote: Vote, cascade: T::Boolean).void }
+  def add_vote(vote, cascade: true)
     key = "vote:#{vote.id}"
     return if @objects.key?(key)
 
@@ -147,18 +153,22 @@ class PoolSerializer
 
     @objects[key] = hash
 
+    return unless cascade
+
     # Add member for voter
     user = User.find(vote.user_id)
     add_member_from_user(user) if user
   end
 
-  sig { params(workspace: Workspace).void }
-  def add_workspace(workspace)
+  sig { params(workspace: Workspace, cascade: T::Boolean).void }
+  def add_workspace(workspace, cascade: true)
     key = "workspace:#{workspace.id}"
     return if @objects.key?(key)
 
     member_ids = WorkspaceMembership.ids_for_workspace(workspace.id)
     @objects[key] = workspace.to_api_hash(member_ids: member_ids)
+
+    return unless cascade
 
     # Add members
     memberships = WorkspaceMembership.for_workspace(workspace.id)
@@ -184,65 +194,17 @@ class PoolSerializer
     events.each { |e| add_event(e) }
   end
 
-  # Flat (non-cascading) methods for partial sync.
-  # These serialize the object with required child IDs but don't load/serialize children.
-
-  sig { params(event: Event).void }
-  def add_event_flat(event)
-    key = "event:#{event.id}"
-    return if @objects.key?(key)
-
-    date_poll = DatePoll.find_by_event(event.id)
-    hash = event.to_api_hash(date_poll_id: date_poll&.id&.to_s)
-
-    # Replace userId with memberId
-    mid = member_id_for_user(event.user_id)
-    if mid
-      hash[:memberId] = mid
-      hash.delete(:userId)
-    end
-
-    @objects[key] = hash
-  end
-
-  sig { params(date_poll: DatePoll).void }
-  def add_date_poll_flat(date_poll)
-    key = "date_poll:#{date_poll.id}"
-    return if @objects.key?(key)
-
-    date_range_ids = DateRange.ids_for_date_poll(date_poll.id)
-    @objects[key] = date_poll.to_api_hash(date_range_ids: date_range_ids)
-  end
-
-  sig { params(date_range: DateRange).void }
-  def add_date_range_flat(date_range)
-    key = "date_range:#{date_range.id}"
-    return if @objects.key?(key)
-
-    vote_ids = Vote.ids_for_date_range(date_range.id)
-    @objects[key] = date_range.to_api_hash(vote_ids: vote_ids)
-  end
-
-  sig { params(workspace: Workspace).void }
-  def add_workspace_flat(workspace)
-    key = "workspace:#{workspace.id}"
-    return if @objects.key?(key)
-
-    member_ids = WorkspaceMembership.ids_for_workspace(workspace.id)
-    @objects[key] = workspace.to_api_hash(member_ids: member_ids)
-  end
-
   sig { params(items: T::Enumerable[T.untyped], type: Symbol).void }
   def add_all(items, type:)
-    items.each do |item|
-      case type
-      when :member_from_user then add_member_from_user(item)
-      when :member then add_member(item)
-      when :event then add_event(item)
-      when :date_poll then add_date_poll(item)
-      when :date_range then add_date_range(item)
-      when :vote then add_vote(item)
-      when :workspace then add_workspace(item)
+    entry = ObjectRegistry::BY_KEY[type.to_s]
+    if entry
+      items.each { |item| send(entry.pool_method, item) }
+    else
+      # Special types not in the registry
+      items.each do |item|
+        case type
+        when :member_from_user then add_member_from_user(item)
+        end
       end
     end
   end

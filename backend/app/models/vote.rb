@@ -46,7 +46,7 @@ class Vote < T::Struct
     end
 
     sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[Vote]) }
-    def updated_since_for_workspace(workspace_id, since)
+    def changed_since(workspace_id, since)
       dataset
         .join(:date_ranges, id: :date_range_id)
         .join(:date_polls, id: Sequel[:date_ranges][:date_poll_id])

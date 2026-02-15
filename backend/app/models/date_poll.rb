@@ -55,7 +55,7 @@ class DatePoll < T::Struct
     end
 
     sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[DatePoll]) }
-    def updated_since_for_workspace(workspace_id, since)
+    def changed_since(workspace_id, since)
       dataset
         .join(:events, id: :event_id)
         .where(Sequel[:events][:workspace_id] => workspace_id)

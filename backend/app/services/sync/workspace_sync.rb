@@ -53,29 +53,16 @@ module Sync
         synced_at = Time.now
         pool = PoolSerializer.new(workspace_id: workspace_id)
 
-        # Collect changed objects from each table
-        events = Event.updated_since(workspace_id, since)
-        events.each { |e| pool.add_event_flat(e) }
-
-        workspace = Workspace.updated_since(workspace_id, since)
-        pool.add_workspace_flat(workspace) if workspace
-
-        memberships = WorkspaceMembership.updated_since(workspace_id, since)
-        memberships.each { |m| pool.add_member(m) }
-
-        date_polls = DatePoll.updated_since_for_workspace(workspace_id, since)
-        date_polls.each { |dp| pool.add_date_poll_flat(dp) }
-
-        date_ranges = DateRange.updated_since_for_workspace(workspace_id, since)
-        date_ranges.each { |dr| pool.add_date_range_flat(dr) }
-
-        votes = Vote.updated_since_for_workspace(workspace_id, since)
-        votes.each { |v| pool.add_vote(v) }
-
-        # Collect referenced user IDs from changed events/votes and add as members
         user_ids = Set.new
-        events.each { |e| user_ids << e.user_id }
-        votes.each { |v| user_ids << v.user_id }
+
+        ObjectRegistry::TYPES.each do |entry|
+          model = Object.const_get(entry.model)
+          items = model.changed_since(workspace_id, since)
+          items.each do |item|
+            pool.send(entry.pool_method, item, cascade: false)
+            user_ids << item.user_id if entry.tracks_user
+          end
+        end
 
         users = User.for_ids(user_ids.map(&:to_s))
         users.each { |u| pool.add_member_from_user(u) }

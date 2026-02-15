@@ -48,7 +48,7 @@ class Event < T::Struct
     end
 
     sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[Event]) }
-    def updated_since(workspace_id, since)
+    def changed_since(workspace_id, since)
       dataset.where(workspace_id: workspace_id).where(Sequel.lit("updated_at > ?", since)).all
     end
 

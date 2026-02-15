@@ -30,9 +30,9 @@ class Workspace < T::Struct
       dataset.where(id: id).first
     end
 
-    sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T.nilable(Workspace)) }
-    def updated_since(workspace_id, since)
-      dataset.where(id: workspace_id).where(Sequel.lit("updated_at > ?", since)).first
+    sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[Workspace]) }
+    def changed_since(workspace_id, since)
+      dataset.where(id: workspace_id).where(Sequel.lit("updated_at > ?", since)).all
     end
 
     sig { params(user_id: T.any(String, UUID)).returns(T::Array[Workspace]) }
