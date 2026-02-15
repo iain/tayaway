@@ -67,13 +67,11 @@ module Auth
           created_at: now
         )
 
-        T.cast(
-          Success(
-            {
-              session_token: token,
-              user_id: magic_token.user_id
-            }
-          ), Result[T::Hash[Symbol, T.untyped], ServiceError]
+        T.cast(Success({
+          session_token: token,
+          user_id: magic_token.user_id
+        }
+                      ), Result[T::Hash[Symbol, T.untyped], ServiceError]
         )
       end
     end

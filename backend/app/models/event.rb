@@ -30,6 +30,7 @@ class Event < T::Struct
 
   class << self
     extend T::Sig
+    include Result::Methods
 
     sig { params(id: T.any(String, UUID)).returns(T.nilable(Event)) }
     def find(id)
@@ -61,6 +62,25 @@ class Event < T::Struct
     sig { returns(T::Array[Event]) }
     def all_ordered
       dataset.order(:created_at).all
+    end
+
+    sig { params(id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }
+    def find_result(id)
+      event = find(id)
+      if event
+        T.cast(Success(event), Result[Event, ServiceError])
+      else
+        T.cast(Failure(ServiceError.not_found("Event not found")), Result[Event, ServiceError])
+      end
+    end
+
+    sig { params(event: Event, current_user_id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }
+    def authorize_owner(event, current_user_id)
+      if event.user_id == current_user_id
+        T.cast(Success(event), Result[Event, ServiceError])
+      else
+        T.cast(Failure(ServiceError.forbidden("Access denied")), Result[Event, ServiceError])
+      end
     end
 
     private

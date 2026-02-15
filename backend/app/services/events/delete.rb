@@ -18,31 +18,12 @@ module Events
           .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
       def call(event_id:, current_user_id:)
-        find_event(event_id)
-          .bind { |event| authorize_owner(event, current_user_id) }
-          .bind { |event| delete_event(event) }
+        Event.find_result(event_id)
+             .bind { |event| Event.authorize_owner(event, current_user_id) }
+             .bind { |event| delete_event(event) }
       end
 
       private
-
-      sig { params(event_id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }
-      def find_event(event_id)
-        event = Event.find(event_id)
-        if event
-          T.cast(Success(event), Result[Event, ServiceError])
-        else
-          T.cast(Failure(ServiceError.not_found("Event not found")), Result[Event, ServiceError])
-        end
-      end
-
-      sig { params(event: Event, current_user_id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }
-      def authorize_owner(event, current_user_id)
-        if event.user_id == current_user_id
-          T.cast(Success(event), Result[Event, ServiceError])
-        else
-          T.cast(Failure(ServiceError.forbidden("Access denied")), Result[Event, ServiceError])
-        end
-      end
 
       sig { params(event: Event).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
       def delete_event(event)

@@ -14,6 +14,15 @@
 class PoolSerializer
   extend T::Sig
 
+  extend Result::Methods
+
+  sig { params(event: Event).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
+  def self.event_result(event)
+    pool = new(workspace_id: event.workspace_id)
+    pool.add_event(T.must(Event.find(event.id)))
+    T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+  end
+
   sig { params(workspace_id: T.nilable(T.any(String, UUID))).void }
   def initialize(workspace_id: nil)
     @objects = T.let({}, T::Hash[String, T::Hash[Symbol, T.untyped]])

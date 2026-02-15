@@ -47,6 +47,7 @@ class DatePoll < T::Struct
 
   class << self
     extend T::Sig
+    include Result::Methods
 
     sig { params(id: T.any(String, UUID)).returns(T.nilable(DatePoll)) }
     def find(id)
@@ -66,6 +67,25 @@ class DatePoll < T::Struct
     sig { params(event_id: T.any(String, UUID)).returns(T.nilable(DatePoll)) }
     def find_by_event(event_id)
       dataset.where(event_id: event_id).first
+    end
+
+    sig { params(event_id: T.any(String, UUID)).returns(Result[DatePoll, ServiceError]) }
+    def find_by_event_result(event_id)
+      poll = find_by_event(event_id)
+      if poll
+        T.cast(Success(poll), Result[DatePoll, ServiceError])
+      else
+        T.cast(Failure(ServiceError.not_found("No date poll found for this event")), Result[DatePoll, ServiceError])
+      end
+    end
+
+    sig { params(poll: DatePoll).returns(Result[DatePoll, ServiceError]) }
+    def validate_open(poll)
+      if poll.open?
+        T.cast(Success(poll), Result[DatePoll, ServiceError])
+      else
+        T.cast(Failure(ServiceError.validation("Poll is not open for changes")), Result[DatePoll, ServiceError])
+      end
     end
 
     private

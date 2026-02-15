@@ -16,33 +16,14 @@ module DatePolls
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
       def call(event_id:, current_user_id:, deadline:)
-        find_event(event_id)
-          .bind { |event| authorize_owner(event, current_user_id) }
-          .bind { |event| validate_no_existing_poll(event) }
-          .bind { |event| validate_deadline(deadline, event) }
-          .bind { |(event, parsed_deadline)| create_poll(event, parsed_deadline) }
+        Event.find_result(event_id)
+             .bind { |event| Event.authorize_owner(event, current_user_id) }
+             .bind { |event| validate_no_existing_poll(event) }
+             .bind { |event| validate_deadline(deadline, event) }
+             .bind { |(event, parsed_deadline)| create_poll(event, parsed_deadline) }
       end
 
       private
-
-      sig { params(event_id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }
-      def find_event(event_id)
-        event = Event.find(event_id)
-        if event
-          T.cast(Success(event), Result[Event, ServiceError])
-        else
-          T.cast(Failure(ServiceError.not_found("Event not found")), Result[Event, ServiceError])
-        end
-      end
-
-      sig { params(event: Event, current_user_id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }
-      def authorize_owner(event, current_user_id)
-        if event.user_id == current_user_id
-          T.cast(Success(event), Result[Event, ServiceError])
-        else
-          T.cast(Failure(ServiceError.forbidden("Access denied")), Result[Event, ServiceError])
-        end
-      end
 
       sig { params(event: Event).returns(Result[Event, ServiceError]) }
       def validate_no_existing_poll(event)
@@ -90,10 +71,7 @@ module DatePolls
           Broadcaster.object_changed("date_poll", poll_id, workspace_id: event.workspace_id)
         end
 
-        pool = PoolSerializer.new(workspace_id: event.workspace_id)
-        pool.add_event(T.must(Event.find(event.id)))
-
-        T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        PoolSerializer.event_result(event)
       end
     end
   end

@@ -27,32 +27,13 @@ module Events
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
       def call(event_id:, current_user_id:, name:, description:)
-        find_event(event_id)
-          .bind { |event| authorize_owner(event, current_user_id) }
-          .bind { |event| validate_name_with_event(name, event) }
-          .bind { |event| update_event(event, name, description) }
+        Event.find_result(event_id)
+             .bind { |event| Event.authorize_owner(event, current_user_id) }
+             .bind { |event| validate_name_with_event(name, event) }
+             .bind { |event| update_event(event, name, description) }
       end
 
       private
-
-      sig { params(event_id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }
-      def find_event(event_id)
-        event = Event.find(event_id)
-        if event
-          T.cast(Success(event), Result[Event, ServiceError])
-        else
-          T.cast(Failure(ServiceError.not_found("Event not found")), Result[Event, ServiceError])
-        end
-      end
-
-      sig { params(event: Event, current_user_id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }
-      def authorize_owner(event, current_user_id)
-        if event.user_id == current_user_id
-          T.cast(Success(event), Result[Event, ServiceError])
-        else
-          T.cast(Failure(ServiceError.forbidden("Access denied")), Result[Event, ServiceError])
-        end
-      end
 
       sig { params(name: T.nilable(String), event: Event).returns(Result[Event, ServiceError]) }
       def validate_name_with_event(name, event)
@@ -74,7 +55,7 @@ module Events
         event_id = event.id
         workspace_id = event.workspace_id
 
-        updated_event = DB.transaction do
+        DB.transaction do
           DB[:events].where(id: event_id).update(
             name: name,
             description: description&.empty? ? nil : description,
@@ -82,14 +63,10 @@ module Events
           )
 
           Broadcaster.object_changed("event", event_id, workspace_id: workspace_id)
-
-          Event.find(event_id)
         end
 
-        pool = PoolSerializer.new(workspace_id: workspace_id)
-        pool.add_event(updated_event)
-
-        T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        updated_event = T.must(Event.find(event_id))
+        PoolSerializer.event_result(updated_event)
       end
     end
   end
