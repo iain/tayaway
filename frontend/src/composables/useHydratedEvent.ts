@@ -66,6 +66,8 @@ export interface HydratedEvent {
   id: string
   name: string
   description: string | null
+  startDate: string | null
+  endDate: string | null
   workspaceId: string
   workspace: HydratedWorkspace | undefined
   memberId: string
@@ -133,6 +135,8 @@ function hydrateEvent(
     id: poolEvent.id,
     name: poolEvent.name,
     description: poolEvent.description,
+    startDate: poolEvent.startDate,
+    endDate: poolEvent.endDate,
     workspaceId: poolEvent.workspaceId,
     workspace,
     memberId: poolEvent.memberId,

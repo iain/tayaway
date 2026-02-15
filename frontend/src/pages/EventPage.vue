@@ -2,16 +2,24 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeftIcon, PencilIcon, UserIcon } from '@heroicons/vue/24/outline'
+import {
+  ArrowLeftIcon,
+  CalendarDaysIcon,
+  PencilIcon,
+  UserIcon,
+} from '@heroicons/vue/24/outline'
 import { CheckCircleIcon } from '@heroicons/vue/24/solid'
 import { useAuthStore } from '@/stores'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
+import { useCalendar } from '@/composables/useCalendar'
 import DatePollSection from '@/components/events/DatePollSection.vue'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const { currentMemberId } = storeToRefs(authStore)
+
+const { formatDateDisplay } = useCalendar()
 
 const eventId = computed(() => route.params.id as string)
 
@@ -120,6 +128,16 @@ function handleVote(): void {
           class="mt-2 text-lg text-gray-600 dark:text-stone-400"
         >
           {{ event.description }}
+        </p>
+        <p
+          v-if="event.startDate && event.endDate"
+          class="mt-2 flex items-center gap-1.5 text-sm text-gray-600 dark:text-stone-300"
+        >
+          <CalendarDaysIcon class="size-4" />
+          {{ formatDateDisplay(event.startDate) }}
+          <template v-if="event.startDate !== event.endDate">
+            &ndash; {{ formatDateDisplay(event.endDate) }}
+          </template>
         </p>
         <p class="mt-2 text-sm text-gray-500 dark:text-stone-400">
           Created by

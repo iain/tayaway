@@ -116,7 +116,7 @@ ws_tickets         id, user_id, ticket (JWT), used_at
 workspaces              id, name, timestamps
 workspace_memberships   id, workspace_id, user_id, role (owner/admin/member), unique(workspace_id, user_id)
 
-events             id, workspace_id, user_id (nullable, set null on delete), name, description, timestamps
+events             id, workspace_id, user_id (nullable, set null on delete), name, description, start_date (nullable), end_date (nullable), timestamps
 date_polls         id, event_id (unique, cascade), deadline, selected_date_range_id, closed_at, timestamps
 date_ranges        id, date_poll_id, start_date, end_date, timestamps, check(start_date <= end_date)
 votes              id, date_range_id, user_id, response (yes/no/preferably_not), comment, unique(date_range_id, user_id)

@@ -66,16 +66,25 @@ module DatePolls
           .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
       def close_poll(event, poll, selected_date_range_id)
+        date_range = T.must(DateRange.find(selected_date_range_id))
+
         DB.transaction do
           DB[:date_polls].where(id: poll.id).update(
             selected_date_range_id: selected_date_range_id,
             closed_at: Time.now
           )
 
+          DB[:events].where(id: event.id).update(
+            start_date: date_range.start_date,
+            end_date: date_range.end_date
+          )
+
           Broadcaster.object_changed("date_poll", poll.id, workspace_id: event.workspace_id)
+          Broadcaster.object_changed("event", event.id, workspace_id: event.workspace_id)
         end
 
         pool = PoolSerializer.new(workspace_id: event.workspace_id)
+        pool.add_event(T.must(Event.find(event.id)))
         pool.add_date_poll(T.must(DatePoll.find(poll.id)))
         T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end

@@ -10,6 +10,8 @@ class Event < T::Struct
   const :user_id, UUID
   const :name, String
   const :description, T.nilable(String)
+  const :start_date, T.nilable(Date)
+  const :end_date, T.nilable(Date)
   const :created_at, Time
   const :updated_at, Time
 
@@ -20,6 +22,8 @@ class Event < T::Struct
       objectType: "event",
       name: name,
       description: description,
+      startDate: start_date&.iso8601,
+      endDate: end_date&.iso8601,
       workspaceId: workspace_id.to_s,
       userId: user_id.to_s,
       datePollId: date_poll_id,
@@ -98,6 +102,8 @@ class Event < T::Struct
         user_id: UUID.new(row[:user_id]),
         name: row[:name],
         description: row[:description],
+        start_date: row[:start_date],
+        end_date: row[:end_date],
         created_at: row[:created_at],
         updated_at: row[:updated_at]
       )

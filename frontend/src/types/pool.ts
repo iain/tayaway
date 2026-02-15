@@ -40,6 +40,8 @@ export interface ObjectTypeMap {
   event: PoolObjectBase<'event'> & {
     name: string
     description: string | null
+    startDate: string | null
+    endDate: string | null
     workspaceId: string
     memberId: string
     datePollId: string | null
