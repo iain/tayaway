@@ -93,7 +93,7 @@ function getInitials(email: string | undefined): string {
     <Disclosure
       v-slot="{ open, close }"
       as="nav"
-      class="bg-amber-600 dark:bg-amber-800"
+      class="sticky top-0 z-40 bg-amber-600 dark:bg-amber-800"
     >
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="flex h-16 items-center justify-between">
@@ -235,16 +235,21 @@ function getInitials(email: string | undefined): string {
                       :key="item.name"
                       v-slot="{ active, close: closeMenu }"
                     >
-                      <router-link
-                        :to="item.href"
+                      <button
+                        type="button"
                         :class="[
                           active ? 'bg-gray-100 dark:bg-stone-700' : '',
-                          'block px-4 py-2 text-sm text-gray-700 dark:text-stone-300',
+                          'block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-stone-300',
                         ]"
-                        @click="closeMenu"
+                        @click="
+                          () => {
+                            closeMenu()
+                            router.push(item.href)
+                          }
+                        "
                       >
                         {{ item.name }}
-                      </router-link>
+                      </button>
                     </MenuItem>
                     <MenuItem v-slot="{ active }">
                       <button
