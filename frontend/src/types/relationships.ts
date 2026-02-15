@@ -22,9 +22,9 @@ export type RelationshipSchema = {
 }
 
 export const relationshipSchema: RelationshipSchema = {
-  user: {},
+  member: {},
   event: {
-    user: { type: 'belongsTo', foreignKey: 'userId', targetType: 'user' },
+    member: { type: 'belongsTo', foreignKey: 'memberId', targetType: 'member' },
     dateRanges: {
       type: 'hasMany',
       foreignKey: 'dateRangeIds',
@@ -41,6 +41,6 @@ export const relationshipSchema: RelationshipSchema = {
       foreignKey: 'dateRangeId',
       targetType: 'dateRange',
     },
-    user: { type: 'belongsTo', foreignKey: 'userId', targetType: 'user' },
+    member: { type: 'belongsTo', foreignKey: 'memberId', targetType: 'member' },
   },
 } as const

@@ -122,12 +122,12 @@ export interface UpdateEventRequest {
   description?: string
 }
 
-// User management types
-export interface CreateUserResponse {
-  user_id: string
+// Member management types
+export interface CreateMemberResponse {
+  member_id: string
 }
 
-export interface CreateUserRequest {
+export interface CreateMemberRequest {
   name?: string
   email: string
 }

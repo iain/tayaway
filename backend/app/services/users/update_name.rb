@@ -67,22 +67,26 @@ module Users
       def update_name(user, name)
         user_id = user.id
 
-        updated_user = DB.transaction do
+        DB.transaction do
           DB[:users].where(id: user_id.to_s).update(
             name: T.must(name).strip,
             updated_at: Time.now
           )
 
-          # Broadcast to all workspaces the user belongs to
-          Workspace.for_user(user_id).each do |workspace|
-            Broadcaster.object_changed("user", user_id, workspace_id: workspace.id)
+          # Broadcast member changes to all workspaces the user belongs to
+          WorkspaceMembership.for_user(user_id).each do |m|
+            Broadcaster.object_changed("member", m.id, workspace_id: m.workspace_id)
           end
-
-          User.find(user_id)
         end
 
+        # Build pool with member objects for each workspace membership
+        memberships = WorkspaceMembership.for_user(user_id)
+
+        # Use the first workspace for pool context (members from all workspaces will be added)
         pool = PoolSerializer.new
-        pool.add_user(T.must(updated_user))
+        memberships.each do |m|
+          pool.add_member_from_membership(m)
+        end
 
         T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end

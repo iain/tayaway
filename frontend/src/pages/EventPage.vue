@@ -11,7 +11,7 @@ import DatePollSection from '@/components/events/DatePollSection.vue'
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-const { user } = storeToRefs(authStore)
+const { currentMemberId } = storeToRefs(authStore)
 
 const eventId = computed(() => route.params.id as string)
 
@@ -19,7 +19,7 @@ const eventId = computed(() => route.params.id as string)
 const { event } = useHydratedEvent(eventId)
 
 const isOwner = computed(() => {
-  return user.value?.id === event.value?.userId
+  return currentMemberId.value === event.value?.memberId
 })
 
 // Categorize workspace members by voting completeness
@@ -27,15 +27,15 @@ const membersNotVoted = computed(() => {
   if (!event.value?.workspace || !event.value.datePoll) return []
 
   const dateRanges = event.value.datePoll.dateRanges
-  const voterUserIds = new Set<string>()
+  const voterMemberIds = new Set<string>()
   for (const dateRange of dateRanges) {
     for (const vote of dateRange.votes) {
-      voterUserIds.add(vote.userId)
+      voterMemberIds.add(vote.memberId)
     }
   }
 
   return event.value.workspace.members.filter(
-    (member) => member.user && !voterUserIds.has(member.user.id)
+    (member) => !voterMemberIds.has(member.id)
   )
 })
 
@@ -45,22 +45,21 @@ const membersPartiallyVoted = computed(() => {
   const dateRanges = event.value.datePoll.dateRanges
   if (dateRanges.length <= 1) return []
 
-  // Count how many date ranges each user has voted on
-  const voteCountByUser = new Map<string, number>()
+  // Count how many date ranges each member has voted on
+  const voteCountByMember = new Map<string, number>()
   for (const dateRange of dateRanges) {
     for (const vote of dateRange.votes) {
-      voteCountByUser.set(
-        vote.userId,
-        (voteCountByUser.get(vote.userId) || 0) + 1
+      voteCountByMember.set(
+        vote.memberId,
+        (voteCountByMember.get(vote.memberId) || 0) + 1
       )
     }
   }
 
   return event.value.workspace.members.filter(
     (member) =>
-      member.user &&
-      voteCountByUser.has(member.user.id) &&
-      voteCountByUser.get(member.user.id)! < dateRanges.length
+      voteCountByMember.has(member.id) &&
+      voteCountByMember.get(member.id)! < dateRanges.length
   )
 })
 
@@ -123,7 +122,8 @@ function handleVote(): void {
           {{ event.description }}
         </p>
         <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-          Created by {{ event.user?.name || event.user?.email || 'Unknown' }}
+          Created by
+          {{ event.member?.name || event.member?.email || 'Unknown' }}
         </p>
       </header>
 
@@ -133,7 +133,7 @@ function handleVote(): void {
         <DatePollSection
           :event="event"
           :is-owner="isOwner"
-          :current-user-id="user?.id"
+          :current-member-id="currentMemberId"
           @vote="handleVote"
         />
 
@@ -179,7 +179,7 @@ function handleVote(): void {
                   :key="member.id"
                   class="flex items-center gap-3 rounded-md px-3 py-2"
                   :class="
-                    member.user?.id === user?.id
+                    member.id === currentMemberId
                       ? 'bg-amber-50 ring-1 ring-amber-200 dark:bg-amber-900/20 dark:ring-amber-800'
                       : 'bg-gray-50 dark:bg-gray-700/50'
                   "
@@ -187,7 +187,7 @@ function handleVote(): void {
                   <div
                     class="flex size-8 items-center justify-center rounded-full"
                     :class="
-                      member.user?.id === user?.id
+                      member.id === currentMemberId
                         ? 'bg-amber-200 dark:bg-amber-800'
                         : 'bg-gray-200 dark:bg-gray-600'
                     "
@@ -195,16 +195,16 @@ function handleVote(): void {
                     <UserIcon
                       class="size-4"
                       :class="
-                        member.user?.id === user?.id
+                        member.id === currentMemberId
                           ? 'text-amber-600 dark:text-amber-400'
                           : 'text-gray-500 dark:text-gray-400'
                       "
                     />
                   </div>
                   <span class="text-gray-900 dark:text-white">
-                    {{ member.user?.name || member.user?.email || 'Unknown' }}
+                    {{ member.name || member.email || 'Unknown' }}
                     <span
-                      v-if="member.user?.id === user?.id"
+                      v-if="member.id === currentMemberId"
                       class="text-sm text-amber-600 dark:text-amber-400"
                     >
                       (you)
@@ -227,7 +227,7 @@ function handleVote(): void {
                   :key="member.id"
                   class="flex items-center gap-3 rounded-md px-3 py-2"
                   :class="
-                    member.user?.id === user?.id
+                    member.id === currentMemberId
                       ? 'bg-amber-50 ring-1 ring-amber-200 dark:bg-amber-900/20 dark:ring-amber-800'
                       : 'bg-gray-50 dark:bg-gray-700/50'
                   "
@@ -235,7 +235,7 @@ function handleVote(): void {
                   <div
                     class="flex size-8 items-center justify-center rounded-full"
                     :class="
-                      member.user?.id === user?.id
+                      member.id === currentMemberId
                         ? 'bg-amber-200 dark:bg-amber-800'
                         : 'bg-gray-200 dark:bg-gray-600'
                     "
@@ -243,16 +243,16 @@ function handleVote(): void {
                     <UserIcon
                       class="size-4"
                       :class="
-                        member.user?.id === user?.id
+                        member.id === currentMemberId
                           ? 'text-amber-600 dark:text-amber-400'
                           : 'text-gray-500 dark:text-gray-400'
                       "
                     />
                   </div>
                   <span class="text-gray-900 dark:text-white">
-                    {{ member.user?.name || member.user?.email || 'Unknown' }}
+                    {{ member.name || member.email || 'Unknown' }}
                     <span
-                      v-if="member.user?.id === user?.id"
+                      v-if="member.id === currentMemberId"
                       class="text-sm text-amber-600 dark:text-amber-400"
                     >
                       (you)

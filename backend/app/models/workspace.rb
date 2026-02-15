@@ -10,13 +10,13 @@ class Workspace < T::Struct
   const :created_at, Time
   const :updated_at, Time
 
-  sig { params(membership_ids: T::Array[String]).returns(T::Hash[Symbol, T.untyped]) }
-  def to_api_hash(membership_ids:)
+  sig { params(member_ids: T::Array[String]).returns(T::Hash[Symbol, T.untyped]) }
+  def to_api_hash(member_ids:)
     {
       id: id.to_s,
       objectType: "workspace",
       name: name,
-      membershipIds: membership_ids,
+      memberIds: member_ids,
       createdAt: created_at.iso8601(3),
       updatedAt: updated_at.iso8601(3)
     }

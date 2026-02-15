@@ -23,12 +23,11 @@ module Websocket
     OBJECT_TYPES = T.let(
       {
         "event" => { model: "Event", pool_method: :add_event, client_type: "event" },
-        "user" => { model: "User", pool_method: :add_user, client_type: "user" },
+        "member" => { model: "WorkspaceMembership", pool_method: :add_member, client_type: "member" },
         "date_poll" => { model: "DatePoll", pool_method: :add_date_poll, client_type: "datePoll" },
         "date_range" => { model: "DateRange", pool_method: :add_date_range, client_type: "dateRange" },
         "vote" => { model: "Vote", pool_method: :add_vote, client_type: "vote" },
-        "workspace" => { model: "Workspace", pool_method: :add_workspace, client_type: "workspace" },
-        "workspace_membership" => { model: "WorkspaceMembership", pool_method: :add_workspace_membership, client_type: "workspaceMembership" }
+        "workspace" => { model: "Workspace", pool_method: :add_workspace, client_type: "workspace" }
       }.freeze,
       T::Hash[String, T::Hash[Symbol, T.untyped]]
     )
@@ -125,7 +124,7 @@ module Websocket
         when "update"
           object = find_object(object_type, object_id)
           if object
-            pool = PoolSerializer.new
+            pool = PoolSerializer.new(workspace_id: workspace_id)
             pool.send(config[:pool_method], object)
             message[:data] = { objects: pool.to_a }
           else

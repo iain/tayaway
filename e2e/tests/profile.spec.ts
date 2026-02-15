@@ -98,9 +98,9 @@ test.describe('Profile Feature', () => {
       })
       expect(response.ok()).toBeTruthy()
       const body = await response.json()
-      const updatedUser = getObjectByType(body.objects, 'user')
-      expect(updatedUser).toBeTruthy()
-      expect(updatedUser!.name).toBe('Updated Profile Name')
+      const updatedMember = getObjectByType(body.objects, 'member')
+      expect(updatedMember).toBeTruthy()
+      expect(updatedMember!.name).toBe('Updated Profile Name')
     })
   })
 

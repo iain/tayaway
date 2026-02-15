@@ -38,10 +38,10 @@ function handleClose(): void {
 </script>
 
 <template>
-  <BaseModal :open="open" title="Add New User" @close="handleClose">
+  <BaseModal :open="open" title="Add New Member" @close="handleClose">
     <form class="space-y-4" @submit.prevent="handleSave">
       <FormInput
-        id="user-name"
+        id="member-name"
         v-model="name"
         label="Name"
         placeholder="Enter name (optional)"
@@ -50,7 +50,7 @@ function handleClose(): void {
         :disabled="loading"
       />
       <FormInput
-        id="user-email"
+        id="member-email"
         v-model="email"
         label="Email"
         type="email"
@@ -75,7 +75,7 @@ function handleClose(): void {
           class="rounded-md bg-rose-500 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
           :disabled="!email.trim() || loading"
         >
-          {{ loading ? 'Adding...' : 'Add User' }}
+          {{ loading ? 'Adding...' : 'Add Member' }}
         </button>
       </div>
     </form>

@@ -21,7 +21,15 @@ export const useAuthStore = defineStore('auth', () => {
   const loading = ref(false)
   const initialized = ref(false)
 
+  // workspaceId → memberId mapping (set from WebSocket authenticated message)
+  const memberships = ref<Map<string, string>>(new Map())
+
   const isAuthenticated = computed(() => user.value !== null)
+
+  const currentMemberId = computed(() => {
+    const wsId = useWorkspaceStore().currentWorkspaceId
+    return wsId ? (memberships.value.get(wsId) ?? null) : null
+  })
 
   async function initialize(): Promise<void> {
     // If already initialized with a valid user, skip
@@ -97,6 +105,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       // Cookie is cleared by the backend response — no localStorage needed
       user.value = null
+      memberships.value = new Map()
       // Reset stores on logout
       const pool = useObjectPoolStore()
       pool.$reset()
@@ -109,6 +118,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (!user.value) return
     const previousName = user.value.name
     const userId = user.value.id
+    const memberId = currentMemberId.value
     const { update } = useMutation()
 
     // Optimistically update the auth ref
@@ -117,8 +127,8 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const result = await update(
         'Failed to update name',
-        'user',
-        userId,
+        'member',
+        memberId!,
         { name },
         (commandQueue) =>
           commandQueue.enqueue<PoolApiResponse>('PUT', `/users/${userId}`, {
@@ -128,9 +138,9 @@ export const useAuthStore = defineStore('auth', () => {
       if (!result.queued && user.value) {
         // Sync auth ref from pool (server response already imported)
         const pool = useObjectPoolStore()
-        const poolUser = pool.get('user', userId)
-        if (poolUser) {
-          user.value.name = poolUser.name
+        const poolMember = memberId ? pool.get('member', memberId) : null
+        if (poolMember) {
+          user.value.name = poolMember.name
         }
       }
     } catch (e) {
@@ -144,13 +154,16 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     loading.value = false
     initialized.value = false
+    memberships.value = new Map()
   }
 
   return {
     user,
     loading,
     initialized,
+    memberships,
     isAuthenticated,
+    currentMemberId,
     initialize,
     requestMagicLink,
     verifyToken,

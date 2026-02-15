@@ -1,18 +1,19 @@
 # typed: true
 # frozen_string_literal: true
 
-module Users
-  # Service to create a new user and add them to a workspace.
-  # If the user already exists (by email), adds them to the workspace instead.
+module Members
+  # Service to add a member to a workspace. Creates user if needed.
+  # Accepts an optional client-provided membership UUID for optimistic updates.
   #
   # @example
-  #   result = Users::Create.call(
+  #   result = Members::Create.call(
   #     name: "John",
   #     email: "john@example.com",
-  #     workspace_id: "uuid"
+  #     workspace_id: "uuid",
+  #     id: "client-generated-uuid"
   #   )
   #   result.success?  # => true
-  #   result.value!    # => { user_id: "uuid", objects: [...] }
+  #   result.value!    # => { member_id: "uuid", objects: [...] }
   module Create
     class << self
       extend T::Sig
@@ -22,12 +23,13 @@ module Users
         params(
           name: T.nilable(String),
           email: T.nilable(String),
-          workspace_id: T.nilable(T.any(String, UUID))
+          workspace_id: T.nilable(T.any(String, UUID)),
+          id: T.nilable(String)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def call(name:, email:, workspace_id: nil)
+      def call(name:, email:, workspace_id: nil, id: nil)
         validate_email(email)
-          .bind { |valid_email| find_or_create_user(name, valid_email, workspace_id) }
+          .bind { |valid_email| find_or_create_member(name, valid_email, workspace_id, id) }
       end
 
       private
@@ -45,26 +47,28 @@ module Users
         params(
           name: T.nilable(String),
           email: String,
-          workspace_id: T.nilable(T.any(String, UUID))
+          workspace_id: T.nilable(T.any(String, UUID)),
+          id: T.nilable(String)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def find_or_create_user(name, email, workspace_id)
+      def find_or_create_member(name, email, workspace_id, id)
         existing_user = User.find_by_email_exact(email)
 
         if existing_user
-          add_existing_user_to_workspace(existing_user, workspace_id)
+          add_existing_user_to_workspace(existing_user, workspace_id, id)
         else
-          create_user(name, email, workspace_id)
+          create_user_and_member(name, email, workspace_id, id)
         end
       end
 
       sig do
         params(
           user: User,
-          workspace_id: T.nilable(T.any(String, UUID))
+          workspace_id: T.nilable(T.any(String, UUID)),
+          id: T.nilable(String)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def add_existing_user_to_workspace(user, workspace_id)
+      def add_existing_user_to_workspace(user, workspace_id, id)
         unless workspace_id
           return T.cast(
             Failure(ServiceError.validation("A user with this email already exists")),
@@ -81,7 +85,7 @@ module Users
         end
 
         now = Time.now
-        membership_id = SecureRandom.uuid
+        membership_id = id || SecureRandom.uuid
 
         DB[:workspace_memberships].insert(
           id: membership_id,
@@ -91,30 +95,31 @@ module Users
           created_at: now
         )
 
-        Broadcaster.object_changed("workspace_membership", membership_id, workspace_id: workspace_id.to_s)
+        Broadcaster.object_changed("member", membership_id, workspace_id: workspace_id.to_s)
 
-        pool = PoolSerializer.new
-        pool.add_user(user)
-        membership = WorkspaceMembership.find_by_workspace_and_user(workspace_id, user.id)
-        pool.add_workspace_membership(membership) if membership
+        membership = WorkspaceMembership.find(membership_id)
+        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool.add_member(T.must(membership))
 
-        T.cast(Success({ user_id: user.id.to_s, objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        T.cast(Success({ member_id: membership_id, objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
 
       sig do
         params(
           name: T.nilable(String),
           email: String,
-          workspace_id: T.nilable(T.any(String, UUID))
+          workspace_id: T.nilable(T.any(String, UUID)),
+          id: T.nilable(String)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def create_user(name, email, workspace_id)
+      def create_user_and_member(name, email, workspace_id, id)
         now = Time.now
-        id = SecureRandom.uuid
+        user_id = SecureRandom.uuid
+        membership_id = id || SecureRandom.uuid
 
         DB.transaction do
           DB[:users].insert(
-            id: id,
+            id: user_id,
             email: email,
             name: name&.empty? ? nil : name,
             created_at: now,
@@ -123,31 +128,28 @@ module Users
 
           # Add user to workspace if provided
           if workspace_id
-            membership_id = SecureRandom.uuid
             DB[:workspace_memberships].insert(
               id: membership_id,
               workspace_id: workspace_id.to_s,
-              user_id: id,
+              user_id: user_id,
               role: "member",
               created_at: now
             )
 
-            # Broadcast new membership so other clients see new member
-            Broadcaster.object_changed("workspace_membership", membership_id, workspace_id: workspace_id.to_s)
+            # Broadcast new member so other clients see new member
+            Broadcaster.object_changed("member", membership_id, workspace_id: workspace_id.to_s)
           end
         end
 
-        user = T.must(User.find(id))
-        pool = PoolSerializer.new
-        pool.add_user(user)
+        pool = PoolSerializer.new(workspace_id: workspace_id)
 
-        # Include workspace membership in response if created
+        # Include member in response if workspace was provided
         if workspace_id
-          membership = WorkspaceMembership.find_by_workspace_and_user(workspace_id, id)
-          pool.add_workspace_membership(membership) if membership
+          membership = WorkspaceMembership.find(membership_id)
+          pool.add_member(T.must(membership))
         end
 
-        T.cast(Success({ user_id: id, objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        T.cast(Success({ member_id: membership_id, objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
     end
   end

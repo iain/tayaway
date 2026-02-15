@@ -13,7 +13,7 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const datePollsStore = useDatePollsStore()
-const { user } = storeToRefs(authStore)
+const { currentMemberId } = storeToRefs(authStore)
 const { addDays } = useCalendar()
 
 const eventId = computed(() => route.params.id as string)
@@ -26,7 +26,7 @@ const modalPreselectedStart = ref<string | null>(null)
 const modalPreselectedEnd = ref<string | null>(null)
 
 const isOwner = computed(() => {
-  return user.value?.id === event.value?.userId
+  return currentMemberId.value === event.value?.memberId
 })
 
 const pollOpen = computed(() => {
@@ -161,7 +161,7 @@ function handleDateRangeModalClose(): void {
             :key="dateRange.id"
             :date-range="dateRange"
             :event-id="event.id"
-            :current-user="user"
+            :current-member-id="currentMemberId"
           />
         </div>
       </section>

@@ -15,17 +15,17 @@ export const useVotesStore = defineStore('votes', () => {
     comment?: string
   ) {
     const pool = useObjectPoolStore()
-    const userId = useAuthStore().user!.id
+    const memberId = useAuthStore().currentMemberId!
     const body: VoteRequestBody = {
       date_range_id: dateRangeId,
       response,
       comment,
     }
 
-    // Check for existing vote by this user on this date range
+    // Check for existing vote by this member on this date range
     const existingVote = pool
       .getAll('vote')
-      .find((v) => v.dateRangeId === dateRangeId && v.userId === userId)
+      .find((v) => v.dateRangeId === dateRangeId && v.memberId === memberId)
 
     if (existingVote) {
       const result = await update(
@@ -48,7 +48,7 @@ export const useVotesStore = defineStore('votes', () => {
         id: voteId,
         objectType: 'vote',
         dateRangeId,
-        userId,
+        memberId,
         response,
         comment: comment ?? null,
         createdAt: now,

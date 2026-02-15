@@ -55,7 +55,7 @@ module Events
         if id
           existing = Event.find(id)
           if existing
-            pool = PoolSerializer.new
+            pool = PoolSerializer.new(workspace_id: workspace_id)
             pool.add_event(existing)
             return T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
           end
@@ -80,7 +80,7 @@ module Events
           Event.find(event_id)
         end
 
-        pool = PoolSerializer.new
+        pool = PoolSerializer.new(workspace_id: workspace_id)
         pool.add_event(event)
 
         T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])

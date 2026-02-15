@@ -20,12 +20,22 @@ class App
     r.websocket do |connection|
       connection_id = Websocket::ConnectionManager.instance.register(connection, user_id)
 
-      # Load workspaces for user (don't subscribe yet — wait for switch_workspace)
+      # Load workspaces and memberships for user
       workspaces = Workspace.for_user(user_id)
       workspace_ids = workspaces.map { |w| w.id.to_s }
+      memberships = WorkspaceMembership.for_user(user_id).map do |m|
+        { workspaceId: m.workspace_id.to_s, memberId: m.id.to_s }
+      end
 
-      # Send authenticated message with workspace IDs
-      connection.write({ type: "authenticated", userId: user_id.to_s, workspaceIds: workspace_ids }.to_json)
+      # Send authenticated message with workspace IDs and memberships
+      connection.write(
+        {
+          type: "authenticated",
+          userId: user_id.to_s,
+          workspaceIds: workspace_ids,
+          memberships: memberships
+        }.to_json
+      )
 
       # Send only workspace objects for the selector (members come with switch_workspace)
       pool = PoolSerializer.new

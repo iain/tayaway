@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/vue/24/outline'
-import type { AuthUser } from '@/types'
 import type { VoteResponse } from '@/types/pool'
 import type { HydratedDateRange } from '@/composables/useHydratedEvent'
 import { useCalendar } from '@/composables/useCalendar'
@@ -13,7 +12,7 @@ import FormTextarea from '@/components/form/FormTextarea.vue'
 const props = defineProps<{
   dateRange: HydratedDateRange
   eventId: string
-  currentUser: AuthUser | null
+  currentMemberId: string | null
 }>()
 
 const { formatDateDisplay } = useCalendar()
@@ -25,9 +24,9 @@ const comment = ref('')
 const showCommentInput = ref(false)
 
 const currentUserVote = computed(() => {
-  if (!props.currentUser) return null
+  if (!props.currentMemberId) return null
   return (
-    props.dateRange.votes.find((v) => v.userId === props.currentUser?.id) ??
+    props.dateRange.votes.find((v) => v.memberId === props.currentMemberId) ??
     null
   )
 })
@@ -54,7 +53,7 @@ const hasCommentChanges = computed(() => {
 })
 
 async function handleVote(response: VoteResponse) {
-  if (!props.currentUser) return
+  if (!props.currentMemberId) return
 
   loading.value = true
   try {
@@ -70,7 +69,7 @@ async function handleVote(response: VoteResponse) {
 }
 
 async function handleCommentSubmit() {
-  if (!currentUserVote.value || !props.currentUser) return
+  if (!currentUserVote.value || !props.currentMemberId) return
 
   const voteResponse = currentUserVote.value.response
   const originalComment = currentUserVote.value.comment || ''

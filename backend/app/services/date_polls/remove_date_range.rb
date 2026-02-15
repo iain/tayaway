@@ -98,7 +98,7 @@ module DatePolls
           Broadcaster.object_deleted("date_range", date_range_id, workspace_id: event.workspace_id)
         end
 
-        pool = PoolSerializer.new
+        pool = PoolSerializer.new(workspace_id: event.workspace_id)
         pool.add_event(T.must(Event.find(event.id)))
 
         T.cast(

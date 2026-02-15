@@ -734,10 +734,10 @@ test.describe('Voting Feature', () => {
         page.getByRole('heading', { name: 'Awaiting Votes' })
       ).toBeVisible({ timeout: 10000 })
 
-      // Now add a new user via API (simulating another tab/user adding someone)
+      // Now add a new member via API (simulating another tab/user adding someone)
       const newUserName = `New User ${Date.now()}`
       const newUserEmail = `new-user-${Date.now()}@example.com`
-      await request.post(`${API_BASE}/api/users`, {
+      await request.post(`${API_BASE}/api/members`, {
         data: {
           name: newUserName,
           email: newUserEmail,
@@ -745,7 +745,7 @@ test.describe('Voting Feature', () => {
         },
       })
 
-      // The new user should appear in real-time via WebSocket (no page refresh)
+      // The new member should appear in real-time via WebSocket (no page refresh)
       await expect(awaitingSection.getByText(newUserName)).toBeVisible({
         timeout: 10000,
       })

@@ -3,7 +3,7 @@ import { useObjectPoolStore } from '@/stores/objectPool'
 import type {
   PoolEvent,
   PoolDateRange,
-  PoolUser,
+  PoolMember,
   VoteResponse,
   DatePollStatus,
 } from '@/types/pool'
@@ -12,8 +12,8 @@ import type {
 export interface HydratedVote {
   id: string
   dateRangeId: string
-  userId: string
-  user: PoolUser | undefined
+  memberId: string
+  member: PoolMember | undefined
   response: VoteResponse
   comment: string | null
   createdAt: string
@@ -51,7 +51,8 @@ export interface HydratedDatePoll {
 
 export interface HydratedMember {
   id: string
-  user: PoolUser | undefined
+  email: string
+  name: string | null
   role: string
 }
 
@@ -67,8 +68,8 @@ export interface HydratedEvent {
   description: string | null
   workspaceId: string
   workspace: HydratedWorkspace | undefined
-  userId: string
-  user: PoolUser | undefined
+  memberId: string
+  member: PoolMember | undefined
   datePoll: HydratedDatePoll | null
   createdAt: string
   updatedAt: string
@@ -78,11 +79,11 @@ export interface HydratedEvent {
  * Composable that provides a hydrated (denormalized) view of an event.
  *
  * This composable joins the normalized pool objects into the nested structure
- * that components expect, including user objects and vote summaries.
+ * that components expect, including member objects and vote summaries.
  *
  * @example
  * const { event, isLoading } = useHydratedEvent(eventId)
- * // event.value.datePoll?.dateRanges[0].votes[0].user - fully hydrated
+ * // event.value.datePoll?.dateRanges[0].votes[0].member - fully hydrated
  */
 export function useHydratedEvent(eventId: ComputedRef<string> | string): {
   event: ComputedRef<HydratedEvent | undefined>
@@ -121,7 +122,7 @@ function hydrateEvent(
   poolEvent: PoolEvent,
   pool: ReturnType<typeof useObjectPoolStore>
 ): HydratedEvent {
-  const user = pool.get('user', poolEvent.userId)
+  const member = pool.get('member', poolEvent.memberId)
   const datePollObj = pool
     .getAll('datePoll')
     .find((dp) => dp.eventId === poolEvent.id)
@@ -134,8 +135,8 @@ function hydrateEvent(
     description: poolEvent.description,
     workspaceId: poolEvent.workspaceId,
     workspace,
-    userId: poolEvent.userId,
-    user,
+    memberId: poolEvent.memberId,
+    member,
     datePoll,
     createdAt: poolEvent.createdAt,
     updatedAt: poolEvent.updatedAt,
@@ -191,20 +192,21 @@ function hydrateWorkspace(
 }
 
 /**
- * Hydrate workspace memberships into members with user objects.
- * Derives membership list from foreign key instead of explicit ID array.
+ * Hydrate workspace members directly from member pool objects.
+ * No more user+membership join needed — member objects have everything.
  */
 function hydrateMembers(
   workspaceId: string,
   pool: ReturnType<typeof useObjectPoolStore>
 ): HydratedMember[] {
   return pool
-    .getAll('workspaceMembership')
+    .getAll('member')
     .filter((m) => m.workspaceId === workspaceId)
-    .map((membership) => ({
-      id: membership.id,
-      user: pool.get('user', membership.userId),
-      role: membership.role,
+    .map((member) => ({
+      id: member.id,
+      email: member.email,
+      name: member.name,
+      role: member.role,
     }))
 }
 
@@ -256,8 +258,8 @@ function hydrateVotes(
     .map((vote) => ({
       id: vote.id,
       dateRangeId: vote.dateRangeId,
-      userId: vote.userId,
-      user: pool.get('user', vote.userId),
+      memberId: vote.memberId,
+      member: pool.get('member', vote.memberId),
       response: vote.response,
       comment: vote.comment,
       createdAt: vote.createdAt,

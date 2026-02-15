@@ -18,7 +18,7 @@ import ClosePollModal from './ClosePollModal.vue'
 const props = defineProps<{
   event: HydratedEvent
   isOwner: boolean
-  currentUserId: string | undefined
+  currentMemberId: string | null
 }>()
 
 const emit = defineEmits<{
@@ -69,11 +69,11 @@ const deadlineText = computed(() => {
 
 // Check current user vote status across poll date ranges
 const currentUserVoteStatus = computed(() => {
-  if (!poll.value || !props.currentUserId) return { voted: 0, total: 0 }
+  if (!poll.value || !props.currentMemberId) return { voted: 0, total: 0 }
   const total = poll.value.dateRanges.length
   let voted = 0
   for (const dr of poll.value.dateRanges) {
-    if (dr.votes.some((v) => v.userId === props.currentUserId)) {
+    if (dr.votes.some((v) => v.memberId === props.currentMemberId)) {
       voted++
     }
   }

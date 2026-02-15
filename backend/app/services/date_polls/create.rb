@@ -90,7 +90,7 @@ module DatePolls
           Broadcaster.object_changed("date_poll", poll_id, workspace_id: event.workspace_id)
         end
 
-        pool = PoolSerializer.new
+        pool = PoolSerializer.new(workspace_id: event.workspace_id)
         pool.add_event(T.must(Event.find(event.id)))
 
         T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])

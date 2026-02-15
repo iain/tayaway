@@ -23,7 +23,7 @@ const authStore = useAuthStore()
 const pool = useObjectPoolStore()
 const { loading, error } = storeToRefs(eventsStore)
 const { formatDateDisplay } = useCalendar()
-const { user } = storeToRefs(authStore)
+const { currentMemberId } = storeToRefs(authStore)
 
 const showModal = ref(false)
 
@@ -38,12 +38,12 @@ const events = computed(() => {
     )
 })
 
-function isOwner(eventUserId: string): boolean {
-  return user.value?.id === eventUserId
+function isOwner(eventMemberId: string): boolean {
+  return currentMemberId.value === eventMemberId
 }
 
-function getEventOwner(userId: string) {
-  return pool.get('user', userId)
+function getEventOwner(memberId: string) {
+  return pool.get('member', memberId)
 }
 
 function getDateRanges(eventId: string) {
@@ -185,15 +185,15 @@ function formatDateRangeSummary(
                 <span class="text-gray-400 dark:text-gray-500"
                   >by
                   {{
-                    getEventOwner(event.userId)?.name ||
-                    getEventOwner(event.userId)?.email ||
+                    getEventOwner(event.memberId)?.name ||
+                    getEventOwner(event.memberId)?.email ||
                     'Unknown'
                   }}</span
                 >
               </div>
             </div>
             <div
-              v-if="isOwner(event.userId)"
+              v-if="isOwner(event.memberId)"
               class="ml-4 flex items-center gap-2"
             >
               <button

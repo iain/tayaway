@@ -3,7 +3,7 @@
 
 require "spec_helper"
 
-RSpec.describe Users::Create do
+RSpec.describe Members::Create do
   it "returns failure when email is missing" do
     result = described_class.call(name: "Test", email: nil)
 
@@ -11,24 +11,37 @@ RSpec.describe Users::Create do
     expect(result.failure.message).to eq("Email is required")
   end
 
-  it "creates user with name and returns success" do
-    result = described_class.call(name: "New User", email: "new@example.com")
+  it "creates user and member with name and returns success" do
+    workspace = TestFactories.workspace
+
+    result = described_class.call(name: "New User", email: "new@example.com", workspace_id: workspace[:id])
 
     expect(result.success?).to be true
-    expect(result.value![:user_id]).to be_a(String)
+    expect(result.value![:member_id]).to be_a(String)
     expect(result.value![:objects]).to be_an(Array)
-    user = DB[:users].where(id: result.value![:user_id]).first
-    expect(user[:email]).to eq("new@example.com")
+    user = DB[:users].where(email: "new@example.com").first
     expect(user[:name]).to eq("New User")
     expect(DB[:users].where(email: "new@example.com").count).to eq(1)
   end
 
   it "creates user with nil name when name is empty" do
-    result = described_class.call(name: "", email: "noname@example.com")
+    workspace = TestFactories.workspace
+
+    result = described_class.call(name: "", email: "noname@example.com", workspace_id: workspace[:id])
 
     expect(result.success?).to be true
-    user = DB[:users].where(id: result.value![:user_id]).first
+    user = DB[:users].where(email: "noname@example.com").first
     expect(user[:name]).to be_nil
+  end
+
+  it "accepts a client-provided membership id" do
+    workspace = TestFactories.workspace
+    client_id = SecureRandom.uuid
+
+    result = described_class.call(name: "Test", email: "clientid@example.com", workspace_id: workspace[:id], id: client_id)
+
+    expect(result.success?).to be true
+    expect(result.value![:member_id]).to eq(client_id)
   end
 
   context "when user already exists" do
@@ -39,7 +52,6 @@ RSpec.describe Users::Create do
       result = described_class.call(name: "Ignored", email: "existing@example.com", workspace_id: workspace[:id])
 
       expect(result.success?).to be true
-      expect(result.value![:user_id]).to eq(existing_user[:id])
       expect(DB[:users].where(email: "existing@example.com").count).to eq(1)
 
       membership = DB[:workspace_memberships].where(

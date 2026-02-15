@@ -86,7 +86,7 @@ module Events
           Event.find(event_id)
         end
 
-        pool = PoolSerializer.new
+        pool = PoolSerializer.new(workspace_id: workspace_id)
         pool.add_event(updated_event)
 
         T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])

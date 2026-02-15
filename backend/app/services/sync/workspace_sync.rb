@@ -37,7 +37,7 @@ module Sync
         workspace = Workspace.find(workspace_id)
         return empty_response(synced_at, "full") unless workspace
 
-        pool = PoolSerializer.new
+        pool = PoolSerializer.new(workspace_id: workspace_id)
         pool.add_workspace_with_events(workspace)
 
         {
@@ -51,7 +51,7 @@ module Sync
       sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Hash[Symbol, T.untyped]) }
       def partial_sync(workspace_id, since)
         synced_at = Time.now
-        pool = PoolSerializer.new
+        pool = PoolSerializer.new(workspace_id: workspace_id)
 
         # Collect changed objects from each table
         events = Event.updated_since(workspace_id, since)
@@ -61,7 +61,7 @@ module Sync
         pool.add_workspace_flat(workspace) if workspace
 
         memberships = WorkspaceMembership.updated_since(workspace_id, since)
-        memberships.each { |m| pool.add_workspace_membership(m) }
+        memberships.each { |m| pool.add_member(m) }
 
         date_polls = DatePoll.updated_since_for_workspace(workspace_id, since)
         date_polls.each { |dp| pool.add_date_poll_flat(dp) }
@@ -72,15 +72,13 @@ module Sync
         votes = Vote.updated_since_for_workspace(workspace_id, since)
         votes.each { |v| pool.add_vote(v) }
 
-        # Collect referenced user IDs from changed objects
+        # Collect referenced user IDs from changed events/votes and add as members
         user_ids = Set.new
         events.each { |e| user_ids << e.user_id }
-        memberships.each { |m| user_ids << m.user_id }
         votes.each { |v| user_ids << v.user_id }
 
-        # Add users that the client may not have yet
         users = User.for_ids(user_ids.map(&:to_s))
-        users.each { |u| pool.add_user(u) }
+        users.each { |u| pool.add_member_from_user(u) }
 
         # Query deletion log
         deleted = DB[:deleted_items]

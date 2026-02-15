@@ -2,11 +2,11 @@
 import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { UserIcon, PlusIcon } from '@heroicons/vue/24/outline'
-import { useUsersStore, useNotificationsStore } from '@/stores'
-import AddUserModal from '@/components/users/AddUserModal.vue'
+import { useMembersStore, useNotificationsStore } from '@/stores'
+import AddMemberModal from '@/components/members/AddMemberModal.vue'
 
-const usersStore = useUsersStore()
-const { users } = storeToRefs(usersStore)
+const membersStore = useMembersStore()
+const { members } = storeToRefs(membersStore)
 
 const isModalOpen = ref(false)
 const isSubmitting = ref(false)
@@ -26,17 +26,17 @@ async function handleSave(name: string, email: string): Promise<void> {
   isSubmitting.value = true
 
   try {
-    const { queued } = await usersStore.createUser({
+    const { queued } = await membersStore.createMember({
       name: name || undefined,
       email: email,
     })
     isModalOpen.value = false
     if (queued) {
       const notifications = useNotificationsStore()
-      notifications.showInfo('User will be created when back online')
+      notifications.showInfo('Member will be added when back online')
     }
   } catch {
-    formError.value = 'Failed to create user. The email may already exist.'
+    formError.value = 'Failed to add member. The email may already exist.'
   } finally {
     isSubmitting.value = false
   }
@@ -50,16 +50,16 @@ async function handleSave(name: string, email: string): Promise<void> {
         data-testid="page-title"
         class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white"
       >
-        Users
+        Members
       </h1>
       <button
         type="button"
-        data-testid="add-user-button"
+        data-testid="add-member-button"
         class="inline-flex items-center gap-2 rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-500"
         @click="openModal"
       >
         <PlusIcon class="size-5" />
-        Add User
+        Add Member
       </button>
     </header>
 
@@ -70,13 +70,13 @@ async function handleSave(name: string, email: string): Promise<void> {
       {{ formError }}
     </div>
 
-    <div v-if="users.length === 0" class="py-12 text-center">
+    <div v-if="members.length === 0" class="py-12 text-center">
       <UserIcon class="mx-auto size-12 text-gray-400" />
       <h3 class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
-        No users
+        No members
       </h3>
       <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        Get started by adding a new user.
+        Get started by adding a new member.
       </p>
       <div class="mt-6">
         <button
@@ -85,20 +85,20 @@ async function handleSave(name: string, email: string): Promise<void> {
           @click="openModal"
         >
           <PlusIcon class="size-5" />
-          Add User
+          Add Member
         </button>
       </div>
     </div>
 
     <ul
       v-else
-      data-testid="users-list"
+      data-testid="members-list"
       class="divide-y divide-gray-200 dark:divide-gray-700"
     >
       <li
-        v-for="user in users"
-        :key="user.id"
-        :data-testid="`user-item-${user.id}`"
+        v-for="member in members"
+        :key="member.id"
+        :data-testid="`member-item-${member.id}`"
         class="mb-4 overflow-hidden rounded-lg bg-white shadow dark:bg-gray-800"
       >
         <div class="px-4 py-5 sm:px-6">
@@ -106,32 +106,32 @@ async function handleSave(name: string, email: string): Promise<void> {
             <UserIcon class="mr-4 size-10 text-gray-400" />
             <div class="min-w-0 flex-1">
               <h2
-                data-testid="user-name"
+                data-testid="member-name"
                 class="truncate text-lg font-semibold text-gray-900 dark:text-white"
               >
-                {{ user.name || 'No name' }}
+                {{ member.name || 'No name' }}
               </h2>
               <div class="flex items-center gap-2">
                 <p
-                  data-testid="user-email"
+                  data-testid="member-email"
                   class="text-sm text-gray-500 dark:text-gray-400"
                 >
-                  {{ user.email }}
+                  {{ member.email }}
                 </p>
                 <span
-                  v-if="user.role"
-                  data-testid="user-role"
+                  v-if="member.role"
+                  data-testid="member-role"
                   class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
                   :class="{
                     'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400':
-                      user.role === 'owner',
+                      member.role === 'owner',
                     'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400':
-                      user.role === 'admin',
+                      member.role === 'admin',
                     'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300':
-                      user.role === 'member',
+                      member.role === 'member',
                   }"
                 >
-                  {{ user.role }}
+                  {{ member.role }}
                 </span>
               </div>
             </div>
@@ -140,7 +140,7 @@ async function handleSave(name: string, email: string): Promise<void> {
       </li>
     </ul>
 
-    <AddUserModal
+    <AddMemberModal
       :open="isModalOpen"
       :loading="isSubmitting"
       @close="closeModal"

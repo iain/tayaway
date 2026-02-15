@@ -8,7 +8,7 @@ import EventCreatePage from '@/pages/EventCreatePage.vue'
 import EventEditPage from '@/pages/EventEditPage.vue'
 import EventPage from '@/pages/EventPage.vue'
 import EventVotePage from '@/pages/EventVotePage.vue'
-import UsersPage from '@/pages/UsersPage.vue'
+import MembersPage from '@/pages/MembersPage.vue'
 import LoginPage from '@/pages/LoginPage.vue'
 import AuthVerifyPage from '@/pages/AuthVerifyPage.vue'
 
@@ -56,9 +56,9 @@ const router = createRouter({
           component: EventEditPage,
         },
         {
-          path: 'users',
-          name: 'users',
-          component: UsersPage,
+          path: 'members',
+          name: 'members',
+          component: MembersPage,
         },
       ],
     },

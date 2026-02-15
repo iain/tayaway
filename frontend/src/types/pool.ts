@@ -21,26 +21,27 @@ interface PoolObjectBase<T extends string> {
 export type DatePollStatus = 'open' | 'expired' | 'resolved'
 
 export const OBJECT_TYPES = [
-  'user',
+  'member',
   'event',
   'datePoll',
   'dateRange',
   'vote',
   'workspace',
-  'workspaceMembership',
 ] as const
 
 export interface ObjectTypeMap {
-  user: PoolObjectBase<'user'> & {
+  member: PoolObjectBase<'member'> & {
+    workspaceId: string
     email: string
     name: string | null
+    role: string
     createdAt: string
   }
   event: PoolObjectBase<'event'> & {
     name: string
     description: string | null
     workspaceId: string
-    userId: string
+    memberId: string
     datePollId: string | null
     createdAt: string
   }
@@ -61,20 +62,14 @@ export interface ObjectTypeMap {
   }
   vote: PoolObjectBase<'vote'> & {
     dateRangeId: string
-    userId: string
+    memberId: string
     response: VoteResponse
     comment: string | null
     createdAt: string
   }
   workspace: PoolObjectBase<'workspace'> & {
     name: string
-    membershipIds: string[]
-    createdAt: string
-  }
-  workspaceMembership: PoolObjectBase<'workspaceMembership'> & {
-    workspaceId: string
-    userId: string
-    role: string
+    memberIds: string[]
     createdAt: string
   }
 }
@@ -87,13 +82,12 @@ export type ObjectType = (typeof OBJECT_TYPES)[number]
 export type PoolObject = ObjectTypeMap[ObjectType]
 
 // Convenience aliases for accessing specific pool types
-export type PoolUser = ObjectTypeMap['user']
+export type PoolMember = ObjectTypeMap['member']
 export type PoolEvent = ObjectTypeMap['event']
 export type PoolDatePoll = ObjectTypeMap['datePoll']
 export type PoolDateRange = ObjectTypeMap['dateRange']
 export type PoolVote = ObjectTypeMap['vote']
 export type PoolWorkspace = ObjectTypeMap['workspace']
-export type PoolWorkspaceMembership = ObjectTypeMap['workspaceMembership']
 
 // API response wrapper - all endpoints include objects array
 export interface PoolApiResponse {

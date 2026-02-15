@@ -46,7 +46,9 @@ RSpec.describe Users::UpdateName do
   end
 
   it "updates user name" do
+    workspace = TestFactories.workspace
     user = TestFactories.user(name: "Original")
+    TestFactories.workspace_membership(workspace: workspace, user: user)
 
     result = described_class.call(
       user_id: user[:id],
@@ -55,7 +57,7 @@ RSpec.describe Users::UpdateName do
     )
 
     expect(result.success?).to be true
-    updated_user = result.value![:objects].find { |o| o[:objectType] == "user" }
-    expect(updated_user[:name]).to eq("Updated Name")
+    updated_member = result.value![:objects].find { |o| o[:objectType] == "member" }
+    expect(updated_member[:name]).to eq("Updated Name")
   end
 end

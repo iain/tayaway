@@ -40,6 +40,7 @@ interface AuthenticatedMessage {
   type: 'authenticated'
   userId: string
   workspaceIds: string[]
+  memberships: Array<{ workspaceId: string; memberId: string }>
 }
 
 interface ServerMessage {
@@ -164,6 +165,16 @@ export const useWebSocketStore = defineStore('websocket', () => {
   function handleAuthenticated(message: AuthenticatedMessage): void {
     state.value = 'authenticated'
     workspaceIds.value = message.workspaceIds
+
+    // Set memberships on auth store
+    import('./auth').then(({ useAuthStore }) => {
+      const authStore = useAuthStore()
+      const map = new Map<string, string>()
+      for (const m of message.memberships ?? []) {
+        map.set(m.workspaceId, m.memberId)
+      }
+      authStore.memberships = map
+    })
 
     // Initialize workspace selection and request data for it
     const workspaceStore = useWorkspaceStore()

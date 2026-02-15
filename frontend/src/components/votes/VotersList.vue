@@ -71,7 +71,7 @@ function getResponseLabel(response: string) {
         />
         <div class="min-w-0 flex-1">
           <div class="text-sm text-gray-900 dark:text-white">
-            {{ vote.user?.name || vote.user?.email || 'Unknown user' }}
+            {{ vote.member?.name || vote.member?.email || 'Unknown member' }}
             <span class="text-gray-500 dark:text-gray-400">
               - {{ getResponseLabel(vote.response) }}
             </span>

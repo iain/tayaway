@@ -9,9 +9,11 @@ class App
     # GET /api/events - List events in user's workspaces
     r.is do
       r.get do
-        workspace_ids = Workspace.for_user(current_user.id).map(&:id)
+        workspaces = Workspace.for_user(current_user.id)
+        workspace_ids = workspaces.map(&:id)
         events = Event.for_workspace_ids(workspace_ids)
-        pool = PoolSerializer.new
+        # Use first workspace for member resolution (single-workspace for now)
+        pool = PoolSerializer.new(workspace_id: workspaces.first&.id)
         pool.add_all(events, type: :event)
 
         response.status = 200
@@ -63,7 +65,7 @@ class App
       # GET /api/events/:id - Get event details (any authenticated user can view)
       r.is do
         r.get do
-          pool = PoolSerializer.new
+          pool = PoolSerializer.new(workspace_id: event.workspace_id)
           pool.add_event(event, include_workspace: true)
 
           response.status = 200
@@ -164,7 +166,7 @@ class App
             poll = DatePoll.find_by_event(event.id)
             date_range_ids = poll ? DateRange.ids_for_date_poll(poll.id) : []
             votes = Vote.for_date_range_ids(date_range_ids)
-            pool = PoolSerializer.new
+            pool = PoolSerializer.new(workspace_id: event.workspace_id)
             pool.add_all(votes, type: :vote)
 
             response.status = 200
@@ -185,7 +187,7 @@ class App
             result.either(
               ->(value) {
                 vote = Vote.find(value[:vote_id])
-                pool = PoolSerializer.new
+                pool = PoolSerializer.new(workspace_id: event.workspace_id)
                 pool.add_vote(vote)
 
                 response.status = value[:created] ? 201 : 200
