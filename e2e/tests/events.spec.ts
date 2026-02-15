@@ -1,53 +1,13 @@
-import { test, expect, Page, APIRequestContext } from '@playwright/test'
+import { test, expect, APIRequestContext } from '@playwright/test'
+import {
+  API_BASE,
+  getObjectByType,
+  getTestSession,
+  setupAuthenticatedPage,
+} from '../helpers'
 
-const API_BASE = 'http://localhost:9293'
 const TEST_EMAIL = 'e2e-events@example.com'
 const TEST_NAME = 'E2E Events User'
-
-// Helper to extract objects from pool response by type
-interface PoolObject {
-  id: string
-  objectType: string
-  [key: string]: unknown
-}
-
-function getObjectByType<T extends PoolObject>(
-  objects: PoolObject[],
-  type: string
-): T | undefined {
-  return objects.find((o) => o.objectType === type) as T | undefined
-}
-
-// Helper to get an authenticated session for testing
-async function getTestSession(
-  request: APIRequestContext
-): Promise<{ token: string; userId: string }> {
-  const response = await request.post(`${API_BASE}/api/test/session`, {
-    data: { email: TEST_EMAIL, name: TEST_NAME },
-  })
-  if (!response.ok()) {
-    throw new Error(`Failed to create test session: ${response.status()}`)
-  }
-  const body = await response.json()
-  return { token: body.session_token, userId: body.user_id }
-}
-
-// Helper to set up authenticated page via cookie
-async function setupAuthenticatedPage(
-  page: Page,
-  token: string
-): Promise<void> {
-  await page.context().addCookies([
-    {
-      name: 'session_token',
-      value: token,
-      domain: 'localhost',
-      path: '/',
-      httpOnly: true,
-      sameSite: 'Lax',
-    },
-  ])
-}
 
 test.describe('Events Feature', () => {
   test.describe('Events API - Unauthenticated', () => {
@@ -98,18 +58,27 @@ test.describe('Events Feature', () => {
   })
 
   test.describe('Events API - Authenticated', () => {
-    test('GET /api/events returns list of events', async ({ request }) => {
-      await getTestSession(request)
-      const response = await request.get(`${API_BASE}/api/events`)
+    let apiContext: APIRequestContext
+
+    test.beforeAll(async ({ playwright }) => {
+      apiContext = await playwright.request.newContext()
+      await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
+    })
+
+    test.afterAll(async () => {
+      await apiContext.dispose()
+    })
+
+    test('GET /api/events returns list of events', async () => {
+      const response = await apiContext.get(`${API_BASE}/api/events`)
       expect(response.ok()).toBeTruthy()
       const body = await response.json()
       expect(body).toHaveProperty('objects')
       expect(Array.isArray(body.objects)).toBeTruthy()
     })
 
-    test('POST /api/events creates a new event', async ({ request }) => {
-      await getTestSession(request)
-      const response = await request.post(`${API_BASE}/api/events`, {
+    test('POST /api/events creates a new event', async () => {
+      const response = await apiContext.post(`${API_BASE}/api/events`, {
         data: {
           name: 'Test Event',
           description: 'A test event description',
@@ -124,9 +93,8 @@ test.describe('Events Feature', () => {
       expect(event?.datePollId).toBeNull()
     })
 
-    test('POST /api/events requires name', async ({ request }) => {
-      await getTestSession(request)
-      const response = await request.post(`${API_BASE}/api/events`, {
+    test('POST /api/events requires name', async () => {
+      const response = await apiContext.post(`${API_BASE}/api/events`, {
         data: { description: 'No name provided' },
       })
       expect(response.status()).toBe(400)
@@ -134,11 +102,9 @@ test.describe('Events Feature', () => {
       expect(body.error).toBe('Name is required')
     })
 
-    test('full CRUD lifecycle for events', async ({ request }) => {
-      await getTestSession(request)
-
+    test('full CRUD lifecycle for events', async () => {
       // Create
-      const createResponse = await request.post(`${API_BASE}/api/events`, {
+      const createResponse = await apiContext.post(`${API_BASE}/api/events`, {
         data: {
           name: 'CRUD Test Event',
         },
@@ -149,14 +115,16 @@ test.describe('Events Feature', () => {
       const eventId = createdEvent!.id
 
       // Read
-      const getResponse = await request.get(`${API_BASE}/api/events/${eventId}`)
+      const getResponse = await apiContext.get(
+        `${API_BASE}/api/events/${eventId}`
+      )
       expect(getResponse.ok()).toBeTruthy()
       const getBody = await getResponse.json()
       const fetchedEvent = getObjectByType(getBody.objects, 'event')
       expect(fetchedEvent?.name).toBe('CRUD Test Event')
 
       // Update
-      const updateResponse = await request.put(
+      const updateResponse = await apiContext.put(
         `${API_BASE}/api/events/${eventId}`,
         {
           data: {
@@ -172,7 +140,7 @@ test.describe('Events Feature', () => {
       expect(updatedEvent?.description).toBe('Now with a description')
 
       // Delete
-      const deleteResponse = await request.delete(
+      const deleteResponse = await apiContext.delete(
         `${API_BASE}/api/events/${eventId}`
       )
       expect(deleteResponse.ok()).toBeTruthy()
@@ -182,17 +150,14 @@ test.describe('Events Feature', () => {
       expect(deleteBody.deleted[0].id).toBe(eventId)
 
       // Verify deleted
-      const verifyResponse = await request.get(
+      const verifyResponse = await apiContext.get(
         `${API_BASE}/api/events/${eventId}`
       )
       expect(verifyResponse.status()).toBe(404)
     })
 
-    test('GET /api/events/:id returns 404 for non-existent event', async ({
-      request,
-    }) => {
-      await getTestSession(request)
-      const response = await request.get(
+    test('GET /api/events/:id returns 404 for non-existent event', async () => {
+      const response = await apiContext.get(
         `${API_BASE}/api/events/00000000-0000-0000-0000-000000000000`
       )
       expect(response.status()).toBe(404)
@@ -225,29 +190,34 @@ test.describe('Events Feature', () => {
   })
 
   test.describe('Events UI - Authenticated', () => {
+    let sessionToken: string
+
+    test.beforeAll(async ({ playwright }) => {
+      const ctx = await playwright.request.newContext()
+      const { token } = await getTestSession(ctx, TEST_EMAIL, TEST_NAME)
+      sessionToken = token
+      await ctx.dispose()
+    })
+
     test('events page displays header and new event button', async ({
       page,
-      request,
     }) => {
-      const { token } = await getTestSession(request)
-      await setupAuthenticatedPage(page, token)
+      await setupAuthenticatedPage(page, sessionToken)
       await page.goto('/events')
 
       await expect(page.getByTestId('page-title')).toContainText('Events')
       await expect(page.getByTestId('new-event-button')).toBeVisible()
     })
 
-    test('navigation includes Events link', async ({ page, request }) => {
-      const { token } = await getTestSession(request)
-      await setupAuthenticatedPage(page, token)
+    test('navigation includes Events link', async ({ page }) => {
+      await setupAuthenticatedPage(page, sessionToken)
       await page.goto('/')
 
       await expect(page.getByRole('link', { name: 'Events' })).toBeVisible()
     })
 
-    test('new event button opens modal', async ({ page, request }) => {
-      const { token } = await getTestSession(request)
-      await setupAuthenticatedPage(page, token)
+    test('new event button opens modal', async ({ page }) => {
+      await setupAuthenticatedPage(page, sessionToken)
       await page.goto('/events')
 
       await page.getByTestId('new-event-button').click()
@@ -257,12 +227,8 @@ test.describe('Events Feature', () => {
       ).toBeVisible()
     })
 
-    test('create event modal has required fields', async ({
-      page,
-      request,
-    }) => {
-      const { token } = await getTestSession(request)
-      await setupAuthenticatedPage(page, token)
+    test('create event modal has required fields', async ({ page }) => {
+      await setupAuthenticatedPage(page, sessionToken)
       await page.goto('/events')
 
       await page.getByTestId('new-event-button').click()
@@ -271,9 +237,8 @@ test.describe('Events Feature', () => {
       await expect(page.getByTestId('modal-save-button')).toBeVisible()
     })
 
-    test('can create an event through modal', async ({ page, request }) => {
-      const { token } = await getTestSession(request)
-      await setupAuthenticatedPage(page, token)
+    test('can create an event through modal', async ({ page }) => {
+      await setupAuthenticatedPage(page, sessionToken)
       await page.goto('/events')
 
       // Open the create event modal

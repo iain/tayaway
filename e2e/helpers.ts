@@ -1,0 +1,135 @@
+import { Page, APIRequestContext } from '@playwright/test'
+
+export const API_BASE = 'http://localhost:9293'
+
+export interface PoolObject {
+  id: string
+  objectType: string
+  [key: string]: unknown
+}
+
+export function getObjectByType<T extends PoolObject>(
+  objects: PoolObject[],
+  type: string
+): T | undefined {
+  return objects.find((o) => o.objectType === type) as T | undefined
+}
+
+export function getObjectsByType<T extends PoolObject>(
+  objects: PoolObject[],
+  type: string
+): T[] {
+  return objects.filter((o) => o.objectType === type) as T[]
+}
+
+export async function getTestSession(
+  request: APIRequestContext,
+  email: string,
+  name: string
+): Promise<{ token: string; userId: string }> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const response = await request.post(`${API_BASE}/api/test/session`, {
+      data: { email, name },
+    })
+    if (response.ok()) {
+      const body = await response.json()
+      return { token: body.session_token, userId: body.user_id }
+    }
+    if (response.status() >= 500 && attempt < 4) {
+      // Exponential backoff with jitter to avoid thundering herd
+      const delay = 200 * Math.pow(2, attempt) + Math.random() * 100
+      await new Promise((r) => setTimeout(r, delay))
+      continue
+    }
+    throw new Error(`Failed to create test session: ${response.status()}`)
+  }
+  throw new Error('Failed to create test session after retries')
+}
+
+export async function setupAuthenticatedPage(
+  page: Page,
+  token: string
+): Promise<void> {
+  await page.context().addCookies([
+    {
+      name: 'session_token',
+      value: token,
+      domain: 'localhost',
+      path: '/',
+      httpOnly: true,
+      sameSite: 'Lax',
+    },
+  ])
+}
+
+export async function createBareEvent(
+  request: APIRequestContext,
+  name = 'Test Event'
+): Promise<string> {
+  const response = await request.post(`${API_BASE}/api/events`, {
+    data: { name, description: 'Test event' },
+  })
+  const body = await response.json()
+  const event = getObjectByType(body.objects, 'event')
+  return event!.id
+}
+
+export async function createEventWithPoll(
+  request: APIRequestContext,
+  name = 'Test Event'
+): Promise<{
+  eventId: string
+  dateRangeIds: string[]
+  dateRangeId: string
+  workspaceId: string
+}> {
+  const eventResponse = await request.post(`${API_BASE}/api/events`, {
+    data: { name, description: 'Test event with poll' },
+  })
+  const eventBody = await eventResponse.json()
+  const event = getObjectByType(eventBody.objects, 'event')
+  const eventId = event!.id
+
+  const deadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+  await request.post(`${API_BASE}/api/events/${eventId}/poll`, {
+    data: { deadline },
+  })
+
+  const dr1Response = await request.post(
+    `${API_BASE}/api/events/${eventId}/poll/date-ranges`,
+    { data: { start_date: '2026-06-01', end_date: '2026-06-07' } }
+  )
+  const dr1Body = await dr1Response.json()
+  const dr1 = getObjectByType(dr1Body.objects, 'dateRange')
+
+  const dr2Response = await request.post(
+    `${API_BASE}/api/events/${eventId}/poll/date-ranges`,
+    { data: { start_date: '2026-06-15', end_date: '2026-06-20' } }
+  )
+  const dr2Body = await dr2Response.json()
+  const dr2 = getObjectByType(dr2Body.objects, 'dateRange')
+
+  return {
+    eventId,
+    dateRangeIds: [dr1!.id, dr2!.id],
+    dateRangeId: dr1!.id,
+    workspaceId: event!.workspaceId as string,
+  }
+}
+
+export async function createResolvedEvent(
+  request: APIRequestContext,
+  name = 'Test Event'
+): Promise<{ eventId: string; winnerDateRangeId: string }> {
+  const { eventId, dateRangeIds } = await createEventWithPoll(request, name)
+
+  await request.post(`${API_BASE}/api/events/${eventId}/votes`, {
+    data: { date_range_id: dateRangeIds[0], response: 'yes' },
+  })
+
+  await request.post(`${API_BASE}/api/events/${eventId}/poll/close`, {
+    data: { selected_date_range_id: dateRangeIds[0] },
+  })
+
+  return { eventId, winnerDateRangeId: dateRangeIds[0] }
+}

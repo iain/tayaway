@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
+import { API_BASE } from '../helpers'
 
 const TEST_EMAIL = 'test@example.com'
-const API_BASE = 'http://localhost:9293'
 
 test.describe('Authentication', () => {
   test.describe('Login page', () => {

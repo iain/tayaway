@@ -3,9 +3,15 @@
 
 require "sequel"
 
+# Falcon runs concurrent request fibers on the same thread. Sequel's default
+# pool keys connections by Thread.current, so fibers would share connections
+# and corrupt each other's query results. This extension keys by Fiber.current.
+# Skip in test env where DatabaseCleaner uses transaction strategy.
+Sequel.extension :fiber_concurrency unless ENV["RACK_ENV"] == "test"
+
 # Lazy database connection - defers connection until first use
 # This is required for Falcon which forks after loading config.ru
-DB = Sequel.connect(ENV.fetch("DATABASE_URL"), preconnect: false, test: false)
+DB = Sequel.connect(ENV.fetch("DATABASE_URL"), preconnect: false, test: false, max_connections: 16)
 
 DB.extension :pg_json
 DB.extension :pg_array

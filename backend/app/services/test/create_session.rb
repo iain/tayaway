@@ -38,30 +38,14 @@ module Test
           .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
       def find_or_create_user_and_session(email, name)
-        user = User.find_by_email(email)
-        user_id = if user
-                    if name && user.name != name
-                      DB[:users].where(id: user.id).update(name: name, updated_at: Time.now)
-                    end
-                    user.id
-                  else
-                    now = Time.now
-                    id = SecureRandom.uuid
-                    DB[:users].insert(id: id, email: email, name: name, created_at: now, updated_at: now)
-                    id
-                  end
+        DB.transaction do
+          user_id = upsert_user(email, name)
+          ensure_default_workspace(user_id)
+          session = create_session_for_user(user_id)
 
-        # Ensure user has at least one workspace
-        ensure_default_workspace(user_id)
-
-        session = create_session_for_user(user_id)
-
-        T.cast(Success({
-          session_token: session[:token],
-          user_id: user_id
-        }
-                      ), Result[T::Hash[Symbol, T.untyped], ServiceError]
-        )
+          success_data = { session_token: session[:token], user_id: user_id }
+          T.cast(Success(success_data), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        end
       end
 
       sig { params(user_id: T.any(String, UUID)).returns(T::Hash[Symbol, T.untyped]) }
@@ -82,13 +66,25 @@ module Test
         { id: id, token: token, user_id: user_id, expires_at: expires_at, created_at: now }
       end
 
+      sig { params(email: String, name: T.nilable(String)).returns(String) }
+      def upsert_user(email, name)
+        now = Time.now
+        id = SecureRandom.uuid
+        display_name = name || email
+
+        DB[:users].insert_conflict(
+          target: :email,
+          update: { name: display_name, updated_at: now }
+        ).insert(id: id, email: email, name: display_name, created_at: now, updated_at: now)
+
+        DB[:users].where(email: email).get(:id)
+      end
+
       sig { params(user_id: T.any(String, UUID)).void }
       def ensure_default_workspace(user_id)
-        # Check if user already has a workspace
         existing = DB[:workspace_memberships].where(user_id: user_id).first
         return if existing
 
-        # Create a default workspace for the user
         now = Time.now
         workspace_id = SecureRandom.uuid
 
@@ -99,7 +95,9 @@ module Test
           updated_at: now
         )
 
-        DB[:workspace_memberships].insert(
+        DB[:workspace_memberships].insert_conflict(
+          target: %i[workspace_id user_id]
+        ).insert(
           id: SecureRandom.uuid,
           workspace_id: workspace_id,
           user_id: user_id,

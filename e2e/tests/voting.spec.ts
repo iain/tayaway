@@ -1,106 +1,17 @@
-import { test, expect, Page, APIRequestContext } from '@playwright/test'
+import { test, expect, APIRequestContext } from '@playwright/test'
+import {
+  API_BASE,
+  getObjectByType,
+  getObjectsByType,
+  getTestSession,
+  setupAuthenticatedPage,
+  createEventWithPoll,
+} from '../helpers'
 
-const API_BASE = 'http://localhost:9293'
 const TEST_EMAIL = 'e2e-voting@example.com'
 const TEST_EMAIL_2 = 'e2e-voting-2@example.com'
 const TEST_NAME = 'E2E Voting User'
 const TEST_NAME_2 = 'E2E Voting User 2'
-
-// Helper to extract objects from pool response by type
-interface PoolObject {
-  id: string
-  objectType: string
-  [key: string]: unknown
-}
-
-function getObjectsByType<T extends PoolObject>(
-  objects: PoolObject[],
-  type: string
-): T[] {
-  return objects.filter((o) => o.objectType === type) as T[]
-}
-
-function getObjectByType<T extends PoolObject>(
-  objects: PoolObject[],
-  type: string
-): T | undefined {
-  return objects.find((o) => o.objectType === type) as T | undefined
-}
-
-// Helper to get an authenticated session for testing
-async function getTestSession(
-  request: APIRequestContext,
-  email = TEST_EMAIL,
-  name = TEST_NAME
-): Promise<{ token: string; userId: string }> {
-  const response = await request.post(`${API_BASE}/api/test/session`, {
-    data: { email, name },
-  })
-  if (!response.ok()) {
-    throw new Error(`Failed to create test session: ${response.status()}`)
-  }
-  const body = await response.json()
-  return { token: body.session_token, userId: body.user_id }
-}
-
-// Helper to set up authenticated page via cookie
-async function setupAuthenticatedPage(
-  page: Page,
-  token: string
-): Promise<void> {
-  await page.context().addCookies([
-    {
-      name: 'session_token',
-      value: token,
-      domain: 'localhost',
-      path: '/',
-      httpOnly: true,
-      sameSite: 'Lax',
-    },
-  ])
-}
-
-// Helper to create an event with a date poll and date ranges
-async function createTestEvent(
-  request: APIRequestContext
-): Promise<{ eventId: string; dateRangeId: string; workspaceId: string }> {
-  // 1. Create the event
-  const eventResponse = await request.post(`${API_BASE}/api/events`, {
-    data: {
-      name: 'Voting Test Event',
-      description: 'An event for testing voting',
-    },
-  })
-  const eventBody = await eventResponse.json()
-  const event = getObjectByType(eventBody.objects, 'event')
-  const eventId = event!.id
-
-  // 2. Open a date poll
-  const deadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-  await request.post(`${API_BASE}/api/events/${eventId}/poll`, {
-    data: { deadline },
-  })
-
-  // 3. Add date ranges
-  const dr1Response = await request.post(
-    `${API_BASE}/api/events/${eventId}/poll/date-ranges`,
-    {
-      data: { start_date: '2025-06-01', end_date: '2025-06-07' },
-    }
-  )
-  const dr1Body = await dr1Response.json()
-  const dateRange1 = getObjectByType(dr1Body.objects, 'dateRange')
-
-  await request.post(`${API_BASE}/api/events/${eventId}/poll/date-ranges`, {
-    data: { start_date: '2025-06-15', end_date: '2025-06-20' },
-  })
-
-  return {
-    eventId,
-    dateRangeId: dateRange1!.id,
-    workspaceId: event!.workspaceId as string,
-  }
-}
 
 test.describe('Voting Feature', () => {
   test.describe('Votes API - Unauthenticated', () => {
@@ -140,11 +51,21 @@ test.describe('Voting Feature', () => {
   })
 
   test.describe('Votes API - Authenticated', () => {
-    test('POST /api/events/:id/votes creates a vote', async ({ request }) => {
-      await getTestSession(request)
-      const { eventId, dateRangeId } = await createTestEvent(request)
+    let apiContext: APIRequestContext
 
-      const response = await request.post(
+    test.beforeAll(async ({ playwright }) => {
+      apiContext = await playwright.request.newContext()
+      await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
+    })
+
+    test.afterAll(async () => {
+      await apiContext.dispose()
+    })
+
+    test('POST /api/events/:id/votes creates a vote', async () => {
+      const { eventId, dateRangeId } = await createEventWithPoll(apiContext)
+
+      const response = await apiContext.post(
         `${API_BASE}/api/events/${eventId}/votes`,
         {
           data: {
@@ -164,14 +85,11 @@ test.describe('Voting Feature', () => {
       expect(vote?.dateRangeId).toBe(dateRangeId)
     })
 
-    test('POST /api/events/:id/votes updates existing vote', async ({
-      request,
-    }) => {
-      await getTestSession(request)
-      const { eventId, dateRangeId } = await createTestEvent(request)
+    test('POST /api/events/:id/votes updates existing vote', async () => {
+      const { eventId, dateRangeId } = await createEventWithPoll(apiContext)
 
       // Create initial vote
-      await request.post(`${API_BASE}/api/events/${eventId}/votes`, {
+      await apiContext.post(`${API_BASE}/api/events/${eventId}/votes`, {
         data: {
           date_range_id: dateRangeId,
           response: 'yes',
@@ -179,7 +97,7 @@ test.describe('Voting Feature', () => {
       })
 
       // Update to different response
-      const response = await request.post(
+      const response = await apiContext.post(
         `${API_BASE}/api/events/${eventId}/votes`,
         {
           data: {
@@ -197,13 +115,10 @@ test.describe('Voting Feature', () => {
       expect(vote?.comment).toBe('Changed my mind')
     })
 
-    test('POST /api/events/:id/votes validates response value', async ({
-      request,
-    }) => {
-      await getTestSession(request)
-      const { eventId, dateRangeId } = await createTestEvent(request)
+    test('POST /api/events/:id/votes validates response value', async () => {
+      const { eventId, dateRangeId } = await createEventWithPoll(apiContext)
 
-      const response = await request.post(
+      const response = await apiContext.post(
         `${API_BASE}/api/events/${eventId}/votes`,
         {
           data: {
@@ -218,13 +133,10 @@ test.describe('Voting Feature', () => {
       expect(body.error).toBe('Invalid response value')
     })
 
-    test('POST /api/events/:id/votes requires date_range_id', async ({
-      request,
-    }) => {
-      await getTestSession(request)
-      const { eventId } = await createTestEvent(request)
+    test('POST /api/events/:id/votes requires date_range_id', async () => {
+      const { eventId } = await createEventWithPoll(apiContext)
 
-      const response = await request.post(
+      const response = await apiContext.post(
         `${API_BASE}/api/events/${eventId}/votes`,
         {
           data: { response: 'yes' },
@@ -236,13 +148,10 @@ test.describe('Voting Feature', () => {
       expect(body.error).toBe('date_range_id is required')
     })
 
-    test('POST /api/events/:id/votes requires response', async ({
-      request,
-    }) => {
-      await getTestSession(request)
-      const { eventId, dateRangeId } = await createTestEvent(request)
+    test('POST /api/events/:id/votes requires response', async () => {
+      const { eventId, dateRangeId } = await createEventWithPoll(apiContext)
 
-      const response = await request.post(
+      const response = await apiContext.post(
         `${API_BASE}/api/events/${eventId}/votes`,
         {
           data: { date_range_id: dateRangeId },
@@ -254,14 +163,11 @@ test.describe('Voting Feature', () => {
       expect(body.error).toBe('response is required')
     })
 
-    test('POST /api/events/:id/votes rejects date_range from different event', async ({
-      request,
-    }) => {
-      await getTestSession(request)
-      const { dateRangeId } = await createTestEvent(request)
-      const { eventId: otherEventId } = await createTestEvent(request)
+    test('POST /api/events/:id/votes rejects date_range from different event', async () => {
+      const { dateRangeId } = await createEventWithPoll(apiContext)
+      const { eventId: otherEventId } = await createEventWithPoll(apiContext)
 
-      const response = await request.post(
+      const response = await apiContext.post(
         `${API_BASE}/api/events/${otherEventId}/votes`,
         {
           data: {
@@ -276,21 +182,18 @@ test.describe('Voting Feature', () => {
       expect(body.error).toBe('Date range does not belong to this event')
     })
 
-    test('GET /api/events/:id/votes returns all votes for event', async ({
-      request,
-    }) => {
-      await getTestSession(request)
-      const { eventId, dateRangeId } = await createTestEvent(request)
+    test('GET /api/events/:id/votes returns all votes for event', async () => {
+      const { eventId, dateRangeId } = await createEventWithPoll(apiContext)
 
       // Create a vote
-      await request.post(`${API_BASE}/api/events/${eventId}/votes`, {
+      await apiContext.post(`${API_BASE}/api/events/${eventId}/votes`, {
         data: {
           date_range_id: dateRangeId,
           response: 'yes',
         },
       })
 
-      const response = await request.get(
+      const response = await apiContext.get(
         `${API_BASE}/api/events/${eventId}/votes`
       )
 
@@ -301,14 +204,11 @@ test.describe('Voting Feature', () => {
       expect(votes[0]?.response).toBe('yes')
     })
 
-    test('DELETE /api/events/:id/votes/:vote_id removes vote', async ({
-      request,
-    }) => {
-      await getTestSession(request)
-      const { eventId, dateRangeId } = await createTestEvent(request)
+    test('DELETE /api/events/:id/votes/:vote_id removes vote', async () => {
+      const { eventId, dateRangeId } = await createEventWithPoll(apiContext)
 
       // Create a vote
-      const createResponse = await request.post(
+      const createResponse = await apiContext.post(
         `${API_BASE}/api/events/${eventId}/votes`,
         {
           data: {
@@ -321,7 +221,7 @@ test.describe('Voting Feature', () => {
       const vote = getObjectByType(createBody.objects, 'vote')
 
       // Delete the vote
-      const deleteResponse = await request.delete(
+      const deleteResponse = await apiContext.delete(
         `${API_BASE}/api/events/${eventId}/votes/${vote!.id}`
       )
 
@@ -332,7 +232,7 @@ test.describe('Voting Feature', () => {
       expect(body.deleted[0].id).toBe(vote!.id)
 
       // Verify vote is gone
-      const getResponse = await request.get(
+      const getResponse = await apiContext.get(
         `${API_BASE}/api/events/${eventId}/votes`
       )
       const getBody = await getResponse.json()
@@ -341,15 +241,12 @@ test.describe('Voting Feature', () => {
     })
 
     test('DELETE /api/events/:id/votes/:vote_id returns 403 for other user vote', async ({
-      request,
       playwright,
     }) => {
-      // User 1 on default request context
-      await getTestSession(request, TEST_EMAIL, TEST_NAME)
-      const { eventId, dateRangeId } = await createTestEvent(request)
+      // User 1 creates event and votes via shared apiContext
+      const { eventId, dateRangeId } = await createEventWithPoll(apiContext)
 
-      // User 1 creates a vote
-      const createResponse = await request.post(
+      const createResponse = await apiContext.post(
         `${API_BASE}/api/events/${eventId}/votes`,
         {
           data: {
@@ -377,12 +274,11 @@ test.describe('Voting Feature', () => {
       await user2Request.dispose()
     })
 
-    test('event includes votes in response', async ({ request }) => {
-      await getTestSession(request)
-      const { eventId, dateRangeId } = await createTestEvent(request)
+    test('event includes votes in response', async () => {
+      const { eventId, dateRangeId } = await createEventWithPoll(apiContext)
 
       // Create a vote
-      await request.post(`${API_BASE}/api/events/${eventId}/votes`, {
+      await apiContext.post(`${API_BASE}/api/events/${eventId}/votes`, {
         data: {
           date_range_id: dateRangeId,
           response: 'preferably_not',
@@ -391,7 +287,7 @@ test.describe('Voting Feature', () => {
       })
 
       // GET /api/events/:id returns only the event (no cascade)
-      const eventResponse = await request.get(
+      const eventResponse = await apiContext.get(
         `${API_BASE}/api/events/${eventId}`
       )
       const eventBody = await eventResponse.json()
@@ -400,7 +296,7 @@ test.describe('Voting Feature', () => {
       expect(events[0]?.id).toBe(eventId)
 
       // Votes are fetched separately via GET /api/events/:id/votes
-      const votesResponse = await request.get(
+      const votesResponse = await apiContext.get(
         `${API_BASE}/api/events/${eventId}/votes`
       )
       const votesBody = await votesResponse.json()
@@ -409,13 +305,9 @@ test.describe('Voting Feature', () => {
       expect(votes[0]?.response).toBe('preferably_not')
     })
 
-    test('non-workspace-member cannot view event', async ({
-      request,
-      playwright,
-    }) => {
-      // Owner on default request context
-      await getTestSession(request, TEST_EMAIL, TEST_NAME)
-      const { eventId } = await createTestEvent(request)
+    test('non-workspace-member cannot view event', async ({ playwright }) => {
+      // Owner creates event via shared apiContext
+      const { eventId } = await createEventWithPoll(apiContext)
 
       // Other user on separate request context
       const user2Request = await playwright.request.newContext()
@@ -434,12 +326,10 @@ test.describe('Voting Feature', () => {
     })
 
     test('non-workspace-member cannot vote on event', async ({
-      request,
       playwright,
     }) => {
-      // Owner on default request context
-      await getTestSession(request, TEST_EMAIL, TEST_NAME)
-      const { eventId, dateRangeId } = await createTestEvent(request)
+      // Owner creates event via shared apiContext
+      const { eventId, dateRangeId } = await createEventWithPoll(apiContext)
 
       // Other user on separate request context
       const user2Request = await playwright.request.newContext()
@@ -465,13 +355,20 @@ test.describe('Voting Feature', () => {
   })
 
   test.describe('Date Poll API', () => {
-    test('POST /api/events/:id/poll creates a date poll', async ({
-      request,
-    }) => {
-      await getTestSession(request)
+    let apiContext: APIRequestContext
 
+    test.beforeAll(async ({ playwright }) => {
+      apiContext = await playwright.request.newContext()
+      await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
+    })
+
+    test.afterAll(async () => {
+      await apiContext.dispose()
+    })
+
+    test('POST /api/events/:id/poll creates a date poll', async () => {
       // Create event without poll
-      const eventResponse = await request.post(`${API_BASE}/api/events`, {
+      const eventResponse = await apiContext.post(`${API_BASE}/api/events`, {
         data: { name: 'Poll Test Event' },
       })
       const eventBody = await eventResponse.json()
@@ -481,7 +378,7 @@ test.describe('Voting Feature', () => {
       const deadline = new Date(
         Date.now() + 7 * 24 * 60 * 60 * 1000
       ).toISOString()
-      const pollResponse = await request.post(
+      const pollResponse = await apiContext.post(
         `${API_BASE}/api/events/${event!.id}/poll`,
         {
           data: { deadline },
@@ -495,13 +392,10 @@ test.describe('Voting Feature', () => {
       expect(poll?.status).toBe('open')
     })
 
-    test('POST /api/events/:id/poll/close selects a winner', async ({
-      request,
-    }) => {
-      await getTestSession(request)
-      const { eventId, dateRangeId } = await createTestEvent(request)
+    test('POST /api/events/:id/poll/close selects a winner', async () => {
+      const { eventId, dateRangeId } = await createEventWithPoll(apiContext)
 
-      const closeResponse = await request.post(
+      const closeResponse = await apiContext.post(
         `${API_BASE}/api/events/${eventId}/poll/close`,
         {
           data: { selected_date_range_id: dateRangeId },
@@ -515,14 +409,11 @@ test.describe('Voting Feature', () => {
       expect(poll?.selectedDateRangeId).toBe(dateRangeId)
     })
 
-    test('POST /api/events/:id/poll/reopen reopens a resolved poll', async ({
-      request,
-    }) => {
-      await getTestSession(request)
-      const { eventId, dateRangeId } = await createTestEvent(request)
+    test('POST /api/events/:id/poll/reopen reopens a resolved poll', async () => {
+      const { eventId, dateRangeId } = await createEventWithPoll(apiContext)
 
       // Close the poll
-      await request.post(`${API_BASE}/api/events/${eventId}/poll/close`, {
+      await apiContext.post(`${API_BASE}/api/events/${eventId}/poll/close`, {
         data: { selected_date_range_id: dateRangeId },
       })
 
@@ -530,7 +421,7 @@ test.describe('Voting Feature', () => {
       const newDeadline = new Date(
         Date.now() + 14 * 24 * 60 * 60 * 1000
       ).toISOString()
-      const reopenResponse = await request.post(
+      const reopenResponse = await apiContext.post(
         `${API_BASE}/api/events/${eventId}/poll/reopen`,
         {
           data: { deadline: newDeadline },
@@ -544,17 +435,16 @@ test.describe('Voting Feature', () => {
       expect(poll?.selectedDateRangeId).toBeNull()
     })
 
-    test('voting fails on a closed poll', async ({ request }) => {
-      await getTestSession(request)
-      const { eventId, dateRangeId } = await createTestEvent(request)
+    test('voting fails on a closed poll', async () => {
+      const { eventId, dateRangeId } = await createEventWithPoll(apiContext)
 
       // Close the poll
-      await request.post(`${API_BASE}/api/events/${eventId}/poll/close`, {
+      await apiContext.post(`${API_BASE}/api/events/${eventId}/poll/close`, {
         data: { selected_date_range_id: dateRangeId },
       })
 
       // Try to vote
-      const voteResponse = await request.post(
+      const voteResponse = await apiContext.post(
         `${API_BASE}/api/events/${eventId}/votes`,
         {
           data: {
@@ -571,6 +461,19 @@ test.describe('Voting Feature', () => {
   })
 
   test.describe('Votes UI', () => {
+    let sessionToken: string
+    let apiContext: APIRequestContext
+
+    test.beforeAll(async ({ playwright }) => {
+      apiContext = await playwright.request.newContext()
+      const { token } = await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
+      sessionToken = token
+    })
+
+    test.afterAll(async () => {
+      await apiContext.dispose()
+    })
+
     test('event page redirects to login when not authenticated', async ({
       page,
     }) => {
@@ -578,13 +481,9 @@ test.describe('Voting Feature', () => {
       await expect(page).toHaveURL('/login')
     })
 
-    test('can navigate to event page from events list', async ({
-      page,
-      request,
-    }) => {
-      const { token } = await getTestSession(request)
-      await createTestEvent(request)
-      await setupAuthenticatedPage(page, token)
+    test('can navigate to event page from events list', async ({ page }) => {
+      await createEventWithPoll(apiContext, 'Voting Test Event')
+      await setupAuthenticatedPage(page, sessionToken)
 
       await page.goto('/events')
       await page.getByText('Voting Test Event').first().click()
@@ -598,11 +497,9 @@ test.describe('Voting Feature', () => {
 
     test('vote page shows date ranges with voting buttons', async ({
       page,
-      request,
     }) => {
-      const { token } = await getTestSession(request)
-      const { eventId } = await createTestEvent(request)
-      await setupAuthenticatedPage(page, token)
+      const { eventId } = await createEventWithPoll(apiContext)
+      await setupAuthenticatedPage(page, sessionToken)
 
       await page.goto(`/events/${eventId}/vote`)
 
@@ -620,10 +517,9 @@ test.describe('Voting Feature', () => {
       ).toBeVisible()
     })
 
-    test('can vote on a date range', async ({ page, request }) => {
-      const { token } = await getTestSession(request)
-      const { eventId } = await createTestEvent(request)
-      await setupAuthenticatedPage(page, token)
+    test('can vote on a date range', async ({ page }) => {
+      const { eventId } = await createEventWithPoll(apiContext)
+      await setupAuthenticatedPage(page, sessionToken)
 
       await page.goto(`/events/${eventId}/vote`)
 
@@ -644,10 +540,9 @@ test.describe('Voting Feature', () => {
       ).toBeVisible()
     })
 
-    test('can change vote', async ({ page, request }) => {
-      const { token } = await getTestSession(request)
-      const { eventId } = await createTestEvent(request)
-      await setupAuthenticatedPage(page, token)
+    test('can change vote', async ({ page }) => {
+      const { eventId } = await createEventWithPoll(apiContext)
+      await setupAuthenticatedPage(page, sessionToken)
 
       await page.goto(`/events/${eventId}/vote`)
 
@@ -678,10 +573,9 @@ test.describe('Voting Feature', () => {
       ).toBeVisible()
     })
 
-    test('can expand voters list', async ({ page, request }) => {
-      const { token } = await getTestSession(request)
-      const { eventId } = await createTestEvent(request)
-      await setupAuthenticatedPage(page, token)
+    test('can expand voters list', async ({ page }) => {
+      const { eventId } = await createEventWithPoll(apiContext)
+      await setupAuthenticatedPage(page, sessionToken)
 
       await page.goto(`/events/${eventId}/vote`)
 
@@ -701,10 +595,9 @@ test.describe('Voting Feature', () => {
       await expect(page.getByText(TEST_NAME).first()).toBeVisible()
     })
 
-    test('back button returns to events list', async ({ page, request }) => {
-      const { token } = await getTestSession(request)
-      const { eventId } = await createTestEvent(request)
-      await setupAuthenticatedPage(page, token)
+    test('back button returns to events list', async ({ page }) => {
+      const { eventId } = await createEventWithPoll(apiContext)
+      await setupAuthenticatedPage(page, sessionToken)
 
       await page.goto(`/events/${eventId}`)
       await page.getByRole('button', { name: 'Back to Events' }).click()
@@ -714,11 +607,9 @@ test.describe('Voting Feature', () => {
 
     test('event page shows new user in awaiting votes section', async ({
       page,
-      request,
     }) => {
-      const { token } = await getTestSession(request)
-      const { eventId, workspaceId } = await createTestEvent(request)
-      await setupAuthenticatedPage(page, token)
+      const { eventId, workspaceId } = await createEventWithPoll(apiContext)
+      await setupAuthenticatedPage(page, sessionToken)
 
       // Navigate to the event page first
       await page.goto(`/events/${eventId}`)
@@ -739,7 +630,7 @@ test.describe('Voting Feature', () => {
       // Now add a new member via API (simulating another tab/user adding someone)
       const newUserName = `New User ${Date.now()}`
       const newUserEmail = `new-user-${Date.now()}@example.com`
-      await request.post(`${API_BASE}/api/members`, {
+      await apiContext.post(`${API_BASE}/api/members`, {
         data: {
           name: newUserName,
           email: newUserEmail,

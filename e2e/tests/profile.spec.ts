@@ -1,56 +1,29 @@
-import { test, expect, Page, APIRequestContext } from '@playwright/test'
+import { test, expect, APIRequestContext } from '@playwright/test'
+import {
+  API_BASE,
+  getObjectByType,
+  getTestSession,
+  setupAuthenticatedPage,
+} from '../helpers'
 
-const API_BASE = 'http://localhost:9293'
 const TEST_EMAIL = 'e2e-profile@example.com'
 const TEST_NAME = 'E2E Profile User'
 
-// Helper to extract objects from pool response by type
-interface PoolObject {
-  id: string
-  objectType: string
-  [key: string]: unknown
-}
-
-function getObjectByType<T extends PoolObject>(
-  objects: PoolObject[],
-  type: string
-): T | undefined {
-  return objects.find((o) => o.objectType === type) as T | undefined
-}
-
-// Helper to get an authenticated session for testing
-async function getTestSession(
-  request: APIRequestContext
-): Promise<{ token: string; userId: string }> {
-  const response = await request.post(`${API_BASE}/api/test/session`, {
-    data: { email: TEST_EMAIL, name: TEST_NAME },
-  })
-  if (!response.ok()) {
-    throw new Error(`Failed to create test session: ${response.status()}`)
-  }
-  const body = await response.json()
-  return { token: body.session_token, userId: body.user_id }
-}
-
-// Helper to set up authenticated page via cookie
-async function setupAuthenticatedPage(
-  page: Page,
-  token: string
-): Promise<void> {
-  await page.context().addCookies([
-    {
-      name: 'session_token',
-      value: token,
-      domain: 'localhost',
-      path: '/',
-      httpOnly: true,
-      sameSite: 'Lax',
-    },
-  ])
-}
-
 test.describe('Profile Feature', () => {
   test.describe('Profile API', () => {
+    let apiContext: APIRequestContext
+    let userId: string
+
+    test.beforeAll(async ({ playwright }) => {
+      apiContext = await playwright.request.newContext()
+      const session = await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
+      userId = session.userId
+    })
+
+    test.afterAll(async () => {
+      await apiContext.dispose()
+    })
+
     test('PUT /api/users/:id returns 401 without auth', async ({ request }) => {
       const response = await request.put(`${API_BASE}/api/users/some-id`, {
         data: { name: 'New Name' },
@@ -60,12 +33,8 @@ test.describe('Profile Feature', () => {
       expect(body.error).toBe('Authorization required')
     })
 
-    test('PUT /api/users/:id returns 403 when updating another user', async ({
-      request,
-    }) => {
-      await getTestSession(request)
-
-      const response = await request.put(
+    test('PUT /api/users/:id returns 403 when updating another user', async () => {
+      const response = await apiContext.put(
         `${API_BASE}/api/users/00000000-0000-0000-0000-000000000000`,
         {
           data: { name: 'Hacked Name' },
@@ -75,12 +44,8 @@ test.describe('Profile Feature', () => {
       expect([403, 404]).toContain(response.status())
     })
 
-    test('PUT /api/users/:id returns 400 when name is empty', async ({
-      request,
-    }) => {
-      const { userId } = await getTestSession(request)
-
-      const response = await request.put(`${API_BASE}/api/users/${userId}`, {
+    test('PUT /api/users/:id returns 400 when name is empty', async () => {
+      const response = await apiContext.put(`${API_BASE}/api/users/${userId}`, {
         data: { name: '' },
       })
       expect(response.status()).toBe(400)
@@ -88,12 +53,8 @@ test.describe('Profile Feature', () => {
       expect(body.error).toBe('Name is required')
     })
 
-    test('PUT /api/users/:id successfully updates name', async ({
-      request,
-    }) => {
-      const { userId } = await getTestSession(request)
-
-      const response = await request.put(`${API_BASE}/api/users/${userId}`, {
+    test('PUT /api/users/:id successfully updates name', async () => {
+      const response = await apiContext.put(`${API_BASE}/api/users/${userId}`, {
         data: { name: 'Updated Profile Name' },
       })
       expect(response.ok()).toBeTruthy()
@@ -105,9 +66,17 @@ test.describe('Profile Feature', () => {
   })
 
   test.describe('Profile UI', () => {
-    test('profile page displays name and email', async ({ page, request }) => {
-      const { token } = await getTestSession(request)
-      await setupAuthenticatedPage(page, token)
+    let sessionToken: string
+
+    test.beforeAll(async ({ playwright }) => {
+      const ctx = await playwright.request.newContext()
+      const { token } = await getTestSession(ctx, TEST_EMAIL, TEST_NAME)
+      sessionToken = token
+      await ctx.dispose()
+    })
+
+    test('profile page displays name and email', async ({ page }) => {
+      await setupAuthenticatedPage(page, sessionToken)
       await page.goto('/profile')
 
       await expect(page.getByText('Account Information')).toBeVisible()
@@ -115,20 +84,15 @@ test.describe('Profile Feature', () => {
       await expect(page.getByText(TEST_NAME)).toBeVisible()
     })
 
-    test('profile page shows edit button for name', async ({
-      page,
-      request,
-    }) => {
-      const { token } = await getTestSession(request)
-      await setupAuthenticatedPage(page, token)
+    test('profile page shows edit button for name', async ({ page }) => {
+      await setupAuthenticatedPage(page, sessionToken)
       await page.goto('/profile')
 
       await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible()
     })
 
-    test('clicking edit opens the name modal', async ({ page, request }) => {
-      const { token } = await getTestSession(request)
-      await setupAuthenticatedPage(page, token)
+    test('clicking edit opens the name modal', async ({ page }) => {
+      await setupAuthenticatedPage(page, sessionToken)
       await page.goto('/profile')
 
       await page.getByRole('button', { name: 'Edit' }).click()
@@ -140,10 +104,8 @@ test.describe('Profile Feature', () => {
 
     test('edit name modal is pre-filled with current name', async ({
       page,
-      request,
     }) => {
-      const { token } = await getTestSession(request)
-      await setupAuthenticatedPage(page, token)
+      await setupAuthenticatedPage(page, sessionToken)
       await page.goto('/profile')
 
       await page.getByRole('button', { name: 'Edit' }).click()
@@ -158,8 +120,12 @@ test.describe('Profile Feature', () => {
       request,
     }) => {
       // Create two sessions so there's at least one non-current session
-      const { token: currentToken } = await getTestSession(request)
-      await getTestSession(request)
+      const { token: currentToken } = await getTestSession(
+        request,
+        TEST_EMAIL,
+        TEST_NAME
+      )
+      await getTestSession(request, TEST_EMAIL, TEST_NAME)
 
       // Authenticate as the current session and visit profile
       await setupAuthenticatedPage(page, currentToken)
@@ -184,9 +150,8 @@ test.describe('Profile Feature', () => {
       await expect(page.getByText('Current session')).toBeVisible()
     })
 
-    test('can update name through the modal', async ({ page, request }) => {
-      const { token } = await getTestSession(request)
-      await setupAuthenticatedPage(page, token)
+    test('can update name through the modal', async ({ page }) => {
+      await setupAuthenticatedPage(page, sessionToken)
       await page.goto('/profile')
 
       // Open modal

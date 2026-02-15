@@ -1,135 +1,36 @@
-import { test, expect, Page, APIRequestContext } from '@playwright/test'
+import { test, expect, APIRequestContext } from '@playwright/test'
+import {
+  API_BASE,
+  getTestSession,
+  setupAuthenticatedPage,
+  createBareEvent,
+  createEventWithPoll,
+  createResolvedEvent,
+} from '../helpers'
 
-const API_BASE = 'http://localhost:9293'
 const TEST_EMAIL = 'e2e-poll@example.com'
 const TEST_NAME = 'E2E Poll User'
 
-interface PoolObject {
-  id: string
-  objectType: string
-  [key: string]: unknown
-}
-
-function getObjectByType<T extends PoolObject>(
-  objects: PoolObject[],
-  type: string
-): T | undefined {
-  return objects.find((o) => o.objectType === type) as T | undefined
-}
-
-function getObjectsByType<T extends PoolObject>(
-  objects: PoolObject[],
-  type: string
-): T[] {
-  return objects.filter((o) => o.objectType === type) as T[]
-}
-
-async function getTestSession(
-  request: APIRequestContext,
-  email = TEST_EMAIL,
-  name = TEST_NAME
-): Promise<{ token: string; userId: string }> {
-  const response = await request.post(`${API_BASE}/api/test/session`, {
-    data: { email, name },
-  })
-  if (!response.ok()) {
-    throw new Error(`Failed to create test session: ${response.status()}`)
-  }
-  const body = await response.json()
-  return { token: body.session_token, userId: body.user_id }
-}
-
-async function setupAuthenticatedPage(
-  page: Page,
-  token: string
-): Promise<void> {
-  await page.context().addCookies([
-    {
-      name: 'session_token',
-      value: token,
-      domain: 'localhost',
-      path: '/',
-      httpOnly: true,
-      sameSite: 'Lax',
-    },
-  ])
-}
-
-// Create a bare event (no poll) via API
-async function createBareEvent(
-  request: APIRequestContext,
-  name = 'Poll Lifecycle Event'
-): Promise<string> {
-  const response = await request.post(`${API_BASE}/api/events`, {
-    data: { name, description: 'Testing poll lifecycle' },
-  })
-  const body = await response.json()
-  const event = getObjectByType(body.objects, 'event')
-  return event!.id
-}
-
-// Create an event with an open poll and date ranges via API
-async function createEventWithPoll(
-  request: APIRequestContext
-): Promise<{ eventId: string; dateRangeIds: string[] }> {
-  const eventId = await createBareEvent(request)
-
-  // Open poll
-  const deadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-  await request.post(`${API_BASE}/api/events/${eventId}/poll`, {
-    data: { deadline },
-  })
-
-  // Add two date ranges
-  const dr1Response = await request.post(
-    `${API_BASE}/api/events/${eventId}/poll/date-ranges`,
-    {
-      data: { start_date: '2026-06-01', end_date: '2026-06-07' },
-    }
-  )
-  const dr1Body = await dr1Response.json()
-  const dr1 = getObjectByType(dr1Body.objects, 'dateRange')
-
-  const dr2Response = await request.post(
-    `${API_BASE}/api/events/${eventId}/poll/date-ranges`,
-    {
-      data: { start_date: '2026-06-15', end_date: '2026-06-20' },
-    }
-  )
-  const dr2Body = await dr2Response.json()
-  const dr2 = getObjectByType(dr2Body.objects, 'dateRange')
-
-  return { eventId, dateRangeIds: [dr1!.id, dr2!.id] }
-}
-
-// Create an event with a poll that has votes and is closed (winner selected)
-async function createResolvedEvent(
-  request: APIRequestContext
-): Promise<{ eventId: string; winnerDateRangeId: string }> {
-  const { eventId, dateRangeIds } = await createEventWithPoll(request)
-
-  // Vote on the first date range
-  await request.post(`${API_BASE}/api/events/${eventId}/votes`, {
-    data: { date_range_id: dateRangeIds[0], response: 'yes' },
-  })
-
-  // Close poll with the first date range as winner
-  await request.post(`${API_BASE}/api/events/${eventId}/poll/close`, {
-    data: { selected_date_range_id: dateRangeIds[0] },
-  })
-
-  return { eventId, winnerDateRangeId: dateRangeIds[0] }
-}
-
 test.describe('Poll Lifecycle UI', () => {
+  let sessionToken: string
+  let apiContext: APIRequestContext
+
+  test.beforeAll(async ({ playwright }) => {
+    apiContext = await playwright.request.newContext()
+    const { token } = await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
+    sessionToken = token
+  })
+
+  test.afterAll(async () => {
+    await apiContext.dispose()
+  })
+
   test.describe('Opening a poll', () => {
     test('event page shows "Open Date Poll" button when no poll exists', async ({
       page,
-      request,
     }) => {
-      const { token } = await getTestSession(request)
-      const eventId = await createBareEvent(request)
-      await setupAuthenticatedPage(page, token)
+      const eventId = await createBareEvent(apiContext)
+      await setupAuthenticatedPage(page, sessionToken)
 
       await page.goto(`/events/${eventId}`)
       await expect(page.getByTestId('event-name')).toBeVisible({
@@ -143,11 +44,9 @@ test.describe('Poll Lifecycle UI', () => {
 
     test('clicking "Open Date Poll" opens modal with deadline field', async ({
       page,
-      request,
     }) => {
-      const { token } = await getTestSession(request)
-      const eventId = await createBareEvent(request)
-      await setupAuthenticatedPage(page, token)
+      const eventId = await createBareEvent(apiContext)
+      await setupAuthenticatedPage(page, sessionToken)
 
       await page.goto(`/events/${eventId}`)
       await expect(page.getByTestId('event-name')).toBeVisible({
@@ -164,13 +63,9 @@ test.describe('Poll Lifecycle UI', () => {
       ).toBeVisible()
     })
 
-    test('can open a date poll through the modal', async ({
-      page,
-      request,
-    }) => {
-      const { token } = await getTestSession(request)
-      const eventId = await createBareEvent(request)
-      await setupAuthenticatedPage(page, token)
+    test('can open a date poll through the modal', async ({ page }) => {
+      const eventId = await createBareEvent(apiContext)
+      await setupAuthenticatedPage(page, sessionToken)
 
       await page.goto(`/events/${eventId}`)
       await expect(page.getByTestId('event-name')).toBeVisible({
@@ -197,13 +92,9 @@ test.describe('Poll Lifecycle UI', () => {
   })
 
   test.describe('Adding date ranges', () => {
-    test('clicking "Add Date Range" opens calendar modal', async ({
-      page,
-      request,
-    }) => {
-      const { token } = await getTestSession(request)
-      const { eventId } = await createEventWithPoll(request)
-      await setupAuthenticatedPage(page, token)
+    test('clicking "Add Date Range" opens calendar modal', async ({ page }) => {
+      const { eventId } = await createEventWithPoll(apiContext)
+      await setupAuthenticatedPage(page, sessionToken)
 
       await page.goto(`/events/${eventId}`)
       await expect(page.getByTestId('event-name')).toBeVisible({
@@ -221,11 +112,9 @@ test.describe('Poll Lifecycle UI', () => {
 
     test('can add a date range by selecting two dates on the calendar', async ({
       page,
-      request,
     }) => {
-      const { token } = await getTestSession(request)
-      const { eventId } = await createEventWithPoll(request)
-      await setupAuthenticatedPage(page, token)
+      const { eventId } = await createEventWithPoll(apiContext)
+      await setupAuthenticatedPage(page, sessionToken)
 
       await page.goto(`/events/${eventId}`)
       await expect(page.getByTestId('event-name')).toBeVisible({
@@ -268,10 +157,9 @@ test.describe('Poll Lifecycle UI', () => {
       })
     })
 
-    test('can remove a date range', async ({ page, request }) => {
-      const { token } = await getTestSession(request)
-      const { eventId } = await createEventWithPoll(request)
-      await setupAuthenticatedPage(page, token)
+    test('can remove a date range', async ({ page }) => {
+      const { eventId } = await createEventWithPoll(apiContext)
+      await setupAuthenticatedPage(page, sessionToken)
 
       await page.goto(`/events/${eventId}`)
       await expect(page.getByTestId('event-name')).toBeVisible({
@@ -296,12 +184,20 @@ test.describe('Poll Lifecycle UI', () => {
   })
 
   test.describe('Poll status display', () => {
-    test('open poll shows remaining time', async ({ page, request }) => {
-      const { token } = await getTestSession(request)
-      const { eventId } = await createEventWithPoll(request)
-      await setupAuthenticatedPage(page, token)
+    let openEventId: string
+    let resolvedEventId: string
 
-      await page.goto(`/events/${eventId}`)
+    test.beforeAll(async () => {
+      const { eventId: eid1 } = await createEventWithPoll(apiContext)
+      openEventId = eid1
+      const { eventId: eid2 } = await createResolvedEvent(apiContext)
+      resolvedEventId = eid2
+    })
+
+    test('open poll shows remaining time', async ({ page }) => {
+      await setupAuthenticatedPage(page, sessionToken)
+
+      await page.goto(`/events/${openEventId}`)
       await expect(page.getByTestId('event-name')).toBeVisible({
         timeout: 10000,
       })
@@ -310,15 +206,10 @@ test.describe('Poll Lifecycle UI', () => {
       await expect(page.getByText(/remaining/)).toBeVisible({ timeout: 5000 })
     })
 
-    test('open poll shows "Vote on Dates" button', async ({
-      page,
-      request,
-    }) => {
-      const { token } = await getTestSession(request)
-      const { eventId } = await createEventWithPoll(request)
-      await setupAuthenticatedPage(page, token)
+    test('open poll shows "Vote on Dates" button', async ({ page }) => {
+      await setupAuthenticatedPage(page, sessionToken)
 
-      await page.goto(`/events/${eventId}`)
+      await page.goto(`/events/${openEventId}`)
       await expect(page.getByTestId('event-name')).toBeVisible({
         timeout: 10000,
       })
@@ -328,12 +219,10 @@ test.describe('Poll Lifecycle UI', () => {
       ).toBeVisible({ timeout: 5000 })
     })
 
-    test('resolved poll shows winner badge', async ({ page, request }) => {
-      const { token } = await getTestSession(request)
-      const { eventId } = await createResolvedEvent(request)
-      await setupAuthenticatedPage(page, token)
+    test('resolved poll shows winner badge', async ({ page }) => {
+      await setupAuthenticatedPage(page, sessionToken)
 
-      await page.goto(`/events/${eventId}`)
+      await page.goto(`/events/${resolvedEventId}`)
       await expect(page.getByTestId('event-name')).toBeVisible({
         timeout: 10000,
       })
@@ -346,13 +235,9 @@ test.describe('Poll Lifecycle UI', () => {
   })
 
   test.describe('Closing a poll (selecting winner)', () => {
-    test('"Select Winner" button opens close poll modal', async ({
-      page,
-      request,
-    }) => {
-      const { token } = await getTestSession(request)
-      const { eventId } = await createEventWithPoll(request)
-      await setupAuthenticatedPage(page, token)
+    test('"Select Winner" button opens close poll modal', async ({ page }) => {
+      const { eventId } = await createEventWithPoll(apiContext)
+      await setupAuthenticatedPage(page, sessionToken)
 
       await page.goto(`/events/${eventId}`)
       await expect(page.getByTestId('event-name')).toBeVisible({
@@ -374,13 +259,9 @@ test.describe('Poll Lifecycle UI', () => {
       ).toBeDisabled()
     })
 
-    test('can select a winner and close the poll', async ({
-      page,
-      request,
-    }) => {
-      const { token } = await getTestSession(request)
-      const { eventId } = await createEventWithPoll(request)
-      await setupAuthenticatedPage(page, token)
+    test('can select a winner and close the poll', async ({ page }) => {
+      const { eventId } = await createEventWithPoll(apiContext)
+      await setupAuthenticatedPage(page, sessionToken)
 
       await page.goto(`/events/${eventId}`)
       await expect(page.getByTestId('event-name')).toBeVisible({
@@ -425,11 +306,9 @@ test.describe('Poll Lifecycle UI', () => {
   test.describe('Reopening a poll', () => {
     test('"Reopen Poll" button is visible on resolved poll', async ({
       page,
-      request,
     }) => {
-      const { token } = await getTestSession(request)
-      const { eventId } = await createResolvedEvent(request)
-      await setupAuthenticatedPage(page, token)
+      const { eventId } = await createResolvedEvent(apiContext)
+      await setupAuthenticatedPage(page, sessionToken)
 
       await page.goto(`/events/${eventId}`)
       await expect(page.getByTestId('event-name')).toBeVisible({
@@ -443,11 +322,9 @@ test.describe('Poll Lifecycle UI', () => {
 
     test('clicking "Reopen Poll" opens modal with deadline field', async ({
       page,
-      request,
     }) => {
-      const { token } = await getTestSession(request)
-      const { eventId } = await createResolvedEvent(request)
-      await setupAuthenticatedPage(page, token)
+      const { eventId } = await createResolvedEvent(apiContext)
+      await setupAuthenticatedPage(page, sessionToken)
 
       await page.goto(`/events/${eventId}`)
       await expect(page.getByTestId('event-name')).toBeVisible({
@@ -463,10 +340,9 @@ test.describe('Poll Lifecycle UI', () => {
       await expect(page.getByLabel('Voting Deadline')).toBeVisible()
     })
 
-    test('can reopen a resolved poll', async ({ page, request }) => {
-      const { token } = await getTestSession(request)
-      const { eventId } = await createResolvedEvent(request)
-      await setupAuthenticatedPage(page, token)
+    test('can reopen a resolved poll', async ({ page }) => {
+      const { eventId } = await createResolvedEvent(apiContext)
+      await setupAuthenticatedPage(page, sessionToken)
 
       await page.goto(`/events/${eventId}`)
       await expect(page.getByTestId('event-name')).toBeVisible({
@@ -505,15 +381,22 @@ test.describe('Poll Lifecycle UI', () => {
   })
 
   test.describe('Vote page and closed poll', () => {
+    let openEventId: string
+    let resolvedEventId: string
+
+    test.beforeAll(async () => {
+      const { eventId: eid1 } = await createEventWithPoll(apiContext)
+      openEventId = eid1
+      const { eventId: eid2 } = await createResolvedEvent(apiContext)
+      resolvedEventId = eid2
+    })
+
     test('vote page shows "Voting is closed" when poll is resolved', async ({
       page,
-      request,
     }) => {
-      const { token } = await getTestSession(request)
-      const { eventId } = await createResolvedEvent(request)
-      await setupAuthenticatedPage(page, token)
+      await setupAuthenticatedPage(page, sessionToken)
 
-      await page.goto(`/events/${eventId}/vote`)
+      await page.goto(`/events/${resolvedEventId}/vote`)
 
       await expect(page.getByText('Voting is closed')).toBeVisible({
         timeout: 10000,
@@ -523,15 +406,10 @@ test.describe('Poll Lifecycle UI', () => {
       ).toBeVisible()
     })
 
-    test('"Vote on Dates" button navigates to vote page', async ({
-      page,
-      request,
-    }) => {
-      const { token } = await getTestSession(request)
-      const { eventId } = await createEventWithPoll(request)
-      await setupAuthenticatedPage(page, token)
+    test('"Vote on Dates" button navigates to vote page', async ({ page }) => {
+      await setupAuthenticatedPage(page, sessionToken)
 
-      await page.goto(`/events/${eventId}`)
+      await page.goto(`/events/${openEventId}`)
       await expect(page.getByTestId('event-name')).toBeVisible({
         timeout: 10000,
       })
@@ -540,7 +418,7 @@ test.describe('Poll Lifecycle UI', () => {
         .getByRole('button', { name: 'Vote on Dates' })
         .click({ timeout: 5000 })
 
-      await expect(page).toHaveURL(`/events/${eventId}/vote`)
+      await expect(page).toHaveURL(`/events/${openEventId}/vote`)
       // Should see voting cards for each date range
       await expect(
         page.getByRole('button', { name: 'Yes', exact: true }).first()
@@ -551,11 +429,9 @@ test.describe('Poll Lifecycle UI', () => {
   test.describe('Full lifecycle', () => {
     test('complete poll lifecycle: open → add dates → vote → close → reopen', async ({
       page,
-      request,
     }) => {
-      const { token } = await getTestSession(request)
-      const eventId = await createBareEvent(request, 'Full Lifecycle Event')
-      await setupAuthenticatedPage(page, token)
+      const eventId = await createBareEvent(apiContext, 'Full Lifecycle Event')
+      await setupAuthenticatedPage(page, sessionToken)
 
       // 1. Navigate to event page
       await page.goto(`/events/${eventId}`)
