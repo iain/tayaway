@@ -1,92 +1,232 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code when working with code in this repository.
+
+> **Keep this file up to date.** When you add routes, models, services, database tables, or change architectural patterns, update the relevant sections of this document. Accurate documentation prevents hallucinated APIs and wrong assumptions in future sessions.
 
 ## Project Overview
 
-Tayaway is a full-stack event planning web application with a Ruby backend API and Vue.js frontend, organized as a pnpm monorepo. Users authenticate via magic link email, then can create and manage events with flexible date ranges.
+Tayaway is a real-time collaborative event planning app. Users authenticate via magic link email, belong to workspaces, and create events with date polls that members vote on. The app syncs all state in real-time via WebSockets and PostgreSQL LISTEN/NOTIFY.
+
+**Monorepo layout:** pnpm workspace with `frontend/` and `e2e/` as packages. `backend/` is a standalone Ruby app (not a pnpm package).
 
 ## Commands
 
-All commands run through mise. Key commands:
+All commands run through mise:
 
 ```bash
 mise run dev              # Start frontend (5173) + backend (9292)
 mise run test             # All tests (frontend + backend + e2e)
 mise run test_backend     # RSpec tests only
 mise run test_frontend    # Vitest tests only
-mise run test_e2e         # Playwright tests only
-mise run lint             # ESLint + Rubocop
+mise run test_e2e         # Playwright e2e tests (requires dev server)
+mise run lint             # ESLint + RuboCop
 mise run typecheck        # vue-tsc + Sorbet
 mise run db_migrate       # Run Sequel migrations
 mise run db_reset         # Drop, create, migrate database
 ```
 
-Run single backend test: `cd backend && bundle exec rspec spec/path/to/spec.rb`
-Run single frontend test: `cd frontend && pnpm exec vitest run src/path/to/file.spec.ts`
+Run a single test:
+
+```bash
+cd backend && bundle exec rspec spec/path/to/spec.rb
+cd frontend && pnpm exec vitest run src/path/to/file.spec.ts
+```
+
+**Three databases:** `tayaway_development`, `tayaway_test`, `tayaway_e2e`. When resetting, also reset test/e2e:
+
+```bash
+RACK_ENV=test bundle exec rake db:reset
+RACK_ENV=e2e bundle exec rake db:reset
+```
 
 ## Architecture
 
 ```
-frontend/          Vue 3 + TypeScript + Vite + Tailwind CSS
-  └── src/api/client.ts    Fetch-based HTTP client (not Axios)
-  └── src/pages/           Page components (Home, Login, Profile, Events)
-  └── src/components/      Reusable components (events/, calendar/)
-  └── src/composables/     Vue composables (useAuth, useEvents, useCalendar)
-  └── src/router/          Vue Router configuration
+frontend/                   Vue 3 + TypeScript + Vite + Tailwind CSS + Pinia
+  src/api/client.ts         Fetch-based HTTP client (not Axios); auto-imports pool objects from responses
+  src/pages/                Page components (Home, Login, Events, Vote, Profile, Members)
+  src/components/           Reusable components (events/, calendar/, votes/, form/, common/)
+  src/composables/          Vue composables (useHydratedEvent, useCalendar, useMutation, useDarkMode)
+  src/stores/               Pinia stores (objectPool, websocket, commandQueue, auth, workspace, events, votes, ...)
+  src/types/pool.ts         Object pool type registry (ObjectTypeMap, OBJECT_TYPES)
+  src/router/               Vue Router with auth guards
 
-backend/           Ruby + Roda + Sequel + PostgreSQL
-  └── app/app.rb           Main Roda app with hash_routes plugin
-  └── app/routes/          Route files (auth.rb, events.rb)
-  └── app/models/          Sequel models (User, Session, MagicLinkToken, Event, DateRange)
-  └── db/migrations/       Sequel migrations
+backend/                    Ruby 4 + Roda + Sequel + Falcon + Sorbet
+  app/app.rb                Main Roda app with hash_routes plugin
+  app/routes/               Route files (auth, events, members, workspaces, users, ws, health)
+  app/models/               Immutable T::Struct models with from_row / to_api_hash
+  app/services/             Business logic using Result monad (Success/Failure with bind chains)
+  app/serializers/          PoolSerializer — collects related objects for normalized API responses
+  app/websocket/            Listener (pg_notify), ConnectionManager, MessageHandler
+  app/object_registry.rb    Central registry mapping object types to models and serializer methods
+  config/environment.rb     Zeitwerk autoloader + Sorbet setup
+  config/database.rb        Sequel connection
+  db/migrations/            Sequel migrations
 
-e2e/               Playwright tests
+e2e/                        Playwright tests (auth, events, voting, poll lifecycle, profile)
+doc/                        Architecture docs (real-time-sync.md, workspaces.md)
 ```
 
-Frontend dev server proxies `/api/*` requests to the backend.
+## Key Architectural Patterns
+
+### Object Pool & Real-Time Sync
+
+All API responses return normalized `{ objects: [...] }` payloads. The frontend stores these in a type-keyed pool (`Map<ObjectType, Map<id, PoolObject>>`). Real-time updates flow through:
+
+1. Service mutates DB and calls `Broadcaster.object_changed(type, id, workspace_id:)`
+2. PostgreSQL `NOTIFY` triggers the background `Listener` thread
+3. Listener fetches full object, serializes via `PoolSerializer`, broadcasts to workspace connections
+4. Frontend `importObjects()` merges by timestamp (strictly newer wins)
+
+See `doc/real-time-sync.md` for full details including parent timestamp touching.
+
+### Result Monad (Backend Services)
+
+Services return `Result[Success[T], Failure[ServiceError]]` and compose with `.bind`:
+
+```ruby
+def call
+  validate_input
+    .bind { find_poll }
+    .bind { check_poll_open }
+    .bind { create_vote }
+    .fmap { |vote| serialize(vote) }
+end
+```
+
+Use `T.cast` when `fmap` changes the generic type to satisfy the Sorbet type checker.
+
+### Hydration (Frontend)
+
+`useHydratedEvent` denormalizes pool objects into nested structures for component consumption. The pool stays normalized for sync efficiency; hydrated views are computed properties.
+
+### Workspace Scoping
+
+All domain data belongs to a workspace. Backend routes verify membership. The frontend switches one workspace at a time via WebSocket `switch_workspace` message. See `doc/workspaces.md`.
+
+## Data Model
+
+```
+users              id (UUID), email (CITEXT), name, timestamps
+sessions           id, user_id, token, expires_at (30 days)
+magic_link_tokens  id, user_id, token, email, expires_at (15 min), used_at
+ws_tickets         id, user_id, ticket (JWT), used_at
+
+workspaces              id, name, timestamps
+workspace_memberships   id, workspace_id, user_id, role (owner/admin/member), unique(workspace_id, user_id)
+
+events             id, workspace_id, user_id (nullable, set null on delete), name, description, timestamps
+date_polls         id, event_id (unique, cascade), deadline, selected_date_range_id, closed_at, timestamps
+date_ranges        id, date_poll_id, start_date, end_date, timestamps, check(start_date <= end_date)
+votes              id, date_range_id, user_id, response (yes/no/preferably_not), comment, unique(date_range_id, user_id)
+```
+
+**Hierarchy:** Workspace -> Event -> DatePoll -> DateRange -> Vote
+
+**Poll lifecycle:** open -> expired (past deadline) -> resolved (closed with winner) -> can reopen
 
 ## API Endpoints
 
 **Authentication (`/api/auth`)**
 
-- `POST /magic-link` - Request magic link email
-- `POST /verify` - Verify token and get session
-- `GET /me` - Get current user (requires auth)
-- `POST /logout` - End session (requires auth)
+- `POST /magic-link` — Request magic link email
+- `POST /verify` — Verify token and create session
+- `GET /me` — Get current user (requires auth)
+- `POST /logout` — End session (requires auth)
+- `POST /ws-ticket` — Get single-use WebSocket JWT (requires auth)
+- `GET /sessions` — List user's sessions (requires auth)
+- `DELETE /sessions/:id` — Delete a session (requires auth)
 
-**Events (`/api/events`)** - All require authentication
+**Events (`/api/events`)** — All require authentication + workspace membership
 
-- `GET /` - List user's events
-- `POST /` - Create event with name, description, date_ranges
-- `GET /:id` - Get event details
-- `PUT /:id` - Update event
-- `DELETE /:id` - Delete event
+- `GET /` — List events in current workspace
+- `POST /` — Create event
+- `GET /:id` — Get event details
+- `PUT /:id` — Update event (owner only)
+- `DELETE /:id` — Delete event (owner only)
+- `POST /:id/poll` — Create date poll
+- `POST /:id/poll/close` — Close poll with selected winner
+- `POST /:id/poll/reopen` — Reopen a resolved poll
+- `POST /:id/poll/date-ranges` — Add date range to poll
+- `DELETE /:id/poll/date-ranges/:dr_id` — Remove date range
+- `GET /:id/votes` — Get votes for event
+- `POST /:id/votes` — Create or update vote
+- `DELETE /:id/votes/:vote_id` — Delete vote
+
+**Members (`/api/members`)** — Requires authentication
+
+- `POST /` — Add member to workspace by email
+
+**Workspaces (`/api/workspaces`)** — Requires authentication
+
+- `GET /` — List user's workspaces
+
+**Users (`/api/users`)** — Requires authentication
+
+- `PUT /name` — Update display name
+
+**WebSocket (`/ws?ticket=<jwt>`)** — Authenticated via single-use JWT ticket
+
+- Server sends: `authenticated`, `sync`, `broadcast`, `pong`, `error`
+- Client sends: `ping`, `switch_workspace`
 
 **Health**
 
-- `GET /health` - Health check
-- `GET /api/health` - API health check
+- `GET /health` — Health check
+- `GET /api/health` — API health check
 
-## Database Schema
+## Object Types
 
-- **users** - id (UUID), email (CITEXT), name, timestamps
-- **magic_link_tokens** - id, user_id, token, email, expires_at (15 min), used_at
-- **sessions** - id, user_id, token, expires_at (30 days)
-- **events** - id, user_id, name, description, timestamps
-- **date_ranges** - id, event_id, start_date, end_date, timestamps
+These types must stay in sync between frontend and backend:
 
-## Code Style Requirements
+| Type      | Backend model         | Frontend pool key | Serializer method          |
+| --------- | --------------------- | ----------------- | -------------------------- |
+| event     | `Event`               | `event`           | `add_event`                |
+| datePoll  | `DatePoll`            | `datePoll`        | `add_date_poll`            |
+| dateRange | `DateRange`           | `dateRange`       | `add_date_range`           |
+| vote      | `Vote`                | `vote`            | `add_vote`                 |
+| workspace | `Workspace`           | `workspace`       | `add_workspace`            |
+| member    | `WorkspaceMembership` | `member`          | `add_workspace_membership` |
+
+Defined in: `backend/app/object_registry.rb` and `frontend/src/types/pool.ts`
+
+## Adding a New Object Type
+
+1. **Backend model:** Create `T::Struct` in `app/models/` with `from_row` and `to_api_hash`
+2. **Serializer:** Add `add_<type>` method to `PoolSerializer`
+3. **Object registry:** Add entry in `object_registry.rb`
+4. **Services:** Call `Broadcaster.object_changed` after mutations
+5. **Frontend types:** Add to `OBJECT_TYPES` and `ObjectTypeMap` in `types/pool.ts`
+6. **Frontend store:** Create Pinia store that reads from the object pool
+7. **Update this file:** Add the new type to the Object Types table above
+
+## Code Style
 
 **Backend (Ruby):**
 
-- Every file must have `# typed: true` (Sorbet sigil) and `# frozen_string_literal: true`
-- Use double quotes for strings
+- Every file: `# typed: true` and `# frozen_string_literal: true`
+- Double quotes for strings
 - Roda routes use `hash_routes` plugin pattern
+- Models are immutable `T::Struct` — `from_row` class method, `to_api_hash` instance method
+- Services return `Result` monads, never raise for expected errors
+- RuboCop enforced; use `not_to` (not `to_not`) in RSpec
 
 **Frontend (TypeScript/Vue):**
 
-- Vue components use `<script setup lang="ts">` syntax
-- Tailwind CSS for styling
-- Use composables for shared state/logic
-- Always support both light and dark mode using Tailwind's `dark:` prefix
+- `<script setup lang="ts">` syntax
+- Tailwind CSS for all styling with `dark:` prefix for dark mode
+- Composables for shared state/logic
+- Stores call API, then auto-import pool objects from response
+- No semicolons (Prettier-enforced)
+
+## Keeping Documentation Current
+
+When making changes, update:
+
+- **This file (CLAUDE.md)** — API endpoints, database schema, object types, architectural patterns
+- **README.md** — Features, setup instructions, high-level architecture
+- **doc/real-time-sync.md** — WebSocket protocol, broadcast flow, pool merge logic
+- **doc/workspaces.md** — Workspace model, authorization, switching flow
+
+If you add a new route, model, service pattern, or change the data model, reflect it here so future sessions have accurate context.
