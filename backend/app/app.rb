@@ -14,6 +14,15 @@ class App < Roda
   plugin :cookies
   plugin :websockets
 
+  STATIC_DIR = T.let(
+    Pathname.new(ENV.fetch("STATIC_DIR", File.expand_path("../../frontend/dist", __dir__))),
+    Pathname
+  )
+
+  if STATIC_DIR.directory?
+    plugin :public, root: STATIC_DIR.to_s
+  end
+
   Sequel.extension(:pg_json_ops)
 
   Dir[File.expand_path("routes/**/*.rb", __dir__)].each { |f| require f }
@@ -56,5 +65,17 @@ class App < Roda
 
   route do |r|
     r.hash_routes
+
+    if STATIC_DIR.directory?
+      r.public
+
+      # SPA fallback: serve index.html for non-API/WS paths so Vue Router handles them
+      unless r.path_info.start_with?("/api", "/ws")
+        index_path = STATIC_DIR.join("index.html")
+        if index_path.file?
+          r.halt [200, { "Content-Type" => "text/html" }, [index_path.read]]
+        end
+      end
+    end
   end
 end
