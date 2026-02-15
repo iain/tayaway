@@ -100,7 +100,7 @@ function formatDateRangeSummary(
 ): string {
   if (ranges.length === 0) return 'No dates'
   if (ranges.length === 1)
-    return `${formatDateDisplay(ranges[0].startDate)} - ${formatDateDisplay(ranges[0].endDate)}`
+    return `${formatDateDisplay(ranges[0]!.startDate)} - ${formatDateDisplay(ranges[0]!.endDate)}`
   return `${ranges.length} date ranges`
 }
 </script>

@@ -160,10 +160,10 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       const pending = pendingUpdates.value.get(pendingKey)
       if (!pending?.length) return obj as ObjectTypeMap[T]
 
-      return pending.reduce(
+      return pending.reduce<Record<string, unknown>>(
         (merged, update) => ({ ...merged, ...update.changes }),
         { ...obj }
-      ) as ObjectTypeMap[T]
+      ) as unknown as ObjectTypeMap[T]
     })
   }
 

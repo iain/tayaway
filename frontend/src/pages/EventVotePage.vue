@@ -46,7 +46,7 @@ function handleAddDateRange(): void {
     const sortedRanges = [...dateRanges.value].sort((a, b) =>
       a.endDate.localeCompare(b.endDate)
     )
-    const lastRange = sortedRanges[sortedRanges.length - 1]
+    const lastRange = sortedRanges[sortedRanges.length - 1]!
     modalPreselectedStart.value = addDays(lastRange.startDate, 7)
     modalPreselectedEnd.value = addDays(lastRange.endDate, 7)
   } else {

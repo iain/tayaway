@@ -373,22 +373,22 @@ export const useWebSocketStore = defineStore('websocket', () => {
   // Deprecated - kept for backwards compatibility during migration
   // These are now no-ops since subscriptions are automatic based on workspace membership
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  function subscribe(channel: string): void {
+  function subscribe(_channel: string): void {
     // No-op: subscriptions are now automatic based on workspace membership
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  function unsubscribe(channel: string): void {
+  function unsubscribe(_channel: string): void {
     // No-op: subscriptions are now automatic based on workspace membership
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  function subscribeToEvent(eventId: string): void {
+  function subscribeToEvent(_eventId: string): void {
     // No-op: subscriptions are now automatic based on workspace membership
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  function unsubscribeFromEvent(eventId: string): void {
+  function unsubscribeFromEvent(_eventId: string): void {
     // No-op: subscriptions are now automatic based on workspace membership
   }
 

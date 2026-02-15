@@ -57,7 +57,11 @@ export function useCalendar() {
   }
 
   function parseDate(dateString: string): Date {
-    const [year, month, day] = dateString.split('-').map(Number)
+    const [year, month, day] = dateString.split('-').map(Number) as [
+      number,
+      number,
+      number,
+    ]
     return new Date(year, month - 1, day)
   }
 
@@ -113,7 +117,7 @@ export function useCalendar() {
       'November',
       'December',
     ]
-    return months[month]
+    return months[month]!
   }
 
   function formatDateDisplay(dateString: string): string {

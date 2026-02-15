@@ -28,8 +28,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (stored && workspaceIds.includes(stored)) {
       currentWorkspaceId.value = stored
     } else if (workspaceIds.length > 0) {
-      currentWorkspaceId.value = workspaceIds[0]
-      localStorage.setItem(STORAGE_KEY, workspaceIds[0])
+      currentWorkspaceId.value = workspaceIds[0]!
+      localStorage.setItem(STORAGE_KEY, workspaceIds[0]!)
     }
   }
 

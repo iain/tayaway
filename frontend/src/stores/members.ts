@@ -31,7 +31,7 @@ export const useMembersStore = defineStore('members', () => {
 
   async function createMember(data: CreateMemberRequest) {
     const membershipId = crypto.randomUUID()
-    const workspaceId = useWorkspaceStore().currentWorkspaceId
+    const workspaceId = useWorkspaceStore().currentWorkspaceId!
     const now = new Date().toISOString()
     const tempMember: PoolMember = {
       id: membershipId,

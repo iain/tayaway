@@ -55,7 +55,10 @@ watch(
 
       // If we have a preselected start, navigate to that month
       if (props.preselectedStart) {
-        const [year, month] = props.preselectedStart.split('-').map(Number)
+        const [year, month] = props.preselectedStart.split('-').map(Number) as [
+          number,
+          number,
+        ]
         leftYear.value = year
         leftMonth.value = month - 1
       } else {

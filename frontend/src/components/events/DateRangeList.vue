@@ -32,7 +32,7 @@ function handleAdd(): void {
 
 function handleRemove(index: number): void {
   // Find the original index in props.ranges
-  const sortedRange = sortedRanges.value[index]
+  const sortedRange = sortedRanges.value[index]!
   const originalIndex = props.ranges.findIndex(
     (r) =>
       r.start_date === sortedRange.start_date &&

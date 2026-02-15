@@ -16,7 +16,7 @@ export const useEventsStore = defineStore('events', () => {
       objectType: 'event',
       name: data.name,
       description: data.description ?? null,
-      workspaceId: useWorkspaceStore().currentWorkspaceId,
+      workspaceId: useWorkspaceStore().currentWorkspaceId!,
       memberId: useAuthStore().currentMemberId!,
       datePollId: null,
       createdAt: now,
