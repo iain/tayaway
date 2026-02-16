@@ -70,9 +70,29 @@ function createEmptyStorage(): Map<ObjectType, Map<string, PoolObject>> {
   return new Map(OBJECT_TYPES.map((type) => [type, new Map()]))
 }
 
+export type ReadTransform = <T extends ObjectType>(
+  type: T,
+  obj: ObjectTypeMap[T]
+) => ObjectTypeMap[T]
+
 export const useObjectPoolStore = defineStore('objectPool', () => {
   // Storage: Map<ObjectType, Map<id, object>>
   const objects = ref(createEmptyStorage())
+
+  // Transform applied to all consumer-facing reads (get/getAll/getMany).
+  // No-op by default; will become the decryption layer.
+  const readTransform = ref<ReadTransform | null>(null)
+
+  function setReadTransform(transform: ReadTransform): void {
+    readTransform.value = transform
+  }
+
+  function applyTransform<T extends ObjectType>(
+    type: T,
+    obj: ObjectTypeMap[T]
+  ): ObjectTypeMap[T] {
+    return readTransform.value ? readTransform.value(type, obj) : obj
+  }
 
   // Pending optimistic updates: Map<"type:id", PendingUpdate[]>
   const pendingUpdates = ref(new Map<string, PendingUpdate[]>())
@@ -132,13 +152,14 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
 
     const pendingKey = `${type}:${id}`
     const pending = pendingUpdates.value.get(pendingKey)
-    if (!pending?.length) return server
+    if (!pending?.length) return applyTransform(type, server)
 
     // Merge all pending changes onto the server data
-    return pending.reduce(
-      (merged, update) => ({ ...merged, ...update.changes }),
+    const merged = pending.reduce(
+      (acc, update) => ({ ...acc, ...update.changes }),
       { ...server }
     )
+    return applyTransform(type, merged)
   }
 
   // Get raw server object without pending updates
@@ -158,12 +179,13 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     return Array.from(typeMap.values()).map((obj) => {
       const pendingKey = `${type}:${obj.id}`
       const pending = pendingUpdates.value.get(pendingKey)
-      if (!pending?.length) return obj as ObjectTypeMap[T]
+      if (!pending?.length) return applyTransform(type, obj as ObjectTypeMap[T])
 
-      return pending.reduce<Record<string, unknown>>(
-        (merged, update) => ({ ...merged, ...update.changes }),
+      const merged = pending.reduce<Record<string, unknown>>(
+        (acc, update) => ({ ...acc, ...update.changes }),
         { ...obj }
       ) as unknown as ObjectTypeMap[T]
+      return applyTransform(type, merged)
     })
   }
 
@@ -345,6 +367,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     replaceObjects,
     restorePendingUpdates,
     clearExcept,
+    setReadTransform,
     $reset,
   }
 })

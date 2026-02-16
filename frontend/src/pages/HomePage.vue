@@ -1,93 +1,19 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import {
   CheckCircleIcon,
   ClockIcon,
   InboxIcon,
 } from '@heroicons/vue/24/outline'
-import { useObjectPoolStore, useAuthStore } from '@/stores'
+import {
+  usePollsNeedingAttention,
+  formatDeadline,
+  isUrgent,
+  isPastDeadline,
+} from '@/composables/usePollsNeedingAttention'
 
 const router = useRouter()
-const pool = useObjectPoolStore()
-const authStore = useAuthStore()
-const { currentMemberId } = storeToRefs(authStore)
-
-interface PollItem {
-  eventId: string
-  eventName: string
-  deadline: string
-  votedCount: number
-  totalCount: number
-}
-
-const pollsNeedingAttention = computed<PollItem[]>(() => {
-  void pool.version
-  const memberId = currentMemberId.value
-  if (!memberId) return []
-
-  const datePolls = pool.getAll('datePoll')
-  const items: PollItem[] = []
-
-  for (const poll of datePolls) {
-    if (poll.status === 'resolved') continue
-
-    const event = pool.get('event', poll.eventId)
-    if (!event) continue
-
-    const dateRanges = pool
-      .getAll('dateRange')
-      .filter((dr) => dr.datePollId === poll.id)
-    if (dateRanges.length === 0) continue
-
-    const votes = pool.getAll('vote')
-    const votedCount = dateRanges.filter((dr) =>
-      votes.some((v) => v.dateRangeId === dr.id && v.memberId === memberId)
-    ).length
-
-    if (votedCount < dateRanges.length) {
-      items.push({
-        eventId: event.id,
-        eventName: event.name,
-        deadline: poll.deadline,
-        votedCount,
-        totalCount: dateRanges.length,
-      })
-    }
-  }
-
-  return items.sort(
-    (a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
-  )
-})
-
-function formatDeadline(deadline: string): string {
-  const date = new Date(deadline)
-  const now = new Date()
-  const diffMs = date.getTime() - now.getTime()
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
-
-  if (diffDays < 0) return 'Past deadline'
-  if (diffDays === 0) return 'Due today'
-  if (diffDays === 1) return 'Due tomorrow'
-  if (diffDays <= 7) return `Due in ${diffDays} days`
-
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}
-
-function isUrgent(deadline: string): boolean {
-  const diffMs = new Date(deadline).getTime() - Date.now()
-  return diffMs < 2 * 24 * 60 * 60 * 1000
-}
-
-function isPastDeadline(deadline: string): boolean {
-  return new Date(deadline).getTime() < Date.now()
-}
+const { pollsNeedingAttention } = usePollsNeedingAttention()
 
 function navigateToEvent(eventId: string): void {
   router.push(`/events/${eventId}/vote`)

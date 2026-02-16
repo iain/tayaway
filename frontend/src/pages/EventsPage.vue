@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import {
@@ -8,72 +8,31 @@ import {
   TrashIcon,
   CalendarDaysIcon,
 } from '@heroicons/vue/24/outline'
-import {
-  useEventsStore,
-  useAuthStore,
-  useObjectPoolStore,
-  useNotificationsStore,
-} from '@/stores'
+import { useEventsStore, useAuthStore, useNotificationsStore } from '@/stores'
 import { useCalendar } from '@/composables/useCalendar'
+import { useEventsList } from '@/composables/useEventsList'
 import AddEventModal from '@/components/events/AddEventModal.vue'
 
 const router = useRouter()
 const eventsStore = useEventsStore()
 const authStore = useAuthStore()
-const pool = useObjectPoolStore()
 const { loading, error } = storeToRefs(eventsStore)
 const { formatDateDisplay } = useCalendar()
 const { currentMemberId } = storeToRefs(authStore)
 
 const showModal = ref(false)
 
-const allEvents = computed(() => {
-  void pool.version // reactivity dependency
-  return pool.getAll('event')
-})
-
-const today = computed(() => new Date().toISOString().slice(0, 10))
-
-const upcomingEvents = computed(() =>
-  allEvents.value
-    .filter((e) => e.startDate && e.startDate >= today.value)
-    .sort((a, b) => a.startDate!.localeCompare(b.startDate!))
-)
-
-const pastEvents = computed(() =>
-  allEvents.value
-    .filter((e) => e.startDate && e.startDate < today.value)
-    .sort((a, b) => b.startDate!.localeCompare(a.startDate!))
-)
-
-const planningEvents = computed(() =>
-  allEvents.value
-    .filter((e) => !e.startDate)
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )
-)
-
-const hasEvents = computed(
-  () =>
-    upcomingEvents.value.length > 0 ||
-    pastEvents.value.length > 0 ||
-    planningEvents.value.length > 0
-)
+const {
+  upcomingEvents,
+  pastEvents,
+  planningEvents,
+  hasEvents,
+  getEventOwner,
+  getDateRanges,
+} = useEventsList()
 
 function isOwner(eventMemberId: string): boolean {
   return currentMemberId.value === eventMemberId
-}
-
-function getEventOwner(memberId: string) {
-  return pool.get('member', memberId)
-}
-
-function getDateRanges(eventId: string) {
-  const datePoll = pool.getAll('datePoll').find((dp) => dp.eventId === eventId)
-  if (!datePoll) return []
-  return pool.getAll('dateRange').filter((dr) => dr.datePollId === datePoll.id)
 }
 
 function handleCreate(): void {

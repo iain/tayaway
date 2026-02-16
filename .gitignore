@@ -45,3 +45,5 @@ backend/sorbet/rbi/todo.rbi
 *.pid
 *.seed
 .cache/
+
+tmp/
