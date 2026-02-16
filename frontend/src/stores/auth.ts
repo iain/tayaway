@@ -16,6 +16,25 @@ import type {
 } from '@/types'
 import type { PoolApiResponse } from '@/types/pool'
 
+const AUTH_USER_KEY = 'tayaway_auth_user'
+
+function cacheUser(u: AuthUser): void {
+  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(u))
+}
+
+function getCachedUser(): AuthUser | null {
+  try {
+    const raw = localStorage.getItem(AUTH_USER_KEY)
+    return raw ? (JSON.parse(raw) as AuthUser) : null
+  } catch {
+    return null
+  }
+}
+
+function clearCachedUser(): void {
+  localStorage.removeItem(AUTH_USER_KEY)
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthUser | null>(null)
   const loading = ref(false)
@@ -47,15 +66,23 @@ export const useAuthStore = defineStore('auth', () => {
           email: data.email,
           name: data.name,
         }
+        cacheUser(user.value)
 
         // Connect WebSocket after successful auth
         const ws = useWebSocketStore()
         ws.connect()
       } else {
+        // Session truly invalid (401/403) — clear cache
         user.value = null
+        clearCachedUser()
       }
     } catch {
-      user.value = null
+      // Network error — fall back to cached user
+      user.value = getCachedUser()
+      if (user.value) {
+        const ws = useWebSocketStore()
+        ws.connect()
+      }
     } finally {
       loading.value = false
       initialized.value = true
@@ -82,6 +109,7 @@ export const useAuthStore = defineStore('auth', () => {
       name: meResponse.data.name,
     }
     user.value = verifiedUser
+    cacheUser(verifiedUser)
 
     // Connect WebSocket after successful verification
     const ws = useWebSocketStore()
@@ -103,7 +131,7 @@ export const useAuthStore = defineStore('auth', () => {
       await commandQueue.reset()
       await poolDb.clearAll()
 
-      // Cookie is cleared by the backend response — no localStorage needed
+      clearCachedUser()
       user.value = null
       memberships.value = new Map()
       // Reset stores on logout
@@ -143,6 +171,7 @@ export const useAuthStore = defineStore('auth', () => {
           user.value.name = poolMember.name
         }
       }
+      if (user.value) cacheUser(user.value)
     } catch (e) {
       // Restore previous name on failure (pool pending already rolled back by update())
       if (user.value) user.value.name = previousName
@@ -151,6 +180,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function $reset() {
+    clearCachedUser()
     user.value = null
     loading.value = false
     initialized.value = false

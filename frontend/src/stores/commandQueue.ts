@@ -24,6 +24,15 @@ function isNetworkError(e: unknown): boolean {
   return msg.includes('fetch') || msg.includes('network')
 }
 
+function isAuthError(e: unknown): boolean {
+  return (
+    typeof e === 'object' &&
+    e !== null &&
+    'status' in e &&
+    (e as { status: number }).status === 401
+  )
+}
+
 export const useCommandQueueStore = defineStore('commandQueue', () => {
   const pendingCount = ref(0)
   const isProcessing = ref(false)
@@ -103,6 +112,23 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
             }
             pendingCount.value -= command.originalIds.length
           } catch (e) {
+            if (isAuthError(e)) {
+              // Session expired — keep commands, redirect to login
+              const { useNotificationsStore } = await import('./notifications')
+              const notifications = useNotificationsStore()
+              notifications.showError(
+                'Your session has expired. Please sign in again.'
+              )
+              const { useWebSocketStore } = await import('./websocket')
+              const wsStore = useWebSocketStore()
+              wsStore.disconnect()
+              const { useAuthStore } = await import('./auth')
+              const authStore = useAuthStore()
+              authStore.$reset()
+              const { default: router } = await import('@/router')
+              router.push({ name: 'login' })
+              break
+            }
             if (isNetworkError(e)) {
               // Still offline, stop processing
               break

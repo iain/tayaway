@@ -75,6 +75,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
   let socket: WebSocket | null = null
   let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
   let pingInterval: ReturnType<typeof setInterval> | null = null
+  let reconnectAttempts = 0
 
   const isConnected = computed(() => state.value === 'authenticated')
   const isReconnecting = computed(
@@ -141,8 +142,22 @@ export const useWebSocketStore = defineStore('websocket', () => {
       socket.onerror = () => {
         // Error will trigger close event
       }
-    } catch {
+    } catch (e) {
       state.value = 'disconnected'
+      // 401 from ws-ticket means session expired — redirect to login
+      if (
+        typeof e === 'object' &&
+        e !== null &&
+        'status' in e &&
+        (e as { status: number }).status === 401
+      ) {
+        const { useAuthStore } = await import('./auth')
+        const authStore = useAuthStore()
+        authStore.$reset()
+        const { default: router } = await import('@/router')
+        router.push({ name: 'login' })
+        return
+      }
       scheduleReconnect()
     }
   }
@@ -177,6 +192,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
   function handleAuthenticated(message: AuthenticatedMessage): void {
     state.value = 'authenticated'
+    reconnectAttempts = 0
     workspaceIds.value = message.workspaceIds
 
     // Set memberships on auth store
@@ -314,7 +330,10 @@ export const useWebSocketStore = defineStore('websocket', () => {
   }
 
   function scheduleReconnect(): void {
-    const delay = 1000
+    const baseDelay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000)
+    const jitter = Math.random() * 1000
+    const delay = baseDelay + jitter
+    reconnectAttempts++
 
     reconnectTimeout = setTimeout(async () => {
       // Don't reconnect if logged out — dynamic import avoids circular deps
@@ -347,6 +366,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     }
 
     state.value = 'disconnected'
+    reconnectAttempts = 0
 
     connect()
   }

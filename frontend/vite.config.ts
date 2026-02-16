@@ -14,7 +14,15 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      manifest: false,
+      manifest: {
+        name: 'Tayaway',
+        short_name: 'Tayaway',
+        description: 'Collaborative event planning',
+        theme_color: '#d97706',
+        background_color: '#ffffff',
+        display: 'standalone',
+        icons: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml' }],
+      },
       injectRegister: false,
       workbox: {
         navigateFallbackDenylist: [/^\/api/, /^\/ws/],

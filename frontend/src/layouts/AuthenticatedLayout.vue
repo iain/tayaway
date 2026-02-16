@@ -423,7 +423,7 @@ function getInitials(email: string | undefined): string {
     leave-to-class="translate-y-full opacity-0"
   >
     <div
-      v-if="pendingCount > 0 && !isOnline"
+      v-if="pendingCount > 0 && wsState !== 'authenticated'"
       class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2"
     >
       <div
