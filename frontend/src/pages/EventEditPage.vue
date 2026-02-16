@@ -43,8 +43,8 @@ async function handleSubmit(data: EventFormData): Promise<void> {
     await eventsStore.updateEvent(eventId, {
       name: data.name,
       description: data.description || undefined,
-      startDate: data.startDate || undefined,
-      endDate: data.endDate || undefined,
+      startDate: data.startDate,
+      endDate: data.endDate,
     })
     router.push(`/events/${eventId}`)
   } catch {

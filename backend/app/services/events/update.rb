@@ -56,7 +56,12 @@ module Events
       def validate_dates(start_date, end_date)
         return T.cast(Success(nil), Result[T.nilable(T::Array[Date]), ServiceError]) if start_date.nil? && end_date.nil?
 
-        if start_date.nil? || end_date.nil?
+        # Both empty string — clear dates
+        if (start_date.nil? || start_date.empty?) && (end_date.nil? || end_date.empty?)
+          return T.cast(Success([]), Result[T.nilable(T::Array[Date]), ServiceError])
+        end
+
+        if start_date.nil? || start_date.empty? || end_date.nil? || end_date.empty?
           return T.cast(
             Failure(ServiceError.validation("Both start date and end date must be provided")),
             Result[T.nilable(T::Array[Date]), ServiceError]
@@ -101,8 +106,13 @@ module Events
           }
 
           if dates
-            update_data[:start_date] = dates[0]
-            update_data[:end_date] = dates[1]
+            if dates.empty?
+              update_data[:start_date] = nil
+              update_data[:end_date] = nil
+            else
+              update_data[:start_date] = dates[0]
+              update_data[:end_date] = dates[1]
+            end
           end
 
           DB[:events].where(id: event_id).update(update_data)

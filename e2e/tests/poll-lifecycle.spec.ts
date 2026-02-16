@@ -301,6 +301,34 @@ test.describe('Poll Lifecycle UI', () => {
         page.getByRole('button', { name: 'Select Winner' })
       ).not.toBeVisible()
     })
+
+    test('closing a poll populates event dates from winning date range', async ({
+      page,
+    }) => {
+      const { eventId } = await createEventWithPoll(apiContext)
+      await setupAuthenticatedPage(page, sessionToken)
+
+      await page.goto(`/events/${eventId}`)
+      await expect(page.getByTestId('event-name')).toBeVisible({
+        timeout: 10000,
+      })
+
+      // Event should not show dates before poll is closed
+      await expect(page.getByTestId('event-dates')).not.toBeVisible()
+
+      // Close the poll by selecting the first date range (Jun 1-7)
+      await page.getByRole('button', { name: 'Select Winner' }).click()
+      await expect(page.getByRole('dialog')).toBeVisible()
+      await page.getByRole('dialog').locator('button.w-full').first().click()
+      await page.getByRole('button', { name: 'Confirm Winner' }).click()
+      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
+
+      // Event header should now show dates from the winning date range
+      await expect(page.getByTestId('event-dates')).toBeVisible({
+        timeout: 5000,
+      })
+      await expect(page.getByTestId('event-dates')).toContainText(/Jun/)
+    })
   })
 
   test.describe('Reopening a poll', () => {
@@ -377,6 +405,33 @@ test.describe('Poll Lifecycle UI', () => {
       await expect(
         page.getByRole('button', { name: 'Select Winner' })
       ).toBeVisible()
+    })
+
+    test('reopening a poll clears event dates', async ({ page }) => {
+      const { eventId } = await createResolvedEvent(apiContext)
+      await setupAuthenticatedPage(page, sessionToken)
+
+      await page.goto(`/events/${eventId}`)
+      await expect(page.getByTestId('event-name')).toBeVisible({
+        timeout: 10000,
+      })
+
+      // Resolved event should show dates from winning date range (Jun 1-7)
+      await expect(page.getByTestId('event-dates')).toBeVisible({
+        timeout: 5000,
+      })
+      await expect(page.getByTestId('event-dates')).toContainText(/Jun/)
+
+      // Reopen the poll
+      await page.getByRole('button', { name: 'Reopen Poll' }).click()
+      await expect(page.getByRole('dialog')).toBeVisible()
+      await page.getByRole('button', { name: 'Open Poll', exact: true }).click()
+      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
+
+      // Event dates should be cleared
+      await expect(page.getByTestId('event-dates')).not.toBeVisible({
+        timeout: 5000,
+      })
     })
   })
 

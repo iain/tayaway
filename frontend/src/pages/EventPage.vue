@@ -131,6 +131,7 @@ function handleVote(): void {
         </p>
         <p
           v-if="event.startDate && event.endDate"
+          data-testid="event-dates"
           class="mt-2 flex items-center gap-1.5 text-sm text-gray-600 dark:text-stone-300"
         >
           <CalendarDaysIcon class="size-4" />
