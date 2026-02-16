@@ -62,6 +62,18 @@ export interface HydratedWorkspace {
   members: HydratedMember[]
 }
 
+export interface HydratedRsvp {
+  id: string
+  eventId: string
+  memberId: string
+  member: PoolMember | undefined
+  attending: boolean
+  startDate: string | null
+  endDate: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export interface HydratedEvent {
   id: string
   name: string
@@ -73,6 +85,7 @@ export interface HydratedEvent {
   memberId: string
   member: PoolMember | undefined
   datePoll: HydratedDatePoll | null
+  rsvps: HydratedRsvp[]
   createdAt: string
   updatedAt: string
 }
@@ -130,6 +143,7 @@ function hydrateEvent(
     .find((dp) => dp.eventId === poolEvent.id)
   const datePoll = datePollObj ? hydrateDatePoll(datePollObj.id, pool) : null
   const workspace = hydrateWorkspace(poolEvent.workspaceId, pool)
+  const rsvps = hydrateRsvps(poolEvent.id, pool)
 
   return {
     id: poolEvent.id,
@@ -142,6 +156,7 @@ function hydrateEvent(
     memberId: poolEvent.memberId,
     member,
     datePoll,
+    rsvps,
     createdAt: poolEvent.createdAt,
     updatedAt: poolEvent.updatedAt,
   }
@@ -269,6 +284,29 @@ function hydrateVotes(
       comment: vote.comment,
       createdAt: vote.createdAt,
       updatedAt: vote.updatedAt,
+    }))
+}
+
+/**
+ * Hydrate RSVPs for an event.
+ */
+function hydrateRsvps(
+  eventId: string,
+  pool: ReturnType<typeof useObjectPoolStore>
+): HydratedRsvp[] {
+  return pool
+    .getAll('rsvp')
+    .filter((r) => r.eventId === eventId)
+    .map((rsvp) => ({
+      id: rsvp.id,
+      eventId: rsvp.eventId,
+      memberId: rsvp.memberId,
+      member: pool.get('member', rsvp.memberId),
+      attending: rsvp.attending,
+      startDate: rsvp.startDate,
+      endDate: rsvp.endDate,
+      createdAt: rsvp.createdAt,
+      updatedAt: rsvp.updatedAt,
     }))
 }
 

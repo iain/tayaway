@@ -79,6 +79,18 @@ module DatePolls
             end_date: date_range.end_date
           )
 
+          # Auto-RSVP "yes" voters on the winning date range as attending
+          yes_voter_ids = DB[:votes]
+                          .where(date_range_id: selected_date_range_id, response: "yes")
+                          .select_map(:user_id)
+
+          now = Time.now
+          yes_voter_ids.each do |uid|
+            rsvp_id = SecureRandom.uuid
+            DB[:rsvps].insert(id: rsvp_id, event_id: event.id, user_id: uid, attending: true, created_at: now, updated_at: now)
+            Broadcaster.object_changed("rsvp", rsvp_id, workspace_id: event.workspace_id)
+          end
+
           Broadcaster.object_changed("date_poll", poll.id, workspace_id: event.workspace_id)
           Broadcaster.object_changed("event", event.id, workspace_id: event.workspace_id)
         end
@@ -86,6 +98,7 @@ module DatePolls
         pool = PoolSerializer.new(workspace_id: event.workspace_id)
         pool.add_event(T.must(Event.find(event.id)))
         pool.add_date_poll(T.must(DatePoll.find(poll.id)))
+        Rsvp.for_event(event.id).each { |r| pool.add_rsvp(r) }
         T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
     end

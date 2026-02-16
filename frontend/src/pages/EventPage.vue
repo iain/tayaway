@@ -13,6 +13,7 @@ import { useAuthStore } from '@/stores'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
 import { useCalendar } from '@/composables/useCalendar'
 import DatePollSection from '@/components/events/DatePollSection.vue'
+import RsvpSection from '@/components/events/RsvpSection.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -154,6 +155,13 @@ function handleVote(): void {
           :is-owner="isOwner"
           :current-member-id="currentMemberId"
           @vote="handleVote"
+        />
+
+        <!-- RSVPs (shown when event has dates) -->
+        <RsvpSection
+          v-if="event.startDate && event.endDate"
+          :event="event"
+          :current-member-id="currentMemberId"
         />
 
         <!-- Who Hasn't Voted -->

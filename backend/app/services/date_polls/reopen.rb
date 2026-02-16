@@ -62,7 +62,18 @@ module DatePolls
           .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
       def reopen_poll(event, poll, deadline)
+        deleted_rsvp_ids = T.let([], T::Array[String])
+
         DB.transaction do
+          # Delete all RSVPs for this event
+          rsvp_ids = Rsvp.ids_for_event(event.id)
+          rsvp_ids.each do |rid|
+            DB[:deleted_items].insert(workspace_id: event.workspace_id, object_type: "rsvp", object_id: rid)
+            Broadcaster.object_deleted("rsvp", rid, workspace_id: event.workspace_id)
+          end
+          DB[:rsvps].where(event_id: event.id).delete
+          deleted_rsvp_ids = rsvp_ids.map(&:to_s)
+
           DB[:date_polls].where(id: poll.id).update(
             deadline: deadline,
             selected_date_range_id: nil,
@@ -81,7 +92,9 @@ module DatePolls
         pool = PoolSerializer.new(workspace_id: event.workspace_id)
         pool.add_event(T.must(Event.find(event.id)))
         pool.add_date_poll(T.must(DatePoll.find(poll.id)))
-        T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+
+        deleted = deleted_rsvp_ids.map { |rid| { objectType: "rsvp", id: rid } }
+        T.cast(Success({ objects: pool.to_a, deleted: deleted }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
     end
   end

@@ -80,6 +80,8 @@ class PoolSerializer
       hash.delete(:userId)
     end
 
+    hash[:rsvpIds] = Rsvp.ids_for_event(event.id)
+
     @objects[key] = hash
   end
 
@@ -110,6 +112,23 @@ class PoolSerializer
 
     # Replace userId with memberId
     mid = member_id_for_user(vote.user_id)
+    if mid
+      hash[:memberId] = mid
+      hash.delete(:userId)
+    end
+
+    @objects[key] = hash
+  end
+
+  sig { params(rsvp: Rsvp).void }
+  def add_rsvp(rsvp)
+    key = "rsvp:#{rsvp.id}"
+    return if @objects.key?(key)
+
+    hash = rsvp.to_api_hash
+
+    # Replace userId with memberId
+    mid = member_id_for_user(rsvp.user_id)
     if mid
       hash[:memberId] = mid
       hash.delete(:userId)

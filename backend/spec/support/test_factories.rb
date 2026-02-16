@@ -106,6 +106,23 @@ module TestFactories
       DB[:votes].where(id: id).first
     end
 
+    def rsvp(event: nil, user: nil, attending: true, start_date: nil, end_date: nil, id: SecureRandom.uuid)
+      event ||= self.event
+      user ||= self.user
+      now = Time.now
+      DB[:rsvps].insert(
+        id: id,
+        event_id: event[:id],
+        user_id: user[:id],
+        attending: attending,
+        start_date: start_date,
+        end_date: end_date,
+        created_at: now,
+        updated_at: now
+      )
+      DB[:rsvps].where(id: id).first
+    end
+
     def session(user: nil, token: SecureRandom.hex(32), expires_at: Time.now + (30 * 24 * 60 * 60), id: SecureRandom.uuid)
       user ||= self.user
       now = Time.now

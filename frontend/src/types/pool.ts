@@ -26,6 +26,7 @@ export const OBJECT_TYPES = [
   'datePoll',
   'dateRange',
   'vote',
+  'rsvp',
   'workspace',
 ] as const
 
@@ -45,6 +46,7 @@ export interface ObjectTypeMap {
     workspaceId: string
     memberId: string
     datePollId: string | null
+    rsvpIds: string[]
     createdAt: string
   }
   datePoll: PoolObjectBase<'datePoll'> & {
@@ -69,6 +71,14 @@ export interface ObjectTypeMap {
     comment: string | null
     createdAt: string
   }
+  rsvp: PoolObjectBase<'rsvp'> & {
+    eventId: string
+    memberId: string
+    attending: boolean
+    startDate: string | null
+    endDate: string | null
+    createdAt: string
+  }
   workspace: PoolObjectBase<'workspace'> & {
     name: string
     memberIds: string[]
@@ -89,6 +99,7 @@ export type PoolEvent = ObjectTypeMap['event']
 export type PoolDatePoll = ObjectTypeMap['datePoll']
 export type PoolDateRange = ObjectTypeMap['dateRange']
 export type PoolVote = ObjectTypeMap['vote']
+export type PoolRsvp = ObjectTypeMap['rsvp']
 export type PoolWorkspace = ObjectTypeMap['workspace']
 
 // API response wrapper - all endpoints include objects array

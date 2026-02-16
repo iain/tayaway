@@ -120,11 +120,14 @@ events             id, workspace_id, user_id (nullable, set null on delete), nam
 date_polls         id, event_id (unique, cascade), deadline, selected_date_range_id, closed_at, timestamps
 date_ranges        id, date_poll_id, start_date, end_date, timestamps, check(start_date <= end_date)
 votes              id, date_range_id, user_id, response (yes/no/preferably_not), comment, unique(date_range_id, user_id)
+rsvps              id, event_id, user_id, attending (boolean), start_date (nullable), end_date (nullable), timestamps, unique(event_id, user_id), check(start_date <= end_date)
 ```
 
 **Hierarchy:** Workspace -> Event -> DatePoll -> DateRange -> Vote
+**RSVP:** Event -> Rsvp (once event has dates set)
 
 **Poll lifecycle:** open -> expired (past deadline) -> resolved (closed with winner) -> can reopen
+**RSVP lifecycle:** Closing a poll auto-RSVPs "yes" voters as attending. Reopening a poll deletes all RSVPs.
 
 ## API Endpoints
 
@@ -150,6 +153,9 @@ votes              id, date_range_id, user_id, response (yes/no/preferably_not),
 - `POST /:id/poll/reopen` — Reopen a resolved poll
 - `POST /:id/poll/date-ranges` — Add date range to poll
 - `DELETE /:id/poll/date-ranges/:dr_id` — Remove date range
+- `GET /:id/rsvps` — Get RSVPs for event
+- `POST /:id/rsvps` — Create or update RSVP
+- `DELETE /:id/rsvps/:rsvp_id` — Delete RSVP
 - `GET /:id/votes` — Get votes for event
 - `POST /:id/votes` — Create or update vote
 - `DELETE /:id/votes/:vote_id` — Delete vote
@@ -186,6 +192,7 @@ These types must stay in sync between frontend and backend:
 | datePoll  | `DatePoll`            | `datePoll`        | `add_date_poll`            |
 | dateRange | `DateRange`           | `dateRange`       | `add_date_range`           |
 | vote      | `Vote`                | `vote`            | `add_vote`                 |
+| rsvp      | `Rsvp`                | `rsvp`            | `add_rsvp`                 |
 | workspace | `Workspace`           | `workspace`       | `add_workspace`            |
 | member    | `WorkspaceMembership` | `member`          | `add_workspace_membership` |
 

@@ -166,6 +166,56 @@ class App
         end
       end
 
+      # /api/events/:id/rsvps routes
+      r.on "rsvps" do
+        # GET /api/events/:id/rsvps - Get all RSVPs for an event
+        r.is do
+          r.get do
+            rsvps = Rsvp.for_event(event.id)
+            pool = PoolSerializer.new(workspace_id: event.workspace_id)
+            pool.add_all(rsvps, type: :rsvp)
+
+            response.status = 200
+            { objects: pool.to_a }
+          end
+
+          # POST /api/events/:id/rsvps - Create or update RSVP
+          r.post do
+            result = Rsvps::Upsert.call(
+              event_id: event.id,
+              user_id: user.id,
+              attending: r.params["attending"],
+              start_date: r.params["start_date"]&.strip,
+              end_date: r.params["end_date"]&.strip,
+              rsvp_id: r.params["id"]
+            )
+
+            result.either(
+              ->(value) {
+                rsvp = Rsvp.find(value[:rsvp_id])
+                pool = PoolSerializer.new(workspace_id: event.workspace_id)
+                pool.add_rsvp(rsvp)
+
+                response.status = value[:created] ? 201 : 200
+                { objects: pool.to_a }
+              },
+              ->(error) {
+                response.status = error.http_status
+                error.to_api_hash
+              }
+            )
+          end
+        end
+
+        # DELETE /api/events/:id/rsvps/:rsvp_id - Remove RSVP
+        r.on String do |rsvp_id|
+          r.delete do
+            result = Rsvps::Delete.call(event_id: event.id, rsvp_id: rsvp_id, user_id: user.id)
+            handle_result(result)
+          end
+        end
+      end
+
       # /api/events/:id/votes routes
       r.on "votes" do
         # GET /api/events/:id/votes - Get all votes for an event

@@ -91,4 +91,34 @@ RSpec.describe DatePolls::Close do
     expect(db_poll[:closed_at]).not_to be_nil
     expect(db_poll[:selected_date_range_id]).to eq(date_range[:id])
   end
+
+  it "auto-RSVPs yes-voters on the winning date range" do
+    owner = TestFactories.user
+    voter1 = TestFactories.user
+    voter2 = TestFactories.user
+    voter3 = TestFactories.user
+    event = TestFactories.event(user: owner)
+    date_poll = TestFactories.date_poll(event: event)
+    date_range = TestFactories.date_range(date_poll: date_poll)
+
+    TestFactories.vote(user: voter1, date_range: date_range, response: "yes")
+    TestFactories.vote(user: voter2, date_range: date_range, response: "no")
+    TestFactories.vote(user: voter3, date_range: date_range, response: "yes")
+
+    result = described_class.call(
+      event_id: event[:id],
+      current_user_id: owner[:id],
+      selected_date_range_id: date_range[:id]
+    )
+
+    expect(result.success?).to be true
+    rsvps = DB[:rsvps].where(event_id: event[:id]).all
+    expect(rsvps.length).to eq(2)
+    expect(rsvps.map { |r| r[:user_id] }).to contain_exactly(voter1[:id], voter3[:id])
+    expect(rsvps.all? { |r| r[:attending] == true }).to be true
+
+    # RSVP objects should be in the response
+    rsvp_objects = result.value![:objects].select { |o| o[:objectType] == "rsvp" }
+    expect(rsvp_objects.length).to eq(2)
+  end
 end

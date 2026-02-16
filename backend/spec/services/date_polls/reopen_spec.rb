@@ -73,4 +73,27 @@ RSpec.describe DatePolls::Reopen do
     expect(db_poll[:closed_at]).to be_nil
     expect(db_poll[:selected_date_range_id]).to be_nil
   end
+
+  it "deletes all RSVPs when reopening" do
+    user = TestFactories.user
+    voter = TestFactories.user
+    event = TestFactories.event(user: user)
+    date_poll = TestFactories.date_poll(event: event, closed_at: Time.now)
+    date_range = TestFactories.date_range(date_poll: date_poll)
+    DB[:date_polls].where(id: date_poll[:id]).update(selected_date_range_id: date_range[:id])
+    DB[:events].where(id: event[:id]).update(start_date: date_range[:start_date], end_date: date_range[:end_date])
+
+    rsvp = TestFactories.rsvp(event: event, user: voter)
+    new_deadline = (Time.now + 86_400).iso8601
+
+    result = described_class.call(
+      event_id: event[:id],
+      current_user_id: user[:id],
+      deadline: new_deadline
+    )
+
+    expect(result.success?).to be true
+    expect(DB[:rsvps].where(event_id: event[:id]).count).to eq(0)
+    expect(result.value![:deleted]).to include({ objectType: "rsvp", id: rsvp[:id] })
+  end
 end
