@@ -80,13 +80,15 @@ test.describe('Poll Lifecycle UI', () => {
       // Just confirm with the default
       await page.getByRole('button', { name: 'Open Poll', exact: true }).click()
 
-      // Modal should close and poll status should appear
+      // Modal should close and redirect to date-ranges page
       await expect(page.getByRole('dialog')).not.toBeVisible()
-      await expect(page.getByText(/remaining/)).toBeVisible({ timeout: 5000 })
+      await expect(page).toHaveURL(`/events/${eventId}/date-ranges`, {
+        timeout: 5000,
+      })
 
-      // "Add Date Range" button should now be visible
+      // "Add Date Range" button should be visible on date-ranges page
       await expect(
-        page.getByRole('button', { name: 'Add Date Range' })
+        page.getByRole('button', { name: 'Add Date Range' }).first()
       ).toBeVisible()
     })
   })
@@ -96,10 +98,10 @@ test.describe('Poll Lifecycle UI', () => {
       const { eventId } = await createEventWithPoll(apiContext)
       await setupAuthenticatedPage(page, sessionToken)
 
-      await page.goto(`/events/${eventId}`)
-      await expect(page.getByTestId('event-name')).toBeVisible({
-        timeout: 10000,
-      })
+      await page.goto(`/events/${eventId}/date-ranges`)
+      await expect(
+        page.getByRole('heading', { name: 'Edit Date Ranges' })
+      ).toBeVisible({ timeout: 10000 })
 
       await page.getByRole('button', { name: 'Add Date Range' }).click()
 
@@ -116,19 +118,17 @@ test.describe('Poll Lifecycle UI', () => {
       const { eventId } = await createEventWithPoll(apiContext)
       await setupAuthenticatedPage(page, sessionToken)
 
-      await page.goto(`/events/${eventId}`)
-      await expect(page.getByTestId('event-name')).toBeVisible({
-        timeout: 10000,
-      })
+      await page.goto(`/events/${eventId}/date-ranges`)
+      await expect(
+        page.getByRole('heading', { name: 'Edit Date Ranges' })
+      ).toBeVisible({ timeout: 10000 })
 
       // Should have 2 date ranges initially
       await expect(page.getByText(/votes?$/).first()).toBeVisible({
         timeout: 5000,
       })
-      const initialDateRangeCards = page.locator(
-        'section:has-text("Date Poll") .rounded-md.border'
-      )
-      const initialCount = await initialDateRangeCards.count()
+      const dateRangeItems = page.locator('ul > li')
+      const initialCount = await dateRangeItems.count()
 
       // Open calendar modal
       await page.getByRole('button', { name: 'Add Date Range' }).click()
@@ -149,10 +149,7 @@ test.describe('Poll Lifecycle UI', () => {
       await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
 
       // New date range should appear in the list
-      const afterDateRangeCards = page.locator(
-        'section:has-text("Date Poll") .rounded-md.border'
-      )
-      await expect(afterDateRangeCards).toHaveCount(initialCount + 1, {
+      await expect(dateRangeItems).toHaveCount(initialCount + 1, {
         timeout: 5000,
       })
     })
@@ -161,23 +158,21 @@ test.describe('Poll Lifecycle UI', () => {
       const { eventId } = await createEventWithPoll(apiContext)
       await setupAuthenticatedPage(page, sessionToken)
 
-      await page.goto(`/events/${eventId}`)
-      await expect(page.getByTestId('event-name')).toBeVisible({
-        timeout: 10000,
-      })
+      await page.goto(`/events/${eventId}/date-ranges`)
+      await expect(
+        page.getByRole('heading', { name: 'Edit Date Ranges' })
+      ).toBeVisible({ timeout: 10000 })
 
       // Wait for date ranges to load
-      const dateRangeCards = page.locator(
-        'section:has-text("Date Poll") .rounded-md.border'
-      )
-      await expect(dateRangeCards.first()).toBeVisible({ timeout: 5000 })
-      const initialCount = await dateRangeCards.count()
+      const dateRangeItems = page.locator('ul > li')
+      await expect(dateRangeItems.first()).toBeVisible({ timeout: 5000 })
+      const initialCount = await dateRangeItems.count()
 
-      // Click "Remove" on the first date range
+      // Click "Remove" on the first date range (no votes, no confirmation dialog)
       await page.getByRole('button', { name: 'Remove' }).first().click()
 
       // One fewer date range
-      await expect(dateRangeCards).toHaveCount(initialCount - 1, {
+      await expect(dateRangeItems).toHaveCount(initialCount - 1, {
         timeout: 5000,
       })
     })
@@ -495,15 +490,17 @@ test.describe('Poll Lifecycle UI', () => {
         { timeout: 10000 }
       )
 
-      // 2. Open a poll
+      // 2. Open a poll — redirects to date-ranges page
       await page.getByRole('button', { name: 'Open Date Poll' }).click()
       await expect(page.getByRole('dialog')).toBeVisible()
       await page.getByRole('button', { name: 'Open Poll', exact: true }).click()
       await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
-      await expect(page.getByText(/remaining/)).toBeVisible({ timeout: 5000 })
+      await expect(page).toHaveURL(`/events/${eventId}/date-ranges`, {
+        timeout: 5000,
+      })
 
       // 3. Add a date range via calendar (calendar opens on current month Feb 2026)
-      await page.getByRole('button', { name: 'Add Date Range' }).click()
+      await page.getByRole('button', { name: 'Add Date Range' }).first().click()
       await expect(page.getByRole('dialog')).toBeVisible()
       // Pick dates in the visible months (Feb/Mar 2026)
       await page.getByTestId('calendar-day-2026-03-10').click()
@@ -511,10 +508,8 @@ test.describe('Poll Lifecycle UI', () => {
       await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
 
       // Verify date range appeared
-      const dateRangeCards = page.locator(
-        'section:has-text("Date Poll") .rounded-md.border'
-      )
-      await expect(dateRangeCards).toHaveCount(1, { timeout: 5000 })
+      const dateRangeItems = page.locator('ul > li')
+      await expect(dateRangeItems).toHaveCount(1, { timeout: 5000 })
 
       // 4. Add a second date range (preselected 7 days after first: Mar 17-22)
       await page.getByRole('button', { name: 'Add Date Range' }).click()
@@ -522,9 +517,11 @@ test.describe('Poll Lifecycle UI', () => {
       await page.getByTestId('calendar-day-2026-03-20').click()
       await page.getByTestId('calendar-day-2026-03-25').click()
       await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
-      await expect(dateRangeCards).toHaveCount(2, { timeout: 5000 })
+      await expect(dateRangeItems).toHaveCount(2, { timeout: 5000 })
 
-      // 5. Navigate to vote page and cast a vote
+      // 5. Navigate back to event page, then to vote page
+      await page.getByRole('button', { name: 'Back to Event' }).click()
+      await expect(page).toHaveURL(`/events/${eventId}`, { timeout: 5000 })
       await page.getByRole('button', { name: 'Vote on Dates' }).click()
       await expect(page).toHaveURL(`/events/${eventId}/vote`)
       await page

@@ -22,7 +22,8 @@ watch(
     } else {
       dialogRef.value?.close()
     }
-  }
+  },
+  { flush: 'post' }
 )
 
 function handleClose(): void {

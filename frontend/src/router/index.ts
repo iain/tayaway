@@ -8,6 +8,7 @@ import EventCreatePage from '@/pages/EventCreatePage.vue'
 import EventEditPage from '@/pages/EventEditPage.vue'
 import EventPage from '@/pages/EventPage.vue'
 import EventVotePage from '@/pages/EventVotePage.vue'
+import EventDateRangesPage from '@/pages/EventDateRangesPage.vue'
 import MembersPage from '@/pages/MembersPage.vue'
 import LoginPage from '@/pages/LoginPage.vue'
 import AuthVerifyPage from '@/pages/AuthVerifyPage.vue'
@@ -49,6 +50,11 @@ const router = createRouter({
           path: 'events/:id/vote',
           name: 'event-vote',
           component: EventVotePage,
+        },
+        {
+          path: 'events/:id/date-ranges',
+          name: 'event-date-ranges',
+          component: EventDateRangesPage,
         },
         {
           path: 'events/:id/edit',

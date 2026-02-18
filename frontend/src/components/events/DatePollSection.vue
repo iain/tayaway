@@ -3,15 +3,13 @@ import { ref, computed } from 'vue'
 import {
   CalendarIcon,
   ClockIcon,
-  PlusIcon,
   CheckCircleIcon as CheckCircleSolidIcon,
 } from '@heroicons/vue/24/solid'
 import { HandThumbUpIcon } from '@heroicons/vue/24/outline'
+import { useRouter } from 'vue-router'
 import { useDatePollsStore } from '@/stores/datePolls'
-import { useCalendar } from '@/composables/useCalendar'
 import type { HydratedEvent } from '@/composables/useHydratedEvent'
 import VoteSummaryBar from '@/components/votes/VoteSummaryBar.vue'
-import DateRangeModal from './DateRangeModal.vue'
 import OpenPollModal from './OpenPollModal.vue'
 import ClosePollModal from './ClosePollModal.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
@@ -29,15 +27,12 @@ const emit = defineEmits<{
   vote: []
 }>()
 
+const router = useRouter()
 const datePollsStore = useDatePollsStore()
-const { addDays } = useCalendar()
 
 const showOpenPollModal = ref(false)
 const showClosePollModal = ref(false)
-const showDateRangeModal = ref(false)
 const reopenMode = ref(false)
-const modalPreselectedStart = ref<string | null>(null)
-const modalPreselectedEnd = ref<string | null>(null)
 
 const poll = computed(() => props.event.datePoll)
 
@@ -100,6 +95,7 @@ async function handleOpenPollConfirm(deadline: string): Promise<void> {
       await datePollsStore.reopenPoll(props.event.id, deadline)
     } else {
       await datePollsStore.createPoll(props.event.id, deadline)
+      router.push(`/events/${props.event.id}/date-ranges`)
     }
     showOpenPollModal.value = false
   } catch {
@@ -115,41 +111,6 @@ async function handleClosePollConfirm(dateRangeId: string): Promise<void> {
   try {
     await datePollsStore.closePoll(props.event.id, dateRangeId)
     showClosePollModal.value = false
-  } catch {
-    // Error handled by store
-  }
-}
-
-function handleAddDateRange(): void {
-  if (poll.value && poll.value.dateRanges.length > 0) {
-    const sortedRanges = [...poll.value.dateRanges].sort((a, b) =>
-      a.endDate.localeCompare(b.endDate)
-    )
-    const lastRange = sortedRanges[sortedRanges.length - 1]!
-    modalPreselectedStart.value = addDays(lastRange.startDate, 7)
-    modalPreselectedEnd.value = addDays(lastRange.endDate, 7)
-  } else {
-    modalPreselectedStart.value = null
-    modalPreselectedEnd.value = null
-  }
-  showDateRangeModal.value = true
-}
-
-async function handleDateRangeModalSave(
-  startDate: string,
-  endDate: string
-): Promise<void> {
-  try {
-    await datePollsStore.addDateRange(props.event.id, startDate, endDate)
-    showDateRangeModal.value = false
-  } catch {
-    // Error handled by store
-  }
-}
-
-async function handleRemoveDateRange(dateRangeId: string): Promise<void> {
-  try {
-    await datePollsStore.removeDateRange(props.event.id, dateRangeId)
   } catch {
     // Error handled by store
   }
@@ -296,36 +257,17 @@ function handleVote(): void {
                 :end-date="dateRange.endDate"
               />
             </span>
-            <div class="flex items-center gap-2">
-              <span class="text-sm text-gray-500 dark:text-stone-400">
-                {{ dateRange.voteSummary.total }}
-                {{ dateRange.voteSummary.total === 1 ? 'vote' : 'votes' }}
-              </span>
-              <button
-                v-if="isOwner && poll.status === 'open'"
-                type="button"
-                class="text-sm text-red-500 hover:text-red-700 dark:hover:text-red-400"
-                @click="handleRemoveDateRange(dateRange.id)"
-              >
-                Remove
-              </button>
-            </div>
+            <span class="text-sm text-gray-500 dark:text-stone-400">
+              {{ dateRange.voteSummary.total }}
+              {{ dateRange.voteSummary.total === 1 ? 'vote' : 'votes' }}
+            </span>
           </div>
           <VoteSummaryBar :summary="dateRange.voteSummary" />
         </div>
       </div>
 
       <!-- Owner actions -->
-      <div v-if="isOwner" class="mt-4 flex flex-wrap gap-2">
-        <button
-          v-if="poll.status === 'open'"
-          type="button"
-          class="inline-flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600"
-          @click="handleAddDateRange"
-        >
-          <PlusIcon class="size-4" />
-          Add Date Range
-        </button>
+      <div v-if="isOwner" class="mt-4 flex flex-wrap items-center gap-2">
         <PrimaryButton
           v-if="poll.status === 'open' || poll.status === 'expired'"
           @click="handleClosePoll"
@@ -358,14 +300,6 @@ function handleVote(): void {
       :loading="datePollsStore.loading"
       @confirm="handleClosePollConfirm"
       @close="showClosePollModal = false"
-    />
-
-    <DateRangeModal
-      :open="showDateRangeModal"
-      :preselected-start="modalPreselectedStart"
-      :preselected-end="modalPreselectedEnd"
-      @save="handleDateRangeModalSave"
-      @close="showDateRangeModal = false"
     />
   </BaseCard>
 </template>

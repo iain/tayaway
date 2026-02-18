@@ -37,6 +37,10 @@ function handleEdit(): void {
   router.push(`/events/${eventId.value}/edit`)
 }
 
+function handleEditDateRanges(): void {
+  router.push(`/events/${eventId.value}/date-ranges`)
+}
+
 function handleVote(): void {
   router.push(`/events/${eventId.value}/vote`)
 }
@@ -49,10 +53,19 @@ function handleVote(): void {
         <ArrowLeftIcon class="size-4" />
         Back to Events
       </TextButton>
-      <TextButton v-if="isOwner" @click="handleEdit">
-        <PencilIcon class="size-4" />
-        Edit Event
-      </TextButton>
+      <div v-if="isOwner" class="flex items-center gap-4">
+        <TextButton
+          v-if="event?.datePoll?.status === 'open'"
+          @click="handleEditDateRanges"
+        >
+          <PencilIcon class="size-4" />
+          Edit Date Ranges
+        </TextButton>
+        <TextButton @click="handleEdit">
+          <PencilIcon class="size-4" />
+          Edit Event
+        </TextButton>
+      </div>
     </div>
 
     <div v-if="!event" class="text-gray-500 dark:text-stone-400">
