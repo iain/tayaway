@@ -1,17 +1,13 @@
 <script setup lang="ts">
-import { PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import type { ObjectTypeMap } from '@/types/pool'
 
 defineProps<{
   event: ObjectTypeMap['event']
   ownerName: string
-  isOwner: boolean
 }>()
 
 defineEmits<{
   click: []
-  edit: []
-  delete: []
 }>()
 </script>
 
@@ -44,24 +40,6 @@ defineEmits<{
               >by {{ ownerName }}</span
             >
           </div>
-        </div>
-        <div v-if="isOwner" class="ml-4 flex items-center gap-2">
-          <button
-            type="button"
-            class="p-2 text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400"
-            @click.stop="$emit('edit')"
-          >
-            <PencilIcon class="size-5" />
-            <span class="sr-only">Edit</span>
-          </button>
-          <button
-            type="button"
-            class="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
-            @click.stop="$emit('delete')"
-          >
-            <TrashIcon class="size-5" />
-            <span class="sr-only">Delete</span>
-          </button>
         </div>
       </div>
     </div>

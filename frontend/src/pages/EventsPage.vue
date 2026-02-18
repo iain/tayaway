@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { PlusIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline'
-import { useEventsStore, useAuthStore, useNotificationsStore } from '@/stores'
+import { useEventsStore, useNotificationsStore } from '@/stores'
 import { useEventsList } from '@/composables/useEventsList'
 import AddEventModal from '@/components/events/AddEventModal.vue'
 import EventListItem from '@/components/events/EventListItem.vue'
@@ -14,9 +14,7 @@ import PrimaryButton from '@/components/common/PrimaryButton.vue'
 
 const router = useRouter()
 const eventsStore = useEventsStore()
-const authStore = useAuthStore()
 const { loading, error } = storeToRefs(eventsStore)
-const { currentMemberId } = storeToRefs(authStore)
 
 const showModal = ref(false)
 
@@ -28,10 +26,6 @@ const {
   getEventOwner,
   getDateRanges,
 } = useEventsList()
-
-function isOwner(eventMemberId: string): boolean {
-  return currentMemberId.value === eventMemberId
-}
 
 function getOwnerName(memberId: string): string {
   const owner = getEventOwner(memberId)
@@ -73,16 +67,6 @@ function handleModalClose(): void {
 
 function handleView(id: string): void {
   router.push(`/events/${id}`)
-}
-
-function handleEdit(id: string): void {
-  router.push(`/events/${id}/edit`)
-}
-
-async function handleDelete(id: string): Promise<void> {
-  if (confirm('Are you sure you want to delete this event?')) {
-    await eventsStore.deleteEvent(id)
-  }
 }
 
 function formatDateRangeSummary(
@@ -131,10 +115,7 @@ function formatDateRangeSummary(
             :key="event.id"
             :event="event"
             :owner-name="getOwnerName(event.memberId)"
-            :is-owner="isOwner(event.memberId)"
             @click="handleView(event.id)"
-            @edit="handleEdit(event.id)"
-            @delete="handleDelete(event.id)"
           >
             <template #meta>
               <span class="inline-flex items-center gap-1">
@@ -159,10 +140,7 @@ function formatDateRangeSummary(
             :key="event.id"
             :event="event"
             :owner-name="getOwnerName(event.memberId)"
-            :is-owner="isOwner(event.memberId)"
             @click="handleView(event.id)"
-            @edit="handleEdit(event.id)"
-            @delete="handleDelete(event.id)"
           >
             <template #meta>
               <span>{{ formatDateRangeSummary(getDateRanges(event.id)) }}</span>
@@ -181,10 +159,7 @@ function formatDateRangeSummary(
             :key="event.id"
             :event="event"
             :owner-name="getOwnerName(event.memberId)"
-            :is-owner="isOwner(event.memberId)"
             @click="handleView(event.id)"
-            @edit="handleEdit(event.id)"
-            @delete="handleDelete(event.id)"
           >
             <template #meta>
               <span class="inline-flex items-center gap-1">
