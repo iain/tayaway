@@ -7,8 +7,11 @@ import {
 } from '@heroicons/vue/24/solid'
 import { UserIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline'
 import { useRsvpsStore } from '@/stores/rsvps'
-import { useCalendar } from '@/composables/useCalendar'
 import type { HydratedEvent } from '@/composables/useHydratedEvent'
+import SectionHeading from '@/components/common/SectionHeading.vue'
+import BaseCard from '@/components/common/BaseCard.vue'
+import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
+import TextButton from '@/components/common/TextButton.vue'
 
 const props = defineProps<{
   event: HydratedEvent
@@ -16,7 +19,6 @@ const props = defineProps<{
 }>()
 
 const rsvpsStore = useRsvpsStore()
-const { formatDateDisplay } = useCalendar()
 
 const showPartialPicker = ref(false)
 const partialStartDate = ref('')
@@ -86,16 +88,8 @@ async function handleClearPartialDates(): Promise<void> {
 </script>
 
 <template>
-  <section
-    data-testid="rsvp-section"
-    class="rounded-lg bg-white p-6 shadow dark:bg-stone-800"
-  >
-    <h2
-      class="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white"
-    >
-      <UserGroupIcon class="size-5" />
-      RSVPs
-    </h2>
+  <BaseCard as="section" padded data-testid="rsvp-section">
+    <SectionHeading :icon="UserGroupIcon" title="RSVPs" />
 
     <!-- Current user RSVP toggle -->
     <div class="mb-6">
@@ -138,24 +132,21 @@ async function handleClearPartialDates(): Promise<void> {
         <div v-if="currentUserRsvp.startDate && currentUserRsvp.endDate">
           <p class="text-sm text-gray-600 dark:text-stone-400">
             <CalendarDaysIcon class="inline size-4" />
-            {{ formatDateDisplay(currentUserRsvp.startDate) }}
-            <template
-              v-if="currentUserRsvp.startDate !== currentUserRsvp.endDate"
-            >
-              &ndash; {{ formatDateDisplay(currentUserRsvp.endDate) }}
-            </template>
+            <DateRangeDisplay
+              :start-date="currentUserRsvp.startDate"
+              :end-date="currentUserRsvp.endDate"
+            />
             (partial)
           </p>
         </div>
-        <button
+        <TextButton
           v-if="!showPartialPicker"
-          type="button"
           data-testid="rsvp-change-dates"
-          class="mt-1 text-sm text-cyan-600 underline hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
+          class="mt-1"
           @click="openPartialPicker"
         >
           {{ currentUserRsvp.startDate ? 'Change dates' : 'Set partial dates' }}
-        </button>
+        </TextButton>
 
         <!-- Partial date picker -->
         <div
@@ -244,10 +235,10 @@ async function handleClearPartialDates(): Promise<void> {
                 v-if="rsvp.startDate && rsvp.endDate"
                 class="text-xs text-gray-500 dark:text-stone-400"
               >
-                {{ formatDateDisplay(rsvp.startDate) }}
-                <template v-if="rsvp.startDate !== rsvp.endDate">
-                  &ndash; {{ formatDateDisplay(rsvp.endDate) }}
-                </template>
+                <DateRangeDisplay
+                  :start-date="rsvp.startDate"
+                  :end-date="rsvp.endDate"
+                />
               </p>
             </div>
           </li>
@@ -321,5 +312,5 @@ async function handleClearPartialDates(): Promise<void> {
         attending, {{ noResponse.length }} pending
       </p>
     </div>
-  </section>
+  </BaseCard>
 </template>

@@ -14,6 +14,10 @@ import VoteSummaryBar from '@/components/votes/VoteSummaryBar.vue'
 import DateRangeModal from './DateRangeModal.vue'
 import OpenPollModal from './OpenPollModal.vue'
 import ClosePollModal from './ClosePollModal.vue'
+import SectionHeading from '@/components/common/SectionHeading.vue'
+import BaseCard from '@/components/common/BaseCard.vue'
+import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
+import PrimaryButton from '@/components/common/PrimaryButton.vue'
 
 const props = defineProps<{
   event: HydratedEvent
@@ -26,7 +30,7 @@ const emit = defineEmits<{
 }>()
 
 const datePollsStore = useDatePollsStore()
-const { formatDateDisplay, addDays } = useCalendar()
+const { addDays } = useCalendar()
 
 const showOpenPollModal = ref(false)
 const showClosePollModal = ref(false)
@@ -157,28 +161,18 @@ function handleVote(): void {
 </script>
 
 <template>
-  <section class="rounded-lg bg-white p-6 shadow dark:bg-stone-800">
-    <h2
-      class="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white"
-    >
-      <CalendarIcon class="size-5" />
-      Date Poll
-    </h2>
+  <BaseCard as="section" padded>
+    <SectionHeading :icon="CalendarIcon" title="Date Poll" />
 
     <!-- No poll yet -->
     <div v-if="!poll" class="py-4 text-center">
       <p class="mb-4 text-gray-500 dark:text-stone-400">
         No date poll has been created yet.
       </p>
-      <button
-        v-if="isOwner"
-        type="button"
-        class="inline-flex items-center gap-2 rounded-md bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-500"
-        @click="handleOpenPoll"
-      >
+      <PrimaryButton v-if="isOwner" @click="handleOpenPoll">
         <CalendarIcon class="size-4" />
         Open Date Poll
-      </button>
+      </PrimaryButton>
     </div>
 
     <!-- Poll exists -->
@@ -297,10 +291,10 @@ function handleVote(): void {
               >
                 #1
               </span>
-              {{ formatDateDisplay(dateRange.startDate) }}
-              <span v-if="dateRange.startDate !== dateRange.endDate">
-                - {{ formatDateDisplay(dateRange.endDate) }}
-              </span>
+              <DateRangeDisplay
+                :start-date="dateRange.startDate"
+                :end-date="dateRange.endDate"
+              />
             </span>
             <div class="flex items-center gap-2">
               <span class="text-sm text-gray-500 dark:text-stone-400">
@@ -332,14 +326,12 @@ function handleVote(): void {
           <PlusIcon class="size-4" />
           Add Date Range
         </button>
-        <button
+        <PrimaryButton
           v-if="poll.status === 'open' || poll.status === 'expired'"
-          type="button"
-          class="inline-flex items-center gap-2 rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-500"
           @click="handleClosePoll"
         >
           Select Winner
-        </button>
+        </PrimaryButton>
         <button
           v-if="poll.status === 'resolved'"
           type="button"
@@ -375,5 +367,5 @@ function handleVote(): void {
       @save="handleDateRangeModalSave"
       @close="showDateRangeModal = false"
     />
-  </section>
+  </BaseCard>
 </template>

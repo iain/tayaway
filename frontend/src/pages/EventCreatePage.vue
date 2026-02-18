@@ -6,6 +6,8 @@ import EventForm, {
   type EventFormData,
 } from '@/components/events/EventForm.vue'
 import { useEventsStore, useNotificationsStore } from '@/stores'
+import PageHeader from '@/components/common/PageHeader.vue'
+import BaseCard from '@/components/common/BaseCard.vue'
 
 const router = useRouter()
 const eventsStore = useEventsStore()
@@ -38,15 +40,9 @@ function handleCancel(): void {
 
 <template>
   <div>
-    <header class="mb-6">
-      <h1
-        class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white"
-      >
-        Create Event
-      </h1>
-    </header>
+    <PageHeader title="Create Event" />
 
-    <div class="rounded-lg bg-white shadow dark:bg-stone-800">
+    <BaseCard>
       <div class="px-4 py-5 sm:p-6">
         <div v-if="formError" class="mb-4 text-red-600 dark:text-red-400">
           {{ formError }}
@@ -59,6 +55,6 @@ function handleCancel(): void {
           @cancel="handleCancel"
         />
       </div>
-    </div>
+    </BaseCard>
   </div>
 </template>

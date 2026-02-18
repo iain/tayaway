@@ -7,6 +7,8 @@ import EventForm, {
 } from '@/components/events/EventForm.vue'
 import { useEventsStore } from '@/stores'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
+import PageHeader from '@/components/common/PageHeader.vue'
+import BaseCard from '@/components/common/BaseCard.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -59,15 +61,9 @@ function handleCancel(): void {
 
 <template>
   <div>
-    <header class="mb-6">
-      <h1
-        class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white"
-      >
-        Edit Event
-      </h1>
-    </header>
+    <PageHeader title="Edit Event" />
 
-    <div class="rounded-lg bg-white shadow dark:bg-stone-800">
+    <BaseCard>
       <div class="px-4 py-5 sm:p-6">
         <div v-if="!event" class="text-gray-500 dark:text-stone-400">
           Event not found
@@ -87,6 +83,6 @@ function handleCancel(): void {
           />
         </template>
       </div>
-    </div>
+    </BaseCard>
   </div>
 </template>

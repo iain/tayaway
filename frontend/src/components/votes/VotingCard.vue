@@ -3,11 +3,12 @@ import { ref, computed, watch } from 'vue'
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/vue/24/outline'
 import type { VoteResponse } from '@/types/pool'
 import type { HydratedDateRange } from '@/composables/useHydratedEvent'
-import { useCalendar } from '@/composables/useCalendar'
 import { useVotesStore } from '@/stores/votes'
 import VoteSummaryBar from './VoteSummaryBar.vue'
 import VotersList from './VotersList.vue'
 import FormTextarea from '@/components/form/FormTextarea.vue'
+import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
+import TextButton from '@/components/common/TextButton.vue'
 
 const props = defineProps<{
   dateRange: HydratedDateRange
@@ -15,7 +16,6 @@ const props = defineProps<{
   currentMemberId: string | null
 }>()
 
-const { formatDateDisplay } = useCalendar()
 const votesStore = useVotesStore()
 
 const loading = ref(false)
@@ -102,10 +102,10 @@ function toggleCommentInput() {
       <!-- Left side: Date range info and stats -->
       <div class="mb-4 flex-1 md:mb-0">
         <h3 class="mb-3 text-sm font-medium text-gray-900 dark:text-white">
-          {{ formatDateDisplay(dateRange.startDate) }}
-          <span v-if="dateRange.startDate !== dateRange.endDate">
-            - {{ formatDateDisplay(dateRange.endDate) }}
-          </span>
+          <DateRangeDisplay
+            :start-date="dateRange.startDate"
+            :end-date="dateRange.endDate"
+          />
         </h3>
 
         <!-- Vote Summary -->
@@ -113,11 +113,7 @@ function toggleCommentInput() {
 
         <!-- Voters List Toggle -->
         <div class="mt-3 border-t border-gray-200 pt-3 dark:border-stone-700">
-          <button
-            type="button"
-            class="flex items-center gap-1 text-sm text-cyan-600 underline hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
-            @click="showVoters = !showVoters"
-          >
+          <TextButton @click="showVoters = !showVoters">
             <component
               :is="showVoters ? ChevronUpIcon : ChevronDownIcon"
               class="size-4"
@@ -125,7 +121,7 @@ function toggleCommentInput() {
             {{ showVoters ? 'Hide' : 'Show' }} votes ({{
               dateRange.voteSummary.total
             }})
-          </button>
+          </TextButton>
           <div v-if="showVoters" class="mt-3">
             <VotersList :votes="dateRange.votes" />
           </div>
@@ -181,11 +177,7 @@ function toggleCommentInput() {
 
         <!-- Comment Input (only show after user has voted) -->
         <div v-if="currentUserVote">
-          <button
-            type="button"
-            class="text-sm text-cyan-600 underline hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
-            @click="toggleCommentInput"
-          >
+          <TextButton @click="toggleCommentInput">
             {{
               showCommentInput
                 ? 'Hide comment'
@@ -193,7 +185,7 @@ function toggleCommentInput() {
                   ? 'Edit comment'
                   : 'Add a comment'
             }}
-          </button>
+          </TextButton>
           <div v-if="showCommentInput" class="mt-2">
             <FormTextarea
               :id="`comment-${dateRange.id}`"

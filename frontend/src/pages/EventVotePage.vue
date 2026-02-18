@@ -8,6 +8,8 @@ import { useHydratedEvent } from '@/composables/useHydratedEvent'
 import { useCalendar } from '@/composables/useCalendar'
 import VotingCard from '@/components/votes/VotingCard.vue'
 import DateRangeModal from '@/components/events/DateRangeModal.vue'
+import TextButton from '@/components/common/TextButton.vue'
+import PrimaryButton from '@/components/common/PrimaryButton.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -78,14 +80,10 @@ function handleDateRangeModalClose(): void {
 <template>
   <div>
     <div class="mb-6">
-      <button
-        type="button"
-        class="inline-flex items-center gap-2 text-sm text-cyan-600 underline hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
-        @click="handleBack"
-      >
+      <TextButton @click="handleBack">
         <ArrowLeftIcon class="size-4" />
         Back to Event
-      </button>
+      </TextButton>
     </div>
 
     <div v-if="!event" class="text-gray-500 dark:text-stone-400">
@@ -98,14 +96,10 @@ function handleDateRangeModalClose(): void {
     >
       <p class="mb-2 text-lg font-medium">Voting is closed</p>
       <p>The date poll is no longer accepting votes.</p>
-      <button
-        type="button"
-        class="mt-4 inline-flex items-center gap-2 text-sm text-cyan-600 underline hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
-        @click="handleBack"
-      >
+      <TextButton class="mt-4" @click="handleBack">
         <ArrowLeftIcon class="size-4" />
         Back to Event
-      </button>
+      </TextButton>
     </div>
 
     <div v-else>
@@ -127,32 +121,28 @@ function handleDateRangeModalClose(): void {
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
             Date Options
           </h2>
-          <button
+          <PrimaryButton
             v-if="isOwner"
-            type="button"
-            class="inline-flex items-center gap-2 rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-500"
             :disabled="datePollsStore.loading"
             @click="handleAddDateRange"
           >
             <PlusIcon class="size-4" />
             Add Date Range
-          </button>
+          </PrimaryButton>
         </div>
 
         <div v-if="dateRanges.length === 0" class="py-8 text-center">
           <p class="mb-4 text-gray-500 dark:text-stone-400">
             No date ranges have been added to this event yet.
           </p>
-          <button
+          <PrimaryButton
             v-if="isOwner"
-            type="button"
-            class="inline-flex items-center gap-2 rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-500"
             :disabled="datePollsStore.loading"
             @click="handleAddDateRange"
           >
             <PlusIcon class="size-4" />
             Add Date Range
-          </button>
+          </PrimaryButton>
         </div>
 
         <div v-else class="space-y-4">

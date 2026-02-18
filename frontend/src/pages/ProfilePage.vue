@@ -4,6 +4,9 @@ import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores'
 import EditNameModal from '@/components/profile/EditNameModal.vue'
 import SessionsList from '@/components/profile/SessionsList.vue'
+import PageHeader from '@/components/common/PageHeader.vue'
+import BaseCard from '@/components/common/BaseCard.vue'
+import TextButton from '@/components/common/TextButton.vue'
 
 const authStore = useAuthStore()
 const { user } = storeToRefs(authStore)
@@ -28,15 +31,9 @@ async function handleSaveName(name: string): Promise<void> {
 
 <template>
   <div>
-    <header class="mb-6">
-      <h1
-        class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white"
-      >
-        Profile
-      </h1>
-    </header>
+    <PageHeader title="Profile" />
 
-    <div class="overflow-hidden rounded-lg bg-white shadow dark:bg-stone-800">
+    <BaseCard>
       <div class="px-4 py-5 sm:p-6">
         <div class="space-y-6">
           <div>
@@ -60,13 +57,7 @@ async function handleSaveName(name: string): Promise<void> {
                   class="mt-1 flex items-center gap-2 text-sm text-gray-900 sm:col-span-2 sm:mt-0 dark:text-white"
                 >
                   <span>{{ user?.name ?? 'Not set' }}</span>
-                  <button
-                    type="button"
-                    class="text-sm font-medium text-cyan-600 underline hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
-                    @click="editNameOpen = true"
-                  >
-                    Edit
-                  </button>
+                  <TextButton @click="editNameOpen = true"> Edit </TextButton>
                 </dd>
               </div>
               <div class="py-4 sm:grid sm:grid-cols-3 sm:gap-4">
@@ -85,7 +76,7 @@ async function handleSaveName(name: string): Promise<void> {
           </div>
         </div>
       </div>
-    </div>
+    </BaseCard>
     <SessionsList class="mt-6" />
     <EditNameModal
       :open="editNameOpen"

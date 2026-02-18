@@ -11,6 +11,8 @@ import {
   isUrgent,
   isPastDeadline,
 } from '@/composables/usePollsNeedingAttention'
+import PageHeader from '@/components/common/PageHeader.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 
 const router = useRouter()
 const { pollsNeedingAttention } = usePollsNeedingAttention()
@@ -22,31 +24,20 @@ function navigateToEvent(eventId: string): void {
 
 <template>
   <div>
-    <header class="mb-6">
-      <h1
-        data-testid="page-title"
-        class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white"
-      >
-        Dashboard
-      </h1>
-    </header>
+    <PageHeader title="Dashboard" data-testid="page-title" />
 
     <section>
       <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
         Polls awaiting your vote
       </h2>
 
-      <div v-if="pollsNeedingAttention.length === 0" class="py-12 text-center">
-        <CheckCircleIcon
-          class="mx-auto size-12 text-green-400 dark:text-green-500"
-        />
-        <h3 class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
-          You're all caught up
-        </h3>
-        <p class="mt-1 text-sm text-gray-500 dark:text-stone-400">
-          No polls need your vote right now.
-        </p>
-      </div>
+      <EmptyState
+        v-if="pollsNeedingAttention.length === 0"
+        :icon="CheckCircleIcon"
+        heading="You're all caught up"
+        description="No polls need your vote right now."
+        icon-class="text-green-400 dark:text-green-500"
+      />
 
       <ul v-else class="space-y-3">
         <li

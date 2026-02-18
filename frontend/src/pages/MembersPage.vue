@@ -4,6 +4,9 @@ import { storeToRefs } from 'pinia'
 import { UserIcon, PlusIcon } from '@heroicons/vue/24/outline'
 import { useMembersStore, useNotificationsStore } from '@/stores'
 import AddMemberModal from '@/components/members/AddMemberModal.vue'
+import PageHeader from '@/components/common/PageHeader.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+import PrimaryButton from '@/components/common/PrimaryButton.vue'
 
 const membersStore = useMembersStore()
 const { members } = storeToRefs(membersStore)
@@ -45,23 +48,12 @@ async function handleSave(name: string, email: string): Promise<void> {
 
 <template>
   <div>
-    <header class="mb-6 flex items-center justify-between">
-      <h1
-        data-testid="page-title"
-        class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white"
-      >
-        Members
-      </h1>
-      <button
-        type="button"
-        data-testid="add-member-button"
-        class="inline-flex items-center gap-2 rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-500"
-        @click="openModal"
-      >
+    <PageHeader title="Members" data-testid="page-title">
+      <PrimaryButton data-testid="add-member-button" @click="openModal">
         <PlusIcon class="size-5" />
         Add Member
-      </button>
-    </header>
+      </PrimaryButton>
+    </PageHeader>
 
     <div
       v-if="formError"
@@ -70,25 +62,17 @@ async function handleSave(name: string, email: string): Promise<void> {
       {{ formError }}
     </div>
 
-    <div v-if="members.length === 0" class="py-12 text-center">
-      <UserIcon class="mx-auto size-12 text-gray-400" />
-      <h3 class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
-        No members
-      </h3>
-      <p class="mt-1 text-sm text-gray-500 dark:text-stone-400">
-        Get started by adding a new member.
-      </p>
-      <div class="mt-6">
-        <button
-          type="button"
-          class="inline-flex items-center gap-2 rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-500"
-          @click="openModal"
-        >
-          <PlusIcon class="size-5" />
-          Add Member
-        </button>
-      </div>
-    </div>
+    <EmptyState
+      v-if="members.length === 0"
+      :icon="UserIcon"
+      heading="No members"
+      description="Get started by adding a new member."
+    >
+      <PrimaryButton @click="openModal">
+        <PlusIcon class="size-5" />
+        Add Member
+      </PrimaryButton>
+    </EmptyState>
 
     <ul
       v-else
