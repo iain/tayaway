@@ -11,6 +11,7 @@ const props = defineProps<{
 
 interface MemberGroup {
   label: string
+  completed: boolean
   members: { id: string; name: string | null; email: string }[]
 }
 
@@ -18,13 +19,11 @@ const memberGroups = computed<MemberGroup[]>(() => {
   if (!props.event.workspace || !props.event.datePoll) return []
 
   const dateRanges = props.event.datePoll.dateRanges
+  const members = props.event.workspace.members
 
-  // Build set of all member IDs who voted at all
-  const voterMemberIds = new Set<string>()
   const voteCountByMember = new Map<string, number>()
   for (const dateRange of dateRanges) {
     for (const vote of dateRange.votes) {
-      voterMemberIds.add(vote.memberId)
       voteCountByMember.set(
         vote.memberId,
         (voteCountByMember.get(vote.memberId) || 0) + 1
@@ -32,31 +31,40 @@ const memberGroups = computed<MemberGroup[]>(() => {
     }
   }
 
-  const notVoted = props.event.workspace.members.filter(
-    (member) => !voterMemberIds.has(member.id)
+  const fullyVoted = members.filter(
+    (m) => voteCountByMember.get(m.id) === dateRanges.length
   )
-
   const partiallyVoted =
     dateRanges.length <= 1
       ? []
-      : props.event.workspace.members.filter(
-          (member) =>
-            voteCountByMember.has(member.id) &&
-            voteCountByMember.get(member.id)! < dateRanges.length
+      : members.filter(
+          (m) =>
+            voteCountByMember.has(m.id) &&
+            voteCountByMember.get(m.id)! < dateRanges.length
         )
+  const notVoted = members.filter((m) => !voteCountByMember.has(m.id))
 
   const groups: MemberGroup[] = []
   if (notVoted.length > 0) {
-    groups.push({ label: 'Not voted yet', members: notVoted })
+    groups.push({ label: 'Not voted yet', completed: false, members: notVoted })
   }
   if (partiallyVoted.length > 0) {
-    groups.push({ label: 'Incomplete votes', members: partiallyVoted })
+    groups.push({
+      label: 'Incomplete votes',
+      completed: false,
+      members: partiallyVoted,
+    })
+  }
+  if (fullyVoted.length > 0) {
+    groups.push({ label: 'Voted', completed: true, members: fullyVoted })
   }
   return groups
 })
 
 const awaitingVotesCount = computed(() =>
-  memberGroups.value.reduce((sum, group) => sum + group.members.length, 0)
+  memberGroups.value
+    .filter((g) => !g.completed)
+    .reduce((sum, g) => sum + g.members.length, 0)
 )
 </script>
 
@@ -66,7 +74,7 @@ const awaitingVotesCount = computed(() =>
       class="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white"
     >
       <UserIcon class="size-5" />
-      Awaiting Votes
+      Votes
     </h2>
 
     <div
@@ -90,7 +98,14 @@ const awaitingVotesCount = computed(() =>
 
     <div v-else class="space-y-4">
       <div v-for="group in memberGroups" :key="group.label">
-        <h3 class="mb-2 text-sm font-medium text-gray-500 dark:text-stone-400">
+        <h3
+          class="mb-2 text-sm font-medium"
+          :class="
+            group.completed
+              ? 'text-green-600 dark:text-green-400'
+              : 'text-gray-500 dark:text-stone-400'
+          "
+        >
           {{ group.label }}
         </h3>
         <ul class="space-y-2">
@@ -99,20 +114,29 @@ const awaitingVotesCount = computed(() =>
             :key="member.id"
             class="flex items-center gap-3 rounded-md px-3 py-2"
             :class="
-              member.id === currentMemberId
-                ? 'bg-amber-50 ring-1 ring-amber-200 dark:bg-amber-900/20 dark:ring-amber-800'
-                : 'bg-gray-50 dark:bg-stone-700/50'
+              group.completed
+                ? 'bg-green-50 dark:bg-green-900/20'
+                : member.id === currentMemberId
+                  ? 'bg-amber-50 ring-1 ring-amber-200 dark:bg-amber-900/20 dark:ring-amber-800'
+                  : 'bg-gray-50 dark:bg-stone-700/50'
             "
           >
             <div
               class="flex size-8 items-center justify-center rounded-full"
               :class="
-                member.id === currentMemberId
-                  ? 'bg-amber-200 dark:bg-amber-800'
-                  : 'bg-gray-200 dark:bg-stone-600'
+                group.completed
+                  ? 'bg-green-200 dark:bg-green-800'
+                  : member.id === currentMemberId
+                    ? 'bg-amber-200 dark:bg-amber-800'
+                    : 'bg-gray-200 dark:bg-stone-600'
               "
             >
+              <CheckCircleIcon
+                v-if="group.completed"
+                class="size-4 text-green-600 dark:text-green-400"
+              />
               <UserIcon
+                v-else
                 class="size-4"
                 :class="
                   member.id === currentMemberId
