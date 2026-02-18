@@ -93,7 +93,7 @@ function getInitials(email: string | undefined): string {
     <Disclosure
       v-slot="{ open, close }"
       as="nav"
-      class="sticky top-0 z-40 bg-amber-600 dark:bg-amber-800"
+      class="bg-nav sticky top-0 z-40"
     >
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="flex h-16 items-center justify-between">
@@ -102,14 +102,14 @@ function getInitials(email: string | undefined): string {
               <!-- Single workspace: just show name -->
               <span
                 v-if="otherWorkspaces.length === 0"
-                class="text-xl font-bold text-white"
+                class="text-nav-text text-xl font-bold"
               >
                 {{ currentWorkspace?.name ?? 'Tayaway' }}
               </span>
               <!-- Multiple workspaces: dropdown -->
               <Menu v-else as="div" class="relative">
                 <MenuButton
-                  class="flex items-center gap-1 text-xl font-bold text-white hover:text-amber-100 focus:outline-hidden"
+                  class="text-nav-text hover:text-nav-text-muted-hover flex items-center gap-1 text-xl font-bold focus:outline-hidden"
                 >
                   {{ currentWorkspace?.name ?? 'Tayaway' }}
                   <ChevronDownIcon class="size-5" aria-hidden="true" />
@@ -153,8 +153,8 @@ function getInitials(email: string | undefined): string {
                   :to="item.href"
                   :class="[
                     isActive(item.routeName)
-                      ? 'bg-amber-700 text-white dark:bg-amber-900'
-                      : 'hover:bg-opacity-75 text-white hover:bg-amber-500 dark:hover:bg-amber-700',
+                      ? 'bg-nav-active text-nav-text'
+                      : 'text-nav-text hover:bg-nav-hover hover:bg-opacity-75',
                     'rounded-md px-3 py-2 text-sm font-medium',
                   ]"
                   :aria-current="isActive(item.routeName) ? 'page' : undefined"
@@ -187,7 +187,7 @@ function getInitials(email: string | undefined): string {
               <!-- Dark mode toggle -->
               <button
                 type="button"
-                class="relative rounded-full bg-amber-600 p-1 text-amber-200 hover:text-white focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-amber-600 focus:outline-hidden dark:bg-amber-800"
+                class="bg-nav text-nav-text-muted hover:text-nav-text focus:ring-offset-nav relative rounded-full p-1 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:outline-hidden"
                 @click="toggleDarkMode"
               >
                 <span class="sr-only">Toggle dark mode</span>
@@ -200,15 +200,15 @@ function getInitials(email: string | undefined): string {
                 <div>
                   <MenuButton
                     data-testid="user-menu-button"
-                    class="relative flex max-w-xs items-center rounded-full bg-amber-600 text-sm focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-amber-600 focus:outline-hidden dark:bg-amber-800"
+                    class="bg-nav focus:ring-offset-nav relative flex max-w-xs items-center rounded-full text-sm focus:ring-2 focus:ring-white focus:ring-offset-2 focus:outline-hidden"
                   >
                     <span class="sr-only">Open user menu</span>
                     <span
-                      class="inline-flex size-8 items-center justify-center rounded-full bg-amber-500 dark:bg-amber-700"
+                      class="bg-nav-hover inline-flex size-8 items-center justify-center rounded-full"
                     >
                       <span
                         data-testid="user-initial"
-                        class="text-sm font-medium text-white"
+                        class="text-nav-text text-sm font-medium"
                         >{{ getInitials(user?.email) }}</span
                       >
                     </span>
@@ -272,7 +272,7 @@ function getInitials(email: string | undefined): string {
           <div class="-mr-2 flex md:hidden">
             <!-- Mobile menu button -->
             <DisclosureButton
-              class="group hover:bg-opacity-75 relative inline-flex items-center justify-center rounded-md bg-amber-600 p-2 text-amber-200 hover:bg-amber-500 hover:text-white focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-amber-600 focus:outline-hidden dark:bg-amber-800 dark:hover:bg-amber-700"
+              class="group bg-nav text-nav-text-muted hover:bg-nav-hover hover:bg-opacity-75 hover:text-nav-text focus:ring-offset-nav relative inline-flex items-center justify-center rounded-md p-2 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:outline-hidden"
             >
               <span class="sr-only">Open main menu</span>
               <Bars3Icon
@@ -292,10 +292,10 @@ function getInitials(email: string | undefined): string {
         <!-- Mobile workspace switcher -->
         <div
           v-if="otherWorkspaces.length > 0"
-          class="border-b border-amber-700 px-3 pt-2 pb-3 dark:border-amber-900"
+          class="border-nav-active border-b px-3 pt-2 pb-3"
         >
           <p
-            class="px-2 text-xs font-semibold tracking-wide text-amber-200 uppercase"
+            class="text-nav-text-muted px-2 text-xs font-semibold tracking-wide uppercase"
           >
             Switch workspace
           </p>
@@ -303,7 +303,7 @@ function getInitials(email: string | undefined): string {
             v-for="ws in otherWorkspaces"
             :key="ws.id"
             type="button"
-            class="hover:bg-opacity-75 mt-1 block w-full rounded-md px-3 py-2 text-left text-base font-medium text-white hover:bg-amber-500 dark:hover:bg-amber-700"
+            class="text-nav-text hover:bg-nav-hover hover:bg-opacity-75 mt-1 block w-full rounded-md px-3 py-2 text-left text-base font-medium"
             @click="
               () => {
                 close()
@@ -321,8 +321,8 @@ function getInitials(email: string | undefined): string {
             :to="item.href"
             :class="[
               isActive(item.routeName)
-                ? 'bg-amber-700 text-white dark:bg-amber-900'
-                : 'hover:bg-opacity-75 text-white hover:bg-amber-500 dark:hover:bg-amber-700',
+                ? 'bg-nav-active text-nav-text'
+                : 'text-nav-text hover:bg-nav-hover hover:bg-opacity-75',
               'block rounded-md px-3 py-2 text-base font-medium',
             ]"
             :aria-current="isActive(item.routeName) ? 'page' : undefined"
@@ -331,19 +331,19 @@ function getInitials(email: string | undefined): string {
             {{ item.name }}
           </router-link>
         </div>
-        <div class="border-t border-amber-700 pt-4 pb-3 dark:border-amber-900">
+        <div class="border-nav-active border-t pt-4 pb-3">
           <div class="flex items-center px-5">
             <div class="shrink-0">
               <span
-                class="inline-flex size-10 items-center justify-center rounded-full bg-amber-500 dark:bg-amber-700"
+                class="bg-nav-hover inline-flex size-10 items-center justify-center rounded-full"
               >
-                <span class="text-sm font-medium text-white">{{
+                <span class="text-nav-text text-sm font-medium">{{
                   getInitials(user?.email)
                 }}</span>
               </span>
             </div>
             <div class="ml-3">
-              <div class="text-base font-medium text-white">
+              <div class="text-nav-text text-base font-medium">
                 {{ user?.email }}
               </div>
             </div>
@@ -365,7 +365,7 @@ function getInitials(email: string | undefined): string {
             </button>
             <button
               type="button"
-              class="shrink-0 rounded-full bg-amber-600 p-1 text-amber-200 hover:text-white focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-amber-600 focus:outline-hidden dark:bg-amber-800"
+              class="bg-nav text-nav-text-muted hover:text-nav-text focus:ring-offset-nav shrink-0 rounded-full p-1 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:outline-hidden"
               :class="!showConnectionBadge ? 'relative ml-auto' : 'ml-2'"
               @click="toggleDarkMode"
             >
@@ -379,14 +379,14 @@ function getInitials(email: string | undefined): string {
               v-for="item in userNavigation"
               :key="item.name"
               :to="item.href"
-              class="hover:bg-opacity-75 block rounded-md px-3 py-2 text-base font-medium text-white hover:bg-amber-500 dark:hover:bg-amber-700"
+              class="text-nav-text hover:bg-nav-hover hover:bg-opacity-75 block rounded-md px-3 py-2 text-base font-medium"
               @click="close"
             >
               {{ item.name }}
             </router-link>
             <button
               type="button"
-              class="hover:bg-opacity-75 block w-full rounded-md px-3 py-2 text-left text-base font-medium text-white hover:bg-amber-500 dark:hover:bg-amber-700"
+              class="text-nav-text hover:bg-nav-hover hover:bg-opacity-75 block w-full rounded-md px-3 py-2 text-left text-base font-medium"
               @click="
                 () => {
                   close()
