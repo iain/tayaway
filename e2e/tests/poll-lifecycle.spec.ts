@@ -222,10 +222,10 @@ test.describe('Poll Lifecycle UI', () => {
         timeout: 10000,
       })
 
-      await expect(page.getByText('Winner selected')).toBeVisible({
-        timeout: 5000,
-      })
-      await expect(page.getByText('Winner').first()).toBeVisible()
+      await expect(
+        page.getByRole('button', { name: 'Reopen Poll' })
+      ).toBeVisible({ timeout: 5000 })
+      await expect(page.getByTestId('event-dates')).toBeVisible()
     })
   })
 
@@ -280,16 +280,10 @@ test.describe('Poll Lifecycle UI', () => {
       // Modal should close
       await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
 
-      // Poll should now be resolved with winner displayed
-      await expect(page.getByText('Winner selected')).toBeVisible({
-        timeout: 5000,
-      })
-      await expect(page.getByText('Winner').first()).toBeVisible()
-
-      // "Reopen Poll" button should be visible
+      // Poll should now be resolved
       await expect(
         page.getByRole('button', { name: 'Reopen Poll' })
-      ).toBeVisible()
+      ).toBeVisible({ timeout: 5000 })
 
       // "Select Winner" button should no longer be visible
       await expect(
@@ -373,9 +367,9 @@ test.describe('Poll Lifecycle UI', () => {
       })
 
       // Verify it's currently resolved
-      await expect(page.getByText('Winner selected')).toBeVisible({
-        timeout: 5000,
-      })
+      await expect(
+        page.getByRole('button', { name: 'Reopen Poll' })
+      ).toBeVisible({ timeout: 5000 })
 
       // Click reopen
       await page.getByRole('button', { name: 'Reopen Poll' }).click()
@@ -390,8 +384,10 @@ test.describe('Poll Lifecycle UI', () => {
       // Poll should now be open again
       await expect(page.getByText(/remaining/)).toBeVisible({ timeout: 5000 })
 
-      // Winner text should be gone
-      await expect(page.getByText('Winner selected')).not.toBeVisible()
+      // Reopen Poll button should be gone (poll is now open)
+      await expect(
+        page.getByRole('button', { name: 'Reopen Poll' })
+      ).not.toBeVisible()
 
       // "Vote on Dates" and "Select Winner" buttons should be back
       await expect(
@@ -542,9 +538,9 @@ test.describe('Poll Lifecycle UI', () => {
       await page.getByRole('dialog').locator('button.w-full').first().click()
       await page.getByRole('button', { name: 'Confirm Winner' }).click()
       await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
-      await expect(page.getByText('Winner selected')).toBeVisible({
-        timeout: 5000,
-      })
+      await expect(
+        page.getByRole('button', { name: 'Reopen Poll' })
+      ).toBeVisible({ timeout: 5000 })
 
       // 7. Reopen the poll
       await page.getByRole('button', { name: 'Reopen Poll' }).click()
@@ -552,7 +548,9 @@ test.describe('Poll Lifecycle UI', () => {
       await page.getByRole('button', { name: 'Open Poll', exact: true }).click()
       await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
       await expect(page.getByText(/remaining/)).toBeVisible({ timeout: 5000 })
-      await expect(page.getByText('Winner selected')).not.toBeVisible()
+      await expect(
+        page.getByRole('button', { name: 'Reopen Poll' })
+      ).not.toBeVisible()
     })
   })
 })

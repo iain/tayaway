@@ -1,24 +1,29 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeftIcon,
+  ArrowPathIcon,
   CalendarDaysIcon,
   PencilIcon,
 } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores'
+import { useDatePollsStore } from '@/stores/datePolls'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
 import DatePollSection from '@/components/events/DatePollSection.vue'
 import RsvpSection from '@/components/events/RsvpSection.vue'
 import AwaitingVotesSection from '@/components/events/AwaitingVotesSection.vue'
+import OpenPollModal from '@/components/events/OpenPollModal.vue'
 import TextButton from '@/components/common/TextButton.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const datePollsStore = useDatePollsStore()
 const { currentMemberId } = storeToRefs(authStore)
+const showReopenModal = ref(false)
 
 const eventId = computed(() => route.params.id as string)
 
@@ -44,6 +49,19 @@ function handleEditDateRanges(): void {
 function handleVote(): void {
   router.push(`/events/${eventId.value}/vote`)
 }
+
+function handleReopenPoll(): void {
+  showReopenModal.value = true
+}
+
+async function handleReopenConfirm(deadline: string): Promise<void> {
+  try {
+    await datePollsStore.reopenPoll(eventId.value, deadline)
+    showReopenModal.value = false
+  } catch {
+    // Error handled by store
+  }
+}
 </script>
 
 <template>
@@ -54,6 +72,13 @@ function handleVote(): void {
         Back to Events
       </TextButton>
       <div v-if="isOwner" class="flex items-center gap-4">
+        <TextButton
+          v-if="event?.datePoll?.status === 'resolved'"
+          @click="handleReopenPoll"
+        >
+          <ArrowPathIcon class="size-4" />
+          Reopen Poll
+        </TextButton>
         <TextButton
           v-if="event?.datePoll?.status === 'open'"
           @click="handleEditDateRanges"
@@ -106,8 +131,9 @@ function handleVote(): void {
 
       <!-- Stats Grid -->
       <div class="grid gap-6 lg:grid-cols-2">
-        <!-- Date Poll Section -->
+        <!-- Date Poll Section (hidden when resolved) -->
         <DatePollSection
+          v-if="event.datePoll?.status !== 'resolved'"
           :event="event"
           :is-owner="isOwner"
           :current-member-id="currentMemberId"
@@ -121,12 +147,22 @@ function handleVote(): void {
           :current-member-id="currentMemberId"
         />
 
-        <!-- Who Hasn't Voted -->
+        <!-- Who Hasn't Voted (hidden when resolved) -->
         <AwaitingVotesSection
+          v-if="event.datePoll?.status !== 'resolved'"
           :event="event"
           :current-member-id="currentMemberId"
         />
       </div>
     </div>
   </div>
+
+  <OpenPollModal
+    :open="showReopenModal"
+    title="Reopen Date Poll"
+    :loading="datePollsStore.loading"
+    autofocus-submit
+    @confirm="handleReopenConfirm"
+    @close="showReopenModal = false"
+  />
 </template>

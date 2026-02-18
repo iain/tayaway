@@ -7,6 +7,7 @@ const props = defineProps<{
   open: boolean
   title?: string
   loading?: boolean
+  autofocusSubmit?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -84,6 +85,7 @@ function handleClose(): void {
         loading-label="Creating..."
         :loading="loading"
         :disabled="!canConfirm"
+        :autofocus-submit="autofocusSubmit"
         @cancel="handleClose"
       />
     </form>

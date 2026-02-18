@@ -32,7 +32,6 @@ const datePollsStore = useDatePollsStore()
 
 const showOpenPollModal = ref(false)
 const showClosePollModal = ref(false)
-const reopenMode = ref(false)
 
 const poll = computed(() => props.event.datePoll)
 
@@ -80,23 +79,13 @@ const currentUserVoteStatus = computed(() => {
 })
 
 function handleOpenPoll(): void {
-  reopenMode.value = false
-  showOpenPollModal.value = true
-}
-
-function handleReopenPoll(): void {
-  reopenMode.value = true
   showOpenPollModal.value = true
 }
 
 async function handleOpenPollConfirm(deadline: string): Promise<void> {
   try {
-    if (reopenMode.value) {
-      await datePollsStore.reopenPoll(props.event.id, deadline)
-    } else {
-      await datePollsStore.createPoll(props.event.id, deadline)
-      router.push(`/events/${props.event.id}/date-ranges`)
-    }
+    await datePollsStore.createPoll(props.event.id, deadline)
+    router.push(`/events/${props.event.id}/date-ranges`)
     showOpenPollModal.value = false
   } catch {
     // Error handled by store
@@ -267,28 +256,18 @@ function handleVote(): void {
       </div>
 
       <!-- Owner actions -->
-      <div v-if="isOwner" class="mt-4 flex flex-wrap items-center gap-2">
-        <PrimaryButton
-          v-if="poll.status === 'open' || poll.status === 'expired'"
-          @click="handleClosePoll"
-        >
-          Select Winner
-        </PrimaryButton>
-        <button
-          v-if="poll.status === 'resolved'"
-          type="button"
-          class="inline-flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600"
-          @click="handleReopenPoll"
-        >
-          Reopen Poll
-        </button>
+      <div
+        v-if="isOwner && (poll.status === 'open' || poll.status === 'expired')"
+        class="mt-4"
+      >
+        <PrimaryButton @click="handleClosePoll">Select Winner</PrimaryButton>
       </div>
     </template>
 
     <!-- Modals -->
     <OpenPollModal
       :open="showOpenPollModal"
-      :title="reopenMode ? 'Reopen Date Poll' : 'Open Date Poll'"
+      title="Open Date Poll"
       :loading="datePollsStore.loading"
       @confirm="handleOpenPollConfirm"
       @close="showOpenPollModal = false"
