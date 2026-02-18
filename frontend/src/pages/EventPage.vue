@@ -23,7 +23,8 @@ const router = useRouter()
 const authStore = useAuthStore()
 const datePollsStore = useDatePollsStore()
 const { currentMemberId } = storeToRefs(authStore)
-const showReopenModal = ref(false)
+const showPollModal = ref(false)
+const pollModalMode = ref<'open' | 'reopen'>('open')
 
 const eventId = computed(() => route.params.id as string)
 
@@ -50,14 +51,25 @@ function handleVote(): void {
   router.push(`/events/${eventId.value}/vote`)
 }
 
-function handleReopenPoll(): void {
-  showReopenModal.value = true
+function handleOpenPoll(): void {
+  pollModalMode.value = 'open'
+  showPollModal.value = true
 }
 
-async function handleReopenConfirm(deadline: string): Promise<void> {
+function handleReopenPoll(): void {
+  pollModalMode.value = 'reopen'
+  showPollModal.value = true
+}
+
+async function handlePollModalConfirm(deadline: string): Promise<void> {
   try {
-    await datePollsStore.reopenPoll(eventId.value, deadline)
-    showReopenModal.value = false
+    if (pollModalMode.value === 'reopen') {
+      await datePollsStore.reopenPoll(eventId.value, deadline)
+    } else {
+      await datePollsStore.createPoll(eventId.value, deadline)
+      router.push(`/events/${eventId.value}/date-ranges`)
+    }
+    showPollModal.value = false
   } catch {
     // Error handled by store
   }
@@ -85,6 +97,10 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
         >
           <PencilIcon class="size-4" />
           Edit Date Ranges
+        </TextButton>
+        <TextButton v-if="!event?.datePoll" @click="handleOpenPoll">
+          <CalendarDaysIcon class="size-4" />
+          Open Date Poll
         </TextButton>
         <TextButton @click="handleEdit">
           <PencilIcon class="size-4" />
@@ -131,9 +147,9 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
 
       <!-- Stats Grid -->
       <div class="grid gap-6 lg:grid-cols-2">
-        <!-- Date Poll Section (hidden when resolved) -->
+        <!-- Date Poll Section (only when poll exists and not resolved) -->
         <DatePollSection
-          v-if="event.datePoll?.status !== 'resolved'"
+          v-if="event.datePoll && event.datePoll.status !== 'resolved'"
           :event="event"
           :is-owner="isOwner"
           :current-member-id="currentMemberId"
@@ -147,9 +163,13 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
           :current-member-id="currentMemberId"
         />
 
-        <!-- Who Hasn't Voted (hidden when resolved) -->
+        <!-- Who Hasn't Voted (only when poll exists and not resolved) -->
         <AwaitingVotesSection
-          v-if="event.datePoll?.status !== 'resolved'"
+          v-if="
+            event.datePoll &&
+            event.datePoll.status !== 'resolved' &&
+            event.datePoll.dateRanges.length > 0
+          "
           :event="event"
           :current-member-id="currentMemberId"
         />
@@ -158,11 +178,11 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
   </div>
 
   <OpenPollModal
-    :open="showReopenModal"
-    title="Reopen Date Poll"
+    :open="showPollModal"
+    :title="pollModalMode === 'reopen' ? 'Reopen Date Poll' : 'Open Date Poll'"
     :loading="datePollsStore.loading"
-    autofocus-submit
-    @confirm="handleReopenConfirm"
-    @close="showReopenModal = false"
+    :autofocus-submit="pollModalMode === 'reopen'"
+    @confirm="handlePollModalConfirm"
+    @close="showPollModal = false"
   />
 </template>

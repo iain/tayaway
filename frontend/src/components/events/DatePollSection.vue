@@ -6,11 +6,9 @@ import {
   CheckCircleIcon as CheckCircleSolidIcon,
 } from '@heroicons/vue/24/solid'
 import { HandThumbUpIcon } from '@heroicons/vue/24/outline'
-import { useRouter } from 'vue-router'
 import { useDatePollsStore } from '@/stores/datePolls'
 import type { HydratedEvent } from '@/composables/useHydratedEvent'
 import VoteSummaryBar from '@/components/votes/VoteSummaryBar.vue'
-import OpenPollModal from './OpenPollModal.vue'
 import ClosePollModal from './ClosePollModal.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
@@ -27,10 +25,8 @@ const emit = defineEmits<{
   vote: []
 }>()
 
-const router = useRouter()
 const datePollsStore = useDatePollsStore()
 
-const showOpenPollModal = ref(false)
 const showClosePollModal = ref(false)
 
 const poll = computed(() => props.event.datePoll)
@@ -78,20 +74,6 @@ const currentUserVoteStatus = computed(() => {
   return { voted, total }
 })
 
-function handleOpenPoll(): void {
-  showOpenPollModal.value = true
-}
-
-async function handleOpenPollConfirm(deadline: string): Promise<void> {
-  try {
-    await datePollsStore.createPoll(props.event.id, deadline)
-    router.push(`/events/${props.event.id}/date-ranges`)
-    showOpenPollModal.value = false
-  } catch {
-    // Error handled by store
-  }
-}
-
 function handleClosePoll(): void {
   showClosePollModal.value = true
 }
@@ -114,19 +96,7 @@ function handleVote(): void {
   <BaseCard as="section" padded>
     <SectionHeading :icon="CalendarIcon" title="Date Poll" />
 
-    <!-- No poll yet -->
-    <div v-if="!poll" class="py-4 text-center">
-      <p class="mb-4 text-gray-500 dark:text-stone-400">
-        No date poll has been created yet.
-      </p>
-      <PrimaryButton v-if="isOwner" @click="handleOpenPoll">
-        <CalendarIcon class="size-4" />
-        Open Date Poll
-      </PrimaryButton>
-    </div>
-
-    <!-- Poll exists -->
-    <template v-else>
+    <template v-if="poll">
       <!-- Status bar -->
       <div
         class="mb-4 flex items-center justify-between rounded-md px-3 py-2"
@@ -168,8 +138,11 @@ function handleVote(): void {
         </div>
       </div>
 
-      <!-- Vote CTA (when poll is open) -->
-      <div v-if="poll.status === 'open'" class="mb-4">
+      <!-- Vote CTA (when poll is open and has date ranges) -->
+      <div
+        v-if="poll.status === 'open' && rankedDateRanges.length > 0"
+        class="mb-4"
+      >
         <button
           type="button"
           class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-rose-600 px-6 py-4 text-lg font-semibold text-white shadow-sm hover:bg-rose-500 sm:w-auto"
@@ -257,7 +230,11 @@ function handleVote(): void {
 
       <!-- Owner actions -->
       <div
-        v-if="isOwner && (poll.status === 'open' || poll.status === 'expired')"
+        v-if="
+          isOwner &&
+          rankedDateRanges.length > 0 &&
+          (poll.status === 'open' || poll.status === 'expired')
+        "
         class="mt-4"
       >
         <PrimaryButton @click="handleClosePoll">Select Winner</PrimaryButton>
@@ -265,14 +242,6 @@ function handleVote(): void {
     </template>
 
     <!-- Modals -->
-    <OpenPollModal
-      :open="showOpenPollModal"
-      title="Open Date Poll"
-      :loading="datePollsStore.loading"
-      @confirm="handleOpenPollConfirm"
-      @close="showOpenPollModal = false"
-    />
-
     <ClosePollModal
       :open="showClosePollModal"
       :date-ranges="rankedDateRanges"

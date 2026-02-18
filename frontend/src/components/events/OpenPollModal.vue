@@ -33,7 +33,8 @@ watch(
       const minutes = String(defaultDate.getMinutes()).padStart(2, '0')
       deadline.value = `${year}-${month}-${day}T${hours}:${minutes}`
     }
-  }
+  },
+  { immediate: true }
 )
 
 const canConfirm = computed(() => {
