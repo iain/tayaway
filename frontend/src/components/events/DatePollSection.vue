@@ -8,6 +8,13 @@ import {
 import { HandThumbUpIcon } from '@heroicons/vue/24/outline'
 import { useDatePollsStore } from '@/stores/datePolls'
 import type { HydratedEvent } from '@/composables/useHydratedEvent'
+import {
+  isPollOpen,
+  isPollExpired,
+  isPollResolved,
+  canClosePoll,
+  formatPollDeadline,
+} from '@/utils/poll'
 import VoteSummaryBar from '@/components/votes/VoteSummaryBar.vue'
 import ClosePollModal from './ClosePollModal.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
@@ -44,22 +51,9 @@ const rankedDateRanges = computed(() => {
   })
 })
 
-const deadlineText = computed(() => {
-  if (!poll.value) return ''
-  const deadline = new Date(poll.value.deadline)
-  const now = new Date()
-  const diff = deadline.getTime() - now.getTime()
-
-  if (diff <= 0) return 'Deadline passed'
-
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-
-  if (days > 0) return `${days}d ${hours}h remaining`
-  if (hours > 0) return `${hours}h remaining`
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-  return `${minutes}m remaining`
-})
+const deadlineText = computed(() =>
+  poll.value ? formatPollDeadline(poll.value.deadline) : ''
+)
 
 // Check current user vote status across poll date ranges
 const currentUserVoteStatus = computed(() => {
@@ -101,18 +95,18 @@ function handleVote(): void {
       <div
         class="mb-4 flex items-center justify-between rounded-md px-3 py-2"
         :class="{
-          'bg-green-50 dark:bg-green-900/20': poll.status === 'open',
-          'bg-amber-50 dark:bg-amber-900/20': poll.status === 'expired',
-          'bg-blue-50 dark:bg-blue-900/20': poll.status === 'resolved',
+          'bg-green-50 dark:bg-green-900/20': isPollOpen(poll),
+          'bg-amber-50 dark:bg-amber-900/20': isPollExpired(poll),
+          'bg-blue-50 dark:bg-blue-900/20': isPollResolved(poll),
         }"
       >
         <div class="flex items-center gap-2">
           <ClockIcon
-            v-if="poll.status === 'open'"
+            v-if="isPollOpen(poll)"
             class="size-4 text-green-600 dark:text-green-400"
           />
           <ClockIcon
-            v-else-if="poll.status === 'expired'"
+            v-else-if="isPollExpired(poll)"
             class="size-4 text-amber-600 dark:text-amber-400"
           />
           <CheckCircleSolidIcon
@@ -122,15 +116,15 @@ function handleVote(): void {
           <span
             class="text-sm font-medium"
             :class="{
-              'text-green-700 dark:text-green-300': poll.status === 'open',
-              'text-amber-700 dark:text-amber-300': poll.status === 'expired',
-              'text-blue-700 dark:text-blue-300': poll.status === 'resolved',
+              'text-green-700 dark:text-green-300': isPollOpen(poll),
+              'text-amber-700 dark:text-amber-300': isPollExpired(poll),
+              'text-blue-700 dark:text-blue-300': isPollResolved(poll),
             }"
           >
-            <template v-if="poll.status === 'open'">
+            <template v-if="isPollOpen(poll)">
               {{ deadlineText }}
             </template>
-            <template v-else-if="poll.status === 'expired'">
+            <template v-else-if="isPollExpired(poll)">
               Deadline passed - awaiting winner selection
             </template>
             <template v-else> Winner selected </template>
@@ -139,10 +133,7 @@ function handleVote(): void {
       </div>
 
       <!-- Vote CTA (when poll is open and has date ranges) -->
-      <div
-        v-if="poll.status === 'open' && rankedDateRanges.length > 0"
-        class="mb-4"
-      >
+      <div v-if="isPollOpen(poll) && rankedDateRanges.length > 0" class="mb-4">
         <button
           type="button"
           class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-rose-600 px-6 py-4 text-lg font-semibold text-white shadow-sm hover:bg-rose-500 sm:w-auto"
@@ -182,26 +173,23 @@ function handleVote(): void {
           class="rounded-md border p-4"
           :class="{
             'border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/20':
-              poll.status === 'resolved' &&
-              dateRange.id === poll.selectedDateRangeId,
+              isPollResolved(poll) && dateRange.id === poll.selectedDateRangeId,
             'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-900/20':
-              poll.status !== 'resolved' &&
+              !isPollResolved(poll) &&
               index === 0 &&
               dateRange.voteSummary.yes > 0,
-            'border-gray-200 dark:border-stone-700':
-              poll.status !== 'resolved'
-                ? index !== 0 || dateRange.voteSummary.yes === 0
-                : dateRange.id !== poll.selectedDateRangeId,
+            'border-gray-200 dark:border-stone-700': !isPollResolved(poll)
+              ? index !== 0 || dateRange.voteSummary.yes === 0
+              : dateRange.id !== poll.selectedDateRangeId,
             'opacity-50':
-              poll.status === 'resolved' &&
-              dateRange.id !== poll.selectedDateRangeId,
+              isPollResolved(poll) && dateRange.id !== poll.selectedDateRangeId,
           }"
         >
           <div class="mb-2 flex items-center justify-between">
             <span class="font-medium text-gray-900 dark:text-white">
               <span
                 v-if="
-                  poll.status === 'resolved' &&
+                  isPollResolved(poll) &&
                   dateRange.id === poll.selectedDateRangeId
                 "
                 class="mr-2 text-blue-600 dark:text-blue-400"
@@ -230,11 +218,7 @@ function handleVote(): void {
 
       <!-- Owner actions -->
       <div
-        v-if="
-          isOwner &&
-          rankedDateRanges.length > 0 &&
-          (poll.status === 'open' || poll.status === 'expired')
-        "
+        v-if="isOwner && canClosePoll(poll, rankedDateRanges.length)"
         class="mt-4"
       >
         <PrimaryButton @click="handleClosePoll">Select Winner</PrimaryButton>

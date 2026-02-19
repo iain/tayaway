@@ -1,6 +1,7 @@
 import { computed } from 'vue'
 import { useObjectPoolStore } from '@/stores'
 import type { ObjectTypeMap } from '@/types/pool'
+import { eventIsUpcoming, eventIsPast, eventIsPlanning } from '@/utils/event'
 
 export function useEventsList() {
   const pool = useObjectPoolStore()
@@ -14,19 +15,19 @@ export function useEventsList() {
 
   const upcomingEvents = computed(() =>
     allEvents.value
-      .filter((e) => e.startDate && e.startDate >= today.value)
+      .filter((e) => eventIsUpcoming(e, today.value))
       .sort((a, b) => a.startDate!.localeCompare(b.startDate!))
   )
 
   const pastEvents = computed(() =>
     allEvents.value
-      .filter((e) => e.startDate && e.startDate < today.value)
+      .filter((e) => eventIsPast(e, today.value))
       .sort((a, b) => b.startDate!.localeCompare(a.startDate!))
   )
 
   const planningEvents = computed(() =>
     allEvents.value
-      .filter((e) => !e.startDate)
+      .filter((e) => eventIsPlanning(e))
       .sort(
         (a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()

@@ -11,6 +11,8 @@ import {
 import { useAuthStore } from '@/stores'
 import { useDatePollsStore } from '@/stores/datePolls'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
+import { isPollActive, isPollOpen, isPollResolved } from '@/utils/poll'
+import { eventHasDates } from '@/utils/event'
 import DatePollSection from '@/components/events/DatePollSection.vue'
 import RsvpSection from '@/components/events/RsvpSection.vue'
 import AwaitingVotesSection from '@/components/events/AwaitingVotesSection.vue'
@@ -85,14 +87,14 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
       </TextButton>
       <div v-if="isOwner" class="flex items-center gap-4">
         <TextButton
-          v-if="event?.datePoll?.status === 'resolved'"
+          v-if="isPollResolved(event?.datePoll)"
           @click="handleReopenPoll"
         >
           <ArrowPathIcon class="size-4" />
           Reopen Poll
         </TextButton>
         <TextButton
-          v-if="event?.datePoll?.status === 'open'"
+          v-if="isPollOpen(event?.datePoll)"
           @click="handleEditDateRanges"
         >
           <PencilIcon class="size-4" />
@@ -129,14 +131,14 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
           {{ event.description }}
         </p>
         <p
-          v-if="event.startDate && event.endDate"
+          v-if="eventHasDates(event)"
           data-testid="event-dates"
           class="mt-2 flex items-center gap-1.5 text-sm text-gray-600 dark:text-stone-300"
         >
           <CalendarDaysIcon class="size-4" />
           <DateRangeDisplay
-            :start-date="event.startDate"
-            :end-date="event.endDate"
+            :start-date="event.startDate!"
+            :end-date="event.endDate!"
           />
         </p>
         <p class="mt-2 text-sm text-gray-500 dark:text-stone-400">
@@ -149,7 +151,7 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
       <div class="grid gap-6 lg:grid-cols-2">
         <!-- Date Poll Section (only when poll exists and not resolved) -->
         <DatePollSection
-          v-if="event.datePoll && event.datePoll.status !== 'resolved'"
+          v-if="isPollActive(event.datePoll)"
           :event="event"
           :is-owner="isOwner"
           :current-member-id="currentMemberId"
@@ -158,7 +160,7 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
 
         <!-- RSVPs (shown when event has dates) -->
         <RsvpSection
-          v-if="event.startDate && event.endDate"
+          v-if="eventHasDates(event)"
           :event="event"
           :current-member-id="currentMemberId"
         />
@@ -166,9 +168,8 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
         <!-- Who Hasn't Voted (only when poll exists and not resolved) -->
         <AwaitingVotesSection
           v-if="
-            event.datePoll &&
-            event.datePoll.status !== 'resolved' &&
-            event.datePoll.dateRanges.length > 0
+            isPollActive(event.datePoll) &&
+            event.datePoll!.dateRanges.length > 0
           "
           :event="event"
           :current-member-id="currentMemberId"

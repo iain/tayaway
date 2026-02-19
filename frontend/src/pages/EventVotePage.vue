@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
+import { isPollOpen } from '@/utils/poll'
 import VotingCard from '@/components/votes/VotingCard.vue'
 import TextButton from '@/components/common/TextButton.vue'
 
@@ -18,9 +19,7 @@ const eventId = computed(() => route.params.id as string)
 // Use hydrated event from pool for reactive updates
 const { event } = useHydratedEvent(eventId)
 
-const pollOpen = computed(() => {
-  return event.value?.datePoll?.status === 'open'
-})
+const pollOpen = computed(() => isPollOpen(event.value?.datePoll))
 
 const dateRanges = computed(() => {
   return event.value?.datePoll?.dateRanges ?? []
