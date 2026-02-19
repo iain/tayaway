@@ -619,13 +619,13 @@ test.describe('Voting Feature', () => {
         timeout: 10000,
       })
 
-      // The awaiting votes section should show initially (just the creator)
+      // The votes section should show initially (just the creator)
       const awaitingSection = page.locator('section', {
-        has: page.getByRole('heading', { name: 'Awaiting Votes' }),
+        has: page.getByRole('heading', { name: 'Votes' }),
       })
-      await expect(
-        page.getByRole('heading', { name: 'Awaiting Votes' })
-      ).toBeVisible({ timeout: 10000 })
+      await expect(page.getByRole('heading', { name: 'Votes' })).toBeVisible({
+        timeout: 10000,
+      })
 
       // Now add a new member via API (simulating another tab/user adding someone)
       const newUserName = `New User ${Date.now()}`
