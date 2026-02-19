@@ -1,0 +1,362 @@
+<script setup lang="ts">
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { MagnifyingGlassIcon } from '@heroicons/vue/20/solid'
+import {
+  ArrowPathIcon,
+  ArrowRightOnRectangleIcon,
+  CalendarDaysIcon,
+  HomeIcon,
+  MoonIcon,
+  SignalIcon,
+  SunIcon,
+  UserCircleIcon,
+  UserGroupIcon,
+} from '@heroicons/vue/24/outline'
+import * as poolDb from '@/api/poolDb'
+import {
+  Combobox,
+  ComboboxInput,
+  ComboboxOption,
+  ComboboxOptions,
+  Dialog,
+  DialogPanel,
+  TransitionChild,
+  TransitionRoot,
+} from '@headlessui/vue'
+import { useAuthStore, useObjectPoolStore, useWebSocketStore } from '@/stores'
+import { useDarkMode } from '@/composables/useDarkMode'
+
+interface NavAction {
+  type: 'action'
+  id: string
+  name: string
+  icon: unknown
+  href?: string
+  run?: () => void | Promise<void>
+}
+
+interface EventResult {
+  type: 'event'
+  id: string
+  name: string
+}
+
+type CommandItem = NavAction | EventResult
+
+const router = useRouter()
+const pool = useObjectPoolStore()
+const authStore = useAuthStore()
+const wsStore = useWebSocketStore()
+const { isDark, toggle: toggleDarkMode } = useDarkMode()
+
+async function resetLocalCache(): Promise<void> {
+  await poolDb.clearAll()
+  window.location.reload()
+}
+
+async function logout(): Promise<void> {
+  await authStore.logout()
+  router.push('/login')
+}
+
+const quickActions = computed<NavAction[]>(() => [
+  { type: 'action', id: 'home', name: 'Dashboard', icon: HomeIcon, href: '/' },
+  {
+    type: 'action',
+    id: 'events',
+    name: 'Events',
+    icon: CalendarDaysIcon,
+    href: '/events',
+  },
+  {
+    type: 'action',
+    id: 'members',
+    name: 'Members',
+    icon: UserGroupIcon,
+    href: '/members',
+  },
+  {
+    type: 'action',
+    id: 'profile',
+    name: 'Your Profile',
+    icon: UserCircleIcon,
+    href: '/profile',
+  },
+  {
+    type: 'action',
+    id: 'dark-mode',
+    name: isDark.value ? 'Switch to light mode' : 'Switch to dark mode',
+    icon: isDark.value ? SunIcon : MoonIcon,
+    run: toggleDarkMode,
+  },
+  {
+    type: 'action',
+    id: 'reconnect',
+    name: 'Reconnect to server',
+    icon: SignalIcon,
+    run: () => wsStore.reconnect(),
+  },
+  {
+    type: 'action',
+    id: 'reset-cache',
+    name: 'Reset local cache and reload',
+    icon: ArrowPathIcon,
+    run: resetLocalCache,
+  },
+  {
+    type: 'action',
+    id: 'logout',
+    name: 'Sign out',
+    icon: ArrowRightOnRectangleIcon,
+    run: logout,
+  },
+])
+
+const open = ref(false)
+const query = ref('')
+
+const filteredEvents = computed<EventResult[]>(() => {
+  if (!query.value) return []
+  const q = query.value.toLowerCase()
+  return pool
+    .getAll('event')
+    .filter((e) => e.name.toLowerCase().includes(q))
+    .map((e) => ({ type: 'event' as const, id: e.id, name: e.name }))
+})
+
+const filteredActions = computed<NavAction[]>(() => {
+  if (!query.value) return []
+  const q = query.value.toLowerCase()
+  return quickActions.value.filter((a) => a.name.toLowerCase().includes(q))
+})
+
+const hasResults = computed(
+  () => filteredEvents.value.length > 0 || filteredActions.value.length > 0
+)
+
+function onSelect(item: CommandItem | null) {
+  if (!item) return
+  open.value = false
+  if (item.type === 'action') {
+    if (item.run) {
+      void item.run()
+    } else if (item.href) {
+      router.push(item.href)
+    }
+  } else {
+    router.push(`/events/${item.id}`)
+  }
+}
+
+function handleKeydown(e: KeyboardEvent) {
+  if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+    e.preventDefault()
+    open.value = !open.value
+  }
+}
+
+onMounted(() => window.addEventListener('keydown', handleKeydown))
+onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
+</script>
+
+<template>
+  <TransitionRoot :show="open" as="template" appear @after-leave="query = ''">
+    <Dialog class="relative z-50" @close="open = false">
+      <TransitionChild
+        as="template"
+        enter="ease-out duration-200"
+        enter-from="opacity-0"
+        enter-to="opacity-100"
+        leave="ease-in duration-150"
+        leave-from="opacity-100"
+        leave-to="opacity-0"
+      >
+        <div
+          class="fixed inset-0 bg-gray-500/50 transition-opacity dark:bg-stone-950/70"
+        />
+      </TransitionChild>
+
+      <div
+        class="fixed inset-0 z-10 w-screen overflow-y-auto p-4 sm:p-6 md:p-20"
+      >
+        <TransitionChild
+          as="template"
+          enter="ease-out duration-200"
+          enter-from="opacity-0 scale-95"
+          enter-to="opacity-100 scale-100"
+          leave="ease-in duration-150"
+          leave-from="opacity-100 scale-100"
+          leave-to="opacity-0 scale-95"
+        >
+          <DialogPanel
+            class="mx-auto max-w-2xl transform divide-y divide-gray-200 overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-gray-200 transition-all dark:divide-white/10 dark:bg-stone-900 dark:ring-white/10"
+          >
+            <Combobox @update:model-value="onSelect">
+              <div class="grid grid-cols-1">
+                <ComboboxInput
+                  class="col-start-1 row-start-1 h-12 w-full bg-transparent pr-4 pl-11 text-base text-gray-900 outline-hidden placeholder:text-gray-400 sm:text-sm dark:text-white"
+                  placeholder="Search..."
+                  @change="query = ($event.target as HTMLInputElement).value"
+                />
+                <MagnifyingGlassIcon
+                  class="pointer-events-none col-start-1 row-start-1 ml-4 size-5 self-center text-gray-400"
+                  aria-hidden="true"
+                />
+              </div>
+
+              <ComboboxOptions
+                v-if="query === '' || hasResults"
+                static
+                as="ul"
+                class="max-h-80 scroll-py-2 divide-y divide-gray-100 overflow-y-auto dark:divide-white/5"
+              >
+                <!-- Navigation (shown when query is empty) -->
+                <li v-if="query === ''" class="p-2">
+                  <h2
+                    class="mb-2 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400"
+                  >
+                    Navigation
+                  </h2>
+                  <ul class="text-sm text-gray-700 dark:text-gray-300">
+                    <ComboboxOption
+                      v-for="action in quickActions"
+                      :key="action.id"
+                      v-slot="{ active }"
+                      :value="action"
+                      as="template"
+                    >
+                      <li
+                        :class="[
+                          'flex cursor-default items-center rounded-md px-3 py-2 select-none',
+                          active && 'bg-amber-500 text-white dark:bg-amber-600',
+                        ]"
+                      >
+                        <component
+                          :is="action.icon"
+                          :class="[
+                            'size-5 flex-none',
+                            active
+                              ? 'text-white'
+                              : 'text-gray-400 dark:text-gray-500',
+                          ]"
+                          aria-hidden="true"
+                        />
+                        <span class="ml-3 flex-auto truncate">{{
+                          action.name
+                        }}</span>
+                      </li>
+                    </ComboboxOption>
+                  </ul>
+                </li>
+
+                <!-- Search results -->
+                <template v-if="query !== ''">
+                  <li v-if="filteredEvents.length > 0" class="p-2">
+                    <h2
+                      class="mb-2 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400"
+                    >
+                      Events
+                    </h2>
+                    <ul class="text-sm text-gray-700 dark:text-gray-300">
+                      <ComboboxOption
+                        v-for="event in filteredEvents"
+                        :key="event.id"
+                        v-slot="{ active }"
+                        :value="event"
+                        as="template"
+                      >
+                        <li
+                          :class="[
+                            'flex cursor-default items-center rounded-md px-3 py-2 select-none',
+                            active &&
+                              'bg-amber-500 text-white dark:bg-amber-600',
+                          ]"
+                        >
+                          <CalendarDaysIcon
+                            :class="[
+                              'size-5 flex-none',
+                              active
+                                ? 'text-white'
+                                : 'text-gray-400 dark:text-gray-500',
+                            ]"
+                            aria-hidden="true"
+                          />
+                          <span class="ml-3 flex-auto truncate">{{
+                            event.name
+                          }}</span>
+                          <span
+                            v-if="active"
+                            :class="[
+                              'ml-3 flex-none text-xs',
+                              active ? 'text-amber-100' : 'text-gray-400',
+                            ]"
+                          >
+                            Jump to...
+                          </span>
+                        </li>
+                      </ComboboxOption>
+                    </ul>
+                  </li>
+
+                  <li v-if="filteredActions.length > 0" class="p-2">
+                    <h2
+                      class="mb-2 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400"
+                    >
+                      Navigation
+                    </h2>
+                    <ul class="text-sm text-gray-700 dark:text-gray-300">
+                      <ComboboxOption
+                        v-for="action in filteredActions"
+                        :key="action.id"
+                        v-slot="{ active }"
+                        :value="action"
+                        as="template"
+                      >
+                        <li
+                          :class="[
+                            'flex cursor-default items-center rounded-md px-3 py-2 select-none',
+                            active &&
+                              'bg-amber-500 text-white dark:bg-amber-600',
+                          ]"
+                        >
+                          <component
+                            :is="action.icon"
+                            :class="[
+                              'size-5 flex-none',
+                              active
+                                ? 'text-white'
+                                : 'text-gray-400 dark:text-gray-500',
+                            ]"
+                            aria-hidden="true"
+                          />
+                          <span class="ml-3 flex-auto truncate">{{
+                            action.name
+                          }}</span>
+                        </li>
+                      </ComboboxOption>
+                    </ul>
+                  </li>
+                </template>
+              </ComboboxOptions>
+
+              <div
+                v-if="query !== '' && !hasResults"
+                class="px-6 py-14 text-center sm:px-14"
+              >
+                <CalendarDaysIcon
+                  class="mx-auto size-6 text-gray-400 dark:text-gray-500"
+                  aria-hidden="true"
+                />
+                <p class="mt-4 text-sm text-gray-600 dark:text-gray-400">
+                  No results for "{{ query }}". Try searching for an event or
+                  page name.
+                </p>
+              </div>
+            </Combobox>
+          </DialogPanel>
+        </TransitionChild>
+      </div>
+    </Dialog>
+  </TransitionRoot>
+</template>

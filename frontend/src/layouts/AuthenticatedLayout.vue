@@ -25,6 +25,7 @@ import {
   useCommandQueueStore,
 } from '@/stores'
 import { useDarkMode } from '@/composables/useDarkMode'
+import CommandPalette from '@/components/common/CommandPalette.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -412,6 +413,8 @@ function getInitials(email: string | undefined): string {
       </div>
     </main>
   </div>
+
+  <CommandPalette />
 
   <!-- Pending changes indicator -->
   <Transition
