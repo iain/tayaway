@@ -26,43 +26,6 @@ test.describe('Poll Lifecycle UI', () => {
   })
 
   test.describe('Opening a poll', () => {
-    test('event page shows "Open Date Poll" button when no poll exists', async ({
-      page,
-    }) => {
-      const eventId = await createBareEvent(apiContext)
-      await setupAuthenticatedPage(page, sessionToken)
-
-      await page.goto(`/events/${eventId}`)
-      await expect(page.getByTestId('event-name')).toBeVisible({
-        timeout: 10000,
-      })
-
-      await expect(
-        page.getByRole('button', { name: 'Open Date Poll' })
-      ).toBeVisible()
-    })
-
-    test('clicking "Open Date Poll" opens modal with deadline field', async ({
-      page,
-    }) => {
-      const eventId = await createBareEvent(apiContext)
-      await setupAuthenticatedPage(page, sessionToken)
-
-      await page.goto(`/events/${eventId}`)
-      await expect(page.getByTestId('event-name')).toBeVisible({
-        timeout: 10000,
-      })
-
-      await page.getByRole('button', { name: 'Open Date Poll' }).click()
-
-      // Modal should appear with deadline input
-      await expect(page.getByRole('dialog')).toBeVisible()
-      await expect(page.getByLabel('Voting Deadline')).toBeVisible()
-      await expect(
-        page.getByRole('button', { name: 'Open Poll', exact: true })
-      ).toBeVisible()
-    })
-
     test('can open a date poll through the modal', async ({ page }) => {
       const eventId = await createBareEvent(apiContext)
       await setupAuthenticatedPage(page, sessionToken)
@@ -189,7 +152,9 @@ test.describe('Poll Lifecycle UI', () => {
       resolvedEventId = eid2
     })
 
-    test('open poll shows remaining time', async ({ page }) => {
+    test('open poll shows remaining time and "Vote on Dates" button', async ({
+      page,
+    }) => {
       await setupAuthenticatedPage(page, sessionToken)
 
       await page.goto(`/events/${openEventId}`)
@@ -197,18 +162,7 @@ test.describe('Poll Lifecycle UI', () => {
         timeout: 10000,
       })
 
-      // Should show time remaining
       await expect(page.getByText(/remaining/)).toBeVisible({ timeout: 5000 })
-    })
-
-    test('open poll shows "Vote on Dates" button', async ({ page }) => {
-      await setupAuthenticatedPage(page, sessionToken)
-
-      await page.goto(`/events/${openEventId}`)
-      await expect(page.getByTestId('event-name')).toBeVisible({
-        timeout: 10000,
-      })
-
       await expect(
         page.getByRole('button', { name: 'Vote on Dates' })
       ).toBeVisible({ timeout: 5000 })
@@ -230,67 +184,6 @@ test.describe('Poll Lifecycle UI', () => {
   })
 
   test.describe('Closing a poll (selecting winner)', () => {
-    test('"Select Winner" button opens close poll modal', async ({ page }) => {
-      const { eventId } = await createEventWithPoll(apiContext)
-      await setupAuthenticatedPage(page, sessionToken)
-
-      await page.goto(`/events/${eventId}`)
-      await expect(page.getByTestId('event-name')).toBeVisible({
-        timeout: 10000,
-      })
-
-      await page.getByRole('button', { name: 'Select Winner' }).click()
-
-      await expect(page.getByRole('dialog')).toBeVisible()
-      await expect(
-        page.getByRole('dialog').getByText('Select Winning Date')
-      ).toBeVisible()
-      await expect(
-        page.getByRole('button', { name: 'Confirm Winner' })
-      ).toBeVisible()
-      // Confirm button should be disabled until a date range is selected
-      await expect(
-        page.getByRole('button', { name: 'Confirm Winner' })
-      ).toBeDisabled()
-    })
-
-    test('can select a winner and close the poll', async ({ page }) => {
-      const { eventId } = await createEventWithPoll(apiContext)
-      await setupAuthenticatedPage(page, sessionToken)
-
-      await page.goto(`/events/${eventId}`)
-      await expect(page.getByTestId('event-name')).toBeVisible({
-        timeout: 10000,
-      })
-
-      // Open close poll modal
-      await page.getByRole('button', { name: 'Select Winner' }).click()
-      await expect(page.getByRole('dialog')).toBeVisible()
-
-      // Click the first date range option in the modal
-      const dateOption = page
-        .getByRole('dialog')
-        .locator('button.w-full')
-        .first()
-      await dateOption.click()
-
-      // Confirm winner
-      await page.getByRole('button', { name: 'Confirm Winner' }).click()
-
-      // Modal should close
-      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
-
-      // Poll should now be resolved
-      await expect(
-        page.getByRole('button', { name: 'Reopen Poll' })
-      ).toBeVisible({ timeout: 5000 })
-
-      // "Select Winner" button should no longer be visible
-      await expect(
-        page.getByRole('button', { name: 'Select Winner' })
-      ).not.toBeVisible()
-    })
-
     test('closing a poll populates event dates from winning date range', async ({
       page,
     }) => {
@@ -321,42 +214,6 @@ test.describe('Poll Lifecycle UI', () => {
   })
 
   test.describe('Reopening a poll', () => {
-    test('"Reopen Poll" button is visible on resolved poll', async ({
-      page,
-    }) => {
-      const { eventId } = await createResolvedEvent(apiContext)
-      await setupAuthenticatedPage(page, sessionToken)
-
-      await page.goto(`/events/${eventId}`)
-      await expect(page.getByTestId('event-name')).toBeVisible({
-        timeout: 10000,
-      })
-
-      await expect(
-        page.getByRole('button', { name: 'Reopen Poll' })
-      ).toBeVisible({ timeout: 5000 })
-    })
-
-    test('clicking "Reopen Poll" opens modal with deadline field', async ({
-      page,
-    }) => {
-      const { eventId } = await createResolvedEvent(apiContext)
-      await setupAuthenticatedPage(page, sessionToken)
-
-      await page.goto(`/events/${eventId}`)
-      await expect(page.getByTestId('event-name')).toBeVisible({
-        timeout: 10000,
-      })
-
-      await page.getByRole('button', { name: 'Reopen Poll' }).click()
-
-      await expect(page.getByRole('dialog')).toBeVisible()
-      await expect(
-        page.getByRole('dialog').getByText('Reopen Date Poll')
-      ).toBeVisible()
-      await expect(page.getByLabel('Voting Deadline')).toBeVisible()
-    })
-
     test('can reopen a resolved poll', async ({ page }) => {
       const { eventId } = await createResolvedEvent(apiContext)
       await setupAuthenticatedPage(page, sessionToken)

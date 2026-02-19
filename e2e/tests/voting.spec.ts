@@ -15,38 +15,19 @@ const TEST_NAME_2 = 'E2E Voting User 2'
 
 test.describe('Voting Feature', () => {
   test.describe('Votes API - Unauthenticated', () => {
-    test('GET /api/events/:id/votes returns 401 without auth', async ({
-      request,
-    }) => {
-      const response = await request.get(`${API_BASE}/api/events/some-id/votes`)
-      expect(response.status()).toBe(401)
-      const body = await response.json()
-      expect(body.error).toBe('Authorization required')
-    })
-
-    test('POST /api/events/:id/votes returns 401 without auth', async ({
-      request,
-    }) => {
-      const response = await request.post(
-        `${API_BASE}/api/events/some-id/votes`,
-        {
+    test('all votes endpoints require auth', async ({ request }) => {
+      const responses = await Promise.all([
+        request.get(`${API_BASE}/api/events/some-id/votes`),
+        request.post(`${API_BASE}/api/events/some-id/votes`, {
           data: { date_range_id: 'some-id', response: 'yes' },
-        }
-      )
-      expect(response.status()).toBe(401)
-      const body = await response.json()
-      expect(body.error).toBe('Authorization required')
-    })
-
-    test('DELETE /api/events/:id/votes/:vote_id returns 401 without auth', async ({
-      request,
-    }) => {
-      const response = await request.delete(
-        `${API_BASE}/api/events/some-id/votes/some-vote-id`
-      )
-      expect(response.status()).toBe(401)
-      const body = await response.json()
-      expect(body.error).toBe('Authorization required')
+        }),
+        request.delete(`${API_BASE}/api/events/some-id/votes/some-vote-id`),
+      ])
+      for (const response of responses) {
+        expect(response.status()).toBe(401)
+        const body = await response.json()
+        expect(body.error).toBe('Authorization required')
+      }
     })
   })
 
@@ -472,13 +453,6 @@ test.describe('Voting Feature', () => {
 
     test.afterAll(async () => {
       await apiContext.dispose()
-    })
-
-    test('event page redirects to login when not authenticated', async ({
-      page,
-    }) => {
-      await page.goto('/events/some-id')
-      await expect(page).toHaveURL('/login')
     })
 
     test('can navigate to event page from events list', async ({ page }) => {

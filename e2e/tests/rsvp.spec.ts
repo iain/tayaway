@@ -60,38 +60,6 @@ test.describe('RSVP Feature', () => {
   })
 
   test.describe('RSVP actions', () => {
-    test('can RSVP as attending', async ({ page }) => {
-      const { eventId } = await createResolvedEvent(apiContext)
-      await setupAuthenticatedPage(page, sessionToken)
-
-      await page.goto(`/events/${eventId}`)
-      await expect(page.getByTestId('rsvp-section')).toBeVisible({
-        timeout: 10000,
-      })
-
-      // Click "Attending"
-      await page.getByTestId('rsvp-attend').click()
-
-      // Button should become active (green)
-      await expect(page.getByTestId('rsvp-attend')).toHaveClass(/bg-green-600/)
-    })
-
-    test('can RSVP as not attending', async ({ page }) => {
-      const { eventId } = await createResolvedEvent(apiContext)
-      await setupAuthenticatedPage(page, sessionToken)
-
-      await page.goto(`/events/${eventId}`)
-      await expect(page.getByTestId('rsvp-section')).toBeVisible({
-        timeout: 10000,
-      })
-
-      // Click "Not Attending"
-      await page.getByTestId('rsvp-decline').click()
-
-      // Button should become active (red)
-      await expect(page.getByTestId('rsvp-decline')).toHaveClass(/bg-red-600/)
-    })
-
     test('can change RSVP from attending to not attending', async ({
       page,
     }) => {

@@ -11,49 +11,23 @@ const TEST_NAME = 'E2E Events User'
 
 test.describe('Events Feature', () => {
   test.describe('Events API - Unauthenticated', () => {
-    test('GET /api/events returns 401 without auth', async ({ request }) => {
-      const response = await request.get(`${API_BASE}/api/events`)
-      expect(response.status()).toBe(401)
-      const body = await response.json()
-      expect(body.error).toBe('Authorization required')
-    })
-
-    test('POST /api/events returns 401 without auth', async ({ request }) => {
-      const response = await request.post(`${API_BASE}/api/events`, {
-        data: { name: 'Test Event' },
-      })
-      expect(response.status()).toBe(401)
-      const body = await response.json()
-      expect(body.error).toBe('Authorization required')
-    })
-
-    test('GET /api/events/:id returns 401 without auth', async ({
-      request,
-    }) => {
-      const response = await request.get(`${API_BASE}/api/events/some-id`)
-      expect(response.status()).toBe(401)
-      const body = await response.json()
-      expect(body.error).toBe('Authorization required')
-    })
-
-    test('PUT /api/events/:id returns 401 without auth', async ({
-      request,
-    }) => {
-      const response = await request.put(`${API_BASE}/api/events/some-id`, {
-        data: { name: 'Updated Event' },
-      })
-      expect(response.status()).toBe(401)
-      const body = await response.json()
-      expect(body.error).toBe('Authorization required')
-    })
-
-    test('DELETE /api/events/:id returns 401 without auth', async ({
-      request,
-    }) => {
-      const response = await request.delete(`${API_BASE}/api/events/some-id`)
-      expect(response.status()).toBe(401)
-      const body = await response.json()
-      expect(body.error).toBe('Authorization required')
+    test('all event endpoints require auth', async ({ request }) => {
+      const responses = await Promise.all([
+        request.get(`${API_BASE}/api/events`),
+        request.post(`${API_BASE}/api/events`, {
+          data: { name: 'Test Event' },
+        }),
+        request.get(`${API_BASE}/api/events/some-id`),
+        request.put(`${API_BASE}/api/events/some-id`, {
+          data: { name: 'Updated Event' },
+        }),
+        request.delete(`${API_BASE}/api/events/some-id`),
+      ])
+      for (const response of responses) {
+        expect(response.status()).toBe(401)
+        const body = await response.json()
+        expect(body.error).toBe('Authorization required')
+      }
     })
   })
 

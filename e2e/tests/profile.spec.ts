@@ -84,35 +84,19 @@ test.describe('Profile Feature', () => {
       await expect(page.getByText(TEST_NAME)).toBeVisible()
     })
 
-    test('profile page shows edit button for name', async ({ page }) => {
+    test('edit button opens pre-filled name modal', async ({ page }) => {
       await setupAuthenticatedPage(page, sessionToken)
       await page.goto('/profile')
 
-      await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible()
-    })
+      const editButton = page.getByRole('button', { name: 'Edit' })
+      await expect(editButton).toBeVisible()
+      await editButton.click()
 
-    test('clicking edit opens the name modal', async ({ page }) => {
-      await setupAuthenticatedPage(page, sessionToken)
-      await page.goto('/profile')
-
-      await page.getByRole('button', { name: 'Edit' }).click()
       await expect(page.getByRole('dialog')).toBeVisible()
       await expect(
         page.getByRole('dialog').getByRole('heading', { name: 'Edit Name' })
       ).toBeVisible()
-    })
-
-    test('edit name modal is pre-filled with current name', async ({
-      page,
-    }) => {
-      await setupAuthenticatedPage(page, sessionToken)
-      await page.goto('/profile')
-
-      await page.getByRole('button', { name: 'Edit' }).click()
-      await expect(page.getByRole('dialog')).toBeVisible()
-
-      const input = page.getByLabel('Name')
-      await expect(input).toHaveValue(TEST_NAME)
+      await expect(page.getByLabel('Name')).toHaveValue(TEST_NAME)
     })
 
     test('can end a non-current session from the sessions list', async ({

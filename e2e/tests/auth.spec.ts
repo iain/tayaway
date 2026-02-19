@@ -119,26 +119,17 @@ test.describe('Authentication', () => {
   })
 
   test.describe('Auth API endpoints', () => {
-    test('POST /api/auth/magic-link returns success for valid email', async ({
+    test('POST /api/auth/magic-link returns success regardless of email existence', async ({
       request,
     }) => {
-      const response = await request.post(`${API_BASE}/api/auth/magic-link`, {
-        data: { email: TEST_EMAIL },
-      })
-      expect(response.ok()).toBeTruthy()
-      const body = await response.json()
-      expect(body.message).toContain('If an account exists')
-    })
-
-    test('POST /api/auth/magic-link returns success for unknown email', async ({
-      request,
-    }) => {
-      const response = await request.post(`${API_BASE}/api/auth/magic-link`, {
-        data: { email: 'nonexistent@example.com' },
-      })
-      expect(response.ok()).toBeTruthy()
-      const body = await response.json()
-      expect(body.message).toContain('If an account exists')
+      for (const email of [TEST_EMAIL, 'nonexistent@example.com']) {
+        const response = await request.post(`${API_BASE}/api/auth/magic-link`, {
+          data: { email },
+        })
+        expect(response.ok()).toBeTruthy()
+        const body = await response.json()
+        expect(body.message).toContain('If an account exists')
+      }
     })
 
     test('POST /api/auth/magic-link returns error for missing email', async ({
