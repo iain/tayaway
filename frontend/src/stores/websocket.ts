@@ -195,14 +195,14 @@ export const useWebSocketStore = defineStore('websocket', () => {
     reconnectAttempts = 0
     workspaceIds.value = message.workspaceIds
 
-    // Set memberships on auth store
+    // Set memberships on auth store (also persists to localStorage for offline use)
     import('./auth').then(({ useAuthStore }) => {
       const authStore = useAuthStore()
       const map = new Map<string, string>()
       for (const m of message.memberships ?? []) {
         map.set(m.workspaceId, m.memberId)
       }
-      authStore.memberships = map
+      authStore.setMemberships(map)
     })
 
     // Initialize workspace selection and request data for it

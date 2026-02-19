@@ -62,6 +62,16 @@ export const useRsvpsStore = defineStore('rsvps', () => {
             { ...body, id: rsvpId }
           )
       )
+      // If the server used a different RSVP ID (e.g. found an existing RSVP),
+      // remove the temp object so it doesn't linger as a phantom.
+      if (!result.queued) {
+        const serverRsvp = result.data.objects.find(
+          (o) => o.objectType === 'rsvp'
+        )
+        if (serverRsvp && serverRsvp.id !== rsvpId) {
+          pool.remove('rsvp', rsvpId)
+        }
+      }
       return { rsvpId, queued: result.queued }
     }
   }

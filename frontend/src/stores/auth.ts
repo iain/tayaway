@@ -17,6 +17,7 @@ import type {
 import type { PoolApiResponse } from '@/types/pool'
 
 const AUTH_USER_KEY = 'tayaway_auth_user'
+const MEMBERSHIPS_KEY = 'tayaway_memberships'
 
 function cacheUser(u: AuthUser): void {
   localStorage.setItem(AUTH_USER_KEY, JSON.stringify(u))
@@ -35,6 +36,26 @@ function clearCachedUser(): void {
   localStorage.removeItem(AUTH_USER_KEY)
 }
 
+function cacheMemberships(map: Map<string, string>): void {
+  localStorage.setItem(
+    MEMBERSHIPS_KEY,
+    JSON.stringify(Array.from(map.entries()))
+  )
+}
+
+function getCachedMemberships(): Map<string, string> | null {
+  try {
+    const raw = localStorage.getItem(MEMBERSHIPS_KEY)
+    return raw ? new Map(JSON.parse(raw) as [string, string][]) : null
+  } catch {
+    return null
+  }
+}
+
+function clearCachedMemberships(): void {
+  localStorage.removeItem(MEMBERSHIPS_KEY)
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthUser | null>(null)
   const loading = ref(false)
@@ -50,9 +71,20 @@ export const useAuthStore = defineStore('auth', () => {
     return wsId ? (memberships.value.get(wsId) ?? null) : null
   })
 
+  function setMemberships(map: Map<string, string>): void {
+    memberships.value = map
+    cacheMemberships(map)
+  }
+
   async function initialize(): Promise<void> {
     // If already initialized with a valid user, skip
     if (initialized.value && user.value) return
+
+    // Restore memberships from cache so currentMemberId is available offline
+    const cachedMemberships = getCachedMemberships()
+    if (cachedMemberships) {
+      memberships.value = cachedMemberships
+    }
 
     try {
       loading.value = true
@@ -132,6 +164,7 @@ export const useAuthStore = defineStore('auth', () => {
       await poolDb.clearAll()
 
       clearCachedUser()
+      clearCachedMemberships()
       user.value = null
       memberships.value = new Map()
       // Reset stores on logout
@@ -181,6 +214,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   function $reset() {
     clearCachedUser()
+    clearCachedMemberships()
     user.value = null
     loading.value = false
     initialized.value = false
@@ -195,6 +229,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     currentMemberId,
     initialize,
+    setMemberships,
     requestMagicLink,
     verifyToken,
     logout,
