@@ -18,6 +18,9 @@ if APP_ENV == "development"
   route_dir = APP_DIR.join("app/routes")
   Reloading.start_listener(lock:, loader: LOADER, code_dirs: [APP_DIR.join("app"), APP_DIR.join("lib")]) do
     Dir[route_dir.join("**/*.rb")].each { |f| load f }
+    # Re-include ResultHandler so App#handle_result uses the freshly-loaded module
+    # with up-to-date Sorbet sig references (avoids stale-class type errors after reload).
+    App.include ResultHandler
   end
   use Reloading::Middleware, lock
   run ->(env) { App.app.call(env) }

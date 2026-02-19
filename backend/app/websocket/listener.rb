@@ -49,7 +49,7 @@ module Websocket
         !!@running
       end
 
-      sig { params(object_type: String).returns(T.nilable(ObjectRegistry::Entry)) }
+      sig { params(object_type: String).returns(T.untyped) }
       def type_config(object_type)
         ObjectRegistry::BY_KEY[object_type]
       end
