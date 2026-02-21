@@ -24,5 +24,17 @@ class App
         handle_result(result, success_status: 201)
       end
     end
+
+    # PUT /api/members/:id - Update member role
+    r.on String do |id|
+      r.put do
+        result = Members::UpdateRole.call(
+          acting_user_id: current_user.id,
+          membership_id: id,
+          new_role: r.params["role"]
+        )
+        handle_result(result)
+      end
+    end
   end
 end

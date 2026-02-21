@@ -92,3 +92,6 @@ RSpec/ExampleLength:
 
 RSpec/DescribeClass:
   Enabled: false
+
+RSpec/MultipleMemoizedHelpers:
+  Max: 9

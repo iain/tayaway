@@ -6,6 +6,10 @@ import { useWorkspaceStore } from './workspace'
 import type { CreateMemberRequest, CreateMemberResponse } from '@/types'
 import type { PoolApiResponse, PoolMember } from '@/types/pool'
 
+interface UpdateRoleResponse {
+  objects?: PoolApiResponse['objects']
+}
+
 interface CreateMemberResponseWithPool extends CreateMemberResponse {
   objects?: PoolApiResponse['objects']
 }
@@ -57,6 +61,22 @@ export const useMembersStore = defineStore('members', () => {
     return { queued: result.queued }
   }
 
+  async function updateMemberRole(memberId: string, role: string) {
+    const { update } = useMutation()
+    return await update(
+      'Failed to update member role',
+      'member',
+      memberId,
+      { role },
+      (commandQueue) =>
+        commandQueue.enqueue<UpdateRoleResponse>(
+          'PUT',
+          `/members/${memberId}`,
+          { role }
+        )
+    )
+  }
+
   function $reset() {
     loading.value = false
     error.value = null
@@ -67,6 +87,7 @@ export const useMembersStore = defineStore('members', () => {
     loading,
     error,
     createMember,
+    updateMemberRole,
     $reset,
   }
 })

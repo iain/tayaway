@@ -163,6 +163,7 @@ rsvps              id, event_id, user_id, attending (boolean), start_date (nulla
 **Members (`/api/members`)** — Requires authentication
 
 - `POST /` — Add member to workspace by email
+- `PUT /:id` — Update member role (owner can change any; admin can change admin/member but not owner)
 
 **Workspaces (`/api/workspaces`)** — Requires authentication
 
