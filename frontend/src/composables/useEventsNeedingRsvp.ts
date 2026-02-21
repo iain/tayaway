@@ -40,8 +40,11 @@ export function useEventsNeedingRsvp() {
     const rsvps = pool.getAll('rsvp')
     const items: RsvpEventItem[] = []
 
+    const now = new Date()
+
     for (const event of pool.getAll('event')) {
       if (!event.startDate || !event.endDate) continue
+      if (new Date(event.endDate) < now) continue
 
       const hasRsvp = rsvps.some(
         (r) => r.eventId === event.id && r.memberId === memberId
