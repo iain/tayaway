@@ -355,10 +355,12 @@ test.describe('Task Sorting', () => {
       const listAName = `List A Move ${uid}`
       const listBName = `List B Move ${uid}`
 
-      // Create List A with an item, List B empty
+      // List B needs a visible item as a drop target — dragging to an empty
+      // list's tiny min-h-8 container is unreliable with SortableJS + Playwright.
       const listAId = await createTaskList(apiContext, workspaceId, listAName)
       await addTaskItem(apiContext, listAId, 'Move me')
-      await createTaskList(apiContext, workspaceId, listBName)
+      const listBId = await createTaskList(apiContext, workspaceId, listBName)
+      await addTaskItem(apiContext, listBId, 'Placeholder')
 
       await setupAuthenticatedPage(page, sessionToken)
       await page.goto('/tasks')
@@ -372,16 +374,51 @@ test.describe('Task Sorting', () => {
 
       await expect(cardA.getByText('Move me')).toBeVisible()
 
-      // Drag the item from List A to List B
-      const moveItem = cardA
+      const itemHandle = cardA
         .getByTestId('task-item-row')
         .filter({ hasText: 'Move me' })
-      const itemHandle = moveItem.getByTestId('task-item-drag-handle')
+        .getByTestId('task-item-drag-handle')
+      const targetRow = cardB
+        .getByTestId('task-item-row')
+        .filter({ hasText: 'Placeholder' })
 
-      await itemHandle.dragTo(cardB.getByTestId('task-items-list'))
+      // Drag-and-drop is sensitive to element positions. Under parallel load,
+      // real-time WebSocket updates from other tests add task lists to this
+      // workspace, causing page reflows that shift element positions between
+      // when we measure bounding boxes and when mouse events fire.
+      //
+      // We use block:'center' (not block:'nearest') so the source lands in the
+      // middle of the viewport, keeping the adjacent List B row visible below.
+      //
+      // dragTo() moves too fast for SortableJS cross-list events, so we drive
+      // the mouse manually. The whole drag+assertion is wrapped in toPass so
+      // that if a reflow invalidates our coordinates and the drag misfires, we
+      // re-scroll, re-measure, and retry.
+      await expect(async () => {
+        await itemHandle.evaluate((el) =>
+          el.scrollIntoView({ block: 'center', behavior: 'instant' })
+        )
+        const [sourceBox, targetBox] = await Promise.all([
+          itemHandle.boundingBox(),
+          targetRow.boundingBox(),
+        ])
+        if (!sourceBox || !targetBox)
+          throw new Error('Elements not in viewport')
+        const sx = sourceBox.x + sourceBox.width / 2
+        const sy = sourceBox.y + sourceBox.height / 2
+        const tx = targetBox.x + targetBox.width / 2
+        const ty = targetBox.y + targetBox.height / 2
 
-      // Verify item moved: gone from A, present in B
-      await expect(cardA.getByText('Move me')).not.toBeVisible()
+        await page.mouse.move(sx, sy)
+        await page.mouse.down()
+        await page.mouse.move(sx, sy - 10, { steps: 10 })
+        await page.mouse.move(tx, ty, { steps: 30 })
+        await page.mouse.up()
+
+        await expect(cardA.getByText('Move me')).not.toBeVisible()
+      }).toPass({ timeout: 20_000 })
+
+      // Verify item arrived in B (outside toPass — by this point the move is done)
       await expect(cardB.getByText('Move me')).toBeVisible()
     })
   })
