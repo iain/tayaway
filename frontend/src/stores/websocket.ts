@@ -61,6 +61,7 @@ const CASCADE_RELATIONS: Partial<
   event: [{ childType: 'datePoll', foreignKey: 'eventId' }],
   datePoll: [{ childType: 'dateRange', foreignKey: 'datePollId' }],
   dateRange: [{ childType: 'vote', foreignKey: 'dateRangeId' }],
+  taskList: [{ childType: 'taskItem', foreignKey: 'taskListId' }],
 }
 
 export const useWebSocketStore = defineStore('websocket', () => {

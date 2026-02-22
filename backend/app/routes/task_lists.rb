@@ -1,0 +1,122 @@
+# typed: false
+# frozen_string_literal: true
+
+class App
+  hash_branch("api", "task-lists") do |r|
+    user = require_auth
+
+    # GET /api/task-lists - List all task lists for a workspace
+    r.is do
+      r.get do
+        workspace_id = r.params["workspace_id"]
+
+        unless workspace_id && member_of_workspace?(workspace_id)
+          response.status = 403
+          next { error: "Access denied" }
+        end
+
+        task_lists = TaskList.for_workspace(workspace_id)
+        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool.add_all(task_lists, type: :task_list)
+
+        response.status = 200
+        { objects: pool.to_a }
+      end
+
+      # POST /api/task-lists - Create a new task list
+      r.post do
+        workspace_id = r.params["workspace_id"]
+
+        unless workspace_id && member_of_workspace?(workspace_id)
+          response.status = 403
+          next { error: "Access denied" }
+        end
+
+        result = TaskLists::Create.call(
+          workspace_id: workspace_id,
+          user_id: user.id,
+          name: r.params["name"]&.strip,
+          id: r.params["id"]
+        )
+        handle_result(result, success_status: 201)
+      end
+    end
+
+    # /api/task-lists/:id routes
+    r.on String do |id|
+      task_list = TaskList.find(id)
+
+      response.status = 404
+      next { error: "Task list not found" } unless task_list
+
+      response.status = 403
+      next { error: "Access denied" } unless member_of_workspace?(task_list.workspace_id)
+
+      # PUT /api/task-lists/:id - Rename a task list
+      r.is do
+        r.put do
+          result = TaskLists::Update.call(
+            task_list_id: task_list.id,
+            name: r.params["name"]&.strip
+          )
+          handle_result(result)
+        end
+
+        # DELETE /api/task-lists/:id - Delete a task list
+        r.delete do
+          result = TaskLists::Delete.call(task_list_id: task_list.id)
+          handle_result(result)
+        end
+      end
+
+      # POST /api/task-lists/:id/items - Add an item
+      r.on "items" do
+        r.is do
+          r.post do
+            result = TaskLists::AddItem.call(
+              task_list_id: task_list.id,
+              user_id: user.id,
+              content: r.params["content"]&.strip,
+              id: r.params["id"]
+            )
+            handle_result(result, success_status: 201)
+          end
+        end
+
+        # /api/task-lists/:id/items/:item_id routes
+        r.on String do |item_id|
+          # PUT /api/task-lists/:id/items/:item_id - Update an item
+          r.put do
+            completed_param = r.params["completed"]
+            completed = completed_param == true || completed_param == "true" ? true : (completed_param == false || completed_param == "false" ? false : nil)
+
+            result = TaskLists::UpdateItem.call(
+              task_list_id: task_list.id,
+              task_item_id: item_id,
+              content: r.params["content"]&.strip,
+              completed: completed
+            )
+            handle_result(result)
+          end
+
+          # DELETE /api/task-lists/:id/items/:item_id - Delete an item
+          r.delete do
+            result = TaskLists::DeleteItem.call(
+              task_list_id: task_list.id,
+              task_item_id: item_id
+            )
+            handle_result(result)
+          end
+        end
+      end
+
+      # POST /api/task-lists/:id/clear-completed - Delete all completed items
+      r.on "clear-completed" do
+        r.post do
+          result = TaskLists::ClearCompleted.call(task_list_id: task_list.id)
+          handle_result(result)
+        end
+      end
+    end
+  end
+end

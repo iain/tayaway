@@ -117,6 +117,45 @@ export async function createEventWithPoll(
   }
 }
 
+export async function getWorkspaceId(
+  request: APIRequestContext
+): Promise<string> {
+  const response = await request.get(`${API_BASE}/api/workspaces`)
+  const body = await response.json()
+  const workspace = getObjectByType(body.objects, 'workspace')
+  if (!workspace) throw new Error('No workspace found for this user')
+  return workspace.id
+}
+
+export async function createTaskList(
+  request: APIRequestContext,
+  workspaceId: string,
+  name = 'Test List'
+): Promise<string> {
+  const response = await request.post(`${API_BASE}/api/task-lists`, {
+    data: { workspace_id: workspaceId, name },
+  })
+  const body = await response.json()
+  const taskList = getObjectByType(body.objects, 'taskList')
+  return taskList!.id
+}
+
+export async function addTaskItem(
+  request: APIRequestContext,
+  taskListId: string,
+  content = 'Test item'
+): Promise<string> {
+  const response = await request.post(
+    `${API_BASE}/api/task-lists/${taskListId}/items`,
+    { data: { content } }
+  )
+  const body = await response.json()
+  // AddItem returns the full task list with all items; find the specific one by content
+  const items = getObjectsByType(body.objects, 'taskItem')
+  const item = items.find((i) => (i as { content: string }).content === content)
+  return item!.id
+}
+
 export async function createResolvedEvent(
   request: APIRequestContext,
   name = 'Test Event'

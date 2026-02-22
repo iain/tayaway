@@ -56,4 +56,19 @@ export const relationshipSchema: RelationshipSchema = {
     member: { type: 'belongsTo', foreignKey: 'memberId', targetType: 'member' },
   },
   workspace: {},
+  taskList: {
+    workspace: {
+      type: 'belongsTo',
+      foreignKey: 'workspaceId',
+      targetType: 'workspace',
+    },
+    items: { type: 'hasMany', foreignKey: 'itemIds', targetType: 'taskItem' },
+  },
+  taskItem: {
+    taskList: {
+      type: 'belongsTo',
+      foreignKey: 'taskListId',
+      targetType: 'taskList',
+    },
+  },
 } as const

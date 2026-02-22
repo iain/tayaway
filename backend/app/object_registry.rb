@@ -20,7 +20,9 @@ module ObjectRegistry
       Entry.new(key: "date_poll",   model: "DatePoll",             client_type: "datePoll",   pool_method: :add_date_poll,   tracks_user: false),
       Entry.new(key: "date_range",  model: "DateRange",            client_type: "dateRange",  pool_method: :add_date_range,  tracks_user: false),
       Entry.new(key: "vote",        model: "Vote",                 client_type: "vote",       pool_method: :add_vote,        tracks_user: true),
-      Entry.new(key: "rsvp",        model: "Rsvp",                 client_type: "rsvp",       pool_method: :add_rsvp,        tracks_user: true)
+      Entry.new(key: "rsvp",        model: "Rsvp",                 client_type: "rsvp",       pool_method: :add_rsvp,        tracks_user: true),
+      Entry.new(key: "task_list",   model: "TaskList",             client_type: "taskList",   pool_method: :add_task_list,   tracks_user: true),
+      Entry.new(key: "task_item",   model: "TaskItem",             client_type: "taskItem",   pool_method: :add_task_item,   tracks_user: true)
     ].freeze,
     T::Array[Entry]
   )

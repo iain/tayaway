@@ -28,6 +28,8 @@ export const OBJECT_TYPES = [
   'vote',
   'rsvp',
   'workspace',
+  'taskList',
+  'taskItem',
 ] as const
 
 export interface ObjectTypeMap {
@@ -84,6 +86,20 @@ export interface ObjectTypeMap {
     memberIds: string[]
     createdAt: string
   }
+  taskList: PoolObjectBase<'taskList'> & {
+    workspaceId: string
+    memberId: string | null
+    name: string
+    itemIds: string[]
+    createdAt: string
+  }
+  taskItem: PoolObjectBase<'taskItem'> & {
+    taskListId: string
+    memberId: string | null
+    content: string
+    completedAt: string | null
+    createdAt: string
+  }
 }
 
 // ============================================================================
@@ -101,6 +117,8 @@ export type PoolDateRange = ObjectTypeMap['dateRange']
 export type PoolVote = ObjectTypeMap['vote']
 export type PoolRsvp = ObjectTypeMap['rsvp']
 export type PoolWorkspace = ObjectTypeMap['workspace']
+export type PoolTaskList = ObjectTypeMap['taskList']
+export type PoolTaskItem = ObjectTypeMap['taskItem']
 
 // API response wrapper - all endpoints include objects array
 export interface PoolApiResponse {

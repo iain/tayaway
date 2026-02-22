@@ -146,6 +146,33 @@ class PoolSerializer
     @objects[key] = workspace.to_api_hash(member_ids: member_ids)
   end
 
+  sig { params(task_list: TaskList).void }
+  def add_task_list(task_list)
+    key = "task_list:#{task_list.id}"
+    return if @objects.key?(key)
+
+    hash = task_list.to_api_hash
+    mid = task_list.user_id ? member_id_for_user(T.must(task_list.user_id)) : nil
+    hash[:memberId] = mid
+    hash.delete(:userId)
+    items = TaskItem.for_task_list(task_list.id)
+    hash[:itemIds] = items.map { |i| i.id.to_s }
+    @objects[key] = hash
+    items.each { |item| add_task_item(item) }
+  end
+
+  sig { params(task_item: TaskItem).void }
+  def add_task_item(task_item)
+    key = "task_item:#{task_item.id}"
+    return if @objects.key?(key)
+
+    hash = task_item.to_api_hash
+    mid = task_item.user_id ? member_id_for_user(T.must(task_item.user_id)) : nil
+    hash[:memberId] = mid
+    hash.delete(:userId)
+    @objects[key] = hash
+  end
+
   sig { params(items: T::Enumerable[T.untyped], type: Symbol).void }
   def add_all(items, type:)
     entry = ObjectRegistry::BY_KEY[type.to_s]

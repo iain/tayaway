@@ -123,6 +123,39 @@ module TestFactories
       DB[:rsvps].where(id: id).first
     end
 
+    def task_list(workspace: nil, user: nil, name: nil, id: SecureRandom.uuid)
+      workspace ||= self.workspace
+      user ||= self.user
+      name ||= "Task List #{next_sequence(:task_list)}"
+      now = Time.now
+      DB[:task_lists].insert(
+        id: id,
+        workspace_id: workspace[:id],
+        user_id: user[:id],
+        name: name,
+        created_at: now,
+        updated_at: now
+      )
+      DB[:task_lists].where(id: id).first
+    end
+
+    def task_item(task_list: nil, user: nil, content: nil, completed_at: nil, id: SecureRandom.uuid)
+      task_list ||= self.task_list
+      user ||= self.user
+      content ||= "Item #{next_sequence(:task_item)}"
+      now = Time.now
+      DB[:task_items].insert(
+        id: id,
+        task_list_id: task_list[:id],
+        user_id: user[:id],
+        content: content,
+        completed_at: completed_at,
+        created_at: now,
+        updated_at: now
+      )
+      DB[:task_items].where(id: id).first
+    end
+
     def session(user: nil, token: SecureRandom.hex(32), expires_at: Time.now + (30 * 24 * 60 * 60), id: SecureRandom.uuid)
       user ||= self.user
       now = Time.now
