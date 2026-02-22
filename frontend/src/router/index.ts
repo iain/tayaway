@@ -88,18 +88,16 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach(async (to, _from, next) => {
+router.beforeEach(async (to) => {
   const authStore = useAuthStore()
 
   // Initialize or re-initialize if token was added after initial load
   await authStore.initialize()
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next({ name: 'login' })
+    return { name: 'login' }
   } else if (to.meta.requiresGuest && authStore.isAuthenticated) {
-    next({ name: 'home' })
-  } else {
-    next()
+    return { name: 'home' }
   }
 })
 
