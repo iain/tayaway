@@ -63,10 +63,12 @@ const userNavigation = [
 const currentRouteName = computed(() => route.name)
 
 const eventDetailRoutes = new Set([
-  'event',
-  'event-vote',
-  'event-date-ranges',
-  'events-edit',
+  'event-redirect',
+  'event-planning',
+  'event-planning-vote',
+  'event-planning-date-ranges',
+  'event-rsvp',
+  'event-edit',
   'event-expenses',
 ])
 
@@ -79,10 +81,15 @@ const currentEventName = computed(() => {
 
 const eventSubNavTab = computed(() => {
   const name = currentRouteName.value as string
-  if (name === 'event-vote' || name === 'event-date-ranges') return 'planning'
+  if (
+    name === 'event-planning' ||
+    name === 'event-planning-vote' ||
+    name === 'event-planning-date-ranges'
+  )
+    return 'planning'
+  if (name === 'event-rsvp') return 'rsvp'
   if (name === 'event-expenses') return 'expenses'
-  if (name === 'events-edit') return 'edit'
-  if (name === 'event') return 'rsvp'
+  if (name === 'event-edit') return 'edit'
   return null
 })
 
@@ -466,13 +473,13 @@ function getInitials(email: string | undefined): string {
           </div>
           <nav class="flex items-center gap-1">
             <router-link
-              :to="`/events/${route.params.id}/vote`"
+              :to="`/events/${route.params.id}/planning`"
               :class="subNavClass(eventSubNavTab === 'planning')"
             >
               Planning
             </router-link>
             <router-link
-              :to="`/events/${route.params.id}`"
+              :to="`/events/${route.params.id}/rsvp`"
               :class="subNavClass(eventSubNavTab === 'rsvp')"
             >
               RSVP

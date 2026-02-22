@@ -9,7 +9,6 @@ import { useHydratedEvent } from '@/composables/useHydratedEvent'
 import { isPollActive, isPollResolved } from '@/utils/poll'
 import { eventHasDates } from '@/utils/event'
 import DatePollSection from '@/components/events/DatePollSection.vue'
-import RsvpSection from '@/components/events/RsvpSection.vue'
 import AwaitingVotesSection from '@/components/events/AwaitingVotesSection.vue'
 import OpenPollModal from '@/components/events/OpenPollModal.vue'
 import TextButton from '@/components/common/TextButton.vue'
@@ -25,7 +24,6 @@ const pollModalMode = ref<'open' | 'reopen'>('open')
 
 const eventId = computed(() => route.params.id as string)
 
-// Use hydrated event from pool for reactive updates
 const { event } = useHydratedEvent(eventId)
 
 const isOwner = computed(() => {
@@ -33,7 +31,7 @@ const isOwner = computed(() => {
 })
 
 function handleVote(): void {
-  router.push(`/events/${eventId.value}/vote`)
+  router.push(`/events/${eventId.value}/planning/vote`)
 }
 
 function handleOpenPoll(): void {
@@ -52,7 +50,7 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
       await datePollsStore.reopenPoll(eventId.value, deadline)
     } else {
       await datePollsStore.createPoll(eventId.value, deadline)
-      router.push(`/events/${eventId.value}/date-ranges`)
+      router.push(`/events/${eventId.value}/planning/date-ranges`)
     }
     showPollModal.value = false
   } catch {
@@ -116,33 +114,36 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
         </div>
       </header>
 
-      <!-- Stats Grid -->
-      <div class="grid gap-6 lg:grid-cols-2">
-        <!-- Date Poll Section (only when poll exists and not resolved) -->
+      <!-- Poll open/expired: show poll sections -->
+      <div
+        v-if="isPollActive(event.datePoll)"
+        class="grid gap-6 lg:grid-cols-2"
+      >
         <DatePollSection
-          v-if="isPollActive(event.datePoll)"
           :event="event"
           :is-owner="isOwner"
           :current-member-id="currentMemberId"
           @vote="handleVote"
         />
-
-        <!-- RSVPs (shown when event has dates) -->
-        <RsvpSection
-          v-if="eventHasDates(event)"
-          :event="event"
-          :current-member-id="currentMemberId"
-        />
-
-        <!-- Who Hasn't Voted (only when poll exists and not resolved) -->
         <AwaitingVotesSection
-          v-if="
-            isPollActive(event.datePoll) &&
-            event.datePoll!.dateRanges.length > 0
-          "
+          v-if="event.datePoll!.dateRanges.length > 0"
           :event="event"
           :current-member-id="currentMemberId"
         />
+      </div>
+
+      <!-- Poll resolved: show closed message -->
+      <div
+        v-else-if="isPollResolved(event.datePoll)"
+        class="py-8 text-center text-gray-500 dark:text-stone-400"
+      >
+        <p class="text-lg font-medium">Voting is closed</p>
+        <p>The date poll is no longer accepting votes.</p>
+      </div>
+
+      <!-- No poll + not owner: show placeholder -->
+      <div v-else-if="!isOwner" class="text-gray-500 dark:text-stone-400">
+        No date poll has been opened yet.
       </div>
     </div>
   </div>

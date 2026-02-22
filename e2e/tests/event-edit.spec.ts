@@ -138,7 +138,7 @@ test.describe('Event Edit Page', () => {
       await page.getByTestId('submit-button').click()
 
       // Should redirect to event page
-      await expect(page).toHaveURL(`/events/${eventId}`, {
+      await expect(page).toHaveURL(`/events/${eventId}/planning`, {
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
@@ -176,7 +176,7 @@ test.describe('Event Edit Page', () => {
       await page.getByTestId('submit-button').click()
 
       // Should redirect and show new dates
-      await expect(page).toHaveURL(`/events/${event!.id}`, {
+      await expect(page).toHaveURL(`/events/${event!.id}/planning`, {
         timeout: PAGE_LOAD_TIMEOUT,
       })
       await expect(page.getByTestId('event-dates')).toBeVisible()
@@ -200,7 +200,7 @@ test.describe('Event Edit Page', () => {
       await page.getByTestId('event-end-date-input').fill('2026-12-25')
 
       await page.getByTestId('submit-button').click()
-      await expect(page).toHaveURL(`/events/${eventId}`, {
+      await expect(page).toHaveURL(`/events/${eventId}/planning`, {
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
@@ -246,7 +246,7 @@ test.describe('Event Edit Page', () => {
 
       // Save
       await page.getByTestId('submit-button').click()
-      await expect(page).toHaveURL(`/events/${event!.id}`, {
+      await expect(page).toHaveURL(`/events/${event!.id}/planning`, {
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
@@ -274,7 +274,7 @@ test.describe('Event Edit Page', () => {
       await page.getByTestId('cancel-button').click()
 
       // Should return to event page with original name
-      await expect(page).toHaveURL(`/events/${eventId}`, {
+      await expect(page).toHaveURL(`/events/${eventId}/planning`, {
         timeout: PAGE_LOAD_TIMEOUT,
       })
       await expect(page.getByTestId('event-name')).toContainText(
@@ -299,7 +299,7 @@ test.describe('Event Edit Page', () => {
       await page.getByTestId('event-end-date-input').fill('2026-08-20')
 
       await page.getByTestId('submit-button').click()
-      await expect(page).toHaveURL(`/events/${eventId}`, {
+      await expect(page).toHaveURL(`/events/${eventId}/planning`, {
         timeout: PAGE_LOAD_TIMEOUT,
       })
 

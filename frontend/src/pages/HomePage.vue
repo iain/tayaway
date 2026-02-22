@@ -31,7 +31,7 @@ const allCaughtUp = computed(
 )
 
 function navigateToEvent(eventId: string): void {
-  router.push(`/events/${eventId}/vote`)
+  router.push(`/events/${eventId}/planning/vote`)
 }
 
 function navigateToEventPage(eventId: string): void {

@@ -72,7 +72,7 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
           </h2>
           <router-link
             v-if="isOwner"
-            :to="`/events/${eventId}/date-ranges`"
+            :to="`/events/${eventId}/planning/date-ranges`"
             class="inline-flex items-center gap-1.5 text-sm text-cyan-600 underline hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
           >
             <PencilSquareIcon class="size-4" />

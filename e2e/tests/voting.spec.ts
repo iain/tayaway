@@ -463,8 +463,8 @@ test.describe('Voting Feature', () => {
       await page.goto('/events')
       await page.getByText('Voting Test Event').first().click()
 
-      // Verify we're on an event detail page (URL contains /events/ followed by a UUID)
-      await expect(page).toHaveURL(/\/events\/[0-9a-f-]+$/)
+      // Verify we're on an event detail page (URL contains /events/ followed by a UUID and /planning)
+      await expect(page).toHaveURL(/\/events\/[0-9a-f-]+\/planning$/)
       await expect(page.getByTestId('event-name')).toContainText(
         'Voting Test Event'
       )
@@ -476,7 +476,7 @@ test.describe('Voting Feature', () => {
       const { eventId } = await createEventWithPoll(apiContext)
       await setupAuthenticatedPage(page, sessionToken)
 
-      await page.goto(`/events/${eventId}/vote`)
+      await page.goto(`/events/${eventId}/planning/vote`)
 
       // Should see vote buttons
       await expect(
@@ -496,7 +496,7 @@ test.describe('Voting Feature', () => {
       const { eventId } = await createEventWithPoll(apiContext)
       await setupAuthenticatedPage(page, sessionToken)
 
-      await page.goto(`/events/${eventId}/vote`)
+      await page.goto(`/events/${eventId}/planning/vote`)
 
       // Click Yes button on first date range
       await page
@@ -519,7 +519,7 @@ test.describe('Voting Feature', () => {
       const { eventId } = await createEventWithPoll(apiContext)
       await setupAuthenticatedPage(page, sessionToken)
 
-      await page.goto(`/events/${eventId}/vote`)
+      await page.goto(`/events/${eventId}/planning/vote`)
 
       // Vote Yes first
       await page
@@ -552,7 +552,7 @@ test.describe('Voting Feature', () => {
       const { eventId } = await createEventWithPoll(apiContext)
       await setupAuthenticatedPage(page, sessionToken)
 
-      await page.goto(`/events/${eventId}/vote`)
+      await page.goto(`/events/${eventId}/planning/vote`)
 
       // Vote first
       await page
