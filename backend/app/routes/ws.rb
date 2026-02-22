@@ -61,7 +61,7 @@ class App
 
       begin
         while (message = connection.read)
-          Websocket::MessageHandler.handle(connection, connection_id, user_id, message)
+          Websocket::MessageHandler.handle(connection, connection_id, user_id, message.to_str)
         end
       rescue StandardError => e
         APP_LOGGER.error { "[WebSocket] Error in message loop: #{e.message}" }
