@@ -87,7 +87,7 @@ test.describe('Poll Lifecycle UI', () => {
 
       // Should have 2 date ranges initially
       await expect(page.getByText(/votes?$/).first()).toBeVisible()
-      const dateRangeItems = page.locator('ul > li')
+      const dateRangeItems = page.getByTestId('date-range-item')
       const initialCount = await dateRangeItems.count()
 
       // Open calendar modal
@@ -122,7 +122,7 @@ test.describe('Poll Lifecycle UI', () => {
       ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
 
       // Wait for date ranges to load
-      const dateRangeItems = page.locator('ul > li')
+      const dateRangeItems = page.getByTestId('date-range-item')
       await expect(dateRangeItems.first()).toBeVisible()
       const initialCount = await dateRangeItems.count()
 
@@ -194,7 +194,11 @@ test.describe('Poll Lifecycle UI', () => {
       // Close the poll by selecting the first date range (Jun 1-7)
       await page.getByRole('button', { name: 'Select Winner' }).click()
       await expect(page.getByRole('dialog')).toBeVisible()
-      await page.getByRole('dialog').locator('button.w-full').first().click()
+      await page
+        .getByRole('dialog')
+        .getByTestId('date-range-option')
+        .first()
+        .click()
       await page.getByRole('button', { name: 'Confirm Winner' }).click()
       await expect(page.getByRole('dialog')).not.toBeVisible()
 
@@ -346,7 +350,7 @@ test.describe('Poll Lifecycle UI', () => {
       await expect(page.getByRole('dialog')).not.toBeVisible()
 
       // Verify date range appeared
-      const dateRangeItems = page.locator('ul > li')
+      const dateRangeItems = page.getByTestId('date-range-item')
       await expect(dateRangeItems).toHaveCount(1)
 
       // 4. Add a second date range (preselected 7 days after first: Mar 17-22)
@@ -368,7 +372,7 @@ test.describe('Poll Lifecycle UI', () => {
         .click()
       await expect(
         page.getByRole('button', { name: 'Yes', exact: true }).first()
-      ).toHaveClass(/bg-green-600/)
+      ).toHaveAttribute('aria-pressed', 'true')
 
       // 6. Go back to planning and close the poll
       await page.getByRole('link', { name: 'Planning' }).click()
@@ -377,7 +381,11 @@ test.describe('Poll Lifecycle UI', () => {
       await expect(page.getByRole('dialog')).toBeVisible()
 
       // Select the first option and confirm
-      await page.getByRole('dialog').locator('button.w-full').first().click()
+      await page
+        .getByRole('dialog')
+        .getByTestId('date-range-option')
+        .first()
+        .click()
       await page.getByRole('button', { name: 'Confirm Winner' }).click()
       await expect(page.getByRole('dialog')).not.toBeVisible()
       await expect(

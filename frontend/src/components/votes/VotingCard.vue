@@ -137,6 +137,7 @@ function toggleCommentInput() {
           <button
             type="button"
             :disabled="loading"
+            :aria-pressed="isSelected('yes') ? 'true' : 'false'"
             class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors"
             :class="[
               isSelected('yes')
@@ -150,6 +151,7 @@ function toggleCommentInput() {
           <button
             type="button"
             :disabled="loading"
+            :aria-pressed="isSelected('preferably_not') ? 'true' : 'false'"
             class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors"
             :class="[
               isSelected('preferably_not')
@@ -163,6 +165,7 @@ function toggleCommentInput() {
           <button
             type="button"
             :disabled="loading"
+            :aria-pressed="isSelected('no') ? 'true' : 'false'"
             class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors"
             :class="[
               isSelected('no')

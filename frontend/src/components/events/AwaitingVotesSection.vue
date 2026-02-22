@@ -69,7 +69,10 @@ const awaitingVotesCount = computed(() =>
 </script>
 
 <template>
-  <section class="rounded-lg bg-white p-6 shadow dark:bg-stone-800">
+  <section
+    data-testid="awaiting-votes-section"
+    class="rounded-lg bg-white p-6 shadow dark:bg-stone-800"
+  >
     <h2
       class="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white"
     >

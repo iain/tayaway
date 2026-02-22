@@ -344,12 +344,16 @@ test.describe('Tasks Feature', () => {
       // Check it
       const checkbox = card.getByRole('checkbox')
       await checkbox.check()
-      await expect(card.getByText('Do the thing')).toHaveClass(/line-through/)
+      await expect(card.getByText('Do the thing')).toHaveAttribute(
+        'data-completed',
+        'true'
+      )
 
       // Uncheck it
       await checkbox.uncheck()
-      await expect(card.getByText('Do the thing')).not.toHaveClass(
-        /line-through/
+      await expect(card.getByText('Do the thing')).not.toHaveAttribute(
+        'data-completed',
+        'true'
       )
     })
 
@@ -415,7 +419,7 @@ test.describe('Tasks Feature', () => {
 
       // Complete the second item (select by row content to avoid order sensitivity)
       await card
-        .locator('li')
+        .getByTestId('task-item-row')
         .filter({ hasText: 'Mark done' })
         .getByRole('checkbox')
         .check()

@@ -19,6 +19,7 @@ const emit = defineEmits<{
     class="flex items-center gap-3 py-2"
     :class="highlighted ? 'rounded bg-rose-50 dark:bg-rose-900/20' : ''"
     :data-item-id="item.id"
+    :data-highlighted="highlighted ? 'true' : undefined"
     data-testid="task-item-row"
     @mouseenter="emit('highlight', item)"
   >
@@ -53,6 +54,7 @@ const emit = defineEmits<{
           ? 'text-gray-400 line-through dark:text-stone-500'
           : 'text-gray-900 dark:text-white'
       "
+      :data-completed="item.completedAt ? 'true' : undefined"
       @click="emit('toggle', item)"
     >
       {{ item.content }}

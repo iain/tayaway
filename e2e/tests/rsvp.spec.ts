@@ -72,14 +72,21 @@ test.describe('RSVP Feature', () => {
 
       // First attend
       await page.getByTestId('rsvp-attend').click()
-      await expect(page.getByTestId('rsvp-attend')).toHaveClass(/bg-green-600/)
+      await expect(page.getByTestId('rsvp-attend')).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      )
 
       // Then decline
       await page.getByTestId('rsvp-decline').click()
-      await expect(page.getByTestId('rsvp-decline')).toHaveClass(/bg-red-600/)
+      await expect(page.getByTestId('rsvp-decline')).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      )
       // Attend button should no longer be active
-      await expect(page.getByTestId('rsvp-attend')).not.toHaveClass(
-        /bg-green-600/
+      await expect(page.getByTestId('rsvp-attend')).toHaveAttribute(
+        'aria-pressed',
+        'false'
       )
     })
   })
@@ -107,7 +114,10 @@ test.describe('RSVP Feature', () => {
       })
 
       // User should be auto-RSVPed as attending
-      await expect(page.getByTestId('rsvp-attend')).toHaveClass(/bg-green-600/)
+      await expect(page.getByTestId('rsvp-attend')).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      )
     })
   })
 

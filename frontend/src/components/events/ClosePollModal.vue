@@ -62,6 +62,7 @@ function handleClose(): void {
           v-for="dateRange in topRanges"
           :key="dateRange.id"
           type="button"
+          data-testid="date-range-option"
           class="w-full rounded-lg border-2 p-4 text-left transition-colors"
           :class="
             selectedId === dateRange.id

@@ -112,6 +112,7 @@ async function handleClearPartialDates(): Promise<void> {
           <button
             type="button"
             data-testid="rsvp-attend"
+            :aria-pressed="currentUserRsvp?.attending ? 'true' : 'false'"
             class="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-sm"
             :class="
               currentUserRsvp?.attending
@@ -126,6 +127,9 @@ async function handleClearPartialDates(): Promise<void> {
           <button
             type="button"
             data-testid="rsvp-decline"
+            :aria-pressed="
+              currentUserRsvp && !currentUserRsvp.attending ? 'true' : 'false'
+            "
             class="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-sm"
             :class="
               currentUserRsvp && !currentUserRsvp.attending

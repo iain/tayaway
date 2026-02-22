@@ -50,27 +50,27 @@ test.describe('Task Keyboard Navigation', () => {
 
     // Hover Alpha to establish starting position
     await rows.nth(0).hover()
-    await expect(rows.nth(0)).toHaveClass(/bg-rose-50/)
+    await expect(rows.nth(0)).toHaveAttribute('data-highlighted', 'true')
 
     // j moves to Beta
     await page.keyboard.press('j')
-    await expect(rows.nth(1)).toHaveClass(/bg-rose-50/)
-    await expect(rows.nth(0)).not.toHaveClass(/bg-rose-50/)
+    await expect(rows.nth(1)).toHaveAttribute('data-highlighted', 'true')
+    await expect(rows.nth(0)).not.toHaveAttribute('data-highlighted', 'true')
 
     // j moves to Gamma
     await page.keyboard.press('j')
-    await expect(rows.nth(2)).toHaveClass(/bg-rose-50/)
-    await expect(rows.nth(1)).not.toHaveClass(/bg-rose-50/)
+    await expect(rows.nth(2)).toHaveAttribute('data-highlighted', 'true')
+    await expect(rows.nth(1)).not.toHaveAttribute('data-highlighted', 'true')
 
     // k moves back to Beta
     await page.keyboard.press('k')
-    await expect(rows.nth(1)).toHaveClass(/bg-rose-50/)
-    await expect(rows.nth(2)).not.toHaveClass(/bg-rose-50/)
+    await expect(rows.nth(1)).toHaveAttribute('data-highlighted', 'true')
+    await expect(rows.nth(2)).not.toHaveAttribute('data-highlighted', 'true')
 
     // k moves back to Alpha
     await page.keyboard.press('k')
-    await expect(rows.nth(0)).toHaveClass(/bg-rose-50/)
-    await expect(rows.nth(1)).not.toHaveClass(/bg-rose-50/)
+    await expect(rows.nth(0)).toHaveAttribute('data-highlighted', 'true')
+    await expect(rows.nth(1)).not.toHaveAttribute('data-highlighted', 'true')
   })
 
   test('space toggles completion of highlighted item', async ({ page }) => {
@@ -91,15 +91,15 @@ test.describe('Task Keyboard Navigation', () => {
     const text = card.getByText('Toggle me')
 
     await row.hover()
-    await expect(row).toHaveClass(/bg-rose-50/)
+    await expect(row).toHaveAttribute('data-highlighted', 'true')
 
     // Space completes the item
     await page.keyboard.press('Space')
-    await expect(text).toHaveClass(/line-through/)
+    await expect(text).toHaveAttribute('data-completed', 'true')
 
     // Space again uncompletes it
     await page.keyboard.press('Space')
-    await expect(text).not.toHaveClass(/line-through/)
+    await expect(text).not.toHaveAttribute('data-completed', 'true')
   })
 
   test('backspace deletes highlighted item and moves to next', async ({
@@ -125,7 +125,7 @@ test.describe('Task Keyboard Navigation', () => {
     await page.keyboard.press('Backspace')
 
     await expect(card.getByText('Delete me')).not.toBeVisible()
-    await expect(rows.first()).toHaveClass(/bg-rose-50/)
+    await expect(rows.first()).toHaveAttribute('data-highlighted', 'true')
     await expect(card.getByText('Keep me')).toBeVisible()
   })
 
@@ -200,12 +200,12 @@ test.describe('Task Keyboard Navigation', () => {
     const rows = card.locator('[data-testid="task-item-row"]')
 
     await rows.nth(0).hover()
-    await expect(rows.nth(0)).toHaveClass(/bg-rose-50/)
-    await expect(rows.nth(1)).not.toHaveClass(/bg-rose-50/)
+    await expect(rows.nth(0)).toHaveAttribute('data-highlighted', 'true')
+    await expect(rows.nth(1)).not.toHaveAttribute('data-highlighted', 'true')
 
     await rows.nth(1).hover()
-    await expect(rows.nth(1)).toHaveClass(/bg-rose-50/)
-    await expect(rows.nth(0)).not.toHaveClass(/bg-rose-50/)
+    await expect(rows.nth(1)).toHaveAttribute('data-highlighted', 'true')
+    await expect(rows.nth(0)).not.toHaveAttribute('data-highlighted', 'true')
   })
 
   test('escape in add-input blurs it and re-enables keyboard navigation', async ({
@@ -232,14 +232,14 @@ test.describe('Task Keyboard Navigation', () => {
 
     // Hover first item so that i targets this list's add-input
     await rows.nth(0).hover()
-    await expect(rows.nth(0)).toHaveClass(/bg-rose-50/)
+    await expect(rows.nth(0)).toHaveAttribute('data-highlighted', 'true')
 
     await page.keyboard.press('i')
     await expect(addInput).toBeFocused()
 
     // j while input is focused does not move the highlight
     await page.keyboard.press('j')
-    await expect(rows.nth(0)).toHaveClass(/bg-rose-50/)
+    await expect(rows.nth(0)).toHaveAttribute('data-highlighted', 'true')
 
     // Escape blurs the input
     await page.keyboard.press('Escape')
@@ -247,7 +247,7 @@ test.describe('Task Keyboard Navigation', () => {
 
     // j now moves the highlight to the next item in the list
     await page.keyboard.press('j')
-    await expect(rows.nth(1)).toHaveClass(/bg-rose-50/)
-    await expect(rows.nth(0)).not.toHaveClass(/bg-rose-50/)
+    await expect(rows.nth(1)).toHaveAttribute('data-highlighted', 'true')
+    await expect(rows.nth(0)).not.toHaveAttribute('data-highlighted', 'true')
   })
 })

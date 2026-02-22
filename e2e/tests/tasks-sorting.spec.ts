@@ -339,15 +339,21 @@ test.describe('Task Sorting', () => {
       await expect(card.getByText('Second item')).toBeVisible()
 
       // Drag Second above First
-      const firstRow = card.locator('li').filter({ hasText: 'First item' })
-      const secondRow = card.locator('li').filter({ hasText: 'Second item' })
+      const firstRow = card
+        .getByTestId('task-item-row')
+        .filter({ hasText: 'First item' })
+      const secondRow = card
+        .getByTestId('task-item-row')
+        .filter({ hasText: 'Second item' })
       const secondHandle = secondRow.getByTestId('task-item-drag-handle')
       const firstHandle = firstRow.getByTestId('task-item-drag-handle')
 
       await secondHandle.dragTo(firstHandle)
 
       // Verify Second is now before First
-      await expect(card.locator('li').first()).toContainText('Second item')
+      await expect(card.getByTestId('task-item-row').first()).toContainText(
+        'Second item'
+      )
     })
 
     test('can move item between task lists by dragging', async ({ page }) => {
@@ -372,7 +378,9 @@ test.describe('Task Sorting', () => {
       await expect(cardA.getByText('Move me')).toBeVisible()
 
       // Drag the item from List A to List B
-      const moveItem = cardA.locator('li').filter({ hasText: 'Move me' })
+      const moveItem = cardA
+        .getByTestId('task-item-row')
+        .filter({ hasText: 'Move me' })
       const itemHandle = moveItem.getByTestId('task-item-drag-handle')
 
       await itemHandle.dragTo(cardB.getByTestId('task-items-list'))

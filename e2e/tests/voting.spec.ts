@@ -504,10 +504,10 @@ test.describe('Voting Feature', () => {
         .first()
         .click()
 
-      // Button should now be highlighted (has green background)
+      // Button should now be highlighted (active state)
       await expect(
         page.getByRole('button', { name: 'Yes', exact: true }).first()
-      ).toHaveClass(/bg-green-600/)
+      ).toHaveAttribute('aria-pressed', 'true')
 
       // Vote summary should show 1 yes
       await expect(
@@ -528,7 +528,7 @@ test.describe('Voting Feature', () => {
         .click()
       await expect(
         page.getByRole('button', { name: 'Yes', exact: true }).first()
-      ).toHaveClass(/bg-green-600/)
+      ).toHaveAttribute('aria-pressed', 'true')
 
       // Change to No
       await page
@@ -537,10 +537,10 @@ test.describe('Voting Feature', () => {
         .click()
       await expect(
         page.getByRole('button', { name: 'No', exact: true }).first()
-      ).toHaveClass(/bg-red-600/)
+      ).toHaveAttribute('aria-pressed', 'true')
       await expect(
         page.getByRole('button', { name: 'Yes', exact: true }).first()
-      ).not.toHaveClass(/bg-green-600/)
+      ).toHaveAttribute('aria-pressed', 'false')
 
       // Vote summary should now show 1 no
       await expect(
@@ -598,9 +598,7 @@ test.describe('Voting Feature', () => {
       })
 
       // The votes section should show initially (just the creator)
-      const awaitingSection = page.locator('section', {
-        has: page.getByRole('heading', { name: 'Votes' }),
-      })
+      const awaitingSection = page.getByTestId('awaiting-votes-section')
       await expect(page.getByRole('heading', { name: 'Votes' })).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })

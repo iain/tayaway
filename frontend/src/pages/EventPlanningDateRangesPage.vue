@@ -140,6 +140,7 @@ async function deleteRange(dateRangeId: string): Promise<void> {
           <li
             v-for="dateRange in dateRanges"
             :key="dateRange.id"
+            data-testid="date-range-item"
             class="flex items-center justify-between rounded-lg bg-white px-4 py-3 shadow dark:bg-stone-800"
           >
             <div>
