@@ -17,6 +17,7 @@ import {
   SunIcon,
   MoonIcon,
   ChevronDownIcon,
+  CalendarDaysIcon,
 } from '@heroicons/vue/24/outline'
 import {
   useAuthStore,
@@ -26,7 +27,9 @@ import {
 } from '@/stores'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useDarkMode } from '@/composables/useDarkMode'
+import { eventHasDates } from '@/utils/event'
 import CommandPalette from '@/components/common/CommandPalette.vue'
+import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -72,12 +75,14 @@ const eventDetailRoutes = new Set([
   'event-expenses',
 ])
 
-const currentEventName = computed(() => {
+const currentEvent = computed(() => {
   const name = route.name as string
   const id = route.params.id as string | undefined
   if (!id || !eventDetailRoutes.has(name)) return null
-  return objectPoolStore.get('event', id)?.name ?? null
+  return objectPoolStore.get('event', id) ?? null
 })
+
+const currentEventName = computed(() => currentEvent.value?.name ?? null)
 
 const eventSubNavTab = computed(() => {
   const name = currentRouteName.value as string
@@ -470,6 +475,16 @@ function getInitials(email: string | undefined): string {
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
               {{ currentEventName }}
             </h2>
+            <p
+              v-if="eventHasDates(currentEvent)"
+              class="flex items-center gap-1 text-xs text-gray-500 dark:text-stone-400"
+            >
+              <CalendarDaysIcon class="size-3.5" />
+              <DateRangeDisplay
+                :start-date="currentEvent!.startDate!"
+                :end-date="currentEvent!.endDate!"
+              />
+            </p>
           </div>
           <nav class="flex items-center gap-1">
             <router-link
