@@ -17,16 +17,17 @@ const emit = defineEmits<{
     <input
       type="checkbox"
       :checked="!!item.completedAt"
-      class="size-4 cursor-pointer rounded border-gray-300 text-amber-600 focus:ring-amber-500 dark:border-stone-600 dark:bg-stone-700"
+      class="size-4 cursor-pointer accent-rose-500"
       @change="emit('toggle', item)"
     />
     <span
-      class="flex-1 text-sm"
+      class="flex-1 cursor-pointer text-sm"
       :class="
         item.completedAt
           ? 'text-gray-400 line-through dark:text-stone-500'
           : 'text-gray-900 dark:text-white'
       "
+      @click="emit('toggle', item)"
     >
       {{ item.content }}
     </span>

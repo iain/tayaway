@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import {
   useTaskListsStore,
@@ -20,6 +20,7 @@ const pool = useObjectPoolStore()
 
 const newItemContent = ref('')
 const isAddingItem = ref(false)
+const newItemInput = ref<HTMLInputElement | null>(null)
 const isRenaming = ref(false)
 const renameValue = ref('')
 
@@ -49,6 +50,8 @@ async function handleAddItem(): Promise<void> {
     // error shown via store
   } finally {
     isAddingItem.value = false
+    await nextTick()
+    newItemInput.value?.focus()
   }
 }
 
@@ -117,7 +120,7 @@ async function handleDeleteList(): Promise<void> {
           <input
             v-model="renameValue"
             type="text"
-            class="flex-1 rounded-md bg-gray-100 px-2 py-1 text-sm font-semibold text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-amber-500 dark:bg-white/5 dark:text-white dark:outline-white/10"
+            class="flex-1 rounded-md bg-gray-100 px-2 py-1 text-sm font-semibold text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10"
             @keyup.enter="commitRename"
             @keyup.escape="isRenaming = false"
             @blur="commitRename"
@@ -150,6 +153,18 @@ async function handleDeleteList(): Promise<void> {
         </div>
       </div>
 
+      <!-- Clear completed -->
+      <div v-if="hasCompleted" class="mb-3">
+        <button
+          type="button"
+          class="text-xs text-gray-400 hover:text-gray-600 dark:text-stone-500 dark:hover:text-stone-300"
+          @click="handleClearCompleted"
+        >
+          Clear {{ completedItems.length }} completed
+          {{ completedItems.length === 1 ? 'item' : 'items' }}
+        </button>
+      </div>
+
       <!-- Items -->
       <ul
         v-if="items.length > 0"
@@ -167,32 +182,21 @@ async function handleDeleteList(): Promise<void> {
       <!-- Add item input -->
       <div class="mt-3 flex items-center gap-2">
         <input
+          ref="newItemInput"
           v-model="newItemContent"
           type="text"
           placeholder="Add an item..."
-          class="flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-amber-500 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
+          class="flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
           :disabled="isAddingItem"
           @keyup.enter="handleAddItem"
         />
         <button
           type="button"
-          class="rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+          class="rounded-md bg-rose-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
           :disabled="!newItemContent.trim() || isAddingItem"
           @click="handleAddItem"
         >
           Add
-        </button>
-      </div>
-
-      <!-- Clear completed -->
-      <div v-if="hasCompleted" class="mt-3">
-        <button
-          type="button"
-          class="text-xs text-gray-400 hover:text-gray-600 dark:text-stone-500 dark:hover:text-stone-300"
-          @click="handleClearCompleted"
-        >
-          Clear {{ completedItems.length }} completed
-          {{ completedItems.length === 1 ? 'item' : 'items' }}
         </button>
       </div>
     </div>
