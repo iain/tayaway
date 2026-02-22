@@ -1,19 +1,22 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { api } from '@/api/client'
 import ExpenseRow from '@/components/expenses/ExpenseRow.vue'
-import AddExpenseForm from '@/components/expenses/AddExpenseForm.vue'
+import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
 import ExpenseSplit from '@/components/expenses/ExpenseSplit.vue'
+import PrimaryButton from '@/components/common/PrimaryButton.vue'
 import type { PoolApiResponse } from '@/types/pool'
 
 const route = useRoute()
 const authStore = useAuthStore()
 const pool = useObjectPoolStore()
 const { currentMemberId } = storeToRefs(authStore)
+
+const isModalOpen = ref(false)
 
 const eventId = computed(() => route.params.id as string)
 
@@ -47,15 +50,18 @@ onMounted(async () => {
     </div>
 
     <div v-else>
-      <div class="mb-6 flex items-baseline justify-between">
-        <h1
-          class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white"
-        >
-          Expenses
-        </h1>
-        <span class="text-lg font-semibold text-gray-700 dark:text-stone-300">
-          {{ formattedTotal }} total
-        </span>
+      <div class="mb-6 flex items-center justify-between">
+        <div class="flex items-baseline gap-4">
+          <h1
+            class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white"
+          >
+            Expenses
+          </h1>
+          <span class="text-lg font-semibold text-gray-700 dark:text-stone-300">
+            {{ formattedTotal }} total
+          </span>
+        </div>
+        <PrimaryButton @click="isModalOpen = true">Add expense</PrimaryButton>
       </div>
 
       <div
@@ -74,7 +80,11 @@ onMounted(async () => {
         No expenses recorded yet.
       </p>
 
-      <AddExpenseForm :event-id="eventId" />
+      <AddExpenseModal
+        :open="isModalOpen"
+        :event-id="eventId"
+        @close="isModalOpen = false"
+      />
 
       <ExpenseSplit v-if="event" :event="event" :total="total" />
     </div>

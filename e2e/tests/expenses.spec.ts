@@ -411,16 +411,16 @@ test.describe('Expenses Feature', () => {
       ).toBeVisible()
     })
 
-    test('shows empty state and add form', async ({ page }) => {
+    test('shows empty state and add expense button', async ({ page }) => {
       await setupAuthenticatedPage(page, sessionToken)
       await page.goto(`/events/${eventId}/expenses`)
 
       await expect(page.getByText(/no expenses recorded/i)).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
-      await expect(page.getByPlaceholder('Description')).toBeVisible()
-      await expect(page.getByPlaceholder('0.00')).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Add' })).toBeVisible()
+      await expect(
+        page.getByRole('button', { name: 'Add expense' })
+      ).toBeVisible()
     })
 
     test('can add an expense and see it in the list', async ({ page }) => {
@@ -428,12 +428,19 @@ test.describe('Expenses Feature', () => {
       await page.goto(`/events/${eventId}/expenses`)
 
       const description = `Coffee ${uid}`
-      await expect(page.getByPlaceholder('Description')).toBeVisible({
-        timeout: PAGE_LOAD_TIMEOUT,
-      })
-      await page.getByPlaceholder('Description').fill(description)
+      await expect(
+        page.getByRole('button', { name: 'Add expense' })
+      ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
+      await page.getByRole('button', { name: 'Add expense' }).click()
+
+      await expect(
+        page.getByPlaceholder('What was this expense for?')
+      ).toBeVisible()
+      await page
+        .getByPlaceholder('What was this expense for?')
+        .fill(description)
       await page.getByPlaceholder('0.00').fill('4.50')
-      await page.getByRole('button', { name: 'Add' }).click()
+      await page.getByTestId('submit-button').click()
 
       const row = page
         .getByTestId('expense-row')
