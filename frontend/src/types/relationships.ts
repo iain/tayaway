@@ -62,7 +62,6 @@ export const relationshipSchema: RelationshipSchema = {
       foreignKey: 'workspaceId',
       targetType: 'workspace',
     },
-    items: { type: 'hasMany', foreignKey: 'itemIds', targetType: 'taskItem' },
   },
   taskItem: {
     taskList: {

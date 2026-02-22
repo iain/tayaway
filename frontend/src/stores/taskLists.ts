@@ -17,7 +17,6 @@ export const useTaskListsStore = defineStore('taskLists', () => {
       workspaceId,
       memberId: useAuthStore().currentMemberId ?? null,
       name,
-      itemIds: [],
       createdAt: now,
       updatedAt: now,
     }

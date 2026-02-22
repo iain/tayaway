@@ -155,10 +155,8 @@ class PoolSerializer
     mid = task_list.user_id ? member_id_for_user(T.must(task_list.user_id)) : nil
     hash[:memberId] = mid
     hash.delete(:userId)
-    items = TaskItem.for_task_list(task_list.id)
-    hash[:itemIds] = items.map { |i| i.id.to_s }
     @objects[key] = hash
-    items.each { |item| add_task_item(item) }
+    TaskItem.for_task_list(task_list.id).each { |item| add_task_item(item) }
   end
 
   sig { params(task_item: TaskItem).void }

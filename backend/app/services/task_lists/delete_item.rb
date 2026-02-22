@@ -37,14 +37,10 @@ module TaskLists
         item_id = item.id
 
         DB.transaction do
-          now = Time.now
           DB[:deleted_items].insert(workspace_id: task_list.workspace_id, object_type: "task_item", object_id: item_id)
           DB[:task_items].where(id: item_id).delete
 
-          # Touch the parent list's updated_at for partial sync
-          DB[:task_lists].where(id: task_list.id).update(updated_at: now)
-
-          Broadcaster.object_changed("task_list", task_list.id, workspace_id: task_list.workspace_id)
+          Broadcaster.object_deleted("task_item", item_id, workspace_id: task_list.workspace_id)
         end
 
         T.cast(

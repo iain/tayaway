@@ -436,8 +436,12 @@ test.describe('Tasks Feature', () => {
       await card.getByPlaceholder('Add an item...').press('Enter')
       await expect(card.getByText('Mark done')).toBeVisible()
 
-      // Complete the second item
-      await card.getByRole('checkbox').last().check()
+      // Complete the second item (select by row content to avoid order sensitivity)
+      await card
+        .locator('li')
+        .filter({ hasText: 'Mark done' })
+        .getByRole('checkbox')
+        .check()
 
       // Clear completed button should appear
       await expect(card.getByText(/Clear 1 completed/)).toBeVisible({

@@ -42,20 +42,20 @@ module TaskLists
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
       def add_item(task_list, user_id, content, id)
-        # Idempotent replay: if client provided an ID and it already exists, return the list
+        # Idempotent replay: if client provided an ID and it already exists, return the item
         if id
           existing = TaskItem.find(id)
           if existing
-            updated_list = T.must(TaskList.find(task_list.id))
             pool = PoolSerializer.new(workspace_id: task_list.workspace_id)
-            pool.add_task_list(updated_list)
+            pool.add_task_item(existing)
             return T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
           end
         end
 
+        item_id = id || SecureRandom.uuid
+
         DB.transaction do
           now = Time.now
-          item_id = id || SecureRandom.uuid
 
           DB[:task_items].insert(
             id: item_id,
@@ -66,15 +66,12 @@ module TaskLists
             updated_at: now
           )
 
-          # Touch the parent list's updated_at for partial sync
-          DB[:task_lists].where(id: task_list.id).update(updated_at: now)
-
-          Broadcaster.object_changed("task_list", task_list.id, workspace_id: task_list.workspace_id)
+          Broadcaster.object_changed("task_item", item_id, workspace_id: task_list.workspace_id)
         end
 
-        updated_list = T.must(TaskList.find(task_list.id))
+        item = T.must(TaskItem.find(item_id))
         pool = PoolSerializer.new(workspace_id: task_list.workspace_id)
-        pool.add_task_list(updated_list)
+        pool.add_task_item(item)
 
         T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end

@@ -24,9 +24,23 @@ const newItemInput = ref<HTMLInputElement | null>(null)
 const isRenaming = ref(false)
 const renameValue = ref('')
 
+// IDs optimistically hidden after "clear completed" — survives pool re-imports
+// caused by concurrent in-flight addItem/updateItem responses arriving as microtasks
+// before Vue flushes the DOM.
+const clearedIds = ref(new Set<string>())
+
+// IDs the user has toggled to "complete" in this component instance.
+// Persists across pool re-imports so handleClearCompleted can find the right IDs
+// even if an in-flight addItem response clears the pending completedAt update.
+const localCompletedIds = ref(new Set<string>())
+
 const items = computed((): PoolTaskItem[] =>
   pool
-    .getMany('taskItem', props.taskList.itemIds)
+    .getAll('taskItem')
+    .filter(
+      (item) =>
+        item.taskListId === props.taskList.id && !clearedIds.value.has(item.id)
+    )
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
 )
 
@@ -56,12 +70,23 @@ async function handleAddItem(): Promise<void> {
 }
 
 async function handleToggle(item: PoolTaskItem): Promise<void> {
+  const completing = !item.completedAt
+  if (completing) {
+    localCompletedIds.value.add(item.id)
+  } else {
+    localCompletedIds.value.delete(item.id)
+  }
   try {
     await taskItemsStore.updateItem(props.taskList.id, item.id, {
-      completed: !item.completedAt,
+      completed: completing,
     })
   } catch {
-    // error shown via store
+    // error shown via store — undo local tracking
+    if (completing) {
+      localCompletedIds.value.delete(item.id)
+    } else {
+      localCompletedIds.value.add(item.id)
+    }
   }
 }
 
@@ -74,11 +99,22 @@ async function handleDeleteItem(item: PoolTaskItem): Promise<void> {
 }
 
 async function handleClearCompleted(): Promise<void> {
-  const ids = completedItems.value.map((i) => i.id)
+  // Merge pool-derived completed IDs with locally-tracked ones. The local set
+  // covers the race where an in-flight addItem response clears the pending
+  // completedAt update before the click handler runs, leaving completedItems empty.
+  const poolIds = completedItems.value.map((i) => i.id)
+  const allIds = [...new Set([...poolIds, ...localCompletedIds.value])]
+  localCompletedIds.value.clear()
+  for (const id of allIds) {
+    clearedIds.value.add(id)
+  }
   try {
-    await taskItemsStore.clearCompleted(props.taskList.id, ids)
+    await taskItemsStore.clearCompleted(props.taskList.id, allIds)
   } catch {
-    // error shown via store
+    // Restore visibility on error
+    for (const id of allIds) {
+      clearedIds.value.delete(id)
+    }
   }
 }
 

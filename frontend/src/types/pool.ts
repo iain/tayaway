@@ -90,7 +90,6 @@ export interface ObjectTypeMap {
     workspaceId: string
     memberId: string | null
     name: string
-    itemIds: string[]
     createdAt: string
   }
   taskItem: PoolObjectBase<'taskItem'> & {

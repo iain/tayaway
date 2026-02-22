@@ -32,8 +32,6 @@ RSpec.describe TaskLists::AddItem do
     result = described_class.call(task_list_id: list[:id], user_id: user[:id], content: "Buy milk")
 
     expect(result.success?).to be true
-    task_list = result.value![:objects].find { |o| o[:objectType] == "taskList" }
-    expect(task_list[:itemIds].length).to eq(1)
     item = result.value![:objects].find { |o| o[:objectType] == "taskItem" }
     expect(item[:content]).to eq("Buy milk")
     expect(item[:completedAt]).to be_nil

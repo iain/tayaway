@@ -25,8 +25,6 @@ module TaskLists
         deleted = T.let([], T::Array[T::Hash[Symbol, T.untyped]])
 
         DB.transaction do
-          now = Time.now
-
           completed_items.each do |item|
             DB[:deleted_items].insert(workspace_id: task_list.workspace_id, object_type: "task_item", object_id: item.id)
             deleted << { objectType: "taskItem", id: item.id.to_s }
@@ -35,8 +33,9 @@ module TaskLists
           unless completed_items.empty?
             ids = completed_items.map(&:id)
             DB[:task_items].where(id: ids).delete
-            DB[:task_lists].where(id: task_list.id).update(updated_at: now)
-            Broadcaster.object_changed("task_list", task_list.id, workspace_id: task_list.workspace_id)
+            completed_items.each do |item|
+              Broadcaster.object_deleted("task_item", item.id, workspace_id: task_list.workspace_id)
+            end
           end
         end
 

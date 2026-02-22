@@ -55,15 +55,12 @@ module TaskLists
 
           DB[:task_items].where(id: item.id).update(updates)
 
-          # Touch the parent list's updated_at for partial sync
-          DB[:task_lists].where(id: task_list.id).update(updated_at: now)
-
-          Broadcaster.object_changed("task_list", task_list.id, workspace_id: task_list.workspace_id)
+          Broadcaster.object_changed("task_item", item.id, workspace_id: task_list.workspace_id)
         end
 
-        updated_list = T.must(TaskList.find(task_list.id))
+        updated_item = T.must(TaskItem.find(item.id))
         pool = PoolSerializer.new(workspace_id: task_list.workspace_id)
-        pool.add_task_list(updated_list)
+        pool.add_task_item(updated_item)
 
         T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end

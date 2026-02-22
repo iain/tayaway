@@ -34,7 +34,6 @@ RSpec.describe TaskLists::Create do
     expect(result.success?).to be true
     list = result.value![:objects].find { |o| o[:objectType] == "taskList" }
     expect(list[:name]).to eq("Shopping")
-    expect(list[:itemIds]).to eq([])
   end
 
   it "uses client-provided id when given" do

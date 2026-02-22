@@ -112,10 +112,21 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       const pendingKey = `${obj.objectType}:${obj.id}`
       const hadPending = pendingUpdates.value.has(pendingKey)
 
-      // Always clear pending updates - server response is authoritative
+      // Clear pending updates only when the server response postdates them.
+      // If any pending update was created AFTER the server object's updatedAt,
+      // the update represents a newer user action and must be preserved.
+      // This prevents a concurrent addItem response (with an older updatedAt)
+      // from clearing a completedAt update made after the item was created.
       if (hadPending) {
-        pendingUpdates.value.delete(pendingKey)
-        changed = true
+        const pending = pendingUpdates.value.get(pendingKey)!
+        const serverMs = new Date(obj.updatedAt).getTime()
+        const hasPendingNewerThanServer = pending.some(
+          (u) => u.timestamp > serverMs
+        )
+        if (!hasPendingNewerThanServer) {
+          pendingUpdates.value.delete(pendingKey)
+          changed = true
+        }
       }
 
       // Update pool object if newer or doesn't exist
