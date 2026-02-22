@@ -375,7 +375,7 @@ test.describe('Task Sorting', () => {
       const moveItem = cardA.locator('li').filter({ hasText: 'Move me' })
       const itemHandle = moveItem.getByTestId('task-item-drag-handle')
 
-      await itemHandle.dragTo(cardB)
+      await itemHandle.dragTo(cardB.getByTestId('task-items-list'))
 
       // Verify item moved: gone from A, present in B
       await expect(cardA.getByText('Move me')).not.toBeVisible()
