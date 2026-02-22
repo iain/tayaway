@@ -8,6 +8,7 @@ import type { PoolExpense } from '@/types/pool'
 const props = defineProps<{
   expense: PoolExpense
   currentMemberId: string | null
+  stripe?: boolean
 }>()
 
 const pool = useObjectPoolStore()
@@ -36,30 +37,32 @@ async function handleDelete() {
 </script>
 
 <template>
-  <div
+  <tr
     data-testid="expense-row"
-    class="flex items-center justify-between gap-4 py-3"
+    :class="stripe ? 'bg-gray-50 dark:bg-black/20' : ''"
   >
-    <div class="min-w-0 flex-1">
+    <td class="py-3 pr-4 pl-2 align-middle">
       <p class="truncate text-sm text-gray-900 dark:text-white">
         {{ expense.description }}
       </p>
       <p class="text-xs text-gray-500 dark:text-stone-400">
         {{ displayName }}
       </p>
-    </div>
-    <div class="flex items-center gap-3">
-      <span class="font-mono text-sm font-medium text-gray-900 dark:text-white">
-        {{ formattedAmount }}
-      </span>
+    </td>
+    <td
+      class="py-3 pr-4 text-right align-middle font-mono text-sm font-medium whitespace-nowrap text-gray-900 dark:text-white"
+    >
+      {{ formattedAmount }}
+    </td>
+    <td class="w-8 py-3 pr-2 align-middle">
       <button
         v-if="isOwner"
         type="button"
-        class="text-gray-400 hover:text-red-500 dark:text-stone-500 dark:hover:text-red-400"
+        class="flex text-gray-400 hover:text-red-500 dark:text-stone-500 dark:hover:text-red-400"
         @click="handleDelete"
       >
         <TrashIcon class="size-4" />
       </button>
-    </div>
-  </div>
+    </td>
+  </tr>
 </template>

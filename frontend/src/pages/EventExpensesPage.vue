@@ -66,14 +66,19 @@ onMounted(async () => {
 
       <div
         v-if="expenses.length > 0"
-        class="mb-6 divide-y divide-gray-100 dark:divide-stone-700"
+        class="mb-6 overflow-hidden rounded-lg border border-gray-200 dark:border-stone-700"
       >
-        <ExpenseRow
-          v-for="expense in expenses"
-          :key="expense.id"
-          :expense="expense"
-          :current-member-id="currentMemberId"
-        />
+        <table class="w-full text-sm">
+          <tbody>
+            <ExpenseRow
+              v-for="(expense, i) in expenses"
+              :key="expense.id"
+              :expense="expense"
+              :current-member-id="currentMemberId"
+              :stripe="i % 2 === 0"
+            />
+          </tbody>
+        </table>
       </div>
 
       <p v-else class="mb-6 text-sm text-gray-500 dark:text-stone-400">

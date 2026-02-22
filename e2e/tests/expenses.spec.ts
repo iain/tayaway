@@ -354,14 +354,19 @@ test.describe('Expenses Feature', () => {
       ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
 
       // User A: paid €100, fair share €50.00 → owed €50.00 back
-      const rowA = page.getByRole('row').filter({ hasText: SPLIT_USER_A_NAME })
+      const splitTable = page.getByTestId('cost-split-table')
+      const rowA = splitTable
+        .getByRole('row')
+        .filter({ hasText: SPLIT_USER_A_NAME })
       await expect(rowA.getByText('50%')).toBeVisible()
       await expect(rowA.getByText('€100.00', { exact: true })).toBeVisible()
       await expect(rowA.getByText('€50.00', { exact: true })).toBeVisible()
       await expect(rowA.getByText('owed €50.00')).toBeVisible()
 
       // User B: paid €0.00, fair share €50.00 → owes €50.00
-      const rowB = page.getByRole('row').filter({ hasText: SPLIT_USER_B_NAME })
+      const rowB = splitTable
+        .getByRole('row')
+        .filter({ hasText: SPLIT_USER_B_NAME })
       await expect(rowB.getByText('50%')).toBeVisible()
       await expect(rowB.getByText('€0.00', { exact: true })).toBeVisible()
       await expect(rowB.getByText('€50.00', { exact: true })).toBeVisible()

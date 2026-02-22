@@ -101,27 +101,32 @@ function formatBalance(balance: number): string {
       No attendees yet.
     </p>
 
-    <div v-else class="overflow-x-auto">
+    <div
+      v-else
+      data-testid="cost-split-table"
+      class="overflow-hidden rounded-lg border border-gray-200 dark:border-stone-700"
+    >
       <table class="w-full text-sm">
         <thead>
           <tr
             class="border-b border-gray-200 text-left text-xs font-medium tracking-wide text-gray-500 uppercase dark:border-stone-700 dark:text-stone-400"
           >
-            <th class="pr-4 pb-2">Name</th>
-            <th class="pr-4 pb-2">Nights</th>
-            <th class="pr-4 pb-2">Share</th>
-            <th class="pr-4 pb-2 text-right">Paid</th>
-            <th class="pr-4 pb-2 text-right">Fair share</th>
-            <th class="pb-2 text-right">Balance</th>
+            <th class="pt-3 pr-4 pb-2 pl-2">Name</th>
+            <th class="pt-3 pr-4 pb-2">Nights</th>
+            <th class="pt-3 pr-4 pb-2">Share</th>
+            <th class="pt-3 pr-4 pb-2 text-right">Paid</th>
+            <th class="pt-3 pr-4 pb-2 text-right">Fair share</th>
+            <th class="pt-3 pr-2 pb-2 text-right">Balance</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-100 dark:divide-stone-700">
+        <tbody>
           <tr
-            v-for="row in rows"
+            v-for="(row, i) in rows"
             :key="row.memberId"
             class="text-gray-800 dark:text-stone-200"
+            :class="i % 2 === 0 ? 'bg-gray-50 dark:bg-black/20' : ''"
           >
-            <td class="py-2 pr-4 font-medium">{{ row.name }}</td>
+            <td class="py-2 pr-4 pl-2 font-medium">{{ row.name }}</td>
             <td class="py-2 pr-4 text-gray-600 dark:text-stone-400">
               {{ formatNights(row.nights) }}
             </td>
@@ -137,7 +142,7 @@ function formatBalance(balance: number): string {
               {{ formatAmount(row.share) }}
             </td>
             <td
-              class="py-2 text-right font-mono"
+              class="py-2 pr-2 text-right font-mono"
               :class="{
                 'text-red-600 dark:text-red-400': row.balance > 0.005,
                 'text-green-600 dark:text-green-400': row.balance < -0.005,
@@ -153,20 +158,20 @@ function formatBalance(balance: number): string {
           <tr
             class="border-t border-gray-300 font-semibold text-gray-900 dark:border-stone-600 dark:text-white"
           >
-            <td class="pt-2 pr-4">Total</td>
-            <td class="pt-2 pr-4 text-gray-600 dark:text-stone-400">
+            <td class="pt-2 pr-4 pb-3 pl-2">Total</td>
+            <td class="pt-2 pr-4 pb-3 text-gray-600 dark:text-stone-400">
               {{ formatNights(totalNights) }}
             </td>
-            <td class="pt-2 pr-4"></td>
+            <td class="pt-2 pr-4 pb-3"></td>
             <td
-              class="pt-2 pr-4 text-right font-mono text-gray-600 dark:text-stone-400"
+              class="pt-2 pr-4 pb-3 text-right font-mono text-gray-600 dark:text-stone-400"
             >
               {{ formatAmount(total) }}
             </td>
-            <td class="pt-2 pr-4 text-right font-mono">
+            <td class="pt-2 pr-4 pb-3 text-right font-mono">
               {{ formatAmount(total) }}
             </td>
-            <td class="pt-2"></td>
+            <td class="pt-2 pr-2 pb-3"></td>
           </tr>
         </tfoot>
       </table>
