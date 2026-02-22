@@ -4,7 +4,7 @@
 require "spec_helper"
 
 RSpec.describe TaskLists::Update do
-  it "returns failure when name is missing" do
+  it "returns failure when neither name nor position is provided" do
     user = TestFactories.user
     workspace = TestFactories.workspace
     list = TestFactories.task_list(workspace: workspace, user: user)
@@ -12,7 +12,7 @@ RSpec.describe TaskLists::Update do
     result = described_class.call(task_list_id: list[:id], name: nil)
 
     expect(result.failure?).to be true
-    expect(result.failure.message).to eq("Name is required")
+    expect(result.failure.message).to eq("Name or position is required")
   end
 
   it "returns failure when task list not found" do

@@ -3,6 +3,7 @@ import { useMutation } from '@/composables/useMutation'
 import { useObjectPoolStore } from './objectPool'
 import { useCommandQueueStore, CommandQueuedError } from './commandQueue'
 import { useAuthStore } from './auth'
+import { positionBetween } from '@/utils/position'
 import type { PoolApiResponse, PoolTaskItem } from '@/types/pool'
 
 export const useTaskItemsStore = defineStore('taskItems', () => {
@@ -18,6 +19,7 @@ export const useTaskItemsStore = defineStore('taskItems', () => {
       memberId: useAuthStore().currentMemberId ?? null,
       content,
       completedAt: null,
+      position: Date.now(), // temporary; server assigns real position
       createdAt: now,
       updatedAt: now,
     }
@@ -63,6 +65,38 @@ export const useTaskItemsStore = defineStore('taskItems', () => {
           'PUT',
           `/task-lists/${taskListId}/items/${itemId}`,
           changes
+        )
+    )
+  }
+
+  async function repositionItem(
+    sourceListId: string,
+    itemId: string,
+    beforePosition: number | null,
+    afterPosition: number | null,
+    targetListId?: string
+  ) {
+    const newPosition = positionBetween(beforePosition, afterPosition)
+    const poolChanges: Partial<PoolTaskItem> = { position: newPosition }
+    if (targetListId && targetListId !== sourceListId) {
+      poolChanges.taskListId = targetListId
+    }
+
+    await update(
+      'Failed to reposition item',
+      'taskItem',
+      itemId,
+      poolChanges,
+      (commandQueue) =>
+        commandQueue.enqueue<PoolApiResponse>(
+          'PUT',
+          `/task-lists/${sourceListId}/items/${itemId}`,
+          {
+            position: newPosition,
+            ...(targetListId && targetListId !== sourceListId
+              ? { task_list_id: targetListId }
+              : {}),
+          }
         )
     )
   }
@@ -125,6 +159,7 @@ export const useTaskItemsStore = defineStore('taskItems', () => {
     error,
     addItem,
     updateItem,
+    repositionItem,
     deleteItem,
     clearCompleted,
     $reset,

@@ -9,6 +9,7 @@ class TaskList < T::Struct
   const :workspace_id, UUID
   const :user_id, T.nilable(UUID)
   const :name, String
+  const :position, Float
   const :created_at, Time
   const :updated_at, Time
 
@@ -20,6 +21,7 @@ class TaskList < T::Struct
       workspaceId: workspace_id.to_s,
       userId: user_id&.to_s,
       name: name,
+      position: position,
       createdAt: created_at.iso8601(3),
       updatedAt: updated_at.iso8601(3)
     }
@@ -36,7 +38,7 @@ class TaskList < T::Struct
 
     sig { params(workspace_id: T.any(String, UUID)).returns(T::Array[TaskList]) }
     def for_workspace(workspace_id)
-      dataset.where(workspace_id: workspace_id).order(:created_at).all
+      dataset.where(workspace_id: workspace_id).order(:position).all
     end
 
     sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[TaskList]) }
@@ -45,6 +47,11 @@ class TaskList < T::Struct
         .where(workspace_id: workspace_id)
         .where(Sequel.lit("updated_at > ?", since))
         .all
+    end
+
+    sig { params(workspace_id: T.any(String, UUID)).returns(Float) }
+    def max_position(workspace_id)
+      DB[:task_lists].where(workspace_id: workspace_id).max(:position).to_f
     end
 
     sig { params(id: T.any(String, UUID)).returns(Result[TaskList, ServiceError]) }
@@ -73,6 +80,7 @@ class TaskList < T::Struct
         workspace_id: UUID.new(row[:workspace_id]),
         user_id: row[:user_id] ? UUID.new(row[:user_id]) : nil,
         name: row[:name],
+        position: row[:position].to_f,
         created_at: row[:created_at],
         updated_at: row[:updated_at]
       )

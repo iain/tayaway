@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, watchEffect } from 'vue'
 import { storeToRefs } from 'pinia'
 import { ClipboardDocumentListIcon, PlusIcon } from '@heroicons/vue/24/outline'
+import { VueDraggable } from 'vue-draggable-plus'
+import type { SortableEvent } from 'vue-draggable-plus'
 import { useTaskListsStore, useNotificationsStore } from '@/stores'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useWorkspaceStore } from '@/stores/workspace'
@@ -10,6 +12,7 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import PrimaryButton from '@/components/common/PrimaryButton.vue'
 import AddTaskListModal from '@/components/tasks/AddTaskListModal.vue'
 import TaskListCard from '@/components/tasks/TaskListCard.vue'
+import type { PoolTaskList } from '@/types/pool'
 
 const taskListsStore = useTaskListsStore()
 const pool = useObjectPoolStore()
@@ -20,12 +23,30 @@ const isModalOpen = ref(false)
 const isSubmitting = ref(false)
 const formError = ref<string | null>(null)
 
-const taskLists = computed(() =>
-  pool
+// Local sorted list for drag-and-drop (synced from pool)
+const taskListsLocal = ref<PoolTaskList[]>([])
+
+watchEffect(() => {
+  taskListsLocal.value = pool
     .getAll('taskList')
     .filter((tl) => tl.workspaceId === currentWorkspaceId.value)
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-)
+    .sort((a, b) => a.position - b.position)
+})
+
+async function handleListDragEnd(event: SortableEvent) {
+  const newIndex = event.newIndex
+  if (newIndex === undefined) return
+
+  const list = taskListsLocal.value
+  const movedList = list[newIndex]
+  if (!movedList) return
+
+  const before = newIndex > 0 ? (list[newIndex - 1]?.position ?? null) : null
+  const after =
+    newIndex < list.length - 1 ? (list[newIndex + 1]?.position ?? null) : null
+
+  await taskListsStore.repositionList(movedList.id, before, after)
+}
 
 function openModal(): void {
   formError.value = null
@@ -72,7 +93,7 @@ async function handleSave(name: string): Promise<void> {
     </div>
 
     <EmptyState
-      v-if="taskLists.length === 0"
+      v-if="taskListsLocal.length === 0"
       :icon="ClipboardDocumentListIcon"
       heading="No task lists"
       description="Get started by creating a new task list."
@@ -83,13 +104,21 @@ async function handleSave(name: string): Promise<void> {
       </PrimaryButton>
     </EmptyState>
 
-    <div v-else class="space-y-6">
+    <VueDraggable
+      v-else
+      v-model="taskListsLocal"
+      class="space-y-6"
+      handle=".list-drag-handle"
+      :animation="150"
+      ghost-class="opacity-50"
+      @end="handleListDragEnd"
+    >
       <TaskListCard
-        v-for="taskList in taskLists"
+        v-for="taskList in taskListsLocal"
         :key="taskList.id"
         :task-list="taskList"
       />
-    </div>
+    </VueDraggable>
 
     <AddTaskListModal
       :open="isModalOpen"

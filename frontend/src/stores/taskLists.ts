@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { useMutation } from '@/composables/useMutation'
 import { useAuthStore } from './auth'
 import { useWorkspaceStore } from './workspace'
+import { positionBetween } from '@/utils/position'
 import type { PoolApiResponse, PoolTaskList } from '@/types/pool'
 
 export const useTaskListsStore = defineStore('taskLists', () => {
@@ -17,6 +18,7 @@ export const useTaskListsStore = defineStore('taskLists', () => {
       workspaceId,
       memberId: useAuthStore().currentMemberId ?? null,
       name,
+      position: Date.now(), // temporary; server assigns real position
       createdAt: now,
       updatedAt: now,
     }
@@ -47,6 +49,24 @@ export const useTaskListsStore = defineStore('taskLists', () => {
     )
   }
 
+  async function repositionList(
+    listId: string,
+    beforePosition: number | null,
+    afterPosition: number | null
+  ) {
+    const newPosition = positionBetween(beforePosition, afterPosition)
+    await update(
+      'Failed to reposition task list',
+      'taskList',
+      listId,
+      { position: newPosition },
+      (commandQueue) =>
+        commandQueue.enqueue<PoolApiResponse>('PUT', `/task-lists/${listId}`, {
+          position: newPosition,
+        })
+    )
+  }
+
   async function deleteTaskList(id: string) {
     await destroy(
       'Failed to delete task list',
@@ -66,6 +86,7 @@ export const useTaskListsStore = defineStore('taskLists', () => {
     error,
     createTaskList,
     updateTaskList,
+    repositionList,
     deleteTaskList,
     $reset,
   }

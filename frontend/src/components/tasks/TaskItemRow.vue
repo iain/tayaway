@@ -13,7 +13,25 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <li class="flex items-center gap-3 py-2">
+  <li class="flex items-center gap-3 py-2" data-testid="task-item-row">
+    <span
+      class="item-drag-handle cursor-grab touch-none text-gray-300 hover:text-gray-400 dark:text-stone-600 dark:hover:text-stone-400"
+      data-testid="task-item-drag-handle"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="size-4"
+        fill="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <circle cx="9" cy="5" r="1.5" />
+        <circle cx="15" cy="5" r="1.5" />
+        <circle cx="9" cy="12" r="1.5" />
+        <circle cx="15" cy="12" r="1.5" />
+        <circle cx="9" cy="19" r="1.5" />
+        <circle cx="15" cy="19" r="1.5" />
+      </svg>
+    </span>
     <input
       type="checkbox"
       :checked="!!item.completedAt"

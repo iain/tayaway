@@ -121,8 +121,8 @@ date_polls         id, event_id (unique, cascade), deadline, selected_date_range
 date_ranges        id, date_poll_id, start_date, end_date, timestamps, check(start_date <= end_date)
 votes              id, date_range_id, user_id, response (yes/no/preferably_not), comment, unique(date_range_id, user_id)
 rsvps              id, event_id, user_id, attending (boolean), start_date (nullable), end_date (nullable), timestamps, unique(event_id, user_id), check(start_date <= end_date)
-task_lists         id, workspace_id (FK cascade), user_id (FK set_null, nullable), name TEXT, timestamps
-task_items         id, task_list_id (FK cascade), user_id (FK set_null, nullable), content TEXT, completed_at (TIMESTAMPTZ nullable), timestamps
+task_lists         id, workspace_id (FK cascade), user_id (FK set_null, nullable), name TEXT, position FLOAT (ordered within workspace), timestamps
+task_items         id, task_list_id (FK cascade), user_id (FK set_null, nullable), content TEXT, completed_at (TIMESTAMPTZ nullable), position FLOAT (ordered within list), timestamps
 ```
 
 **Hierarchy:** Workspace -> Event -> DatePoll -> DateRange -> Vote
@@ -166,10 +166,10 @@ task_items         id, task_list_id (FK cascade), user_id (FK set_null, nullable
 
 - `GET /` — List task lists for workspace (workspace_id query param)
 - `POST /` — Create task list
-- `PUT /:id` — Rename task list
+- `PUT /:id` — Update task list (name and/or position; at least one required)
 - `DELETE /:id` — Delete task list
 - `POST /:id/items` — Add item to list
-- `PUT /:id/items/:item_id` — Update item (content and/or completed boolean)
+- `PUT /:id/items/:item_id` — Update item (content, completed boolean, position, and/or task_list_id for cross-list move)
 - `DELETE /:id/items/:item_id` — Delete item
 - `POST /:id/clear-completed` — Delete all completed items
 

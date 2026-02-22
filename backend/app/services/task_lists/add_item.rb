@@ -56,12 +56,14 @@ module TaskLists
 
         DB.transaction do
           now = Time.now
+          position = TaskItem.max_position(task_list.id) + 1.0
 
           DB[:task_items].insert(
             id: item_id,
             task_list_id: task_list.id,
             user_id: user_id,
             content: content,
+            position: position,
             created_at: now,
             updated_at: now
           )

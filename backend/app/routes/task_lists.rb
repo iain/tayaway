@@ -55,12 +55,15 @@ class App
       response.status = 403
       next { error: "Access denied" } unless member_of_workspace?(task_list.workspace_id)
 
-      # PUT /api/task-lists/:id - Rename a task list
+      # PUT /api/task-lists/:id - Update a task list (rename and/or reposition)
       r.is do
         r.put do
+          position_param = r.params["position"]
+          position = position_param ? position_param.to_f : nil
           result = TaskLists::Update.call(
             task_list_id: task_list.id,
-            name: r.params["name"]&.strip
+            name: r.params["name"]&.strip,
+            position: position
           )
           handle_result(result)
         end
@@ -88,16 +91,21 @@ class App
 
         # /api/task-lists/:id/items/:item_id routes
         r.on String do |item_id|
-          # PUT /api/task-lists/:id/items/:item_id - Update an item
+          # PUT /api/task-lists/:id/items/:item_id - Update an item (content, completion, position, and/or list)
           r.put do
             completed_param = r.params["completed"]
             completed = completed_param == true || completed_param == "true" ? true : (completed_param == false || completed_param == "false" ? false : nil)
+
+            position_param = r.params["position"]
+            position = position_param ? position_param.to_f : nil
 
             result = TaskLists::UpdateItem.call(
               task_list_id: task_list.id,
               task_item_id: item_id,
               content: r.params["content"]&.strip,
-              completed: completed
+              completed: completed,
+              position: position,
+              new_task_list_id: r.params["task_list_id"]
             )
             handle_result(result)
           end

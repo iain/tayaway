@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, watchEffect, nextTick } from 'vue'
 import { PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import { VueDraggable } from 'vue-draggable-plus'
+import type { SortableEvent } from 'vue-draggable-plus'
 import {
   useTaskListsStore,
   useTaskItemsStore,
@@ -34,20 +36,76 @@ const clearedIds = ref(new Set<string>())
 // even if an in-flight addItem response clears the pending completedAt update.
 const localCompletedIds = ref(new Set<string>())
 
-const items = computed((): PoolTaskItem[] =>
-  pool
+// Local sorted list for drag-and-drop (synced from pool)
+const itemsLocal = ref<PoolTaskItem[]>([])
+
+watchEffect(() => {
+  itemsLocal.value = pool
     .getAll('taskItem')
     .filter(
       (item) =>
         item.taskListId === props.taskList.id && !clearedIds.value.has(item.id)
     )
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-)
+    .sort((a, b) => a.position - b.position)
+})
+
+const items = computed(() => itemsLocal.value)
 
 const completedItems = computed(() =>
   items.value.filter((i) => i.completedAt !== null)
 )
 const hasCompleted = computed(() => completedItems.value.length > 0)
+
+// Handles same-list reorders. @end fires on the SOURCE, so skip cross-list drags here.
+async function handleItemDragEnd(event: SortableEvent) {
+  if (event.from !== event.to) return
+
+  const newIndex = event.newIndex
+  if (newIndex === undefined) return
+
+  const list = itemsLocal.value
+  const movedItem = list[newIndex]
+  if (!movedItem) return
+
+  const before = newIndex > 0 ? (list[newIndex - 1]?.position ?? null) : null
+  const after =
+    newIndex < list.length - 1 ? (list[newIndex + 1]?.position ?? null) : null
+
+  await taskItemsStore.repositionItem(
+    movedItem.taskListId,
+    movedItem.id,
+    before,
+    after
+  )
+}
+
+// Handles cross-list drops INTO this list. @add fires on the TARGET with
+// v-model already updated, so itemsLocal[newIndex] is the moved item
+// (taskListId still points to source list until the optimistic update).
+async function handleItemDragAdd(event: SortableEvent) {
+  const newIndex = event.newIndex
+  if (newIndex === undefined) return
+
+  const list = itemsLocal.value
+  const movedItem = list[newIndex]
+  if (!movedItem) return
+
+  const sourceListId = movedItem.taskListId
+  const targetListId = props.taskList.id
+  if (sourceListId === targetListId) return // shouldn't happen in @add
+
+  const before = newIndex > 0 ? (list[newIndex - 1]?.position ?? null) : null
+  const after =
+    newIndex < list.length - 1 ? (list[newIndex + 1]?.position ?? null) : null
+
+  await taskItemsStore.repositionItem(
+    sourceListId,
+    movedItem.id,
+    before,
+    after,
+    targetListId
+  )
+}
 
 async function handleAddItem(): Promise<void> {
   const content = newItemContent.value.trim()
@@ -152,6 +210,25 @@ async function handleDeleteList(): Promise<void> {
     <div class="px-4 py-4 sm:px-6">
       <!-- Header -->
       <div class="mb-3 flex items-center justify-between gap-2">
+        <span
+          class="list-drag-handle cursor-grab touch-none text-gray-300 hover:text-gray-400 dark:text-stone-600 dark:hover:text-stone-400"
+          data-testid="task-list-drag-handle"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="size-5"
+            fill="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <circle cx="9" cy="5" r="1.5" />
+            <circle cx="15" cy="5" r="1.5" />
+            <circle cx="9" cy="12" r="1.5" />
+            <circle cx="15" cy="12" r="1.5" />
+            <circle cx="9" cy="19" r="1.5" />
+            <circle cx="15" cy="19" r="1.5" />
+          </svg>
+        </span>
+
         <div v-if="isRenaming" class="flex flex-1 items-center gap-2">
           <input
             v-model="renameValue"
@@ -164,7 +241,7 @@ async function handleDeleteList(): Promise<void> {
         </div>
         <h2
           v-else
-          class="text-base font-semibold text-gray-900 dark:text-white"
+          class="flex-1 text-base font-semibold text-gray-900 dark:text-white"
         >
           {{ taskList.name }}
         </h2>
@@ -201,10 +278,18 @@ async function handleDeleteList(): Promise<void> {
         </button>
       </div>
 
-      <!-- Items -->
-      <ul
-        v-if="items.length > 0"
+      <!-- Items (always rendered so empty lists can receive cross-list drops) -->
+      <VueDraggable
+        v-model="itemsLocal"
+        tag="ul"
         class="divide-y divide-gray-100 dark:divide-stone-700"
+        :class="{ 'min-h-8': items.length === 0 }"
+        group="task-items"
+        handle=".item-drag-handle"
+        :animation="150"
+        ghost-class="opacity-50"
+        @end="handleItemDragEnd"
+        @add="handleItemDragAdd"
       >
         <TaskItemRow
           v-for="item in items"
@@ -213,7 +298,7 @@ async function handleDeleteList(): Promise<void> {
           @toggle="handleToggle"
           @delete="handleDeleteItem"
         />
-      </ul>
+      </VueDraggable>
 
       <!-- Add item input -->
       <div class="mt-3 flex items-center gap-2">

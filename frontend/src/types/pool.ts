@@ -90,6 +90,7 @@ export interface ObjectTypeMap {
     workspaceId: string
     memberId: string | null
     name: string
+    position: number
     createdAt: string
   }
   taskItem: PoolObjectBase<'taskItem'> & {
@@ -97,6 +98,7 @@ export interface ObjectTypeMap {
     memberId: string | null
     content: string
     completedAt: string | null
+    position: number
     createdAt: string
   }
 }

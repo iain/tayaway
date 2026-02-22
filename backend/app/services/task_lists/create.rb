@@ -54,12 +54,14 @@ module TaskLists
         task_list = DB.transaction do
           now = Time.now
           list_id = id || SecureRandom.uuid
+          position = TaskList.max_position(workspace_id) + 1.0
 
           DB[:task_lists].insert(
             id: list_id,
             workspace_id: workspace_id,
             user_id: user_id,
             name: name,
+            position: position,
             created_at: now,
             updated_at: now
           )
