@@ -70,4 +70,8 @@ export const relationshipSchema: RelationshipSchema = {
       targetType: 'taskList',
     },
   },
+  expense: {
+    event: { type: 'belongsTo', foreignKey: 'eventId', targetType: 'event' },
+    member: { type: 'belongsTo', foreignKey: 'memberId', targetType: 'member' },
+  },
 } as const

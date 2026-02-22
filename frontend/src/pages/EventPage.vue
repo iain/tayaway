@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeftIcon,
   ArrowPathIcon,
+  BanknotesIcon,
   CalendarDaysIcon,
   PencilIcon,
 } from '@heroicons/vue/24/outline'
@@ -39,6 +40,10 @@ const isOwner = computed(() => {
 
 function handleBack(): void {
   router.push('/events')
+}
+
+function handleExpenses(): void {
+  router.push(`/events/${eventId.value}/expenses`)
 }
 
 function handleEdit(): void {
@@ -85,29 +90,35 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
         <ArrowLeftIcon class="size-4" />
         Back to Events
       </TextButton>
-      <div v-if="isOwner" class="flex items-center gap-4">
-        <TextButton
-          v-if="isPollResolved(event?.datePoll)"
-          @click="handleReopenPoll"
-        >
-          <ArrowPathIcon class="size-4" />
-          Reopen Poll
+      <div class="flex items-center gap-4">
+        <TextButton @click="handleExpenses">
+          <BanknotesIcon class="size-4" />
+          Expenses
         </TextButton>
-        <TextButton
-          v-if="isPollOpen(event?.datePoll)"
-          @click="handleEditDateRanges"
-        >
-          <PencilIcon class="size-4" />
-          Edit Date Ranges
-        </TextButton>
-        <TextButton v-if="!event?.datePoll" @click="handleOpenPoll">
-          <CalendarDaysIcon class="size-4" />
-          Open Date Poll
-        </TextButton>
-        <TextButton @click="handleEdit">
-          <PencilIcon class="size-4" />
-          Edit Event
-        </TextButton>
+        <div v-if="isOwner" class="flex items-center gap-4">
+          <TextButton
+            v-if="isPollResolved(event?.datePoll)"
+            @click="handleReopenPoll"
+          >
+            <ArrowPathIcon class="size-4" />
+            Reopen Poll
+          </TextButton>
+          <TextButton
+            v-if="isPollOpen(event?.datePoll)"
+            @click="handleEditDateRanges"
+          >
+            <PencilIcon class="size-4" />
+            Edit Date Ranges
+          </TextButton>
+          <TextButton v-if="!event?.datePoll" @click="handleOpenPoll">
+            <CalendarDaysIcon class="size-4" />
+            Open Date Poll
+          </TextButton>
+          <TextButton @click="handleEdit">
+            <PencilIcon class="size-4" />
+            Edit Event
+          </TextButton>
+        </div>
       </div>
     </div>
 

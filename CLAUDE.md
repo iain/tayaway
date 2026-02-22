@@ -123,6 +123,7 @@ votes              id, date_range_id, user_id, response (yes/no/preferably_not),
 rsvps              id, event_id, user_id, attending (boolean), start_date (nullable), end_date (nullable), timestamps, unique(event_id, user_id), check(start_date <= end_date)
 task_lists         id, workspace_id (FK cascade), user_id (FK set_null, nullable), name TEXT, position FLOAT (ordered within workspace), timestamps
 task_items         id, task_list_id (FK cascade), user_id (FK set_null, nullable), content TEXT, completed_at (TIMESTAMPTZ nullable), position FLOAT (ordered within list), timestamps
+expenses           id (UUID), event_id (FK cascade), user_id (FK set_null, nullable), amount NUMERIC NOT NULL (euros), description TEXT NOT NULL, timestamps
 ```
 
 **Hierarchy:** Workspace -> Event -> DatePoll -> DateRange -> Vote
@@ -173,6 +174,13 @@ task_items         id, task_list_id (FK cascade), user_id (FK set_null, nullable
 - `DELETE /:id/items/:item_id` — Delete item
 - `POST /:id/clear-completed` — Delete all completed items
 
+**Expenses (`/api/expenses`)** — All require authentication + workspace membership (via event)
+
+- `GET /?event_id=xxx` — List expenses for event
+- `POST /` — Create expense (body: event_id, description, amount, id?)
+- `PUT /:id` — Update expense (creator-only; description and/or amount)
+- `DELETE /:id` — Delete expense (creator-only)
+
 **Members (`/api/members`)** — Requires authentication
 
 - `POST /` — Add member to workspace by email
@@ -211,6 +219,7 @@ These types must stay in sync between frontend and backend:
 | member    | `WorkspaceMembership` | `member`          | `add_workspace_membership` |
 | task_list | `TaskList`            | `taskList`        | `add_task_list`            |
 | task_item | `TaskItem`            | `taskItem`        | `add_task_item`            |
+| expense   | `Expense`             | `expense`         | `add_expense`              |
 
 Defined in: `backend/app/object_registry.rb` and `frontend/src/types/pool.ts`
 

@@ -171,6 +171,18 @@ class PoolSerializer
     @objects[key] = hash
   end
 
+  sig { params(expense: Expense).void }
+  def add_expense(expense)
+    key = "expense:#{expense.id}"
+    return if @objects.key?(key)
+
+    hash = expense.to_api_hash
+    mid = expense.user_id ? member_id_for_user(T.must(expense.user_id)) : nil
+    hash[:memberId] = mid
+    hash.delete(:userId)
+    @objects[key] = hash
+  end
+
   sig { params(items: T::Enumerable[T.untyped], type: Symbol).void }
   def add_all(items, type:)
     entry = ObjectRegistry::BY_KEY[type.to_s]

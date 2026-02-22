@@ -11,6 +11,7 @@ import EventVotePage from '@/pages/EventVotePage.vue'
 import EventDateRangesPage from '@/pages/EventDateRangesPage.vue'
 import MembersPage from '@/pages/MembersPage.vue'
 import TasksPage from '@/pages/TasksPage.vue'
+import EventExpensesPage from '@/pages/EventExpensesPage.vue'
 import LoginPage from '@/pages/LoginPage.vue'
 import AuthVerifyPage from '@/pages/AuthVerifyPage.vue'
 
@@ -61,6 +62,11 @@ const router = createRouter({
           path: 'events/:id/edit',
           name: 'events-edit',
           component: EventEditPage,
+        },
+        {
+          path: 'events/:id/expenses',
+          name: 'event-expenses',
+          component: EventExpensesPage,
         },
         {
           path: 'tasks',
