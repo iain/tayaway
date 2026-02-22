@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useExpensesStore } from '@/stores/expenses'
+import CurrencyInput from '@/components/form/CurrencyInput.vue'
 
 const props = defineProps<{
   eventId: string
@@ -30,24 +31,21 @@ async function handleSubmit() {
 
 <template>
   <form class="flex gap-2" @submit.prevent="handleSubmit">
-    <input
-      v-model="description"
-      type="text"
-      placeholder="Description"
-      class="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none dark:border-stone-600 dark:bg-stone-800 dark:text-white dark:placeholder-stone-500 dark:focus:border-cyan-500"
-    />
-    <input
-      v-model="amount"
-      type="number"
-      step="0.01"
-      min="0.01"
-      placeholder="€0.00"
-      class="w-28 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none dark:border-stone-600 dark:bg-stone-800 dark:text-white dark:placeholder-stone-500 dark:focus:border-cyan-500"
-    />
+    <div
+      class="flex min-w-0 flex-1 items-center rounded-md bg-gray-100 px-3 outline-1 -outline-offset-1 outline-gray-300 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-cyan-500 dark:bg-white/5 dark:outline-white/10 dark:focus-within:outline-cyan-500"
+    >
+      <input
+        v-model="description"
+        type="text"
+        placeholder="Description"
+        class="block min-w-0 grow bg-transparent py-1.5 text-sm/6 text-gray-900 placeholder:text-gray-400 focus:outline-none dark:text-white dark:placeholder:text-stone-500"
+      />
+    </div>
+    <CurrencyInput v-model="amount" class="w-28" placeholder="0.00" />
     <button
       type="submit"
       :disabled="submitting"
-      class="rounded-md bg-cyan-600 px-3 py-2 text-sm font-medium text-white hover:bg-cyan-700 disabled:opacity-50 dark:bg-cyan-700 dark:hover:bg-cyan-600"
+      class="rounded-md bg-cyan-600 px-3 py-1.5 text-sm/6 font-medium text-white hover:bg-cyan-700 disabled:opacity-50 dark:bg-cyan-700 dark:hover:bg-cyan-600"
     >
       Add
     </button>

@@ -299,7 +299,7 @@ test.describe('Expenses Feature', () => {
         timeout: PAGE_LOAD_TIMEOUT,
       })
       await expect(page.getByPlaceholder('Description')).toBeVisible()
-      await expect(page.getByPlaceholder('€0.00')).toBeVisible()
+      await expect(page.getByPlaceholder('0.00')).toBeVisible()
       await expect(page.getByRole('button', { name: 'Add' })).toBeVisible()
     })
 
@@ -312,7 +312,7 @@ test.describe('Expenses Feature', () => {
         timeout: PAGE_LOAD_TIMEOUT,
       })
       await page.getByPlaceholder('Description').fill(description)
-      await page.getByPlaceholder('€0.00').fill('4.50')
+      await page.getByPlaceholder('0.00').fill('4.50')
       await page.getByRole('button', { name: 'Add' }).click()
 
       const row = page
