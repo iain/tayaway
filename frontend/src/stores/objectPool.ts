@@ -1,4 +1,4 @@
-import { ref, computed, triggerRef } from 'vue'
+import { ref, computed, triggerRef, toRaw } from 'vue'
 import { defineStore } from 'pinia'
 import {
   OBJECT_TYPES,
@@ -173,13 +173,15 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     return applyTransform(type, merged)
   }
 
-  // Get raw server object without pending updates
+  // Get raw server object without pending updates.
+  // Returns a plain (non-reactive) object so it can be safely stored in IndexedDB.
   function getServer<T extends ObjectType>(
     type: T,
     id: string
   ): ObjectTypeMap[T] | undefined {
     const typeMap = objects.value.get(type)
-    return typeMap?.get(id) as ObjectTypeMap[T] | undefined
+    const obj = typeMap?.get(id)
+    return obj ? (toRaw(obj) as ObjectTypeMap[T]) : undefined
   }
 
   // Get all objects of a type

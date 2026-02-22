@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { useMutation } from '@/composables/useMutation'
 import { useObjectPoolStore } from './objectPool'
-import { useCommandQueueStore } from './commandQueue'
+import { useCommandQueueStore, CommandQueuedError } from './commandQueue'
 import { useAuthStore } from './auth'
 import type { PoolApiResponse, PoolTaskItem } from '@/types/pool'
 
@@ -100,7 +100,11 @@ export const useTaskItemsStore = defineStore('taskItems', () => {
         {}
       )
     } catch (e) {
-      // Restore items on error
+      if (e instanceof CommandQueuedError) {
+        // Request queued for later — keep items optimistically removed
+        return
+      }
+      // Restore items on actual error
       for (const item of saved) {
         if (item) pool.set(item)
       }
