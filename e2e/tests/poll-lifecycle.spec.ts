@@ -358,7 +358,7 @@ test.describe('Poll Lifecycle UI', () => {
       await expect(dateRangeItems).toHaveCount(2)
 
       // 5. Navigate back to event page, then to vote page
-      await page.getByRole('button', { name: 'Back to Event' }).click()
+      await page.getByRole('link', { name: 'RSVP' }).click()
       await expect(page).toHaveURL(`/events/${eventId}`)
       await page.getByRole('button', { name: 'Vote on Dates' }).click()
       await expect(page).toHaveURL(`/events/${eventId}/vote`)
@@ -371,7 +371,7 @@ test.describe('Poll Lifecycle UI', () => {
       ).toHaveClass(/bg-green-600/)
 
       // 6. Go back and close the poll
-      await page.getByRole('button', { name: 'Back to Event' }).click()
+      await page.getByRole('link', { name: 'RSVP' }).click()
       await expect(page).toHaveURL(`/events/${eventId}`)
       await page.getByRole('button', { name: 'Select Winner' }).click()
       await expect(page.getByRole('dialog')).toBeVisible()

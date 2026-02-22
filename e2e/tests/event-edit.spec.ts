@@ -35,7 +35,7 @@ test.describe('Event Edit Page', () => {
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
-      await page.getByRole('button', { name: 'Edit Event' }).click()
+      await page.getByRole('link', { name: 'Edit' }).click()
       await expect(page).toHaveURL(`/events/${eventId}/edit`)
     })
 
@@ -232,7 +232,7 @@ test.describe('Event Edit Page', () => {
       })
 
       // Navigate to edit page
-      await page.getByRole('button', { name: 'Edit Event' }).click()
+      await page.getByRole('link', { name: 'Edit' }).click()
       await expect(page).toHaveURL(`/events/${event!.id}/edit`)
       await expect(
         page.getByRole('heading', { name: 'Edit Event' })

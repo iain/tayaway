@@ -280,10 +280,10 @@ test.describe('Expenses Feature', () => {
       await setupAuthenticatedPage(page, sessionToken)
       await page.goto(`/events/${eventId}`)
 
-      await expect(page.getByRole('button', { name: /expenses/i })).toBeVisible(
-        { timeout: PAGE_LOAD_TIMEOUT }
-      )
-      await page.getByRole('button', { name: /expenses/i }).click()
+      await expect(page.getByRole('link', { name: /expenses/i })).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+      await page.getByRole('link', { name: /expenses/i }).click()
 
       await expect(page).toHaveURL(`/events/${eventId}/expenses`)
       await expect(

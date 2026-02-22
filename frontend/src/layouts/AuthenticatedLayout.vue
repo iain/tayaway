@@ -24,6 +24,7 @@ import {
   useWorkspaceStore,
   useCommandQueueStore,
 } from '@/stores'
+import { useObjectPoolStore } from '@/stores/objectPool'
 import { useDarkMode } from '@/composables/useDarkMode'
 import CommandPalette from '@/components/common/CommandPalette.vue'
 
@@ -33,6 +34,7 @@ const authStore = useAuthStore()
 const wsStore = useWebSocketStore()
 const workspaceStore = useWorkspaceStore()
 const commandQueueStore = useCommandQueueStore()
+const objectPoolStore = useObjectPoolStore()
 const { user } = storeToRefs(authStore)
 const { state: wsState, hasSynced, hasCachedData } = storeToRefs(wsStore)
 const { pendingCount, isOnline } = storeToRefs(commandQueueStore)
@@ -60,8 +62,45 @@ const userNavigation = [
 
 const currentRouteName = computed(() => route.name)
 
+const eventDetailRoutes = new Set([
+  'event',
+  'event-vote',
+  'event-date-ranges',
+  'events-edit',
+  'event-expenses',
+])
+
+const currentEventName = computed(() => {
+  const name = route.name as string
+  const id = route.params.id as string | undefined
+  if (!id || !eventDetailRoutes.has(name)) return null
+  return objectPoolStore.get('event', id)?.name ?? null
+})
+
+const eventSubNavTab = computed(() => {
+  const name = currentRouteName.value as string
+  if (name === 'event-vote' || name === 'event-date-ranges') return 'planning'
+  if (name === 'event-expenses') return 'expenses'
+  if (name === 'events-edit') return 'edit'
+  if (name === 'event') return 'rsvp'
+  return null
+})
+
+function subNavClass(active: boolean): string {
+  return [
+    'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+    active
+      ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
+      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-stone-400 dark:hover:bg-stone-700 dark:hover:text-stone-100',
+  ].join(' ')
+}
+
 function isActive(routeName: string): boolean {
-  return currentRouteName.value === routeName
+  const currentName = currentRouteName.value as string
+  if (routeName === 'events') {
+    return currentName === 'events' || currentName?.startsWith('event')
+  }
+  return currentName === routeName
 }
 
 async function handleSignOut() {
@@ -408,6 +447,53 @@ function getInitials(email: string | undefined): string {
         <slot name="header" />
       </div>
     </header>
+
+    <div
+      v-if="currentEventName"
+      class="border-b border-gray-200 bg-white dark:border-stone-700 dark:bg-stone-800"
+    >
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between py-3">
+          <div>
+            <p
+              class="text-xs font-medium tracking-wide text-gray-500 uppercase dark:text-stone-400"
+            >
+              Event
+            </p>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+              {{ currentEventName }}
+            </h2>
+          </div>
+          <nav class="flex items-center gap-1">
+            <router-link
+              :to="`/events/${route.params.id}/vote`"
+              :class="subNavClass(eventSubNavTab === 'planning')"
+            >
+              Planning
+            </router-link>
+            <router-link
+              :to="`/events/${route.params.id}`"
+              :class="subNavClass(eventSubNavTab === 'rsvp')"
+            >
+              RSVP
+            </router-link>
+            <router-link
+              :to="`/events/${route.params.id}/expenses`"
+              :class="subNavClass(eventSubNavTab === 'expenses')"
+            >
+              Expenses
+            </router-link>
+            <router-link
+              :to="`/events/${route.params.id}/edit`"
+              :class="subNavClass(eventSubNavTab === 'edit')"
+            >
+              Edit
+            </router-link>
+          </nav>
+        </div>
+      </div>
+    </div>
+
     <main>
       <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <RouterView />

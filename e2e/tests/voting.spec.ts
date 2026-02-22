@@ -575,7 +575,10 @@ test.describe('Voting Feature', () => {
       await setupAuthenticatedPage(page, sessionToken)
 
       await page.goto(`/events/${eventId}`)
-      await page.getByRole('button', { name: 'Back to Events' }).click()
+      await expect(page.getByTestId('event-name')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+      await page.getByRole('link', { name: 'Events' }).first().click()
 
       await expect(page).toHaveURL('/events')
     })

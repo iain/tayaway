@@ -1,17 +1,18 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
+import { useRoute } from 'vue-router'
+import { ArrowPathIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores'
+import { useDatePollsStore } from '@/stores/datePolls'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
-import { isPollOpen } from '@/utils/poll'
+import { isPollOpen, isPollResolved } from '@/utils/poll'
 import VotingCard from '@/components/votes/VotingCard.vue'
-import TextButton from '@/components/common/TextButton.vue'
+import OpenPollModal from '@/components/events/OpenPollModal.vue'
 
 const route = useRoute()
-const router = useRouter()
 const authStore = useAuthStore()
+const datePollsStore = useDatePollsStore()
 const { currentMemberId } = storeToRefs(authStore)
 
 const eventId = computed(() => route.params.id as string)
@@ -20,25 +21,26 @@ const eventId = computed(() => route.params.id as string)
 const { event } = useHydratedEvent(eventId)
 
 const pollOpen = computed(() => isPollOpen(event.value?.datePoll))
+const isOwner = computed(() => currentMemberId.value === event.value?.memberId)
 
 const dateRanges = computed(() => {
   return event.value?.datePoll?.dateRanges ?? []
 })
 
-function handleBack(): void {
-  router.push(`/events/${eventId.value}`)
+const showReopenModal = ref(false)
+
+async function handleReopenConfirm(deadline: string): Promise<void> {
+  try {
+    await datePollsStore.reopenPoll(eventId.value, deadline)
+    showReopenModal.value = false
+  } catch {
+    // Error handled by store
+  }
 }
 </script>
 
 <template>
   <div>
-    <div class="mb-6">
-      <TextButton @click="handleBack">
-        <ArrowLeftIcon class="size-4" />
-        Back to Event
-      </TextButton>
-    </div>
-
     <div v-if="!event" class="text-gray-500 dark:text-stone-400">
       Event not found
     </div>
@@ -49,30 +51,34 @@ function handleBack(): void {
     >
       <p class="mb-2 text-lg font-medium">Voting is closed</p>
       <p>The date poll is no longer accepting votes.</p>
-      <TextButton class="mt-4" @click="handleBack">
-        <ArrowLeftIcon class="size-4" />
-        Back to Event
-      </TextButton>
+      <div v-if="isOwner && isPollResolved(event.datePoll)" class="mt-4">
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600"
+          @click="showReopenModal = true"
+        >
+          <ArrowPathIcon class="size-4" />
+          Reopen Poll
+        </button>
+      </div>
     </div>
 
     <div v-else>
-      <!-- Event Header -->
-      <header class="mb-8">
-        <h1
-          class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white"
-        >
-          {{ event.name }}
-        </h1>
-        <p class="mt-2 text-sm text-gray-500 dark:text-stone-400">
-          Vote on your preferred dates below
-        </p>
-      </header>
-
       <!-- Date Ranges with Voting -->
       <section>
-        <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-          Date Options
-        </h2>
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+            Date Options
+          </h2>
+          <router-link
+            v-if="isOwner"
+            :to="`/events/${eventId}/date-ranges`"
+            class="inline-flex items-center gap-1.5 text-sm text-cyan-600 underline hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
+          >
+            <PencilSquareIcon class="size-4" />
+            Edit options
+          </router-link>
+        </div>
 
         <div v-if="dateRanges.length === 0" class="py-8 text-center">
           <p class="text-gray-500 dark:text-stone-400">
@@ -92,4 +98,13 @@ function handleBack(): void {
       </section>
     </div>
   </div>
+
+  <OpenPollModal
+    :open="showReopenModal"
+    title="Reopen Date Poll"
+    :loading="datePollsStore.loading"
+    :autofocus-submit="true"
+    @confirm="handleReopenConfirm"
+    @close="showReopenModal = false"
+  />
 </template>

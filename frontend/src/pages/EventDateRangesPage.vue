@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeftIcon, PlusIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import { useRoute } from 'vue-router'
+import { PlusIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { useAuthStore, useDatePollsStore } from '@/stores'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
 import type { HydratedDateRange } from '@/composables/useHydratedEvent'
@@ -10,12 +10,10 @@ import { useCalendar } from '@/composables/useCalendar'
 import DateRangeModal from '@/components/events/DateRangeModal.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import VotersList from '@/components/votes/VotersList.vue'
-import TextButton from '@/components/common/TextButton.vue'
 import PrimaryButton from '@/components/common/PrimaryButton.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 
 const route = useRoute()
-const router = useRouter()
 const authStore = useAuthStore()
 const datePollsStore = useDatePollsStore()
 const { currentMemberId } = storeToRefs(authStore)
@@ -38,10 +36,6 @@ const isOwner = computed(() => {
 const dateRanges = computed(() => {
   return event.value?.datePoll?.dateRanges ?? []
 })
-
-function handleBack(): void {
-  router.push(`/events/${eventId.value}`)
-}
 
 function handleAddDateRange(): void {
   if (dateRanges.value.length > 0) {
@@ -93,13 +87,6 @@ async function deleteRange(dateRangeId: string): Promise<void> {
 
 <template>
   <div>
-    <div class="mb-6 flex items-center justify-between">
-      <TextButton @click="handleBack">
-        <ArrowLeftIcon class="size-4" />
-        Back to Event
-      </TextButton>
-    </div>
-
     <div v-if="!event" class="text-gray-500 dark:text-stone-400">
       Event not found
     </div>

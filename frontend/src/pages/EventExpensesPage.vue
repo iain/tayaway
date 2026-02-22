@@ -1,18 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { api } from '@/api/client'
-import TextButton from '@/components/common/TextButton.vue'
 import ExpenseRow from '@/components/expenses/ExpenseRow.vue'
 import AddExpenseForm from '@/components/expenses/AddExpenseForm.vue'
 import type { PoolApiResponse } from '@/types/pool'
 
 const route = useRoute()
-const router = useRouter()
 const authStore = useAuthStore()
 const pool = useObjectPoolStore()
 const { currentMemberId } = storeToRefs(authStore)
@@ -37,21 +34,10 @@ const formattedTotal = computed(() => `€${total.value.toFixed(2)}`)
 onMounted(async () => {
   await api.get<PoolApiResponse>(`/expenses?event_id=${eventId.value}`)
 })
-
-function handleBack(): void {
-  router.push(`/events/${eventId.value}`)
-}
 </script>
 
 <template>
   <div>
-    <div class="mb-6">
-      <TextButton @click="handleBack">
-        <ArrowLeftIcon class="size-4" />
-        Back to Event
-      </TextButton>
-    </div>
-
     <div v-if="!event" class="text-gray-500 dark:text-stone-400">
       Event not found
     </div>

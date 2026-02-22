@@ -2,17 +2,11 @@
 import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  ArrowLeftIcon,
-  ArrowPathIcon,
-  BanknotesIcon,
-  CalendarDaysIcon,
-  PencilIcon,
-} from '@heroicons/vue/24/outline'
+import { ArrowPathIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores'
 import { useDatePollsStore } from '@/stores/datePolls'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
-import { isPollActive, isPollOpen, isPollResolved } from '@/utils/poll'
+import { isPollActive, isPollResolved } from '@/utils/poll'
 import { eventHasDates } from '@/utils/event'
 import DatePollSection from '@/components/events/DatePollSection.vue'
 import RsvpSection from '@/components/events/RsvpSection.vue'
@@ -37,22 +31,6 @@ const { event } = useHydratedEvent(eventId)
 const isOwner = computed(() => {
   return currentMemberId.value === event.value?.memberId
 })
-
-function handleBack(): void {
-  router.push('/events')
-}
-
-function handleExpenses(): void {
-  router.push(`/events/${eventId.value}/expenses`)
-}
-
-function handleEdit(): void {
-  router.push(`/events/${eventId.value}/edit`)
-}
-
-function handleEditDateRanges(): void {
-  router.push(`/events/${eventId.value}/date-ranges`)
-}
 
 function handleVote(): void {
   router.push(`/events/${eventId.value}/vote`)
@@ -85,43 +63,6 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
 
 <template>
   <div>
-    <div class="mb-6 flex items-center justify-between">
-      <TextButton @click="handleBack">
-        <ArrowLeftIcon class="size-4" />
-        Back to Events
-      </TextButton>
-      <div class="flex items-center gap-4">
-        <TextButton @click="handleExpenses">
-          <BanknotesIcon class="size-4" />
-          Expenses
-        </TextButton>
-        <div v-if="isOwner" class="flex items-center gap-4">
-          <TextButton
-            v-if="isPollResolved(event?.datePoll)"
-            @click="handleReopenPoll"
-          >
-            <ArrowPathIcon class="size-4" />
-            Reopen Poll
-          </TextButton>
-          <TextButton
-            v-if="isPollOpen(event?.datePoll)"
-            @click="handleEditDateRanges"
-          >
-            <PencilIcon class="size-4" />
-            Edit Date Ranges
-          </TextButton>
-          <TextButton v-if="!event?.datePoll" @click="handleOpenPoll">
-            <CalendarDaysIcon class="size-4" />
-            Open Date Poll
-          </TextButton>
-          <TextButton @click="handleEdit">
-            <PencilIcon class="size-4" />
-            Edit Event
-          </TextButton>
-        </div>
-      </div>
-    </div>
-
     <div v-if="!event" class="text-gray-500 dark:text-stone-400">
       Event not found
     </div>
@@ -129,33 +70,50 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
     <div v-else>
       <!-- Event Header -->
       <header class="mb-8">
-        <h1
-          data-testid="event-name"
-          class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white"
-        >
-          {{ event.name }}
-        </h1>
-        <p
-          v-if="event.description"
-          class="mt-2 text-lg text-gray-600 dark:text-stone-400"
-        >
-          {{ event.description }}
-        </p>
-        <p
-          v-if="eventHasDates(event)"
-          data-testid="event-dates"
-          class="mt-2 flex items-center gap-1.5 text-sm text-gray-600 dark:text-stone-300"
-        >
-          <CalendarDaysIcon class="size-4" />
-          <DateRangeDisplay
-            :start-date="event.startDate!"
-            :end-date="event.endDate!"
-          />
-        </p>
-        <p class="mt-2 text-sm text-gray-500 dark:text-stone-400">
-          Created by
-          {{ event.member?.name || event.member?.email || 'Unknown' }}
-        </p>
+        <div class="flex items-start justify-between">
+          <div>
+            <h1
+              data-testid="event-name"
+              class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white"
+            >
+              {{ event.name }}
+            </h1>
+            <p
+              v-if="event.description"
+              class="mt-2 text-lg text-gray-600 dark:text-stone-400"
+            >
+              {{ event.description }}
+            </p>
+            <p
+              v-if="eventHasDates(event)"
+              data-testid="event-dates"
+              class="mt-2 flex items-center gap-1.5 text-sm text-gray-600 dark:text-stone-300"
+            >
+              <CalendarDaysIcon class="size-4" />
+              <DateRangeDisplay
+                :start-date="event.startDate!"
+                :end-date="event.endDate!"
+              />
+            </p>
+            <p class="mt-2 text-sm text-gray-500 dark:text-stone-400">
+              Created by
+              {{ event.member?.name || event.member?.email || 'Unknown' }}
+            </p>
+          </div>
+          <div v-if="isOwner" class="ml-4 flex shrink-0 items-center gap-3">
+            <TextButton
+              v-if="isPollResolved(event?.datePoll)"
+              @click="handleReopenPoll"
+            >
+              <ArrowPathIcon class="size-4" />
+              Reopen Poll
+            </TextButton>
+            <TextButton v-if="!event?.datePoll" @click="handleOpenPoll">
+              <CalendarDaysIcon class="size-4" />
+              Open Date Poll
+            </TextButton>
+          </div>
+        </div>
       </header>
 
       <!-- Stats Grid -->
