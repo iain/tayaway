@@ -7,6 +7,7 @@ import { useObjectPoolStore } from '@/stores/objectPool'
 import { api } from '@/api/client'
 import ExpenseRow from '@/components/expenses/ExpenseRow.vue'
 import AddExpenseForm from '@/components/expenses/AddExpenseForm.vue'
+import ExpenseSplit from '@/components/expenses/ExpenseSplit.vue'
 import type { PoolApiResponse } from '@/types/pool'
 
 const route = useRoute()
@@ -32,7 +33,10 @@ const total = computed(() =>
 const formattedTotal = computed(() => `€${total.value.toFixed(2)}`)
 
 onMounted(async () => {
-  await api.get<PoolApiResponse>(`/expenses?event_id=${eventId.value}`)
+  await Promise.all([
+    api.get<PoolApiResponse>(`/expenses?event_id=${eventId.value}`),
+    api.get<PoolApiResponse>(`/events/${eventId.value}/rsvps`),
+  ])
 })
 </script>
 
@@ -71,6 +75,8 @@ onMounted(async () => {
       </p>
 
       <AddExpenseForm :event-id="eventId" />
+
+      <ExpenseSplit v-if="event" :event="event" :total="total" />
     </div>
   </div>
 </template>

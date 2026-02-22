@@ -3,6 +3,12 @@ interface EventLike {
   endDate: string | null
 }
 
+export function countNights(startDate: string, endDate: string): number {
+  return (
+    (new Date(endDate).getTime() - new Date(startDate).getTime()) / 86_400_000
+  )
+}
+
 export function eventHasDates(event: EventLike | null | undefined): boolean {
   return event != null && event.startDate != null && event.endDate != null
 }

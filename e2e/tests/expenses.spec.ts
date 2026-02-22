@@ -6,6 +6,7 @@ import {
   getTestSession,
   setupAuthenticatedPage,
   createBareEvent,
+  createResolvedEvent,
   PAGE_LOAD_TIMEOUT,
 } from '../helpers'
 
@@ -246,6 +247,125 @@ test.describe('Expenses Feature', () => {
         { data: { description: 'Updated Taxi' } }
       )
       expect(response.ok()).toBeTruthy()
+    })
+  })
+
+  test.describe('Expense Split UI', () => {
+    const SPLIT_USER_A_EMAIL = 'e2e-split-a@example.com'
+    const SPLIT_USER_A_NAME = 'Split User A'
+    const SPLIT_USER_B_EMAIL = 'e2e-split-b@example.com'
+    const SPLIT_USER_B_NAME = 'Split User B'
+
+    test('cost split section is hidden when event has no dates', async ({
+      page,
+      playwright,
+    }) => {
+      const apiContext = await playwright.request.newContext()
+      const { token } = await getTestSession(
+        apiContext,
+        SPLIT_USER_A_EMAIL,
+        SPLIT_USER_A_NAME
+      )
+      const eventId = await createBareEvent(apiContext, 'No Dates Split Test')
+      await apiContext.dispose()
+
+      await setupAuthenticatedPage(page, token)
+      await page.goto(`/events/${eventId}/expenses`)
+
+      await expect(page.getByRole('heading', { name: 'Expenses' })).toBeVisible(
+        { timeout: PAGE_LOAD_TIMEOUT }
+      )
+      await expect(
+        page.getByRole('heading', { name: 'Cost Split' })
+      ).not.toBeVisible()
+    })
+
+    test('shows split for single attendee with settled balance', async ({
+      page,
+      playwright,
+    }) => {
+      const apiContext = await playwright.request.newContext()
+      const { token } = await getTestSession(
+        apiContext,
+        SPLIT_USER_A_EMAIL,
+        SPLIT_USER_A_NAME
+      )
+      const { eventId } = await createResolvedEvent(apiContext)
+
+      await apiContext.post(`${API_BASE}/api/expenses`, {
+        data: { event_id: eventId, description: 'Hotel', amount: 40 },
+      })
+      await apiContext.dispose()
+
+      await setupAuthenticatedPage(page, token)
+      await page.goto(`/events/${eventId}/expenses`)
+
+      await expect(
+        page.getByRole('heading', { name: 'Cost Split' })
+      ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
+
+      // Single attendee has 100% and is settled (they paid exactly their share)
+      await expect(page.getByText('100%')).toBeVisible()
+      await expect(page.getByText('settled')).toBeVisible()
+    })
+
+    test('shows correct per-person balances with two attendees', async ({
+      page,
+      playwright,
+    }) => {
+      // User A creates event and is auto-RSVP'd attending after poll close
+      const apiContextA = await playwright.request.newContext()
+      const { token: tokenA } = await getTestSession(
+        apiContextA,
+        SPLIT_USER_A_EMAIL,
+        SPLIT_USER_A_NAME
+      )
+      const { eventId } = await createResolvedEvent(apiContextA)
+
+      // Add User B to the workspace and have them RSVP attending
+      const apiContextB = await playwright.request.newContext()
+      await getTestSession(apiContextB, SPLIT_USER_B_EMAIL, SPLIT_USER_B_NAME)
+
+      const wsResp = await apiContextA.get(`${API_BASE}/api/workspaces`)
+      const wsBody = await wsResp.json()
+      const workspace = getObjectByType(wsBody.objects, 'workspace')!
+
+      await apiContextA.post(`${API_BASE}/api/members`, {
+        data: { workspace_id: workspace.id, email: SPLIT_USER_B_EMAIL },
+      })
+
+      await apiContextB.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
+        data: { attending: true },
+      })
+
+      // User A pays €100 — both attend 6 nights, so each owes €50
+      await apiContextA.post(`${API_BASE}/api/expenses`, {
+        data: { event_id: eventId, description: 'Hotel', amount: 100 },
+      })
+
+      await apiContextA.dispose()
+      await apiContextB.dispose()
+
+      await setupAuthenticatedPage(page, tokenA)
+      await page.goto(`/events/${eventId}/expenses`)
+
+      await expect(
+        page.getByRole('heading', { name: 'Cost Split' })
+      ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
+
+      // User A: paid €100, fair share €50.00 → owed €50.00 back
+      const rowA = page.getByRole('row').filter({ hasText: SPLIT_USER_A_NAME })
+      await expect(rowA.getByText('50%')).toBeVisible()
+      await expect(rowA.getByText('€100.00', { exact: true })).toBeVisible()
+      await expect(rowA.getByText('€50.00', { exact: true })).toBeVisible()
+      await expect(rowA.getByText('owed €50.00')).toBeVisible()
+
+      // User B: paid €0.00, fair share €50.00 → owes €50.00
+      const rowB = page.getByRole('row').filter({ hasText: SPLIT_USER_B_NAME })
+      await expect(rowB.getByText('50%')).toBeVisible()
+      await expect(rowB.getByText('€0.00', { exact: true })).toBeVisible()
+      await expect(rowB.getByText('€50.00', { exact: true })).toBeVisible()
+      await expect(rowB.getByText('owes €50.00')).toBeVisible()
     })
   })
 
