@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watchEffect } from 'vue'
+import { ref, watch, watchEffect } from 'vue'
 import { storeToRefs } from 'pinia'
 import { ClipboardDocumentListIcon, PlusIcon } from '@heroicons/vue/24/outline'
 import { VueDraggable } from 'vue-draggable-plus'
@@ -12,6 +12,7 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import PrimaryButton from '@/components/common/PrimaryButton.vue'
 import AddTaskListModal from '@/components/tasks/AddTaskListModal.vue'
 import TaskListCard from '@/components/tasks/TaskListCard.vue'
+import { useTaskActions } from '@/composables/useTaskActions'
 import type { PoolTaskList } from '@/types/pool'
 
 const taskListsStore = useTaskListsStore()
@@ -19,7 +20,17 @@ const pool = useObjectPoolStore()
 const workspaceStore = useWorkspaceStore()
 const { currentWorkspaceId } = storeToRefs(workspaceStore)
 
+const { pendingNewList } = useTaskActions()
+
 const isModalOpen = ref(false)
+
+watch(pendingNewList, (val) => {
+  if (val) {
+    pendingNewList.value = false
+    openModal()
+  }
+})
+
 const isSubmitting = ref(false)
 const formError = ref<string | null>(null)
 

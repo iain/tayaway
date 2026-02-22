@@ -6,8 +6,11 @@ import {
   ArrowPathIcon,
   ArrowRightOnRectangleIcon,
   CalendarDaysIcon,
+  CheckCircleIcon,
+  ClipboardDocumentListIcon,
   HomeIcon,
   MoonIcon,
+  PlusIcon,
   SignalIcon,
   SunIcon,
   UserCircleIcon,
@@ -24,8 +27,14 @@ import {
   TransitionChild,
   TransitionRoot,
 } from '@headlessui/vue'
-import { useAuthStore, useObjectPoolStore, useWebSocketStore } from '@/stores'
+import {
+  useAuthStore,
+  useObjectPoolStore,
+  useWebSocketStore,
+  useWorkspaceStore,
+} from '@/stores'
 import { useDarkMode } from '@/composables/useDarkMode'
+import { useTaskActions } from '@/composables/useTaskActions'
 
 interface NavAction {
   type: 'action'
@@ -42,13 +51,28 @@ interface EventResult {
   name: string
 }
 
-type CommandItem = NavAction | EventResult
+interface TaskListResult {
+  type: 'taskList'
+  id: string
+  name: string
+}
+
+interface TaskItemResult {
+  type: 'taskItem'
+  id: string
+  name: string
+  listName: string
+}
+
+type CommandItem = NavAction | EventResult | TaskListResult | TaskItemResult
 
 const router = useRouter()
 const pool = useObjectPoolStore()
 const authStore = useAuthStore()
 const wsStore = useWebSocketStore()
+const workspaceStore = useWorkspaceStore()
 const { isDark, toggle: toggleDarkMode } = useDarkMode()
+const { triggerNewList } = useTaskActions()
 
 async function resetLocalCache(): Promise<void> {
   await poolDb.clearAll()
@@ -71,6 +95,13 @@ const quickActions = computed<NavAction[]>(() => [
   },
   {
     type: 'action',
+    id: 'tasks',
+    name: 'Tasks',
+    icon: ClipboardDocumentListIcon,
+    href: '/tasks',
+  },
+  {
+    type: 'action',
     id: 'members',
     name: 'Members',
     icon: UserGroupIcon,
@@ -82,6 +113,18 @@ const quickActions = computed<NavAction[]>(() => [
     name: 'Your Profile',
     icon: UserCircleIcon,
     href: '/profile',
+  },
+  {
+    type: 'action',
+    id: 'new-task-list',
+    name: 'New task list',
+    icon: PlusIcon,
+    run: async () => {
+      if (router.currentRoute.value.path !== '/tasks') {
+        await router.push('/tasks')
+      }
+      triggerNewList()
+    },
   },
   {
     type: 'action',
@@ -125,6 +168,44 @@ const filteredEvents = computed<EventResult[]>(() => {
     .map((e) => ({ type: 'event' as const, id: e.id, name: e.name }))
 })
 
+const filteredTaskLists = computed<TaskListResult[]>(() => {
+  if (!query.value) return []
+  const q = query.value.toLowerCase()
+  const wsId = workspaceStore.currentWorkspaceId
+  return pool
+    .getAll('taskList')
+    .filter(
+      (tl) => tl.workspaceId === wsId && tl.name.toLowerCase().includes(q)
+    )
+    .map((tl) => ({ type: 'taskList' as const, id: tl.id, name: tl.name }))
+})
+
+const filteredTaskItems = computed<TaskItemResult[]>(() => {
+  if (!query.value) return []
+  const q = query.value.toLowerCase()
+  const wsId = workspaceStore.currentWorkspaceId
+  const taskListNames = new Map(
+    pool
+      .getAll('taskList')
+      .filter((tl) => tl.workspaceId === wsId)
+      .map((tl) => [tl.id, tl.name])
+  )
+  return pool
+    .getAll('taskItem')
+    .filter(
+      (item) =>
+        taskListNames.has(item.taskListId) &&
+        item.completedAt === null &&
+        item.content.toLowerCase().includes(q)
+    )
+    .map((item) => ({
+      type: 'taskItem' as const,
+      id: item.id,
+      name: item.content,
+      listName: taskListNames.get(item.taskListId) ?? '',
+    }))
+})
+
 const filteredActions = computed<NavAction[]>(() => {
   if (!query.value) return []
   const q = query.value.toLowerCase()
@@ -132,7 +213,11 @@ const filteredActions = computed<NavAction[]>(() => {
 })
 
 const hasResults = computed(
-  () => filteredEvents.value.length > 0 || filteredActions.value.length > 0
+  () =>
+    filteredEvents.value.length > 0 ||
+    filteredTaskLists.value.length > 0 ||
+    filteredTaskItems.value.length > 0 ||
+    filteredActions.value.length > 0
 )
 
 function onSelect(item: CommandItem | null) {
@@ -144,8 +229,10 @@ function onSelect(item: CommandItem | null) {
     } else if (item.href) {
       router.push(item.href)
     }
-  } else {
+  } else if (item.type === 'event') {
     router.push(`/events/${item.id}`)
+  } else {
+    router.push('/tasks')
   }
 }
 
@@ -299,6 +386,98 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
                     </ul>
                   </li>
 
+                  <li v-if="filteredTaskLists.length > 0" class="p-2">
+                    <h2
+                      class="mb-2 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400"
+                    >
+                      Task Lists
+                    </h2>
+                    <ul class="text-sm text-gray-700 dark:text-gray-300">
+                      <ComboboxOption
+                        v-for="list in filteredTaskLists"
+                        :key="list.id"
+                        v-slot="{ active }"
+                        :value="list"
+                        as="template"
+                      >
+                        <li
+                          :class="[
+                            'flex cursor-default items-center rounded-md px-3 py-2 select-none',
+                            active &&
+                              'bg-amber-500 text-white dark:bg-amber-600',
+                          ]"
+                        >
+                          <ClipboardDocumentListIcon
+                            :class="[
+                              'size-5 flex-none',
+                              active
+                                ? 'text-white'
+                                : 'text-gray-400 dark:text-gray-500',
+                            ]"
+                            aria-hidden="true"
+                          />
+                          <span class="ml-3 flex-auto truncate">{{
+                            list.name
+                          }}</span>
+                          <span
+                            v-if="active"
+                            class="ml-3 flex-none text-xs text-amber-100"
+                          >
+                            Jump to...
+                          </span>
+                        </li>
+                      </ComboboxOption>
+                    </ul>
+                  </li>
+
+                  <li v-if="filteredTaskItems.length > 0" class="p-2">
+                    <h2
+                      class="mb-2 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400"
+                    >
+                      Task Items
+                    </h2>
+                    <ul class="text-sm text-gray-700 dark:text-gray-300">
+                      <ComboboxOption
+                        v-for="item in filteredTaskItems"
+                        :key="item.id"
+                        v-slot="{ active }"
+                        :value="item"
+                        as="template"
+                      >
+                        <li
+                          :class="[
+                            'flex cursor-default items-center rounded-md px-3 py-2 select-none',
+                            active &&
+                              'bg-amber-500 text-white dark:bg-amber-600',
+                          ]"
+                        >
+                          <CheckCircleIcon
+                            :class="[
+                              'size-5 flex-none',
+                              active
+                                ? 'text-white'
+                                : 'text-gray-400 dark:text-gray-500',
+                            ]"
+                            aria-hidden="true"
+                          />
+                          <span class="ml-3 flex-auto truncate">{{
+                            item.name
+                          }}</span>
+                          <span
+                            :class="[
+                              'ml-3 flex-none truncate text-xs',
+                              active
+                                ? 'text-amber-100'
+                                : 'text-gray-400 dark:text-gray-500',
+                            ]"
+                          >
+                            {{ item.listName }}
+                          </span>
+                        </li>
+                      </ComboboxOption>
+                    </ul>
+                  </li>
+
                   <li v-if="filteredActions.length > 0" class="p-2">
                     <h2
                       class="mb-2 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400"
@@ -344,13 +523,13 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
                 v-if="query !== '' && !hasResults"
                 class="px-6 py-14 text-center sm:px-14"
               >
-                <CalendarDaysIcon
+                <ClipboardDocumentListIcon
                   class="mx-auto size-6 text-gray-400 dark:text-gray-500"
                   aria-hidden="true"
                 />
                 <p class="mt-4 text-sm text-gray-600 dark:text-gray-400">
-                  No results for "{{ query }}". Try searching for an event or
-                  page name.
+                  No results for "{{ query }}". Try searching for an event,
+                  task, or page name.
                 </p>
               </div>
             </Combobox>
