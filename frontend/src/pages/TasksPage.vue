@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { ref, watch, watchEffect } from 'vue'
+import {
+  ref,
+  computed,
+  watch,
+  watchEffect,
+  onMounted,
+  onUnmounted,
+  nextTick,
+} from 'vue'
 import { storeToRefs } from 'pinia'
 import { ClipboardDocumentListIcon, PlusIcon } from '@heroicons/vue/24/outline'
 import { VueDraggable } from 'vue-draggable-plus'
@@ -13,7 +21,7 @@ import PrimaryButton from '@/components/common/PrimaryButton.vue'
 import AddTaskListModal from '@/components/tasks/AddTaskListModal.vue'
 import TaskListCard from '@/components/tasks/TaskListCard.vue'
 import { useTaskActions } from '@/composables/useTaskActions'
-import type { PoolTaskList } from '@/types/pool'
+import type { PoolTaskList, PoolTaskItem } from '@/types/pool'
 
 const taskListsStore = useTaskListsStore()
 const pool = useObjectPoolStore()
@@ -43,6 +51,115 @@ watchEffect(() => {
     .filter((tl) => tl.workspaceId === currentWorkspaceId.value)
     .sort((a, b) => a.position - b.position)
 })
+
+// Keyboard navigation
+const highlightedItemId = ref<string | null>(null)
+
+interface TaskListCardExposed {
+  focusInput(): void
+  toggleItem(item: PoolTaskItem): void
+  deleteItem(item: PoolTaskItem): void
+}
+const cardRefs = ref<Record<string, TaskListCardExposed>>({})
+
+function setCardRef(id: string, el: unknown): void {
+  if (el) {
+    cardRefs.value[id] = el as TaskListCardExposed
+  } else {
+    delete cardRefs.value[id]
+  }
+}
+
+const allItems = computed(() => {
+  const result: PoolTaskItem[] = []
+  for (const list of taskListsLocal.value) {
+    const listItems = pool
+      .getAll('taskItem')
+      .filter((item) => item.taskListId === list.id)
+      .sort((a, b) => a.position - b.position)
+    result.push(...listItems)
+  }
+  return result
+})
+
+watch(allItems, (items) => {
+  if (
+    highlightedItemId.value &&
+    !items.find((i) => i.id === highlightedItemId.value)
+  ) {
+    highlightedItemId.value = null
+  }
+})
+
+function isInputActive(): boolean {
+  const el = document.activeElement
+  return (
+    el instanceof HTMLInputElement ||
+    el instanceof HTMLTextAreaElement ||
+    (el instanceof HTMLElement && el.isContentEditable)
+  )
+}
+
+async function handleKeydown(e: KeyboardEvent): Promise<void> {
+  if (isInputActive() || isModalOpen.value) return
+  const items = allItems.value
+
+  if (e.key === 'j') {
+    e.preventDefault()
+    if (items.length === 0) return
+    if (highlightedItemId.value === null) {
+      highlightedItemId.value = items[0]!.id
+    } else {
+      const idx = items.findIndex((item) => item.id === highlightedItemId.value)
+      if (idx < items.length - 1) highlightedItemId.value = items[idx + 1]!.id
+    }
+    await nextTick()
+    document
+      .querySelector(`[data-item-id="${highlightedItemId.value}"]`)
+      ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  } else if (e.key === 'k') {
+    e.preventDefault()
+    if (items.length === 0) return
+    if (highlightedItemId.value === null) {
+      highlightedItemId.value = items[items.length - 1]!.id
+    } else {
+      const idx = items.findIndex((item) => item.id === highlightedItemId.value)
+      if (idx > 0) highlightedItemId.value = items[idx - 1]!.id
+    }
+    await nextTick()
+    document
+      .querySelector(`[data-item-id="${highlightedItemId.value}"]`)
+      ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  } else if (e.key === ' ') {
+    if (highlightedItemId.value === null) return
+    e.preventDefault()
+    const item = items.find((i) => i.id === highlightedItemId.value)
+    if (!item) return
+    cardRefs.value[item.taskListId]?.toggleItem(item)
+  } else if (e.key === 'Backspace') {
+    if (highlightedItemId.value === null) return
+    e.preventDefault()
+    const item = items.find((i) => i.id === highlightedItemId.value)
+    if (!item) return
+    const idx = items.indexOf(item)
+    highlightedItemId.value = items[idx + 1]?.id ?? items[idx - 1]?.id ?? null
+    cardRefs.value[item.taskListId]?.deleteItem(item)
+  } else if (e.key === 'i') {
+    e.preventDefault()
+    if (highlightedItemId.value !== null) {
+      const item = items.find((i) => i.id === highlightedItemId.value)
+      if (item) {
+        cardRefs.value[item.taskListId]?.focusInput()
+        return
+      }
+    }
+    const firstList = taskListsLocal.value[0]
+    if (firstList) cardRefs.value[firstList.id]?.focusInput()
+  }
+}
+
+onMounted(() => window.addEventListener('keydown', handleKeydown))
+onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
 
 async function handleListDragEnd(event: SortableEvent) {
   const newIndex = event.newIndex
@@ -127,7 +244,10 @@ async function handleSave(name: string): Promise<void> {
       <TaskListCard
         v-for="taskList in taskListsLocal"
         :key="taskList.id"
+        :ref="(el) => setCardRef(taskList.id, el)"
         :task-list="taskList"
+        :highlighted-item-id="highlightedItemId"
+        @highlight="highlightedItemId = $event"
       />
     </VueDraggable>
 

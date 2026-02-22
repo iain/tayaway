@@ -4,16 +4,24 @@ import type { PoolTaskItem } from '@/types/pool'
 
 defineProps<{
   item: PoolTaskItem
+  highlighted?: boolean
 }>()
 
 const emit = defineEmits<{
   toggle: [item: PoolTaskItem]
   delete: [item: PoolTaskItem]
+  highlight: [item: PoolTaskItem]
 }>()
 </script>
 
 <template>
-  <li class="flex items-center gap-3 py-2" data-testid="task-item-row">
+  <li
+    class="flex items-center gap-3 py-2"
+    :class="highlighted ? 'rounded bg-rose-50 dark:bg-rose-900/20' : ''"
+    :data-item-id="item.id"
+    data-testid="task-item-row"
+    @mouseenter="emit('highlight', item)"
+  >
     <span
       class="item-drag-handle cursor-grab touch-none text-gray-300 hover:text-gray-400 dark:text-stone-600 dark:hover:text-stone-400"
       data-testid="task-item-drag-handle"

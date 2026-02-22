@@ -14,6 +14,11 @@ import type { PoolTaskList, PoolTaskItem } from '@/types/pool'
 
 const props = defineProps<{
   taskList: PoolTaskList
+  highlightedItemId?: string | null
+}>()
+
+const emit = defineEmits<{
+  highlight: [itemId: string]
 }>()
 
 const taskListsStore = useTaskListsStore()
@@ -200,6 +205,18 @@ async function handleDeleteList(): Promise<void> {
     // error shown via store
   }
 }
+
+defineExpose({
+  focusInput(): void {
+    newItemInput.value?.focus()
+  },
+  toggleItem(item: PoolTaskItem): void {
+    void handleToggle(item)
+  },
+  deleteItem(item: PoolTaskItem): void {
+    void handleDeleteItem(item)
+  },
+})
 </script>
 
 <template>
@@ -295,8 +312,10 @@ async function handleDeleteList(): Promise<void> {
           v-for="item in items"
           :key="item.id"
           :item="item"
+          :highlighted="item.id === highlightedItemId"
           @toggle="handleToggle"
           @delete="handleDeleteItem"
+          @highlight="emit('highlight', $event.id)"
         />
       </VueDraggable>
 
@@ -310,6 +329,7 @@ async function handleDeleteList(): Promise<void> {
           class="flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
           :disabled="isAddingItem"
           @keyup.enter="handleAddItem"
+          @keyup.escape="newItemInput?.blur()"
         />
         <button
           type="button"
