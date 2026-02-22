@@ -252,14 +252,20 @@ test.describe('Tasks Feature', () => {
 
   test.describe('Tasks UI - Authenticated', () => {
     let sessionToken: string
+    let apiContext: APIRequestContext
+    let workspaceId: string
     // Unique suffix prevents collisions with accumulated data from previous runs
     const uid = Date.now()
 
     test.beforeAll(async ({ playwright }) => {
-      const ctx = await playwright.request.newContext()
-      const { token } = await getTestSession(ctx, TEST_EMAIL, TEST_NAME)
+      apiContext = await playwright.request.newContext()
+      const { token } = await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
       sessionToken = token
-      await ctx.dispose()
+      workspaceId = await getWorkspaceId(apiContext)
+    })
+
+    test.afterAll(async () => {
+      await apiContext.dispose()
     })
 
     test('tasks page shows header and New List button', async ({ page }) => {
@@ -305,14 +311,11 @@ test.describe('Tasks Feature', () => {
     })
 
     test('can add an item to a task list', async ({ page }) => {
+      const listName = `Add Item List ${uid}`
+      await createTaskList(apiContext, workspaceId, listName)
+
       await setupAuthenticatedPage(page, sessionToken)
       await page.goto('/tasks')
-
-      const listName = `Add Item List ${uid}`
-      await page.getByTestId('add-task-list-button').click()
-      await page.getByLabel('Name').fill(listName)
-      await page.getByTestId('submit-button').click()
-      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
 
       const card = page
         .getByTestId('task-list-card')
@@ -326,22 +329,16 @@ test.describe('Tasks Feature', () => {
     })
 
     test('can check and uncheck a task item', async ({ page }) => {
+      const listName = `Checkbox List ${uid}`
+      const listId = await createTaskList(apiContext, workspaceId, listName)
+      await addTaskItem(apiContext, listId, 'Do the thing')
+
       await setupAuthenticatedPage(page, sessionToken)
       await page.goto('/tasks')
-
-      const listName = `Checkbox List ${uid}`
-      await page.getByTestId('add-task-list-button').click()
-      await page.getByLabel('Name').fill(listName)
-      await page.getByTestId('submit-button').click()
-      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
 
       const card = page
         .getByTestId('task-list-card')
         .filter({ hasText: listName })
-      await expect(card).toBeVisible()
-
-      await card.getByPlaceholder('Add an item...').fill('Do the thing')
-      await card.getByPlaceholder('Add an item...').press('Enter')
       await expect(card.getByText('Do the thing')).toBeVisible()
 
       // Check it
@@ -362,16 +359,13 @@ test.describe('Tasks Feature', () => {
     })
 
     test('can rename a task list', async ({ page }) => {
+      const oldName = `Rename Me ${uid}`
+      const newName = `Renamed ${uid}`
+      await createTaskList(apiContext, workspaceId, oldName)
+
       await setupAuthenticatedPage(page, sessionToken)
       await page.goto('/tasks')
 
-      const oldName = `Rename Me ${uid}`
-      const newName = `Renamed ${uid}`
-      await page.getByTestId('add-task-list-button').click()
-      await page.getByLabel('Name').fill(oldName)
-      await page.getByTestId('submit-button').click()
-
-      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
       const card = page
         .getByTestId('task-list-card')
         .filter({ hasText: oldName })
@@ -391,15 +385,12 @@ test.describe('Tasks Feature', () => {
     })
 
     test('can delete a task list', async ({ page }) => {
+      const listName = `Delete Me ${uid}`
+      await createTaskList(apiContext, workspaceId, listName)
+
       await setupAuthenticatedPage(page, sessionToken)
       await page.goto('/tasks')
 
-      const listName = `Delete Me ${uid}`
-      await page.getByTestId('add-task-list-button').click()
-      await page.getByLabel('Name').fill(listName)
-      await page.getByTestId('submit-button').click()
-
-      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
       const card = page
         .getByTestId('task-list-card')
         .filter({ hasText: listName })
@@ -413,27 +404,18 @@ test.describe('Tasks Feature', () => {
     test('clear completed button appears and removes completed items', async ({
       page,
     }) => {
+      const listName = `Clear Test ${uid}`
+      const listId = await createTaskList(apiContext, workspaceId, listName)
+      await addTaskItem(apiContext, listId, 'Keep this')
+      await addTaskItem(apiContext, listId, 'Mark done')
+
       await setupAuthenticatedPage(page, sessionToken)
       await page.goto('/tasks')
 
-      const listName = `Clear Test ${uid}`
-      await page.getByTestId('add-task-list-button').click()
-      await page.getByLabel('Name').fill(listName)
-      await page.getByTestId('submit-button').click()
-
-      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
       const card = page
         .getByTestId('task-list-card')
         .filter({ hasText: listName })
-      await expect(card).toBeVisible()
-
-      // Add two items
-      await card.getByPlaceholder('Add an item...').fill('Keep this')
-      await card.getByPlaceholder('Add an item...').press('Enter')
       await expect(card.getByText('Keep this')).toBeVisible()
-
-      await card.getByPlaceholder('Add an item...').fill('Mark done')
-      await card.getByPlaceholder('Add an item...').press('Enter')
       await expect(card.getByText('Mark done')).toBeVisible()
 
       // Complete the second item (select by row content to avoid order sensitivity)

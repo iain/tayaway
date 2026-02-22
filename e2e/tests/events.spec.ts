@@ -190,7 +190,9 @@ test.describe('Events Feature', () => {
       await expect(page.getByRole('link', { name: 'Events' })).toBeVisible()
     })
 
-    test('new event button opens modal', async ({ page }) => {
+    test('new event button opens modal with required fields', async ({
+      page,
+    }) => {
       await setupAuthenticatedPage(page, sessionToken)
       await page.goto('/events')
 
@@ -199,13 +201,6 @@ test.describe('Events Feature', () => {
       await expect(
         page.getByRole('dialog').getByRole('heading', { name: 'New Event' })
       ).toBeVisible()
-    })
-
-    test('create event modal has required fields', async ({ page }) => {
-      await setupAuthenticatedPage(page, sessionToken)
-      await page.goto('/events')
-
-      await page.getByTestId('new-event-button').click()
       await expect(page.getByLabel('Name')).toBeVisible()
       await expect(page.getByLabel(/Description/)).toBeVisible()
       await expect(page.getByTestId('modal-save-button')).toBeVisible()
