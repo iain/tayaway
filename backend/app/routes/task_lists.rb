@@ -44,10 +44,13 @@ class App
 
     # /api/task-lists/:id routes
     r.on String do |id|
-      task_list = TaskList.find(id)
-
-      response.status = 404
-      next { error: "Task list not found" } unless task_list
+      find_result = TaskList.find_result(id)
+      unless find_result.success?
+        error = find_result.failure
+        response.status = error.http_status
+        next error.to_api_hash
+      end
+      task_list = find_result.value!
 
       response.status = 403
       next { error: "Access denied" } unless member_of_workspace?(task_list.workspace_id)

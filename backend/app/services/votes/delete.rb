@@ -32,6 +32,8 @@ module Votes
         vote = Vote.find(vote_id)
         if vote
           T.cast(Success(vote), Result[Vote, ServiceError])
+        elsif DB[:deleted_items].where(object_type: "vote", object_id: vote_id).first
+          T.cast(Failure(ServiceError.gone("Vote not found")), Result[Vote, ServiceError])
         else
           T.cast(Failure(ServiceError.not_found("Vote not found")), Result[Vote, ServiceError])
         end

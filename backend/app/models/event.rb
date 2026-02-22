@@ -73,6 +73,8 @@ class Event < T::Struct
       event = find(id)
       if event
         T.cast(Success(event), Result[Event, ServiceError])
+      elsif DB[:deleted_items].where(object_type: "event", object_id: id).first
+        T.cast(Failure(ServiceError.gone("Event not found")), Result[Event, ServiceError])
       else
         T.cast(Failure(ServiceError.not_found("Event not found")), Result[Event, ServiceError])
       end

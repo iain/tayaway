@@ -24,7 +24,8 @@ class ServiceError < T::Struct
       unauthorized: 401,
       forbidden: 403,
       not_found: 404,
-      conflict: 409
+      conflict: 409,
+      gone: 410
     }.freeze, T::Hash[Symbol, Integer]
   )
 
@@ -64,6 +65,11 @@ class ServiceError < T::Struct
     sig { params(message: String).returns(ServiceError) }
     def conflict(message)
       new(code: :conflict, message: message)
+    end
+
+    sig { params(message: String).returns(ServiceError) }
+    def gone(message)
+      new(code: :gone, message: message)
     end
   end
 end

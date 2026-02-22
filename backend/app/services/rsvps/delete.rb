@@ -29,6 +29,8 @@ module Rsvps
         rsvp = Rsvp.find(rsvp_id)
         if rsvp
           T.cast(Success(rsvp), Result[Rsvp, ServiceError])
+        elsif DB[:deleted_items].where(object_type: "rsvp", object_id: rsvp_id).first
+          T.cast(Failure(ServiceError.gone("RSVP not found")), Result[Rsvp, ServiceError])
         else
           T.cast(Failure(ServiceError.not_found("RSVP not found")), Result[Rsvp, ServiceError])
         end

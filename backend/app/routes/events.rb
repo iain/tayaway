@@ -59,10 +59,13 @@ class App
 
     # /api/events/:id routes
     r.on String do |id|
-      event = Event.find(id)
-
-      response.status = 404
-      next { error: "Event not found" } unless event
+      find_result = Event.find_result(id)
+      unless find_result.success?
+        error = find_result.failure
+        response.status = error.http_status
+        next error.to_api_hash
+      end
+      event = find_result.value!
 
       # Verify user is a member of the event's workspace
       response.status = 403

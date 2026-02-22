@@ -61,6 +61,8 @@ class TaskItem < T::Struct
       item = find(id)
       if item
         T.cast(Success(item), Result[TaskItem, ServiceError])
+      elsif DB[:deleted_items].where(object_type: "task_item", object_id: id).first
+        T.cast(Failure(ServiceError.gone("Task item not found")), Result[TaskItem, ServiceError])
       else
         T.cast(Failure(ServiceError.not_found("Task item not found")), Result[TaskItem, ServiceError])
       end

@@ -139,7 +139,7 @@ test.describe('Tasks Feature', () => {
         `${API_BASE}/api/task-lists/${listId}`,
         { data: { name: 'Ghost' } }
       )
-      expect(verifyResponse.status()).toBe(404)
+      expect(verifyResponse.status()).toBe(410)
     })
 
     test('task item add, complete, update, and delete lifecycle', async () => {

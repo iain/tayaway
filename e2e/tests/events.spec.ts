@@ -127,7 +127,7 @@ test.describe('Events Feature', () => {
       const verifyResponse = await apiContext.get(
         `${API_BASE}/api/events/${eventId}`
       )
-      expect(verifyResponse.status()).toBe(404)
+      expect(verifyResponse.status()).toBe(410)
     })
 
     test('GET /api/events/:id returns 404 for non-existent event', async () => {

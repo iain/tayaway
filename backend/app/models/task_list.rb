@@ -52,6 +52,8 @@ class TaskList < T::Struct
       task_list = find(id)
       if task_list
         T.cast(Success(task_list), Result[TaskList, ServiceError])
+      elsif DB[:deleted_items].where(object_type: "task_list", object_id: id).first
+        T.cast(Failure(ServiceError.gone("Task list not found")), Result[TaskList, ServiceError])
       else
         T.cast(Failure(ServiceError.not_found("Task list not found")), Result[TaskList, ServiceError])
       end
