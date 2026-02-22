@@ -2,6 +2,11 @@ import { Page, APIRequestContext } from '@playwright/test'
 
 export const API_BASE = 'http://localhost:9293'
 
+// Assertions that fire immediately after page.goto() need extra headroom for
+// the frontend to fetch data and render. Everything else uses the 5 s default
+// configured in playwright.config.ts.
+export const PAGE_LOAD_TIMEOUT = 10_000
+
 export interface PoolObject {
   id: string
   objectType: string

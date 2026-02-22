@@ -4,6 +4,7 @@ import {
   getObjectByType,
   getTestSession,
   setupAuthenticatedPage,
+  PAGE_LOAD_TIMEOUT,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-events@example.com'
@@ -222,7 +223,9 @@ test.describe('Events Feature', () => {
       await page.getByTestId('modal-save-button').click()
 
       // Should redirect to the event page
-      await expect(page).toHaveURL(/\/events\/[\w-]+$/, { timeout: 10000 })
+      await expect(page).toHaveURL(/\/events\/[\w-]+$/, {
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
 
       // Event name should be visible on the event page
       await expect(page.getByTestId('event-name')).toContainText(

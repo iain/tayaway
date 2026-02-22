@@ -95,11 +95,11 @@ test.describe('Task Keyboard Navigation', () => {
 
     // Space completes the item
     await page.keyboard.press('Space')
-    await expect(text).toHaveClass(/line-through/, { timeout: 5000 })
+    await expect(text).toHaveClass(/line-through/)
 
     // Space again uncompletes it
     await page.keyboard.press('Space')
-    await expect(text).not.toHaveClass(/line-through/, { timeout: 5000 })
+    await expect(text).not.toHaveClass(/line-through/)
   })
 
   test('backspace deletes highlighted item and moves to next', async ({
@@ -124,10 +124,8 @@ test.describe('Task Keyboard Navigation', () => {
     await rows.nth(0).hover()
     await page.keyboard.press('Backspace')
 
-    await expect(card.getByText('Delete me')).not.toBeVisible({
-      timeout: 5000,
-    })
-    await expect(rows.first()).toHaveClass(/bg-rose-50/, { timeout: 5000 })
+    await expect(card.getByText('Delete me')).not.toBeVisible()
+    await expect(rows.first()).toHaveClass(/bg-rose-50/)
     await expect(card.getByText('Keep me')).toBeVisible()
   })
 
@@ -156,9 +154,7 @@ test.describe('Task Keyboard Navigation', () => {
     await rows.nth(1).hover()
     await page.keyboard.press('Backspace')
 
-    await expect(card.getByText('Delete me')).not.toBeVisible({
-      timeout: 5000,
-    })
+    await expect(card.getByText('Delete me')).not.toBeVisible()
     await expect(card.getByText('Keep me', { exact: true })).toBeVisible()
     await expect(card.getByText('Also keep me')).toBeVisible()
   })

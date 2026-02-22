@@ -6,6 +6,7 @@ import {
   getTestSession,
   setupAuthenticatedPage,
   createEventWithPoll,
+  PAGE_LOAD_TIMEOUT,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-voting@example.com'
@@ -590,7 +591,7 @@ test.describe('Voting Feature', () => {
 
       // Wait for the event name to be visible (indicates page is loaded)
       await expect(page.getByTestId('event-name')).toBeVisible({
-        timeout: 10000,
+        timeout: PAGE_LOAD_TIMEOUT,
       })
 
       // The votes section should show initially (just the creator)
@@ -598,7 +599,7 @@ test.describe('Voting Feature', () => {
         has: page.getByRole('heading', { name: 'Votes' }),
       })
       await expect(page.getByRole('heading', { name: 'Votes' })).toBeVisible({
-        timeout: 10000,
+        timeout: PAGE_LOAD_TIMEOUT,
       })
 
       // Now add a new member via API (simulating another tab/user adding someone)
@@ -614,7 +615,7 @@ test.describe('Voting Feature', () => {
 
       // The new member should appear in real-time via WebSocket (no page refresh)
       await expect(awaitingSection.getByText(newUserName)).toBeVisible({
-        timeout: 10000,
+        timeout: PAGE_LOAD_TIMEOUT,
       })
 
       // Should show count of people who haven't voted

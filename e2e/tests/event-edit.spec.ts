@@ -5,6 +5,7 @@ import {
   getTestSession,
   setupAuthenticatedPage,
   createBareEvent,
+  PAGE_LOAD_TIMEOUT,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-event-edit@example.com'
@@ -31,7 +32,7 @@ test.describe('Event Edit Page', () => {
 
       await page.goto(`/events/${eventId}`)
       await expect(page.getByTestId('event-name')).toBeVisible({
-        timeout: 10000,
+        timeout: PAGE_LOAD_TIMEOUT,
       })
 
       await page.getByRole('button', { name: 'Edit Event' }).click()
@@ -46,7 +47,7 @@ test.describe('Event Edit Page', () => {
       await expect(
         page.getByRole('heading', { name: 'Edit Event' })
       ).toBeVisible({
-        timeout: 10000,
+        timeout: PAGE_LOAD_TIMEOUT,
       })
     })
   })
@@ -60,7 +61,7 @@ test.describe('Event Edit Page', () => {
       await expect(
         page.getByRole('heading', { name: 'Edit Event' })
       ).toBeVisible({
-        timeout: 10000,
+        timeout: PAGE_LOAD_TIMEOUT,
       })
 
       await expect(page.getByTestId('event-name-input')).toHaveValue(
@@ -79,7 +80,7 @@ test.describe('Event Edit Page', () => {
       await expect(
         page.getByRole('heading', { name: 'Edit Event' })
       ).toBeVisible({
-        timeout: 10000,
+        timeout: PAGE_LOAD_TIMEOUT,
       })
 
       await expect(page.getByTestId('event-start-date-input')).toHaveValue('')
@@ -105,7 +106,7 @@ test.describe('Event Edit Page', () => {
       await expect(
         page.getByRole('heading', { name: 'Edit Event' })
       ).toBeVisible({
-        timeout: 10000,
+        timeout: PAGE_LOAD_TIMEOUT,
       })
 
       await expect(page.getByTestId('event-start-date-input')).toHaveValue(
@@ -126,7 +127,7 @@ test.describe('Event Edit Page', () => {
       await expect(
         page.getByRole('heading', { name: 'Edit Event' })
       ).toBeVisible({
-        timeout: 10000,
+        timeout: PAGE_LOAD_TIMEOUT,
       })
 
       // Fill in dates
@@ -137,12 +138,12 @@ test.describe('Event Edit Page', () => {
       await page.getByTestId('submit-button').click()
 
       // Should redirect to event page
-      await expect(page).toHaveURL(`/events/${eventId}`, { timeout: 10000 })
+      await expect(page).toHaveURL(`/events/${eventId}`, {
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
 
       // Dates should display on the event page
-      await expect(page.getByTestId('event-dates')).toBeVisible({
-        timeout: 5000,
-      })
+      await expect(page.getByTestId('event-dates')).toBeVisible()
       await expect(page.getByTestId('event-dates')).toContainText(/Sep 1/)
       await expect(page.getByTestId('event-dates')).toContainText(/Sep 5/)
     })
@@ -164,7 +165,7 @@ test.describe('Event Edit Page', () => {
       await expect(
         page.getByRole('heading', { name: 'Edit Event' })
       ).toBeVisible({
-        timeout: 10000,
+        timeout: PAGE_LOAD_TIMEOUT,
       })
 
       // Change dates
@@ -175,10 +176,10 @@ test.describe('Event Edit Page', () => {
       await page.getByTestId('submit-button').click()
 
       // Should redirect and show new dates
-      await expect(page).toHaveURL(`/events/${event!.id}`, { timeout: 10000 })
-      await expect(page.getByTestId('event-dates')).toBeVisible({
-        timeout: 5000,
+      await expect(page).toHaveURL(`/events/${event!.id}`, {
+        timeout: PAGE_LOAD_TIMEOUT,
       })
+      await expect(page.getByTestId('event-dates')).toBeVisible()
       await expect(page.getByTestId('event-dates')).toContainText(/Oct 15/)
       await expect(page.getByTestId('event-dates')).toContainText(/Oct 20/)
     })
@@ -191,7 +192,7 @@ test.describe('Event Edit Page', () => {
       await expect(
         page.getByRole('heading', { name: 'Edit Event' })
       ).toBeVisible({
-        timeout: 10000,
+        timeout: PAGE_LOAD_TIMEOUT,
       })
 
       // Set same start and end date
@@ -199,12 +200,12 @@ test.describe('Event Edit Page', () => {
       await page.getByTestId('event-end-date-input').fill('2026-12-25')
 
       await page.getByTestId('submit-button').click()
-      await expect(page).toHaveURL(`/events/${eventId}`, { timeout: 10000 })
+      await expect(page).toHaveURL(`/events/${eventId}`, {
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
 
       // Should display the date (only once, since start === end)
-      await expect(page.getByTestId('event-dates')).toBeVisible({
-        timeout: 5000,
-      })
+      await expect(page.getByTestId('event-dates')).toBeVisible()
       await expect(page.getByTestId('event-dates')).toContainText(/Dec 25/)
     })
   })
@@ -227,7 +228,7 @@ test.describe('Event Edit Page', () => {
       // Verify dates show on event page first
       await page.goto(`/events/${event!.id}`)
       await expect(page.getByTestId('event-dates')).toBeVisible({
-        timeout: 10000,
+        timeout: PAGE_LOAD_TIMEOUT,
       })
 
       // Navigate to edit page
@@ -236,7 +237,7 @@ test.describe('Event Edit Page', () => {
       await expect(
         page.getByRole('heading', { name: 'Edit Event' })
       ).toBeVisible({
-        timeout: 10000,
+        timeout: PAGE_LOAD_TIMEOUT,
       })
 
       // Clear dates
@@ -245,12 +246,12 @@ test.describe('Event Edit Page', () => {
 
       // Save
       await page.getByTestId('submit-button').click()
-      await expect(page).toHaveURL(`/events/${event!.id}`, { timeout: 10000 })
+      await expect(page).toHaveURL(`/events/${event!.id}`, {
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
 
       // Dates should no longer be displayed
-      await expect(page.getByTestId('event-dates')).not.toBeVisible({
-        timeout: 5000,
-      })
+      await expect(page.getByTestId('event-dates')).not.toBeVisible()
     })
   })
 
@@ -263,7 +264,7 @@ test.describe('Event Edit Page', () => {
       await expect(
         page.getByRole('heading', { name: 'Edit Event' })
       ).toBeVisible({
-        timeout: 10000,
+        timeout: PAGE_LOAD_TIMEOUT,
       })
 
       // Change the name
@@ -273,7 +274,9 @@ test.describe('Event Edit Page', () => {
       await page.getByTestId('cancel-button').click()
 
       // Should return to event page with original name
-      await expect(page).toHaveURL(`/events/${eventId}`, { timeout: 10000 })
+      await expect(page).toHaveURL(`/events/${eventId}`, {
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
       await expect(page.getByTestId('event-name')).toContainText(
         'Cancel Test Event'
       )
@@ -287,7 +290,7 @@ test.describe('Event Edit Page', () => {
       await expect(
         page.getByRole('heading', { name: 'Edit Event' })
       ).toBeVisible({
-        timeout: 10000,
+        timeout: PAGE_LOAD_TIMEOUT,
       })
 
       // Update name and add dates
@@ -296,15 +299,15 @@ test.describe('Event Edit Page', () => {
       await page.getByTestId('event-end-date-input').fill('2026-08-20')
 
       await page.getByTestId('submit-button').click()
-      await expect(page).toHaveURL(`/events/${eventId}`, { timeout: 10000 })
+      await expect(page).toHaveURL(`/events/${eventId}`, {
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
 
       // Both name and dates should be updated
       await expect(page.getByTestId('event-name')).toContainText(
         'Updated Event Name'
       )
-      await expect(page.getByTestId('event-dates')).toBeVisible({
-        timeout: 5000,
-      })
+      await expect(page.getByTestId('event-dates')).toBeVisible()
       await expect(page.getByTestId('event-dates')).toContainText(/Aug 15/)
       await expect(page.getByTestId('event-dates')).toContainText(/Aug 20/)
     })

@@ -306,7 +306,7 @@ test.describe('Tasks Feature', () => {
       await page.getByLabel('Name').fill(listName)
       await page.getByTestId('submit-button').click()
 
-      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
+      await expect(page.getByRole('dialog')).not.toBeVisible()
       await expect(page.getByText(listName)).toBeVisible()
     })
 
@@ -344,17 +344,12 @@ test.describe('Tasks Feature', () => {
       // Check it
       const checkbox = card.getByRole('checkbox')
       await checkbox.check()
-      await expect(card.getByText('Do the thing')).toHaveClass(/line-through/, {
-        timeout: 5000,
-      })
+      await expect(card.getByText('Do the thing')).toHaveClass(/line-through/)
 
       // Uncheck it
       await checkbox.uncheck()
       await expect(card.getByText('Do the thing')).not.toHaveClass(
-        /line-through/,
-        {
-          timeout: 5000,
-        }
+        /line-through/
       )
     })
 
@@ -381,7 +376,7 @@ test.describe('Tasks Feature', () => {
       await renameInput.fill(newName)
       await renameInput.press('Enter')
 
-      await expect(page.getByText(newName)).toBeVisible({ timeout: 5000 })
+      await expect(page.getByText(newName)).toBeVisible()
     })
 
     test('can delete a task list', async ({ page }) => {
@@ -398,7 +393,7 @@ test.describe('Tasks Feature', () => {
 
       await card.getByTitle('Delete list').click()
 
-      await expect(card).not.toBeVisible({ timeout: 5000 })
+      await expect(card).not.toBeVisible()
     })
 
     test('clear completed button appears and removes completed items', async ({
@@ -426,14 +421,10 @@ test.describe('Tasks Feature', () => {
         .check()
 
       // Clear completed button should appear
-      await expect(card.getByText(/Clear 1 completed/)).toBeVisible({
-        timeout: 5000,
-      })
+      await expect(card.getByText(/Clear 1 completed/)).toBeVisible()
       await card.getByText(/Clear 1 completed/).click()
 
-      await expect(card.getByText('Mark done')).not.toBeVisible({
-        timeout: 5000,
-      })
+      await expect(card.getByText('Mark done')).not.toBeVisible()
       await expect(card.getByText('Keep this')).toBeVisible()
       await expect(card.getByText(/Clear.*completed/)).not.toBeVisible()
     })

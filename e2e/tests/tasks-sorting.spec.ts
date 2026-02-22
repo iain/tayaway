@@ -347,9 +347,7 @@ test.describe('Task Sorting', () => {
       await secondHandle.dragTo(firstHandle)
 
       // Verify Second is now before First
-      await expect(card.locator('li').first()).toContainText('Second item', {
-        timeout: 5000,
-      })
+      await expect(card.locator('li').first()).toContainText('Second item')
     })
 
     test('can move item between task lists by dragging', async ({ page }) => {
@@ -380,10 +378,8 @@ test.describe('Task Sorting', () => {
       await itemHandle.dragTo(cardB)
 
       // Verify item moved: gone from A, present in B
-      await expect(cardA.getByText('Move me')).not.toBeVisible({
-        timeout: 5000,
-      })
-      await expect(cardB.getByText('Move me')).toBeVisible({ timeout: 5000 })
+      await expect(cardA.getByText('Move me')).not.toBeVisible()
+      await expect(cardB.getByText('Move me')).toBeVisible()
     })
   })
 })

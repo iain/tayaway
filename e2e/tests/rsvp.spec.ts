@@ -6,6 +6,7 @@ import {
   createEventWithPoll,
   createResolvedEvent,
   getObjectsByType,
+  PAGE_LOAD_TIMEOUT,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-rsvp@example.com'
@@ -34,7 +35,7 @@ test.describe('RSVP Feature', () => {
 
       await page.goto(`/events/${eventId}`)
       await expect(page.getByTestId('event-name')).toBeVisible({
-        timeout: 10000,
+        timeout: PAGE_LOAD_TIMEOUT,
       })
 
       // No dates set, so RSVP section should not be visible
@@ -49,13 +50,11 @@ test.describe('RSVP Feature', () => {
 
       await page.goto(`/events/${eventId}`)
       await expect(page.getByTestId('event-name')).toBeVisible({
-        timeout: 10000,
+        timeout: PAGE_LOAD_TIMEOUT,
       })
 
       // Resolved event has dates from winning date range
-      await expect(page.getByTestId('rsvp-section')).toBeVisible({
-        timeout: 5000,
-      })
+      await expect(page.getByTestId('rsvp-section')).toBeVisible()
     })
   })
 
@@ -68,7 +67,7 @@ test.describe('RSVP Feature', () => {
 
       await page.goto(`/events/${eventId}`)
       await expect(page.getByTestId('rsvp-section')).toBeVisible({
-        timeout: 10000,
+        timeout: PAGE_LOAD_TIMEOUT,
       })
 
       // First attend
@@ -104,14 +103,11 @@ test.describe('RSVP Feature', () => {
       await setupAuthenticatedPage(page, sessionToken)
       await page.goto(`/events/${eventId}`)
       await expect(page.getByTestId('rsvp-section')).toBeVisible({
-        timeout: 10000,
+        timeout: PAGE_LOAD_TIMEOUT,
       })
 
       // User should be auto-RSVPed as attending
-      await expect(page.getByTestId('rsvp-attend')).toHaveClass(
-        /bg-green-600/,
-        { timeout: 5000 }
-      )
+      await expect(page.getByTestId('rsvp-attend')).toHaveClass(/bg-green-600/)
     })
   })
 
