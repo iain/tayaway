@@ -472,11 +472,15 @@ function getInitials(email: string | undefined): string {
             >
               Event
             </p>
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+            <h2
+              data-testid="event-name"
+              class="text-lg font-semibold text-gray-900 dark:text-white"
+            >
               {{ currentEventName }}
             </h2>
             <p
               v-if="eventHasDates(currentEvent)"
+              data-testid="event-dates"
               class="flex items-center gap-1 text-xs text-gray-500 dark:text-stone-400"
             >
               <CalendarDaysIcon class="size-3.5" />

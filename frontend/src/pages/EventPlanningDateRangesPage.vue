@@ -102,9 +102,6 @@ async function deleteRange(dateRangeId: string): Promise<void> {
         >
           Edit Date Ranges
         </h1>
-        <p class="mt-2 text-sm text-gray-500 dark:text-stone-400">
-          {{ event.name }}
-        </p>
       </header>
 
       <section>

@@ -95,6 +95,13 @@ const quickActions = computed<NavAction[]>(() => [
   },
   {
     type: 'action',
+    id: 'new-event',
+    name: 'New event',
+    icon: PlusIcon,
+    href: '/events/new',
+  },
+  {
+    type: 'action',
     id: 'tasks',
     name: 'Tasks',
     icon: ClipboardDocumentListIcon,
