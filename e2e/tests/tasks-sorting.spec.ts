@@ -305,20 +305,15 @@ test.describe('Task Sorting', () => {
       await betaHandle.dragTo(alphaHandle)
 
       // Wait for UI to update and verify Beta is now before Alpha (relative order)
-      await page.waitForFunction(
-        ([beta, alpha]) => {
-          const cards = Array.from(
-            document.querySelectorAll('[data-testid="task-list-card"]')
-          )
-          const betaIdx = cards.findIndex((c) => c.textContent?.includes(beta))
-          const alphaIdx = cards.findIndex((c) =>
-            c.textContent?.includes(alpha)
-          )
-          return betaIdx > -1 && alphaIdx > -1 && betaIdx < alphaIdx
-        },
-        [betaName, alphaName],
-        { timeout: 5000 }
-      )
+      await expect(async () => {
+        const allCards = await page.getByTestId('task-list-card').all()
+        const texts = await Promise.all(allCards.map((c) => c.textContent()))
+        const betaIdx = texts.findIndex((t) => t?.includes(betaName))
+        const alphaIdx = texts.findIndex((t) => t?.includes(alphaName))
+        expect(betaIdx).toBeGreaterThan(-1)
+        expect(alphaIdx).toBeGreaterThan(-1)
+        expect(betaIdx).toBeLessThan(alphaIdx)
+      }).toPass({ timeout: 10000 })
     })
 
     test('can reorder items within a task list by dragging', async ({
