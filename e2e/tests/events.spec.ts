@@ -155,13 +155,6 @@ test.describe('Events Feature', () => {
       await page.goto('/events/new')
       await expect(page).toHaveURL('/login')
     })
-
-    test('events edit page redirects to login when not authenticated', async ({
-      page,
-    }) => {
-      await page.goto('/events/some-id/edit')
-      await expect(page).toHaveURL('/login')
-    })
   })
 
   test.describe('Events UI - Authenticated', () => {

@@ -5,7 +5,6 @@ import HomePage from '@/pages/HomePage.vue'
 import ProfilePage from '@/pages/ProfilePage.vue'
 import EventsPage from '@/pages/EventsPage.vue'
 import EventCreatePage from '@/pages/EventCreatePage.vue'
-import EventEditPage from '@/pages/EventEditPage.vue'
 import EventPage from '@/pages/EventPage.vue'
 import EventPlanningPage from '@/pages/EventPlanningPage.vue'
 import EventPlanningVotePage from '@/pages/EventPlanningVotePage.vue'
@@ -69,11 +68,6 @@ const router = createRouter({
           path: 'events/:id/rsvp',
           name: 'event-rsvp',
           component: EventRsvpPage,
-        },
-        {
-          path: 'events/:id/edit',
-          name: 'event-edit',
-          component: EventEditPage,
         },
         {
           path: 'events/:id/expenses',

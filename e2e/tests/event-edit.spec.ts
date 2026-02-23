@@ -11,7 +11,7 @@ import {
 const TEST_EMAIL = 'e2e-event-edit@example.com'
 const TEST_NAME = 'E2E Event Edit User'
 
-test.describe('Event Edit Page', () => {
+test.describe('Event Edit', () => {
   let sessionToken: string
   let apiContext: APIRequestContext
 
@@ -25,9 +25,14 @@ test.describe('Event Edit Page', () => {
     await apiContext.dispose()
   })
 
-  test.describe('Navigation', () => {
-    test('"Edit Event" button navigates to edit page', async ({ page }) => {
-      const eventId = await createBareEvent(apiContext, 'Nav Test Event')
+  test.describe('Edit buttons', () => {
+    test('edit buttons are visible on the event page for the owner', async ({
+      page,
+    }) => {
+      const eventId = await createBareEvent(
+        apiContext,
+        'Button Visibility Test'
+      )
       await setupAuthenticatedPage(page, sessionToken)
 
       await page.goto(`/events/${eventId}`)
@@ -35,39 +40,43 @@ test.describe('Event Edit Page', () => {
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
-      await page.getByRole('link', { name: 'Edit' }).click()
-      await expect(page).toHaveURL(`/events/${eventId}/edit`)
-    })
-
-    test('edit page shows "Edit Event" heading', async ({ page }) => {
-      const eventId = await createBareEvent(apiContext)
-      await setupAuthenticatedPage(page, sessionToken)
-
-      await page.goto(`/events/${eventId}/edit`)
-      await expect(
-        page.getByRole('heading', { name: 'Edit Event' })
-      ).toBeVisible({
-        timeout: PAGE_LOAD_TIMEOUT,
-      })
+      await expect(page.getByTestId('edit-name-button')).toBeAttached()
+      await expect(page.getByTestId('edit-description-button')).toBeAttached()
+      await expect(page.getByTestId('edit-dates-button')).toBeAttached()
     })
   })
 
   test.describe('Form pre-population', () => {
-    test('form is pre-populated with current event data', async ({ page }) => {
+    test('name modal is pre-populated with current event name', async ({
+      page,
+    }) => {
       const eventId = await createBareEvent(apiContext, 'Prepopulate Test')
       await setupAuthenticatedPage(page, sessionToken)
 
-      await page.goto(`/events/${eventId}/edit`)
-      await expect(
-        page.getByRole('heading', { name: 'Edit Event' })
-      ).toBeVisible({
+      await page.goto(`/events/${eventId}`)
+      await expect(page.getByTestId('event-name')).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
-      await expect(page.getByTestId('event-name-input')).toHaveValue(
+      await page.getByTestId('edit-name-button').click({ force: true })
+      await expect(page.getByTestId('edit-name-input')).toHaveValue(
         'Prepopulate Test'
       )
-      await expect(page.getByTestId('event-description-input')).toHaveValue(
+    })
+
+    test('description modal is pre-populated with current description', async ({
+      page,
+    }) => {
+      const eventId = await createBareEvent(apiContext, 'Desc Prepopulate Test')
+      await setupAuthenticatedPage(page, sessionToken)
+
+      await page.goto(`/events/${eventId}`)
+      await expect(page.getByTestId('event-name')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+
+      await page.getByTestId('edit-description-button').click({ force: true })
+      await expect(page.getByTestId('edit-description-input')).toHaveValue(
         'Test event'
       )
     })
@@ -76,21 +85,19 @@ test.describe('Event Edit Page', () => {
       const eventId = await createBareEvent(apiContext)
       await setupAuthenticatedPage(page, sessionToken)
 
-      await page.goto(`/events/${eventId}/edit`)
-      await expect(
-        page.getByRole('heading', { name: 'Edit Event' })
-      ).toBeVisible({
+      await page.goto(`/events/${eventId}`)
+      await expect(page.getByTestId('event-name')).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
-      await expect(page.getByTestId('event-start-date-input')).toHaveValue('')
-      await expect(page.getByTestId('event-end-date-input')).toHaveValue('')
+      await page.getByTestId('edit-dates-button').click({ force: true })
+      await expect(page.getByTestId('edit-start-date-input')).toHaveValue('')
+      await expect(page.getByTestId('edit-end-date-input')).toHaveValue('')
     })
 
     test('date fields are pre-populated when event has dates', async ({
       page,
     }) => {
-      // Create event with dates via API
       const response = await apiContext.post(`${API_BASE}/api/events`, {
         data: {
           name: 'Dated Event',
@@ -102,19 +109,36 @@ test.describe('Event Edit Page', () => {
       const event = getObjectByType(body.objects, 'event')
 
       await setupAuthenticatedPage(page, sessionToken)
-      await page.goto(`/events/${event!.id}/edit`)
-      await expect(
-        page.getByRole('heading', { name: 'Edit Event' })
-      ).toBeVisible({
+      await page.goto(`/events/${event!.id}`)
+      await expect(page.getByTestId('event-name')).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
-      await expect(page.getByTestId('event-start-date-input')).toHaveValue(
+      await page.getByTestId('edit-dates-button').click({ force: true })
+      await expect(page.getByTestId('edit-start-date-input')).toHaveValue(
         '2026-08-01'
       )
-      await expect(page.getByTestId('event-end-date-input')).toHaveValue(
+      await expect(page.getByTestId('edit-end-date-input')).toHaveValue(
         '2026-08-07'
       )
+    })
+  })
+
+  test.describe('Editing event name', () => {
+    test('can update event name', async ({ page }) => {
+      const eventId = await createBareEvent(apiContext, 'Original Name')
+      await setupAuthenticatedPage(page, sessionToken)
+
+      await page.goto(`/events/${eventId}`)
+      await expect(page.getByTestId('event-name')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+
+      await page.getByTestId('edit-name-button').click({ force: true })
+      await page.getByTestId('edit-name-input').fill('Updated Name')
+      await page.getByTestId('submit-button').click()
+
+      await expect(page.getByTestId('event-name')).toContainText('Updated Name')
     })
   })
 
@@ -123,33 +147,22 @@ test.describe('Event Edit Page', () => {
       const eventId = await createBareEvent(apiContext, 'Set Dates Event')
       await setupAuthenticatedPage(page, sessionToken)
 
-      await page.goto(`/events/${eventId}/edit`)
-      await expect(
-        page.getByRole('heading', { name: 'Edit Event' })
-      ).toBeVisible({
+      await page.goto(`/events/${eventId}`)
+      await expect(page.getByTestId('event-name')).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
-      // Fill in dates
-      await page.getByTestId('event-start-date-input').fill('2026-09-01')
-      await page.getByTestId('event-end-date-input').fill('2026-09-05')
-
-      // Save
+      await page.getByTestId('edit-dates-button').click({ force: true })
+      await page.getByTestId('edit-start-date-input').fill('2026-09-01')
+      await page.getByTestId('edit-end-date-input').fill('2026-09-05')
       await page.getByTestId('submit-button').click()
 
-      // Should redirect to event page
-      await expect(page).toHaveURL(`/events/${eventId}/planning`, {
-        timeout: PAGE_LOAD_TIMEOUT,
-      })
-
-      // Dates should display on the event page
       await expect(page.getByTestId('event-dates')).toBeVisible()
       await expect(page.getByTestId('event-dates')).toContainText(/Sep 1/)
       await expect(page.getByTestId('event-dates')).toContainText(/Sep 5/)
     })
 
     test('can update existing dates', async ({ page }) => {
-      // Create event with dates
       const response = await apiContext.post(`${API_BASE}/api/events`, {
         data: {
           name: 'Update Dates Event',
@@ -161,24 +174,16 @@ test.describe('Event Edit Page', () => {
       const event = getObjectByType(body.objects, 'event')
 
       await setupAuthenticatedPage(page, sessionToken)
-      await page.goto(`/events/${event!.id}/edit`)
-      await expect(
-        page.getByRole('heading', { name: 'Edit Event' })
-      ).toBeVisible({
+      await page.goto(`/events/${event!.id}`)
+      await expect(page.getByTestId('event-name')).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
-      // Change dates
-      await page.getByTestId('event-start-date-input').fill('2026-10-15')
-      await page.getByTestId('event-end-date-input').fill('2026-10-20')
-
-      // Save
+      await page.getByTestId('edit-dates-button').click({ force: true })
+      await page.getByTestId('edit-start-date-input').fill('2026-10-15')
+      await page.getByTestId('edit-end-date-input').fill('2026-10-20')
       await page.getByTestId('submit-button').click()
 
-      // Should redirect and show new dates
-      await expect(page).toHaveURL(`/events/${event!.id}/planning`, {
-        timeout: PAGE_LOAD_TIMEOUT,
-      })
       await expect(page.getByTestId('event-dates')).toBeVisible()
       await expect(page.getByTestId('event-dates')).toContainText(/Oct 15/)
       await expect(page.getByTestId('event-dates')).toContainText(/Oct 20/)
@@ -188,23 +193,16 @@ test.describe('Event Edit Page', () => {
       const eventId = await createBareEvent(apiContext, 'Single Day Event')
       await setupAuthenticatedPage(page, sessionToken)
 
-      await page.goto(`/events/${eventId}/edit`)
-      await expect(
-        page.getByRole('heading', { name: 'Edit Event' })
-      ).toBeVisible({
+      await page.goto(`/events/${eventId}`)
+      await expect(page.getByTestId('event-name')).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
-      // Set same start and end date
-      await page.getByTestId('event-start-date-input').fill('2026-12-25')
-      await page.getByTestId('event-end-date-input').fill('2026-12-25')
-
+      await page.getByTestId('edit-dates-button').click({ force: true })
+      await page.getByTestId('edit-start-date-input').fill('2026-12-25')
+      await page.getByTestId('edit-end-date-input').fill('2026-12-25')
       await page.getByTestId('submit-button').click()
-      await expect(page).toHaveURL(`/events/${eventId}/planning`, {
-        timeout: PAGE_LOAD_TIMEOUT,
-      })
 
-      // Should display the date (only once, since start === end)
       await expect(page.getByTestId('event-dates')).toBeVisible()
       await expect(page.getByTestId('event-dates')).toContainText(/Dec 25/)
     })
@@ -212,7 +210,6 @@ test.describe('Event Edit Page', () => {
 
   test.describe('Clearing event dates', () => {
     test('can clear dates by emptying the fields', async ({ page }) => {
-      // Create event with dates
       const response = await apiContext.post(`${API_BASE}/api/events`, {
         data: {
           name: 'Clear Dates Event',
@@ -224,92 +221,37 @@ test.describe('Event Edit Page', () => {
       const event = getObjectByType(body.objects, 'event')
 
       await setupAuthenticatedPage(page, sessionToken)
-
-      // Verify dates show on event page first
       await page.goto(`/events/${event!.id}`)
       await expect(page.getByTestId('event-dates')).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
-      // Navigate to edit page
-      await page.getByRole('link', { name: 'Edit' }).click()
-      await expect(page).toHaveURL(`/events/${event!.id}/edit`)
-      await expect(
-        page.getByRole('heading', { name: 'Edit Event' })
-      ).toBeVisible({
-        timeout: PAGE_LOAD_TIMEOUT,
-      })
-
-      // Clear dates
-      await page.getByTestId('event-start-date-input').fill('')
-      await page.getByTestId('event-end-date-input').fill('')
-
-      // Save
+      await page.getByTestId('edit-dates-button').click({ force: true })
+      await page.getByTestId('edit-start-date-input').fill('')
+      await page.getByTestId('edit-end-date-input').fill('')
       await page.getByTestId('submit-button').click()
-      await expect(page).toHaveURL(`/events/${event!.id}/planning`, {
-        timeout: PAGE_LOAD_TIMEOUT,
-      })
 
-      // Dates should no longer be displayed
       await expect(page.getByTestId('event-dates')).not.toBeVisible()
     })
   })
 
-  test.describe('Cancel and validation', () => {
-    test('cancel returns to event page without saving', async ({ page }) => {
+  test.describe('Cancel', () => {
+    test('cancel closes modal without saving', async ({ page }) => {
       const eventId = await createBareEvent(apiContext, 'Cancel Test Event')
       await setupAuthenticatedPage(page, sessionToken)
 
-      await page.goto(`/events/${eventId}/edit`)
-      await expect(
-        page.getByRole('heading', { name: 'Edit Event' })
-      ).toBeVisible({
+      await page.goto(`/events/${eventId}`)
+      await expect(page.getByTestId('event-name')).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
-      // Change the name
-      await page.getByTestId('event-name-input').fill('Changed Name')
-
-      // Cancel
+      await page.getByTestId('edit-name-button').click({ force: true })
+      await page.getByTestId('edit-name-input').fill('Changed Name')
       await page.getByTestId('cancel-button').click()
 
-      // Should return to event page with original name
-      await expect(page).toHaveURL(`/events/${eventId}/planning`, {
-        timeout: PAGE_LOAD_TIMEOUT,
-      })
       await expect(page.getByTestId('event-name')).toContainText(
         'Cancel Test Event'
       )
-    })
-
-    test('can update event name along with dates', async ({ page }) => {
-      const eventId = await createBareEvent(apiContext, 'Name And Dates Event')
-      await setupAuthenticatedPage(page, sessionToken)
-
-      await page.goto(`/events/${eventId}/edit`)
-      await expect(
-        page.getByRole('heading', { name: 'Edit Event' })
-      ).toBeVisible({
-        timeout: PAGE_LOAD_TIMEOUT,
-      })
-
-      // Update name and add dates
-      await page.getByTestId('event-name-input').fill('Updated Event Name')
-      await page.getByTestId('event-start-date-input').fill('2026-08-15')
-      await page.getByTestId('event-end-date-input').fill('2026-08-20')
-
-      await page.getByTestId('submit-button').click()
-      await expect(page).toHaveURL(`/events/${eventId}/planning`, {
-        timeout: PAGE_LOAD_TIMEOUT,
-      })
-
-      // Both name and dates should be updated
-      await expect(page.getByTestId('event-name')).toContainText(
-        'Updated Event Name'
-      )
-      await expect(page.getByTestId('event-dates')).toBeVisible()
-      await expect(page.getByTestId('event-dates')).toContainText(/Aug 15/)
-      await expect(page.getByTestId('event-dates')).toContainText(/Aug 20/)
     })
   })
 
@@ -335,7 +277,6 @@ test.describe('Event Edit Page', () => {
     })
 
     test('PUT /api/events/:id can clear dates', async () => {
-      // Create event with dates
       const createResponse = await apiContext.post(`${API_BASE}/api/events`, {
         data: {
           name: 'API Clear Dates',
@@ -346,7 +287,6 @@ test.describe('Event Edit Page', () => {
       const createBody = await createResponse.json()
       const createdEvent = getObjectByType(createBody.objects, 'event')
 
-      // Clear dates by sending empty strings
       const response = await apiContext.put(
         `${API_BASE}/api/events/${createdEvent!.id}`,
         {

@@ -71,7 +71,6 @@ const eventDetailRoutes = new Set([
   'event-planning-vote',
   'event-planning-date-ranges',
   'event-rsvp',
-  'event-edit',
   'event-expenses',
 ])
 
@@ -94,7 +93,6 @@ const eventSubNavTab = computed(() => {
     return 'planning'
   if (name === 'event-rsvp') return 'rsvp'
   if (name === 'event-expenses') return 'expenses'
-  if (name === 'event-edit') return 'edit'
   return null
 })
 
@@ -508,12 +506,6 @@ function getInitials(email: string | undefined): string {
               :class="subNavClass(eventSubNavTab === 'expenses')"
             >
               Expenses
-            </router-link>
-            <router-link
-              :to="`/events/${route.params.id}/edit`"
-              :class="subNavClass(eventSubNavTab === 'edit')"
-            >
-              Edit
             </router-link>
           </nav>
         </div>
