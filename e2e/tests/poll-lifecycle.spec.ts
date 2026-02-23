@@ -31,7 +31,7 @@ test.describe('Poll Lifecycle UI', () => {
       const eventId = await createBareEvent(apiContext)
       await setupAuthenticatedPage(page, sessionToken)
 
-      await page.goto(`/events/${eventId}`)
+      await page.goto(`/events/${eventId}/planning`)
       await expect(page.getByTestId('event-name')).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
@@ -150,7 +150,7 @@ test.describe('Poll Lifecycle UI', () => {
     }) => {
       await setupAuthenticatedPage(page, sessionToken)
 
-      await page.goto(`/events/${openEventId}`)
+      await page.goto(`/events/${openEventId}/planning`)
       await expect(page.getByTestId('event-name')).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
@@ -183,7 +183,7 @@ test.describe('Poll Lifecycle UI', () => {
       const { eventId } = await createEventWithPoll(apiContext)
       await setupAuthenticatedPage(page, sessionToken)
 
-      await page.goto(`/events/${eventId}`)
+      await page.goto(`/events/${eventId}/planning`)
       await expect(page.getByTestId('event-name')).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
@@ -303,7 +303,7 @@ test.describe('Poll Lifecycle UI', () => {
     test('"Vote on Dates" button navigates to vote page', async ({ page }) => {
       await setupAuthenticatedPage(page, sessionToken)
 
-      await page.goto(`/events/${openEventId}`)
+      await page.goto(`/events/${openEventId}/planning`)
       await expect(page.getByTestId('event-name')).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
@@ -327,8 +327,8 @@ test.describe('Poll Lifecycle UI', () => {
       const eventId = await createBareEvent(apiContext, 'Full Lifecycle Event')
       await setupAuthenticatedPage(page, sessionToken)
 
-      // 1. Navigate to event page
-      await page.goto(`/events/${eventId}`)
+      // 1. Navigate to event planning page
+      await page.goto(`/events/${eventId}/planning`)
       await expect(page.getByTestId('event-name')).toContainText(
         'Full Lifecycle Event',
         { timeout: PAGE_LOAD_TIMEOUT }

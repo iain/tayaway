@@ -463,8 +463,8 @@ test.describe('Voting Feature', () => {
       await page.goto('/events')
       await page.getByText('Voting Test Event').first().click()
 
-      // Verify we're on an event detail page (URL contains /events/ followed by a UUID and /planning)
-      await expect(page).toHaveURL(/\/events\/[0-9a-f-]+\/planning$/)
+      // Verify we're on an event detail page (URL contains /events/ followed by a UUID)
+      await expect(page).toHaveURL(/\/events\/[0-9a-f-]+$/)
       await expect(page.getByTestId('event-name')).toContainText(
         'Voting Test Event'
       )
@@ -589,8 +589,8 @@ test.describe('Voting Feature', () => {
       const { eventId, workspaceId } = await createEventWithPoll(apiContext)
       await setupAuthenticatedPage(page, sessionToken)
 
-      // Navigate to the event page first
-      await page.goto(`/events/${eventId}`)
+      // Navigate to the event planning page
+      await page.goto(`/events/${eventId}/planning`)
 
       // Wait for the event name to be visible (indicates page is loaded)
       await expect(page.getByTestId('event-name')).toBeVisible({

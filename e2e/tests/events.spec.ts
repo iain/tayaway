@@ -222,8 +222,8 @@ test.describe('Events Feature', () => {
       // Submit the form
       await page.getByTestId('modal-save-button').click()
 
-      // Should redirect to the event planning page
-      await expect(page).toHaveURL(/\/events\/[\w-]+\/planning$/, {
+      // Should navigate to the event page
+      await expect(page).toHaveURL(/\/events\/[\w-]+$/, {
         timeout: PAGE_LOAD_TIMEOUT,
       })
 

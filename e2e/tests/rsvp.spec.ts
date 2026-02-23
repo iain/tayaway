@@ -48,7 +48,7 @@ test.describe('RSVP Feature', () => {
       const { eventId } = await createResolvedEvent(apiContext)
       await setupAuthenticatedPage(page, sessionToken)
 
-      await page.goto(`/events/${eventId}`)
+      await page.goto(`/events/${eventId}/rsvp`)
       await expect(page.getByTestId('event-name')).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
@@ -65,7 +65,7 @@ test.describe('RSVP Feature', () => {
       const { eventId } = await createResolvedEvent(apiContext)
       await setupAuthenticatedPage(page, sessionToken)
 
-      await page.goto(`/events/${eventId}`)
+      await page.goto(`/events/${eventId}/rsvp`)
       await expect(page.getByTestId('rsvp-section')).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
@@ -108,7 +108,7 @@ test.describe('RSVP Feature', () => {
       })
 
       await setupAuthenticatedPage(page, sessionToken)
-      await page.goto(`/events/${eventId}`)
+      await page.goto(`/events/${eventId}/rsvp`)
       await expect(page.getByTestId('rsvp-section')).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })

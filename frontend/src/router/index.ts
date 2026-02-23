@@ -6,7 +6,7 @@ import ProfilePage from '@/pages/ProfilePage.vue'
 import EventsPage from '@/pages/EventsPage.vue'
 import EventCreatePage from '@/pages/EventCreatePage.vue'
 import EventEditPage from '@/pages/EventEditPage.vue'
-import EventRedirectPage from '@/pages/EventRedirectPage.vue'
+import EventPage from '@/pages/EventPage.vue'
 import EventPlanningPage from '@/pages/EventPlanningPage.vue'
 import EventPlanningVotePage from '@/pages/EventPlanningVotePage.vue'
 import EventPlanningDateRangesPage from '@/pages/EventPlanningDateRangesPage.vue'
@@ -47,8 +47,8 @@ const router = createRouter({
         },
         {
           path: 'events/:id',
-          name: 'event-redirect',
-          component: EventRedirectPage,
+          name: 'event',
+          component: EventPage,
         },
         {
           path: 'events/:id/planning',

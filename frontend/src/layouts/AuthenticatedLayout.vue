@@ -66,7 +66,7 @@ const userNavigation = [
 const currentRouteName = computed(() => route.name)
 
 const eventDetailRoutes = new Set([
-  'event-redirect',
+  'event',
   'event-planning',
   'event-planning-vote',
   'event-planning-date-ranges',
