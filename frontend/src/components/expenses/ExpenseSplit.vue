@@ -112,7 +112,7 @@ function formatBalance(balance: number): string {
             class="border-b border-gray-200 text-left text-xs font-medium tracking-wide text-gray-500 uppercase dark:border-stone-700 dark:text-stone-400"
           >
             <th class="pt-3 pr-4 pb-2 pl-2">Name</th>
-            <th class="pt-3 pr-4 pb-2">Nights</th>
+            <th class="hidden pt-3 pr-4 pb-2 sm:table-cell">Nights</th>
             <th class="pt-3 pr-4 pb-2">Share</th>
             <th class="pt-3 pr-4 pb-2 text-right">Paid</th>
             <th class="pt-3 pr-4 pb-2 text-right">Fair share</th>
@@ -127,7 +127,9 @@ function formatBalance(balance: number): string {
             :class="i % 2 === 0 ? 'bg-gray-50 dark:bg-black/20' : ''"
           >
             <td class="py-2 pr-4 pl-2 font-medium">{{ row.name }}</td>
-            <td class="py-2 pr-4 text-gray-600 dark:text-stone-400">
+            <td
+              class="hidden py-2 pr-4 text-gray-600 sm:table-cell dark:text-stone-400"
+            >
               {{ formatNights(row.nights) }}
             </td>
             <td class="py-2 pr-4 text-gray-600 dark:text-stone-400">
@@ -159,7 +161,9 @@ function formatBalance(balance: number): string {
             class="border-t border-gray-300 font-semibold text-gray-900 dark:border-stone-600 dark:text-white"
           >
             <td class="pt-2 pr-4 pb-3 pl-2">Total</td>
-            <td class="pt-2 pr-4 pb-3 text-gray-600 dark:text-stone-400">
+            <td
+              class="hidden pt-2 pr-4 pb-3 text-gray-600 sm:table-cell dark:text-stone-400"
+            >
               {{ formatNights(totalNights) }}
             </td>
             <td class="pt-2 pr-4 pb-3"></td>
