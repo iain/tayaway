@@ -53,15 +53,22 @@ module Mailers
         smtp_password = ENV.fetch("SMTP_PASSWORD")
         smtp_domain = ENV.fetch("SMTP_DOMAIN", "tayaway.com")
 
+        # Port 465 uses implicit SSL; port 587 uses STARTTLS
+        tls_options = if smtp_port == 465
+                        { ssl: true, enable_starttls_auto: false }
+                      else
+                        { ssl: false, enable_starttls_auto: true }
+                      end
+
         Mail.defaults do
-          T.unsafe(self).delivery_method :smtp,
-                                         address: smtp_host,
-                                         port: smtp_port,
-                                         user_name: smtp_username,
-                                         password: smtp_password,
-                                         domain: smtp_domain,
-                                         authentication: "plain",
-                                         enable_starttls_auto: true
+          T.unsafe(self).delivery_method :smtp, {
+            address: smtp_host,
+            port: smtp_port,
+            user_name: smtp_username,
+            password: smtp_password,
+            domain: smtp_domain,
+            authentication: "plain"
+          }.merge(tls_options)
         end
       end
     end
