@@ -49,7 +49,38 @@ RSpec.describe Auth::CreateMagicLink do
 
     expect(Mailers::MagicLink).to have_received(:send_email).with(
       email: "test@example.com",
-      magic_link: a_string_matching(%r{auth/verify\?token=eyJ})
+      magic_link: a_string_matching(%r{auth/verify\?token=eyJ}),
+      workspace_name: "Tayaway"
+    )
+  end
+
+  it "passes workspace name when user belongs to exactly one workspace" do
+    user_row = TestFactories.user(email: "test@example.com")
+    workspace = TestFactories.workspace(name: "My Team")
+    TestFactories.workspace_membership(workspace: workspace, user: user_row)
+
+    described_class.call(email: "test@example.com")
+
+    expect(Mailers::MagicLink).to have_received(:send_email).with(
+      email: "test@example.com",
+      magic_link: a_string_matching(%r{auth/verify\?token=eyJ}),
+      workspace_name: "My Team"
+    )
+  end
+
+  it "falls back to Tayaway when user belongs to multiple workspaces" do
+    user_row = TestFactories.user(email: "test@example.com")
+    workspace1 = TestFactories.workspace(name: "Team A")
+    workspace2 = TestFactories.workspace(name: "Team B")
+    TestFactories.workspace_membership(workspace: workspace1, user: user_row)
+    TestFactories.workspace_membership(workspace: workspace2, user: user_row)
+
+    described_class.call(email: "test@example.com")
+
+    expect(Mailers::MagicLink).to have_received(:send_email).with(
+      email: "test@example.com",
+      magic_link: a_string_matching(%r{auth/verify\?token=eyJ}),
+      workspace_name: "Tayaway"
     )
   end
 

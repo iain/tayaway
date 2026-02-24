@@ -10,24 +10,24 @@ module Mailers
     class << self
       extend T::Sig
 
-      sig { params(email: T.any(String, EmailAddress), magic_link: String).void }
-      def send_email(email:, magic_link:)
-        message = build_message(email: email.to_s, magic_link: magic_link)
+      sig { params(email: T.any(String, EmailAddress), magic_link: String, workspace_name: String).void }
+      def send_email(email:, magic_link:, workspace_name: "Tayaway")
+        message = build_message(email: email.to_s, magic_link: magic_link, workspace_name: workspace_name)
         Mailers::Base.deliver_later(message)
       end
 
       private
 
-      sig { params(email: String, magic_link: String).returns(Mail::Message) }
-      def build_message(email:, magic_link:)
+      sig { params(email: String, magic_link: String, workspace_name: String).returns(Mail::Message) }
+      def build_message(email:, magic_link:, workspace_name:)
         message = Mail.new
         message.to      email
         message.from    Mailers::Base.from_address
-        message.subject "Sign in to Tayaway"
+        message.subject "Sign in to #{workspace_name}"
 
         text = Mail::Part.new
         text.body = <<~TEXT
-          Sign in to Tayaway
+          Sign in to #{workspace_name}
 
           Click the link below to sign in:
 
@@ -48,7 +48,7 @@ module Mailers
               <tr><td align="center">
                 <table width="480" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;padding:40px;">
                   <tr><td style="text-align:center;">
-                    <h1 style="margin:0 0 16px;font-size:24px;color:#18181b;">Sign in to Tayaway</h1>
+                    <h1 style="margin:0 0 16px;font-size:24px;color:#18181b;">Sign in to #{workspace_name}</h1>
                     <p style="margin:0 0 32px;font-size:16px;color:#52525b;line-height:1.5;">
                       Click the button below to sign in to your account.
                     </p>

@@ -39,8 +39,11 @@ module Auth
           frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:5173")
           magic_link = "#{frontend_url}/auth/verify?token=#{jwt}"
 
+          workspaces = Workspace.for_user(user.id)
+          workspace_name = workspaces.length == 1 ? T.must(workspaces.first).name : "Tayaway"
+
           APP_LOGGER.debug { "MAGIC LINK FOR #{email}: #{magic_link}" }
-          Mailers::MagicLink.send_email(email: email, magic_link: magic_link)
+          Mailers::MagicLink.send_email(email: email, magic_link: magic_link, workspace_name: workspace_name)
         else
           APP_LOGGER.debug { "No user found for email #{email}" }
         end

@@ -10,43 +10,65 @@ RSpec.describe Mailers::MagicLink do
     let(:email) { "user@example.com" }
     let(:magic_link) { "https://tayaway.com/auth/verify?token=abc123" }
 
-    before { described_class.send_email(email: email, magic_link: magic_link) }
+    context "with default workspace name" do
+      before { described_class.send_email(email: email, magic_link: magic_link) }
 
-    it "delivers one email" do
-      expect(Mail::TestMailer.deliveries.length).to eq(1)
+      it "delivers one email" do
+        expect(Mail::TestMailer.deliveries.length).to eq(1)
+      end
+
+      it "sends to the correct recipient" do
+        expect(Mail::TestMailer.deliveries.first.to).to eq([email])
+      end
+
+      it "sends from the configured address" do
+        expect(Mail::TestMailer.deliveries.first.from).to eq(["noreply@tayaway.com"])
+      end
+
+      it "has the default subject" do
+        expect(Mail::TestMailer.deliveries.first.subject).to eq("Sign in to Tayaway")
+      end
+
+      it "includes the magic link in the text part" do
+        message = Mail::TestMailer.deliveries.first
+        text_body = message.text_part.body.to_s
+
+        expect(text_body).to include(magic_link)
+      end
+
+      it "includes the magic link in the HTML part" do
+        message = Mail::TestMailer.deliveries.first
+        html_body = message.html_part.body.to_s
+
+        expect(html_body).to include(magic_link)
+      end
+
+      it "has both text and HTML parts" do
+        message = Mail::TestMailer.deliveries.first
+
+        expect(message.text_part).not_to be_nil
+        expect(message.html_part).not_to be_nil
+      end
     end
 
-    it "sends to the correct recipient" do
-      expect(Mail::TestMailer.deliveries.first.to).to eq([email])
-    end
+    context "with custom workspace name" do
+      before { described_class.send_email(email: email, magic_link: magic_link, workspace_name: "My Team") }
 
-    it "sends from the configured address" do
-      expect(Mail::TestMailer.deliveries.first.from).to eq(["noreply@tayaway.com"])
-    end
+      it "uses the workspace name in the subject" do
+        expect(Mail::TestMailer.deliveries.first.subject).to eq("Sign in to My Team")
+      end
 
-    it "has the correct subject" do
-      expect(Mail::TestMailer.deliveries.first.subject).to eq("Sign in to Tayaway")
-    end
+      it "uses the workspace name in the text body" do
+        text_body = Mail::TestMailer.deliveries.first.text_part.body.to_s
 
-    it "includes the magic link in the text part" do
-      message = Mail::TestMailer.deliveries.first
-      text_body = message.text_part.body.to_s
+        expect(text_body).to include("Sign in to My Team")
+      end
 
-      expect(text_body).to include(magic_link)
-    end
+      it "uses the workspace name in the HTML body" do
+        html_body = Mail::TestMailer.deliveries.first.html_part.body.to_s
 
-    it "includes the magic link in the HTML part" do
-      message = Mail::TestMailer.deliveries.first
-      html_body = message.html_part.body.to_s
-
-      expect(html_body).to include(magic_link)
-    end
-
-    it "has both text and HTML parts" do
-      message = Mail::TestMailer.deliveries.first
-
-      expect(message.text_part).not_to be_nil
-      expect(message.html_part).not_to be_nil
+        expect(html_body).to include("Sign in to My Team")
+      end
     end
   end
 end
