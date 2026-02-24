@@ -29,6 +29,21 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      onwarn(warning, defaultHandler) {
+        if (
+          warning.code === 'MIXED_EXPORTS' ||
+          (warning.message &&
+            warning.message.includes('is dynamically imported by') &&
+            warning.message.includes('but also statically imported by'))
+        ) {
+          return
+        }
+        defaultHandler(warning)
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

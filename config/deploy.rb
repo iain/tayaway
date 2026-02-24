@@ -25,13 +25,14 @@ set :keep_releases, 5
 
 # Files and dirs shared across releases
 set :linked_files, %w[backend/.env.production]
-set :linked_dirs, %w[backend/vendor/bundle backend/log]
+set :linked_dirs, %w[backend/vendor/bundle backend/log backend/.bundle]
 
 # Bundler — install gems from backend/Gemfile into shared/backend/vendor/bundle
 set :bundle_gemfile, -> { release_path.join("backend", "Gemfile") }
 set :bundle_path, -> { shared_path.join("backend", "vendor", "bundle") }
 set :bundle_without, "development:test"
 set :bundle_flags, "--quiet"
+set :bundle_version, 4
 
 # mise integration — prefix commands so they run through mise exec
 mise = "/home/ubuntu/.local/bin/mise exec --"
