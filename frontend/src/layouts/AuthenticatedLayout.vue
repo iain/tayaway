@@ -515,7 +515,7 @@ function getInitials(email: string | undefined): string {
             <p
               v-if="eventHasDates(currentEvent)"
               data-testid="event-dates"
-              class="flex items-center gap-1 text-xs text-gray-500 dark:text-stone-400"
+              class="hidden items-center gap-1 text-xs text-gray-500 sm:flex dark:text-stone-400"
             >
               <CalendarDaysIcon class="size-3.5" />
               <DateRangeDisplay
