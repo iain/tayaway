@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useAuthStore } from '@/stores'
+import { useAuthStore } from '@/stores/auth'
 import { FormInput } from '@/components/form'
 
 const authStore = useAuthStore()

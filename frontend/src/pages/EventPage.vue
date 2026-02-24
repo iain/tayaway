@@ -11,7 +11,8 @@ import { useHydratedEvent } from '@/composables/useHydratedEvent'
 import { eventHasDates } from '@/utils/event'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import EditEventModal from '@/components/events/EditEventModal.vue'
-import { useAuthStore, useEventsStore } from '@/stores'
+import { useAuthStore } from '@/stores/auth'
+import { useEventsStore } from '@/stores'
 import { generateIcs, downloadIcs } from '@/utils/ics'
 
 const route = useRoute()

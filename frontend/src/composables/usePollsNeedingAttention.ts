@@ -1,6 +1,7 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useObjectPoolStore, useAuthStore } from '@/stores'
+import { useAuthStore } from '@/stores/auth'
+import { useObjectPoolStore } from '@/stores'
 
 export interface PollItem {
   eventId: string

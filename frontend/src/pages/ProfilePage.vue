@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useAuthStore } from '@/stores'
+import { useAuthStore } from '@/stores/auth'
 import EditNameModal from '@/components/profile/EditNameModal.vue'
 import SessionsList from '@/components/profile/SessionsList.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
