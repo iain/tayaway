@@ -16,6 +16,7 @@ All commands run through mise:
 
 ```bash
 mise run dev              # Start frontend (5173) + backend (9292)
+mise run ci               # All CI checks (lint, typecheck, tests, e2e) in parallel
 mise run test             # All tests (frontend + backend + e2e)
 mise run test_backend     # RSpec tests only
 mise run test_frontend    # Vitest tests only
@@ -25,6 +26,8 @@ mise run typecheck        # vue-tsc + Sorbet
 mise run db_migrate       # Run Sequel migrations
 mise run db_reset         # Drop, create, migrate database
 ```
+
+**Before committing:** Always run `mise run ci` and ensure it passes before creating a commit.
 
 Run a single test:
 
