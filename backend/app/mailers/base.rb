@@ -21,15 +21,21 @@ module Mailers
         else
           Mail.defaults { T.unsafe(self).delivery_method :test }
         end
-        APP_LOGGER.info { "[Mailer] Configured delivery method: #{APP_ENV == "production" ? "smtp" : "test"}" }
+        if APP_ENV == "production"
+          APP_LOGGER.info { "[Mailer] Configured SMTP delivery via #{ENV.fetch("SMTP_HOST", "?")}:#{ENV.fetch("SMTP_PORT", "587")}" }
+        else
+          APP_LOGGER.info { "[Mailer] Configured test delivery method" }
+        end
       end
 
       sig { params(message: Mail::Message).void }
       def deliver(message)
+        recipients = message.to&.join(", ")
+        APP_LOGGER.info { "[Mailer] Sending email to #{recipients} (subject: #{message.subject})" }
         message.deliver
-        APP_LOGGER.info { "[Mailer] Email queued to #{message.to&.join(", ")}" }
+        APP_LOGGER.info { "[Mailer] Email delivered to #{recipients}" }
       rescue StandardError => e
-        APP_LOGGER.error { "[Mailer] Failed to deliver email: #{e.message}" }
+        APP_LOGGER.error { "[Mailer] Failed to deliver email to #{message.to&.join(", ")}: #{e.class} - #{e.message}" }
       end
 
       sig { returns(String) }
