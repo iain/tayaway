@@ -6,6 +6,11 @@ set :deploy_to, "/var/www/tayaway"
 set :branch, "main"
 set :keep_releases, 5
 
+# Deploy to localhost — use Local backend instead of SSH.
+# SSHKit's SSH backend wraps commands in POSIX ( export ...; cmd ) subshell
+# syntax which is incompatible with the fish login shell.
+set :sshkit_backend, SSHKit::Backend::Local
+
 # Files and dirs shared across releases
 set :linked_files, %w[backend/.env.production]
 set :linked_dirs, %w[backend/vendor/bundle backend/log]
@@ -16,11 +21,8 @@ set :bundle_path, -> { shared_path.join("backend", "vendor", "bundle") }
 set :bundle_without, "development:test"
 set :bundle_flags, "--quiet"
 
-# mise integration — prefix commands so they run through mise exec.
-# Use /usr/bin/env to set MISE_TRUSTED_CONFIG_PATHS inline (compatible with fish shell).
-# This avoids setting default_env, which causes SSHKit to wrap commands in
-# POSIX ( export ...; cmd ) subshell syntax that fish cannot parse.
-mise = "/usr/bin/env MISE_TRUSTED_CONFIG_PATHS=/var/www/tayaway /home/ubuntu/.local/bin/mise exec --"
+# mise integration — prefix commands so they run through mise exec
+mise = "MISE_TRUSTED_CONFIG_PATHS=/var/www/tayaway /home/ubuntu/.local/bin/mise exec --"
 SSHKit.config.command_map[:bundle] = "#{mise} bundle"
 SSHKit.config.command_map[:ruby]   = "#{mise} ruby"
 SSHKit.config.command_map[:rake]   = "#{mise} rake"
