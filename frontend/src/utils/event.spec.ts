@@ -3,6 +3,7 @@ import {
   countNights,
   eventHasDates,
   eventIsPlanning,
+  eventIsCurrent,
   eventIsUpcoming,
   eventIsPast,
 } from './event'
@@ -65,38 +66,124 @@ describe('eventIsPlanning', () => {
   })
 })
 
+describe('eventIsCurrent', () => {
+  const today = '2026-07-15'
+
+  it('returns true when today is between startDate and endDate', () => {
+    expect(
+      eventIsCurrent({ startDate: '2026-07-10', endDate: '2026-07-20' }, today)
+    ).toBe(true)
+  })
+
+  it('returns true when today equals startDate', () => {
+    expect(
+      eventIsCurrent({ startDate: '2026-07-15', endDate: '2026-07-20' }, today)
+    ).toBe(true)
+  })
+
+  it('returns true when today equals endDate', () => {
+    expect(
+      eventIsCurrent({ startDate: '2026-07-10', endDate: '2026-07-15' }, today)
+    ).toBe(true)
+  })
+
+  it('returns true for a single-day event on today', () => {
+    expect(
+      eventIsCurrent({ startDate: '2026-07-15', endDate: '2026-07-15' }, today)
+    ).toBe(true)
+  })
+
+  it('returns false when today is before the event', () => {
+    expect(
+      eventIsCurrent({ startDate: '2026-07-16', endDate: '2026-07-20' }, today)
+    ).toBe(false)
+  })
+
+  it('returns false when today is after the event', () => {
+    expect(
+      eventIsCurrent({ startDate: '2026-07-10', endDate: '2026-07-14' }, today)
+    ).toBe(false)
+  })
+
+  it('returns false when startDate is null', () => {
+    expect(
+      eventIsCurrent({ startDate: null, endDate: '2026-07-20' }, today)
+    ).toBe(false)
+  })
+
+  it('returns false when endDate is null', () => {
+    expect(
+      eventIsCurrent({ startDate: '2026-07-10', endDate: null }, today)
+    ).toBe(false)
+  })
+
+  it('returns false when event is null', () => {
+    expect(eventIsCurrent(null, today)).toBe(false)
+  })
+})
+
 describe('eventIsUpcoming', () => {
+  const today = '2026-07-15'
+
   it('returns true when startDate is in the future', () => {
     expect(
-      eventIsUpcoming({ startDate: '2099-01-01', endDate: '2099-01-04' })
+      eventIsUpcoming({ startDate: '2026-07-16', endDate: '2026-07-20' }, today)
     ).toBe(true)
+  })
+
+  it('returns false when startDate equals today (event is current)', () => {
+    expect(
+      eventIsUpcoming({ startDate: '2026-07-15', endDate: '2026-07-20' }, today)
+    ).toBe(false)
   })
 
   it('returns false when startDate is in the past', () => {
     expect(
-      eventIsUpcoming({ startDate: '2020-01-01', endDate: '2020-01-04' })
+      eventIsUpcoming({ startDate: '2026-07-10', endDate: '2026-07-14' }, today)
     ).toBe(false)
   })
 
   it('returns false when startDate is null', () => {
-    expect(eventIsUpcoming({ startDate: null, endDate: null })).toBe(false)
+    expect(eventIsUpcoming({ startDate: null, endDate: null }, today)).toBe(
+      false
+    )
   })
 })
 
 describe('eventIsPast', () => {
-  it('returns true when startDate is in the past', () => {
+  const today = '2026-07-15'
+
+  it('returns true when both dates are in the past', () => {
     expect(
-      eventIsPast({ startDate: '2020-01-01', endDate: '2020-01-04' })
+      eventIsPast({ startDate: '2026-07-10', endDate: '2026-07-14' }, today)
     ).toBe(true)
+  })
+
+  it('returns true when startDate is past and endDate is null', () => {
+    expect(eventIsPast({ startDate: '2026-07-10', endDate: null }, today)).toBe(
+      true
+    )
+  })
+
+  it('returns false when startDate is past but endDate is today (event is current)', () => {
+    expect(
+      eventIsPast({ startDate: '2026-07-10', endDate: '2026-07-15' }, today)
+    ).toBe(false)
+  })
+
+  it('returns false when startDate is past but endDate is in the future (event is current)', () => {
+    expect(
+      eventIsPast({ startDate: '2026-07-10', endDate: '2026-07-20' }, today)
+    ).toBe(false)
   })
 
   it('returns false when startDate is in the future', () => {
     expect(
-      eventIsPast({ startDate: '2099-01-01', endDate: '2099-01-04' })
+      eventIsPast({ startDate: '2026-07-16', endDate: '2026-07-20' }, today)
     ).toBe(false)
   })
 
   it('returns false when startDate is null', () => {
-    expect(eventIsPast({ startDate: null, endDate: null })).toBe(false)
+    expect(eventIsPast({ startDate: null, endDate: null }, today)).toBe(false)
   })
 })

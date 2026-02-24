@@ -17,15 +17,19 @@ import {
   useEventsNeedingRsvp,
   formatEventDateRange,
 } from '@/composables/useEventsNeedingRsvp'
+import { useEventsList } from '@/composables/useEventsList'
 import PageHeader from '@/components/common/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
+import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 
 const router = useRouter()
 const { pollsNeedingAttention } = usePollsNeedingAttention()
 const { eventsNeedingRsvp } = useEventsNeedingRsvp()
+const { currentEvents } = useEventsList()
 
 const allCaughtUp = computed(
   () =>
+    currentEvents.value.length === 0 &&
     pollsNeedingAttention.value.length === 0 &&
     eventsNeedingRsvp.value.length === 0
 )
@@ -52,7 +56,48 @@ function navigateToEventPage(eventId: string): void {
     />
 
     <template v-else>
-      <section v-if="pollsNeedingAttention.length > 0">
+      <section v-if="currentEvents.length > 0">
+        <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
+          Happening now
+        </h2>
+
+        <ul class="space-y-3">
+          <li
+            v-for="event in currentEvents"
+            :key="event.id"
+            class="cursor-pointer overflow-hidden rounded-lg bg-white shadow transition-all hover:ring-2 hover:ring-rose-500 dark:bg-stone-800"
+            @click="navigateToEventPage(event.id)"
+          >
+            <div class="px-4 py-4 sm:px-6">
+              <div class="flex items-center justify-between">
+                <div class="min-w-0 flex-1">
+                  <h3
+                    class="truncate text-base font-semibold text-gray-900 dark:text-white"
+                  >
+                    {{ event.name }}
+                  </h3>
+                  <div class="mt-1 flex flex-wrap items-center gap-3 text-sm">
+                    <span
+                      class="inline-flex items-center gap-1 text-gray-500 dark:text-stone-400"
+                    >
+                      <CalendarDaysIcon class="size-4" />
+                      <DateRangeDisplay
+                        :start-date="event.startDate!"
+                        :end-date="event.endDate!"
+                      />
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <section
+        v-if="pollsNeedingAttention.length > 0"
+        :class="currentEvents.length > 0 ? 'mt-8' : ''"
+      >
         <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
           Polls awaiting your vote
         </h2>
@@ -104,7 +149,11 @@ function navigateToEventPage(eventId: string): void {
 
       <section
         v-if="eventsNeedingRsvp.length > 0"
-        :class="pollsNeedingAttention.length > 0 ? 'mt-8' : ''"
+        :class="
+          pollsNeedingAttention.length > 0 || currentEvents.length > 0
+            ? 'mt-8'
+            : ''
+        "
       >
         <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
           Events awaiting your RSVP

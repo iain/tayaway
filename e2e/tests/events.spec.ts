@@ -228,6 +228,129 @@ test.describe('Events Feature', () => {
   })
 })
 
+test.describe('Events categorization - Happening Now', () => {
+  let sessionToken: string
+  let apiContext: APIRequestContext
+
+  test.beforeAll(async ({ playwright }) => {
+    apiContext = await playwright.request.newContext()
+    const { token } = await getTestSession(
+      apiContext,
+      'e2e-events-categorization@example.com',
+      'E2E Categorization User'
+    )
+    sessionToken = token
+  })
+
+  test.afterAll(async () => {
+    await apiContext.dispose()
+  })
+
+  function todayStr(): string {
+    return new Date().toISOString().slice(0, 10)
+  }
+
+  function offsetDate(days: number): string {
+    const d = new Date()
+    d.setDate(d.getDate() + days)
+    return d.toISOString().slice(0, 10)
+  }
+
+  test('events page shows "Happening Now" section for current events', async ({
+    page,
+  }) => {
+    // Create a current event (started yesterday, ends tomorrow)
+    await apiContext.post(`${API_BASE}/api/events`, {
+      data: {
+        name: 'Current Trip',
+        start_date: offsetDate(-1),
+        end_date: offsetDate(1),
+      },
+    })
+
+    // Create an upcoming event (starts next week)
+    await apiContext.post(`${API_BASE}/api/events`, {
+      data: {
+        name: 'Future Trip',
+        start_date: offsetDate(7),
+        end_date: offsetDate(10),
+      },
+    })
+
+    await setupAuthenticatedPage(page, sessionToken)
+    await page.goto('/events')
+
+    await expect(page.getByTestId('events-list')).toBeVisible({
+      timeout: PAGE_LOAD_TIMEOUT,
+    })
+
+    // "Happening Now" section should be visible with the current event
+    const happeningNow = page.getByRole('heading', { name: 'Happening Now' })
+    await expect(happeningNow).toBeVisible()
+
+    // The current event should be in the list
+    await expect(page.getByText('Current Trip')).toBeVisible()
+
+    // "Upcoming" section should also be visible
+    await expect(page.getByRole('heading', { name: 'Upcoming' })).toBeVisible()
+    await expect(page.getByText('Future Trip')).toBeVisible()
+  })
+
+  test('dashboard shows "Happening now" section for current events', async ({
+    page,
+  }) => {
+    await setupAuthenticatedPage(page, sessionToken)
+    await page.goto('/')
+
+    // Dashboard should show "Happening now" heading
+    const happeningNowHeading = page.getByRole('heading', {
+      name: 'Happening now',
+    })
+    await expect(happeningNowHeading).toBeVisible({
+      timeout: PAGE_LOAD_TIMEOUT,
+    })
+
+    // The current event should be listed within the happening now section
+    const happeningNowSection = happeningNowHeading.locator('..')
+    await expect(happeningNowSection.getByText('Current Trip')).toBeVisible()
+  })
+
+  test('event starting today appears in "Happening Now", not "Upcoming"', async ({
+    page,
+  }) => {
+    await apiContext.post(`${API_BASE}/api/events`, {
+      data: {
+        name: 'Starting Today Trip',
+        start_date: todayStr(),
+        end_date: offsetDate(3),
+      },
+    })
+
+    await setupAuthenticatedPage(page, sessionToken)
+    await page.goto('/events')
+
+    await expect(page.getByTestId('events-list')).toBeVisible({
+      timeout: PAGE_LOAD_TIMEOUT,
+    })
+
+    // The "Happening Now" section should contain the event starting today
+    const happeningNowSection = page
+      .getByRole('heading', { name: 'Happening Now' })
+      .locator('..')
+    await expect(
+      happeningNowSection.getByText('Starting Today Trip')
+    ).toBeVisible()
+
+    // It should NOT appear in the "Upcoming" section
+    const upcomingSection = page
+      .getByRole('heading', { name: 'Upcoming' })
+      .locator('..')
+    await expect(
+      upcomingSection.getByText('Starting Today Trip')
+    ).not.toBeVisible()
+  })
+})
+
 // Integration tests that verify the API contract
 test.describe('Events API Contract', () => {
   test('API returns proper JSON content type', async ({ request }) => {

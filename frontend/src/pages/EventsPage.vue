@@ -19,6 +19,7 @@ const { loading, error } = storeToRefs(eventsStore)
 const showModal = ref(false)
 
 const {
+  currentEvents,
   upcomingEvents,
   pastEvents,
   planningEvents,
@@ -105,6 +106,31 @@ function formatDateRangeSummary(
     </EmptyState>
 
     <div v-else data-testid="events-list" class="space-y-8">
+      <section v-if="currentEvents.length > 0">
+        <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
+          Happening Now
+        </h2>
+        <ul class="space-y-4">
+          <EventListItem
+            v-for="event in currentEvents"
+            :key="event.id"
+            :event="event"
+            :owner-name="getOwnerName(event.memberId)"
+            @click="handleView(event.id)"
+          >
+            <template #meta>
+              <span class="inline-flex items-center gap-1">
+                <CalendarDaysIcon class="size-4" />
+                <DateRangeDisplay
+                  :start-date="event.startDate!"
+                  :end-date="event.endDate!"
+                />
+              </span>
+            </template>
+          </EventListItem>
+        </ul>
+      </section>
+
       <section v-if="upcomingEvents.length > 0">
         <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
           Upcoming
