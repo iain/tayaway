@@ -38,6 +38,7 @@ test.describe('Authentication', () => {
   test.describe('Magic link verification', () => {
     test('shows error for invalid token', async ({ page }) => {
       await page.goto('/auth/verify?token=invalid&email=test@example.com')
+      await page.getByTestId('confirm-sign-in').click()
       await expect(
         page.getByText('Invalid or expired magic link')
       ).toBeVisible()
