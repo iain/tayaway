@@ -33,6 +33,18 @@ export const useNotificationsStore = defineStore('notifications', () => {
     }, 4000)
   }
 
+  function showUpdate(message: string, action: () => void): void {
+    if (notifications.value.some((n) => n.type === 'update')) return
+    const id = crypto.randomUUID()
+    const notification: Notification = {
+      id,
+      type: 'update',
+      message,
+      action,
+    }
+    notifications.value.push(notification)
+  }
+
   function dismiss(id: string): void {
     const index = notifications.value.findIndex((n) => n.id === id)
     if (index !== -1) {
@@ -48,6 +60,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
     notifications,
     showError,
     showInfo,
+    showUpdate,
     dismiss,
     $reset,
   }

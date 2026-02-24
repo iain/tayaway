@@ -1,5 +1,6 @@
 export interface Notification {
   id: string
-  type: 'error' | 'info'
+  type: 'error' | 'info' | 'update'
   message: string
+  action?: () => void
 }
