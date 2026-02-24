@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watchEffect } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter, useRoute } from 'vue-router'
 import {
@@ -82,6 +82,37 @@ const currentEvent = computed(() => {
 })
 
 const currentEventName = computed(() => currentEvent.value?.name ?? null)
+
+const routeTitleMap: Record<string, string> = {
+  home: 'Dashboard',
+  profile: 'Profile',
+  events: 'Events',
+  'events-new': 'New Event',
+  event: '',
+  'event-planning': 'Planning',
+  'event-planning-vote': 'Vote',
+  'event-planning-date-ranges': 'Date Ranges',
+  'event-rsvp': 'RSVP',
+  'event-expenses': 'Expenses',
+  tasks: 'Tasks',
+  members: 'Members',
+}
+
+watchEffect(() => {
+  const parts: string[] = []
+  const routeName = route.name as string
+  const pageTitle = routeTitleMap[routeName]
+  if (pageTitle !== undefined) {
+    if (eventDetailRoutes.has(routeName)) {
+      if (pageTitle) parts.push(pageTitle)
+      if (currentEventName.value) parts.push(currentEventName.value)
+    } else if (pageTitle) {
+      parts.push(pageTitle)
+    }
+  }
+  if (currentWorkspace.value?.name) parts.push(currentWorkspace.value.name)
+  document.title = parts.length > 0 ? parts.join(' - ') : 'Tayaway'
+})
 
 const eventSubNavTab = computed(() => {
   const name = currentRouteName.value as string

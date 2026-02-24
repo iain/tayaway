@@ -90,14 +90,22 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: LoginPage,
-      meta: { requiresGuest: true },
+      meta: { requiresGuest: true, title: 'Login' },
     },
     {
       path: '/auth/verify',
       name: 'auth-verify',
       component: AuthVerifyPage,
+      meta: { title: 'Verifying' },
     },
   ],
+})
+
+router.afterEach((to) => {
+  const title = to.meta.title as string | undefined
+  if (title) {
+    document.title = title
+  }
 })
 
 router.beforeEach(async (to) => {
