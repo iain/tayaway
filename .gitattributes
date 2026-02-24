@@ -1,0 +1,3 @@
+backend/.env.development export-ignore
+backend/.env.test export-ignore
+backend/.env.e2e export-ignore

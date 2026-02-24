@@ -25,6 +25,9 @@ gem "zeitwerk"
 # Runtime type checking
 gem "sorbet-static-and-runtime", require: "sorbet-runtime"
 
+# Logging (extracted from default gems in Ruby 4.0)
+gem "logger"
+
 # Tasks
 gem "rake"
 

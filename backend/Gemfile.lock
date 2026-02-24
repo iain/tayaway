@@ -300,6 +300,7 @@ DEPENDENCIES
   json
   jwt
   listen
+  logger
   pg
   pry
   rack-test

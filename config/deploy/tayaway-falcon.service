@@ -1,0 +1,24 @@
+[Unit]
+Description=Tayaway Falcon Application Server
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/var/www/tayaway/current/backend
+EnvironmentFile=/var/www/tayaway/shared/backend/.env.production
+Environment=RACK_ENV=production
+Environment=PATH=/home/ubuntu/.local/share/mise/installs/ruby/4.0.1/bin:/usr/local/bin:/usr/bin:/bin
+Environment=GEM_HOME=/var/www/tayaway/shared/backend/vendor/bundle/ruby/4.0.0
+Environment=GEM_PATH=/var/www/tayaway/shared/backend/vendor/bundle/ruby/4.0.0
+ExecStart=/var/www/tayaway/shared/backend/vendor/bundle/ruby/4.0.0/bin/falcon serve --bind http://127.0.0.1:9292
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tayaway-falcon
+
+[Install]
+WantedBy=multi-user.target

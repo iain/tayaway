@@ -4,7 +4,8 @@ experimental = true
 [tools]
 node = "24.13.0"
 ruby = "4.0.1"
-pnpm = "9"
+pnpm = "10.30.2"
+"postgres-binary:postgres" = "18.2"
 
 [env]
 _.file = ["backend/.env.development"]
