@@ -21,9 +21,11 @@ set :bundle_path, -> { shared_path.join("backend", "vendor", "bundle") }
 set :bundle_without, "development:test"
 set :bundle_flags, "--quiet"
 
-# mise integration — prefix commands so they run through mise exec
+# mise integration — prefix commands so they run through mise exec.
+# Bundle needs env -u BUNDLE_GEMFILE to avoid inheriting the Capistrano
+# process's Gemfile when using the Local backend.
 mise = "MISE_TRUSTED_CONFIG_PATHS=/var/www/tayaway /home/ubuntu/.local/bin/mise exec --"
-SSHKit.config.command_map[:bundle] = "#{mise} bundle"
+SSHKit.config.command_map[:bundle] = "env -u BUNDLE_GEMFILE #{mise} bundle"
 SSHKit.config.command_map[:ruby]   = "#{mise} ruby"
 SSHKit.config.command_map[:rake]   = "#{mise} rake"
 SSHKit.config.command_map[:node]   = "#{mise} node"
