@@ -38,6 +38,15 @@ module Mailers
         APP_LOGGER.error { "[Mailer] Failed to deliver email to #{message.to&.join(", ")}: #{e.class} - #{e.message}" }
       end
 
+      sig { params(message: Mail::Message).void }
+      def deliver_later(message)
+        if APP_ENV == "production"
+          Thread.new { deliver(message) }
+        else
+          deliver(message)
+        end
+      end
+
       sig { returns(String) }
       def from_address
         ENV.fetch("SMTP_FROM_EMAIL", "noreply@tayaway.com")

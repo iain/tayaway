@@ -13,7 +13,7 @@ module Mailers
       sig { params(email: T.any(String, EmailAddress), magic_link: String).void }
       def send_email(email:, magic_link:)
         message = build_message(email: email.to_s, magic_link: magic_link)
-        Mailers::Base.deliver(message)
+        Mailers::Base.deliver_later(message)
       end
 
       private
