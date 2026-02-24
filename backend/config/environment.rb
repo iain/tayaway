@@ -7,7 +7,14 @@ APP_DIR = Pathname(File.expand_path("..", __dir__))
 require "bundler/setup"
 Bundler.require(:default, APP_ENV)
 
-GIT_SHA = T.let((ENV["GIT_SHA"] || `git rev-parse --short HEAD 2>/dev/null`.strip).freeze, String)
+GIT_SHA = T.let(
+  (
+    ENV["GIT_SHA"] ||
+    (File.read("#{APP_DIR}/REVISION").strip[0, 7] if File.exist?("#{APP_DIR}/REVISION")) ||
+    `git rev-parse --short HEAD 2>/dev/null`.strip
+  ).freeze,
+  String,
+)
 
 Dotenv.overload("#{APP_DIR}/.env.#{APP_ENV}") unless APP_ENV == "production"
 
