@@ -151,50 +151,55 @@ function getInitials(email: string | undefined): string {
           <div class="flex items-center">
             <div class="shrink-0">
               <!-- Single workspace: just show name -->
-              <span
+              <router-link
                 v-if="otherWorkspaces.length === 0"
+                to="/"
                 class="text-nav-text text-xl font-bold"
               >
                 {{ currentWorkspace?.name ?? 'Tayaway' }}
-              </span>
-              <!-- Multiple workspaces: dropdown -->
-              <Menu v-else as="div" class="relative">
-                <MenuButton
-                  class="text-nav-text hover:text-nav-text-muted-hover flex items-center gap-1 text-xl font-bold focus:outline-hidden"
-                >
+              </router-link>
+              <!-- Multiple workspaces: name links to dashboard, chevron opens dropdown -->
+              <div v-else class="relative flex items-center gap-0.5">
+                <router-link to="/" class="text-nav-text text-xl font-bold">
                   {{ currentWorkspace?.name ?? 'Tayaway' }}
-                  <ChevronDownIcon class="size-5" aria-hidden="true" />
-                </MenuButton>
-                <transition
-                  enter-active-class="transition ease-out duration-100"
-                  enter-from-class="transform opacity-0 scale-95"
-                  enter-to-class="transform opacity-100 scale-100"
-                  leave-active-class="transition ease-in duration-75"
-                  leave-from-class="transform opacity-100 scale-100"
-                  leave-to-class="transform opacity-0 scale-95"
-                >
-                  <MenuItems
-                    class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5 focus:outline-hidden dark:bg-stone-800"
+                </router-link>
+                <Menu as="div" class="relative">
+                  <MenuButton
+                    class="text-nav-text hover:text-nav-text-muted-hover flex items-center focus:outline-hidden"
                   >
-                    <MenuItem
-                      v-for="ws in otherWorkspaces"
-                      :key="ws.id"
-                      v-slot="{ active }"
+                    <ChevronDownIcon class="size-5" aria-hidden="true" />
+                  </MenuButton>
+                  <transition
+                    enter-active-class="transition ease-out duration-100"
+                    enter-from-class="transform opacity-0 scale-95"
+                    enter-to-class="transform opacity-100 scale-100"
+                    leave-active-class="transition ease-in duration-75"
+                    leave-from-class="transform opacity-100 scale-100"
+                    leave-to-class="transform opacity-0 scale-95"
+                  >
+                    <MenuItems
+                      class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5 focus:outline-hidden dark:bg-stone-800"
                     >
-                      <button
-                        type="button"
-                        :class="[
-                          active ? 'bg-gray-100 dark:bg-stone-700' : '',
-                          'block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-stone-300',
-                        ]"
-                        @click="handleSwitchWorkspace(ws.id)"
+                      <MenuItem
+                        v-for="ws in otherWorkspaces"
+                        :key="ws.id"
+                        v-slot="{ active }"
                       >
-                        {{ ws.name }}
-                      </button>
-                    </MenuItem>
-                  </MenuItems>
-                </transition>
-              </Menu>
+                        <button
+                          type="button"
+                          :class="[
+                            active ? 'bg-gray-100 dark:bg-stone-700' : '',
+                            'block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-stone-300',
+                          ]"
+                          @click="handleSwitchWorkspace(ws.id)"
+                        >
+                          {{ ws.name }}
+                        </button>
+                      </MenuItem>
+                    </MenuItems>
+                  </transition>
+                </Menu>
+              </div>
             </div>
             <div class="hidden md:block">
               <div class="ml-10 flex items-baseline space-x-4">
