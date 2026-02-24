@@ -16,15 +16,13 @@ set :bundle_path, -> { shared_path.join("backend", "vendor", "bundle") }
 set :bundle_without, "development:test"
 set :bundle_flags, "--quiet"
 
-# mise integration — prefix commands so they run through mise exec
-SSHKit.config.command_map[:bundle] = "/home/ubuntu/.local/bin/mise exec -- bundle"
-SSHKit.config.command_map[:ruby] = "/home/ubuntu/.local/bin/mise exec -- ruby"
-SSHKit.config.command_map[:rake] = "/home/ubuntu/.local/bin/mise exec -- rake"
-SSHKit.config.command_map[:node] = "/home/ubuntu/.local/bin/mise exec -- node"
-SSHKit.config.command_map[:pnpm] = "/home/ubuntu/.local/bin/mise exec -- pnpm"
-
-# Ensure mise is on PATH
-set :default_env, {
-  path: "/home/ubuntu/.local/bin:$PATH",
-  mise_trusted_config_paths: "/var/www/tayaway"
-}
+# mise integration — prefix commands so they run through mise exec.
+# Use /usr/bin/env to set MISE_TRUSTED_CONFIG_PATHS inline (compatible with fish shell).
+# This avoids setting default_env, which causes SSHKit to wrap commands in
+# POSIX ( export ...; cmd ) subshell syntax that fish cannot parse.
+mise = "/usr/bin/env MISE_TRUSTED_CONFIG_PATHS=/var/www/tayaway /home/ubuntu/.local/bin/mise exec --"
+SSHKit.config.command_map[:bundle] = "#{mise} bundle"
+SSHKit.config.command_map[:ruby]   = "#{mise} ruby"
+SSHKit.config.command_map[:rake]   = "#{mise} rake"
+SSHKit.config.command_map[:node]   = "#{mise} node"
+SSHKit.config.command_map[:pnpm]   = "#{mise} pnpm"
