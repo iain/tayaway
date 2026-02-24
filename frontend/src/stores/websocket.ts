@@ -77,6 +77,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
   let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
   let pingInterval: ReturnType<typeof setInterval> | null = null
   let reconnectAttempts = 0
+  let knownGitSha: string | null = null
 
   const isConnected = computed(() => state.value === 'authenticated')
   const isReconnecting = computed(
@@ -183,11 +184,29 @@ export const useWebSocketStore = defineStore('websocket', () => {
         handleBroadcast(message as unknown as BroadcastMessage)
         break
       case 'pong':
-        // Keep-alive response, nothing to do
+        handlePong(message as unknown as { type: 'pong'; gitSha?: string })
         break
       case 'error':
         console.warn('[WebSocket] Server error:', message.message)
         break
+    }
+  }
+
+  function handlePong(message: { type: 'pong'; gitSha?: string }): void {
+    if (!message.gitSha) return
+    if (knownGitSha === null) {
+      knownGitSha = message.gitSha
+    } else if (knownGitSha !== message.gitSha) {
+      import('./notifications').then(({ useNotificationsStore }) => {
+        const notifications = useNotificationsStore()
+        notifications.showUpdate(
+          'A new version is available. Click to reload.',
+          () => {
+            caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)))
+            window.location.reload()
+          }
+        )
+      })
     }
   }
 

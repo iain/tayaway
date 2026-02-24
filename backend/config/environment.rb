@@ -7,6 +7,8 @@ APP_DIR = Pathname(File.expand_path("..", __dir__))
 require "bundler/setup"
 Bundler.require(:default, APP_ENV)
 
+GIT_SHA = T.let((ENV["GIT_SHA"] || `git rev-parse --short HEAD 2>/dev/null`.strip).freeze, String)
+
 Dotenv.overload("#{APP_DIR}/.env.#{APP_ENV}") unless APP_ENV == "production"
 
 require "base64"

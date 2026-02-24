@@ -33,7 +33,7 @@ module Websocket
 
         case type
         when "ping"
-          connection.write({ type: "pong" }.to_json)
+          connection.write({ type: "pong", gitSha: GIT_SHA }.to_json)
         when "switch_workspace"
           switch_workspace(connection, connection_id, user_id, data[:workspaceId], data[:since])
         else
