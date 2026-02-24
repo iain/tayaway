@@ -10,6 +10,9 @@ build/
 .env
 .env.local
 .env.*.local
+backend/.env.development
+backend/.env.test
+backend/.env.e2e
 
 # IDE
 .vscode/

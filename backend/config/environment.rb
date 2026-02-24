@@ -36,4 +36,6 @@ LOADER.enable_reloading if APP_ENV == "development"
 LOADER.setup
 LOADER.eager_load if APP_ENV == "production"
 
+Mailers::Base.configure!
+
 require_relative "../app/app"

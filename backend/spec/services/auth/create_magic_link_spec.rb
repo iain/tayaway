@@ -4,6 +4,8 @@
 require "spec_helper"
 
 RSpec.describe Auth::CreateMagicLink do
+  before { allow(Mailers::MagicLink).to receive(:send_email) }
+
   it "returns failure when email is missing" do
     result = described_class.call(email: nil)
 
@@ -38,5 +40,22 @@ RSpec.describe Auth::CreateMagicLink do
     expect(result.success?).to be true
     expect(result.value![:message]).to include("If an account exists")
     expect(DB[:magic_link_tokens].count).to eq(0)
+  end
+
+  it "sends a magic link email for existing user" do
+    TestFactories.user(email: "test@example.com")
+
+    described_class.call(email: "test@example.com")
+
+    expect(Mailers::MagicLink).to have_received(:send_email).with(
+      email: "test@example.com",
+      magic_link: a_string_matching(%r{auth/verify\?token=eyJ})
+    )
+  end
+
+  it "does not send email for non-existent user" do
+    described_class.call(email: "nonexistent@example.com")
+
+    expect(Mailers::MagicLink).not_to have_received(:send_email)
   end
 end

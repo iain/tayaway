@@ -40,6 +40,7 @@ module Auth
           magic_link = "#{frontend_url}/auth/verify?token=#{jwt}"
 
           APP_LOGGER.debug { "MAGIC LINK FOR #{email}: #{magic_link}" }
+          Mailers::MagicLink.send_email(email: email, magic_link: magic_link)
         else
           APP_LOGGER.debug { "No user found for email #{email}" }
         end

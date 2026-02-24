@@ -11,8 +11,10 @@ namespace :db do
     database_url = ENV.fetch("DATABASE_URL")
     db_name = database_url.split("/").last
 
-    # Connect to postgres database to create our database
-    maintenance_url = database_url.sub(/\/[^\/]+$/, "/postgres")
+    # Connect to a sibling tayaway database to issue CREATE DATABASE.
+    # We can't use `postgres` (restricted) or the target DB (may not exist yet).
+    siblings = %w[tayaway_development tayaway_test tayaway_e2e] - [db_name]
+    maintenance_url = database_url.sub(/\/[^\/]+$/, "/#{siblings.first}")
     db = Sequel.connect(maintenance_url)
 
     begin
@@ -34,7 +36,8 @@ namespace :db do
     database_url = ENV.fetch("DATABASE_URL")
     db_name = database_url.split("/").last
 
-    maintenance_url = database_url.sub(/\/[^\/]+$/, "/postgres")
+    siblings = %w[tayaway_development tayaway_test tayaway_e2e] - [db_name]
+    maintenance_url = database_url.sub(/\/[^\/]+$/, "/#{siblings.first}")
     db = Sequel.connect(maintenance_url)
 
     begin

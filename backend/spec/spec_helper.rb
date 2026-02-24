@@ -38,6 +38,7 @@ RSpec.configure do |config|
 
   config.before do
     TestFactories.reset_sequences!
+    Mail::TestMailer.deliveries.clear
   end
 
   config.around do |example|
