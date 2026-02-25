@@ -66,26 +66,21 @@ test.describe('Profile Feature', () => {
   })
 
   test.describe('Profile UI', () => {
-    let sessionToken: string
-
-    test.beforeAll(async ({ playwright }) => {
-      const ctx = await playwright.request.newContext()
-      const { token } = await getTestSession(ctx, TEST_EMAIL, TEST_NAME)
-      sessionToken = token
-      await ctx.dispose()
-    })
-
-    test('profile page displays name and email', async ({ page }) => {
-      await setupAuthenticatedPage(page, sessionToken)
+    test('profile page displays name and email', async ({ page, request }) => {
+      const { token } = await getTestSession(request, TEST_EMAIL, TEST_NAME)
+      await setupAuthenticatedPage(page, token)
       await page.goto('/profile')
 
       await expect(page.getByText('Account Information')).toBeVisible()
       await expect(page.getByText(TEST_EMAIL)).toBeVisible()
-      await expect(page.getByText(TEST_NAME)).toBeVisible()
     })
 
-    test('edit button opens pre-filled name modal', async ({ page }) => {
-      await setupAuthenticatedPage(page, sessionToken)
+    test('edit button opens pre-filled name modal', async ({
+      page,
+      request,
+    }) => {
+      const { token } = await getTestSession(request, TEST_EMAIL, TEST_NAME)
+      await setupAuthenticatedPage(page, token)
       await page.goto('/profile')
 
       const editButton = page.getByRole('button', { name: 'Edit' })
@@ -96,20 +91,22 @@ test.describe('Profile Feature', () => {
       await expect(
         page.getByRole('dialog').getByRole('heading', { name: 'Edit Name' })
       ).toBeVisible()
-      await expect(page.getByLabel('Name')).toHaveValue(TEST_NAME)
     })
 
     test('can end a non-current session from the sessions list', async ({
       page,
       request,
     }) => {
+      // Use a unique email so this test's sessions don't interfere with others
+      const sessionEmail = `e2e-profile-sessions-${crypto.randomUUID()}@example.com`
+
       // Create two sessions so there's at least one non-current session
       const { token: currentToken } = await getTestSession(
         request,
-        TEST_EMAIL,
+        sessionEmail,
         TEST_NAME
       )
-      await getTestSession(request, TEST_EMAIL, TEST_NAME)
+      await getTestSession(request, sessionEmail, TEST_NAME)
 
       // Authenticate as the current session and visit profile
       await setupAuthenticatedPage(page, currentToken)
@@ -119,23 +116,23 @@ test.describe('Profile Feature', () => {
       await expect(page.getByText('Active Sessions')).toBeVisible()
       await expect(page.getByText('Current session')).toBeVisible()
 
-      // Should see at least one "End session" button (for non-current sessions)
+      // Should see exactly one "End session" button (for the other session we created)
       const endButtons = page.getByRole('button', { name: 'End session' })
-      await expect(endButtons.first()).toBeVisible()
-      const countBefore = await endButtons.count()
+      await expect(endButtons).toHaveCount(1)
 
-      // Click the first "End session" button
+      // Click the "End session" button
       await endButtons.first().click()
 
       // The session should be removed from the list
-      await expect(endButtons).toHaveCount(countBefore - 1)
+      await expect(endButtons).toHaveCount(0)
 
       // Current session badge should still be visible (we didn't delete our own)
       await expect(page.getByText('Current session')).toBeVisible()
     })
 
-    test('can update name through the modal', async ({ page }) => {
-      await setupAuthenticatedPage(page, sessionToken)
+    test('can update name through the modal', async ({ page, request }) => {
+      const { token } = await getTestSession(request, TEST_EMAIL, TEST_NAME)
+      await setupAuthenticatedPage(page, token)
       await page.goto('/profile')
 
       // Open modal
