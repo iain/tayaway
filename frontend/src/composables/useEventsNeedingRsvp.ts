@@ -31,12 +31,12 @@ export function formatEventDateRange(
 export function useEventsNeedingRsvp() {
   const pool = useObjectPoolStore()
   const authStore = useAuthStore()
-  const { currentMemberId } = storeToRefs(authStore)
+  const { currentUserId } = storeToRefs(authStore)
 
   const eventsNeedingRsvp = computed<RsvpEventItem[]>(() => {
     void pool.version
-    const memberId = currentMemberId.value
-    if (!memberId) return []
+    const userId = currentUserId.value
+    if (!userId) return []
 
     const rsvps = pool.getAll('rsvp')
     const items: RsvpEventItem[] = []
@@ -48,7 +48,7 @@ export function useEventsNeedingRsvp() {
       if (new Date(event.endDate) < now) continue
 
       const hasRsvp = rsvps.some(
-        (r) => r.eventId === event.id && r.memberId === memberId
+        (r) => r.eventId === event.id && r.userId === userId
       )
       if (!hasRsvp) {
         items.push({

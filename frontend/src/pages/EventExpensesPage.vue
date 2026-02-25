@@ -14,7 +14,7 @@ import type { PoolApiResponse } from '@/types/pool'
 const route = useRoute()
 const authStore = useAuthStore()
 const pool = useObjectPoolStore()
-const { currentMemberId } = storeToRefs(authStore)
+const { currentUserId } = storeToRefs(authStore)
 
 const isModalOpen = ref(false)
 
@@ -74,7 +74,7 @@ onMounted(async () => {
               v-for="(expense, i) in expenses"
               :key="expense.id"
               :expense="expense"
-              :current-member-id="currentMemberId"
+              :current-user-id="currentUserId"
               :stripe="i % 2 === 0"
             />
           </tbody>

@@ -30,7 +30,6 @@ module Sync
         return empty_response(synced_at, full ? "full" : "partial") unless workspace
 
         pool = PoolSerializer.new(workspace_id: workspace_id)
-        user_ids = T.let(Set.new, T::Set[T.untyped])
 
         # Always include workspace so memberIds stays current on partial syncs
         # (adding a member doesn't update the workspace's updated_at)
@@ -41,12 +40,13 @@ module Sync
           items = model.changed_since(workspace_id, effective_since)
           items.each do |item|
             pool.send(entry.pool_method, item)
-            user_ids << item.user_id if entry.tracks_user
           end
         end
 
-        users = User.for_ids(user_ids.map(&:to_s))
-        users.each { |u| pool.add_member_from_user(u) }
+        # Include all members so the frontend can resolve userId references
+        WorkspaceMembership.for_workspace(workspace_id).each do |m|
+          pool.add_member_from_membership(m)
+        end
 
         deleted = if full
                     []

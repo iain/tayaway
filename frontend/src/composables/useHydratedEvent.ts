@@ -12,7 +12,7 @@ import type {
 export interface HydratedVote {
   id: string
   dateRangeId: string
-  memberId: string
+  userId: string
   member: PoolMember | undefined
   response: VoteResponse
   comment: string | null
@@ -51,6 +51,7 @@ export interface HydratedDatePoll {
 
 export interface HydratedMember {
   id: string
+  userId: string
   email: string
   name: string | null
   role: string
@@ -65,7 +66,7 @@ export interface HydratedWorkspace {
 export interface HydratedRsvp {
   id: string
   eventId: string
-  memberId: string
+  userId: string
   member: PoolMember | undefined
   attending: boolean
   startDate: string | null
@@ -82,7 +83,7 @@ export interface HydratedEvent {
   endDate: string | null
   workspaceId: string
   workspace: HydratedWorkspace | undefined
-  memberId: string
+  userId: string
   member: PoolMember | undefined
   datePoll: HydratedDatePoll | null
   rsvps: HydratedRsvp[]
@@ -137,7 +138,7 @@ function hydrateEvent(
   poolEvent: PoolEvent,
   pool: ReturnType<typeof useObjectPoolStore>
 ): HydratedEvent {
-  const member = pool.get('member', poolEvent.memberId)
+  const member = pool.findBy('member', 'userId', poolEvent.userId)
   const datePollObj = pool
     .getAll('datePoll')
     .find((dp) => dp.eventId === poolEvent.id)
@@ -153,7 +154,7 @@ function hydrateEvent(
     endDate: poolEvent.endDate,
     workspaceId: poolEvent.workspaceId,
     workspace,
-    memberId: poolEvent.memberId,
+    userId: poolEvent.userId,
     member,
     datePoll,
     rsvps,
@@ -223,6 +224,7 @@ function hydrateMembers(
     .filter((m) => m.workspaceId === workspaceId)
     .map((member) => ({
       id: member.id,
+      userId: member.userId,
       email: member.email,
       name: member.name,
       role: member.role,
@@ -278,8 +280,8 @@ function hydrateVotes(
     .map((vote) => ({
       id: vote.id,
       dateRangeId: vote.dateRangeId,
-      memberId: vote.memberId,
-      member: pool.get('member', vote.memberId),
+      userId: vote.userId,
+      member: pool.findBy('member', 'userId', vote.userId),
       response: vote.response,
       comment: vote.comment,
       createdAt: vote.createdAt,
@@ -300,8 +302,8 @@ function hydrateRsvps(
     .map((rsvp) => ({
       id: rsvp.id,
       eventId: rsvp.eventId,
-      memberId: rsvp.memberId,
-      member: pool.get('member', rsvp.memberId),
+      userId: rsvp.userId,
+      member: pool.findBy('member', 'userId', rsvp.userId),
       attending: rsvp.attending,
       startDate: rsvp.startDate,
       endDate: rsvp.endDate,

@@ -27,9 +27,9 @@ const formError = ref<string | null>(null)
 const roleError = ref<string | null>(null)
 
 const currentMember = computed((): PoolMember | null => {
-  const memberId = authStore.currentMemberId
-  if (!memberId) return null
-  return pool.get('member', memberId) ?? null
+  const userId = authStore.currentUserId
+  if (!userId) return null
+  return pool.findBy('member', 'userId', userId) ?? null
 })
 
 const isAdminOrOwner = computed((): boolean => {

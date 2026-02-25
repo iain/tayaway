@@ -17,7 +17,7 @@ export const useExpensesStore = defineStore('expenses', () => {
       id: expenseId,
       objectType: 'expense',
       eventId,
-      memberId: useAuthStore().currentMemberId ?? null,
+      userId: useAuthStore().currentUserId ?? null,
       description,
       amount,
       createdAt: now,

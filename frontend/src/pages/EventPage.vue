@@ -20,8 +20,8 @@ const eventId = computed(() => route.params.id as string)
 const { event } = useHydratedEvent(eventId)
 
 const authStore = useAuthStore()
-const { currentMemberId } = storeToRefs(authStore)
-const isOwner = computed(() => currentMemberId.value === event.value?.memberId)
+const { currentUserId } = storeToRefs(authStore)
+const isOwner = computed(() => currentUserId.value === event.value?.userId)
 
 const eventsStore = useEventsStore()
 const { loading } = storeToRefs(eventsStore)

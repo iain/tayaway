@@ -24,7 +24,7 @@ export type RelationshipSchema = {
 export const relationshipSchema: RelationshipSchema = {
   member: {},
   event: {
-    member: { type: 'belongsTo', foreignKey: 'memberId', targetType: 'member' },
+    member: { type: 'belongsTo', foreignKey: 'userId', targetType: 'member' },
     dateRanges: {
       type: 'hasMany',
       foreignKey: 'dateRangeIds',
@@ -49,11 +49,11 @@ export const relationshipSchema: RelationshipSchema = {
       foreignKey: 'dateRangeId',
       targetType: 'dateRange',
     },
-    member: { type: 'belongsTo', foreignKey: 'memberId', targetType: 'member' },
+    member: { type: 'belongsTo', foreignKey: 'userId', targetType: 'member' },
   },
   rsvp: {
     event: { type: 'belongsTo', foreignKey: 'eventId', targetType: 'event' },
-    member: { type: 'belongsTo', foreignKey: 'memberId', targetType: 'member' },
+    member: { type: 'belongsTo', foreignKey: 'userId', targetType: 'member' },
   },
   workspace: {},
   taskList: {
@@ -72,6 +72,6 @@ export const relationshipSchema: RelationshipSchema = {
   },
   expense: {
     event: { type: 'belongsTo', foreignKey: 'eventId', targetType: 'event' },
-    member: { type: 'belongsTo', foreignKey: 'memberId', targetType: 'member' },
+    member: { type: 'belongsTo', foreignKey: 'userId', targetType: 'member' },
   },
 } as const

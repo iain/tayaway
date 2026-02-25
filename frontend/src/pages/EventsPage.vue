@@ -28,8 +28,8 @@ const {
   getDateRanges,
 } = useEventsList()
 
-function getOwnerName(memberId: string): string {
-  const owner = getEventOwner(memberId)
+function getOwnerName(userId: string): string {
+  const owner = getEventOwner(userId)
   return owner?.name || owner?.email || 'Unknown'
 }
 
@@ -115,7 +115,7 @@ function formatDateRangeSummary(
             v-for="event in currentEvents"
             :key="event.id"
             :event="event"
-            :owner-name="getOwnerName(event.memberId)"
+            :owner-name="getOwnerName(event.userId)"
             @click="handleView(event.id)"
           >
             <template #meta>
@@ -140,7 +140,7 @@ function formatDateRangeSummary(
             v-for="event in upcomingEvents"
             :key="event.id"
             :event="event"
-            :owner-name="getOwnerName(event.memberId)"
+            :owner-name="getOwnerName(event.userId)"
             @click="handleView(event.id)"
           >
             <template #meta>
@@ -165,7 +165,7 @@ function formatDateRangeSummary(
             v-for="event in planningEvents"
             :key="event.id"
             :event="event"
-            :owner-name="getOwnerName(event.memberId)"
+            :owner-name="getOwnerName(event.userId)"
             @click="handleView(event.id)"
           >
             <template #meta>
@@ -184,7 +184,7 @@ function formatDateRangeSummary(
             v-for="event in pastEvents"
             :key="event.id"
             :event="event"
-            :owner-name="getOwnerName(event.memberId)"
+            :owner-name="getOwnerName(event.userId)"
             @click="handleView(event.id)"
           >
             <template #meta>

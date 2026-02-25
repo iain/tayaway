@@ -16,7 +16,7 @@ export const useTaskListsStore = defineStore('taskLists', () => {
       id: listId,
       objectType: 'taskList',
       workspaceId,
-      memberId: useAuthStore().currentMemberId ?? null,
+      userId: useAuthStore().currentUserId ?? null,
       name,
       position: Date.now(), // temporary; server assigns real position
       createdAt: now,

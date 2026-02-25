@@ -7,7 +7,7 @@ import type { PoolExpense } from '@/types/pool'
 
 const props = defineProps<{
   expense: PoolExpense
-  currentMemberId: string | null
+  currentUserId: string | null
   stripe?: boolean
 }>()
 
@@ -15,8 +15,8 @@ const pool = useObjectPoolStore()
 const expensesStore = useExpensesStore()
 
 const member = computed(() => {
-  if (!props.expense.memberId) return null
-  return pool.get('member', props.expense.memberId)
+  if (!props.expense.userId) return null
+  return pool.findBy('member', 'userId', props.expense.userId)
 })
 
 const displayName = computed(() => {
@@ -28,7 +28,7 @@ const formattedAmount = computed(() => {
 })
 
 const isOwner = computed(() => {
-  return props.expense.memberId === props.currentMemberId
+  return props.expense.userId === props.currentUserId
 })
 
 async function handleDelete() {

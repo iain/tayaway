@@ -18,6 +18,10 @@ vi.mock('@/stores/objectPool', () => ({
       return []
     },
     get: (_type: string, id: string) => mockMembers.find((m) => m.id === id),
+    findBy: (_type: string, field: string, value: unknown) =>
+      mockMembers.find(
+        (m) => (m as unknown as Record<string, unknown>)[field] === value
+      ),
   }),
 }))
 
@@ -38,7 +42,7 @@ function mkEvent(overrides: Partial<PoolEvent> = {}): PoolEvent {
     startDate: '2026-07-01',
     endDate: '2026-07-04',
     workspaceId: 'ws-1',
-    memberId: 'member-1',
+    userId: 'member-1',
     datePollId: null,
     rsvpIds: [],
     ...overrides,
@@ -51,7 +55,7 @@ function mkRsvp(overrides: Partial<PoolRsvp> = {}): PoolRsvp {
     id: 'rsvp-1',
     objectType: 'rsvp',
     eventId: 'event-1',
-    memberId: 'member-1',
+    userId: 'member-1',
     attending: true,
     startDate: null,
     endDate: null,
@@ -65,6 +69,7 @@ function mkMember(overrides: Partial<PoolMember> = {}): PoolMember {
     id: 'member-1',
     objectType: 'member',
     workspaceId: 'ws-1',
+    userId: 'member-1',
     email: 'alice@example.com',
     name: 'Alice',
     role: 'member',
@@ -78,7 +83,7 @@ function mkExpense(overrides: Partial<PoolExpense> = {}): PoolExpense {
     id: 'expense-1',
     objectType: 'expense',
     eventId: 'event-1',
-    memberId: 'member-1',
+    userId: 'member-1',
     description: 'Hotel',
     amount: 100,
     ...overrides,
@@ -156,14 +161,14 @@ describe('ExpenseSplit', () => {
 
     it('two full attendees each get 50%', () => {
       mockRsvps = [
-        mkRsvp({ id: 'rsvp-1', memberId: 'member-1' }),
-        mkRsvp({ id: 'rsvp-2', memberId: 'member-2' }),
+        mkRsvp({ id: 'rsvp-1', userId: 'member-1' }),
+        mkRsvp({ id: 'rsvp-2', userId: 'member-2' }),
       ]
       mockMembers = [
         mkMember({ id: 'member-1', name: 'Alice' }),
-        mkMember({ id: 'member-2', name: 'Bob' }),
+        mkMember({ id: 'member-2', userId: 'member-2', name: 'Bob' }),
       ]
-      mockExpenses = [mkExpense({ memberId: 'member-1', amount: 100 })]
+      mockExpenses = [mkExpense({ userId: 'member-1', amount: 100 })]
       const wrapper = mountSplit(
         mkEvent({ startDate: '2026-07-01', endDate: '2026-07-05' }),
         100
@@ -175,14 +180,14 @@ describe('ExpenseSplit', () => {
     it('payer is owed, non-payer owes', () => {
       // Alice pays €100; each owes €50. Alice is owed €50, Bob owes €50.
       mockRsvps = [
-        mkRsvp({ id: 'rsvp-1', memberId: 'member-1' }),
-        mkRsvp({ id: 'rsvp-2', memberId: 'member-2' }),
+        mkRsvp({ id: 'rsvp-1', userId: 'member-1' }),
+        mkRsvp({ id: 'rsvp-2', userId: 'member-2' }),
       ]
       mockMembers = [
         mkMember({ id: 'member-1', name: 'Alice' }),
-        mkMember({ id: 'member-2', name: 'Bob' }),
+        mkMember({ id: 'member-2', userId: 'member-2', name: 'Bob' }),
       ]
-      mockExpenses = [mkExpense({ memberId: 'member-1', amount: 100 })]
+      mockExpenses = [mkExpense({ userId: 'member-1', amount: 100 })]
       const wrapper = mountSplit(
         mkEvent({ startDate: '2026-07-01', endDate: '2026-07-05' }),
         100
@@ -196,19 +201,19 @@ describe('ExpenseSplit', () => {
       // Total nights: 5. Alice 80% = €40 share, Bob 20% = €10 share.
       // Alice pays €50 → owed €10. Bob pays €0 → owes €10.
       mockRsvps = [
-        mkRsvp({ id: 'rsvp-1', memberId: 'member-1' }),
+        mkRsvp({ id: 'rsvp-1', userId: 'member-1' }),
         mkRsvp({
           id: 'rsvp-2',
-          memberId: 'member-2',
+          userId: 'member-2',
           startDate: '2026-07-01',
           endDate: '2026-07-02',
         }),
       ]
       mockMembers = [
         mkMember({ id: 'member-1', name: 'Alice' }),
-        mkMember({ id: 'member-2', name: 'Bob' }),
+        mkMember({ id: 'member-2', userId: 'member-2', name: 'Bob' }),
       ]
-      mockExpenses = [mkExpense({ memberId: 'member-1', amount: 50 })]
+      mockExpenses = [mkExpense({ userId: 'member-1', amount: 50 })]
       const wrapper = mountSplit(
         mkEvent({ startDate: '2026-07-01', endDate: '2026-07-05' }),
         50
@@ -232,12 +237,12 @@ describe('ExpenseSplit', () => {
     it('shows summed nights across all attendees', () => {
       // Two full attendees on a 3-night event → 6 total nights
       mockRsvps = [
-        mkRsvp({ id: 'rsvp-1', memberId: 'member-1' }),
-        mkRsvp({ id: 'rsvp-2', memberId: 'member-2' }),
+        mkRsvp({ id: 'rsvp-1', userId: 'member-1' }),
+        mkRsvp({ id: 'rsvp-2', userId: 'member-2' }),
       ]
       mockMembers = [
         mkMember({ id: 'member-1', name: 'Alice' }),
-        mkMember({ id: 'member-2', name: 'Bob' }),
+        mkMember({ id: 'member-2', userId: 'member-2', name: 'Bob' }),
       ]
       mockExpenses = []
       const wrapper = mountSplit(

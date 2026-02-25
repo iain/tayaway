@@ -6,13 +6,13 @@ import type { HydratedEvent } from '@/composables/useHydratedEvent'
 
 const props = defineProps<{
   event: HydratedEvent
-  currentMemberId: string | null
+  currentUserId: string | null
 }>()
 
 interface MemberGroup {
   label: string
   completed: boolean
-  members: { id: string; name: string | null; email: string }[]
+  members: { id: string; userId: string; name: string | null; email: string }[]
 }
 
 const memberGroups = computed<MemberGroup[]>(() => {
@@ -25,24 +25,24 @@ const memberGroups = computed<MemberGroup[]>(() => {
   for (const dateRange of dateRanges) {
     for (const vote of dateRange.votes) {
       voteCountByMember.set(
-        vote.memberId,
-        (voteCountByMember.get(vote.memberId) || 0) + 1
+        vote.userId,
+        (voteCountByMember.get(vote.userId) || 0) + 1
       )
     }
   }
 
   const fullyVoted = members.filter(
-    (m) => voteCountByMember.get(m.id) === dateRanges.length
+    (m) => voteCountByMember.get(m.userId) === dateRanges.length
   )
   const partiallyVoted =
     dateRanges.length <= 1
       ? []
       : members.filter(
           (m) =>
-            voteCountByMember.has(m.id) &&
-            voteCountByMember.get(m.id)! < dateRanges.length
+            voteCountByMember.has(m.userId) &&
+            voteCountByMember.get(m.userId)! < dateRanges.length
         )
-  const notVoted = members.filter((m) => !voteCountByMember.has(m.id))
+  const notVoted = members.filter((m) => !voteCountByMember.has(m.userId))
 
   const groups: MemberGroup[] = []
   if (notVoted.length > 0) {
@@ -119,7 +119,7 @@ const awaitingVotesCount = computed(() =>
             :class="
               group.completed
                 ? 'bg-green-50 dark:bg-green-900/20'
-                : member.id === currentMemberId
+                : member.userId === currentUserId
                   ? 'bg-amber-50 ring-1 ring-amber-200 dark:bg-amber-900/20 dark:ring-amber-800'
                   : 'bg-gray-50 dark:bg-stone-700/50'
             "
@@ -129,7 +129,7 @@ const awaitingVotesCount = computed(() =>
               :class="
                 group.completed
                   ? 'bg-green-200 dark:bg-green-800'
-                  : member.id === currentMemberId
+                  : member.userId === currentUserId
                     ? 'bg-amber-200 dark:bg-amber-800'
                     : 'bg-gray-200 dark:bg-stone-600'
               "
@@ -142,7 +142,7 @@ const awaitingVotesCount = computed(() =>
                 v-else
                 class="size-4"
                 :class="
-                  member.id === currentMemberId
+                  member.userId === currentUserId
                     ? 'text-amber-600 dark:text-amber-400'
                     : 'text-gray-500 dark:text-stone-400'
                 "
@@ -151,7 +151,7 @@ const awaitingVotesCount = computed(() =>
             <span class="text-gray-900 dark:text-white">
               {{ member.name || member.email || 'Unknown' }}
               <span
-                v-if="member.id === currentMemberId"
+                v-if="member.userId === currentUserId"
                 class="text-sm text-amber-600 dark:text-amber-400"
               >
                 (you)

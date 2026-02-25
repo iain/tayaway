@@ -224,20 +224,22 @@ Authenticated (admin/owner only):
 
 These types must stay in sync between frontend and backend:
 
-| Type      | Backend model         | Frontend pool key | Serializer method          |
-| --------- | --------------------- | ----------------- | -------------------------- |
-| event     | `Event`               | `event`           | `add_event`                |
-| datePoll  | `DatePoll`            | `datePoll`        | `add_date_poll`            |
-| dateRange | `DateRange`           | `dateRange`       | `add_date_range`           |
-| vote      | `Vote`                | `vote`            | `add_vote`                 |
-| rsvp      | `Rsvp`                | `rsvp`            | `add_rsvp`                 |
-| workspace | `Workspace`           | `workspace`       | `add_workspace`            |
-| member    | `WorkspaceMembership` | `member`          | `add_workspace_membership` |
-| task_list | `TaskList`            | `taskList`        | `add_task_list`            |
-| task_item | `TaskItem`            | `taskItem`        | `add_task_item`            |
-| expense   | `Expense`             | `expense`         | `add_expense`              |
+| Type      | Backend model         | Frontend pool key | Serializer method |
+| --------- | --------------------- | ----------------- | ----------------- |
+| event     | `Event`               | `event`           | `add_event`       |
+| datePoll  | `DatePoll`            | `datePoll`        | `add_date_poll`   |
+| dateRange | `DateRange`           | `dateRange`       | `add_date_range`  |
+| vote      | `Vote`                | `vote`            | `add_vote`        |
+| rsvp      | `Rsvp`                | `rsvp`            | `add_rsvp`        |
+| workspace | `Workspace`           | `workspace`       | `add_workspace`   |
+| member    | `WorkspaceMembership` | `member`          | `add_member`      |
+| task_list | `TaskList`            | `taskList`        | `add_task_list`   |
+| task_item | `TaskItem`            | `taskItem`        | `add_task_item`   |
+| expense   | `Expense`             | `expense`         | `add_expense`     |
 
 Defined in: `backend/app/object_registry.rb` and `frontend/src/types/pool.ts`
+
+**Note:** The `member` pool object includes a `userId` field that maps to the underlying user. Domain objects (event, vote, rsvp, taskList, taskItem, expense) carry `userId` directly — the frontend uses `pool.findBy('member', 'userId', obj.userId)` to resolve the member.
 
 ## Adding a New Object Type
 

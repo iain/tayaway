@@ -41,12 +41,12 @@ export function isPastDeadline(deadline: string): boolean {
 export function usePollsNeedingAttention() {
   const pool = useObjectPoolStore()
   const authStore = useAuthStore()
-  const { currentMemberId } = storeToRefs(authStore)
+  const { currentUserId } = storeToRefs(authStore)
 
   const pollsNeedingAttention = computed<PollItem[]>(() => {
     void pool.version
-    const memberId = currentMemberId.value
-    if (!memberId) return []
+    const userId = currentUserId.value
+    if (!userId) return []
 
     const datePolls = pool.getAll('datePoll')
     const items: PollItem[] = []
@@ -64,7 +64,7 @@ export function usePollsNeedingAttention() {
 
       const votes = pool.getAll('vote')
       const votedCount = dateRanges.filter((dr) =>
-        votes.some((v) => v.dateRangeId === dr.id && v.memberId === memberId)
+        votes.some((v) => v.dateRangeId === dr.id && v.userId === userId)
       ).length
 
       if (votedCount < dateRanges.length) {

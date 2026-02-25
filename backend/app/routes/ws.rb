@@ -23,12 +23,9 @@ class App
     r.websocket do |connection|
       connection_id = Websocket::ConnectionManager.instance.register(connection, user_id)
 
-      # Load workspaces and memberships for user
+      # Load workspaces for user
       workspaces = Workspace.for_user(user_id)
       workspace_ids = workspaces.map { |w| w.id.to_s }
-      memberships = WorkspaceMembership.for_user(user_id).map do |m|
-        { workspaceId: m.workspace_id.to_s, memberId: m.id.to_s }
-      end
 
       # If client requested an initial workspace, validate membership and prepare sync
       synced_workspace_id = nil
@@ -36,12 +33,11 @@ class App
         synced_workspace_id = initial_workspace_id
       end
 
-      # Send authenticated message with workspace IDs and memberships
+      # Send authenticated message with workspace IDs
       auth_message = {
         type: "authenticated",
         userId: user_id.to_s,
-        workspaceIds: workspace_ids,
-        memberships: memberships
+        workspaceIds: workspace_ids
       }
       auth_message[:initialWorkspaceId] = synced_workspace_id if synced_workspace_id
       connection.write(auth_message.to_json)

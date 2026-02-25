@@ -16,7 +16,7 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const datePollsStore = useDatePollsStore()
-const { currentMemberId } = storeToRefs(authStore)
+const { currentUserId } = storeToRefs(authStore)
 const showPollModal = ref(false)
 const pollModalMode = ref<'open' | 'reopen'>('open')
 
@@ -25,7 +25,7 @@ const eventId = computed(() => route.params.id as string)
 const { event } = useHydratedEvent(eventId)
 
 const isOwner = computed(() => {
-  return currentMemberId.value === event.value?.memberId
+  return currentUserId.value === event.value?.userId
 })
 
 function handleVote(): void {
@@ -86,13 +86,13 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
         <DatePollSection
           :event="event"
           :is-owner="isOwner"
-          :current-member-id="currentMemberId"
+          :current-user-id="currentUserId"
           @vote="handleVote"
         />
         <AwaitingVotesSection
           v-if="event.datePoll!.dateRanges.length > 0"
           :event="event"
-          :current-member-id="currentMemberId"
+          :current-user-id="currentUserId"
         />
       </div>
 

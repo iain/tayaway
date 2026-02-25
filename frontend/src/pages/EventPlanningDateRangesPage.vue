@@ -17,7 +17,7 @@ import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 const route = useRoute()
 const authStore = useAuthStore()
 const datePollsStore = useDatePollsStore()
-const { currentMemberId } = storeToRefs(authStore)
+const { currentUserId } = storeToRefs(authStore)
 const { addDays } = useCalendar()
 
 const eventId = computed(() => route.params.id as string)
@@ -31,7 +31,7 @@ const modalPreselectedEnd = ref<string | null>(null)
 const confirmingDateRange = ref<HydratedDateRange | null>(null)
 
 const isOwner = computed(() => {
-  return currentMemberId.value === event.value?.memberId
+  return currentUserId.value === event.value?.userId
 })
 
 const dateRanges = computed(() => {

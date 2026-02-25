@@ -15,7 +15,7 @@ import TextButton from '@/components/common/TextButton.vue'
 
 const props = defineProps<{
   event: HydratedEvent
-  currentMemberId: string | null
+  currentUserId: string | null
 }>()
 
 const rsvpsStore = useRsvpsStore()
@@ -25,8 +25,8 @@ const partialStartDate = ref('')
 const partialEndDate = ref('')
 
 const currentUserRsvp = computed(() => {
-  if (!props.currentMemberId) return undefined
-  return props.event.rsvps.find((r) => r.memberId === props.currentMemberId)
+  if (!props.currentUserId) return undefined
+  return props.event.rsvps.find((r) => r.userId === props.currentUserId)
 })
 
 const isEventInPast = computed(() => {
@@ -42,8 +42,8 @@ const notAttending = computed(() =>
 
 const noResponse = computed(() => {
   if (!props.event.workspace) return []
-  const rsvpMemberIds = new Set(props.event.rsvps.map((r) => r.memberId))
-  return props.event.workspace.members.filter((m) => !rsvpMemberIds.has(m.id))
+  const rsvpUserIds = new Set(props.event.rsvps.map((r) => r.userId))
+  return props.event.workspace.members.filter((m) => !rsvpUserIds.has(m.userId))
 })
 
 async function handleAttend(): Promise<void> {
@@ -246,7 +246,7 @@ async function handleClearPartialDates(): Promise<void> {
               <span class="text-gray-900 dark:text-white">
                 {{ rsvp.member?.name || rsvp.member?.email || 'Unknown' }}
                 <span
-                  v-if="rsvp.memberId === currentMemberId"
+                  v-if="rsvp.userId === currentUserId"
                   class="text-sm text-green-600 dark:text-green-400"
                 >
                   (you)
@@ -285,7 +285,7 @@ async function handleClearPartialDates(): Promise<void> {
             <span class="text-gray-900 dark:text-white">
               {{ rsvp.member?.name || rsvp.member?.email || 'Unknown' }}
               <span
-                v-if="rsvp.memberId === currentMemberId"
+                v-if="rsvp.userId === currentUserId"
                 class="text-sm text-red-600 dark:text-red-400"
               >
                 (you)
@@ -314,7 +314,7 @@ async function handleClearPartialDates(): Promise<void> {
             <span class="text-gray-900 dark:text-white">
               {{ member.name || member.email || 'Unknown' }}
               <span
-                v-if="member.id === currentMemberId"
+                v-if="member.userId === currentUserId"
                 class="text-sm text-amber-600 dark:text-amber-400"
               >
                 (you)

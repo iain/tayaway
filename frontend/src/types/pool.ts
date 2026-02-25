@@ -36,6 +36,7 @@ export const OBJECT_TYPES = [
 export interface ObjectTypeMap {
   member: PoolObjectBase<'member'> & {
     workspaceId: string
+    userId: string
     email: string
     name: string | null
     role: string
@@ -47,7 +48,7 @@ export interface ObjectTypeMap {
     startDate: string | null
     endDate: string | null
     workspaceId: string
-    memberId: string
+    userId: string
     datePollId: string | null
     rsvpIds: string[]
     createdAt: string
@@ -69,14 +70,14 @@ export interface ObjectTypeMap {
   }
   vote: PoolObjectBase<'vote'> & {
     dateRangeId: string
-    memberId: string
+    userId: string
     response: VoteResponse
     comment: string | null
     createdAt: string
   }
   rsvp: PoolObjectBase<'rsvp'> & {
     eventId: string
-    memberId: string
+    userId: string
     attending: boolean
     startDate: string | null
     endDate: string | null
@@ -89,14 +90,14 @@ export interface ObjectTypeMap {
   }
   taskList: PoolObjectBase<'taskList'> & {
     workspaceId: string
-    memberId: string | null
+    userId: string | null
     name: string
     position: number
     createdAt: string
   }
   taskItem: PoolObjectBase<'taskItem'> & {
     taskListId: string
-    memberId: string | null
+    userId: string | null
     content: string
     completedAt: string | null
     position: number
@@ -104,7 +105,7 @@ export interface ObjectTypeMap {
   }
   expense: PoolObjectBase<'expense'> & {
     eventId: string
-    memberId: string | null
+    userId: string | null
     description: string
     amount: number
     createdAt: string

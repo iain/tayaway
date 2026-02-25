@@ -54,17 +54,6 @@ class WorkspaceMembership < T::Struct
         .select_map(:id)
     end
 
-    # Returns { user_id_str => membership_id_str } for a workspace.
-    # Used by PoolSerializer to map user_id → membership_id.
-    sig { params(workspace_id: T.any(String, UUID)).returns(T::Hash[String, String]) }
-    def member_id_lookup(workspace_id)
-      DB[:workspace_memberships]
-        .where(workspace_id: workspace_id)
-        .select_hash(:user_id, :id)
-        .transform_keys(&:to_s)
-        .transform_values(&:to_s)
-    end
-
     sig do
       params(
         workspace_id: T.any(String, UUID),

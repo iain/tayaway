@@ -13,7 +13,7 @@ import TextButton from '@/components/common/TextButton.vue'
 const props = defineProps<{
   dateRange: HydratedDateRange
   eventId: string
-  currentMemberId: string | null
+  currentUserId: string | null
 }>()
 
 const votesStore = useVotesStore()
@@ -24,10 +24,9 @@ const comment = ref('')
 const showCommentInput = ref(false)
 
 const currentUserVote = computed(() => {
-  if (!props.currentMemberId) return null
+  if (!props.currentUserId) return null
   return (
-    props.dateRange.votes.find((v) => v.memberId === props.currentMemberId) ??
-    null
+    props.dateRange.votes.find((v) => v.userId === props.currentUserId) ?? null
   )
 })
 
@@ -53,7 +52,7 @@ const hasCommentChanges = computed(() => {
 })
 
 async function handleVote(response: VoteResponse) {
-  if (!props.currentMemberId) return
+  if (!props.currentUserId) return
 
   loading.value = true
   try {
@@ -69,7 +68,7 @@ async function handleVote(response: VoteResponse) {
 }
 
 async function handleCommentSubmit() {
-  if (!currentUserVote.value || !props.currentMemberId) return
+  if (!currentUserVote.value || !props.currentUserId) return
 
   const voteResponse = currentUserVote.value.response
   const originalComment = currentUserVote.value.comment || ''

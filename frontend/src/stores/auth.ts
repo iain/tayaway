@@ -6,6 +6,7 @@ import { useObjectPoolStore } from './objectPool'
 import { useWebSocketStore } from './websocket'
 import { useWorkspaceStore } from './workspace'
 import { useMutation } from '@/composables/useMutation'
+
 import * as poolDb from '@/api/poolDb'
 import type {
   AuthUser,
@@ -17,7 +18,6 @@ import type {
 import type { PoolApiResponse } from '@/types/pool'
 
 const AUTH_USER_KEY = 'tayaway_auth_user'
-const MEMBERSHIPS_KEY = 'tayaway_memberships'
 
 function cacheUser(u: AuthUser): void {
   localStorage.setItem(AUTH_USER_KEY, JSON.stringify(u))
@@ -36,55 +36,18 @@ function clearCachedUser(): void {
   localStorage.removeItem(AUTH_USER_KEY)
 }
 
-function cacheMemberships(map: Map<string, string>): void {
-  localStorage.setItem(
-    MEMBERSHIPS_KEY,
-    JSON.stringify(Array.from(map.entries()))
-  )
-}
-
-function getCachedMemberships(): Map<string, string> | null {
-  try {
-    const raw = localStorage.getItem(MEMBERSHIPS_KEY)
-    return raw ? new Map(JSON.parse(raw) as [string, string][]) : null
-  } catch {
-    return null
-  }
-}
-
-function clearCachedMemberships(): void {
-  localStorage.removeItem(MEMBERSHIPS_KEY)
-}
-
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthUser | null>(null)
   const loading = ref(false)
   const initialized = ref(false)
 
-  // workspaceId → memberId mapping (set from WebSocket authenticated message)
-  const memberships = ref<Map<string, string>>(new Map())
-
   const isAuthenticated = computed(() => user.value !== null)
 
-  const currentMemberId = computed(() => {
-    const wsId = useWorkspaceStore().currentWorkspaceId
-    return wsId ? (memberships.value.get(wsId) ?? null) : null
-  })
-
-  function setMemberships(map: Map<string, string>): void {
-    memberships.value = map
-    cacheMemberships(map)
-  }
+  const currentUserId = computed(() => user.value?.id ?? null)
 
   async function initialize(): Promise<void> {
     // If already initialized with a valid user, skip
     if (initialized.value && user.value) return
-
-    // Restore memberships from cache so currentMemberId is available offline
-    const cachedMemberships = getCachedMemberships()
-    if (cachedMemberships) {
-      memberships.value = cachedMemberships
-    }
 
     try {
       loading.value = true
@@ -164,9 +127,7 @@ export const useAuthStore = defineStore('auth', () => {
       await poolDb.clearAll()
 
       clearCachedUser()
-      clearCachedMemberships()
       user.value = null
-      memberships.value = new Map()
       // Reset stores on logout
       const pool = useObjectPoolStore()
       pool.$reset()
@@ -179,27 +140,33 @@ export const useAuthStore = defineStore('auth', () => {
     if (!user.value) return
     const previousName = user.value.name
     const userId = user.value.id
-    const memberId = currentMemberId.value
-    const { update } = useMutation()
+    const pool = useObjectPoolStore()
+    const member = pool.findBy('member', 'userId', userId)
+    const { mutate, update } = useMutation()
 
     // Optimistically update the auth ref
     user.value.name = name
 
     try {
-      const result = await update(
-        'Failed to update name',
-        'member',
-        memberId!,
-        { name },
-        (commandQueue) =>
-          commandQueue.enqueue<PoolApiResponse>('PUT', `/users/${userId}`, {
-            name,
-          })
-      )
+      const apiCall = (commandQueue: ReturnType<typeof useCommandQueueStore>) =>
+        commandQueue.enqueue<PoolApiResponse>('PUT', `/users/${userId}`, {
+          name,
+        })
+
+      // If the member is in the pool, use optimistic pool update; otherwise just mutate
+      const result = member
+        ? await update(
+            'Failed to update name',
+            'member',
+            member.id,
+            { name },
+            apiCall
+          )
+        : await mutate('Failed to update name', apiCall)
+
       if (!result.queued && user.value) {
         // Sync auth ref from pool (server response already imported)
-        const pool = useObjectPoolStore()
-        const poolMember = memberId ? pool.get('member', memberId) : null
+        const poolMember = member ? pool.get('member', member.id) : null
         if (poolMember) {
           user.value.name = poolMember.name
         }
@@ -214,22 +181,18 @@ export const useAuthStore = defineStore('auth', () => {
 
   function $reset() {
     clearCachedUser()
-    clearCachedMemberships()
     user.value = null
     loading.value = false
     initialized.value = false
-    memberships.value = new Map()
   }
 
   return {
     user,
     loading,
     initialized,
-    memberships,
     isAuthenticated,
-    currentMemberId,
+    currentUserId,
     initialize,
-    setMemberships,
     requestMagicLink,
     verifyToken,
     logout,

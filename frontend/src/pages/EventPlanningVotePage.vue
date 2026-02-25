@@ -13,7 +13,7 @@ import OpenPollModal from '@/components/events/OpenPollModal.vue'
 const route = useRoute()
 const authStore = useAuthStore()
 const datePollsStore = useDatePollsStore()
-const { currentMemberId } = storeToRefs(authStore)
+const { currentUserId } = storeToRefs(authStore)
 
 const eventId = computed(() => route.params.id as string)
 
@@ -21,7 +21,7 @@ const eventId = computed(() => route.params.id as string)
 const { event } = useHydratedEvent(eventId)
 
 const pollOpen = computed(() => isPollOpen(event.value?.datePoll))
-const isOwner = computed(() => currentMemberId.value === event.value?.memberId)
+const isOwner = computed(() => currentUserId.value === event.value?.userId)
 
 const dateRanges = computed(() => {
   return event.value?.datePoll?.dateRanges ?? []
@@ -92,7 +92,7 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
             :key="dateRange.id"
             :date-range="dateRange"
             :event-id="event.id"
-            :current-member-id="currentMemberId"
+            :current-user-id="currentUserId"
           />
         </div>
       </section>

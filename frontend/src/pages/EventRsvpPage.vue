@@ -12,7 +12,7 @@ import RsvpSection from '@/components/events/RsvpSection.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
-const { currentMemberId } = storeToRefs(authStore)
+const { currentUserId } = storeToRefs(authStore)
 
 const eventId = computed(() => route.params.id as string)
 
@@ -56,7 +56,7 @@ function handleDownloadIcs(): void {
 
       <!-- Event has dates: show RSVP section -->
       <template v-else-if="eventHasDates(event)">
-        <RsvpSection :event="event" :current-member-id="currentMemberId" />
+        <RsvpSection :event="event" :current-user-id="currentUserId" />
         <button
           type="button"
           class="mt-4 inline-flex items-center gap-1.5 text-sm text-cyan-600 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"

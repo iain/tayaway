@@ -4,9 +4,6 @@
 # Collects and serializes objects for pool-based API responses.
 # Objects are deduplicated by type and id, and includes related objects.
 #
-# When workspace_id is provided, user objects are serialized as "member"
-# by joining user attributes with workspace membership data.
-#
 # @example
 #   pool = PoolSerializer.new(workspace_id: workspace_id)
 #   pool.add_event(event)
@@ -18,32 +15,6 @@ class PoolSerializer
   def initialize(workspace_id: nil)
     @objects = T.let({}, T::Hash[String, T::Hash[Symbol, T.untyped]])
     @workspace_id = T.let(workspace_id&.to_s, T.nilable(String))
-    @member_lookup = T.let(nil, T.nilable(T::Hash[String, String]))
-  end
-
-  # Lazily builds and caches { user_id_str => membership_id_str } lookup
-  sig { params(user_id: T.any(String, UUID)).returns(T.nilable(String)) }
-  def member_id_for_user(user_id)
-    return nil unless @workspace_id
-
-    @member_lookup ||= WorkspaceMembership.member_id_lookup(@workspace_id)
-    @member_lookup[user_id.to_s]
-  end
-
-  # Serializes a user as a member pool object using the membership lookup.
-  # Skips if no membership found for this user in the workspace.
-  sig { params(user: User).void }
-  def add_member_from_user(user)
-    membership_id = member_id_for_user(user.id)
-    return unless membership_id
-
-    key = "member:#{membership_id}"
-    return if @objects.key?(key)
-
-    membership = WorkspaceMembership.find(membership_id)
-    return unless membership
-
-    @objects[key] = build_member_hash(user, membership)
   end
 
   # Serializes a workspace membership as a member pool object by fetching the user.
@@ -72,14 +43,6 @@ class PoolSerializer
 
     date_poll = DatePoll.find_by_event(event.id)
     hash = event.to_api_hash(date_poll_id: date_poll&.id&.to_s)
-
-    # Replace userId with memberId
-    mid = member_id_for_user(event.user_id)
-    if mid
-      hash[:memberId] = mid
-      hash.delete(:userId)
-    end
-
     hash[:rsvpIds] = Rsvp.ids_for_event(event.id)
 
     @objects[key] = hash
@@ -108,16 +71,7 @@ class PoolSerializer
     key = "vote:#{vote.id}"
     return if @objects.key?(key)
 
-    hash = vote.to_api_hash
-
-    # Replace userId with memberId
-    mid = member_id_for_user(vote.user_id)
-    if mid
-      hash[:memberId] = mid
-      hash.delete(:userId)
-    end
-
-    @objects[key] = hash
+    @objects[key] = vote.to_api_hash
   end
 
   sig { params(rsvp: Rsvp).void }
@@ -125,16 +79,7 @@ class PoolSerializer
     key = "rsvp:#{rsvp.id}"
     return if @objects.key?(key)
 
-    hash = rsvp.to_api_hash
-
-    # Replace userId with memberId
-    mid = member_id_for_user(rsvp.user_id)
-    if mid
-      hash[:memberId] = mid
-      hash.delete(:userId)
-    end
-
-    @objects[key] = hash
+    @objects[key] = rsvp.to_api_hash
   end
 
   sig { params(workspace: Workspace).void }
@@ -151,11 +96,7 @@ class PoolSerializer
     key = "task_list:#{task_list.id}"
     return if @objects.key?(key)
 
-    hash = task_list.to_api_hash
-    mid = task_list.user_id ? member_id_for_user(T.must(task_list.user_id)) : nil
-    hash[:memberId] = mid
-    hash.delete(:userId)
-    @objects[key] = hash
+    @objects[key] = task_list.to_api_hash
     TaskItem.for_task_list(task_list.id).each { |item| add_task_item(item) }
   end
 
@@ -164,11 +105,7 @@ class PoolSerializer
     key = "task_item:#{task_item.id}"
     return if @objects.key?(key)
 
-    hash = task_item.to_api_hash
-    mid = task_item.user_id ? member_id_for_user(T.must(task_item.user_id)) : nil
-    hash[:memberId] = mid
-    hash.delete(:userId)
-    @objects[key] = hash
+    @objects[key] = task_item.to_api_hash
   end
 
   sig { params(expense: Expense).void }
@@ -176,11 +113,7 @@ class PoolSerializer
     key = "expense:#{expense.id}"
     return if @objects.key?(key)
 
-    hash = expense.to_api_hash
-    mid = expense.user_id ? member_id_for_user(T.must(expense.user_id)) : nil
-    hash[:memberId] = mid
-    hash.delete(:userId)
-    @objects[key] = hash
+    @objects[key] = expense.to_api_hash
   end
 
   sig { params(items: T::Enumerable[T.untyped], type: Symbol).void }
@@ -188,13 +121,6 @@ class PoolSerializer
     entry = ObjectRegistry::BY_KEY[type.to_s]
     if entry
       items.each { |item| send(entry.pool_method, item) }
-    else
-      # Special types not in the registry
-      items.each do |item|
-        case type
-        when :member_from_user then add_member_from_user(item)
-        end
-      end
     end
   end
 
@@ -211,6 +137,7 @@ class PoolSerializer
       id: membership.id.to_s,
       objectType: "member",
       workspaceId: membership.workspace_id.to_s,
+      userId: user.id.to_s,
       email: user.email.to_s,
       name: user.name,
       role: membership.role,

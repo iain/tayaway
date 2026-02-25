@@ -202,6 +202,17 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     })
   }
 
+  // Find a single object by a field value (e.g. member by userId)
+  function findBy<T extends ObjectType>(
+    type: T,
+    field: string,
+    value: unknown
+  ): ObjectTypeMap[T] | undefined {
+    return getAll(type).find(
+      (obj) => (obj as unknown as Record<string, unknown>)[field] === value
+    )
+  }
+
   // Get multiple objects by IDs
   function getMany<T extends ObjectType>(
     type: T,
@@ -371,6 +382,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     get,
     getServer,
     getAll,
+    findBy,
     getMany,
     addPending,
     removePending,

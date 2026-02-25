@@ -53,10 +53,8 @@ export function useEventsList() {
       planningEvents.value.length > 0
   )
 
-  function getEventOwner(
-    memberId: string
-  ): ObjectTypeMap['member'] | undefined {
-    return pool.get('member', memberId)
+  function getEventOwner(userId: string): ObjectTypeMap['member'] | undefined {
+    return pool.findBy('member', 'userId', userId)
   }
 
   function getDateRanges(eventId: string): ObjectTypeMap['dateRange'][] {

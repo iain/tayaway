@@ -12,7 +12,7 @@ const props = defineProps<{
 const pool = useObjectPoolStore()
 
 interface SplitRow {
-  memberId: string
+  userId: string
   name: string
   nights: number
   ratio: number
@@ -48,13 +48,13 @@ const rows = computed((): SplitRow[] => {
     .filter((e) => e.eventId === props.event.id)
 
   return withNights.map(({ rsvp, nights }) => {
-    const member = pool.get('member', rsvp.memberId)
+    const member = pool.findBy('member', 'userId', rsvp.userId)
     const ratio = nights / totalNights
     const paid = expenses
-      .filter((e) => e.memberId === rsvp.memberId)
+      .filter((e) => e.userId === rsvp.userId)
       .reduce((sum, e) => sum + e.amount, 0)
     return {
-      memberId: rsvp.memberId,
+      userId: rsvp.userId,
       name: member?.name ?? member?.email ?? 'Unknown',
       nights,
       ratio,
@@ -122,7 +122,7 @@ function formatBalance(balance: number): string {
         <tbody>
           <tr
             v-for="(row, i) in rows"
-            :key="row.memberId"
+            :key="row.userId"
             class="text-gray-800 dark:text-stone-200"
             :class="i % 2 === 0 ? 'bg-gray-50 dark:bg-black/20' : ''"
           >
