@@ -76,7 +76,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
   let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
   let pingInterval: ReturnType<typeof setInterval> | null = null
   let reconnectAttempts = 0
-  let knownGitSha: string | null = null
+  const gitSha = ref<string | null>(null)
 
   const isConnected = computed(() => state.value === 'authenticated')
   const isReconnecting = computed(
@@ -193,9 +193,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
   function handlePong(message: { type: 'pong'; gitSha?: string }): void {
     if (!message.gitSha) return
-    if (knownGitSha === null) {
-      knownGitSha = message.gitSha
-    } else if (knownGitSha !== message.gitSha) {
+    const previous = gitSha.value
+    gitSha.value = message.gitSha
+    if (previous !== null && previous !== message.gitSha) {
       import('./notifications').then(({ useNotificationsStore }) => {
         const notifications = useNotificationsStore()
         notifications.showUpdate(() => {
@@ -441,6 +441,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     isReconnecting,
     hasSynced,
     hasCachedData,
+    gitSha,
     connect,
     reconnect,
     disconnect,

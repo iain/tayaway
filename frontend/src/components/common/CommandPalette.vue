@@ -8,6 +8,7 @@ import {
   CalendarDaysIcon,
   CheckCircleIcon,
   ClipboardDocumentListIcon,
+  ClipboardIcon,
   HomeIcon,
   MoonIcon,
   PlusIcon,
@@ -140,6 +141,17 @@ const quickActions = computed<NavAction[]>(() => [
     icon: isDark.value ? SunIcon : MoonIcon,
     run: toggleDarkMode,
   },
+  ...(wsStore.gitSha
+    ? [
+        {
+          type: 'action' as const,
+          id: 'copy-revision',
+          name: `Copy revision (${wsStore.gitSha.slice(0, 7)})`,
+          icon: ClipboardIcon,
+          run: () => navigator.clipboard.writeText(wsStore.gitSha!),
+        },
+      ]
+    : []),
   {
     type: 'action',
     id: 'reconnect',
