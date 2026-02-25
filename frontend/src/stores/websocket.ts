@@ -209,6 +209,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
   function handleAuthenticated(message: AuthenticatedMessage): void {
     state.value = 'authenticated'
     reconnectAttempts = 0
+    gitSha.value = null
     workspaceIds.value = message.workspaceIds
 
     // Initialize workspace selection and request data for it
