@@ -8,7 +8,7 @@ Deploy to production after ensuring the working tree is clean and pushed.
    - Do NOT proceed with deploy
 3. Run `git status -sb` to check if the branch is ahead of the remote
 4. If there are unpushed commits, ask the user for confirmation then run `git push`
-5. Once the working tree is clean and all commits are pushed, run `mise run deploy`
+5. Once the working tree is clean and all commits are pushed, run `cd backend && bundle exec cap production deploy`
 6. Report the result to the user
 
 ## Important
