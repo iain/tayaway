@@ -147,8 +147,15 @@ test.describe('Profile Feature', () => {
       await input.clear()
       await input.fill('New E2E Name')
 
-      // Save
-      await page.getByRole('button', { name: 'Save' }).click()
+      // Save and wait for the API response
+      await Promise.all([
+        page.waitForResponse(
+          (resp) =>
+            resp.url().includes('/api/users/') &&
+            resp.request().method() === 'PUT'
+        ),
+        page.getByRole('button', { name: 'Save' }).click(),
+      ])
 
       // Modal should close
       await expect(page.getByRole('dialog')).toBeHidden()
