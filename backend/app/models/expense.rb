@@ -10,6 +10,8 @@ class Expense < T::Struct
   const :user_id, T.nilable(UUID)
   const :amount, Float
   const :description, String
+  const :start_date, Date
+  const :end_date, Date
   const :created_at, Time
   const :updated_at, Time
 
@@ -22,6 +24,8 @@ class Expense < T::Struct
       userId: user_id&.to_s,
       amount: amount,
       description: description,
+      startDate: start_date.iso8601,
+      endDate: end_date.iso8601,
       createdAt: created_at.iso8601(3),
       updatedAt: updated_at.iso8601(3)
     }
@@ -78,6 +82,8 @@ class Expense < T::Struct
         user_id: row[:user_id] ? UUID.new(row[:user_id]) : nil,
         amount: row[:amount].to_f,
         description: row[:description],
+        start_date: row[:start_date],
+        end_date: row[:end_date],
         created_at: row[:created_at],
         updated_at: row[:updated_at]
       )

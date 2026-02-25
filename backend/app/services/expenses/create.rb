@@ -15,21 +15,28 @@ module Expenses
           workspace_id: T.any(String, UUID),
           description: T.nilable(String),
           amount: T.nilable(Float),
+          start_date: T.nilable(String),
+          end_date: T.nilable(String),
           id: T.nilable(String)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def call(event_id:, user_id:, workspace_id:, description:, amount:, id: nil)
-        validate(description, amount)
-          .bind { |valid| create_expense(event_id, user_id, workspace_id, valid[:description], valid[:amount], id) }
+      def call(event_id:, user_id:, workspace_id:, description:, amount:, start_date:, end_date:, id: nil)
+        validate(description, amount, start_date, end_date)
+          .bind { |valid| validate_date_range(valid, event_id) }
+          .bind { |valid| create_expense(event_id, user_id, workspace_id, valid, id) }
       end
 
       private
 
       sig do
-        params(description: T.nilable(String), amount: T.nilable(Float))
-          .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
+        params(
+          description: T.nilable(String),
+          amount: T.nilable(Float),
+          start_date: T.nilable(String),
+          end_date: T.nilable(String)
+        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def validate(description, amount)
+      def validate(description, amount, start_date, end_date)
         if description.nil? || description.empty?
           return T.cast(
             Failure(ServiceError.validation("Description is required")),
@@ -44,10 +51,44 @@ module Expenses
           )
         end
 
+        if start_date.nil? || start_date.empty? || end_date.nil? || end_date.empty?
+          return T.cast(
+            Failure(ServiceError.validation("Start date and end date are required")),
+            Result[T::Hash[Symbol, T.untyped], ServiceError]
+          )
+        end
+
+        if start_date > end_date
+          return T.cast(
+            Failure(ServiceError.validation("Start date must be on or before end date")),
+            Result[T::Hash[Symbol, T.untyped], ServiceError]
+          )
+        end
+
         T.cast(
-          Success({ description: description, amount: amount }),
+          Success({ description: description, amount: amount, start_date: Date.parse(start_date), end_date: Date.parse(end_date) }),
           Result[T::Hash[Symbol, T.untyped], ServiceError]
         )
+      end
+
+      sig do
+        params(
+          valid: T::Hash[Symbol, T.untyped],
+          event_id: T.any(String, UUID)
+        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
+      end
+      def validate_date_range(valid, event_id)
+        event = Event.find(event_id)
+        if event&.start_date && event.end_date
+          if valid[:start_date] < event.start_date || valid[:end_date] > event.end_date
+            return T.cast(
+              Failure(ServiceError.validation("Expense dates must fall within event date range")),
+              Result[T::Hash[Symbol, T.untyped], ServiceError]
+            )
+          end
+        end
+
+        T.cast(Success(valid), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
 
       sig do
@@ -55,12 +96,11 @@ module Expenses
           event_id: T.any(String, UUID),
           user_id: T.any(String, UUID),
           workspace_id: T.any(String, UUID),
-          description: String,
-          amount: Float,
+          valid: T::Hash[Symbol, T.untyped],
           id: T.nilable(String)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def create_expense(event_id, user_id, workspace_id, description, amount, id)
+      def create_expense(event_id, user_id, workspace_id, valid, id)
         # Idempotent replay: if client provided an ID and it already exists, return it
         if id
           existing = Expense.find(id)
@@ -79,8 +119,10 @@ module Expenses
             id: expense_id,
             event_id: event_id,
             user_id: user_id,
-            amount: amount,
-            description: description,
+            amount: valid[:amount],
+            description: valid[:description],
+            start_date: valid[:start_date],
+            end_date: valid[:end_date],
             created_at: now,
             updated_at: now
           )

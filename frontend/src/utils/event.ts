@@ -9,6 +9,10 @@ export function countNights(startDate: string, endDate: string): number {
   )
 }
 
+export function countDays(startDate: string, endDate: string): number {
+  return countNights(startDate, endDate) + 1
+}
+
 export function eventHasDates(event: EventLike | null | undefined): boolean {
   return event != null && event.startDate != null && event.endDate != null
 }

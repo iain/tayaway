@@ -126,7 +126,7 @@ votes              id, date_range_id, user_id, response (yes/no/preferably_not),
 rsvps              id, event_id, user_id, attending (boolean), start_date (nullable), end_date (nullable), timestamps, unique(event_id, user_id), check(start_date <= end_date)
 task_lists         id, workspace_id (FK cascade), user_id (FK set_null, nullable), name TEXT, position FLOAT (ordered within workspace), timestamps
 task_items         id, task_list_id (FK cascade), user_id (FK set_null, nullable), content TEXT, completed_at (TIMESTAMPTZ nullable), position FLOAT (ordered within list), timestamps
-expenses           id (UUID), event_id (FK cascade), user_id (FK set_null, nullable), amount NUMERIC NOT NULL (euros), description TEXT NOT NULL, timestamps
+expenses           id (UUID), event_id (FK cascade), user_id (FK set_null, nullable), amount NUMERIC NOT NULL (euros), description TEXT NOT NULL, start_date DATE NOT NULL, end_date DATE NOT NULL, timestamps, check(start_date <= end_date)
 workspace_invites  id (UUID), workspace_id (FK cascade), invited_by (FK set_null, nullable), email (CITEXT), token (hashed), expires_at (24h), accepted_at (nullable), timestamps; partial unique(workspace_id, email) WHERE accepted_at IS NULL
 ```
 

@@ -74,6 +74,7 @@ onMounted(async () => {
               v-for="(expense, i) in expenses"
               :key="expense.id"
               :expense="expense"
+              :event="event"
               :current-user-id="currentUserId"
               :stripe="i % 2 === 0"
             />
@@ -87,7 +88,7 @@ onMounted(async () => {
 
       <AddExpenseModal
         :open="isModalOpen"
-        :event-id="eventId"
+        :event="event"
         @close="isModalOpen = false"
       />
 

@@ -53,6 +53,8 @@ class App
           workspace_id: event.workspace_id,
           description: r.params["description"]&.strip,
           amount: amount,
+          start_date: r.params["start_date"]&.strip,
+          end_date: r.params["end_date"]&.strip,
           id: r.params["id"]
         )
         handle_result(result, success_status: 201)
@@ -85,7 +87,9 @@ class App
           current_user_id: user.id,
           workspace_id: event.workspace_id,
           description: r.params["description"]&.strip,
-          amount: amount
+          amount: amount,
+          start_date: r.params["start_date"]&.strip,
+          end_date: r.params["end_date"]&.strip
         )
         handle_result(result)
       end

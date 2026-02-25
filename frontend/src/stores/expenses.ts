@@ -9,7 +9,9 @@ export const useExpensesStore = defineStore('expenses', () => {
   async function createExpense(
     eventId: string,
     description: string,
-    amount: number
+    amount: number,
+    startDate: string,
+    endDate: string
   ) {
     const expenseId = crypto.randomUUID()
     const now = new Date().toISOString()
@@ -20,6 +22,8 @@ export const useExpensesStore = defineStore('expenses', () => {
       userId: useAuthStore().currentUserId ?? null,
       description,
       amount,
+      startDate,
+      endDate,
       createdAt: now,
       updatedAt: now,
     }
@@ -32,6 +36,8 @@ export const useExpensesStore = defineStore('expenses', () => {
           event_id: eventId,
           description,
           amount,
+          start_date: startDate,
+          end_date: endDate,
           id: expenseId,
         })
     )
@@ -40,15 +46,32 @@ export const useExpensesStore = defineStore('expenses', () => {
 
   async function updateExpense(
     id: string,
-    changes: { description?: string; amount?: number }
+    changes: {
+      description?: string
+      amount?: number
+      startDate?: string
+      endDate?: string
+    }
   ) {
+    const apiChanges: Record<string, unknown> = {}
+    if (changes.description !== undefined)
+      apiChanges.description = changes.description
+    if (changes.amount !== undefined) apiChanges.amount = changes.amount
+    if (changes.startDate !== undefined)
+      apiChanges.start_date = changes.startDate
+    if (changes.endDate !== undefined) apiChanges.end_date = changes.endDate
+
     await update(
       'Failed to update expense',
       'expense',
       id,
       changes,
       (commandQueue) =>
-        commandQueue.enqueue<PoolApiResponse>('PUT', `/expenses/${id}`, changes)
+        commandQueue.enqueue<PoolApiResponse>(
+          'PUT',
+          `/expenses/${id}`,
+          apiChanges
+        )
     )
   }
 

@@ -86,6 +86,8 @@ function mkExpense(overrides: Partial<PoolExpense> = {}): PoolExpense {
     userId: 'member-1',
     description: 'Hotel',
     amount: 100,
+    startDate: '2026-07-01',
+    endDate: '2026-07-04',
     ...overrides,
   }
 }
@@ -123,9 +125,9 @@ describe('ExpenseSplit', () => {
     })
   })
 
-  describe('nights calculation', () => {
+  describe('days calculation', () => {
     it('uses event dates when RSVP has no partial dates', () => {
-      // Event Jul 1–4 = 3 nights. RSVP has no partial dates → 3 nights shown.
+      // Event Jul 1–4 = 4 days. RSVP has no partial dates → 4 days shown.
       mockRsvps = [mkRsvp()]
       mockMembers = [mkMember()]
       mockExpenses = [mkExpense({ amount: 90 })]
@@ -133,11 +135,11 @@ describe('ExpenseSplit', () => {
         mkEvent({ startDate: '2026-07-01', endDate: '2026-07-04' }),
         90
       )
-      expect(wrapper.text()).toContain('3 nights')
+      expect(wrapper.text()).toContain('4 days')
     })
 
     it('uses RSVP partial dates when set', () => {
-      // Event Jul 1–4 = 3 nights, RSVP Jul 1–2 = 1 night.
+      // Event Jul 1–4. RSVP Jul 1–2 = 2 days.
       mockRsvps = [mkRsvp({ startDate: '2026-07-01', endDate: '2026-07-02' })]
       mockMembers = [mkMember()]
       mockExpenses = [mkExpense({ amount: 90 })]
@@ -145,40 +147,33 @@ describe('ExpenseSplit', () => {
         mkEvent({ startDate: '2026-07-01', endDate: '2026-07-04' }),
         90
       )
-      expect(wrapper.text()).toContain('1 night')
+      expect(wrapper.text()).toContain('2 days')
+    })
+
+    it('same-day RSVP counts as 1 day', () => {
+      mockRsvps = [mkRsvp({ startDate: '2026-07-02', endDate: '2026-07-02' })]
+      mockMembers = [mkMember()]
+      mockExpenses = [mkExpense({ amount: 50 })]
+      const wrapper = mountSplit(
+        mkEvent({ startDate: '2026-07-01', endDate: '2026-07-04' }),
+        50
+      )
+      expect(wrapper.text()).toContain('1 day')
     })
   })
 
   describe('share and balance calculations', () => {
-    it('single attendee who paid gets 100% and settled balance', () => {
+    it('single attendee who paid gets settled balance', () => {
       mockRsvps = [mkRsvp()]
       mockMembers = [mkMember()]
       mockExpenses = [mkExpense({ amount: 60 })]
       const wrapper = mountSplit(mkEvent(), 60)
-      expect(wrapper.text()).toContain('100%')
       expect(wrapper.text()).toContain('settled')
     })
 
-    it('two full attendees each get 50%', () => {
-      mockRsvps = [
-        mkRsvp({ id: 'rsvp-1', userId: 'member-1' }),
-        mkRsvp({ id: 'rsvp-2', userId: 'member-2' }),
-      ]
-      mockMembers = [
-        mkMember({ id: 'member-1', name: 'Alice' }),
-        mkMember({ id: 'member-2', userId: 'member-2', name: 'Bob' }),
-      ]
-      mockExpenses = [mkExpense({ userId: 'member-1', amount: 100 })]
-      const wrapper = mountSplit(
-        mkEvent({ startDate: '2026-07-01', endDate: '2026-07-05' }),
-        100
-      )
-      const text = wrapper.text()
-      expect(text.match(/50%/g)?.length).toBeGreaterThanOrEqual(2)
-    })
-
     it('payer is owed, non-payer owes', () => {
-      // Alice pays €100; each owes €50. Alice is owed €50, Bob owes €50.
+      // Alice pays €100; both attend full event, equal share → each €50.
+      const ev = mkEvent({ startDate: '2026-07-01', endDate: '2026-07-05' })
       mockRsvps = [
         mkRsvp({ id: 'rsvp-1', userId: 'member-1' }),
         mkRsvp({ id: 'rsvp-2', userId: 'member-2' }),
@@ -187,19 +182,25 @@ describe('ExpenseSplit', () => {
         mkMember({ id: 'member-1', name: 'Alice' }),
         mkMember({ id: 'member-2', userId: 'member-2', name: 'Bob' }),
       ]
-      mockExpenses = [mkExpense({ userId: 'member-1', amount: 100 })]
-      const wrapper = mountSplit(
-        mkEvent({ startDate: '2026-07-01', endDate: '2026-07-05' }),
-        100
-      )
+      mockExpenses = [
+        mkExpense({
+          userId: 'member-1',
+          amount: 100,
+          startDate: ev.startDate!,
+          endDate: ev.endDate!,
+        }),
+      ]
+      const wrapper = mountSplit(ev, 100)
       expect(wrapper.text()).toContain('owed €50.00')
       expect(wrapper.text()).toContain('owes €50.00')
     })
 
     it('partial attendee pays a proportionally smaller share', () => {
-      // Event Jul 1–5 = 4 nights. Alice: full (4). Bob: partial Jul 1–2 (1).
-      // Total nights: 5. Alice 80% = €40 share, Bob 20% = €10 share.
-      // Alice pays €50 → owed €10. Bob pays €0 → owes €10.
+      // Event Jul 1–4 = 4 days. Alice: full (4). Bob: partial Jul 1–2 (2 days).
+      // Expense covers full event. Alice overlap: 4, Bob overlap: 2, total: 6.
+      // Alice: 4/6 * 60 = €40 share, Bob: 2/6 * 60 = €20 share.
+      // Alice pays €60 → owed €20. Bob pays €0 → owes €20.
+      const ev = mkEvent({ startDate: '2026-07-01', endDate: '2026-07-04' })
       mockRsvps = [
         mkRsvp({ id: 'rsvp-1', userId: 'member-1' }),
         mkRsvp({
@@ -213,15 +214,82 @@ describe('ExpenseSplit', () => {
         mkMember({ id: 'member-1', name: 'Alice' }),
         mkMember({ id: 'member-2', userId: 'member-2', name: 'Bob' }),
       ]
-      mockExpenses = [mkExpense({ userId: 'member-1', amount: 50 })]
-      const wrapper = mountSplit(
-        mkEvent({ startDate: '2026-07-01', endDate: '2026-07-05' }),
-        50
-      )
-      expect(wrapper.text()).toContain('80%')
-      expect(wrapper.text()).toContain('20%')
-      expect(wrapper.text()).toContain('owed €10.00')
-      expect(wrapper.text()).toContain('owes €10.00')
+      mockExpenses = [
+        mkExpense({
+          userId: 'member-1',
+          amount: 60,
+          startDate: ev.startDate!,
+          endDate: ev.endDate!,
+        }),
+      ]
+      const wrapper = mountSplit(ev, 60)
+      expect(wrapper.text()).toContain('owed €20.00')
+      expect(wrapper.text()).toContain('owes €20.00')
+    })
+
+    it('same-day expense is split among overlapping attendees', () => {
+      // Event Jul 1–4. Alice: full. Bob: Jul 2–4. Expense: Jul 2 only.
+      // Alice overlap: 1 day, Bob overlap: 1 day, total: 2.
+      // Each share: 1/2 * 40 = €20.
+      const ev = mkEvent({ startDate: '2026-07-01', endDate: '2026-07-04' })
+      mockRsvps = [
+        mkRsvp({ id: 'rsvp-1', userId: 'member-1' }),
+        mkRsvp({
+          id: 'rsvp-2',
+          userId: 'member-2',
+          startDate: '2026-07-02',
+          endDate: '2026-07-04',
+        }),
+      ]
+      mockMembers = [
+        mkMember({ id: 'member-1', name: 'Alice' }),
+        mkMember({ id: 'member-2', userId: 'member-2', name: 'Bob' }),
+      ]
+      mockExpenses = [
+        mkExpense({
+          userId: 'member-1',
+          amount: 40,
+          startDate: '2026-07-02',
+          endDate: '2026-07-02',
+        }),
+      ]
+      const wrapper = mountSplit(ev, 40)
+      expect(wrapper.text()).toContain('owed €20.00')
+      expect(wrapper.text()).toContain('owes €20.00')
+    })
+
+    it('date-scoped expense only charges overlapping attendees', () => {
+      // Event Jul 1–5. Alice: full. Bob: partial Jul 4–5 (2 days).
+      // Expense covers Jul 1–3 (3 days).
+      // Alice overlap with expense: 3 days, Bob overlap: 0 days.
+      // Only Alice is charged the full €60.
+      const ev = mkEvent({ startDate: '2026-07-01', endDate: '2026-07-05' })
+      mockRsvps = [
+        mkRsvp({ id: 'rsvp-1', userId: 'member-1' }),
+        mkRsvp({
+          id: 'rsvp-2',
+          userId: 'member-2',
+          startDate: '2026-07-04',
+          endDate: '2026-07-05',
+        }),
+      ]
+      mockMembers = [
+        mkMember({ id: 'member-1', name: 'Alice' }),
+        mkMember({ id: 'member-2', userId: 'member-2', name: 'Bob' }),
+      ]
+      mockExpenses = [
+        mkExpense({
+          userId: 'member-1',
+          amount: 60,
+          startDate: '2026-07-01',
+          endDate: '2026-07-03',
+        }),
+      ]
+      const wrapper = mountSplit(ev, 60)
+      // Alice: share €60, paid €60 → settled
+      // Bob: share €0, paid €0 → settled
+      const text = wrapper.text()
+      expect(text.match(/settled/g)?.length).toBe(2)
     })
 
     it('falls back to email when member name is null', () => {
@@ -234,8 +302,9 @@ describe('ExpenseSplit', () => {
   })
 
   describe('totals row', () => {
-    it('shows summed nights across all attendees', () => {
-      // Two full attendees on a 3-night event → 6 total nights
+    it('shows summed days across all attendees', () => {
+      // Two full attendees on a 4-day event (Jul 1–4) → 8 total days
+      const ev = mkEvent({ startDate: '2026-07-01', endDate: '2026-07-04' })
       mockRsvps = [
         mkRsvp({ id: 'rsvp-1', userId: 'member-1' }),
         mkRsvp({ id: 'rsvp-2', userId: 'member-2' }),
@@ -245,11 +314,8 @@ describe('ExpenseSplit', () => {
         mkMember({ id: 'member-2', userId: 'member-2', name: 'Bob' }),
       ]
       mockExpenses = []
-      const wrapper = mountSplit(
-        mkEvent({ startDate: '2026-07-01', endDate: '2026-07-04' }),
-        60
-      )
-      expect(wrapper.text()).toContain('6 nights')
+      const wrapper = mountSplit(ev, 60)
+      expect(wrapper.text()).toContain('8 days')
     })
   })
 })

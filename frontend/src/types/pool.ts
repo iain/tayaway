@@ -108,6 +108,8 @@ export interface ObjectTypeMap {
     userId: string | null
     description: string
     amount: number
+    startDate: string
+    endDate: string
     createdAt: string
   }
 }

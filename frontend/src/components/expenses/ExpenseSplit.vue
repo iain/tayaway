@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
-import { countNights } from '@/utils/event'
+import { countDays } from '@/utils/event'
 import type { PoolEvent } from '@/types/pool'
 
 const props = defineProps<{
@@ -14,8 +14,7 @@ const pool = useObjectPoolStore()
 interface SplitRow {
   userId: string
   name: string
-  nights: number
-  ratio: number
+  days: number
   share: number
   paid: number
   balance: number
@@ -30,55 +29,76 @@ const rows = computed((): SplitRow[] => {
 
   if (attendingRsvps.length === 0) return []
 
-  const eventNights = countNights(props.event.startDate, props.event.endDate)
-
-  const withNights = attendingRsvps.map((rsvp) => {
-    const nights =
-      rsvp.startDate && rsvp.endDate
-        ? countNights(rsvp.startDate, rsvp.endDate)
-        : eventNights
-    return { rsvp, nights }
-  })
-
-  const totalNights = withNights.reduce((sum, row) => sum + row.nights, 0)
-  if (totalNights === 0) return []
+  const eventDays = countDays(props.event.startDate, props.event.endDate)
 
   const expenses = pool
     .getAll('expense')
     .filter((e) => e.eventId === props.event.id)
 
-  return withNights.map(({ rsvp, nights }) => {
+  // Per-expense splitting: compute each person's share across all expenses
+  const shareByUser = new Map<string, number>()
+
+  // Pre-compute each RSVP's effective dates
+  const rsvpDates = attendingRsvps.map((rsvp) => ({
+    rsvp,
+    start: rsvp.startDate ?? props.event.startDate!,
+    end: rsvp.endDate ?? props.event.endDate!,
+    days:
+      rsvp.startDate && rsvp.endDate
+        ? countDays(rsvp.startDate, rsvp.endDate)
+        : eventDays,
+  }))
+
+  // For each expense, compute overlap and distribute cost
+  for (const expense of expenses) {
+    const overlaps: { userId: string; overlapDays: number }[] = []
+
+    for (const { rsvp, start, end } of rsvpDates) {
+      const overlapStart = expense.startDate > start ? expense.startDate : start
+      const overlapEnd = expense.endDate < end ? expense.endDate : end
+
+      if (overlapStart > overlapEnd) continue
+
+      const overlapDays = countDays(overlapStart, overlapEnd)
+      if (overlapDays > 0) {
+        overlaps.push({ userId: rsvp.userId, overlapDays })
+      }
+    }
+
+    const totalOverlapDays = overlaps.reduce((sum, o) => sum + o.overlapDays, 0)
+    if (totalOverlapDays === 0) continue
+
+    for (const { userId, overlapDays } of overlaps) {
+      const share = (overlapDays / totalOverlapDays) * expense.amount
+      shareByUser.set(userId, (shareByUser.get(userId) ?? 0) + share)
+    }
+  }
+
+  return rsvpDates.map(({ rsvp, days }) => {
     const member = pool.findBy('member', 'userId', rsvp.userId)
-    const ratio = nights / totalNights
+    const share = shareByUser.get(rsvp.userId) ?? 0
     const paid = expenses
       .filter((e) => e.userId === rsvp.userId)
       .reduce((sum, e) => sum + e.amount, 0)
     return {
       userId: rsvp.userId,
       name: member?.name ?? member?.email ?? 'Unknown',
-      nights,
-      ratio,
-      share: ratio * props.total,
+      days,
+      share,
       paid,
-      balance: ratio * props.total - paid,
+      balance: share - paid,
     }
   })
 })
 
-const totalNights = computed(() =>
-  rows.value.reduce((sum, r) => sum + r.nights, 0)
-)
+const totalDays = computed(() => rows.value.reduce((sum, r) => sum + r.days, 0))
 
 function formatAmount(amount: number): string {
   return `€${amount.toFixed(2)}`
 }
 
-function formatNights(nights: number): string {
-  return `${nights} night${nights === 1 ? '' : 's'}`
-}
-
-function formatPercent(ratio: number): string {
-  return `${Math.round(ratio * 100)}%`
+function formatDays(days: number): string {
+  return `${days} day${days === 1 ? '' : 's'}`
 }
 
 function formatBalance(balance: number): string {
@@ -112,8 +132,7 @@ function formatBalance(balance: number): string {
             class="border-b border-gray-200 text-left text-xs font-medium tracking-wide text-gray-500 uppercase dark:border-stone-700 dark:text-stone-400"
           >
             <th class="pt-3 pr-4 pb-2 pl-2">Name</th>
-            <th class="hidden pt-3 pr-4 pb-2 sm:table-cell">Nights</th>
-            <th class="pt-3 pr-4 pb-2">Share</th>
+            <th class="hidden pt-3 pr-4 pb-2 sm:table-cell">Days</th>
             <th class="pt-3 pr-4 pb-2 text-right">Paid</th>
             <th class="pt-3 pr-4 pb-2 text-right">Fair share</th>
             <th class="pt-3 pr-2 pb-2 text-right">Balance</th>
@@ -130,10 +149,7 @@ function formatBalance(balance: number): string {
             <td
               class="hidden py-2 pr-4 text-gray-600 sm:table-cell dark:text-stone-400"
             >
-              {{ formatNights(row.nights) }}
-            </td>
-            <td class="py-2 pr-4 text-gray-600 dark:text-stone-400">
-              {{ formatPercent(row.ratio) }}
+              {{ formatDays(row.days) }}
             </td>
             <td
               class="py-2 pr-4 text-right font-mono text-gray-600 dark:text-stone-400"
@@ -164,9 +180,8 @@ function formatBalance(balance: number): string {
             <td
               class="hidden pt-2 pr-4 pb-3 text-gray-600 sm:table-cell dark:text-stone-400"
             >
-              {{ formatNights(totalNights) }}
+              {{ formatDays(totalDays) }}
             </td>
-            <td class="pt-2 pr-4 pb-3"></td>
             <td
               class="pt-2 pr-4 pb-3 text-right font-mono text-gray-600 dark:text-stone-400"
             >

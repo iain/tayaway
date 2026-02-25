@@ -14,6 +14,10 @@ import {
 const TEST_EMAIL = 'e2e-expenses@example.com'
 const TEST_NAME = 'E2E Expenses User'
 
+// Resolved events use date range 2026-06-01 to 2026-06-07
+const DEFAULT_START = '2026-06-01'
+const DEFAULT_END = '2026-06-07'
+
 test.describe('Expenses Feature', () => {
   test.describe('Expenses API - Unauthenticated', () => {
     test('all expense endpoints require auth', async ({ request }) => {
@@ -21,7 +25,13 @@ test.describe('Expenses Feature', () => {
       const responses = await Promise.all([
         request.get(`${API_BASE}/api/expenses?event_id=${fakeId}`),
         request.post(`${API_BASE}/api/expenses`, {
-          data: { event_id: fakeId, description: 'Dinner', amount: 50 },
+          data: {
+            event_id: fakeId,
+            description: 'Dinner',
+            amount: 50,
+            start_date: DEFAULT_START,
+            end_date: DEFAULT_END,
+          },
         }),
         request.put(`${API_BASE}/api/expenses/${fakeId}`, {
           data: { description: 'Lunch' },
@@ -79,7 +89,12 @@ test.describe('Expenses Feature', () => {
 
     test('POST /api/expenses requires description', async () => {
       const response = await apiContext.post(`${API_BASE}/api/expenses`, {
-        data: { event_id: eventId, amount: 10 },
+        data: {
+          event_id: eventId,
+          amount: 10,
+          start_date: '2026-01-01',
+          end_date: '2026-01-02',
+        },
       })
       expect(response.status()).toBe(400)
       const body = await response.json()
@@ -89,13 +104,30 @@ test.describe('Expenses Feature', () => {
     test('POST /api/expenses requires positive amount', async () => {
       const responses = await Promise.all([
         apiContext.post(`${API_BASE}/api/expenses`, {
-          data: { event_id: eventId, description: 'Dinner' },
+          data: {
+            event_id: eventId,
+            description: 'Dinner',
+            start_date: '2026-01-01',
+            end_date: '2026-01-02',
+          },
         }),
         apiContext.post(`${API_BASE}/api/expenses`, {
-          data: { event_id: eventId, description: 'Dinner', amount: 0 },
+          data: {
+            event_id: eventId,
+            description: 'Dinner',
+            amount: 0,
+            start_date: '2026-01-01',
+            end_date: '2026-01-02',
+          },
         }),
         apiContext.post(`${API_BASE}/api/expenses`, {
-          data: { event_id: eventId, description: 'Dinner', amount: -5 },
+          data: {
+            event_id: eventId,
+            description: 'Dinner',
+            amount: -5,
+            start_date: '2026-01-01',
+            end_date: '2026-01-02',
+          },
         }),
       ])
       for (const response of responses) {
@@ -103,10 +135,29 @@ test.describe('Expenses Feature', () => {
       }
     })
 
+    test('POST /api/expenses requires dates', async () => {
+      const response = await apiContext.post(`${API_BASE}/api/expenses`, {
+        data: {
+          event_id: eventId,
+          description: 'Dinner',
+          amount: 10,
+        },
+      })
+      expect(response.status()).toBe(400)
+      const body = await response.json()
+      expect(body.error).toContain('date')
+    })
+
     test('full expense CRUD lifecycle', async () => {
       // Create
       const createResponse = await apiContext.post(`${API_BASE}/api/expenses`, {
-        data: { event_id: eventId, description: 'Team dinner', amount: 120.5 },
+        data: {
+          event_id: eventId,
+          description: 'Team dinner',
+          amount: 120.5,
+          start_date: '2026-03-01',
+          end_date: '2026-03-03',
+        },
       })
       expect(createResponse.status()).toBe(201)
       const createBody = await createResponse.json()
@@ -115,6 +166,8 @@ test.describe('Expenses Feature', () => {
       expect(created?.description).toBe('Team dinner')
       expect(created?.amount).toBeCloseTo(120.5)
       expect(created).toHaveProperty('eventId', eventId)
+      expect(created).toHaveProperty('startDate', '2026-03-01')
+      expect(created).toHaveProperty('endDate', '2026-03-03')
       const expenseId = created!.id
 
       // Read — appears in event GET
@@ -146,6 +199,17 @@ test.describe('Expenses Feature', () => {
       const updatedAmount = getObjectByType(updateAmountBody.objects, 'expense')
       expect(updatedAmount?.amount).toBeCloseTo(85.0)
 
+      // Update dates
+      const updateDatesResponse = await apiContext.put(
+        `${API_BASE}/api/expenses/${expenseId}`,
+        { data: { start_date: '2026-03-02', end_date: '2026-03-04' } }
+      )
+      expect(updateDatesResponse.ok()).toBeTruthy()
+      const updateDatesBody = await updateDatesResponse.json()
+      const updatedDates = getObjectByType(updateDatesBody.objects, 'expense')
+      expect(updatedDates).toHaveProperty('startDate', '2026-03-02')
+      expect(updatedDates).toHaveProperty('endDate', '2026-03-04')
+
       // Delete
       const deleteResponse = await apiContext.delete(
         `${API_BASE}/api/expenses/${expenseId}`
@@ -168,17 +232,75 @@ test.describe('Expenses Feature', () => {
       const id = crypto.randomUUID()
 
       const first = await apiContext.post(`${API_BASE}/api/expenses`, {
-        data: { event_id: eventId, description: 'Hotel', amount: 200, id },
+        data: {
+          event_id: eventId,
+          description: 'Hotel',
+          amount: 200,
+          start_date: '2026-04-01',
+          end_date: '2026-04-03',
+          id,
+        },
       })
       expect(first.status()).toBe(201)
 
       const second = await apiContext.post(`${API_BASE}/api/expenses`, {
-        data: { event_id: eventId, description: 'Hotel', amount: 200, id },
+        data: {
+          event_id: eventId,
+          description: 'Hotel',
+          amount: 200,
+          start_date: '2026-04-01',
+          end_date: '2026-04-03',
+          id,
+        },
       })
       expect(second.status()).toBe(201)
       const secondBody = await second.json()
       const returned = getObjectByType(secondBody.objects, 'expense')
       expect(returned?.id).toBe(id)
+    })
+
+    test('expense dates must fall within event date range', async () => {
+      // Create a resolved event with dates 2026-06-01 to 2026-06-07
+      const { eventId: resolvedEventId } = await createResolvedEvent(
+        apiContext,
+        'Date Validation Event'
+      )
+
+      // Expense before event start
+      const beforeResp = await apiContext.post(`${API_BASE}/api/expenses`, {
+        data: {
+          event_id: resolvedEventId,
+          description: 'Too early',
+          amount: 10,
+          start_date: '2026-05-30',
+          end_date: '2026-06-02',
+        },
+      })
+      expect(beforeResp.status()).toBe(400)
+
+      // Expense after event end
+      const afterResp = await apiContext.post(`${API_BASE}/api/expenses`, {
+        data: {
+          event_id: resolvedEventId,
+          description: 'Too late',
+          amount: 10,
+          start_date: '2026-06-05',
+          end_date: '2026-06-10',
+        },
+      })
+      expect(afterResp.status()).toBe(400)
+
+      // Expense within event range — should succeed
+      const withinResp = await apiContext.post(`${API_BASE}/api/expenses`, {
+        data: {
+          event_id: resolvedEventId,
+          description: 'Just right',
+          amount: 10,
+          start_date: '2026-06-02',
+          end_date: '2026-06-05',
+        },
+      })
+      expect(withinResp.status()).toBe(201)
     })
   })
 
@@ -195,7 +317,13 @@ test.describe('Expenses Feature', () => {
 
       // Create an expense as owner
       const resp = await ownerContext.post(`${API_BASE}/api/expenses`, {
-        data: { event_id: eventId, description: 'Taxi', amount: 30 },
+        data: {
+          event_id: eventId,
+          description: 'Taxi',
+          amount: 30,
+          start_date: '2026-01-01',
+          end_date: '2026-01-02',
+        },
       })
       const body = await resp.json()
       expenseId = getObjectByType(body.objects, 'expense')!.id
@@ -293,7 +421,13 @@ test.describe('Expenses Feature', () => {
       const { eventId } = await createResolvedEvent(apiContext)
 
       await apiContext.post(`${API_BASE}/api/expenses`, {
-        data: { event_id: eventId, description: 'Hotel', amount: 40 },
+        data: {
+          event_id: eventId,
+          description: 'Hotel',
+          amount: 40,
+          start_date: DEFAULT_START,
+          end_date: DEFAULT_END,
+        },
       })
       await apiContext.dispose()
 
@@ -304,8 +438,7 @@ test.describe('Expenses Feature', () => {
         page.getByRole('heading', { name: 'Cost Split' })
       ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
 
-      // Single attendee has 100% and is settled (they paid exactly their share)
-      await expect(page.getByText('100%')).toBeVisible()
+      // Single attendee is settled (they paid exactly their share)
       await expect(page.getByText('settled')).toBeVisible()
     })
 
@@ -336,9 +469,15 @@ test.describe('Expenses Feature', () => {
         data: { attending: true },
       })
 
-      // User A pays €100 — both attend 6 nights, so each owes €50
+      // User A pays €100 — both attend 6 nights, expense covers full event
       await apiContextA.post(`${API_BASE}/api/expenses`, {
-        data: { event_id: eventId, description: 'Hotel', amount: 100 },
+        data: {
+          event_id: eventId,
+          description: 'Hotel',
+          amount: 100,
+          start_date: DEFAULT_START,
+          end_date: DEFAULT_END,
+        },
       })
 
       await apiContextA.dispose()
@@ -356,7 +495,6 @@ test.describe('Expenses Feature', () => {
       const rowA = splitTable
         .getByRole('row')
         .filter({ hasText: SPLIT_USER_A_NAME })
-      await expect(rowA.getByText('50%')).toBeVisible()
       await expect(rowA.getByText('€100.00', { exact: true })).toBeVisible()
       await expect(rowA.getByText('€50.00', { exact: true })).toBeVisible()
       await expect(rowA.getByText('owed €50.00')).toBeVisible()
@@ -365,10 +503,123 @@ test.describe('Expenses Feature', () => {
       const rowB = splitTable
         .getByRole('row')
         .filter({ hasText: SPLIT_USER_B_NAME })
-      await expect(rowB.getByText('50%')).toBeVisible()
       await expect(rowB.getByText('€0.00', { exact: true })).toBeVisible()
       await expect(rowB.getByText('€50.00', { exact: true })).toBeVisible()
       await expect(rowB.getByText('owes €50.00')).toBeVisible()
+    })
+
+    test('date-scoped expense only splits among overlapping attendees', async ({
+      page,
+      playwright,
+    }) => {
+      // User A creates event, both attend, but User B only attends partial dates
+      const apiContextA = await playwright.request.newContext()
+      const { token: tokenA } = await getTestSession(
+        apiContextA,
+        SPLIT_USER_A_EMAIL,
+        SPLIT_USER_A_NAME
+      )
+      const { eventId } = await createResolvedEvent(
+        apiContextA,
+        'Date Scoped Split'
+      )
+
+      const apiContextB = await playwright.request.newContext()
+      await getTestSession(apiContextB, SPLIT_USER_B_EMAIL, SPLIT_USER_B_NAME)
+
+      const wsResp = await apiContextA.get(`${API_BASE}/api/workspaces`)
+      const wsBody = await wsResp.json()
+      const workspace = getObjectByType(wsBody.objects, 'workspace')!
+
+      await addMemberToWorkspace(apiContextA, workspace.id, SPLIT_USER_B_EMAIL)
+
+      // User B RSVPs with partial dates: only 2026-06-05 to 2026-06-07
+      await apiContextB.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
+        data: {
+          attending: true,
+          start_date: '2026-06-05',
+          end_date: '2026-06-07',
+        },
+      })
+
+      // Expense covering only first 4 days: 2026-06-01 to 2026-06-04
+      // User A attends all 4 days, User B attends 0 days of this expense
+      // So User A should bear 100% of this expense
+      await apiContextA.post(`${API_BASE}/api/expenses`, {
+        data: {
+          event_id: eventId,
+          description: 'Early dinner',
+          amount: 60,
+          start_date: '2026-06-01',
+          end_date: '2026-06-04',
+        },
+      })
+
+      await apiContextA.dispose()
+      await apiContextB.dispose()
+
+      await setupAuthenticatedPage(page, tokenA)
+      await page.goto(`/events/${eventId}/expenses`)
+
+      await expect(
+        page.getByRole('heading', { name: 'Cost Split' })
+      ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
+
+      // User A paid €60, fair share is €60 (100%) → settled
+      const splitTable = page.getByTestId('cost-split-table')
+      const rowA = splitTable
+        .getByRole('row')
+        .filter({ hasText: SPLIT_USER_A_NAME })
+      await expect(rowA.getByText('settled')).toBeVisible()
+
+      // User B: fair share €0.00, paid €0.00 → settled
+      const rowB = splitTable
+        .getByRole('row')
+        .filter({ hasText: SPLIT_USER_B_NAME })
+      await expect(rowB.getByText('settled')).toBeVisible()
+    })
+
+    test('expense row expansion shows payer breakdown', async ({
+      page,
+      playwright,
+    }) => {
+      const apiContextA = await playwright.request.newContext()
+      const { token: tokenA } = await getTestSession(
+        apiContextA,
+        SPLIT_USER_A_EMAIL,
+        SPLIT_USER_A_NAME
+      )
+      const { eventId } = await createResolvedEvent(
+        apiContextA,
+        'Expansion Test'
+      )
+
+      await apiContextA.post(`${API_BASE}/api/expenses`, {
+        data: {
+          event_id: eventId,
+          description: 'Groceries',
+          amount: 30,
+          start_date: DEFAULT_START,
+          end_date: DEFAULT_END,
+        },
+      })
+      await apiContextA.dispose()
+
+      await setupAuthenticatedPage(page, tokenA)
+      await page.goto(`/events/${eventId}/expenses`)
+
+      const row = page
+        .getByTestId('expense-row')
+        .filter({ hasText: 'Groceries' })
+      await expect(row).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
+
+      // Click to expand
+      await row.click()
+
+      const detail = page.getByTestId('expense-detail')
+      await expect(detail).toBeVisible()
+      await expect(detail.getByText(SPLIT_USER_A_NAME)).toBeVisible()
+      await expect(detail.getByText('€30.00')).toBeVisible()
     })
   })
 
@@ -459,6 +710,8 @@ test.describe('Expenses Feature', () => {
           event_id: eventId,
           description: 'Total Item A',
           amount: 10.0,
+          start_date: '2026-01-01',
+          end_date: '2026-01-02',
         },
       })
       await apiContext.post(`${API_BASE}/api/expenses`, {
@@ -466,6 +719,8 @@ test.describe('Expenses Feature', () => {
           event_id: eventId,
           description: 'Total Item B',
           amount: 5.5,
+          start_date: '2026-01-01',
+          end_date: '2026-01-02',
         },
       })
 
@@ -485,7 +740,13 @@ test.describe('Expenses Feature', () => {
 
       // Create expense via API
       const resp = await apiContext.post(`${API_BASE}/api/expenses`, {
-        data: { event_id: eventId, description, amount: 99 },
+        data: {
+          event_id: eventId,
+          description,
+          amount: 99,
+          start_date: '2026-01-01',
+          end_date: '2026-01-02',
+        },
       })
       const body = await resp.json()
       const expense = getObjectByType(body.objects, 'expense')!
@@ -505,7 +766,7 @@ test.describe('Expenses Feature', () => {
             resp.url().includes('/api/expenses/') &&
             resp.request().method() === 'DELETE'
         ),
-        row.getByRole('button').click(),
+        row.getByRole('button').first().click(),
       ])
       expect(deleteResponse.status()).toBe(200)
 
