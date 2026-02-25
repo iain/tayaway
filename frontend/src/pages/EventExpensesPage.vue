@@ -9,6 +9,7 @@ import ExpenseRow from '@/components/expenses/ExpenseRow.vue'
 import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
 import ExpenseSplit from '@/components/expenses/ExpenseSplit.vue'
 import SettlementSection from '@/components/expenses/SettlementSection.vue'
+import BaseModal from '@/components/common/BaseModal.vue'
 import PrimaryButton from '@/components/common/PrimaryButton.vue'
 import type { PoolApiResponse, PoolExpense } from '@/types/pool'
 
@@ -19,8 +20,13 @@ const { currentUserId } = storeToRefs(authStore)
 
 const isModalOpen = ref(false)
 const editingExpense = ref<PoolExpense | undefined>(undefined)
+const showRsvpDialog = ref(false)
 
 function openAdd() {
+  if (!userIsAttending.value) {
+    showRsvpDialog.value = true
+    return
+  }
   editingExpense.value = undefined
   isModalOpen.value = true
 }
@@ -89,9 +95,7 @@ onMounted(async () => {
             {{ formattedTotal }} total
           </span>
         </div>
-        <PrimaryButton v-if="userIsAttending" @click="openAdd"
-          >Add expense</PrimaryButton
-        >
+        <PrimaryButton @click="openAdd">Add expense</PrimaryButton>
       </div>
 
       <div
@@ -123,6 +127,20 @@ onMounted(async () => {
         :expense="editingExpense"
         @close="closeModal"
       />
+
+      <BaseModal
+        :open="showRsvpDialog"
+        title="RSVP required"
+        size="sm"
+        @close="showRsvpDialog = false"
+      >
+        <p class="text-sm text-gray-600 dark:text-stone-400">
+          You must RSVP as attending this event before you can add expenses.
+        </p>
+        <div class="mt-4 flex justify-end">
+          <PrimaryButton @click="showRsvpDialog = false">OK</PrimaryButton>
+        </div>
+      </BaseModal>
 
       <ExpenseSplit v-if="event" :event="event" :total="total" />
 
