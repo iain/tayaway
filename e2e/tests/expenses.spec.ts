@@ -53,7 +53,10 @@ test.describe('Expenses Feature', () => {
     test.beforeAll(async ({ playwright }) => {
       apiContext = await playwright.request.newContext()
       await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
-      eventId = await createBareEvent(apiContext, 'Expense API Test Event')
+      ;({ eventId } = await createResolvedEvent(
+        apiContext,
+        'Expense API Test Event'
+      ))
     })
 
     test.afterAll(async () => {
@@ -155,8 +158,8 @@ test.describe('Expenses Feature', () => {
           event_id: eventId,
           description: 'Team dinner',
           amount: 120.5,
-          start_date: '2026-03-01',
-          end_date: '2026-03-03',
+          start_date: '2026-06-02',
+          end_date: '2026-06-04',
         },
       })
       expect(createResponse.status()).toBe(201)
@@ -166,8 +169,8 @@ test.describe('Expenses Feature', () => {
       expect(created?.description).toBe('Team dinner')
       expect(created?.amount).toBeCloseTo(120.5)
       expect(created).toHaveProperty('eventId', eventId)
-      expect(created).toHaveProperty('startDate', '2026-03-01')
-      expect(created).toHaveProperty('endDate', '2026-03-03')
+      expect(created).toHaveProperty('startDate', '2026-06-02')
+      expect(created).toHaveProperty('endDate', '2026-06-04')
       const expenseId = created!.id
 
       // Read — appears in event GET
@@ -202,13 +205,13 @@ test.describe('Expenses Feature', () => {
       // Update dates
       const updateDatesResponse = await apiContext.put(
         `${API_BASE}/api/expenses/${expenseId}`,
-        { data: { start_date: '2026-03-02', end_date: '2026-03-04' } }
+        { data: { start_date: '2026-06-03', end_date: '2026-06-05' } }
       )
       expect(updateDatesResponse.ok()).toBeTruthy()
       const updateDatesBody = await updateDatesResponse.json()
       const updatedDates = getObjectByType(updateDatesBody.objects, 'expense')
-      expect(updatedDates).toHaveProperty('startDate', '2026-03-02')
-      expect(updatedDates).toHaveProperty('endDate', '2026-03-04')
+      expect(updatedDates).toHaveProperty('startDate', '2026-06-03')
+      expect(updatedDates).toHaveProperty('endDate', '2026-06-05')
 
       // Delete
       const deleteResponse = await apiContext.delete(
@@ -236,8 +239,8 @@ test.describe('Expenses Feature', () => {
           event_id: eventId,
           description: 'Hotel',
           amount: 200,
-          start_date: '2026-04-01',
-          end_date: '2026-04-03',
+          start_date: DEFAULT_START,
+          end_date: DEFAULT_END,
           id,
         },
       })
@@ -248,8 +251,8 @@ test.describe('Expenses Feature', () => {
           event_id: eventId,
           description: 'Hotel',
           amount: 200,
-          start_date: '2026-04-01',
-          end_date: '2026-04-03',
+          start_date: DEFAULT_START,
+          end_date: DEFAULT_END,
           id,
         },
       })
@@ -313,7 +316,10 @@ test.describe('Expenses Feature', () => {
     test.beforeAll(async ({ playwright }) => {
       ownerContext = await playwright.request.newContext()
       await getTestSession(ownerContext, TEST_EMAIL, TEST_NAME)
-      eventId = await createBareEvent(ownerContext, 'Auth Test Event')
+      ;({ eventId } = await createResolvedEvent(
+        ownerContext,
+        'Auth Test Event'
+      ))
 
       // Create an expense as owner
       const resp = await ownerContext.post(`${API_BASE}/api/expenses`, {
@@ -321,8 +327,8 @@ test.describe('Expenses Feature', () => {
           event_id: eventId,
           description: 'Taxi',
           amount: 30,
-          start_date: '2026-01-01',
-          end_date: '2026-01-02',
+          start_date: DEFAULT_START,
+          end_date: DEFAULT_END,
         },
       })
       const body = await resp.json()
@@ -643,7 +649,10 @@ test.describe('Expenses Feature', () => {
       apiContext = await playwright.request.newContext()
       const { token } = await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
       sessionToken = token
-      eventId = await createBareEvent(apiContext, `UI Expense Event ${uid}`)
+      ;({ eventId } = await createResolvedEvent(
+        apiContext,
+        `UI Expense Event ${uid}`
+      ))
     })
 
     test.afterAll(async () => {
@@ -710,8 +719,8 @@ test.describe('Expenses Feature', () => {
           event_id: eventId,
           description: 'Total Item A',
           amount: 10.0,
-          start_date: '2026-01-01',
-          end_date: '2026-01-02',
+          start_date: DEFAULT_START,
+          end_date: DEFAULT_END,
         },
       })
       await apiContext.post(`${API_BASE}/api/expenses`, {
@@ -719,8 +728,8 @@ test.describe('Expenses Feature', () => {
           event_id: eventId,
           description: 'Total Item B',
           amount: 5.5,
-          start_date: '2026-01-01',
-          end_date: '2026-01-02',
+          start_date: DEFAULT_START,
+          end_date: DEFAULT_END,
         },
       })
 
@@ -742,8 +751,8 @@ test.describe('Expenses Feature', () => {
           event_id: eventId,
           description,
           amount: 25,
-          start_date: '2026-01-01',
-          end_date: '2026-01-03',
+          start_date: DEFAULT_START,
+          end_date: DEFAULT_END,
         },
       })
 
@@ -771,8 +780,8 @@ test.describe('Expenses Feature', () => {
       // Change dates
       const startDateInput = page.getByTestId('expense-start-date')
       const endDateInput = page.getByTestId('expense-end-date')
-      await startDateInput.fill('2026-02-01')
-      await endDateInput.fill('2026-02-05')
+      await startDateInput.fill('2026-06-03')
+      await endDateInput.fill('2026-06-05')
 
       // Submit
       const [updateResponse] = await Promise.all([
@@ -804,8 +813,8 @@ test.describe('Expenses Feature', () => {
           event_id: eventId,
           description,
           amount: 99,
-          start_date: '2026-01-01',
-          end_date: '2026-01-02',
+          start_date: DEFAULT_START,
+          end_date: DEFAULT_END,
         },
       })
       const body = await resp.json()

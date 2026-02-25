@@ -52,6 +52,16 @@ const total = computed(() =>
 
 const formattedTotal = computed(() => `€${total.value.toFixed(2)}`)
 
+const userIsAttending = computed(() => {
+  if (!currentUserId.value) return false
+  const rsvp = pool
+    .getAll('rsvp')
+    .find(
+      (r) => r.eventId === eventId.value && r.userId === currentUserId.value
+    )
+  return rsvp?.attending === true
+})
+
 onMounted(async () => {
   await Promise.all([
     api.get<PoolApiResponse>(`/expenses?event_id=${eventId.value}`),
@@ -79,7 +89,9 @@ onMounted(async () => {
             {{ formattedTotal }} total
           </span>
         </div>
-        <PrimaryButton @click="openAdd">Add expense</PrimaryButton>
+        <PrimaryButton v-if="userIsAttending" @click="openAdd"
+          >Add expense</PrimaryButton
+        >
       </div>
 
       <div

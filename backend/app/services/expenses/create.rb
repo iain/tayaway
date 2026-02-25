@@ -23,6 +23,7 @@ module Expenses
       def call(event_id:, user_id:, workspace_id:, description:, amount:, start_date:, end_date:, id: nil)
         validate(description, amount, start_date, end_date)
           .bind { |valid| validate_date_range(valid, event_id) }
+          .bind { |valid| validate_rsvp(valid, event_id, user_id) }
           .bind { |valid| create_expense(event_id, user_id, workspace_id, valid, id) }
       end
 
@@ -86,6 +87,26 @@ module Expenses
               Result[T::Hash[Symbol, T.untyped], ServiceError]
             )
           end
+        end
+
+        T.cast(Success(valid), Result[T::Hash[Symbol, T.untyped], ServiceError])
+      end
+
+      sig do
+        params(
+          valid: T::Hash[Symbol, T.untyped],
+          event_id: T.any(String, UUID),
+          user_id: T.any(String, UUID)
+        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
+      end
+      def validate_rsvp(valid, event_id, user_id)
+        rsvp = Rsvp.find_by_event_and_user(event_id, user_id)
+
+        if rsvp.nil? || !rsvp.attending
+          return T.cast(
+            Failure(ServiceError.forbidden("You must RSVP to this event before adding expenses")),
+            Result[T::Hash[Symbol, T.untyped], ServiceError]
+          )
         end
 
         T.cast(Success(valid), Result[T::Hash[Symbol, T.untyped], ServiceError])
