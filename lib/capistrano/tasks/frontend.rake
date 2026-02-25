@@ -14,7 +14,7 @@ namespace :frontend do
   task :build do
     on roles(:app) do
       within release_path do
-        execute :pnpm, "-C", "frontend", "build"
+        execute :pnpm, "-C", "frontend", "exec", "vite", "build"
       end
     end
   end
