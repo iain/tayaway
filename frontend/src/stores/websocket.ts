@@ -198,13 +198,10 @@ export const useWebSocketStore = defineStore('websocket', () => {
     } else if (knownGitSha !== message.gitSha) {
       import('./notifications').then(({ useNotificationsStore }) => {
         const notifications = useNotificationsStore()
-        notifications.showUpdate(
-          'A new version is available. Click to reload.',
-          () => {
-            caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)))
-            window.location.reload()
-          }
-        )
+        notifications.showUpdate(() => {
+          caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)))
+          window.location.reload()
+        })
       })
     }
   }

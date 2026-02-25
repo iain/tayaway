@@ -19,10 +19,14 @@ const emit = defineEmits<{
 <template>
   <div
     class="pointer-events-auto w-full max-w-sm overflow-hidden rounded-lg shadow-lg ring-1"
-    :class="
+    :class="[
       notification.type === 'update'
         ? 'bg-amber-50 ring-amber-200 dark:bg-amber-950 dark:ring-amber-800'
-        : 'bg-white ring-black/5 dark:bg-stone-800 dark:ring-white/10'
+        : 'bg-white ring-black/5 dark:bg-stone-800 dark:ring-white/10',
+      notification.type === 'update' ? 'cursor-pointer' : '',
+    ]"
+    @click="
+      notification.type === 'update' ? notification.action?.() : undefined
     "
   >
     <div class="p-4">
@@ -46,8 +50,14 @@ const emit = defineEmits<{
         </div>
         <div
           class="ml-3 w-0 flex-1 pt-0.5"
-          :class="notification.action ? 'cursor-pointer' : ''"
-          @click="notification.action?.()"
+          :class="
+            notification.type !== 'update' && notification.action
+              ? 'cursor-pointer'
+              : ''
+          "
+          @click="
+            notification.type !== 'update' ? notification.action?.() : undefined
+          "
         >
           <p
             class="text-sm font-medium"
@@ -76,15 +86,10 @@ const emit = defineEmits<{
             {{ notification.message }}
           </p>
         </div>
-        <div class="ml-4 flex shrink-0">
+        <div v-if="notification.type !== 'update'" class="ml-4 flex shrink-0">
           <button
             type="button"
-            class="inline-flex rounded-md text-gray-500 hover:text-gray-700 focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 focus:outline-none"
-            :class="
-              notification.type === 'update'
-                ? 'bg-amber-50 dark:bg-amber-950 dark:text-amber-400 dark:hover:text-amber-200 dark:focus:ring-offset-amber-950'
-                : 'bg-white dark:bg-stone-800 dark:text-stone-400 dark:hover:text-stone-200 dark:focus:ring-offset-stone-800'
-            "
+            class="inline-flex rounded-md bg-white text-gray-500 hover:text-gray-700 focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 focus:outline-none dark:bg-stone-800 dark:text-stone-400 dark:hover:text-stone-200 dark:focus:ring-offset-stone-800"
             @click="emit('dismiss', notification.id)"
           >
             <span class="sr-only">Close</span>

@@ -33,13 +33,13 @@ export const useNotificationsStore = defineStore('notifications', () => {
     }, 4000)
   }
 
-  function showUpdate(message: string, action: () => void): void {
+  function showUpdate(action: () => void): void {
     if (notifications.value.some((n) => n.type === 'update')) return
     const id = crypto.randomUUID()
     const notification: Notification = {
       id,
       type: 'update',
-      message,
+      message: 'A new version is available. Click to reload.',
       action,
     }
     notifications.value.push(notification)

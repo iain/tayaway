@@ -26,7 +26,6 @@ export default defineConfig({
       injectRegister: false,
       workbox: {
         globPatterns: ['**/*.{js,css,ico,png,svg,woff,woff2}'],
-        navigateFallbackDenylist: [/./],
         runtimeCaching: [
           {
             urlPattern: ({ request }) => request.mode === 'navigate',

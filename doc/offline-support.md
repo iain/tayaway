@@ -134,7 +134,7 @@ This keeps the local pool consistent without the server enumerating every delete
 
 **Files:** `vite.config.ts`, `registerSW.ts`
 
-Vite PWA with Workbox caches static assets for offline access. `registerType: 'autoUpdate'` activates new service workers immediately. Navigation fallback excludes `/api` and `/ws` routes.
+Vite PWA with Workbox caches static assets for offline access. `registerType: 'prompt'` shows a toast notification when a new service worker is available, letting the user choose when to reload. The app also checks for SW updates every 60 minutes and on tab visibility change (throttled to 30 seconds). Navigation requests use `NetworkFirst` runtime caching with a 3-second timeout.
 
 ## UI Indicators
 
