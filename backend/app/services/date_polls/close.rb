@@ -67,6 +67,7 @@ module DatePolls
       end
       def close_poll(event, poll, selected_date_range_id)
         date_range = T.must(DateRange.find(selected_date_range_id))
+        yes_voter_ids = T.let([], T::Array[String])
 
         DB.transaction do
           DB[:date_polls].where(id: poll.id).update(
@@ -95,11 +96,66 @@ module DatePolls
           Broadcaster.object_changed("event", event.id, workspace_id: event.workspace_id)
         end
 
+        send_poll_closed_emails(event, poll, date_range, yes_voter_ids)
+
         pool = PoolSerializer.new(workspace_id: event.workspace_id)
         pool.add_event(T.must(Event.find(event.id)))
         pool.add_date_poll(T.must(DatePoll.find(poll.id)))
         Rsvp.for_event(event.id).each { |r| pool.add_rsvp(r) }
         T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+      end
+
+      sig do
+        params(event: Event, poll: DatePoll, date_range: DateRange, yes_voter_ids: T::Array[String]).void
+      end
+      def send_poll_closed_emails(event, poll, date_range, yes_voter_ids)
+        all_date_range_ids = DateRange.ids_for_date_poll(poll.id)
+        all_votes = Vote.for_date_range_ids(all_date_range_ids)
+        voter_user_ids = all_votes.map { |v| v.user_id.to_s }.uniq
+        users = User.for_ids(voter_user_ids)
+
+        ics_content = IcsGenerator.generate(
+          uid: event.id.to_s,
+          summary: event.name,
+          start_date: date_range.start_date,
+          end_date: date_range.end_date,
+          description: event.description,
+          location: event.location_name,
+          created_at: event.created_at
+        )
+
+        date_label = format_date_label(date_range.start_date, date_range.end_date)
+        event_url = "#{ENV.fetch("FRONTEND_URL", "https://tayaway.com")}/events/#{event.id}"
+        ics_filename = "#{event.name.downcase.gsub(/[^a-z0-9]+/, "-").gsub(/\A-|-\z/, "")}.ics"
+
+        users.each do |user|
+          auto_rsvped = yes_voter_ids.include?(user.id.to_s)
+          Mailers::PollClosed.send_email(
+            email: user.email,
+            user_name: user.name,
+            event_name: event.name,
+            date_label: date_label,
+            event_url: event_url,
+            ics_content: ics_content,
+            ics_filename: ics_filename,
+            auto_rsvped: auto_rsvped
+          )
+        end
+      rescue StandardError => e
+        APP_LOGGER.error { "[DatePolls::Close] Failed to send poll closed emails: #{e.class} - #{e.message}" }
+      end
+
+      sig { params(start_date: Date, end_date: Date).returns(String) }
+      def format_date_label(start_date, end_date)
+        if start_date == end_date
+          start_date.strftime("%B %-d, %Y")
+        elsif start_date.year == end_date.year && start_date.month == end_date.month
+          "#{start_date.strftime("%B %-d")}-#{end_date.strftime("%-d, %Y")}"
+        elsif start_date.year == end_date.year
+          "#{start_date.strftime("%B %-d")} - #{end_date.strftime("%B %-d, %Y")}"
+        else
+          "#{start_date.strftime("%B %-d, %Y")} - #{end_date.strftime("%B %-d, %Y")}"
+        end
       end
     end
   end

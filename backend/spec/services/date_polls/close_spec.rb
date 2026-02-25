@@ -121,4 +121,117 @@ RSpec.describe DatePolls::Close do
     rsvp_objects = result.value![:objects].select { |o| o[:objectType] == "rsvp" }
     expect(rsvp_objects.length).to eq(2)
   end
+
+  describe "poll closed emails" do
+    before { Mail::TestMailer.deliveries.clear }
+
+    it "sends emails to all voters across all date ranges" do
+      owner = TestFactories.user(name: "Owner")
+      voter1 = TestFactories.user(name: "Voter One", email: "voter1@example.com")
+      voter2 = TestFactories.user(name: "Voter Two", email: "voter2@example.com")
+      voter3 = TestFactories.user(name: "Voter Three", email: "voter3@example.com")
+      event = TestFactories.event(user: owner, name: "Beach Trip")
+      date_poll = TestFactories.date_poll(event: event)
+      winning_range = TestFactories.date_range(date_poll: date_poll, start_date: Date.new(2026, 3, 10), end_date: Date.new(2026, 3, 12))
+      other_range = TestFactories.date_range(date_poll: date_poll, start_date: Date.new(2026, 4, 1), end_date: Date.new(2026, 4, 3))
+
+      TestFactories.vote(user: voter1, date_range: winning_range, response: "yes")
+      TestFactories.vote(user: voter2, date_range: winning_range, response: "no")
+      TestFactories.vote(user: voter3, date_range: other_range, response: "yes")
+
+      described_class.call(
+        event_id: event[:id],
+        current_user_id: owner[:id],
+        selected_date_range_id: winning_range[:id]
+      )
+
+      recipients = Mail::TestMailer.deliveries.map { |m| m.to.first }
+      expect(recipients).to contain_exactly("voter1@example.com", "voter2@example.com", "voter3@example.com")
+    end
+
+    it "includes ICS attachment with event details" do
+      owner = TestFactories.user
+      voter = TestFactories.user(email: "voter@example.com")
+      event = TestFactories.event(user: owner, name: "Summer Trip")
+      date_poll = TestFactories.date_poll(event: event)
+      date_range = TestFactories.date_range(date_poll: date_poll, start_date: Date.new(2026, 6, 1), end_date: Date.new(2026, 6, 5))
+
+      TestFactories.vote(user: voter, date_range: date_range, response: "yes")
+
+      described_class.call(
+        event_id: event[:id],
+        current_user_id: owner[:id],
+        selected_date_range_id: date_range[:id]
+      )
+
+      message = Mail::TestMailer.deliveries.first
+      expect(message.attachments.length).to eq(1)
+      attachment = message.attachments.first
+      expect(attachment.filename).to eq("summer-trip.ics")
+      ics_content = attachment.body.to_s
+      expect(ics_content).to include("BEGIN:VCALENDAR")
+      expect(ics_content).to include("SUMMARY:Summer Trip")
+      expect(ics_content).to include("DTSTART;VALUE=DATE:20260601")
+    end
+
+    it "sends auto-RSVPed messaging to yes-voters on the winning range" do
+      owner = TestFactories.user
+      yes_voter = TestFactories.user(email: "yes@example.com")
+      event = TestFactories.event(user: owner)
+      date_poll = TestFactories.date_poll(event: event)
+      date_range = TestFactories.date_range(date_poll: date_poll)
+
+      TestFactories.vote(user: yes_voter, date_range: date_range, response: "yes")
+
+      described_class.call(
+        event_id: event[:id],
+        current_user_id: owner[:id],
+        selected_date_range_id: date_range[:id]
+      )
+
+      message = Mail::TestMailer.deliveries.find { |m| m.to.first == "yes@example.com" }
+      text_body = message.text_part.body.to_s
+      expect(text_body).to include("You've been RSVPed as attending based on your vote.")
+    end
+
+    it "sends RSVP prompt to voters who were not auto-RSVPed" do
+      owner = TestFactories.user
+      no_voter = TestFactories.user(email: "no@example.com")
+      event = TestFactories.event(user: owner)
+      date_poll = TestFactories.date_poll(event: event)
+      date_range = TestFactories.date_range(date_poll: date_poll)
+
+      TestFactories.vote(user: no_voter, date_range: date_range, response: "no")
+
+      described_class.call(
+        event_id: event[:id],
+        current_user_id: owner[:id],
+        selected_date_range_id: date_range[:id]
+      )
+
+      message = Mail::TestMailer.deliveries.find { |m| m.to.first == "no@example.com" }
+      text_body = message.text_part.body.to_s
+      expect(text_body).to include("Head to the event page to RSVP")
+    end
+
+    it "does not break the API response if email sending fails" do
+      owner = TestFactories.user
+      voter = TestFactories.user
+      event = TestFactories.event(user: owner)
+      date_poll = TestFactories.date_poll(event: event)
+      date_range = TestFactories.date_range(date_poll: date_poll)
+
+      TestFactories.vote(user: voter, date_range: date_range, response: "yes")
+
+      allow(Mailers::PollClosed).to receive(:send_email).and_raise(StandardError, "SMTP down")
+
+      result = described_class.call(
+        event_id: event[:id],
+        current_user_id: owner[:id],
+        selected_date_range_id: date_range[:id]
+      )
+
+      expect(result.success?).to be true
+    end
+  end
 end
