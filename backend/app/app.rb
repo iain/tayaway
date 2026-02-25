@@ -96,7 +96,7 @@ class App < Roda
       unless r.path_info.start_with?("/api", "/ws")
         index_path = STATIC_DIR.join("index.html")
         if index_path.file?
-          r.halt [200, { "Content-Type" => "text/html" }, [index_path.read]]
+          r.halt [200, { "Content-Type" => "text/html", "Cache-Control" => "no-cache, no-store, must-revalidate" }, [index_path.read]]
         end
       end
     end

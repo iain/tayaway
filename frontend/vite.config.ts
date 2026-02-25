@@ -25,7 +25,18 @@ export default defineConfig({
       },
       injectRegister: false,
       workbox: {
-        navigateFallbackDenylist: [/^\/api/, /^\/ws/],
+        globPatterns: ['**/*.{js,css,ico,png,svg,woff,woff2}'],
+        navigateFallbackDenylist: [/./],
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'pages',
+              networkTimeoutSeconds: 3,
+            },
+          },
+        ],
       },
     }),
   ],
