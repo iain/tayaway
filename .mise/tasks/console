@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Open a Ruby console with the app loaded"
+#MISE dir="{{config_root}}/backend"
+
+bundle exec pry -r ./config/environment
