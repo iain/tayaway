@@ -126,6 +126,49 @@ RSpec.describe Rsvps::Upsert do
     expect(DB[:rsvps].count).to eq(1)
   end
 
+  it "returns failure when declining with expenses on the event" do
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
+    DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
+
+    # RSVP as attending first
+    described_class.call(event_id: event[:id], user_id: user[:id], attending: true)
+
+    # Create an expense on this event
+    now = Time.now
+    DB[:expenses].insert(
+      id: SecureRandom.uuid,
+      event_id: event[:id],
+      user_id: user[:id],
+      amount: 50,
+      description: "Dinner",
+      start_date: Date.today,
+      end_date: Date.today + 1,
+      created_at: now,
+      updated_at: now
+    )
+
+    result = described_class.call(event_id: event[:id], user_id: user[:id], attending: false)
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("You cannot decline while you have expenses on this event")
+    expect(result.failure.http_status).to eq(403)
+  end
+
+  it "allows declining when user has no expenses on the event" do
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
+    DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
+
+    described_class.call(event_id: event[:id], user_id: user[:id], attending: true)
+
+    result = described_class.call(event_id: event[:id], user_id: user[:id], attending: false)
+
+    expect(result.success?).to be true
+    rsvp = DB[:rsvps].where(id: result.value![:rsvp_id]).first
+    expect(rsvp[:attending]).to be false
+  end
+
   it "returns existing RSVP on idempotent replay with same rsvp_id" do
     user = TestFactories.user
     event = TestFactories.event(user: user)
