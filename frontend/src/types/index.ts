@@ -126,12 +126,27 @@ export interface UpdateEventRequest {
   endDate?: string | null
 }
 
-// Member management types
-export interface CreateMemberResponse {
-  member_id: string
+// Invite types
+export interface InviteResponse {
+  id: string
+  workspaceId: string
+  invitedBy: string | null
+  email: string
+  expiresAt: string
+  acceptedAt: string | null
+  createdAt: string
 }
 
-export interface CreateMemberRequest {
-  name?: string
+export interface CreateInviteRequest {
   email: string
+  workspace_id: string
+}
+
+export interface InviteInfoResponse {
+  workspaceName: string
+  email: string
+}
+
+export interface InvitesListResponse {
+  invites: InviteResponse[]
 }

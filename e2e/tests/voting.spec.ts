@@ -6,6 +6,7 @@ import {
   getTestSession,
   setupAuthenticatedPage,
   createEventWithPoll,
+  addMemberToWorkspace,
   PAGE_LOAD_TIMEOUT,
 } from '../helpers'
 
@@ -585,6 +586,7 @@ test.describe('Voting Feature', () => {
 
     test('event page shows new user in awaiting votes section', async ({
       page,
+      playwright,
     }) => {
       const { eventId, workspaceId } = await createEventWithPoll(apiContext)
       await setupAuthenticatedPage(page, sessionToken)
@@ -603,16 +605,14 @@ test.describe('Voting Feature', () => {
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
-      // Now add a new member via API (simulating another tab/user adding someone)
+      // Now add a new member via test API (simulating another tab/user adding someone)
       const newUserName = `New User ${Date.now()}`
       const newUserEmail = `new-user-${Date.now()}@example.com`
-      await apiContext.post(`${API_BASE}/api/members`, {
-        data: {
-          name: newUserName,
-          email: newUserEmail,
-          workspace_id: workspaceId,
-        },
-      })
+      // Create the user first via test session, then add as member
+      const newUserContext = await playwright.request.newContext()
+      await getTestSession(newUserContext, newUserEmail, newUserName)
+      await addMemberToWorkspace(apiContext, workspaceId, newUserEmail)
+      await newUserContext.dispose()
 
       // The new member should appear in real-time via WebSocket (no page refresh)
       await expect(awaitingSection.getByText(newUserName)).toBeVisible({

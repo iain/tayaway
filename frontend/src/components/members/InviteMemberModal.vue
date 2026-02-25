@@ -11,17 +11,15 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  save: [name: string, email: string]
+  save: [email: string]
 }>()
 
-const name = ref('')
 const email = ref('')
 
 watch(
   () => props.open,
   (isOpen) => {
     if (isOpen) {
-      name.value = ''
       email.value = ''
     }
   }
@@ -29,7 +27,7 @@ watch(
 
 function handleSave(): void {
   if (email.value.trim()) {
-    emit('save', name.value.trim(), email.value.trim())
+    emit('save', email.value.trim())
   }
 }
 
@@ -39,31 +37,23 @@ function handleClose(): void {
 </script>
 
 <template>
-  <BaseModal :open="open" title="Add New Member" @close="handleClose">
+  <BaseModal :open="open" title="Invite Member" @close="handleClose">
     <form class="space-y-4" @submit.prevent="handleSave">
       <FormInput
-        id="member-name"
-        v-model="name"
-        label="Name"
-        placeholder="Enter name (optional)"
-        autocomplete="name"
-        autofocus
-        :disabled="loading"
-      />
-      <FormInput
-        id="member-email"
+        id="invite-email"
         v-model="email"
         label="Email"
         type="email"
-        placeholder="Enter email"
+        placeholder="Enter email address"
         autocomplete="email"
+        autofocus
         required
         :disabled="loading"
       />
 
       <FormActions
-        submit-label="Add Member"
-        loading-label="Adding..."
+        submit-label="Send Invitation"
+        loading-label="Sending..."
         :loading="loading"
         :disabled="!email.trim()"
         @cancel="handleClose"

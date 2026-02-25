@@ -17,6 +17,7 @@ const TasksPage = () => import('@/pages/TasksPage.vue')
 const EventExpensesPage = () => import('@/pages/EventExpensesPage.vue')
 const LoginPage = () => import('@/pages/LoginPage.vue')
 const AuthVerifyPage = () => import('@/pages/AuthVerifyPage.vue')
+const InviteAcceptPage = () => import('@/pages/InviteAcceptPage.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -99,6 +100,12 @@ const router = createRouter({
       name: 'auth-verify',
       component: AuthVerifyPage,
       meta: { title: 'Verifying' },
+    },
+    {
+      path: '/invite/accept',
+      name: 'invite-accept',
+      component: InviteAcceptPage,
+      meta: { title: 'Accept Invitation' },
     },
   ],
 })

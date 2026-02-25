@@ -79,6 +79,13 @@ class App < Roda
     !WorkspaceMembership.find_by_workspace_and_user(workspace_id, current_user.id).nil?
   end
 
+  def require_admin_or_owner!(workspace_id)
+    membership = WorkspaceMembership.find_by_workspace_and_user(workspace_id, current_user.id)
+    return if membership && %w[admin owner].include?(membership.role)
+
+    request.halt [403, { "Content-Type" => "application/json" }, ['{"error":"Admin or owner role required"}']]
+  end
+
   route do |r|
     r.hash_routes
 

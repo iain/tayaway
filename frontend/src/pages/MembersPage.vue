@@ -1,18 +1,23 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
-import { UserIcon, PlusIcon } from '@heroicons/vue/24/outline'
+import {
+  UserIcon,
+  PlusIcon,
+  EnvelopeIcon,
+  XMarkIcon,
+} from '@heroicons/vue/24/outline'
 import { useMembersStore, useNotificationsStore } from '@/stores'
 import { useAuthStore } from '@/stores/auth'
 import { useObjectPoolStore } from '@/stores/objectPool'
-import AddMemberModal from '@/components/members/AddMemberModal.vue'
+import InviteMemberModal from '@/components/members/InviteMemberModal.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import PrimaryButton from '@/components/common/PrimaryButton.vue'
 import type { PoolMember } from '@/types/pool'
 
 const membersStore = useMembersStore()
-const { members } = storeToRefs(membersStore)
+const { members, pendingInvites } = storeToRefs(membersStore)
 const authStore = useAuthStore()
 const pool = useObjectPoolStore()
 
@@ -25,6 +30,12 @@ const currentMember = computed((): PoolMember | null => {
   const memberId = authStore.currentMemberId
   if (!memberId) return null
   return pool.get('member', memberId) ?? null
+})
+
+const isAdminOrOwner = computed((): boolean => {
+  const me = currentMember.value
+  if (!me) return false
+  return me.role === 'admin' || me.role === 'owner'
 })
 
 function canChangeRole(member: PoolMember): boolean {
@@ -65,34 +76,49 @@ function closeModal(): void {
   isModalOpen.value = false
 }
 
-async function handleSave(name: string, email: string): Promise<void> {
+async function handleSave(email: string): Promise<void> {
   formError.value = null
   isSubmitting.value = true
 
   try {
-    const { queued } = await membersStore.createMember({
-      name: name || undefined,
-      email: email,
-    })
+    await membersStore.createInvite(email)
     isModalOpen.value = false
-    if (queued) {
-      const notifications = useNotificationsStore()
-      notifications.showInfo('Member will be added when back online')
-    }
+    const notifications = useNotificationsStore()
+    notifications.showInfo('Invitation sent')
   } catch {
-    formError.value = 'Failed to add member. The email may already exist.'
+    formError.value =
+      'Failed to send invitation. The email may already be a member.'
   } finally {
     isSubmitting.value = false
   }
 }
+
+async function handleCancelInvite(id: string): Promise<void> {
+  try {
+    await membersStore.cancelInvite(id)
+  } catch {
+    const notifications = useNotificationsStore()
+    notifications.showError('Failed to cancel invitation')
+  }
+}
+
+onMounted(() => {
+  if (isAdminOrOwner.value) {
+    membersStore.fetchInvites()
+  }
+})
 </script>
 
 <template>
   <div>
     <PageHeader title="Members" data-testid="page-title">
-      <PrimaryButton data-testid="add-member-button" @click="openModal">
+      <PrimaryButton
+        v-if="isAdminOrOwner"
+        data-testid="invite-member-button"
+        @click="openModal"
+      >
         <PlusIcon class="size-5" />
-        Add Member
+        Invite Member
       </PrimaryButton>
     </PageHeader>
 
@@ -110,15 +136,64 @@ async function handleSave(name: string, email: string): Promise<void> {
       {{ roleError }}
     </div>
 
+    <!-- Pending Invites Section -->
+    <div
+      v-if="isAdminOrOwner && pendingInvites.length > 0"
+      class="mb-6"
+      data-testid="pending-invites-section"
+    >
+      <h2
+        class="mb-3 text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-stone-400"
+      >
+        Pending Invitations
+      </h2>
+      <ul class="divide-y divide-gray-200 dark:divide-stone-700">
+        <li
+          v-for="invite in pendingInvites"
+          :key="invite.id"
+          class="mb-2 overflow-hidden rounded-lg bg-white shadow dark:bg-stone-800"
+        >
+          <div class="px-4 py-3 sm:px-6">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center">
+                <EnvelopeIcon class="mr-3 size-8 text-gray-400" />
+                <div>
+                  <p
+                    class="text-sm font-medium text-gray-900 dark:text-white"
+                    data-testid="invite-email"
+                  >
+                    {{ invite.email }}
+                  </p>
+                  <span
+                    class="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+                  >
+                    Pending
+                  </span>
+                </div>
+              </div>
+              <button
+                data-testid="cancel-invite-button"
+                class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-stone-700 dark:hover:text-stone-300"
+                title="Cancel invitation"
+                @click="handleCancelInvite(invite.id)"
+              >
+                <XMarkIcon class="size-5" />
+              </button>
+            </div>
+          </div>
+        </li>
+      </ul>
+    </div>
+
     <EmptyState
       v-if="members.length === 0"
       :icon="UserIcon"
       heading="No members"
-      description="Get started by adding a new member."
+      description="Get started by inviting a new member."
     >
-      <PrimaryButton @click="openModal">
+      <PrimaryButton v-if="isAdminOrOwner" @click="openModal">
         <PlusIcon class="size-5" />
-        Add Member
+        Invite Member
       </PrimaryButton>
     </EmptyState>
 
@@ -200,7 +275,7 @@ async function handleSave(name: string, email: string): Promise<void> {
       </li>
     </ul>
 
-    <AddMemberModal
+    <InviteMemberModal
       :open="isModalOpen"
       :loading="isSubmitting"
       @close="closeModal"

@@ -1,0 +1,101 @@
+# typed: true
+# frozen_string_literal: true
+
+module Invites
+  # Service to create a workspace invitation and send the invite email.
+  module Create
+    class << self
+      extend T::Sig
+      include Result::Methods
+
+      sig do
+        params(
+          email: T.nilable(String),
+          workspace_id: T.any(String, UUID),
+          invited_by: T.any(String, UUID)
+        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
+      end
+      def call(email:, workspace_id:, invited_by:)
+        validate_email(email)
+          .bind { |valid_email| check_not_already_member(valid_email, workspace_id) }
+          .bind { |valid_email| check_no_pending_invite(valid_email, workspace_id) }
+          .bind { |valid_email| create_invite(valid_email, workspace_id, invited_by) }
+      end
+
+      private
+
+      sig { params(email: T.nilable(String)).returns(Result[String, ServiceError]) }
+      def validate_email(email)
+        if email.nil? || email.empty?
+          T.cast(Failure(ServiceError.validation("Email is required")), Result[String, ServiceError])
+        else
+          T.cast(Success(email), Result[String, ServiceError])
+        end
+      end
+
+      sig { params(email: String, workspace_id: T.any(String, UUID)).returns(Result[String, ServiceError]) }
+      def check_not_already_member(email, workspace_id)
+        user = User.find_by_email(email)
+        if user && WorkspaceMembership.find_by_workspace_and_user(workspace_id, user.id)
+          T.cast(
+            Failure(ServiceError.validation("This user is already a member of this workspace")),
+            Result[String, ServiceError]
+          )
+        else
+          T.cast(Success(email), Result[String, ServiceError])
+        end
+      end
+
+      sig { params(email: String, workspace_id: T.any(String, UUID)).returns(Result[String, ServiceError]) }
+      def check_no_pending_invite(email, workspace_id)
+        if WorkspaceInvite.find_pending(workspace_id, email)
+          T.cast(
+            Failure(ServiceError.validation("An invitation has already been sent to this email")),
+            Result[String, ServiceError]
+          )
+        else
+          T.cast(Success(email), Result[String, ServiceError])
+        end
+      end
+
+      sig do
+        params(
+          email: String,
+          workspace_id: T.any(String, UUID),
+          invited_by: T.any(String, UUID)
+        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
+      end
+      def create_invite(email, workspace_id, invited_by)
+        now = Time.now
+        id = SecureRandom.uuid
+        raw_token = SecureRandom.hex(32)
+        token_hash = Auth::Token.digest(raw_token)
+        expires_at = now + (WorkspaceInvite::EXPIRY_HOURS * 3600)
+
+        DB[:workspace_invites].insert(
+          id: id,
+          workspace_id: workspace_id.to_s,
+          invited_by: invited_by.to_s,
+          email: email,
+          token: token_hash,
+          expires_at: expires_at,
+          created_at: now,
+          updated_at: now
+        )
+
+        jwt = Auth::Token.encode_invite(token: raw_token, email: email)
+        frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:5173")
+        invite_link = "#{frontend_url}/invite/accept?token=#{jwt}"
+
+        workspace = Workspace.find(workspace_id)
+        workspace_name = workspace ? workspace.name : "Tayaway"
+
+        APP_LOGGER.debug { "INVITE LINK FOR #{email}: #{invite_link}" }
+        Mailers::WorkspaceInvite.send_email(email: email, invite_link: invite_link, workspace_name: workspace_name)
+
+        invite = WorkspaceInvite.find(id)
+        T.cast(Success(T.must(invite).to_api_hash), Result[T::Hash[Symbol, T.untyped], ServiceError])
+      end
+    end
+  end
+end

@@ -7,6 +7,7 @@ import {
   setupAuthenticatedPage,
   createBareEvent,
   createResolvedEvent,
+  addMemberToWorkspace,
   PAGE_LOAD_TIMEOUT,
 } from '../helpers'
 
@@ -213,12 +214,11 @@ test.describe('Expenses Feature', () => {
       const workspace = getObjectByType(wsBody.objects, 'workspace')!
 
       // Add other user as member
-      await ownerContext.post(`${API_BASE}/api/members`, {
-        data: {
-          workspace_id: workspace.id,
-          email: 'e2e-expenses-other@example.com',
-        },
-      })
+      await addMemberToWorkspace(
+        ownerContext,
+        workspace.id,
+        'e2e-expenses-other@example.com'
+      )
     })
 
     test.afterAll(async () => {
@@ -330,9 +330,7 @@ test.describe('Expenses Feature', () => {
       const wsBody = await wsResp.json()
       const workspace = getObjectByType(wsBody.objects, 'workspace')!
 
-      await apiContextA.post(`${API_BASE}/api/members`, {
-        data: { workspace_id: workspace.id, email: SPLIT_USER_B_EMAIL },
-      })
+      await addMemberToWorkspace(apiContextA, workspace.id, SPLIT_USER_B_EMAIL)
 
       await apiContextB.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
         data: { attending: true },

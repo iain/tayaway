@@ -24,10 +24,44 @@ class App
       end
     end
 
+    # POST /api/test/add-member - Directly add a user to a workspace (bypasses invite flow)
+    r.is "add-member" do
+      r.post do
+        email = r.params["email"]&.strip&.downcase
+        workspace_id = r.params["workspace_id"]
+
+        user = User.find_by_email(email)
+        unless user
+          response.status = 404
+          next { error: "User not found" }
+        end
+
+        existing = WorkspaceMembership.find_by_workspace_and_user(workspace_id, user.id)
+        if existing
+          response.status = 200
+          next { member_id: existing.id.to_s }
+        end
+
+        now = Time.now
+        membership_id = SecureRandom.uuid
+        DB[:workspace_memberships].insert(
+          id: membership_id,
+          workspace_id: workspace_id,
+          user_id: user.id.to_s,
+          role: "member",
+          created_at: now
+        )
+        Broadcaster.object_changed("member", membership_id, workspace_id: workspace_id)
+
+        response.status = 201
+        { member_id: membership_id }
+      end
+    end
+
     # POST /api/test/reset - Truncate all tables
     r.is "reset" do
       r.post do
-        DB.run("TRUNCATE votes, date_ranges, date_polls, events, sessions, magic_link_tokens, workspace_memberships, workspaces, users CASCADE")
+        DB.run("TRUNCATE votes, date_ranges, date_polls, events, sessions, magic_link_tokens, workspace_invites, workspace_memberships, workspaces, users CASCADE")
 
         response.status = 200
         { message: "Database reset" }

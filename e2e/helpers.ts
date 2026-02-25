@@ -161,6 +161,18 @@ export async function addTaskItem(
   return item!.id
 }
 
+export async function addMemberToWorkspace(
+  request: APIRequestContext,
+  workspaceId: string,
+  email: string
+): Promise<string> {
+  const response = await request.post(`${API_BASE}/api/test/add-member`, {
+    data: { workspace_id: workspaceId, email },
+  })
+  const body = await response.json()
+  return body.member_id
+}
+
 export async function createResolvedEvent(
   request: APIRequestContext,
   name = 'Test Event'

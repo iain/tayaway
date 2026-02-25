@@ -1,0 +1,64 @@
+# typed: false
+# frozen_string_literal: true
+
+require "spec_helper"
+
+RSpec.describe Invites::Cancel do
+  let(:workspace) { TestFactories.workspace }
+  let(:user) { TestFactories.user }
+
+  # rubocop:disable Sorbet/BlockMethodDefinition -- test helper used across examples
+  def create_invite(email: "cancel@example.com", accepted_at: nil)
+    now = Time.now
+    id = SecureRandom.uuid
+    DB[:workspace_invites].insert(
+      id: id,
+      workspace_id: workspace[:id],
+      invited_by: user[:id],
+      email: email,
+      token: Auth::Token.digest("token-#{id}"),
+      expires_at: now + 3600,
+      accepted_at: accepted_at,
+      created_at: now,
+      updated_at: now
+    )
+    id
+  end
+  # rubocop:enable Sorbet/BlockMethodDefinition
+
+  it "deletes a pending invite" do
+    invite_id = create_invite
+
+    result = described_class.call(invite_id: invite_id, workspace_id: workspace[:id])
+
+    expect(result.success?).to be true
+    expect(result.value![:message]).to eq("Invitation cancelled")
+    expect(DB[:workspace_invites].where(id: invite_id).count).to eq(0)
+  end
+
+  it "returns failure for unknown invite" do
+    result = described_class.call(invite_id: SecureRandom.uuid, workspace_id: workspace[:id])
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Invitation not found")
+  end
+
+  it "returns failure for invite in different workspace" do
+    invite_id = create_invite
+    other_workspace = TestFactories.workspace
+
+    result = described_class.call(invite_id: invite_id, workspace_id: other_workspace[:id])
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Invitation not found")
+  end
+
+  it "returns failure for already accepted invite" do
+    invite_id = create_invite(accepted_at: Time.now)
+
+    result = described_class.call(invite_id: invite_id, workspace_id: workspace[:id])
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("This invitation has already been accepted")
+  end
+end

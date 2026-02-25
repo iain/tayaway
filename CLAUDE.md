@@ -127,6 +127,7 @@ rsvps              id, event_id, user_id, attending (boolean), start_date (nulla
 task_lists         id, workspace_id (FK cascade), user_id (FK set_null, nullable), name TEXT, position FLOAT (ordered within workspace), timestamps
 task_items         id, task_list_id (FK cascade), user_id (FK set_null, nullable), content TEXT, completed_at (TIMESTAMPTZ nullable), position FLOAT (ordered within list), timestamps
 expenses           id (UUID), event_id (FK cascade), user_id (FK set_null, nullable), amount NUMERIC NOT NULL (euros), description TEXT NOT NULL, timestamps
+workspace_invites  id (UUID), workspace_id (FK cascade), invited_by (FK set_null, nullable), email (CITEXT), token (hashed), expires_at (24h), accepted_at (nullable), timestamps; partial unique(workspace_id, email) WHERE accepted_at IS NULL
 ```
 
 **Hierarchy:** Workspace -> Event -> DatePoll -> DateRange -> Vote
@@ -184,9 +185,21 @@ expenses           id (UUID), event_id (FK cascade), user_id (FK set_null, nulla
 - `PUT /:id` — Update expense (creator-only; description and/or amount)
 - `DELETE /:id` — Delete expense (creator-only)
 
+**Invites (`/api/invites`)** — Mixed authentication
+
+Unauthenticated:
+
+- `GET /info?token=JWT` — Get invite info (workspace name, email)
+- `POST /accept` — Accept an invitation (creates user + membership, sends magic link)
+
+Authenticated (admin/owner only):
+
+- `GET /?workspace_id=X` — List pending invites
+- `POST /` — Create an invitation (sends invite email)
+- `DELETE /:id?workspace_id=X` — Cancel a pending invitation
+
 **Members (`/api/members`)** — Requires authentication
 
-- `POST /` — Add member to workspace by email
 - `PUT /:id` — Update member role (owner can change any; admin can change admin/member but not owner)
 
 **Workspaces (`/api/workspaces`)** — Requires authentication
