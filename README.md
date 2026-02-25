@@ -79,6 +79,7 @@ mise run test_e2e         # Playwright e2e tests (requires dev server)
 mise run lint             # ESLint + RuboCop
 mise run typecheck        # vue-tsc + Sorbet
 mise run build            # Production build
+mise run deploy           # Deploy to production (cap production deploy)
 mise run db_migrate       # Run pending migrations
 mise run db_reset         # Drop, create, and migrate database
 ```

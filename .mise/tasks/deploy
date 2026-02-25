@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Deploy to production"
+
+cd backend && bundle exec cap production deploy
