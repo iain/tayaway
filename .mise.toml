@@ -2,7 +2,7 @@
 experimental = true
 
 [tools]
-node = "24.13.0"
+node = "24.14.0"
 ruby = "4.0.1"
 pnpm = "10.30.2"
 

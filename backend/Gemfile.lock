@@ -10,7 +10,7 @@ GEM
       traces (~> 0.18)
     async-container (0.34.2)
       async (~> 2.22)
-    async-container-supervisor (0.10.0)
+    async-container-supervisor (0.10.1)
       async-service
       io-endpoint
       memory (~> 0.7)
@@ -61,7 +61,7 @@ GEM
     date (3.5.1)
     diff-lcs (1.6.2)
     dotenv (3.2.0)
-    erb (6.0.1)
+    erb (6.0.2)
     erubi (1.13.1)
     falcon (0.54.2)
       async
@@ -117,7 +117,7 @@ GEM
       bake (~> 0.15)
       console
       msgpack
-    memory-leak (0.10.2)
+    memory-leak (0.10.3)
       process-metrics (>= 0.10.1)
     method_source (1.1.0)
     metrics (0.15.0)
@@ -148,10 +148,9 @@ GEM
       prettyprint
     prettyprint (0.2.0)
     prism (1.9.0)
-    process-metrics (0.10.1)
+    process-metrics (0.11.0)
       console (~> 1.8)
       json (~> 2)
-      samovar (~> 2.1)
     protocol-hpack (1.5.1)
     protocol-http (0.59.0)
     protocol-http1 (0.37.0)
@@ -256,15 +255,15 @@ GEM
     sequel_pg (1.18.2)
       pg (>= 0.18.0, != 1.2.0)
       sequel (>= 4.38.0)
-    sorbet (0.6.12957)
-      sorbet-static (= 0.6.12957)
-    sorbet-runtime (0.6.12957)
-    sorbet-static (0.6.12957-aarch64-linux)
-    sorbet-static (0.6.12957-universal-darwin)
-    sorbet-static (0.6.12957-x86_64-linux)
-    sorbet-static-and-runtime (0.6.12957)
-      sorbet (= 0.6.12957)
-      sorbet-runtime (= 0.6.12957)
+    sorbet (0.6.12963)
+      sorbet-static (= 0.6.12963)
+    sorbet-runtime (0.6.12963)
+    sorbet-static (0.6.12963-aarch64-linux)
+    sorbet-static (0.6.12963-universal-darwin)
+    sorbet-static (0.6.12963-x86_64-linux)
+    sorbet-static-and-runtime (0.6.12963)
+      sorbet (= 0.6.12963)
+      sorbet-runtime (= 0.6.12963)
     spoom (1.7.11)
       erubi (>= 1.10.0)
       prism (>= 0.28.0)
@@ -342,7 +341,7 @@ CHECKSUMS
   ast (2.4.3) sha256=954615157c1d6a382bc27d690d973195e79db7f55e9765ac7c481c60bdb4d383
   async (2.36.0) sha256=090623f4c65706664355c9efa6c7bfb86771a513e65cd681c51cb27747530550
   async-container (0.34.2) sha256=83ac767e74a832c42e156110c14e10b1fb3fd7583fa1beb3dfe45269e3554746
-  async-container-supervisor (0.10.0) sha256=96a2b6048312e679993c116f0b29b70fc25696b0a6e8c68d8c4f9b8e666a8614
+  async-container-supervisor (0.10.1) sha256=97a4c7b8514c22753e72647cc09fc89ab1a2659cfe7ece563ca3ae65b5e875cb
   async-http (0.94.2) sha256=c5ca94b337976578904a373833abe5b8dfb466a2946af75c4ae38c409c5c78b2
   async-http-cache (0.4.6) sha256=2038d1f093182f16b50b4db271c25085e3938da10bfcfc2904cadb0530fddfd6
   async-pool (0.11.1) sha256=98e1583e199a75f7dc70f8e65fc8d0d3b28636c3f256595d43e206642ad8fbda
@@ -361,7 +360,7 @@ CHECKSUMS
   date (3.5.1) sha256=750d06384d7b9c15d562c76291407d89e368dda4d4fff957eb94962d325a0dc0
   diff-lcs (1.6.2) sha256=9ae0d2cba7d4df3075fe8cd8602a8604993efc0dfa934cff568969efb1909962
   dotenv (3.2.0) sha256=e375b83121ea7ca4ce20f214740076129ab8514cd81378161f11c03853fe619d
-  erb (6.0.1) sha256=28ecdd99c5472aebd5674d6061e3c6b0a45c049578b071e5a52c2a7f13c197e5
+  erb (6.0.2) sha256=9fe6264d44f79422c87490a1558479bd0e7dad4dd0e317656e67ea3077b5242b
   erubi (1.13.1) sha256=a082103b0885dbc5ecf1172fede897f9ebdb745a4b97a5e8dc63953db1ee4ad9
   falcon (0.54.2) sha256=ab35a702466f318d6b3189e638e4aee53290261a5404c9f681115f4a8aca153e
   ffi (1.17.3-aarch64-linux-gnu) sha256=28ad573df26560f0aedd8a90c3371279a0b2bd0b4e834b16a2baa10bd7a97068
@@ -388,7 +387,7 @@ CHECKSUMS
   mail (2.9.0) sha256=6fa6673ecd71c60c2d996260f9ee3dd387d4673b8169b502134659ece6d34941
   mapping (1.1.3) sha256=2274931d20ecd46eaafdd1e00c58cc7472133b213bcac335cc7733d3c75f4da2
   memory (0.12.0) sha256=786a14d84cec8e5667a491da02ebbf492b9ec3d19d35161131ac9d47abb684b4
-  memory-leak (0.10.2) sha256=c486973e3dd2339d837f050bbb0ffc5a72584f8553982c60f59d486a6ad04a5a
+  memory-leak (0.10.3) sha256=6874744ed6abc153feeb901118fa5848e7b5883e1c58cbe6cc0b5431f9001a45
   method_source (1.1.0) sha256=181301c9c45b731b4769bc81e8860e72f9161ad7d66dd99103c9ab84f560f5c5
   metrics (0.15.0) sha256=61ded5bac95118e995b1bc9ed4a5f19bc9814928a312a85b200abbdac9039072
   mini_mime (1.1.5) sha256=8681b7e2e4215f2a159f9400b5816d85e9d8c6c6b491e96a12797e798f8bccef
@@ -410,7 +409,7 @@ CHECKSUMS
   pp (0.6.3) sha256=2951d514450b93ccfeb1df7d021cae0da16e0a7f95ee1e2273719669d0ab9df6
   prettyprint (0.2.0) sha256=2bc9e15581a94742064a3cc8b0fb9d45aae3d03a1baa6ef80922627a0766f193
   prism (1.9.0) sha256=7b530c6a9f92c24300014919c9dcbc055bf4cdf51ec30aed099b06cd6674ef85
-  process-metrics (0.10.1) sha256=4e5c469a63abd91c273cf35bbdb1a315b99a23a6c1cecd9d8717d7d96a6dfed0
+  process-metrics (0.11.0) sha256=69f1602c94e33760e9549173ebf45047d762fe913ba43c135dae3641a2d617fc
   protocol-hpack (1.5.1) sha256=6feca238b8078da1cd295677d6f306c6001af92d75fe0643d33e6956cbc3ad91
   protocol-http (0.59.0) sha256=90e20ad817cb3ffe947d4fd6194fe0651f385625dcce055386d1c356ee32547b
   protocol-http1 (0.37.0) sha256=5bdd739e28792b341134596f6f5ab21a9d4b395f67bae69e153743eb0e69d123
@@ -452,12 +451,12 @@ CHECKSUMS
   samovar (2.4.1) sha256=c3b91dd0580771e3bc600621c1111f29542529dcffafaac3b6bf068b3f309e80
   sequel (5.101.0) sha256=d2ae3fd997a7c4572e8357918e777869faf90dc19310fcd6332747122aed2b29
   sequel_pg (1.18.2) sha256=6bdf0f5f13e062ef0e4b1fd2ddafbe6a13d1aab579473c9627ef4e88da431953
-  sorbet (0.6.12957) sha256=505ae9bc89426aa186e3e8337248ddb21bf100a1028c00cc48f793158679fb48
-  sorbet-runtime (0.6.12957) sha256=691ccafeae2663236777ffc8a348266907fca3985b089f013d7ccd59bef19056
-  sorbet-static (0.6.12957-aarch64-linux) sha256=e172c6befb564295eca7056544fda1cb23329d4311f086d702979b4a123b58ea
-  sorbet-static (0.6.12957-universal-darwin) sha256=6b576e5c1311970a10911e6049640399dfea670d1efa4f3dc7ce5f7679d23248
-  sorbet-static (0.6.12957-x86_64-linux) sha256=2ebdb8a11a3be4e13d530cc879ec8823aa07baa2934350332e479c351a3c1719
-  sorbet-static-and-runtime (0.6.12957) sha256=832054766186ffdecb00c7596314c441ef35d9c2e9e84a34bebce985b7ba04a6
+  sorbet (0.6.12963) sha256=b9c357df5761f925776564a4a6e76595504507b7047a37fbf7078b94571b0ba7
+  sorbet-runtime (0.6.12963) sha256=2f9f6c0aec7155f10733303754f3bce0b03621695571790be9169d1004a21a68
+  sorbet-static (0.6.12963-aarch64-linux) sha256=18eec2b4edf9db658282bae2db520f99559981ed98bee128da16978749569dda
+  sorbet-static (0.6.12963-universal-darwin) sha256=ba77d088fea5234e717ca492bcc733b5beaa1c6e880df6fadf38242ee04ea861
+  sorbet-static (0.6.12963-x86_64-linux) sha256=8752fa127146f6d55bb654a82c6159dd5e522001f8cf906b7be97f5bd4cafb7f
+  sorbet-static-and-runtime (0.6.12963) sha256=8e3ae303963fc4f3a0476d4f3bfc606865be0b462a63522ee0c514a4696ef3bb
   spoom (1.7.11) sha256=4e27384af6d3fde5aadc0287c51e6f76c0802259cbb3b6a67603bf718352f4cf
   string-format (0.2.0) sha256=bc981c14116b061f12134549f32fa2d61a17b5a35dd6fd36596c21722a789af6
   stringio (3.2.0) sha256=c37cb2e58b4ffbd33fe5cd948c05934af997b36e0b6ca6fdf43afa234cf222e1
