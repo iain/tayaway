@@ -8,7 +8,10 @@ export function registerServiceWorker(): void {
       const notifications = useNotificationsStore()
       notifications.showUpdate(
         'A new version is available. Click to reload.',
-        () => updateSW(true)
+        async () => {
+          await updateSW(true)
+          window.location.reload()
+        }
       )
     },
   })
