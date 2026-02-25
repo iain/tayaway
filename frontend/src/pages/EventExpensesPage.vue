@@ -147,6 +147,7 @@ onMounted(async () => {
           <RouterLink
             :to="`/events/${eventId}/rsvp`"
             class="inline-flex items-center rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-500"
+            autofocus
             @click="showRsvpDialog = false"
           >
             Go to RSVP
