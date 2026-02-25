@@ -98,7 +98,7 @@ The object pool is cached in IndexedDB (`tayaway-pool-cache`) with three stores:
 
 ### Cache invalidation
 
-`CACHE_VERSION` (currently 3) is bumped when the sync protocol changes. Mismatch clears the cache and forces a full sync.
+`CACHE_VERSION` (currently 4) is bumped when the sync protocol changes. Mismatch clears the cache and forces a full sync.
 
 ## WebSocket Reconnection
 

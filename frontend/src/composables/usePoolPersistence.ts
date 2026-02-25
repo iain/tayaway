@@ -69,6 +69,8 @@ export function usePoolPersistence() {
       if (objects.length === 0 && pendingUpdates.size === 0) return
 
       const pool = useObjectPoolStore()
+      const wsStore = useWebSocketStore()
+      if (wsStore.hasSynced) return // Server already sent authoritative data
       if (objects.length > 0) {
         pool.importObjects(objects)
       }
@@ -76,7 +78,6 @@ export function usePoolPersistence() {
         pool.restorePendingUpdates(pendingUpdates)
       }
 
-      const wsStore = useWebSocketStore()
       wsStore.hasCachedData = true
 
       // Restore syncedAt so the next sync can be partial

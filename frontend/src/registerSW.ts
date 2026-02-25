@@ -20,7 +20,7 @@ export function registerServiceWorker(): void {
       if (!registration) return
 
       // Check for updates every 60 minutes
-      setInterval(() => registration.update(), 60 * 60 * 1000)
+      setInterval(() => registration.update().catch(() => {}), 60 * 60 * 1000)
 
       // Check for updates when tab becomes visible (throttled to 30s)
       let lastVisibilityCheck = 0
@@ -29,7 +29,7 @@ export function registerServiceWorker(): void {
         const now = Date.now()
         if (now - lastVisibilityCheck < 30_000) return
         lastVisibilityCheck = now
-        registration.update()
+        registration.update().catch(() => {})
       })
     },
   })
