@@ -9,7 +9,7 @@ import ExpenseRow from '@/components/expenses/ExpenseRow.vue'
 import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
 import ExpenseSplit from '@/components/expenses/ExpenseSplit.vue'
 import PrimaryButton from '@/components/common/PrimaryButton.vue'
-import type { PoolApiResponse } from '@/types/pool'
+import type { PoolApiResponse, PoolExpense } from '@/types/pool'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -17,6 +17,22 @@ const pool = useObjectPoolStore()
 const { currentUserId } = storeToRefs(authStore)
 
 const isModalOpen = ref(false)
+const editingExpense = ref<PoolExpense | undefined>(undefined)
+
+function openAdd() {
+  editingExpense.value = undefined
+  isModalOpen.value = true
+}
+
+function openEdit(expense: PoolExpense) {
+  editingExpense.value = expense
+  isModalOpen.value = true
+}
+
+function closeModal() {
+  isModalOpen.value = false
+  editingExpense.value = undefined
+}
 
 const eventId = computed(() => route.params.id as string)
 
@@ -61,7 +77,7 @@ onMounted(async () => {
             {{ formattedTotal }} total
           </span>
         </div>
-        <PrimaryButton @click="isModalOpen = true">Add expense</PrimaryButton>
+        <PrimaryButton @click="openAdd">Add expense</PrimaryButton>
       </div>
 
       <div
@@ -77,6 +93,7 @@ onMounted(async () => {
               :event="event"
               :current-user-id="currentUserId"
               :stripe="i % 2 === 0"
+              @edit="openEdit"
             />
           </tbody>
         </table>
@@ -89,7 +106,8 @@ onMounted(async () => {
       <AddExpenseModal
         :open="isModalOpen"
         :event="event"
-        @close="isModalOpen = false"
+        :expense="editingExpense"
+        @close="closeModal"
       />
 
       <ExpenseSplit v-if="event" :event="event" :total="total" />

@@ -6,11 +6,12 @@ import FormActions from '@/components/form/FormActions.vue'
 import { useExpensesStore } from '@/stores/expenses'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useAuthStore } from '@/stores/auth'
-import type { PoolEvent } from '@/types/pool'
+import type { PoolEvent, PoolExpense } from '@/types/pool'
 
 const props = defineProps<{
   open: boolean
   event: PoolEvent
+  expense?: PoolExpense
 }>()
 
 const emit = defineEmits<{
@@ -27,6 +28,12 @@ const startDate = ref('')
 const endDate = ref('')
 const submitting = ref(false)
 
+const isEditing = computed(() => props.expense != null)
+
+const modalTitle = computed(() =>
+  isEditing.value ? 'Edit Expense' : 'Add Expense'
+)
+
 const eventHasDates = computed(
   () => props.event.startDate != null && props.event.endDate != null
 )
@@ -35,34 +42,41 @@ watch(
   () => props.open,
   (isOpen) => {
     if (isOpen) {
-      description.value = ''
-      amount.value = ''
-
-      if (eventHasDates.value) {
-        // Pre-fill from current user's RSVP dates if partial, otherwise event dates
-        const userId = authStore.currentUserId
-        const rsvp = userId
-          ? pool
-              .getAll('rsvp')
-              .find(
-                (r) =>
-                  r.eventId === props.event.id &&
-                  r.userId === userId &&
-                  r.attending
-              )
-          : null
-
-        if (rsvp?.startDate && rsvp?.endDate) {
-          startDate.value = rsvp.startDate
-          endDate.value = rsvp.endDate
-        } else {
-          startDate.value = props.event.startDate!
-          endDate.value = props.event.endDate!
-        }
+      if (props.expense) {
+        description.value = props.expense.description
+        amount.value = props.expense.amount.toString()
+        startDate.value = props.expense.startDate
+        endDate.value = props.expense.endDate
       } else {
-        const today = new Date().toISOString().slice(0, 10)
-        startDate.value = today
-        endDate.value = today
+        description.value = ''
+        amount.value = ''
+
+        if (eventHasDates.value) {
+          // Pre-fill from current user's RSVP dates if partial, otherwise event dates
+          const userId = authStore.currentUserId
+          const rsvp = userId
+            ? pool
+                .getAll('rsvp')
+                .find(
+                  (r) =>
+                    r.eventId === props.event.id &&
+                    r.userId === userId &&
+                    r.attending
+                )
+            : null
+
+          if (rsvp?.startDate && rsvp?.endDate) {
+            startDate.value = rsvp.startDate
+            endDate.value = rsvp.endDate
+          } else {
+            startDate.value = props.event.startDate!
+            endDate.value = props.event.endDate!
+          }
+        } else {
+          const today = new Date().toISOString().slice(0, 10)
+          startDate.value = today
+          endDate.value = today
+        }
       }
     }
   }
@@ -76,13 +90,22 @@ async function handleSubmit(): Promise<void> {
 
   submitting.value = true
   try {
-    await expensesStore.createExpense(
-      props.event.id,
-      desc,
-      amt,
-      startDate.value,
-      endDate.value
-    )
+    if (props.expense) {
+      await expensesStore.updateExpense(props.expense.id, {
+        description: desc,
+        amount: amt,
+        startDate: startDate.value,
+        endDate: endDate.value,
+      })
+    } else {
+      await expensesStore.createExpense(
+        props.event.id,
+        desc,
+        amt,
+        startDate.value,
+        endDate.value
+      )
+    }
     emit('close')
   } finally {
     submitting.value = false
@@ -95,7 +118,7 @@ function handleClose(): void {
 </script>
 
 <template>
-  <BaseModal :open="open" title="Add Expense" @close="handleClose">
+  <BaseModal :open="open" :title="modalTitle" @close="handleClose">
     <form class="space-y-4" @submit.prevent="handleSubmit">
       <FormInput
         id="expense-description"
@@ -116,7 +139,7 @@ function handleClose(): void {
         :disabled="submitting"
       />
 
-      <div v-if="eventHasDates">
+      <div v-if="eventHasDates || isEditing">
         <label
           class="mb-1 block text-sm font-medium text-gray-700 dark:text-stone-300"
         >
@@ -146,8 +169,8 @@ function handleClose(): void {
       </div>
 
       <FormActions
-        submit-label="Add Expense"
-        loading-label="Adding..."
+        :submit-label="isEditing ? 'Save' : 'Add Expense'"
+        :loading-label="isEditing ? 'Saving...' : 'Adding...'"
         :loading="submitting"
         :disabled="!description.trim() || !(parseFloat(amount) > 0)"
         @cancel="handleClose"

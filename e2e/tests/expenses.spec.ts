@@ -733,6 +733,66 @@ test.describe('Expenses Feature', () => {
       })
     })
 
+    test('can edit an expense via the edit button', async ({ page }) => {
+      const description = `Edit Me ${uid}`
+
+      // Create expense via API
+      await apiContext.post(`${API_BASE}/api/expenses`, {
+        data: {
+          event_id: eventId,
+          description,
+          amount: 25,
+          start_date: '2026-01-01',
+          end_date: '2026-01-03',
+        },
+      })
+
+      await setupAuthenticatedPage(page, sessionToken)
+      await page.goto(`/events/${eventId}/expenses`)
+
+      const row = page
+        .getByTestId('expense-row')
+        .filter({ hasText: description })
+      await expect(row).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
+
+      // Click edit button
+      await row.getByTestId('edit-expense').click()
+
+      // Modal should open with pre-filled values
+      const descInput = page.getByPlaceholder('What was this expense for?')
+      await expect(descInput).toBeVisible()
+      await expect(descInput).toHaveValue(description)
+
+      // Change description and amount
+      await descInput.fill(`Updated ${uid}`)
+      const amountInput = page.getByPlaceholder('0.00')
+      await amountInput.fill('42.00')
+
+      // Change dates
+      const startDateInput = page.getByTestId('expense-start-date')
+      const endDateInput = page.getByTestId('expense-end-date')
+      await startDateInput.fill('2026-02-01')
+      await endDateInput.fill('2026-02-05')
+
+      // Submit
+      const [updateResponse] = await Promise.all([
+        page.waitForResponse(
+          (resp) =>
+            resp.url().includes('/api/expenses/') &&
+            resp.request().method() === 'PUT'
+        ),
+        page.getByTestId('submit-button').click(),
+      ])
+      expect(updateResponse.status()).toBe(200)
+
+      // Updated values should appear in the row
+      const updatedRow = page
+        .getByTestId('expense-row')
+        .filter({ hasText: `Updated ${uid}` })
+      await expect(updatedRow).toBeVisible()
+      await expect(updatedRow.getByText('€42.00')).toBeVisible()
+    })
+
     test('creator sees delete button; expense is removed on click', async ({
       page,
     }) => {
@@ -766,7 +826,7 @@ test.describe('Expenses Feature', () => {
             resp.url().includes('/api/expenses/') &&
             resp.request().method() === 'DELETE'
         ),
-        row.getByRole('button').first().click(),
+        row.getByTestId('delete-expense').click(),
       ])
       expect(deleteResponse.status()).toBe(200)
 

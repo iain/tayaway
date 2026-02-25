@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { TrashIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
+import {
+  TrashIcon,
+  ChevronDownIcon,
+  PencilIcon,
+} from '@heroicons/vue/24/outline'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useExpensesStore } from '@/stores/expenses'
 import { countDays } from '@/utils/event'
@@ -16,6 +20,10 @@ const props = defineProps<{
 
 const pool = useObjectPoolStore()
 const expensesStore = useExpensesStore()
+
+const emit = defineEmits<{
+  edit: [expense: PoolExpense]
+}>()
 
 const expanded = ref(false)
 
@@ -91,6 +99,11 @@ function toggleExpand() {
   expanded.value = !expanded.value
 }
 
+function handleEdit(e: Event) {
+  e.stopPropagation()
+  emit('edit', props.expense)
+}
+
 async function handleDelete(e: Event) {
   e.stopPropagation()
   await expensesStore.deleteExpense(props.expense.id)
@@ -133,6 +146,16 @@ async function handleDelete(e: Event) {
         <button
           v-if="isOwner"
           type="button"
+          data-testid="edit-expense"
+          class="flex text-gray-400 hover:text-blue-500 dark:text-stone-500 dark:hover:text-blue-400"
+          @click="handleEdit"
+        >
+          <PencilIcon class="size-4" />
+        </button>
+        <button
+          v-if="isOwner"
+          type="button"
+          data-testid="delete-expense"
           class="flex text-gray-400 hover:text-red-500 dark:text-stone-500 dark:hover:text-red-400"
           @click="handleDelete"
         >
