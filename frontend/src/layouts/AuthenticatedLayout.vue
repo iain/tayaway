@@ -58,10 +58,7 @@ const navigation = [
   { name: 'Members', href: '/members', routeName: 'members' },
 ]
 
-const userNavigation = [
-  { name: 'Your Profile', href: '/profile' },
-  { name: 'Settings', href: '#' },
-]
+const userNavigation = [{ name: 'Your Profile', href: '/profile' }]
 
 const currentRouteName = computed(() => route.name)
 
