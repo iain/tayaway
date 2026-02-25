@@ -29,12 +29,19 @@ const router = useRouter()
 const pool = useObjectPoolStore()
 const { pollsNeedingAttention } = usePollsNeedingAttention()
 const { eventsNeedingRsvp } = useEventsNeedingRsvp()
-const { currentEvents } = useEventsList()
+const { currentEvents, pastEvents } = useEventsList()
 
 function attendeeCount(eventId: string): number {
   void pool.version
   return pool.getAll('rsvp').filter((r) => r.eventId === eventId && r.attending)
     .length
+}
+
+function unsettledExpenseCount(eventId: string): number {
+  void pool.version
+  return pool
+    .getAll('expense')
+    .filter((e) => e.eventId === eventId && !e.settlementId).length
 }
 
 function unpaidTransferCount(eventId: string): number {
@@ -50,9 +57,16 @@ function unpaidTransferCount(eventId: string): number {
     .filter((t) => settlementIdSet.has(t.settlementId) && !t.paidAt).length
 }
 
+const pastEventsWithOpenExpenses = computed(() =>
+  pastEvents.value.filter(
+    (e) => unsettledExpenseCount(e.id) > 0 || unpaidTransferCount(e.id) > 0
+  )
+)
+
 const allCaughtUp = computed(
   () =>
     currentEvents.value.length === 0 &&
+    pastEventsWithOpenExpenses.value.length === 0 &&
     pollsNeedingAttention.value.length === 0 &&
     eventsNeedingRsvp.value.length === 0
 )
@@ -135,8 +149,71 @@ function navigateToEventPage(eventId: string): void {
       </section>
 
       <section
-        v-if="pollsNeedingAttention.length > 0"
+        v-if="pastEventsWithOpenExpenses.length > 0"
         :class="currentEvents.length > 0 ? 'mt-8' : ''"
+      >
+        <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
+          Past events with open expenses
+        </h2>
+
+        <ul class="space-y-3">
+          <li
+            v-for="event in pastEventsWithOpenExpenses"
+            :key="event.id"
+            class="overflow-hidden rounded-lg bg-white shadow dark:bg-stone-800"
+          >
+            <div class="px-4 py-4 sm:px-6">
+              <div
+                class="cursor-pointer"
+                @click="navigateToEventPage(event.id)"
+              >
+                <h3
+                  class="truncate text-base font-semibold text-gray-900 dark:text-white"
+                >
+                  {{ event.name }}
+                </h3>
+                <div class="mt-1 flex flex-wrap items-center gap-3 text-sm">
+                  <span
+                    class="inline-flex items-center gap-1 text-gray-500 dark:text-stone-400"
+                  >
+                    <CalendarDaysIcon class="size-4" />
+                    <DateRangeDisplay
+                      :start-date="event.startDate!"
+                      :end-date="event.endDate!"
+                    />
+                  </span>
+                </div>
+              </div>
+              <div class="mt-3 flex flex-wrap gap-2">
+                <router-link
+                  v-if="unsettledExpenseCount(event.id) > 0"
+                  :to="`/events/${event.id}/expenses`"
+                  class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 transition-colors hover:bg-rose-100 hover:text-rose-700 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
+                >
+                  <BanknotesIcon class="size-4" />
+                  {{ unsettledExpenseCount(event.id) }} unsettled
+                </router-link>
+                <router-link
+                  v-if="unpaidTransferCount(event.id) > 0"
+                  :to="`/events/${event.id}/expenses`"
+                  class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 transition-colors hover:bg-rose-100 hover:text-rose-700 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
+                >
+                  <BanknotesIcon class="size-4" />
+                  {{ unpaidTransferCount(event.id) }} unpaid
+                </router-link>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <section
+        v-if="pollsNeedingAttention.length > 0"
+        :class="
+          currentEvents.length > 0 || pastEventsWithOpenExpenses.length > 0
+            ? 'mt-8'
+            : ''
+        "
       >
         <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
           Polls awaiting your vote
@@ -190,7 +267,9 @@ function navigateToEventPage(eventId: string): void {
       <section
         v-if="eventsNeedingRsvp.length > 0"
         :class="
-          pollsNeedingAttention.length > 0 || currentEvents.length > 0
+          pollsNeedingAttention.length > 0 ||
+          pastEventsWithOpenExpenses.length > 0 ||
+          currentEvents.length > 0
             ? 'mt-8'
             : ''
         "
