@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -7,9 +8,11 @@ import {
 } from '@heroicons/vue/24/solid'
 import { UserIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline'
 import { useRsvpsStore } from '@/stores/rsvps'
+import { useObjectPoolStore } from '@/stores/objectPool'
 import type { HydratedEvent } from '@/composables/useHydratedEvent'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
+import BaseModal from '@/components/common/BaseModal.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import TextButton from '@/components/common/TextButton.vue'
 
@@ -19,8 +22,10 @@ const props = defineProps<{
 }>()
 
 const rsvpsStore = useRsvpsStore()
+const pool = useObjectPoolStore()
 
 const showPartialPicker = ref(false)
+const showExpensesDialog = ref(false)
 const partialStartDate = ref('')
 const partialEndDate = ref('')
 
@@ -40,6 +45,15 @@ const notAttending = computed(() =>
   props.event.rsvps.filter((r) => !r.attending)
 )
 
+const userHasExpenses = computed(() => {
+  if (!props.currentUserId) return false
+  return pool
+    .getAll('expense')
+    .some(
+      (e) => e.eventId === props.event.id && e.userId === props.currentUserId
+    )
+})
+
 const noResponse = computed(() => {
   if (!props.event.workspace) return []
   const rsvpUserIds = new Set(props.event.rsvps.map((r) => r.userId))
@@ -55,6 +69,10 @@ async function handleAttend(): Promise<void> {
 }
 
 async function handleDecline(): Promise<void> {
+  if (userHasExpenses.value) {
+    showExpensesDialog.value = true
+    return
+  }
   try {
     await rsvpsStore.submitRsvp(props.event.id, false)
   } catch {
@@ -333,5 +351,33 @@ async function handleClearPartialDates(): Promise<void> {
         attending, {{ noResponse.length }} pending
       </p>
     </div>
+
+    <BaseModal
+      :open="showExpensesDialog"
+      title="Cannot decline"
+      size="sm"
+      @close="showExpensesDialog = false"
+    >
+      <p class="text-sm text-gray-600 dark:text-stone-400">
+        You have expenses on this event. Delete your expenses before changing
+        your RSVP to not attending.
+      </p>
+      <div class="mt-4 flex justify-end gap-3">
+        <button
+          class="rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 dark:text-stone-400 dark:hover:text-stone-200"
+          @click="showExpensesDialog = false"
+        >
+          Cancel
+        </button>
+        <RouterLink
+          :to="`/events/${event.id}/expenses`"
+          class="inline-flex items-center rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-500"
+          autofocus
+          @click="showExpensesDialog = false"
+        >
+          Go to Expenses
+        </RouterLink>
+      </div>
+    </BaseModal>
   </BaseCard>
 </template>

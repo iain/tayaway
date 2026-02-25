@@ -43,6 +43,7 @@ module Rsvps
           .bind { find_event(event_id) }
           .bind { |event| validate_event_has_dates(event) }
           .bind { |event| validate_event_not_in_past(event) }
+          .bind { |event| validate_no_expenses_when_declining(event, user_id, T.must(attending)) }
           .bind { |event| validate_partial_dates(event, attending, start_date, end_date) }
           .bind { |event, parsed_start, parsed_end| upsert_rsvp(event, user_id, T.must(attending), parsed_start, parsed_end, rsvp_id) }
       end
@@ -91,6 +92,24 @@ module Rsvps
         else
           T.cast(Success(event), Result[Event, ServiceError])
         end
+      end
+
+      sig do
+        params(
+          event: Event,
+          user_id: T.any(String, UUID),
+          attending: T::Boolean
+        ).returns(Result[Event, ServiceError])
+      end
+      def validate_no_expenses_when_declining(event, user_id, attending)
+        if !attending && DB[:expenses].where(event_id: event.id, user_id: user_id).count > 0
+          return T.cast(
+            Failure(ServiceError.forbidden("You cannot decline while you have expenses on this event")),
+            Result[Event, ServiceError]
+          )
+        end
+
+        T.cast(Success(event), Result[Event, ServiceError])
       end
 
       sig do
