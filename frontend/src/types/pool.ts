@@ -47,6 +47,9 @@ export interface ObjectTypeMap {
     description: string | null
     startDate: string | null
     endDate: string | null
+    locationName: string | null
+    latitude: number | null
+    longitude: number | null
     workspaceId: string
     userId: string
     datePollId: string | null

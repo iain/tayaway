@@ -4,6 +4,7 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import FormInput from '@/components/form/FormInput.vue'
 import FormTextarea from '@/components/form/FormTextarea.vue'
 import FormActions from '@/components/form/FormActions.vue'
+import LocationInput from '@/components/form/LocationInput.vue'
 
 const props = defineProps<{
   open: boolean
@@ -17,6 +18,9 @@ const emit = defineEmits<{
     description: string,
     startDate: string | undefined,
     endDate: string | undefined,
+    locationName: string | undefined,
+    latitude: number | undefined,
+    longitude: number | undefined,
   ]
 }>()
 
@@ -25,6 +29,9 @@ const description = ref('')
 const setDates = ref(false)
 const startDate = ref('')
 const endDate = ref('')
+const locationName = ref('')
+const latitude = ref<number | null>(null)
+const longitude = ref<number | null>(null)
 
 watch(
   () => props.open,
@@ -35,6 +42,9 @@ watch(
       setDates.value = false
       startDate.value = ''
       endDate.value = ''
+      locationName.value = ''
+      latitude.value = null
+      longitude.value = null
     }
   }
 )
@@ -46,7 +56,10 @@ function handleSave(): void {
       name.value.trim(),
       description.value.trim(),
       setDates.value && startDate.value ? startDate.value : undefined,
-      setDates.value && endDate.value ? endDate.value : undefined
+      setDates.value && endDate.value ? endDate.value : undefined,
+      locationName.value || undefined,
+      latitude.value ?? undefined,
+      longitude.value ?? undefined
     )
   }
 }
@@ -76,6 +89,14 @@ function handleClose(): void {
         label="Description (optional)"
         placeholder="Enter event description"
         :rows="3"
+        :disabled="loading"
+      />
+
+      <LocationInput
+        v-model="locationName"
+        v-model:latitude="latitude"
+        v-model:longitude="longitude"
+        label="Location (optional)"
         :disabled="loading"
       />
 

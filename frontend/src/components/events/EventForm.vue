@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { FormInput, FormTextarea, FormActions } from '@/components/form'
+import LocationInput from '@/components/form/LocationInput.vue'
 
 export interface EventFormData {
   name: string
   description: string
   startDate: string
   endDate: string
+  locationName: string
+  latitude: number | null
+  longitude: number | null
 }
 
 const props = defineProps<{
@@ -24,6 +28,9 @@ const name = ref('')
 const description = ref('')
 const startDate = ref('')
 const endDate = ref('')
+const locationName = ref('')
+const latitude = ref<number | null>(null)
+const longitude = ref<number | null>(null)
 
 // Initialize form with initial data if provided
 watch(
@@ -34,6 +41,9 @@ watch(
       description.value = data.description
       startDate.value = data.startDate
       endDate.value = data.endDate
+      locationName.value = data.locationName
+      latitude.value = data.latitude
+      longitude.value = data.longitude
     }
   },
   { immediate: true }
@@ -50,6 +60,9 @@ function handleSubmit(): void {
     description: description.value.trim(),
     startDate: startDate.value,
     endDate: endDate.value,
+    locationName: locationName.value,
+    latitude: latitude.value,
+    longitude: longitude.value,
   })
 }
 
@@ -78,6 +91,13 @@ function handleCancel(): void {
         placeholder="Enter event description"
         :rows="3"
         data-testid="event-description-input"
+      />
+
+      <LocationInput
+        v-model="locationName"
+        v-model:latitude="latitude"
+        v-model:longitude="longitude"
+        label="Location (optional)"
       />
 
       <div class="grid grid-cols-2 gap-4">

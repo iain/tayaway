@@ -25,15 +25,24 @@ module Events
           name: T.nilable(String),
           description: T.nilable(String),
           start_date: T.nilable(String),
-          end_date: T.nilable(String)
+          end_date: T.nilable(String),
+          location_name: T.nilable(String),
+          latitude: T.nilable(Float),
+          longitude: T.nilable(Float)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def call(event_id:, current_user_id:, name:, description:, start_date: nil, end_date: nil)
+      def call(event_id:, current_user_id:, name:, description:, start_date: nil, end_date: nil,
+               location_name: nil, latitude: nil, longitude: nil)
         Event.find_result(event_id)
              .bind { |event| Event.authorize_owner(event, current_user_id) }
              .bind { |event| validate_name_with_event(name, event) }
              .bind { |event| validate_dates(start_date, end_date).fmap { |dates| [event, dates] } }
-             .bind { |(event, dates)| update_event(event, name, description, dates) }
+             .bind do |(event, dates)|
+               update_event(
+                 event: event, name: name, description: description, dates: dates,
+                 location_name: location_name, latitude: latitude, longitude: longitude
+               )
+             end
       end
 
       private
@@ -91,10 +100,13 @@ module Events
           event: Event,
           name: T.nilable(String),
           description: T.nilable(String),
-          dates: T.nilable(T::Array[Date])
+          dates: T.nilable(T::Array[Date]),
+          location_name: T.nilable(String),
+          latitude: T.nilable(Float),
+          longitude: T.nilable(Float)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def update_event(event, name, description, dates)
+      def update_event(event:, name:, description:, dates:, location_name:, latitude:, longitude:)
         event_id = event.id
         workspace_id = event.workspace_id
 
@@ -112,6 +124,16 @@ module Events
             else
               update_data[:start_date] = dates[0]
               update_data[:end_date] = dates[1]
+            end
+          end
+
+          unless location_name.nil?
+            if location_name.empty?
+              update_data[:location_name] = nil
+              update_data[:location_coordinates] = nil
+            elsif latitude && longitude
+              update_data[:location_name] = location_name
+              update_data[:location_coordinates] = Sequel.lit("point(?, ?)", longitude, latitude)
             end
           end
 

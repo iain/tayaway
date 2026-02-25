@@ -81,6 +81,9 @@ export interface HydratedEvent {
   description: string | null
   startDate: string | null
   endDate: string | null
+  locationName: string | null
+  latitude: number | null
+  longitude: number | null
   workspaceId: string
   workspace: HydratedWorkspace | undefined
   userId: string
@@ -152,6 +155,9 @@ function hydrateEvent(
     description: poolEvent.description,
     startDate: poolEvent.startDate,
     endDate: poolEvent.endDate,
+    locationName: poolEvent.locationName,
+    latitude: poolEvent.latitude,
+    longitude: poolEvent.longitude,
     workspaceId: poolEvent.workspaceId,
     workspace,
     userId: poolEvent.userId,

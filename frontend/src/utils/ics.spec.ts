@@ -7,6 +7,7 @@ const base = {
   description: null,
   startDate: null,
   endDate: null,
+  location: null,
   createdAt: '2026-02-01T10:00:00.000Z',
 }
 

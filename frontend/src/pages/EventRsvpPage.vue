@@ -27,6 +27,7 @@ function handleDownloadIcs(): void {
     description: e.description,
     startDate: e.startDate,
     endDate: e.endDate,
+    location: e.locationName,
     createdAt: e.createdAt,
   })
   const filename =

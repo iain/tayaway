@@ -12,6 +12,8 @@ class Event < T::Struct
   const :description, T.nilable(String)
   const :start_date, T.nilable(Date)
   const :end_date, T.nilable(Date)
+  const :location_name, T.nilable(String)
+  const :location_coordinates, T.nilable(T::Array[Float])
   const :created_at, Time
   const :updated_at, Time
 
@@ -24,6 +26,9 @@ class Event < T::Struct
       description: description,
       startDate: start_date&.iso8601,
       endDate: end_date&.iso8601,
+      locationName: location_name,
+      latitude: location_coordinates&.[](1),
+      longitude: location_coordinates&.[](0),
       workspaceId: workspace_id.to_s,
       userId: user_id.to_s,
       datePollId: date_poll_id,
@@ -98,6 +103,12 @@ class Event < T::Struct
 
     sig { params(row: T::Hash[Symbol, T.untyped]).returns(Event) }
     def from_row(row)
+      point = row[:location_coordinates]
+      coords = if point.is_a?(String) && point.match?(/\A\(.+,.+\)\z/)
+                 parts = point.delete("()").split(",")
+                 [parts[0].to_f, parts[1].to_f]
+               end
+
       Event.new(
         id: UUID.new(row[:id]),
         workspace_id: UUID.new(row[:workspace_id]),
@@ -106,6 +117,8 @@ class Event < T::Struct
         description: row[:description],
         start_date: row[:start_date],
         end_date: row[:end_date],
+        location_name: row[:location_name],
+        location_coordinates: coords,
         created_at: row[:created_at],
         updated_at: row[:updated_at]
       )

@@ -4,8 +4,9 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import FormInput from '@/components/form/FormInput.vue'
 import FormTextarea from '@/components/form/FormTextarea.vue'
 import FormActions from '@/components/form/FormActions.vue'
+import LocationInput from '@/components/form/LocationInput.vue'
 
-type EditField = 'name' | 'description' | 'dates'
+type EditField = 'name' | 'description' | 'dates' | 'location'
 
 const props = defineProps<{
   open: boolean
@@ -14,6 +15,9 @@ const props = defineProps<{
   currentDescription: string | null
   currentStartDate: string | null
   currentEndDate: string | null
+  currentLocationName: string | null
+  currentLatitude: number | null
+  currentLongitude: number | null
   loading?: boolean
 }>()
 
@@ -25,6 +29,9 @@ const emit = defineEmits<{
       description: string | undefined
       startDate: string | null
       endDate: string | null
+      locationName: string | undefined
+      latitude: number | undefined
+      longitude: number | undefined
     },
   ]
 }>()
@@ -33,6 +40,9 @@ const name = ref('')
 const description = ref('')
 const startDate = ref('')
 const endDate = ref('')
+const locationName = ref('')
+const latitude = ref<number | null>(null)
+const longitude = ref<number | null>(null)
 
 watch(
   () => props.open,
@@ -42,6 +52,9 @@ watch(
       description.value = props.currentDescription ?? ''
       startDate.value = props.currentStartDate ?? ''
       endDate.value = props.currentEndDate ?? ''
+      locationName.value = props.currentLocationName ?? ''
+      latitude.value = props.currentLatitude
+      longitude.value = props.currentLongitude
     }
   }
 )
@@ -50,6 +63,7 @@ const titles: Record<EditField, string> = {
   name: 'Edit Title',
   description: 'Edit Description',
   dates: 'Edit Dates',
+  location: 'Edit Location',
 }
 
 function handleSave(): void {
@@ -58,6 +72,9 @@ function handleSave(): void {
     description: description.value.trim() || undefined,
     startDate: startDate.value || null,
     endDate: endDate.value || null,
+    locationName: locationName.value || undefined,
+    latitude: latitude.value ?? undefined,
+    longitude: longitude.value ?? undefined,
   })
 }
 
@@ -113,6 +130,15 @@ function handleClose(): void {
           data-testid="edit-end-date-input"
         />
       </div>
+
+      <LocationInput
+        v-if="field === 'location'"
+        v-model="locationName"
+        v-model:latitude="latitude"
+        v-model:longitude="longitude"
+        label="Location"
+        :disabled="loading"
+      />
 
       <FormActions
         submit-label="Save"

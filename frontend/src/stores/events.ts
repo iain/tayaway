@@ -18,6 +18,9 @@ export const useEventsStore = defineStore('events', () => {
       description: data.description ?? null,
       startDate: data.startDate ?? null,
       endDate: data.endDate ?? null,
+      locationName: data.locationName ?? null,
+      latitude: data.latitude ?? null,
+      longitude: data.longitude ?? null,
       workspaceId: useWorkspaceStore().currentWorkspaceId!,
       userId: useAuthStore().currentUserId!,
       datePollId: null,
@@ -35,6 +38,9 @@ export const useEventsStore = defineStore('events', () => {
           description: data.description,
           start_date: data.startDate,
           end_date: data.endDate,
+          location_name: data.locationName,
+          latitude: data.latitude,
+          longitude: data.longitude,
           id: eventId,
           workspace_id: useWorkspaceStore().currentWorkspaceId,
         })
@@ -49,6 +55,9 @@ export const useEventsStore = defineStore('events', () => {
         description: data.description,
         start_date: data.startDate,
         end_date: data.endDate,
+        location_name: data.locationName,
+        latitude: data.latitude,
+        longitude: data.longitude,
       })
     )
   }

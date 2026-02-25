@@ -4,6 +4,7 @@ export interface IcsEventData {
   description: string | null
   startDate: string | null // YYYY-MM-DD
   endDate: string | null // YYYY-MM-DD
+  location: string | null
   createdAt: string
 }
 
@@ -62,6 +63,10 @@ export function generateIcs(event: IcsEventData): string {
 
   if (event.description) {
     lines.push(`DESCRIPTION:${escapeText(event.description)}`)
+  }
+
+  if (event.location) {
+    lines.push(`LOCATION:${escapeText(event.location)}`)
   }
 
   if (event.startDate) {

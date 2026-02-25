@@ -41,7 +41,10 @@ async function handleModalSave(
   name: string,
   description: string,
   startDate: string | undefined,
-  endDate: string | undefined
+  endDate: string | undefined,
+  locationName: string | undefined,
+  latitude: number | undefined,
+  longitude: number | undefined
 ): Promise<void> {
   try {
     const { eventId, queued } = await eventsStore.createEvent({
@@ -49,6 +52,9 @@ async function handleModalSave(
       description: description || undefined,
       startDate,
       endDate,
+      locationName,
+      latitude,
+      longitude,
     })
     showModal.value = false
     if (queued) {

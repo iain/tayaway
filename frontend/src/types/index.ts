@@ -117,6 +117,9 @@ export interface CreateEventRequest {
   description?: string
   startDate?: string
   endDate?: string
+  locationName?: string
+  latitude?: number
+  longitude?: number
 }
 
 export interface UpdateEventRequest {
@@ -124,6 +127,9 @@ export interface UpdateEventRequest {
   description?: string
   startDate?: string | null
   endDate?: string | null
+  locationName?: string
+  latitude?: number
+  longitude?: number
 }
 
 // Invite types

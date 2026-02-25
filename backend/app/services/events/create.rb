@@ -25,13 +25,23 @@ module Events
           description: T.nilable(String),
           id: T.nilable(String),
           start_date: T.nilable(String),
-          end_date: T.nilable(String)
+          end_date: T.nilable(String),
+          location_name: T.nilable(String),
+          latitude: T.nilable(Float),
+          longitude: T.nilable(Float)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def call(workspace_id:, user_id:, name:, description:, id: nil, start_date: nil, end_date: nil)
+      def call(workspace_id:, user_id:, name:, description:, id: nil, start_date: nil, end_date: nil,
+               location_name: nil, latitude: nil, longitude: nil)
         validate_name(name)
           .bind { |valid_name| validate_dates(start_date, end_date).fmap { |dates| [valid_name, dates] } }
-          .bind { |(valid_name, dates)| create_event(workspace_id, user_id, valid_name, description, id, dates) }
+          .bind do |(valid_name, dates)|
+            create_event(
+              workspace_id: workspace_id, user_id: user_id, name: valid_name,
+              description: description, id: id, dates: dates,
+              location_name: location_name, latitude: latitude, longitude: longitude
+            )
+          end
       end
 
       private
@@ -86,10 +96,13 @@ module Events
           name: String,
           description: T.nilable(String),
           id: T.nilable(String),
-          dates: T.nilable(T::Array[Date])
+          dates: T.nilable(T::Array[Date]),
+          location_name: T.nilable(String),
+          latitude: T.nilable(Float),
+          longitude: T.nilable(Float)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def create_event(workspace_id, user_id, name, description, id, dates)
+      def create_event(workspace_id:, user_id:, name:, description:, id:, dates:, location_name:, latitude:, longitude:)
         # Idempotent replay: if client provided an ID and it already exists, return it
         if id
           existing = Event.find(id)
@@ -117,6 +130,11 @@ module Events
           if dates
             insert_data[:start_date] = dates[0]
             insert_data[:end_date] = dates[1]
+          end
+
+          if location_name && !location_name.empty? && latitude && longitude
+            insert_data[:location_name] = location_name
+            insert_data[:location_coordinates] = Sequel.lit("point(?, ?)", longitude, latitude)
           end
 
           DB[:events].insert(insert_data)
