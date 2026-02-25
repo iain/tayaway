@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useRoute } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { api } from '@/api/client'
@@ -137,8 +137,20 @@ onMounted(async () => {
         <p class="text-sm text-gray-600 dark:text-stone-400">
           You must RSVP as attending this event before you can add expenses.
         </p>
-        <div class="mt-4 flex justify-end">
-          <PrimaryButton @click="showRsvpDialog = false">OK</PrimaryButton>
+        <div class="mt-4 flex justify-end gap-3">
+          <button
+            class="rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 dark:text-stone-400 dark:hover:text-stone-200"
+            @click="showRsvpDialog = false"
+          >
+            Cancel
+          </button>
+          <RouterLink
+            :to="`/events/${eventId}/rsvp`"
+            class="inline-flex items-center rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-500"
+            @click="showRsvpDialog = false"
+          >
+            Go to RSVP
+          </RouterLink>
         </div>
       </BaseModal>
 
