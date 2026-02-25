@@ -2,10 +2,12 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
+  BanknotesIcon,
   CalendarDaysIcon,
   CheckCircleIcon,
   ClockIcon,
   InboxIcon,
+  UserGroupIcon,
 } from '@heroicons/vue/24/outline'
 import {
   usePollsNeedingAttention,
@@ -18,14 +20,37 @@ import {
   formatEventDateRange,
 } from '@/composables/useEventsNeedingRsvp'
 import { useEventsList } from '@/composables/useEventsList'
+import { useObjectPoolStore } from '@/stores'
 import PageHeader from '@/components/common/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 
 const router = useRouter()
+const pool = useObjectPoolStore()
 const { pollsNeedingAttention } = usePollsNeedingAttention()
 const { eventsNeedingRsvp } = useEventsNeedingRsvp()
 const { currentEvents } = useEventsList()
+
+function attendeeCount(eventId: string): number {
+  void pool.version
+  return pool.getAll('rsvp').filter((r) => r.eventId === eventId && r.attending)
+    .length
+}
+
+function expenseTotal(eventId: string): number {
+  void pool.version
+  return pool
+    .getAll('expense')
+    .filter((e) => e.eventId === eventId)
+    .reduce((sum, e) => sum + e.amount, 0)
+}
+
+function formatEuros(amount: number): string {
+  return amount.toLocaleString('en', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
 
 const allCaughtUp = computed(
   () =>
@@ -65,29 +90,45 @@ function navigateToEventPage(eventId: string): void {
           <li
             v-for="event in currentEvents"
             :key="event.id"
-            class="cursor-pointer overflow-hidden rounded-lg bg-white shadow transition-all hover:ring-2 hover:ring-rose-500 dark:bg-stone-800"
-            @click="navigateToEventPage(event.id)"
+            class="overflow-hidden rounded-lg bg-white shadow dark:bg-stone-800"
           >
             <div class="px-4 py-4 sm:px-6">
-              <div class="flex items-center justify-between">
-                <div class="min-w-0 flex-1">
-                  <h3
-                    class="truncate text-base font-semibold text-gray-900 dark:text-white"
+              <div
+                class="cursor-pointer"
+                @click="navigateToEventPage(event.id)"
+              >
+                <h3
+                  class="truncate text-base font-semibold text-gray-900 dark:text-white"
+                >
+                  {{ event.name }}
+                </h3>
+                <div class="mt-1 flex flex-wrap items-center gap-3 text-sm">
+                  <span
+                    class="inline-flex items-center gap-1 text-gray-500 dark:text-stone-400"
                   >
-                    {{ event.name }}
-                  </h3>
-                  <div class="mt-1 flex flex-wrap items-center gap-3 text-sm">
-                    <span
-                      class="inline-flex items-center gap-1 text-gray-500 dark:text-stone-400"
-                    >
-                      <CalendarDaysIcon class="size-4" />
-                      <DateRangeDisplay
-                        :start-date="event.startDate!"
-                        :end-date="event.endDate!"
-                      />
-                    </span>
-                  </div>
+                    <CalendarDaysIcon class="size-4" />
+                    <DateRangeDisplay
+                      :start-date="event.startDate!"
+                      :end-date="event.endDate!"
+                    />
+                  </span>
                 </div>
+              </div>
+              <div class="mt-3 flex flex-wrap gap-2">
+                <router-link
+                  :to="`/events/${event.id}/rsvp`"
+                  class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 transition-colors hover:bg-rose-100 hover:text-rose-700 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
+                >
+                  <UserGroupIcon class="size-4" />
+                  {{ attendeeCount(event.id) }} attending
+                </router-link>
+                <router-link
+                  :to="`/events/${event.id}/expenses`"
+                  class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 transition-colors hover:bg-rose-100 hover:text-rose-700 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
+                >
+                  <BanknotesIcon class="size-4" />
+                  {{ formatEuros(expenseTotal(event.id)) }}
+                </router-link>
               </div>
             </div>
           </li>
