@@ -116,6 +116,23 @@ class PoolSerializer
     @objects[key] = expense.to_api_hash
   end
 
+  sig { params(settlement: Settlement).void }
+  def add_settlement(settlement)
+    key = "settlement:#{settlement.id}"
+    return if @objects.key?(key)
+
+    transfer_ids = SettlementTransfer.ids_for_settlement(settlement.id)
+    @objects[key] = settlement.to_api_hash(transfer_ids: transfer_ids)
+  end
+
+  sig { params(transfer: SettlementTransfer).void }
+  def add_settlement_transfer(transfer)
+    key = "settlement_transfer:#{transfer.id}"
+    return if @objects.key?(key)
+
+    @objects[key] = transfer.to_api_hash
+  end
+
   sig { params(items: T::Enumerable[T.untyped], type: Symbol).void }
   def add_all(items, type:)
     entry = ObjectRegistry::BY_KEY[type.to_s]

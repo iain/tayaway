@@ -31,6 +31,8 @@ export const OBJECT_TYPES = [
   'taskList',
   'taskItem',
   'expense',
+  'settlement',
+  'settlementTransfer',
 ] as const
 
 export interface ObjectTypeMap {
@@ -109,10 +111,25 @@ export interface ObjectTypeMap {
   expense: PoolObjectBase<'expense'> & {
     eventId: string
     userId: string | null
+    settlementId: string | null
     description: string
     amount: number
     startDate: string
     endDate: string
+    createdAt: string
+  }
+  settlement: PoolObjectBase<'settlement'> & {
+    eventId: string
+    userId: string | null
+    transferIds: string[]
+    createdAt: string
+  }
+  settlementTransfer: PoolObjectBase<'settlementTransfer'> & {
+    settlementId: string
+    fromUserId: string | null
+    toUserId: string | null
+    amount: number
+    paidAt: string | null
     createdAt: string
   }
 }
@@ -135,6 +152,8 @@ export type PoolWorkspace = ObjectTypeMap['workspace']
 export type PoolTaskList = ObjectTypeMap['taskList']
 export type PoolTaskItem = ObjectTypeMap['taskItem']
 export type PoolExpense = ObjectTypeMap['expense']
+export type PoolSettlement = ObjectTypeMap['settlement']
+export type PoolSettlementTransfer = ObjectTypeMap['settlementTransfer']
 
 // API response wrapper - all endpoints include objects array
 export interface PoolApiResponse {

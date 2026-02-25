@@ -17,11 +17,24 @@ module Expenses
       end
       def call(expense_id:, current_user_id:, workspace_id:)
         Expense.find_result(expense_id)
+               .bind { |expense| check_not_settled(expense) }
                .bind { |expense| check_owner(expense, current_user_id) }
                .bind { |expense| delete_expense(expense, workspace_id) }
       end
 
       private
+
+      sig { params(expense: Expense).returns(Result[Expense, ServiceError]) }
+      def check_not_settled(expense)
+        if expense.settlement_id
+          T.cast(
+            Failure(ServiceError.validation("Expense is part of a settlement. Delete the settlement first to edit.")),
+            Result[Expense, ServiceError]
+          )
+        else
+          T.cast(Success(expense), Result[Expense, ServiceError])
+        end
+      end
 
       sig do
         params(expense: Expense, current_user_id: T.any(String, UUID))

@@ -74,4 +74,19 @@ export const relationshipSchema: RelationshipSchema = {
     event: { type: 'belongsTo', foreignKey: 'eventId', targetType: 'event' },
     member: { type: 'belongsTo', foreignKey: 'userId', targetType: 'member' },
   },
+  settlement: {
+    event: { type: 'belongsTo', foreignKey: 'eventId', targetType: 'event' },
+    transfers: {
+      type: 'hasMany',
+      foreignKey: 'transferIds',
+      targetType: 'settlementTransfer',
+    },
+  },
+  settlementTransfer: {
+    settlement: {
+      type: 'belongsTo',
+      foreignKey: 'settlementId',
+      targetType: 'settlement',
+    },
+  },
 } as const

@@ -20,6 +20,7 @@ export const useExpensesStore = defineStore('expenses', () => {
       objectType: 'expense',
       eventId,
       userId: useAuthStore().currentUserId ?? null,
+      settlementId: null,
       description,
       amount,
       startDate,

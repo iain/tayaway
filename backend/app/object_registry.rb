@@ -23,7 +23,9 @@ module ObjectRegistry
       Entry.new(key: "rsvp",        model: "Rsvp",                 client_type: "rsvp",       pool_method: :add_rsvp,        tracks_user: true),
       Entry.new(key: "task_list",   model: "TaskList",             client_type: "taskList",   pool_method: :add_task_list,   tracks_user: true),
       Entry.new(key: "task_item",   model: "TaskItem",             client_type: "taskItem",   pool_method: :add_task_item,   tracks_user: true),
-      Entry.new(key: "expense",     model: "Expense",              client_type: "expense",    pool_method: :add_expense,     tracks_user: true)
+      Entry.new(key: "expense",     model: "Expense",              client_type: "expense",    pool_method: :add_expense,     tracks_user: true),
+      Entry.new(key: "settlement",  model: "Settlement",           client_type: "settlement", pool_method: :add_settlement,  tracks_user: true),
+      Entry.new(key: "settlement_transfer", model: "SettlementTransfer", client_type: "settlementTransfer", pool_method: :add_settlement_transfer, tracks_user: false)
     ].freeze,
     T::Array[Entry]
   )

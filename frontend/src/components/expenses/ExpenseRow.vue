@@ -4,6 +4,7 @@ import {
   TrashIcon,
   ChevronDownIcon,
   PencilIcon,
+  LockClosedIcon,
 } from '@heroicons/vue/24/outline'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useExpensesStore } from '@/stores/expenses'
@@ -42,6 +43,10 @@ const formattedAmount = computed(() => {
 
 const isOwner = computed(() => {
   return props.expense.userId === props.currentUserId
+})
+
+const isSettled = computed(() => {
+  return !!props.expense.settlementId
 })
 
 interface ExpensePayer {
@@ -143,24 +148,31 @@ async function handleDelete(e: Event) {
     </td>
     <td class="w-12 py-3 pr-2 align-middle">
       <div class="flex items-center gap-1">
-        <button
-          v-if="isOwner"
-          type="button"
-          data-testid="edit-expense"
-          class="flex text-gray-400 hover:text-blue-500 dark:text-stone-500 dark:hover:text-blue-400"
-          @click="handleEdit"
-        >
-          <PencilIcon class="size-4" />
-        </button>
-        <button
-          v-if="isOwner"
-          type="button"
-          data-testid="delete-expense"
-          class="flex text-gray-400 hover:text-red-500 dark:text-stone-500 dark:hover:text-red-400"
-          @click="handleDelete"
-        >
-          <TrashIcon class="size-4" />
-        </button>
+        <LockClosedIcon
+          v-if="isSettled"
+          class="size-4 text-gray-300 dark:text-stone-600"
+          title="Part of a settlement"
+        />
+        <template v-else>
+          <button
+            v-if="isOwner"
+            type="button"
+            data-testid="edit-expense"
+            class="flex text-gray-400 hover:text-blue-500 dark:text-stone-500 dark:hover:text-blue-400"
+            @click="handleEdit"
+          >
+            <PencilIcon class="size-4" />
+          </button>
+          <button
+            v-if="isOwner"
+            type="button"
+            data-testid="delete-expense"
+            class="flex text-gray-400 hover:text-red-500 dark:text-stone-500 dark:hover:text-red-400"
+            @click="handleDelete"
+          >
+            <TrashIcon class="size-4" />
+          </button>
+        </template>
         <ChevronDownIcon
           class="size-4 text-gray-400 transition-transform dark:text-stone-500"
           :class="{ 'rotate-180': expanded }"

@@ -1,0 +1,243 @@
+# typed: true
+# frozen_string_literal: true
+
+module Settlements
+  # Service to create a settlement for an event. Computes balances from expenses
+  # and attending RSVPs, then minimizes transfers using a greedy algorithm.
+  module Create
+    class << self
+      extend T::Sig
+      include Result::Methods
+
+      sig do
+        params(
+          event_id: T.any(String, UUID),
+          user_id: T.any(String, UUID),
+          workspace_id: T.any(String, UUID)
+        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
+      end
+      def call(event_id:, user_id:, workspace_id:)
+        find_event(event_id)
+          .bind { |event| check_event_dates(event) }
+          .bind { |event| find_unsettled_expenses(event) }
+          .bind { |event, expenses| find_rsvps(event, expenses) }
+          .bind { |event, expenses, rsvps| compute_and_create(event, expenses, rsvps, user_id, workspace_id) }
+      end
+
+      private
+
+      sig { params(event_id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }
+      def find_event(event_id)
+        Event.find_result(event_id)
+      end
+
+      sig { params(event: Event).returns(Result[Event, ServiceError]) }
+      def check_event_dates(event)
+        if event.start_date && event.end_date
+          T.cast(Success(event), Result[Event, ServiceError])
+        else
+          T.cast(
+            Failure(ServiceError.validation("Event must have dates set before settling expenses")),
+            Result[Event, ServiceError]
+          )
+        end
+      end
+
+      sig { params(event: Event).returns(Result[T::Array[T.untyped], ServiceError]) }
+      def find_unsettled_expenses(event)
+        expenses = DB[:expenses]
+                   .where(event_id: event.id, settlement_id: nil)
+                   .order(:created_at)
+                   .all
+
+        if expenses.empty?
+          T.cast(
+            Failure(ServiceError.validation("No unsettled expenses to settle")),
+            Result[T::Array[T.untyped], ServiceError]
+          )
+        else
+          T.cast(Success([event, expenses]), Result[T::Array[T.untyped], ServiceError])
+        end
+      end
+
+      sig { params(event: Event, expenses: T::Array[T.untyped]).returns(Result[T::Array[T.untyped], ServiceError]) }
+      def find_rsvps(event, expenses)
+        rsvps = Rsvp.for_event(event.id).select(&:attending)
+
+        if rsvps.empty?
+          T.cast(
+            Failure(ServiceError.validation("No attending RSVPs found for this event")),
+            Result[T::Array[T.untyped], ServiceError]
+          )
+        else
+          T.cast(Success([event, expenses, rsvps]), Result[T::Array[T.untyped], ServiceError])
+        end
+      end
+
+      sig do
+        params(
+          event: Event,
+          expenses: T::Array[T.untyped],
+          rsvps: T::Array[Rsvp],
+          user_id: T.any(String, UUID),
+          workspace_id: T.any(String, UUID)
+        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
+      end
+      def compute_and_create(event, expenses, rsvps, user_id, workspace_id)
+        balances = compute_balances(event, expenses, rsvps)
+        transfers = minimize_transfers(balances)
+
+        settlement_id = SecureRandom.uuid
+        now = Time.now
+
+        DB.transaction do
+          DB[:settlements].insert(
+            id: settlement_id,
+            event_id: event.id,
+            user_id: user_id,
+            created_at: now,
+            updated_at: now
+          )
+
+          transfers.each do |transfer|
+            transfer_id = SecureRandom.uuid
+            DB[:settlement_transfers].insert(
+              id: transfer_id,
+              settlement_id: settlement_id,
+              from_user_id: transfer[:from_user_id],
+              to_user_id: transfer[:to_user_id],
+              amount: transfer[:amount],
+              created_at: now,
+              updated_at: now
+            )
+            Broadcaster.object_changed("settlement_transfer", transfer_id, workspace_id: workspace_id)
+          end
+
+          DB[:expenses]
+            .where(event_id: event.id, settlement_id: nil)
+            .update(settlement_id: settlement_id, updated_at: now)
+
+          Broadcaster.object_changed("settlement", settlement_id, workspace_id: workspace_id)
+
+          # Broadcast each updated expense
+          Expense.for_event(event.id).select { |e| e.settlement_id&.to_s == settlement_id }.each do |expense|
+            Broadcaster.object_changed("expense", expense.id, workspace_id: workspace_id)
+          end
+        end
+
+        pool = PoolSerializer.new(workspace_id: workspace_id)
+        settlement = T.must(Settlement.find(settlement_id))
+        pool.add_settlement(settlement)
+        SettlementTransfer.for_settlement(settlement_id).each { |t| pool.add_settlement_transfer(t) }
+        Expense.for_event(event.id).each { |e| pool.add_expense(e) }
+
+        T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+      end
+
+      # Compute net balance for each user: share - paid
+      # Positive balance means user owes money; negative means user is owed money
+      sig do
+        params(
+          event: Event,
+          expenses: T::Array[T.untyped],
+          rsvps: T::Array[Rsvp]
+        ).returns(T::Hash[String, Float])
+      end
+      def compute_balances(event, expenses, rsvps)
+        share_by_user = Hash.new(0.0)
+        paid_by_user = Hash.new(0.0)
+
+        event_start = T.must(event.start_date)
+        event_end = T.must(event.end_date)
+
+        # Pre-compute RSVP effective dates
+        rsvp_dates = rsvps.map do |rsvp|
+          {
+            user_id: rsvp.user_id.to_s,
+            start_date: rsvp.start_date || event_start,
+            end_date: rsvp.end_date || event_end
+          }
+        end
+
+        expenses.each do |expense|
+          expense_start = expense[:start_date]
+          expense_end = expense[:end_date]
+          expense_amount = expense[:amount].to_f
+
+          # Track who paid
+          if expense[:user_id]
+            paid_by_user[expense[:user_id].to_s] += expense_amount
+          end
+
+          # Compute overlap for each RSVP
+          overlaps = []
+          rsvp_dates.each do |rd|
+            overlap_start = [expense_start, rd[:start_date]].max
+            overlap_end = [expense_end, rd[:end_date]].min
+
+            next if overlap_start > overlap_end
+
+            overlap_days = (overlap_end - overlap_start).to_i + 1
+            next if overlap_days <= 0
+
+            overlaps << { user_id: rd[:user_id], days: overlap_days }
+          end
+
+          total_overlap_days = overlaps.sum { |o| o[:days] }
+          next if total_overlap_days == 0
+
+          overlaps.each do |o|
+            share = (o[:days].to_f / total_overlap_days) * expense_amount
+            share_by_user[o[:user_id]] += share
+          end
+        end
+
+        # Net balance: positive = owes money, negative = owed money
+        all_user_ids = (share_by_user.keys + paid_by_user.keys).uniq
+        balances = {}
+        all_user_ids.each do |uid|
+          balance = (share_by_user[uid] - paid_by_user[uid]).round(2).to_f
+          balances[uid] = balance unless balance.abs < 0.005
+        end
+
+        balances
+      end
+
+      # Greedy algorithm to minimize transfers
+      sig { params(balances: T::Hash[String, Float]).returns(T::Array[T::Hash[Symbol, T.untyped]]) }
+      def minimize_transfers(balances)
+        debtors = balances.select { |_, v| v > 0 }.sort_by { |_, v| -v }.map { |k, v| [k, v] }
+        creditors = balances.select { |_, v| v < 0 }.sort_by { |_, v| v }.map { |k, v| [k, -v] }
+
+        transfers = []
+        d_idx = 0
+        c_idx = 0
+
+        while d_idx < debtors.length && c_idx < creditors.length
+          debtor_id, debt = T.must(debtors[d_idx])
+          creditor_id, credit = T.must(creditors[c_idx])
+
+          amount = [debt, credit].min.round(2).to_f
+
+          if amount > 0.005
+            transfers << {
+              from_user_id: debtor_id,
+              to_user_id: creditor_id,
+              amount: amount
+            }
+          end
+
+          remaining_debt = (debt - amount).round(2).to_f
+          remaining_credit = (credit - amount).round(2).to_f
+          debtors[d_idx] = [debtor_id, remaining_debt]
+          creditors[c_idx] = [creditor_id, remaining_credit]
+
+          d_idx += 1 if remaining_debt < 0.005
+          c_idx += 1 if remaining_credit < 0.005
+        end
+
+        transfers
+      end
+    end
+  end
+end

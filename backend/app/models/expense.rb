@@ -8,6 +8,7 @@ class Expense < T::Struct
   const :id, UUID
   const :event_id, UUID
   const :user_id, T.nilable(UUID)
+  const :settlement_id, T.nilable(UUID)
   const :amount, Float
   const :description, String
   const :start_date, Date
@@ -22,6 +23,7 @@ class Expense < T::Struct
       objectType: "expense",
       eventId: event_id.to_s,
       userId: user_id&.to_s,
+      settlementId: settlement_id&.to_s,
       amount: amount,
       description: description,
       startDate: start_date.iso8601,
@@ -80,6 +82,7 @@ class Expense < T::Struct
         id: UUID.new(row[:id]),
         event_id: UUID.new(row[:event_id]),
         user_id: row[:user_id] ? UUID.new(row[:user_id]) : nil,
+        settlement_id: row[:settlement_id] ? UUID.new(row[:settlement_id]) : nil,
         amount: row[:amount].to_f,
         description: row[:description],
         start_date: row[:start_date],

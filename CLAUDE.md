@@ -126,12 +126,15 @@ votes              id, date_range_id, user_id, response (yes/no/preferably_not),
 rsvps              id, event_id, user_id, attending (boolean), start_date (nullable), end_date (nullable), timestamps, unique(event_id, user_id), check(start_date <= end_date)
 task_lists         id, workspace_id (FK cascade), user_id (FK set_null, nullable), name TEXT, position FLOAT (ordered within workspace), timestamps
 task_items         id, task_list_id (FK cascade), user_id (FK set_null, nullable), content TEXT, completed_at (TIMESTAMPTZ nullable), position FLOAT (ordered within list), timestamps
-expenses           id (UUID), event_id (FK cascade), user_id (FK set_null, nullable), amount NUMERIC NOT NULL (euros), description TEXT NOT NULL, start_date DATE NOT NULL, end_date DATE NOT NULL, timestamps, check(start_date <= end_date)
+expenses           id (UUID), event_id (FK cascade), user_id (FK set_null, nullable), settlement_id (FK settlements set_null, nullable), amount NUMERIC NOT NULL (euros), description TEXT NOT NULL, start_date DATE NOT NULL, end_date DATE NOT NULL, timestamps, check(start_date <= end_date)
+settlements        id (UUID), event_id (FK cascade), user_id (FK set_null, nullable), timestamps
+settlement_transfers  id (UUID), settlement_id (FK settlements cascade), from_user_id (FK set_null, nullable), to_user_id (FK set_null, nullable), amount NUMERIC NOT NULL, paid_at (TIMESTAMPTZ nullable), timestamps
 workspace_invites  id (UUID), workspace_id (FK cascade), invited_by (FK set_null, nullable), email (CITEXT), token (hashed), expires_at (24h), accepted_at (nullable), timestamps; partial unique(workspace_id, email) WHERE accepted_at IS NULL
 ```
 
 **Hierarchy:** Workspace -> Event -> DatePoll -> DateRange -> Vote
 **RSVP:** Event -> Rsvp (once event has dates set)
+**Settlement:** Event -> Settlement -> SettlementTransfer; Settlement -> Expenses (via settlement_id)
 
 **Poll lifecycle:** open -> expired (past deadline) -> resolved (closed with winner) -> can reopen
 **RSVP lifecycle:** Closing a poll auto-RSVPs "yes" voters as attending. Reopening a poll deletes all RSVPs.
@@ -185,6 +188,13 @@ workspace_invites  id (UUID), workspace_id (FK cascade), invited_by (FK set_null
 - `PUT /:id` — Update expense (creator-only; description and/or amount)
 - `DELETE /:id` — Delete expense (creator-only)
 
+**Settlements (`/api/settlements`)** — All require authentication + workspace membership (via event)
+
+- `GET /?event_id=X` — List settlements + transfers for event
+- `POST /` — Create settlement (computes balances and minimizes transfers)
+- `DELETE /:id` — Delete settlement (creator or event owner)
+- `PUT /transfers/:id` — Toggle paid status on a transfer
+
 **Invites (`/api/invites`)** — Mixed authentication
 
 Unauthenticated:
@@ -224,18 +234,20 @@ Authenticated (admin/owner only):
 
 These types must stay in sync between frontend and backend:
 
-| Type      | Backend model         | Frontend pool key | Serializer method |
-| --------- | --------------------- | ----------------- | ----------------- |
-| event     | `Event`               | `event`           | `add_event`       |
-| datePoll  | `DatePoll`            | `datePoll`        | `add_date_poll`   |
-| dateRange | `DateRange`           | `dateRange`       | `add_date_range`  |
-| vote      | `Vote`                | `vote`            | `add_vote`        |
-| rsvp      | `Rsvp`                | `rsvp`            | `add_rsvp`        |
-| workspace | `Workspace`           | `workspace`       | `add_workspace`   |
-| member    | `WorkspaceMembership` | `member`          | `add_member`      |
-| task_list | `TaskList`            | `taskList`        | `add_task_list`   |
-| task_item | `TaskItem`            | `taskItem`        | `add_task_item`   |
-| expense   | `Expense`             | `expense`         | `add_expense`     |
+| Type                | Backend model         | Frontend pool key    | Serializer method         |
+| ------------------- | --------------------- | -------------------- | ------------------------- |
+| event               | `Event`               | `event`              | `add_event`               |
+| datePoll            | `DatePoll`            | `datePoll`           | `add_date_poll`           |
+| dateRange           | `DateRange`           | `dateRange`          | `add_date_range`          |
+| vote                | `Vote`                | `vote`               | `add_vote`                |
+| rsvp                | `Rsvp`                | `rsvp`               | `add_rsvp`                |
+| workspace           | `Workspace`           | `workspace`          | `add_workspace`           |
+| member              | `WorkspaceMembership` | `member`             | `add_member`              |
+| task_list           | `TaskList`            | `taskList`           | `add_task_list`           |
+| task_item           | `TaskItem`            | `taskItem`           | `add_task_item`           |
+| expense             | `Expense`             | `expense`            | `add_expense`             |
+| settlement          | `Settlement`          | `settlement`         | `add_settlement`          |
+| settlement_transfer | `SettlementTransfer`  | `settlementTransfer` | `add_settlement_transfer` |
 
 Defined in: `backend/app/object_registry.rb` and `frontend/src/types/pool.ts`
 

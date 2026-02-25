@@ -8,6 +8,7 @@ import { api } from '@/api/client'
 import ExpenseRow from '@/components/expenses/ExpenseRow.vue'
 import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
 import ExpenseSplit from '@/components/expenses/ExpenseSplit.vue'
+import SettlementSection from '@/components/expenses/SettlementSection.vue'
 import PrimaryButton from '@/components/common/PrimaryButton.vue'
 import type { PoolApiResponse, PoolExpense } from '@/types/pool'
 
@@ -55,6 +56,7 @@ onMounted(async () => {
   await Promise.all([
     api.get<PoolApiResponse>(`/expenses?event_id=${eventId.value}`),
     api.get<PoolApiResponse>(`/events/${eventId.value}/rsvps`),
+    api.get<PoolApiResponse>(`/settlements?event_id=${eventId.value}`),
   ])
 })
 </script>
@@ -111,6 +113,12 @@ onMounted(async () => {
       />
 
       <ExpenseSplit v-if="event" :event="event" :total="total" />
+
+      <SettlementSection
+        v-if="event"
+        :event="event"
+        :current-user-id="currentUserId"
+      />
     </div>
   </div>
 </template>

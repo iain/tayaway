@@ -37,19 +37,17 @@ function attendeeCount(eventId: string): number {
     .length
 }
 
-function expenseTotal(eventId: string): number {
+function unpaidTransferCount(eventId: string): number {
   void pool.version
+  const settlementIds = pool
+    .getAll('settlement')
+    .filter((s) => s.eventId === eventId)
+    .map((s) => s.id)
+  if (settlementIds.length === 0) return 0
+  const settlementIdSet = new Set(settlementIds)
   return pool
-    .getAll('expense')
-    .filter((e) => e.eventId === eventId)
-    .reduce((sum, e) => sum + e.amount, 0)
-}
-
-function formatEuros(amount: number): string {
-  return amount.toLocaleString('en', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
+    .getAll('settlementTransfer')
+    .filter((t) => settlementIdSet.has(t.settlementId) && !t.paidAt).length
 }
 
 const allCaughtUp = computed(
@@ -123,11 +121,12 @@ function navigateToEventPage(eventId: string): void {
                   {{ attendeeCount(event.id) }} attending
                 </router-link>
                 <router-link
+                  v-if="unpaidTransferCount(event.id) > 0"
                   :to="`/events/${event.id}/expenses`"
                   class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 transition-colors hover:bg-rose-100 hover:text-rose-700 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
                 >
                   <BanknotesIcon class="size-4" />
-                  {{ formatEuros(expenseTotal(event.id)) }}
+                  {{ unpaidTransferCount(event.id) }} unpaid
                 </router-link>
               </div>
             </div>
