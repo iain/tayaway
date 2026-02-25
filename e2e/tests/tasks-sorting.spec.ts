@@ -241,39 +241,27 @@ test.describe('Task Sorting', () => {
     })
   })
 
+  // Each drag test uses its own user/workspace to avoid interference from
+  // parallel tests that create task lists in the same workspace (which causes
+  // page reflows that break drag coordinates).
   test.describe('UI - Drag-and-Drop', () => {
-    let sessionToken: string
-    let apiContext: APIRequestContext
-    let workspaceId: string
-    const uid = Date.now()
-
-    test.beforeAll(async ({ playwright }) => {
-      apiContext = await playwright.request.newContext()
-      const { token } = await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
-      sessionToken = token
-      workspaceId = await getWorkspaceId(apiContext)
-    })
-
-    test.afterAll(async () => {
-      await apiContext.dispose()
-    })
-
     test('drag handles are visible on task lists and items', async ({
       page,
+      request,
     }) => {
-      const listId = await createTaskList(
-        apiContext,
-        workspaceId,
-        `Drag Handle Test ${uid}`
-      )
-      await addTaskItem(apiContext, listId, 'Handle test item')
+      const email = `e2e-dnd-handles-${crypto.randomUUID()}@example.com`
+      const { token } = await getTestSession(request, email, TEST_NAME)
+      const workspaceId = await getWorkspaceId(request)
 
-      await setupAuthenticatedPage(page, sessionToken)
+      const listId = await createTaskList(request, workspaceId, 'Handle List')
+      await addTaskItem(request, listId, 'Handle test item')
+
+      await setupAuthenticatedPage(page, token)
       await page.goto('/tasks')
 
       const card = page
         .getByTestId('task-list-card')
-        .filter({ hasText: `Drag Handle Test ${uid}` })
+        .filter({ hasText: 'Handle List' })
       await expect(card.getByText('Handle test item')).toBeVisible()
       await expect(
         page.getByTestId('task-list-drag-handle').first()
@@ -281,59 +269,63 @@ test.describe('Task Sorting', () => {
       await expect(card.getByTestId('task-item-drag-handle')).toBeVisible()
     })
 
-    test('can reorder task lists by dragging', async ({ page }) => {
-      const alphaName = `Alpha List ${uid}`
-      const betaName = `Beta List ${uid}`
+    test('can reorder task lists by dragging', async ({ page, request }) => {
+      const email = `e2e-dnd-reorder-${crypto.randomUUID()}@example.com`
+      const { token } = await getTestSession(request, email, TEST_NAME)
+      const workspaceId = await getWorkspaceId(request)
 
       // Create Alpha first (gets lower position), Beta second (gets higher position)
-      await createTaskList(apiContext, workspaceId, alphaName)
-      await createTaskList(apiContext, workspaceId, betaName)
+      await createTaskList(request, workspaceId, 'Alpha List')
+      await createTaskList(request, workspaceId, 'Beta List')
 
-      await setupAuthenticatedPage(page, sessionToken)
+      await setupAuthenticatedPage(page, token)
       await page.goto('/tasks')
 
       const cards = page.getByTestId('task-list-card')
-      const alphaCard = cards.filter({ hasText: alphaName })
-      const betaCard = cards.filter({ hasText: betaName })
+      const alphaCard = cards.filter({ hasText: 'Alpha List' })
+      const betaCard = cards.filter({ hasText: 'Beta List' })
       await expect(alphaCard).toBeVisible()
       await expect(betaCard).toBeVisible()
 
-      // Drag Beta's handle above Alpha
       const betaHandle = betaCard.getByTestId('task-list-drag-handle')
       const alphaHandle = alphaCard.getByTestId('task-list-drag-handle')
 
-      await betaHandle.dragTo(alphaHandle)
-
-      // Wait for UI to update and verify Beta is now before Alpha (relative order)
+      // SortableJS uses the HTML5 Drag API, so Playwright's dragTo is the
+      // most reliable approach. Wrap in toPass to retry on misfire.
       await expect(async () => {
+        await betaHandle.dragTo(alphaHandle)
+
         const allCards = await page.getByTestId('task-list-card').all()
         const texts = await Promise.all(allCards.map((c) => c.textContent()))
-        const betaIdx = texts.findIndex((t) => t?.includes(betaName))
-        const alphaIdx = texts.findIndex((t) => t?.includes(alphaName))
+        const betaIdx = texts.findIndex((t) => t?.includes('Beta List'))
+        const alphaIdx = texts.findIndex((t) => t?.includes('Alpha List'))
         expect(betaIdx).toBeGreaterThan(-1)
         expect(alphaIdx).toBeGreaterThan(-1)
         expect(betaIdx).toBeLessThan(alphaIdx)
-      }).toPass({ timeout: 10000 })
+      }).toPass({ timeout: 15_000 })
     })
 
     test('can reorder items within a task list by dragging', async ({
       page,
+      request,
     }) => {
-      const listName = `Item Sort List ${uid}`
-      const listId = await createTaskList(apiContext, workspaceId, listName)
-      await addTaskItem(apiContext, listId, 'First item')
-      await addTaskItem(apiContext, listId, 'Second item')
+      const email = `e2e-dnd-items-${crypto.randomUUID()}@example.com`
+      const { token } = await getTestSession(request, email, TEST_NAME)
+      const workspaceId = await getWorkspaceId(request)
 
-      await setupAuthenticatedPage(page, sessionToken)
+      const listId = await createTaskList(request, workspaceId, 'Sort List')
+      await addTaskItem(request, listId, 'First item')
+      await addTaskItem(request, listId, 'Second item')
+
+      await setupAuthenticatedPage(page, token)
       await page.goto('/tasks')
 
       const card = page
         .getByTestId('task-list-card')
-        .filter({ hasText: listName })
+        .filter({ hasText: 'Sort List' })
       await expect(card.getByText('First item')).toBeVisible()
       await expect(card.getByText('Second item')).toBeVisible()
 
-      // Drag Second above First
       const firstRow = card
         .getByTestId('task-item-row')
         .filter({ hasText: 'First item' })
@@ -343,34 +335,41 @@ test.describe('Task Sorting', () => {
       const secondHandle = secondRow.getByTestId('task-item-drag-handle')
       const firstHandle = firstRow.getByTestId('task-item-drag-handle')
 
-      await secondHandle.dragTo(firstHandle)
+      // SortableJS uses the HTML5 Drag API, so Playwright's dragTo is the
+      // most reliable approach. Wrap in toPass to retry on misfire.
+      await expect(async () => {
+        await secondHandle.dragTo(firstHandle)
 
-      // Verify Second is now before First
-      await expect(card.getByTestId('task-item-row').first()).toContainText(
-        'Second item'
-      )
+        await expect(card.getByTestId('task-item-row').first()).toContainText(
+          'Second item'
+        )
+      }).toPass({ timeout: 15_000 })
     })
 
-    test('can move item between task lists by dragging', async ({ page }) => {
-      const listAName = `List A Move ${uid}`
-      const listBName = `List B Move ${uid}`
+    test('can move item between task lists by dragging', async ({
+      page,
+      request,
+    }) => {
+      const email = `e2e-dnd-cross-${crypto.randomUUID()}@example.com`
+      const { token } = await getTestSession(request, email, TEST_NAME)
+      const workspaceId = await getWorkspaceId(request)
 
       // List B needs a visible item as a drop target — dragging to an empty
       // list's tiny min-h-8 container is unreliable with SortableJS + Playwright.
-      const listAId = await createTaskList(apiContext, workspaceId, listAName)
-      await addTaskItem(apiContext, listAId, 'Move me')
-      const listBId = await createTaskList(apiContext, workspaceId, listBName)
-      await addTaskItem(apiContext, listBId, 'Placeholder')
+      const listAId = await createTaskList(request, workspaceId, 'List A')
+      await addTaskItem(request, listAId, 'Move me')
+      const listBId = await createTaskList(request, workspaceId, 'List B')
+      await addTaskItem(request, listBId, 'Placeholder')
 
-      await setupAuthenticatedPage(page, sessionToken)
+      await setupAuthenticatedPage(page, token)
       await page.goto('/tasks')
 
       const cardA = page
         .getByTestId('task-list-card')
-        .filter({ hasText: listAName })
+        .filter({ hasText: 'List A' })
       const cardB = page
         .getByTestId('task-list-card')
-        .filter({ hasText: listBName })
+        .filter({ hasText: 'List B' })
 
       await expect(cardA.getByText('Move me')).toBeVisible()
 
@@ -382,18 +381,9 @@ test.describe('Task Sorting', () => {
         .getByTestId('task-item-row')
         .filter({ hasText: 'Placeholder' })
 
-      // Drag-and-drop is sensitive to element positions. Under parallel load,
-      // real-time WebSocket updates from other tests add task lists to this
-      // workspace, causing page reflows that shift element positions between
-      // when we measure bounding boxes and when mouse events fire.
-      //
-      // We use block:'center' (not block:'nearest') so the source lands in the
-      // middle of the viewport, keeping the adjacent List B row visible below.
-      //
       // dragTo() moves too fast for SortableJS cross-list events, so we drive
       // the mouse manually. The whole drag+assertion is wrapped in toPass so
-      // that if a reflow invalidates our coordinates and the drag misfires, we
-      // re-scroll, re-measure, and retry.
+      // that if the drag misfires, we re-measure and retry.
       await expect(async () => {
         await itemHandle.evaluate((el) =>
           el.scrollIntoView({ block: 'center', behavior: 'instant' })
