@@ -91,6 +91,57 @@ test.describe('RSVP Feature', () => {
     })
   })
 
+  test.describe('Cannot decline with expenses', () => {
+    test('shows dialog when declining RSVP with expenses on the event', async ({
+      page,
+    }) => {
+      // Create resolved event (auto-RSVPs the user as attending)
+      const { eventId } = await createResolvedEvent(
+        apiContext,
+        'Decline With Expenses'
+      )
+
+      // Add an expense
+      await apiContext.post(`${API_BASE}/api/expenses`, {
+        data: {
+          event_id: eventId,
+          description: 'Hotel',
+          amount: 50,
+          start_date: '2026-06-01',
+          end_date: '2026-06-07',
+        },
+      })
+
+      await setupAuthenticatedPage(page, sessionToken)
+      await page.goto(`/events/${eventId}/rsvp`)
+
+      await expect(page.getByTestId('rsvp-section')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+
+      // Try to decline
+      await page.getByTestId('rsvp-decline').click()
+
+      // Dialog should appear with explanation
+      await expect(
+        page.getByText('You have expenses on this event')
+      ).toBeVisible()
+      await expect(
+        page.getByRole('link', { name: 'Go to Expenses' })
+      ).toBeVisible()
+
+      // RSVP should still be attending
+      await expect(page.getByTestId('rsvp-attend')).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      )
+
+      // Link should navigate to expenses page
+      await page.getByRole('link', { name: 'Go to Expenses' }).click()
+      await expect(page).toHaveURL(`/events/${eventId}/expenses`)
+    })
+  })
+
   test.describe('Auto-RSVP on poll close', () => {
     test('closing a poll auto-RSVPs yes-voters as attending', async ({
       page,

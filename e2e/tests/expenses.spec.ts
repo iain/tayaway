@@ -629,6 +629,47 @@ test.describe('Expenses Feature', () => {
     })
   })
 
+  test.describe('RSVP required dialog', () => {
+    test('shows RSVP required dialog when non-attending user clicks Add expense', async ({
+      page,
+      playwright,
+    }) => {
+      const apiContext = await playwright.request.newContext()
+      const { token } = await getTestSession(
+        apiContext,
+        'e2e-rsvp-dialog@example.com',
+        'RSVP Dialog User'
+      )
+      // createResolvedEvent auto-RSVPs the user as attending; change to not attending
+      const { eventId } = await createResolvedEvent(
+        apiContext,
+        'RSVP Dialog Test'
+      )
+      await apiContext.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
+        data: { attending: false },
+      })
+      await apiContext.dispose()
+
+      await setupAuthenticatedPage(page, token)
+      await page.goto(`/events/${eventId}/expenses`)
+
+      await expect(
+        page.getByRole('button', { name: 'Add expense' })
+      ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
+      await page.getByRole('button', { name: 'Add expense' }).click()
+
+      // Dialog should appear with explanation
+      await expect(
+        page.getByText('You must RSVP as attending this event')
+      ).toBeVisible()
+      await expect(page.getByRole('link', { name: 'Go to RSVP' })).toBeVisible()
+
+      // Link should point to the RSVP page
+      await page.getByRole('link', { name: 'Go to RSVP' }).click()
+      await expect(page).toHaveURL(`/events/${eventId}/rsvp`)
+    })
+  })
+
   test.describe('Expenses UI - Unauthenticated', () => {
     test('expenses page redirects to login when not authenticated', async ({
       page,
