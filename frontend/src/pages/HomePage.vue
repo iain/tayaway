@@ -21,17 +21,70 @@ import {
   formatEventDateRange,
 } from '@/composables/useEventsNeedingRsvp'
 import { useEventsList } from '@/composables/useEventsList'
-import { useMembersStore, useObjectPoolStore } from '@/stores'
+import { useAuthStore, useMembersStore, useObjectPoolStore } from '@/stores'
+import { useSettlementsStore } from '@/stores/settlements'
 import PageHeader from '@/components/common/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
-import type { PoolMember } from '@/types/pool'
+import type { PoolMember, PoolSettlementTransfer } from '@/types/pool'
 
 const router = useRouter()
 const pool = useObjectPoolStore()
+const authStore = useAuthStore()
+const settlementsStore = useSettlementsStore()
 const { pollsNeedingAttention } = usePollsNeedingAttention()
 const { eventsNeedingRsvp } = useEventsNeedingRsvp()
 const { currentEvents, pastEvents } = useEventsList()
+
+const currentUserId = computed(() => authStore.currentUserId)
+
+const myUnpaidTransfers = computed(() => {
+  void pool.version
+  const uid = currentUserId.value
+  if (!uid) return []
+  return pool
+    .getAll('settlementTransfer')
+    .filter(
+      (t) => t.paidAt === null && (t.fromUserId === uid || t.toUserId === uid)
+    )
+})
+
+const transfersOwedToYou = computed(() =>
+  myUnpaidTransfers.value.filter((t) => t.toUserId === currentUserId.value)
+)
+
+const transfersYouOwe = computed(() =>
+  myUnpaidTransfers.value.filter((t) => t.fromUserId === currentUserId.value)
+)
+
+function getMemberName(userId: string | null): string {
+  if (!userId) return 'Unknown'
+  const member = pool.findBy('member', 'userId', userId)
+  return member?.name ?? member?.email ?? 'Unknown'
+}
+
+function getEventNameForTransfer(transfer: PoolSettlementTransfer): string {
+  const settlement = pool.get('settlement', transfer.settlementId)
+  if (!settlement) return 'Unknown event'
+  const event = pool.get('event', settlement.eventId)
+  return event?.name ?? 'Unknown event'
+}
+
+function getEventIdForTransfer(
+  transfer: PoolSettlementTransfer
+): string | null {
+  const settlement = pool.get('settlement', transfer.settlementId)
+  if (!settlement) return null
+  return settlement.eventId
+}
+
+function formatTransferAmount(amount: number): string {
+  return `€${amount.toFixed(2)}`
+}
+
+async function handleMarkPaid(transferId: string) {
+  await settlementsStore.markTransferPaid(transferId, true)
+}
 
 function attendeeCount(eventId: string): number {
   void pool.version
@@ -152,6 +205,7 @@ const hasBirthdays = computed(
 const allCaughtUp = computed(
   () =>
     !hasBirthdays.value &&
+    myUnpaidTransfers.value.length === 0 &&
     currentEvents.value.length === 0 &&
     pastEventsWithOpenExpenses.value.length === 0 &&
     pollsNeedingAttention.value.length === 0 &&
@@ -253,10 +307,94 @@ function navigateToEventPage(eventId: string): void {
         </ul>
       </section>
 
+      <!-- Open settlements -->
+      <section
+        v-if="myUnpaidTransfers.length > 0"
+        :class="hasBirthdays ? 'mt-8' : ''"
+      >
+        <h2 class="mb-1 text-lg font-medium text-gray-900 dark:text-white">
+          Open settlements
+        </h2>
+        <p class="mb-4 text-sm text-gray-500 dark:text-stone-400">
+          Mark a transfer as paid once you've received the payment.
+        </p>
+
+        <ul class="space-y-3">
+          <li
+            v-for="transfer in transfersOwedToYou"
+            :key="transfer.id"
+            class="overflow-hidden rounded-lg bg-white shadow dark:bg-stone-800"
+          >
+            <div
+              class="flex flex-wrap items-center justify-between gap-y-2 px-4 py-3 sm:px-6"
+            >
+              <div class="min-w-0 flex-1">
+                <p class="text-sm text-gray-900 dark:text-white">
+                  <span class="font-semibold">{{
+                    getMemberName(transfer.fromUserId)
+                  }}</span>
+                  owes you
+                  <span
+                    class="font-mono font-semibold text-gray-900 dark:text-white"
+                    >{{ formatTransferAmount(transfer.amount) }}</span
+                  >
+                </p>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
+                  <router-link
+                    v-if="getEventIdForTransfer(transfer)"
+                    :to="`/events/${getEventIdForTransfer(transfer)}/expenses`"
+                    class="hover:text-rose-600 hover:underline dark:hover:text-rose-400"
+                  >
+                    {{ getEventNameForTransfer(transfer) }}
+                  </router-link>
+                  <span v-else>{{ getEventNameForTransfer(transfer) }}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                class="rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600"
+                @click="handleMarkPaid(transfer.id)"
+              >
+                Mark paid
+              </button>
+            </div>
+          </li>
+          <li
+            v-for="transfer in transfersYouOwe"
+            :key="transfer.id"
+            class="overflow-hidden rounded-lg bg-white shadow dark:bg-stone-800"
+          >
+            <div class="px-4 py-3 sm:px-6">
+              <p class="text-sm text-gray-900 dark:text-white">
+                You owe
+                <span class="font-semibold">{{
+                  getMemberName(transfer.toUserId)
+                }}</span>
+                {{ ' ' }}
+                <span
+                  class="font-mono font-semibold text-gray-900 dark:text-white"
+                  >{{ formatTransferAmount(transfer.amount) }}</span
+                >
+              </p>
+              <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
+                <router-link
+                  v-if="getEventIdForTransfer(transfer)"
+                  :to="`/events/${getEventIdForTransfer(transfer)}/expenses`"
+                  class="hover:text-rose-600 hover:underline dark:hover:text-rose-400"
+                >
+                  {{ getEventNameForTransfer(transfer) }}
+                </router-link>
+                <span v-else>{{ getEventNameForTransfer(transfer) }}</span>
+              </p>
+            </div>
+          </li>
+        </ul>
+      </section>
+
       <section
         v-if="currentEvents.length > 0"
         data-testid="happening-now-section"
-        :class="hasBirthdays ? 'mt-8' : ''"
+        :class="hasBirthdays || myUnpaidTransfers.length > 0 ? 'mt-8' : ''"
       >
         <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
           Happening now
@@ -314,7 +452,13 @@ function navigateToEventPage(eventId: string): void {
 
       <section
         v-if="pastEventsWithOpenExpenses.length > 0"
-        :class="currentEvents.length > 0 || hasBirthdays ? 'mt-8' : ''"
+        :class="
+          currentEvents.length > 0 ||
+          myUnpaidTransfers.length > 0 ||
+          hasBirthdays
+            ? 'mt-8'
+            : ''
+        "
       >
         <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
           Past events with open expenses
@@ -376,6 +520,7 @@ function navigateToEventPage(eventId: string): void {
         :class="
           currentEvents.length > 0 ||
           pastEventsWithOpenExpenses.length > 0 ||
+          myUnpaidTransfers.length > 0 ||
           hasBirthdays
             ? 'mt-8'
             : ''
@@ -436,6 +581,7 @@ function navigateToEventPage(eventId: string): void {
           pollsNeedingAttention.length > 0 ||
           pastEventsWithOpenExpenses.length > 0 ||
           currentEvents.length > 0 ||
+          myUnpaidTransfers.length > 0 ||
           hasBirthdays
             ? 'mt-8'
             : ''
