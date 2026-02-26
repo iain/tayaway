@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import type { InviteInfoResponse } from '@/types'
+import AppButton from '@/components/common/AppButton.vue'
 
 const route = useRoute()
 
@@ -70,12 +71,7 @@ async function handleAccept() {
         <p class="mb-6 text-sm text-red-400">
           {{ error }}
         </p>
-        <router-link
-          to="/login"
-          class="inline-block rounded-md bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-400"
-        >
-          Go to login
-        </router-link>
+        <AppButton to="/login">Go to login</AppButton>
       </div>
 
       <!-- Accepted state -->
@@ -86,12 +82,7 @@ async function handleAccept() {
         <p class="mb-6 text-sm/6 text-stone-400">
           Check your email for a magic link to sign in.
         </p>
-        <router-link
-          to="/login"
-          class="inline-block rounded-md bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-400"
-        >
-          Go to login
-        </router-link>
+        <AppButton to="/login">Go to login</AppButton>
       </div>
 
       <!-- Accept invitation state -->
@@ -103,14 +94,15 @@ async function handleAccept() {
           You've been invited to join
           <strong class="text-white">{{ workspaceName }}</strong> on Tayaway.
         </p>
-        <button
+        <AppButton
           data-testid="accept-invite"
-          :disabled="accepting"
-          class="w-full rounded-md bg-rose-500 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
+          :loading="accepting"
+          loading-label="Accepting..."
+          full-width
           @click="handleAccept"
         >
-          {{ accepting ? 'Accepting...' : 'Accept invitation' }}
-        </button>
+          Accept invitation
+        </AppButton>
       </div>
     </div>
   </main>

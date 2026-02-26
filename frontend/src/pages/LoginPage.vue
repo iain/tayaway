@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { FormInput } from '@/components/form'
+import AppButton from '@/components/common/AppButton.vue'
 
 const authStore = useAuthStore()
 
@@ -53,14 +54,16 @@ async function handleSubmit() {
           data-testid="email-input"
         />
 
-        <button
+        <AppButton
           type="submit"
           data-testid="submit-button"
-          :disabled="loading || !email"
-          class="w-full rounded-md bg-rose-500 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
+          :disabled="!email"
+          :loading="loading"
+          loading-label="Sending..."
+          full-width
         >
-          {{ loading ? 'Sending...' : 'Send magic link' }}
-        </button>
+          Send magic link
+        </AppButton>
       </form>
 
       <div

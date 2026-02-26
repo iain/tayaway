@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { PlusIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import IconButton from '@/components/common/IconButton.vue'
+import TextButton from '@/components/common/TextButton.vue'
 import { useCalendar } from '@/composables/useCalendar'
 
 export interface DateRangeItem {
@@ -48,15 +50,10 @@ function handleRemove(index: number): void {
       <label class="block text-sm/6 font-medium text-white">
         Date Ranges
       </label>
-      <button
-        type="button"
-        data-testid="add-date-range-button"
-        class="inline-flex items-center gap-1 text-sm text-cyan-400 underline hover:text-cyan-300"
-        @click="handleAdd"
-      >
+      <TextButton data-testid="add-date-range-button" @click="handleAdd">
         <PlusIcon class="size-4" />
         Add Range
-      </button>
+      </TextButton>
     </div>
 
     <div v-if="sortedRanges.length === 0" class="text-sm text-gray-400 italic">
@@ -73,14 +70,13 @@ function handleRemove(index: number): void {
           {{ formatDateDisplay(range.start_date) }} -
           {{ formatDateDisplay(range.end_date) }}
         </span>
-        <button
-          type="button"
-          class="text-gray-400 hover:text-red-400"
+        <IconButton
+          variant="danger"
+          label="Remove"
           @click="handleRemove(index)"
         >
           <TrashIcon class="size-4" />
-          <span class="sr-only">Remove</span>
-        </button>
+        </IconButton>
       </li>
     </ul>
   </div>

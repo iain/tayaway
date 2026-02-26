@@ -6,6 +6,7 @@ import {
   PencilIcon,
   LockClosedIcon,
 } from '@heroicons/vue/24/outline'
+import IconButton from '@/components/common/IconButton.vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useExpensesStore } from '@/stores/expenses'
 import { countDays } from '@/utils/event'
@@ -154,24 +155,23 @@ async function handleDelete(e: Event) {
           title="Part of a settlement"
         />
         <template v-else>
-          <button
+          <IconButton
             v-if="isOwner"
-            type="button"
+            label="Edit expense"
             data-testid="edit-expense"
-            class="flex text-gray-400 hover:text-blue-500 dark:text-stone-500 dark:hover:text-blue-400"
             @click="handleEdit"
           >
             <PencilIcon class="size-4" />
-          </button>
-          <button
+          </IconButton>
+          <IconButton
             v-if="isOwner"
-            type="button"
+            variant="danger"
+            label="Delete expense"
             data-testid="delete-expense"
-            class="flex text-gray-400 hover:text-red-500 dark:text-stone-500 dark:hover:text-red-400"
             @click="handleDelete"
           >
             <TrashIcon class="size-4" />
-          </button>
+          </IconButton>
         </template>
         <ChevronDownIcon
           class="size-4 text-gray-400 transition-transform dark:text-stone-500"

@@ -7,6 +7,9 @@ import {
   MapPinIcon,
   PencilIcon,
 } from '@heroicons/vue/24/outline'
+import AppButton from '@/components/common/AppButton.vue'
+import TextButton from '@/components/common/TextButton.vue'
+import IconButton from '@/components/common/IconButton.vue'
 import { storeToRefs } from 'pinia'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
 import { eventHasDates } from '@/utils/event'
@@ -107,15 +110,16 @@ async function handleSave(data: {
         >
           {{ event.name }}
         </h1>
-        <button
+        <IconButton
           v-if="isOwner"
-          type="button"
+          hover-reveal
+          label="Edit name"
           data-testid="edit-name-button"
-          class="mt-2 shrink-0 rounded p-0.5 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100 hover:text-gray-600 dark:text-stone-500 dark:hover:text-stone-300"
+          class="mt-2 shrink-0"
           @click="openEdit('name')"
         >
           <PencilIcon class="size-5" />
-        </button>
+        </IconButton>
       </div>
 
       <div class="group mt-3 flex items-start gap-2">
@@ -131,15 +135,16 @@ async function handleSave(data: {
         >
           No description
         </p>
-        <button
+        <IconButton
           v-if="isOwner"
-          type="button"
+          hover-reveal
+          label="Edit description"
           data-testid="edit-description-button"
-          class="mt-1 shrink-0 rounded p-0.5 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100 hover:text-gray-600 dark:text-stone-500 dark:hover:text-stone-300"
+          class="mt-1 shrink-0"
           @click="openEdit('description')"
         >
           <PencilIcon class="size-4" />
-        </button>
+        </IconButton>
       </div>
 
       <div class="group mt-4 flex items-center gap-2">
@@ -160,15 +165,16 @@ async function handleSave(data: {
           <CalendarDaysIcon class="size-5" />
           <span class="italic">No dates set</span>
         </div>
-        <button
+        <IconButton
           v-if="isOwner"
-          type="button"
+          hover-reveal
+          label="Edit dates"
           data-testid="edit-dates-button"
-          class="shrink-0 rounded p-0.5 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100 hover:text-gray-600 dark:text-stone-500 dark:hover:text-stone-300"
+          class="shrink-0"
           @click="openEdit('dates')"
         >
           <PencilIcon class="size-4" />
-        </button>
+        </IconButton>
       </div>
 
       <div class="group mt-4 flex items-center gap-2">
@@ -186,26 +192,26 @@ async function handleSave(data: {
           <MapPinIcon class="size-5" />
           <span class="italic">No location set</span>
         </div>
-        <button
+        <IconButton
           v-if="isOwner"
-          type="button"
+          hover-reveal
+          label="Edit location"
           data-testid="edit-location-button"
-          class="shrink-0 rounded p-0.5 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100 hover:text-gray-600 dark:text-stone-500 dark:hover:text-stone-300"
+          class="shrink-0"
           @click="openEdit('location')"
         >
           <PencilIcon class="size-4" />
-        </button>
+        </IconButton>
       </div>
 
-      <button
+      <TextButton
         v-if="eventHasDates(event)"
-        type="button"
-        class="mt-4 inline-flex items-center gap-2 text-cyan-600 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
+        class="mt-4"
         @click="handleDownloadIcs"
       >
         <ArrowDownTrayIcon class="size-5" />
         Add to calendar
-      </button>
+      </TextButton>
     </div>
 
     <!-- Right column: map -->
@@ -248,13 +254,9 @@ async function handleSave(data: {
         period.
       </p>
       <div class="mt-6 flex justify-end">
-        <button
-          type="button"
-          class="rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-700 dark:bg-cyan-700 dark:hover:bg-cyan-600"
-          @click="datesBlockedOpen = false"
-        >
+        <AppButton variant="cyan" @click="datesBlockedOpen = false">
           Got it
-        </button>
+        </AppButton>
       </div>
     </BaseModal>
   </div>

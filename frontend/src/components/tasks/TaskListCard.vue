@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, watchEffect, nextTick } from 'vue'
 import { PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import AppButton from '@/components/common/AppButton.vue'
+import IconButton from '@/components/common/IconButton.vue'
+import TextButton from '@/components/common/TextButton.vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import type { SortableEvent } from 'vue-draggable-plus'
 import {
@@ -265,38 +268,35 @@ defineExpose({
         </h2>
 
         <div class="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            class="rounded p-1 text-gray-400 hover:text-gray-600 dark:text-stone-500 dark:hover:text-stone-300"
-            title="Rename list"
+          <IconButton
+            label="Rename list"
             data-testid="rename-list-button"
             @click="startRename"
           >
             <PencilIcon class="size-4" />
-          </button>
-          <button
-            type="button"
-            class="rounded p-1 text-gray-400 hover:text-red-500 dark:text-stone-500 dark:hover:text-red-400"
-            title="Delete list"
+          </IconButton>
+          <IconButton
+            variant="danger"
+            label="Delete list"
             data-testid="delete-list-button"
             @click="handleDeleteList"
           >
             <TrashIcon class="size-4" />
-          </button>
+          </IconButton>
         </div>
       </div>
 
       <!-- Clear completed -->
       <div v-if="hasCompleted" class="mb-3">
-        <button
-          type="button"
+        <TextButton
+          variant="secondary"
           data-testid="clear-completed-button"
-          class="text-xs text-gray-400 hover:text-gray-600 dark:text-stone-500 dark:hover:text-stone-300"
+          class="text-xs"
           @click="handleClearCompleted"
         >
           Clear {{ completedItems.length }} completed
           {{ completedItems.length === 1 ? 'item' : 'items' }}
-        </button>
+        </TextButton>
       </div>
 
       <!-- Items (always rendered so empty lists can receive cross-list drops) -->
@@ -336,14 +336,13 @@ defineExpose({
           @keyup.enter="handleAddItem"
           @keyup.escape="newItemInput?.blur()"
         />
-        <button
-          type="button"
-          class="rounded-md bg-rose-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
+        <AppButton
+          size="sm"
           :disabled="!newItemContent.trim() || isAddingItem"
           @click="handleAddItem"
         >
           Add
-        </button>
+        </AppButton>
       </div>
     </div>
   </div>

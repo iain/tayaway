@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { TrashIcon } from '@heroicons/vue/24/outline'
+import IconButton from '@/components/common/IconButton.vue'
 import type { PoolTaskItem } from '@/types/pool'
 
 defineProps<{
@@ -59,13 +60,8 @@ const emit = defineEmits<{
     >
       {{ item.content }}
     </span>
-    <button
-      type="button"
-      class="text-gray-400 hover:text-red-500 dark:text-stone-500 dark:hover:text-red-400"
-      @click="emit('delete', item)"
-    >
-      <span class="sr-only">Delete</span>
+    <IconButton variant="danger" label="Delete" @click="emit('delete', item)">
       <TrashIcon class="size-4" />
-    </button>
+    </IconButton>
   </li>
 </template>

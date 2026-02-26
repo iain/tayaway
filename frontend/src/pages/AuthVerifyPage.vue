@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import AppButton from '@/components/common/AppButton.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -34,14 +35,15 @@ async function handleSignIn() {
         <p class="mb-8 text-sm/6 text-stone-400">
           Click the button below to complete sign-in.
         </p>
-        <button
+        <AppButton
           data-testid="confirm-sign-in"
-          :disabled="verifying"
-          class="w-full rounded-md bg-rose-500 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
+          :loading="verifying"
+          loading-label="Signing in..."
+          full-width
           @click="handleSignIn"
         >
-          {{ verifying ? 'Signing in...' : 'Sign in' }}
-        </button>
+          Sign in
+        </AppButton>
       </div>
 
       <div v-else>
@@ -49,12 +51,7 @@ async function handleSignIn() {
         <p data-testid="verify-error" class="mb-6 text-sm text-red-400">
           {{ error }}
         </p>
-        <router-link
-          to="/login"
-          class="inline-block rounded-md bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-400"
-        >
-          Back to login
-        </router-link>
+        <AppButton to="/login">Back to login</AppButton>
       </div>
     </div>
   </main>

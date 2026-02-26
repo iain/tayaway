@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -14,6 +13,7 @@ import SectionHeading from '@/components/common/SectionHeading.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
+import AppButton from '@/components/common/AppButton.vue'
 import TextButton from '@/components/common/TextButton.vue'
 
 const props = defineProps<{
@@ -212,28 +212,23 @@ async function handleClearPartialDates(): Promise<void> {
               />
             </div>
             <div class="mt-2 flex gap-2">
-              <button
-                type="button"
-                class="rounded-md bg-rose-600 px-3 py-1 text-sm font-semibold text-white hover:bg-rose-500"
-                @click="handleSavePartialDates"
-              >
+              <AppButton size="sm" @click="handleSavePartialDates">
                 Save
-              </button>
-              <button
+              </AppButton>
+              <AppButton
                 v-if="currentUserRsvp.startDate"
-                type="button"
-                class="rounded-md bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600"
+                variant="secondary"
+                size="sm"
                 @click="handleClearPartialDates"
               >
                 Full event
-              </button>
-              <button
-                type="button"
-                class="rounded-md px-3 py-1 text-sm text-gray-500 hover:text-gray-700 dark:text-stone-400 dark:hover:text-stone-300"
+              </AppButton>
+              <TextButton
+                variant="secondary"
                 @click="showPartialPicker = false"
               >
                 Cancel
-              </button>
+              </TextButton>
             </div>
           </div>
         </div>
@@ -363,20 +358,16 @@ async function handleClearPartialDates(): Promise<void> {
         your RSVP to not attending.
       </p>
       <div class="mt-4 flex justify-end gap-3">
-        <button
-          class="rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 dark:text-stone-400 dark:hover:text-stone-200"
-          @click="showExpensesDialog = false"
-        >
+        <TextButton variant="secondary" @click="showExpensesDialog = false">
           Cancel
-        </button>
-        <RouterLink
+        </TextButton>
+        <AppButton
           :to="`/events/${event.id}/expenses`"
-          class="inline-flex items-center rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-500"
           autofocus
           @click="showExpensesDialog = false"
         >
           Go to Expenses
-        </RouterLink>
+        </AppButton>
       </div>
     </BaseModal>
   </BaseCard>

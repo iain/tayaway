@@ -10,7 +10,7 @@ import EventListItem from '@/components/events/EventListItem.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
-import PrimaryButton from '@/components/common/PrimaryButton.vue'
+import AppButton from '@/components/common/AppButton.vue'
 
 const router = useRouter()
 const eventsStore = useEventsStore()
@@ -89,10 +89,10 @@ function formatDateRangeSummary(
 <template>
   <div>
     <PageHeader title="Events" data-testid="page-title">
-      <PrimaryButton data-testid="new-event-button" @click="handleCreate">
+      <AppButton data-testid="new-event-button" @click="handleCreate">
         <PlusIcon class="size-5" />
         New Event
-      </PrimaryButton>
+      </AppButton>
     </PageHeader>
 
     <div v-if="error" class="text-red-600 dark:text-red-400">
@@ -105,10 +105,10 @@ function formatDateRangeSummary(
       heading="No events"
       description="Get started by creating a new event."
     >
-      <PrimaryButton @click="handleCreate">
+      <AppButton @click="handleCreate">
         <PlusIcon class="size-5" />
         New Event
-      </PrimaryButton>
+      </AppButton>
     </EmptyState>
 
     <div v-else data-testid="events-list" class="space-y-8">

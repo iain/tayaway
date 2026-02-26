@@ -11,7 +11,8 @@ import { useCalendar } from '@/composables/useCalendar'
 import DateRangeModal from '@/components/events/DateRangeModal.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import VotersList from '@/components/votes/VotersList.vue'
-import PrimaryButton from '@/components/common/PrimaryButton.vue'
+import AppButton from '@/components/common/AppButton.vue'
+import IconButton from '@/components/common/IconButton.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 
 const route = useRoute()
@@ -110,28 +111,28 @@ async function deleteRange(dateRangeId: string): Promise<void> {
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
             Date Options
           </h2>
-          <PrimaryButton
+          <AppButton
             v-if="isOwner"
             :disabled="datePollsStore.loading"
             @click="handleAddDateRange"
           >
             <PlusIcon class="size-4" />
             Add Date Range
-          </PrimaryButton>
+          </AppButton>
         </div>
 
         <div v-if="dateRanges.length === 0" class="py-8 text-center">
           <p class="mb-4 text-gray-500 dark:text-stone-400">
             No date ranges added yet.
           </p>
-          <PrimaryButton
+          <AppButton
             v-if="isOwner"
             :disabled="datePollsStore.loading"
             @click="handleAddDateRange"
           >
             <PlusIcon class="size-4" />
             Add Date Range
-          </PrimaryButton>
+          </AppButton>
         </div>
 
         <ul v-else class="space-y-2">
@@ -153,16 +154,16 @@ async function deleteRange(dateRangeId: string): Promise<void> {
                 {{ dateRange.voteSummary.total === 1 ? 'vote' : 'votes' }}
               </span>
             </div>
-            <button
+            <IconButton
               v-if="isOwner"
-              type="button"
+              variant="danger"
+              label="Remove"
               :disabled="datePollsStore.loading"
-              class="ml-4 text-gray-400 hover:text-red-500 disabled:opacity-50 dark:text-stone-500 dark:hover:text-red-400"
+              class="ml-4"
               @click="handleDeleteClick(dateRange)"
             >
               <TrashIcon class="size-4" />
-              <span class="sr-only">Remove</span>
-            </button>
+            </IconButton>
           </li>
         </ul>
       </section>
@@ -192,22 +193,20 @@ async function deleteRange(dateRangeId: string): Promise<void> {
         <VotersList :votes="confirmingDateRange.votes" />
 
         <div class="mt-6 flex justify-end gap-3">
-          <button
-            type="button"
+          <AppButton
+            variant="secondary"
             autofocus
-            class="rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-stone-300 dark:hover:bg-stone-700"
             @click="confirmingDateRange = null"
           >
             Cancel
-          </button>
-          <button
-            type="button"
+          </AppButton>
+          <AppButton
+            variant="danger"
             :disabled="datePollsStore.loading"
-            class="rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50"
             @click="deleteRange(confirmingDateRange.id)"
           >
             Remove
-          </button>
+          </AppButton>
         </div>
       </div>
     </BaseModal>

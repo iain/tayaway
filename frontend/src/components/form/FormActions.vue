@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import AppButton from '@/components/common/AppButton.vue'
+
 defineProps<{
   submitLabel?: string
   cancelLabel?: string
@@ -24,14 +26,15 @@ defineEmits<{
     >
       {{ cancelLabel ?? 'Cancel' }}
     </button>
-    <button
+    <AppButton
       type="submit"
       :data-testid="submitTestid ?? 'submit-button'"
-      :disabled="disabled || loading"
+      :disabled="disabled"
+      :loading="loading"
+      :loading-label="loadingLabel ?? 'Saving...'"
       :autofocus="autofocusSubmit"
-      class="rounded-md bg-rose-500 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
     >
-      {{ loading ? (loadingLabel ?? 'Saving...') : (submitLabel ?? 'Save') }}
-    </button>
+      {{ submitLabel ?? 'Save' }}
+    </AppButton>
   </div>
 </template>

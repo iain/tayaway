@@ -56,9 +56,9 @@ test.describe('Member Role Management', () => {
     })
 
     test.afterAll(async () => {
-      await ownerContext.dispose()
-      await adminContext.dispose()
-      await memberContext.dispose()
+      await ownerContext?.dispose()
+      await adminContext?.dispose()
+      await memberContext?.dispose()
     })
 
     test('PUT /api/members/:id requires auth', async ({ request }) => {

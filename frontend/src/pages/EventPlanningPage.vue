@@ -14,7 +14,7 @@ import { isPollActive, isPollResolved } from '@/utils/poll'
 import DatePollSection from '@/components/events/DatePollSection.vue'
 import AwaitingVotesSection from '@/components/events/AwaitingVotesSection.vue'
 import OpenPollModal from '@/components/events/OpenPollModal.vue'
-import PrimaryButton from '@/components/common/PrimaryButton.vue'
+import AppButton from '@/components/common/AppButton.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -109,14 +109,15 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
         <p class="mt-1 max-w-sm text-gray-500 dark:text-stone-400">
           The date poll has been resolved and is no longer accepting votes.
         </p>
-        <button
+        <AppButton
           v-if="canOpenOrReopenPoll"
-          class="mt-6 inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500"
+          variant="amber"
+          class="mt-6"
           @click="handleReopenPoll"
         >
           <ArrowPathIcon class="size-4" />
           Reopen Poll
-        </button>
+        </AppButton>
         <p
           v-if="isOwner && eventHasStarted"
           class="mt-4 text-sm text-gray-400 dark:text-stone-500"
@@ -178,13 +179,13 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
             >
           </li>
         </ol>
-        <PrimaryButton
+        <AppButton
           v-if="canOpenOrReopenPoll"
           class="mt-6"
           @click="handleOpenPoll"
         >
           Open Date Poll
-        </PrimaryButton>
+        </AppButton>
         <p
           v-if="isOwner && eventHasStarted"
           class="mt-4 text-sm text-gray-400 dark:text-stone-500"

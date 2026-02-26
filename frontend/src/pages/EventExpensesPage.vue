@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { RouterLink, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { api } from '@/api/client'
@@ -10,7 +10,8 @@ import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
 import ExpenseSplit from '@/components/expenses/ExpenseSplit.vue'
 import SettlementSection from '@/components/expenses/SettlementSection.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
-import PrimaryButton from '@/components/common/PrimaryButton.vue'
+import AppButton from '@/components/common/AppButton.vue'
+import TextButton from '@/components/common/TextButton.vue'
 import type { PoolApiResponse, PoolExpense } from '@/types/pool'
 
 const route = useRoute()
@@ -98,7 +99,7 @@ onMounted(async () => {
             {{ formattedTotal }} total
           </span>
         </div>
-        <PrimaryButton @click="openAdd">Add expense</PrimaryButton>
+        <AppButton @click="openAdd">Add expense</AppButton>
       </div>
 
       <div
@@ -144,20 +145,16 @@ onMounted(async () => {
           You must RSVP as attending this event before you can add expenses.
         </p>
         <div class="mt-4 flex justify-end gap-3">
-          <button
-            class="rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 dark:text-stone-400 dark:hover:text-stone-200"
-            @click="showRsvpDialog = false"
-          >
+          <TextButton variant="secondary" @click="showRsvpDialog = false">
             Cancel
-          </button>
-          <RouterLink
+          </TextButton>
+          <AppButton
             :to="`/events/${eventId}/rsvp`"
-            class="inline-flex items-center rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-500"
             autofocus
             @click="showRsvpDialog = false"
           >
             Go to RSVP
-          </RouterLink>
+          </AppButton>
         </div>
       </BaseModal>
 

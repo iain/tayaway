@@ -20,7 +20,7 @@ import ClosePollModal from './ClosePollModal.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
-import PrimaryButton from '@/components/common/PrimaryButton.vue'
+import AppButton from '@/components/common/AppButton.vue'
 
 const props = defineProps<{
   event: HydratedEvent
@@ -134,14 +134,10 @@ function handleVote(): void {
 
       <!-- Vote CTA (when poll is open and has date ranges) -->
       <div v-if="isPollOpen(poll) && rankedDateRanges.length > 0" class="mb-4">
-        <button
-          type="button"
-          class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-rose-600 px-6 py-4 text-lg font-semibold text-white shadow-sm hover:bg-rose-500 sm:w-auto"
-          @click="handleVote"
-        >
+        <AppButton size="lg" class="w-full sm:w-auto" @click="handleVote">
           <HandThumbUpIcon class="size-6" />
           Vote on Dates
-        </button>
+        </AppButton>
         <p
           v-if="currentUserVoteStatus.total > 0"
           class="mt-2 text-sm text-gray-500 dark:text-stone-400"
@@ -221,7 +217,7 @@ function handleVote(): void {
         v-if="isOwner && canClosePoll(poll, rankedDateRanges.length)"
         class="mt-4"
       >
-        <PrimaryButton @click="handleClosePoll">Select Winner</PrimaryButton>
+        <AppButton @click="handleClosePoll">Select Winner</AppButton>
       </div>
     </template>
 

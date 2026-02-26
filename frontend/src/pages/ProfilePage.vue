@@ -8,6 +8,7 @@ import {
   PhoneIcon,
   ComputerDesktopIcon,
 } from '@heroicons/vue/24/outline'
+import IconButton from '@/components/common/IconButton.vue'
 import EditProfileFieldModal from '@/components/profile/EditProfileFieldModal.vue'
 import type {
   ProfileField,
@@ -116,14 +117,14 @@ async function handleRequestEmailChange(email: string): Promise<void> {
               {{ user?.email }}
             </dd>
           </div>
-          <button
-            type="button"
+          <IconButton
+            hover-reveal
+            label="Edit email"
             data-testid="edit-email-button"
-            class="rounded p-1 text-gray-400 hover:text-gray-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-stone-500 dark:hover:text-stone-300"
             @click="editEmailOpen = true"
           >
             <PencilIcon class="size-4" />
-          </button>
+          </IconButton>
         </div>
 
         <!-- Email change success alert -->
@@ -147,14 +148,14 @@ async function handleRequestEmailChange(email: string): Promise<void> {
               {{ user?.name ?? 'Not set' }}
             </dd>
           </div>
-          <button
-            type="button"
+          <IconButton
+            hover-reveal
+            label="Edit name"
             data-testid="edit-name-button"
-            class="rounded p-1 text-gray-400 hover:text-gray-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-stone-500 dark:hover:text-stone-300"
             @click="openField('name')"
           >
             <PencilIcon class="size-4" />
-          </button>
+          </IconButton>
         </div>
       </dl>
     </BaseCard>
@@ -174,14 +175,14 @@ async function handleRequestEmailChange(email: string): Promise<void> {
               {{ user?.phoneNumber ?? 'Not set' }}
             </dd>
           </div>
-          <button
-            type="button"
+          <IconButton
+            hover-reveal
+            label="Edit phone"
             data-testid="edit-contact-button"
-            class="rounded p-1 text-gray-400 hover:text-gray-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-stone-500 dark:hover:text-stone-300"
             @click="openField('phone')"
           >
             <PencilIcon class="size-4" />
-          </button>
+          </IconButton>
         </div>
 
         <!-- Birthday -->
@@ -194,14 +195,14 @@ async function handleRequestEmailChange(email: string): Promise<void> {
               {{ user?.birthday ? formatBirthday(user.birthday) : 'Not set' }}
             </dd>
           </div>
-          <button
-            type="button"
+          <IconButton
+            hover-reveal
+            label="Edit birthday"
             data-testid="edit-birthday-button"
-            class="rounded p-1 text-gray-400 hover:text-gray-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-stone-500 dark:hover:text-stone-300"
             @click="openField('birthday')"
           >
             <PencilIcon class="size-4" />
-          </button>
+          </IconButton>
         </div>
 
         <!-- Address -->
@@ -214,14 +215,14 @@ async function handleRequestEmailChange(email: string): Promise<void> {
               {{ user?.locationName ?? 'Not set' }}
             </dd>
           </div>
-          <button
-            type="button"
+          <IconButton
+            hover-reveal
+            label="Edit address"
             data-testid="edit-address-button"
-            class="rounded p-1 text-gray-400 hover:text-gray-600 sm:opacity-0 sm:group-hover:opacity-100 dark:text-stone-500 dark:hover:text-stone-300"
             @click="openField('address')"
           >
             <PencilIcon class="size-4" />
-          </button>
+          </IconButton>
         </div>
       </dl>
     </BaseCard>

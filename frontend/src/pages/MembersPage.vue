@@ -17,7 +17,8 @@ import InviteMemberModal from '@/components/members/InviteMemberModal.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
-import PrimaryButton from '@/components/common/PrimaryButton.vue'
+import AppButton from '@/components/common/AppButton.vue'
+import IconButton from '@/components/common/IconButton.vue'
 import type { PoolMember } from '@/types/pool'
 import { generateVCard, downloadVCard } from '@/utils/vcard'
 
@@ -151,10 +152,10 @@ onMounted(() => {
 <template>
   <div>
     <PageHeader title="Members" data-testid="page-title">
-      <PrimaryButton data-testid="invite-member-button" @click="openModal">
+      <AppButton data-testid="invite-member-button" @click="openModal">
         <PlusIcon class="size-5" />
         Invite Member
-      </PrimaryButton>
+      </AppButton>
     </PageHeader>
 
     <div
@@ -210,14 +211,13 @@ onMounted(() => {
                   </span>
                 </div>
               </div>
-              <button
+              <IconButton
+                label="Cancel invitation"
                 data-testid="cancel-invite-button"
-                class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-stone-700 dark:hover:text-stone-300"
-                title="Cancel invitation"
                 @click="handleCancelInvite(invite.id)"
               >
                 <XMarkIcon class="size-5" />
-              </button>
+              </IconButton>
             </div>
           </div>
         </li>
@@ -230,10 +230,10 @@ onMounted(() => {
       heading="No members"
       description="Get started by inviting a new member."
     >
-      <PrimaryButton @click="openModal">
+      <AppButton @click="openModal">
         <PlusIcon class="size-5" />
         Invite Member
-      </PrimaryButton>
+      </AppButton>
     </EmptyState>
 
     <div
@@ -370,7 +370,7 @@ onMounted(() => {
           </a>
           <button
             data-testid="download-vcard-button"
-            class="ml-auto inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-stone-300 dark:hover:bg-stone-700"
+            class="ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-stone-300 dark:hover:bg-stone-700"
             title="Download contact card"
             @click="handleDownloadVCard(member)"
           >

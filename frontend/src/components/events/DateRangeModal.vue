@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/vue/24/outline'
+import AppButton from '@/components/common/AppButton.vue'
+import IconButton from '@/components/common/IconButton.vue'
+import TextButton from '@/components/common/TextButton.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import CalendarMonth from '@/components/calendar/CalendarMonth.vue'
 import { useCalendar } from '@/composables/useCalendar'
@@ -149,20 +152,20 @@ const selectionText = computed(() => {
 
     <!-- Navigation -->
     <div class="mb-4 flex items-center justify-between">
-      <button
-        type="button"
-        class="rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-stone-400 dark:hover:bg-white/10 dark:hover:text-stone-300"
+      <IconButton
+        label="Previous month"
+        class="rounded-md p-2 hover:bg-gray-100 dark:hover:bg-white/10"
         @click="navigatePrev"
       >
         <ChevronLeftIcon class="size-5" />
-      </button>
-      <button
-        type="button"
-        class="rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-stone-400 dark:hover:bg-white/10 dark:hover:text-stone-300"
+      </IconButton>
+      <IconButton
+        label="Next month"
+        class="rounded-md p-2 hover:bg-gray-100 dark:hover:bg-white/10"
         @click="navigateNext"
       >
         <ChevronRightIcon class="size-5" />
-      </button>
+      </IconButton>
     </div>
 
     <!-- Two calendars side by side -->
@@ -190,22 +193,14 @@ const selectionText = computed(() => {
     </div>
 
     <div class="mt-6 flex items-center justify-end gap-x-6">
-      <button
-        type="button"
-        class="text-sm/6 font-semibold text-gray-900 dark:text-white"
-        @click="handleClose"
-      >
-        Cancel
-      </button>
-      <button
-        type="button"
+      <TextButton variant="secondary" @click="handleClose"> Cancel </TextButton>
+      <AppButton
         data-testid="modal-save-button"
-        class="rounded-md bg-rose-500 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
         :disabled="!canSave"
         @click="handleSave"
       >
         Add Range
-      </button>
+      </AppButton>
     </div>
   </BaseModal>
 </template>

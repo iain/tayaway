@@ -8,6 +8,7 @@ import VoteSummaryBar from './VoteSummaryBar.vue'
 import VotersList from './VotersList.vue'
 import FormTextarea from '@/components/form/FormTextarea.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
+import AppButton from '@/components/common/AppButton.vue'
 import TextButton from '@/components/common/TextButton.vue'
 
 const props = defineProps<{
@@ -196,19 +197,15 @@ function toggleCommentInput() {
               placeholder="Optional comment..."
               :rows="2"
             />
-            <button
-              type="button"
-              :disabled="loading || !hasCommentChanges"
-              class="mt-2 rounded-md px-4 py-2 text-sm font-medium transition-colors"
-              :class="[
-                hasCommentChanges
-                  ? 'bg-rose-600 text-white hover:bg-rose-500 disabled:bg-rose-400'
-                  : 'cursor-not-allowed bg-gray-200 text-gray-400 dark:bg-stone-700 dark:text-stone-500',
-              ]"
+            <AppButton
+              :disabled="!hasCommentChanges"
+              :loading="loading"
+              loading-label="Saving..."
+              class="mt-2"
               @click="handleCommentSubmit"
             >
-              {{ loading ? 'Saving...' : 'Save comment' }}
-            </button>
+              Save comment
+            </AppButton>
           </div>
         </div>
       </div>

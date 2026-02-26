@@ -17,7 +17,7 @@ import { useObjectPoolStore } from '@/stores/objectPool'
 import { useWorkspaceStore } from '@/stores/workspace'
 import PageHeader from '@/components/common/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
-import PrimaryButton from '@/components/common/PrimaryButton.vue'
+import AppButton from '@/components/common/AppButton.vue'
 import AddTaskListModal from '@/components/tasks/AddTaskListModal.vue'
 import TaskListCard from '@/components/tasks/TaskListCard.vue'
 import { useTaskActions } from '@/composables/useTaskActions'
@@ -207,10 +207,10 @@ async function handleSave(name: string): Promise<void> {
 <template>
   <div>
     <PageHeader title="Tasks" data-testid="page-title">
-      <PrimaryButton data-testid="add-task-list-button" @click="openModal">
+      <AppButton data-testid="add-task-list-button" @click="openModal">
         <PlusIcon class="size-5" />
         New List
-      </PrimaryButton>
+      </AppButton>
     </PageHeader>
 
     <div
@@ -226,10 +226,10 @@ async function handleSave(name: string): Promise<void> {
       heading="No task lists"
       description="Get started by creating a new task list."
     >
-      <PrimaryButton @click="openModal">
+      <AppButton @click="openModal">
         <PlusIcon class="size-5" />
         New List
-      </PrimaryButton>
+      </AppButton>
     </EmptyState>
 
     <VueDraggable

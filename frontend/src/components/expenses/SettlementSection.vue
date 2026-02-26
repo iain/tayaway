@@ -7,7 +7,8 @@ import {
 } from '@heroicons/vue/24/outline'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useSettlementsStore } from '@/stores/settlements'
-import PrimaryButton from '@/components/common/PrimaryButton.vue'
+import AppButton from '@/components/common/AppButton.vue'
+import IconButton from '@/components/common/IconButton.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import type { PoolEvent } from '@/types/pool'
 
@@ -109,11 +110,11 @@ async function handlePaidClick(
       <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
         Settlements
       </h2>
-      <PrimaryButton v-if="unsettledExpenseCount > 0" @click="settleUp">
+      <AppButton v-if="unsettledExpenseCount > 0" @click="settleUp">
         <LockClosedIcon class="size-4" />
         Settle up
         <span class="text-rose-200">({{ unsettledExpenseCount }})</span>
-      </PrimaryButton>
+      </AppButton>
     </div>
 
     <p
@@ -149,15 +150,15 @@ async function handlePaidClick(
               All paid
             </span>
           </div>
-          <button
+          <IconButton
             v-if="canDeleteSettlement(settlement.userId)"
-            type="button"
+            variant="danger"
+            label="Delete settlement"
             data-testid="delete-settlement-button"
-            class="flex text-gray-400 hover:text-red-500 dark:text-stone-500 dark:hover:text-red-400"
             @click="deleteSettlement(settlement.id)"
           >
             <TrashIcon class="size-4" />
-          </button>
+          </IconButton>
         </div>
 
         <div class="divide-y divide-gray-100 dark:divide-stone-700/50">
@@ -215,13 +216,13 @@ async function handlePaidClick(
         Only the person receiving the money can mark a transfer as paid.
       </p>
       <div class="mt-4 flex justify-end">
-        <button
-          type="button"
-          class="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600"
+        <AppButton
+          variant="secondary"
+          size="sm"
           @click="showRecipientOnlyModal = false"
         >
           OK
-        </button>
+        </AppButton>
       </div>
     </BaseModal>
   </div>

@@ -33,9 +33,20 @@ export async function getTestSession(
   name: string
 ): Promise<{ token: string; userId: string }> {
   for (let attempt = 0; attempt < 5; attempt++) {
-    const response = await request.post(`${API_BASE}/api/test/session`, {
-      data: { email, name },
-    })
+    let response
+    try {
+      response = await request.post(`${API_BASE}/api/test/session`, {
+        data: { email, name },
+      })
+    } catch {
+      // Connection error (ECONNREFUSED, etc.) — retry with backoff
+      if (attempt < 4) {
+        const delay = 200 * Math.pow(2, attempt) + Math.random() * 100
+        await new Promise((r) => setTimeout(r, delay))
+        continue
+      }
+      throw new Error('Failed to create test session: connection refused')
+    }
     if (response.ok()) {
       const body = await response.json()
       return { token: body.session_token, userId: body.user_id }

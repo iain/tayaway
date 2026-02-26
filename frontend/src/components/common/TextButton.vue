@@ -4,6 +4,7 @@ import { computed } from 'vue'
 const props = withDefaults(
   defineProps<{
     variant?: 'primary' | 'secondary'
+    disabled?: boolean
   }>(),
   { variant: 'primary' }
 )
@@ -22,8 +23,9 @@ const variantClass = computed(() =>
 <template>
   <button
     type="button"
-    class="inline-flex cursor-pointer items-center gap-2 text-sm"
+    class="inline-flex cursor-pointer items-center gap-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
     :class="variantClass"
+    :disabled="disabled"
     @click="$emit('click')"
   >
     <slot />

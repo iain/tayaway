@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useDatePollsStore } from '@/stores/datePolls'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
 import { isPollOpen, isPollResolved } from '@/utils/poll'
+import AppButton from '@/components/common/AppButton.vue'
 import VotingCard from '@/components/votes/VotingCard.vue'
 import OpenPollModal from '@/components/events/OpenPollModal.vue'
 
@@ -53,14 +54,10 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
       <p class="mb-2 text-lg font-medium">Voting is closed</p>
       <p>The date poll is no longer accepting votes.</p>
       <div v-if="isOwner && isPollResolved(event.datePoll)" class="mt-4">
-        <button
-          type="button"
-          class="inline-flex items-center gap-2 rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600"
-          @click="showReopenModal = true"
-        >
+        <AppButton variant="amber" @click="showReopenModal = true">
           <ArrowPathIcon class="size-4" />
           Reopen Poll
-        </button>
+        </AppButton>
       </div>
     </div>
 

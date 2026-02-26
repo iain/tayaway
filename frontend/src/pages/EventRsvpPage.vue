@@ -17,6 +17,7 @@ import { useObjectPoolStore } from '@/stores/objectPool'
 import RsvpSection from '@/components/events/RsvpSection.vue'
 import EditEventModal from '@/components/events/EditEventModal.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
+import AppButton from '@/components/common/AppButton.vue'
 import TextButton from '@/components/common/TextButton.vue'
 
 const route = useRoute()
@@ -122,14 +123,10 @@ function handleDownloadIcs(): void {
       <!-- Event has dates: show RSVP section -->
       <template v-else-if="eventHasDates(event)">
         <RsvpSection :event="event" :current-user-id="currentUserId" />
-        <button
-          type="button"
-          class="mt-4 inline-flex items-center gap-1.5 text-sm text-cyan-600 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
-          @click="handleDownloadIcs"
-        >
+        <TextButton class="mt-4" @click="handleDownloadIcs">
           <ArrowDownTrayIcon class="size-4" />
           Add to calendar
-        </button>
+        </TextButton>
       </template>
 
       <!-- No dates yet: show empty state -->
@@ -186,13 +183,9 @@ function handleDownloadIcs(): void {
           period.
         </p>
         <div class="mt-6 flex justify-end">
-          <button
-            type="button"
-            class="rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-700 dark:bg-cyan-700 dark:hover:bg-cyan-600"
-            @click="datesBlockedOpen = false"
-          >
+          <AppButton variant="cyan" @click="datesBlockedOpen = false">
             Got it
-          </button>
+          </AppButton>
         </div>
       </BaseModal>
     </div>
