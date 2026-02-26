@@ -185,10 +185,10 @@ test.describe('Profile Feature', () => {
       await page.goto('/profile')
 
       // Profile page displays name and email
-      await expect(page.getByTestId('account-info-heading')).toBeVisible({
+      await expect(page.getByRole('heading', { name: 'Account' })).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
-      await expect(page.getByText(TEST_EMAIL)).toBeVisible()
+      await expect(page.getByText(TEST_EMAIL).first()).toBeVisible()
 
       // Edit button opens pre-filled name modal
       const editButton = page.getByTestId('edit-name-button')
@@ -219,7 +219,7 @@ test.describe('Profile Feature', () => {
       await expect(page.getByRole('dialog')).toBeHidden()
 
       // Updated name should appear on the profile page
-      await expect(page.getByText('New E2E Name')).toBeVisible()
+      await expect(page.getByText('New E2E Name').first()).toBeVisible()
     })
 
     test('displays contact fields and can edit them via modal', async ({
@@ -244,7 +244,7 @@ test.describe('Profile Feature', () => {
       await page.goto('/profile')
 
       // Wait for the page to load
-      await expect(page.getByTestId('account-info-heading')).toBeVisible({
+      await expect(page.getByRole('heading', { name: 'Account' })).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
@@ -256,9 +256,7 @@ test.describe('Profile Feature', () => {
       await page.getByTestId('edit-contact-button').click()
       await expect(page.getByRole('dialog')).toBeVisible()
       await expect(
-        page
-          .getByRole('dialog')
-          .getByRole('heading', { name: 'Edit Contact Info' })
+        page.getByRole('dialog').getByRole('heading', { name: 'Edit Phone' })
       ).toBeVisible()
 
       // Update phone number in the modal
@@ -303,7 +301,9 @@ test.describe('Profile Feature', () => {
       await page.goto('/profile')
 
       // Should see the Active Sessions section with current badge
-      await expect(page.getByTestId('active-sessions-heading')).toBeVisible({
+      await expect(
+        page.getByRole('heading', { name: 'Active Sessions' })
+      ).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
       await expect(page.getByTestId('current-session-badge')).toBeVisible()
