@@ -21,6 +21,7 @@ import {
   formatEventDateRange,
 } from '@/composables/useEventsNeedingRsvp'
 import { useEventsList } from '@/composables/useEventsList'
+import { storeToRefs } from 'pinia'
 import { useAuthStore, useMembersStore, useObjectPoolStore } from '@/stores'
 import { useSettlementsStore } from '@/stores/settlements'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -118,7 +119,7 @@ const pastEventsWithOpenExpenses = computed(() =>
   )
 )
 
-const { members } = useMembersStore()
+const { members } = storeToRefs(useMembersStore())
 
 function birthdayMonthDay(member: PoolMember): [number, number] | null {
   if (!member.birthday) return null
@@ -130,7 +131,7 @@ const todayBirthdays = computed(() => {
   const today = new Date()
   const m = today.getMonth() + 1
   const d = today.getDate()
-  return members.filter((member) => {
+  return members.value.filter((member) => {
     const md = birthdayMonthDay(member)
     return md && md[0] === m && md[1] === d
   })
@@ -141,7 +142,7 @@ const upcomingBirthdays = computed(() => {
   const todayM = today.getMonth() + 1
   const todayD = today.getDate()
 
-  return members
+  return members.value
     .filter((member) => {
       const md = birthdayMonthDay(member)
       if (!md) return false

@@ -16,6 +16,8 @@ const props = withDefaults(
   {
     variant: 'primary',
     size: 'md',
+    loadingLabel: undefined,
+    to: undefined,
     type: 'button',
   }
 )

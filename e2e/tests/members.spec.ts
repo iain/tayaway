@@ -17,6 +17,9 @@ const MEMBER_EMAIL = 'e2e-members-member@example.com'
 const MEMBER_NAME = 'E2E Members Member'
 
 test.describe('Member Role Management', () => {
+  // Tests mutate shared membership roles — must run serially to avoid races
+  test.describe.configure({ mode: 'serial' })
+
   test.describe('Members API', () => {
     let ownerContext: APIRequestContext
     let adminContext: APIRequestContext
@@ -49,9 +52,12 @@ test.describe('Member Role Management', () => {
         MEMBER_EMAIL
       )
 
-      // Promote admin user to admin role
+      // Ensure correct roles (handles stale state from previous failed runs)
       await ownerContext.put(`${API_BASE}/api/members/${adminMemberId}`, {
         data: { role: 'admin' },
+      })
+      await ownerContext.put(`${API_BASE}/api/members/${memberMemberId}`, {
+        data: { role: 'member' },
       })
     })
 
