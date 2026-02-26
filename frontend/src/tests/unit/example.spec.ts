@@ -12,7 +12,13 @@ vi.mock('vue-router', () => ({
 describe('HomePage', () => {
   it('renders the dashboard title', () => {
     setActivePinia(createPinia())
-    const wrapper = mount(HomePage)
+    const wrapper = mount(HomePage, {
+      global: {
+        stubs: {
+          'router-link': true,
+        },
+      },
+    })
     expect(wrapper.text()).toContain('Dashboard')
   })
 })
