@@ -18,6 +18,7 @@ const EventExpensesPage = () => import('@/pages/EventExpensesPage.vue')
 const LoginPage = () => import('@/pages/LoginPage.vue')
 const AuthVerifyPage = () => import('@/pages/AuthVerifyPage.vue')
 const InviteAcceptPage = () => import('@/pages/InviteAcceptPage.vue')
+const VerifyEmailChangePage = () => import('@/pages/VerifyEmailChangePage.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -106,6 +107,12 @@ const router = createRouter({
       name: 'invite-accept',
       component: InviteAcceptPage,
       meta: { title: 'Accept Invitation' },
+    },
+    {
+      path: '/verify-email',
+      name: 'verify-email',
+      component: VerifyEmailChangePage,
+      meta: { title: 'Verify Email' },
     },
   ],
 })

@@ -83,7 +83,7 @@ test.describe('Profile Feature', () => {
       await setupAuthenticatedPage(page, token)
       await page.goto('/profile')
 
-      const editButton = page.getByRole('button', { name: 'Edit' })
+      const editButton = page.getByTestId('edit-name-button')
       await expect(editButton).toBeVisible()
       await editButton.click()
 
@@ -136,7 +136,7 @@ test.describe('Profile Feature', () => {
       await page.goto('/profile')
 
       // Open modal
-      await page.getByRole('button', { name: 'Edit' }).click()
+      await page.getByTestId('edit-name-button').click()
       await expect(page.getByRole('dialog')).toBeVisible()
 
       // Clear and type new name

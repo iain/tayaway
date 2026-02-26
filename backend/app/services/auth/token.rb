@@ -64,5 +64,22 @@ module Auth
       payload = decoded.first
       { token: payload["token"], email: payload["email"] }
     end
+
+    sig { params(token: String, email: String).returns(String) }
+    def self.encode_email_change(token:, email:)
+      payload = {
+        token: token,
+        email: email,
+        exp: (Time.now + (EmailChangeToken::EXPIRY_MINUTES * 60)).to_i
+      }
+      JWT.encode(payload, APP_SECRET, "HS256")
+    end
+
+    sig { params(jwt: String).returns(T::Hash[Symbol, String]) }
+    def self.decode_email_change(jwt)
+      decoded = JWT.decode(jwt, APP_SECRET, true, algorithm: "HS256")
+      payload = decoded.first
+      { token: payload["token"], email: payload["email"] }
+    end
   end
 end

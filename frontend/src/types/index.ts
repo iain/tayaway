@@ -158,3 +158,12 @@ export interface InviteInfoResponse {
 export interface InvitesListResponse {
   invites: InviteResponse[]
 }
+
+// Email change types
+export interface EmailChangeRequestResponse {
+  message: string
+}
+
+export interface EmailChangeVerifyResponse {
+  message: string
+}

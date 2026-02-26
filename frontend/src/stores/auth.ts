@@ -14,6 +14,8 @@ import type {
   VerifyResponse,
   MeResponse,
   LogoutResponse,
+  EmailChangeRequestResponse,
+  EmailChangeVerifyResponse,
 } from '@/types'
 import type { PoolApiResponse } from '@/types/pool'
 
@@ -179,6 +181,38 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function requestEmailChange(email: string): Promise<string> {
+    const response = await api.post<EmailChangeRequestResponse>(
+      '/users/email-change/request',
+      { email }
+    )
+    return response.data.message
+  }
+
+  async function verifyEmailChange(token: string): Promise<string> {
+    const response = await api.post<EmailChangeVerifyResponse>(
+      '/users/email-change/verify',
+      { token }
+    )
+
+    // If authenticated, refresh user info
+    if (user.value) {
+      try {
+        const meResponse = await api.get<MeResponse>('/auth/me')
+        user.value = {
+          id: meResponse.data.user_id,
+          email: meResponse.data.email,
+          name: meResponse.data.name,
+        }
+        cacheUser(user.value)
+      } catch {
+        // May not be authenticated (different browser) — that's fine
+      }
+    }
+
+    return response.data.message
+  }
+
   function $reset() {
     clearCachedUser()
     user.value = null
@@ -197,6 +231,8 @@ export const useAuthStore = defineStore('auth', () => {
     verifyToken,
     logout,
     updateName,
+    requestEmailChange,
+    verifyEmailChange,
     $reset,
   }
 })

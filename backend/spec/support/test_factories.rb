@@ -178,6 +178,11 @@ module TestFactories
       const :record, MagicLinkToken
     end
 
+    class EmailChangeTokenResult < T::Struct
+      const :token, String
+      const :record, EmailChangeToken
+    end
+
     def ws_ticket(user: nil, token: SecureRandom.hex(32), expires_at: Time.now + WsTicket::EXPIRY_SECONDS, used_at: nil, id: SecureRandom.uuid)
       user ||= self.user
       now = Time.now
@@ -207,6 +212,25 @@ module TestFactories
       )
       record = MagicLinkToken.find(id)
       MagicTokenResult.new(token:, record:)
+    end
+
+    def email_change_token(user: nil, token: SecureRandom.hex(32), email: nil, new_email: nil, expires_at: Time.now + (15 * 60), used_at: nil, id: SecureRandom.uuid)
+      user ||= self.user
+      email ||= user[:email]
+      new_email ||= "new#{next_sequence(:email_change)}@example.com"
+      now = Time.now
+      DB[:email_change_tokens].insert(
+        id: id,
+        user_id: user[:id],
+        token: Auth::Token.digest(token),
+        email: email,
+        new_email: new_email,
+        expires_at: expires_at,
+        used_at: used_at,
+        created_at: now
+      )
+      record = EmailChangeToken.find(id)
+      EmailChangeTokenResult.new(token:, record:)
     end
 
     def reset_sequences!

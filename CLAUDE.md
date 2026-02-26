@@ -20,7 +20,7 @@ mise run ci               # All CI checks (lint, typecheck, tests, e2e) in paral
 mise run test             # All tests (frontend + backend + e2e)
 mise run test_backend     # RSpec tests only
 mise run test_frontend    # Vitest tests only
-mise run test_e2e         # Playwright e2e tests (requires dev server)
+mise run test_e2e         # Playwright e2e tests (Playwright starts its own servers)
 mise run lint             # ESLint + RuboCop
 mise run typecheck        # vue-tsc + Sorbet
 mise run db_migrate       # Run Sequel migrations
@@ -114,6 +114,7 @@ All domain data belongs to a workspace. Backend routes verify membership. The fr
 users              id (UUID), email (CITEXT), name, timestamps
 sessions           id, user_id, token, expires_at (30 days)
 magic_link_tokens  id, user_id, token, email, expires_at (15 min), used_at
+email_change_tokens id, user_id, token (hashed), email (CITEXT — current email), new_email (CITEXT), expires_at (15 min), used_at, timestamps
 ws_tickets         id, user_id, ticket (JWT), used_at
 
 workspaces              id, name, timestamps
@@ -216,9 +217,11 @@ Authenticated (admin/owner only):
 
 - `GET /` — List user's workspaces
 
-**Users (`/api/users`)** — Requires authentication
+**Users (`/api/users`)** — Mixed authentication
 
-- `PUT /name` — Update display name
+- `PUT /name` — Update display name (requires auth)
+- `POST /email-change/request` — Request email change verification link (requires auth)
+- `POST /email-change/verify` — Verify email change token and update email (unauthenticated — token is proof)
 
 **WebSocket (`/ws?ticket=<jwt>`)** — Authenticated via single-use JWT ticket
 
