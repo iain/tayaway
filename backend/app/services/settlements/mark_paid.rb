@@ -3,7 +3,7 @@
 
 module Settlements
   # Service to toggle paid status on a settlement transfer.
-  # Any workspace member can mark/unmark a transfer as paid.
+  # Only the transfer recipient (to_user) can mark/unmark a transfer as paid.
   module MarkPaid
     class << self
       extend T::Sig

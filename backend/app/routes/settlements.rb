@@ -80,6 +80,11 @@ class App
         end
 
         r.put do
+          unless transfer.to_user_id&.to_s == user.id.to_s
+            response.status = 403
+            next { error: "Only the recipient can mark a transfer as paid" }
+          end
+
           paid = r.params["paid"]
 
           result = Settlements::MarkPaid.call(

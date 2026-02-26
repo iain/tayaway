@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import {
   CheckCircleIcon,
   LockClosedIcon,
@@ -8,6 +8,7 @@ import {
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useSettlementsStore } from '@/stores/settlements'
 import PrimaryButton from '@/components/common/PrimaryButton.vue'
+import BaseModal from '@/components/common/BaseModal.vue'
 import type { PoolEvent } from '@/types/pool'
 
 const props = defineProps<{
@@ -83,7 +84,21 @@ async function deleteSettlement(id: string) {
   await settlementsStore.deleteSettlement(id)
 }
 
-async function togglePaid(transferId: string, currentlyPaid: boolean) {
+const showRecipientOnlyModal = ref(false)
+
+function canMarkPaid(toUserId: string | null): boolean {
+  return props.currentUserId !== null && toUserId === props.currentUserId
+}
+
+async function handlePaidClick(
+  transferId: string,
+  currentlyPaid: boolean,
+  toUserId: string | null
+) {
+  if (!canMarkPaid(toUserId)) {
+    showRecipientOnlyModal.value = true
+    return
+  }
   await settlementsStore.markTransferPaid(transferId, !currentlyPaid)
 }
 </script>
@@ -174,7 +189,13 @@ async function togglePaid(transferId: string, currentlyPaid: boolean) {
                   ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600'
               "
-              @click="togglePaid(transfer.id, !!transfer.paidAt)"
+              @click="
+                handlePaidClick(
+                  transfer.id,
+                  !!transfer.paidAt,
+                  transfer.toUserId
+                )
+              "
             >
               {{ transfer.paidAt ? 'Paid' : 'Mark paid' }}
             </button>
@@ -182,5 +203,25 @@ async function togglePaid(transferId: string, currentlyPaid: boolean) {
         </div>
       </div>
     </div>
+
+    <BaseModal
+      :open="showRecipientOnlyModal"
+      title="Can't mark as paid"
+      size="sm"
+      @close="showRecipientOnlyModal = false"
+    >
+      <p class="text-sm text-gray-600 dark:text-stone-400">
+        Only the person receiving the money can mark a transfer as paid.
+      </p>
+      <div class="mt-4 flex justify-end">
+        <button
+          type="button"
+          class="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600"
+          @click="showRecipientOnlyModal = false"
+        >
+          OK
+        </button>
+      </div>
+    </BaseModal>
   </div>
 </template>
