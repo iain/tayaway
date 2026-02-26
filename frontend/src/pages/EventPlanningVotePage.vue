@@ -47,6 +47,7 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
 
     <div
       v-else-if="!event.datePoll || !pollOpen"
+      data-testid="poll-closed-message"
       class="py-8 text-center text-gray-500 dark:text-stone-400"
     >
       <p class="mb-2 text-lg font-medium">Voting is closed</p>

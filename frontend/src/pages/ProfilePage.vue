@@ -57,7 +57,10 @@ async function handleRequestEmailChange(email: string): Promise<void> {
       <div class="px-4 py-5 sm:p-6">
         <div class="space-y-6">
           <div>
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+            <h3
+              data-testid="account-info-heading"
+              class="text-lg font-medium text-gray-900 dark:text-white"
+            >
               Account Information
             </h3>
             <p class="mt-1 text-sm text-gray-500 dark:text-stone-400">

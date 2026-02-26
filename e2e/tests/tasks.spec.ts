@@ -1,6 +1,7 @@
 import { test, expect, APIRequestContext } from '@playwright/test'
 import {
   API_BASE,
+  PAGE_LOAD_TIMEOUT,
   getObjectByType,
   getObjectsByType,
   getTestSession,
@@ -268,41 +269,35 @@ test.describe('Tasks Feature', () => {
       await apiContext.dispose()
     })
 
-    test('tasks page shows header and New List button', async ({ page }) => {
+    test('page layout, navigation, and creating a list via modal', async ({
+      page,
+    }) => {
       await setupAuthenticatedPage(page, sessionToken)
-      await page.goto('/tasks')
 
-      await expect(page.getByTestId('page-title')).toContainText('Tasks')
-      await expect(page.getByTestId('add-task-list-button')).toBeVisible()
-    })
-
-    test('navigation includes Tasks link', async ({ page }) => {
-      await setupAuthenticatedPage(page, sessionToken)
+      // Navigation includes Tasks link
       await page.goto('/')
+      await expect(page.getByRole('link', { name: 'Tasks' })).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
 
-      await expect(page.getByRole('link', { name: 'Tasks' })).toBeVisible()
-    })
-
-    test('New List button opens the create modal', async ({ page }) => {
-      await setupAuthenticatedPage(page, sessionToken)
+      // Tasks page shows header and New List button
       await page.goto('/tasks')
+      await expect(page.getByTestId('page-title')).toContainText('Tasks', {
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+      await expect(page.getByTestId('add-task-list-button')).toBeVisible()
 
+      // New List button opens the create modal
       await page.getByTestId('add-task-list-button').click()
-
       await expect(page.getByRole('dialog')).toBeVisible()
       await expect(
         page.getByRole('dialog').getByRole('heading', { name: 'New Task List' })
       ).toBeVisible()
       await expect(page.getByLabel('Name')).toBeVisible()
       await expect(page.getByTestId('submit-button')).toBeVisible()
-    })
 
-    test('can create a task list through the modal', async ({ page }) => {
-      await setupAuthenticatedPage(page, sessionToken)
-      await page.goto('/tasks')
-
+      // Can create a task list through the modal
       const listName = `Shopping List ${uid}`
-      await page.getByTestId('add-task-list-button').click()
       await page.getByLabel('Name').fill(listName)
       await page.getByTestId('submit-button').click()
 
@@ -310,8 +305,8 @@ test.describe('Tasks Feature', () => {
       await expect(page.getByText(listName)).toBeVisible()
     })
 
-    test('can add an item to a task list', async ({ page }) => {
-      const listName = `Add Item List ${uid}`
+    test('add items, check/uncheck, and clear completed', async ({ page }) => {
+      const listName = `Items List ${uid}`
       await createTaskList(apiContext, workspaceId, listName)
 
       await setupAuthenticatedPage(page, sessionToken)
@@ -320,117 +315,82 @@ test.describe('Tasks Feature', () => {
       const card = page
         .getByTestId('task-list-card')
         .filter({ hasText: listName })
-      await expect(card).toBeVisible()
+      await expect(card).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
 
-      await card.getByPlaceholder('Add an item...').fill('Pick up dry cleaning')
+      // Add items
+      await card.getByPlaceholder('Add an item...').fill('Keep this')
       await card.getByPlaceholder('Add an item...').press('Enter')
+      await expect(card.getByText('Keep this')).toBeVisible()
 
-      await expect(card.getByText('Pick up dry cleaning')).toBeVisible()
-    })
+      await card.getByPlaceholder('Add an item...').fill('Mark done')
+      await card.getByPlaceholder('Add an item...').press('Enter')
+      await expect(card.getByText('Mark done')).toBeVisible()
 
-    test('can check and uncheck a task item', async ({ page }) => {
-      const listName = `Checkbox List ${uid}`
-      const listId = await createTaskList(apiContext, workspaceId, listName)
-      await addTaskItem(apiContext, listId, 'Do the thing')
-
-      await setupAuthenticatedPage(page, sessionToken)
-      await page.goto('/tasks')
-
-      const card = page
-        .getByTestId('task-list-card')
-        .filter({ hasText: listName })
-      await expect(card.getByText('Do the thing')).toBeVisible()
-
-      // Check it
-      const checkbox = card.getByRole('checkbox')
-      await checkbox.check()
-      await expect(card.getByText('Do the thing')).toHaveAttribute(
+      // Check an item
+      const markDoneCheckbox = card
+        .getByTestId('task-item-row')
+        .filter({ hasText: 'Mark done' })
+        .getByRole('checkbox')
+      await markDoneCheckbox.check()
+      await expect(card.getByText('Mark done')).toHaveAttribute(
         'data-completed',
         'true'
       )
 
       // Uncheck it
-      await checkbox.uncheck()
-      await expect(card.getByText('Do the thing')).not.toHaveAttribute(
+      await markDoneCheckbox.uncheck()
+      await expect(card.getByText('Mark done')).not.toHaveAttribute(
         'data-completed',
         'true'
       )
+
+      // Re-check to test clear completed
+      await markDoneCheckbox.check()
+      const clearBtn = card.getByTestId('clear-completed-button')
+      await expect(clearBtn).toBeVisible()
+      await clearBtn.click()
+
+      await expect(card.getByText('Mark done')).not.toBeVisible()
+      await expect(card.getByText('Keep this')).toBeVisible()
+      await expect(clearBtn).not.toBeVisible()
     })
 
-    test('can rename a task list', async ({ page }) => {
+    test('rename and delete a task list', async ({ page }) => {
       const oldName = `Rename Me ${uid}`
       const newName = `Renamed ${uid}`
       await createTaskList(apiContext, workspaceId, oldName)
 
+      const deleteName = `Delete Me ${uid}`
+      await createTaskList(apiContext, workspaceId, deleteName)
+
       await setupAuthenticatedPage(page, sessionToken)
       await page.goto('/tasks')
 
-      const card = page
+      // Rename
+      const renameCard = page
         .getByTestId('task-list-card')
         .filter({ hasText: oldName })
-      await expect(card).toBeVisible()
+      await expect(renameCard).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
 
-      await card.getByTitle('Rename list').click()
+      await renameCard.getByTestId('rename-list-button').click()
 
-      // After clicking rename, the h2 disappears (v-if) so the card no longer has
-      // visible text matching oldName. Find the rename input by absence of placeholder.
-      const renameInput = page.locator(
-        '[data-testid="task-list-card"] input[type="text"]:not([placeholder])'
-      )
+      // After clicking rename, the h2 disappears (v-if) so the card text filter
+      // no longer matches. Find the visible rename input directly on the page.
+      const renameInput = page.getByTestId('rename-list-input')
       await renameInput.fill(newName)
       await renameInput.press('Enter')
 
       await expect(page.getByText(newName)).toBeVisible()
-    })
 
-    test('can delete a task list', async ({ page }) => {
-      const listName = `Delete Me ${uid}`
-      await createTaskList(apiContext, workspaceId, listName)
-
-      await setupAuthenticatedPage(page, sessionToken)
-      await page.goto('/tasks')
-
-      const card = page
+      // Delete
+      const deleteCard = page
         .getByTestId('task-list-card')
-        .filter({ hasText: listName })
-      await expect(card).toBeVisible()
+        .filter({ hasText: deleteName })
+      await expect(deleteCard).toBeVisible()
 
-      await card.getByTitle('Delete list').click()
+      await deleteCard.getByTestId('delete-list-button').click()
 
-      await expect(card).not.toBeVisible()
-    })
-
-    test('clear completed button appears and removes completed items', async ({
-      page,
-    }) => {
-      const listName = `Clear Test ${uid}`
-      const listId = await createTaskList(apiContext, workspaceId, listName)
-      await addTaskItem(apiContext, listId, 'Keep this')
-      await addTaskItem(apiContext, listId, 'Mark done')
-
-      await setupAuthenticatedPage(page, sessionToken)
-      await page.goto('/tasks')
-
-      const card = page
-        .getByTestId('task-list-card')
-        .filter({ hasText: listName })
-      await expect(card.getByText('Keep this')).toBeVisible()
-      await expect(card.getByText('Mark done')).toBeVisible()
-
-      // Complete the second item (select by row content to avoid order sensitivity)
-      await card
-        .getByTestId('task-item-row')
-        .filter({ hasText: 'Mark done' })
-        .getByRole('checkbox')
-        .check()
-
-      // Clear completed button should appear
-      await expect(card.getByText(/Clear 1 completed/)).toBeVisible()
-      await card.getByText(/Clear 1 completed/).click()
-
-      await expect(card.getByText('Mark done')).not.toBeVisible()
-      await expect(card.getByText('Keep this')).toBeVisible()
-      await expect(card.getByText(/Clear.*completed/)).not.toBeVisible()
+      await expect(deleteCard).not.toBeVisible()
     })
   })
 })

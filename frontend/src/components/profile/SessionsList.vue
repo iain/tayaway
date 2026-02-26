@@ -64,7 +64,10 @@ onMounted(fetchSessions)
     <div class="px-4 py-5 sm:p-6">
       <div class="space-y-4">
         <div>
-          <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+          <h3
+            data-testid="active-sessions-heading"
+            class="text-lg font-medium text-gray-900 dark:text-white"
+          >
             Active Sessions
           </h3>
           <p class="mt-1 text-sm text-gray-500 dark:text-stone-400">
@@ -102,6 +105,7 @@ onMounted(fetchSessions)
                 </p>
                 <span
                   v-if="session.current"
+                  data-testid="current-session-badge"
                   class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900 dark:text-green-300"
                 >
                   Current session

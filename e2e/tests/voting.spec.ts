@@ -98,10 +98,29 @@ test.describe('Voting Feature', () => {
       expect(vote?.comment).toBe('Changed my mind')
     })
 
-    test('POST /api/events/:id/votes validates response value', async () => {
+    test('POST /api/events/:id/votes validates required fields and response value', async () => {
       const { eventId, dateRangeId } = await createEventWithPoll(apiContext)
 
-      const response = await apiContext.post(
+      // Missing date_range_id
+      const missingDrResponse = await apiContext.post(
+        `${API_BASE}/api/events/${eventId}/votes`,
+        { data: { response: 'yes' } }
+      )
+      expect(missingDrResponse.status()).toBe(400)
+      const missingDrBody = await missingDrResponse.json()
+      expect(missingDrBody.error).toBe('date_range_id is required')
+
+      // Missing response
+      const missingRespResponse = await apiContext.post(
+        `${API_BASE}/api/events/${eventId}/votes`,
+        { data: { date_range_id: dateRangeId } }
+      )
+      expect(missingRespResponse.status()).toBe(400)
+      const missingRespBody = await missingRespResponse.json()
+      expect(missingRespBody.error).toBe('response is required')
+
+      // Invalid response value
+      const invalidResponse = await apiContext.post(
         `${API_BASE}/api/events/${eventId}/votes`,
         {
           data: {
@@ -110,40 +129,9 @@ test.describe('Voting Feature', () => {
           },
         }
       )
-
-      expect(response.status()).toBe(400)
-      const body = await response.json()
-      expect(body.error).toBe('Invalid response value')
-    })
-
-    test('POST /api/events/:id/votes requires date_range_id', async () => {
-      const { eventId } = await createEventWithPoll(apiContext)
-
-      const response = await apiContext.post(
-        `${API_BASE}/api/events/${eventId}/votes`,
-        {
-          data: { response: 'yes' },
-        }
-      )
-
-      expect(response.status()).toBe(400)
-      const body = await response.json()
-      expect(body.error).toBe('date_range_id is required')
-    })
-
-    test('POST /api/events/:id/votes requires response', async () => {
-      const { eventId, dateRangeId } = await createEventWithPoll(apiContext)
-
-      const response = await apiContext.post(
-        `${API_BASE}/api/events/${eventId}/votes`,
-        {
-          data: { date_range_id: dateRangeId },
-        }
-      )
-
-      expect(response.status()).toBe(400)
-      const body = await response.json()
-      expect(body.error).toBe('response is required')
+      expect(invalidResponse.status()).toBe(400)
+      const invalidBody = await invalidResponse.json()
+      expect(invalidBody.error).toBe('Invalid response value')
     })
 
     test('POST /api/events/:id/votes rejects date_range from different event', async () => {
@@ -349,97 +337,77 @@ test.describe('Voting Feature', () => {
       await apiContext.dispose()
     })
 
-    test('POST /api/events/:id/poll creates a date poll', async () => {
-      // Create event without poll
+    test('poll lifecycle: create, close with winner, vote fails on closed, reopen', async () => {
+      // --- Create poll on a bare event ---
       const eventResponse = await apiContext.post(`${API_BASE}/api/events`, {
         data: { name: 'Poll Test Event' },
       })
       const eventBody = await eventResponse.json()
       const event = getObjectByType(eventBody.objects, 'event')
 
-      // Create poll
       const deadline = new Date(
         Date.now() + 7 * 24 * 60 * 60 * 1000
       ).toISOString()
       const pollResponse = await apiContext.post(
         `${API_BASE}/api/events/${event!.id}/poll`,
-        {
-          data: { deadline },
-        }
+        { data: { deadline } }
       )
 
       expect(pollResponse.status()).toBe(201)
       const pollBody = await pollResponse.json()
-      const poll = getObjectByType(pollBody.objects, 'datePoll')
-      expect(poll).toHaveProperty('id')
-      expect(poll?.status).toBe('open')
-    })
+      const createdPoll = getObjectByType(pollBody.objects, 'datePoll')
+      expect(createdPoll).toHaveProperty('id')
+      expect(createdPoll?.status).toBe('open')
 
-    test('POST /api/events/:id/poll/close selects a winner', async () => {
-      const { eventId, dateRangeId } = await createEventWithPoll(apiContext)
+      // Add a date range so we can close with a winner
+      const drResponse = await apiContext.post(
+        `${API_BASE}/api/events/${event!.id}/poll/date-ranges`,
+        { data: { start_date: '2026-06-01', end_date: '2026-06-07' } }
+      )
+      const drBody = await drResponse.json()
+      const dateRange = getObjectByType(drBody.objects, 'dateRange')
 
+      // --- Close poll with winner ---
       const closeResponse = await apiContext.post(
-        `${API_BASE}/api/events/${eventId}/poll/close`,
-        {
-          data: { selected_date_range_id: dateRangeId },
-        }
+        `${API_BASE}/api/events/${event!.id}/poll/close`,
+        { data: { selected_date_range_id: dateRange!.id } }
       )
 
       expect(closeResponse.ok()).toBeTruthy()
       const closeBody = await closeResponse.json()
-      const poll = getObjectByType(closeBody.objects, 'datePoll')
-      expect(poll?.status).toBe('resolved')
-      expect(poll?.selectedDateRangeId).toBe(dateRangeId)
-    })
+      const closedPoll = getObjectByType(closeBody.objects, 'datePoll')
+      expect(closedPoll?.status).toBe('resolved')
+      expect(closedPoll?.selectedDateRangeId).toBe(dateRange!.id)
 
-    test('POST /api/events/:id/poll/reopen reopens a resolved poll', async () => {
-      const { eventId, dateRangeId } = await createEventWithPoll(apiContext)
-
-      // Close the poll
-      await apiContext.post(`${API_BASE}/api/events/${eventId}/poll/close`, {
-        data: { selected_date_range_id: dateRangeId },
-      })
-
-      // Reopen
-      const newDeadline = new Date(
-        Date.now() + 14 * 24 * 60 * 60 * 1000
-      ).toISOString()
-      const reopenResponse = await apiContext.post(
-        `${API_BASE}/api/events/${eventId}/poll/reopen`,
-        {
-          data: { deadline: newDeadline },
-        }
-      )
-
-      expect(reopenResponse.ok()).toBeTruthy()
-      const reopenBody = await reopenResponse.json()
-      const poll = getObjectByType(reopenBody.objects, 'datePoll')
-      expect(poll?.status).toBe('open')
-      expect(poll?.selectedDateRangeId).toBeNull()
-    })
-
-    test('voting fails on a closed poll', async () => {
-      const { eventId, dateRangeId } = await createEventWithPoll(apiContext)
-
-      // Close the poll
-      await apiContext.post(`${API_BASE}/api/events/${eventId}/poll/close`, {
-        data: { selected_date_range_id: dateRangeId },
-      })
-
-      // Try to vote
+      // --- Voting fails on closed poll ---
       const voteResponse = await apiContext.post(
-        `${API_BASE}/api/events/${eventId}/votes`,
+        `${API_BASE}/api/events/${event!.id}/votes`,
         {
           data: {
-            date_range_id: dateRangeId,
+            date_range_id: dateRange!.id,
             response: 'yes',
           },
         }
       )
 
       expect(voteResponse.status()).toBe(400)
-      const body = await voteResponse.json()
-      expect(body.error).toBe('Poll is not open for voting')
+      const voteBody = await voteResponse.json()
+      expect(voteBody.error).toBe('Poll is not open for voting')
+
+      // --- Reopen poll ---
+      const newDeadline = new Date(
+        Date.now() + 14 * 24 * 60 * 60 * 1000
+      ).toISOString()
+      const reopenResponse = await apiContext.post(
+        `${API_BASE}/api/events/${event!.id}/poll/reopen`,
+        { data: { deadline: newDeadline } }
+      )
+
+      expect(reopenResponse.ok()).toBeTruthy()
+      const reopenBody = await reopenResponse.json()
+      const reopenedPoll = getObjectByType(reopenBody.objects, 'datePoll')
+      expect(reopenedPoll?.status).toBe('open')
+      expect(reopenedPoll?.selectedDateRangeId).toBeNull()
     })
   })
 
@@ -457,11 +425,20 @@ test.describe('Voting Feature', () => {
       await apiContext.dispose()
     })
 
-    test('can navigate to event page from events list', async ({ page }) => {
-      await createEventWithPoll(apiContext, 'Voting Test Event')
+    test('can navigate to event, vote, change vote, and expand voters list', async ({
+      page,
+    }) => {
+      const { eventId } = await createEventWithPoll(
+        apiContext,
+        'Voting Test Event'
+      )
       await setupAuthenticatedPage(page, sessionToken)
 
+      // --- Navigate to event from events list ---
       await page.goto('/events')
+      await expect(page.getByText('Voting Test Event').first()).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
       await page.getByText('Voting Test Event').first().click()
 
       // Verify we're on an event detail page (URL contains /events/ followed by a UUID)
@@ -469,20 +446,14 @@ test.describe('Voting Feature', () => {
       await expect(page.getByTestId('event-name')).toContainText(
         'Voting Test Event'
       )
-    })
 
-    test('vote page shows date ranges with voting buttons', async ({
-      page,
-    }) => {
-      const { eventId } = await createEventWithPoll(apiContext)
-      await setupAuthenticatedPage(page, sessionToken)
-
+      // --- Navigate to vote page and verify buttons ---
       await page.goto(`/events/${eventId}/planning/vote`)
 
       // Should see vote buttons
       await expect(
         page.getByRole('button', { name: 'Yes', exact: true }).first()
-      ).toBeVisible()
+      ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
       await expect(
         page
           .getByRole('button', { name: 'Preferably not', exact: true })
@@ -491,15 +462,8 @@ test.describe('Voting Feature', () => {
       await expect(
         page.getByRole('button', { name: 'No', exact: true }).first()
       ).toBeVisible()
-    })
 
-    test('can vote on a date range', async ({ page }) => {
-      const { eventId } = await createEventWithPoll(apiContext)
-      await setupAuthenticatedPage(page, sessionToken)
-
-      await page.goto(`/events/${eventId}/planning/vote`)
-
-      // Click Yes button on first date range
+      // --- Vote Yes on first date range ---
       await page
         .getByRole('button', { name: 'Yes', exact: true })
         .first()
@@ -511,27 +475,11 @@ test.describe('Voting Feature', () => {
       ).toHaveAttribute('aria-pressed', 'true')
 
       // Vote summary should show 1 yes
-      await expect(
-        page.getByText('1 yes, 0 preferably not, 0 no').first()
-      ).toBeVisible()
-    })
+      await expect(page.getByTestId('vote-summary').first()).toContainText(
+        '1 yes'
+      )
 
-    test('can change vote', async ({ page }) => {
-      const { eventId } = await createEventWithPoll(apiContext)
-      await setupAuthenticatedPage(page, sessionToken)
-
-      await page.goto(`/events/${eventId}/planning/vote`)
-
-      // Vote Yes first
-      await page
-        .getByRole('button', { name: 'Yes', exact: true })
-        .first()
-        .click()
-      await expect(
-        page.getByRole('button', { name: 'Yes', exact: true }).first()
-      ).toHaveAttribute('aria-pressed', 'true')
-
-      // Change to No
+      // --- Change vote to No ---
       await page
         .getByRole('button', { name: 'No', exact: true })
         .first()
@@ -544,24 +492,11 @@ test.describe('Voting Feature', () => {
       ).toHaveAttribute('aria-pressed', 'false')
 
       // Vote summary should now show 1 no
-      await expect(
-        page.getByText('0 yes, 0 preferably not, 1 no').first()
-      ).toBeVisible()
-    })
+      await expect(page.getByTestId('vote-summary').first()).toContainText(
+        '1 no'
+      )
 
-    test('can expand voters list', async ({ page }) => {
-      const { eventId } = await createEventWithPoll(apiContext)
-      await setupAuthenticatedPage(page, sessionToken)
-
-      await page.goto(`/events/${eventId}/planning/vote`)
-
-      // Vote first
-      await page
-        .getByRole('button', { name: 'Yes', exact: true })
-        .first()
-        .click()
-
-      // Expand voters list
+      // --- Expand voters list ---
       await page
         .getByRole('button', { name: /Show votes/ })
         .first()

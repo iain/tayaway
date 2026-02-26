@@ -167,29 +167,25 @@ test.describe('Events Feature', () => {
       await ctx.dispose()
     })
 
-    test('events page displays header and new event button', async ({
+    test('events page UI: header, navigation, modal fields, and event creation', async ({
       page,
     }) => {
       await setupAuthenticatedPage(page, sessionToken)
-      await page.goto('/events')
 
-      await expect(page.getByTestId('page-title')).toContainText('Events')
-      await expect(page.getByTestId('new-event-button')).toBeVisible()
-    })
-
-    test('navigation includes Events link', async ({ page }) => {
-      await setupAuthenticatedPage(page, sessionToken)
+      // Navigation includes Events link
       await page.goto('/')
+      await expect(page.getByRole('link', { name: 'Events' })).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
 
-      await expect(page.getByRole('link', { name: 'Events' })).toBeVisible()
-    })
-
-    test('new event button opens modal with required fields', async ({
-      page,
-    }) => {
-      await setupAuthenticatedPage(page, sessionToken)
+      // Events page displays header and new event button
       await page.goto('/events')
+      await expect(page.getByTestId('page-title')).toContainText('Events', {
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+      await expect(page.getByTestId('new-event-button')).toBeVisible()
 
+      // New event button opens modal with required fields
       await page.getByTestId('new-event-button').click()
       await expect(page.getByRole('dialog')).toBeVisible()
       await expect(
@@ -198,21 +194,10 @@ test.describe('Events Feature', () => {
       await expect(page.getByLabel('Name')).toBeVisible()
       await expect(page.getByLabel(/Description/)).toBeVisible()
       await expect(page.getByTestId('modal-save-button')).toBeVisible()
-    })
 
-    test('can create an event through modal', async ({ page }) => {
-      await setupAuthenticatedPage(page, sessionToken)
-      await page.goto('/events')
-
-      // Open the create event modal
-      await page.getByTestId('new-event-button').click()
-      await expect(page.getByRole('dialog')).toBeVisible()
-
-      // Fill in the form
+      // Fill in the form and create an event
       await page.getByLabel('Name').fill('Modal Test Event')
       await page.getByLabel(/Description/).fill('Created via modal test')
-
-      // Submit the form
       await page.getByTestId('modal-save-button').click()
 
       // Should navigate to the event page
@@ -311,7 +296,7 @@ test.describe('Events categorization - Happening Now', () => {
     })
 
     // The current event should be listed within the happening now section
-    const happeningNowSection = happeningNowHeading.locator('..')
+    const happeningNowSection = page.getByTestId('happening-now-section')
     await expect(happeningNowSection.getByText('Current Trip')).toBeVisible()
   })
 
@@ -334,17 +319,13 @@ test.describe('Events categorization - Happening Now', () => {
     })
 
     // The "Happening Now" section should contain the event starting today
-    const happeningNowSection = page
-      .getByRole('heading', { name: 'Happening Now' })
-      .locator('..')
+    const happeningNowSection = page.getByTestId('happening-now-section')
     await expect(
       happeningNowSection.getByText('Starting Today Trip')
     ).toBeVisible()
 
     // It should NOT appear in the "Upcoming" section
-    const upcomingSection = page
-      .getByRole('heading', { name: 'Upcoming' })
-      .locator('..')
+    const upcomingSection = page.getByTestId('upcoming-section')
     await expect(
       upcomingSection.getByText('Starting Today Trip')
     ).not.toBeVisible()

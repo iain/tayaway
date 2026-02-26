@@ -292,12 +292,12 @@ test.describe('Poll Lifecycle UI', () => {
 
       await page.goto(`/events/${resolvedEventId}/planning/vote`)
 
-      await expect(page.getByText('Voting is closed')).toBeVisible({
+      await expect(page.getByTestId('poll-closed-message')).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
-      await expect(
-        page.getByText('The date poll is no longer accepting votes.')
-      ).toBeVisible()
+      await expect(page.getByTestId('poll-closed-message')).toContainText(
+        'The date poll is no longer accepting votes.'
+      )
     })
 
     test('"Vote on Dates" button navigates to vote page', async ({ page }) => {

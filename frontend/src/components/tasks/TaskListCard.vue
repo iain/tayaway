@@ -250,6 +250,7 @@ defineExpose({
           <input
             v-model="renameValue"
             type="text"
+            data-testid="rename-list-input"
             class="flex-1 rounded-md bg-gray-100 px-2 py-1 text-sm font-semibold text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10"
             @keyup.enter="commitRename"
             @keyup.escape="isRenaming = false"
@@ -268,6 +269,7 @@ defineExpose({
             type="button"
             class="rounded p-1 text-gray-400 hover:text-gray-600 dark:text-stone-500 dark:hover:text-stone-300"
             title="Rename list"
+            data-testid="rename-list-button"
             @click="startRename"
           >
             <PencilIcon class="size-4" />
@@ -276,6 +278,7 @@ defineExpose({
             type="button"
             class="rounded p-1 text-gray-400 hover:text-red-500 dark:text-stone-500 dark:hover:text-red-400"
             title="Delete list"
+            data-testid="delete-list-button"
             @click="handleDeleteList"
           >
             <TrashIcon class="size-4" />
@@ -287,6 +290,7 @@ defineExpose({
       <div v-if="hasCompleted" class="mb-3">
         <button
           type="button"
+          data-testid="clear-completed-button"
           class="text-xs text-gray-400 hover:text-gray-600 dark:text-stone-500 dark:hover:text-stone-300"
           @click="handleClearCompleted"
         >

@@ -1,5 +1,6 @@
 import { test, expect, APIRequestContext } from '@playwright/test'
 import {
+  PAGE_LOAD_TIMEOUT,
   getTestSession,
   setupAuthenticatedPage,
   getWorkspaceId,
@@ -43,10 +44,12 @@ test.describe('Task Keyboard Navigation', () => {
     const card = page
       .getByTestId('task-list-card')
       .filter({ hasText: `KB Nav ${uid}` })
-    const rows = card.locator('[data-testid="task-item-row"]')
+    const rows = card.getByTestId('task-item-row')
 
     // Wait for all items to be visible
-    await expect(card.getByText('Gamma')).toBeVisible()
+    await expect(card.getByText('Gamma')).toBeVisible({
+      timeout: PAGE_LOAD_TIMEOUT,
+    })
 
     // Hover Alpha to establish starting position
     await rows.nth(0).hover()
@@ -87,9 +90,10 @@ test.describe('Task Keyboard Navigation', () => {
     const card = page
       .getByTestId('task-list-card')
       .filter({ hasText: `KB Space ${uid}` })
-    const row = card.locator('[data-testid="task-item-row"]').first()
+    const row = card.getByTestId('task-item-row').first()
     const text = card.getByText('Toggle me')
 
+    await expect(row).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
     await row.hover()
     await expect(row).toHaveAttribute('data-highlighted', 'true')
 
@@ -119,8 +123,9 @@ test.describe('Task Keyboard Navigation', () => {
     const card = page
       .getByTestId('task-list-card')
       .filter({ hasText: `KB Delete ${uid}` })
-    const rows = card.locator('[data-testid="task-item-row"]')
+    const rows = card.getByTestId('task-item-row')
 
+    await expect(rows.nth(0)).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
     await rows.nth(0).hover()
     await page.keyboard.press('Backspace')
 
@@ -147,9 +152,11 @@ test.describe('Task Keyboard Navigation', () => {
     const card = page
       .getByTestId('task-list-card')
       .filter({ hasText: `KB Delete Last ${uid}` })
-    const rows = card.locator('[data-testid="task-item-row"]')
+    const rows = card.getByTestId('task-item-row')
 
-    await expect(card.getByText('Also keep me')).toBeVisible()
+    await expect(card.getByText('Also keep me')).toBeVisible({
+      timeout: PAGE_LOAD_TIMEOUT,
+    })
 
     await rows.nth(1).hover()
     await page.keyboard.press('Backspace')
@@ -174,8 +181,9 @@ test.describe('Task Keyboard Navigation', () => {
       .getByTestId('task-list-card')
       .filter({ hasText: `KB Input ${uid}` })
     const addInput = card.getByPlaceholder('Add an item...')
-    const row = card.locator('[data-testid="task-item-row"]').first()
+    const row = card.getByTestId('task-item-row').first()
 
+    await expect(row).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
     await row.hover()
     await page.keyboard.press('i')
 
@@ -197,8 +205,9 @@ test.describe('Task Keyboard Navigation', () => {
     const card = page
       .getByTestId('task-list-card')
       .filter({ hasText: `KB Hover ${uid}` })
-    const rows = card.locator('[data-testid="task-item-row"]')
+    const rows = card.getByTestId('task-item-row')
 
+    await expect(rows.nth(0)).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
     await rows.nth(0).hover()
     await expect(rows.nth(0)).toHaveAttribute('data-highlighted', 'true')
     await expect(rows.nth(1)).not.toHaveAttribute('data-highlighted', 'true')
@@ -226,9 +235,11 @@ test.describe('Task Keyboard Navigation', () => {
       .getByTestId('task-list-card')
       .filter({ hasText: `KB Escape ${uid}` })
     const addInput = card.getByPlaceholder('Add an item...')
-    const rows = card.locator('[data-testid="task-item-row"]')
+    const rows = card.getByTestId('task-item-row')
 
-    await expect(card.getByText('Second item')).toBeVisible()
+    await expect(card.getByText('Second item')).toBeVisible({
+      timeout: PAGE_LOAD_TIMEOUT,
+    })
 
     // Hover first item so that i targets this list's add-input
     await rows.nth(0).hover()

@@ -93,7 +93,10 @@ function navigateToEventPage(eventId: string): void {
     />
 
     <template v-else>
-      <section v-if="currentEvents.length > 0">
+      <section
+        v-if="currentEvents.length > 0"
+        data-testid="happening-now-section"
+      >
         <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
           Happening now
         </h2>

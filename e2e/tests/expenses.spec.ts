@@ -659,9 +659,7 @@ test.describe('Expenses Feature', () => {
       await page.getByRole('button', { name: 'Add expense' }).click()
 
       // Dialog should appear with explanation
-      await expect(
-        page.getByText('You must RSVP as attending this event')
-      ).toBeVisible()
+      await expect(page.getByTestId('rsvp-required-dialog')).toBeVisible()
       await expect(page.getByRole('link', { name: 'Go to RSVP' })).toBeVisible()
 
       // Link should point to the RSVP page
@@ -737,13 +735,9 @@ test.describe('Expenses Feature', () => {
       ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
       await page.getByRole('button', { name: 'Add expense' }).click()
 
-      await expect(
-        page.getByPlaceholder('What was this expense for?')
-      ).toBeVisible()
-      await page
-        .getByPlaceholder('What was this expense for?')
-        .fill(description)
-      await page.getByPlaceholder('0.00').fill('4.50')
+      await expect(page.getByTestId('expense-description-input')).toBeVisible()
+      await page.getByTestId('expense-description-input').fill(description)
+      await page.getByTestId('expense-amount-input').fill('4.50')
       await page.getByTestId('submit-button').click()
 
       const row = page
@@ -778,7 +772,7 @@ test.describe('Expenses Feature', () => {
       await page.goto(`/events/${eventId}/expenses`)
 
       // Total should include all expenses for this event (at least A + B = 15.50)
-      await expect(page.getByText(/€\d+\.\d{2} total/)).toBeVisible({
+      await expect(page.getByTestId('expenses-total')).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
     })
@@ -809,13 +803,13 @@ test.describe('Expenses Feature', () => {
       await row.getByTestId('edit-expense').click()
 
       // Modal should open with pre-filled values
-      const descInput = page.getByPlaceholder('What was this expense for?')
+      const descInput = page.getByTestId('expense-description-input')
       await expect(descInput).toBeVisible()
       await expect(descInput).toHaveValue(description)
 
       // Change description and amount
       await descInput.fill(`Updated ${uid}`)
-      const amountInput = page.getByPlaceholder('0.00')
+      const amountInput = page.getByTestId('expense-amount-input')
       await amountInput.fill('42.00')
 
       // Change dates

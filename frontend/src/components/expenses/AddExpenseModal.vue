@@ -125,6 +125,7 @@ function handleClose(): void {
         v-model="description"
         label="Description"
         placeholder="What was this expense for?"
+        data-testid="expense-description-input"
         autofocus
         :disabled="submitting"
       />
@@ -134,6 +135,7 @@ function handleClose(): void {
         v-model="amount"
         label="Amount"
         placeholder="0.00"
+        data-testid="expense-amount-input"
         prefix="€"
         inputmode="decimal"
         :disabled="submitting"

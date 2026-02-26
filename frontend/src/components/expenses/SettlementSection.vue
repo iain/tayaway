@@ -152,6 +152,7 @@ async function handlePaidClick(
           <button
             v-if="canDeleteSettlement(settlement.userId)"
             type="button"
+            data-testid="delete-settlement-button"
             class="flex text-gray-400 hover:text-red-500 dark:text-stone-500 dark:hover:text-red-400"
             @click="deleteSettlement(settlement.id)"
           >

@@ -100,18 +100,19 @@ export async function createEventWithPoll(
     data: { deadline },
   })
 
-  const dr1Response = await request.post(
-    `${API_BASE}/api/events/${eventId}/poll/date-ranges`,
-    { data: { start_date: '2026-06-01', end_date: '2026-06-07' } }
-  )
-  const dr1Body = await dr1Response.json()
+  const [dr1Response, dr2Response] = await Promise.all([
+    request.post(`${API_BASE}/api/events/${eventId}/poll/date-ranges`, {
+      data: { start_date: '2026-06-01', end_date: '2026-06-07' },
+    }),
+    request.post(`${API_BASE}/api/events/${eventId}/poll/date-ranges`, {
+      data: { start_date: '2026-06-15', end_date: '2026-06-20' },
+    }),
+  ])
+  const [dr1Body, dr2Body] = await Promise.all([
+    dr1Response.json(),
+    dr2Response.json(),
+  ])
   const dr1 = getObjectByType(dr1Body.objects, 'dateRange')
-
-  const dr2Response = await request.post(
-    `${API_BASE}/api/events/${eventId}/poll/date-ranges`,
-    { data: { start_date: '2026-06-15', end_date: '2026-06-20' } }
-  )
-  const dr2Body = await dr2Response.json()
   const dr2 = getObjectByType(dr2Body.objects, 'dateRange')
 
   return {

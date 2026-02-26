@@ -91,7 +91,10 @@ onMounted(async () => {
           >
             Expenses
           </h1>
-          <span class="text-lg font-semibold text-gray-700 dark:text-stone-300">
+          <span
+            data-testid="expenses-total"
+            class="text-lg font-semibold text-gray-700 dark:text-stone-300"
+          >
             {{ formattedTotal }} total
           </span>
         </div>
@@ -134,7 +137,10 @@ onMounted(async () => {
         size="sm"
         @close="showRsvpDialog = false"
       >
-        <p class="text-sm text-gray-600 dark:text-stone-400">
+        <p
+          data-testid="rsvp-required-dialog"
+          class="text-sm text-gray-600 dark:text-stone-400"
+        >
           You must RSVP as attending this event before you can add expenses.
         </p>
         <div class="mt-4 flex justify-end gap-3">

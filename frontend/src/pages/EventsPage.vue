@@ -112,7 +112,10 @@ function formatDateRangeSummary(
     </EmptyState>
 
     <div v-else data-testid="events-list" class="space-y-8">
-      <section v-if="currentEvents.length > 0">
+      <section
+        v-if="currentEvents.length > 0"
+        data-testid="happening-now-section"
+      >
         <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
           Happening Now
         </h2>
@@ -137,7 +140,7 @@ function formatDateRangeSummary(
         </ul>
       </section>
 
-      <section v-if="upcomingEvents.length > 0">
+      <section v-if="upcomingEvents.length > 0" data-testid="upcoming-section">
         <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
           Upcoming
         </h2>

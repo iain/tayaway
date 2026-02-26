@@ -46,7 +46,7 @@ async function handleSignIn() {
 
       <div v-else>
         <h1 class="mb-4 text-2xl font-bold text-white">Verification Failed</h1>
-        <p class="mb-6 text-sm text-red-400">
+        <p data-testid="verify-error" class="mb-6 text-sm text-red-400">
           {{ error }}
         </p>
         <router-link

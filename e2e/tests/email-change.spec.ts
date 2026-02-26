@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test'
-import { API_BASE, getTestSession, setupAuthenticatedPage } from '../helpers'
+import {
+  API_BASE,
+  PAGE_LOAD_TIMEOUT,
+  getTestSession,
+  setupAuthenticatedPage,
+} from '../helpers'
 
 const TEST_NAME = 'E2E Email Change User'
 
@@ -84,7 +89,7 @@ test.describe('Email Change Feature', () => {
       await page.goto('/profile')
 
       const editButton = page.getByTestId('edit-email-button')
-      await expect(editButton).toBeVisible()
+      await expect(editButton).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
 
       await editButton.click()
 
@@ -106,6 +111,9 @@ test.describe('Email Change Feature', () => {
       await setupAuthenticatedPage(page, token)
       await page.goto('/profile')
 
+      await expect(page.getByTestId('edit-email-button')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
       await page.getByTestId('edit-email-button').click()
       await expect(page.getByRole('dialog')).toBeVisible()
 
@@ -132,11 +140,15 @@ test.describe('Email Change Feature', () => {
     }) => {
       // Missing token
       await page.goto('/verify-email')
-      await expect(page.getByTestId('email-change-error')).toBeVisible()
+      await expect(page.getByTestId('email-change-error')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
 
       // Invalid token — shows confirm button, then error after click
       await page.goto('/verify-email?token=bad-token')
-      await expect(page.getByTestId('confirm-email-change')).toBeVisible()
+      await expect(page.getByTestId('confirm-email-change')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
       await page.getByTestId('confirm-email-change').click()
 
       await expect(page.getByTestId('error-message')).toBeVisible()
