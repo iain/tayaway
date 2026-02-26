@@ -5,14 +5,17 @@ import {
   UserIcon,
   PlusIcon,
   EnvelopeIcon,
+  PhoneIcon,
+  CakeIcon,
   XMarkIcon,
-  ArrowDownTrayIcon,
+  IdentificationIcon,
 } from '@heroicons/vue/24/outline'
 import { useMembersStore, useNotificationsStore } from '@/stores'
 import { useAuthStore } from '@/stores/auth'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import InviteMemberModal from '@/components/members/InviteMemberModal.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
+import BaseCard from '@/components/common/BaseCard.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import PrimaryButton from '@/components/common/PrimaryButton.vue'
 import type { PoolMember } from '@/types/pool'
@@ -96,6 +99,34 @@ async function handleCancelInvite(id: string): Promise<void> {
     const notifications = useNotificationsStore()
     notifications.showError('Failed to cancel invitation')
   }
+}
+
+function isBirthday(member: PoolMember): boolean {
+  if (!member.birthday) return false
+  const today = new Date()
+  const [, month, day] = member.birthday.split('-')
+  return (
+    today.getMonth() + 1 === Number(month) && today.getDate() === Number(day)
+  )
+}
+
+function formatBirthday(iso: string): string {
+  const [year, month, day] = iso.split('-')
+  return `${day}/${month}/${year}`
+}
+
+function getInitials(member: PoolMember): string {
+  const name = member.name
+  if (name) {
+    const parts = name.trim().split(/\s+/)
+    if (parts.length >= 2) {
+      const first = parts[0]?.[0] ?? ''
+      const last = parts[parts.length - 1]?.[0] ?? ''
+      return (first + last).toUpperCase()
+    }
+    return (parts[0]?.[0] ?? '').toUpperCase()
+  }
+  return member.email?.[0]?.toUpperCase() ?? '?'
 }
 
 function handleDownloadVCard(member: PoolMember): void {
@@ -205,93 +236,150 @@ onMounted(() => {
       </PrimaryButton>
     </EmptyState>
 
-    <ul
+    <div
       v-else
       data-testid="members-list"
-      class="divide-y divide-gray-200 dark:divide-stone-700"
+      class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
     >
-      <li
+      <BaseCard
         v-for="member in members"
         :key="member.id"
         :data-testid="`member-item-${member.id}`"
-        class="mb-4 overflow-hidden rounded-lg bg-white shadow dark:bg-stone-800"
+        class="row-span-2 grid grid-rows-subgrid"
+        :class="[
+          currentMember?.id === member.id &&
+            !isBirthday(member) &&
+            'ring-2 ring-rose-300 dark:ring-rose-700',
+          isBirthday(member) && 'birthday-card',
+        ]"
       >
-        <div class="px-4 py-5 sm:px-6">
-          <div class="flex items-center">
-            <UserIcon class="mr-4 size-10 text-gray-400" />
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center justify-between">
-                <h2
-                  data-testid="member-name"
-                  class="truncate text-lg font-semibold text-gray-900 dark:text-white"
+        <!-- Top section: avatar + identity -->
+        <div class="relative flex items-start gap-4 p-5">
+          <div
+            v-if="isBirthday(member)"
+            class="pointer-events-none absolute inset-x-0 top-0 flex justify-between px-3 pt-1 text-xl"
+          >
+            <span class="birthday-float" style="animation-delay: 0s">🎉</span>
+            <span class="birthday-float" style="animation-delay: 0.4s">🎈</span>
+            <span class="birthday-float" style="animation-delay: 0.8s">🎊</span>
+            <span class="birthday-float" style="animation-delay: 0.2s">🥳</span>
+            <span class="birthday-float" style="animation-delay: 0.6s">🎂</span>
+          </div>
+          <div
+            class="flex size-12 shrink-0 items-center justify-center rounded-full text-lg font-semibold"
+            :class="
+              isBirthday(member)
+                ? 'animate-bounce bg-amber-300 text-amber-900 ring-4 ring-amber-400/50 dark:bg-amber-500 dark:text-amber-950 dark:ring-amber-500/50'
+                : 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400'
+            "
+          >
+            {{ isBirthday(member) ? '🎂' : getInitials(member) }}
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+              <h2
+                data-testid="member-name"
+                class="truncate text-lg font-semibold text-gray-900 dark:text-white"
+              >
+                {{ member.name || 'No name' }}
+              </h2>
+              <select
+                v-if="canChangeRole(member)"
+                data-testid="member-role-select"
+                :value="member.role"
+                class="inline-flex shrink-0 cursor-pointer items-center rounded-full border-0 px-2 py-0.5 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:ring-inset"
+                :class="{
+                  'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400':
+                    member.role === 'owner',
+                  'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400':
+                    member.role === 'admin',
+                  'bg-gray-100 text-gray-600 dark:bg-stone-700 dark:text-stone-300':
+                    member.role === 'member',
+                }"
+                @change="
+                  handleRoleChange(
+                    member,
+                    ($event.target as HTMLSelectElement).value
+                  )
+                "
+              >
+                <option
+                  v-for="role in availableRolesFor()"
+                  :key="role"
+                  :value="role"
                 >
-                  {{ member.name || 'No name' }}
-                </h2>
-                <button
-                  data-testid="download-vcard-button"
-                  class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-stone-700 dark:hover:text-stone-300"
-                  title="Download contact card"
-                  @click="handleDownloadVCard(member)"
-                >
-                  <ArrowDownTrayIcon class="size-5" />
-                </button>
-              </div>
-              <div class="flex items-center gap-2">
-                <p
-                  data-testid="member-email"
-                  class="text-sm text-gray-500 dark:text-stone-400"
-                >
-                  {{ member.email }}
-                </p>
-                <select
-                  v-if="canChangeRole(member)"
-                  data-testid="member-role-select"
-                  :value="member.role"
-                  class="inline-flex cursor-pointer items-center rounded-full border-0 px-2 py-0.5 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:ring-inset"
-                  :class="{
-                    'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400':
-                      member.role === 'owner',
-                    'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400':
-                      member.role === 'admin',
-                    'bg-gray-100 text-gray-600 dark:bg-stone-700 dark:text-stone-300':
-                      member.role === 'member',
-                  }"
-                  @change="
-                    handleRoleChange(
-                      member,
-                      ($event.target as HTMLSelectElement).value
-                    )
-                  "
-                >
-                  <option
-                    v-for="role in availableRolesFor()"
-                    :key="role"
-                    :value="role"
-                  >
-                    {{ role }}
-                  </option>
-                </select>
-                <span
-                  v-else-if="member.role"
-                  data-testid="member-role"
-                  class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-                  :class="{
-                    'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400':
-                      member.role === 'owner',
-                    'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400':
-                      member.role === 'admin',
-                    'bg-gray-100 text-gray-600 dark:bg-stone-700 dark:text-stone-300':
-                      member.role === 'member',
-                  }"
-                >
-                  {{ member.role }}
-                </span>
-              </div>
+                  {{ role }}
+                </option>
+              </select>
+              <span
+                v-else-if="member.role"
+                data-testid="member-role"
+                class="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                :class="{
+                  'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400':
+                    member.role === 'owner',
+                  'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400':
+                    member.role === 'admin',
+                  'bg-gray-100 text-gray-600 dark:bg-stone-700 dark:text-stone-300':
+                    member.role === 'member',
+                }"
+              >
+                {{ member.role }}
+              </span>
             </div>
+            <p
+              v-if="isBirthday(member)"
+              class="birthday-shimmer text-sm font-bold"
+            >
+              🎉 Happy Birthday! 🎉
+            </p>
+            <p
+              data-testid="member-email"
+              class="truncate text-sm text-gray-500 dark:text-stone-400"
+            >
+              {{ member.email }}
+            </p>
+            <p
+              v-if="member.birthday && !isBirthday(member)"
+              class="flex items-center gap-1 text-sm text-gray-500 dark:text-stone-400"
+            >
+              <CakeIcon class="size-3.5" />
+              {{ formatBirthday(member.birthday) }}
+            </p>
           </div>
         </div>
-      </li>
-    </ul>
+
+        <!-- Bottom section: action buttons -->
+        <div
+          class="flex items-center gap-1 border-t border-gray-200 px-5 py-3 dark:border-stone-700"
+        >
+          <a
+            :href="`mailto:${member.email}`"
+            class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-stone-300 dark:hover:bg-stone-700"
+          >
+            <EnvelopeIcon class="size-4" />
+            Email
+          </a>
+          <a
+            v-if="member.phoneNumber"
+            :href="`tel:${member.phoneNumber}`"
+            class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-stone-300 dark:hover:bg-stone-700"
+          >
+            <PhoneIcon class="size-4" />
+            Call
+          </a>
+          <button
+            data-testid="download-vcard-button"
+            class="ml-auto inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-stone-300 dark:hover:bg-stone-700"
+            title="Download contact card"
+            @click="handleDownloadVCard(member)"
+          >
+            <IdentificationIcon class="size-4" />
+            vCard
+          </button>
+        </div>
+      </BaseCard>
+    </div>
 
     <InviteMemberModal
       :open="isModalOpen"
@@ -301,3 +389,83 @@ onMounted(() => {
     />
   </div>
 </template>
+
+<style scoped>
+.birthday-card {
+  background: linear-gradient(
+    135deg,
+    #fef3c7 0%,
+    #fce7f3 25%,
+    #ede9fe 50%,
+    #dbeafe 75%,
+    #fef3c7 100%
+  );
+  background-size: 300% 300%;
+  animation: birthday-gradient 4s ease infinite;
+  box-shadow:
+    0 0 15px rgba(251, 191, 36, 0.4),
+    0 0 30px rgba(244, 114, 182, 0.2);
+}
+
+:where(.dark) .birthday-card {
+  background: linear-gradient(
+    135deg,
+    #78350f 0%,
+    #831843 25%,
+    #4c1d95 50%,
+    #1e3a5f 75%,
+    #78350f 100%
+  );
+  background-size: 300% 300%;
+  animation: birthday-gradient 4s ease infinite;
+  box-shadow:
+    0 0 15px rgba(251, 191, 36, 0.3),
+    0 0 30px rgba(244, 114, 182, 0.15);
+}
+
+@keyframes birthday-gradient {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.birthday-float {
+  animation: birthday-bob 2s ease-in-out infinite;
+}
+
+@keyframes birthday-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.birthday-shimmer {
+  background: linear-gradient(
+    90deg,
+    #f59e0b,
+    #ec4899,
+    #8b5cf6,
+    #f59e0b,
+    #ec4899
+  );
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: birthday-shimmer-move 2s linear infinite;
+}
+
+@keyframes birthday-shimmer-move {
+  to {
+    background-position: 200% center;
+  }
+}
+</style>

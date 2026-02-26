@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   BanknotesIcon,
+  CakeIcon,
   CalendarDaysIcon,
   CheckCircleIcon,
   ClockIcon,
@@ -20,10 +21,11 @@ import {
   formatEventDateRange,
 } from '@/composables/useEventsNeedingRsvp'
 import { useEventsList } from '@/composables/useEventsList'
-import { useObjectPoolStore } from '@/stores'
+import { useMembersStore, useObjectPoolStore } from '@/stores'
 import PageHeader from '@/components/common/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
+import type { PoolMember } from '@/types/pool'
 
 const router = useRouter()
 const pool = useObjectPoolStore()
@@ -63,8 +65,93 @@ const pastEventsWithOpenExpenses = computed(() =>
   )
 )
 
+const { members } = useMembersStore()
+
+function birthdayMonthDay(member: PoolMember): [number, number] | null {
+  if (!member.birthday) return null
+  const [, month, day] = member.birthday.split('-')
+  return [Number(month), Number(day)]
+}
+
+const todayBirthdays = computed(() => {
+  const today = new Date()
+  const m = today.getMonth() + 1
+  const d = today.getDate()
+  return members.filter((member) => {
+    const md = birthdayMonthDay(member)
+    return md && md[0] === m && md[1] === d
+  })
+})
+
+const upcomingBirthdays = computed(() => {
+  const today = new Date()
+  const todayM = today.getMonth() + 1
+  const todayD = today.getDate()
+
+  return members
+    .filter((member) => {
+      const md = birthdayMonthDay(member)
+      if (!md) return false
+      // Exclude today's birthdays
+      if (md[0] === todayM && md[1] === todayD) return false
+      // Check if birthday falls within the next 7 days
+      for (let i = 1; i <= 7; i++) {
+        const future = new Date(today)
+        future.setDate(future.getDate() + i)
+        if (md[0] === future.getMonth() + 1 && md[1] === future.getDate()) {
+          return true
+        }
+      }
+      return false
+    })
+    .sort((a, b) => {
+      const amd = birthdayMonthDay(a)!
+      const bmd = birthdayMonthDay(b)!
+      return amd[0] - bmd[0] || amd[1] - bmd[1]
+    })
+})
+
+function formatBirthdayDate(member: PoolMember): string {
+  if (!member.birthday) return ''
+  const today = new Date()
+  const [, month, day] = member.birthday.split('-')
+  for (let i = 1; i <= 7; i++) {
+    const future = new Date(today)
+    future.setDate(future.getDate() + i)
+    if (
+      Number(month) === future.getMonth() + 1 &&
+      Number(day) === future.getDate()
+    ) {
+      if (i === 1) return 'Tomorrow'
+      return future.toLocaleDateString(undefined, {
+        weekday: 'long',
+      })
+    }
+  }
+  return `${day}/${month}`
+}
+
+function getInitials(member: PoolMember): string {
+  const name = member.name
+  if (name) {
+    const parts = name.trim().split(/\s+/)
+    if (parts.length >= 2) {
+      const first = parts[0]?.[0] ?? ''
+      const last = parts[parts.length - 1]?.[0] ?? ''
+      return (first + last).toUpperCase()
+    }
+    return (parts[0]?.[0] ?? '').toUpperCase()
+  }
+  return member.email?.[0]?.toUpperCase() ?? '?'
+}
+
+const hasBirthdays = computed(
+  () => todayBirthdays.value.length > 0 || upcomingBirthdays.value.length > 0
+)
+
 const allCaughtUp = computed(
   () =>
+    !hasBirthdays.value &&
     currentEvents.value.length === 0 &&
     pastEventsWithOpenExpenses.value.length === 0 &&
     pollsNeedingAttention.value.length === 0 &&
@@ -93,9 +180,83 @@ function navigateToEventPage(eventId: string): void {
     />
 
     <template v-else>
+      <!-- Today's birthdays -->
+      <section v-if="todayBirthdays.length > 0">
+        <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
+          🎂 Happy Birthday!
+        </h2>
+
+        <ul class="space-y-3">
+          <li
+            v-for="member in todayBirthdays"
+            :key="member.id"
+            class="birthday-card-dashboard overflow-hidden rounded-lg shadow"
+          >
+            <div class="flex items-center gap-4 px-4 py-4 sm:px-6">
+              <div
+                class="flex size-10 shrink-0 animate-bounce items-center justify-center rounded-full bg-amber-300 text-lg ring-4 ring-amber-400/50 dark:bg-amber-500 dark:ring-amber-500/50"
+              >
+                🎂
+              </div>
+              <div class="min-w-0 flex-1">
+                <h3
+                  class="truncate text-base font-semibold text-gray-900 dark:text-white"
+                >
+                  {{ member.name || member.email }}
+                </h3>
+                <p class="birthday-shimmer text-sm font-bold">
+                  🎉 It's their birthday today! 🎉
+                </p>
+              </div>
+              <span class="text-2xl">🥳</span>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <!-- Upcoming birthdays this week -->
+      <section
+        v-if="upcomingBirthdays.length > 0"
+        :class="todayBirthdays.length > 0 ? 'mt-8' : ''"
+      >
+        <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
+          Upcoming birthdays
+        </h2>
+
+        <ul class="space-y-3">
+          <li
+            v-for="member in upcomingBirthdays"
+            :key="member.id"
+            class="overflow-hidden rounded-lg bg-white shadow dark:bg-stone-800"
+          >
+            <div class="flex items-center gap-4 px-4 py-4 sm:px-6">
+              <div
+                class="flex size-10 shrink-0 items-center justify-center rounded-full bg-rose-100 text-sm font-semibold text-rose-600 dark:bg-rose-900/30 dark:text-rose-400"
+              >
+                {{ getInitials(member) }}
+              </div>
+              <div class="min-w-0 flex-1">
+                <h3
+                  class="truncate text-base font-semibold text-gray-900 dark:text-white"
+                >
+                  {{ member.name || member.email }}
+                </h3>
+                <div
+                  class="mt-0.5 flex items-center gap-1 text-sm text-gray-500 dark:text-stone-400"
+                >
+                  <CakeIcon class="size-4" />
+                  {{ formatBirthdayDate(member) }}
+                </div>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </section>
+
       <section
         v-if="currentEvents.length > 0"
         data-testid="happening-now-section"
+        :class="hasBirthdays ? 'mt-8' : ''"
       >
         <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
           Happening now
@@ -153,7 +314,7 @@ function navigateToEventPage(eventId: string): void {
 
       <section
         v-if="pastEventsWithOpenExpenses.length > 0"
-        :class="currentEvents.length > 0 ? 'mt-8' : ''"
+        :class="currentEvents.length > 0 || hasBirthdays ? 'mt-8' : ''"
       >
         <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
           Past events with open expenses
@@ -213,7 +374,9 @@ function navigateToEventPage(eventId: string): void {
       <section
         v-if="pollsNeedingAttention.length > 0"
         :class="
-          currentEvents.length > 0 || pastEventsWithOpenExpenses.length > 0
+          currentEvents.length > 0 ||
+          pastEventsWithOpenExpenses.length > 0 ||
+          hasBirthdays
             ? 'mt-8'
             : ''
         "
@@ -272,7 +435,8 @@ function navigateToEventPage(eventId: string): void {
         :class="
           pollsNeedingAttention.length > 0 ||
           pastEventsWithOpenExpenses.length > 0 ||
-          currentEvents.length > 0
+          currentEvents.length > 0 ||
+          hasBirthdays
             ? 'mt-8'
             : ''
         "
@@ -313,3 +477,63 @@ function navigateToEventPage(eventId: string): void {
     </template>
   </div>
 </template>
+
+<style scoped>
+.birthday-card-dashboard {
+  background: linear-gradient(
+    135deg,
+    #fef3c7 0%,
+    #fce7f3 25%,
+    #ede9fe 50%,
+    #dbeafe 75%,
+    #fef3c7 100%
+  );
+  background-size: 300% 300%;
+  animation: birthday-gradient 4s ease infinite;
+}
+
+:where(.dark) .birthday-card-dashboard {
+  background: linear-gradient(
+    135deg,
+    #78350f 0%,
+    #831843 25%,
+    #4c1d95 50%,
+    #1e3a5f 75%,
+    #78350f 100%
+  );
+  background-size: 300% 300%;
+  animation: birthday-gradient 4s ease infinite;
+}
+
+@keyframes birthday-gradient {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.birthday-shimmer {
+  background: linear-gradient(
+    90deg,
+    #f59e0b,
+    #ec4899,
+    #8b5cf6,
+    #f59e0b,
+    #ec4899
+  );
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: birthday-shimmer-move 2s linear infinite;
+}
+
+@keyframes birthday-shimmer-move {
+  to {
+    background-position: 200% center;
+  }
+}
+</style>
