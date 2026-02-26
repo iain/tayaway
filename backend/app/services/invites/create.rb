@@ -12,14 +12,16 @@ module Invites
         params(
           email: T.nilable(String),
           workspace_id: T.any(String, UUID),
-          invited_by: T.any(String, UUID)
+          invited_by: T.any(String, UUID),
+          name: T.nilable(String)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def call(email:, workspace_id:, invited_by:)
+      def call(email:, workspace_id:, invited_by:, name: nil)
+        sanitized_name = name&.strip&.then { |n| n.empty? ? nil : n }
         validate_email(email)
           .bind { |valid_email| check_not_already_member(valid_email, workspace_id) }
           .bind { |valid_email| check_no_pending_invite(valid_email, workspace_id) }
-          .bind { |valid_email| create_invite(valid_email, workspace_id, invited_by) }
+          .bind { |valid_email| create_invite(valid_email, workspace_id, invited_by, sanitized_name) }
       end
 
       private
@@ -62,10 +64,11 @@ module Invites
         params(
           email: String,
           workspace_id: T.any(String, UUID),
-          invited_by: T.any(String, UUID)
+          invited_by: T.any(String, UUID),
+          name: T.nilable(String)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def create_invite(email, workspace_id, invited_by)
+      def create_invite(email, workspace_id, invited_by, name)
         now = Time.now
         id = SecureRandom.uuid
         raw_token = SecureRandom.hex(32)
@@ -77,6 +80,7 @@ module Invites
           workspace_id: workspace_id.to_s,
           invited_by: invited_by.to_s,
           email: email,
+          name: name,
           token: token_hash,
           expires_at: expires_at,
           created_at: now,
@@ -91,7 +95,7 @@ module Invites
         workspace_name = workspace ? workspace.name : "Tayaway"
 
         APP_LOGGER.debug { "INVITE LINK FOR #{email}: #{invite_link}" }
-        Mailers::WorkspaceInvite.send_email(email: email, invite_link: invite_link, workspace_name: workspace_name)
+        Mailers::WorkspaceInvite.send_email(email: email, invite_link: invite_link, workspace_name: workspace_name, name: name)
 
         invite = WorkspaceInvite.find(id)
         T.cast(Success(T.must(invite).to_api_hash), Result[T::Hash[Symbol, T.untyped], ServiceError])

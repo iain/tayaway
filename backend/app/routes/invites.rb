@@ -62,8 +62,6 @@ class App
           next { error: "Access denied" }
         end
 
-        require_admin_or_owner!(workspace_id)
-
         invites = WorkspaceInvite.pending_for_workspace(workspace_id)
         { invites: invites.map(&:to_api_hash) }
       end
@@ -77,12 +75,11 @@ class App
           next { error: "Access denied" }
         end
 
-        require_admin_or_owner!(workspace_id)
-
         result = Invites::Create.call(
           email: r.params["email"]&.strip&.downcase,
           workspace_id: workspace_id,
-          invited_by: current_user.id
+          invited_by: current_user.id,
+          name: r.params["name"]
         )
         handle_result(result, success_status: 201)
       end
@@ -97,8 +94,6 @@ class App
           response.status = 403
           next { error: "Access denied" }
         end
-
-        require_admin_or_owner!(workspace_id)
 
         result = Invites::Cancel.call(invite_id: id, workspace_id: workspace_id)
         handle_result(result)

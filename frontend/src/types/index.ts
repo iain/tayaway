@@ -138,6 +138,7 @@ export interface InviteResponse {
   workspaceId: string
   invitedBy: string | null
   email: string
+  name: string | null
   expiresAt: string
   acceptedAt: string | null
   createdAt: string
@@ -145,6 +146,7 @@ export interface InviteResponse {
 
 export interface CreateInviteRequest {
   email: string
+  name?: string
   workspace_id: string
 }
 

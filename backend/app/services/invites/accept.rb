@@ -60,7 +60,7 @@ module Invites
             DB[:users].insert(
               id: user_id,
               email: invite.email.to_s,
-              name: nil,
+              name: invite.name,
               created_at: now,
               updated_at: now
             )

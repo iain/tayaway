@@ -32,12 +32,6 @@ const currentMember = computed((): PoolMember | null => {
   return pool.findBy('member', 'userId', userId) ?? null
 })
 
-const isAdminOrOwner = computed((): boolean => {
-  const me = currentMember.value
-  if (!me) return false
-  return me.role === 'admin' || me.role === 'owner'
-})
-
 function canChangeRole(member: PoolMember): boolean {
   const me = currentMember.value
   if (!me || me.id === member.id) return false
@@ -76,12 +70,12 @@ function closeModal(): void {
   isModalOpen.value = false
 }
 
-async function handleSave(email: string): Promise<void> {
+async function handleSave(name: string, email: string): Promise<void> {
   formError.value = null
   isSubmitting.value = true
 
   try {
-    await membersStore.createInvite(email)
+    await membersStore.createInvite(email, name || undefined)
     isModalOpen.value = false
     const notifications = useNotificationsStore()
     notifications.showInfo('Invitation sent')
@@ -103,20 +97,14 @@ async function handleCancelInvite(id: string): Promise<void> {
 }
 
 onMounted(() => {
-  if (isAdminOrOwner.value) {
-    membersStore.fetchInvites()
-  }
+  membersStore.fetchInvites()
 })
 </script>
 
 <template>
   <div>
     <PageHeader title="Members" data-testid="page-title">
-      <PrimaryButton
-        v-if="isAdminOrOwner"
-        data-testid="invite-member-button"
-        @click="openModal"
-      >
+      <PrimaryButton data-testid="invite-member-button" @click="openModal">
         <PlusIcon class="size-5" />
         Invite Member
       </PrimaryButton>
@@ -138,7 +126,7 @@ onMounted(() => {
 
     <!-- Pending Invites Section -->
     <div
-      v-if="isAdminOrOwner && pendingInvites.length > 0"
+      v-if="pendingInvites.length > 0"
       class="mb-6"
       data-testid="pending-invites-section"
     >
@@ -162,7 +150,11 @@ onMounted(() => {
                     class="text-sm font-medium text-gray-900 dark:text-white"
                     data-testid="invite-email"
                   >
-                    {{ invite.email }}
+                    {{
+                      invite.name
+                        ? `${invite.name} (${invite.email})`
+                        : invite.email
+                    }}
                   </p>
                   <span
                     class="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
@@ -191,7 +183,7 @@ onMounted(() => {
       heading="No members"
       description="Get started by inviting a new member."
     >
-      <PrimaryButton v-if="isAdminOrOwner" @click="openModal">
+      <PrimaryButton @click="openModal">
         <PlusIcon class="size-5" />
         Invite Member
       </PrimaryButton>

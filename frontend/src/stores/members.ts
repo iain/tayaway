@@ -49,10 +49,11 @@ export const useMembersStore = defineStore('members', () => {
     }
   }
 
-  async function createInvite(email: string) {
+  async function createInvite(email: string, name?: string) {
     const workspaceId = useWorkspaceStore().currentWorkspaceId!
     await api.post<InviteResponse>('/invites', {
       email,
+      name,
       workspace_id: workspaceId,
     })
     await fetchInvites()

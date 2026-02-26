@@ -11,6 +11,7 @@ class WorkspaceInvite < T::Struct
   const :workspace_id, UUID
   const :invited_by, T.nilable(UUID)
   const :email, EmailAddress
+  const :name, T.nilable(String)
   const :token, String
   const :expires_at, Time
   const :accepted_at, T.nilable(Time)
@@ -24,6 +25,7 @@ class WorkspaceInvite < T::Struct
       workspaceId: workspace_id.to_s,
       invitedBy: invited_by&.to_s,
       email: email.to_s,
+      name: name,
       expiresAt: expires_at.iso8601(3),
       acceptedAt: accepted_at&.iso8601(3),
       createdAt: created_at.iso8601(3)
@@ -77,6 +79,7 @@ class WorkspaceInvite < T::Struct
         workspace_id: UUID.new(row[:workspace_id]),
         invited_by: row[:invited_by] ? UUID.new(row[:invited_by]) : nil,
         email: EmailAddress.new(row[:email]),
+        name: row[:name],
         token: row[:token],
         expires_at: row[:expires_at],
         accepted_at: row[:accepted_at],

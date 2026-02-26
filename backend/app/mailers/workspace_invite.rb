@@ -7,24 +7,26 @@ module Mailers
     class << self
       extend T::Sig
 
-      sig { params(email: T.any(String, EmailAddress), invite_link: String, workspace_name: String).void }
-      def send_email(email:, invite_link:, workspace_name:)
-        message = build_message(email: email.to_s, invite_link: invite_link, workspace_name: workspace_name)
+      sig { params(email: T.any(String, EmailAddress), invite_link: String, workspace_name: String, name: T.nilable(String)).void }
+      def send_email(email:, invite_link:, workspace_name:, name: nil)
+        message = build_message(email: email.to_s, invite_link: invite_link, workspace_name: workspace_name, name: name)
         Mailers::Base.deliver_later(message)
       end
 
       private
 
-      sig { params(email: String, invite_link: String, workspace_name: String).returns(Mail::Message) }
-      def build_message(email:, invite_link:, workspace_name:)
+      sig { params(email: String, invite_link: String, workspace_name: String, name: T.nilable(String)).returns(Mail::Message) }
+      def build_message(email:, invite_link:, workspace_name:, name: nil)
         message = Mail.new
         message.to      email
         message.from    Mailers::Base.from_address
         message.subject "Join #{workspace_name} on Tayaway"
 
+        greeting = name ? "Hi #{name},\n\n" : ""
+
         text = Mail::Part.new
         text.body = <<~TEXT
-          You've been invited to join #{workspace_name} on Tayaway
+          #{greeting}You've been invited to join #{workspace_name} on Tayaway
 
           Click the link below to accept the invitation:
 
@@ -46,6 +48,7 @@ module Mailers
                 <table width="480" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;padding:40px;">
                   <tr><td style="text-align:center;">
                     <h1 style="margin:0 0 16px;font-size:24px;color:#18181b;">Join #{workspace_name}</h1>
+                    #{name ? "<p style=\"margin:0 0 8px;font-size:16px;color:#52525b;line-height:1.5;\">Hi #{name},</p>" : ""}
                     <p style="margin:0 0 32px;font-size:16px;color:#52525b;line-height:1.5;">
                       You&rsquo;ve been invited to join <strong>#{workspace_name}</strong> on Tayaway.
                     </p>
