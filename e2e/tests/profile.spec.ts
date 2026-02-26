@@ -91,22 +91,23 @@ test.describe('Profile Feature', () => {
       expect(badBdayResponse.status()).toBe(400)
       const badBdayBody = await badBdayResponse.json()
       expect(badBdayBody.error).toBe('Invalid birthday format')
-    })
 
-    test('contact fields returned in /me response', async () => {
-      // Set contact fields first
-      await apiContext.put(`${API_BASE}/api/users/${userId}`, {
-        data: {
-          name: TEST_NAME,
-          phoneNumber: '+44123456789',
-          birthday: '1985-03-20',
-          locationName: 'London, UK',
-          latitude: 51.5074,
-          longitude: -0.1278,
-        },
-      })
+      // Set all contact fields at once and verify /me returns them
+      const allFieldsResponse = await apiContext.put(
+        `${API_BASE}/api/users/${userId}`,
+        {
+          data: {
+            name: TEST_NAME,
+            phoneNumber: '+44123456789',
+            birthday: '1985-03-20',
+            locationName: 'London, UK',
+            latitude: 51.5074,
+            longitude: -0.1278,
+          },
+        }
+      )
+      expect(allFieldsResponse.ok()).toBeTruthy()
 
-      // Verify /me includes the new fields
       const meResponse = await apiContext.get(`${API_BASE}/api/auth/me`)
       expect(meResponse.ok()).toBeTruthy()
       const meBody = await meResponse.json()
