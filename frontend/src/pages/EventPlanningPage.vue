@@ -2,7 +2,11 @@
 import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowPathIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline'
+import {
+  ArrowPathIcon,
+  CalendarDaysIcon,
+  CheckCircleIcon,
+} from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 import { useDatePollsStore } from '@/stores/datePolls'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
@@ -10,7 +14,7 @@ import { isPollActive, isPollResolved } from '@/utils/poll'
 import DatePollSection from '@/components/events/DatePollSection.vue'
 import AwaitingVotesSection from '@/components/events/AwaitingVotesSection.vue'
 import OpenPollModal from '@/components/events/OpenPollModal.vue'
-import TextButton from '@/components/common/TextButton.vue'
+import PrimaryButton from '@/components/common/PrimaryButton.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -26,6 +30,15 @@ const { event } = useHydratedEvent(eventId)
 
 const isOwner = computed(() => {
   return currentUserId.value === event.value?.userId
+})
+
+const eventHasStarted = computed(() => {
+  const sd = event.value?.startDate
+  return !!sd && sd < new Date().toISOString().slice(0, 10)
+})
+
+const canOpenOrReopenPoll = computed(() => {
+  return isOwner.value && !!event.value && !eventHasStarted.value
 })
 
 function handleVote(): void {
@@ -64,20 +77,6 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
     </div>
 
     <div v-else>
-      <div v-if="isOwner" class="mb-6 flex justify-end gap-3">
-        <TextButton
-          v-if="isPollResolved(event?.datePoll)"
-          @click="handleReopenPoll"
-        >
-          <ArrowPathIcon class="size-4" />
-          Reopen Poll
-        </TextButton>
-        <TextButton v-if="!event?.datePoll" @click="handleOpenPoll">
-          <CalendarDaysIcon class="size-4" />
-          Open Date Poll
-        </TextButton>
-      </div>
-
       <!-- Poll open/expired: show poll sections -->
       <div
         v-if="isPollActive(event.datePoll)"
@@ -96,18 +95,102 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
         />
       </div>
 
-      <!-- Poll resolved: show closed message -->
+      <!-- Poll resolved: show closed state -->
       <div
         v-else-if="isPollResolved(event.datePoll)"
-        class="py-8 text-center text-gray-500 dark:text-stone-400"
+        class="flex flex-col items-center py-12 text-center"
       >
-        <p class="text-lg font-medium">Voting is closed</p>
-        <p>The date poll is no longer accepting votes.</p>
+        <CheckCircleIcon
+          class="mb-4 size-12 text-gray-400 dark:text-stone-500"
+        />
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-stone-100">
+          Date poll closed
+        </h2>
+        <p class="mt-1 max-w-sm text-gray-500 dark:text-stone-400">
+          The date poll has been resolved and is no longer accepting votes.
+        </p>
+        <button
+          v-if="canOpenOrReopenPoll"
+          class="mt-6 inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500"
+          @click="handleReopenPoll"
+        >
+          <ArrowPathIcon class="size-4" />
+          Reopen Poll
+        </button>
+        <p
+          v-if="isOwner && eventHasStarted"
+          class="mt-4 text-sm text-gray-400 dark:text-stone-500"
+        >
+          The poll can't be reopened because the event has already started.
+        </p>
       </div>
 
-      <!-- No poll + not owner: show placeholder -->
-      <div v-else-if="!isOwner" class="text-gray-500 dark:text-stone-400">
-        No date poll has been opened yet.
+      <!-- No poll: show empty state -->
+      <div v-else class="flex flex-col items-center py-12 text-center">
+        <CalendarDaysIcon
+          class="mb-4 size-12 text-gray-400 dark:text-stone-500"
+        />
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-stone-100">
+          Plan your event dates
+        </h2>
+        <p class="mt-1 max-w-sm text-gray-500 dark:text-stone-400">
+          Use a date poll to find the best dates for your event. Members vote on
+          proposed dates and the organiser picks the winner.
+        </p>
+        <ol class="mt-6 space-y-3 text-left text-sm">
+          <li class="flex gap-3">
+            <span
+              class="flex size-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-700 dark:bg-sky-900 dark:text-sky-300"
+              >1</span
+            >
+            <span class="text-gray-700 dark:text-stone-300"
+              ><strong>Create a date poll</strong> — Set a voting deadline</span
+            >
+          </li>
+          <li class="flex gap-3">
+            <span
+              class="flex size-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-700 dark:bg-sky-900 dark:text-sky-300"
+              >2</span
+            >
+            <span class="text-gray-700 dark:text-stone-300"
+              ><strong>Add date options</strong> — Propose date ranges to vote
+              on</span
+            >
+          </li>
+          <li class="flex gap-3">
+            <span
+              class="flex size-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-700 dark:bg-sky-900 dark:text-sky-300"
+              >3</span
+            >
+            <span class="text-gray-700 dark:text-stone-300"
+              ><strong>Members vote</strong> — Everyone picks their preferred
+              dates</span
+            >
+          </li>
+          <li class="flex gap-3">
+            <span
+              class="flex size-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-700 dark:bg-sky-900 dark:text-sky-300"
+              >4</span
+            >
+            <span class="text-gray-700 dark:text-stone-300"
+              ><strong>Select the winner</strong> — Choose the best date for the
+              event</span
+            >
+          </li>
+        </ol>
+        <PrimaryButton
+          v-if="canOpenOrReopenPoll"
+          class="mt-6"
+          @click="handleOpenPoll"
+        >
+          Open Date Poll
+        </PrimaryButton>
+        <p
+          v-if="isOwner && eventHasStarted"
+          class="mt-4 text-sm text-gray-400 dark:text-stone-500"
+        >
+          A date poll can't be opened because the event has already started.
+        </p>
       </div>
     </div>
   </div>
