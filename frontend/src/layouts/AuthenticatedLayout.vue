@@ -17,7 +17,6 @@ import {
   SunIcon,
   MoonIcon,
   ChevronDownIcon,
-  CalendarDaysIcon,
 } from '@heroicons/vue/24/outline'
 import {
   useAuthStore,
@@ -27,9 +26,8 @@ import {
 } from '@/stores'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useDarkMode } from '@/composables/useDarkMode'
-import { eventHasDates } from '@/utils/event'
 import CommandPalette from '@/components/common/CommandPalette.vue'
-import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
+import EventSubheader from '@/components/events/EventSubheader.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -110,28 +108,6 @@ watchEffect(() => {
   if (currentWorkspace.value?.name) parts.push(currentWorkspace.value.name)
   document.title = parts.length > 0 ? parts.join(' - ') : 'Tayaway'
 })
-
-const eventSubNavTab = computed(() => {
-  const name = currentRouteName.value as string
-  if (
-    name === 'event-planning' ||
-    name === 'event-planning-vote' ||
-    name === 'event-planning-date-ranges'
-  )
-    return 'planning'
-  if (name === 'event-rsvp') return 'rsvp'
-  if (name === 'event-expenses') return 'expenses'
-  return null
-})
-
-function subNavClass(active: boolean): string {
-  return [
-    'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-    active
-      ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
-      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-stone-400 dark:hover:bg-stone-700 dark:hover:text-stone-100',
-  ].join(' ')
-}
 
 function isActive(routeName: string): boolean {
   const currentName = currentRouteName.value as string
@@ -491,59 +467,8 @@ function getInitials(email: string | undefined): string {
       </div>
     </header>
 
-    <div
-      v-if="currentEventName"
-      class="border-b border-gray-200 bg-white dark:border-stone-700 dark:bg-stone-800"
-    >
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between py-3">
-          <div>
-            <p
-              class="text-xs font-medium tracking-wide text-gray-500 uppercase dark:text-stone-400"
-            >
-              Event
-            </p>
-            <h2
-              data-testid="event-name"
-              class="text-lg font-semibold text-gray-900 dark:text-white"
-            >
-              {{ currentEventName }}
-            </h2>
-            <p
-              v-if="eventHasDates(currentEvent)"
-              data-testid="event-dates"
-              class="hidden items-center gap-1 text-xs text-gray-500 sm:flex dark:text-stone-400"
-            >
-              <CalendarDaysIcon class="size-3.5" />
-              <DateRangeDisplay
-                :start-date="currentEvent!.startDate!"
-                :end-date="currentEvent!.endDate!"
-              />
-            </p>
-          </div>
-          <nav class="flex items-center gap-1">
-            <router-link
-              :to="`/events/${route.params.id}/planning`"
-              :class="subNavClass(eventSubNavTab === 'planning')"
-            >
-              Planning
-            </router-link>
-            <router-link
-              :to="`/events/${route.params.id}/rsvp`"
-              :class="subNavClass(eventSubNavTab === 'rsvp')"
-            >
-              RSVP
-            </router-link>
-            <router-link
-              :to="`/events/${route.params.id}/expenses`"
-              :class="subNavClass(eventSubNavTab === 'expenses')"
-            >
-              Expenses
-            </router-link>
-          </nav>
-        </div>
-      </div>
-    </div>
+    <!-- Event subheader -->
+    <EventSubheader v-if="currentEvent" :event="currentEvent" />
 
     <main>
       <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
