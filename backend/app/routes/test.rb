@@ -44,13 +44,20 @@ class App
 
         now = Time.now
         membership_id = SecureRandom.uuid
-        DB[:workspace_memberships].insert(
-          id: membership_id,
-          workspace_id: workspace_id,
-          user_id: user.id.to_s,
-          role: "member",
-          created_at: now
-        )
+        begin
+          DB[:workspace_memberships].insert(
+            id: membership_id,
+            workspace_id: workspace_id,
+            user_id: user.id.to_s,
+            role: "member",
+            created_at: now
+          )
+        rescue Sequel::UniqueConstraintViolation
+          # Race condition: another request inserted between our check and insert
+          existing = WorkspaceMembership.find_by_workspace_and_user(workspace_id, user.id)
+          response.status = 200
+          next { member_id: existing.id.to_s }
+        end
         Broadcaster.object_changed("member", membership_id, workspace_id: workspace_id)
 
         response.status = 201
