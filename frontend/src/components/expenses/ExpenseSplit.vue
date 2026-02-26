@@ -133,9 +133,12 @@ function formatBalance(balance: number): string {
           >
             <th class="pt-3 pr-4 pb-2 pl-2">Name</th>
             <th class="hidden pt-3 pr-4 pb-2 sm:table-cell">Days</th>
-            <th class="pt-3 pr-4 pb-2 text-right">Paid</th>
-            <th class="pt-3 pr-4 pb-2 text-right">Fair share</th>
-            <th class="pt-3 pr-2 pb-2 text-right">Balance</th>
+            <th class="pt-3 pr-4 pb-2 text-right whitespace-nowrap">Paid</th>
+            <th class="pt-3 pr-4 pb-2 text-right">
+              <span class="sm:hidden">Share</span>
+              <span class="hidden sm:inline">Fair share</span>
+            </th>
+            <th class="pt-3 pr-2 pb-2 text-right whitespace-nowrap">Balance</th>
           </tr>
         </thead>
         <tbody>
@@ -145,18 +148,22 @@ function formatBalance(balance: number): string {
             class="text-gray-800 dark:text-stone-200"
             :class="i % 2 === 0 ? 'bg-gray-50 dark:bg-black/20' : ''"
           >
-            <td class="py-2 pr-4 pl-2 font-medium">{{ row.name }}</td>
+            <td
+              class="sm:truncate-none max-w-[6rem] truncate py-2 pr-4 pl-2 font-medium sm:max-w-none"
+            >
+              {{ row.name }}
+            </td>
             <td
               class="hidden py-2 pr-4 text-gray-600 sm:table-cell dark:text-stone-400"
             >
               {{ formatDays(row.days) }}
             </td>
             <td
-              class="py-2 pr-4 text-right font-mono text-gray-600 dark:text-stone-400"
+              class="py-2 pr-4 text-right font-mono whitespace-nowrap text-gray-600 dark:text-stone-400"
             >
               {{ formatAmount(row.paid) }}
             </td>
-            <td class="py-2 pr-4 text-right font-mono">
+            <td class="py-2 pr-4 text-right font-mono whitespace-nowrap">
               {{ formatAmount(row.share) }}
             </td>
             <td

@@ -42,8 +42,10 @@ function tabClass(active: boolean): string {
     class="border-b border-gray-200 bg-white dark:border-stone-700 dark:bg-stone-800"
   >
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between py-3">
-        <div>
+      <div
+        class="flex flex-col py-3 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div class="min-w-0">
           <p
             class="text-xs font-medium tracking-wide text-gray-500 uppercase dark:text-stone-400"
           >
@@ -52,7 +54,7 @@ function tabClass(active: boolean): string {
           <router-link
             :to="`/events/${eventId}`"
             data-testid="event-name"
-            class="text-lg font-semibold text-gray-900 hover:text-amber-700 dark:text-white dark:hover:text-amber-400"
+            class="block truncate text-lg font-semibold text-gray-900 hover:text-amber-700 dark:text-white dark:hover:text-amber-400"
           >
             {{ event.name }}
           </router-link>
@@ -68,7 +70,7 @@ function tabClass(active: boolean): string {
             />
           </p>
         </div>
-        <nav class="flex items-center gap-1">
+        <nav class="mt-1 flex items-center gap-1 sm:mt-0">
           <router-link
             :to="`/events/${eventId}/planning`"
             :class="tabClass(activeTab === 'planning')"

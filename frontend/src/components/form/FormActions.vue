@@ -21,7 +21,7 @@ defineEmits<{
     <button
       type="button"
       data-testid="cancel-button"
-      class="text-sm/6 font-semibold text-gray-900 dark:text-white"
+      class="px-3 py-2 text-sm/6 font-semibold text-gray-900 dark:text-white"
       @click="$emit('cancel')"
     >
       {{ cancelLabel ?? 'Cancel' }}

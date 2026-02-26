@@ -36,6 +36,7 @@ import {
 } from '@/stores'
 import { useDarkMode } from '@/composables/useDarkMode'
 import { useTaskActions } from '@/composables/useTaskActions'
+import { useCommandPalette } from '@/composables/useCommandPalette'
 
 interface NavAction {
   type: 'action'
@@ -74,6 +75,7 @@ const wsStore = useWebSocketStore()
 const workspaceStore = useWorkspaceStore()
 const { isDark, toggle: toggleDarkMode } = useDarkMode()
 const { triggerNewList } = useTaskActions()
+const { isOpen: open } = useCommandPalette()
 
 async function resetLocalCache(): Promise<void> {
   await poolDb.clearAll()
@@ -175,7 +177,6 @@ const quickActions = computed<NavAction[]>(() => [
   },
 ])
 
-const open = ref(false)
 const query = ref('')
 
 const filteredEvents = computed<EventResult[]>(() => {

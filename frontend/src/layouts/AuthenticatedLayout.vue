@@ -17,6 +17,7 @@ import {
   SunIcon,
   MoonIcon,
   ChevronDownIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/vue/24/outline'
 import {
   useAuthStore,
@@ -28,6 +29,7 @@ import { useObjectPoolStore } from '@/stores/objectPool'
 import { useDarkMode } from '@/composables/useDarkMode'
 import CommandPalette from '@/components/common/CommandPalette.vue'
 import EventSubheader from '@/components/events/EventSubheader.vue'
+import { useCommandPalette } from '@/composables/useCommandPalette'
 
 const router = useRouter()
 const route = useRoute()
@@ -48,6 +50,7 @@ function handleSwitchWorkspace(workspaceId: string) {
   wsStore.sendSwitchWorkspace(workspaceId)
 }
 const { isDark, toggle: toggleDarkMode } = useDarkMode()
+const { open: openCommandPalette } = useCommandPalette()
 
 const navigation = [
   { name: 'Dashboard', href: '/', routeName: 'home' },
@@ -390,6 +393,19 @@ function getInitials(email: string | undefined): string {
           >
             {{ item.name }}
           </router-link>
+          <button
+            type="button"
+            class="text-nav-text hover:bg-nav-hover hover:bg-opacity-75 flex w-full items-center gap-2 rounded-md px-3 py-2 text-base font-medium"
+            @click="
+              () => {
+                close()
+                openCommandPalette()
+              }
+            "
+          >
+            <MagnifyingGlassIcon class="size-5" aria-hidden="true" />
+            Search
+          </button>
         </div>
         <div class="border-nav-active border-t pt-4 pb-3">
           <div class="flex items-center px-5">
@@ -490,7 +506,7 @@ function getInitials(email: string | undefined): string {
   >
     <div
       v-if="pendingCount > 0 && wsState !== 'authenticated'"
-      class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2"
+      class="fixed bottom-20 left-1/2 z-50 -translate-x-1/2"
     >
       <div
         class="flex items-center gap-2 rounded-full bg-amber-600 px-4 py-2 text-sm font-medium text-white shadow-lg dark:bg-amber-700"

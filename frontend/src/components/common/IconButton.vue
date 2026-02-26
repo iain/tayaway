@@ -18,7 +18,7 @@ const classes = computed(() => [
   props.variant === 'danger'
     ? 'text-gray-400 hover:text-red-500 dark:text-stone-500 dark:hover:text-red-400'
     : 'text-gray-400 hover:text-gray-600 dark:text-stone-500 dark:hover:text-stone-300',
-  props.hoverReveal && 'sm:opacity-0 sm:group-hover:opacity-100',
+  props.hoverReveal && 'lg:opacity-0 lg:group-hover:opacity-100',
   props.disabled && 'disabled:opacity-50',
 ])
 </script>

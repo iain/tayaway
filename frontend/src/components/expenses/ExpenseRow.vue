@@ -125,7 +125,7 @@ async function handleDelete(e: Event) {
     ]"
     @click="toggleExpand"
   >
-    <td class="py-3 pr-4 pl-2 align-middle">
+    <td class="min-w-0 py-3 pr-4 pl-2 align-middle">
       <p class="truncate text-sm text-gray-900 dark:text-white">
         {{ expense.description }}
       </p>

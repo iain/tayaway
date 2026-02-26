@@ -101,12 +101,12 @@ async function handleSave(data: {
     Event not found
   </div>
 
-  <div v-else class="flex gap-8">
+  <div v-else class="flex lg:gap-8">
     <!-- Left column: event details -->
     <div class="min-w-0 flex-1">
       <div class="group flex items-start gap-2">
         <h1
-          class="text-4xl font-bold tracking-tight text-gray-900 dark:text-white"
+          class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl lg:text-4xl dark:text-white"
         >
           {{ event.name }}
         </h1>

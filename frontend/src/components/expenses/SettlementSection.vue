@@ -135,9 +135,9 @@ async function handlePaidClick(
         class="overflow-hidden rounded-lg border border-gray-200 dark:border-stone-700"
       >
         <div
-          class="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-3 py-2 dark:border-stone-700 dark:bg-stone-800/50"
+          class="flex flex-wrap items-center justify-between gap-y-1 border-b border-gray-200 bg-gray-50 px-3 py-2 dark:border-stone-700 dark:bg-stone-800/50"
         >
-          <div class="flex items-center gap-2">
+          <div class="flex min-w-0 items-center gap-2">
             <span class="text-xs text-gray-500 dark:text-stone-400">
               Settled by {{ getMemberName(settlement.userId) }} on
               {{ formatDate(settlement.createdAt) }}
@@ -165,20 +165,20 @@ async function handlePaidClick(
           <div
             v-for="transfer in transfersForSettlement(settlement.id)"
             :key="transfer.id"
-            class="flex items-center justify-between px-3 py-2"
+            class="flex flex-wrap items-center justify-between gap-y-1 px-3 py-2"
           >
-            <div class="flex items-center gap-2">
-              <span class="text-sm text-gray-800 dark:text-stone-200">
+            <div class="flex min-w-0 items-center gap-2">
+              <span class="truncate text-sm text-gray-800 dark:text-stone-200">
                 {{ getMemberName(transfer.fromUserId) }}
               </span>
-              <span class="text-xs text-gray-400 dark:text-stone-500">
+              <span class="shrink-0 text-xs text-gray-400 dark:text-stone-500">
                 &rarr;
               </span>
-              <span class="text-sm text-gray-800 dark:text-stone-200">
+              <span class="truncate text-sm text-gray-800 dark:text-stone-200">
                 {{ getMemberName(transfer.toUserId) }}
               </span>
               <span
-                class="font-mono text-sm font-medium text-gray-900 dark:text-white"
+                class="shrink-0 font-mono text-sm font-medium text-gray-900 dark:text-white"
               >
                 {{ formatAmount(transfer.amount) }}
               </span>
