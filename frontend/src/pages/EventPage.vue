@@ -12,9 +12,11 @@ import { useHydratedEvent } from '@/composables/useHydratedEvent'
 import { eventHasDates } from '@/utils/event'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import EditEventModal from '@/components/events/EditEventModal.vue'
+import BaseModal from '@/components/common/BaseModal.vue'
 import StaticMap from '@/components/common/StaticMap.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useEventsStore } from '@/stores'
+import { useObjectPoolStore } from '@/stores/objectPool'
 import { generateIcs, downloadIcs } from '@/utils/ics'
 
 const route = useRoute()
@@ -28,11 +30,22 @@ const isOwner = computed(() => currentUserId.value === event.value?.userId)
 const eventsStore = useEventsStore()
 const { loading } = storeToRefs(eventsStore)
 
+const pool = useObjectPoolStore()
+const hasExpenses = computed(() => {
+  void pool.version
+  return pool.getAll('expense').some((e) => e.eventId === eventId.value)
+})
+
 type EditField = 'name' | 'description' | 'dates' | 'location'
 const editField = ref<EditField>('name')
 const modalOpen = ref(false)
+const datesBlockedOpen = ref(false)
 
 function openEdit(field: EditField): void {
+  if (field === 'dates' && hasExpenses.value) {
+    datesBlockedOpen.value = true
+    return
+  }
   editField.value = field
   modalOpen.value = true
 }
@@ -223,5 +236,26 @@ async function handleSave(data: {
       @close="modalOpen = false"
       @save="handleSave"
     />
+
+    <BaseModal
+      :open="datesBlockedOpen"
+      title="Can't change dates"
+      @close="datesBlockedOpen = false"
+    >
+      <p class="text-gray-600 dark:text-stone-300">
+        This event has expenses that are tied to the current date range.
+        Changing the dates could make those expenses fall outside the event
+        period.
+      </p>
+      <div class="mt-6 flex justify-end">
+        <button
+          type="button"
+          class="rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-700 dark:bg-cyan-700 dark:hover:bg-cyan-600"
+          @click="datesBlockedOpen = false"
+        >
+          Got it
+        </button>
+      </div>
+    </BaseModal>
   </div>
 </template>
