@@ -25,6 +25,98 @@ test.describe('Profile Feature', () => {
       await apiContext.dispose()
     })
 
+    test('update contact fields: phone, birthday, location', async () => {
+      // Update phone
+      const phoneResponse = await apiContext.put(
+        `${API_BASE}/api/users/${userId}`,
+        {
+          data: { name: TEST_NAME, phoneNumber: '+31612345678' },
+        }
+      )
+      expect(phoneResponse.ok()).toBeTruthy()
+      const phoneBody = await phoneResponse.json()
+      const phoneMember = getObjectByType(phoneBody.objects, 'member')
+      expect(phoneMember!.phoneNumber).toBe('+31612345678')
+
+      // Update birthday
+      const bdayResponse = await apiContext.put(
+        `${API_BASE}/api/users/${userId}`,
+        {
+          data: { name: TEST_NAME, birthday: '1990-06-15' },
+        }
+      )
+      expect(bdayResponse.ok()).toBeTruthy()
+      const bdayBody = await bdayResponse.json()
+      const bdayMember = getObjectByType(bdayBody.objects, 'member')
+      expect(bdayMember!.birthday).toBe('1990-06-15')
+
+      // Update location with coordinates
+      const locResponse = await apiContext.put(
+        `${API_BASE}/api/users/${userId}`,
+        {
+          data: {
+            name: TEST_NAME,
+            locationName: 'Berlin, Germany',
+            latitude: 52.52,
+            longitude: 13.405,
+          },
+        }
+      )
+      expect(locResponse.ok()).toBeTruthy()
+      const locBody = await locResponse.json()
+      const locMember = getObjectByType(locBody.objects, 'member')
+      expect(locMember!.locationName).toBe('Berlin, Germany')
+      expect(locMember!.latitude).toBeCloseTo(52.52, 1)
+      expect(locMember!.longitude).toBeCloseTo(13.405, 1)
+
+      // Clear phone
+      const clearPhoneResponse = await apiContext.put(
+        `${API_BASE}/api/users/${userId}`,
+        {
+          data: { name: TEST_NAME, phoneNumber: '' },
+        }
+      )
+      expect(clearPhoneResponse.ok()).toBeTruthy()
+      const clearPhoneBody = await clearPhoneResponse.json()
+      const clearPhoneMember = getObjectByType(clearPhoneBody.objects, 'member')
+      expect(clearPhoneMember!.phoneNumber).toBeNull()
+
+      // Invalid birthday
+      const badBdayResponse = await apiContext.put(
+        `${API_BASE}/api/users/${userId}`,
+        {
+          data: { name: TEST_NAME, birthday: 'not-a-date' },
+        }
+      )
+      expect(badBdayResponse.status()).toBe(400)
+      const badBdayBody = await badBdayResponse.json()
+      expect(badBdayBody.error).toBe('Invalid birthday format')
+    })
+
+    test('contact fields returned in /me response', async () => {
+      // Set contact fields first
+      await apiContext.put(`${API_BASE}/api/users/${userId}`, {
+        data: {
+          name: TEST_NAME,
+          phoneNumber: '+44123456789',
+          birthday: '1985-03-20',
+          locationName: 'London, UK',
+          latitude: 51.5074,
+          longitude: -0.1278,
+        },
+      })
+
+      // Verify /me includes the new fields
+      const meResponse = await apiContext.get(`${API_BASE}/api/auth/me`)
+      expect(meResponse.ok()).toBeTruthy()
+      const meBody = await meResponse.json()
+      expect(meBody.phoneNumber).toBe('+44123456789')
+      expect(meBody.birthday).toBe('1985-03-20')
+      expect(meBody.locationName).toBe('London, UK')
+      expect(meBody.latitude).toBeCloseTo(51.5074, 1)
+      expect(meBody.longitude).toBeCloseTo(-0.1278, 1)
+    })
+
     test('update name lifecycle: 401 without auth, 403/404 for other user, 400 for empty name, success', async ({
       request,
     }) => {
@@ -127,6 +219,67 @@ test.describe('Profile Feature', () => {
 
       // Updated name should appear on the profile page
       await expect(page.getByText('New E2E Name')).toBeVisible()
+    })
+
+    test('displays contact fields and can edit them via modal', async ({
+      page,
+      request,
+    }) => {
+      // Use a unique user for this test to avoid conflicts
+      const contactEmail = `e2e-profile-contact-${crypto.randomUUID()}@example.com`
+      const { token: contactToken, userId: contactUserId } =
+        await getTestSession(request, contactEmail, 'Contact Test')
+
+      // Set initial contact fields via API
+      await request.put(`${API_BASE}/api/users/${contactUserId}`, {
+        data: {
+          name: 'Contact Test',
+          phoneNumber: '+31600000000',
+          birthday: '1990-01-15',
+        },
+      })
+
+      await setupAuthenticatedPage(page, contactToken)
+      await page.goto('/profile')
+
+      // Wait for the page to load
+      await expect(page.getByTestId('account-info-heading')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+
+      // Verify contact fields are displayed
+      await expect(page.getByText('+31600000000')).toBeVisible()
+      await expect(page.getByText('15/01/1990')).toBeVisible()
+
+      // Click edit contact button to open the modal
+      await page.getByTestId('edit-contact-button').click()
+      await expect(page.getByRole('dialog')).toBeVisible()
+      await expect(
+        page
+          .getByRole('dialog')
+          .getByRole('heading', { name: 'Edit Contact Info' })
+      ).toBeVisible()
+
+      // Update phone number in the modal
+      const phoneInput = page.getByLabel('Phone')
+      await phoneInput.clear()
+      await phoneInput.fill('+31611111111')
+
+      // Save and wait for the API response
+      await Promise.all([
+        page.waitForResponse(
+          (resp) =>
+            resp.url().includes('/api/users/') &&
+            resp.request().method() === 'PUT'
+        ),
+        page.getByRole('button', { name: 'Save' }).click(),
+      ])
+
+      // Modal should close
+      await expect(page.getByRole('dialog')).toBeHidden()
+
+      // Updated phone should appear on the profile page
+      await expect(page.getByText('+31611111111')).toBeVisible()
     })
 
     test('can end a non-current session from the sessions list', async ({

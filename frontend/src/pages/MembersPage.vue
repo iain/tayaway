@@ -6,6 +6,7 @@ import {
   PlusIcon,
   EnvelopeIcon,
   XMarkIcon,
+  ArrowDownTrayIcon,
 } from '@heroicons/vue/24/outline'
 import { useMembersStore, useNotificationsStore } from '@/stores'
 import { useAuthStore } from '@/stores/auth'
@@ -15,6 +16,7 @@ import PageHeader from '@/components/common/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import PrimaryButton from '@/components/common/PrimaryButton.vue'
 import type { PoolMember } from '@/types/pool'
+import { generateVCard, downloadVCard } from '@/utils/vcard'
 
 const membersStore = useMembersStore()
 const { members, pendingInvites } = storeToRefs(membersStore)
@@ -94,6 +96,20 @@ async function handleCancelInvite(id: string): Promise<void> {
     const notifications = useNotificationsStore()
     notifications.showError('Failed to cancel invitation')
   }
+}
+
+function handleDownloadVCard(member: PoolMember): void {
+  const content = generateVCard({
+    name: member.name,
+    email: member.email,
+    phoneNumber: member.phoneNumber,
+    birthday: member.birthday,
+    locationName: member.locationName,
+    latitude: member.latitude,
+    longitude: member.longitude,
+  })
+  const filename = `${member.name || member.email}.vcf`
+  downloadVCard(filename, content)
 }
 
 onMounted(() => {
@@ -204,12 +220,22 @@ onMounted(() => {
           <div class="flex items-center">
             <UserIcon class="mr-4 size-10 text-gray-400" />
             <div class="min-w-0 flex-1">
-              <h2
-                data-testid="member-name"
-                class="truncate text-lg font-semibold text-gray-900 dark:text-white"
-              >
-                {{ member.name || 'No name' }}
-              </h2>
+              <div class="flex items-center justify-between">
+                <h2
+                  data-testid="member-name"
+                  class="truncate text-lg font-semibold text-gray-900 dark:text-white"
+                >
+                  {{ member.name || 'No name' }}
+                </h2>
+                <button
+                  data-testid="download-vcard-button"
+                  class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-stone-700 dark:hover:text-stone-300"
+                  title="Download contact card"
+                  @click="handleDownloadVCard(member)"
+                >
+                  <ArrowDownTrayIcon class="size-5" />
+                </button>
+              </div>
               <div class="flex items-center gap-2">
                 <p
                   data-testid="member-email"

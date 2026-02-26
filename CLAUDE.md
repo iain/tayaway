@@ -111,7 +111,7 @@ All domain data belongs to a workspace. Backend routes verify membership. The fr
 ## Data Model
 
 ```
-users              id (UUID), email (CITEXT), name, timestamps
+users              id (UUID), email (CITEXT), name, phone_number (TEXT nullable), birthday (DATE nullable), location_name (TEXT nullable), location_coordinates (POINT nullable), timestamps
 sessions           id, user_id, token, expires_at (30 days)
 magic_link_tokens  id, user_id, token, email, expires_at (15 min), used_at
 email_change_tokens id, user_id, token (hashed), email (CITEXT — current email), new_email (CITEXT), expires_at (15 min), used_at, timestamps
@@ -219,7 +219,7 @@ Authenticated (admin/owner only):
 
 **Users (`/api/users`)** — Mixed authentication
 
-- `PUT /name` — Update display name (requires auth)
+- `PUT /:id` — Update profile (name, phone, birthday, location; requires auth, owner-only)
 - `POST /email-change/request` — Request email change verification link (requires auth)
 - `POST /email-change/verify` — Verify email change token and update email (unauthenticated — token is proof)
 
@@ -254,7 +254,7 @@ These types must stay in sync between frontend and backend:
 
 Defined in: `backend/app/object_registry.rb` and `frontend/src/types/pool.ts`
 
-**Note:** The `member` pool object includes a `userId` field that maps to the underlying user. Domain objects (event, vote, rsvp, taskList, taskItem, expense) carry `userId` directly — the frontend uses `pool.findBy('member', 'userId', obj.userId)` to resolve the member.
+**Note:** The `member` pool object includes a `userId` field that maps to the underlying user, plus contact fields from the user: `phoneNumber`, `birthday`, `locationName`, `latitude`, `longitude`. Domain objects (event, vote, rsvp, taskList, taskItem, expense) carry `userId` directly — the frontend uses `pool.findBy('member', 'userId', obj.userId)` to resolve the member.
 
 ## Adding a New Object Type
 

@@ -8,6 +8,10 @@ class User < T::Struct
   const :id, UUID
   const :email, EmailAddress
   const :name, T.nilable(String)
+  const :phone_number, T.nilable(String)
+  const :birthday, T.nilable(Date)
+  const :location_name, T.nilable(String)
+  const :location_coordinates, T.nilable(T::Array[Float])
   const :created_at, Time
   const :updated_at, Time
 
@@ -18,6 +22,11 @@ class User < T::Struct
       objectType: "user",
       email: email.to_s,
       name: name,
+      phoneNumber: phone_number,
+      birthday: birthday&.iso8601,
+      locationName: location_name,
+      latitude: location_coordinates&.[](1),
+      longitude: location_coordinates&.[](0),
       createdAt: created_at.iso8601(3),
       updatedAt: updated_at.iso8601(3)
     }
@@ -62,10 +71,20 @@ class User < T::Struct
 
     sig { params(row: T::Hash[Symbol, T.untyped]).returns(User) }
     def from_row(row)
+      point = row[:location_coordinates]
+      coords = if point.is_a?(String) && point.match?(/\A\(.+,.+\)\z/)
+                 parts = point.delete("()").split(",")
+                 [parts[0].to_f, parts[1].to_f]
+               end
+
       User.new(
         id: UUID.new(row[:id]),
         email: EmailAddress.new(row[:email]),
         name: row[:name],
+        phone_number: row[:phone_number],
+        birthday: row[:birthday],
+        location_name: row[:location_name],
+        location_coordinates: coords,
         created_at: row[:created_at],
         updated_at: row[:updated_at]
       )

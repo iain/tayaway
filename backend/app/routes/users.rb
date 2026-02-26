@@ -31,12 +31,17 @@ class App
     # /api/users/:id routes
     r.on String do |id|
       r.is do
-        # PUT /api/users/:id - Update user name (personal settings)
+        # PUT /api/users/:id - Update user profile (personal settings)
         r.put do
-          result = Users::UpdateName.call(
+          result = Users::UpdateProfile.call(
             user_id: id,
             current_user_id: user.id,
-            name: r.params["name"]&.strip
+            name: r.params["name"]&.strip,
+            phone_number: r.params["phoneNumber"],
+            birthday: r.params["birthday"],
+            location_name: r.params["locationName"],
+            latitude: r.params["latitude"]&.to_f,
+            longitude: r.params["longitude"]&.to_f
           )
           handle_result(result)
         end

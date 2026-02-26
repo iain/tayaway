@@ -165,6 +165,45 @@ test.describe('Member Role Management', () => {
       await expect(page.getByText(OWNER_NAME)).toBeVisible()
     })
 
+    test('members page shows vCard download button on each member', async ({
+      page,
+    }) => {
+      await setupAuthenticatedPage(page, ownerToken)
+      await page.goto('/members')
+
+      await expect(page.getByTestId('members-list')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+
+      // Each member card should have a download vCard button
+      const downloadButtons = page.getByTestId('download-vcard-button')
+      const count = await downloadButtons.count()
+      expect(count).toBeGreaterThanOrEqual(1)
+
+      // Verify the button has the correct title
+      await expect(downloadButtons.first()).toHaveAttribute(
+        'title',
+        'Download contact card'
+      )
+    })
+
+    test('vCard download triggers file download', async ({ page }) => {
+      await setupAuthenticatedPage(page, ownerToken)
+      await page.goto('/members')
+
+      await expect(page.getByTestId('members-list')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+
+      // Listen for the download event
+      const downloadPromise = page.waitForEvent('download')
+      await page.getByTestId('download-vcard-button').first().click()
+      const download = await downloadPromise
+
+      // Verify the downloaded file has a .vcf extension
+      expect(download.suggestedFilename()).toMatch(/\.vcf$/)
+    })
+
     test('owner can change member role via dropdown', async ({ page }) => {
       await setupAuthenticatedPage(page, ownerToken)
       await page.goto('/members')

@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import EditNameModal from '@/components/profile/EditNameModal.vue'
 import ChangeEmailModal from '@/components/profile/ChangeEmailModal.vue'
+import EditContactInfoModal from '@/components/profile/EditContactInfoModal.vue'
 import SessionsList from '@/components/profile/SessionsList.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
@@ -21,6 +22,10 @@ const editEmailLoading = ref(false)
 const editEmailError = ref<string | null>(null)
 const editEmailSuccess = ref<string | null>(null)
 
+const editContactOpen = ref(false)
+const editContactLoading = ref(false)
+const editContactError = ref<string | null>(null)
+
 async function handleSaveName(name: string): Promise<void> {
   editNameLoading.value = true
   editNameError.value = null
@@ -31,6 +36,31 @@ async function handleSaveName(name: string): Promise<void> {
     editNameError.value = 'Failed to update name. Please try again.'
   } finally {
     editNameLoading.value = false
+  }
+}
+
+function formatBirthday(iso: string): string {
+  const [year, month, day] = iso.split('-')
+  return `${day}/${month}/${year}`
+}
+
+async function handleSaveContactInfo(fields: {
+  phoneNumber: string | null
+  birthday: string | null
+  locationName: string | null
+  latitude: number | null
+  longitude: number | null
+}): Promise<void> {
+  if (!user.value) return
+  editContactLoading.value = true
+  editContactError.value = null
+  try {
+    await authStore.updateProfile(fields)
+    editContactOpen.value = false
+  } catch {
+    editContactError.value = 'Failed to update contact info. Please try again.'
+  } finally {
+    editContactLoading.value = false
   }
 }
 
@@ -106,6 +136,50 @@ async function handleRequestEmailChange(email: string): Promise<void> {
                   </TextButton>
                 </dd>
               </div>
+              <div class="py-4 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt
+                  class="text-sm font-medium text-gray-500 dark:text-stone-400"
+                >
+                  Phone
+                </dt>
+                <dd
+                  class="mt-1 flex items-center gap-2 text-sm text-gray-900 sm:col-span-2 sm:mt-0 dark:text-white"
+                >
+                  <span>{{ user?.phoneNumber ?? 'Not set' }}</span>
+                  <TextButton
+                    data-testid="edit-contact-button"
+                    @click="editContactOpen = true"
+                  >
+                    Edit
+                  </TextButton>
+                </dd>
+              </div>
+              <div class="py-4 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt
+                  class="text-sm font-medium text-gray-500 dark:text-stone-400"
+                >
+                  Birthday
+                </dt>
+                <dd
+                  class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 dark:text-white"
+                >
+                  {{
+                    user?.birthday ? formatBirthday(user.birthday) : 'Not set'
+                  }}
+                </dd>
+              </div>
+              <div class="py-4 sm:grid sm:grid-cols-3 sm:gap-4">
+                <dt
+                  class="text-sm font-medium text-gray-500 dark:text-stone-400"
+                >
+                  Address
+                </dt>
+                <dd
+                  class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 dark:text-white"
+                >
+                  {{ user?.locationName ?? 'Not set' }}
+                </dd>
+              </div>
             </dl>
           </div>
         </div>
@@ -134,6 +208,17 @@ async function handleRequestEmailChange(email: string): Promise<void> {
       :error="editEmailError"
       @close="editEmailOpen = false"
       @submit="handleRequestEmailChange"
+    />
+    <EditContactInfoModal
+      :open="editContactOpen"
+      :loading="editContactLoading"
+      :current-phone="user?.phoneNumber ?? null"
+      :current-birthday="user?.birthday ?? null"
+      :current-location-name="user?.locationName ?? null"
+      :current-latitude="user?.latitude ?? null"
+      :current-longitude="user?.longitude ?? null"
+      @close="editContactOpen = false"
+      @save="handleSaveContactInfo"
     />
   </div>
 </template>

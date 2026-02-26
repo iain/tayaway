@@ -157,6 +157,11 @@ class PoolSerializer
       userId: user.id.to_s,
       email: user.email.to_s,
       name: user.name,
+      phoneNumber: user.phone_number,
+      birthday: user.birthday&.iso8601,
+      locationName: user.location_name,
+      latitude: user.location_coordinates&.[](1),
+      longitude: user.location_coordinates&.[](0),
       role: membership.role,
       createdAt: membership.created_at.iso8601(3),
       updatedAt: [user.updated_at, membership.updated_at].max.iso8601(3)

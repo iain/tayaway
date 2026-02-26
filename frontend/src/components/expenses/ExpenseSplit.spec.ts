@@ -75,6 +75,11 @@ function mkMember(overrides: Partial<PoolMember> = {}): PoolMember {
     userId: 'member-1',
     email: 'alice@example.com',
     name: 'Alice',
+    phoneNumber: null,
+    birthday: null,
+    locationName: null,
+    latitude: null,
+    longitude: null,
     role: 'member',
     ...overrides,
   }

@@ -62,6 +62,11 @@ export const useAuthStore = defineStore('auth', () => {
           id: data.user_id,
           email: data.email,
           name: data.name,
+          phoneNumber: data.phoneNumber ?? null,
+          birthday: data.birthday ?? null,
+          locationName: data.locationName ?? null,
+          latitude: data.latitude ?? null,
+          longitude: data.longitude ?? null,
         }
         cacheUser(user.value)
 
@@ -104,6 +109,11 @@ export const useAuthStore = defineStore('auth', () => {
       id: meResponse.data.user_id,
       email: meResponse.data.email,
       name: meResponse.data.name,
+      phoneNumber: meResponse.data.phoneNumber ?? null,
+      birthday: meResponse.data.birthday ?? null,
+      locationName: meResponse.data.locationName ?? null,
+      latitude: meResponse.data.latitude ?? null,
+      longitude: meResponse.data.longitude ?? null,
     }
     user.value = verifiedUser
     cacheUser(verifiedUser)
@@ -138,47 +148,80 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function updateName(name: string): Promise<void> {
+  interface ProfileFields {
+    name?: string
+    phoneNumber?: string | null
+    birthday?: string | null
+    locationName?: string | null
+    latitude?: number | null
+    longitude?: number | null
+  }
+
+  async function updateProfile(fields: ProfileFields): Promise<void> {
     if (!user.value) return
-    const previousName = user.value.name
+    const previousUser = { ...user.value }
     const userId = user.value.id
     const pool = useObjectPoolStore()
     const member = pool.findBy('member', 'userId', userId)
     const { mutate, update } = useMutation()
 
     // Optimistically update the auth ref
-    user.value.name = name
+    if (fields.name !== undefined) user.value.name = fields.name
+    if (fields.phoneNumber !== undefined)
+      user.value.phoneNumber = fields.phoneNumber
+    if (fields.birthday !== undefined) user.value.birthday = fields.birthday
+    if (fields.locationName !== undefined)
+      user.value.locationName = fields.locationName
+    if (fields.latitude !== undefined) user.value.latitude = fields.latitude
+    if (fields.longitude !== undefined) user.value.longitude = fields.longitude
 
     try {
       const apiCall = (commandQueue: ReturnType<typeof useCommandQueueStore>) =>
-        commandQueue.enqueue<PoolApiResponse>('PUT', `/users/${userId}`, {
-          name,
-        })
+        commandQueue.enqueue<PoolApiResponse>('PUT', `/users/${userId}`, fields)
 
-      // If the member is in the pool, use optimistic pool update; otherwise just mutate
+      // Build optimistic pool changes from provided fields
+      const poolChanges: Record<string, unknown> = {}
+      if (fields.name !== undefined) poolChanges.name = fields.name
+      if (fields.phoneNumber !== undefined)
+        poolChanges.phoneNumber = fields.phoneNumber
+      if (fields.birthday !== undefined) poolChanges.birthday = fields.birthday
+      if (fields.locationName !== undefined)
+        poolChanges.locationName = fields.locationName
+      if (fields.latitude !== undefined) poolChanges.latitude = fields.latitude
+      if (fields.longitude !== undefined)
+        poolChanges.longitude = fields.longitude
+
       const result = member
         ? await update(
-            'Failed to update name',
+            'Failed to update profile',
             'member',
             member.id,
-            { name },
+            poolChanges,
             apiCall
           )
-        : await mutate('Failed to update name', apiCall)
+        : await mutate('Failed to update profile', apiCall)
 
       if (!result.queued && user.value) {
-        // Sync auth ref from pool (server response already imported)
         const poolMember = member ? pool.get('member', member.id) : null
         if (poolMember) {
           user.value.name = poolMember.name
+          user.value.phoneNumber = poolMember.phoneNumber
+          user.value.birthday = poolMember.birthday
+          user.value.locationName = poolMember.locationName
+          user.value.latitude = poolMember.latitude
+          user.value.longitude = poolMember.longitude
         }
       }
       if (user.value) cacheUser(user.value)
     } catch (e) {
-      // Restore previous name on failure (pool pending already rolled back by update())
-      if (user.value) user.value.name = previousName
+      // Restore previous state on failure
+      if (user.value) Object.assign(user.value, previousUser)
       throw e
     }
+  }
+
+  async function updateName(name: string): Promise<void> {
+    return updateProfile({ name })
   }
 
   async function requestEmailChange(email: string): Promise<string> {
@@ -203,6 +246,11 @@ export const useAuthStore = defineStore('auth', () => {
           id: meResponse.data.user_id,
           email: meResponse.data.email,
           name: meResponse.data.name,
+          phoneNumber: meResponse.data.phoneNumber ?? null,
+          birthday: meResponse.data.birthday ?? null,
+          locationName: meResponse.data.locationName ?? null,
+          latitude: meResponse.data.latitude ?? null,
+          longitude: meResponse.data.longitude ?? null,
         }
         cacheUser(user.value)
       } catch {
@@ -230,6 +278,7 @@ export const useAuthStore = defineStore('auth', () => {
     requestMagicLink,
     verifyToken,
     logout,
+    updateProfile,
     updateName,
     requestEmailChange,
     verifyEmailChange,

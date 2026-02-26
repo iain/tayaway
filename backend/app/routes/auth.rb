@@ -88,7 +88,12 @@ class App
       {
         user_id: user.id,
         email: user.email,
-        name: user.name
+        name: user.name,
+        phoneNumber: user.phone_number,
+        birthday: user.birthday&.iso8601,
+        locationName: user.location_name,
+        latitude: user.location_coordinates&.[](1),
+        longitude: user.location_coordinates&.[](0)
       }
     end
   end

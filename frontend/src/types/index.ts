@@ -21,6 +21,11 @@ export interface MeResponse {
   user_id: string
   email: string
   name: string | null
+  phoneNumber: string | null
+  birthday: string | null
+  locationName: string | null
+  latitude: number | null
+  longitude: number | null
 }
 
 // Simple user type for auth responses (outside the object pool)
@@ -28,6 +33,11 @@ export interface AuthUser {
   id: string
   email: string
   name: string | null
+  phoneNumber: string | null
+  birthday: string | null
+  locationName: string | null
+  latitude: number | null
+  longitude: number | null
 }
 
 export interface LogoutResponse {

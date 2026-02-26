@@ -41,6 +41,11 @@ export interface ObjectTypeMap {
     userId: string
     email: string
     name: string | null
+    phoneNumber: string | null
+    birthday: string | null
+    locationName: string | null
+    latitude: number | null
+    longitude: number | null
     role: string
     createdAt: string
   }
