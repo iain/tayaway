@@ -5,8 +5,8 @@ import {
   CalculatorIcon,
   CheckCircleIcon,
   CurrencyEuroIcon,
-  EyeIcon,
   LockClosedIcon,
+  ScaleIcon,
   QrCodeIcon,
   TrashIcon,
 } from '@heroicons/vue/24/outline'
@@ -180,9 +180,13 @@ async function handlePaidClick(
       <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
         Settlements
       </h2>
-      <AppButton v-if="unsettledExpenseCount > 0" @click="openPreview">
-        <EyeIcon class="size-4" />
-        Preview settlement
+      <AppButton
+        v-if="unsettledExpenseCount > 0"
+        data-testid="start-settlement-button"
+        @click="openPreview"
+      >
+        <ScaleIcon class="size-4" />
+        Start settlement
         <span class="text-rose-200">({{ unsettledExpenseCount }})</span>
       </AppButton>
     </div>
@@ -226,7 +230,7 @@ async function handlePaidClick(
           </span>
           <span class="text-sm text-gray-600 dark:text-stone-400">
             <span class="font-medium text-gray-800 dark:text-stone-200"
-              >Preview &amp; settle</span
+              >Start settlement</span
             >
             &mdash; see who owes whom, then lock it in. Locked expenses can no
             longer be edited.
@@ -240,12 +244,30 @@ async function handlePaidClick(
           </span>
           <span class="text-sm text-gray-600 dark:text-stone-400">
             <span class="font-medium text-gray-800 dark:text-stone-200"
-              >Pay &amp; mark paid</span
+              >Pay up</span
             >
-            &mdash; transfer money outside the app, then the recipient marks
-            each transfer as paid. If the recipient has added their IBAN in
-            their profile, a QR code button appears that you can scan with your
-            banking app to pre-fill the transfer details instantly.
+            &mdash; transfer money via your banking app. When someone you owe
+            has added their IBAN in
+            <router-link
+              to="/profile"
+              class="font-medium text-rose-600 hover:text-rose-500 dark:text-rose-400 dark:hover:text-rose-300"
+              >their profile</router-link
+            >, a QR code appears that pre-fills the amount, recipient, and
+            reference &mdash; no copy-pasting account numbers.
+          </span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span
+            class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-gray-300 dark:bg-stone-600"
+          >
+            <CheckCircleIcon class="size-3.5 text-white" />
+          </span>
+          <span class="text-sm text-gray-600 dark:text-stone-400">
+            <span class="font-medium text-gray-800 dark:text-stone-200"
+              >Mark paid</span
+            >
+            &mdash; once the money arrives, the recipient marks the transfer as
+            paid so everyone can see what&rsquo;s left.
           </span>
         </li>
       </ol>

@@ -241,11 +241,9 @@ test.describe('Settlements Feature', () => {
         page.getByRole('heading', { name: 'Settlements' })
       ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
 
-      // Click "Preview settlement"
-      await expect(
-        page.getByRole('button', { name: /Preview settlement/ })
-      ).toBeVisible()
-      await page.getByRole('button', { name: /Preview settlement/ }).click()
+      // Click "Start settlement"
+      await expect(page.getByTestId('start-settlement-button')).toBeVisible()
+      await page.getByTestId('start-settlement-button').click()
 
       // Preview modal should appear
       await expect(page.getByText('This is a preview')).toBeVisible()
@@ -297,10 +295,8 @@ test.describe('Settlements Feature', () => {
       ])
       expect(deleteResp.ok()).toBeTruthy()
 
-      // Preview settlement button should reappear (expenses are unsettled again)
-      await expect(
-        page.getByRole('button', { name: /Preview settlement/ })
-      ).toBeVisible()
+      // Start settlement button should reappear (expenses are unsettled again)
+      await expect(page.getByTestId('start-settlement-button')).toBeVisible()
     })
   })
 })
