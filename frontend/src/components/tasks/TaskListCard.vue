@@ -268,6 +268,15 @@ defineExpose({
         </h2>
 
         <div class="flex shrink-0 items-center gap-1">
+          <TextButton
+            v-if="hasCompleted"
+            variant="secondary"
+            data-testid="clear-completed-button"
+            class="text-xs"
+            @click="handleClearCompleted"
+          >
+            Clear {{ completedItems.length }} completed
+          </TextButton>
           <IconButton
             label="Rename list"
             data-testid="rename-list-button"
@@ -284,19 +293,6 @@ defineExpose({
             <TrashIcon class="size-4" />
           </IconButton>
         </div>
-      </div>
-
-      <!-- Clear completed -->
-      <div v-if="hasCompleted" class="mb-3">
-        <TextButton
-          variant="secondary"
-          data-testid="clear-completed-button"
-          class="text-xs"
-          @click="handleClearCompleted"
-        >
-          Clear {{ completedItems.length }} completed
-          {{ completedItems.length === 1 ? 'item' : 'items' }}
-        </TextButton>
       </div>
 
       <!-- Items (always rendered so empty lists can receive cross-list drops) -->
