@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import {
+  BanknotesIcon,
+  CalculatorIcon,
   CheckCircleIcon,
+  CurrencyEuroIcon,
   EyeIcon,
   LockClosedIcon,
   TrashIcon,
@@ -158,18 +161,67 @@ async function handlePaidClick(
       </AppButton>
     </div>
 
-    <p
-      v-if="settlements.length === 0 && hasExpenses"
-      class="text-sm text-gray-500 dark:text-stone-400"
+    <div
+      v-if="settlements.length === 0"
+      class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-stone-700 dark:bg-stone-800/50"
     >
-      No settlements yet. Settle up to lock expenses and compute transfers.
-    </p>
-    <p
-      v-else-if="settlements.length === 0"
-      class="text-sm text-gray-500 dark:text-stone-400"
-    >
-      Add expenses first, then settle up.
-    </p>
+      <p class="mb-3 text-sm font-medium text-gray-700 dark:text-stone-300">
+        How settling up works
+      </p>
+      <ol class="space-y-3">
+        <li class="flex items-start gap-3">
+          <span
+            class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-white"
+            :class="
+              hasExpenses
+                ? 'bg-green-500 dark:bg-green-600'
+                : 'bg-gray-300 dark:bg-stone-600'
+            "
+          >
+            <CurrencyEuroIcon class="size-3.5" />
+          </span>
+          <span class="text-sm text-gray-600 dark:text-stone-400">
+            <span class="font-medium text-gray-800 dark:text-stone-200"
+              >Log expenses</span
+            >
+            &mdash; everyone adds what they paid for. Costs are split per day
+            among attendees.
+          </span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span
+            class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-gray-300 dark:bg-stone-600"
+            :class="{
+              'bg-green-500 dark:bg-green-600':
+                hasExpenses && unsettledExpenseCount > 0,
+            }"
+          >
+            <CalculatorIcon class="size-3.5 text-white" />
+          </span>
+          <span class="text-sm text-gray-600 dark:text-stone-400">
+            <span class="font-medium text-gray-800 dark:text-stone-200"
+              >Preview &amp; settle</span
+            >
+            &mdash; see who owes whom, then lock it in. Locked expenses can no
+            longer be edited.
+          </span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span
+            class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-gray-300 dark:bg-stone-600"
+          >
+            <BanknotesIcon class="size-3.5 text-white" />
+          </span>
+          <span class="text-sm text-gray-600 dark:text-stone-400">
+            <span class="font-medium text-gray-800 dark:text-stone-200"
+              >Pay &amp; mark paid</span
+            >
+            &mdash; transfer money outside the app, then the recipient marks
+            each transfer as paid.
+          </span>
+        </li>
+      </ol>
+    </div>
 
     <div v-for="settlement in settlements" :key="settlement.id" class="mb-4">
       <div
