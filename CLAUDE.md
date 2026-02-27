@@ -111,7 +111,7 @@ All domain data belongs to a workspace. Backend routes verify membership. The fr
 ## Data Model
 
 ```
-users              id (UUID), email (CITEXT), name, phone_number (TEXT nullable), birthday (DATE nullable), location_name (TEXT nullable), location_coordinates (POINT nullable), timestamps
+users              id (UUID), email (CITEXT), name, phone_number (TEXT nullable), birthday (DATE nullable), location_name (TEXT nullable), location_coordinates (POINT nullable), iban (TEXT nullable), timestamps
 sessions           id, user_id, token, expires_at (30 days)
 magic_link_tokens  id, user_id, token, email, expires_at (15 min), used_at
 email_change_tokens id, user_id, token (hashed), email (CITEXT — current email), new_email (CITEXT), expires_at (15 min), used_at, timestamps
@@ -195,6 +195,7 @@ workspace_invites  id (UUID), workspace_id (FK cascade), invited_by (FK set_null
 - `POST /` — Create settlement (computes balances and minimizes transfers)
 - `DELETE /:id` — Delete settlement (creator or event owner)
 - `PUT /transfers/:id` — Toggle paid status on a transfer
+- `GET /transfers/:id/qr` — Generate EPC QR code PNG (sender-only; returns image/png)
 
 **Invites (`/api/invites`)** — Mixed authentication
 
@@ -254,7 +255,7 @@ These types must stay in sync between frontend and backend:
 
 Defined in: `backend/app/object_registry.rb` and `frontend/src/types/pool.ts`
 
-**Note:** The `member` pool object includes a `userId` field that maps to the underlying user, plus contact fields from the user: `phoneNumber`, `birthday`, `locationName`, `latitude`, `longitude`. Domain objects (event, vote, rsvp, taskList, taskItem, expense) carry `userId` directly — the frontend uses `pool.findBy('member', 'userId', obj.userId)` to resolve the member.
+**Note:** The `member` pool object includes a `userId` field that maps to the underlying user, plus contact fields from the user: `phoneNumber`, `birthday`, `locationName`, `latitude`, `longitude`, `hasIban` (boolean). The actual IBAN value is only available to the owner via `/api/auth/me` — it is never broadcast to other members. EPC QR codes are generated server-side at `GET /api/settlements/transfers/:id/qr`. Domain objects (event, vote, rsvp, taskList, taskItem, expense) carry `userId` directly — the frontend uses `pool.findBy('member', 'userId', obj.userId)` to resolve the member.
 
 ## Adding a New Object Type
 

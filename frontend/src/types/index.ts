@@ -26,6 +26,7 @@ export interface MeResponse {
   locationName: string | null
   latitude: number | null
   longitude: number | null
+  iban: string | null
 }
 
 // Simple user type for auth responses (outside the object pool)
@@ -38,6 +39,7 @@ export interface AuthUser {
   locationName: string | null
   latitude: number | null
   longitude: number | null
+  iban: string | null
 }
 
 export interface LogoutResponse {

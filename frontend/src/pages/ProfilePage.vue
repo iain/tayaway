@@ -7,6 +7,7 @@ import {
   UserIcon,
   PhoneIcon,
   ComputerDesktopIcon,
+  BanknotesIcon,
 } from '@heroicons/vue/24/outline'
 import IconButton from '@/components/common/IconButton.vue'
 import EditProfileFieldModal from '@/components/profile/EditProfileFieldModal.vue'
@@ -227,6 +228,33 @@ async function handleRequestEmailChange(email: string): Promise<void> {
       </dl>
     </BaseCard>
 
+    <!-- Payment Section -->
+    <BaseCard padded class="mt-6">
+      <SectionHeading :icon="BanknotesIcon" title="Payment" />
+
+      <dl class="divide-y divide-gray-200 dark:divide-stone-700">
+        <!-- IBAN -->
+        <div class="group flex items-center justify-between py-3">
+          <div>
+            <dt class="text-sm font-medium text-gray-500 dark:text-stone-400">
+              IBAN
+            </dt>
+            <dd class="text-sm text-gray-900 dark:text-white">
+              {{ user?.iban ?? 'Not set' }}
+            </dd>
+          </div>
+          <IconButton
+            hover-reveal
+            label="Edit IBAN"
+            data-testid="edit-iban-button"
+            @click="openField('iban')"
+          >
+            <PencilIcon class="size-4" />
+          </IconButton>
+        </div>
+      </dl>
+    </BaseCard>
+
     <!-- Active Sessions Section -->
     <BaseCard padded class="mt-6">
       <SectionHeading :icon="ComputerDesktopIcon" title="Active Sessions" />
@@ -244,6 +272,7 @@ async function handleRequestEmailChange(email: string): Promise<void> {
       :current-location-name="user?.locationName ?? null"
       :current-latitude="user?.latitude ?? null"
       :current-longitude="user?.longitude ?? null"
+      :current-iban="user?.iban ?? null"
       @close="editField = null"
       @save="handleSaveField"
     />

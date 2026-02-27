@@ -288,6 +288,103 @@ RSpec.describe Users::UpdateProfile do
     expect(result.failure.http_status).to eq(404)
   end
 
+  it "updates IBAN" do
+    workspace = TestFactories.workspace
+    user = TestFactories.user(name: "Test")
+    TestFactories.workspace_membership(workspace: workspace, user: user)
+
+    result = described_class.call(
+      user_id: user[:id],
+      current_user_id: user[:id],
+      name: "Test",
+      iban: "NL91ABNA0417164300"
+    )
+
+    expect(result.success?).to be true
+    updated_member = result.value![:objects].find { |o| o[:objectType] == "member" }
+    expect(updated_member[:hasIban]).to be true
+  end
+
+  it "normalizes IBAN by stripping spaces and uppercasing" do
+    workspace = TestFactories.workspace
+    user = TestFactories.user(name: "Test")
+    TestFactories.workspace_membership(workspace: workspace, user: user)
+
+    result = described_class.call(
+      user_id: user[:id],
+      current_user_id: user[:id],
+      name: "Test",
+      iban: "nl91 abna 0417 1643 00"
+    )
+
+    expect(result.success?).to be true
+    updated_member = result.value![:objects].find { |o| o[:objectType] == "member" }
+    expect(updated_member[:hasIban]).to be true
+  end
+
+  it "clears IBAN when blank" do
+    workspace = TestFactories.workspace
+    user = TestFactories.user(name: "Test")
+    TestFactories.workspace_membership(workspace: workspace, user: user)
+    DB[:users].where(id: user[:id]).update(iban: "NL91ABNA0417164300")
+
+    result = described_class.call(
+      user_id: user[:id],
+      current_user_id: user[:id],
+      name: "Test",
+      iban: ""
+    )
+
+    expect(result.success?).to be true
+    updated_member = result.value![:objects].find { |o| o[:objectType] == "member" }
+    expect(updated_member[:hasIban]).to be false
+  end
+
+  it "returns failure for invalid IBAN format" do
+    user = TestFactories.user(name: "Test")
+
+    result = described_class.call(
+      user_id: user[:id],
+      current_user_id: user[:id],
+      name: "Test",
+      iban: "INVALID"
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Invalid IBAN format")
+  end
+
+  it "returns failure for IBAN with invalid checksum" do
+    user = TestFactories.user(name: "Test")
+
+    result = described_class.call(
+      user_id: user[:id],
+      current_user_id: user[:id],
+      name: "Test",
+      iban: "NL00ABNA0417164300"
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Invalid IBAN checksum")
+  end
+
+  it "leaves IBAN unchanged when not provided" do
+    workspace = TestFactories.workspace
+    user = TestFactories.user(name: "Test")
+    TestFactories.workspace_membership(workspace: workspace, user: user)
+    DB[:users].where(id: user[:id]).update(iban: "NL91ABNA0417164300")
+
+    result = described_class.call(
+      user_id: user[:id],
+      current_user_id: user[:id],
+      name: "Updated"
+    )
+
+    expect(result.success?).to be true
+    updated_member = result.value![:objects].find { |o| o[:objectType] == "member" }
+    expect(updated_member[:hasIban]).to be true
+  end
+
   it "clears location when blank" do
     workspace = TestFactories.workspace
     user = TestFactories.user(name: "Test")

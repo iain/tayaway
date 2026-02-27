@@ -31,16 +31,18 @@ module Users
           birthday: T.nilable(String),
           location_name: T.nilable(String),
           latitude: T.nilable(Float),
-          longitude: T.nilable(Float)
+          longitude: T.nilable(Float),
+          iban: T.nilable(String)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
       def call(user_id:, current_user_id:, name:, phone_number: nil, birthday: nil,
-               location_name: nil, latitude: nil, longitude: nil)
+               location_name: nil, latitude: nil, longitude: nil, iban: nil)
         find_user(user_id)
           .bind { |user| authorize(user, current_user_id) }
           .bind { |user| validate_name(name, user) }
           .bind { |user| validate_birthday(birthday, user) }
-          .bind { |user| update_profile(user, name, phone_number, birthday, location_name, latitude, longitude) }
+          .bind { |user| validate_iban(iban, user) }
+          .bind { |user| update_profile(user, name, phone_number, birthday, location_name, latitude, longitude, iban) }
       end
 
       private
@@ -86,6 +88,26 @@ module Users
         T.cast(Failure(ServiceError.validation("Invalid birthday format")), Result[User, ServiceError])
       end
 
+      sig { params(iban: T.nilable(String), user: User).returns(Result[User, ServiceError]) }
+      def validate_iban(iban, user)
+        # nil means "don't change", empty means "clear"
+        return T.cast(Success(user), Result[User, ServiceError]) if iban.nil? || iban.strip.empty?
+
+        normalized = iban.gsub(/\s/, "").upcase
+        unless normalized.match?(/\A[A-Z]{2}\d{2}[A-Z0-9]{4,30}\z/)
+          return T.cast(Failure(ServiceError.validation("Invalid IBAN format")), Result[User, ServiceError])
+        end
+
+        # MOD97-10 checksum validation
+        rearranged = T.must(normalized[4..]) + T.must(normalized[0..3])
+        numeric = rearranged.chars.map { |c| c.match?(/[A-Z]/) ? (c.ord - 55).to_s : c }.join
+        unless numeric.to_i % 97 == 1
+          return T.cast(Failure(ServiceError.validation("Invalid IBAN checksum")), Result[User, ServiceError])
+        end
+
+        T.cast(Success(user), Result[User, ServiceError])
+      end
+
       sig do
         params(
           user: User,
@@ -94,10 +116,11 @@ module Users
           birthday: T.nilable(String),
           location_name: T.nilable(String),
           latitude: T.nilable(Float),
-          longitude: T.nilable(Float)
+          longitude: T.nilable(Float),
+          iban: T.nilable(String)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def update_profile(user, name, phone_number, birthday, location_name, latitude, longitude)
+      def update_profile(user, name, phone_number, birthday, location_name, latitude, longitude, iban)
         user_id = user.id
 
         DB.transaction do
@@ -116,6 +139,11 @@ module Users
           # Birthday: blank -> nil, otherwise parse
           unless birthday.nil?
             update_data[:birthday] = birthday.strip.empty? ? nil : Date.parse(birthday)
+          end
+
+          # IBAN: blank -> nil, otherwise normalize (strip spaces, uppercase)
+          unless iban.nil?
+            update_data[:iban] = iban.strip.empty? ? nil : iban.gsub(/\s/, "").upcase
           end
 
           # Location: blank -> clear both, otherwise set both

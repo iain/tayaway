@@ -22,6 +22,10 @@ gem "dotenv"
 # Email
 gem "mail", "~> 2.8"
 
+# QR code generation
+gem "chunky_png"
+gem "rqrcode"
+
 # Autoloading
 gem "zeitwerk"
 

@@ -67,6 +67,7 @@ export const useAuthStore = defineStore('auth', () => {
           locationName: data.locationName ?? null,
           latitude: data.latitude ?? null,
           longitude: data.longitude ?? null,
+          iban: data.iban ?? null,
         }
         cacheUser(user.value)
 
@@ -114,6 +115,7 @@ export const useAuthStore = defineStore('auth', () => {
       locationName: meResponse.data.locationName ?? null,
       latitude: meResponse.data.latitude ?? null,
       longitude: meResponse.data.longitude ?? null,
+      iban: meResponse.data.iban ?? null,
     }
     user.value = verifiedUser
     cacheUser(verifiedUser)
@@ -155,6 +157,7 @@ export const useAuthStore = defineStore('auth', () => {
     locationName?: string | null
     latitude?: number | null
     longitude?: number | null
+    iban?: string | null
   }
 
   async function updateProfile(fields: ProfileFields): Promise<void> {
@@ -174,6 +177,7 @@ export const useAuthStore = defineStore('auth', () => {
       user.value.locationName = fields.locationName
     if (fields.latitude !== undefined) user.value.latitude = fields.latitude
     if (fields.longitude !== undefined) user.value.longitude = fields.longitude
+    if (fields.iban !== undefined) user.value.iban = fields.iban || null
 
     try {
       const apiCall = (commandQueue: ReturnType<typeof useCommandQueueStore>) =>
@@ -190,6 +194,7 @@ export const useAuthStore = defineStore('auth', () => {
       if (fields.latitude !== undefined) poolChanges.latitude = fields.latitude
       if (fields.longitude !== undefined)
         poolChanges.longitude = fields.longitude
+      if (fields.iban !== undefined) poolChanges.hasIban = !!fields.iban
 
       const result = member
         ? await update(
@@ -210,6 +215,7 @@ export const useAuthStore = defineStore('auth', () => {
           user.value.locationName = poolMember.locationName
           user.value.latitude = poolMember.latitude
           user.value.longitude = poolMember.longitude
+          user.value.iban = poolMember.hasIban ? user.value.iban : null
         }
       }
       if (user.value) cacheUser(user.value)
@@ -251,6 +257,7 @@ export const useAuthStore = defineStore('auth', () => {
           locationName: meResponse.data.locationName ?? null,
           latitude: meResponse.data.latitude ?? null,
           longitude: meResponse.data.longitude ?? null,
+          iban: meResponse.data.iban ?? null,
         }
         cacheUser(user.value)
       } catch {

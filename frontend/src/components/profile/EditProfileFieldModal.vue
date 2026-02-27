@@ -5,7 +5,7 @@ import FormInput from '@/components/form/FormInput.vue'
 import FormActions from '@/components/form/FormActions.vue'
 import LocationInput from '@/components/form/LocationInput.vue'
 
-export type ProfileField = 'name' | 'phone' | 'birthday' | 'address'
+export type ProfileField = 'name' | 'phone' | 'birthday' | 'address' | 'iban'
 
 export interface ProfileFieldValues {
   name?: string
@@ -14,6 +14,7 @@ export interface ProfileFieldValues {
   locationName?: string | null
   latitude?: number | null
   longitude?: number | null
+  iban?: string | null
 }
 
 const props = defineProps<{
@@ -26,6 +27,7 @@ const props = defineProps<{
   currentLocationName: string | null
   currentLatitude: number | null
   currentLongitude: number | null
+  currentIban: string | null
 }>()
 
 const emit = defineEmits<{
@@ -39,12 +41,14 @@ const birthday = ref('')
 const locationName = ref('')
 const latitude = ref<number | null>(null)
 const longitude = ref<number | null>(null)
+const iban = ref('')
 
 const titles: Record<ProfileField, string> = {
   name: 'Edit Name',
   phone: 'Edit Phone',
   birthday: 'Edit Birthday',
   address: 'Edit Address',
+  iban: 'Edit IBAN',
 }
 
 const title = computed(() => titles[props.field])
@@ -64,6 +68,7 @@ watch(
       locationName.value = props.currentLocationName ?? ''
       latitude.value = props.currentLatitude
       longitude.value = props.currentLongitude
+      iban.value = props.currentIban ?? ''
     }
   }
 )
@@ -87,6 +92,9 @@ function handleSave(): void {
         latitude: latitude.value,
         longitude: longitude.value,
       })
+      break
+    case 'iban':
+      emit('save', { iban: iban.value.trim() })
       break
   }
 }
@@ -147,6 +155,22 @@ function handleClose(): void {
           @update:latitude="latitude = $event"
           @update:longitude="longitude = $event"
         />
+      </template>
+
+      <template v-else-if="field === 'iban'">
+        <FormInput
+          id="profile-iban"
+          v-model="iban"
+          label="IBAN"
+          placeholder="NL00 BANK 0000 0000 00"
+          autofocus
+          :maxlength="34"
+          :disabled="loading"
+        />
+        <p class="text-xs text-gray-500 dark:text-stone-400">
+          Your IBAN is used to generate QR codes for bank transfers. It is never
+          shared directly with other members.
+        </p>
       </template>
 
       <FormActions

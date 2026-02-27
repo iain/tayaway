@@ -41,7 +41,8 @@ class App
             birthday: r.params["birthday"],
             location_name: r.params["locationName"],
             latitude: r.params["latitude"]&.to_f,
-            longitude: r.params["longitude"]&.to_f
+            longitude: r.params["longitude"]&.to_f,
+            iban: r.params["iban"]
           )
           handle_result(result)
         end

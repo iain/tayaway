@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   BanknotesIcon,
@@ -8,6 +8,7 @@ import {
   CheckCircleIcon,
   ClockIcon,
   InboxIcon,
+  QrCodeIcon,
   UserGroupIcon,
 } from '@heroicons/vue/24/outline'
 import {
@@ -27,6 +28,7 @@ import { useSettlementsStore } from '@/stores/settlements'
 import PageHeader from '@/components/common/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
+import EpcQrModal from '@/components/expenses/EpcQrModal.vue'
 import type { PoolMember, PoolSettlementTransfer } from '@/types/pool'
 
 const router = useRouter()
@@ -85,6 +87,26 @@ function formatTransferAmount(amount: number): string {
 
 async function handleMarkPaid(transferId: string) {
   await settlementsStore.markTransferPaid(transferId, true)
+}
+
+const showQrModal = ref(false)
+const qrTransferId = ref<string | null>(null)
+const qrRecipientName = ref<string | null>(null)
+const qrAmount = ref<number | null>(null)
+
+function memberHasIban(userId: string | null): boolean {
+  if (!userId) return false
+  return pool.findBy('member', 'userId', userId)?.hasIban ?? false
+}
+
+function openQrModal(transfer: PoolSettlementTransfer) {
+  if (!transfer.toUserId) return
+  const member = pool.findBy('member', 'userId', transfer.toUserId)
+  if (!member?.hasIban) return
+  qrTransferId.value = transfer.id
+  qrRecipientName.value = member.name ?? member.email
+  qrAmount.value = transfer.amount
+  showQrModal.value = true
 }
 
 function attendeeCount(eventId: string): number {
@@ -365,28 +387,41 @@ function navigateToEventPage(eventId: string): void {
             :key="transfer.id"
             class="overflow-hidden rounded-lg bg-white shadow dark:bg-stone-800"
           >
-            <div class="px-4 py-3 sm:px-6">
-              <p class="text-sm text-gray-900 dark:text-white">
-                You owe
-                <span class="font-semibold">{{
-                  getMemberName(transfer.toUserId)
-                }}</span>
-                {{ ' ' }}
-                <span
-                  class="font-mono font-semibold text-gray-900 dark:text-white"
-                  >{{ formatTransferAmount(transfer.amount) }}</span
-                >
-              </p>
-              <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
-                <router-link
-                  v-if="getEventIdForTransfer(transfer)"
-                  :to="`/events/${getEventIdForTransfer(transfer)}/expenses`"
-                  class="hover:text-rose-600 hover:underline dark:hover:text-rose-400"
-                >
-                  {{ getEventNameForTransfer(transfer) }}
-                </router-link>
-                <span v-else>{{ getEventNameForTransfer(transfer) }}</span>
-              </p>
+            <div
+              class="flex flex-wrap items-center justify-between gap-y-2 px-4 py-3 sm:px-6"
+            >
+              <div class="min-w-0 flex-1">
+                <p class="text-sm text-gray-900 dark:text-white">
+                  You owe
+                  <span class="font-semibold">{{
+                    getMemberName(transfer.toUserId)
+                  }}</span>
+                  {{ ' ' }}
+                  <span
+                    class="font-mono font-semibold text-gray-900 dark:text-white"
+                    >{{ formatTransferAmount(transfer.amount) }}</span
+                  >
+                </p>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
+                  <router-link
+                    v-if="getEventIdForTransfer(transfer)"
+                    :to="`/events/${getEventIdForTransfer(transfer)}/expenses`"
+                    class="hover:text-rose-600 hover:underline dark:hover:text-rose-400"
+                  >
+                    {{ getEventNameForTransfer(transfer) }}
+                  </router-link>
+                  <span v-else>{{ getEventNameForTransfer(transfer) }}</span>
+                </p>
+              </div>
+              <button
+                v-if="memberHasIban(transfer.toUserId)"
+                type="button"
+                class="rounded-md bg-gray-100 p-1 text-gray-600 transition-colors hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600"
+                title="Show QR code for bank transfer"
+                @click="openQrModal(transfer)"
+              >
+                <QrCodeIcon class="size-4" />
+              </button>
             </div>
           </li>
         </ul>
@@ -622,6 +657,14 @@ function navigateToEventPage(eventId: string): void {
         </ul>
       </section>
     </template>
+
+    <EpcQrModal
+      :open="showQrModal"
+      :transfer-id="qrTransferId"
+      :recipient-name="qrRecipientName"
+      :amount="qrAmount"
+      @close="showQrModal = false"
+    />
   </div>
 </template>
 

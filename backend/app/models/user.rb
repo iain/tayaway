@@ -12,6 +12,7 @@ class User < T::Struct
   const :birthday, T.nilable(Date)
   const :location_name, T.nilable(String)
   const :location_coordinates, T.nilable(T::Array[Float])
+  const :iban, T.nilable(String)
   const :created_at, Time
   const :updated_at, Time
 
@@ -27,6 +28,7 @@ class User < T::Struct
       locationName: location_name,
       latitude: location_coordinates&.[](1),
       longitude: location_coordinates&.[](0),
+      iban: iban,
       createdAt: created_at.iso8601(3),
       updatedAt: updated_at.iso8601(3)
     }
@@ -85,6 +87,7 @@ class User < T::Struct
         birthday: row[:birthday],
         location_name: row[:location_name],
         location_coordinates: coords,
+        iban: row[:iban],
         created_at: row[:created_at],
         updated_at: row[:updated_at]
       )

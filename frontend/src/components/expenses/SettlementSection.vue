@@ -7,6 +7,7 @@ import {
   CurrencyEuroIcon,
   EyeIcon,
   LockClosedIcon,
+  QrCodeIcon,
   TrashIcon,
 } from '@heroicons/vue/24/outline'
 import { useObjectPoolStore } from '@/stores/objectPool'
@@ -19,6 +20,7 @@ import {
 import AppButton from '@/components/common/AppButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
+import EpcQrModal from '@/components/expenses/EpcQrModal.vue'
 import type { PoolEvent } from '@/types/pool'
 
 const props = defineProps<{
@@ -130,6 +132,30 @@ async function deleteSettlement(id: string) {
 }
 
 const showRecipientOnlyModal = ref(false)
+
+const showQrModal = ref(false)
+const qrTransferId = ref<string | null>(null)
+const qrRecipientName = ref<string | null>(null)
+const qrAmount = ref<number | null>(null)
+
+function memberHasIban(userId: string | null): boolean {
+  if (!userId) return false
+  return pool.findBy('member', 'userId', userId)?.hasIban ?? false
+}
+
+function openQrModal(transfer: {
+  id: string
+  toUserId: string | null
+  amount: number
+}) {
+  if (!transfer.toUserId) return
+  const member = pool.findBy('member', 'userId', transfer.toUserId)
+  if (!member?.hasIban) return
+  qrTransferId.value = transfer.id
+  qrRecipientName.value = member.name ?? member.email
+  qrAmount.value = transfer.amount
+  showQrModal.value = true
+}
 
 function canMarkPaid(toUserId: string | null): boolean {
   return props.currentUserId !== null && toUserId === props.currentUserId
@@ -276,24 +302,39 @@ async function handlePaidClick(
                 {{ formatAmount(transfer.amount) }}
               </span>
             </div>
-            <button
-              type="button"
-              class="rounded-md px-2 py-1 text-xs font-medium transition-colors"
-              :class="
-                transfer.paidAt
-                  ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600'
-              "
-              @click="
-                handlePaidClick(
-                  transfer.id,
-                  !!transfer.paidAt,
-                  transfer.toUserId
-                )
-              "
-            >
-              {{ transfer.paidAt ? 'Paid' : 'Mark paid' }}
-            </button>
+            <div class="flex items-center gap-1">
+              <button
+                v-if="
+                  !transfer.paidAt &&
+                  transfer.fromUserId === currentUserId &&
+                  memberHasIban(transfer.toUserId)
+                "
+                type="button"
+                class="rounded-md bg-gray-100 p-1 text-gray-600 transition-colors hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600"
+                title="Show QR code for bank transfer"
+                @click="openQrModal(transfer)"
+              >
+                <QrCodeIcon class="size-4" />
+              </button>
+              <button
+                type="button"
+                class="rounded-md px-2 py-1 text-xs font-medium transition-colors"
+                :class="
+                  transfer.paidAt
+                    ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600'
+                "
+                @click="
+                  handlePaidClick(
+                    transfer.id,
+                    !!transfer.paidAt,
+                    transfer.toUserId
+                  )
+                "
+              >
+                {{ transfer.paidAt ? 'Paid' : 'Mark paid' }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -391,5 +432,13 @@ async function handlePaidClick(
         </AppButton>
       </div>
     </BaseModal>
+
+    <EpcQrModal
+      :open="showQrModal"
+      :transfer-id="qrTransferId"
+      :recipient-name="qrRecipientName"
+      :amount="qrAmount"
+      @close="showQrModal = false"
+    />
   </div>
 </template>

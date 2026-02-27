@@ -56,9 +56,31 @@ class App
       end
     end
 
-    # /api/settlements/transfers/:id - Toggle paid on a transfer
+    # /api/settlements/transfers/:id - Toggle paid on a transfer, or get QR code
     r.on "transfers" do
       r.on String do |transfer_id|
+        # GET /api/settlements/transfers/:id/qr - Generate EPC QR code PNG
+        r.on "qr" do
+          r.get do
+            result = Settlements::GenerateQr.call(
+              transfer_id: transfer_id,
+              current_user_id: user.id
+            )
+
+            if result.success?
+              png = result.value!
+              response.status = 200
+              response["Content-Type"] = "image/png"
+              response["Cache-Control"] = "private, max-age=300"
+              r.halt [200, { "Content-Type" => "image/png", "Cache-Control" => "private, max-age=300" }, [png]]
+            else
+              error = result.failure
+              response.status = error.http_status
+              next error.to_api_hash
+            end
+          end
+        end
+
         find_result = SettlementTransfer.find_result(transfer_id)
         unless find_result.success?
           error = find_result.failure

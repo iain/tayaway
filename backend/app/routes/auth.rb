@@ -93,7 +93,8 @@ class App
         birthday: user.birthday&.iso8601,
         locationName: user.location_name,
         latitude: user.location_coordinates&.[](1),
-        longitude: user.location_coordinates&.[](0)
+        longitude: user.location_coordinates&.[](0),
+        iban: user.iban
       }
     end
   end

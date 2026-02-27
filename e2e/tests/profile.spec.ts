@@ -118,6 +118,49 @@ test.describe('Profile Feature', () => {
       expect(meBody.longitude).toBeCloseTo(-0.1278, 1)
     })
 
+    test('update IBAN: set, verify in /me, clear, reject invalid', async () => {
+      // Set valid IBAN
+      const setResponse = await apiContext.put(
+        `${API_BASE}/api/users/${userId}`,
+        {
+          data: { name: TEST_NAME, iban: 'NL91ABNA0417164300' },
+        }
+      )
+      expect(setResponse.ok()).toBeTruthy()
+      const setBody = await setResponse.json()
+      const setMember = getObjectByType(setBody.objects, 'member')
+      expect(setMember!.hasIban).toBe(true)
+
+      // Verify in /me
+      const meResponse = await apiContext.get(`${API_BASE}/api/auth/me`)
+      expect(meResponse.ok()).toBeTruthy()
+      const meBody = await meResponse.json()
+      expect(meBody.iban).toBe('NL91ABNA0417164300')
+
+      // Clear IBAN
+      const clearResponse = await apiContext.put(
+        `${API_BASE}/api/users/${userId}`,
+        {
+          data: { name: TEST_NAME, iban: '' },
+        }
+      )
+      expect(clearResponse.ok()).toBeTruthy()
+      const clearBody = await clearResponse.json()
+      const clearMember = getObjectByType(clearBody.objects, 'member')
+      expect(clearMember!.hasIban).toBe(false)
+
+      // Reject invalid IBAN
+      const invalidResponse = await apiContext.put(
+        `${API_BASE}/api/users/${userId}`,
+        {
+          data: { name: TEST_NAME, iban: 'NL00FAKE1234567890' },
+        }
+      )
+      expect(invalidResponse.status()).toBe(400)
+      const invalidBody = await invalidResponse.json()
+      expect(invalidBody.error).toContain('Invalid IBAN')
+    })
+
     test('update name lifecycle: 401 without auth, 403/404 for other user, 400 for empty name, success', async ({
       request,
     }) => {
@@ -279,6 +322,75 @@ test.describe('Profile Feature', () => {
 
       // Updated phone should appear on the profile page
       await expect(page.getByText('+31611111111')).toBeVisible()
+    })
+
+    test('can edit IBAN via profile modal', async ({ page, request }) => {
+      // Use a unique user for this test
+      const ibanEmail = `e2e-profile-iban-${crypto.randomUUID()}@example.com`
+      const { token: ibanToken } = await getTestSession(
+        request,
+        ibanEmail,
+        'IBAN Test'
+      )
+
+      await setupAuthenticatedPage(page, ibanToken)
+      await page.goto('/profile')
+
+      // Wait for the page to load
+      await expect(page.getByRole('heading', { name: 'Payment' })).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+
+      // Click edit IBAN button to open modal
+      await page.getByTestId('edit-iban-button').click()
+      await expect(page.getByRole('dialog')).toBeVisible()
+      await expect(
+        page.getByRole('dialog').getByRole('heading', { name: 'Edit IBAN' })
+      ).toBeVisible()
+
+      // Enter a valid IBAN
+      const ibanInput = page.getByLabel('IBAN')
+      await ibanInput.fill('NL91ABNA0417164300')
+
+      // Save and wait for the API response
+      await Promise.all([
+        page.waitForResponse(
+          (resp) =>
+            resp.url().includes('/api/users/') &&
+            resp.request().method() === 'PUT'
+        ),
+        page.getByRole('button', { name: 'Save' }).click(),
+      ])
+
+      // Modal should close
+      await expect(page.getByRole('dialog')).toBeHidden()
+
+      // IBAN should now appear on the profile page
+      await expect(page.getByText('NL91ABNA0417164300')).toBeVisible()
+
+      // Edit again to clear it
+      await page.getByTestId('edit-iban-button').click()
+      await expect(page.getByRole('dialog')).toBeVisible()
+
+      // Modal should be pre-filled with current IBAN
+      const ibanInputAgain = page.getByLabel('IBAN')
+      await expect(ibanInputAgain).toHaveValue('NL91ABNA0417164300')
+      await ibanInputAgain.clear()
+
+      await Promise.all([
+        page.waitForResponse(
+          (resp) =>
+            resp.url().includes('/api/users/') &&
+            resp.request().method() === 'PUT' &&
+            resp.status() === 200
+        ),
+        page.getByRole('button', { name: 'Save' }).click(),
+      ])
+
+      await expect(page.getByRole('dialog')).toBeHidden()
+
+      // IBAN should no longer be visible on the page
+      await expect(page.getByText('NL91ABNA0417164300')).not.toBeVisible()
     })
 
     test('can end a non-current session from the sessions list', async ({

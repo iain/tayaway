@@ -46,6 +46,7 @@ export interface ObjectTypeMap {
     locationName: string | null
     latitude: number | null
     longitude: number | null
+    hasIban: boolean
     role: string
     createdAt: string
   }
