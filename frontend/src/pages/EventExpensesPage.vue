@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -12,9 +12,11 @@ import SettlementSection from '@/components/expenses/SettlementSection.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import TextButton from '@/components/common/TextButton.vue'
+import { useExpenseActions } from '@/composables/useExpenseActions'
 import type { PoolApiResponse, PoolExpense } from '@/types/pool'
 
 const route = useRoute()
+const { pendingAdd } = useExpenseActions()
 const authStore = useAuthStore()
 const pool = useObjectPoolStore()
 const { currentUserId } = storeToRefs(authStore)
@@ -22,6 +24,13 @@ const { currentUserId } = storeToRefs(authStore)
 const isModalOpen = ref(false)
 const editingExpense = ref<PoolExpense | undefined>(undefined)
 const showRsvpDialog = ref(false)
+
+watch(pendingAdd, (val) => {
+  if (val) {
+    pendingAdd.value = false
+    openAdd()
+  }
+})
 
 function openAdd() {
   if (!userIsAttending.value) {

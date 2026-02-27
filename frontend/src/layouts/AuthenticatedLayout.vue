@@ -30,6 +30,9 @@ import { useDarkMode } from '@/composables/useDarkMode'
 import CommandPalette from '@/components/common/CommandPalette.vue'
 import EventSubheader from '@/components/events/EventSubheader.vue'
 import { useCommandPalette } from '@/composables/useCommandPalette'
+import { useEventContextCommands } from '@/composables/useEventContextCommands'
+
+useEventContextCommands()
 
 const router = useRouter()
 const route = useRoute()

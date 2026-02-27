@@ -75,7 +75,7 @@ const wsStore = useWebSocketStore()
 const workspaceStore = useWorkspaceStore()
 const { isDark, toggle: toggleDarkMode } = useDarkMode()
 const { triggerNewList } = useTaskActions()
-const { isOpen: open } = useCommandPalette()
+const { isOpen: open, contextGroups } = useCommandPalette()
 
 async function resetLocalCache(): Promise<void> {
   await poolDb.clearAll()
@@ -232,12 +232,42 @@ const filteredActions = computed<NavAction[]>(() => {
   return quickActions.value.filter((a) => a.name.toLowerCase().includes(q))
 })
 
+const contextNavActions = computed(() => {
+  const groups: { label: string; actions: NavAction[] }[] = []
+  for (const [, group] of contextGroups.value) {
+    groups.push({
+      label: group.label,
+      actions: group.actions.map((a) => ({
+        type: 'action' as const,
+        id: a.id,
+        name: a.name,
+        icon: a.icon,
+        href: a.href,
+        run: a.run,
+      })),
+    })
+  }
+  return groups
+})
+
+const filteredContextNavActions = computed(() => {
+  if (!query.value) return []
+  const q = query.value.toLowerCase()
+  return contextNavActions.value
+    .map((group) => ({
+      label: group.label,
+      actions: group.actions.filter((a) => a.name.toLowerCase().includes(q)),
+    }))
+    .filter((group) => group.actions.length > 0)
+})
+
 const hasResults = computed(
   () =>
     filteredEvents.value.length > 0 ||
     filteredTaskLists.value.length > 0 ||
     filteredTaskItems.value.length > 0 ||
-    filteredActions.value.length > 0
+    filteredActions.value.length > 0 ||
+    filteredContextNavActions.value.length > 0
 )
 
 function onSelect(item: CommandItem | null) {
@@ -318,6 +348,52 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
                 as="ul"
                 class="max-h-80 scroll-py-2 divide-y divide-gray-100 overflow-y-auto dark:divide-white/5"
               >
+                <!-- Context groups (shown when query is empty) -->
+                <template v-if="query === ''">
+                  <li
+                    v-for="group in contextNavActions"
+                    :key="group.label"
+                    class="p-2"
+                  >
+                    <h2
+                      class="mb-2 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400"
+                    >
+                      {{ group.label }}
+                    </h2>
+                    <ul class="text-sm text-gray-700 dark:text-gray-300">
+                      <ComboboxOption
+                        v-for="action in group.actions"
+                        :key="action.id"
+                        v-slot="{ active }"
+                        :value="action"
+                        as="template"
+                      >
+                        <li
+                          :class="[
+                            'flex cursor-default items-center rounded-md px-3 py-2 select-none',
+                            active &&
+                              'bg-amber-500 text-white dark:bg-amber-600',
+                          ]"
+                        >
+                          <component
+                            :is="action.icon"
+                            :class="[
+                              'size-5 flex-none',
+                              active
+                                ? 'text-white'
+                                : 'text-gray-400 dark:text-gray-500',
+                            ]"
+                            aria-hidden="true"
+                          />
+                          <span class="ml-3 flex-auto truncate">{{
+                            action.name
+                          }}</span>
+                        </li>
+                      </ComboboxOption>
+                    </ul>
+                  </li>
+                </template>
+
                 <!-- Navigation (shown when query is empty) -->
                 <li v-if="query === ''" class="p-2">
                   <h2
@@ -359,6 +435,49 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
 
                 <!-- Search results -->
                 <template v-if="query !== ''">
+                  <li
+                    v-for="group in filteredContextNavActions"
+                    :key="group.label"
+                    class="p-2"
+                  >
+                    <h2
+                      class="mb-2 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400"
+                    >
+                      {{ group.label }}
+                    </h2>
+                    <ul class="text-sm text-gray-700 dark:text-gray-300">
+                      <ComboboxOption
+                        v-for="action in group.actions"
+                        :key="action.id"
+                        v-slot="{ active }"
+                        :value="action"
+                        as="template"
+                      >
+                        <li
+                          :class="[
+                            'flex cursor-default items-center rounded-md px-3 py-2 select-none',
+                            active &&
+                              'bg-amber-500 text-white dark:bg-amber-600',
+                          ]"
+                        >
+                          <component
+                            :is="action.icon"
+                            :class="[
+                              'size-5 flex-none',
+                              active
+                                ? 'text-white'
+                                : 'text-gray-400 dark:text-gray-500',
+                            ]"
+                            aria-hidden="true"
+                          />
+                          <span class="ml-3 flex-auto truncate">{{
+                            action.name
+                          }}</span>
+                        </li>
+                      </ComboboxOption>
+                    </ul>
+                  </li>
+
                   <li v-if="filteredEvents.length > 0" class="p-2">
                     <h2
                       class="mb-2 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400"

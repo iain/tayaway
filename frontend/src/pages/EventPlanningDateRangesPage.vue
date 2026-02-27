@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 import { PlusIcon, TrashIcon } from '@heroicons/vue/24/outline'
@@ -14,8 +14,10 @@ import VotersList from '@/components/votes/VotersList.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
+import { useDateRangeActions } from '@/composables/useDateRangeActions'
 
 const route = useRoute()
+const { pendingAdd: pendingAddDateRange } = useDateRangeActions()
 const authStore = useAuthStore()
 const datePollsStore = useDatePollsStore()
 const { currentUserId } = storeToRefs(authStore)
@@ -37,6 +39,13 @@ const isOwner = computed(() => {
 
 const dateRanges = computed(() => {
   return event.value?.datePoll?.dateRanges ?? []
+})
+
+watch(pendingAddDateRange, (val) => {
+  if (val) {
+    pendingAddDateRange.value = false
+    handleAddDateRange()
+  }
 })
 
 function handleAddDateRange(): void {
