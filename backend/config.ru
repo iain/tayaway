@@ -4,7 +4,6 @@
 $stdout.sync = true
 
 require_relative "config/environment"
-require_relative "lib/rate_limiter"
 
 use Rack::Attack
 use RequestLogger
