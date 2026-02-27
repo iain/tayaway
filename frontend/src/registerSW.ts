@@ -10,9 +10,19 @@ export function registerServiceWorker(): void {
         try {
           await updateSW(true)
         } catch {
+          // SW update failed — fall through to manual reload
+        }
+
+        // Always clear caches before reloading. On iOS standalone PWA,
+        // skipWaiting() can silently fail, leaving the old SW active.
+        // Clearing caches ensures reload fetches fresh content regardless.
+        try {
           const keys = await caches.keys()
           await Promise.all(keys.map((k) => caches.delete(k)))
+        } catch {
+          // Cache API unavailable
         }
+
         window.location.reload()
       })
     },
