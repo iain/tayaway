@@ -17,7 +17,6 @@ const props = defineProps<{
   expense: PoolExpense
   event: PoolEvent
   currentUserId: string | null
-  stripe?: boolean
 }>()
 
 const pool = useObjectPoolStore()
@@ -117,107 +116,101 @@ async function handleDelete(e: Event) {
 </script>
 
 <template>
-  <tr
+  <div
     data-testid="expense-row"
-    :class="[
-      stripe ? 'bg-gray-50 dark:bg-black/20' : '',
-      'cursor-pointer select-none',
-    ]"
+    class="cursor-pointer rounded-lg bg-white shadow transition-all select-none hover:ring-2 hover:ring-rose-500 dark:bg-stone-800"
     @click="toggleExpand"
   >
-    <td class="min-w-0 py-3 pr-4 pl-2 align-middle">
-      <p class="truncate text-sm text-gray-900 dark:text-white">
-        {{ expense.description }}
-      </p>
-      <p class="text-xs text-gray-500 dark:text-stone-400">
-        {{ displayName }}
-      </p>
-      <p
-        v-if="event.startDate && event.endDate"
-        class="text-xs text-gray-400 dark:text-stone-500"
-      >
-        <DateRangeDisplay
-          :start-date="expense.startDate"
-          :end-date="expense.endDate"
-        />
-      </p>
-    </td>
-    <td
-      class="py-3 pr-4 text-right align-middle font-mono text-sm font-medium whitespace-nowrap text-gray-900 dark:text-white"
-    >
-      {{ formattedAmount }}
-    </td>
-    <td class="w-12 py-3 pr-2 align-middle">
-      <div class="flex items-center gap-1">
-        <LockClosedIcon
-          v-if="isSettled"
-          class="size-4 text-gray-300 dark:text-stone-600"
-          title="Part of a settlement"
-        />
-        <template v-else>
-          <IconButton
-            v-if="isOwner"
-            label="Edit expense"
-            data-testid="edit-expense"
-            @click="handleEdit"
-          >
-            <PencilIcon class="size-4" />
-          </IconButton>
-          <IconButton
-            v-if="isOwner"
-            variant="danger"
-            label="Delete expense"
-            data-testid="delete-expense"
-            @click="handleDelete"
-          >
-            <TrashIcon class="size-4" />
-          </IconButton>
-        </template>
-        <ChevronDownIcon
-          class="size-4 text-gray-400 transition-transform dark:text-stone-500"
-          :class="{ 'rotate-180': expanded }"
-        />
-      </div>
-    </td>
-  </tr>
-  <tr v-if="expanded" data-testid="expense-detail">
-    <td
-      colspan="3"
-      class="px-2 pb-3"
-      :class="stripe ? 'bg-gray-50 dark:bg-black/20' : ''"
-    >
-      <div
-        class="rounded-md border border-gray-200 bg-white p-3 dark:border-stone-600 dark:bg-stone-800"
-      >
-        <p
-          v-if="payers.length === 0"
-          class="text-xs text-gray-500 dark:text-stone-400"
-        >
-          No overlapping attendees for this expense.
+    <div class="flex items-center px-4 py-3">
+      <div class="min-w-0 flex-1">
+        <p class="truncate text-sm text-gray-900 dark:text-white">
+          {{ expense.description }}
         </p>
-        <table v-else class="w-full text-xs">
-          <thead>
-            <tr class="text-left text-gray-500 uppercase dark:text-stone-400">
-              <th class="pr-2 pb-1">Person</th>
-              <th class="pr-2 pb-1">Days</th>
-              <th class="pb-1 text-right">Share</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="payer in payers"
-              :key="payer.name"
-              class="text-gray-700 dark:text-stone-300"
-            >
-              <td class="py-0.5 pr-2">{{ payer.name }}</td>
-              <td class="py-0.5 pr-2">{{ payer.overlapDays }}</td>
-              <td class="py-0.5 text-right font-mono">
-                €{{ payer.share.toFixed(2) }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <p class="text-xs text-gray-500 dark:text-stone-400">
+          {{ displayName }}
+        </p>
+        <p
+          v-if="event.startDate && event.endDate"
+          class="text-xs text-gray-400 dark:text-stone-500"
+        >
+          <DateRangeDisplay
+            :start-date="expense.startDate"
+            :end-date="expense.endDate"
+          />
+        </p>
       </div>
-    </td>
-  </tr>
+      <div class="flex items-center gap-3">
+        <span
+          class="font-mono text-sm font-medium whitespace-nowrap text-gray-900 dark:text-white"
+        >
+          {{ formattedAmount }}
+        </span>
+        <div class="flex items-center gap-1">
+          <LockClosedIcon
+            v-if="isSettled"
+            class="size-4 text-gray-300 dark:text-stone-600"
+            title="Part of a settlement"
+          />
+          <template v-else>
+            <IconButton
+              v-if="isOwner"
+              label="Edit expense"
+              data-testid="edit-expense"
+              @click="handleEdit"
+            >
+              <PencilIcon class="size-4" />
+            </IconButton>
+            <IconButton
+              v-if="isOwner"
+              variant="danger"
+              label="Delete expense"
+              data-testid="delete-expense"
+              @click="handleDelete"
+            >
+              <TrashIcon class="size-4" />
+            </IconButton>
+          </template>
+          <ChevronDownIcon
+            class="size-4 text-gray-400 transition-transform dark:text-stone-500"
+            :class="{ 'rotate-180': expanded }"
+          />
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="expanded"
+      data-testid="expense-detail"
+      class="border-t border-gray-100 px-4 pt-3 pb-3 dark:border-stone-700"
+    >
+      <p
+        v-if="payers.length === 0"
+        class="text-xs text-gray-500 dark:text-stone-400"
+      >
+        No overlapping attendees for this expense.
+      </p>
+      <table v-else class="w-full text-xs">
+        <thead>
+          <tr class="text-left text-gray-500 uppercase dark:text-stone-400">
+            <th class="pr-2 pb-1">Person</th>
+            <th class="pr-2 pb-1">Days</th>
+            <th class="pb-1 text-right">Share</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="payer in payers"
+            :key="payer.name"
+            class="text-gray-700 dark:text-stone-300"
+          >
+            <td class="py-0.5 pr-2">{{ payer.name }}</td>
+            <td class="py-0.5 pr-2">{{ payer.overlapDays }}</td>
+            <td class="py-0.5 text-right font-mono">
+              €{{ payer.share.toFixed(2) }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 </template>

@@ -406,9 +406,9 @@ test.describe('Expenses Feature', () => {
       await setupAuthenticatedPage(page, token)
       await page.goto(`/events/${eventId}/expenses`)
 
-      await expect(page.getByRole('heading', { name: 'Expenses' })).toBeVisible(
-        { timeout: PAGE_LOAD_TIMEOUT }
-      )
+      await expect(
+        page.getByRole('heading', { name: 'Expenses', exact: true })
+      ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
       await expect(
         page.getByRole('heading', { name: 'Cost Split' })
       ).not.toBeVisible()
@@ -709,7 +709,7 @@ test.describe('Expenses Feature', () => {
 
       await expect(page).toHaveURL(`/events/${eventId}/expenses`)
       await expect(
-        page.getByRole('heading', { name: 'Expenses' })
+        page.getByRole('heading', { name: 'Expenses', exact: true })
       ).toBeVisible()
     })
 
@@ -717,7 +717,7 @@ test.describe('Expenses Feature', () => {
       await setupAuthenticatedPage(page, sessionToken)
       await page.goto(`/events/${eventId}/expenses`)
 
-      await expect(page.getByText(/no expenses recorded/i)).toBeVisible({
+      await expect(page.getByText(/no expenses yet/i)).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
       await expect(

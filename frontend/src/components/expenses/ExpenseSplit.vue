@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { CalculatorIcon } from '@heroicons/vue/24/outline'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { countDays } from '@/utils/event'
+import SectionHeading from '@/components/common/SectionHeading.vue'
+import BaseCard from '@/components/common/BaseCard.vue'
 import type { PoolEvent } from '@/types/pool'
 
 const props = defineProps<{
@@ -110,9 +113,7 @@ function formatBalance(balance: number): string {
 
 <template>
   <div v-if="event.startDate && event.endDate" class="mt-8">
-    <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-      Cost Split
-    </h2>
+    <SectionHeading :icon="CalculatorIcon" title="Cost Split" />
 
     <p
       v-if="rows.length === 0"
@@ -121,24 +122,20 @@ function formatBalance(balance: number): string {
       No attendees yet.
     </p>
 
-    <div
-      v-else
-      data-testid="cost-split-table"
-      class="overflow-hidden rounded-lg border border-gray-200 dark:border-stone-700"
-    >
+    <BaseCard v-else data-testid="cost-split-table" class="overflow-hidden">
       <table class="w-full text-sm">
         <thead>
           <tr
             class="border-b border-gray-200 text-left text-xs font-medium tracking-wide text-gray-500 uppercase dark:border-stone-700 dark:text-stone-400"
           >
-            <th class="pt-3 pr-4 pb-2 pl-2">Name</th>
+            <th class="pt-3 pr-4 pb-2 pl-4">Name</th>
             <th class="hidden pt-3 pr-4 pb-2 sm:table-cell">Days</th>
             <th class="pt-3 pr-4 pb-2 text-right whitespace-nowrap">Paid</th>
             <th class="pt-3 pr-4 pb-2 text-right">
               <span class="sm:hidden">Share</span>
               <span class="hidden sm:inline">Fair share</span>
             </th>
-            <th class="pt-3 pr-2 pb-2 text-right whitespace-nowrap">Balance</th>
+            <th class="pt-3 pr-4 pb-2 text-right whitespace-nowrap">Balance</th>
           </tr>
         </thead>
         <tbody>
@@ -146,10 +143,10 @@ function formatBalance(balance: number): string {
             v-for="(row, i) in rows"
             :key="row.userId"
             class="text-gray-800 dark:text-stone-200"
-            :class="i % 2 === 0 ? 'bg-gray-50 dark:bg-black/20' : ''"
+            :class="i % 2 === 0 ? 'bg-gray-50/50 dark:bg-white/[0.03]' : ''"
           >
             <td
-              class="sm:truncate-none max-w-[6rem] truncate py-2 pr-4 pl-2 font-medium sm:max-w-none"
+              class="sm:truncate-none max-w-[6rem] truncate py-2 pr-4 pl-4 font-medium sm:max-w-none"
             >
               {{ row.name }}
             </td>
@@ -167,7 +164,7 @@ function formatBalance(balance: number): string {
               {{ formatAmount(row.share) }}
             </td>
             <td
-              class="py-2 pr-2 text-right font-mono"
+              class="py-2 pr-4 text-right font-mono font-semibold"
               :class="{
                 'text-red-600 dark:text-red-400': row.balance > 0.005,
                 'text-green-600 dark:text-green-400': row.balance < -0.005,
@@ -183,7 +180,7 @@ function formatBalance(balance: number): string {
           <tr
             class="border-t border-gray-300 font-semibold text-gray-900 dark:border-stone-600 dark:text-white"
           >
-            <td class="pt-2 pr-4 pb-3 pl-2">Total</td>
+            <td class="pt-2 pr-4 pb-3 pl-4">Total</td>
             <td
               class="hidden pt-2 pr-4 pb-3 text-gray-600 sm:table-cell dark:text-stone-400"
             >
@@ -197,10 +194,10 @@ function formatBalance(balance: number): string {
             <td class="pt-2 pr-4 pb-3 text-right font-mono">
               {{ formatAmount(total) }}
             </td>
-            <td class="pt-2 pr-2 pb-3"></td>
+            <td class="pt-2 pr-4 pb-3"></td>
           </tr>
         </tfoot>
       </table>
-    </div>
+    </BaseCard>
   </div>
 </template>

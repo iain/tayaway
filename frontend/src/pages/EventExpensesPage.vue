@@ -12,6 +12,8 @@ import SettlementSection from '@/components/expenses/SettlementSection.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import TextButton from '@/components/common/TextButton.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+import { CurrencyEuroIcon } from '@heroicons/vue/24/outline'
 import { useExpenseActions } from '@/composables/useExpenseActions'
 import type { PoolApiResponse, PoolExpense } from '@/types/pool'
 
@@ -108,31 +110,30 @@ onMounted(async () => {
             {{ formattedTotal }} total
           </span>
         </div>
-        <AppButton @click="openAdd">Add expense</AppButton>
+        <AppButton v-if="expenses.length > 0" @click="openAdd"
+          >Add expense</AppButton
+        >
       </div>
 
-      <div
-        v-if="expenses.length > 0"
-        class="mb-6 overflow-hidden rounded-lg border border-gray-200 dark:border-stone-700"
+      <div v-if="expenses.length > 0" class="mb-6 space-y-3">
+        <ExpenseRow
+          v-for="expense in expenses"
+          :key="expense.id"
+          :expense="expense"
+          :event="event"
+          :current-user-id="currentUserId"
+          @edit="openEdit"
+        />
+      </div>
+
+      <EmptyState
+        v-else
+        :icon="CurrencyEuroIcon"
+        heading="No expenses yet"
+        description="Add your first expense to start tracking costs."
       >
-        <table class="w-full text-sm">
-          <tbody>
-            <ExpenseRow
-              v-for="(expense, i) in expenses"
-              :key="expense.id"
-              :expense="expense"
-              :event="event"
-              :current-user-id="currentUserId"
-              :stripe="i % 2 === 0"
-              @edit="openEdit"
-            />
-          </tbody>
-        </table>
-      </div>
-
-      <p v-else class="mb-6 text-sm text-gray-500 dark:text-stone-400">
-        No expenses recorded yet.
-      </p>
+        <AppButton @click="openAdd">Add expense</AppButton>
+      </EmptyState>
 
       <AddExpenseModal
         :open="isModalOpen"
