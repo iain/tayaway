@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import { useCalendar } from '@/composables/useCalendar'
+import { formatDateDisplay } from '@/utils/date'
 
 defineProps<{
   startDate: string
   endDate: string
 }>()
-
-const { formatDateDisplay } = useCalendar()
 </script>
 
 <template>

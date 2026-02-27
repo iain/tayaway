@@ -17,6 +17,7 @@ import {
   minimizeTransfers,
   type PreviewTransfer,
 } from '@/utils/settlement'
+import { formatDateTime } from '@/utils/date'
 import AppButton from '@/components/common/AppButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
@@ -80,12 +81,7 @@ function formatAmount(amount: number): string {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return formatDateTime(iso)
 }
 
 const showPreviewModal = ref(false)

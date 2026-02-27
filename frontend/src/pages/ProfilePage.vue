@@ -9,6 +9,7 @@ import {
   ComputerDesktopIcon,
   BanknotesIcon,
 } from '@heroicons/vue/24/outline'
+import { formatBirthday } from '@/utils/date'
 import IconButton from '@/components/common/IconButton.vue'
 import EditProfileFieldModal from '@/components/profile/EditProfileFieldModal.vue'
 import type {
@@ -45,11 +46,6 @@ const initials = computed(() => {
   }
   return user.value?.email?.[0]?.toUpperCase() ?? '?'
 })
-
-function formatBirthday(iso: string): string {
-  const [year, month, day] = iso.split('-')
-  return `${day}/${month}/${year}`
-}
 
 function openField(field: ProfileField): void {
   editField.value = field

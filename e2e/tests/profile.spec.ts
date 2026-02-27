@@ -293,7 +293,7 @@ test.describe('Profile Feature', () => {
 
       // Verify contact fields are displayed
       await expect(page.getByText('+31600000000')).toBeVisible()
-      await expect(page.getByText('15/01/1990')).toBeVisible()
+      await expect(page.getByText('01/15/1990')).toBeVisible()
 
       // Click edit contact button to open the modal
       await page.getByTestId('edit-contact-button').click()

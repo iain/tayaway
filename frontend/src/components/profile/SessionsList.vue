@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { api } from '@/api/client'
+import { formatRelativeDate, formatDateShort } from '@/utils/date'
 import type { Session, SessionsResponse } from '@/types'
 
 defineProps<{
@@ -37,27 +38,8 @@ async function endSession(id: string) {
   }
 }
 
-function formatRelativeDate(iso: string): string {
-  const date = new Date(iso)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMinutes = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-
-  if (diffMinutes < 1) return 'Just now'
-  if (diffMinutes < 60) return `${diffMinutes}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
-  if (diffDays < 30) return `${diffDays}d ago`
-  return date.toLocaleDateString()
-}
-
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
+  return formatDateShort(iso)
 }
 
 onMounted(fetchSessions)

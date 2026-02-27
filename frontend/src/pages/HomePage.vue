@@ -27,6 +27,7 @@ import { useAuthStore, useMembersStore, useObjectPoolStore } from '@/stores'
 import { useSettlementsStore } from '@/stores/settlements'
 import PageHeader from '@/components/common/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
+import { formatBirthday } from '@/utils/date'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import EpcQrModal from '@/components/expenses/EpcQrModal.vue'
 import type { PoolMember, PoolSettlementTransfer } from '@/types/pool'
@@ -205,7 +206,7 @@ function formatBirthdayDate(member: PoolMember): string {
       })
     }
   }
-  return `${day}/${month}`
+  return formatBirthday(member.birthday)
 }
 
 function getInitials(member: PoolMember): string {

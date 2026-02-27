@@ -20,6 +20,7 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import type { PoolMember } from '@/types/pool'
+import { formatBirthday } from '@/utils/date'
 import { generateVCard, downloadVCard } from '@/utils/vcard'
 
 const membersStore = useMembersStore()
@@ -109,11 +110,6 @@ function isBirthday(member: PoolMember): boolean {
   return (
     today.getMonth() + 1 === Number(month) && today.getDate() === Number(day)
   )
-}
-
-function formatBirthday(iso: string): string {
-  const [year, month, day] = iso.split('-')
-  return `${day}/${month}/${year}`
 }
 
 function getInitials(member: PoolMember): string {

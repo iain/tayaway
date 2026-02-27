@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { PlusIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline'
+import { formatDateRange } from '@/utils/date'
 import { useEventsStore, useNotificationsStore } from '@/stores'
 import { useEventsList } from '@/composables/useEventsList'
 import AddEventModal from '@/components/events/AddEventModal.vue'
@@ -81,7 +82,7 @@ function formatDateRangeSummary(
 ): string {
   if (ranges.length === 0) return 'No dates'
   if (ranges.length === 1)
-    return `${ranges[0]!.startDate} - ${ranges[0]!.endDate}`
+    return formatDateRange(ranges[0]!.startDate, ranges[0]!.endDate)
   return `${ranges.length} date ranges`
 }
 </script>

@@ -10,23 +10,7 @@ export interface RsvpEventItem {
   endDate: string
 }
 
-export function formatEventDateRange(
-  startDate: string,
-  endDate: string
-): string {
-  const start = new Date(startDate)
-  const end = new Date(endDate)
-  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
-
-  if (start.getFullYear() === end.getFullYear()) {
-    if (start.getMonth() === end.getMonth()) {
-      return `${start.toLocaleDateString('en-US', opts)} – ${end.getDate()}, ${end.getFullYear()}`
-    }
-    return `${start.toLocaleDateString('en-US', opts)} – ${end.toLocaleDateString('en-US', opts)}, ${end.getFullYear()}`
-  }
-
-  return `${start.toLocaleDateString('en-US', { ...opts, year: 'numeric' })} – ${end.toLocaleDateString('en-US', { ...opts, year: 'numeric' })}`
-}
+export { formatDateRange as formatEventDateRange } from '@/utils/date'
 
 export function useEventsNeedingRsvp() {
   const pool = useObjectPoolStore()

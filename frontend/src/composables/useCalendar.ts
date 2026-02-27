@@ -4,6 +4,13 @@ export interface CalendarDay {
   dateString: string
 }
 
+import {
+  formatDateDisplay as _formatDateDisplay,
+  getMonthName as _getMonthName,
+} from '@/utils/date'
+
+export { formatDateDisplay, getMonthName } from '@/utils/date'
+
 export function useCalendar() {
   function getDaysInMonth(year: number, month: number): CalendarDay[] {
     const days: CalendarDay[] = []
@@ -102,34 +109,6 @@ export function useCalendar() {
     return formatDate(date)
   }
 
-  function getMonthName(month: number): string {
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ]
-    return months[month]!
-  }
-
-  function formatDateDisplay(dateString: string): string {
-    const date = parseDate(dateString)
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
-  }
-
   return {
     getDaysInMonth,
     formatDate,
@@ -138,7 +117,7 @@ export function useCalendar() {
     isDateInHoverRange,
     getNextMonday,
     addDays,
-    getMonthName,
-    formatDateDisplay,
+    getMonthName: _getMonthName,
+    formatDateDisplay: _formatDateDisplay,
   }
 }

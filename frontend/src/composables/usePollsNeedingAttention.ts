@@ -11,23 +11,9 @@ export interface PollItem {
   totalCount: number
 }
 
-export function formatDeadline(deadline: string): string {
-  const date = new Date(deadline)
-  const now = new Date()
-  const diffMs = date.getTime() - now.getTime()
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+import { formatDeadline } from '@/utils/date'
 
-  if (diffDays < 0) return 'Past deadline'
-  if (diffDays === 0) return 'Due today'
-  if (diffDays === 1) return 'Due tomorrow'
-  if (diffDays <= 7) return `Due in ${diffDays} days`
-
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}
+export { formatDeadline }
 
 export function isUrgent(deadline: string): boolean {
   const diffMs = new Date(deadline).getTime() - Date.now()
