@@ -27,12 +27,15 @@ export function getObjectsByType<T extends PoolObject>(
   return objects.filter((o) => o.objectType === type) as T[]
 }
 
+const MAX_SESSION_ATTEMPTS = 8
+const MAX_SESSION_DELAY = 3000
+
 export async function getTestSession(
   request: APIRequestContext,
   email: string,
   name: string
 ): Promise<{ token: string; userId: string }> {
-  for (let attempt = 0; attempt < 5; attempt++) {
+  for (let attempt = 0; attempt < MAX_SESSION_ATTEMPTS; attempt++) {
     let response
     try {
       response = await request.post(`${API_BASE}/api/test/session`, {
@@ -40,8 +43,10 @@ export async function getTestSession(
       })
     } catch {
       // Connection error (ECONNREFUSED, etc.) — retry with backoff
-      if (attempt < 4) {
-        const delay = 200 * Math.pow(2, attempt) + Math.random() * 100
+      if (attempt < MAX_SESSION_ATTEMPTS - 1) {
+        const delay =
+          Math.min(200 * Math.pow(2, attempt), MAX_SESSION_DELAY) +
+          Math.random() * 100
         await new Promise((r) => setTimeout(r, delay))
         continue
       }
@@ -51,9 +56,11 @@ export async function getTestSession(
       const body = await response.json()
       return { token: body.session_token, userId: body.user_id }
     }
-    if (response.status() >= 500 && attempt < 4) {
-      // Exponential backoff with jitter to avoid thundering herd
-      const delay = 200 * Math.pow(2, attempt) + Math.random() * 100
+    if (response.status() >= 500 && attempt < MAX_SESSION_ATTEMPTS - 1) {
+      // Exponential backoff with jitter, capped to avoid long waits
+      const delay =
+        Math.min(200 * Math.pow(2, attempt), MAX_SESSION_DELAY) +
+        Math.random() * 100
       await new Promise((r) => setTimeout(r, delay))
       continue
     }
