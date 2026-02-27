@@ -241,11 +241,17 @@ test.describe('Settlements Feature', () => {
         page.getByRole('heading', { name: 'Settlements' })
       ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
 
-      // Click "Settle up"
+      // Click "Preview settlement"
       await expect(
-        page.getByRole('button', { name: /Settle up/ })
+        page.getByRole('button', { name: /Preview settlement/ })
       ).toBeVisible()
-      await page.getByRole('button', { name: /Settle up/ }).click()
+      await page.getByRole('button', { name: /Preview settlement/ }).click()
+
+      // Preview modal should appear
+      await expect(page.getByText('This is a preview')).toBeVisible()
+
+      // Confirm the settlement
+      await page.getByRole('button', { name: /Confirm/ }).click()
 
       // Settlement should appear with "Settled by" text
       await expect(page.getByText(/Settled by/)).toBeVisible()
@@ -291,9 +297,9 @@ test.describe('Settlements Feature', () => {
       ])
       expect(deleteResp.ok()).toBeTruthy()
 
-      // Settle up button should reappear (expenses are unsettled again)
+      // Preview settlement button should reappear (expenses are unsettled again)
       await expect(
-        page.getByRole('button', { name: /Settle up/ })
+        page.getByRole('button', { name: /Preview settlement/ })
       ).toBeVisible()
     })
   })

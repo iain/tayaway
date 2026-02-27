@@ -1,0 +1,203 @@
+import { describe, it, expect } from 'vitest'
+import { computeBalances, minimizeTransfers } from './settlement'
+
+describe('computeBalances', () => {
+  const eventStart = '2026-07-01'
+  const eventEnd = '2026-07-07'
+
+  it('returns empty map when single payer is sole attendee', () => {
+    const expenses = [
+      {
+        userId: 'alice',
+        startDate: eventStart,
+        endDate: eventEnd,
+        amount: 100,
+      },
+    ]
+    const rsvps = [{ userId: 'alice', startDate: null, endDate: null }]
+
+    const balances = computeBalances(expenses, rsvps, eventStart, eventEnd)
+    expect(balances.size).toBe(0)
+  })
+
+  it('splits evenly between two equal attendees with one payer', () => {
+    const expenses = [
+      {
+        userId: 'alice',
+        startDate: eventStart,
+        endDate: eventEnd,
+        amount: 100,
+      },
+    ]
+    const rsvps = [
+      { userId: 'alice', startDate: null, endDate: null },
+      { userId: 'bob', startDate: null, endDate: null },
+    ]
+
+    const balances = computeBalances(expenses, rsvps, eventStart, eventEnd)
+    // Alice paid 100, share is 50 → balance = 50 - 100 = -50 (owed)
+    expect(balances.get('alice')).toBe(-50)
+    // Bob paid 0, share is 50 → balance = 50 - 0 = 50 (owes)
+    expect(balances.get('bob')).toBe(50)
+  })
+
+  it('splits proportionally by attendance overlap', () => {
+    // Event: Jul 1-4 (4 days)
+    const start = '2026-07-01'
+    const end = '2026-07-04'
+    const expenses = [
+      { userId: 'alice', startDate: start, endDate: end, amount: 60 },
+    ]
+    const rsvps = [
+      { userId: 'alice', startDate: start, endDate: end }, // 4 days
+      { userId: 'bob', startDate: start, endDate: '2026-07-02' }, // 2 days
+    ]
+
+    const balances = computeBalances(expenses, rsvps, start, end)
+    // Total overlap days: 4 + 2 = 6
+    // Alice share: 4/6 * 60 = 40, paid 60 → balance = -20 (owed)
+    expect(balances.get('alice')).toBe(-20)
+    // Bob share: 2/6 * 60 = 20, paid 0 → balance = 20 (owes)
+    expect(balances.get('bob')).toBe(20)
+  })
+
+  it('ignores expenses with no RSVP overlap', () => {
+    const expenses = [
+      {
+        userId: 'alice',
+        startDate: '2026-07-10',
+        endDate: '2026-07-12',
+        amount: 100,
+      },
+    ]
+    const rsvps = [
+      { userId: 'alice', startDate: eventStart, endDate: '2026-07-03' },
+      { userId: 'bob', startDate: eventStart, endDate: '2026-07-03' },
+    ]
+
+    const balances = computeBalances(expenses, rsvps, eventStart, eventEnd)
+    // No overlap with expense dates → alice paid 100 but has 0 share
+    // Only paid_by_user is populated, so alice balance = 0 - 100 = -100
+    expect(balances.get('alice')).toBe(-100)
+    expect(balances.has('bob')).toBe(false)
+  })
+
+  it('accumulates multiple expenses', () => {
+    const expenses = [
+      { userId: 'alice', startDate: eventStart, endDate: eventEnd, amount: 60 },
+      { userId: 'bob', startDate: eventStart, endDate: eventEnd, amount: 40 },
+    ]
+    const rsvps = [
+      { userId: 'alice', startDate: null, endDate: null },
+      { userId: 'bob', startDate: null, endDate: null },
+    ]
+
+    const balances = computeBalances(expenses, rsvps, eventStart, eventEnd)
+    // Alice: share 50 (half of 100), paid 60 → -10 (owed)
+    expect(balances.get('alice')).toBe(-10)
+    // Bob: share 50, paid 40 → 10 (owes)
+    expect(balances.get('bob')).toBe(10)
+  })
+
+  it('filters out near-zero balances', () => {
+    const expenses = [
+      {
+        userId: 'alice',
+        startDate: eventStart,
+        endDate: eventEnd,
+        amount: 10.0,
+      },
+    ]
+    const rsvps = [
+      { userId: 'alice', startDate: null, endDate: null },
+      { userId: 'bob', startDate: null, endDate: null },
+    ]
+
+    // Alice share 5, paid 10 → -5; Bob share 5, paid 0 → 5
+    const balances = computeBalances(expenses, rsvps, eventStart, eventEnd)
+    expect(balances.size).toBe(2)
+    // Both are well above 0.005 threshold
+    expect(balances.get('alice')).toBe(-5)
+    expect(balances.get('bob')).toBe(5)
+  })
+})
+
+describe('minimizeTransfers', () => {
+  it('returns empty array for empty balances', () => {
+    expect(minimizeTransfers(new Map())).toEqual([])
+  })
+
+  it('creates single transfer between two users', () => {
+    const balances = new Map([
+      ['alice', -50], // owed 50
+      ['bob', 50], // owes 50
+    ])
+
+    const transfers = minimizeTransfers(balances)
+    expect(transfers).toEqual([
+      { fromUserId: 'bob', toUserId: 'alice', amount: 50 },
+    ])
+  })
+
+  it('handles one debtor and two creditors', () => {
+    const balances = new Map([
+      ['alice', -30],
+      ['bob', -20],
+      ['charlie', 50],
+    ])
+
+    const transfers = minimizeTransfers(balances)
+    expect(transfers).toHaveLength(2)
+    // Charlie owes 50 total: 30 to alice, 20 to bob
+    expect(transfers[0]).toEqual({
+      fromUserId: 'charlie',
+      toUserId: 'alice',
+      amount: 30,
+    })
+    expect(transfers[1]).toEqual({
+      fromUserId: 'charlie',
+      toUserId: 'bob',
+      amount: 20,
+    })
+  })
+
+  it('handles two debtors and one creditor', () => {
+    const balances = new Map([
+      ['alice', -50],
+      ['bob', 30],
+      ['charlie', 20],
+    ])
+
+    const transfers = minimizeTransfers(balances)
+    expect(transfers).toHaveLength(2)
+    expect(transfers[0]).toEqual({
+      fromUserId: 'bob',
+      toUserId: 'alice',
+      amount: 30,
+    })
+    expect(transfers[1]).toEqual({
+      fromUserId: 'charlie',
+      toUserId: 'alice',
+      amount: 20,
+    })
+  })
+
+  it('returns empty array when all balances are below threshold', () => {
+    const balances = new Map([
+      ['alice', 0.003],
+      ['bob', -0.003],
+    ])
+
+    expect(minimizeTransfers(balances)).toEqual([])
+  })
+
+  it('rounds transfer amounts to 2 decimal places', () => {
+    const balances = new Map([
+      ['alice', -33.33],
+      ['bob', 33.33],
+    ])
+
+    const transfers = minimizeTransfers(balances)
+    expect(transfers[0]!.amount).toBe(33.33)
+  })
+})

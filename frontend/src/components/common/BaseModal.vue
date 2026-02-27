@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps<{
@@ -13,6 +13,12 @@ const emit = defineEmits<{
 }>()
 
 const dialogRef = ref<HTMLDialogElement | null>(null)
+
+onMounted(() => {
+  if (props.open) {
+    dialogRef.value?.showModal()
+  }
+})
 
 watch(
   () => props.open,
