@@ -20,6 +20,7 @@ module Auth
       payload = {
         token: token,
         email: email,
+        typ: "magic_link",
         exp: (Time.now + (MagicLinkToken::EXPIRY_MINUTES * 60)).to_i
       }
       JWT.encode(payload, APP_SECRET, "HS256")
@@ -29,6 +30,8 @@ module Auth
     def self.decode_magic_link(jwt)
       decoded = JWT.decode(jwt, APP_SECRET, true, algorithm: "HS256")
       payload = decoded.first
+      raise JWT::DecodeError, "Invalid token type" unless payload["typ"] == "magic_link"
+
       { token: payload["token"], email: payload["email"] }
     end
 
@@ -36,6 +39,7 @@ module Auth
     def self.encode_ws_ticket(token:)
       payload = {
         token: token,
+        typ: "ws_ticket",
         exp: (Time.now + WsTicket::EXPIRY_SECONDS).to_i
       }
       JWT.encode(payload, APP_SECRET, "HS256")
@@ -45,6 +49,8 @@ module Auth
     def self.decode_ws_ticket(jwt)
       decoded = JWT.decode(jwt, APP_SECRET, true, algorithm: "HS256")
       payload = decoded.first
+      raise JWT::DecodeError, "Invalid token type" unless payload["typ"] == "ws_ticket"
+
       { token: payload["token"] }
     end
 
@@ -53,6 +59,7 @@ module Auth
       payload = {
         token: token,
         email: email,
+        typ: "invite",
         exp: (Time.now + (WorkspaceInvite::EXPIRY_HOURS * 3600)).to_i
       }
       JWT.encode(payload, APP_SECRET, "HS256")
@@ -62,6 +69,8 @@ module Auth
     def self.decode_invite(jwt)
       decoded = JWT.decode(jwt, APP_SECRET, true, algorithm: "HS256")
       payload = decoded.first
+      raise JWT::DecodeError, "Invalid token type" unless payload["typ"] == "invite"
+
       { token: payload["token"], email: payload["email"] }
     end
 
@@ -70,6 +79,7 @@ module Auth
       payload = {
         token: token,
         email: email,
+        typ: "email_change",
         exp: (Time.now + (EmailChangeToken::EXPIRY_MINUTES * 60)).to_i
       }
       JWT.encode(payload, APP_SECRET, "HS256")
@@ -79,6 +89,8 @@ module Auth
     def self.decode_email_change(jwt)
       decoded = JWT.decode(jwt, APP_SECRET, true, algorithm: "HS256")
       payload = decoded.first
+      raise JWT::DecodeError, "Invalid token type" unless payload["typ"] == "email_change"
+
       { token: payload["token"], email: payload["email"] }
     end
   end

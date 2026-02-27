@@ -22,7 +22,7 @@ import type { PoolApiResponse } from '@/types/pool'
 const AUTH_USER_KEY = 'tayaway_auth_user'
 
 function cacheUser(u: AuthUser): void {
-  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(u))
+  localStorage.setItem(AUTH_USER_KEY, JSON.stringify({ ...u, iban: null }))
 }
 
 function getCachedUser(): AuthUser | null {

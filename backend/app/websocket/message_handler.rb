@@ -42,7 +42,8 @@ module Websocket
       rescue JSON::ParserError
         connection.write({ type: "error", message: "Invalid JSON" }.to_json)
       rescue StandardError => e
-        connection.write({ type: "error", message: e.message }.to_json)
+        APP_LOGGER.error { "[WebSocket] MessageHandler error: #{e.message}" }
+        connection.write({ type: "error", message: "Internal error" }.to_json)
       end
 
       private

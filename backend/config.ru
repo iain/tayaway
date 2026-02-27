@@ -4,7 +4,9 @@
 $stdout.sync = true
 
 require_relative "config/environment"
+require_relative "lib/rate_limiter"
 
+use Rack::Attack
 use RequestLogger
 
 # Start WebSocket listener for PostgreSQL NOTIFY (skip in test environment)

@@ -28,6 +28,8 @@ module TaskLists
       def validate_content(content)
         if content.nil? || content.empty?
           T.cast(Failure(ServiceError.validation("Content is required")), Result[String, ServiceError])
+        elsif content.length > 5000
+          T.cast(Failure(ServiceError.validation("Content is too long (maximum 5000 characters)")), Result[String, ServiceError])
         else
           T.cast(Success(content), Result[String, ServiceError])
         end

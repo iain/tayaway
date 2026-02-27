@@ -36,6 +36,7 @@ module Events
         Event.find_result(event_id)
              .bind { |event| Event.authorize_owner(event, current_user_id) }
              .bind { |event| validate_name_with_event(name, event) }
+             .bind { |event| validate_text_lengths(description, location_name).fmap { event } }
              .bind { |event| validate_dates(start_date, end_date).fmap { |dates| [event, dates] } }
              .bind do |(event, dates)|
                update_event(
@@ -51,9 +52,29 @@ module Events
       def validate_name_with_event(name, event)
         if name.nil? || name.empty?
           T.cast(Failure(ServiceError.validation("Name is required")), Result[Event, ServiceError])
+        elsif name.length > 255
+          T.cast(Failure(ServiceError.validation("Name is too long (maximum 255 characters)")), Result[Event, ServiceError])
         else
           T.cast(Success(event), Result[Event, ServiceError])
         end
+      end
+
+      sig do
+        params(
+          description: T.nilable(String),
+          location_name: T.nilable(String)
+        ).returns(Result[TrueClass, ServiceError])
+      end
+      def validate_text_lengths(description, location_name)
+        if description && description.length > 5000
+          return T.cast(Failure(ServiceError.validation("Description is too long (maximum 5000 characters)")), Result[TrueClass, ServiceError])
+        end
+
+        if location_name && location_name.length > 255
+          return T.cast(Failure(ServiceError.validation("Location name is too long (maximum 255 characters)")), Result[TrueClass, ServiceError])
+        end
+
+        T.cast(Success(true), Result[TrueClass, ServiceError])
       end
 
       sig do

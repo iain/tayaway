@@ -42,6 +42,7 @@ module Users
           .bind { |user| validate_name(name, user) }
           .bind { |user| validate_birthday(birthday, user) }
           .bind { |user| validate_iban(iban, user) }
+          .bind { |user| validate_text_lengths(phone_number, location_name, user) }
           .bind { |user| update_profile(user, name, phone_number, birthday, location_name, latitude, longitude, iban) }
       end
 
@@ -73,6 +74,8 @@ module Users
 
         if name.strip.empty?
           T.cast(Failure(ServiceError.validation("Name is required")), Result[User, ServiceError])
+        elsif name.length > 255
+          T.cast(Failure(ServiceError.validation("Name is too long (maximum 255 characters)")), Result[User, ServiceError])
         else
           T.cast(Success(user), Result[User, ServiceError])
         end
@@ -103,6 +106,25 @@ module Users
         numeric = rearranged.chars.map { |c| c.match?(/[A-Z]/) ? (c.ord - 55).to_s : c }.join
         unless numeric.to_i % 97 == 1
           return T.cast(Failure(ServiceError.validation("Invalid IBAN checksum")), Result[User, ServiceError])
+        end
+
+        T.cast(Success(user), Result[User, ServiceError])
+      end
+
+      sig do
+        params(
+          phone_number: T.nilable(String),
+          location_name: T.nilable(String),
+          user: User
+        ).returns(Result[User, ServiceError])
+      end
+      def validate_text_lengths(phone_number, location_name, user)
+        if phone_number && phone_number.length > 50
+          return T.cast(Failure(ServiceError.validation("Phone number is too long (maximum 50 characters)")), Result[User, ServiceError])
+        end
+
+        if location_name && location_name.length > 255
+          return T.cast(Failure(ServiceError.validation("Location name is too long (maximum 255 characters)")), Result[User, ServiceError])
         end
 
         T.cast(Success(user), Result[User, ServiceError])

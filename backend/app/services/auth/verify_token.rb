@@ -19,8 +19,8 @@ module Auth
       end
       def call(token:)
         decode_jwt(token)
-          .bind { |params| find_magic_token(T.must(params[:token]), T.must(params[:email])) }
-          .bind { |magic_token| create_session(magic_token) }
+          .bind { |params| claim_magic_token(T.must(params[:token]), T.must(params[:email])) }
+          .bind { |user_id| create_session(user_id) }
       end
 
       private
@@ -40,20 +40,30 @@ module Auth
         T.cast(Failure(ServiceError.unauthorized("Invalid or expired magic link")), Result[T::Hash[Symbol, String], ServiceError])
       end
 
-      sig { params(token: String, email: String).returns(Result[MagicLinkToken, ServiceError]) }
-      def find_magic_token(token, email)
-        magic_token = MagicLinkToken.find_valid(token, email)
-        if magic_token
-          T.cast(Success(magic_token), Result[MagicLinkToken, ServiceError])
-        else
-          T.cast(Failure(ServiceError.unauthorized("Invalid or expired magic link")), Result[MagicLinkToken, ServiceError])
+      sig { params(token: String, email: String).returns(Result[String, ServiceError]) }
+      def claim_magic_token(token, email)
+        digest = Auth::Token.digest(token)
+        row = DB[:magic_link_tokens]
+              .where(token: digest, email: email, used_at: nil)
+              .where(Sequel[:expires_at] > Time.now)
+              .returning(:id, :user_id, :email)
+              .update(used_at: Time.now)
+              .first
+
+        unless row
+          return T.cast(Failure(ServiceError.unauthorized("Invalid or expired magic link")), Result[String, ServiceError])
         end
+
+        user = User.find(row[:user_id])
+        unless user && user.email.to_s.downcase == email.downcase
+          return T.cast(Failure(ServiceError.unauthorized("Invalid or expired magic link")), Result[String, ServiceError])
+        end
+
+        T.cast(Success(row[:user_id].to_s), Result[String, ServiceError])
       end
 
-      sig { params(magic_token: MagicLinkToken).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
-      def create_session(magic_token)
-        DB[:magic_link_tokens].where(id: magic_token.id).update(used_at: Time.now)
-
+      sig { params(user_id: String).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
+      def create_session(user_id)
         now = Time.now
         id = SecureRandom.uuid
         token = SecureRandom.hex(32)
@@ -61,7 +71,7 @@ module Auth
 
         DB[:sessions].insert(
           id: id,
-          user_id: magic_token.user_id,
+          user_id: user_id,
           token: Auth::Token.digest(token),
           expires_at: expires_at,
           created_at: now
@@ -69,7 +79,7 @@ module Auth
 
         T.cast(Success({
           session_token: token,
-          user_id: magic_token.user_id
+          user_id: user_id
         }
                       ), Result[T::Hash[Symbol, T.untyped], ServiceError]
         )

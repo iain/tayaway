@@ -27,6 +27,8 @@ module TaskLists
       def validate_name(name)
         if name.nil? || name.empty?
           T.cast(Failure(ServiceError.validation("Name is required")), Result[String, ServiceError])
+        elsif name.length > 255
+          T.cast(Failure(ServiceError.validation("Name is too long (maximum 255 characters)")), Result[String, ServiceError])
         else
           T.cast(Success(name), Result[String, ServiceError])
         end

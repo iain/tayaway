@@ -53,6 +53,8 @@ module Auth
 
       sig { params(user_id: T.any(String, UUID), email: T.any(String, EmailAddress)).returns(String) }
       def create_magic_link_token(user_id, email)
+        DB[:magic_link_tokens].where(user_id: user_id.to_s, used_at: nil).update(used_at: Time.now)
+
         now = Time.now
         id = SecureRandom.uuid
         token = SecureRandom.hex(32)

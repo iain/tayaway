@@ -107,6 +107,8 @@ module Invites
 
       sig { params(user: User).void }
       def send_magic_link(user)
+        DB[:magic_link_tokens].where(user_id: user.id.to_s, used_at: nil).update(used_at: Time.now)
+
         raw_token = SecureRandom.hex(32)
         now = Time.now
         expires_at = now + (MagicLinkToken::EXPIRY_MINUTES * 60)

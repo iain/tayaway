@@ -28,6 +28,8 @@ module TaskLists
         has_name = name && !name.empty?
         if !has_name && position.nil?
           T.cast(Failure(ServiceError.validation("Name or position is required")), Result[TrueClass, ServiceError])
+        elsif has_name && T.must(name).length > 255
+          T.cast(Failure(ServiceError.validation("Name is too long (maximum 255 characters)")), Result[TrueClass, ServiceError])
         else
           T.cast(Success(true), Result[TrueClass, ServiceError])
         end

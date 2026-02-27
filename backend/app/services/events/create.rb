@@ -34,6 +34,7 @@ module Events
       def call(workspace_id:, user_id:, name:, description:, id: nil, start_date: nil, end_date: nil,
                location_name: nil, latitude: nil, longitude: nil)
         validate_name(name)
+          .bind { |valid_name| validate_text_lengths(description, location_name).fmap { valid_name } }
           .bind { |valid_name| validate_dates(start_date, end_date).fmap { |dates| [valid_name, dates] } }
           .bind do |(valid_name, dates)|
             create_event(
@@ -50,9 +51,29 @@ module Events
       def validate_name(name)
         if name.nil? || name.empty?
           T.cast(Failure(ServiceError.validation("Name is required")), Result[String, ServiceError])
+        elsif name.length > 255
+          T.cast(Failure(ServiceError.validation("Name is too long (maximum 255 characters)")), Result[String, ServiceError])
         else
           T.cast(Success(name), Result[String, ServiceError])
         end
+      end
+
+      sig do
+        params(
+          description: T.nilable(String),
+          location_name: T.nilable(String)
+        ).returns(Result[TrueClass, ServiceError])
+      end
+      def validate_text_lengths(description, location_name)
+        if description && description.length > 5000
+          return T.cast(Failure(ServiceError.validation("Description is too long (maximum 5000 characters)")), Result[TrueClass, ServiceError])
+        end
+
+        if location_name && location_name.length > 255
+          return T.cast(Failure(ServiceError.validation("Location name is too long (maximum 255 characters)")), Result[TrueClass, ServiceError])
+        end
+
+        T.cast(Success(true), Result[TrueClass, ServiceError])
       end
 
       sig do

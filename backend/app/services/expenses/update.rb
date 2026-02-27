@@ -74,9 +74,23 @@ module Expenses
           )
         end
 
+        if has_description && T.must(description).length > 255
+          return T.cast(
+            Failure(ServiceError.validation("Description is too long (maximum 255 characters)")),
+            Result[Expense, ServiceError]
+          )
+        end
+
         if has_amount && T.must(amount) <= 0
           return T.cast(
             Failure(ServiceError.validation("Amount must be greater than zero")),
+            Result[Expense, ServiceError]
+          )
+        end
+
+        if has_amount && T.must(amount) > 1_000_000
+          return T.cast(
+            Failure(ServiceError.validation("Amount cannot exceed 1,000,000")),
             Result[Expense, ServiceError]
           )
         end

@@ -111,6 +111,13 @@ module Votes
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
       def upsert_vote(date_range, user_id, vote_response, comment, vote_id)
+        if comment && comment.length > 1000
+          return T.cast(
+            Failure(ServiceError.validation("Comment is too long (maximum 1000 characters)")),
+            Result[T::Hash[Symbol, T.untyped], ServiceError]
+          )
+        end
+
         existing_vote = Vote.find_by_date_range_and_user(date_range.id, user_id)
         clean_comment = comment&.empty? ? nil : comment
         result_vote_id = T.let(nil, T.nilable(T.any(String, UUID)))

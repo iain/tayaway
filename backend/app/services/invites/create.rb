@@ -19,6 +19,7 @@ module Invites
       def call(email:, workspace_id:, invited_by:, name: nil)
         sanitized_name = name&.strip&.then { |n| n.empty? ? nil : n }
         validate_email(email)
+          .bind { |valid_email| validate_name_length(sanitized_name).fmap { valid_email } }
           .bind { |valid_email| check_not_already_member(valid_email, workspace_id) }
           .bind { |valid_email| check_no_pending_invite(valid_email, workspace_id) }
           .bind { |valid_email| create_invite(valid_email, workspace_id, invited_by, sanitized_name) }
@@ -32,6 +33,15 @@ module Invites
           T.cast(Failure(ServiceError.validation("Email is required")), Result[String, ServiceError])
         else
           T.cast(Success(email), Result[String, ServiceError])
+        end
+      end
+
+      sig { params(name: T.nilable(String)).returns(Result[TrueClass, ServiceError]) }
+      def validate_name_length(name)
+        if name && name.length > 255
+          T.cast(Failure(ServiceError.validation("Name is too long (maximum 255 characters)")), Result[TrueClass, ServiceError])
+        else
+          T.cast(Success(true), Result[TrueClass, ServiceError])
         end
       end
 

@@ -45,9 +45,23 @@ module Expenses
           )
         end
 
+        if description.length > 255
+          return T.cast(
+            Failure(ServiceError.validation("Description is too long (maximum 255 characters)")),
+            Result[T::Hash[Symbol, T.untyped], ServiceError]
+          )
+        end
+
         if amount.nil? || amount <= 0
           return T.cast(
             Failure(ServiceError.validation("Amount must be greater than zero")),
+            Result[T::Hash[Symbol, T.untyped], ServiceError]
+          )
+        end
+
+        if amount > 1_000_000
+          return T.cast(
+            Failure(ServiceError.validation("Amount cannot exceed 1,000,000")),
             Result[T::Hash[Symbol, T.untyped], ServiceError]
           )
         end
