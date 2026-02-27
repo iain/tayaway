@@ -54,7 +54,12 @@ watchEffect(() => {
       (item) =>
         item.taskListId === props.taskList.id && !clearedIds.value.has(item.id)
     )
-    .sort((a, b) => a.position - b.position)
+    .sort((a, b) => {
+      const aCompleted = a.completedAt !== null ? 1 : 0
+      const bCompleted = b.completedAt !== null ? 1 : 0
+      if (aCompleted !== bCompleted) return aCompleted - bCompleted
+      return a.position - b.position
+    })
 })
 
 const items = computed(() => itemsLocal.value)

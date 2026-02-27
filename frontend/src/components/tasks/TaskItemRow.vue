@@ -17,7 +17,7 @@ const emit = defineEmits<{
 
 <template>
   <li
-    class="flex items-center gap-3 py-2"
+    class="flex items-center gap-3 py-3"
     :class="highlighted ? 'rounded bg-rose-50 dark:bg-rose-900/20' : ''"
     :data-item-id="item.id"
     :data-highlighted="highlighted ? 'true' : undefined"
@@ -45,11 +45,11 @@ const emit = defineEmits<{
     <input
       type="checkbox"
       :checked="!!item.completedAt"
-      class="size-4 cursor-pointer accent-rose-500"
+      class="size-5 cursor-pointer accent-rose-500"
       @change="emit('toggle', item)"
     />
     <span
-      class="flex-1 cursor-pointer text-sm"
+      class="flex-1 cursor-pointer text-base"
       :class="
         item.completedAt
           ? 'text-gray-400 line-through dark:text-stone-500'
