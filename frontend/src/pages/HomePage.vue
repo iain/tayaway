@@ -40,6 +40,7 @@ const { eventsNeedingRsvp } = useEventsNeedingRsvp()
 const { currentEvents, pastEvents } = useEventsList()
 
 const currentUserId = computed(() => authStore.currentUserId)
+const { user } = storeToRefs(authStore)
 
 const myUnpaidTransfers = computed(() => {
   void pool.version
@@ -341,6 +342,27 @@ function navigateToEventPage(eventId: string): void {
         <p class="mb-4 text-sm text-gray-500 dark:text-stone-400">
           Mark a transfer as paid once you've received the payment.
         </p>
+
+        <div
+          v-if="transfersOwedToYou.length > 0 && !user?.iban"
+          class="mb-3 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/30"
+        >
+          <BanknotesIcon
+            class="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400"
+          />
+          <div class="min-w-0 flex-1">
+            <p class="text-sm text-amber-800 dark:text-amber-300">
+              Add your IBAN so others can pay you with a single QR code scan.
+            </p>
+            <button
+              type="button"
+              class="mt-1 text-sm font-medium text-amber-700 underline hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-200"
+              @click="router.push('/profile')"
+            >
+              Add IBAN in profile
+            </button>
+          </div>
+        </div>
 
         <ul class="space-y-3">
           <li

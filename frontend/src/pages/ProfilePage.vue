@@ -232,6 +232,13 @@ async function handleRequestEmailChange(email: string): Promise<void> {
     <BaseCard padded class="mt-6">
       <SectionHeading :icon="BanknotesIcon" title="Payment" />
 
+      <p class="mb-2 text-sm text-gray-500 dark:text-stone-400">
+        Adding your IBAN lets others pay you with a single QR code scan when
+        settling shared expenses. Your IBAN is stored securely and never shared
+        with other members &mdash; it is only used server-side to generate
+        payment QR codes.
+      </p>
+
       <dl class="divide-y divide-gray-200 dark:divide-stone-700">
         <!-- IBAN -->
         <div class="group flex items-center justify-between py-3">

@@ -243,7 +243,9 @@ async function handlePaidClick(
               >Pay &amp; mark paid</span
             >
             &mdash; transfer money outside the app, then the recipient marks
-            each transfer as paid.
+            each transfer as paid. If the recipient has added their IBAN in
+            their profile, a QR code button appears that you can scan with your
+            banking app to pre-fill the transfer details instantly.
           </span>
         </li>
       </ol>
