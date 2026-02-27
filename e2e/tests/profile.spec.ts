@@ -408,9 +408,9 @@ test.describe('Profile Feature', () => {
       )
       await getTestSession(request, sessionEmail, TEST_NAME)
 
-      // Authenticate as the current session and visit profile
+      // Authenticate as the current session and visit account page
       await setupAuthenticatedPage(page, currentToken)
-      await page.goto('/profile')
+      await page.goto('/account')
 
       // Should see the Active Sessions section with current badge
       await expect(

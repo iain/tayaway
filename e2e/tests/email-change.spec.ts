@@ -86,7 +86,7 @@ test.describe('Email Change Feature', () => {
       const email = `e2e-ec-modal-${crypto.randomUUID()}@example.com`
       const { token } = await getTestSession(request, email, TEST_NAME)
       await setupAuthenticatedPage(page, token)
-      await page.goto('/profile')
+      await page.goto('/account')
 
       const editButton = page.getByTestId('edit-email-button')
       await expect(editButton).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
@@ -109,7 +109,7 @@ test.describe('Email Change Feature', () => {
       const email = `e2e-ec-submit-${crypto.randomUUID()}@example.com`
       const { token } = await getTestSession(request, email, TEST_NAME)
       await setupAuthenticatedPage(page, token)
-      await page.goto('/profile')
+      await page.goto('/account')
 
       await expect(page.getByTestId('edit-email-button')).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,

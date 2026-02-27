@@ -4,6 +4,7 @@ import AuthenticatedLayout from '@/layouts/AuthenticatedLayout.vue'
 
 const HomePage = () => import('@/pages/HomePage.vue')
 const ProfilePage = () => import('@/pages/ProfilePage.vue')
+const AccountPage = () => import('@/pages/AccountPage.vue')
 const EventsPage = () => import('@/pages/EventsPage.vue')
 const EventCreatePage = () => import('@/pages/EventCreatePage.vue')
 const EventPage = () => import('@/pages/EventPage.vue')
@@ -37,6 +38,11 @@ const router = createRouter({
           path: 'profile',
           name: 'profile',
           component: ProfilePage,
+        },
+        {
+          path: 'account',
+          name: 'account',
+          component: AccountPage,
         },
         {
           path: 'events',

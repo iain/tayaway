@@ -6,7 +6,6 @@ import {
   PencilIcon,
   UserIcon,
   PhoneIcon,
-  ComputerDesktopIcon,
   BanknotesIcon,
 } from '@heroicons/vue/24/outline'
 import { formatBirthday } from '@/utils/date'
@@ -16,8 +15,6 @@ import type {
   ProfileField,
   ProfileFieldValues,
 } from '@/components/profile/EditProfileFieldModal.vue'
-import ChangeEmailModal from '@/components/profile/ChangeEmailModal.vue'
-import SessionsList from '@/components/profile/SessionsList.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
@@ -27,11 +24,6 @@ const { user } = storeToRefs(authStore)
 
 const editField = ref<ProfileField | null>(null)
 const editFieldLoading = ref(false)
-
-const editEmailOpen = ref(false)
-const editEmailLoading = ref(false)
-const editEmailError = ref<string | null>(null)
-const editEmailSuccess = ref<string | null>(null)
 
 const initials = computed(() => {
   const name = user.value?.name
@@ -62,20 +54,6 @@ async function handleSaveField(fields: ProfileFieldValues): Promise<void> {
     editFieldLoading.value = false
   }
 }
-
-async function handleRequestEmailChange(email: string): Promise<void> {
-  editEmailLoading.value = true
-  editEmailError.value = null
-  try {
-    const message = await authStore.requestEmailChange(email)
-    editEmailOpen.value = false
-    editEmailSuccess.value = message
-  } catch {
-    editEmailError.value = 'Failed to send verification link. Please try again.'
-  } finally {
-    editEmailLoading.value = false
-  }
-}
 </script>
 
 <template>
@@ -99,42 +77,11 @@ async function handleRequestEmailChange(email: string): Promise<void> {
       </div>
     </div>
 
-    <!-- Account Section -->
+    <!-- Name Section -->
     <BaseCard padded>
       <SectionHeading :icon="UserIcon" title="Account" />
 
       <dl class="divide-y divide-gray-200 dark:divide-stone-700">
-        <!-- Email -->
-        <div class="group flex items-center justify-between py-3">
-          <div>
-            <dt class="text-sm font-medium text-gray-500 dark:text-stone-400">
-              Email
-            </dt>
-            <dd class="text-sm text-gray-900 dark:text-white">
-              {{ user?.email }}
-            </dd>
-          </div>
-          <IconButton
-            hover-reveal
-            label="Edit email"
-            data-testid="edit-email-button"
-            @click="editEmailOpen = true"
-          >
-            <PencilIcon class="size-4" />
-          </IconButton>
-        </div>
-
-        <!-- Email change success alert -->
-        <div
-          v-if="editEmailSuccess"
-          data-testid="email-change-success"
-          class="rounded-md bg-green-50 p-3 dark:bg-green-900/20"
-        >
-          <p class="text-sm text-green-700 dark:text-green-400">
-            {{ editEmailSuccess }}
-          </p>
-        </div>
-
         <!-- Name -->
         <div class="group flex items-center justify-between py-3">
           <div>
@@ -258,12 +205,6 @@ async function handleRequestEmailChange(email: string): Promise<void> {
       </dl>
     </BaseCard>
 
-    <!-- Active Sessions Section -->
-    <BaseCard padded class="mt-6">
-      <SectionHeading :icon="ComputerDesktopIcon" title="Active Sessions" />
-      <SessionsList bare />
-    </BaseCard>
-
     <!-- Unified field edit modal -->
     <EditProfileFieldModal
       :open="editField !== null"
@@ -278,14 +219,6 @@ async function handleRequestEmailChange(email: string): Promise<void> {
       :current-iban="user?.iban ?? null"
       @close="editField = null"
       @save="handleSaveField"
-    />
-
-    <ChangeEmailModal
-      :open="editEmailOpen"
-      :loading="editEmailLoading"
-      :error="editEmailError"
-      @close="editEmailOpen = false"
-      @submit="handleRequestEmailChange"
     />
   </div>
 </template>

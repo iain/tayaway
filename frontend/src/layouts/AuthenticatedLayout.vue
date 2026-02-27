@@ -62,7 +62,10 @@ const navigation = [
   { name: 'Members', href: '/members', routeName: 'members' },
 ]
 
-const userNavigation = [{ name: 'Your Profile', href: '/profile' }]
+const userNavigation = [
+  { name: 'Your Profile', href: '/profile' },
+  { name: 'Account', href: '/account' },
+]
 
 const currentRouteName = computed(() => route.name)
 
@@ -87,6 +90,7 @@ const currentEventName = computed(() => currentEvent.value?.name ?? null)
 const routeTitleMap: Record<string, string> = {
   home: 'Dashboard',
   profile: 'Profile',
+  account: 'Account',
   events: 'Events',
   'events-new': 'New Event',
   event: '',
