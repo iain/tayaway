@@ -197,7 +197,7 @@ async function handlePaidClick(
       <ol class="space-y-3">
         <li class="flex items-start gap-3">
           <span
-            class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-white"
+            class="flex size-6 shrink-0 items-center justify-center rounded-full text-white"
             :class="
               hasExpenses
                 ? 'bg-green-500 dark:bg-green-600'
@@ -216,7 +216,7 @@ async function handlePaidClick(
         </li>
         <li class="flex items-start gap-3">
           <span
-            class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-gray-300 dark:bg-stone-600"
+            class="flex size-6 shrink-0 items-center justify-center rounded-full bg-gray-300 dark:bg-stone-600"
             :class="{
               'bg-green-500 dark:bg-green-600':
                 hasExpenses && unsettledExpenseCount > 0,
@@ -234,7 +234,7 @@ async function handlePaidClick(
         </li>
         <li class="flex items-start gap-3">
           <span
-            class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-gray-300 dark:bg-stone-600"
+            class="flex size-6 shrink-0 items-center justify-center rounded-full bg-gray-300 dark:bg-stone-600"
           >
             <BanknotesIcon class="size-3.5 text-white" />
           </span>
@@ -254,7 +254,7 @@ async function handlePaidClick(
         </li>
         <li class="flex items-start gap-3">
           <span
-            class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-gray-300 dark:bg-stone-600"
+            class="flex size-6 shrink-0 items-center justify-center rounded-full bg-gray-300 dark:bg-stone-600"
           >
             <CheckCircleIcon class="size-3.5 text-white" />
           </span>
