@@ -9,7 +9,7 @@ import CalendarMonth from '@/components/calendar/CalendarMonth.vue'
 import { useExpensesStore } from '@/stores/expenses'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useAuthStore } from '@/stores/auth'
-import { useCalendar } from '@/composables/useCalendar'
+import { useCalendar, getMonthName } from '@/composables/useCalendar'
 import type { PoolEvent, PoolExpense } from '@/types/pool'
 
 const props = defineProps<{
@@ -60,6 +60,10 @@ const selectionText = computed(() => {
   }
   return 'Select start date'
 })
+
+const monthLabel = computed(
+  () => `${getMonthName(calendarMonth.value)} ${calendarYear.value}`
+)
 
 // Constrain navigation to months that overlap with the event range
 const canNavigatePrev = computed(() => {
@@ -251,45 +255,57 @@ function handleClose(): void {
 
       <div v-if="eventHasDates || isEditing">
         <label
-          class="mb-1 block text-sm font-medium text-gray-700 dark:text-stone-300"
+          class="mb-2 block text-sm font-medium text-gray-700 dark:text-stone-300"
         >
           Dates
         </label>
-        <div class="text-sm text-gray-500 dark:text-stone-400">
-          {{ selectionText }}
-        </div>
 
-        <!-- Month navigation -->
-        <div class="mt-2 flex items-center justify-between">
-          <IconButton
-            label="Previous month"
-            :disabled="!canNavigatePrev"
-            class="rounded-md p-2 hover:bg-gray-100 dark:hover:bg-white/10"
-            @click="navigatePrev"
-          >
-            <ChevronLeftIcon class="size-5" />
-          </IconButton>
-          <IconButton
-            label="Next month"
-            :disabled="!canNavigateNext"
-            class="rounded-md p-2 hover:bg-gray-100 dark:hover:bg-white/10"
-            @click="navigateNext"
-          >
-            <ChevronRightIcon class="size-5" />
-          </IconButton>
-        </div>
+        <div
+          class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-stone-700 dark:bg-stone-800"
+        >
+          <!-- Month header with navigation -->
+          <div class="mb-2 flex items-center justify-between">
+            <IconButton
+              label="Previous month"
+              :disabled="!canNavigatePrev"
+              class="rounded-md p-1.5 hover:bg-gray-200 dark:hover:bg-white/10"
+              @click="navigatePrev"
+            >
+              <ChevronLeftIcon class="size-5" />
+            </IconButton>
+            <span class="text-sm font-semibold text-gray-900 dark:text-white">
+              {{ monthLabel }}
+            </span>
+            <IconButton
+              label="Next month"
+              :disabled="!canNavigateNext"
+              class="rounded-md p-1.5 hover:bg-gray-200 dark:hover:bg-white/10"
+              @click="navigateNext"
+            >
+              <ChevronRightIcon class="size-5" />
+            </IconButton>
+          </div>
 
-        <CalendarMonth
-          :year="calendarYear"
-          :month="calendarMonth"
-          :selected-start="startDate || null"
-          :selected-end="endDate || null"
-          :hover-date="hoverDate"
-          :min-date="event.startDate ?? undefined"
-          :max-date="event.endDate ?? undefined"
-          @select="handleDateSelect"
-          @hover="handleHover"
-        />
+          <CalendarMonth
+            :year="calendarYear"
+            :month="calendarMonth"
+            :selected-start="startDate || null"
+            :selected-end="endDate || null"
+            :hover-date="hoverDate"
+            :min-date="event.startDate ?? undefined"
+            :max-date="event.endDate ?? undefined"
+            hide-header
+            @select="handleDateSelect"
+            @hover="handleHover"
+          />
+
+          <!-- Selection summary -->
+          <div
+            class="mt-2 text-center text-sm text-gray-500 dark:text-stone-400"
+          >
+            {{ selectionText }}
+          </div>
+        </div>
       </div>
 
       <FormActions

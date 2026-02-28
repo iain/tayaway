@@ -12,6 +12,7 @@ const props = defineProps<{
   existingRanges?: DateRangeItem[]
   minDate?: string
   maxDate?: string
+  hideHeader?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -107,10 +108,10 @@ function getDayClasses(dateString: string): string[] {
     return classes
   }
 
-  // Hover range (preview)
+  // Hover range (preview — lighter than committed selection)
   if (isInHoverRange(dateString)) {
     const bounds = getHoverRangeBounds()
-    const classes = ['bg-rose-500', 'font-semibold', 'text-white']
+    const classes = ['bg-rose-400/60', 'text-white']
     if (bounds && dateString === bounds.start) classes.push('rounded-l-full')
     if (bounds && dateString === bounds.end) classes.push('rounded-r-full')
     return classes
@@ -145,25 +146,25 @@ function handleMouseLeave(): void {
 
 <template>
   <div class="w-full">
-    <div class="mb-4 text-center font-semibold text-white">
+    <div v-if="!hideHeader" class="mb-4 text-center font-semibold text-white">
       {{ monthName }} {{ year }}
     </div>
 
     <div
-      class="mb-2 grid grid-cols-7 gap-px text-center text-xs font-medium text-gray-400"
+      class="mb-1 grid grid-cols-7 text-center text-xs font-medium text-gray-400"
     >
-      <div v-for="day in weekDays" :key="day" class="py-2">
+      <div v-for="day in weekDays" :key="day" class="py-1.5">
         {{ day }}
       </div>
     </div>
 
-    <div class="grid grid-cols-7 gap-px">
+    <div class="grid grid-cols-7">
       <button
         v-for="day in days"
         :key="day.dateString"
         :data-testid="`calendar-day-${day.dateString}`"
         type="button"
-        class="relative py-2 text-sm focus:z-10 focus:ring-2 focus:ring-rose-500 focus:outline-none"
+        class="relative aspect-square text-sm transition-colors duration-100 focus:z-10 focus:ring-2 focus:ring-rose-500 focus:outline-none"
         :class="[
           day.isCurrentMonth ? 'text-white' : 'text-gray-600',
           getDayClasses(day.dateString),
