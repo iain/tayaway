@@ -101,7 +101,7 @@ const editPopover = ref<{
 } | null>(null)
 const confirmDeleteChoreId = ref<string | null>(null)
 const confirmAutofill = ref(false)
-const confirmDeleteRoster = ref(false)
+const showDeleteActions = ref(false)
 
 const memberMap = computed(() => {
   const map = new Map<string, PoolMember>()
@@ -204,13 +204,19 @@ function handleDeleteRoster() {
     showRsvpDialog.value = true
     return
   }
-  confirmDeleteRoster.value = true
+  showDeleteActions.value = true
 }
 
-async function confirmDeleteRosterAction() {
+async function handleClearUnpinned() {
+  if (!roster.value) return
+  await choreRostersStore.clearUnpinned(roster.value.id)
+  showDeleteActions.value = false
+}
+
+async function handleDeleteRosterConfirm() {
   if (!roster.value) return
   await choreRostersStore.deleteRoster(roster.value.id)
-  confirmDeleteRoster.value = false
+  showDeleteActions.value = false
 }
 
 onMounted(async () => {
@@ -374,24 +380,17 @@ onMounted(async () => {
     </BaseModal>
 
     <BaseModal
-      :open="confirmDeleteRoster"
-      title="Delete roster"
+      :open="showDeleteActions"
+      title="Delete..."
       size="sm"
-      @close="confirmDeleteRoster = false"
+      @close="showDeleteActions = false"
     >
-      <p class="text-sm text-gray-600 dark:text-stone-400">
-        Delete roster? All chores and assignments will be removed.
-      </p>
-      <div class="mt-4 flex justify-end gap-3">
-        <TextButton variant="secondary" @click="confirmDeleteRoster = false">
-          Cancel
-        </TextButton>
-        <AppButton
-          variant="danger"
-          autofocus
-          @click="confirmDeleteRosterAction"
-        >
-          Delete
+      <div class="flex flex-col gap-3">
+        <AppButton variant="secondary" @click="handleClearUnpinned">
+          Clear assignments
+        </AppButton>
+        <AppButton variant="danger" @click="handleDeleteRosterConfirm">
+          Delete roster
         </AppButton>
       </div>
     </BaseModal>

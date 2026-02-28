@@ -213,6 +213,7 @@ workspace_invites  id (UUID), workspace_id (FK cascade), invited_by (FK set_null
 - `PUT /:id/assignments/:aid` — Update assignment (note, user_id)
 - `DELETE /:id/assignments/:aid` — Remove assignment
 - `POST /:id/autofill` — Delete non-pinned, re-distribute fairly
+- `POST /:id/clear-unpinned` — Delete all non-pinned assignments
 
 **Invites (`/api/invites`)** — Mixed authentication
 

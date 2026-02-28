@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useChoreRostersStore } from '@/stores/choreRosters'
+import PushPinIcon from '@/components/icons/PushPinIcon.vue'
 import type { PoolChoreAssignment, PoolMember } from '@/types/pool'
 
 const props = defineProps<{
@@ -40,6 +41,15 @@ async function handleSaveNote() {
   emit('close')
 }
 
+async function handleTogglePin() {
+  await choreRostersStore.updateAssignment(
+    props.rosterId,
+    props.assignment.id,
+    { pinned: !props.assignment.pinned }
+  )
+  emit('close')
+}
+
 async function handleRemove() {
   await choreRostersStore.deleteAssignment(props.rosterId, props.assignment.id)
   emit('close')
@@ -69,9 +79,24 @@ onBeforeUnmount(() => {
       left: `${anchorEl.getBoundingClientRect().left}px`,
     }"
   >
-    <p class="mb-2 text-xs font-medium text-gray-500 dark:text-stone-400">
-      {{ getMemberName(assignment.userId) }}
-    </p>
+    <div class="mb-2 flex items-center justify-between">
+      <p class="text-xs font-medium text-gray-500 dark:text-stone-400">
+        {{ getMemberName(assignment.userId) }}
+      </p>
+      <button
+        type="button"
+        class="cursor-pointer rounded p-1 transition-colors"
+        :class="
+          assignment.pinned
+            ? 'text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/30 dark:hover:text-amber-300'
+            : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-stone-500 dark:hover:bg-stone-700 dark:hover:text-stone-300'
+        "
+        :title="assignment.pinned ? 'Unpin' : 'Pin'"
+        @click="handleTogglePin"
+      >
+        <PushPinIcon class="size-3.5" />
+      </button>
+    </div>
 
     <input
       v-model="note"
@@ -84,14 +109,14 @@ onBeforeUnmount(() => {
     <div class="flex items-center justify-between">
       <button
         type="button"
-        class="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+        class="cursor-pointer text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
         @click="handleRemove"
       >
         Remove
       </button>
       <button
         type="button"
-        class="rounded-md bg-rose-600 px-2 py-1 text-xs font-medium text-white hover:bg-rose-500"
+        class="cursor-pointer rounded-md bg-rose-600 px-2 py-1 text-xs font-medium text-white hover:bg-rose-500"
         @click="handleSaveNote"
       >
         Save

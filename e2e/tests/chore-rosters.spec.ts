@@ -795,17 +795,15 @@ test.describe('Chore Rosters Feature', () => {
         page.getByRole('button', { name: 'Add chore' }).first()
       ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
 
-      // Click delete roster button
+      // Click delete roster button (opens action choice dialog)
       await page.getByRole('button', { name: 'Delete roster' }).click()
 
-      // Confirmation dialog should appear
+      // Action dialog should appear with options
       await expect(
-        page.getByText('All chores and assignments will be removed', {
-          exact: false,
-        })
+        page.locator('dialog').getByRole('button', { name: 'Delete roster' })
       ).toBeVisible()
 
-      // Confirm deletion
+      // Click "Delete roster" in the dialog
       const [deleteResp] = await Promise.all([
         page.waitForResponse(
           (resp) =>
@@ -814,7 +812,10 @@ test.describe('Chore Rosters Feature', () => {
             !resp.url().includes('/chores/') &&
             !resp.url().includes('/assignments/')
         ),
-        page.locator('dialog').getByRole('button', { name: 'Delete' }).click(),
+        page
+          .locator('dialog')
+          .getByRole('button', { name: 'Delete roster' })
+          .click(),
       ])
       expect(deleteResp.ok()).toBeTruthy()
 

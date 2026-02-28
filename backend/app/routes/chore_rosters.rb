@@ -60,17 +60,35 @@ class App
         end
       end
 
+      # POST /api/chore-rosters/:id/clear-unpinned
+      r.on "clear-unpinned" do
+        r.post do
+          result = ChoreRosters::ClearUnpinned.call(
+            roster_id: roster.id,
+            workspace_id: workspace_id
+          )
+          handle_result(result)
+        end
+      end
+
       # /api/chore-rosters/:id/assignments
       r.on "assignments" do
         # /api/chore-rosters/:id/assignments/:aid
         r.on String do |aid|
           # PUT /api/chore-rosters/:id/assignments/:aid
           r.put do
+            pinned_param = r.params["pinned"]
+            pinned = case pinned_param
+                     when true, "true" then true
+                     when false, "false" then false
+                     end
+
             result = ChoreRosters::UpdateAssignment.call(
               assignment_id: aid,
               workspace_id: workspace_id,
               note: r.params["note"],
-              user_id: r.params["user_id"]
+              user_id: r.params["user_id"],
+              pinned: pinned
             )
             handle_result(result)
           end

@@ -1,0 +1,63 @@
+# typed: false
+# frozen_string_literal: true
+
+require "spec_helper"
+
+RSpec.describe ChoreRosters::ClearUnpinned do
+  it "returns failure when roster not found" do
+    result = described_class.call(roster_id: SecureRandom.uuid, workspace_id: SecureRandom.uuid)
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Chore roster not found")
+  end
+
+  it "deletes non-pinned assignments while preserving pinned ones" do
+    workspace = TestFactories.workspace
+    user = TestFactories.user
+    event = TestFactories.event(workspace: workspace, user: user)
+    roster = TestFactories.chore_roster(event: event, user: user)
+    chore = TestFactories.chore(chore_roster: roster)
+
+    pinned = TestFactories.chore_assignment(chore: chore, user: user, date: Date.today, pinned: true)
+    unpinned1 = TestFactories.chore_assignment(chore: chore, user: user, date: Date.today + 1, pinned: false)
+    unpinned2 = TestFactories.chore_assignment(chore: chore, user: user, date: Date.today + 2, pinned: false)
+
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
+
+    expect(result.success?).to be true
+    expect(result.value![:deleted].map { |d| d[:id] }).to contain_exactly(unpinned1[:id], unpinned2[:id])
+    expect(DB[:chore_assignments].where(id: pinned[:id]).count).to eq(1)
+    expect(DB[:chore_assignments].where(id: unpinned1[:id]).count).to eq(0)
+    expect(DB[:chore_assignments].where(id: unpinned2[:id]).count).to eq(0)
+  end
+
+  it "does nothing when no non-pinned assignments exist" do
+    workspace = TestFactories.workspace
+    user = TestFactories.user
+    event = TestFactories.event(workspace: workspace, user: user)
+    roster = TestFactories.chore_roster(event: event, user: user)
+    chore = TestFactories.chore(chore_roster: roster)
+
+    TestFactories.chore_assignment(chore: chore, user: user, date: Date.today, pinned: true)
+
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
+
+    expect(result.success?).to be true
+    expect(result.value![:deleted]).to eq([])
+    expect(DB[:chore_assignments].count).to eq(1)
+  end
+
+  it "inserts deleted_items records for cleared assignments" do
+    workspace = TestFactories.workspace
+    user = TestFactories.user
+    event = TestFactories.event(workspace: workspace, user: user)
+    roster = TestFactories.chore_roster(event: event, user: user)
+    chore = TestFactories.chore(chore_roster: roster)
+
+    assignment = TestFactories.chore_assignment(chore: chore, user: user, date: Date.today, pinned: false)
+
+    described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
+
+    expect(DB[:deleted_items].where(object_type: "chore_assignment", object_id: assignment[:id]).count).to eq(1)
+  end
+end

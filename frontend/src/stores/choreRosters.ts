@@ -149,11 +149,12 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
   async function updateAssignment(
     rosterId: string,
     assignmentId: string,
-    changes: { note?: string; userId?: string }
+    changes: { note?: string; userId?: string; pinned?: boolean }
   ) {
     const apiChanges: Record<string, unknown> = {}
     if (changes.note !== undefined) apiChanges.note = changes.note
     if (changes.userId !== undefined) apiChanges.user_id = changes.userId
+    if (changes.pinned !== undefined) apiChanges.pinned = changes.pinned
 
     await mutate('Failed to update assignment', (commandQueue) =>
       commandQueue.enqueue<PoolApiResponse>(
@@ -196,6 +197,15 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
     )
   }
 
+  async function clearUnpinned(rosterId: string) {
+    await mutate('Failed to clear assignments', (commandQueue) =>
+      commandQueue.enqueue<PoolApiResponse>(
+        'POST',
+        `/chore-rosters/${rosterId}/clear-unpinned`
+      )
+    )
+  }
+
   function $reset() {
     loading.value = false
     error.value = null
@@ -213,6 +223,7 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
     updateAssignment,
     deleteAssignment,
     autofill,
+    clearUnpinned,
     $reset,
   }
 })

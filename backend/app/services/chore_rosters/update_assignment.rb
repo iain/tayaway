@@ -13,12 +13,13 @@ module ChoreRosters
           assignment_id: T.any(String, UUID),
           workspace_id: T.any(String, UUID),
           note: T.nilable(String),
-          user_id: T.nilable(String)
+          user_id: T.nilable(String),
+          pinned: T.nilable(T::Boolean)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def call(assignment_id:, workspace_id:, note: nil, user_id: nil)
+      def call(assignment_id:, workspace_id:, note: nil, user_id: nil, pinned: nil)
         ChoreAssignment.find_result(assignment_id)
-                       .bind { |assignment| update(assignment, workspace_id, note, user_id) }
+                       .bind { |assignment| update(assignment, workspace_id, note, user_id, pinned) }
       end
 
       private
@@ -28,13 +29,15 @@ module ChoreRosters
           assignment: ChoreAssignment,
           workspace_id: T.any(String, UUID),
           note: T.nilable(String),
-          user_id: T.nilable(String)
+          user_id: T.nilable(String),
+          pinned: T.nilable(T::Boolean)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def update(assignment, workspace_id, note, user_id)
+      def update(assignment, workspace_id, note, user_id, pinned)
         updates = {}
         updates[:note] = note if note
         updates[:user_id] = user_id if user_id
+        updates[:pinned] = pinned unless pinned.nil?
 
         if updates.empty?
           return T.cast(
