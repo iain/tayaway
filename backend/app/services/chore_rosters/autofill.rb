@@ -77,7 +77,11 @@ module ChoreRosters
           # Compute load from pinned assignments
           pinned = ChoreAssignment.for_roster(roster.id)
           load_count = Hash.new(0)
-          pinned.each { |a| load_count[a.user_id.to_s] += 1 }
+          chore_load = Hash.new(0) # key: [user_id, chore_id] => count
+          pinned.each do |a|
+            load_count[a.user_id.to_s] += 1
+            chore_load[[a.user_id.to_s, a.chore_id.to_s]] += 1
+          end
 
           # Compute available_days per user
           available_days = {}
@@ -97,10 +101,11 @@ module ChoreRosters
 
           # For each day (chronological), for each chore, fill empty slots
           now = Time.now
-          dates.each do |date|
+          dates.each_with_index do |date, day_index|
             available_today = availability[date] || Set.new
 
-            chores.each do |chore|
+            rotated_chores = chores.rotate(day_index)
+            rotated_chores.each do |chore|
               existing_count = chore_day_assignments[[chore.id.to_s, date]].size
               slots_needed = chore.people_per_day - existing_count
 
@@ -120,11 +125,15 @@ module ChoreRosters
 
                 break if eligible.empty?
 
-                # Pick person with lowest load/available_days ratio (proportional fairness)
-                # Tie-break: prefer person with fewer available days (they need to be scheduled sooner)
+                # Pick person with fewest assignments on THIS chore (variety), then
+                # lowest overall load/available_days ratio (fairness), then fewest available days
                 chosen = eligible.min_by do |uid|
                   user_available = available_days[uid] || 1
-                  [load_count[uid].to_f / user_available, user_available]
+                  [
+                    chore_load[[uid, chore.id.to_s]],
+                    load_count[uid].to_f / user_available,
+                    user_available
+                  ]
                 end
 
                 next unless chosen
@@ -144,6 +153,7 @@ module ChoreRosters
 
                 # Update trackers
                 load_count[chosen] += 1
+                chore_load[[chosen, chore.id.to_s]] += 1
                 day_assignments[date] << chosen
                 chore_day_assignments[[chore.id.to_s, date]] << chosen
               end

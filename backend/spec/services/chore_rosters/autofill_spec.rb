@@ -188,6 +188,29 @@ RSpec.describe ChoreRosters::Autofill do
     expect(all_assignments.length).to eq(0)
   end
 
+  it "distributes chore variety across people" do
+    # 6 days so patterns emerge
+    DB[:events].where(id: event[:id]).update(end_date: event_start + 5)
+
+    create_rsvp(user_a)
+    create_rsvp(user_b)
+    TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
+    TestFactories.chore(chore_roster: roster, name: "Cleaning", people_per_day: 1)
+
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
+    expect(result.success?).to be true
+
+    assignments = non_pinned_assignments
+    # Each person should do each chore at least twice (out of 6 days)
+    %w[Cooking Cleaning].each do |chore_name|
+      chore_id = DB[:chores].where(name: chore_name, chore_roster_id: roster[:id]).first[:id]
+      [user_a, user_b].each do |user|
+        count = assignments.count { |a| a[:chore_id] == chore_id && a[:user_id] == user[:id] }
+        expect(count).to be >= 2, "#{user[:name]} should do #{chore_name} at least twice, got #{count}"
+      end
+    end
+  end
+
   it "keeps pinned-only state when all assignments are pinned" do
     create_rsvp(user_a)
     chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
