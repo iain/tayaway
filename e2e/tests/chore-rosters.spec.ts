@@ -824,6 +824,98 @@ test.describe('Chore Rosters Feature', () => {
       ).toBeVisible()
     })
 
+    test('workload table column order updates after chore reorder', async ({
+      page,
+    }) => {
+      const { eventId } = await createResolvedEvent(
+        apiContext,
+        `Workload Reorder ${uid}`
+      )
+      const rosterId = await createRoster(apiContext, eventId)
+      await addChore(apiContext, rosterId, 'Cooking')
+      await addChore(apiContext, rosterId, 'Cleaning')
+
+      // Autofill so the workload table appears
+      await apiContext.post(
+        `${API_BASE}/api/chore-rosters/${rosterId}/autofill`
+      )
+
+      await setupAuthenticatedPage(page, sessionToken)
+      await page.goto(`/events/${eventId}/chores`)
+
+      // Wait for workload table to appear
+      await expect(page.getByRole('heading', { name: 'Workload' })).toBeVisible(
+        { timeout: PAGE_LOAD_TIMEOUT }
+      )
+
+      const workloadHeaders = page
+        .locator('h2', { hasText: 'Workload' })
+        .locator('..')
+        .locator('thead th')
+      const gridHeaders = page.locator('.chore-col')
+
+      // Initial order: Cooking, Cleaning
+      await expect(workloadHeaders.nth(1)).toHaveText('Cooking')
+      await expect(workloadHeaders.nth(2)).toHaveText('Cleaning')
+
+      // Helper: drag one chore handle to another's position
+      async function dragChore(fromIndex: number, toIndex: number) {
+        const handles = page.locator('.chore-drag-handle')
+        const source = handles.nth(fromIndex)
+        // Hover first so the handle is interactable
+        await source.hover()
+        const sourceBox = await source.boundingBox()
+        const targetBox = await handles.nth(toIndex).boundingBox()
+        expect(sourceBox).not.toBeNull()
+        expect(targetBox).not.toBeNull()
+
+        const responsePromise = page.waitForResponse(
+          (resp) =>
+            resp.url().includes('/chore-rosters/') &&
+            resp.url().includes('/chores/') &&
+            resp.request().method() === 'PUT'
+        )
+
+        await page.mouse.move(
+          sourceBox!.x + sourceBox!.width / 2,
+          sourceBox!.y + sourceBox!.height / 2
+        )
+        await page.mouse.down()
+        await page.waitForTimeout(100) // Let SortableJS recognize the drag
+        // Move past the target edge to trigger SortableJS swap
+        const targetX =
+          fromIndex < toIndex
+            ? targetBox!.x + targetBox!.width - 5
+            : targetBox!.x + 5
+        await page.mouse.move(targetX, targetBox!.y + targetBox!.height / 2, {
+          steps: 15,
+        })
+        await page.mouse.up()
+
+        const resp = await responsePromise
+        expect(resp.ok()).toBeTruthy()
+      }
+
+      // Drag Cooking (0) right to after Cleaning (1)
+      await dragChore(0, 1)
+
+      await expect(gridHeaders.nth(0)).toContainText('Cleaning')
+      await expect(gridHeaders.nth(1)).toContainText('Cooking')
+      await expect(workloadHeaders.nth(1)).toHaveText('Cleaning')
+      await expect(workloadHeaders.nth(2)).toHaveText('Cooking')
+
+      // Wait for reactive updates and SortableJS animation to settle
+      await page.waitForTimeout(500)
+
+      // Drag Cooking (now at 1) back left to before Cleaning (now at 0)
+      await dragChore(1, 0)
+
+      await expect(gridHeaders.nth(0)).toContainText('Cooking')
+      await expect(gridHeaders.nth(1)).toContainText('Cleaning')
+      await expect(workloadHeaders.nth(1)).toHaveText('Cooking')
+      await expect(workloadHeaders.nth(2)).toHaveText('Cleaning')
+    })
+
     test('shows RSVP required dialog for non-attending user', async ({
       page,
       playwright,

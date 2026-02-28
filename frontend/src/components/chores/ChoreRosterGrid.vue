@@ -55,21 +55,26 @@ useDraggable(headerRow, choresSorted, {
   animation: 150,
   ghostClass: 'opacity-50',
   onEnd(event: SortableEvent) {
-    const { oldIndex, newIndex } = event
+    const { oldDraggableIndex, newDraggableIndex } = event
     if (
-      oldIndex === undefined ||
-      newIndex === undefined ||
-      oldIndex === newIndex
+      oldDraggableIndex === undefined ||
+      newDraggableIndex === undefined ||
+      oldDraggableIndex === newDraggableIndex
     )
       return
 
     const list = choresSorted.value
-    const movedChore = list[newIndex]
+    const movedChore = list[newDraggableIndex]
     if (!movedChore) return
 
-    const before = newIndex > 0 ? (list[newIndex - 1]?.position ?? null) : null
+    const before =
+      newDraggableIndex > 0
+        ? (list[newDraggableIndex - 1]?.position ?? null)
+        : null
     const after =
-      newIndex < list.length - 1 ? (list[newIndex + 1]?.position ?? null) : null
+      newDraggableIndex < list.length - 1
+        ? (list[newDraggableIndex + 1]?.position ?? null)
+        : null
 
     choreRostersStore.updateChore(props.rosterId, movedChore.id, {
       position: positionBetween(before, after),
