@@ -76,6 +76,7 @@ const eventDetailRoutes = new Set([
   'event-planning-date-ranges',
   'event-rsvp',
   'event-expenses',
+  'event-chores',
 ])
 
 const currentEvent = computed(() => {
@@ -99,6 +100,7 @@ const routeTitleMap: Record<string, string> = {
   'event-planning-date-ranges': 'Date Ranges',
   'event-rsvp': 'RSVP',
   'event-expenses': 'Expenses',
+  'event-chores': 'Chores',
   tasks: 'Tasks',
   members: 'Members',
 }

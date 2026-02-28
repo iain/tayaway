@@ -89,4 +89,40 @@ export const relationshipSchema: RelationshipSchema = {
       targetType: 'settlement',
     },
   },
+  choreRoster: {
+    event: {
+      type: 'belongsTo',
+      foreignKey: 'eventId',
+      targetType: 'event',
+    },
+    chores: {
+      type: 'hasMany',
+      foreignKey: 'choreIds',
+      targetType: 'chore',
+    },
+  },
+  chore: {
+    choreRoster: {
+      type: 'belongsTo',
+      foreignKey: 'choreRosterId',
+      targetType: 'choreRoster',
+    },
+    assignments: {
+      type: 'hasMany',
+      foreignKey: 'assignmentIds',
+      targetType: 'choreAssignment',
+    },
+  },
+  choreAssignment: {
+    chore: {
+      type: 'belongsTo',
+      foreignKey: 'choreId',
+      targetType: 'chore',
+    },
+    member: {
+      type: 'belongsTo',
+      foreignKey: 'userId',
+      targetType: 'member',
+    },
+  },
 } as const

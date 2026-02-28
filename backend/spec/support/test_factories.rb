@@ -156,6 +156,54 @@ module TestFactories
       DB[:task_items].where(id: id).first
     end
 
+    def chore_roster(event: nil, user: nil, id: SecureRandom.uuid)
+      event ||= self.event
+      user ||= self.user
+      now = Time.now
+      DB[:chore_rosters].insert(
+        id: id,
+        event_id: event[:id],
+        user_id: user[:id],
+        created_at: now,
+        updated_at: now
+      )
+      DB[:chore_rosters].where(id: id).first
+    end
+
+    def chore(chore_roster: nil, name: nil, people_per_day: 1, position: nil, id: SecureRandom.uuid)
+      chore_roster ||= self.chore_roster
+      name ||= "Chore #{next_sequence(:chore)}"
+      position ||= (DB[:chores].where(chore_roster_id: chore_roster[:id]).max(:position) || 0.0) + 1.0
+      now = Time.now
+      DB[:chores].insert(
+        id: id,
+        chore_roster_id: chore_roster[:id],
+        name: name,
+        people_per_day: people_per_day,
+        position: position,
+        created_at: now,
+        updated_at: now
+      )
+      DB[:chores].where(id: id).first
+    end
+
+    def chore_assignment(chore: nil, user: nil, date: Date.today, pinned: false, note: nil, id: SecureRandom.uuid)
+      chore ||= self.chore
+      user ||= self.user
+      now = Time.now
+      DB[:chore_assignments].insert(
+        id: id,
+        chore_id: chore[:id],
+        user_id: user[:id],
+        date: date,
+        pinned: pinned,
+        note: note,
+        created_at: now,
+        updated_at: now
+      )
+      DB[:chore_assignments].where(id: id).first
+    end
+
     def session(user: nil, token: SecureRandom.hex(32), expires_at: Time.now + (30 * 24 * 60 * 60), id: SecureRandom.uuid)
       user ||= self.user
       now = Time.now

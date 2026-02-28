@@ -57,7 +57,7 @@ frontend/                   Vue 3 + TypeScript + Vite + Tailwind CSS + Pinia
 
 backend/                    Ruby 4 + Roda + Sequel + Falcon + Sorbet
   app/app.rb                Main Roda app with hash_routes plugin
-  app/routes/               Route files (auth, events, members, workspaces, users, ws, health)
+  app/routes/               Route files (auth, events, members, workspaces, users, chore_rosters, ws, health)
   app/models/               Immutable T::Struct models with from_row / to_api_hash
   app/services/             Business logic using Result monad (Success/Failure with bind chains)
   app/serializers/          PoolSerializer — collects related objects for normalized API responses
@@ -130,12 +130,16 @@ task_items         id, task_list_id (FK cascade), user_id (FK set_null, nullable
 expenses           id (UUID), event_id (FK cascade), user_id (FK set_null, nullable), settlement_id (FK settlements set_null, nullable), amount NUMERIC NOT NULL (euros), description TEXT NOT NULL, start_date DATE NOT NULL, end_date DATE NOT NULL, timestamps, check(start_date <= end_date)
 settlements        id (UUID), event_id (FK cascade), user_id (FK set_null, nullable), timestamps
 settlement_transfers  id (UUID), settlement_id (FK settlements cascade), from_user_id (FK set_null, nullable), to_user_id (FK set_null, nullable), amount NUMERIC NOT NULL, paid_at (TIMESTAMPTZ nullable), timestamps
+chore_rosters     id (UUID PK), event_id (FK events unique cascade), user_id (FK users set_null nullable), timestamps
+chores            id (UUID PK), chore_roster_id (FK cascade), name (VARCHAR 255), people_per_day (INT default 1), position (FLOAT), timestamps
+chore_assignments id (UUID PK), chore_id (FK cascade), user_id (FK users cascade), date (DATE), pinned (BOOL default false), note (TEXT nullable), timestamps, unique(chore_id, user_id, date)
 workspace_invites  id (UUID), workspace_id (FK cascade), invited_by (FK set_null, nullable), email (CITEXT), token (hashed), expires_at (24h), accepted_at (nullable), timestamps; partial unique(workspace_id, email) WHERE accepted_at IS NULL
 ```
 
 **Hierarchy:** Workspace -> Event -> DatePoll -> DateRange -> Vote
 **RSVP:** Event -> Rsvp (once event has dates set)
 **Settlement:** Event -> Settlement -> SettlementTransfer; Settlement -> Expenses (via settlement_id)
+**Chore Roster:** Event -> ChoreRoster -> Chore -> ChoreAssignment
 
 **Poll lifecycle:** open -> expired (past deadline) -> resolved (closed with winner) -> can reopen
 **RSVP lifecycle:** Closing a poll auto-RSVPs "yes" voters as attending. Reopening a poll deletes all RSVPs.
@@ -197,6 +201,19 @@ workspace_invites  id (UUID), workspace_id (FK cascade), invited_by (FK set_null
 - `PUT /transfers/:id` — Toggle paid status on a transfer
 - `GET /transfers/:id/qr` — Generate EPC QR code PNG (sender-only; returns image/png)
 
+**Chore Rosters (`/api/chore-rosters`)** — All require authentication + workspace membership (via event)
+
+- `POST /` — Create roster (body: event_id)
+- `GET /:id` — Get roster with all chores and assignments
+- `DELETE /:id` — Delete roster (creator-only; cascades chores and assignments)
+- `POST /:id/chores` — Add chore (name, people_per_day)
+- `PUT /:id/chores/:cid` — Update chore (name, people_per_day, position)
+- `DELETE /:id/chores/:cid` — Delete chore (cascades assignments)
+- `POST /:id/assignments` — Pin assignment (chore_id, user_id, date, note?)
+- `PUT /:id/assignments/:aid` — Update assignment (note, user_id)
+- `DELETE /:id/assignments/:aid` — Remove assignment
+- `POST /:id/autofill` — Delete non-pinned, re-distribute fairly
+
 **Invites (`/api/invites`)** — Mixed authentication
 
 Unauthenticated:
@@ -252,6 +269,9 @@ These types must stay in sync between frontend and backend:
 | expense             | `Expense`             | `expense`            | `add_expense`             |
 | settlement          | `Settlement`          | `settlement`         | `add_settlement`          |
 | settlement_transfer | `SettlementTransfer`  | `settlementTransfer` | `add_settlement_transfer` |
+| chore_roster        | `ChoreRoster`         | `choreRoster`        | `add_chore_roster`        |
+| chore               | `Chore`               | `chore`              | `add_chore`               |
+| chore_assignment    | `ChoreAssignment`     | `choreAssignment`    | `add_chore_assignment`    |
 
 Defined in: `backend/app/object_registry.rb` and `frontend/src/types/pool.ts`
 

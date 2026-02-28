@@ -1,0 +1,213 @@
+import { defineStore } from 'pinia'
+import { useMutation } from '@/composables/useMutation'
+import { useAuthStore } from './auth'
+import type {
+  PoolApiResponse,
+  PoolChoreRoster,
+  PoolChore,
+  PoolChoreAssignment,
+} from '@/types/pool'
+
+export const useChoreRostersStore = defineStore('choreRosters', () => {
+  const { loading, error, create, mutate, destroy } = useMutation()
+
+  async function createRoster(eventId: string) {
+    const rosterId = crypto.randomUUID()
+    const now = new Date().toISOString()
+    const tempRoster: PoolChoreRoster = {
+      id: rosterId,
+      objectType: 'choreRoster',
+      eventId,
+      userId: useAuthStore().currentUserId ?? null,
+      choreIds: [],
+      createdAt: now,
+      updatedAt: now,
+    }
+
+    const result = await create(
+      'Failed to create chore roster',
+      tempRoster,
+      (commandQueue) =>
+        commandQueue.enqueue<PoolApiResponse>('POST', '/chore-rosters', {
+          event_id: eventId,
+          id: rosterId,
+        })
+    )
+    return { rosterId, queued: result.queued }
+  }
+
+  async function addChore(
+    rosterId: string,
+    name: string,
+    peoplePerDay: number
+  ) {
+    const choreId = crypto.randomUUID()
+    const now = new Date().toISOString()
+    const tempChore: PoolChore = {
+      id: choreId,
+      objectType: 'chore',
+      choreRosterId: rosterId,
+      name,
+      peoplePerDay,
+      position: Date.now(),
+      assignmentIds: [],
+      createdAt: now,
+      updatedAt: now,
+    }
+
+    const result = await create(
+      'Failed to add chore',
+      tempChore,
+      (commandQueue) =>
+        commandQueue.enqueue<PoolApiResponse>(
+          'POST',
+          `/chore-rosters/${rosterId}/chores`,
+          {
+            name,
+            people_per_day: peoplePerDay,
+            id: choreId,
+          }
+        )
+    )
+    return { choreId, queued: result.queued }
+  }
+
+  async function updateChore(
+    rosterId: string,
+    choreId: string,
+    changes: { name?: string; peoplePerDay?: number; position?: number }
+  ) {
+    const apiChanges: Record<string, unknown> = {}
+    if (changes.name !== undefined) apiChanges.name = changes.name
+    if (changes.peoplePerDay !== undefined)
+      apiChanges.people_per_day = changes.peoplePerDay
+    if (changes.position !== undefined) apiChanges.position = changes.position
+
+    await mutate('Failed to update chore', (commandQueue) =>
+      commandQueue.enqueue<PoolApiResponse>(
+        'PUT',
+        `/chore-rosters/${rosterId}/chores/${choreId}`,
+        apiChanges
+      )
+    )
+  }
+
+  async function deleteChore(rosterId: string, choreId: string) {
+    await destroy('Failed to delete chore', 'chore', choreId, (commandQueue) =>
+      commandQueue.enqueue(
+        'DELETE',
+        `/chore-rosters/${rosterId}/chores/${choreId}`
+      )
+    )
+  }
+
+  async function createAssignment(
+    rosterId: string,
+    choreId: string,
+    userId: string,
+    date: string,
+    note?: string
+  ) {
+    const assignmentId = crypto.randomUUID()
+    const now = new Date().toISOString()
+    const tempAssignment: PoolChoreAssignment = {
+      id: assignmentId,
+      objectType: 'choreAssignment',
+      choreId,
+      userId,
+      date,
+      pinned: true,
+      note: note ?? null,
+      createdAt: now,
+      updatedAt: now,
+    }
+
+    const result = await create(
+      'Failed to create assignment',
+      tempAssignment,
+      (commandQueue) =>
+        commandQueue.enqueue<PoolApiResponse>(
+          'POST',
+          `/chore-rosters/${rosterId}/assignments`,
+          {
+            chore_id: choreId,
+            user_id: userId,
+            date,
+            note,
+            id: assignmentId,
+          }
+        )
+    )
+    return { assignmentId, queued: result.queued }
+  }
+
+  async function updateAssignment(
+    rosterId: string,
+    assignmentId: string,
+    changes: { note?: string; userId?: string }
+  ) {
+    const apiChanges: Record<string, unknown> = {}
+    if (changes.note !== undefined) apiChanges.note = changes.note
+    if (changes.userId !== undefined) apiChanges.user_id = changes.userId
+
+    await mutate('Failed to update assignment', (commandQueue) =>
+      commandQueue.enqueue<PoolApiResponse>(
+        'PUT',
+        `/chore-rosters/${rosterId}/assignments/${assignmentId}`,
+        apiChanges
+      )
+    )
+  }
+
+  async function deleteAssignment(rosterId: string, assignmentId: string) {
+    await destroy(
+      'Failed to delete assignment',
+      'choreAssignment',
+      assignmentId,
+      (commandQueue) =>
+        commandQueue.enqueue(
+          'DELETE',
+          `/chore-rosters/${rosterId}/assignments/${assignmentId}`
+        )
+    )
+  }
+
+  async function deleteRoster(rosterId: string) {
+    await destroy(
+      'Failed to delete roster',
+      'choreRoster',
+      rosterId,
+      (commandQueue) =>
+        commandQueue.enqueue('DELETE', `/chore-rosters/${rosterId}`)
+    )
+  }
+
+  async function autofill(rosterId: string) {
+    await mutate('Failed to autofill roster', (commandQueue) =>
+      commandQueue.enqueue<PoolApiResponse>(
+        'POST',
+        `/chore-rosters/${rosterId}/autofill`
+      )
+    )
+  }
+
+  function $reset() {
+    loading.value = false
+    error.value = null
+  }
+
+  return {
+    loading,
+    error,
+    createRoster,
+    addChore,
+    updateChore,
+    deleteChore,
+    deleteRoster,
+    createAssignment,
+    updateAssignment,
+    deleteAssignment,
+    autofill,
+    $reset,
+  }
+})

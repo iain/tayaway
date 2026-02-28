@@ -133,6 +133,34 @@ class PoolSerializer
     @objects[key] = transfer.to_api_hash
   end
 
+  sig { params(roster: ChoreRoster).void }
+  def add_chore_roster(roster)
+    key = "chore_roster:#{roster.id}"
+    return if @objects.key?(key)
+
+    chore_ids = Chore.ids_for_roster(roster.id)
+    @objects[key] = roster.to_api_hash(chore_ids: chore_ids)
+    Chore.for_roster(roster.id).each { |chore| add_chore(chore) }
+  end
+
+  sig { params(chore: Chore).void }
+  def add_chore(chore)
+    key = "chore:#{chore.id}"
+    return if @objects.key?(key)
+
+    assignment_ids = ChoreAssignment.ids_for_chore(chore.id)
+    @objects[key] = chore.to_api_hash(assignment_ids: assignment_ids)
+    ChoreAssignment.for_chore(chore.id).each { |a| add_chore_assignment(a) }
+  end
+
+  sig { params(assignment: ChoreAssignment).void }
+  def add_chore_assignment(assignment)
+    key = "chore_assignment:#{assignment.id}"
+    return if @objects.key?(key)
+
+    @objects[key] = assignment.to_api_hash
+  end
+
   sig { params(items: T::Enumerable[T.untyped], type: Symbol).void }
   def add_all(items, type:)
     entry = ObjectRegistry::BY_KEY[type.to_s]
