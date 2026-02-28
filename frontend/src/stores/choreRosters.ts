@@ -9,7 +9,7 @@ import type {
 } from '@/types/pool'
 
 export const useChoreRostersStore = defineStore('choreRosters', () => {
-  const { loading, error, create, mutate, destroy } = useMutation()
+  const { loading, error, create, mutate, update, destroy } = useMutation()
 
   async function createRoster(eventId: string) {
     const rosterId = crypto.randomUUID()
@@ -83,12 +83,17 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
       apiChanges.people_per_day = changes.peoplePerDay
     if (changes.position !== undefined) apiChanges.position = changes.position
 
-    await mutate('Failed to update chore', (commandQueue) =>
-      commandQueue.enqueue<PoolApiResponse>(
-        'PUT',
-        `/chore-rosters/${rosterId}/chores/${choreId}`,
-        apiChanges
-      )
+    await update(
+      'Failed to update chore',
+      'chore',
+      choreId,
+      changes,
+      (commandQueue) =>
+        commandQueue.enqueue<PoolApiResponse>(
+          'PUT',
+          `/chore-rosters/${rosterId}/chores/${choreId}`,
+          apiChanges
+        )
     )
   }
 

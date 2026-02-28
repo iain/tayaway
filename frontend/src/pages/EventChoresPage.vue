@@ -7,6 +7,7 @@ import { useObjectPoolStore } from '@/stores/objectPool'
 import { useChoreRostersStore } from '@/stores/choreRosters'
 import { api } from '@/api/client'
 import ChoreRosterGrid from '@/components/chores/ChoreRosterGrid.vue'
+import ChoreSummaryTable from '@/components/chores/ChoreSummaryTable.vue'
 import ChoreRosterToolbar from '@/components/chores/ChoreRosterToolbar.vue'
 import AddChoreModal from '@/components/chores/AddChoreModal.vue'
 import AssignMemberPopover from '@/components/chores/AssignMemberPopover.vue'
@@ -285,6 +286,13 @@ onMounted(async () => {
           @assign="openAssign"
           @edit-assignment="openEditAssignment"
           @delete-chore="handleDeleteChore"
+        />
+
+        <ChoreSummaryTable
+          v-if="assignments.length > 0"
+          :chores="chores"
+          :assignments="assignments"
+          :members="members"
         />
       </div>
 

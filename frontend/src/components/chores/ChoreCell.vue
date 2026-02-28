@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import {
-  PlusIcon,
-  MapPinIcon,
-  ChatBubbleLeftIcon,
-} from '@heroicons/vue/24/outline'
+import { PlusIcon, ChatBubbleLeftIcon } from '@heroicons/vue/24/outline'
+import PushPinIcon from '@/components/icons/PushPinIcon.vue'
 import type { PoolChoreAssignment, PoolMember } from '@/types/pool'
 
 const props = defineProps<{
@@ -52,7 +49,7 @@ function handleAddClick(event: MouseEvent) {
       "
       @click="emit('editAssignment', a, $event.currentTarget as HTMLElement)"
     >
-      <MapPinIcon v-if="a.pinned" class="size-3 shrink-0" />
+      <PushPinIcon v-if="a.pinned" class="size-3 shrink-0" />
       <span class="truncate">{{ getMemberName(a.userId) }}</span>
       <ChatBubbleLeftIcon
         v-if="a.note"

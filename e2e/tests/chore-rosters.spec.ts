@@ -487,7 +487,7 @@ test.describe('Chore Rosters Feature', () => {
 
       // Chore should appear in the grid
       await expect(page.getByText('Cooking')).toBeVisible()
-      await expect(page.getByText('2 people/day')).toBeVisible()
+      await expect(page.getByText('2/day')).toBeVisible()
     })
 
     test('can run autofill and see assignments in grid', async ({ page }) => {
@@ -585,8 +585,10 @@ test.describe('Chore Rosters Feature', () => {
       await expect(page.getByText('Mopping')).toBeVisible()
 
       // Click delete button for "Dishes" (force-click since hover-reveal)
-      const dishesRow = page.locator('tr').filter({ hasText: 'Dishes' })
-      const deleteBtn = dishesRow.getByRole('button', { name: 'Delete chore' })
+      const dishesHeader = page.locator('th').filter({ hasText: 'Dishes' })
+      const deleteBtn = dishesHeader.getByRole('button', {
+        name: 'Delete chore',
+      })
       await deleteBtn.click({ force: true })
 
       // Confirmation dialog should appear
