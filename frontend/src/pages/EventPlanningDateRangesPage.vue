@@ -224,6 +224,12 @@ async function deleteRange(dateRangeId: string): Promise<void> {
       :open="showDateRangeModal"
       :preselected-start="modalPreselectedStart"
       :preselected-end="modalPreselectedEnd"
+      :existing-ranges="
+        dateRanges.map((r) => ({
+          start_date: r.startDate,
+          end_date: r.endDate,
+        }))
+      "
       @save="handleDateRangeModalSave"
       @close="showDateRangeModal = false"
     />

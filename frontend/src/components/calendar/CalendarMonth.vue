@@ -117,10 +117,10 @@ function getDayClasses(dateString: string): string[] {
     return classes
   }
 
-  // Existing ranges
+  // Existing ranges (distinct color from selection)
   const existing = getExistingRangeInfo(dateString)
   if (existing.inRange) {
-    const classes = ['bg-rose-500/40']
+    const classes = ['bg-sky-500/30']
     if (existing.isStart) classes.push('rounded-l-full')
     if (existing.isEnd) classes.push('rounded-r-full')
     return classes

@@ -196,6 +196,7 @@ const selectionText = computed(() => {
       <TextButton variant="secondary" @click="handleClose"> Cancel </TextButton>
       <AppButton
         data-testid="modal-save-button"
+        autofocus
         :disabled="!canSave"
         @click="handleSave"
       >
