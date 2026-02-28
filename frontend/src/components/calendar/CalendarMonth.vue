@@ -10,6 +10,8 @@ const props = defineProps<{
   selectedEnd: string | null
   hoverDate: string | null
   existingRanges?: DateRangeItem[]
+  minDate?: string
+  maxDate?: string
 }>()
 
 const emit = defineEmits<{
@@ -73,7 +75,17 @@ function getExistingRangeInfo(dateString: string): {
   return { inRange, isStart, isEnd }
 }
 
+function isDisabled(dateString: string): boolean {
+  if (props.minDate && dateString < props.minDate) return true
+  if (props.maxDate && dateString > props.maxDate) return true
+  return false
+}
+
 function getDayClasses(dateString: string): string[] {
+  if (isDisabled(dateString)) {
+    return ['opacity-30', 'cursor-default']
+  }
+
   // Selected range (both start and end chosen)
   if (isInSelectedRange(dateString)) {
     const classes = ['bg-rose-500', 'font-semibold', 'text-white']
@@ -117,10 +129,12 @@ function getDayClasses(dateString: string): string[] {
 }
 
 function handleClick(day: CalendarDay): void {
+  if (isDisabled(day.dateString)) return
   emit('select', day.dateString)
 }
 
 function handleMouseEnter(day: CalendarDay): void {
+  if (isDisabled(day.dateString)) return
   emit('hover', day.dateString)
 }
 

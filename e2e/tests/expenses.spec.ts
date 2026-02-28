@@ -812,11 +812,9 @@ test.describe('Expenses Feature', () => {
       const amountInput = page.getByTestId('expense-amount-input')
       await amountInput.fill('42.00')
 
-      // Change dates
-      const startDateInput = page.getByTestId('expense-start-date')
-      const endDateInput = page.getByTestId('expense-end-date')
-      await startDateInput.fill('2026-06-03')
-      await endDateInput.fill('2026-06-05')
+      // Change dates via calendar (click start, then end)
+      await page.getByTestId('calendar-day-2026-06-03').click()
+      await page.getByTestId('calendar-day-2026-06-05').click()
 
       // Submit
       const [updateResponse] = await Promise.all([

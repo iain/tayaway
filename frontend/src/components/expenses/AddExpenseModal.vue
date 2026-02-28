@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/vue/24/outline'
 import BaseModal from '@/components/common/BaseModal.vue'
+import IconButton from '@/components/common/IconButton.vue'
 import FormInput from '@/components/form/FormInput.vue'
 import FormActions from '@/components/form/FormActions.vue'
+import CalendarMonth from '@/components/calendar/CalendarMonth.vue'
 import { useExpensesStore } from '@/stores/expenses'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useAuthStore } from '@/stores/auth'
+import { useCalendar } from '@/composables/useCalendar'
 import type { PoolEvent, PoolExpense } from '@/types/pool'
 
 const props = defineProps<{
@@ -21,12 +25,18 @@ const emit = defineEmits<{
 const expensesStore = useExpensesStore()
 const pool = useObjectPoolStore()
 const authStore = useAuthStore()
+const { formatDateDisplay } = useCalendar()
 
 const description = ref('')
 const amount = ref('')
 const startDate = ref('')
 const endDate = ref('')
 const submitting = ref(false)
+
+// Calendar navigation state
+const calendarYear = ref(new Date().getFullYear())
+const calendarMonth = ref(new Date().getMonth())
+const hoverDate = ref<string | null>(null)
 
 const isEditing = computed(() => props.expense != null)
 
@@ -37,6 +47,87 @@ const modalTitle = computed(() =>
 const eventHasDates = computed(
   () => props.event.startDate != null && props.event.endDate != null
 )
+
+const selectionText = computed(() => {
+  if (startDate.value && endDate.value) {
+    if (startDate.value === endDate.value) {
+      return formatDateDisplay(startDate.value)
+    }
+    return `${formatDateDisplay(startDate.value)} – ${formatDateDisplay(endDate.value)}`
+  }
+  if (startDate.value) {
+    return `${formatDateDisplay(startDate.value)} – Select end date`
+  }
+  return 'Select start date'
+})
+
+// Constrain navigation to months that overlap with the event range
+const canNavigatePrev = computed(() => {
+  if (!props.event.startDate) return true
+  const [minYear, minMonth] = props.event.startDate.split('-').map(Number) as [
+    number,
+    number,
+  ]
+  // Can go back if current month is after the event start month
+  return (
+    calendarYear.value > minYear ||
+    (calendarYear.value === minYear && calendarMonth.value > minMonth - 1)
+  )
+})
+
+const canNavigateNext = computed(() => {
+  if (!props.event.endDate) return true
+  const [maxYear, maxMonth] = props.event.endDate.split('-').map(Number) as [
+    number,
+    number,
+  ]
+  return (
+    calendarYear.value < maxYear ||
+    (calendarYear.value === maxYear && calendarMonth.value < maxMonth - 1)
+  )
+})
+
+function navigatePrev(): void {
+  if (!canNavigatePrev.value) return
+  if (calendarMonth.value === 0) {
+    calendarMonth.value = 11
+    calendarYear.value--
+  } else {
+    calendarMonth.value--
+  }
+}
+
+function navigateNext(): void {
+  if (!canNavigateNext.value) return
+  if (calendarMonth.value === 11) {
+    calendarMonth.value = 0
+    calendarYear.value++
+  } else {
+    calendarMonth.value++
+  }
+}
+
+function handleDateSelect(dateString: string): void {
+  if (!startDate.value || endDate.value) {
+    // Start new selection
+    startDate.value = dateString
+    endDate.value = ''
+  } else {
+    // Complete selection
+    let start = startDate.value
+    let end = dateString
+    if (dateString < startDate.value) {
+      start = dateString
+      end = startDate.value
+    }
+    startDate.value = start
+    endDate.value = end
+  }
+}
+
+function handleHover(date: string | null): void {
+  hoverDate.value = date
+}
 
 watch(
   () => props.open,
@@ -78,6 +169,23 @@ watch(
           endDate.value = today
         }
       }
+
+      // Initialize calendar to the start date's month
+      if (startDate.value) {
+        const [year, month] = startDate.value.split('-').map(Number) as [
+          number,
+          number,
+        ]
+        calendarYear.value = year
+        calendarMonth.value = month - 1
+      } else if (props.event.startDate) {
+        const [year, month] = props.event.startDate.split('-').map(Number) as [
+          number,
+          number,
+        ]
+        calendarYear.value = year
+        calendarMonth.value = month - 1
+      }
     }
   }
 )
@@ -118,7 +226,7 @@ function handleClose(): void {
 </script>
 
 <template>
-  <BaseModal :open="open" :title="modalTitle" @close="handleClose">
+  <BaseModal :open="open" :title="modalTitle" size="lg" @close="handleClose">
     <form class="space-y-4" @submit.prevent="handleSubmit">
       <FormInput
         id="expense-description"
@@ -147,27 +255,41 @@ function handleClose(): void {
         >
           Dates
         </label>
-        <div class="flex items-center gap-2">
-          <input
-            v-model="startDate"
-            type="date"
-            data-testid="expense-start-date"
-            :min="event.startDate ?? undefined"
-            :max="event.endDate ?? undefined"
-            :disabled="submitting"
-            class="rounded-md border border-gray-300 px-2 py-1 text-sm dark:border-stone-600 dark:bg-stone-700 dark:text-white"
-          />
-          <span class="text-gray-500 dark:text-stone-400">to</span>
-          <input
-            v-model="endDate"
-            type="date"
-            data-testid="expense-end-date"
-            :min="event.startDate ?? undefined"
-            :max="event.endDate ?? undefined"
-            :disabled="submitting"
-            class="rounded-md border border-gray-300 px-2 py-1 text-sm dark:border-stone-600 dark:bg-stone-700 dark:text-white"
-          />
+        <div class="text-sm text-gray-500 dark:text-stone-400">
+          {{ selectionText }}
         </div>
+
+        <!-- Month navigation -->
+        <div class="mt-2 flex items-center justify-between">
+          <IconButton
+            label="Previous month"
+            :disabled="!canNavigatePrev"
+            class="rounded-md p-2 hover:bg-gray-100 dark:hover:bg-white/10"
+            @click="navigatePrev"
+          >
+            <ChevronLeftIcon class="size-5" />
+          </IconButton>
+          <IconButton
+            label="Next month"
+            :disabled="!canNavigateNext"
+            class="rounded-md p-2 hover:bg-gray-100 dark:hover:bg-white/10"
+            @click="navigateNext"
+          >
+            <ChevronRightIcon class="size-5" />
+          </IconButton>
+        </div>
+
+        <CalendarMonth
+          :year="calendarYear"
+          :month="calendarMonth"
+          :selected-start="startDate || null"
+          :selected-end="endDate || null"
+          :hover-date="hoverDate"
+          :min-date="event.startDate ?? undefined"
+          :max-date="event.endDate ?? undefined"
+          @select="handleDateSelect"
+          @hover="handleHover"
+        />
       </div>
 
       <FormActions
