@@ -1,20 +1,20 @@
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { defineStore } from 'pinia'
 import { useMutation } from '@/composables/useMutation'
 import { api } from '@/api/client'
 import { useObjectPoolStore } from './objectPool'
 import { useWorkspaceStore } from './workspace'
-import type { InviteResponse, InvitesListResponse } from '@/types'
-import type { PoolApiResponse, PoolMember } from '@/types/pool'
+import type {
+  PoolApiResponse,
+  PoolMember,
+  PoolWorkspaceInvite,
+} from '@/types/pool'
 
 interface UpdateRoleResponse {
   objects?: PoolApiResponse['objects']
 }
 
 export const useMembersStore = defineStore('members', () => {
-  const pendingInvites = ref<InviteResponse[]>([])
-  const invitesLoading = ref(false)
-
   // Members are derived directly from the pool — no cross-referencing needed
   const members = computed((): PoolMember[] => {
     const pool = useObjectPoolStore()
@@ -31,38 +31,44 @@ export const useMembersStore = defineStore('members', () => {
       })
   })
 
+  // Pending invites derived from pool, filtered to current workspace + non-accepted
+  const pendingInvites = computed((): PoolWorkspaceInvite[] => {
+    const pool = useObjectPoolStore()
+    const workspaceStore = useWorkspaceStore()
+    const workspaceId = workspaceStore.currentWorkspaceId
+
+    return pool
+      .getAll('workspaceInvite')
+      .filter((i) => i.workspaceId === workspaceId && !i.acceptedAt)
+      .sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      )
+  })
+
   async function fetchInvites() {
     const workspaceId = useWorkspaceStore().currentWorkspaceId
     if (!workspaceId) return
 
-    invitesLoading.value = true
     try {
-      const { data } = await api.get<InvitesListResponse>(
-        `/invites?workspace_id=${workspaceId}`
-      )
-      pendingInvites.value = data.invites
+      await api.get(`/invites?workspace_id=${workspaceId}`)
     } catch {
       // Silently fail — user may not be admin
-      pendingInvites.value = []
-    } finally {
-      invitesLoading.value = false
     }
   }
 
   async function createInvite(email: string, name?: string) {
     const workspaceId = useWorkspaceStore().currentWorkspaceId!
-    await api.post<InviteResponse>('/invites', {
+    await api.post('/invites', {
       email,
       name,
       workspace_id: workspaceId,
     })
-    await fetchInvites()
   }
 
   async function cancelInvite(id: string) {
     const workspaceId = useWorkspaceStore().currentWorkspaceId!
     await api.delete(`/invites/${id}?workspace_id=${workspaceId}`)
-    pendingInvites.value = pendingInvites.value.filter((i) => i.id !== id)
   }
 
   async function updateMemberRole(memberId: string, role: string) {
@@ -82,14 +88,12 @@ export const useMembersStore = defineStore('members', () => {
   }
 
   function $reset() {
-    pendingInvites.value = []
-    invitesLoading.value = false
+    // All state is computed from pool — nothing to reset
   }
 
   return {
     members,
     pendingInvites,
-    invitesLoading,
     fetchInvites,
     createInvite,
     cancelInvite,

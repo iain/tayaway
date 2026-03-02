@@ -63,7 +63,9 @@ class App
         end
 
         invites = WorkspaceInvite.pending_for_workspace(workspace_id)
-        { invites: invites.map(&:to_api_hash) }
+        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool.add_all(invites, type: :workspace_invite)
+        { objects: pool.to_a }
       end
 
       # POST /api/invites - Create an invitation

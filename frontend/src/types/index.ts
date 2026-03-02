@@ -145,17 +145,6 @@ export interface UpdateEventRequest {
 }
 
 // Invite types
-export interface InviteResponse {
-  id: string
-  workspaceId: string
-  invitedBy: string | null
-  email: string
-  name: string | null
-  expiresAt: string
-  acceptedAt: string | null
-  createdAt: string
-}
-
 export interface CreateInviteRequest {
   email: string
   name?: string
@@ -165,10 +154,6 @@ export interface CreateInviteRequest {
 export interface InviteInfoResponse {
   workspaceName: string
   email: string
-}
-
-export interface InvitesListResponse {
-  invites: InviteResponse[]
 }
 
 // Email change types

@@ -107,8 +107,12 @@ module Invites
         APP_LOGGER.debug { "INVITE LINK FOR #{email}: #{invite_link}" }
         Mailers::WorkspaceInvite.send_email(email: email, invite_link: invite_link, workspace_name: workspace_name, name: name)
 
-        invite = WorkspaceInvite.find(id)
-        T.cast(Success(T.must(invite).to_api_hash), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        Broadcaster.object_changed("workspace_invite", id, workspace_id: workspace_id.to_s)
+
+        invite = T.must(WorkspaceInvite.find(id))
+        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool.add_workspace_invite(invite)
+        T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
     end
   end

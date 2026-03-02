@@ -273,6 +273,7 @@ These types must stay in sync between frontend and backend:
 | chore_roster        | `ChoreRoster`         | `choreRoster`        | `add_chore_roster`        |
 | chore               | `Chore`               | `chore`              | `add_chore`               |
 | chore_assignment    | `ChoreAssignment`     | `choreAssignment`    | `add_chore_assignment`    |
+| workspace_invite    | `WorkspaceInvite`     | `workspaceInvite`    | `add_workspace_invite`    |
 
 Defined in: `backend/app/object_registry.rb` and `frontend/src/types/pool.ts`
 

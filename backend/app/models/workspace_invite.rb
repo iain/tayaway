@@ -22,13 +22,15 @@ class WorkspaceInvite < T::Struct
   def to_api_hash
     {
       id: id.to_s,
+      objectType: "workspaceInvite",
       workspaceId: workspace_id.to_s,
       invitedBy: invited_by&.to_s,
       email: email.to_s,
       name: name,
       expiresAt: expires_at.iso8601(3),
       acceptedAt: accepted_at&.iso8601(3),
-      createdAt: created_at.iso8601(3)
+      createdAt: created_at.iso8601(3),
+      updatedAt: updated_at.iso8601(3)
     }
   end
 
@@ -67,6 +69,17 @@ class WorkspaceInvite < T::Struct
         .where(accepted_at: nil)
         .where(Sequel[:expires_at] > Time.now)
         .order(:created_at)
+        .all
+    end
+
+    # Return pending invites changed since a given timestamp (for pool sync).
+    sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[WorkspaceInvite]) }
+    def changed_since(workspace_id, since)
+      dataset
+        .where(workspace_id: workspace_id)
+        .where(accepted_at: nil)
+        .where(Sequel[:expires_at] > Time.now)
+        .where(Sequel.lit("updated_at > ?", since))
         .all
     end
 

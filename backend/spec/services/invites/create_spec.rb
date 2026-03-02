@@ -17,8 +17,10 @@ RSpec.describe Invites::Create do
     )
 
     expect(result.success?).to be true
-    expect(result.value![:email]).to eq("new@example.com")
-    expect(result.value![:workspaceId]).to eq(workspace[:id])
+    objects = result.value![:objects]
+    invite_obj = objects.find { |o| o[:objectType] == "workspaceInvite" }
+    expect(invite_obj[:email]).to eq("new@example.com")
+    expect(invite_obj[:workspaceId]).to eq(workspace[:id])
 
     invite_row = DB[:workspace_invites].where(email: "new@example.com").first
     expect(invite_row).not_to be_nil

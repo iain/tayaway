@@ -12,7 +12,7 @@ module Invites
         params(
           invite_id: T.nilable(String),
           workspace_id: T.any(String, UUID)
-        ).returns(Result[T::Hash[Symbol, String], ServiceError])
+        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
       def call(invite_id:, workspace_id:)
         find_invite(invite_id, workspace_id)
@@ -44,10 +44,21 @@ module Invites
         T.cast(Success(invite), Result[WorkspaceInvite, ServiceError])
       end
 
-      sig { params(invite: WorkspaceInvite).returns(Result[T::Hash[Symbol, String], ServiceError]) }
+      sig { params(invite: WorkspaceInvite).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
       def delete_invite(invite)
-        DB[:workspace_invites].where(id: invite.id).delete
-        T.cast(Success({ message: "Invitation cancelled" }), Result[T::Hash[Symbol, String], ServiceError])
+        invite_id = invite.id
+        workspace_id = invite.workspace_id
+
+        DB.transaction do
+          DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "workspace_invite", object_id: invite_id)
+          DB[:workspace_invites].where(id: invite_id).delete
+          Broadcaster.object_deleted("workspace_invite", invite_id, workspace_id: workspace_id.to_s)
+        end
+
+        T.cast(
+          Success({ deleted: [{ objectType: "workspaceInvite", id: invite_id.to_s }] }),
+          Result[T::Hash[Symbol, T.untyped], ServiceError]
+        )
       end
     end
   end

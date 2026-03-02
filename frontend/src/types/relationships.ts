@@ -125,4 +125,5 @@ export const relationshipSchema: RelationshipSchema = {
       targetType: 'member',
     },
   },
+  workspaceInvite: {},
 } as const

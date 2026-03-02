@@ -161,6 +161,14 @@ class PoolSerializer
     @objects[key] = assignment.to_api_hash
   end
 
+  sig { params(invite: WorkspaceInvite).void }
+  def add_workspace_invite(invite)
+    key = "workspace_invite:#{invite.id}"
+    return if @objects.key?(key)
+
+    @objects[key] = invite.to_api_hash
+  end
+
   sig { params(items: T::Enumerable[T.untyped], type: Symbol).void }
   def add_all(items, type:)
     entry = ObjectRegistry::BY_KEY[type.to_s]

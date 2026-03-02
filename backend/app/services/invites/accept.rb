@@ -71,7 +71,9 @@ module Invites
           existing = WorkspaceMembership.find_by_workspace_and_user(invite.workspace_id, user.id)
           if existing
             # Mark invite accepted but skip membership creation
-            DB[:workspace_invites].where(id: invite.id).update(accepted_at: now)
+            DB[:workspace_invites].where(id: invite.id).update(accepted_at: now, updated_at: now)
+            DB[:deleted_items].insert(workspace_id: invite.workspace_id, object_type: "workspace_invite", object_id: invite.id)
+            Broadcaster.object_deleted("workspace_invite", invite.id, workspace_id: invite.workspace_id.to_s)
             return T.cast(
               Success({ message: "You are already a member of this workspace" }),
               Result[T::Hash[Symbol, String], ServiceError]
@@ -87,8 +89,10 @@ module Invites
             created_at: now
           )
 
-          # Mark invite accepted
-          DB[:workspace_invites].where(id: invite.id).update(accepted_at: now)
+          # Mark invite accepted and remove from pool
+          DB[:workspace_invites].where(id: invite.id).update(accepted_at: now, updated_at: now)
+          DB[:deleted_items].insert(workspace_id: invite.workspace_id, object_type: "workspace_invite", object_id: invite.id)
+          Broadcaster.object_deleted("workspace_invite", invite.id, workspace_id: invite.workspace_id.to_s)
         end
 
         user = T.must(user)

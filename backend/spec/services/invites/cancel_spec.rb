@@ -32,8 +32,9 @@ RSpec.describe Invites::Cancel do
     result = described_class.call(invite_id: invite_id, workspace_id: workspace[:id])
 
     expect(result.success?).to be true
-    expect(result.value![:message]).to eq("Invitation cancelled")
+    expect(result.value![:deleted]).to eq([{ objectType: "workspaceInvite", id: invite_id }])
     expect(DB[:workspace_invites].where(id: invite_id).count).to eq(0)
+    expect(DB[:deleted_items].where(object_type: "workspace_invite", object_id: invite_id).count).to eq(1)
   end
 
   it "returns failure for unknown invite" do

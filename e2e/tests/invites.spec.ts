@@ -74,8 +74,8 @@ test.describe('Workspace Invites Feature', () => {
       )
       expect(response.ok()).toBeTruthy()
       const body = await response.json()
-      expect(body).toHaveProperty('invites')
-      expect(Array.isArray(body.invites)).toBeTruthy()
+      expect(body).toHaveProperty('objects')
+      expect(Array.isArray(body.objects)).toBeTruthy()
     })
 
     test('full invite lifecycle: create, list, cancel', async () => {
@@ -91,9 +91,12 @@ test.describe('Workspace Invites Feature', () => {
       })
       expect(createResponse.status()).toBe(201)
       const createBody = await createResponse.json()
-      expect(createBody).toHaveProperty('id')
-      expect(createBody.email).toBe(inviteEmail)
-      const inviteId = createBody.id
+      expect(createBody).toHaveProperty('objects')
+      const inviteObj = createBody.objects.find(
+        (o: { objectType: string }) => o.objectType === 'workspaceInvite'
+      )
+      expect(inviteObj.email).toBe(inviteEmail)
+      const inviteId = inviteObj.id
 
       // List — invite should appear
       const listResponse = await apiContext.get(
@@ -102,7 +105,10 @@ test.describe('Workspace Invites Feature', () => {
       expect(listResponse.ok()).toBeTruthy()
       const listBody = await listResponse.json()
       expect(
-        listBody.invites.some((i: { id: string }) => i.id === inviteId)
+        listBody.objects.some(
+          (i: { id: string; objectType: string }) =>
+            i.id === inviteId && i.objectType === 'workspaceInvite'
+        )
       ).toBeTruthy()
 
       // Cancel invite
@@ -111,7 +117,9 @@ test.describe('Workspace Invites Feature', () => {
       )
       expect(cancelResponse.ok()).toBeTruthy()
       const cancelBody = await cancelResponse.json()
-      expect(cancelBody.message).toBe('Invitation cancelled')
+      expect(cancelBody.deleted).toEqual([
+        { objectType: 'workspaceInvite', id: inviteId },
+      ])
     })
 
     test('POST /api/invites requires email', async () => {
