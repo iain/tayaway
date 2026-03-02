@@ -42,7 +42,6 @@ module Rsvps
         validate_params(attending, rsvp_id)
           .bind { find_event(event_id) }
           .bind { |event| validate_event_has_dates(event) }
-          .bind { |event| validate_event_not_in_past(event) }
           .bind { |event| validate_no_expenses_when_declining(event, user_id, T.must(attending)) }
           .bind { |event| validate_partial_dates(event, attending, start_date, end_date) }
           .bind { |event, parsed_start, parsed_end| upsert_rsvp(event, user_id, T.must(attending), parsed_start, parsed_end, rsvp_id) }
@@ -82,15 +81,6 @@ module Rsvps
           T.cast(Success(event), Result[Event, ServiceError])
         else
           T.cast(Failure(ServiceError.validation("Event does not have dates set")), Result[Event, ServiceError])
-        end
-      end
-
-      sig { params(event: Event).returns(Result[Event, ServiceError]) }
-      def validate_event_not_in_past(event)
-        if T.must(event.end_date) < Date.today
-          T.cast(Failure(ServiceError.validation("Cannot RSVP to an event that has already ended")), Result[Event, ServiceError])
-        else
-          T.cast(Success(event), Result[Event, ServiceError])
         end
       end
 

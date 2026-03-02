@@ -34,11 +34,6 @@ const currentUserRsvp = computed(() => {
   return props.event.rsvps.find((r) => r.userId === props.currentUserId)
 })
 
-const isEventInPast = computed(() => {
-  if (!props.event.endDate) return false
-  return props.event.endDate < new Date().toISOString().slice(0, 10)
-})
-
 const attending = computed(() => props.event.rsvps.filter((r) => r.attending))
 
 const notAttending = computed(() =>
@@ -120,119 +115,105 @@ async function handleClearPartialDates(): Promise<void> {
         Your response
       </p>
 
-      <!-- Past event notice -->
-      <p v-if="isEventInPast" class="text-sm text-gray-500 dark:text-stone-400">
-        This event has already ended.
-      </p>
+      <div class="flex gap-2">
+        <button
+          type="button"
+          data-testid="rsvp-attend"
+          :aria-pressed="currentUserRsvp?.attending ? 'true' : 'false'"
+          class="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-sm"
+          :class="
+            currentUserRsvp?.attending
+              ? 'bg-green-600 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600'
+          "
+          @click="handleAttend"
+        >
+          <CheckCircleIcon class="size-4" />
+          Attending
+        </button>
+        <button
+          type="button"
+          data-testid="rsvp-decline"
+          :aria-pressed="
+            currentUserRsvp && !currentUserRsvp.attending ? 'true' : 'false'
+          "
+          class="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-sm"
+          :class="
+            currentUserRsvp && !currentUserRsvp.attending
+              ? 'bg-red-600 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600'
+          "
+          @click="handleDecline"
+        >
+          <XCircleIcon class="size-4" />
+          Not Attending
+        </button>
+      </div>
 
-      <template v-else>
-        <div class="flex gap-2">
-          <button
-            type="button"
-            data-testid="rsvp-attend"
-            :aria-pressed="currentUserRsvp?.attending ? 'true' : 'false'"
-            class="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-sm"
-            :class="
-              currentUserRsvp?.attending
-                ? 'bg-green-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600'
-            "
-            @click="handleAttend"
-          >
-            <CheckCircleIcon class="size-4" />
-            Attending
-          </button>
-          <button
-            type="button"
-            data-testid="rsvp-decline"
-            :aria-pressed="
-              currentUserRsvp && !currentUserRsvp.attending ? 'true' : 'false'
-            "
-            class="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-sm"
-            :class="
-              currentUserRsvp && !currentUserRsvp.attending
-                ? 'bg-red-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600'
-            "
-            @click="handleDecline"
-          >
-            <XCircleIcon class="size-4" />
-            Not Attending
-          </button>
+      <!-- Partial attendance -->
+      <div v-if="currentUserRsvp?.attending" class="mt-3">
+        <div v-if="currentUserRsvp.startDate && currentUserRsvp.endDate">
+          <p class="text-sm text-gray-600 dark:text-stone-400">
+            <CalendarDaysIcon class="inline size-4" />
+            <DateRangeDisplay
+              :start-date="currentUserRsvp.startDate"
+              :end-date="currentUserRsvp.endDate"
+            />
+            (partial)
+          </p>
         </div>
+        <TextButton
+          v-if="!showPartialPicker"
+          data-testid="rsvp-change-dates"
+          class="mt-1"
+          @click="openPartialPicker"
+        >
+          {{ currentUserRsvp.startDate ? 'Change dates' : 'Set partial dates' }}
+        </TextButton>
 
-        <!-- Partial attendance -->
-        <div v-if="currentUserRsvp?.attending" class="mt-3">
-          <div v-if="currentUserRsvp.startDate && currentUserRsvp.endDate">
-            <p class="text-sm text-gray-600 dark:text-stone-400">
-              <CalendarDaysIcon class="inline size-4" />
-              <DateRangeDisplay
-                :start-date="currentUserRsvp.startDate"
-                :end-date="currentUserRsvp.endDate"
-              />
-              (partial)
-            </p>
+        <!-- Partial date picker -->
+        <div
+          v-if="showPartialPicker"
+          class="mt-3 rounded-md border border-gray-200 p-3 dark:border-stone-600"
+        >
+          <p class="mb-2 text-sm font-medium text-gray-700 dark:text-stone-300">
+            Your attendance dates
+          </p>
+          <div class="flex items-center gap-2">
+            <input
+              v-model="partialStartDate"
+              type="date"
+              :min="event.startDate ?? undefined"
+              :max="event.endDate ?? undefined"
+              class="rounded-md border border-gray-300 px-2 py-1 text-sm dark:border-stone-600 dark:bg-stone-700 dark:text-white"
+            />
+            <span class="text-gray-500 dark:text-stone-400">to</span>
+            <input
+              v-model="partialEndDate"
+              type="date"
+              :min="event.startDate ?? undefined"
+              :max="event.endDate ?? undefined"
+              class="rounded-md border border-gray-300 px-2 py-1 text-sm dark:border-stone-600 dark:bg-stone-700 dark:text-white"
+            />
           </div>
-          <TextButton
-            v-if="!showPartialPicker"
-            data-testid="rsvp-change-dates"
-            class="mt-1"
-            @click="openPartialPicker"
-          >
-            {{
-              currentUserRsvp.startDate ? 'Change dates' : 'Set partial dates'
-            }}
-          </TextButton>
-
-          <!-- Partial date picker -->
-          <div
-            v-if="showPartialPicker"
-            class="mt-3 rounded-md border border-gray-200 p-3 dark:border-stone-600"
-          >
-            <p
-              class="mb-2 text-sm font-medium text-gray-700 dark:text-stone-300"
+          <div class="mt-2 flex gap-2">
+            <AppButton size="sm" @click="handleSavePartialDates">
+              Save
+            </AppButton>
+            <AppButton
+              v-if="currentUserRsvp.startDate"
+              variant="secondary"
+              size="sm"
+              @click="handleClearPartialDates"
             >
-              Your attendance dates
-            </p>
-            <div class="flex items-center gap-2">
-              <input
-                v-model="partialStartDate"
-                type="date"
-                :min="event.startDate ?? undefined"
-                :max="event.endDate ?? undefined"
-                class="rounded-md border border-gray-300 px-2 py-1 text-sm dark:border-stone-600 dark:bg-stone-700 dark:text-white"
-              />
-              <span class="text-gray-500 dark:text-stone-400">to</span>
-              <input
-                v-model="partialEndDate"
-                type="date"
-                :min="event.startDate ?? undefined"
-                :max="event.endDate ?? undefined"
-                class="rounded-md border border-gray-300 px-2 py-1 text-sm dark:border-stone-600 dark:bg-stone-700 dark:text-white"
-              />
-            </div>
-            <div class="mt-2 flex gap-2">
-              <AppButton size="sm" @click="handleSavePartialDates">
-                Save
-              </AppButton>
-              <AppButton
-                v-if="currentUserRsvp.startDate"
-                variant="secondary"
-                size="sm"
-                @click="handleClearPartialDates"
-              >
-                Full event
-              </AppButton>
-              <TextButton
-                variant="secondary"
-                @click="showPartialPicker = false"
-              >
-                Cancel
-              </TextButton>
-            </div>
+              Full event
+            </AppButton>
+            <TextButton variant="secondary" @click="showPartialPicker = false">
+              Cancel
+            </TextButton>
           </div>
         </div>
-      </template>
+      </div>
     </div>
 
     <!-- Attendee lists -->
