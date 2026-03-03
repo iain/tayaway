@@ -31,6 +31,7 @@ import { formatBirthday } from '@/utils/date'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import EpcQrModal from '@/components/expenses/EpcQrModal.vue'
 import type { PoolMember, PoolSettlementTransfer } from '@/types/pool'
+import BaseCard from '@/components/common/BaseCard.vue'
 
 const router = useRouter()
 const pool = useObjectPoolStore()
@@ -303,10 +304,11 @@ function navigateToEventPage(eventId: string): void {
         </h2>
 
         <ul class="space-y-3">
-          <li
+          <BaseCard
             v-for="member in upcomingBirthdays"
             :key="member.id"
-            class="overflow-hidden rounded-lg bg-white shadow dark:bg-stone-800"
+            as="li"
+            class="overflow-hidden"
           >
             <div class="flex items-center gap-4 px-4 py-4 sm:px-6">
               <div
@@ -328,7 +330,7 @@ function navigateToEventPage(eventId: string): void {
                 </div>
               </div>
             </div>
-          </li>
+          </BaseCard>
         </ul>
       </section>
 
@@ -366,10 +368,11 @@ function navigateToEventPage(eventId: string): void {
         </div>
 
         <ul class="space-y-3">
-          <li
+          <BaseCard
             v-for="transfer in transfersOwedToYou"
             :key="transfer.id"
-            class="overflow-hidden rounded-lg bg-white shadow dark:bg-stone-800"
+            as="li"
+            class="overflow-hidden"
           >
             <div
               class="flex flex-wrap items-center justify-between gap-y-2 px-4 py-3 sm:px-6"
@@ -404,11 +407,12 @@ function navigateToEventPage(eventId: string): void {
                 Mark paid
               </button>
             </div>
-          </li>
-          <li
+          </BaseCard>
+          <BaseCard
             v-for="transfer in transfersYouOwe"
             :key="transfer.id"
-            class="overflow-hidden rounded-lg bg-white shadow dark:bg-stone-800"
+            as="li"
+            class="overflow-hidden"
           >
             <div
               class="flex flex-wrap items-center justify-between gap-y-2 px-4 py-3 sm:px-6"
@@ -446,7 +450,7 @@ function navigateToEventPage(eventId: string): void {
                 <QrCodeIcon class="size-4" />
               </button>
             </div>
-          </li>
+          </BaseCard>
         </ul>
       </section>
 
@@ -460,10 +464,11 @@ function navigateToEventPage(eventId: string): void {
         </h2>
 
         <ul class="space-y-3">
-          <li
+          <BaseCard
             v-for="event in currentEvents"
             :key="event.id"
-            class="overflow-hidden rounded-lg bg-white shadow dark:bg-stone-800"
+            as="li"
+            class="overflow-hidden"
           >
             <div class="px-4 py-4 sm:px-6">
               <div
@@ -505,7 +510,7 @@ function navigateToEventPage(eventId: string): void {
                 </router-link>
               </div>
             </div>
-          </li>
+          </BaseCard>
         </ul>
       </section>
 
@@ -524,10 +529,11 @@ function navigateToEventPage(eventId: string): void {
         </h2>
 
         <ul class="space-y-3">
-          <li
+          <BaseCard
             v-for="event in pastEventsWithOpenExpenses"
             :key="event.id"
-            class="overflow-hidden rounded-lg bg-white shadow dark:bg-stone-800"
+            as="li"
+            class="overflow-hidden"
           >
             <div class="px-4 py-4 sm:px-6">
               <div
@@ -570,7 +576,7 @@ function navigateToEventPage(eventId: string): void {
                 </router-link>
               </div>
             </div>
-          </li>
+          </BaseCard>
         </ul>
       </section>
 
@@ -590,10 +596,12 @@ function navigateToEventPage(eventId: string): void {
         </h2>
 
         <ul class="space-y-3">
-          <li
+          <BaseCard
             v-for="item in pollsNeedingAttention"
             :key="item.eventId"
-            class="cursor-pointer overflow-hidden rounded-lg bg-white shadow transition-all hover:ring-2 hover:ring-rose-500 dark:bg-stone-800"
+            as="li"
+            interactive
+            class="overflow-hidden"
             @click="navigateToEvent(item.eventId)"
           >
             <div class="px-4 py-4 sm:px-6">
@@ -630,7 +638,7 @@ function navigateToEventPage(eventId: string): void {
                 </div>
               </div>
             </div>
-          </li>
+          </BaseCard>
         </ul>
       </section>
 
@@ -651,10 +659,12 @@ function navigateToEventPage(eventId: string): void {
         </h2>
 
         <ul class="space-y-3">
-          <li
+          <BaseCard
             v-for="item in eventsNeedingRsvp"
             :key="item.eventId"
-            class="cursor-pointer overflow-hidden rounded-lg bg-white shadow transition-all hover:ring-2 hover:ring-rose-500 dark:bg-stone-800"
+            as="li"
+            interactive
+            class="overflow-hidden"
             @click="navigateToEventPage(item.eventId)"
           >
             <div class="px-4 py-4 sm:px-6">
@@ -676,7 +686,7 @@ function navigateToEventPage(eventId: string): void {
                 </div>
               </div>
             </div>
-          </li>
+          </BaseCard>
         </ul>
       </section>
     </template>

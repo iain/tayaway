@@ -13,6 +13,7 @@ import {
 } from '@/stores'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import TaskItemRow from './TaskItemRow.vue'
+import BaseCard from '@/components/common/BaseCard.vue'
 import type { PoolTaskList, PoolTaskItem } from '@/types/pool'
 
 const props = defineProps<{
@@ -228,10 +229,7 @@ defineExpose({
 </script>
 
 <template>
-  <div
-    class="overflow-hidden rounded-lg bg-white shadow dark:bg-stone-800"
-    data-testid="task-list-card"
-  >
+  <BaseCard class="overflow-hidden" data-testid="task-list-card">
     <div class="px-4 py-4 sm:px-6">
       <!-- Header -->
       <div class="mb-3 flex items-center justify-between gap-2">
@@ -346,5 +344,5 @@ defineExpose({
         </AppButton>
       </div>
     </div>
-  </div>
+  </BaseCard>
 </template>

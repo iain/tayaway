@@ -13,6 +13,7 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import VotersList from '@/components/votes/VotersList.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
+import BaseCard from '@/components/common/BaseCard.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import { useDateRangeActions } from '@/composables/useDateRangeActions'
 
@@ -145,11 +146,12 @@ async function deleteRange(dateRangeId: string): Promise<void> {
         </div>
 
         <ul v-else class="space-y-2">
-          <li
+          <BaseCard
             v-for="dateRange in dateRanges"
             :key="dateRange.id"
+            as="li"
+            class="flex items-center justify-between px-4 py-3"
             data-testid="date-range-item"
-            class="flex items-center justify-between rounded-lg bg-white px-4 py-3 shadow dark:bg-stone-800"
           >
             <div>
               <span class="text-sm font-medium text-gray-900 dark:text-white">
@@ -173,7 +175,7 @@ async function deleteRange(dateRangeId: string): Promise<void> {
             >
               <TrashIcon class="size-4" />
             </IconButton>
-          </li>
+          </BaseCard>
         </ul>
       </section>
     </div>

@@ -240,10 +240,11 @@ onMounted(() => {
         Pending Invitations
       </h2>
       <ul class="divide-y divide-gray-200 dark:divide-stone-700">
-        <li
+        <BaseCard
           v-for="invite in pendingInvites"
           :key="invite.id"
-          class="mb-2 overflow-hidden rounded-lg bg-white shadow dark:bg-stone-800"
+          as="li"
+          class="mb-2 overflow-hidden"
         >
           <div class="px-4 py-3 sm:px-6">
             <div class="flex items-center justify-between">
@@ -316,7 +317,7 @@ onMounted(() => {
               </div>
             </div>
           </div>
-        </li>
+        </BaseCard>
       </ul>
     </div>
 

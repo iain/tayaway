@@ -9,6 +9,7 @@ import VotersList from './VotersList.vue'
 import FormTextarea from '@/components/form/FormTextarea.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import AppButton from '@/components/common/AppButton.vue'
+import BaseCard from '@/components/common/BaseCard.vue'
 import TextButton from '@/components/common/TextButton.vue'
 
 const props = defineProps<{
@@ -97,7 +98,7 @@ function toggleCommentInput() {
 </script>
 
 <template>
-  <div class="rounded-lg bg-white p-4 shadow dark:bg-stone-800">
+  <BaseCard class="p-4">
     <div class="flex flex-col md:flex-row md:gap-6">
       <!-- Left side: Date range info and stats -->
       <div class="mb-4 flex-1 md:mb-0">
@@ -210,5 +211,5 @@ function toggleCommentInput() {
         </div>
       </div>
     </div>
-  </div>
+  </BaseCard>
 </template>

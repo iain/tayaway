@@ -12,6 +12,7 @@ import { useExpensesStore } from '@/stores/expenses'
 import { countDays } from '@/utils/event'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import type { PoolExpense, PoolEvent } from '@/types/pool'
+import BaseCard from '@/components/common/BaseCard.vue'
 
 const props = defineProps<{
   expense: PoolExpense
@@ -116,9 +117,10 @@ async function handleDelete(e: Event) {
 </script>
 
 <template>
-  <div
+  <BaseCard
     data-testid="expense-row"
-    class="cursor-pointer rounded-lg bg-white shadow transition-all select-none hover:ring-2 hover:ring-rose-500 dark:bg-stone-800"
+    interactive
+    class="select-none"
     @click="toggleExpand"
   >
     <div class="flex items-center px-4 py-3">
@@ -212,5 +214,5 @@ async function handleDelete(e: Event) {
         </tbody>
       </table>
     </div>
-  </div>
+  </BaseCard>
 </template>

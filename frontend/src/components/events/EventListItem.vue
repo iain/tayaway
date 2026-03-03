@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ObjectTypeMap } from '@/types/pool'
+import BaseCard from '@/components/common/BaseCard.vue'
 
 defineProps<{
   event: ObjectTypeMap['event']
@@ -12,9 +13,11 @@ defineEmits<{
 </script>
 
 <template>
-  <li
+  <BaseCard
+    as="li"
+    interactive
+    class="overflow-hidden"
     :data-testid="`event-item-${event.id}`"
-    class="cursor-pointer overflow-hidden rounded-lg bg-white shadow transition-all hover:ring-2 hover:ring-rose-500 dark:bg-stone-800"
     @click="$emit('click')"
   >
     <div class="px-4 py-5 sm:px-6">
@@ -43,5 +46,5 @@ defineEmits<{
         </div>
       </div>
     </div>
-  </li>
+  </BaseCard>
 </template>

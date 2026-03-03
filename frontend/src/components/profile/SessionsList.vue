@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { api } from '@/api/client'
 import { formatRelativeDate, formatDateShort } from '@/utils/date'
 import type { Session, SessionsResponse } from '@/types'
+import BaseCard from '@/components/common/BaseCard.vue'
 
 defineProps<{
   bare?: boolean
@@ -93,10 +94,7 @@ onMounted(fetchSessions)
   </div>
 
   <!-- Default mode: full card with heading -->
-  <div
-    v-else
-    class="overflow-hidden rounded-lg bg-white shadow dark:bg-stone-800"
-  >
+  <BaseCard v-else class="overflow-hidden">
     <div class="px-4 py-5 sm:p-6">
       <div class="space-y-4">
         <div>
@@ -164,5 +162,5 @@ onMounted(fetchSessions)
         </ul>
       </div>
     </div>
-  </div>
+  </BaseCard>
 </template>

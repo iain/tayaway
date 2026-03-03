@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { UserIcon } from '@heroicons/vue/24/outline'
 import { CheckCircleIcon } from '@heroicons/vue/24/solid'
 import type { HydratedEvent } from '@/composables/useHydratedEvent'
+import BaseCard from '@/components/common/BaseCard.vue'
 
 const props = defineProps<{
   event: HydratedEvent
@@ -69,10 +70,7 @@ const awaitingVotesCount = computed(() =>
 </script>
 
 <template>
-  <section
-    data-testid="awaiting-votes-section"
-    class="rounded-lg bg-white p-6 shadow dark:bg-stone-800"
-  >
+  <BaseCard as="section" padded data-testid="awaiting-votes-section">
     <h2
       class="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white"
     >
@@ -167,5 +165,5 @@ const awaitingVotesCount = computed(() =>
         fully voted yet
       </p>
     </div>
-  </section>
+  </BaseCard>
 </template>
