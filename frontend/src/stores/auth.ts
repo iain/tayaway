@@ -74,10 +74,17 @@ export const useAuthStore = defineStore('auth', () => {
         // Connect WebSocket after successful auth
         const ws = useWebSocketStore()
         ws.connect()
-      } else {
-        // Session truly invalid (401/403) — clear cache
+      } else if (response.status === 401 || response.status === 403) {
+        // Session truly invalid — clear cache and require re-login
         user.value = null
         clearCachedUser()
+      } else {
+        // Server unavailable (5xx) — treat like network error, keep cached user
+        user.value = getCachedUser()
+        if (user.value) {
+          const ws = useWebSocketStore()
+          ws.connect()
+        }
       }
     } catch {
       // Network error — fall back to cached user
