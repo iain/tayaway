@@ -15,6 +15,7 @@ class WorkspaceInvite < T::Struct
   const :token, String
   const :expires_at, Time
   const :accepted_at, T.nilable(Time)
+  const :last_reminded_at, T.nilable(Time)
   const :created_at, Time
   const :updated_at, Time
 
@@ -29,6 +30,7 @@ class WorkspaceInvite < T::Struct
       name: name,
       expiresAt: expires_at.iso8601(3),
       acceptedAt: accepted_at&.iso8601(3),
+      lastRemindedAt: last_reminded_at&.iso8601(3),
       createdAt: created_at.iso8601(3),
       updatedAt: updated_at.iso8601(3)
     }
@@ -61,24 +63,22 @@ class WorkspaceInvite < T::Struct
         .first
     end
 
-    # List all pending (not accepted, not expired) invites for a workspace.
+    # List all non-accepted invites (pending + expired) for a workspace.
     sig { params(workspace_id: T.any(String, UUID)).returns(T::Array[WorkspaceInvite]) }
-    def pending_for_workspace(workspace_id)
+    def all_non_accepted_for_workspace(workspace_id)
       dataset
         .where(workspace_id: workspace_id)
         .where(accepted_at: nil)
-        .where(Sequel[:expires_at] > Time.now)
         .order(:created_at)
         .all
     end
 
-    # Return pending invites changed since a given timestamp (for pool sync).
+    # Return non-accepted invites changed since a given timestamp (for pool sync).
     sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[WorkspaceInvite]) }
     def changed_since(workspace_id, since)
       dataset
         .where(workspace_id: workspace_id)
         .where(accepted_at: nil)
-        .where(Sequel[:expires_at] > Time.now)
         .where(Sequel.lit("updated_at > ?", since))
         .all
     end
@@ -96,6 +96,7 @@ class WorkspaceInvite < T::Struct
         token: row[:token],
         expires_at: row[:expires_at],
         accepted_at: row[:accepted_at],
+        last_reminded_at: row[:last_reminded_at],
         created_at: row[:created_at],
         updated_at: row[:updated_at]
       )

@@ -133,7 +133,7 @@ settlement_transfers  id (UUID), settlement_id (FK settlements cascade), from_us
 chore_rosters     id (UUID PK), event_id (FK events unique cascade), user_id (FK users set_null nullable), timestamps
 chores            id (UUID PK), chore_roster_id (FK cascade), name (VARCHAR 255), people_per_day (INT default 1), position (FLOAT), timestamps
 chore_assignments id (UUID PK), chore_id (FK cascade), user_id (FK users cascade), date (DATE), pinned (BOOL default false), note (TEXT nullable), timestamps, unique(chore_id, user_id, date)
-workspace_invites  id (UUID), workspace_id (FK cascade), invited_by (FK set_null, nullable), email (CITEXT), token (hashed), expires_at (24h), accepted_at (nullable), timestamps; partial unique(workspace_id, email) WHERE accepted_at IS NULL
+workspace_invites  id (UUID), workspace_id (FK cascade), invited_by (FK set_null, nullable), email (CITEXT), token (hashed), expires_at (24h), accepted_at (nullable), last_reminded_at (nullable), timestamps; partial unique(workspace_id, email) WHERE accepted_at IS NULL
 ```
 
 **Hierarchy:** Workspace -> Event -> DatePoll -> DateRange -> Vote
@@ -224,9 +224,10 @@ Unauthenticated:
 
 Authenticated (admin/owner only):
 
-- `GET /?workspace_id=X` — List pending invites
+- `GET /?workspace_id=X` — List all non-accepted invites (pending + expired)
 - `POST /` — Create an invitation (sends invite email)
 - `DELETE /:id?workspace_id=X` — Cancel a pending invitation
+- `POST /:id/remind?workspace_id=X` — Resend invitation email; regenerates token + extends expiry 24h; rate-limited to once per 24h (counting original creation)
 
 **Members (`/api/members`)** — Requires authentication
 

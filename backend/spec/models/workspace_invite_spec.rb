@@ -133,17 +133,17 @@ RSpec.describe WorkspaceInvite do
     end
   end
 
-  describe ".pending_for_workspace" do
-    it "returns only pending, non-expired invites" do
+  describe ".all_non_accepted_for_workspace" do
+    it "returns pending and expired invites but not accepted ones" do
       create_invite(email: "a@example.com")
       create_invite(email: "b@example.com")
       create_invite(email: "expired@example.com", expires_at: Time.now - 1)
       create_invite(email: "accepted@example.com", accepted_at: Time.now)
 
-      invites = described_class.pending_for_workspace(workspace[:id])
+      invites = described_class.all_non_accepted_for_workspace(workspace[:id])
       emails = invites.map { |i| i.email.to_s }
 
-      expect(emails).to contain_exactly("a@example.com", "b@example.com")
+      expect(emails).to contain_exactly("a@example.com", "b@example.com", "expired@example.com")
     end
   end
 

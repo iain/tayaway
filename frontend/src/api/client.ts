@@ -113,8 +113,23 @@ class ApiClient {
     })
 
     if (!response.ok) {
+      let serverMessage: string | undefined
+      try {
+        const body = (await response.json()) as unknown
+        if (
+          body &&
+          typeof body === 'object' &&
+          'error' in body &&
+          typeof (body as { error: unknown }).error === 'string'
+        ) {
+          serverMessage = (body as { error: string }).error
+        }
+      } catch {
+        // ignore parse errors
+      }
+
       const error: ApiError = {
-        message: response.statusText,
+        message: serverMessage ?? response.statusText,
         status: response.status,
       }
 

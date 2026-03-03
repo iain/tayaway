@@ -171,6 +171,7 @@ export interface ObjectTypeMap {
     name: string | null
     expiresAt: string
     acceptedAt: string | null
+    lastRemindedAt: string | null
     createdAt: string
   }
 }

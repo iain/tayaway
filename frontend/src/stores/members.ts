@@ -71,6 +71,15 @@ export const useMembersStore = defineStore('members', () => {
     await api.delete(`/invites/${id}?workspace_id=${workspaceId}`)
   }
 
+  async function sendReminder(id: string) {
+    const workspaceId = useWorkspaceStore().currentWorkspaceId!
+    await api.post(
+      `/invites/${id}/remind?workspace_id=${workspaceId}`,
+      undefined,
+      { silent: true }
+    )
+  }
+
   async function updateMemberRole(memberId: string, role: string) {
     const { update } = useMutation()
     return await update(
@@ -97,6 +106,7 @@ export const useMembersStore = defineStore('members', () => {
     fetchInvites,
     createInvite,
     cancelInvite,
+    sendReminder,
     updateMemberRole,
     $reset,
   }

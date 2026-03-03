@@ -9,6 +9,7 @@ import {
   CakeIcon,
   XMarkIcon,
   IdentificationIcon,
+  ArrowPathIcon,
 } from '@heroicons/vue/24/outline'
 import { useMembersStore, useNotificationsStore } from '@/stores'
 import { useAuthStore } from '@/stores/auth'
@@ -19,8 +20,8 @@ import BaseCard from '@/components/common/BaseCard.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
-import type { PoolMember } from '@/types/pool'
-import { formatBirthday } from '@/utils/date'
+import type { PoolMember, PoolWorkspaceInvite } from '@/types/pool'
+import { formatBirthday, formatRelativeDate } from '@/utils/date'
 import { generateVCard, downloadVCard } from '@/utils/vcard'
 
 const membersStore = useMembersStore()
@@ -30,6 +31,7 @@ const pool = useObjectPoolStore()
 
 const isModalOpen = ref(false)
 const isSubmitting = ref(false)
+const remindingInviteId = ref<string | null>(null)
 const formError = ref<string | null>(null)
 const roleError = ref<string | null>(null)
 
@@ -103,6 +105,64 @@ async function handleCancelInvite(id: string): Promise<void> {
   }
 }
 
+function isExpired(invite: PoolWorkspaceInvite): boolean {
+  return new Date(invite.expiresAt) < new Date()
+}
+
+function canRemind(invite: PoolWorkspaceInvite): boolean {
+  const lastSentAt = invite.lastRemindedAt ?? invite.createdAt
+  const cooldownUntil = new Date(
+    new Date(lastSentAt).getTime() + 24 * 60 * 60 * 1000
+  )
+  return new Date() >= cooldownUntil
+}
+
+function remindAvailableAt(invite: PoolWorkspaceInvite): string {
+  const lastSentAt = invite.lastRemindedAt ?? invite.createdAt
+  const cooldownUntil = new Date(
+    new Date(lastSentAt).getTime() + 24 * 60 * 60 * 1000
+  )
+  return cooldownUntil.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+async function handleRemind(id: string): Promise<void> {
+  remindingInviteId.value = id
+  try {
+    await membersStore.sendReminder(id)
+    const notifications = useNotificationsStore()
+    notifications.showInfo('Reminder sent')
+  } catch (err) {
+    const notifications = useNotificationsStore()
+    const apiErr = err as { message?: string }
+    notifications.showError(apiErr.message || 'Failed to send reminder')
+  } finally {
+    remindingInviteId.value = null
+  }
+}
+
+function inviteExpiryText(invite: PoolWorkspaceInvite): string {
+  const expiresAt = new Date(invite.expiresAt)
+  const now = new Date()
+  if (expiresAt < now) {
+    return `Expired ${formatRelativeDate(invite.expiresAt)}`
+  }
+  const diffMs = expiresAt.getTime() - now.getTime()
+  const diffMinutes = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  if (diffMinutes < 60) return `Expires in ${diffMinutes}m`
+  if (diffHours < 24) return `Expires in ${diffHours}h`
+  return `Expires in ${Math.floor(diffHours / 24)}d`
+}
+
+function invitedByName(invite: PoolWorkspaceInvite): string | null {
+  if (!invite.invitedBy) return null
+  const member = pool.findBy('member', 'userId', invite.invitedBy)
+  return member ? (member.name ?? member.email) : null
+}
+
 function isBirthday(member: PoolMember): boolean {
   if (!member.birthday) return false
   const today = new Date()
@@ -168,7 +228,7 @@ onMounted(() => {
       {{ roleError }}
     </div>
 
-    <!-- Pending Invites Section -->
+    <!-- Pending + Expired Invites Section -->
     <div
       v-if="pendingInvites.length > 0"
       class="mb-6"
@@ -200,20 +260,60 @@ onMounted(() => {
                         : invite.email
                     }}
                   </p>
-                  <span
-                    class="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-                  >
-                    Pending
-                  </span>
+                  <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span
+                      v-if="isExpired(invite)"
+                      class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                    >
+                      Expired
+                    </span>
+                    <span
+                      v-else
+                      class="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+                    >
+                      Pending
+                    </span>
+                    <span class="text-xs text-gray-400 dark:text-stone-500">
+                      Sent {{ formatRelativeDate(invite.createdAt) }}
+                      <template v-if="invitedByName(invite)">
+                        by {{ invitedByName(invite) }}
+                      </template>
+                      · {{ inviteExpiryText(invite) }}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <IconButton
-                label="Cancel invitation"
-                data-testid="cancel-invite-button"
-                @click="handleCancelInvite(invite.id)"
-              >
-                <XMarkIcon class="size-5" />
-              </IconButton>
+              <div class="flex items-center gap-1">
+                <IconButton
+                  :label="
+                    isExpired(invite) ? 'Resend invitation' : 'Send reminder'
+                  "
+                  :disabled="
+                    !canRemind(invite) || remindingInviteId === invite.id
+                  "
+                  :title="
+                    !canRemind(invite)
+                      ? `Available at ${remindAvailableAt(invite)}`
+                      : isExpired(invite)
+                        ? 'Resend invitation'
+                        : 'Send reminder'
+                  "
+                  data-testid="remind-invite-button"
+                  @click="handleRemind(invite.id)"
+                >
+                  <ArrowPathIcon
+                    class="size-5"
+                    :class="{ 'animate-spin': remindingInviteId === invite.id }"
+                  />
+                </IconButton>
+                <IconButton
+                  label="Cancel invitation"
+                  data-testid="cancel-invite-button"
+                  @click="handleCancelInvite(invite.id)"
+                >
+                  <XMarkIcon class="size-5" />
+                </IconButton>
+              </div>
             </div>
           </div>
         </li>
