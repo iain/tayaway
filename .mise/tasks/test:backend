@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Run backend tests"
-#MISE dir="{{config_root}}/backend"
-
-RACK_ENV=test bundle exec rspec

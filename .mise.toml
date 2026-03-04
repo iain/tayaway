@@ -8,3 +8,177 @@ pnpm = "10.30.2"
 
 [env]
 _.file = ["backend/.env.development"]
+
+# ── Dev ──────────────────────────────────────────────────────────────────────
+
+[tasks.dev]
+description = "Start both frontend and backend dev servers"
+depends = ["dev:backend", "dev:frontend"]
+wait_for = ["dev:backend"]
+run = "echo 'Development servers started'"
+
+[tasks."dev:backend"]
+description = "Start backend dev server"
+dir = "{{config_root}}/backend"
+env = { OBJC_DISABLE_INITIALIZE_FORK_SAFETY = "YES" }
+run = "bundle exec falcon serve --bind http://localhost:9292"
+
+[tasks."dev:frontend"]
+description = "Start frontend dev server"
+dir = "{{config_root}}/frontend"
+run = "pnpm run dev"
+
+# ── Build ─────────────────────────────────────────────────────────────────────
+
+[tasks.build]
+description = "Build production assets"
+depends = ["build:frontend"]
+run = "echo 'Build complete'"
+
+[tasks."build:frontend"]
+description = "Build frontend for production"
+dir = "{{config_root}}/frontend"
+run = "pnpm run build"
+
+# ── CI / Test / Lint / Typecheck ─────────────────────────────────────────────
+
+[tasks.ci]
+description = "Run all CI checks (lint, typecheck, tests, e2e) in parallel"
+depends = ["lint:frontend", "lint:backend", "typecheck:frontend", "typecheck:backend", "test:frontend", "test:backend", "test:e2e"]
+run = "echo 'All CI checks complete'"
+
+[tasks.test]
+description = "Run all tests"
+depends = ["test:frontend", "test:backend"]
+run = "echo 'All tests complete'"
+
+[tasks."test:frontend"]
+description = "Run frontend tests"
+dir = "{{config_root}}/frontend"
+run = "pnpm run test"
+
+[tasks."test:backend"]
+description = "Run backend tests"
+dir = "{{config_root}}/backend"
+run = "RACK_ENV=test bundle exec rspec"
+
+[tasks."test:e2e"]
+description = "Run E2E tests"
+depends = ["db:setup_e2e"]
+run = "pnpm exec playwright test"
+
+[tasks.lint]
+description = "Run all linters"
+depends = ["lint:frontend", "lint:backend"]
+run = "echo 'Linting complete'"
+
+[tasks."lint:frontend"]
+description = "Run frontend linter"
+dir = "{{config_root}}/frontend"
+run = "pnpm run lint"
+
+[tasks."lint:backend"]
+description = "Run backend linter"
+dir = "{{config_root}}/backend"
+run = "bundle exec rubocop"
+
+[tasks.typecheck]
+description = "Run all type checkers"
+depends = ["typecheck:frontend", "typecheck:backend"]
+run = "echo 'Type checking complete'"
+
+[tasks."typecheck:frontend"]
+description = "Run frontend type checker"
+dir = "{{config_root}}/frontend"
+run = "pnpm run typecheck"
+
+[tasks."typecheck:backend"]
+description = "Run backend type checker"
+dir = "{{config_root}}/backend"
+run = "bundle exec srb tc"
+
+# ── Database ──────────────────────────────────────────────────────────────────
+
+[tasks."db:create"]
+description = "Create the database"
+dir = "{{config_root}}/backend"
+run = "bundle exec rake db:create"
+
+[tasks."db:drop"]
+description = "Drop the database"
+dir = "{{config_root}}/backend"
+run = "bundle exec rake db:drop"
+
+[tasks."db:migrate"]
+description = "Run database migrations"
+dir = "{{config_root}}/backend"
+run = "bundle exec rake db:migrate"
+
+[tasks."db:rollback"]
+description = "Rollback the last migration"
+dir = "{{config_root}}/backend"
+run = "bundle exec rake db:rollback"
+
+[tasks."db:reset"]
+description = "Reset the database"
+dir = "{{config_root}}/backend"
+run = "bundle exec rake db:reset"
+
+[tasks."db:seed"]
+description = "Seed the database"
+dir = "{{config_root}}/backend"
+run = "bundle exec rake db:seed"
+
+[tasks."db:setup_e2e"]
+description = "Create and migrate the e2e database"
+dir = "{{config_root}}/backend"
+run = "RACK_ENV=e2e bundle exec rake db:create db:migrate"
+
+# ── Setup ─────────────────────────────────────────────────────────────────────
+
+[tasks.setup]
+description = "Set up the project after cloning"
+depends = ["setup:deps", "setup:db"]
+run = "echo \"Setup complete! Run 'mise run dev' to start the development server.\""
+
+[tasks."setup:deps"]
+description = "Install all dependencies"
+depends = ["setup:deps_frontend", "setup:deps_backend", "setup:deps_root"]
+run = "echo 'Dependencies installed'"
+
+[tasks."setup:deps_frontend"]
+description = "Install frontend dependencies"
+dir = "{{config_root}}/frontend"
+run = "pnpm install"
+
+[tasks."setup:deps_backend"]
+description = "Install backend dependencies"
+dir = "{{config_root}}/backend"
+run = "bundle install"
+
+[tasks."setup:deps_root"]
+description = "Install root dependencies (Playwright)"
+run = "pnpm install"
+
+[tasks."setup:db"]
+description = "Create and migrate all databases"
+dir = "{{config_root}}/backend"
+run = """
+echo "Setting up development database..."
+RACK_ENV=development bundle exec rake db:create db:migrate
+
+echo "Setting up test database..."
+RACK_ENV=test bundle exec rake db:create db:migrate
+
+echo "Setting up e2e database..."
+RACK_ENV=e2e bundle exec rake db:create db:migrate
+
+echo "All databases ready"
+"""
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+
+[tasks.console]
+description = "Open a Ruby console with the app loaded"
+dir = "{{config_root}}/backend"
+run = "bundle exec pry -r ./config/environment"

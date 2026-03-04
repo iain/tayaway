@@ -18,13 +18,13 @@ All commands run through mise:
 mise run dev              # Start frontend (5173) + backend (9292)
 mise run ci               # All CI checks (lint, typecheck, tests, e2e) in parallel
 mise run test             # All tests (frontend + backend + e2e)
-mise run test_backend     # RSpec tests only
-mise run test_frontend    # Vitest tests only
-mise run test_e2e         # Playwright e2e tests (Playwright starts its own servers)
+mise run test:backend     # RSpec tests only
+mise run test:frontend    # Vitest tests only
+mise run test:e2e         # Playwright e2e tests (Playwright starts its own servers)
 mise run lint             # ESLint + RuboCop
 mise run typecheck        # vue-tsc + Sorbet
-mise run db_migrate       # Run Sequel migrations
-mise run db_reset         # Drop, create, migrate database
+mise run db:migrate       # Run Sequel migrations
+mise run db:reset         # Drop, create, migrate database
 ```
 
 **Before committing:** Always run `mise run ci` and ensure it passes before creating a commit.

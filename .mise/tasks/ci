@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Run all CI checks (lint, typecheck, tests, e2e) in parallel"
-#MISE depends=["lint_frontend", "lint_backend", "typecheck_frontend", "typecheck_backend", "test_frontend", "test_backend", "test_e2e"]
-
-echo "All CI checks complete"

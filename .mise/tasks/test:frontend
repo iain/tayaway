@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Run frontend tests"
-#MISE dir="{{config_root}}/frontend"
-
-pnpm run test

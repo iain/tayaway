@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Install all dependencies"
-#MISE depends=["setup_deps_frontend", "setup_deps_backend", "setup_deps_root"]
-
-echo "Dependencies installed"

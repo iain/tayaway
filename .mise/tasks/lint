@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Run all linters"
-#MISE depends=["lint_frontend", "lint_backend"]
-
-echo "Linting complete"

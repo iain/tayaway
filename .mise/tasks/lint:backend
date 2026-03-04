@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Run backend linter"
-#MISE dir="{{config_root}}/backend"
-
-bundle exec rubocop

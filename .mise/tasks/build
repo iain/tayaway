@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Build production assets"
-#MISE depends=["build_frontend"]
-
-echo "Build complete"

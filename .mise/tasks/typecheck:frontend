@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Run frontend type checker"
-#MISE dir="{{config_root}}/frontend"
-
-pnpm run typecheck

@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Build frontend for production"
-#MISE dir="{{config_root}}/frontend"
-
-pnpm run build

@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Start backend dev server"
-#MISE dir="{{config_root}}/backend"
-
-# Disable macOS fork safety check to prevent crashes with Falcon's forked workers
-export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
-
-bundle exec falcon serve --bind http://localhost:9292

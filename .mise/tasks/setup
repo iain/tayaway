@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Set up the project after cloning"
-#MISE depends=["setup_deps", "setup_db"]
-
-echo "Setup complete! Run 'mise run dev' to start the development server."

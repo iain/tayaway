@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Start frontend dev server"
-#MISE dir="{{config_root}}/frontend"
-
-pnpm run dev

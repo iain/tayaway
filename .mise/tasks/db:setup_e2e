@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Create and migrate the e2e database"
-#MISE dir="{{config_root}}/backend"
-
-RACK_ENV=e2e bundle exec rake db:create db:migrate

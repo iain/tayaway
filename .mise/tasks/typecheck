@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Run all type checkers"
-#MISE depends=["typecheck_frontend", "typecheck_backend"]
-
-echo "Type checking complete"
