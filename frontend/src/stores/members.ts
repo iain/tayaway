@@ -58,25 +58,40 @@ export const useMembersStore = defineStore('members', () => {
   }
 
   async function createInvite(email: string, name?: string) {
+    const { mutate } = useMutation()
     const workspaceId = useWorkspaceStore().currentWorkspaceId!
-    await api.post('/invites', {
-      email,
-      name,
-      workspace_id: workspaceId,
-    })
+    await mutate('Failed to send invite', (commandQueue) =>
+      commandQueue.enqueue('POST', '/invites', {
+        email,
+        name,
+        workspace_id: workspaceId,
+      })
+    )
   }
 
   async function cancelInvite(id: string) {
+    const { destroy } = useMutation()
     const workspaceId = useWorkspaceStore().currentWorkspaceId!
-    await api.delete(`/invites/${id}?workspace_id=${workspaceId}`)
+    await destroy(
+      'Failed to cancel invite',
+      'workspaceInvite',
+      id,
+      (commandQueue) =>
+        commandQueue.enqueue(
+          'DELETE',
+          `/invites/${id}?workspace_id=${workspaceId}`
+        )
+    )
   }
 
   async function sendReminder(id: string) {
+    const { mutate } = useMutation()
     const workspaceId = useWorkspaceStore().currentWorkspaceId!
-    await api.post(
-      `/invites/${id}/remind?workspace_id=${workspaceId}`,
-      undefined,
-      { silent: true }
+    await mutate('Failed to send reminder', (commandQueue) =>
+      commandQueue.enqueue(
+        'POST',
+        `/invites/${id}/remind?workspace_id=${workspaceId}`
+      )
     )
   }
 

@@ -100,6 +100,19 @@ end
 
 Use `T.cast` when `fmap` changes the generic type to satisfy the Sorbet type checker.
 
+### Frontend Mutations (Offline-First)
+
+All domain object mutations **must** go through `useMutation` and the command queue — never call `api.*` directly from a store mutation. This ensures operations are queued and retried when offline.
+
+- **Create:** use `useMutation().create()` with a temp object for optimistic insertion into the pool
+- **Update:** use `useMutation().update()` with the changed fields for optimistic patching
+- **Delete:** use `useMutation().destroy()` for optimistic removal with rollback on error
+- **Other mutations** (e.g. resend, reopen): use `useMutation().mutate()`
+
+The backend must call `Broadcaster.object_changed` / `Broadcaster.object_deleted` after every mutation so connected clients receive real-time updates via WebSocket without polling.
+
+**Exception:** authentication-related operations (login, logout, session management) and sensitive data (tokens, IBANs) are not pooled and do not go through the command queue. Use direct `api.*` calls for those.
+
 ### Hydration (Frontend)
 
 `useHydratedEvent` denormalizes pool objects into nested structures for component consumption. The pool stays normalized for sync efficiency; hydrated views are computed properties.
