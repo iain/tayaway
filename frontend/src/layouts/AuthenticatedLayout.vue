@@ -225,7 +225,7 @@ function getInitials(email: string | undefined): string {
                   :to="item.href"
                   :class="[
                     isActive(item.routeName)
-                      ? 'bg-nav-active text-nav-text'
+                      ? 'bg-nav-active text-nav-text shadow-[inset_0_1px_2px_rgba(0,0,0,0.15)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)]'
                       : 'text-nav-text hover:bg-nav-hover hover:bg-opacity-75',
                     'rounded-md px-3 py-2 text-sm font-medium',
                   ]"
@@ -393,7 +393,7 @@ function getInitials(email: string | undefined): string {
             :to="item.href"
             :class="[
               isActive(item.routeName)
-                ? 'bg-nav-active text-nav-text'
+                ? 'bg-nav-active text-nav-text shadow-[inset_0_1px_2px_rgba(0,0,0,0.15)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)]'
                 : 'text-nav-text hover:bg-nav-hover hover:bg-opacity-75',
               'block rounded-md px-3 py-2 text-base font-medium',
             ]"
