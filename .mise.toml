@@ -97,6 +97,21 @@ description = "Run backend type checker"
 dir = "{{config_root}}/backend"
 run = "bundle exec srb tc"
 
+[tasks.fix]
+description = "Run all CI checks, auto-fixing lint issues where possible"
+depends = ["fix:lint_frontend", "fix:lint_backend", "typecheck:frontend", "typecheck:backend", "test:frontend", "test:backend", "test:e2e"]
+run = "echo 'All CI checks complete (with autofix)'"
+
+[tasks."fix:lint_frontend"]
+description = "Run frontend linter with autofix"
+dir = "{{config_root}}/frontend"
+run = "pnpm run lint"
+
+[tasks."fix:lint_backend"]
+description = "Run backend linter with autofix"
+dir = "{{config_root}}/backend"
+run = "bundle exec rubocop -A"
+
 # ── Database ──────────────────────────────────────────────────────────────────
 
 [tasks."db:create"]
