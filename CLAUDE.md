@@ -12,22 +12,9 @@ Tayaway is a real-time collaborative event planning app. Users authenticate via 
 
 ## Commands
 
-All commands run through mise:
+All commands run through mise. See `GETTING_STARTED.md` for the full list.
 
-```bash
-mise run dev              # Start frontend (5173) + backend (9292)
-mise run ci               # All CI checks (lint, typecheck, tests, e2e) in parallel
-mise run test             # All tests (frontend + backend + e2e)
-mise run test:backend     # RSpec tests only
-mise run test:frontend    # Vitest tests only
-mise run test:e2e         # Playwright e2e tests (Playwright starts its own servers)
-mise run lint             # ESLint + RuboCop
-mise run typecheck        # vue-tsc + Sorbet
-mise run db:migrate       # Run Sequel migrations
-mise run db:reset         # Drop, create, migrate database
-```
-
-**Before committing:** Always run `mise run ci` and ensure it passes before creating a commit.
+**Before committing:** Always run `mise run fix` and ensure it passes. This runs all CI checks (lint, typecheck, tests, e2e) and auto-fixes lint issues where possible.
 
 Run a single test:
 
@@ -321,14 +308,3 @@ Defined in: `backend/app/object_registry.rb` and `frontend/src/types/pool.ts`
 - Composables for shared state/logic
 - Stores call API, then auto-import pool objects from response
 - No semicolons (Prettier-enforced)
-
-## Keeping Documentation Current
-
-When making changes, update:
-
-- **This file (CLAUDE.md)** — API endpoints, database schema, object types, architectural patterns
-- **README.md** — Features, setup instructions, high-level architecture
-- **doc/real-time-sync.md** — WebSocket protocol, broadcast flow, pool merge logic
-- **doc/workspaces.md** — Workspace model, authorization, switching flow
-
-If you add a new route, model, service pattern, or change the data model, reflect it here so future sessions have accurate context.

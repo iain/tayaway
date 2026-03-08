@@ -10,10 +10,12 @@ A real-time collaborative event planning app. Create events, propose date ranges
 - **Live voting** — Vote yes/no/preferably not on each proposed date, with instant results
 - **RSVPs** — Confirm attendance with custom date ranges once event dates are set
 - **Expense tracking** — Log event expenses and split costs by nights attended
+- **Chore rosters** — Assign daily chores fairly with pinning and autofill
 - **Task lists** — Workspace-scoped task lists with drag-and-drop reordering and vim-style keyboard navigation
+- **Settlements** — Calculate minimal transfers to settle up; EPC QR codes for easy payment
 - **ICS export** — Download `.ics` calendar files for events
 - **Command palette** — Cmd+K to search, navigate, and take actions
-- **Real-time sync** — All changes broadcast instantly to connected clients via WebSockets + PostgreSQL LISTEN/NOTIFY
+- **Real-time sync** — All changes broadcast instantly via WebSockets + PostgreSQL LISTEN/NOTIFY
 - **Offline support** — IndexedDB-backed command queue replays mutations on reconnect; pool cache for instant startup
 - **PWA** — Installable progressive web app with service worker caching and auto-update detection
 - **Dark mode** — System-aware light/dark theme with manual toggle
@@ -31,65 +33,9 @@ A real-time collaborative event planning app. Create events, propose date ranges
 | Deploy    | Capistrano, Nginx, systemd                                   |
 | Tooling   | mise, pnpm 10, Husky, lint-staged, ESLint, RuboCop, Prettier |
 
-## Prerequisites
+## Getting Started
 
-- [mise](https://mise.jdx.dev/) — manages Ruby, Node.js, pnpm, and PostgreSQL versions
-- PostgreSQL 18+
-
-## Setup
-
-```bash
-# Install runtimes (Ruby 4.0.1, Node 24, pnpm 10)
-mise install
-
-# Install dependencies
-pnpm install
-cd backend && bundle install && cd ..
-
-# Create and configure the database
-cp backend/.env.example backend/.env.development
-# Edit backend/.env.development — set APP_SECRET and DATABASE_URL
-
-mise run db_create
-mise run db_migrate
-```
-
-## Development
-
-```bash
-mise run dev
-```
-
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:9292
-
-The frontend dev server proxies `/api/*` requests to the backend. In development, magic link URLs are printed to the backend console instead of being emailed.
-
-## Commands
-
-All commands run through mise:
-
-```bash
-mise run dev              # Start frontend (5173) + backend (9292)
-mise run ci               # All CI checks (lint, typecheck, tests, e2e) in parallel
-mise run test             # All tests (frontend + backend + e2e)
-mise run test_backend     # RSpec tests only
-mise run test_frontend    # Vitest tests only
-mise run test_e2e         # Playwright e2e tests (requires dev server)
-mise run lint             # ESLint + RuboCop
-mise run typecheck        # vue-tsc + Sorbet
-mise run build            # Production build
-mise run deploy           # Deploy to production (cap production deploy)
-mise run db_migrate       # Run pending migrations
-mise run db_reset         # Drop, create, and migrate database
-```
-
-Run a single test:
-
-```bash
-cd backend && bundle exec rspec spec/path/to/spec.rb
-cd frontend && pnpm exec vitest run src/path/to/file.spec.ts
-```
+See [`GETTING_STARTED.md`](GETTING_STARTED.md) for setup instructions.
 
 ## Architecture
 
@@ -140,7 +86,9 @@ Workspace
   │     │     └── DateRange
   │     │           └── Vote (yes / no / preferably_not)
   │     ├── Rsvp (attending + custom date range)
-  │     └── Expense (amount + description)
+  │     ├── Expense (amount + description)
+  │     ├── Settlement → SettlementTransfer
+  │     └── ChoreRoster → Chore → ChoreAssignment
   └── TaskList
         └── TaskItem
 ```
