@@ -4,6 +4,11 @@ set -e
 echo "Installing Claude Code..."
 curl -fsSL https://claude.ai/install.sh | bash
 
+# Mark onboarding complete so claude skips the interactive setup wizard
+cat > /home/ubuntu/.claude.json <<'JSON'
+{"hasCompletedOnboarding":true,"autoUpdates":false}
+JSON
+
 echo "Installing backend dependencies..."
 cd /workspace/backend
 bundle install

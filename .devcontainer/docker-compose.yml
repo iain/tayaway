@@ -6,7 +6,6 @@ services:
     volumes:
       - ..:/workspace:cached
       - ~/.claude:/home/ubuntu/.claude:cached
-      - ~/.claude.json:/home/ubuntu/.claude.json:cached
     command: sleep infinity
     depends_on:
       db:
