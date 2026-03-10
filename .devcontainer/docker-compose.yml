@@ -6,6 +6,8 @@ services:
     volumes:
       - ..:/workspace:cached
       - ~/.claude:/home/ubuntu/.claude:cached
+      - ~/.config/git:/home/ubuntu/.config/git:ro
+      - ~/.ssh:/home/ubuntu/.ssh:ro
     command: sleep infinity
     depends_on:
       db:
@@ -22,6 +24,7 @@ services:
       SMTP_FROM_EMAIL: noreply@tayaway.com
       SMTP_DOMAIN: tayaway.com
       CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN}
+      GH_TOKEN: ${GH_TOKEN}
       BUNDLE_PATH: /workspace/backend/vendor/bundle
       MISE_YES: "1"
 
