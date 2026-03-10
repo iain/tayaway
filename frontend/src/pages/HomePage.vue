@@ -28,6 +28,7 @@ import { useSettlementsStore } from '@/stores/settlements'
 import PageHeader from '@/components/common/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { formatBirthday } from '@/utils/date'
+import { getInitials, getMemberName } from '@/utils/member'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import EpcQrModal from '@/components/expenses/EpcQrModal.vue'
 import type { PoolMember, PoolSettlementTransfer } from '@/types/pool'
@@ -62,12 +63,6 @@ const transfersOwedToYou = computed(() =>
 const transfersYouOwe = computed(() =>
   myUnpaidTransfers.value.filter((t) => t.fromUserId === currentUserId.value)
 )
-
-function getMemberName(userId: string | null): string {
-  if (!userId) return 'Unknown'
-  const member = pool.findBy('member', 'userId', userId)
-  return member?.name ?? member?.email ?? 'Unknown'
-}
 
 function getEventNameForTransfer(transfer: PoolSettlementTransfer): string {
   const settlement = pool.get('settlement', transfer.settlementId)
@@ -208,20 +203,6 @@ function formatBirthdayDate(member: PoolMember): string {
     }
   }
   return formatBirthday(member.birthday)
-}
-
-function getInitials(member: PoolMember): string {
-  const name = member.name
-  if (name) {
-    const parts = name.trim().split(/\s+/)
-    if (parts.length >= 2) {
-      const first = parts[0]?.[0] ?? ''
-      const last = parts[parts.length - 1]?.[0] ?? ''
-      return (first + last).toUpperCase()
-    }
-    return (parts[0]?.[0] ?? '').toUpperCase()
-  }
-  return member.email?.[0]?.toUpperCase() ?? '?'
 }
 
 const hasBirthdays = computed(
@@ -380,7 +361,7 @@ function navigateToEventPage(eventId: string): void {
               <div class="min-w-0 flex-1">
                 <p class="text-sm text-gray-900 dark:text-white">
                   <span class="font-semibold">{{
-                    getMemberName(transfer.fromUserId)
+                    getMemberName(transfer.fromUserId, pool)
                   }}</span>
                   owes you
                   <span
@@ -421,7 +402,7 @@ function navigateToEventPage(eventId: string): void {
                 <p class="text-sm text-gray-900 dark:text-white">
                   You owe
                   <span class="font-semibold">{{
-                    getMemberName(transfer.toUserId)
+                    getMemberName(transfer.toUserId, pool)
                   }}</span>
                   {{ ' ' }}
                   <span

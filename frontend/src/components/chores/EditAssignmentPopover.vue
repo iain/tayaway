@@ -3,6 +3,7 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useChoreRostersStore } from '@/stores/choreRosters'
 import PushPinIcon from '@/components/icons/PushPinIcon.vue'
 import type { PoolChoreAssignment, PoolMember } from '@/types/pool'
+import { getMemberNameFromMap } from '@/utils/member'
 
 const props = defineProps<{
   assignment: PoolChoreAssignment
@@ -18,12 +19,6 @@ const emit = defineEmits<{
 const choreRostersStore = useChoreRostersStore()
 const note = ref(props.assignment.note ?? '')
 const popoverRef = ref<HTMLDivElement | null>(null)
-
-function getMemberName(userId: string): string {
-  const member = props.memberMap.get(userId)
-  if (!member) return '?'
-  return member.name ?? member.email.split('@')[0] ?? member.email
-}
 
 async function handleSaveNote() {
   const trimmed = note.value.trim()
@@ -81,7 +76,7 @@ onBeforeUnmount(() => {
   >
     <div class="mb-2 flex items-center justify-between">
       <p class="text-xs font-medium text-gray-500 dark:text-stone-400">
-        {{ getMemberName(assignment.userId) }}
+        {{ getMemberNameFromMap(assignment.userId, memberMap) }}
       </p>
       <button
         type="button"

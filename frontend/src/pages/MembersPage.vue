@@ -23,6 +23,7 @@ import IconButton from '@/components/common/IconButton.vue'
 import type { PoolMember, PoolWorkspaceInvite } from '@/types/pool'
 import { formatBirthday, formatRelativeDate } from '@/utils/date'
 import { generateVCard, downloadVCard } from '@/utils/vcard'
+import { getInitials } from '@/utils/member'
 
 const membersStore = useMembersStore()
 const { members, pendingInvites } = storeToRefs(membersStore)
@@ -170,20 +171,6 @@ function isBirthday(member: PoolMember): boolean {
   return (
     today.getMonth() + 1 === Number(month) && today.getDate() === Number(day)
   )
-}
-
-function getInitials(member: PoolMember): string {
-  const name = member.name
-  if (name) {
-    const parts = name.trim().split(/\s+/)
-    if (parts.length >= 2) {
-      const first = parts[0]?.[0] ?? ''
-      const last = parts[parts.length - 1]?.[0] ?? ''
-      return (first + last).toUpperCase()
-    }
-    return (parts[0]?.[0] ?? '').toUpperCase()
-  }
-  return member.email?.[0]?.toUpperCase() ?? '?'
 }
 
 function handleDownloadVCard(member: PoolMember): void {
