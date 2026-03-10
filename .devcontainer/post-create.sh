@@ -6,22 +6,26 @@ curl -fsSL https://claude.ai/install.sh | bash
 
 echo "Installing backend dependencies..."
 cd /workspace/backend
-bundle config set --local path vendor/bundle
 bundle install
 
 echo "Installing frontend dependencies..."
 cd /workspace/frontend
-pnpm install
+pnpm install --force
 
 echo "Installing root dependencies (Playwright)..."
 cd /workspace
-pnpm install
+pnpm install --force
 
 echo "Installing Playwright browsers..."
 pnpm exec playwright install --with-deps chromium
 
 echo "Waiting for PostgreSQL..."
-until pg_isready -h db -U tayaway -q; do
+for i in $(seq 1 30); do
+  pg_isready -h db -U tayaway -q && break
+  if [ "$i" -eq 30 ]; then
+    echo "ERROR: PostgreSQL did not become ready in 30s" >&2
+    exit 1
+  fi
   sleep 1
 done
 

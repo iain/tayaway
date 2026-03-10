@@ -35,7 +35,27 @@ A real-time collaborative event planning app. Create events, propose date ranges
 
 ## Getting Started
 
-See [`GETTING_STARTED.md`](GETTING_STARTED.md) for setup instructions.
+See [`GETTING_STARTED.md`](GETTING_STARTED.md) for local setup instructions.
+
+### Devcontainer
+
+The project includes a devcontainer for a fully isolated development environment with all dependencies pre-configured.
+
+**Start Claude Code in the devcontainer:**
+
+```bash
+.devcontainer/claude.sh
+```
+
+This starts the devcontainer (if not already running), pulls your OAuth token from macOS Keychain, and launches Claude Code with `--dangerously-skip-permissions`. Extra args are forwarded: `.devcontainer/claude.sh -p "fix the login bug"`.
+
+**Run any command in the devcontainer:**
+
+```bash
+.devcontainer/exec.sh mise run fix
+.devcontainer/exec.sh mise run dev
+.devcontainer/exec.sh bash
+```
 
 ## Architecture
 

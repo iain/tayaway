@@ -44,6 +44,9 @@ backend/vendor/bundle/
 backend/sorbet/rbi/gems/
 backend/sorbet/rbi/todo.rbi
 
+# Claude Code
+.claude/worktrees/
+
 # Misc
 *.pid
 *.seed
