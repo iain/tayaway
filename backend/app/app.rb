@@ -13,6 +13,11 @@ class App < Roda
   plugin :all_verbs
   plugin :cookies
   plugin :websockets
+  plugin :error_handler do |e|
+    $stderr.puts "Unhandled error: #{e.class}: #{e.message}"
+    e.backtrace.each { |line| $stderr.puts line }
+    { error: "Internal server error" }
+  end
 
   STATIC_DIR = T.let(
     Pathname.new(ENV.fetch("STATIC_DIR", File.expand_path("../../frontend/dist", __dir__))),
