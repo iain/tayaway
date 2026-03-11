@@ -156,12 +156,17 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
     if (changes.userId !== undefined) apiChanges.user_id = changes.userId
     if (changes.pinned !== undefined) apiChanges.pinned = changes.pinned
 
-    await mutate('Failed to update assignment', (commandQueue) =>
-      commandQueue.enqueue<PoolApiResponse>(
-        'PUT',
-        `/chore-rosters/${rosterId}/assignments/${assignmentId}`,
-        apiChanges
-      )
+    await update(
+      'Failed to update assignment',
+      'choreAssignment',
+      assignmentId,
+      changes,
+      (commandQueue) =>
+        commandQueue.enqueue<PoolApiResponse>(
+          'PUT',
+          `/chore-rosters/${rosterId}/assignments/${assignmentId}`,
+          apiChanges
+        )
     )
   }
 
