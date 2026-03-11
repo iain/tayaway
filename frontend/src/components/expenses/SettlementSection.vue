@@ -277,10 +277,7 @@ async function handlePaidClick(
               Settled by {{ getMemberName(settlement.userId, pool) }} on
               {{ formatDate(settlement.createdAt) }}
             </span>
-            <AppBadge
-              v-if="allTransfersPaid(settlement.id)"
-              variant="green"
-            >
+            <AppBadge v-if="allTransfersPaid(settlement.id)" variant="green">
               <CheckCircleIcon class="size-3" />
               All paid
             </AppBadge>
@@ -326,7 +323,7 @@ async function handlePaidClick(
                   memberHasIban(transfer.toUserId)
                 "
                 type="button"
-                class="rounded-md bg-gray-100 p-1 text-gray-600 transition-colors hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600"
+                class="cursor-pointer rounded-md bg-gray-100 p-1 text-gray-600 transition-colors hover:bg-gray-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600"
                 title="Show QR code for bank transfer"
                 @click="openQrModal(transfer)"
               >
@@ -334,7 +331,7 @@ async function handlePaidClick(
               </button>
               <button
                 type="button"
-                class="rounded-md px-2 py-1 text-xs font-medium transition-colors"
+                class="cursor-pointer rounded-md px-2 py-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500"
                 :class="
                   transfer.paidAt
                     ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'

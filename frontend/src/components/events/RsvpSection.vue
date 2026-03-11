@@ -120,7 +120,7 @@ async function handleClearPartialDates(): Promise<void> {
           type="button"
           data-testid="rsvp-attend"
           :aria-pressed="currentUserRsvp?.attending ? 'true' : 'false'"
-          class="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-sm"
+          class="inline-flex cursor-pointer items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500"
           :class="
             currentUserRsvp?.attending
               ? 'bg-green-600 text-white'
@@ -137,7 +137,7 @@ async function handleClearPartialDates(): Promise<void> {
           :aria-pressed="
             currentUserRsvp && !currentUserRsvp.attending ? 'true' : 'false'
           "
-          class="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-sm"
+          class="inline-flex cursor-pointer items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500"
           :class="
             currentUserRsvp && !currentUserRsvp.attending
               ? 'bg-red-600 text-white'
@@ -185,7 +185,7 @@ async function handleClearPartialDates(): Promise<void> {
               type="date"
               :min="event.startDate ?? undefined"
               :max="event.endDate ?? undefined"
-              class="rounded-md border border-gray-300 px-2 py-1 text-sm dark:border-stone-600 dark:bg-stone-700 dark:text-white"
+              class="rounded-md bg-gray-100 px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10"
             />
             <span class="text-gray-500 dark:text-stone-400">to</span>
             <input
@@ -193,7 +193,7 @@ async function handleClearPartialDates(): Promise<void> {
               type="date"
               :min="event.startDate ?? undefined"
               :max="event.endDate ?? undefined"
-              class="rounded-md border border-gray-300 px-2 py-1 text-sm dark:border-stone-600 dark:bg-stone-700 dark:text-white"
+              class="rounded-md bg-gray-100 px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10"
             />
           </div>
           <div class="mt-2 flex gap-2">

@@ -146,7 +146,10 @@ function handleMouseLeave(): void {
 
 <template>
   <div class="w-full">
-    <div v-if="!hideHeader" class="mb-4 text-center font-semibold text-gray-900 dark:text-white">
+    <div
+      v-if="!hideHeader"
+      class="mb-4 text-center font-semibold text-gray-900 dark:text-white"
+    >
       {{ monthName }} {{ year }}
     </div>
 
@@ -166,7 +169,9 @@ function handleMouseLeave(): void {
         type="button"
         class="relative aspect-square text-sm transition-colors duration-100 focus:z-10 focus:ring-2 focus:ring-rose-500 focus:outline-none"
         :class="[
-          day.isCurrentMonth ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-600',
+          day.isCurrentMonth
+            ? 'text-gray-900 dark:text-white'
+            : 'text-gray-400 dark:text-gray-600',
           getDayClasses(day.dateString),
         ]"
         @click="handleClick(day)"

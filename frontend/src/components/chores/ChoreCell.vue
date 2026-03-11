@@ -31,7 +31,7 @@ function handleAddClick(event: MouseEvent) {
       v-for="a in assignments"
       :key="a.id"
       type="button"
-      class="group/cell relative inline-flex cursor-pointer items-center gap-0.5 rounded px-1.5 py-0.5 text-xs transition-shadow hover:ring-1 hover:ring-gray-300 dark:hover:ring-stone-500"
+      class="group/cell relative inline-flex cursor-pointer items-center gap-0.5 rounded px-1.5 py-0.5 text-xs transition-shadow hover:ring-1 hover:ring-gray-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:hover:ring-stone-500"
       :class="
         a.pinned
           ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
@@ -45,7 +45,9 @@ function handleAddClick(event: MouseEvent) {
       @click="emit('editAssignment', a, $event.currentTarget as HTMLElement)"
     >
       <PushPinIcon v-if="a.pinned" class="size-3 shrink-0" />
-      <span class="truncate">{{ getMemberNameFromMap(a.userId, memberMap) }}</span>
+      <span class="truncate">{{
+        getMemberNameFromMap(a.userId, memberMap)
+      }}</span>
       <ChatBubbleLeftIcon
         v-if="a.note"
         class="size-3 shrink-0 text-gray-400 dark:text-stone-500"
@@ -54,8 +56,9 @@ function handleAddClick(event: MouseEvent) {
     <button
       v-if="hasEmptySlots"
       type="button"
-      class="inline-flex size-5 items-center justify-center rounded text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:text-stone-500 dark:hover:bg-stone-700 dark:hover:text-stone-300"
+      class="inline-flex size-5 items-center justify-center rounded text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-stone-500 dark:hover:bg-stone-700 dark:hover:text-stone-300"
       title="Assign member"
+      aria-label="Assign member"
       @click="handleAddClick"
     >
       <PlusIcon class="size-3.5" />

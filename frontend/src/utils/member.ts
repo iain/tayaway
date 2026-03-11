@@ -32,7 +32,13 @@ export function getInitials(member: {
  */
 export function getMemberName(
   userId: string | null,
-  pool: { findBy: (type: 'member', field: 'userId', value: string) => PoolMember | undefined },
+  pool: {
+    findBy: (
+      type: 'member',
+      field: 'userId',
+      value: string
+    ) => PoolMember | undefined
+  }
 ): string {
   if (!userId) return 'Unknown'
   const member = pool.findBy('member', 'userId', userId)
@@ -46,7 +52,7 @@ export function getMemberName(
  */
 export function getMemberNameFromMap(
   userId: string,
-  memberMap: Map<string, PoolMember>,
+  memberMap: Map<string, PoolMember>
 ): string {
   const member = memberMap.get(userId)
   if (!member) return '?'

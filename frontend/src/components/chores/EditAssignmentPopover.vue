@@ -80,7 +80,7 @@ onBeforeUnmount(() => {
       </p>
       <button
         type="button"
-        class="cursor-pointer rounded p-1 transition-colors"
+        class="cursor-pointer rounded p-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500"
         :class="
           assignment.pinned
             ? 'text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/30 dark:hover:text-amber-300'
@@ -104,14 +104,14 @@ onBeforeUnmount(() => {
     <div class="flex items-center justify-between">
       <button
         type="button"
-        class="cursor-pointer text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+        class="cursor-pointer rounded text-xs text-red-600 transition-colors hover:text-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-red-400 dark:hover:text-red-300"
         @click="handleRemove"
       >
         Remove
       </button>
       <button
         type="button"
-        class="cursor-pointer rounded-md bg-rose-600 px-2 py-1 text-xs font-medium text-white hover:bg-rose-500"
+        class="cursor-pointer rounded-md bg-rose-600 px-2 py-1 text-xs font-medium text-white transition-colors hover:bg-rose-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500"
         @click="handleSaveNote"
       >
         Save

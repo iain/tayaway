@@ -56,7 +56,10 @@ function handleRemove(index: number): void {
       </TextButton>
     </div>
 
-    <div v-if="sortedRanges.length === 0" class="text-sm text-gray-500 dark:text-stone-400 italic">
+    <div
+      v-if="sortedRanges.length === 0"
+      class="text-sm text-gray-500 italic dark:text-stone-400"
+    >
       No date ranges added yet. Click "Add Range" to add potential dates.
     </div>
 
@@ -64,7 +67,7 @@ function handleRemove(index: number): void {
       <li
         v-for="(range, index) in sortedRanges"
         :key="`${range.start_date}-${range.end_date}`"
-        class="flex items-center justify-between rounded-md bg-white/5 px-3 py-2"
+        class="flex items-center justify-between rounded-md bg-gray-50 px-3 py-2 dark:bg-white/5"
       >
         <span class="text-sm text-gray-900 dark:text-white">
           {{ formatDateDisplay(range.start_date) }} -

@@ -173,7 +173,7 @@ onBeforeUnmount(() => {
         :disabled="disabled"
         placeholder="Search for a location..."
         autocomplete="off"
-        class="block w-full rounded-md bg-gray-100 py-1.5 pr-9 pl-9 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
+        class="block w-full rounded-md bg-gray-100 py-1.5 pr-9 pl-9 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
         @input="handleInput"
         @keydown="handleKeydown"
         @focus="showDropdown = suggestions.length > 0"
@@ -190,12 +190,14 @@ onBeforeUnmount(() => {
     </div>
     <ul
       v-if="showDropdown"
+      role="listbox"
       class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black/5 sm:text-sm dark:bg-stone-800 dark:ring-white/10"
     >
       <li
         v-for="(feature, i) in suggestions"
         :key="i"
-        class="cursor-pointer px-3 py-2 text-gray-900 dark:text-white"
+        role="option"
+        class="cursor-pointer px-3 py-2 text-gray-900 transition-colors dark:text-white"
         :class="
           i === activeIndex
             ? 'bg-rose-50 dark:bg-stone-700'

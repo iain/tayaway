@@ -150,7 +150,7 @@ async function handleDelete(e: Event) {
         <div class="flex items-center gap-1">
           <LockClosedIcon
             v-if="isSettled"
-            class="size-4 text-gray-300 dark:text-stone-600"
+            class="size-4 text-gray-400 dark:text-stone-500"
             title="Part of a settlement"
           />
           <template v-else>
@@ -173,7 +173,7 @@ async function handleDelete(e: Event) {
             </IconButton>
           </template>
           <ChevronDownIcon
-            class="size-4 text-gray-400 transition-transform dark:text-stone-500"
+            class="size-4 text-gray-400 transition-transform duration-200 dark:text-stone-500"
             :class="{ 'rotate-180': expanded }"
           />
         </div>

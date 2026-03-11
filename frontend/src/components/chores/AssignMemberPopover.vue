@@ -115,7 +115,7 @@ onBeforeUnmount(() => {
         v-for="member in availableMembers"
         :key="member.id"
         type="button"
-        class="flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-stone-300 dark:hover:bg-stone-700"
+        class="flex w-full cursor-pointer items-center rounded-md px-2 py-1.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-stone-300 dark:hover:bg-stone-700"
         @click="handleSelect(member.userId)"
       >
         {{ getMemberDisplayName(member) }}

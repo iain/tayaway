@@ -143,7 +143,7 @@ function formatBalance(balance: number): string {
             v-for="(row, i) in rows"
             :key="row.userId"
             class="text-gray-800 dark:text-stone-200"
-            :class="i % 2 === 0 ? 'bg-gray-50/50 dark:bg-white/[0.03]' : ''"
+            :class="i % 2 === 0 ? 'bg-gray-50 dark:bg-white/[0.04]' : ''"
           >
             <td
               class="sm:truncate-none max-w-[6rem] truncate py-2 pr-4 pl-4 font-medium sm:max-w-none"

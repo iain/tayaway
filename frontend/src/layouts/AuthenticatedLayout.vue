@@ -135,7 +135,6 @@ async function handleSignOut() {
   await authStore.logout()
   router.push('/login')
 }
-
 </script>
 
 <template>

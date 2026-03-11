@@ -85,7 +85,7 @@ onMounted(fetchSessions)
           v-if="!session.current"
           type="button"
           :disabled="deletingId === session.id"
-          class="ml-4 shrink-0 px-3 py-2 text-sm font-medium text-red-600 hover:text-red-500 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
+          class="ml-4 shrink-0 rounded-md px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
           @click="endSession(session.id)"
         >
           {{ deletingId === session.id ? 'Ending...' : 'End session' }}
@@ -138,13 +138,13 @@ onMounted(fetchSessions)
                 <p class="text-sm font-medium text-gray-900 dark:text-white">
                   Created {{ formatRelativeDate(session.created_at) }}
                 </p>
-                <span
+                <AppBadge
                   v-if="session.current"
                   data-testid="current-session-badge"
-                  class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900 dark:text-green-300"
+                  variant="green"
                 >
                   Current session
-                </span>
+                </AppBadge>
               </div>
               <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
                 Expires {{ formatDate(session.expires_at) }}
@@ -154,7 +154,7 @@ onMounted(fetchSessions)
               v-if="!session.current"
               type="button"
               :disabled="deletingId === session.id"
-              class="ml-4 shrink-0 px-3 py-2 text-sm font-medium text-red-600 hover:text-red-500 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
+              class="ml-4 shrink-0 rounded-md px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
               @click="endSession(session.id)"
             >
               {{ deletingId === session.id ? 'Ending...' : 'End session' }}

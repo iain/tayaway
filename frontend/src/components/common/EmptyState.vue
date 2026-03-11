@@ -14,7 +14,8 @@ defineProps<{
     <component
       :is="icon"
       class="mx-auto size-12"
-      :class="iconClass ?? 'text-gray-400'"
+      :class="iconClass ?? 'text-gray-400 dark:text-stone-500'"
+      aria-hidden="true"
     />
     <h3 class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
       {{ heading }}

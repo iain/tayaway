@@ -139,7 +139,7 @@ function toggleCommentInput() {
             type="button"
             :disabled="loading"
             :aria-pressed="isSelected('yes') ? 'true' : 'false'"
-            class="flex-1 rounded-md px-3 py-2 text-center text-sm font-medium whitespace-nowrap transition-colors"
+            class="flex-1 cursor-pointer rounded-md px-3 py-2 text-center text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
             :class="[
               isSelected('yes')
                 ? 'bg-green-600 text-white'
@@ -153,7 +153,7 @@ function toggleCommentInput() {
             type="button"
             :disabled="loading"
             :aria-pressed="isSelected('preferably_not') ? 'true' : 'false'"
-            class="flex-1 rounded-md px-3 py-2 text-center text-sm font-medium whitespace-nowrap transition-colors"
+            class="flex-1 cursor-pointer rounded-md px-3 py-2 text-center text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
             :class="[
               isSelected('preferably_not')
                 ? 'bg-yellow-500 text-white'
@@ -167,7 +167,7 @@ function toggleCommentInput() {
             type="button"
             :disabled="loading"
             :aria-pressed="isSelected('no') ? 'true' : 'false'"
-            class="flex-1 rounded-md px-3 py-2 text-center text-sm font-medium whitespace-nowrap transition-colors"
+            class="flex-1 cursor-pointer rounded-md px-3 py-2 text-center text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
             :class="[
               isSelected('no')
                 ? 'bg-red-600 text-white'

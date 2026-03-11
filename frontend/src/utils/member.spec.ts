@@ -25,13 +25,13 @@ function makeMember(overrides: Partial<PoolMember> = {}): PoolMember {
 describe('getInitials', () => {
   it('returns first+last initials for a two-word name', () => {
     expect(getInitials({ name: 'Alice Smith', email: 'a@example.com' })).toBe(
-      'AS',
+      'AS'
     )
   })
 
   it('returns first+last initials for a three-word name', () => {
     expect(
-      getInitials({ name: 'Alice Marie Smith', email: 'a@example.com' }),
+      getInitials({ name: 'Alice Marie Smith', email: 'a@example.com' })
     ).toBe('AS')
   })
 
@@ -41,7 +41,7 @@ describe('getInitials', () => {
 
   it('uppercases initials', () => {
     expect(getInitials({ name: 'alice smith', email: 'a@example.com' })).toBe(
-      'AS',
+      'AS'
     )
   })
 
@@ -59,11 +59,15 @@ describe('getMemberName', () => {
     findBy: (
       _type: 'member',
       _field: 'userId',
-      value: string,
+      value: string
     ): PoolMember | undefined => {
       if (value === 'u1') return makeMember({ userId: 'u1', name: 'Alice' })
       if (value === 'u2')
-        return makeMember({ userId: 'u2', name: null, email: 'bob@example.com' })
+        return makeMember({
+          userId: 'u2',
+          name: null,
+          email: 'bob@example.com',
+        })
       return undefined
     },
   }

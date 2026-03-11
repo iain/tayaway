@@ -49,7 +49,11 @@ defineEmits<{
       <label :for="id" class="font-medium text-gray-900 dark:text-white">
         {{ label }}
       </label>
-      <p v-if="description" :id="`${id}-description`" class="text-gray-600 dark:text-stone-400">
+      <p
+        v-if="description"
+        :id="`${id}-description`"
+        class="text-gray-600 dark:text-stone-400"
+      >
         {{ description }}
       </p>
     </div>

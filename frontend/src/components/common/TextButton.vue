@@ -23,7 +23,7 @@ const variantClass = computed(() =>
 <template>
   <button
     type="button"
-    class="inline-flex cursor-pointer items-center gap-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+    class="inline-flex cursor-pointer items-center gap-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
     :class="variantClass"
     :disabled="disabled"
     @click="$emit('click')"

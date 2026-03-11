@@ -378,7 +378,7 @@ function navigateToEventPage(eventId: string): void {
               </div>
               <button
                 type="button"
-                class="rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600"
+                class="cursor-pointer rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600"
                 @click="handleMarkPaid(transfer.id)"
               >
                 Mark paid
@@ -421,7 +421,7 @@ function navigateToEventPage(eventId: string): void {
               <button
                 v-if="memberHasIban(transfer.toUserId)"
                 type="button"
-                class="rounded-lg bg-amber-600 p-2 text-white shadow-sm transition-colors hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-500"
+                class="cursor-pointer rounded-lg bg-amber-600 p-2 text-white shadow-sm transition-colors hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 dark:bg-amber-600 dark:hover:bg-amber-500"
                 title="Show QR code for bank transfer"
                 @click="openQrModal(transfer)"
               >
