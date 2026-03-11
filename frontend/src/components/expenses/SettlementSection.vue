@@ -18,6 +18,7 @@ import {
   type PreviewTransfer,
 } from '@/utils/settlement'
 import { formatDateTime } from '@/utils/date'
+import { getMemberName } from '@/utils/member'
 import AppButton from '@/components/common/AppButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
@@ -51,12 +52,6 @@ const hasExpenses = computed(
     pool.getAll('expense').filter((e) => e.eventId === props.event.id).length >
     0
 )
-
-function getMemberName(userId: string | null): string {
-  if (!userId) return 'Unknown'
-  const member = pool.findBy('member', 'userId', userId)
-  return member?.name ?? member?.email ?? 'Unknown'
-}
 
 function canDeleteSettlement(settlementUserId: string | null): boolean {
   if (!props.currentUserId) return false
@@ -278,7 +273,7 @@ async function handlePaidClick(
         >
           <div class="flex min-w-0 items-center gap-2">
             <span class="text-xs text-gray-500 dark:text-stone-400">
-              Settled by {{ getMemberName(settlement.userId) }} on
+              Settled by {{ getMemberName(settlement.userId, pool) }} on
               {{ formatDate(settlement.createdAt) }}
             </span>
             <span
@@ -308,13 +303,13 @@ async function handlePaidClick(
           >
             <div class="flex min-w-0 items-center gap-2">
               <span class="truncate text-sm text-gray-800 dark:text-stone-200">
-                {{ getMemberName(transfer.fromUserId) }}
+                {{ getMemberName(transfer.fromUserId, pool) }}
               </span>
               <span class="shrink-0 text-xs text-gray-400 dark:text-stone-500">
                 &rarr;
               </span>
               <span class="truncate text-sm text-gray-800 dark:text-stone-200">
-                {{ getMemberName(transfer.toUserId) }}
+                {{ getMemberName(transfer.toUserId, pool) }}
               </span>
               <span
                 class="shrink-0 font-mono text-sm font-medium text-gray-900 dark:text-white"
@@ -392,13 +387,13 @@ async function handlePaidClick(
             class="flex items-center gap-2 px-3 py-2"
           >
             <span class="truncate text-sm text-gray-800 dark:text-stone-200">
-              {{ getMemberName(transfer.fromUserId) }}
+              {{ getMemberName(transfer.fromUserId, pool) }}
             </span>
             <span class="shrink-0 text-xs text-gray-400 dark:text-stone-500">
               &rarr;
             </span>
             <span class="truncate text-sm text-gray-800 dark:text-stone-200">
-              {{ getMemberName(transfer.toUserId) }}
+              {{ getMemberName(transfer.toUserId, pool) }}
             </span>
             <span
               class="ml-auto shrink-0 font-mono text-sm font-medium text-gray-900 dark:text-white"

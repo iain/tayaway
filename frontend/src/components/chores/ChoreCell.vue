@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { PlusIcon, ChatBubbleLeftIcon } from '@heroicons/vue/24/outline'
 import PushPinIcon from '@/components/icons/PushPinIcon.vue'
 import type { PoolChoreAssignment, PoolMember } from '@/types/pool'
+import { getMemberNameFromMap } from '@/utils/member'
 
 const props = defineProps<{
   assignments: PoolChoreAssignment[]
@@ -18,12 +19,6 @@ const emit = defineEmits<{
 const hasEmptySlots = computed(
   () => props.assignments.length < props.peoplePerDay
 )
-
-function getMemberName(userId: string): string {
-  const member = props.memberMap.get(userId)
-  if (!member) return '?'
-  return member.name ?? member.email.split('@')[0] ?? member.email
-}
 
 function handleAddClick(event: MouseEvent) {
   emit('assign', event.currentTarget as HTMLElement)
@@ -44,13 +39,13 @@ function handleAddClick(event: MouseEvent) {
       "
       :title="
         a.note
-          ? `${getMemberName(a.userId)}: ${a.note}`
-          : getMemberName(a.userId)
+          ? `${getMemberNameFromMap(a.userId, memberMap)}: ${a.note}`
+          : getMemberNameFromMap(a.userId, memberMap)
       "
       @click="emit('editAssignment', a, $event.currentTarget as HTMLElement)"
     >
       <PushPinIcon v-if="a.pinned" class="size-3 shrink-0" />
-      <span class="truncate">{{ getMemberName(a.userId) }}</span>
+      <span class="truncate">{{ getMemberNameFromMap(a.userId, memberMap) }}</span>
       <ChatBubbleLeftIcon
         v-if="a.note"
         class="size-3 shrink-0 text-gray-400 dark:text-stone-500"

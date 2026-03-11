@@ -27,6 +27,7 @@ import {
 } from '@/stores'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useDarkMode } from '@/composables/useDarkMode'
+import { getInitials } from '@/utils/member'
 import CommandPalette from '@/components/common/CommandPalette.vue'
 import EventSubheader from '@/components/events/EventSubheader.vue'
 import { useCommandPalette } from '@/composables/useCommandPalette'
@@ -134,10 +135,6 @@ async function handleSignOut() {
   router.push('/login')
 }
 
-function getInitials(email: string | undefined): string {
-  if (!email) return '?'
-  return email.charAt(0).toUpperCase()
-}
 </script>
 
 <template>
@@ -281,7 +278,7 @@ function getInitials(email: string | undefined): string {
                       <span
                         data-testid="user-initial"
                         class="text-nav-text text-sm font-medium"
-                        >{{ getInitials(user?.email) }}</span
+                        >{{ user ? getInitials(user) : '?' }}</span
                       >
                     </span>
                   </MenuButton>
@@ -423,7 +420,7 @@ function getInitials(email: string | undefined): string {
                 class="bg-nav-hover inline-flex size-10 items-center justify-center rounded-full"
               >
                 <span class="text-nav-text text-sm font-medium">{{
-                  getInitials(user?.email)
+                  user ? getInitials(user) : '?'
                 }}</span>
               </span>
             </div>
