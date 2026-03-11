@@ -83,9 +83,9 @@ test.describe('Authentication', () => {
       timeout: PAGE_LOAD_TIMEOUT,
     })
 
-    // User menu should show their email initial
+    // User menu should show their initials
     await expect(page.getByTestId('user-initial')).toBeVisible()
-    await expect(page.getByTestId('user-initial')).toHaveText('E') // First letter of email
+    await expect(page.getByTestId('user-initial')).toHaveText('TU') // Initials of 'Test User'
 
     // Click user menu and logout
     await page.getByTestId('user-menu-button').click()
