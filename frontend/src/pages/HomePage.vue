@@ -393,6 +393,7 @@ function navigateToEventPage(eventId: string): void {
             v-for="transfer in transfersYouOwe"
             :key="transfer.id"
             as="li"
+            variant="action"
             class="overflow-hidden"
           >
             <div
@@ -590,6 +591,13 @@ function navigateToEventPage(eventId: string): void {
             :key="item.eventId"
             as="li"
             interactive
+            :variant="
+              isPastDeadline(item.deadline)
+                ? 'urgent'
+                : isUrgent(item.deadline)
+                  ? 'action'
+                  : undefined
+            "
             class="overflow-hidden"
             @click="navigateToEvent(item.eventId)"
           >
