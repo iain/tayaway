@@ -33,6 +33,9 @@ import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import EpcQrModal from '@/components/expenses/EpcQrModal.vue'
 import type { PoolMember, PoolSettlementTransfer } from '@/types/pool'
 import BaseCard from '@/components/common/BaseCard.vue'
+import AppBadge from '@/components/common/AppBadge.vue'
+import AppAvatar from '@/components/common/AppAvatar.vue'
+import AlertBox from '@/components/common/AlertBox.vue'
 
 const router = useRouter()
 const pool = useObjectPoolStore()
@@ -292,11 +295,7 @@ function navigateToEventPage(eventId: string): void {
             class="overflow-hidden"
           >
             <div class="flex items-center gap-4 px-4 py-4 sm:px-6">
-              <div
-                class="flex size-10 shrink-0 items-center justify-center rounded-full bg-rose-100 text-sm font-semibold text-rose-600 dark:bg-rose-900/30 dark:text-rose-400"
-              >
-                {{ getInitials(member) }}
-              </div>
+              <AppAvatar :initials="getInitials(member)" />
               <div class="min-w-0 flex-1">
                 <h3
                   class="truncate text-base font-semibold text-gray-900 dark:text-white"
@@ -327,26 +326,23 @@ function navigateToEventPage(eventId: string): void {
           Mark a transfer as paid once you've received the payment.
         </p>
 
-        <div
+        <AlertBox
           v-if="transfersOwedToYou.length > 0 && !user?.iban"
-          class="mb-3 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/30"
+          variant="warning"
+          :icon="BanknotesIcon"
+          class="mb-3"
         >
-          <BanknotesIcon
-            class="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400"
-          />
-          <div class="min-w-0 flex-1">
-            <p class="text-sm text-amber-800 dark:text-amber-300">
-              Add your IBAN so others can pay you with a single QR code scan.
-            </p>
-            <button
-              type="button"
-              class="mt-1 text-sm font-medium text-amber-700 underline hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-200"
-              @click="router.push('/profile')"
-            >
-              Add IBAN in profile
-            </button>
-          </div>
-        </div>
+          <p class="text-sm">
+            Add your IBAN so others can pay you with a single QR code scan.
+          </p>
+          <button
+            type="button"
+            class="mt-1 text-sm font-medium text-amber-700 underline hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-200"
+            @click="router.push('/profile')"
+          >
+            Add IBAN in profile
+          </button>
+        </AlertBox>
 
         <ul class="space-y-3">
           <BaseCard
@@ -633,12 +629,13 @@ function navigateToEventPage(eventId: string): void {
                     </span>
                   </div>
                 </div>
-                <span
+                <AppBadge
                   v-if="isPastDeadline(item.deadline)"
-                  class="shrink-0 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-700 dark:bg-red-900/50 dark:text-red-300"
+                  variant="red"
+                  size="sm"
                 >
                   Overdue
-                </span>
+                </AppBadge>
               </div>
             </div>
           </BaseCard>

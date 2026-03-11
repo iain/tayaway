@@ -28,6 +28,7 @@ import {
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useDarkMode } from '@/composables/useDarkMode'
 import { getInitials } from '@/utils/member'
+import AppAvatar from '@/components/common/AppAvatar.vue'
 import CommandPalette from '@/components/common/CommandPalette.vue'
 import EventSubheader from '@/components/events/EventSubheader.vue'
 import { useCommandPalette } from '@/composables/useCommandPalette'
@@ -272,15 +273,12 @@ async function handleSignOut() {
                     class="bg-nav focus:ring-offset-nav relative flex max-w-xs items-center rounded-full text-sm focus:ring-2 focus:ring-white focus:ring-offset-2 focus:outline-hidden"
                   >
                     <span class="sr-only">Open user menu</span>
-                    <span
-                      class="bg-nav-hover inline-flex size-8 items-center justify-center rounded-full"
-                    >
-                      <span
-                        data-testid="user-initial"
-                        class="text-nav-text text-sm font-medium"
-                        >{{ user ? getInitials(user) : '?' }}</span
-                      >
-                    </span>
+                    <AppAvatar
+                      data-testid="user-initial"
+                      :initials="user ? getInitials(user) : '?'"
+                      size="sm"
+                      variant="nav"
+                    />
                   </MenuButton>
                 </div>
                 <transition
@@ -416,13 +414,10 @@ async function handleSignOut() {
         <div class="border-nav-active border-t pt-4 pb-3">
           <div class="flex items-center px-5">
             <div class="shrink-0">
-              <span
-                class="bg-nav-hover inline-flex size-10 items-center justify-center rounded-full"
-              >
-                <span class="text-nav-text text-sm font-medium">{{
-                  user ? getInitials(user) : '?'
-                }}</span>
-              </span>
+              <AppAvatar
+                :initials="user ? getInitials(user) : '?'"
+                variant="nav"
+              />
             </div>
             <div class="ml-3">
               <div class="text-nav-text text-base font-medium">

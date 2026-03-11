@@ -4,6 +4,7 @@ import { api } from '@/api/client'
 import { formatRelativeDate, formatDateShort } from '@/utils/date'
 import type { Session, SessionsResponse } from '@/types'
 import BaseCard from '@/components/common/BaseCard.vue'
+import AppBadge from '@/components/common/AppBadge.vue'
 
 defineProps<{
   bare?: boolean
@@ -68,13 +69,13 @@ onMounted(fetchSessions)
             <p class="text-sm font-medium text-gray-900 dark:text-white">
               Created {{ formatRelativeDate(session.created_at) }}
             </p>
-            <span
+            <AppBadge
               v-if="session.current"
               data-testid="current-session-badge"
-              class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900 dark:text-green-300"
+              variant="green"
             >
               Current session
-            </span>
+            </AppBadge>
           </div>
           <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
             Expires {{ formatDate(session.expires_at) }}

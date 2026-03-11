@@ -18,6 +18,7 @@ import { useWorkspaceStore } from '@/stores/workspace'
 import PageHeader from '@/components/common/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import AppButton from '@/components/common/AppButton.vue'
+import AlertBox from '@/components/common/AlertBox.vue'
 import AddTaskListModal from '@/components/tasks/AddTaskListModal.vue'
 import TaskListCard from '@/components/tasks/TaskListCard.vue'
 import { useTaskActions } from '@/composables/useTaskActions'
@@ -213,12 +214,9 @@ async function handleSave(name: string): Promise<void> {
       </AppButton>
     </PageHeader>
 
-    <div
-      v-if="formError"
-      class="mb-4 rounded-md bg-red-900/50 p-4 text-red-400"
-    >
+    <AlertBox v-if="formError" class="mb-4">
       {{ formError }}
-    </div>
+    </AlertBox>
 
     <EmptyState
       v-if="taskListsLocal.length === 0"

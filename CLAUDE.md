@@ -308,3 +308,34 @@ Defined in: `backend/app/object_registry.rb` and `frontend/src/types/pool.ts`
 - Composables for shared state/logic
 - Stores call API, then auto-import pool objects from response
 - No semicolons (Prettier-enforced)
+
+## Design Context
+
+### Users
+
+Friend groups planning trips, parties, and shared activities together. They're coordinating in a casual context — not at work, not managing projects. They want to quickly find dates that work, split costs fairly, and organize logistics without endless group chat threads.
+
+### Brand Personality
+
+**Clean, efficient, reliable.** Tayaway gets out of the way and just works. It's a tool that respects your time — no friction, no clutter, no engagement tricks. The warmth comes from the amber palette and thoughtful interactions, not from decorative flourish.
+
+### Aesthetic Direction
+
+**Warm minimal** — clean layouts with warm colors and subtle personality. Inspired by Linear's purposeful precision and Splitwise's friendly, social utility. Every element earns its place.
+
+- **Primary brand color:** Amber (`#d97706`) — warm, inviting, distinct
+- **Accent color:** Rose (`#e11d48`) — CTAs, focus states, attention
+- **Secondary accent:** Cyan — text links, secondary actions
+- **Semantic colors:** Green/yellow/red for voting responses
+- **Typography:** Inter Variable — clean, modern, highly legible
+- **Theme:** Light and dark mode, using gray (light) and stone (dark) scales
+
+**Anti-references:** Must never feel like social media (no feeds, likes, engagement hooks) or over-designed (no gratuitous animations, gradients, or decoration for its own sake). It's a tool, not a platform.
+
+### Design Principles
+
+1. **Purposeful over decorative** — Every visual element should serve a function. If it doesn't help the user accomplish their task, remove it.
+2. **Warm but restrained** — The amber palette and friendly tone provide warmth without crossing into playful or noisy. Personality lives in the details, not the surface.
+3. **Information density done right** — Show what matters at a glance (dates, votes, expenses) without overwhelming. Use hierarchy (type weight, color, spacing) rather than chrome to organize.
+4. **Consistent and predictable** — Same patterns everywhere. Cards look like cards, buttons look like buttons, actions behave the same way across features.
+5. **Fast and responsive** — Interactions should feel instant. Optimistic updates, minimal loading states, no unnecessary transitions.

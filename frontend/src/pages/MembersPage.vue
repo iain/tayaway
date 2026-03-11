@@ -20,6 +20,9 @@ import BaseCard from '@/components/common/BaseCard.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
+import AppBadge from '@/components/common/AppBadge.vue'
+import AppAvatar from '@/components/common/AppAvatar.vue'
+import AlertBox from '@/components/common/AlertBox.vue'
 import type { PoolMember, PoolWorkspaceInvite } from '@/types/pool'
 import { formatBirthday, formatRelativeDate } from '@/utils/date'
 import { generateVCard, downloadVCard } from '@/utils/vcard'
@@ -201,19 +204,13 @@ onMounted(() => {
       </AppButton>
     </PageHeader>
 
-    <div
-      v-if="formError"
-      class="mb-4 rounded-md bg-red-900/50 p-4 text-red-400"
-    >
+    <AlertBox v-if="formError" class="mb-4">
       {{ formError }}
-    </div>
+    </AlertBox>
 
-    <div
-      v-if="roleError"
-      class="mb-4 rounded-md bg-red-900/50 p-4 text-red-400"
-    >
+    <AlertBox v-if="roleError" class="mb-4">
       {{ roleError }}
-    </div>
+    </AlertBox>
 
     <!-- Pending + Expired Invites Section -->
     <div
@@ -249,18 +246,15 @@ onMounted(() => {
                     }}
                   </p>
                   <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span
+                    <AppBadge
                       v-if="isExpired(invite)"
-                      class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                      variant="red"
                     >
                       Expired
-                    </span>
-                    <span
-                      v-else
-                      class="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-                    >
+                    </AppBadge>
+                    <AppBadge v-else variant="yellow">
                       Pending
-                    </span>
+                    </AppBadge>
                     <span class="text-xs text-gray-400 dark:text-stone-500">
                       Sent {{ formatRelativeDate(invite.createdAt) }}
                       <template v-if="invitedByName(invite)">
@@ -349,16 +343,17 @@ onMounted(() => {
             <span class="birthday-float" style="animation-delay: 0.2s">🥳</span>
             <span class="birthday-float" style="animation-delay: 0.6s">🎂</span>
           </div>
-          <div
-            class="flex size-12 shrink-0 items-center justify-center rounded-full text-lg font-semibold"
-            :class="
-              isBirthday(member)
-                ? 'animate-bounce bg-amber-300 text-amber-900 ring-4 ring-amber-400/50 dark:bg-amber-500 dark:text-amber-950 dark:ring-amber-500/50'
-                : 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400'
-            "
+          <AppAvatar
+            v-if="!isBirthday(member)"
+            :initials="getInitials(member)"
+            size="lg"
+          />
+          <span
+            v-else
+            class="inline-flex size-12 shrink-0 animate-bounce items-center justify-center rounded-full bg-amber-300 text-lg font-semibold text-amber-900 ring-4 ring-amber-400/50 dark:bg-amber-500 dark:text-amber-950 dark:ring-amber-500/50"
           >
-            {{ isBirthday(member) ? '🎂' : getInitials(member) }}
-          </div>
+            🎂
+          </span>
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2">
               <h2
@@ -395,21 +390,19 @@ onMounted(() => {
                   {{ role }}
                 </option>
               </select>
-              <span
+              <AppBadge
                 v-else-if="member.role"
                 data-testid="member-role"
-                class="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium"
-                :class="{
-                  'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400':
-                    member.role === 'owner',
-                  'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400':
-                    member.role === 'admin',
-                  'bg-gray-100 text-gray-600 dark:bg-stone-700 dark:text-stone-300':
-                    member.role === 'member',
-                }"
+                :variant="
+                  member.role === 'owner'
+                    ? 'amber'
+                    : member.role === 'admin'
+                      ? 'blue'
+                      : 'gray'
+                "
               >
                 {{ member.role }}
-              </span>
+              </AppBadge>
             </div>
             <p
               v-if="isBirthday(member)"
