@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 namespace :falcon do
-  desc "Gracefully reload Falcon via systemd (zero-downtime)"
+  desc "Restart Falcon via systemd"
   task :restart do
     on roles(:app) do
-      execute :sudo, "systemctl", "reload", "tayaway-falcon"
+      execute :sudo, "systemctl", "restart", "tayaway-falcon"
     end
   end
 
