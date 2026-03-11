@@ -31,7 +31,8 @@ defineEmits<{
           </h3>
           <p
             v-if="event.description"
-            class="mt-1 text-sm text-gray-500 dark:text-stone-400"
+            class="mt-1 line-clamp-2 text-sm text-gray-500 dark:text-stone-400"
+            :title="event.description"
           >
             {{ event.description }}
           </p>

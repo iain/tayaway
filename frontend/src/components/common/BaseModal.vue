@@ -6,6 +6,7 @@ const props = defineProps<{
   open: boolean
   title: string
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
+  preventClose?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -33,7 +34,14 @@ watch(
 )
 
 function handleClose(): void {
+  if (props.preventClose) return
   emit('close')
+}
+
+function handleCancel(e: Event): void {
+  if (props.preventClose) {
+    e.preventDefault()
+  }
 }
 
 const sizeClasses: Record<string, string> = {
@@ -53,11 +61,13 @@ const sizeClasses: Record<string, string> = {
       sizeClasses[size ?? 'md'],
     ]"
     @close="handleClose"
+    @cancel="handleCancel"
   >
     <div class="absolute top-0 right-0 pt-4 pr-4">
       <button
         type="button"
-        class="rounded-md bg-white text-gray-500 hover:text-gray-700 focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 focus:ring-offset-white focus:outline-none dark:bg-stone-900 dark:text-stone-400 dark:hover:text-stone-300 dark:focus:ring-offset-stone-900"
+        :disabled="preventClose"
+        class="rounded-md bg-white text-gray-500 hover:text-gray-700 focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 focus:ring-offset-white focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-stone-900 dark:text-stone-400 dark:hover:text-stone-300 dark:focus:ring-offset-stone-900"
         @click="handleClose"
       >
         <span class="sr-only">Close</span>

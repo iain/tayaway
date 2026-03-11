@@ -230,7 +230,7 @@ function handleClose(): void {
 </script>
 
 <template>
-  <BaseModal :open="open" :title="modalTitle" size="lg" @close="handleClose">
+  <BaseModal :open="open" :title="modalTitle" size="lg" :prevent-close="submitting" @close="handleClose">
     <form class="space-y-4" @submit.prevent="handleSubmit">
       <FormInput
         id="expense-description"

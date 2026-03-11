@@ -86,8 +86,16 @@ function formatTransferAmount(amount: number): string {
   return `€${amount.toFixed(2)}`
 }
 
+const markingPaidIds = ref(new Set<string>())
+
 async function handleMarkPaid(transferId: string) {
-  await settlementsStore.markTransferPaid(transferId, true)
+  if (markingPaidIds.value.has(transferId)) return
+  markingPaidIds.value.add(transferId)
+  try {
+    await settlementsStore.markTransferPaid(transferId, true)
+  } finally {
+    markingPaidIds.value.delete(transferId)
+  }
 }
 
 const showQrModal = ref(false)
@@ -378,10 +386,13 @@ function navigateToEventPage(eventId: string): void {
               </div>
               <button
                 type="button"
-                class="cursor-pointer rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600"
+                :disabled="markingPaidIds.has(transfer.id)"
+                class="cursor-pointer rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600"
                 @click="handleMarkPaid(transfer.id)"
               >
-                Mark paid
+                {{
+                  markingPaidIds.has(transfer.id) ? 'Marking...' : 'Mark paid'
+                }}
               </button>
             </div>
           </BaseCard>

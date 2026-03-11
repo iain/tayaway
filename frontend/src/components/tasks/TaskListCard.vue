@@ -266,7 +266,8 @@ defineExpose({
         </div>
         <h2
           v-else
-          class="flex-1 text-base font-semibold text-gray-900 dark:text-white"
+          class="min-w-0 flex-1 truncate text-base font-semibold text-gray-900 dark:text-white"
+          :title="taskList.name"
         >
           {{ taskList.name }}
         </h2>

@@ -105,7 +105,7 @@ function handleClose(): void {
 </script>
 
 <template>
-  <BaseModal :open="open" :title="title" @close="handleClose">
+  <BaseModal :open="open" :title="title" :prevent-close="loading" @close="handleClose">
     <form class="space-y-4" @submit.prevent="handleSave">
       <template v-if="field === 'name'">
         <FormInput

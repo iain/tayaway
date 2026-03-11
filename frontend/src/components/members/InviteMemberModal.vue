@@ -39,7 +39,7 @@ function handleClose(): void {
 </script>
 
 <template>
-  <BaseModal :open="open" title="Invite Member" @close="handleClose">
+  <BaseModal :open="open" title="Invite Member" :prevent-close="loading" @close="handleClose">
     <form class="space-y-4" @submit.prevent="handleSave">
       <FormInput
         id="invite-name"

@@ -83,8 +83,8 @@ async function handleSaveField(fields: ProfileFieldValues): Promise<void> {
 
       <dl class="divide-y divide-gray-200 dark:divide-stone-700">
         <!-- Name -->
-        <div class="group flex items-center justify-between py-3">
-          <div>
+        <div class="group flex items-center justify-between gap-2 py-3">
+          <div class="min-w-0">
             <dt class="text-sm font-medium text-gray-500 dark:text-stone-400">
               Name
             </dt>
@@ -110,12 +110,12 @@ async function handleSaveField(fields: ProfileFieldValues): Promise<void> {
 
       <dl class="divide-y divide-gray-200 dark:divide-stone-700">
         <!-- Phone -->
-        <div class="group flex items-center justify-between py-3">
-          <div>
+        <div class="group flex items-center justify-between gap-2 py-3">
+          <div class="min-w-0">
             <dt class="text-sm font-medium text-gray-500 dark:text-stone-400">
               Phone
             </dt>
-            <dd class="text-sm text-gray-900 dark:text-white">
+            <dd class="truncate text-sm text-gray-900 dark:text-white">
               {{ user?.phoneNumber ?? 'Not set' }}
             </dd>
           </div>
@@ -130,8 +130,8 @@ async function handleSaveField(fields: ProfileFieldValues): Promise<void> {
         </div>
 
         <!-- Birthday -->
-        <div class="group flex items-center justify-between py-3">
-          <div>
+        <div class="group flex items-center justify-between gap-2 py-3">
+          <div class="min-w-0">
             <dt class="text-sm font-medium text-gray-500 dark:text-stone-400">
               Birthday
             </dt>
@@ -150,12 +150,12 @@ async function handleSaveField(fields: ProfileFieldValues): Promise<void> {
         </div>
 
         <!-- Address -->
-        <div class="group flex items-center justify-between py-3">
-          <div>
+        <div class="group flex items-center justify-between gap-2 py-3">
+          <div class="min-w-0">
             <dt class="text-sm font-medium text-gray-500 dark:text-stone-400">
               Address
             </dt>
-            <dd class="text-sm text-gray-900 dark:text-white">
+            <dd class="truncate text-sm text-gray-900 dark:text-white">
               {{ user?.locationName ?? 'Not set' }}
             </dd>
           </div>
@@ -184,12 +184,12 @@ async function handleSaveField(fields: ProfileFieldValues): Promise<void> {
 
       <dl class="divide-y divide-gray-200 dark:divide-stone-700">
         <!-- IBAN -->
-        <div class="group flex items-center justify-between py-3">
-          <div>
+        <div class="group flex items-center justify-between gap-2 py-3">
+          <div class="min-w-0">
             <dt class="text-sm font-medium text-gray-500 dark:text-stone-400">
               IBAN
             </dt>
-            <dd class="text-sm text-gray-900 dark:text-white">
+            <dd class="truncate font-mono text-sm text-gray-900 dark:text-white">
               {{ user?.iban ?? 'Not set' }}
             </dd>
           </div>

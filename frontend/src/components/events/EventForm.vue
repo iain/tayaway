@@ -49,8 +49,15 @@ watch(
   { immediate: true }
 )
 
+const dateError = computed(() => {
+  if (startDate.value && endDate.value && endDate.value < startDate.value) {
+    return 'End date must be on or after start date'
+  }
+  return null
+})
+
 const canSubmit = computed(() => {
-  return name.value.trim().length > 0 && !props.loading
+  return name.value.trim().length > 0 && !dateError.value && !props.loading
 })
 
 function handleSubmit(): void {
@@ -100,21 +107,29 @@ function handleCancel(): void {
         label="Location (optional)"
       />
 
-      <div class="grid grid-cols-2 gap-4">
-        <FormInput
-          id="start-date"
-          v-model="startDate"
-          type="date"
-          label="Start date (optional)"
-          data-testid="event-start-date-input"
-        />
-        <FormInput
-          id="end-date"
-          v-model="endDate"
-          type="date"
-          label="End date (optional)"
-          data-testid="event-end-date-input"
-        />
+      <div>
+        <div class="grid grid-cols-2 gap-4">
+          <FormInput
+            id="start-date"
+            v-model="startDate"
+            type="date"
+            label="Start date (optional)"
+            data-testid="event-start-date-input"
+          />
+          <FormInput
+            id="end-date"
+            v-model="endDate"
+            type="date"
+            label="End date (optional)"
+            data-testid="event-end-date-input"
+          />
+        </div>
+        <p
+          v-if="dateError"
+          class="mt-1.5 text-sm text-red-600 dark:text-red-400"
+        >
+          {{ dateError }}
+        </p>
       </div>
     </div>
 

@@ -100,12 +100,18 @@ async function handleSave(name: string, email: string): Promise<void> {
   }
 }
 
+const cancellingInviteId = ref<string | null>(null)
+
 async function handleCancelInvite(id: string): Promise<void> {
+  if (cancellingInviteId.value === id) return
+  cancellingInviteId.value = id
   try {
     await membersStore.cancelInvite(id)
   } catch {
     const notifications = useNotificationsStore()
     notifications.showError('Failed to cancel invitation')
+  } finally {
+    cancellingInviteId.value = null
   }
 }
 
@@ -232,12 +238,17 @@ onMounted(() => {
         >
           <div class="px-4 py-3 sm:px-6">
             <div class="flex items-center justify-between">
-              <div class="flex items-center">
-                <EnvelopeIcon class="mr-3 size-8 text-gray-400" />
-                <div>
+              <div class="flex min-w-0 items-center">
+                <EnvelopeIcon class="mr-3 size-8 shrink-0 text-gray-400" />
+                <div class="min-w-0 flex-1">
                   <p
-                    class="text-sm font-medium text-gray-900 dark:text-white"
+                    class="truncate text-sm font-medium text-gray-900 dark:text-white"
                     data-testid="invite-email"
+                    :title="
+                      invite.name
+                        ? `${invite.name} (${invite.email})`
+                        : invite.email
+                    "
                   >
                     {{
                       invite.name
@@ -285,6 +296,7 @@ onMounted(() => {
                 </IconButton>
                 <IconButton
                   label="Cancel invitation"
+                  :disabled="cancellingInviteId === invite.id"
                   data-testid="cancel-invite-button"
                   @click="handleCancelInvite(invite.id)"
                 >

@@ -110,9 +110,17 @@ function handleEdit(e: Event) {
   emit('edit', props.expense)
 }
 
+const deleting = ref(false)
+
 async function handleDelete(e: Event) {
   e.stopPropagation()
-  await expensesStore.deleteExpense(props.expense.id)
+  if (deleting.value) return
+  deleting.value = true
+  try {
+    await expensesStore.deleteExpense(props.expense.id)
+  } finally {
+    deleting.value = false
+  }
 }
 </script>
 
@@ -166,6 +174,7 @@ async function handleDelete(e: Event) {
               v-if="isOwner"
               variant="danger"
               label="Delete expense"
+              :disabled="deleting"
               data-testid="delete-expense"
               @click="handleDelete"
             >
@@ -205,7 +214,9 @@ async function handleDelete(e: Event) {
             :key="payer.name"
             class="text-gray-700 dark:text-stone-300"
           >
-            <td class="py-0.5 pr-2">{{ payer.name }}</td>
+            <td class="max-w-[10rem] truncate py-0.5 pr-2" :title="payer.name">
+              {{ payer.name }}
+            </td>
             <td class="py-0.5 pr-2">{{ payer.overlapDays }}</td>
             <td class="py-0.5 text-right font-mono">
               €{{ payer.share.toFixed(2) }}

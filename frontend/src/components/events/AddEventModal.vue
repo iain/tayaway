@@ -70,7 +70,7 @@ function handleClose(): void {
 </script>
 
 <template>
-  <BaseModal :open="open" title="New Event" @close="handleClose">
+  <BaseModal :open="open" title="New Event" :prevent-close="loading" @close="handleClose">
     <form class="space-y-4" @submit.prevent="handleSave">
       <FormInput
         id="event-name"
