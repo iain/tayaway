@@ -393,22 +393,23 @@ function navigateToEventPage(eventId: string): void {
             v-for="transfer in transfersYouOwe"
             :key="transfer.id"
             as="li"
+            variant="action"
             class="overflow-hidden"
           >
             <div
               class="flex flex-wrap items-center justify-between gap-y-2 px-4 py-3 sm:px-6"
             >
               <div class="min-w-0 flex-1">
-                <p class="text-sm text-gray-900 dark:text-white">
+                <p class="text-sm text-gray-700 dark:text-stone-300">
                   You owe
-                  <span class="font-semibold">{{
+                  <span class="font-semibold text-gray-900 dark:text-white">{{
                     getMemberName(transfer.toUserId, pool)
                   }}</span>
-                  {{ ' ' }}
-                  <span
-                    class="font-mono font-semibold text-gray-900 dark:text-white"
-                    >{{ formatTransferAmount(transfer.amount) }}</span
-                  >
+                </p>
+                <p
+                  class="mt-0.5 font-mono text-lg font-bold text-amber-700 dark:text-amber-400"
+                >
+                  {{ formatTransferAmount(transfer.amount) }}
                 </p>
                 <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
                   <router-link
@@ -424,11 +425,11 @@ function navigateToEventPage(eventId: string): void {
               <button
                 v-if="memberHasIban(transfer.toUserId)"
                 type="button"
-                class="rounded-md bg-gray-100 p-1 text-gray-600 transition-colors hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600"
+                class="rounded-lg bg-amber-600 p-2 text-white shadow-sm transition-colors hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-500"
                 title="Show QR code for bank transfer"
                 @click="openQrModal(transfer)"
               >
-                <QrCodeIcon class="size-4" />
+                <QrCodeIcon class="size-5" />
               </button>
             </div>
           </BaseCard>
@@ -590,11 +591,18 @@ function navigateToEventPage(eventId: string): void {
             :key="item.eventId"
             as="li"
             interactive
+            :variant="
+              isPastDeadline(item.deadline)
+                ? 'urgent'
+                : isUrgent(item.deadline)
+                  ? 'action'
+                  : undefined
+            "
             class="overflow-hidden"
             @click="navigateToEvent(item.eventId)"
           >
             <div class="px-4 py-4 sm:px-6">
-              <div class="flex items-center justify-between">
+              <div class="flex items-center justify-between gap-3">
                 <div class="min-w-0 flex-1">
                   <h3
                     class="truncate text-base font-semibold text-gray-900 dark:text-white"
@@ -606,9 +614,9 @@ function navigateToEventPage(eventId: string): void {
                       class="inline-flex items-center gap-1"
                       :class="
                         isPastDeadline(item.deadline)
-                          ? 'text-red-600 dark:text-red-400'
+                          ? 'font-semibold text-red-600 dark:text-red-400'
                           : isUrgent(item.deadline)
-                            ? 'text-amber-600 dark:text-amber-400'
+                            ? 'font-medium text-amber-600 dark:text-amber-400'
                             : 'text-gray-500 dark:text-stone-400'
                       "
                     >
@@ -625,6 +633,12 @@ function navigateToEventPage(eventId: string): void {
                     </span>
                   </div>
                 </div>
+                <span
+                  v-if="isPastDeadline(item.deadline)"
+                  class="shrink-0 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-700 dark:bg-red-900/50 dark:text-red-300"
+                >
+                  Overdue
+                </span>
               </div>
             </div>
           </BaseCard>
