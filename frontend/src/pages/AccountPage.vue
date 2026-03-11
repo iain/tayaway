@@ -8,6 +8,7 @@ import {
   ComputerDesktopIcon,
 } from '@heroicons/vue/24/outline'
 import IconButton from '@/components/common/IconButton.vue'
+import AlertBox from '@/components/common/AlertBox.vue'
 import ChangeEmailModal from '@/components/profile/ChangeEmailModal.vue'
 import SessionsList from '@/components/profile/SessionsList.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -66,15 +67,15 @@ async function handleRequestEmailChange(email: string): Promise<void> {
         </div>
 
         <!-- Email change success alert -->
-        <div
+        <AlertBox
           v-if="editEmailSuccess"
           data-testid="email-change-success"
-          class="rounded-md bg-green-50 p-3 dark:bg-green-900/20"
+          variant="success"
         >
-          <p class="text-sm text-green-700 dark:text-green-400">
+          <p class="text-sm">
             {{ editEmailSuccess }}
           </p>
-        </div>
+        </AlertBox>
       </dl>
     </BaseCard>
 

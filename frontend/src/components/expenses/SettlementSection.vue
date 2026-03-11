@@ -20,6 +20,7 @@ import {
 import { formatDateTime } from '@/utils/date'
 import { getMemberName } from '@/utils/member'
 import AppButton from '@/components/common/AppButton.vue'
+import AppBadge from '@/components/common/AppBadge.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import EpcQrModal from '@/components/expenses/EpcQrModal.vue'
@@ -276,13 +277,13 @@ async function handlePaidClick(
               Settled by {{ getMemberName(settlement.userId, pool) }} on
               {{ formatDate(settlement.createdAt) }}
             </span>
-            <span
+            <AppBadge
               v-if="allTransfersPaid(settlement.id)"
-              class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400"
+              variant="green"
             >
               <CheckCircleIcon class="size-3" />
               All paid
-            </span>
+            </AppBadge>
           </div>
           <IconButton
             v-if="canDeleteSettlement(settlement.userId)"

@@ -36,7 +36,7 @@ const sizeClasses: Record<string, string> = {
 
 <template>
   <span
-    class="inline-flex shrink-0 items-center rounded-full font-medium"
+    class="inline-flex shrink-0 items-center gap-1 rounded-full font-medium"
     :class="[variantClasses[props.variant], sizeClasses[props.size]]"
   >
     <slot />

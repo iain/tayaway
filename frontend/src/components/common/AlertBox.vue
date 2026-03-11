@@ -3,7 +3,7 @@ import type { Component } from 'vue'
 
 withDefaults(
   defineProps<{
-    variant?: 'error' | 'warning'
+    variant?: 'error' | 'warning' | 'success'
     icon?: Component
   }>(),
   {
@@ -13,9 +13,18 @@ withDefaults(
 )
 
 const variantClasses: Record<string, string> = {
-  error: 'bg-red-900/50 text-red-400',
+  error:
+    'border border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-400',
   warning:
     'border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300',
+  success:
+    'border border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400',
+}
+
+const iconClasses: Record<string, string> = {
+  error: 'text-red-600 dark:text-red-400',
+  warning: 'text-amber-600 dark:text-amber-400',
+  success: 'text-green-600 dark:text-green-400',
 }
 </script>
 
@@ -25,11 +34,7 @@ const variantClasses: Record<string, string> = {
       <component
         :is="icon"
         class="mt-0.5 size-5 shrink-0"
-        :class="
-          variant === 'warning'
-            ? 'text-amber-600 dark:text-amber-400'
-            : 'text-red-400'
-        "
+        :class="iconClasses[variant]"
       />
       <div class="min-w-0 flex-1">
         <slot />
