@@ -18,7 +18,7 @@ defineEmits<{
 
 <template>
   <div>
-    <label :for="id" class="block text-sm/6 font-medium text-white">
+    <label :for="id" class="block text-sm/6 font-medium text-gray-900 dark:text-white">
       {{ label }}
     </label>
     <div class="mt-2 grid grid-cols-1">

@@ -49,7 +49,7 @@ const attrs = useAttrs()
         "
       />
     </div>
-    <p v-if="hint" class="mt-3 text-sm/6 text-gray-400">
+    <p v-if="hint" class="mt-3 text-sm/6 text-gray-500 dark:text-stone-400">
       {{ hint }}
     </p>
   </div>
