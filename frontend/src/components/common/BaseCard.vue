@@ -23,7 +23,7 @@ function handleKeydown(event: KeyboardEvent) {
   <component
     :is="as ?? 'div'"
     ref="root"
-    class="rounded-lg shadow ring-1"
+    class="rounded-lg shadow"
     :class="[
       {
         'p-6': padded,
@@ -31,10 +31,10 @@ function handleKeydown(event: KeyboardEvent) {
           interactive,
       },
       variant === 'urgent'
-        ? 'border-l-4 border-l-red-500 bg-red-50/50 ring-red-200 dark:border-l-red-400 dark:bg-red-950/20 dark:ring-red-900/40'
+        ? 'bg-red-50 ring-2 ring-red-300/60 dark:bg-red-950/30 dark:ring-red-800/50'
         : variant === 'action'
-          ? 'border-l-4 border-l-amber-400 bg-amber-50/30 ring-amber-200 dark:border-l-amber-500 dark:bg-amber-950/15 dark:ring-amber-900/30'
-          : 'bg-white ring-black/5 dark:bg-stone-800 dark:shadow-[0_2px_8px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.06)] dark:ring-white/[0.06]',
+          ? 'bg-amber-50/60 ring-2 ring-amber-300/50 dark:bg-amber-950/20 dark:ring-amber-700/40'
+          : 'ring-1 bg-white ring-black/5 dark:bg-stone-800 dark:shadow-[0_2px_8px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.06)] dark:ring-white/[0.06]',
     ]"
     :tabindex="interactive ? 0 : undefined"
     :role="interactive ? 'button' : undefined"
