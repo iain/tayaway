@@ -22,26 +22,28 @@ export function useEventsNeedingRsvp() {
     const userId = currentUserId.value
     if (!userId) return []
 
-    const rsvps = pool.getAll('rsvp')
-    const items: RsvpEventItem[] = []
+    // Build set of eventIds the user has RSVPed to — O(1) lookup per event
+    const rsvpedEventIds = new Set(
+      pool
+        .getAll('rsvp')
+        .filter((r) => r.userId === userId)
+        .map((r) => r.eventId)
+    )
 
+    const items: RsvpEventItem[] = []
     const now = new Date()
 
     for (const event of pool.getAll('event')) {
       if (!event.startDate || !event.endDate) continue
       if (new Date(event.endDate) < now) continue
+      if (rsvpedEventIds.has(event.id)) continue
 
-      const hasRsvp = rsvps.some(
-        (r) => r.eventId === event.id && r.userId === userId
-      )
-      if (!hasRsvp) {
-        items.push({
-          eventId: event.id,
-          eventName: event.name,
-          startDate: event.startDate,
-          endDate: event.endDate,
-        })
-      }
+      items.push({
+        eventId: event.id,
+        eventName: event.name,
+        startDate: event.startDate,
+        endDate: event.endDate,
+      })
     }
 
     return items.sort(

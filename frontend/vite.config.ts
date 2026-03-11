@@ -53,6 +53,12 @@ export default defineConfig({
         }
         defaultHandler(warning)
       },
+      output: {
+        manualChunks: {
+          leaflet: ['leaflet'],
+          'vue-draggable': ['vue-draggable-plus'],
+        },
+      },
     },
   },
   resolve: {

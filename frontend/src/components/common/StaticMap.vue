@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import L from 'leaflet'
+import { ref, onMounted, onBeforeUnmount, watch, shallowRef } from 'vue'
+import type L from 'leaflet'
 
 const props = defineProps<{
   latitude: number
@@ -8,23 +8,35 @@ const props = defineProps<{
 }>()
 
 const mapContainer = ref<HTMLDivElement>()
+const loaded = ref(false)
+const leafletModule = shallowRef<typeof import('leaflet') | null>(null)
 let map: L.Map | null = null
 let marker: L.Marker | null = null
 
-// Fix default marker icon paths (Leaflet bundles them but Vite doesn't resolve them)
-const defaultIcon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl:
-    'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-})
+async function loadLeaflet(): Promise<typeof import('leaflet')> {
+  if (leafletModule.value) return leafletModule.value
+  const [mod] = await Promise.all([
+    import('leaflet'),
+    import('leaflet/dist/leaflet.css'),
+  ])
+  leafletModule.value = mod
+  return mod
+}
 
-function initMap(): void {
+function initMap(L: typeof import('leaflet')): void {
   if (!mapContainer.value) return
+
+  const defaultIcon = L.icon({
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    iconRetinaUrl:
+      'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+    shadowUrl:
+      'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41],
+  })
 
   map = L.map(mapContainer.value, {
     zoomControl: false,
@@ -42,6 +54,7 @@ function initMap(): void {
   const latLng: L.LatLngExpression = [props.latitude, props.longitude]
   map.setView(latLng, 15)
   marker = L.marker(latLng, { icon: defaultIcon }).addTo(map)
+  loaded.value = true
 }
 
 watch(
@@ -55,8 +68,9 @@ watch(
   }
 )
 
-onMounted(() => {
-  initMap()
+onMounted(async () => {
+  const L = await loadLeaflet()
+  initMap(L)
 })
 
 onBeforeUnmount(() => {

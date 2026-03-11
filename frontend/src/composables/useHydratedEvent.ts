@@ -134,20 +134,48 @@ export function useHydratedEvent(eventId: ComputedRef<string> | string): {
   }
 }
 
+type Pool = ReturnType<typeof useObjectPoolStore>
+
+/**
+ * Build a member lookup by userId for O(1) access during hydration.
+ */
+function buildMemberIndex(pool: Pool): Map<string, PoolMember> {
+  const index = new Map<string, PoolMember>()
+  for (const m of pool.getAll('member')) {
+    index.set(m.userId, m)
+  }
+  return index
+}
+
 /**
  * Hydrate a pool event into the full nested structure.
+ * Builds indexes upfront to avoid repeated full-pool scans.
  */
-function hydrateEvent(
-  poolEvent: PoolEvent,
-  pool: ReturnType<typeof useObjectPoolStore>
-): HydratedEvent {
-  const member = pool.findBy('member', 'userId', poolEvent.userId)
+function hydrateEvent(poolEvent: PoolEvent, pool: Pool): HydratedEvent {
+  const memberIndex = buildMemberIndex(pool)
+  const member = memberIndex.get(poolEvent.userId)
+
   const datePollObj = pool
     .getAll('datePoll')
     .find((dp) => dp.eventId === poolEvent.id)
-  const datePoll = datePollObj ? hydrateDatePoll(datePollObj.id, pool) : null
+
+  // Build vote index by dateRangeId — avoids re-scanning all votes per date range
+  const votesByDateRange = new Map<string, typeof votes>()
+  const votes = pool.getAll('vote')
+  for (const v of votes) {
+    const existing = votesByDateRange.get(v.dateRangeId)
+    if (existing) {
+      existing.push(v)
+    } else {
+      votesByDateRange.set(v.dateRangeId, [v])
+    }
+  }
+
+  const datePoll = datePollObj
+    ? hydrateDatePoll(datePollObj.id, pool, votesByDateRange, memberIndex)
+    : null
   const workspace = hydrateWorkspace(poolEvent.workspaceId, pool)
-  const rsvps = hydrateRsvps(poolEvent.id, pool)
+  const rsvps = hydrateRsvps(poolEvent.id, pool, memberIndex)
 
   return {
     id: poolEvent.id,
@@ -174,12 +202,19 @@ function hydrateEvent(
  */
 function hydrateDatePoll(
   datePollId: string,
-  pool: ReturnType<typeof useObjectPoolStore>
+  pool: Pool,
+  votesByDateRange: Map<string, ReturnType<Pool['getAll']>>,
+  memberIndex: Map<string, PoolMember>
 ): HydratedDatePoll | null {
   const pollData = pool.get('datePoll', datePollId)
   if (!pollData) return null
 
-  const dateRanges = hydrateDateRanges(pollData.id, pool)
+  const dateRanges = pool
+    .getAll('dateRange')
+    .filter((dr) => dr.datePollId === datePollId)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate))
+    .map((dr) => hydrateDateRange(dr, votesByDateRange, memberIndex))
+
   const selectedDateRange = pollData.selectedDateRangeId
     ? dateRanges.find((dr) => dr.id === pollData.selectedDateRangeId)
     : undefined
@@ -203,29 +238,12 @@ function hydrateDatePoll(
  */
 function hydrateWorkspace(
   workspaceId: string,
-  pool: ReturnType<typeof useObjectPoolStore>
+  pool: Pool
 ): HydratedWorkspace | undefined {
   const workspace = pool.get('workspace', workspaceId)
   if (!workspace) return undefined
 
-  const members = hydrateMembers(workspace.id, pool)
-
-  return {
-    id: workspace.id,
-    name: workspace.name,
-    members,
-  }
-}
-
-/**
- * Hydrate workspace members directly from member pool objects.
- * No more user+membership join needed — member objects have everything.
- */
-function hydrateMembers(
-  workspaceId: string,
-  pool: ReturnType<typeof useObjectPoolStore>
-): HydratedMember[] {
-  return pool
+  const members = pool
     .getAll('member')
     .filter((m) => m.workspaceId === workspaceId)
     .map((member) => ({
@@ -235,31 +253,44 @@ function hydrateMembers(
       name: member.name,
       role: member.role,
     }))
-}
 
-/**
- * Hydrate date ranges for a date poll.
- * Derives date range list from foreign key instead of explicit ID array.
- */
-function hydrateDateRanges(
-  datePollId: string,
-  pool: ReturnType<typeof useObjectPoolStore>
-): HydratedDateRange[] {
-  return pool
-    .getAll('dateRange')
-    .filter((dr) => dr.datePollId === datePollId)
-    .sort((a, b) => a.startDate.localeCompare(b.startDate))
-    .map((dr) => hydrateDateRange(dr, pool))
+  return {
+    id: workspace.id,
+    name: workspace.name,
+    members,
+  }
 }
 
 /**
  * Hydrate a single date range with its votes and summary.
+ * Uses pre-built vote index for O(1) lookup instead of scanning all votes.
  */
 function hydrateDateRange(
   dateRange: PoolDateRange,
-  pool: ReturnType<typeof useObjectPoolStore>
+  votesByDateRange: Map<string, ReturnType<Pool['getAll']>>,
+  memberIndex: Map<string, PoolMember>
 ): HydratedDateRange {
-  const votes = hydrateVotes(dateRange.id, pool)
+  const rawVotes = (votesByDateRange.get(dateRange.id) ?? []) as Array<{
+    id: string
+    dateRangeId: string
+    userId: string
+    response: VoteResponse
+    comment: string | null
+    createdAt: string
+    updatedAt: string
+  }>
+
+  const votes: HydratedVote[] = rawVotes.map((vote) => ({
+    id: vote.id,
+    dateRangeId: vote.dateRangeId,
+    userId: vote.userId,
+    member: memberIndex.get(vote.userId),
+    response: vote.response,
+    comment: vote.comment,
+    createdAt: vote.createdAt,
+    updatedAt: vote.updatedAt,
+  }))
+
   const voteSummary = calculateVoteSummary(votes)
 
   return {
@@ -273,34 +304,12 @@ function hydrateDateRange(
 }
 
 /**
- * Hydrate votes for a date range.
- * Derives vote list from foreign key instead of explicit ID array.
- */
-function hydrateVotes(
-  dateRangeId: string,
-  pool: ReturnType<typeof useObjectPoolStore>
-): HydratedVote[] {
-  return pool
-    .getAll('vote')
-    .filter((v) => v.dateRangeId === dateRangeId)
-    .map((vote) => ({
-      id: vote.id,
-      dateRangeId: vote.dateRangeId,
-      userId: vote.userId,
-      member: pool.findBy('member', 'userId', vote.userId),
-      response: vote.response,
-      comment: vote.comment,
-      createdAt: vote.createdAt,
-      updatedAt: vote.updatedAt,
-    }))
-}
-
-/**
- * Hydrate RSVPs for an event.
+ * Hydrate RSVPs for an event. Uses pre-built member index.
  */
 function hydrateRsvps(
   eventId: string,
-  pool: ReturnType<typeof useObjectPoolStore>
+  pool: Pool,
+  memberIndex: Map<string, PoolMember>
 ): HydratedRsvp[] {
   return pool
     .getAll('rsvp')
@@ -309,7 +318,7 @@ function hydrateRsvps(
       id: rsvp.id,
       eventId: rsvp.eventId,
       userId: rsvp.userId,
-      member: pool.findBy('member', 'userId', rsvp.userId),
+      member: memberIndex.get(rsvp.userId),
       attending: rsvp.attending,
       startDate: rsvp.startDate,
       endDate: rsvp.endDate,
@@ -322,10 +331,13 @@ function hydrateRsvps(
  * Calculate vote summary from hydrated votes.
  */
 function calculateVoteSummary(votes: HydratedVote[]): VoteSummary {
-  return {
-    yes: votes.filter((v) => v.response === 'yes').length,
-    no: votes.filter((v) => v.response === 'no').length,
-    preferably_not: votes.filter((v) => v.response === 'preferably_not').length,
-    total: votes.length,
+  let yes = 0
+  let no = 0
+  let preferably_not = 0
+  for (const v of votes) {
+    if (v.response === 'yes') yes++
+    else if (v.response === 'no') no++
+    else if (v.response === 'preferably_not') preferably_not++
   }
+  return { yes, no, preferably_not, total: votes.length }
 }

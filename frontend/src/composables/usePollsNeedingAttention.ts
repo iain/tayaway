@@ -34,32 +34,46 @@ export function usePollsNeedingAttention() {
     const userId = currentUserId.value
     if (!userId) return []
 
-    const datePolls = pool.getAll('datePoll')
+    // Build a set of dateRangeIds the user has voted on — O(n) instead of O(n²)
+    const votedDateRangeIds = new Set(
+      pool
+        .getAll('vote')
+        .filter((v) => v.userId === userId)
+        .map((v) => v.dateRangeId)
+    )
+
+    // Index dateRanges by datePollId — avoids re-scanning the full list per poll
+    const rangesByPoll = new Map<string, [total: number, voted: number]>()
+    for (const dr of pool.getAll('dateRange')) {
+      const counts = rangesByPoll.get(dr.datePollId)
+      const voted = votedDateRangeIds.has(dr.id) ? 1 : 0
+      if (counts) {
+        counts[0]++
+        counts[1] += voted
+      } else {
+        rangesByPoll.set(dr.datePollId, [1, voted])
+      }
+    }
+
     const items: PollItem[] = []
 
-    for (const datePoll of datePolls) {
+    for (const datePoll of pool.getAll('datePoll')) {
       if (datePoll.status === 'resolved') continue
 
-      const event = pool.get('event', datePoll.eventId)
-      if (!event) continue
+      const counts = rangesByPoll.get(datePoll.id)
+      if (!counts || counts[0] === 0) continue
 
-      const dateRanges = pool
-        .getAll('dateRange')
-        .filter((dr) => dr.datePollId === datePoll.id)
-      if (dateRanges.length === 0) continue
+      const [totalCount, votedCount] = counts
+      if (votedCount < totalCount) {
+        const event = pool.get('event', datePoll.eventId)
+        if (!event) continue
 
-      const votes = pool.getAll('vote')
-      const votedCount = dateRanges.filter((dr) =>
-        votes.some((v) => v.dateRangeId === dr.id && v.userId === userId)
-      ).length
-
-      if (votedCount < dateRanges.length) {
         items.push({
           eventId: event.id,
           eventName: event.name,
           deadline: datePoll.deadline,
           votedCount,
-          totalCount: dateRanges.length,
+          totalCount,
         })
       }
     }

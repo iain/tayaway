@@ -45,7 +45,8 @@ const clearedIds = ref(new Set<string>())
 // even if an in-flight addItem response clears the pending completedAt update.
 const localCompletedIds = ref(new Set<string>())
 
-// Local sorted list for drag-and-drop (synced from pool)
+// Local sorted list for drag-and-drop (synced from pool).
+// Uses watchEffect (not computed) because VueDraggable needs a writable v-model.
 const itemsLocal = ref<PoolTaskItem[]>([])
 
 watchEffect(() => {
@@ -63,7 +64,7 @@ watchEffect(() => {
     })
 })
 
-const items = computed(() => itemsLocal.value)
+const items = itemsLocal
 
 const completedItems = computed(() =>
   items.value.filter((i) => i.completedAt !== null)
