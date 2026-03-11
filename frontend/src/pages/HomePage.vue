@@ -454,7 +454,11 @@ function navigateToEventPage(eventId: string): void {
             <div class="px-4 py-4 sm:px-6">
               <div
                 class="cursor-pointer"
+                role="button"
+                tabindex="0"
                 @click="navigateToEventPage(event.id)"
+                @keydown.enter="navigateToEventPage(event.id)"
+                @keydown.space.prevent="navigateToEventPage(event.id)"
               >
                 <h3
                   class="truncate text-base font-semibold text-gray-900 dark:text-white"
@@ -519,7 +523,11 @@ function navigateToEventPage(eventId: string): void {
             <div class="px-4 py-4 sm:px-6">
               <div
                 class="cursor-pointer"
+                role="button"
+                tabindex="0"
                 @click="navigateToEventPage(event.id)"
+                @keydown.enter="navigateToEventPage(event.id)"
+                @keydown.space.prevent="navigateToEventPage(event.id)"
               >
                 <h3
                   class="truncate text-base font-semibold text-gray-900 dark:text-white"

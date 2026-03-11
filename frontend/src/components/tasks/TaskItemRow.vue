@@ -42,24 +42,25 @@ const emit = defineEmits<{
         <circle cx="15" cy="19" r="1.5" />
       </svg>
     </span>
-    <input
-      type="checkbox"
-      :checked="!!item.completedAt"
-      class="size-5 cursor-pointer accent-rose-500"
-      @change="emit('toggle', item)"
-    />
-    <span
-      class="flex-1 cursor-pointer text-base"
-      :class="
-        item.completedAt
-          ? 'text-gray-400 line-through dark:text-stone-500'
-          : 'text-gray-900 dark:text-white'
-      "
-      :data-completed="item.completedAt ? 'true' : undefined"
-      @click="emit('toggle', item)"
-    >
-      {{ item.content }}
-    </span>
+    <label class="flex flex-1 cursor-pointer items-center gap-3">
+      <input
+        type="checkbox"
+        :checked="!!item.completedAt"
+        class="size-5 cursor-pointer accent-rose-500"
+        @change="emit('toggle', item)"
+      />
+      <span
+        class="flex-1 text-base"
+        :class="
+          item.completedAt
+            ? 'text-gray-400 line-through dark:text-stone-500'
+            : 'text-gray-900 dark:text-white'
+        "
+        :data-completed="item.completedAt ? 'true' : undefined"
+      >
+        {{ item.content }}
+      </span>
+    </label>
     <IconButton variant="danger" label="Delete" @click="emit('delete', item)">
       <TrashIcon class="size-4" />
     </IconButton>
