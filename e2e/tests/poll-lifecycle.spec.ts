@@ -341,23 +341,24 @@ test.describe('Poll Lifecycle UI', () => {
       await expect(page.getByRole('dialog')).not.toBeVisible()
       await expect(page).toHaveURL(`/events/${eventId}/planning/date-ranges`)
 
-      // 3. Add a date range via calendar (calendar opens on current month Feb 2026)
+      // 3. Add a date range via calendar — pick future dates so the event
+      //    won't have "already started" when we try to reopen the poll.
+      //    Calendar opens on current month (left) and next month (right).
       await page.getByRole('button', { name: 'Add Date Range' }).first().click()
       await expect(page.getByRole('dialog')).toBeVisible()
-      // Pick dates in the visible months (Feb/Mar 2026)
-      await page.getByTestId('calendar-day-2026-03-10').click()
-      await page.getByTestId('calendar-day-2026-03-15').click()
+      await page.getByTestId('calendar-day-2026-04-10').click()
+      await page.getByTestId('calendar-day-2026-04-15').click()
       await expect(page.getByRole('dialog')).not.toBeVisible()
 
       // Verify date range appeared
       const dateRangeItems = page.getByTestId('date-range-item')
       await expect(dateRangeItems).toHaveCount(1)
 
-      // 4. Add a second date range (preselected 7 days after first: Mar 17-22)
+      // 4. Add a second date range (preselected 7 days after first: Apr 22-27)
       await page.getByRole('button', { name: 'Add Date Range' }).click()
       await expect(page.getByRole('dialog')).toBeVisible()
-      await page.getByTestId('calendar-day-2026-03-20').click()
-      await page.getByTestId('calendar-day-2026-03-25').click()
+      await page.getByTestId('calendar-day-2026-04-20').click()
+      await page.getByTestId('calendar-day-2026-04-25').click()
       await expect(page.getByRole('dialog')).not.toBeVisible()
       await expect(dateRangeItems).toHaveCount(2)
 
@@ -388,6 +389,8 @@ test.describe('Poll Lifecycle UI', () => {
         .click()
       await page.getByRole('button', { name: 'Confirm Winner' }).click()
       await expect(page.getByRole('dialog')).not.toBeVisible()
+      // Wait for event dates to appear (confirms close-poll broadcasts have settled)
+      await expect(page.getByTestId('event-dates')).toBeVisible()
       await expect(
         page.getByRole('button', { name: 'Reopen Poll' })
       ).toBeVisible()
