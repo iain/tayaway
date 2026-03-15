@@ -14,8 +14,10 @@ class App < Roda
   plugin :cookies
   plugin :websockets
   plugin :error_handler do |e|
-    $stderr.puts "Unhandled error: #{e.class}: #{e.message}"
-    e.backtrace.each { |line| $stderr.puts line }
+    unless APP_ENV == "test"
+      $stderr.puts "Unhandled error: #{e.class}: #{e.message}"
+      e.backtrace&.each { |line| $stderr.puts line }
+    end
     { error: "Internal server error" }
   end
 

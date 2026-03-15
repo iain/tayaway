@@ -23,7 +23,11 @@ APP_SECRET = Base64.strict_decode64(ENV.fetch("APP_SECRET"))
 
 require "logger"
 APP_LOGGER = Logger.new($stdout)
-APP_LOGGER.level = APP_ENV == "production" ? Logger::INFO : Logger::DEBUG
+APP_LOGGER.level = case APP_ENV
+                   when "production" then Logger::INFO
+                   when "test", "e2e" then Logger::WARN
+                   else Logger::DEBUG
+                   end
 APP_LOGGER.formatter = proc { |severity, _time, _progname, msg|
   label = severity == "DEBUG" ? "" : "[#{severity}] "
   "#{label}#{msg}\n"

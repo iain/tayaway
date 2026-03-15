@@ -3,6 +3,12 @@
 
 ENV["RACK_ENV"] = "test"
 
+module Warning
+  def self.warn(msg, **)
+    super unless msg.include?("redefining 'object_id'")
+  end
+end
+
 require_relative "../config/environment"
 require "rack/test"
 require "database_cleaner/sequel"

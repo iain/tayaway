@@ -55,7 +55,7 @@ run = "echo 'All tests complete'"
 [tasks."test:frontend"]
 description = "Run frontend tests"
 dir = "{{config_root}}/frontend"
-run = "pnpm run test"
+run = "pnpm exec vitest run --reporter=dot"
 
 [tasks."test:backend"]
 description = "Run backend tests"
@@ -75,12 +75,12 @@ run = "echo 'Linting complete'"
 [tasks."lint:frontend"]
 description = "Run frontend linter"
 dir = "{{config_root}}/frontend"
-run = "pnpm run lint"
+run = "pnpm exec eslint src --fix"
 
 [tasks."lint:backend"]
 description = "Run backend linter"
 dir = "{{config_root}}/backend"
-run = "bundle exec rubocop"
+run = "bundle exec rubocop -f q"
 
 [tasks.typecheck]
 description = "Run all type checkers"
@@ -90,7 +90,7 @@ run = "echo 'Type checking complete'"
 [tasks."typecheck:frontend"]
 description = "Run frontend type checker"
 dir = "{{config_root}}/frontend"
-run = "pnpm run typecheck"
+run = "pnpm exec vue-tsc -b"
 
 [tasks."typecheck:backend"]
 description = "Run backend type checker"
@@ -105,12 +105,12 @@ run = "echo 'All CI checks complete (with autofix)'"
 [tasks."fix:lint_frontend"]
 description = "Run frontend linter with autofix"
 dir = "{{config_root}}/frontend"
-run = "pnpm run lint"
+run = "pnpm exec eslint src --fix"
 
 [tasks."fix:lint_backend"]
 description = "Run backend linter with autofix"
 dir = "{{config_root}}/backend"
-run = "bundle exec rubocop -A"
+run = "bundle exec rubocop -A -f q"
 
 # ── Database ──────────────────────────────────────────────────────────────────
 
