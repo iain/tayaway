@@ -1,140 +1,59 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
-    <!-- Deep amber base gradient -->
-    <linearGradient id="bg" x1="0.1" y1="0" x2="0.7" y2="1">
-      <stop offset="0%" stop-color="#fbbf24"/>
-      <stop offset="35%" stop-color="#d97706"/>
-      <stop offset="70%" stop-color="#b45309"/>
-      <stop offset="100%" stop-color="#7c2d12"/>
+    <!-- Amber fill for letters -->
+    <linearGradient id="amberFill" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
     </linearGradient>
 
-    <!-- Warm mid-tone behind the glass surface -->
-    <radialGradient id="warmCenter" cx="0.45" cy="0.5" r="0.5">
-      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.4"/>
-      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
-    </radialGradient>
-
-    <!-- Glass surface: convex lens curvature -->
-    <radialGradient id="glassLens" cx="0.48" cy="0.42" r="0.55" fx="0.45" fy="0.38">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.2"/>
-      <stop offset="40%" stop-color="#ffffff" stop-opacity="0.05"/>
-      <stop offset="75%" stop-color="#000000" stop-opacity="0.08"/>
-      <stop offset="100%" stop-color="#000000" stop-opacity="0.25"/>
-    </radialGradient>
-
-    <!-- Primary caustic: strong top-left specular -->
-    <radialGradient id="caustic" cx="0.28" cy="0.15" r="0.35" fx="0.25" fy="0.1">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.85"/>
-      <stop offset="15%" stop-color="#ffffff" stop-opacity="0.45"/>
-      <stop offset="40%" stop-color="#ffffff" stop-opacity="0.1"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
-    </radialGradient>
-
-    <!-- Small sharp highlight dot (glass "spark") -->
-    <radialGradient id="spark" cx="0.22" cy="0.12" r="0.08">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9"/>
-      <stop offset="60%" stop-color="#ffffff" stop-opacity="0.3"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
-    </radialGradient>
-
-    <!-- Diagonal refraction band -->
-    <linearGradient id="refraction" x1="0" y1="0" x2="1" y2="0.6" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
-      <stop offset="35%" stop-color="#ffffff" stop-opacity="0"/>
-      <stop offset="44%" stop-color="#ffffff" stop-opacity="0.12"/>
-      <stop offset="50%" stop-color="#ffffff" stop-opacity="0.22"/>
-      <stop offset="56%" stop-color="#ffffff" stop-opacity="0.12"/>
-      <stop offset="65%" stop-color="#ffffff" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    <!-- Glass specular: bright highlight on top portion of letters -->
+    <linearGradient id="glassHighlight" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.5"/>
+      <stop offset="45%" stop-color="#ffffff" stop-opacity="0.15"/>
+      <stop offset="55%" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.1"/>
     </linearGradient>
 
-    <!-- Bottom-right secondary reflection -->
-    <radialGradient id="secondaryReflect" cx="0.72" cy="0.88" r="0.3">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18"/>
-      <stop offset="50%" stop-color="#ffffff" stop-opacity="0.05"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
-    </radialGradient>
-
-    <!-- Bottom edge catch light -->
-    <linearGradient id="bottomCatch" x1="0.3" y1="0.92" x2="0.7" y2="1">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
-      <stop offset="50%" stop-color="#ffffff" stop-opacity="0.12"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    <!-- Glass edge stroke -->
+    <linearGradient id="glassEdge" x1="0.3" y1="0" x2="0.7" y2="1">
+      <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.8"/>
+      <stop offset="40%" stop-color="#ffffff" stop-opacity="0.3"/>
+      <stop offset="60%" stop-color="#d97706" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#fbbf24" stop-opacity="0.6"/>
     </linearGradient>
 
-    <!-- Vignette -->
-    <radialGradient id="vignette" cx="0.48" cy="0.45" r="0.58">
-      <stop offset="55%" stop-color="#000000" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#000000" stop-opacity="0.35"/>
-    </radialGradient>
-
-    <!-- Text shadow -->
-    <filter id="textShadow" x="-5%" y="-5%" width="110%" height="120%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="12" result="blur"/>
-      <feFlood flood-color="#451a03" flood-opacity="0.55" result="color"/>
+    <!-- Drop shadow behind letters -->
+    <filter id="dropShadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="10" result="blur"/>
+      <feFlood flood-color="#000000" flood-opacity="0.25" result="color"/>
       <feComposite in="color" in2="blur" operator="in" result="shadow"/>
-      <feOffset in="shadow" dx="0" dy="8" result="offsetShadow"/>
+      <feOffset in="shadow" dx="0" dy="6" result="offsetShadow"/>
       <feMerge>
         <feMergeNode in="offsetShadow"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
 
-    <!-- Rim light -->
-    <linearGradient id="rim" x1="0.15" y1="0" x2="0.85" y2="1">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.55"/>
-      <stop offset="25%" stop-color="#ffffff" stop-opacity="0.12"/>
-      <stop offset="50%" stop-color="#ffffff" stop-opacity="0.04"/>
-      <stop offset="75%" stop-color="#ffffff" stop-opacity="0.08"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.35"/>
-    </linearGradient>
+    <!-- Text shape for reuse -->
+    <text id="thw" x="512" y="545" text-anchor="middle" dominant-baseline="central"
+      font-family="Inter, -apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif"
+      font-weight="800" font-size="340" letter-spacing="-8">THW</text>
 
-    <!-- Text clip -->
+    <!-- Clip to letter shapes -->
     <clipPath id="textClip">
-      <text x="512" y="555" text-anchor="middle" dominant-baseline="central"
-        font-family="Inter, -apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif"
-        font-weight="800" font-size="340" letter-spacing="-8">THW</text>
+      <use href="#thw"/>
     </clipPath>
   </defs>
 
-  <!-- 1. Rich amber background -->
-  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <!-- Letter group with drop shadow -->
+  <g filter="url(#dropShadow)">
+    <!-- Base amber fill -->
+    <use href="#thw" fill="url(#amberFill)"/>
 
-  <!-- 2. Warm center glow -->
-  <rect width="1024" height="1024" fill="url(#warmCenter)"/>
+    <!-- Glass edge border -->
+    <use href="#thw" fill="none" stroke="url(#glassEdge)" stroke-width="2.5"/>
 
-  <!-- 3. Vignette for depth -->
-  <rect width="1024" height="1024" fill="url(#vignette)"/>
-
-  <!-- 4. Glass lens surface -->
-  <rect width="1024" height="1024" fill="url(#glassLens)"/>
-
-  <!-- 5. Diagonal refraction band -->
-  <rect x="-200" y="-150" width="1500" height="900" fill="url(#refraction)" transform="rotate(-18, 512, 380)"/>
-
-  <!-- 6. Primary caustic highlight -->
-  <rect width="1024" height="1024" fill="url(#caustic)"/>
-
-  <!-- 7. Sharp spark point -->
-  <rect width="1024" height="1024" fill="url(#spark)"/>
-
-  <!-- 8. Bottom-right secondary -->
-  <rect width="1024" height="1024" fill="url(#secondaryReflect)"/>
-
-  <!-- 9. Bottom edge catch light -->
-  <rect width="1024" height="1024" fill="url(#bottomCatch)"/>
-
-  <!-- 10. Text with shadow -->
-  <text x="512" y="555" text-anchor="middle" dominant-baseline="central"
-    font-family="Inter, -apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif"
-    font-weight="800" font-size="340" letter-spacing="-8"
-    fill="#ffffff" fill-opacity="0.95" filter="url(#textShadow)">THW</text>
-
-  <!-- 11. Glass highlight on top portion of text -->
-  <rect x="0" y="0" width="1024" height="470"
-    fill="#ffffff" fill-opacity="0.18" clip-path="url(#textClip)"/>
-
-  <!-- 12. Rim light border -->
-  <rect x="1" y="1" width="1022" height="1022" fill="none"
-    stroke="url(#rim)" stroke-width="2"/>
+    <!-- Specular highlight overlay clipped to letters -->
+    <rect x="0" y="0" width="1024" height="1024" fill="url(#glassHighlight)" clip-path="url(#textClip)"/>
+  </g>
 </svg>
