@@ -23,8 +23,14 @@ onMounted(async () => {
 
 <template>
   <RouterView v-if="initialized" />
-  <div v-else class="flex min-h-screen items-center justify-center bg-gray-100">
-    <div class="text-gray-500">Loading...</div>
+  <div
+    v-else
+    class="flex min-h-screen flex-col items-center justify-center bg-gray-50 dark:bg-stone-900"
+  >
+    <div
+      class="inline-block h-10 w-10 animate-spin rounded-full border-4 border-amber-600 border-t-transparent"
+    />
+    <p class="mt-3 text-sm text-gray-500 dark:text-stone-400">Loading...</p>
   </div>
   <ToastContainer />
 </template>

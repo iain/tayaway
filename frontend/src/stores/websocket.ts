@@ -92,11 +92,19 @@ export const useWebSocketStore = defineStore('websocket', () => {
   }
 
   async function getWebSocketUrl(): Promise<string> {
-    const { data } = await api.post<{ ticket: string }>(
-      '/auth/ws-ticket',
-      undefined,
-      { silent: true }
-    )
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
+    let data: { ticket: string }
+    try {
+      const result = await api.post<{ ticket: string }>(
+        '/auth/ws-ticket',
+        undefined,
+        { silent: true, signal: controller.signal }
+      )
+      data = result.data
+    } finally {
+      clearTimeout(timeout)
+    }
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
     let url = `${protocol}//${host}/ws?ticket=${encodeURIComponent(data.ticket)}`

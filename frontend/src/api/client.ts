@@ -78,7 +78,7 @@ class ApiClient {
   async post<T>(
     path: string,
     body?: unknown,
-    options?: { silent?: boolean }
+    options?: { silent?: boolean; signal?: AbortSignal }
   ): Promise<ApiResponse<T>> {
     return this.request<T>('POST', path, body, options)
   }
@@ -99,7 +99,7 @@ class ApiClient {
     method: string,
     path: string,
     body?: unknown,
-    options?: { silent?: boolean }
+    options?: { silent?: boolean; signal?: AbortSignal }
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${path}`
     const headers: HeadersInit = {
@@ -110,6 +110,7 @@ class ApiClient {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
+      signal: options?.signal,
     })
 
     if (!response.ok) {

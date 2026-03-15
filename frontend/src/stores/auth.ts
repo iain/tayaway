@@ -54,7 +54,13 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       loading.value = true
       // Use raw fetch to silently probe — avoids error notification on 401
-      const response = await fetch('/api/auth/me')
+      // Timeout after 5s so the app doesn't hang on bad connections (iOS PWA)
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 5000)
+      const response = await fetch('/api/auth/me', {
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
 
       if (response.ok) {
         const data = (await response.json()) as MeResponse

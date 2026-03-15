@@ -39,6 +39,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
     // Clear pool data except workspace objects (needed for the workspace selector)
     pool.clearExcept('workspace')
+
+    // Clear IndexedDB cache so stale data from the old workspace isn't
+    // loaded on next app restart
+    import('@/api/poolDb').then((poolDb) => poolDb.clearAll()).catch(() => {})
   }
 
   function $reset(): void {
