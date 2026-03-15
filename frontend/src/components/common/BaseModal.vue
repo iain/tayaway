@@ -57,7 +57,7 @@ const sizeClasses: Record<string, string> = {
   <dialog
     ref="dialogRef"
     :class="[
-      'm-auto rounded-lg bg-white p-6 text-left shadow-lg ring-1 ring-gray-600 backdrop:bg-gray-500/85 backdrop:backdrop-blur-[2px] sm:w-full dark:bg-stone-900 dark:ring-stone-800 dark:backdrop:bg-stone-900/80',
+      'm-auto rounded-lg bg-white p-6 text-left shadow-xl ring-1 ring-black/10 backdrop:bg-gray-500/85 backdrop:backdrop-blur-[2px] sm:w-full dark:bg-stone-900 dark:ring-white/10 dark:backdrop:bg-stone-900/80',
       sizeClasses[size ?? 'md'],
     ]"
     @close="handleClose"
@@ -67,7 +67,7 @@ const sizeClasses: Record<string, string> = {
       <button
         type="button"
         :disabled="preventClose"
-        class="rounded-md bg-white text-gray-500 hover:text-gray-700 focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 focus:ring-offset-white focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-stone-900 dark:text-stone-400 dark:hover:text-stone-300 dark:focus:ring-offset-stone-900"
+        class="rounded-md bg-white text-gray-500 hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-stone-900 dark:text-stone-400 dark:hover:text-stone-300 dark:focus-visible:ring-offset-stone-900"
         @click="handleClose"
       >
         <span class="sr-only">Close</span>

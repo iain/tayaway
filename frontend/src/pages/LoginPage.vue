@@ -29,7 +29,7 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <main class="flex min-h-screen items-center justify-center bg-stone-900">
+  <main class="dark flex min-h-screen items-center justify-center bg-stone-900">
     <div class="w-full max-w-md px-6">
       <h1
         data-testid="login-title"

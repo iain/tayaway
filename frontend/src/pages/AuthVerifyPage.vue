@@ -28,7 +28,7 @@ async function handleSignIn() {
 </script>
 
 <template>
-  <main class="flex min-h-screen items-center justify-center bg-stone-900">
+  <main class="dark flex min-h-screen items-center justify-center bg-stone-900">
     <div class="w-full max-w-md px-6 text-center">
       <div v-if="!error">
         <h1 class="mb-2 text-2xl font-bold text-white">Sign in to Tayaway</h1>

@@ -25,7 +25,7 @@ onMounted(async () => {
   <RouterView v-if="initialized" />
   <div
     v-else
-    class="flex min-h-screen flex-col items-center justify-center bg-gray-50 dark:bg-stone-900"
+    class="flex min-h-screen flex-col items-center justify-center bg-gray-100 dark:bg-stone-900"
   >
     <div
       class="inline-block h-10 w-10 animate-spin rounded-full border-4 border-amber-600 border-t-transparent"

@@ -29,7 +29,7 @@ async function handleVerify() {
 </script>
 
 <template>
-  <main class="flex min-h-screen items-center justify-center bg-stone-900">
+  <main class="dark flex min-h-screen items-center justify-center bg-stone-900">
     <div class="w-full max-w-md px-6 text-center">
       <div v-if="success" data-testid="email-change-success">
         <h1 class="mb-2 text-2xl font-bold text-white">Email updated</h1>

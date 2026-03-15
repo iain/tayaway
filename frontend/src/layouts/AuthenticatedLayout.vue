@@ -141,7 +141,7 @@ async function handleSignOut() {
   <!-- Loading screen while waiting for initial sync -->
   <div
     v-if="!hasSynced && !hasCachedData"
-    class="flex min-h-screen flex-col items-center justify-center bg-gray-50 dark:bg-stone-900"
+    class="flex min-h-screen flex-col items-center justify-center bg-gray-100 dark:bg-stone-900"
   >
     <div class="text-center">
       <div

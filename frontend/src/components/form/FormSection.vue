@@ -7,7 +7,9 @@ defineProps<{
 </script>
 
 <template>
-  <div :class="border ? 'border-b border-white/10 pb-12' : ''">
+  <div
+    :class="border ? 'border-b border-gray-200 pb-12 dark:border-white/10' : ''"
+  >
     <h2 class="text-base/7 font-semibold text-gray-900 dark:text-white">
       {{ title }}
     </h2>

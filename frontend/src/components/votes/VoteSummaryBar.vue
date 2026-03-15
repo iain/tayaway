@@ -28,17 +28,17 @@ const percentages = computed(() => {
     >
       <div
         v-if="percentages.yes > 0"
-        class="bg-green-500"
+        class="bg-green-500 transition-all duration-300"
         :style="{ width: `${percentages.yes}%` }"
       />
       <div
         v-if="percentages.preferablyNot > 0"
-        class="bg-yellow-500"
+        class="bg-yellow-500 transition-all duration-300"
         :style="{ width: `${percentages.preferablyNot}%` }"
       />
       <div
         v-if="percentages.no > 0"
-        class="bg-red-500"
+        class="bg-red-500 transition-all duration-300"
         :style="{ width: `${percentages.no}%` }"
       />
     </div>
