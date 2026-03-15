@@ -137,19 +137,24 @@ export const useWebSocketStore = defineStore('websocket', () => {
       const url = await getWebSocketUrl()
       socket = new WebSocket(url)
 
-      socket.onopen = () => {}
+      socket.onopen = () => {
+        console.info('[WebSocket] Connected')
+      }
 
       socket.onmessage = (event) => {
         handleMessage(event.data)
       }
 
-      socket.onclose = () => {
+      socket.onclose = (event) => {
+        console.warn(
+          `[WebSocket] Closed — code: ${event.code}, reason: ${event.reason || '(none)'}, reconnect attempt: ${reconnectAttempts + 1}`
+        )
         cleanup()
         scheduleReconnect()
       }
 
-      socket.onerror = () => {
-        // Error will trigger close event
+      socket.onerror = (event) => {
+        console.warn('[WebSocket] Error', event)
       }
     } catch (e) {
       state.value = 'disconnected'
