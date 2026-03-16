@@ -53,7 +53,7 @@ module ChoreRosters
         availability = build_availability(dates, rsvps, event_start, event_end)
 
         chores = Chore.for_roster(roster.id)
-        deleted = []
+        deleted = T.let([], T::Array[T::Hash[Symbol, String]])
         pool = PoolSerializer.new(workspace_id: workspace_id)
 
         DB.transaction do
@@ -64,15 +64,14 @@ module ChoreRosters
                            .where(Sequel[:chore_assignments][:pinned] => false)
                            .select_map(Sequel[:chore_assignments][:id])
 
-          non_pinned_ids.each do |aid|
-            DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "chore_assignment", object_id: aid)
-            Broadcaster.object_deleted("chore_assignment", aid, workspace_id: workspace_id)
-            deleted << { objectType: "choreAssignment", id: aid.to_s }
+          if non_pinned_ids.any?
+            deleted_rows = non_pinned_ids.map do |aid|
+              { workspace_id: workspace_id, object_type: "chore_assignment", object_id: aid }
+            end
+            DB[:deleted_items].multi_insert(deleted_rows)
+            deleted = non_pinned_ids.map { |aid| { objectType: "choreAssignment", id: aid.to_s } }
+            DB[:chore_assignments].where(id: non_pinned_ids).delete
           end
-
-          DB[:chore_assignments]
-            .where(id: non_pinned_ids)
-            .delete if non_pinned_ids.any?
 
           # Compute load from pinned assignments
           pinned = ChoreAssignment.for_roster(roster.id)
@@ -101,6 +100,7 @@ module ChoreRosters
 
           # For each day (chronological), for each chore, fill empty slots
           now = Time.now
+          new_rows = []
           dates.each_with_index do |date, day_index|
             available_today = availability[date] || Set.new
 
@@ -138,9 +138,8 @@ module ChoreRosters
 
                 next unless chosen
 
-                assignment_id = SecureRandom.uuid
-                DB[:chore_assignments].insert(
-                  id: assignment_id,
+                new_rows << {
+                  id: SecureRandom.uuid,
                   chore_id: chore.id,
                   user_id: chosen,
                   date: date,
@@ -148,8 +147,7 @@ module ChoreRosters
                   note: nil,
                   created_at: now,
                   updated_at: now
-                )
-                Broadcaster.object_changed("chore_assignment", assignment_id, workspace_id: workspace_id)
+                }
 
                 # Update trackers
                 load_count[chosen] += 1
@@ -157,11 +155,12 @@ module ChoreRosters
                 day_assignments[date] << chosen
                 chore_day_assignments[[chore.id.to_s, date]] << chosen
               end
-
-              Broadcaster.object_changed("chore", chore.id, workspace_id: workspace_id)
             end
           end
 
+          DB[:chore_assignments].multi_insert(new_rows) if new_rows.any?
+
+          # Single broadcast for the entire roster change
           Broadcaster.object_changed("chore_roster", roster.id, workspace_id: workspace_id)
         end
 

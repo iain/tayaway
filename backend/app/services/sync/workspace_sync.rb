@@ -44,9 +44,7 @@ module Sync
         end
 
         # Include all members so the frontend can resolve userId references
-        WorkspaceMembership.for_workspace(workspace_id).each do |m|
-          pool.add_member_from_membership(m)
-        end
+        pool.add_members_batch(WorkspaceMembership.for_workspace(workspace_id))
 
         deleted = if full
                     []

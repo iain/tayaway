@@ -36,6 +36,23 @@ class PoolSerializer
     add_member_from_membership(membership)
   end
 
+  # Batch-add members with a single User query instead of N+1
+  sig { params(memberships: T::Array[WorkspaceMembership]).void }
+  def add_members_batch(memberships)
+    new_memberships = memberships.reject { |m| @objects.key?("member:#{m.id}") }
+    return if new_memberships.empty?
+
+    user_ids = new_memberships.map { |m| m.user_id.to_s }
+    users_by_id = User.for_ids(user_ids).each_with_object({}) { |u, h| h[u.id.to_s] = u }
+
+    new_memberships.each do |m|
+      user = users_by_id[m.user_id.to_s]
+      next unless user
+
+      @objects["member:#{m.id}"] = build_member_hash(user, m)
+    end
+  end
+
   sig { params(event: Event).void }
   def add_event(event)
     key = "event:#{event.id}"
@@ -138,9 +155,23 @@ class PoolSerializer
     key = "chore_roster:#{roster.id}"
     return if @objects.key?(key)
 
-    chore_ids = Chore.ids_for_roster(roster.id)
+    chores = Chore.for_roster(roster.id)
+    chore_ids = chores.map { |c| c.id.to_s }
     @objects[key] = roster.to_api_hash(chore_ids: chore_ids)
-    Chore.for_roster(roster.id).each { |chore| add_chore(chore) }
+
+    # Batch-load all assignments for this roster in one query
+    all_assignments = ChoreAssignment.for_roster(roster.id)
+    assignments_by_chore = all_assignments.group_by { |a| a.chore_id.to_s }
+
+    chores.each do |chore|
+      chore_key = "chore:#{chore.id}"
+      next if @objects.key?(chore_key)
+
+      chore_assignments = assignments_by_chore[chore.id.to_s] || []
+      assignment_ids = chore_assignments.map { |a| a.id.to_s }
+      @objects[chore_key] = chore.to_api_hash(assignment_ids: assignment_ids)
+      chore_assignments.each { |a| add_chore_assignment(a) }
+    end
   end
 
   sig { params(chore: Chore).void }
@@ -148,9 +179,10 @@ class PoolSerializer
     key = "chore:#{chore.id}"
     return if @objects.key?(key)
 
-    assignment_ids = ChoreAssignment.ids_for_chore(chore.id)
+    assignments = ChoreAssignment.for_chore(chore.id)
+    assignment_ids = assignments.map { |a| a.id.to_s }
     @objects[key] = chore.to_api_hash(assignment_ids: assignment_ids)
-    ChoreAssignment.for_chore(chore.id).each { |a| add_chore_assignment(a) }
+    assignments.each { |a| add_chore_assignment(a) }
   end
 
   sig { params(assignment: ChoreAssignment).void }
