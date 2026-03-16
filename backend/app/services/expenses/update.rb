@@ -104,7 +104,10 @@ module Expenses
               Result[Expense, ServiceError]
             )
           end
-          if sd > ed
+          parsed_sd = Date.parse(sd)
+          parsed_ed = Date.parse(ed)
+
+          if parsed_sd > parsed_ed
             return T.cast(
               Failure(ServiceError.validation("Start date must be on or before end date")),
               Result[Expense, ServiceError]
@@ -113,7 +116,7 @@ module Expenses
 
           event = Event.find(expense.event_id)
           if event&.start_date && event.end_date
-            if Date.parse(sd) < event.start_date || Date.parse(ed) > event.end_date
+            if parsed_sd < event.start_date || parsed_ed > event.end_date
               return T.cast(
                 Failure(ServiceError.validation("Expense dates must fall within event date range")),
                 Result[Expense, ServiceError]
