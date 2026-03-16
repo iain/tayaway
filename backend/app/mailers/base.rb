@@ -34,14 +34,16 @@ module Mailers
         APP_LOGGER.info { "[Mailer] Sending email to #{recipients} (subject: #{message.subject})" }
         message.deliver
         APP_LOGGER.info { "[Mailer] Email delivered to #{recipients}" }
-      rescue StandardError => e
-        APP_LOGGER.error { "[Mailer] Failed to deliver email to #{message.to&.join(", ")}: #{e.class} - #{e.message}" }
       end
 
       sig { params(message: Mail::Message).void }
       def deliver_later(message)
         if APP_ENV == "production"
-          Thread.new { deliver(message) }
+          Thread.new do
+            deliver(message)
+          rescue StandardError => e
+            APP_LOGGER.error { "[Mailer] Failed to deliver email to #{message.to&.join(", ")}: #{e.class} - #{e.message}" }
+          end
         else
           deliver(message)
         end

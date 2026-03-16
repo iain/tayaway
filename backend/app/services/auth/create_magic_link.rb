@@ -42,10 +42,11 @@ module Auth
           workspaces = Workspace.for_user(user.id)
           workspace_name = workspaces.length == 1 ? T.must(workspaces.first).name : "Tayaway"
 
-          APP_LOGGER.debug { "MAGIC LINK FOR #{email}: #{magic_link}" }
+          APP_LOGGER.info { "[Auth::CreateMagicLink] Magic link requested for user #{user.id}" }
+          APP_LOGGER.debug { "MAGIC LINK FOR #{email}: #{magic_link}" } if ENV["DEBUG_AUTH_LINKS"]
           Mailers::MagicLink.send_email(email: email, magic_link: magic_link, workspace_name: workspace_name)
         else
-          APP_LOGGER.debug { "No user found for email #{email}" }
+          APP_LOGGER.info { "[Auth::CreateMagicLink] Magic link requested for unknown email" }
         end
 
         T.cast(Success({ message: "If an account exists with this email, a magic link has been sent." }), Result[T::Hash[Symbol, String], ServiceError])

@@ -92,7 +92,7 @@ module Invites
         workspace = Workspace.find(invite.workspace_id)
         workspace_name = workspace ? workspace.name : "Tayaway"
 
-        APP_LOGGER.debug { "REMINDER INVITE LINK FOR #{invite.email}: #{invite_link}" }
+        APP_LOGGER.debug { "REMINDER INVITE LINK FOR #{invite.email}: #{invite_link}" } if ENV["DEBUG_AUTH_LINKS"]
         Mailers::WorkspaceInvite.send_email(
           email: invite.email,
           invite_link: invite_link,

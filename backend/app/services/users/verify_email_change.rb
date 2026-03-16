@@ -97,6 +97,7 @@ module Users
           end
         end
 
+        APP_LOGGER.info { "[Users::VerifyEmailChange] User #{email_token.user_id} changed email from #{email_token.email} to #{email_token.new_email}" }
         T.cast(
           Success({ message: "Your email has been updated successfully." }),
           Result[T::Hash[Symbol, String], ServiceError]

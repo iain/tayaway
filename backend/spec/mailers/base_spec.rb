@@ -13,14 +13,11 @@ RSpec.describe Mailers::Base do
       expect(Mail::TestMailer.deliveries.first.to).to eq(["test@example.com"])
     end
 
-    it "logs and swallows errors instead of raising" do
+    it "raises errors so callers can handle delivery failures" do
       message = Mail.new(to: "test@example.com", from: "noreply@tayaway.com", subject: "Test")
       allow(message).to receive(:deliver).and_raise(StandardError, "SMTP connection failed")
-      allow(APP_LOGGER).to receive(:error)
 
-      expect { described_class.deliver(message) }.not_to raise_error
-
-      expect(APP_LOGGER).to have_received(:error)
+      expect { described_class.deliver(message) }.to raise_error(StandardError, "SMTP connection failed")
     end
   end
 

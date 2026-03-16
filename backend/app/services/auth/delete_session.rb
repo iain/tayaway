@@ -45,6 +45,7 @@ module Auth
       sig { params(session: Session).returns(Result[T::Hash[Symbol, String], ServiceError]) }
       def destroy(session)
         DB[:sessions].where(id: session.id.to_s).delete
+        APP_LOGGER.info { "[Auth::DeleteSession] Session #{session.id} deleted for user #{session.user_id}" }
         T.cast(Success({ message: "Session ended successfully" }), Result[T::Hash[Symbol, String], ServiceError])
       end
     end

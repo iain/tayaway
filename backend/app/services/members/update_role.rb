@@ -84,6 +84,7 @@ module Members
           )
         end
 
+        APP_LOGGER.info { "[Members::UpdateRole] User #{acting_user_id} changed member #{target.id} role from #{target.role} to #{new_role} in workspace #{target.workspace_id}" }
         DB[:workspace_memberships]
           .where(id: target.id.to_s)
           .update(role: new_role, updated_at: Time.now)

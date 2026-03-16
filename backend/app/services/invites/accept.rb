@@ -97,6 +97,8 @@ module Invites
 
         user = T.must(user)
 
+        APP_LOGGER.info { "[Invites::Accept] User #{user.id} (#{user.email}) accepted invite to workspace #{invite.workspace_id}" }
+
         # Broadcast new member
         Broadcaster.object_changed("member", membership_id, workspace_id: invite.workspace_id.to_s)
 
@@ -133,7 +135,7 @@ module Invites
         workspaces = Workspace.for_user(user.id)
         workspace_name = workspaces.length == 1 ? T.must(workspaces.first).name : "Tayaway"
 
-        APP_LOGGER.debug { "MAGIC LINK FOR #{user.email}: #{magic_link}" }
+        APP_LOGGER.debug { "MAGIC LINK FOR #{user.email}: #{magic_link}" } if ENV["DEBUG_AUTH_LINKS"]
         Mailers::MagicLink.send_email(email: user.email, magic_link: magic_link, workspace_name: workspace_name)
       end
     end

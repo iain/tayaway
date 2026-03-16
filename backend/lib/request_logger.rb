@@ -19,6 +19,10 @@ class RequestLogger
     status, headers, body = @app.call(env)
     log(env, status, began_at)
     [status, headers, body]
+  rescue StandardError => e
+    log(env, 500, T.must(began_at))
+    APP_LOGGER.error { "#{e.class}: #{e.message}\n#{e.backtrace&.first(10)&.join("\n")}" }
+    raise
   end
 
   private

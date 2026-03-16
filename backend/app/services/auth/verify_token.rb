@@ -36,7 +36,8 @@ module Auth
 
         decoded = Auth::Token.decode_magic_link(jwt)
         T.cast(Success(decoded), Result[T::Hash[Symbol, String], ServiceError])
-      rescue JWT::DecodeError
+      rescue JWT::DecodeError => e
+        APP_LOGGER.warn { "[Auth] Magic link verification failed: #{e.class}" }
         T.cast(Failure(ServiceError.unauthorized("Invalid or expired magic link")), Result[T::Hash[Symbol, String], ServiceError])
       end
 
@@ -77,6 +78,7 @@ module Auth
           created_at: now
         )
 
+        APP_LOGGER.info { "[Auth::VerifyToken] Session created for user #{user_id}" }
         T.cast(Success({
           session_token: token,
           user_id: user_id

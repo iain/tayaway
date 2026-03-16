@@ -104,7 +104,7 @@ module Invites
         workspace = Workspace.find(workspace_id)
         workspace_name = workspace ? workspace.name : "Tayaway"
 
-        APP_LOGGER.debug { "INVITE LINK FOR #{email}: #{invite_link}" }
+        APP_LOGGER.debug { "INVITE LINK FOR #{email}: #{invite_link}" } if ENV["DEBUG_AUTH_LINKS"]
         Mailers::WorkspaceInvite.send_email(email: email, invite_link: invite_link, workspace_name: workspace_name, name: name)
 
         Broadcaster.object_changed("workspace_invite", id, workspace_id: workspace_id.to_s)

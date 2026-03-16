@@ -27,7 +27,9 @@ RSpec.describe Auth::CreateMagicLink do
     TestFactories.user(email: "test@example.com")
     allow(APP_LOGGER).to receive(:debug)
 
+    ENV["DEBUG_AUTH_LINKS"] = "1"
     described_class.call(email: "test@example.com")
+    ENV.delete("DEBUG_AUTH_LINKS")
 
     expect(APP_LOGGER).to have_received(:debug) do |&block|
       expect(block.call).to match(/auth\/verify\?token=eyJ/)

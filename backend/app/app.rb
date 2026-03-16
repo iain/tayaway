@@ -70,6 +70,7 @@ class App < Roda
     user = current_user
     return user if user
 
+    APP_LOGGER.warn { "[Auth] Unauthorized request: #{request.request_method} #{request.path_info} from #{request.ip}" }
     request.halt [401, { "Content-Type" => "application/json" }, ['{"error":"Authorization required"}']]
   end
 
@@ -90,6 +91,7 @@ class App < Roda
     membership = WorkspaceMembership.find_by_workspace_and_user(workspace_id, current_user.id)
     return if membership && %w[admin owner].include?(membership.role)
 
+    APP_LOGGER.warn { "[Auth] Forbidden: user #{current_user.id} lacks admin/owner role for workspace #{workspace_id} on #{request.request_method} #{request.path_info}" }
     request.halt [403, { "Content-Type" => "application/json" }, ['{"error":"Admin or owner role required"}']]
   end
 
