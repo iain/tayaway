@@ -118,35 +118,55 @@ function openQrModal(transfer: PoolSettlementTransfer) {
   showQrModal.value = true
 }
 
-function attendeeCount(eventId: string): number {
+// Precompute attendee counts by event ID — O(rsvps) instead of O(events * rsvps)
+const attendeeCountByEvent = computed<Map<string, number>>(() => {
   void pool.version
-  return pool.getAll('rsvp').filter((r) => r.eventId === eventId && r.attending)
-    .length
-}
+  const counts = new Map<string, number>()
+  for (const r of pool.getAll('rsvp')) {
+    if (r.attending) {
+      counts.set(r.eventId, (counts.get(r.eventId) ?? 0) + 1)
+    }
+  }
+  return counts
+})
 
-function unsettledExpenseCount(eventId: string): number {
+// Precompute unsettled expense counts by event ID — O(expenses) instead of O(events * expenses)
+const unsettledExpenseCountByEvent = computed<Map<string, number>>(() => {
   void pool.version
-  return pool
-    .getAll('expense')
-    .filter((e) => e.eventId === eventId && !e.settlementId).length
-}
+  const counts = new Map<string, number>()
+  for (const e of pool.getAll('expense')) {
+    if (!e.settlementId) {
+      counts.set(e.eventId, (counts.get(e.eventId) ?? 0) + 1)
+    }
+  }
+  return counts
+})
 
-function unpaidTransferCount(eventId: string): number {
+// Precompute unpaid transfer counts by event ID — O(settlements + transfers) instead of O(events * (settlements + transfers))
+const unpaidTransferCountByEvent = computed<Map<string, number>>(() => {
   void pool.version
-  const settlementIds = pool
-    .getAll('settlement')
-    .filter((s) => s.eventId === eventId)
-    .map((s) => s.id)
-  if (settlementIds.length === 0) return 0
-  const settlementIdSet = new Set(settlementIds)
-  return pool
-    .getAll('settlementTransfer')
-    .filter((t) => settlementIdSet.has(t.settlementId) && !t.paidAt).length
-}
+  // Build a map from settlementId -> eventId in one pass
+  const eventBySettlement = new Map<string, string>()
+  for (const s of pool.getAll('settlement')) {
+    eventBySettlement.set(s.id, s.eventId)
+  }
+  const counts = new Map<string, number>()
+  for (const t of pool.getAll('settlementTransfer')) {
+    if (!t.paidAt) {
+      const eventId = eventBySettlement.get(t.settlementId)
+      if (eventId) {
+        counts.set(eventId, (counts.get(eventId) ?? 0) + 1)
+      }
+    }
+  }
+  return counts
+})
 
 const pastEventsWithOpenExpenses = computed(() =>
   pastEvents.value.filter(
-    (e) => unsettledExpenseCount(e.id) > 0 || unpaidTransferCount(e.id) > 0
+    (e) =>
+      (unsettledExpenseCountByEvent.value.get(e.id) ?? 0) > 0 ||
+      (unpaidTransferCountByEvent.value.get(e.id) ?? 0) > 0
   )
 )
 
@@ -491,15 +511,15 @@ function navigateToEventPage(eventId: string): void {
                   class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 transition-colors hover:bg-rose-100 hover:text-rose-700 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
                 >
                   <UserGroupIcon class="size-4" />
-                  {{ attendeeCount(event.id) }} attending
+                  {{ attendeeCountByEvent.get(event.id) ?? 0 }} attending
                 </router-link>
                 <router-link
-                  v-if="unpaidTransferCount(event.id) > 0"
+                  v-if="(unpaidTransferCountByEvent.get(event.id) ?? 0) > 0"
                   :to="`/events/${event.id}/expenses`"
                   class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 transition-colors hover:bg-rose-100 hover:text-rose-700 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
                 >
                   <BanknotesIcon class="size-4" />
-                  {{ unpaidTransferCount(event.id) }} unpaid
+                  {{ unpaidTransferCountByEvent.get(event.id) ?? 0 }} unpaid
                 </router-link>
               </div>
             </div>
@@ -556,20 +576,20 @@ function navigateToEventPage(eventId: string): void {
               </div>
               <div class="mt-3 flex flex-wrap gap-2">
                 <router-link
-                  v-if="unsettledExpenseCount(event.id) > 0"
+                  v-if="(unsettledExpenseCountByEvent.get(event.id) ?? 0) > 0"
                   :to="`/events/${event.id}/expenses`"
                   class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 transition-colors hover:bg-rose-100 hover:text-rose-700 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
                 >
                   <BanknotesIcon class="size-4" />
-                  {{ unsettledExpenseCount(event.id) }} unsettled
+                  {{ unsettledExpenseCountByEvent.get(event.id) ?? 0 }} unsettled
                 </router-link>
                 <router-link
-                  v-if="unpaidTransferCount(event.id) > 0"
+                  v-if="(unpaidTransferCountByEvent.get(event.id) ?? 0) > 0"
                   :to="`/events/${event.id}/expenses`"
                   class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 transition-colors hover:bg-rose-100 hover:text-rose-700 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
                 >
                   <BanknotesIcon class="size-4" />
-                  {{ unpaidTransferCount(event.id) }} unpaid
+                  {{ unpaidTransferCountByEvent.get(event.id) ?? 0 }} unpaid
                 </router-link>
               </div>
             </div>

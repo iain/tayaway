@@ -1,34 +1,9 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
+import { useObjectPoolStore } from './objectPool'
+import type { ObjectTypeMap } from '@/types/pool'
 
-vi.mock('@/api/client', () => ({
-  api: {
-    post: vi.fn().mockResolvedValue({ data: { ticket: 'test-ticket' } }),
-  },
-}))
-
-vi.mock('./auth', () => ({
-  useAuthStore: vi.fn(() => ({ isAuthenticated: true, $reset: vi.fn() })),
-}))
-
-vi.mock('./workspace', () => ({
-  useWorkspaceStore: vi.fn(() => ({
-    currentWorkspaceId: 'ws-1',
-    initialize: vi.fn(),
-  })),
-}))
-
-vi.mock('./commandQueue', () => ({
-  useCommandQueueStore: vi.fn(() => ({ processQueue: vi.fn() })),
-}))
-
-vi.mock('./notifications', () => ({
-  useNotificationsStore: vi.fn(() => ({ showUpdate: vi.fn() })),
-}))
-
-vi.mock('@/router', () => ({
-  default: { push: vi.fn() },
-}))
+// ---- WebSocket mock --------------------------------------------------------
 
 type MockSocket = {
   onopen: ((event: Event) => void) | null
@@ -64,6 +39,195 @@ function installWebSocketMock() {
     configurable: true,
   })
 }
+
+vi.mock('@/api/client', () => ({
+  api: {
+    post: vi.fn().mockResolvedValue({ data: { ticket: 'test-ticket' } }),
+  },
+}))
+
+vi.mock('./auth', () => ({
+  useAuthStore: vi.fn(() => ({ isAuthenticated: true, $reset: vi.fn() })),
+}))
+
+vi.mock('./workspace', () => ({
+  useWorkspaceStore: vi.fn(() => ({
+    currentWorkspaceId: 'ws-1',
+    initialize: vi.fn(),
+  })),
+}))
+
+vi.mock('./commandQueue', () => ({
+  useCommandQueueStore: vi.fn(() => ({ processQueue: vi.fn() })),
+}))
+
+vi.mock('./notifications', () => ({
+  useNotificationsStore: vi.fn(() => ({ showUpdate: vi.fn() })),
+}))
+
+vi.mock('@/router', () => ({
+  default: { push: vi.fn() },
+}))
+
+// ---- Helpers ---------------------------------------------------------------
+
+function ts(offset = 0): string {
+  return new Date(Date.now() + offset).toISOString()
+}
+
+function makeEvent(
+  overrides: Partial<ObjectTypeMap['event']> = {}
+): ObjectTypeMap['event'] {
+  return {
+    id: 'evt-1',
+    objectType: 'event',
+    name: 'Test Event',
+    description: null,
+    startDate: null,
+    endDate: null,
+    locationName: null,
+    latitude: null,
+    longitude: null,
+    workspaceId: 'ws-1',
+    userId: 'user-1',
+    datePollId: null,
+    rsvpIds: [],
+    createdAt: ts(),
+    updatedAt: ts(),
+    ...overrides,
+  }
+}
+
+function makeRsvp(
+  overrides: Partial<ObjectTypeMap['rsvp']> = {}
+): ObjectTypeMap['rsvp'] {
+  return {
+    id: 'rsvp-1',
+    objectType: 'rsvp',
+    eventId: 'evt-1',
+    userId: 'user-1',
+    attending: true,
+    startDate: null,
+    endDate: null,
+    createdAt: ts(),
+    updatedAt: ts(),
+    ...overrides,
+  }
+}
+
+function makeExpense(
+  overrides: Partial<ObjectTypeMap['expense']> = {}
+): ObjectTypeMap['expense'] {
+  return {
+    id: 'exp-1',
+    objectType: 'expense',
+    eventId: 'evt-1',
+    userId: 'user-1',
+    settlementId: null,
+    description: 'Hotel',
+    amount: 100,
+    startDate: '2026-03-01',
+    endDate: '2026-03-03',
+    createdAt: ts(),
+    updatedAt: ts(),
+    ...overrides,
+  }
+}
+
+function makeSettlement(
+  overrides: Partial<ObjectTypeMap['settlement']> = {}
+): ObjectTypeMap['settlement'] {
+  return {
+    id: 'settle-1',
+    objectType: 'settlement',
+    eventId: 'evt-1',
+    userId: 'user-1',
+    transferIds: [],
+    createdAt: ts(),
+    updatedAt: ts(),
+    ...overrides,
+  }
+}
+
+function makeSettlementTransfer(
+  overrides: Partial<ObjectTypeMap['settlementTransfer']> = {}
+): ObjectTypeMap['settlementTransfer'] {
+  return {
+    id: 'transfer-1',
+    objectType: 'settlementTransfer',
+    settlementId: 'settle-1',
+    fromUserId: 'user-1',
+    toUserId: 'user-2',
+    amount: 50,
+    paidAt: null,
+    createdAt: ts(),
+    updatedAt: ts(),
+    ...overrides,
+  }
+}
+
+function makeChoreRoster(
+  overrides: Partial<ObjectTypeMap['choreRoster']> = {}
+): ObjectTypeMap['choreRoster'] {
+  return {
+    id: 'roster-1',
+    objectType: 'choreRoster',
+    eventId: 'evt-1',
+    userId: 'user-1',
+    choreIds: [],
+    createdAt: ts(),
+    updatedAt: ts(),
+    ...overrides,
+  }
+}
+
+function makeChore(
+  overrides: Partial<ObjectTypeMap['chore']> = {}
+): ObjectTypeMap['chore'] {
+  return {
+    id: 'chore-1',
+    objectType: 'chore',
+    choreRosterId: 'roster-1',
+    name: 'Dishes',
+    peoplePerDay: 1,
+    position: 1,
+    assignmentIds: [],
+    createdAt: ts(),
+    updatedAt: ts(),
+    ...overrides,
+  }
+}
+
+function makeChoreAssignment(
+  overrides: Partial<ObjectTypeMap['choreAssignment']> = {}
+): ObjectTypeMap['choreAssignment'] {
+  return {
+    id: 'assign-1',
+    objectType: 'choreAssignment',
+    choreId: 'chore-1',
+    userId: 'user-1',
+    date: '2026-03-10',
+    pinned: false,
+    note: null,
+    createdAt: ts(),
+    updatedAt: ts(),
+    ...overrides,
+  }
+}
+
+/** Send a broadcast-delete message through the WebSocket mock. */
+function sendDeleteBroadcast(objectType: string, id: string): void {
+  lastSocket.onmessage!({
+    data: JSON.stringify({
+      type: 'broadcast',
+      workspaceId: 'ws-1',
+      action: 'delete',
+      data: { deleted: [{ objectType, id }] },
+    }),
+  } as MessageEvent)
+}
+
+// ---- Connection logging tests ----------------------------------------------
 
 describe('useWebSocketStore — connection logging', () => {
   beforeEach(() => {
@@ -141,5 +305,128 @@ describe('useWebSocketStore — connection logging', () => {
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining('reconnect attempt: 1')
     )
+  })
+})
+
+// ---- Cascade delete tests --------------------------------------------------
+
+describe('websocket store — cascade delete', () => {
+  beforeEach(async () => {
+    installWebSocketMock()
+    setActivePinia(createPinia())
+
+    // Connect so the socket's onmessage handler is set up
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+    await store.connect()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.resetModules()
+  })
+
+  it('deleting an event cascades to rsvp', () => {
+    const pool = useObjectPoolStore()
+    pool.importObjects([makeEvent(), makeRsvp()])
+
+    sendDeleteBroadcast('event', 'evt-1')
+
+    expect(pool.get('event', 'evt-1')).toBeUndefined()
+    expect(pool.get('rsvp', 'rsvp-1')).toBeUndefined()
+  })
+
+  it('deleting an event cascades to expense', () => {
+    const pool = useObjectPoolStore()
+    pool.importObjects([makeEvent(), makeExpense()])
+
+    sendDeleteBroadcast('event', 'evt-1')
+
+    expect(pool.get('event', 'evt-1')).toBeUndefined()
+    expect(pool.get('expense', 'exp-1')).toBeUndefined()
+  })
+
+  it('deleting an event cascades to settlement and its transfers', () => {
+    const pool = useObjectPoolStore()
+    pool.importObjects([makeEvent(), makeSettlement(), makeSettlementTransfer()])
+
+    sendDeleteBroadcast('event', 'evt-1')
+
+    expect(pool.get('event', 'evt-1')).toBeUndefined()
+    expect(pool.get('settlement', 'settle-1')).toBeUndefined()
+    expect(pool.get('settlementTransfer', 'transfer-1')).toBeUndefined()
+  })
+
+  it('deleting an event cascades to choreRoster, chore, and choreAssignment', () => {
+    const pool = useObjectPoolStore()
+    pool.importObjects([
+      makeEvent(),
+      makeChoreRoster(),
+      makeChore(),
+      makeChoreAssignment(),
+    ])
+
+    sendDeleteBroadcast('event', 'evt-1')
+
+    expect(pool.get('event', 'evt-1')).toBeUndefined()
+    expect(pool.get('choreRoster', 'roster-1')).toBeUndefined()
+    expect(pool.get('chore', 'chore-1')).toBeUndefined()
+    expect(pool.get('choreAssignment', 'assign-1')).toBeUndefined()
+  })
+
+  it('deleting a settlement cascades to settlementTransfer', () => {
+    const pool = useObjectPoolStore()
+    pool.importObjects([makeSettlement(), makeSettlementTransfer()])
+
+    sendDeleteBroadcast('settlement', 'settle-1')
+
+    expect(pool.get('settlement', 'settle-1')).toBeUndefined()
+    expect(pool.get('settlementTransfer', 'transfer-1')).toBeUndefined()
+  })
+
+  it('deleting a choreRoster cascades to chore and choreAssignment', () => {
+    const pool = useObjectPoolStore()
+    pool.importObjects([makeChoreRoster(), makeChore(), makeChoreAssignment()])
+
+    sendDeleteBroadcast('choreRoster', 'roster-1')
+
+    expect(pool.get('choreRoster', 'roster-1')).toBeUndefined()
+    expect(pool.get('chore', 'chore-1')).toBeUndefined()
+    expect(pool.get('choreAssignment', 'assign-1')).toBeUndefined()
+  })
+
+  it('deleting a chore cascades to choreAssignment', () => {
+    const pool = useObjectPoolStore()
+    pool.importObjects([makeChore(), makeChoreAssignment()])
+
+    sendDeleteBroadcast('chore', 'chore-1')
+
+    expect(pool.get('chore', 'chore-1')).toBeUndefined()
+    expect(pool.get('choreAssignment', 'assign-1')).toBeUndefined()
+  })
+
+  it('only removes children that belong to the deleted parent', () => {
+    const pool = useObjectPoolStore()
+    pool.importObjects([
+      makeEvent({ id: 'evt-1' }),
+      makeEvent({ id: 'evt-2' }),
+      makeRsvp({ id: 'rsvp-1', eventId: 'evt-1' }),
+      makeRsvp({ id: 'rsvp-2', eventId: 'evt-2' }),
+    ])
+
+    sendDeleteBroadcast('event', 'evt-1')
+
+    expect(pool.get('event', 'evt-1')).toBeUndefined()
+    expect(pool.get('rsvp', 'rsvp-1')).toBeUndefined()
+    expect(pool.get('event', 'evt-2')).toBeDefined()
+    expect(pool.get('rsvp', 'rsvp-2')).toBeDefined()
+  })
+
+  it('handles cascade delete when there are no children', () => {
+    const pool = useObjectPoolStore()
+    pool.importObjects([makeEvent()])
+
+    expect(() => sendDeleteBroadcast('event', 'evt-1')).not.toThrow()
+    expect(pool.get('event', 'evt-1')).toBeUndefined()
   })
 })

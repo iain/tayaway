@@ -57,10 +57,19 @@ interface ServerMessage {
 const CASCADE_RELATIONS: Partial<
   Record<ObjectType, { childType: ObjectType; foreignKey: string }[]>
 > = {
-  event: [{ childType: 'datePoll', foreignKey: 'eventId' }],
+  event: [
+    { childType: 'datePoll', foreignKey: 'eventId' },
+    { childType: 'rsvp', foreignKey: 'eventId' },
+    { childType: 'expense', foreignKey: 'eventId' },
+    { childType: 'settlement', foreignKey: 'eventId' },
+    { childType: 'choreRoster', foreignKey: 'eventId' },
+  ],
   datePoll: [{ childType: 'dateRange', foreignKey: 'datePollId' }],
   dateRange: [{ childType: 'vote', foreignKey: 'dateRangeId' }],
   taskList: [{ childType: 'taskItem', foreignKey: 'taskListId' }],
+  settlement: [{ childType: 'settlementTransfer', foreignKey: 'settlementId' }],
+  choreRoster: [{ childType: 'chore', foreignKey: 'choreRosterId' }],
+  chore: [{ childType: 'choreAssignment', foreignKey: 'choreId' }],
 }
 
 export const useWebSocketStore = defineStore('websocket', () => {

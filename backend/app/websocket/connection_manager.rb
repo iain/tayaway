@@ -91,6 +91,7 @@ module Websocket
           connection.websocket.flush
         rescue StandardError => e
           APP_LOGGER.error { "[ConnectionManager] Error broadcasting to workspace #{workspace_id}, conn #{connection_id}: #{e.message}" }
+          unregister(connection_id)
         end
       end
     end

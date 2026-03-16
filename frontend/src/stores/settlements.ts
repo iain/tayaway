@@ -3,7 +3,7 @@ import { useMutation } from '@/composables/useMutation'
 import type { PoolApiResponse } from '@/types/pool'
 
 export const useSettlementsStore = defineStore('settlements', () => {
-  const { loading, error, mutate, update } = useMutation()
+  const { loading, error, mutate, update, destroy } = useMutation()
 
   async function createSettlement(eventId: string) {
     return await mutate('Failed to create settlement', (commandQueue) =>
@@ -14,7 +14,7 @@ export const useSettlementsStore = defineStore('settlements', () => {
   }
 
   async function deleteSettlement(id: string) {
-    return await mutate('Failed to delete settlement', (commandQueue) =>
+    await destroy('Failed to delete settlement', 'settlement', id, (commandQueue) =>
       commandQueue.enqueue('DELETE', `/settlements/${id}`)
     )
   }
