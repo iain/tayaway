@@ -1,12 +1,11 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useObjectPoolStore } from './objectPool'
-import { useWebSocketStore } from './websocket'
 import type { ObjectTypeMap } from '@/types/pool'
 
 // ---- WebSocket mock --------------------------------------------------------
 
-let lastSocket: {
+type MockSocket = {
   onopen: ((event: Event) => void) | null
   onmessage: ((event: MessageEvent) => void) | null
   onclose: ((event: CloseEvent) => void) | null
@@ -16,22 +15,23 @@ let lastSocket: {
   readyState: number
 }
 
-function installWebSocketMock() {
-  class MockWebSocket {
-    onopen: ((event: Event) => void) | null = null
-    onmessage: ((event: MessageEvent) => void) | null = null
-    onclose: ((event: CloseEvent) => void) | null = null
-    onerror: ((event: Event) => void) | null = null
-    send = vi.fn()
-    close = vi.fn()
-    readyState = 1 // OPEN
-    static OPEN = 1
+let lastSocket: MockSocket
 
-    constructor() {
-      // eslint-disable-next-line @typescript-eslint/no-this-alias
-      lastSocket = this as typeof lastSocket
-    }
-  }
+function installWebSocketMock() {
+  // Must use a real constructor function — vi.fn().mockImplementation does not
+  // work correctly as a `new` target in jsdom.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const MockWebSocket = function (this: any) {
+    this.onopen = null
+    this.onmessage = null
+    this.onclose = null
+    this.onerror = null
+    this.send = vi.fn()
+    this.close = vi.fn()
+    this.readyState = 1 // OPEN
+    lastSocket = this as MockSocket
+  } as unknown as typeof WebSocket
+  ;(MockWebSocket as unknown as { OPEN: number }).OPEN = 1
 
   Object.defineProperty(window, 'WebSocket', {
     value: MockWebSocket,
@@ -227,7 +227,88 @@ function sendDeleteBroadcast(objectType: string, id: string): void {
   } as MessageEvent)
 }
 
-// ---- Tests -----------------------------------------------------------------
+// ---- Connection logging tests ----------------------------------------------
+
+describe('useWebSocketStore — connection logging', () => {
+  beforeEach(() => {
+    installWebSocketMock()
+    setActivePinia(createPinia())
+    vi.spyOn(console, 'info').mockImplementation(() => {})
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+    vi.resetModules()
+  })
+
+  it('logs info on open', async () => {
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+    await store.connect()
+
+    lastSocket.onopen!(new Event('open'))
+
+    expect(console.info).toHaveBeenCalledWith('[WebSocket] Connected')
+  })
+
+  it('logs warn on error', async () => {
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+    await store.connect()
+
+    const errorEvent = new Event('error')
+    lastSocket.onerror!(errorEvent)
+
+    expect(console.warn).toHaveBeenCalledWith('[WebSocket] Error', errorEvent)
+  })
+
+  it('logs warn on close with code and reason', async () => {
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+    await store.connect()
+
+    const closeEvent = new CloseEvent('close', { code: 1006, reason: 'Network error' })
+    lastSocket.onclose!(closeEvent)
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('code: 1006')
+    )
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('reason: Network error')
+    )
+  })
+
+  it('shows "(none)" when close reason is empty', async () => {
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+    await store.connect()
+
+    const closeEvent = new CloseEvent('close', { code: 1001 })
+    lastSocket.onclose!(closeEvent)
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('reason: (none)')
+    )
+  })
+
+  it('includes reconnect attempt count in close log', async () => {
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+    await store.connect()
+
+    const closeEvent = new CloseEvent('close', { code: 1001 })
+    lastSocket.onclose!(closeEvent)
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('reconnect attempt: 1')
+    )
+  })
+})
+
+// ---- Cascade delete tests --------------------------------------------------
 
 describe('websocket store — cascade delete', () => {
   beforeEach(async () => {
@@ -235,8 +316,14 @@ describe('websocket store — cascade delete', () => {
     setActivePinia(createPinia())
 
     // Connect so the socket's onmessage handler is set up
+    const { useWebSocketStore } = await import('./websocket')
     const store = useWebSocketStore()
     await store.connect()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.resetModules()
   })
 
   it('deleting an event cascades to rsvp', () => {
