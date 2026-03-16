@@ -73,7 +73,10 @@ module Expenses
           )
         end
 
-        if start_date > end_date
+        parsed_start = Date.parse(start_date)
+        parsed_end = Date.parse(end_date)
+
+        if parsed_start > parsed_end
           return T.cast(
             Failure(ServiceError.validation("Start date must be on or before end date")),
             Result[T::Hash[Symbol, T.untyped], ServiceError]
@@ -81,7 +84,7 @@ module Expenses
         end
 
         T.cast(
-          Success({ description: description, amount: amount, start_date: Date.parse(start_date), end_date: Date.parse(end_date) }),
+          Success({ description: description, amount: amount, start_date: parsed_start, end_date: parsed_end }),
           Result[T::Hash[Symbol, T.untyped], ServiceError]
         )
       end
