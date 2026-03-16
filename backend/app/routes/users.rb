@@ -40,8 +40,8 @@ class App
             phone_number: r.params["phoneNumber"],
             birthday: r.params["birthday"],
             location_name: r.params["locationName"],
-            latitude: r.params["latitude"]&.to_f,
-            longitude: r.params["longitude"]&.to_f,
+            latitude: (lat = r.params["latitude"]; lat && lat != "" ? lat.to_f : nil),
+            longitude: (lng = r.params["longitude"]; lng && lng != "" ? lng.to_f : nil),
             iban: r.params["iban"]
           )
           handle_result(result)
