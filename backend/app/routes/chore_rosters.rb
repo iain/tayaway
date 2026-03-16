@@ -85,6 +85,7 @@ class App
 
             result = ChoreRosters::UpdateAssignment.call(
               assignment_id: aid,
+              roster_id: roster.id,
               workspace_id: workspace_id,
               note: r.params["note"],
               user_id: r.params["user_id"],
@@ -97,6 +98,7 @@ class App
           r.delete do
             result = ChoreRosters::DeleteAssignment.call(
               assignment_id: aid,
+              roster_id: roster.id,
               workspace_id: workspace_id
             )
             handle_result(result)

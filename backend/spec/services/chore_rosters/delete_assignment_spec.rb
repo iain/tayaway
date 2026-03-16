@@ -18,7 +18,7 @@ RSpec.describe ChoreRosters::DeleteAssignment do
   it "deletes the assignment" do
     assignment_id = assignment[:id]
 
-    result = described_class.call(assignment_id: assignment_id, workspace_id: workspace[:id])
+    result = described_class.call(assignment_id: assignment_id, roster_id: roster[:id], workspace_id: workspace[:id])
 
     expect(result.success?).to be true
     expect(DB[:chore_assignments].where(id: assignment_id).count).to eq(0)
@@ -27,13 +27,13 @@ RSpec.describe ChoreRosters::DeleteAssignment do
   it "tracks deletion in deleted_items" do
     assignment_id = assignment[:id]
 
-    described_class.call(assignment_id: assignment_id, workspace_id: workspace[:id])
+    described_class.call(assignment_id: assignment_id, roster_id: roster[:id], workspace_id: workspace[:id])
 
     expect(DB[:deleted_items].where(object_type: "chore_assignment", object_id: assignment_id).count).to eq(1)
   end
 
   it "returns the deleted item in response" do
-    result = described_class.call(assignment_id: assignment[:id], workspace_id: workspace[:id])
+    result = described_class.call(assignment_id: assignment[:id], roster_id: roster[:id], workspace_id: workspace[:id])
 
     deleted = result.value![:deleted]
     expect(deleted.length).to eq(1)
@@ -42,7 +42,7 @@ RSpec.describe ChoreRosters::DeleteAssignment do
   end
 
   it "returns the parent chore in response" do
-    result = described_class.call(assignment_id: assignment[:id], workspace_id: workspace[:id])
+    result = described_class.call(assignment_id: assignment[:id], roster_id: roster[:id], workspace_id: workspace[:id])
 
     chore_obj = result.value![:objects].find { |o| o[:objectType] == "chore" }
     expect(chore_obj).not_to be_nil
@@ -50,7 +50,7 @@ RSpec.describe ChoreRosters::DeleteAssignment do
   end
 
   it "fails for nonexistent assignment" do
-    result = described_class.call(assignment_id: SecureRandom.uuid, workspace_id: workspace[:id])
+    result = described_class.call(assignment_id: SecureRandom.uuid, roster_id: roster[:id], workspace_id: workspace[:id])
 
     expect(result.failure?).to be true
     expect(result.failure.http_status).to eq(404)

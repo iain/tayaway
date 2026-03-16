@@ -19,6 +19,7 @@ RSpec.describe ChoreRosters::UpdateAssignment do
   it "updates the note" do
     result = described_class.call(
       assignment_id: assignment[:id],
+      roster_id: roster[:id],
       workspace_id: workspace[:id],
       note: "Pizza night"
     )
@@ -31,6 +32,7 @@ RSpec.describe ChoreRosters::UpdateAssignment do
   it "reassigns to a different user" do
     result = described_class.call(
       assignment_id: assignment[:id],
+      roster_id: roster[:id],
       workspace_id: workspace[:id],
       user_id: other_user[:id].to_s
     )
@@ -43,6 +45,7 @@ RSpec.describe ChoreRosters::UpdateAssignment do
   it "returns the parent chore in response" do
     result = described_class.call(
       assignment_id: assignment[:id],
+      roster_id: roster[:id],
       workspace_id: workspace[:id],
       note: "Updated"
     )
@@ -54,6 +57,7 @@ RSpec.describe ChoreRosters::UpdateAssignment do
   it "fails when no changes provided" do
     result = described_class.call(
       assignment_id: assignment[:id],
+      roster_id: roster[:id],
       workspace_id: workspace[:id]
     )
 
@@ -64,6 +68,7 @@ RSpec.describe ChoreRosters::UpdateAssignment do
   it "fails for nonexistent assignment" do
     result = described_class.call(
       assignment_id: SecureRandom.uuid,
+      roster_id: roster[:id],
       workspace_id: workspace[:id],
       note: "test"
     )

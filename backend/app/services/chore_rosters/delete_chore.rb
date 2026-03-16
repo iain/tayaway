@@ -17,7 +17,22 @@ module ChoreRosters
       end
       def call(chore_id:, roster_id:, workspace_id:)
         Chore.find_result(chore_id)
+             .bind { |chore| validate_belongs_to_roster(chore, roster_id) }
              .bind { |chore| delete(chore, roster_id, workspace_id) }
+      end
+
+      sig do
+        params(
+          chore: Chore,
+          roster_id: T.any(String, UUID)
+        ).returns(Result[Chore, ServiceError])
+      end
+      def validate_belongs_to_roster(chore, roster_id)
+        if chore.chore_roster_id.to_s == roster_id.to_s
+          T.cast(Success(chore), Result[Chore, ServiceError])
+        else
+          T.cast(Failure(ServiceError.not_found("Chore not found")), Result[Chore, ServiceError])
+        end
       end
 
       private

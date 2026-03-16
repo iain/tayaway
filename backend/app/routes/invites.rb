@@ -68,7 +68,7 @@ class App
         { objects: pool.to_a }
       end
 
-      # POST /api/invites - Create an invitation
+      # POST /api/invites - Create an invitation (admin/owner only)
       r.post do
         workspace_id = r.params["workspace_id"]
 
@@ -76,6 +76,8 @@ class App
           response.status = 403
           next { error: "Access denied" }
         end
+
+        require_admin_or_owner!(workspace_id)
 
         result = Invites::Create.call(
           email: r.params["email"]&.strip&.downcase,
@@ -88,7 +90,7 @@ class App
     end
 
     r.on String do |id|
-      # DELETE /api/invites/:id - Cancel an invitation
+      # DELETE /api/invites/:id - Cancel an invitation (admin/owner only)
       r.delete do
         workspace_id = r.params["workspace_id"]
 
@@ -97,11 +99,13 @@ class App
           next { error: "Access denied" }
         end
 
+        require_admin_or_owner!(workspace_id)
+
         result = Invites::Cancel.call(invite_id: id, workspace_id: workspace_id)
         handle_result(result)
       end
 
-      # POST /api/invites/:id/remind - Resend invitation email
+      # POST /api/invites/:id/remind - Resend invitation email (admin/owner only)
       r.on "remind" do
         r.post do
           workspace_id = r.params["workspace_id"]
@@ -110,6 +114,8 @@ class App
             response.status = 403
             next { error: "Access denied" }
           end
+
+          require_admin_or_owner!(workspace_id)
 
           result = Invites::Remind.call(invite_id: id, workspace_id: workspace_id)
           handle_result(result)

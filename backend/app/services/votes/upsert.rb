@@ -128,33 +128,39 @@ module Votes
         event = T.must(Event.find(poll.event_id))
         workspace_id = event.workspace_id
 
-        DB.transaction do
-          now = Time.now
+        begin
+          DB.transaction do
+            now = Time.now
 
-          if existing_vote
-            DB[:votes].where(id: existing_vote.id).update(
-              response: vote_response,
-              comment: clean_comment,
-              updated_at: now
-            )
-            result_vote_id = existing_vote.id
-            created = false
-          else
-            result_vote_id = vote_id || SecureRandom.uuid
+            if existing_vote
+              DB[:votes].where(id: existing_vote.id).update(
+                response: vote_response,
+                comment: clean_comment,
+                updated_at: now
+              )
+              result_vote_id = existing_vote.id
+              created = false
+            else
+              result_vote_id = vote_id || SecureRandom.uuid
 
-            DB[:votes].insert(
-              id: result_vote_id,
-              date_range_id: date_range.id,
-              user_id: user_id,
-              response: vote_response,
-              comment: clean_comment,
-              created_at: now,
-              updated_at: now
-            )
-            created = true
+              DB[:votes].insert(
+                id: result_vote_id,
+                date_range_id: date_range.id,
+                user_id: user_id,
+                response: vote_response,
+                comment: clean_comment,
+                created_at: now,
+                updated_at: now
+              )
+              created = true
+            end
+
+            Broadcaster.object_changed("vote", T.must(result_vote_id), workspace_id: workspace_id)
           end
-
-          Broadcaster.object_changed("vote", T.must(result_vote_id), workspace_id: workspace_id)
+        rescue Sequel::UniqueConstraintViolation
+          existing = Vote.find_by_date_range_and_user(date_range.id, user_id)
+          result_vote_id = T.must(existing).id
+          created = false
         end
 
         T.cast(Success({ vote_id: result_vote_id, created: created }), Result[T::Hash[Symbol, T.untyped], ServiceError])

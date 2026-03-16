@@ -134,35 +134,39 @@ module Events
           end
         end
 
-        event = DB.transaction do
-          now = Time.now
-          event_id = id || SecureRandom.uuid
+        event = begin
+          DB.transaction do
+            now = Time.now
+            event_id = id || SecureRandom.uuid
 
-          insert_data = {
-            id: event_id,
-            workspace_id: workspace_id,
-            user_id: user_id,
-            name: name,
-            description: description&.empty? ? nil : description,
-            created_at: now,
-            updated_at: now
-          }
+            insert_data = {
+              id: event_id,
+              workspace_id: workspace_id,
+              user_id: user_id,
+              name: name,
+              description: description&.empty? ? nil : description,
+              created_at: now,
+              updated_at: now
+            }
 
-          if dates
-            insert_data[:start_date] = dates[0]
-            insert_data[:end_date] = dates[1]
+            if dates
+              insert_data[:start_date] = dates[0]
+              insert_data[:end_date] = dates[1]
+            end
+
+            if location_name && !location_name.empty? && latitude && longitude
+              insert_data[:location_name] = location_name
+              insert_data[:location_coordinates] = Sequel.lit("point(?, ?)", longitude, latitude)
+            end
+
+            DB[:events].insert(insert_data)
+
+            Broadcaster.object_changed("event", event_id, workspace_id: workspace_id)
+
+            Event.find(event_id)
           end
-
-          if location_name && !location_name.empty? && latitude && longitude
-            insert_data[:location_name] = location_name
-            insert_data[:location_coordinates] = Sequel.lit("point(?, ?)", longitude, latitude)
-          end
-
-          DB[:events].insert(insert_data)
-
-          Broadcaster.object_changed("event", event_id, workspace_id: workspace_id)
-
-          Event.find(event_id)
+        rescue Sequel::UniqueConstraintViolation
+          T.must(Event.find(T.must(id)))
         end
 
         pool = PoolSerializer.new(workspace_id: workspace_id)

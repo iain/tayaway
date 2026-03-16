@@ -149,25 +149,29 @@ module Expenses
           end
         end
 
-        expense = DB.transaction do
-          now = Time.now
-          expense_id = id || SecureRandom.uuid
+        expense = begin
+          DB.transaction do
+            now = Time.now
+            expense_id = id || SecureRandom.uuid
 
-          DB[:expenses].insert(
-            id: expense_id,
-            event_id: event_id,
-            user_id: user_id,
-            amount: valid[:amount],
-            description: valid[:description],
-            start_date: valid[:start_date],
-            end_date: valid[:end_date],
-            created_at: now,
-            updated_at: now
-          )
+            DB[:expenses].insert(
+              id: expense_id,
+              event_id: event_id,
+              user_id: user_id,
+              amount: valid[:amount],
+              description: valid[:description],
+              start_date: valid[:start_date],
+              end_date: valid[:end_date],
+              created_at: now,
+              updated_at: now
+            )
 
-          Broadcaster.object_changed("expense", expense_id, workspace_id: workspace_id)
+            Broadcaster.object_changed("expense", expense_id, workspace_id: workspace_id)
 
-          Expense.find(expense_id)
+            Expense.find(expense_id)
+          end
+        rescue Sequel::UniqueConstraintViolation
+          T.must(Expense.find(T.must(id)))
         end
 
         pool = PoolSerializer.new(workspace_id: workspace_id)

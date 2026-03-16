@@ -155,6 +155,9 @@ module Events
             elsif latitude && longitude
               update_data[:location_name] = location_name
               update_data[:location_coordinates] = Sequel.lit("point(?, ?)", longitude, latitude)
+            else
+              update_data[:location_name] = location_name
+              update_data[:location_coordinates] = nil
             end
           end
 

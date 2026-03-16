@@ -11,15 +11,32 @@ module ChoreRosters
       sig do
         params(
           assignment_id: T.any(String, UUID),
+          roster_id: T.any(String, UUID),
           workspace_id: T.any(String, UUID),
           note: T.nilable(String),
           user_id: T.nilable(String),
           pinned: T.nilable(T::Boolean)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def call(assignment_id:, workspace_id:, note: nil, user_id: nil, pinned: nil)
+      def call(assignment_id:, roster_id:, workspace_id:, note: nil, user_id: nil, pinned: nil)
         ChoreAssignment.find_result(assignment_id)
+                       .bind { |assignment| validate_belongs_to_roster(assignment, roster_id) }
                        .bind { |assignment| update(assignment, workspace_id, note, user_id, pinned) }
+      end
+
+      sig do
+        params(
+          assignment: ChoreAssignment,
+          roster_id: T.any(String, UUID)
+        ).returns(Result[ChoreAssignment, ServiceError])
+      end
+      def validate_belongs_to_roster(assignment, roster_id)
+        chore = Chore.find(assignment.chore_id)
+        if chore && chore.chore_roster_id.to_s == roster_id.to_s
+          T.cast(Success(assignment), Result[ChoreAssignment, ServiceError])
+        else
+          T.cast(Failure(ServiceError.not_found("Assignment not found")), Result[ChoreAssignment, ServiceError])
+        end
       end
 
       private
