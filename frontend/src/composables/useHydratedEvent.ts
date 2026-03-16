@@ -115,8 +115,15 @@ export function useHydratedEvent(eventId: ComputedRef<string> | string): {
   )
 
   const event = computed((): HydratedEvent | undefined => {
-    // Access version to establish reactivity dependency on any pool change
-    void pool.version
+    // Access per-type versions for scoped reactivity (only re-compute when relevant types change)
+    const tv = pool.typeVersions
+    void tv.get('event')
+    void tv.get('datePoll')
+    void tv.get('dateRange')
+    void tv.get('vote')
+    void tv.get('member')
+    void tv.get('workspace')
+    void tv.get('rsvp')
 
     const poolEvent = pool.get('event', resolvedId.value)
     if (!poolEvent) return undefined

@@ -366,14 +366,30 @@ describe('objectPool store', () => {
       expect(pool.get('event', 'evt-3')?.name).toBe('New')
     })
 
-    it('clears all pending updates', () => {
+    it('clears pending updates older than server data', () => {
       const pool = useObjectPoolStore()
       pool.importObjects([makeEvent()])
       pool.addPending('event', 'evt-1', { name: 'Pending' })
 
-      pool.replaceObjects([makeEvent()])
+      // Replace with a server object whose updatedAt is in the future,
+      // so the pending update (created at Date.now()) is older
+      const futureDate = new Date(Date.now() + 60_000).toISOString()
+      pool.replaceObjects([makeEvent({ updatedAt: futureDate })])
 
       expect(pool.hasPending('event', 'evt-1')).toBe(false)
+    })
+
+    it('preserves pending updates newer than server data', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeEvent()])
+      pool.addPending('event', 'evt-1', { name: 'Pending' })
+
+      // Replace with server data that has an old updatedAt
+      pool.replaceObjects([makeEvent()])
+
+      // Pending update was created at Date.now() which is after 2026-01-01,
+      // so it should be preserved
+      expect(pool.hasPending('event', 'evt-1')).toBe(true)
     })
   })
 

@@ -70,6 +70,24 @@ function createEmptyStorage(): Map<ObjectType, Map<string, PoolObject>> {
   return new Map(OBJECT_TYPES.map((type) => [type, new Map()]))
 }
 
+// Cascade relationships: parent type → [{ childType, foreignKey }]
+const CASCADE_RULES: Partial<
+  Record<ObjectType, { childType: ObjectType; foreignKey: string }[]>
+> = {
+  event: [
+    { childType: 'rsvp', foreignKey: 'eventId' },
+    { childType: 'expense', foreignKey: 'eventId' },
+  ],
+  datePoll: [{ childType: 'dateRange', foreignKey: 'datePollId' }],
+  dateRange: [{ childType: 'vote', foreignKey: 'dateRangeId' }],
+  settlement: [
+    { childType: 'settlementTransfer', foreignKey: 'settlementId' },
+  ],
+  choreRoster: [{ childType: 'chore', foreignKey: 'choreRosterId' }],
+  chore: [{ childType: 'choreAssignment', foreignKey: 'choreId' }],
+  taskList: [{ childType: 'taskItem', foreignKey: 'taskListId' }],
+}
+
 export type ReadTransform = <T extends ObjectType>(
   type: T,
   obj: ObjectTypeMap[T]
@@ -97,8 +115,20 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   // Pending optimistic updates: Map<"type:id", PendingUpdate[]>
   const pendingUpdates = ref(new Map<string, PendingUpdate[]>())
 
-  // Version counter to force reactivity - incremented on any change
+  // Per-type version counters to limit reactivity invalidation scope
+  const typeVersions = ref(
+    new Map<ObjectType, number>(OBJECT_TYPES.map((type) => [type, 0]))
+  )
+  // Global version counter (for backwards compatibility and cross-type consumers)
   const version = ref(0)
+
+  function bumpVersion(...types: ObjectType[]): void {
+    for (const type of types) {
+      typeVersions.value.set(type, (typeVersions.value.get(type) ?? 0) + 1)
+    }
+    version.value++
+    triggerRef(typeVersions)
+  }
 
   // Import objects from API response - no parsing needed
   function importObjects(poolObjects: PoolObject[]): void {
@@ -138,7 +168,8 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     }
     // Trigger reactivity for nested Map changes
     if (changed) {
-      version.value++
+      const changedTypes = new Set(imported.map((o) => o.objectType))
+      bumpVersion(...changedTypes)
       triggerRef(objects)
       triggerRef(pendingUpdates)
     }
@@ -152,8 +183,8 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     type: T,
     id: string
   ): ObjectTypeMap[T] | undefined {
-    // Access version to establish reactivity dependency
-    void version.value
+    // Access per-type version to establish scoped reactivity dependency
+    void typeVersions.value.get(type)
 
     const typeMap = objects.value.get(type)
     if (!typeMap) return undefined
@@ -242,7 +273,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
 
     const existing = pendingUpdates.value.get(pendingKey) || []
     pendingUpdates.value.set(pendingKey, [...existing, update as PendingUpdate])
-    version.value++
+    bumpVersion(objectType)
     triggerRef(pendingUpdates)
 
     return pendingId
@@ -250,19 +281,19 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
 
   // Remove a specific pending update (for rollback)
   function removePending(pendingId: string): void {
-    let changed = false
+    const changedTypes = new Set<ObjectType>()
     for (const [key, updates] of pendingUpdates.value.entries()) {
       const filtered = updates.filter((u) => u.id !== pendingId)
       if (filtered.length === 0) {
         pendingUpdates.value.delete(key)
-        changed = true
+        changedTypes.add(key.split(':')[0] as ObjectType)
       } else if (filtered.length !== updates.length) {
         pendingUpdates.value.set(key, filtered)
-        changed = true
+        changedTypes.add(key.split(':')[0] as ObjectType)
       }
     }
-    if (changed) {
-      version.value++
+    if (changedTypes.size > 0) {
+      bumpVersion(...changedTypes)
       triggerRef(pendingUpdates)
     }
   }
@@ -279,7 +310,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     const typeMap = objects.value.get(object.objectType)
     if (typeMap) {
       typeMap.set(object.id, object)
-      version.value++
+      bumpVersion(object.objectType)
       triggerRef(objects)
       notifyChange({ type: 'set', object })
     }
@@ -293,10 +324,61 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     }
     // Also clear any pending updates
     pendingUpdates.value.delete(`${objectType}:${objectId}`)
-    version.value++
+    bumpVersion(objectType)
     triggerRef(objects)
     triggerRef(pendingUpdates)
     notifyChange({ type: 'remove', objectType, id: objectId })
+  }
+
+  // Cascade-remove an object and all its children, returning all removed objects for rollback
+  function cascadeRemove(
+    objectType: ObjectType,
+    objectId: string
+  ): PoolObject[] {
+    const removed: PoolObject[] = []
+    const typesChanged = new Set<ObjectType>()
+
+    function removeRecursive(type: ObjectType, id: string): void {
+      const typeMap = objects.value.get(type)
+      if (!typeMap) return
+
+      const obj = typeMap.get(id)
+      if (obj) {
+        removed.push(obj)
+        typeMap.delete(id)
+        pendingUpdates.value.delete(`${type}:${id}`)
+        typesChanged.add(type)
+      }
+
+      // Find and remove children
+      const rules = CASCADE_RULES[type]
+      if (!rules) return
+
+      for (const rule of rules) {
+        const childMap = objects.value.get(rule.childType)
+        if (!childMap) continue
+
+        for (const [childId, child] of childMap) {
+          if (
+            (child as unknown as Record<string, unknown>)[rule.foreignKey] ===
+            id
+          ) {
+            removeRecursive(rule.childType, childId)
+          }
+        }
+      }
+    }
+
+    removeRecursive(objectType, objectId)
+
+    if (typesChanged.size > 0) {
+      bumpVersion(...typesChanged)
+      triggerRef(objects)
+      triggerRef(pendingUpdates)
+      notifyChange({ type: 'remove', objectType, id: objectId })
+    }
+
+    return removed
   }
 
   // Computed to get pool stats (useful for debugging)
@@ -311,9 +393,11 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   // Clear all object types except specified ones (used during workspace switch)
   function clearExcept(...keepTypes: ObjectType[]): void {
     const keepSet = new Set(keepTypes)
+    const clearedTypes: ObjectType[] = []
     for (const type of OBJECT_TYPES) {
       if (!keepSet.has(type)) {
         objects.value.get(type)?.clear()
+        clearedTypes.push(type)
       }
     }
     // Clear pending updates for cleared types
@@ -323,22 +407,39 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
         pendingUpdates.value.delete(key)
       }
     }
-    version.value++
+    bumpVersion(...clearedTypes)
     triggerRef(objects)
     triggerRef(pendingUpdates)
   }
 
   // Replace all objects — clears existing data then imports.
   // Used on sync to ensure server-side deletions are reflected.
-  // A full sync is authoritative so all pending updates are cleared.
+  // Preserves pending updates that are newer than the server data (queued commands).
   function replaceObjects(poolObjects: PoolObject[]): void {
+    // Build index of incoming server timestamps for pending-update comparison
+    const serverTimestamps = new Map<string, number>()
+    for (const obj of poolObjects) {
+      serverTimestamps.set(
+        `${obj.objectType}:${obj.id}`,
+        new Date(obj.updatedAt).getTime()
+      )
+    }
+
+    // Preserve pending updates that postdate the server data
+    for (const [key, updates] of pendingUpdates.value) {
+      const serverMs = serverTimestamps.get(key) ?? 0
+      const newer = updates.filter((u) => u.timestamp > serverMs)
+      if (newer.length === 0) {
+        pendingUpdates.value.delete(key)
+      } else {
+        pendingUpdates.value.set(key, newer)
+      }
+    }
+
     // Clear all type maps
     for (const typeMap of objects.value.values()) {
       typeMap.clear()
     }
-
-    // Clear all pending updates — server sync is authoritative
-    pendingUpdates.value.clear()
 
     // Import the new objects
     for (const obj of poolObjects) {
@@ -348,7 +449,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       }
     }
 
-    version.value++
+    bumpVersion(...OBJECT_TYPES)
     triggerRef(objects)
     triggerRef(pendingUpdates)
     notifyChange({ type: 'replace', objects: poolObjects })
@@ -357,10 +458,12 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   // Restore pending updates from cache (used on startup)
   function restorePendingUpdates(cached: Map<string, PendingUpdate[]>): void {
     if (cached.size === 0) return
+    const restoredTypes = new Set<ObjectType>()
     for (const [key, updates] of cached) {
       pendingUpdates.value.set(key, updates)
+      restoredTypes.add(key.split(':')[0] as ObjectType)
     }
-    version.value++
+    bumpVersion(...restoredTypes)
     triggerRef(pendingUpdates)
   }
 
@@ -375,6 +478,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     objects,
     pendingUpdates,
     version,
+    typeVersions,
     stats,
 
     // Methods
@@ -389,6 +493,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     hasPending,
     set,
     remove,
+    cascadeRemove,
     replaceObjects,
     restorePendingUpdates,
     clearExcept,

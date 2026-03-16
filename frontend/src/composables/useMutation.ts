@@ -125,8 +125,8 @@ export function useMutation() {
     ) => Promise<ApiResponse<T>>
   ): Promise<MutationResult<T>> {
     const pool = useObjectPoolStore()
-    const saved = pool.getServer(objectType, objectId)
-    pool.remove(objectType, objectId)
+    // Cascade-remove parent and all children, saving them for rollback
+    const removedObjects = pool.cascadeRemove(objectType, objectId)
 
     loading.value = true
     error.value = null
@@ -138,8 +138,9 @@ export function useMutation() {
       if (e instanceof CommandQueuedError) {
         return { queued: true }
       }
-      if (saved) {
-        pool.set(saved)
+      // Restore all removed objects on error
+      for (const obj of removedObjects) {
+        pool.set(obj)
       }
       error.value = errorMessage
       throw e
