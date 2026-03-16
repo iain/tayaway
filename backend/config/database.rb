@@ -11,7 +11,15 @@ Sequel.extension :fiber_concurrency unless ENV["RACK_ENV"] == "test"
 
 # Lazy database connection - defers connection until first use
 # This is required for Falcon which forks after loading config.ru
-DB = Sequel.connect(ENV.fetch("DATABASE_URL"), preconnect: false, test: false, max_connections: 16)
+DB = Sequel.connect(
+  ENV.fetch("DATABASE_URL"),
+  preconnect: false,
+  test: false,
+  max_connections: 16,
+  pool_timeout: 5,
+  connect_timeout: 5,
+  after_connect: proc { |conn| conn.exec("SET statement_timeout = '30s'") }
+)
 
 DB.extension :pg_json
 DB.extension :pg_array
