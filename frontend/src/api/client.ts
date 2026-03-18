@@ -134,6 +134,10 @@ class ApiClient {
         status: response.status,
       }
 
+      console.error(
+        `API ${method} ${url} failed: ${response.status} ${error.message}`
+      )
+
       if (!options?.silent) {
         const notificationsStore = useNotificationsStore()
         notificationsStore.showError(
@@ -143,7 +147,13 @@ class ApiClient {
       throw error
     }
 
-    const data = (await response.json()) as T
+    let data: T
+    try {
+      data = (await response.json()) as T
+    } catch (parseError) {
+      console.error(`API ${method} ${url} response parse failed:`, parseError)
+      throw parseError
+    }
     processPoolResponse(data)
     return { data, status: response.status }
   }
