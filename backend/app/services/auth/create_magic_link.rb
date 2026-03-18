@@ -43,7 +43,9 @@ module Auth
           workspace_name = workspaces.length == 1 ? T.must(workspaces.first).name : "Tayaway"
 
           APP_LOGGER.info { "[Auth::CreateMagicLink] Magic link requested for user #{user.id}" }
-          APP_LOGGER.debug { "MAGIC LINK FOR #{email}: #{magic_link}" } if ENV["DEBUG_AUTH_LINKS"]
+          if ENV["RACK_ENV"] == "development" || ENV["DEBUG_AUTH_LINKS"]
+            APP_LOGGER.info { "[Auth::CreateMagicLink] MAGIC LINK FOR #{email}: #{magic_link}" }
+          end
           Mailers::MagicLink.send_email(email: email, magic_link: magic_link, workspace_name: workspace_name)
         else
           APP_LOGGER.info { "[Auth::CreateMagicLink] Magic link requested for unknown email" }

@@ -25,15 +25,17 @@ RSpec.describe Auth::CreateMagicLink do
 
   it "generates a URL with a single JWT token parameter" do
     TestFactories.user(email: "test@example.com")
-    allow(APP_LOGGER).to receive(:debug)
+    logged_messages = []
+    allow(APP_LOGGER).to receive(:info) do |&block|
+      logged_messages << block.call if block
+    end
 
     ENV["DEBUG_AUTH_LINKS"] = "1"
     described_class.call(email: "test@example.com")
     ENV.delete("DEBUG_AUTH_LINKS")
 
-    expect(APP_LOGGER).to have_received(:debug) do |&block|
-      expect(block.call).to match(/auth\/verify\?token=eyJ/)
-    end
+    magic_link_log = logged_messages.find { |m| m.include?("MAGIC LINK") }
+    expect(magic_link_log).to match(/auth\/verify\?token=eyJ/)
   end
 
   it "returns success without creating token for non-existent user" do
