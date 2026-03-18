@@ -221,8 +221,10 @@ export const useWebSocketStore = defineStore('websocket', () => {
       import('./notifications').then(({ useNotificationsStore }) => {
         const notifications = useNotificationsStore()
         notifications.showUpdate(() => {
-          caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)))
-          window.location.reload()
+          caches
+            .keys()
+            .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+            .finally(() => window.location.reload())
         })
       })
     }
