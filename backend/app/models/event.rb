@@ -93,12 +93,6 @@ class Event < T::Struct
 
     sig { params(row: T::Hash[Symbol, T.untyped]).returns(Event) }
     def from_row(row)
-      point = row[:location_coordinates]
-      coords = if point.is_a?(String) && point.match?(/\A\(.+,.+\)\z/)
-                 parts = point.delete("()").split(",")
-                 [parts[0].to_f, parts[1].to_f]
-               end
-
       Event.new(
         id: UUID.new(row[:id]),
         workspace_id: UUID.new(row[:workspace_id]),
@@ -108,7 +102,7 @@ class Event < T::Struct
         start_date: row[:start_date],
         end_date: row[:end_date],
         location_name: row[:location_name],
-        location_coordinates: coords,
+        location_coordinates: PointParser.parse(row[:location_coordinates]),
         created_at: row[:created_at],
         updated_at: row[:updated_at]
       )
