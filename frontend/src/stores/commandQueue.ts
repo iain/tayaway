@@ -57,6 +57,10 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
     }
   }
 
+  async function resyncPendingCount(): Promise<void> {
+    pendingCount.value = await dbCount()
+  }
+
   async function enqueue<T>(
     method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     path: string,
@@ -75,8 +79,13 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
         throw new CommandQueuedError()
       }
       // Server error — remove from queue and rethrow
-      await removeCommand(commandId)
-      pendingCount.value--
+      try {
+        await removeCommand(commandId)
+        pendingCount.value--
+      } catch {
+        // removeCommand failed — resync count from IndexedDB to avoid drift
+        await resyncPendingCount()
+      }
       throw e
     }
   }
@@ -87,6 +96,7 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
       return
     }
     isProcessing.value = true
+    let hadError = false
 
     try {
       do {
@@ -134,10 +144,15 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
               break
             }
             // Server error — remove and notify, continue with next
-            for (const id of command.originalIds) {
-              await removeCommand(id)
+            hadError = true
+            try {
+              for (const id of command.originalIds) {
+                await removeCommand(id)
+              }
+              pendingCount.value -= command.originalIds.length
+            } catch {
+              // removeCommand failed — count will be resynced in finally block
             }
-            pendingCount.value -= command.originalIds.length
             const { useNotificationsStore } = await import('./notifications')
             const notifications = useNotificationsStore()
             notifications.showError(
@@ -146,8 +161,14 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
           }
         }
       } while (retryRequested.value)
+    } catch {
+      // Unexpected error escaped the inner loop — resync to avoid drift
+      hadError = true
     } finally {
       isProcessing.value = false
+      if (hadError) {
+        await resyncPendingCount()
+      }
     }
   }
 

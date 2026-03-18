@@ -33,12 +33,14 @@ vi.mock('@/api/commandDb', () => {
 // Mock coalesceCommands to pass through by default
 vi.mock('@/api/coalesceCommands', () => ({
   coalesceCommands: vi.fn((commands) =>
-    commands.map((cmd: { id: string; method: string; path: string; body?: unknown }) => ({
-      method: cmd.method,
-      path: cmd.path,
-      body: cmd.body,
-      originalIds: [cmd.id],
-    }))
+    commands.map(
+      (cmd: { id: string; method: string; path: string; body?: unknown }) => ({
+        method: cmd.method,
+        path: cmd.path,
+        body: cmd.body,
+        originalIds: [cmd.id],
+      })
+    )
   ),
 }))
 
@@ -109,10 +111,14 @@ describe('commandQueue store', () => {
       const store = useCommandQueueStore()
       mockedApi.post.mockResolvedValueOnce(okResponse({ id: 'new-1' }))
 
-      const result = await store.enqueue('POST', '/api/events', { name: 'Test' })
+      const result = await store.enqueue('POST', '/api/events', {
+        name: 'Test',
+      })
 
       expect(result).toEqual({ data: { id: 'new-1' }, status: 200 })
-      expect(mockedApi.post).toHaveBeenCalledWith('/api/events', { name: 'Test' })
+      expect(mockedApi.post).toHaveBeenCalledWith('/api/events', {
+        name: 'Test',
+      })
     })
 
     it('persists command to db before executing', async () => {
@@ -156,19 +162,25 @@ describe('commandQueue store', () => {
     it('throws CommandQueuedError on network failure and keeps command in db', async () => {
       const store = useCommandQueueStore()
       const networkError = new TypeError('Failed to fetch')
-      Object.defineProperty(navigator, 'onLine', { value: false, configurable: true })
+      Object.defineProperty(navigator, 'onLine', {
+        value: false,
+        configurable: true,
+      })
 
       mockedApi.post.mockRejectedValueOnce(networkError)
 
-      await expect(
-        store.enqueue('POST', '/api/events', {})
-      ).rejects.toThrow(CommandQueuedError)
+      await expect(store.enqueue('POST', '/api/events', {})).rejects.toThrow(
+        CommandQueuedError
+      )
 
       // Command stays in db (removeCommand not called after addCommand)
       expect(removeCommand).not.toHaveBeenCalled()
       expect(store.pendingCount).toBe(1)
 
-      Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
+      Object.defineProperty(navigator, 'onLine', {
+        value: true,
+        configurable: true,
+      })
     })
 
     it('removes command from db and rethrows on server error', async () => {
@@ -176,9 +188,9 @@ describe('commandQueue store', () => {
       const serverError = { status: 422, message: 'Validation failed' }
       mockedApi.post.mockRejectedValueOnce(serverError)
 
-      await expect(
-        store.enqueue('POST', '/api/events', {})
-      ).rejects.toEqual(serverError)
+      await expect(store.enqueue('POST', '/api/events', {})).rejects.toEqual(
+        serverError
+      )
 
       expect(removeCommand).toHaveBeenCalled()
       expect(store.pendingCount).toBe(0)
@@ -193,7 +205,9 @@ describe('commandQueue store', () => {
 
       mockedApi.patch.mockResolvedValueOnce(okResponse(null))
       await store.enqueue('PATCH', '/api/events/1', { name: 'x' })
-      expect(mockedApi.patch).toHaveBeenCalledWith('/api/events/1', { name: 'x' })
+      expect(mockedApi.patch).toHaveBeenCalledWith('/api/events/1', {
+        name: 'x',
+      })
     })
   })
 
@@ -203,8 +217,20 @@ describe('commandQueue store', () => {
       store.pendingCount = 2
 
       const commands = [
-        { id: 'cmd-a', method: 'POST' as const, path: '/api/events', body: { name: 'A' }, createdAt: 1 },
-        { id: 'cmd-b', method: 'PUT' as const, path: '/api/events/1', body: { name: 'B' }, createdAt: 2 },
+        {
+          id: 'cmd-a',
+          method: 'POST' as const,
+          path: '/api/events',
+          body: { name: 'A' },
+          createdAt: 1,
+        },
+        {
+          id: 'cmd-b',
+          method: 'PUT' as const,
+          path: '/api/events/1',
+          body: { name: 'B' },
+          createdAt: 2,
+        },
       ]
       vi.mocked(getPendingCommands).mockResolvedValueOnce(commands)
       mockedApi.post.mockResolvedValueOnce(okResponse(null))
@@ -222,13 +248,28 @@ describe('commandQueue store', () => {
       store.pendingCount = 2
 
       const commands = [
-        { id: 'cmd-a', method: 'POST' as const, path: '/api/events', body: {}, createdAt: 1 },
-        { id: 'cmd-b', method: 'PUT' as const, path: '/api/events/1', body: {}, createdAt: 2 },
+        {
+          id: 'cmd-a',
+          method: 'POST' as const,
+          path: '/api/events',
+          body: {},
+          createdAt: 1,
+        },
+        {
+          id: 'cmd-b',
+          method: 'PUT' as const,
+          path: '/api/events/1',
+          body: {},
+          createdAt: 2,
+        },
       ]
       vi.mocked(getPendingCommands).mockResolvedValueOnce(commands)
 
       const networkError = new TypeError('Failed to fetch')
-      Object.defineProperty(navigator, 'onLine', { value: false, configurable: true })
+      Object.defineProperty(navigator, 'onLine', {
+        value: false,
+        configurable: true,
+      })
       mockedApi.post.mockRejectedValueOnce(networkError)
 
       await store.processQueue()
@@ -238,7 +279,10 @@ describe('commandQueue store', () => {
       // pendingCount stays at 2 (neither removed)
       expect(store.pendingCount).toBe(2)
 
-      Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
+      Object.defineProperty(navigator, 'onLine', {
+        value: true,
+        configurable: true,
+      })
     })
 
     it('removes failed server-error commands and continues with next', async () => {
@@ -246,13 +290,26 @@ describe('commandQueue store', () => {
       store.pendingCount = 2
 
       const commands = [
-        { id: 'cmd-a', method: 'POST' as const, path: '/api/events', body: {}, createdAt: 1 },
-        { id: 'cmd-b', method: 'PUT' as const, path: '/api/events/1', body: {}, createdAt: 2 },
+        {
+          id: 'cmd-a',
+          method: 'POST' as const,
+          path: '/api/events',
+          body: {},
+          createdAt: 1,
+        },
+        {
+          id: 'cmd-b',
+          method: 'PUT' as const,
+          path: '/api/events/1',
+          body: {},
+          createdAt: 2,
+        },
       ]
       vi.mocked(getPendingCommands).mockResolvedValueOnce(commands)
 
       mockedApi.post.mockRejectedValueOnce(new Error('Server error'))
       mockedApi.put.mockResolvedValueOnce(okResponse(null))
+      vi.mocked(dbCount).mockResolvedValueOnce(0)
 
       await store.processQueue()
 
@@ -265,7 +322,9 @@ describe('commandQueue store', () => {
       const store = useCommandQueueStore()
 
       let resolveFirst: () => void
-      const firstBlocks = new Promise<void>((r) => { resolveFirst = r })
+      const firstBlocks = new Promise<void>((r) => {
+        resolveFirst = r
+      })
 
       vi.mocked(getPendingCommands)
         .mockImplementationOnce(async () => {
@@ -302,7 +361,13 @@ describe('commandQueue store', () => {
       store.pendingCount = 1
 
       const commands = [
-        { id: 'cmd-a', method: 'POST' as const, path: '/api/events', body: {}, createdAt: 1 },
+        {
+          id: 'cmd-a',
+          method: 'POST' as const,
+          path: '/api/events',
+          body: {},
+          createdAt: 1,
+        },
       ]
       vi.mocked(getPendingCommands).mockResolvedValueOnce(commands)
       mockedApi.post.mockRejectedValueOnce({ status: 401 })
@@ -343,6 +408,83 @@ describe('commandQueue store', () => {
       await store.initialize()
 
       expect(getPendingCommands).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('resync on error', () => {
+    it('resyncs pendingCount from db when removeCommand fails in enqueue server error path', async () => {
+      const store = useCommandQueueStore()
+      const serverError = { status: 422, message: 'Validation failed' }
+      mockedApi.post.mockRejectedValueOnce(serverError)
+      vi.mocked(removeCommand).mockRejectedValueOnce(new Error('IDB failure'))
+      vi.mocked(dbCount).mockResolvedValueOnce(2)
+
+      await expect(store.enqueue('POST', '/api/events', {})).rejects.toEqual(
+        serverError
+      )
+
+      expect(dbCount).toHaveBeenCalled()
+      expect(store.pendingCount).toBe(2)
+    })
+
+    it('resyncs pendingCount from db when removeCommand fails in processQueue server error path', async () => {
+      const store = useCommandQueueStore()
+      store.pendingCount = 1
+
+      const commands = [
+        {
+          id: 'cmd-a',
+          method: 'POST' as const,
+          path: '/api/events',
+          body: {},
+          createdAt: 1,
+        },
+      ]
+      vi.mocked(getPendingCommands).mockResolvedValueOnce(commands)
+      mockedApi.post.mockRejectedValueOnce(new Error('Server error'))
+      vi.mocked(removeCommand).mockRejectedValueOnce(new Error('IDB failure'))
+      vi.mocked(dbCount).mockResolvedValueOnce(1)
+
+      await store.processQueue()
+
+      expect(dbCount).toHaveBeenCalled()
+      expect(store.pendingCount).toBe(1)
+    })
+
+    it('resyncs pendingCount from db when an unexpected error escapes processQueue inner loop', async () => {
+      const store = useCommandQueueStore()
+      store.pendingCount = 3
+      vi.mocked(getPendingCommands).mockRejectedValueOnce(
+        new Error('IDB read failure')
+      )
+      vi.mocked(dbCount).mockResolvedValueOnce(3)
+
+      await store.processQueue()
+
+      expect(dbCount).toHaveBeenCalled()
+      expect(store.pendingCount).toBe(3)
+    })
+
+    it('does not call dbCount on the happy path in processQueue', async () => {
+      const store = useCommandQueueStore()
+      store.pendingCount = 1
+
+      const commands = [
+        {
+          id: 'cmd-a',
+          method: 'POST' as const,
+          path: '/api/events',
+          body: {},
+          createdAt: 1,
+        },
+      ]
+      vi.mocked(getPendingCommands).mockResolvedValueOnce(commands)
+      mockedApi.post.mockResolvedValueOnce(okResponse(null))
+
+      await store.processQueue()
+
+      expect(dbCount).not.toHaveBeenCalled()
+      expect(store.pendingCount).toBe(0)
     })
   })
 
