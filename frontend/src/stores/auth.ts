@@ -20,15 +20,40 @@ import type {
 import type { PoolApiResponse } from '@/types/pool'
 
 const AUTH_USER_KEY = 'tayaway_auth_user'
+const AUTH_USER_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 
 function cacheUser(u: AuthUser): void {
-  localStorage.setItem(AUTH_USER_KEY, JSON.stringify({ ...u, iban: null }))
+  // Omit iban before caching — sensitive data should not persist in localStorage
+  const entry = {
+    user: {
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      phoneNumber: u.phoneNumber,
+      birthday: u.birthday,
+      locationName: u.locationName,
+      latitude: u.latitude,
+      longitude: u.longitude,
+    },
+    cachedAt: Date.now(),
+  }
+  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(entry))
 }
 
 function getCachedUser(): AuthUser | null {
   try {
     const raw = localStorage.getItem(AUTH_USER_KEY)
-    return raw ? (JSON.parse(raw) as AuthUser) : null
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    // Support legacy format (no cachedAt) — treat as expired so stale sessions
+    // are cleared on the next online boot
+    const cachedAt =
+      typeof parsed.cachedAt === 'number' ? parsed.cachedAt : null
+    if (cachedAt === null || Date.now() - cachedAt > AUTH_USER_TTL_MS) {
+      localStorage.removeItem(AUTH_USER_KEY)
+      return null
+    }
+    return parsed.user as AuthUser
   } catch {
     return null
   }
@@ -92,8 +117,19 @@ export const useAuthStore = defineStore('auth', () => {
           ws.connect()
         }
       }
-    } catch {
-      // Network error — fall back to cached user
+    } catch (e) {
+      // Genuine network/abort errors are expected when offline or on slow
+      // connections — fall back to cached user silently.
+      // Any other error (programming bug, unexpected exception) should be
+      // logged so it doesn't disappear unnoticed.
+      const isNetworkError =
+        e instanceof DOMException && e.name === 'AbortError'
+          ? true
+          : e instanceof TypeError &&
+            /fetch|network|failed to fetch/i.test(e.message)
+      if (!isNetworkError) {
+        console.error('[auth] initialize() caught unexpected error:', e)
+      }
       user.value = getCachedUser()
       if (user.value) {
         const ws = useWebSocketStore()
