@@ -7,6 +7,7 @@ module Expenses
     class << self
       extend T::Sig
       include Result::Methods
+      include Expenses::Validators
 
       sig do
         params(
@@ -28,30 +29,6 @@ module Expenses
       end
 
       private
-
-      sig { params(expense: Expense).returns(Result[Expense, ServiceError]) }
-      def check_not_settled(expense)
-        if expense.settlement_id
-          T.cast(
-            Failure(ServiceError.validation("Expense is part of a settlement. Delete the settlement first to edit.")),
-            Result[Expense, ServiceError]
-          )
-        else
-          T.cast(Success(expense), Result[Expense, ServiceError])
-        end
-      end
-
-      sig do
-        params(expense: Expense, current_user_id: T.any(String, UUID))
-          .returns(Result[Expense, ServiceError])
-      end
-      def check_owner(expense, current_user_id)
-        if expense.user_id&.to_s == current_user_id.to_s
-          T.cast(Success(expense), Result[Expense, ServiceError])
-        else
-          T.cast(Failure(ServiceError.forbidden("Not authorized to update this expense")), Result[Expense, ServiceError])
-        end
-      end
 
       sig do
         params(

@@ -17,6 +17,7 @@ module Events
     class << self
       extend T::Sig
       include Result::Methods
+      include Events::Validators
 
       sig do
         params(
@@ -57,24 +58,6 @@ module Events
         else
           T.cast(Success(event), Result[Event, ServiceError])
         end
-      end
-
-      sig do
-        params(
-          description: T.nilable(String),
-          location_name: T.nilable(String)
-        ).returns(Result[TrueClass, ServiceError])
-      end
-      def validate_text_lengths(description, location_name)
-        if description && description.length > 5000
-          return T.cast(Failure(ServiceError.validation("Description is too long (maximum 5000 characters)")), Result[TrueClass, ServiceError])
-        end
-
-        if location_name && location_name.length > 255
-          return T.cast(Failure(ServiceError.validation("Location name is too long (maximum 255 characters)")), Result[TrueClass, ServiceError])
-        end
-
-        T.cast(Success(true), Result[TrueClass, ServiceError])
       end
 
       sig do
