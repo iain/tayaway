@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { FormInput } from '@/components/form'
 import AppButton from '@/components/common/AppButton.vue'
+import appIcon from '@/assets/app-icon.svg'
 
 const authStore = useAuthStore()
 
@@ -32,6 +33,7 @@ async function handleSubmit() {
 <template>
   <main class="dark flex min-h-screen items-center justify-center bg-stone-900">
     <div class="w-full max-w-md px-6">
+      <img :src="appIcon" alt="Tayaway" class="mx-auto mb-8 size-16" />
       <h1
         data-testid="login-title"
         class="mb-2 text-center text-2xl font-bold text-white"
@@ -58,6 +60,7 @@ async function handleSubmit() {
         <AppButton
           type="submit"
           data-testid="submit-button"
+          variant="amber"
           :disabled="!email"
           :loading="loading"
           loading-label="Sending..."

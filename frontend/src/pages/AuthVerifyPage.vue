@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import AppButton from '@/components/common/AppButton.vue'
+import appIcon from '@/assets/app-icon.svg'
 
 const route = useRoute()
 const router = useRouter()
@@ -33,6 +34,7 @@ async function handleSignIn() {
 <template>
   <main class="dark flex min-h-screen items-center justify-center bg-stone-900">
     <div class="w-full max-w-md px-6 text-center">
+      <img :src="appIcon" alt="Tayaway" class="mx-auto mb-8 size-16" />
       <div v-if="!error">
         <h1 class="mb-2 text-2xl font-bold text-white">Sign in to Tayaway</h1>
         <p class="mb-8 text-sm/6 text-stone-400">
@@ -40,6 +42,7 @@ async function handleSignIn() {
         </p>
         <AppButton
           data-testid="confirm-sign-in"
+          variant="amber"
           :loading="verifying"
           loading-label="Signing in..."
           full-width
@@ -54,7 +57,7 @@ async function handleSignIn() {
         <p data-testid="verify-error" class="mb-6 text-sm text-red-400">
           {{ error }}
         </p>
-        <AppButton to="/login">Back to login</AppButton>
+        <AppButton variant="amber" to="/login">Back to login</AppButton>
       </div>
     </div>
   </main>

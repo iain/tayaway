@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import type { InviteInfoResponse } from '@/types'
 import AppButton from '@/components/common/AppButton.vue'
+import appIcon from '@/assets/app-icon.svg'
 
 const route = useRoute()
 
@@ -60,6 +61,8 @@ async function handleAccept() {
 <template>
   <main class="dark flex min-h-screen items-center justify-center bg-stone-900">
     <div class="w-full max-w-md px-6 text-center">
+      <img :src="appIcon" alt="Tayaway" class="mx-auto mb-8 size-16" />
+
       <!-- Loading state -->
       <div v-if="loading">
         <p class="text-stone-400">Loading invitation...</p>
@@ -71,7 +74,7 @@ async function handleAccept() {
         <p class="mb-6 text-sm text-red-400">
           {{ error }}
         </p>
-        <AppButton to="/login">Go to login</AppButton>
+        <AppButton variant="amber" to="/login">Go to login</AppButton>
       </div>
 
       <!-- Accepted state -->
@@ -82,20 +85,17 @@ async function handleAccept() {
         <p class="mb-6 text-sm/6 text-stone-400">
           Check your email for a magic link to sign in.
         </p>
-        <AppButton to="/login">Go to login</AppButton>
+        <AppButton variant="amber" to="/login">Go to login</AppButton>
       </div>
 
       <!-- Accept invitation state -->
       <div v-else>
-        <h1 class="mb-2 text-2xl font-bold text-white">
+        <h1 class="mb-8 text-2xl font-bold text-white">
           Join {{ workspaceName }}
         </h1>
-        <p class="mb-8 text-sm/6 text-stone-400">
-          You've been invited to join
-          <strong class="text-white">{{ workspaceName }}</strong> on Tayaway.
-        </p>
         <AppButton
           data-testid="accept-invite"
+          variant="amber"
           :loading="accepting"
           loading-label="Accepting..."
           full-width
