@@ -52,8 +52,12 @@ export const useMembersStore = defineStore('members', () => {
 
     try {
       await api.get(`/invites?workspace_id=${workspaceId}`)
-    } catch {
-      // Silently fail — user may not be admin
+    } catch (err) {
+      if ((err as { status?: number }).status === 403) {
+        // Silently fail — user may not be admin
+        return
+      }
+      console.error('Failed to fetch invites', err)
     }
   }
 
