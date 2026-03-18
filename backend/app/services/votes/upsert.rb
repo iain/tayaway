@@ -15,9 +15,6 @@ module Votes
   #   result.success?  # => true
   #   result.value!    # => { vote_id: "uuid", created: true }
   module Upsert
-    UUID_REGEX = /\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/i
-    private_constant :UUID_REGEX
-
     class << self
       extend T::Sig
       include Result::Methods
@@ -64,7 +61,7 @@ module Votes
           T.cast(Failure(ServiceError.validation("response is required")), Result[T::Hash[Symbol, String], ServiceError])
         elsif !VoteResponse.valid?(vote_response)
           T.cast(Failure(ServiceError.validation("Invalid response value")), Result[T::Hash[Symbol, String], ServiceError])
-        elsif vote_id && !UUID_REGEX.match?(vote_id)
+        elsif vote_id && !UUID::REGEX.match?(vote_id)
           T.cast(Failure(ServiceError.validation("Invalid vote ID format")), Result[T::Hash[Symbol, String], ServiceError])
         else
           T.cast(Success({ date_range_id: date_range_id, vote_response: vote_response }), Result[T::Hash[Symbol, String], ServiceError])
