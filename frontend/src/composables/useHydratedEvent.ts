@@ -4,6 +4,7 @@ import type {
   PoolEvent,
   PoolDateRange,
   PoolMember,
+  PoolVote,
   VoteResponse,
   DatePollStatus,
 } from '@/types/pool'
@@ -166,21 +167,25 @@ function hydrateEvent(poolEvent: PoolEvent, pool: Pool): HydratedEvent {
     .getAll('datePoll')
     .find((dp) => dp.eventId === poolEvent.id)
 
-  // Build vote index by dateRangeId — avoids re-scanning all votes per date range
-  const votesByDateRange = new Map<string, typeof votes>()
-  const votes = pool.getAll('vote')
-  for (const v of votes) {
-    const existing = votesByDateRange.get(v.dateRangeId)
-    if (existing) {
-      existing.push(v)
-    } else {
-      votesByDateRange.set(v.dateRangeId, [v])
+  let datePoll = null
+  if (datePollObj) {
+    // Only build vote index when a poll exists — avoids scanning all votes for events without polls
+    const votesByDateRange = new Map<string, PoolVote[]>()
+    for (const v of pool.getAll('vote')) {
+      const existing = votesByDateRange.get(v.dateRangeId)
+      if (existing) {
+        existing.push(v)
+      } else {
+        votesByDateRange.set(v.dateRangeId, [v])
+      }
     }
+    datePoll = hydrateDatePoll(
+      datePollObj.id,
+      pool,
+      votesByDateRange,
+      memberIndex
+    )
   }
-
-  const datePoll = datePollObj
-    ? hydrateDatePoll(datePollObj.id, pool, votesByDateRange, memberIndex)
-    : null
   const workspace = hydrateWorkspace(poolEvent.workspaceId, pool)
   const rsvps = hydrateRsvps(poolEvent.id, pool, memberIndex)
 

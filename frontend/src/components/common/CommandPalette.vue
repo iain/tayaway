@@ -188,27 +188,25 @@ const filteredEvents = computed<EventResult[]>(() => {
     .map((e) => ({ type: 'event' as const, id: e.id, name: e.name }))
 })
 
+// Build workspace task list index once, shared by both task list and task item filters
+const workspaceTaskLists = computed(() => {
+  const wsId = workspaceStore.currentWorkspaceId
+  return pool.getAll('taskList').filter((tl) => tl.workspaceId === wsId)
+})
+
 const filteredTaskLists = computed<TaskListResult[]>(() => {
   if (!query.value) return []
   const q = query.value.toLowerCase()
-  const wsId = workspaceStore.currentWorkspaceId
-  return pool
-    .getAll('taskList')
-    .filter(
-      (tl) => tl.workspaceId === wsId && tl.name.toLowerCase().includes(q)
-    )
+  return workspaceTaskLists.value
+    .filter((tl) => tl.name.toLowerCase().includes(q))
     .map((tl) => ({ type: 'taskList' as const, id: tl.id, name: tl.name }))
 })
 
 const filteredTaskItems = computed<TaskItemResult[]>(() => {
   if (!query.value) return []
   const q = query.value.toLowerCase()
-  const wsId = workspaceStore.currentWorkspaceId
   const taskListNames = new Map(
-    pool
-      .getAll('taskList')
-      .filter((tl) => tl.workspaceId === wsId)
-      .map((tl) => [tl.id, tl.name])
+    workspaceTaskLists.value.map((tl) => [tl.id, tl.name])
   )
   return pool
     .getAll('taskItem')
