@@ -29,8 +29,10 @@ export function registerServiceWorker(): void {
     onRegisteredSW(_url, registration) {
       if (!registration) return
 
+      const onUpdateError = (err: unknown) => console.warn('SW update failed:', err)
+
       // Check for updates every 60 minutes
-      setInterval(() => registration.update().catch(() => {}), 60 * 60 * 1000)
+      setInterval(() => registration.update().catch(onUpdateError), 60 * 60 * 1000)
 
       // Check for updates when tab becomes visible (throttled to 30s)
       let lastVisibilityCheck = 0
@@ -39,7 +41,7 @@ export function registerServiceWorker(): void {
         const now = Date.now()
         if (now - lastVisibilityCheck < 30_000) return
         lastVisibilityCheck = now
-        registration.update().catch(() => {})
+        registration.update().catch(onUpdateError)
       })
     },
   })
