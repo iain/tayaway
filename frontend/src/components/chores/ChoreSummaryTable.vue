@@ -57,8 +57,8 @@ const rows = computed<SummaryRow[]>(() => {
   <div class="mt-8">
     <SectionHeading :icon="ChartBarIcon" title="Workload" />
 
-    <BaseCard class="overflow-hidden">
-      <table class="w-full text-sm">
+    <BaseCard class="overflow-x-auto">
+      <table class="min-w-full text-sm">
         <thead>
           <tr
             class="border-b border-gray-200 text-left text-xs font-medium tracking-wide text-gray-500 uppercase dark:border-stone-700 dark:text-stone-400"
@@ -82,7 +82,7 @@ const rows = computed<SummaryRow[]>(() => {
             :class="i % 2 === 0 ? 'bg-gray-50 dark:bg-white/[0.04]' : ''"
           >
             <td
-              class="max-w-[6rem] truncate py-2 pr-4 pl-4 font-medium sm:max-w-none"
+              class="max-w-[8rem] truncate py-2 pr-4 pl-4 font-medium sm:max-w-none"
             >
               {{ row.name }}
             </td>

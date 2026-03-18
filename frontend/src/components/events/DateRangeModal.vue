@@ -169,7 +169,7 @@ const selectionText = computed(() => {
     </div>
 
     <!-- Two calendars side by side -->
-    <div class="grid grid-cols-1 gap-8 sm:grid-cols-2">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-8">
       <CalendarMonth
         :year="leftYear"
         :month="leftMonth"

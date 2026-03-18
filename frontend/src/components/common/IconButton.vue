@@ -14,7 +14,7 @@ const props = withDefaults(
 )
 
 const classes = computed(() => [
-  'cursor-pointer rounded p-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500',
+  'cursor-pointer rounded p-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 min-h-[44px] min-w-[44px] inline-flex items-center justify-center sm:min-h-0 sm:min-w-0 sm:p-1',
   props.variant === 'danger'
     ? 'text-gray-400 hover:text-red-500 dark:text-stone-500 dark:hover:text-red-400'
     : 'text-gray-400 hover:text-gray-600 dark:text-stone-500 dark:hover:text-stone-300',

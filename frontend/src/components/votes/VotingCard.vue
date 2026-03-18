@@ -134,7 +134,7 @@ function toggleCommentInput() {
         class="flex-1 md:border-l md:border-gray-200 md:pl-6 md:dark:border-stone-700"
       >
         <!-- Vote Buttons -->
-        <div class="mb-4 flex gap-2">
+        <div class="mb-4 flex flex-col gap-2 sm:flex-row">
           <button
             type="button"
             :disabled="loading"

@@ -143,7 +143,7 @@ function formatBalance(balance: number): string {
             :class="i % 2 === 0 ? 'bg-gray-50 dark:bg-white/[0.04]' : ''"
           >
             <td
-              class="sm:truncate-none max-w-[6rem] truncate py-2 pr-4 pl-4 font-medium sm:max-w-none"
+              class="max-w-[8rem] truncate py-2 pr-4 pl-4 font-medium sm:max-w-none"
             >
               {{ row.name }}
             </td>
