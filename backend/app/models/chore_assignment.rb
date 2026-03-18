@@ -32,6 +32,7 @@ class ChoreAssignment < T::Struct
   class << self
     extend T::Sig
     include Result::Methods
+    include Findable
 
     sig { params(id: T.any(String, UUID)).returns(T.nilable(ChoreAssignment)) }
     def find(id)
@@ -67,18 +68,6 @@ class ChoreAssignment < T::Struct
         .where(Sequel.lit("chore_assignments.updated_at > ?", since))
         .select_all(:chore_assignments)
         .all
-    end
-
-    sig { params(id: T.any(String, UUID)).returns(Result[ChoreAssignment, ServiceError]) }
-    def find_result(id)
-      assignment = find(id)
-      if assignment
-        T.cast(Success(assignment), Result[ChoreAssignment, ServiceError])
-      elsif DB[:deleted_items].where(object_type: "chore_assignment", object_id: id).first
-        T.cast(Failure(ServiceError.gone("Chore assignment not found")), Result[ChoreAssignment, ServiceError])
-      else
-        T.cast(Failure(ServiceError.not_found("Chore assignment not found")), Result[ChoreAssignment, ServiceError])
-      end
     end
 
     private

@@ -32,6 +32,7 @@ class SettlementTransfer < T::Struct
   class << self
     extend T::Sig
     include Result::Methods
+    include Findable
 
     sig { params(id: T.any(String, UUID)).returns(T.nilable(SettlementTransfer)) }
     def find(id)
@@ -57,18 +58,6 @@ class SettlementTransfer < T::Struct
         .where(Sequel.lit("settlement_transfers.updated_at > ?", since))
         .select_all(:settlement_transfers)
         .all
-    end
-
-    sig { params(id: T.any(String, UUID)).returns(Result[SettlementTransfer, ServiceError]) }
-    def find_result(id)
-      transfer = find(id)
-      if transfer
-        T.cast(Success(transfer), Result[SettlementTransfer, ServiceError])
-      elsif DB[:deleted_items].where(object_type: "settlement_transfer", object_id: id).first
-        T.cast(Failure(ServiceError.gone("Settlement transfer not found")), Result[SettlementTransfer, ServiceError])
-      else
-        T.cast(Failure(ServiceError.not_found("Settlement transfer not found")), Result[SettlementTransfer, ServiceError])
-      end
     end
 
     private

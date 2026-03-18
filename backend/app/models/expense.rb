@@ -36,6 +36,7 @@ class Expense < T::Struct
   class << self
     extend T::Sig
     include Result::Methods
+    include Findable
 
     sig { params(id: T.any(String, UUID)).returns(T.nilable(Expense)) }
     def find(id)
@@ -55,18 +56,6 @@ class Expense < T::Struct
         .where(Sequel.lit("expenses.updated_at > ?", since))
         .select_all(:expenses)
         .all
-    end
-
-    sig { params(id: T.any(String, UUID)).returns(Result[Expense, ServiceError]) }
-    def find_result(id)
-      expense = find(id)
-      if expense
-        T.cast(Success(expense), Result[Expense, ServiceError])
-      elsif DB[:deleted_items].where(object_type: "expense", object_id: id).first
-        T.cast(Failure(ServiceError.gone("Expense not found")), Result[Expense, ServiceError])
-      else
-        T.cast(Failure(ServiceError.not_found("Expense not found")), Result[Expense, ServiceError])
-      end
     end
 
     private
