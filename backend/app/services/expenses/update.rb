@@ -51,7 +51,7 @@ module Expenses
           )
         end
 
-        if has_description && T.must(description).length > 255
+        if has_description && T.must(description).length > ValidationLimits::SHORT_STRING
           return T.cast(
             Failure(ServiceError.validation("Description is too long (maximum 255 characters)")),
             Result[Expense, ServiceError]
@@ -65,7 +65,7 @@ module Expenses
           )
         end
 
-        if has_amount && T.must(amount) > 1_000_000
+        if has_amount && T.must(amount) > ValidationLimits::EXPENSE_AMOUNT_MAX
           return T.cast(
             Failure(ServiceError.validation("Amount cannot exceed 1,000,000")),
             Result[Expense, ServiceError]

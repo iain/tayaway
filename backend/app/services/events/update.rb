@@ -53,7 +53,7 @@ module Events
       def validate_name_with_event(name, event)
         if name.nil? || name.empty?
           T.cast(Failure(ServiceError.validation("Name is required")), Result[Event, ServiceError])
-        elsif name.length > 255
+        elsif name.length > ValidationLimits::SHORT_STRING
           T.cast(Failure(ServiceError.validation("Name is too long (maximum 255 characters)")), Result[Event, ServiceError])
         else
           T.cast(Success(event), Result[Event, ServiceError])

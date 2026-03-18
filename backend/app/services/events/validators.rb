@@ -14,11 +14,11 @@ module Events
       ).returns(Result[TrueClass, ServiceError])
     end
     def validate_text_lengths(description, location_name)
-      if description && description.length > 5000
+      if description && description.length > ValidationLimits::LONG_TEXT
         return T.cast(Failure(ServiceError.validation("Description is too long (maximum 5000 characters)")), Result[TrueClass, ServiceError])
       end
 
-      if location_name && location_name.length > 255
+      if location_name && location_name.length > ValidationLimits::SHORT_STRING
         return T.cast(Failure(ServiceError.validation("Location name is too long (maximum 255 characters)")), Result[TrueClass, ServiceError])
       end
 

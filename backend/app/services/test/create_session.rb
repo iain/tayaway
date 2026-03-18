@@ -53,7 +53,7 @@ module Test
         now = Time.now
         id = SecureRandom.uuid
         token = SecureRandom.hex(32)
-        expires_at = now + (Session::EXPIRY_DAYS * 24 * 60 * 60)
+        expires_at = now + Session::EXPIRY_SECONDS
 
         DB[:sessions].insert(
           id: id,
