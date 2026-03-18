@@ -84,7 +84,7 @@ RSpec.describe Invites::Remind do
     expect(result.failure.message).to eq("A reminder was already sent recently. Please wait before sending another.")
   end
 
-  it "resends the invite when cooldown has elapsed" do
+  it "resends the invite when cooldown has elapsed since creation" do
     invite_id = create_invite(created_at: Time.now - (25 * 3600)) # 25 hours ago
 
     result = described_class.call(invite_id: invite_id, workspace_id: workspace[:id])
@@ -93,6 +93,43 @@ RSpec.describe Invites::Remind do
     obj = result.value![:objects].find { |o| o[:objectType] == "workspaceInvite" }
     expect(obj[:email]).to eq("invitee@example.com")
     expect(obj[:lastRemindedAt]).not_to be_nil
+  end
+
+  it "resends the invite when cooldown has elapsed since last reminder" do
+    invite_id = create_invite(
+      created_at: Time.now - (72 * 3600),       # 3 days ago
+      last_reminded_at: Time.now - (25 * 3600)  # 25 hours ago — past 24h cooldown
+    )
+
+    result = described_class.call(invite_id: invite_id, workspace_id: workspace[:id])
+
+    expect(result.success?).to be true
+    obj = result.value![:objects].find { |o| o[:objectType] == "workspaceInvite" }
+    expect(obj[:email]).to eq("invitee@example.com")
+    expect(obj[:lastRemindedAt]).not_to be_nil
+  end
+
+  it "returns failure when just inside the 24h cooldown boundary since creation" do
+    # 23h59m ago — comfortably inside the cooldown window, must be blocked
+    invite_id = create_invite(created_at: Time.now - ((24 * 3600) - 60))
+
+    result = described_class.call(invite_id: invite_id, workspace_id: workspace[:id])
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("A reminder was already sent recently. Please wait before sending another.")
+  end
+
+  it "returns failure when just inside the 24h cooldown boundary since last reminder" do
+    # last_reminded_at was 23h59m ago — comfortably inside the cooldown window
+    invite_id = create_invite(
+      created_at: Time.now - (48 * 3600),
+      last_reminded_at: Time.now - ((24 * 3600) - 60)
+    )
+
+    result = described_class.call(invite_id: invite_id, workspace_id: workspace[:id])
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("A reminder was already sent recently. Please wait before sending another.")
   end
 
   it "sends an email when reminder is successful" do
