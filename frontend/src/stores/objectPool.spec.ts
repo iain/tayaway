@@ -292,6 +292,66 @@ describe('objectPool store', () => {
       const pool = useObjectPoolStore()
       expect(pool.getAll('event')).toEqual([])
     })
+
+    it('returns the same array reference when nothing has changed (cache hit)', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeEvent({ id: 'evt-1' })])
+
+      const first = pool.getAll('event')
+      const second = pool.getAll('event')
+
+      expect(second).toBe(first)
+    })
+
+    it('returns a new array reference after an import (cache miss)', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeEvent({ id: 'evt-1' })])
+
+      const first = pool.getAll('event')
+
+      pool.importObjects([makeEvent({ id: 'evt-2', name: 'Second' })])
+      const second = pool.getAll('event')
+
+      expect(second).not.toBe(first)
+      expect(second).toHaveLength(2)
+    })
+
+    it('returns a new array reference after remove (cache miss)', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeEvent({ id: 'evt-1' })])
+
+      const first = pool.getAll('event')
+      pool.remove('event', 'evt-1')
+      const second = pool.getAll('event')
+
+      expect(second).not.toBe(first)
+      expect(second).toHaveLength(0)
+    })
+
+    it('returns a new array reference after addPending (cache miss)', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeEvent({ id: 'evt-1', name: 'Original' })])
+
+      const first = pool.getAll('event')
+      pool.addPending('event', 'evt-1', { name: 'Pending' })
+      const second = pool.getAll('event')
+
+      expect(second).not.toBe(first)
+      expect(second[0]!.name).toBe('Pending')
+    })
+
+    it('does not invalidate cache for an unrelated type mutation', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeEvent({ id: 'evt-1' }), makeTaskItem()])
+
+      const eventsBefore = pool.getAll('event')
+
+      // mutate taskItem type only
+      pool.remove('taskItem', 'item-1')
+
+      const eventsAfter = pool.getAll('event')
+      expect(eventsAfter).toBe(eventsBefore)
+    })
   })
 
   describe('getMany', () => {

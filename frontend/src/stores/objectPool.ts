@@ -101,8 +101,13 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   // No-op by default; will become the decryption layer.
   const readTransform = ref<ReadTransform | null>(null)
 
+  // Tracks how many times setReadTransform has been called so the getAll
+  // cache can be invalidated when the transform changes.
+  let transformVersion = 0
+
   function setReadTransform(transform: ReadTransform): void {
     readTransform.value = transform
+    transformVersion++
   }
 
   function applyTransform<T extends ObjectType>(
@@ -121,6 +126,13 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   )
   // Global version counter (for backwards compatibility and cross-type consumers)
   const version = ref(0)
+
+  // Memoization cache for getAll: type → { typeVersion, transformVersion, result }
+  // Bounded by the number of object types — no memory leak risk.
+  const getAllCache = new Map<
+    ObjectType,
+    { typeVersion: number; transformVersion: number; result: unknown[] }
+  >()
 
   function bumpVersion(...types: ObjectType[]): void {
     for (const type of types) {
@@ -216,11 +228,25 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   }
 
   // Get all objects of a type
+  // Results are memoized by type version + transform version to avoid
+  // materializing intermediate arrays and objects on every call.
   function getAll<T extends ObjectType>(type: T): ObjectTypeMap[T][] {
+    // Access per-type version to establish scoped reactivity dependency
+    const currentTypeVersion = typeVersions.value.get(type) ?? 0
+
+    const cached = getAllCache.get(type)
+    if (
+      cached !== undefined &&
+      cached.typeVersion === currentTypeVersion &&
+      cached.transformVersion === transformVersion
+    ) {
+      return cached.result as ObjectTypeMap[T][]
+    }
+
     const typeMap = objects.value.get(type)
     if (!typeMap) return []
 
-    return Array.from(typeMap.values()).map((obj) => {
+    const result = Array.from(typeMap.values()).map((obj) => {
       const pendingKey = `${type}:${obj.id}`
       const pending = pendingUpdates.value.get(pendingKey)
       if (!pending?.length) return applyTransform(type, obj as ObjectTypeMap[T])
@@ -231,6 +257,14 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       ) as unknown as ObjectTypeMap[T]
       return applyTransform(type, merged)
     })
+
+    getAllCache.set(type, {
+      typeVersion: currentTypeVersion,
+      transformVersion,
+      result,
+    })
+
+    return result
   }
 
   // Find a single object by a field value (e.g. member by userId)
@@ -471,6 +505,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   function $reset(): void {
     objects.value = createEmptyStorage()
     pendingUpdates.value = new Map()
+    getAllCache.clear()
   }
 
   return {
