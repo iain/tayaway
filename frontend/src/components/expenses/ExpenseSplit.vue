@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { CalculatorIcon } from '@heroicons/vue/24/outline'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { countDays } from '@/utils/event'
+import { formatAmount } from '@/utils/format'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import type { PoolEvent } from '@/types/pool'
@@ -95,10 +96,6 @@ const rows = computed((): SplitRow[] => {
 })
 
 const totalDays = computed(() => rows.value.reduce((sum, r) => sum + r.days, 0))
-
-function formatAmount(amount: number): string {
-  return `€${amount.toFixed(2)}`
-}
 
 function formatDays(days: number): string {
   return `${days} day${days === 1 ? '' : 's'}`

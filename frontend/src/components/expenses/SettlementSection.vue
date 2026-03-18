@@ -18,6 +18,7 @@ import {
   type PreviewTransfer,
 } from '@/utils/settlement'
 import { formatDateTime } from '@/utils/date'
+import { formatAmount } from '@/utils/format'
 import { getMemberName } from '@/utils/member'
 import AppButton from '@/components/common/AppButton.vue'
 import AppBadge from '@/components/common/AppBadge.vue'
@@ -70,10 +71,6 @@ function transfersForSettlement(settlementId: string) {
 function allTransfersPaid(settlementId: string): boolean {
   const transfers = transfersForSettlement(settlementId)
   return transfers.length > 0 && transfers.every((t) => t.paidAt !== null)
-}
-
-function formatAmount(amount: number): string {
-  return `€${amount.toFixed(2)}`
 }
 
 function formatDate(iso: string): string {
