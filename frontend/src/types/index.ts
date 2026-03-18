@@ -1,5 +1,7 @@
 // Shared types for the frontend application
 
+import type { VoteResponse } from '@/types/pool'
+
 export interface User {
   id: string
   email: string
@@ -62,7 +64,7 @@ export interface AuthError {
 }
 
 // Vote types
-export type VoteResponse = 'yes' | 'no' | 'preferably_not'
+export type { VoteResponse }
 
 export interface Vote {
   id: string
