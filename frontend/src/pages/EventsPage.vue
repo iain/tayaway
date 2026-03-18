@@ -130,7 +130,9 @@ function formatDateRangeSummary(
           >
             <template #meta>
               <span class="inline-flex items-center gap-1">
-                <CalendarDaysIcon class="size-4" />
+                <CalendarDaysIcon
+                  class="size-4 text-amber-600 dark:text-amber-400"
+                />
                 <DateRangeDisplay
                   :start-date="event.startDate!"
                   :end-date="event.endDate!"
@@ -155,7 +157,9 @@ function formatDateRangeSummary(
           >
             <template #meta>
               <span class="inline-flex items-center gap-1">
-                <CalendarDaysIcon class="size-4" />
+                <CalendarDaysIcon
+                  class="size-4 text-amber-600 dark:text-amber-400"
+                />
                 <DateRangeDisplay
                   :start-date="event.startDate!"
                   :end-date="event.endDate!"
@@ -199,7 +203,9 @@ function formatDateRangeSummary(
           >
             <template #meta>
               <span class="inline-flex items-center gap-1">
-                <CalendarDaysIcon class="size-4" />
+                <CalendarDaysIcon
+                  class="size-4 text-amber-600 dark:text-amber-400"
+                />
                 <DateRangeDisplay
                   :start-date="event.startDate!"
                   :end-date="event.endDate!"

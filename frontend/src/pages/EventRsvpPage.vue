@@ -104,7 +104,7 @@ function handleDownloadIcs(): void {
         v-if="isPollActive(event.datePoll)"
         class="flex flex-col items-center py-12 text-center"
       >
-        <ClockIcon class="mb-4 size-12 text-gray-400 dark:text-stone-500" />
+        <ClockIcon class="mb-4 size-12 text-amber-500 dark:text-amber-400" />
         <h2 class="text-lg font-semibold text-gray-900 dark:text-stone-100">
           Voting in progress
         </h2>
@@ -132,7 +132,7 @@ function handleDownloadIcs(): void {
       <!-- No dates yet: show empty state -->
       <div v-else class="flex flex-col items-center py-12 text-center">
         <CalendarDaysIcon
-          class="mb-4 size-12 text-gray-400 dark:text-stone-500"
+          class="mb-4 size-12 text-amber-500 dark:text-amber-400"
         />
         <h2 class="text-lg font-semibold text-gray-900 dark:text-stone-100">
           No dates confirmed yet

@@ -152,7 +152,7 @@ async function handleSave(data: {
           v-if="eventHasDates(event)"
           class="flex items-center gap-2 text-gray-500 dark:text-stone-400"
         >
-          <CalendarDaysIcon class="size-5" />
+          <CalendarDaysIcon class="size-5 text-amber-600 dark:text-amber-400" />
           <DateRangeDisplay
             :start-date="event.startDate!"
             :end-date="event.endDate!"
@@ -182,7 +182,9 @@ async function handleSave(data: {
           v-if="event.locationName"
           class="flex items-center gap-2 text-gray-500 dark:text-stone-400"
         >
-          <MapPinIcon class="size-5 shrink-0" />
+          <MapPinIcon
+            class="size-5 shrink-0 text-amber-600 dark:text-amber-400"
+          />
           <span>{{ event.locationName }}</span>
         </div>
         <div
