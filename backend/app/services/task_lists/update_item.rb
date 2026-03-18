@@ -61,7 +61,7 @@ module TaskLists
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
       def update_item(source_list, item, target_list, content, completed, position)
-        if content && content.length > 5000
+        if content && content.length > ValidationLimits::LONG_TEXT
           return T.cast(
             Failure(ServiceError.validation("Content is too long (maximum 5000 characters)")),
             Result[T::Hash[Symbol, T.untyped], ServiceError]

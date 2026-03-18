@@ -38,7 +38,7 @@ module Invites
 
       sig { params(name: T.nilable(String)).returns(Result[TrueClass, ServiceError]) }
       def validate_name_length(name)
-        if name && name.length > 255
+        if name && name.length > ValidationLimits::SHORT_STRING
           T.cast(Failure(ServiceError.validation("Name is too long (maximum 255 characters)")), Result[TrueClass, ServiceError])
         else
           T.cast(Success(true), Result[TrueClass, ServiceError])

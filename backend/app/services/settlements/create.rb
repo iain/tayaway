@@ -5,6 +5,11 @@ module Settlements
   # Service to create a settlement for an event. Computes balances from expenses
   # and attending RSVPs, then minimizes transfers using a greedy algorithm.
   module Create
+    # Minimum absolute balance (in euros) treated as zero. Balances and transfer
+    # amounts below this threshold are ignored to avoid spurious micro-transfers
+    # from floating-point rounding after two decimal places of precision.
+    BALANCE_EPSILON = 0.005
+
     class << self
       extend T::Sig
       include Result::Methods
@@ -197,7 +202,7 @@ module Settlements
         balances = {}
         all_user_ids.each do |uid|
           balance = (share_by_user[uid] - paid_by_user[uid]).round(2).to_f
-          balances[uid] = balance unless balance.abs < 0.005
+          balances[uid] = balance unless balance.abs < BALANCE_EPSILON
         end
 
         balances
@@ -219,7 +224,7 @@ module Settlements
 
           amount = [debt, credit].min.round(2).to_f
 
-          if amount > 0.005
+          if amount > BALANCE_EPSILON
             transfers << {
               from_user_id: debtor_id,
               to_user_id: creditor_id,
@@ -232,8 +237,8 @@ module Settlements
           debtors[d_idx] = [debtor_id, remaining_debt]
           creditors[c_idx] = [creditor_id, remaining_credit]
 
-          d_idx += 1 if remaining_debt < 0.005
-          c_idx += 1 if remaining_credit < 0.005
+          d_idx += 1 if remaining_debt < BALANCE_EPSILON
+          c_idx += 1 if remaining_credit < BALANCE_EPSILON
         end
 
         transfers

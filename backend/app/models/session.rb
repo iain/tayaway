@@ -6,6 +6,7 @@ class Session < T::Struct
   extend T::Sig
 
   EXPIRY_DAYS = 30
+  EXPIRY_SECONDS = EXPIRY_DAYS * 24 * 60 * 60
 
   const :id, UUID
   const :user_id, UUID

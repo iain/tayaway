@@ -204,7 +204,7 @@ module TestFactories
       DB[:chore_assignments].where(id: id).first
     end
 
-    def session(user: nil, token: SecureRandom.hex(32), expires_at: Time.now + (30 * 24 * 60 * 60), id: SecureRandom.uuid)
+    def session(user: nil, token: SecureRandom.hex(32), expires_at: Time.now + Session::EXPIRY_SECONDS, id: SecureRandom.uuid)
       user ||= self.user
       now = Time.now
       DB[:sessions].insert(

@@ -74,7 +74,7 @@ module Users
 
         if name.strip.empty?
           T.cast(Failure(ServiceError.validation("Name is required")), Result[User, ServiceError])
-        elsif name.length > 255
+        elsif name.length > ValidationLimits::SHORT_STRING
           T.cast(Failure(ServiceError.validation("Name is too long (maximum 255 characters)")), Result[User, ServiceError])
         else
           T.cast(Success(user), Result[User, ServiceError])
@@ -123,7 +123,7 @@ module Users
           return T.cast(Failure(ServiceError.validation("Phone number is too long (maximum 50 characters)")), Result[User, ServiceError])
         end
 
-        if location_name && location_name.length > 255
+        if location_name && location_name.length > ValidationLimits::SHORT_STRING
           return T.cast(Failure(ServiceError.validation("Location name is too long (maximum 255 characters)")), Result[User, ServiceError])
         end
 

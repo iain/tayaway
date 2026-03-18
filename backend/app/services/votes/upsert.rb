@@ -108,7 +108,7 @@ module Votes
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
       def upsert_vote(date_range, user_id, vote_response, comment, vote_id)
-        if comment && comment.length > 1000
+        if comment && comment.length > ValidationLimits::VOTE_COMMENT
           return T.cast(
             Failure(ServiceError.validation("Comment is too long (maximum 1000 characters)")),
             Result[T::Hash[Symbol, T.untyped], ServiceError]
