@@ -43,11 +43,6 @@ class TaskItem < T::Struct
       dataset.where(task_list_id: task_list_id).order(:position).all
     end
 
-    sig { params(task_list_id: T.any(String, UUID)).returns(T::Array[String]) }
-    def ids_for_task_list(task_list_id)
-      DB[:task_items].where(task_list_id: task_list_id).select_map(:id)
-    end
-
     sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[TaskItem]) }
     def changed_since(workspace_id, since)
       dataset

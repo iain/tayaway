@@ -47,21 +47,11 @@ class User < T::Struct
       dataset.where(Sequel.lit("LOWER(email) = ?", email.to_s.downcase)).first
     end
 
-    sig { params(email: T.any(String, EmailAddress)).returns(T.nilable(User)) }
-    def find_by_email_exact(email)
-      dataset.where(email: email).first
-    end
-
     sig { params(ids: T::Array[T.any(String, UUID)]).returns(T::Array[User]) }
     def for_ids(ids)
       return [] if ids.empty?
 
       dataset.where(id: ids).all
-    end
-
-    sig { returns(T::Array[User]) }
-    def all_ordered
-      dataset.order(:name, :email).all
     end
 
     private
