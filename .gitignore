@@ -46,6 +46,7 @@ backend/sorbet/rbi/todo.rbi
 
 # Claude Code
 .claude/worktrees/
+.claude/settings.local.json
 
 # Misc
 *.pid
