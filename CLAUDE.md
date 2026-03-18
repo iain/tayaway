@@ -30,6 +30,12 @@ RACK_ENV=test bundle exec rake db:reset
 RACK_ENV=e2e bundle exec rake db:reset
 ```
 
+**Git commit and GitHub Pull Requests:** The most important rules writing commit messages or making pull requests:
+
+- Write a title that is **short, imperative, title case** (capitalise each significant word), easy to scan in a `git log --oneline`.
+- The body of the commit or PR should be short, only a few bullet points. No "Co-Authored-By", no fluff, no headers. Just the subject line unless a single sentence of context is genuinely needed (rare).
+- Always use the `/commit` and `/pr` commands.
+
 ## Architecture
 
 ```
