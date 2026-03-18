@@ -214,7 +214,10 @@ async function handleDelete(e: Event) {
             :key="payer.name"
             class="text-gray-700 dark:text-stone-300"
           >
-            <td class="max-w-[10rem] truncate py-0.5 pr-2" :title="payer.name">
+            <td
+              class="max-w-[6rem] truncate py-0.5 pr-2 sm:max-w-[10rem]"
+              :title="payer.name"
+            >
               {{ payer.name }}
             </td>
             <td class="py-0.5 pr-2">{{ payer.overlapDays }}</td>

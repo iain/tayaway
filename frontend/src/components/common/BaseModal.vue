@@ -57,7 +57,7 @@ const sizeClasses: Record<string, string> = {
   <dialog
     ref="dialogRef"
     :class="[
-      'modal-dialog m-auto rounded-lg bg-white p-6 text-left shadow-xl ring-1 ring-black/10 backdrop:bg-gray-500/85 sm:w-full dark:bg-stone-900 dark:ring-white/10 dark:backdrop:bg-stone-900/80',
+      'modal-dialog m-auto rounded-lg bg-white p-4 text-left shadow-xl ring-1 ring-black/10 backdrop:bg-gray-500/85 sm:w-full sm:p-6 dark:bg-stone-900 dark:ring-white/10 dark:backdrop:bg-stone-900/80',
       sizeClasses[size ?? 'md'],
     ]"
     @close="handleClose"

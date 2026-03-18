@@ -52,7 +52,7 @@ async function handleRequestEmailChange(email: string): Promise<void> {
             <dt class="text-sm font-medium text-gray-500 dark:text-stone-400">
               Email
             </dt>
-            <dd class="text-sm text-gray-900 dark:text-white">
+            <dd class="truncate text-sm text-gray-900 dark:text-white">
               {{ user?.email }}
             </dd>
           </div>

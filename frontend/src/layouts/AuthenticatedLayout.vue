@@ -292,7 +292,7 @@ async function handleSignOut() {
                     class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5 focus:outline-hidden dark:bg-stone-800"
                   >
                     <div
-                      class="border-b border-gray-200 px-4 py-2 text-sm text-gray-700 dark:border-stone-700 dark:text-stone-300"
+                      class="truncate border-b border-gray-200 px-4 py-2 text-sm text-gray-700 dark:border-stone-700 dark:text-stone-300"
                     >
                       {{ user?.email }}
                     </div>
@@ -418,8 +418,8 @@ async function handleSignOut() {
                 variant="nav"
               />
             </div>
-            <div class="ml-3">
-              <div class="text-nav-text text-base font-medium">
+            <div class="ml-3 min-w-0 flex-1">
+              <div class="text-nav-text truncate text-base font-medium">
                 {{ user?.email }}
               </div>
             </div>

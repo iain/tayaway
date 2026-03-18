@@ -294,7 +294,7 @@ async function handlePaidClick(
           <div
             v-for="transfer in transfersForSettlement(settlement.id)"
             :key="transfer.id"
-            class="flex flex-wrap items-center justify-between gap-y-1 px-3 py-2"
+            class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2"
           >
             <div class="flex min-w-0 items-center gap-2">
               <span class="truncate text-sm text-gray-800 dark:text-stone-200">
