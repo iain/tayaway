@@ -16,7 +16,7 @@ class WorkspaceMembership < T::Struct
   def to_api_hash
     {
       id: id.to_s,
-      objectType: "workspaceMembership",
+      objectType: "member",
       workspaceId: workspace_id.to_s,
       userId: user_id.to_s,
       role: role,
