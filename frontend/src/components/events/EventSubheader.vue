@@ -29,7 +29,7 @@ const activeTab = computed(() => {
 
 function tabClass(active: boolean): string {
   return [
-    'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+    'shrink-0 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors',
     active
       ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
       : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-stone-400 dark:hover:bg-stone-700 dark:hover:text-stone-100',
@@ -71,7 +71,9 @@ function tabClass(active: boolean): string {
             />
           </p>
         </div>
-        <nav class="mt-1 flex items-center gap-1 sm:mt-0">
+        <nav
+          class="-mx-4 mt-1 flex items-center gap-1 overflow-x-auto px-4 sm:mx-0 sm:mt-0 sm:px-0"
+        >
           <router-link
             :to="`/events/${eventId}/planning`"
             :class="tabClass(activeTab === 'planning')"

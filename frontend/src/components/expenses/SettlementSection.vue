@@ -294,7 +294,7 @@ async function handlePaidClick(
           <div
             v-for="transfer in transfersForSettlement(settlement.id)"
             :key="transfer.id"
-            class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2"
+            class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3"
           >
             <div class="flex min-w-0 items-center gap-2">
               <span class="truncate text-sm text-gray-800 dark:text-stone-200">
@@ -307,12 +307,12 @@ async function handlePaidClick(
                 {{ getMemberName(transfer.toUserId, pool) }}
               </span>
               <span
-                class="shrink-0 font-mono text-sm font-medium text-gray-900 dark:text-white"
+                class="shrink-0 font-mono text-sm font-semibold text-gray-900 dark:text-white"
               >
                 {{ formatAmount(transfer.amount) }}
               </span>
             </div>
-            <div class="flex items-center gap-1">
+            <div class="flex items-center gap-2">
               <button
                 v-if="
                   !transfer.paidAt &&
@@ -320,15 +320,15 @@ async function handlePaidClick(
                   memberHasIban(transfer.toUserId)
                 "
                 type="button"
-                class="cursor-pointer rounded-md bg-gray-100 p-1 text-gray-600 transition-colors hover:bg-gray-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600"
+                class="cursor-pointer rounded-md bg-gray-100 p-1.5 text-gray-600 transition-colors hover:bg-gray-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600"
                 title="Show QR code for bank transfer"
                 @click="openQrModal(transfer)"
               >
-                <QrCodeIcon class="size-4" />
+                <QrCodeIcon class="size-5" />
               </button>
               <button
                 type="button"
-                class="cursor-pointer rounded-md px-2 py-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500"
+                class="cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500"
                 :class="
                   transfer.paidAt
                     ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
