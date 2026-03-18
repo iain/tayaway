@@ -464,4 +464,160 @@ describe('objectPool store', () => {
       expect(pool.hasPending('event', 'evt-1')).toBe(false)
     })
   })
+
+  describe('cascadeRemove', () => {
+    function makeDatePoll(
+      overrides: Partial<ObjectTypeMap['datePoll']> = {}
+    ): ObjectTypeMap['datePoll'] {
+      return {
+        id: 'poll-1',
+        objectType: 'datePoll',
+        eventId: 'evt-1',
+        deadline: '2026-06-01T00:00:00.000Z',
+        selectedDateRangeId: null,
+        closedAt: null,
+        status: 'open',
+        dateRangeIds: [],
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        ...overrides,
+      }
+    }
+
+    function makeDateRange(
+      overrides: Partial<ObjectTypeMap['dateRange']> = {}
+    ): ObjectTypeMap['dateRange'] {
+      return {
+        id: 'dr-1',
+        objectType: 'dateRange',
+        datePollId: 'poll-1',
+        startDate: '2026-06-10',
+        endDate: '2026-06-12',
+        voteIds: [],
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        ...overrides,
+      }
+    }
+
+    function makeVote(
+      overrides: Partial<ObjectTypeMap['vote']> = {}
+    ): ObjectTypeMap['vote'] {
+      return {
+        id: 'vote-1',
+        objectType: 'vote',
+        dateRangeId: 'dr-1',
+        userId: 'user-1',
+        response: 'yes',
+        comment: null,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        ...overrides,
+      }
+    }
+
+    it('removes the object itself', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeEvent()])
+
+      pool.cascadeRemove('event', 'evt-1')
+
+      expect(pool.get('event', 'evt-1')).toBeUndefined()
+    })
+
+    it('removes deeply nested children in a single pass', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([
+        makeEvent(),
+        makeDatePoll(),
+        makeDateRange(),
+        makeVote(),
+        makeVote({ id: 'vote-2' }),
+      ])
+
+      pool.cascadeRemove('event', 'evt-1')
+
+      expect(pool.get('event', 'evt-1')).toBeUndefined()
+      expect(pool.get('datePoll', 'poll-1')).toBeUndefined()
+      expect(pool.get('dateRange', 'dr-1')).toBeUndefined()
+      expect(pool.get('vote', 'vote-1')).toBeUndefined()
+      expect(pool.get('vote', 'vote-2')).toBeUndefined()
+    })
+
+    it('only removes children belonging to the deleted parent', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([
+        makeEvent({ id: 'evt-1' }),
+        makeEvent({ id: 'evt-2' }),
+        makeDatePoll({ id: 'poll-1', eventId: 'evt-1' }),
+        makeDatePoll({ id: 'poll-2', eventId: 'evt-2' }),
+      ])
+
+      pool.cascadeRemove('event', 'evt-1')
+
+      expect(pool.get('datePoll', 'poll-1')).toBeUndefined()
+      expect(pool.get('datePoll', 'poll-2')).toBeDefined()
+      expect(pool.get('event', 'evt-2')).toBeDefined()
+    })
+
+    it('bumps the version exactly once per affected type regardless of child count', () => {
+      const pool = useObjectPoolStore()
+      // 1 event → 1 datePoll → 3 dateRanges → 2 votes each = 8 total objects
+      pool.importObjects([
+        makeEvent(),
+        makeDatePoll(),
+        makeDateRange({ id: 'dr-1', datePollId: 'poll-1' }),
+        makeDateRange({ id: 'dr-2', datePollId: 'poll-1' }),
+        makeDateRange({ id: 'dr-3', datePollId: 'poll-1' }),
+        makeVote({ id: 'vote-1', dateRangeId: 'dr-1' }),
+        makeVote({ id: 'vote-2', dateRangeId: 'dr-1' }),
+        makeVote({ id: 'vote-3', dateRangeId: 'dr-2' }),
+        makeVote({ id: 'vote-4', dateRangeId: 'dr-2' }),
+      ])
+
+      const versionBefore = pool.version
+      const pollVersionBefore = pool.typeVersions.get('datePoll')!
+      const dateRangeVersionBefore = pool.typeVersions.get('dateRange')!
+      const voteVersionBefore = pool.typeVersions.get('vote')!
+
+      pool.cascadeRemove('event', 'evt-1')
+
+      // Global version should increment by exactly 1 (one bumpVersion call)
+      expect(pool.version).toBe(versionBefore + 1)
+      // Each affected type version should also only increment by 1
+      expect(pool.typeVersions.get('datePoll')).toBe(pollVersionBefore + 1)
+      expect(pool.typeVersions.get('dateRange')).toBe(dateRangeVersionBefore + 1)
+      expect(pool.typeVersions.get('vote')).toBe(voteVersionBefore + 1)
+    })
+
+    it('clears pending updates for removed objects', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeEvent(), makeDatePoll()])
+      pool.addPending('datePoll', 'poll-1', {
+        deadline: '2099-01-01T00:00:00.000Z',
+      })
+
+      pool.cascadeRemove('event', 'evt-1')
+
+      expect(pool.hasPending('datePoll', 'poll-1')).toBe(false)
+    })
+
+    it('returns all removed objects for rollback', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeEvent(), makeDatePoll(), makeDateRange()])
+
+      const removed = pool.cascadeRemove('event', 'evt-1')
+
+      expect(removed).toHaveLength(3)
+      const ids = removed.map((o) => o.id)
+      expect(ids).toContain('evt-1')
+      expect(ids).toContain('poll-1')
+      expect(ids).toContain('dr-1')
+    })
+
+    it('handles cascading a nonexistent object without throwing', () => {
+      const pool = useObjectPoolStore()
+
+      expect(() => pool.cascadeRemove('event', 'nonexistent')).not.toThrow()
+    })
+  })
 })

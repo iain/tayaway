@@ -429,4 +429,85 @@ describe('websocket store — cascade delete', () => {
     expect(() => sendDeleteBroadcast('event', 'evt-1')).not.toThrow()
     expect(pool.get('event', 'evt-1')).toBeUndefined()
   })
+
+  it('increments the pool version only once per type when cascading many deletions', () => {
+    const pool = useObjectPoolStore()
+
+    function makeDatePoll(
+      overrides: Partial<ObjectTypeMap['datePoll']> = {}
+    ): ObjectTypeMap['datePoll'] {
+      return {
+        id: 'poll-1',
+        objectType: 'datePoll',
+        eventId: 'evt-1',
+        deadline: '2026-06-01T00:00:00.000Z',
+        selectedDateRangeId: null,
+        closedAt: null,
+        status: 'open',
+        dateRangeIds: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        ...overrides,
+      }
+    }
+
+    function makeDateRange(
+      overrides: Partial<ObjectTypeMap['dateRange']> = {}
+    ): ObjectTypeMap['dateRange'] {
+      return {
+        id: 'dr-1',
+        objectType: 'dateRange',
+        datePollId: 'poll-1',
+        startDate: '2026-06-10',
+        endDate: '2026-06-12',
+        voteIds: [],
+        updatedAt: new Date().toISOString(),
+        ...overrides,
+      }
+    }
+
+    function makeVote(
+      overrides: Partial<ObjectTypeMap['vote']> = {}
+    ): ObjectTypeMap['vote'] {
+      return {
+        id: 'vote-1',
+        objectType: 'vote',
+        dateRangeId: 'dr-1',
+        userId: 'user-1',
+        response: 'yes',
+        comment: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        ...overrides,
+      }
+    }
+
+    // Build: 1 event → 1 datePoll → 1 dateRange → 3 votes (6 total objects)
+    pool.importObjects([
+      makeEvent(),
+      makeDatePoll(),
+      makeDateRange(),
+      makeVote({ id: 'vote-1', dateRangeId: 'dr-1' }),
+      makeVote({ id: 'vote-2', dateRangeId: 'dr-1' }),
+      makeVote({ id: 'vote-3', dateRangeId: 'dr-1' }),
+    ])
+
+    const versionBefore = pool.version
+    const voteVersionBefore = pool.typeVersions.get('vote')!
+
+    sendDeleteBroadcast('event', 'evt-1')
+
+    // All objects removed
+    expect(pool.get('event', 'evt-1')).toBeUndefined()
+    expect(pool.get('datePoll', 'poll-1')).toBeUndefined()
+    expect(pool.get('dateRange', 'dr-1')).toBeUndefined()
+    expect(pool.get('vote', 'vote-1')).toBeUndefined()
+    expect(pool.get('vote', 'vote-2')).toBeUndefined()
+    expect(pool.get('vote', 'vote-3')).toBeUndefined()
+
+    // Version bumped exactly once (one bumpVersion call for all types together)
+    expect(pool.version).toBe(versionBefore + 1)
+    // vote type version bumped only once despite 3 votes being deleted
+    expect(pool.typeVersions.get('vote')).toBe(voteVersionBefore + 1)
+  })
 })

@@ -53,25 +53,6 @@ interface ServerMessage {
   message?: string
 }
 
-// Cascade relationship map: when an object is deleted, also remove its dependents
-const CASCADE_RELATIONS: Partial<
-  Record<ObjectType, { childType: ObjectType; foreignKey: string }[]>
-> = {
-  event: [
-    { childType: 'datePoll', foreignKey: 'eventId' },
-    { childType: 'rsvp', foreignKey: 'eventId' },
-    { childType: 'expense', foreignKey: 'eventId' },
-    { childType: 'settlement', foreignKey: 'eventId' },
-    { childType: 'choreRoster', foreignKey: 'eventId' },
-  ],
-  datePoll: [{ childType: 'dateRange', foreignKey: 'datePollId' }],
-  dateRange: [{ childType: 'vote', foreignKey: 'dateRangeId' }],
-  taskList: [{ childType: 'taskItem', foreignKey: 'taskListId' }],
-  settlement: [{ childType: 'settlementTransfer', foreignKey: 'settlementId' }],
-  choreRoster: [{ childType: 'chore', foreignKey: 'choreRosterId' }],
-  chore: [{ childType: 'choreAssignment', foreignKey: 'choreId' }],
-}
-
 export const useWebSocketStore = defineStore('websocket', () => {
   const state = ref<ConnectionState>('disconnected')
   const workspaceIds = ref<string[]>([])
@@ -277,7 +258,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
       }
       if (message.data.deleted?.length) {
         for (const item of message.data.deleted) {
-          cascadeRemove(pool, item.objectType, item.id)
+          pool.cascadeRemove(item.objectType, item.id)
         }
       }
     } else {
@@ -298,37 +279,13 @@ export const useWebSocketStore = defineStore('websocket', () => {
     hasSynced.value = true
   }
 
-  /** Remove an object and cascade-remove its dependents from the pool. */
-  function cascadeRemove(
-    pool: ReturnType<typeof useObjectPoolStore>,
-    objectType: ObjectType,
-    id: string
-  ): void {
-    // Find children before removing (need the object's data for FK lookups)
-    const relations = CASCADE_RELATIONS[objectType]
-    if (relations) {
-      for (const rel of relations) {
-        const children = pool
-          .getAll(rel.childType)
-          .filter(
-            (obj) =>
-              (obj as unknown as Record<string, string>)[rel.foreignKey] === id
-          )
-        for (const child of children) {
-          cascadeRemove(pool, rel.childType, child.id)
-        }
-      }
-    }
-    pool.remove(objectType, id)
-  }
-
   function handleBroadcast(message: BroadcastMessage): void {
     const pool = useObjectPoolStore()
 
     if (message.action === 'delete' && message.data?.deleted) {
       // Handle deletions from the deleted array
       for (const item of message.data.deleted) {
-        cascadeRemove(pool, item.objectType, item.id)
+        pool.cascadeRemove(item.objectType, item.id)
       }
     } else if (message.action === 'update' && message.data?.objects) {
       pool.importObjects(message.data.objects)
