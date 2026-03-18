@@ -9,8 +9,9 @@ import {
 } from '@/types/pool'
 
 // Helper to compare ISO8601 timestamps
+// ISO 8601 strings with the same format are lexicographically sortable
 function isNewer(a: string, b: string): boolean {
-  return new Date(a).getTime() > new Date(b).getTime()
+  return a > b
 }
 
 // Generate unique ID for pending updates
