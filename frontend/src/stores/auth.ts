@@ -38,6 +38,20 @@ function clearCachedUser(): void {
   localStorage.removeItem(AUTH_USER_KEY)
 }
 
+function mapMeResponseToAuthUser(data: MeResponse): AuthUser {
+  return {
+    id: data.user_id,
+    email: data.email,
+    name: data.name,
+    phoneNumber: data.phoneNumber ?? null,
+    birthday: data.birthday ?? null,
+    locationName: data.locationName ?? null,
+    latitude: data.latitude ?? null,
+    longitude: data.longitude ?? null,
+    iban: data.iban ?? null,
+  }
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthUser | null>(null)
   const loading = ref(false)
@@ -64,17 +78,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (response.ok) {
         const data = (await response.json()) as MeResponse
-        user.value = {
-          id: data.user_id,
-          email: data.email,
-          name: data.name,
-          phoneNumber: data.phoneNumber ?? null,
-          birthday: data.birthday ?? null,
-          locationName: data.locationName ?? null,
-          latitude: data.latitude ?? null,
-          longitude: data.longitude ?? null,
-          iban: data.iban ?? null,
-        }
+        user.value = mapMeResponseToAuthUser(data)
         cacheUser(user.value)
 
         // Connect WebSocket after successful auth
@@ -119,17 +123,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     // After verify, we need to fetch user info
     const meResponse = await api.get<MeResponse>('/auth/me')
-    const verifiedUser: AuthUser = {
-      id: meResponse.data.user_id,
-      email: meResponse.data.email,
-      name: meResponse.data.name,
-      phoneNumber: meResponse.data.phoneNumber ?? null,
-      birthday: meResponse.data.birthday ?? null,
-      locationName: meResponse.data.locationName ?? null,
-      latitude: meResponse.data.latitude ?? null,
-      longitude: meResponse.data.longitude ?? null,
-      iban: meResponse.data.iban ?? null,
-    }
+    const verifiedUser = mapMeResponseToAuthUser(meResponse.data)
     user.value = verifiedUser
     cacheUser(verifiedUser)
 
@@ -261,17 +255,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (user.value) {
       try {
         const meResponse = await api.get<MeResponse>('/auth/me')
-        user.value = {
-          id: meResponse.data.user_id,
-          email: meResponse.data.email,
-          name: meResponse.data.name,
-          phoneNumber: meResponse.data.phoneNumber ?? null,
-          birthday: meResponse.data.birthday ?? null,
-          locationName: meResponse.data.locationName ?? null,
-          latitude: meResponse.data.latitude ?? null,
-          longitude: meResponse.data.longitude ?? null,
-          iban: meResponse.data.iban ?? null,
-        }
+        user.value = mapMeResponseToAuthUser(meResponse.data)
         cacheUser(user.value)
       } catch {
         // May not be authenticated (different browser) — that's fine
