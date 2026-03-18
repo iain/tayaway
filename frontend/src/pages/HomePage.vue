@@ -28,6 +28,7 @@ import { useSettlementsStore } from '@/stores/settlements'
 import PageHeader from '@/components/common/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { formatBirthday } from '@/utils/date'
+import { formatAmount } from '@/utils/format'
 import { getInitials, getMemberName } from '@/utils/member'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import EpcQrModal from '@/components/expenses/EpcQrModal.vue'
@@ -80,10 +81,6 @@ function getEventIdForTransfer(
   const settlement = pool.get('settlement', transfer.settlementId)
   if (!settlement) return null
   return settlement.eventId
-}
-
-function formatTransferAmount(amount: number): string {
-  return `€${amount.toFixed(2)}`
 }
 
 const markingPaidIds = ref(new Set<string>())
@@ -390,7 +387,7 @@ function navigateToEventPage(eventId: string): void {
                   owes you
                   <span
                     class="font-mono font-semibold text-gray-900 dark:text-white"
-                    >{{ formatTransferAmount(transfer.amount) }}</span
+                    >{{ formatAmount(transfer.amount) }}</span
                   >
                 </p>
                 <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
@@ -436,7 +433,7 @@ function navigateToEventPage(eventId: string): void {
                 <p
                   class="mt-0.5 font-mono text-lg font-bold text-amber-700 dark:text-amber-400"
                 >
-                  {{ formatTransferAmount(transfer.amount) }}
+                  {{ formatAmount(transfer.amount) }}
                 </p>
                 <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
                   <router-link
@@ -581,7 +578,10 @@ function navigateToEventPage(eventId: string): void {
                   class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 transition-colors hover:bg-rose-100 hover:text-rose-700 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
                 >
                   <BanknotesIcon class="size-4" />
-                  {{ unsettledExpenseCountByEvent.get(event.id) ?? 0 }} unsettled
+                  {{
+                    unsettledExpenseCountByEvent.get(event.id) ?? 0
+                  }}
+                  unsettled
                 </router-link>
                 <router-link
                   v-if="(unpaidTransferCountByEvent.get(event.id) ?? 0) > 0"
