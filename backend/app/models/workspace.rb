@@ -43,11 +43,6 @@ class Workspace < T::Struct
       dataset.where(id: workspace_ids).order(:name).all
     end
 
-    sig { returns(T::Array[Workspace]) }
-    def all_ordered
-      dataset.order(:name).all
-    end
-
     private
 
     sig { returns(Sequel::Dataset) }

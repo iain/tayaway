@@ -46,11 +46,6 @@ class Event < T::Struct
       dataset.where(id: id).first
     end
 
-    sig { params(user_id: T.any(String, UUID)).returns(T::Array[Event]) }
-    def for_user(user_id)
-      dataset.where(user_id: user_id).order(:created_at).all
-    end
-
     sig { params(workspace_id: T.any(String, UUID)).returns(T::Array[Event]) }
     def for_workspace(workspace_id)
       dataset.where(workspace_id: workspace_id).order(:created_at).all
@@ -66,11 +61,6 @@ class Event < T::Struct
       return [] if workspace_ids.empty?
 
       dataset.where(workspace_id: workspace_ids).order(:created_at).all
-    end
-
-    sig { returns(T::Array[Event]) }
-    def all_ordered
-      dataset.order(:created_at).all
     end
 
     sig { params(id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }
