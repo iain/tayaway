@@ -57,7 +57,7 @@ const sizeClasses: Record<string, string> = {
   <dialog
     ref="dialogRef"
     :class="[
-      'm-auto rounded-lg bg-white p-6 text-left shadow-xl ring-1 ring-black/10 backdrop:bg-gray-500/85 backdrop:backdrop-blur-[2px] sm:w-full dark:bg-stone-900 dark:ring-white/10 dark:backdrop:bg-stone-900/80',
+      'modal-dialog m-auto rounded-lg bg-white p-6 text-left shadow-xl ring-1 ring-black/10 backdrop:bg-gray-500/85 sm:w-full dark:bg-stone-900 dark:ring-white/10 dark:backdrop:bg-stone-900/80',
       sizeClasses[size ?? 'md'],
     ]"
     @close="handleClose"
@@ -82,3 +82,50 @@ const sizeClasses: Record<string, string> = {
     <slot />
   </dialog>
 </template>
+
+<style scoped>
+.modal-dialog {
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
+  transition:
+    opacity 200ms cubic-bezier(0.25, 1, 0.5, 1),
+    transform 200ms cubic-bezier(0.25, 1, 0.5, 1),
+    overlay 200ms allow-discrete,
+    display 200ms allow-discrete;
+}
+
+.modal-dialog[open] {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.modal-dialog::backdrop {
+  opacity: 0;
+  transition:
+    opacity 200ms cubic-bezier(0.25, 1, 0.5, 1),
+    overlay 200ms allow-discrete,
+    display 200ms allow-discrete;
+}
+
+.modal-dialog[open]::backdrop {
+  opacity: 1;
+}
+
+@starting-style {
+  .modal-dialog[open] {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+
+  .modal-dialog[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-dialog,
+  .modal-dialog::backdrop {
+    transition-duration: 0.01ms;
+  }
+}
+</style>

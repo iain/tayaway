@@ -28,18 +28,18 @@ const percentages = computed(() => {
     >
       <div
         v-if="percentages.yes > 0"
-        class="bg-green-500 transition-all duration-300"
-        :style="{ width: `${percentages.yes}%` }"
+        class="vote-bar bg-green-500"
+        :style="{ flexBasis: `${percentages.yes}%` }"
       />
       <div
         v-if="percentages.preferablyNot > 0"
-        class="bg-yellow-500 transition-all duration-300"
-        :style="{ width: `${percentages.preferablyNot}%` }"
+        class="vote-bar bg-yellow-500"
+        :style="{ flexBasis: `${percentages.preferablyNot}%` }"
       />
       <div
         v-if="percentages.no > 0"
-        class="bg-red-500 transition-all duration-300"
-        :style="{ width: `${percentages.no}%` }"
+        class="vote-bar bg-red-500"
+        :style="{ flexBasis: `${percentages.no}%` }"
       />
     </div>
     <div v-else class="h-2 rounded-full bg-gray-200 dark:bg-stone-700" />
@@ -55,3 +55,15 @@ const percentages = computed(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.vote-bar {
+  transition: flex-basis 300ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vote-bar {
+    transition-duration: 0.01ms;
+  }
+}
+</style>
