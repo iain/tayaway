@@ -40,6 +40,7 @@ class Event < T::Struct
   class << self
     extend T::Sig
     include Result::Methods
+    include Findable
 
     sig { params(id: T.any(String, UUID)).returns(T.nilable(Event)) }
     def find(id)
@@ -61,18 +62,6 @@ class Event < T::Struct
       return [] if workspace_ids.empty?
 
       dataset.where(workspace_id: workspace_ids).order(:created_at).all
-    end
-
-    sig { params(id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }
-    def find_result(id)
-      event = find(id)
-      if event
-        T.cast(Success(event), Result[Event, ServiceError])
-      elsif DB[:deleted_items].where(object_type: "event", object_id: id).first
-        T.cast(Failure(ServiceError.gone("Event not found")), Result[Event, ServiceError])
-      else
-        T.cast(Failure(ServiceError.not_found("Event not found")), Result[Event, ServiceError])
-      end
     end
 
     sig { params(event: Event, current_user_id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }

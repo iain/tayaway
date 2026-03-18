@@ -30,6 +30,7 @@ class TaskList < T::Struct
   class << self
     extend T::Sig
     include Result::Methods
+    include Findable
 
     sig { params(id: T.any(String, UUID)).returns(T.nilable(TaskList)) }
     def find(id)
@@ -52,18 +53,6 @@ class TaskList < T::Struct
     sig { params(workspace_id: T.any(String, UUID)).returns(Float) }
     def max_position(workspace_id)
       DB[:task_lists].where(workspace_id: workspace_id).max(:position).to_f
-    end
-
-    sig { params(id: T.any(String, UUID)).returns(Result[TaskList, ServiceError]) }
-    def find_result(id)
-      task_list = find(id)
-      if task_list
-        T.cast(Success(task_list), Result[TaskList, ServiceError])
-      elsif DB[:deleted_items].where(object_type: "task_list", object_id: id).first
-        T.cast(Failure(ServiceError.gone("Task list not found")), Result[TaskList, ServiceError])
-      else
-        T.cast(Failure(ServiceError.not_found("Task list not found")), Result[TaskList, ServiceError])
-      end
     end
 
     private

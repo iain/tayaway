@@ -1,0 +1,49 @@
+# typed: true
+# frozen_string_literal: true
+
+# Mixin providing a standard find_result class method for models that
+# track deleted items. Include this module inside `class << self` on
+# any model whose records may appear in the deleted_items table.
+#
+# The including class must define a `find(id)` class method.
+#
+# The object_type string used for the deleted_items lookup and the
+# human-readable label used in error messages are both derived from
+# the class name (e.g. SettlementTransfer → "settlement_transfer" /
+# "Settlement transfer").
+#
+# @example
+#   class Event < T::Struct
+#     class << self
+#       include Result::Methods
+#       include Findable
+#     end
+#   end
+module Findable
+  extend T::Sig
+  include Result::Methods
+
+  sig { params(id: T.any(String, UUID)).returns(T.untyped) }
+  def find_result(id)
+    item = T.unsafe(self).find(id)
+    if item
+      Success(item)
+    elsif DB[:deleted_items].where(object_type: deleted_item_object_type, object_id: id).first
+      Failure(ServiceError.gone("#{deleted_item_label} not found"))
+    else
+      Failure(ServiceError.not_found("#{deleted_item_label} not found"))
+    end
+  end
+
+  private
+
+  sig { returns(String) }
+  def deleted_item_object_type
+    T.must(T.unsafe(self).name).gsub(/([a-z])([A-Z])/, '\1_\2').downcase
+  end
+
+  sig { returns(String) }
+  def deleted_item_label
+    T.must(T.unsafe(self).name).gsub(/([a-z])([A-Z])/, '\1 \2').downcase.capitalize
+  end
+end
