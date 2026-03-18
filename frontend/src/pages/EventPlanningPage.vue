@@ -174,8 +174,8 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
               >4</span
             >
             <span class="text-gray-700 dark:text-stone-300"
-              ><strong>Select the winner</strong> — Choose the best date for the
-              event</span
+              ><strong>Confirm the dates</strong> — Lock in the best date for
+              the event</span
             >
           </li>
         </ol>

@@ -10,7 +10,9 @@ const authStore = useAuthStore()
 
 const token = route.query.token as string | undefined
 const verifying = ref(false)
-const error = ref(token ? '' : 'Invalid magic link. Missing token.')
+const error = ref(
+  token ? '' : 'This link is incomplete. Open the full link from your email.'
+)
 
 async function handleSignIn() {
   if (!token) return
@@ -21,7 +23,8 @@ async function handleSignIn() {
     await authStore.verifyToken(token)
     router.push('/')
   } catch {
-    error.value = 'Invalid or expired magic link. Please request a new one.'
+    error.value =
+      'This magic link has expired or was already used. Request a new one to sign in.'
     verifying.value = false
   }
 }

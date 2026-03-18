@@ -178,9 +178,8 @@ function handleDownloadIcs(): void {
         @close="datesBlockedOpen = false"
       >
         <p class="text-gray-600 dark:text-stone-300">
-          This event has expenses that are tied to the current date range.
-          Changing the dates could make those expenses fall outside the event
-          period.
+          This event has expenses tied to the current dates. Delete or adjust
+          the expenses first, then you can change the event dates.
         </p>
         <div class="mt-6 flex justify-end">
           <AppButton variant="cyan" @click="datesBlockedOpen = false">

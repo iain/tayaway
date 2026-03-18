@@ -22,7 +22,7 @@ async function fetchSessions() {
     const { data } = await api.get<SessionsResponse>('/auth/sessions')
     sessions.value = data.sessions
   } catch {
-    error.value = 'Failed to load sessions.'
+    error.value = 'Could not load sessions. Please try again.'
   } finally {
     loading.value = false
   }
@@ -88,7 +88,7 @@ onMounted(fetchSessions)
           class="ml-4 shrink-0 rounded-md px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
           @click="endSession(session.id)"
         >
-          {{ deletingId === session.id ? 'Ending...' : 'End session' }}
+          {{ deletingId === session.id ? 'Revoking...' : 'Revoke' }}
         </button>
       </li>
     </ul>
@@ -157,7 +157,7 @@ onMounted(fetchSessions)
               class="ml-4 shrink-0 rounded-md px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
               @click="endSession(session.id)"
             >
-              {{ deletingId === session.id ? 'Ending...' : 'End session' }}
+              {{ deletingId === session.id ? 'Revoking...' : 'Revoke' }}
             </button>
           </li>
         </ul>

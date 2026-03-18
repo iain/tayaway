@@ -91,10 +91,10 @@ async function handleSave(name: string, email: string): Promise<void> {
     await membersStore.createInvite(email, name || undefined)
     isModalOpen.value = false
     const notifications = useNotificationsStore()
-    notifications.showInfo('Invitation sent')
+    notifications.showInfo('Invitation email sent')
   } catch {
     formError.value =
-      'Failed to send invitation. The email may already be a member.'
+      'Could not send invitation. This email may already be a member or have a pending invite.'
   } finally {
     isSubmitting.value = false
   }
@@ -109,7 +109,7 @@ async function handleCancelInvite(id: string): Promise<void> {
     await membersStore.cancelInvite(id)
   } catch {
     const notifications = useNotificationsStore()
-    notifications.showError('Failed to cancel invitation')
+    notifications.showError('Could not cancel invitation. Please try again.')
   } finally {
     cancellingInviteId.value = null
   }
@@ -143,7 +143,7 @@ async function handleRemind(id: string): Promise<void> {
   try {
     await membersStore.sendReminder(id)
     const notifications = useNotificationsStore()
-    notifications.showInfo('Reminder sent')
+    notifications.showInfo('Reminder email sent')
   } catch (err) {
     const notifications = useNotificationsStore()
     const apiErr = err as { message?: string }

@@ -51,8 +51,8 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
       data-testid="poll-closed-message"
       class="py-8 text-center text-gray-500 dark:text-stone-400"
     >
-      <p class="mb-2 text-lg font-medium">Voting is closed</p>
-      <p>The date poll is no longer accepting votes.</p>
+      <p class="mb-2 text-lg font-medium">Voting has ended</p>
+      <p>The date poll is closed and no longer accepting votes.</p>
       <div v-if="isOwner && isPollResolved(event.datePoll)" class="mt-4">
         <AppButton variant="amber" @click="showReopenModal = true">
           <ArrowPathIcon class="size-4" />
@@ -80,7 +80,8 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
 
         <div v-if="dateRanges.length === 0" class="py-8 text-center">
           <p class="text-gray-500 dark:text-stone-400">
-            No date ranges have been added yet.
+            No date options have been added yet. The event organiser can add
+            dates to vote on.
           </p>
         </div>
 

@@ -420,11 +420,11 @@ test.describe('Profile Feature', () => {
       })
       await expect(page.getByTestId('current-session-badge')).toBeVisible()
 
-      // Should see exactly one "End session" button (for the other session we created)
-      const endButtons = page.getByRole('button', { name: 'End session' })
+      // Should see exactly one "Revoke" button (for the other session we created)
+      const endButtons = page.getByRole('button', { name: 'Revoke' })
       await expect(endButtons).toHaveCount(1)
 
-      // Click the "End session" button
+      // Click the "Revoke" button
       await endButtons.first().click()
 
       // The session should be removed from the list

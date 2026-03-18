@@ -21,7 +21,8 @@ async function handleSubmit() {
     message.value = response
     email.value = ''
   } catch {
-    error.value = 'Failed to send magic link. Please try again.'
+    error.value =
+      'Could not send the magic link. Check your email address and try again.'
   } finally {
     loading.value = false
   }

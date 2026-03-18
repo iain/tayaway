@@ -257,7 +257,7 @@ function handleClose(): void {
         <label
           class="mb-2 block text-sm font-medium text-gray-700 dark:text-stone-300"
         >
-          Dates
+          Expense period
         </label>
 
         <div

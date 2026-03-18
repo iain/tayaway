@@ -285,7 +285,7 @@ test.describe('Poll Lifecycle UI', () => {
       resolvedEventId = eid2
     })
 
-    test('vote page shows "Voting is closed" when poll is resolved', async ({
+    test('vote page shows "Voting has ended" when poll is resolved', async ({
       page,
     }) => {
       await setupAuthenticatedPage(page, sessionToken)
@@ -296,7 +296,7 @@ test.describe('Poll Lifecycle UI', () => {
         timeout: PAGE_LOAD_TIMEOUT,
       })
       await expect(page.getByTestId('poll-closed-message')).toContainText(
-        'The date poll is no longer accepting votes.'
+        'The date poll is closed and no longer accepting votes.'
       )
     })
 

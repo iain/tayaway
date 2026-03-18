@@ -631,7 +631,7 @@ test.describe('Chore Rosters Feature', () => {
       // Click Auto-fill — should show confirmation
       await page.getByRole('button', { name: 'Auto-fill' }).click()
       await expect(
-        page.getByText('replace all non-pinned assignments', { exact: false })
+        page.getByText('clear all non-pinned assignments', { exact: false })
       ).toBeVisible()
 
       // Confirm autofill
@@ -800,10 +800,10 @@ test.describe('Chore Rosters Feature', () => {
 
       // Action dialog should appear with options
       await expect(
-        page.locator('dialog').getByRole('button', { name: 'Delete roster' })
+        page.locator('dialog').getByRole('button', { name: 'Delete entire roster' })
       ).toBeVisible()
 
-      // Click "Delete roster" in the dialog
+      // Click "Delete entire roster" in the dialog
       const [deleteResp] = await Promise.all([
         page.waitForResponse(
           (resp) =>
@@ -814,7 +814,7 @@ test.describe('Chore Rosters Feature', () => {
         ),
         page
           .locator('dialog')
-          .getByRole('button', { name: 'Delete roster' })
+          .getByRole('button', { name: 'Delete entire roster' })
           .click(),
       ])
       expect(deleteResp.ok()).toBeTruthy()

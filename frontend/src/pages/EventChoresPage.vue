@@ -367,7 +367,8 @@ onMounted(async () => {
       @close="confirmAutofill = false"
     >
       <p class="text-sm text-gray-600 dark:text-stone-400">
-        Auto-fill will replace all non-pinned assignments. Continue?
+        This will clear all non-pinned assignments and redistribute them fairly
+        among attendees. Pinned assignments stay as they are.
       </p>
       <div class="mt-4 flex justify-end gap-3">
         <TextButton variant="secondary" @click="confirmAutofill = false">
@@ -381,16 +382,16 @@ onMounted(async () => {
 
     <BaseModal
       :open="showDeleteActions"
-      title="Delete..."
+      title="Manage roster"
       size="sm"
       @close="showDeleteActions = false"
     >
       <div class="flex flex-col gap-3">
         <AppButton variant="secondary" @click="handleClearUnpinned">
-          Clear assignments
+          Clear non-pinned assignments
         </AppButton>
         <AppButton variant="danger" @click="handleDeleteRosterConfirm">
-          Delete roster
+          Delete entire roster
         </AppButton>
       </div>
     </BaseModal>
@@ -402,7 +403,7 @@ onMounted(async () => {
       @close="showRsvpDialog = false"
     >
       <p class="text-sm text-gray-600 dark:text-stone-400">
-        You must RSVP as attending this event before you can manage chores.
+        You need to RSVP as attending before you can manage chores.
       </p>
       <div class="mt-4 flex justify-end gap-3">
         <TextButton variant="secondary" @click="showRsvpDialog = false">

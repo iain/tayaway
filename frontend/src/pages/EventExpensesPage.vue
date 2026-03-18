@@ -152,7 +152,8 @@ onMounted(async () => {
           data-testid="rsvp-required-dialog"
           class="text-sm text-gray-600 dark:text-stone-400"
         >
-          You must RSVP as attending this event before you can add expenses.
+          You need to RSVP as attending before you can add expenses. This
+          ensures costs are split among attendees only.
         </p>
         <div class="mt-4 flex justify-end gap-3">
           <TextButton variant="secondary" @click="showRsvpDialog = false">
