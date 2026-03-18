@@ -1,11 +1,19 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { CheckCircleIcon } from '@heroicons/vue/24/outline'
 import { usePollsNeedingAttention } from '@/composables/usePollsNeedingAttention'
 import { useEventsNeedingRsvp } from '@/composables/useEventsNeedingRsvp'
 import { useEventsList } from '@/composables/useEventsList'
 import { storeToRefs } from 'pinia'
-import { useAuthStore, useMembersStore, useObjectPoolStore } from '@/stores'
+import {
+  useAuthStore,
+  useEventsStore,
+  useMembersStore,
+  useNotificationsStore,
+  useObjectPoolStore,
+  useWorkspaceStore,
+} from '@/stores'
 import PageHeader from '@/components/common/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import type { PoolMember } from '@/types/pool'
@@ -16,15 +24,25 @@ import HappeningNowSection from '@/components/home/HappeningNowSection.vue'
 import PastEventsOpenExpenses from '@/components/home/PastEventsOpenExpenses.vue'
 import PollsNeedingAttention from '@/components/home/PollsNeedingAttention.vue'
 import EventsNeedingRsvp from '@/components/home/EventsNeedingRsvp.vue'
+import WelcomeSection from '@/components/home/WelcomeSection.vue'
+import AddEventModal from '@/components/events/AddEventModal.vue'
 
 const pool = useObjectPoolStore()
 const authStore = useAuthStore()
+const workspaceStore = useWorkspaceStore()
 const { pollsNeedingAttention } = usePollsNeedingAttention()
 const { eventsNeedingRsvp } = useEventsNeedingRsvp()
-const { currentEvents, pastEvents } = useEventsList()
+const { currentEvents, pastEvents, hasEvents } = useEventsList()
 
 const currentUserId = computed(() => authStore.currentUserId)
 const { user } = storeToRefs(authStore)
+
+const showEventModal = ref(false)
+
+const isNewUser = computed(() => {
+  void pool.version
+  return !hasEvents.value && pool.getAll('taskList').length === 0
+})
 
 const myUnpaidTransfers = computed(() => {
   void pool.version
@@ -149,6 +167,7 @@ const hasBirthdays = computed(
 
 const allCaughtUp = computed(
   () =>
+    !isNewUser.value &&
     !hasBirthdays.value &&
     myUnpaidTransfers.value.length === 0 &&
     currentEvents.value.length === 0 &&
@@ -156,14 +175,60 @@ const allCaughtUp = computed(
     pollsNeedingAttention.value.length === 0 &&
     eventsNeedingRsvp.value.length === 0
 )
+
+const eventsStore = useEventsStore()
+const { loading: eventLoading } = storeToRefs(eventsStore)
+const router = useRouter()
+
+async function handleCreateEvent(
+  name: string,
+  description: string,
+  startDate: string | undefined,
+  endDate: string | undefined,
+  locationName: string | undefined,
+  latitude: number | undefined,
+  longitude: number | undefined
+): Promise<void> {
+  try {
+    const { eventId, queued } = await eventsStore.createEvent({
+      name,
+      description: description || undefined,
+      startDate,
+      endDate,
+      locationName,
+      latitude,
+      longitude,
+    })
+    showEventModal.value = false
+    if (queued) {
+      const notifications = useNotificationsStore()
+      notifications.showInfo('Event will be created when back online')
+    } else {
+      router.push(`/events/${eventId}`)
+    }
+  } catch {
+    // Error handled by store
+  }
+}
 </script>
 
 <template>
   <div>
     <PageHeader title="Dashboard" data-testid="page-title" />
 
+    <WelcomeSection
+      v-if="isNewUser"
+      :workspace-name="
+        workspaceStore.currentWorkspace?.name ?? 'your workspace'
+      "
+      :user-name="user?.name ?? null"
+      :member-count="members.length"
+      :has-events="hasEvents"
+      @create-event="showEventModal = true"
+    />
+
     <EmptyState
-      v-if="allCaughtUp"
+      v-else-if="allCaughtUp"
       :icon="CheckCircleIcon"
       heading="You're all caught up"
       description="Nothing needs your attention right now."
@@ -233,5 +298,12 @@ const allCaughtUp = computed(
         "
       />
     </template>
+
+    <AddEventModal
+      :open="showEventModal"
+      :loading="eventLoading"
+      @save="handleCreateEvent"
+      @close="showEventModal = false"
+    />
   </div>
 </template>

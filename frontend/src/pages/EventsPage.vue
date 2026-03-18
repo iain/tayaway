@@ -103,8 +103,8 @@ function formatDateRangeSummary(
     <EmptyState
       v-else-if="!hasEvents"
       :icon="CalendarDaysIcon"
-      heading="No events"
-      description="Get started by creating a new event."
+      heading="No events yet"
+      description="Create an event to start planning dates, splitting costs, and organising your group."
     >
       <AppButton @click="handleCreate">
         <PlusIcon class="size-5" />

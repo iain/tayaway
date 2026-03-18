@@ -312,8 +312,8 @@ onMounted(() => {
     <EmptyState
       v-if="members.length === 0"
       :icon="UserIcon"
-      heading="No members"
-      description="Get started by inviting a new member."
+      heading="No members yet"
+      description="Invite your friends so they can vote on dates, RSVP, and split costs."
     >
       <AppButton @click="openModal">
         <PlusIcon class="size-5" />

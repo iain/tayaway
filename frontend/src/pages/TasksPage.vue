@@ -221,8 +221,8 @@ async function handleSave(name: string): Promise<void> {
     <EmptyState
       v-if="taskListsLocal.length === 0"
       :icon="ClipboardDocumentListIcon"
-      heading="No task lists"
-      description="Get started by creating a new task list."
+      heading="No task lists yet"
+      description="Create a list to track what needs doing — packing, shopping, or anything your group needs to coordinate."
     >
       <AppButton @click="openModal">
         <PlusIcon class="size-5" />
