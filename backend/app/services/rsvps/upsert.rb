@@ -13,9 +13,6 @@ module Rsvps
   #     end_date: "2026-03-12"
   #   )
   module Upsert
-    UUID_REGEX = /\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/i
-    private_constant :UUID_REGEX
-
     class << self
       extend T::Sig
       include Result::Methods
@@ -58,7 +55,7 @@ module Rsvps
       def validate_params(attending, rsvp_id)
         if attending.nil?
           T.cast(Failure(ServiceError.validation("attending is required")), Result[T::Boolean, ServiceError])
-        elsif rsvp_id && !UUID_REGEX.match?(rsvp_id)
+        elsif rsvp_id && !UUID::REGEX.match?(rsvp_id)
           T.cast(Failure(ServiceError.validation("Invalid RSVP ID format")), Result[T::Boolean, ServiceError])
         else
           T.cast(Success(attending), Result[T::Boolean, ServiceError])
