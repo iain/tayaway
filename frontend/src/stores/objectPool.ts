@@ -76,8 +76,11 @@ const CASCADE_RULES: Partial<
   Record<ObjectType, { childType: ObjectType; foreignKey: string }[]>
 > = {
   event: [
+    { childType: 'datePoll', foreignKey: 'eventId' },
     { childType: 'rsvp', foreignKey: 'eventId' },
     { childType: 'expense', foreignKey: 'eventId' },
+    { childType: 'settlement', foreignKey: 'eventId' },
+    { childType: 'choreRoster', foreignKey: 'eventId' },
   ],
   datePoll: [{ childType: 'dateRange', foreignKey: 'datePollId' }],
   dateRange: [{ childType: 'vote', foreignKey: 'dateRangeId' }],
