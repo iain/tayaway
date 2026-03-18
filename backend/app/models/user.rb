@@ -73,12 +73,6 @@ class User < T::Struct
 
     sig { params(row: T::Hash[Symbol, T.untyped]).returns(User) }
     def from_row(row)
-      point = row[:location_coordinates]
-      coords = if point.is_a?(String) && point.match?(/\A\(.+,.+\)\z/)
-                 parts = point.delete("()").split(",")
-                 [parts[0].to_f, parts[1].to_f]
-               end
-
       User.new(
         id: UUID.new(row[:id]),
         email: EmailAddress.new(row[:email]),
@@ -86,7 +80,7 @@ class User < T::Struct
         phone_number: row[:phone_number],
         birthday: row[:birthday],
         location_name: row[:location_name],
-        location_coordinates: coords,
+        location_coordinates: PointParser.parse(row[:location_coordinates]),
         iban: row[:iban],
         created_at: row[:created_at],
         updated_at: row[:updated_at]
