@@ -128,7 +128,7 @@ async function handleClearPartialDates(): Promise<void> {
           "
           @click="handleAttend"
         >
-          <CheckCircleIcon class="size-4" />
+          <CheckCircleIcon class="size-4" aria-hidden="true" />
           Attending
         </button>
         <button
@@ -145,7 +145,7 @@ async function handleClearPartialDates(): Promise<void> {
           "
           @click="handleDecline"
         >
-          <XCircleIcon class="size-4" />
+          <XCircleIcon class="size-4" aria-hidden="true" />
           Not Attending
         </button>
       </div>
@@ -206,7 +206,7 @@ async function handleClearPartialDates(): Promise<void> {
               size="sm"
               @click="handleClearPartialDates"
             >
-              Full event
+              Full Event
             </AppButton>
             <TextButton variant="secondary" @click="showPartialPicker = false">
               Cancel

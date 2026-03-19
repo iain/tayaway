@@ -67,7 +67,7 @@ const sizeClasses: Record<string, string> = {
       <button
         type="button"
         :disabled="preventClose"
-        class="rounded-md bg-white text-gray-500 hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-stone-900 dark:text-stone-400 dark:hover:text-stone-300 dark:focus-visible:ring-offset-stone-900"
+        class="rounded-md bg-white text-gray-500 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-stone-900 dark:text-stone-400 dark:hover:text-stone-300"
         @click="handleClose"
       >
         <span class="sr-only">Close</span>

@@ -128,6 +128,7 @@ function getAssignments(choreId: string, date: string): PoolChoreAssignment[] {
           >
             <div class="group inline-flex items-center gap-1">
               <Bars3Icon
+                aria-hidden="true"
                 class="chore-drag-handle size-3.5 shrink-0 cursor-grab text-gray-300 opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing dark:text-stone-600"
               />
               <span>{{ chore.name }}</span>

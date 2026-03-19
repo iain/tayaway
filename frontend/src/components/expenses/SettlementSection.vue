@@ -324,7 +324,7 @@ async function handlePaidClick(
                 title="Show QR code for bank transfer"
                 @click="openQrModal(transfer)"
               >
-                <QrCodeIcon class="size-5" />
+                <QrCodeIcon class="size-5" aria-hidden="true" />
               </button>
               <button
                 type="button"
