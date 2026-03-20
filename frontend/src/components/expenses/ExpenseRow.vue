@@ -229,7 +229,7 @@ async function handleDelete(e: Event) {
       <template v-else>
         <p
           v-if="hasParticipants"
-          class="mb-1.5 text-xs text-gray-400 dark:text-stone-500"
+          class="mb-1.5 text-xs font-medium text-amber-700 dark:text-amber-400"
         >
           Equal split
         </p>

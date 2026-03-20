@@ -125,7 +125,14 @@ function toggleUser(userId: string): void {
             </span>
           </label>
         </div>
-        <p class="mt-2 text-xs text-gray-500 dark:text-stone-400">
+        <p
+          class="mt-2 text-xs"
+          :class="
+            selectedUserIds.length > 0
+              ? 'text-amber-700 dark:text-amber-400'
+              : 'text-gray-500 dark:text-stone-400'
+          "
+        >
           {{ selectedUserIds.length }} of
           {{ overlappingMembers.length }} selected
         </p>
