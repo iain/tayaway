@@ -114,9 +114,25 @@ function toggleUser(userId: string): void {
       </div>
     </div>
 
-    <div v-if="everyone" class="text-sm text-gray-500 dark:text-stone-400">
-      Split by attendance overlap — everyone who RSVPs will be included
-      automatically.
+    <div v-if="everyone">
+      <p class="text-sm text-gray-500 dark:text-stone-400">
+        Split by attendance overlap.
+      </p>
+      <div
+        v-if="overlappingMembers.length > 0"
+        class="mt-2 flex flex-wrap gap-1.5"
+      >
+        <span
+          v-for="m in overlappingMembers"
+          :key="m.userId"
+          class="inline-block rounded-full bg-gray-100 px-2.5 py-0.5 text-xs text-gray-700 dark:bg-stone-700 dark:text-stone-300"
+        >
+          {{ m.name }}
+        </span>
+      </div>
+      <p v-else class="mt-2 text-xs text-gray-400 dark:text-stone-500">
+        No attending members overlap with this expense period.
+      </p>
     </div>
 
     <div v-else>
