@@ -116,7 +116,8 @@ function toggleUser(userId: string): void {
 
     <div v-if="everyone">
       <p class="text-sm text-gray-500 dark:text-stone-400">
-        Split by attendance overlap.
+        Split by attendance overlap — everyone who RSVPs will be included
+        automatically.
       </p>
       <div
         v-if="overlappingMembers.length > 0"
