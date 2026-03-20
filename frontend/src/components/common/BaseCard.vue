@@ -27,7 +27,7 @@ function handleKeydown(event: KeyboardEvent) {
     :class="[
       {
         'p-6': padded,
-        'cursor-pointer transition-all hover:ring-2 hover:ring-rose-500 active:scale-[0.99] active:brightness-95':
+        'cursor-pointer transition-all hover:ring-2 hover:ring-rose-500 active:scale-[0.99] active:brightness-95 dark:active:brightness-110':
           interactive,
       },
       variant === 'urgent'

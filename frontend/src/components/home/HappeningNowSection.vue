@@ -42,7 +42,7 @@ function navigateToEventPage(eventId: string): void {
       >
         <div class="px-4 py-4 sm:px-6">
           <div
-            class="flex cursor-pointer items-center gap-3 transition-opacity active:opacity-70"
+            class="flex cursor-pointer items-center gap-3 transition-all active:scale-[0.99] active:brightness-95 dark:active:brightness-110"
             role="button"
             tabindex="0"
             @click="navigateToEventPage(event.id)"
