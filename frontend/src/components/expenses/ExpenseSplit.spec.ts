@@ -98,6 +98,7 @@ function mkExpense(overrides: Partial<PoolExpense> = {}): PoolExpense {
     amount: 100,
     startDate: '2026-07-01',
     endDate: '2026-07-04',
+    participantIds: [],
     ...overrides,
   }
 }

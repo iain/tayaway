@@ -207,4 +207,93 @@ RSpec.describe Expenses::Update do
     obj = result.value![:objects].find { |o| o[:objectType] == "expense" }
     expect(obj[:amount]).to eq(99.99)
   end
+
+  describe "participant_ids" do
+    let(:alice) { TestFactories.user(name: "Alice") }
+    let(:bob) { TestFactories.user(name: "Bob") }
+    let(:carol) { TestFactories.user(name: "Carol") }
+
+    it "adds participants" do
+      expense_id = create_expense
+
+      result = described_class.call(
+        expense_id: expense_id,
+        current_user_id: user[:id],
+        workspace_id: workspace[:id],
+        description: nil,
+        amount: nil,
+        participant_ids: [alice[:id], bob[:id]]
+      )
+
+      expect(result.success?).to be true
+      expense = result.value![:objects].find { |o| o[:objectType] == "expense" }
+      expect(expense[:participantIds]).to contain_exactly(alice[:id], bob[:id])
+    end
+
+    it "syncs participants: adds new and removes old" do
+      expense_id = create_expense
+      # Add initial participants
+      now = Time.now
+      DB[:expense_participants].insert(id: SecureRandom.uuid, expense_id: expense_id, user_id: alice[:id], created_at: now)
+      DB[:expense_participants].insert(id: SecureRandom.uuid, expense_id: expense_id, user_id: bob[:id], created_at: now)
+
+      # Update: remove Alice, keep Bob, add Carol
+      result = described_class.call(
+        expense_id: expense_id,
+        current_user_id: user[:id],
+        workspace_id: workspace[:id],
+        description: nil,
+        amount: nil,
+        participant_ids: [bob[:id], carol[:id]]
+      )
+
+      expect(result.success?).to be true
+      expense = result.value![:objects].find { |o| o[:objectType] == "expense" }
+      expect(expense[:participantIds]).to contain_exactly(bob[:id], carol[:id])
+    end
+
+    it "clears all participants when empty array provided" do
+      expense_id = create_expense
+      now = Time.now
+      DB[:expense_participants].insert(id: SecureRandom.uuid, expense_id: expense_id, user_id: alice[:id], created_at: now)
+
+      result = described_class.call(
+        expense_id: expense_id,
+        current_user_id: user[:id],
+        workspace_id: workspace[:id],
+        description: nil,
+        amount: nil,
+        participant_ids: []
+      )
+
+      expect(result.success?).to be true
+      expense = result.value![:objects].find { |o| o[:objectType] == "expense" }
+      expect(expense[:participantIds]).to eq([])
+    end
+
+    it "rejects participant changes on settled expense" do
+      settlement_id = SecureRandom.uuid
+      now = Time.now
+      DB[:settlements].insert(
+        id: settlement_id,
+        event_id: event[:id],
+        user_id: user[:id],
+        created_at: now,
+        updated_at: now
+      )
+      expense_id = create_expense(settlement_id: settlement_id)
+
+      result = described_class.call(
+        expense_id: expense_id,
+        current_user_id: user[:id],
+        workspace_id: workspace[:id],
+        description: nil,
+        amount: nil,
+        participant_ids: [alice[:id]]
+      )
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to include("settlement")
+    end
+  end
 end

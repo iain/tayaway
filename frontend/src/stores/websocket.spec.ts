@@ -128,6 +128,7 @@ function makeExpense(
     amount: 100,
     startDate: '2026-03-01',
     endDate: '2026-03-03',
+    participantIds: [],
     createdAt: ts(),
     updatedAt: ts(),
     ...overrides,
@@ -270,7 +271,10 @@ describe('useWebSocketStore — connection logging', () => {
     const store = useWebSocketStore()
     await store.connect()
 
-    const closeEvent = new CloseEvent('close', { code: 1006, reason: 'Network error' })
+    const closeEvent = new CloseEvent('close', {
+      code: 1006,
+      reason: 'Network error',
+    })
     lastSocket.onclose!(closeEvent)
 
     expect(console.warn).toHaveBeenCalledWith(
@@ -348,7 +352,11 @@ describe('websocket store — cascade delete', () => {
 
   it('deleting an event cascades to settlement and its transfers', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([makeEvent(), makeSettlement(), makeSettlementTransfer()])
+    pool.importObjects([
+      makeEvent(),
+      makeSettlement(),
+      makeSettlementTransfer(),
+    ])
 
     sendDeleteBroadcast('event', 'evt-1')
 

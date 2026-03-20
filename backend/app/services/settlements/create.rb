@@ -164,9 +164,12 @@ module Settlements
           }
         end
 
+        # Batch-load participants for all expenses
+        expense_ids = expenses.map { |e| e[:id].to_s }
+        participants_by_expense = ExpenseParticipant.for_expenses(expense_ids)
+
         expenses.each do |expense|
-          expense_start = expense[:start_date]
-          expense_end = expense[:end_date]
+          expense_id = expense[:id].to_s
           expense_amount = expense[:amount].to_f
 
           # Track who paid
@@ -174,26 +177,39 @@ module Settlements
             paid_by_user[expense[:user_id].to_s] += expense_amount
           end
 
-          # Compute overlap for each RSVP
-          overlaps = []
-          rsvp_dates.each do |rd|
-            overlap_start = [expense_start, rd[:start_date]].max
-            overlap_end = [expense_end, rd[:end_date]].min
+          participants = participants_by_expense[expense_id] || []
 
-            next if overlap_start > overlap_end
+          if participants.any?
+            # Equal split among explicit participants
+            share = expense_amount / participants.length
+            participants.each do |p|
+              share_by_user[p.user_id.to_s] += share
+            end
+          else
+            # RSVP overlap logic (unchanged)
+            expense_start = expense[:start_date]
+            expense_end = expense[:end_date]
 
-            overlap_days = (overlap_end - overlap_start).to_i + 1
-            next if overlap_days <= 0
+            overlaps = []
+            rsvp_dates.each do |rd|
+              overlap_start = [expense_start, rd[:start_date]].max
+              overlap_end = [expense_end, rd[:end_date]].min
 
-            overlaps << { user_id: rd[:user_id], days: overlap_days }
-          end
+              next if overlap_start > overlap_end
 
-          total_overlap_days = overlaps.sum { |o| o[:days] }
-          next if total_overlap_days == 0
+              overlap_days = (overlap_end - overlap_start).to_i + 1
+              next if overlap_days <= 0
 
-          overlaps.each do |o|
-            share = (o[:days].to_f / total_overlap_days) * expense_amount
-            share_by_user[o[:user_id]] += share
+              overlaps << { user_id: rd[:user_id], days: overlap_days }
+            end
+
+            total_overlap_days = overlaps.sum { |o| o[:days] }
+            next if total_overlap_days == 0
+
+            overlaps.each do |o|
+              overlap_share = (o[:days].to_f / total_overlap_days) * expense_amount
+              share_by_user[o[:user_id]] += overlap_share
+            end
           end
         end
 

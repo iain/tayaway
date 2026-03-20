@@ -47,6 +47,9 @@ class App
         amount_param = r.params["amount"]
         amount = amount_param ? amount_param.to_f : nil
 
+        participant_ids = r.params["participant_ids"]
+        participant_ids = Array(participant_ids) if participant_ids
+
         result = Expenses::Create.call(
           event_id: event_id,
           user_id: user.id,
@@ -55,7 +58,8 @@ class App
           amount: amount,
           start_date: r.params["start_date"]&.strip,
           end_date: r.params["end_date"]&.strip,
-          id: r.params["id"]
+          id: r.params["id"],
+          participant_ids: participant_ids
         )
         handle_result(result, success_status: 201)
       end
@@ -82,6 +86,9 @@ class App
         amount_param = r.params["amount"]
         amount = amount_param ? amount_param.to_f : nil
 
+        participant_ids = r.params["participant_ids"]
+        participant_ids = Array(participant_ids) if participant_ids
+
         result = Expenses::Update.call(
           expense_id: expense.id,
           current_user_id: user.id,
@@ -89,7 +96,8 @@ class App
           description: r.params["description"]&.strip,
           amount: amount,
           start_date: r.params["start_date"]&.strip,
-          end_date: r.params["end_date"]&.strip
+          end_date: r.params["end_date"]&.strip,
+          participant_ids: participant_ids
         )
         handle_result(result)
       end

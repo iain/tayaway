@@ -37,6 +37,7 @@ export const OBJECT_TYPES = [
   'chore',
   'choreAssignment',
   'workspaceInvite',
+  'expenseParticipant',
 ] as const
 
 export interface ObjectTypeMap {
@@ -126,6 +127,7 @@ export interface ObjectTypeMap {
     amount: number
     startDate: string
     endDate: string
+    participantIds: string[]
     createdAt: string
   }
   settlement: PoolObjectBase<'settlement'> & {
@@ -164,6 +166,11 @@ export interface ObjectTypeMap {
     note: string | null
     createdAt: string
   }
+  expenseParticipant: PoolObjectBase<'expenseParticipant'> & {
+    expenseId: string
+    userId: string
+    createdAt: string
+  }
   workspaceInvite: PoolObjectBase<'workspaceInvite'> & {
     workspaceId: string
     invitedBy: string | null
@@ -199,6 +206,7 @@ export type PoolSettlementTransfer = ObjectTypeMap['settlementTransfer']
 export type PoolChoreRoster = ObjectTypeMap['choreRoster']
 export type PoolChore = ObjectTypeMap['chore']
 export type PoolChoreAssignment = ObjectTypeMap['choreAssignment']
+export type PoolExpenseParticipant = ObjectTypeMap['expenseParticipant']
 export type PoolWorkspaceInvite = ObjectTypeMap['workspaceInvite']
 
 // API response wrapper - all endpoints include objects array

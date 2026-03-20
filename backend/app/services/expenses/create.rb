@@ -17,14 +17,16 @@ module Expenses
           amount: T.nilable(Float),
           start_date: T.nilable(String),
           end_date: T.nilable(String),
-          id: T.nilable(String)
+          id: T.nilable(String),
+          participant_ids: T.nilable(T::Array[String])
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def call(event_id:, user_id:, workspace_id:, description:, amount:, start_date:, end_date:, id: nil)
+      def call(event_id:, user_id:, workspace_id:, description:, amount:, start_date:, end_date:, id: nil, participant_ids: nil)
         validate(description, amount, start_date, end_date)
           .bind { |valid| validate_date_range(valid, event_id) }
           .bind { |valid| validate_rsvp(valid, event_id, user_id) }
-          .bind { |valid| create_expense(event_id, user_id, workspace_id, valid, id) }
+          .bind { |valid| validate_participants(valid, participant_ids) }
+          .bind { |valid| create_expense(event_id, user_id, workspace_id, valid, id, participant_ids) }
       end
 
       private
@@ -131,14 +133,36 @@ module Expenses
 
       sig do
         params(
+          valid: T::Hash[Symbol, T.untyped],
+          participant_ids: T.nilable(T::Array[String])
+        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
+      end
+      def validate_participants(valid, participant_ids)
+        return T.cast(Success(valid), Result[T::Hash[Symbol, T.untyped], ServiceError]) if participant_ids.nil? || participant_ids.empty?
+
+        # Verify all participant user_ids exist
+        existing_count = DB[:users].where(id: participant_ids).count
+        if existing_count != participant_ids.length
+          return T.cast(
+            Failure(ServiceError.validation("One or more participant user IDs are invalid")),
+            Result[T::Hash[Symbol, T.untyped], ServiceError]
+          )
+        end
+
+        T.cast(Success(valid), Result[T::Hash[Symbol, T.untyped], ServiceError])
+      end
+
+      sig do
+        params(
           event_id: T.any(String, UUID),
           user_id: T.any(String, UUID),
           workspace_id: T.any(String, UUID),
           valid: T::Hash[Symbol, T.untyped],
-          id: T.nilable(String)
+          id: T.nilable(String),
+          participant_ids: T.nilable(T::Array[String])
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def create_expense(event_id, user_id, workspace_id, valid, id)
+      def create_expense(event_id, user_id, workspace_id, valid, id, participant_ids)
         # Idempotent replay: if client provided an ID and it already exists, return it
         if id
           existing = Expense.find(id)
@@ -166,6 +190,8 @@ module Expenses
               updated_at: now
             )
 
+            insert_participants(expense_id, participant_ids, workspace_id)
+
             Broadcaster.object_changed("expense", expense_id, workspace_id: workspace_id)
 
             Expense.find(expense_id)
@@ -178,6 +204,29 @@ module Expenses
         pool.add_expense(expense)
 
         T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+      end
+
+      sig do
+        params(
+          expense_id: T.any(String, UUID),
+          participant_ids: T.nilable(T::Array[String]),
+          workspace_id: T.any(String, UUID)
+        ).void
+      end
+      def insert_participants(expense_id, participant_ids, workspace_id)
+        return if participant_ids.nil? || participant_ids.empty?
+
+        now = Time.now
+        participant_ids.each do |pid|
+          participant_id = SecureRandom.uuid
+          DB[:expense_participants].insert(
+            id: participant_id,
+            expense_id: expense_id,
+            user_id: pid,
+            created_at: now
+          )
+          Broadcaster.object_changed("expense_participant", participant_id, workspace_id: workspace_id)
+        end
       end
     end
   end
