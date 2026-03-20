@@ -258,9 +258,9 @@ describe('AddExpenseModal wizard', () => {
     await wrapper.vm.$nextTick()
 
     expect(wrapper.text()).toContain('Split by attendance overlap')
-    expect(wrapper.find('[data-testid="toggle-people-mode"]').text()).toBe(
-      'Specific people'
-    )
+    const toggle = wrapper.find('[data-testid="toggle-people-mode"]')
+    expect(toggle.text()).toContain('Everyone')
+    expect(toggle.text()).toContain('Specific people')
   })
 
   it('shows member checkboxes when switching to specific people mode', async () => {
@@ -301,23 +301,21 @@ describe('AddExpenseModal wizard', () => {
     await wrapper.find('form').trigger('submit')
     await wrapper.vm.$nextTick()
 
-    // Switch to specific people
-    await wrapper.find('[data-testid="toggle-people-mode"]').trigger('click')
+    // Switch to specific people by clicking the "Specific people" button
+    const buttons = wrapper
+      .find('[data-testid="toggle-people-mode"]')
+      .findAll('button')
+    const specificBtn = buttons.find((b) => b.text() === 'Specific people')
+    await specificBtn!.trigger('click')
     await wrapper.vm.$nextTick()
     await wrapper.vm.$nextTick()
 
-    // Check the toggle worked by looking for "No attending members" or checkboxes
+    // Check the toggle worked
     const text = wrapper.text()
-    // If members don't overlap, we get the "No attending members" message
-    // Otherwise we get checkboxes
     expect(text).not.toContain('Split by attendance overlap')
-    // At minimum, the toggle should have switched the UI
-    expect(wrapper.find('[data-testid="toggle-people-mode"]').text()).toBe(
-      'Everyone'
-    )
   })
 
-  it('shows date mode toggle on step 2', async () => {
+  it('shows date mode segmented control on step 2', async () => {
     const wrapper = mountModal()
     await wrapper
       .find('[data-testid="expense-description-input"]')
@@ -328,10 +326,11 @@ describe('AddExpenseModal wizard', () => {
 
     const toggle = wrapper.find('[data-testid="toggle-date-mode"]')
     expect(toggle.exists()).toBe(true)
-    expect(toggle.text()).toBe('Date range')
+    expect(toggle.text()).toContain('Single date')
+    expect(toggle.text()).toContain('Date range')
   })
 
-  it('switches date mode toggle text when clicked', async () => {
+  it('switches date mode when clicking Date range button', async () => {
     const wrapper = mountModal()
     await wrapper
       .find('[data-testid="expense-description-input"]')
@@ -340,10 +339,14 @@ describe('AddExpenseModal wizard', () => {
     await wrapper.find('form').trigger('submit')
     await wrapper.vm.$nextTick()
 
-    const toggle = wrapper.find('[data-testid="toggle-date-mode"]')
-    await toggle.trigger('click')
+    const buttons = wrapper
+      .find('[data-testid="toggle-date-mode"]')
+      .findAll('button')
+    const rangeBtn = buttons.find((b) => b.text() === 'Date range')
+    await rangeBtn!.trigger('click')
     await wrapper.vm.$nextTick()
 
-    expect(toggle.text()).toBe('Single date')
+    // Date range button should now have the active style
+    expect(rangeBtn!.classes()).toContain('bg-white')
   })
 })

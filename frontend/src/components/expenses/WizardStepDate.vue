@@ -127,14 +127,35 @@ function toggleMode(): void {
       <p class="text-sm font-medium text-gray-700 dark:text-stone-300">
         Expense period
       </p>
-      <button
-        type="button"
-        class="min-h-[44px] px-1 text-xs font-medium text-cyan-600 hover:text-cyan-700 sm:min-h-0 dark:text-cyan-400 dark:hover:text-cyan-300"
+      <div
+        class="inline-flex rounded-md bg-gray-100 p-0.5 dark:bg-stone-700"
         data-testid="toggle-date-mode"
-        @click="toggleMode"
       >
-        {{ singleDate ? 'Date range' : 'Single date' }}
-      </button>
+        <button
+          type="button"
+          class="rounded px-2.5 py-1 text-xs font-medium transition-colors"
+          :class="
+            singleDate
+              ? 'bg-white text-gray-900 shadow-sm dark:bg-stone-600 dark:text-white'
+              : 'text-gray-500 hover:text-gray-700 dark:text-stone-400 dark:hover:text-stone-200'
+          "
+          @click="singleDate || toggleMode()"
+        >
+          Single date
+        </button>
+        <button
+          type="button"
+          class="rounded px-2.5 py-1 text-xs font-medium transition-colors"
+          :class="
+            !singleDate
+              ? 'bg-white text-gray-900 shadow-sm dark:bg-stone-600 dark:text-white'
+              : 'text-gray-500 hover:text-gray-700 dark:text-stone-400 dark:hover:text-stone-200'
+          "
+          @click="singleDate && toggleMode()"
+        >
+          Date range
+        </button>
+      </div>
     </div>
 
     <div
