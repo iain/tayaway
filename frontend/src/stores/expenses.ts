@@ -68,7 +68,7 @@ export const useExpensesStore = defineStore('expenses', () => {
       id: expenseId,
     }
     if (participantIds && participantIds.length > 0) {
-      apiBody.participant_ids = participantIds
+      apiBody.participant_ids = [...participantIds]
     }
 
     const result = await create(
@@ -107,7 +107,7 @@ export const useExpensesStore = defineStore('expenses', () => {
       apiChanges.start_date = changes.startDate
     if (changes.endDate !== undefined) apiChanges.end_date = changes.endDate
     if (changes.participantIds !== undefined)
-      apiChanges.participant_ids = changes.participantIds
+      apiChanges.participant_ids = [...changes.participantIds]
 
     // For optimistic update, don't pass participantIds to pool patch (handled via server response)
     const poolChanges: Partial<PoolExpense> = {}
