@@ -77,6 +77,15 @@ export const useExpensesStore = defineStore('expenses', () => {
       (commandQueue) =>
         commandQueue.enqueue<PoolApiResponse>('POST', '/expenses', apiBody)
     )
+
+    // On success, server response replaced the temp expense (with real participantIds).
+    // Remove orphaned temp participant objects that are no longer referenced.
+    if (!result.queued) {
+      for (const tp of tempParticipants) {
+        pool.remove('expenseParticipant', tp.id)
+      }
+    }
+
     return { expenseId, queued: result.queued }
   }
 

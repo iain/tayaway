@@ -24,9 +24,7 @@ module Settlements
       def call(event_id:, user_id:, workspace_id:)
         find_event(event_id)
           .bind { |event| check_event_dates(event) }
-          .bind { |event| find_unsettled_expenses(event) }
-          .bind { |event, expenses| find_rsvps(event, expenses) }
-          .bind { |event, expenses, rsvps| compute_and_create(event, expenses, rsvps, user_id, workspace_id) }
+          .bind { |event| settle(event, user_id, workspace_id) }
       end
 
       private
@@ -48,54 +46,47 @@ module Settlements
         end
       end
 
-      sig { params(event: Event).returns(Result[T::Array[T.untyped], ServiceError]) }
-      def find_unsettled_expenses(event)
-        expenses = DB[:expenses]
-                   .where(event_id: event.id, settlement_id: nil)
-                   .order(:created_at)
-                   .all
-
-        if expenses.empty?
-          T.cast(
-            Failure(ServiceError.validation("No unsettled expenses to settle")),
-            Result[T::Array[T.untyped], ServiceError]
-          )
-        else
-          T.cast(Success([event, expenses]), Result[T::Array[T.untyped], ServiceError])
-        end
-      end
-
-      sig { params(event: Event, expenses: T::Array[T.untyped]).returns(Result[T::Array[T.untyped], ServiceError]) }
-      def find_rsvps(event, expenses)
-        rsvps = Rsvp.for_event(event.id).select(&:attending)
-
-        if rsvps.empty?
-          T.cast(
-            Failure(ServiceError.validation("No attending RSVPs found for this event")),
-            Result[T::Array[T.untyped], ServiceError]
-          )
-        else
-          T.cast(Success([event, expenses, rsvps]), Result[T::Array[T.untyped], ServiceError])
-        end
-      end
-
+      # Run the entire settlement inside a single transaction with row-level locking.
+      # This prevents concurrent expense mutations from causing stale-data settlements.
       sig do
         params(
           event: Event,
-          expenses: T::Array[T.untyped],
-          rsvps: T::Array[Rsvp],
           user_id: T.any(String, UUID),
           workspace_id: T.any(String, UUID)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def compute_and_create(event, expenses, rsvps, user_id, workspace_id)
-        balances = compute_balances(event, expenses, rsvps)
-        transfers = minimize_transfers(balances)
-
+      def settle(event, user_id, workspace_id)
         settlement_id = SecureRandom.uuid
         now = Time.now
 
         DB.transaction do
+          # Lock unsettled expenses for this event — prevents concurrent create/update/delete
+          # from changing them while we compute balances.
+          expenses = DB[:expenses]
+                     .where(event_id: event.id, settlement_id: nil)
+                     .for_update
+                     .order(:created_at)
+                     .all
+
+          if expenses.empty?
+            return T.cast(
+              Failure(ServiceError.validation("No unsettled expenses to settle")),
+              Result[T::Hash[Symbol, T.untyped], ServiceError]
+            )
+          end
+
+          rsvps = Rsvp.for_event(event.id).select(&:attending)
+
+          if rsvps.empty?
+            return T.cast(
+              Failure(ServiceError.validation("No attending RSVPs found for this event")),
+              Result[T::Hash[Symbol, T.untyped], ServiceError]
+            )
+          end
+
+          balances = compute_balances(event, expenses, rsvps)
+          transfers = minimize_transfers(balances)
+
           DB[:settlements].insert(
             id: settlement_id,
             event_id: event.id,
@@ -124,7 +115,6 @@ module Settlements
 
           Broadcaster.object_changed("settlement", settlement_id, workspace_id: workspace_id)
 
-          # Broadcast each updated expense
           Expense.for_event(event.id).select { |e| e.settlement_id&.to_s == settlement_id }.each do |expense|
             Broadcaster.object_changed("expense", expense.id, workspace_id: workspace_id)
           end
