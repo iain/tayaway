@@ -123,7 +123,7 @@ function toggleMode(): void {
 
 <template>
   <div>
-    <div class="mb-3 flex items-center justify-between">
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
       <p class="text-sm font-medium text-gray-700 dark:text-stone-300">
         Expense period
       </p>
