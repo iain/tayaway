@@ -736,9 +736,16 @@ test.describe('Expenses Feature', () => {
       ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
       await page.getByRole('button', { name: 'Add expense' }).click()
 
+      // Step 1: Details
       await expect(page.getByTestId('expense-description-input')).toBeVisible()
       await page.getByTestId('expense-description-input').fill(description)
       await page.getByTestId('expense-amount-input').fill('4.50')
+      await page.getByTestId('submit-button').click()
+
+      // Step 2: Date (pre-selected from event dates)
+      await page.getByTestId('submit-button').click()
+
+      // Step 3: People (default "Everyone")
       await page.getByTestId('submit-button').click()
 
       const row = page
@@ -808,16 +815,18 @@ test.describe('Expenses Feature', () => {
       await expect(descInput).toBeVisible()
       await expect(descInput).toHaveValue(description)
 
-      // Change description and amount
+      // Step 1: Change description and amount
       await descInput.fill(`Updated ${uid}`)
       const amountInput = page.getByTestId('expense-amount-input')
       await amountInput.fill('42.00')
+      await page.getByTestId('submit-button').click()
 
-      // Change dates via calendar (click start, then end)
+      // Step 2: Change dates via calendar (click start, then end)
       await page.getByTestId('calendar-day-2026-06-03').click()
       await page.getByTestId('calendar-day-2026-06-05').click()
+      await page.getByTestId('submit-button').click()
 
-      // Submit
+      // Step 3: People (keep default)
       const [updateResponse] = await Promise.all([
         page.waitForResponse(
           (resp) =>

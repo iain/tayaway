@@ -230,7 +230,7 @@ RSpec.describe Expenses::Update do
       expect(participants.map { |p| p[:userId] }).to contain_exactly(alice[:id], bob[:id])
 
       expense = result.value![:objects].find { |o| o[:objectType] == "expense" }
-      expect(expense[:participantIds]).to contain_exactly(*participants.map { |p| p[:id] })
+      expect(expense[:participantIds]).to match_array(participants.map { |p| p[:id] })
     end
 
     it "syncs participants: adds new and removes old" do
