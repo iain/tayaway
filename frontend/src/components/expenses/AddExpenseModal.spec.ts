@@ -347,6 +347,6 @@ describe('AddExpenseModal wizard', () => {
     await wrapper.vm.$nextTick()
 
     // Date range button should now have the active style
-    expect(rangeBtn!.classes()).toContain('bg-white')
+    expect(rangeBtn!.classes()).toContain('bg-amber-100')
   })
 })

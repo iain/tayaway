@@ -128,16 +128,16 @@ function toggleMode(): void {
         Expense period
       </p>
       <div
-        class="inline-flex rounded-md bg-gray-100 p-0.5 dark:bg-stone-700"
+        class="inline-flex gap-0.5 rounded-lg bg-gray-100 p-0.5 dark:bg-stone-700"
         data-testid="toggle-date-mode"
       >
         <button
           type="button"
-          class="rounded px-2.5 py-1 text-xs font-medium transition-colors"
+          class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors"
           :class="
             singleDate
-              ? 'bg-white text-gray-900 shadow-sm dark:bg-stone-600 dark:text-white'
-              : 'text-gray-500 hover:text-gray-700 dark:text-stone-400 dark:hover:text-stone-200'
+              ? 'bg-amber-100 text-amber-800 shadow-sm dark:bg-amber-900/40 dark:text-amber-300'
+              : 'text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:text-stone-400 dark:hover:bg-stone-600 dark:hover:text-stone-200'
           "
           @click="singleDate || toggleMode()"
         >
@@ -145,11 +145,11 @@ function toggleMode(): void {
         </button>
         <button
           type="button"
-          class="rounded px-2.5 py-1 text-xs font-medium transition-colors"
+          class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors"
           :class="
             !singleDate
-              ? 'bg-white text-gray-900 shadow-sm dark:bg-stone-600 dark:text-white'
-              : 'text-gray-500 hover:text-gray-700 dark:text-stone-400 dark:hover:text-stone-200'
+              ? 'bg-amber-100 text-amber-800 shadow-sm dark:bg-amber-900/40 dark:text-amber-300'
+              : 'text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:text-stone-400 dark:hover:bg-stone-600 dark:hover:text-stone-200'
           "
           @click="singleDate && toggleMode()"
         >
