@@ -1,7 +1,12 @@
 import { defineStore } from 'pinia'
 import { useMutation } from '@/composables/useMutation'
 import { useAuthStore } from './auth'
-import type { PoolApiResponse, PoolExpense } from '@/types/pool'
+import { useObjectPoolStore } from './objectPool'
+import type {
+  PoolApiResponse,
+  PoolExpense,
+  PoolExpenseParticipant,
+} from '@/types/pool'
 
 export const useExpensesStore = defineStore('expenses', () => {
   const { loading, error, create, update, destroy } = useMutation()
@@ -11,10 +16,13 @@ export const useExpensesStore = defineStore('expenses', () => {
     description: string,
     amount: number,
     startDate: string,
-    endDate: string
+    endDate: string,
+    participantIds?: string[]
   ) {
     const expenseId = crypto.randomUUID()
     const now = new Date().toISOString()
+    const pool = useObjectPoolStore()
+
     const tempExpense: PoolExpense = {
       id: expenseId,
       objectType: 'expense',
@@ -25,23 +33,59 @@ export const useExpensesStore = defineStore('expenses', () => {
       amount,
       startDate,
       endDate,
+      participantIds: [],
       createdAt: now,
       updatedAt: now,
+    }
+
+    // Create temp participant objects for optimistic UI
+    const tempParticipants: PoolExpenseParticipant[] = (
+      participantIds ?? []
+    ).map((userId) => {
+      const id = crypto.randomUUID()
+      tempExpense.participantIds.push(id)
+      return {
+        id,
+        objectType: 'expenseParticipant' as const,
+        expenseId,
+        userId,
+        createdAt: now,
+        updatedAt: now,
+      }
+    })
+
+    // Insert temp participants into pool before the create call
+    for (const tp of tempParticipants) {
+      pool.importObjects([tp])
+    }
+
+    const apiBody: Record<string, unknown> = {
+      event_id: eventId,
+      description,
+      amount,
+      start_date: startDate,
+      end_date: endDate,
+      id: expenseId,
+    }
+    if (participantIds && participantIds.length > 0) {
+      apiBody.participant_ids = [...participantIds]
     }
 
     const result = await create(
       'Failed to create expense',
       tempExpense,
       (commandQueue) =>
-        commandQueue.enqueue<PoolApiResponse>('POST', '/expenses', {
-          event_id: eventId,
-          description,
-          amount,
-          start_date: startDate,
-          end_date: endDate,
-          id: expenseId,
-        })
+        commandQueue.enqueue<PoolApiResponse>('POST', '/expenses', apiBody)
     )
+
+    // On success, server response replaced the temp expense (with real participantIds).
+    // Remove orphaned temp participant objects that are no longer referenced.
+    if (!result.queued) {
+      for (const tp of tempParticipants) {
+        pool.remove('expenseParticipant', tp.id)
+      }
+    }
+
     return { expenseId, queued: result.queued }
   }
 
@@ -52,6 +96,7 @@ export const useExpensesStore = defineStore('expenses', () => {
       amount?: number
       startDate?: string
       endDate?: string
+      participantIds?: string[]
     }
   ) {
     const apiChanges: Record<string, unknown> = {}
@@ -61,12 +106,23 @@ export const useExpensesStore = defineStore('expenses', () => {
     if (changes.startDate !== undefined)
       apiChanges.start_date = changes.startDate
     if (changes.endDate !== undefined) apiChanges.end_date = changes.endDate
+    if (changes.participantIds !== undefined)
+      apiChanges.participant_ids = [...changes.participantIds]
+
+    // For optimistic update, don't pass participantIds to pool patch (handled via server response)
+    const poolChanges: Partial<PoolExpense> = {}
+    if (changes.description !== undefined)
+      poolChanges.description = changes.description
+    if (changes.amount !== undefined) poolChanges.amount = changes.amount
+    if (changes.startDate !== undefined)
+      poolChanges.startDate = changes.startDate
+    if (changes.endDate !== undefined) poolChanges.endDate = changes.endDate
 
     await update(
       'Failed to update expense',
       'expense',
       id,
-      changes,
+      poolChanges,
       (commandQueue) =>
         commandQueue.enqueue<PoolApiResponse>(
           'PUT',

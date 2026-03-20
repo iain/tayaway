@@ -8,6 +8,7 @@ import {
   setupAuthenticatedPage,
   createResolvedEvent,
   addMemberToWorkspace,
+  getWorkspaceId,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-settlements@example.com'
@@ -297,6 +298,182 @@ test.describe('Settlements Feature', () => {
 
       // Start settlement button should reappear (expenses are unsettled again)
       await expect(page.getByTestId('start-settlement-button')).toBeVisible()
+    })
+  })
+
+  // -------------------------------------------------------------------
+  // Mixed expense types: overlap, partial overlap, and explicit participants
+  // -------------------------------------------------------------------
+  // Event: Jun 1–7. Three users with different attendance:
+  //   Alice (creator): full trip (Jun 1–7)
+  //   Bob:             partial (Jun 1–4)
+  //   Carol:           partial (Jun 3–7)
+  //
+  // Expenses:
+  //   1. Alice pays €70 groceries, Jun 1–7, everyone (RSVP overlap split)
+  //      Overlap days: Alice 7, Bob 4, Carol 5 → total 16
+  //      Shares: Alice 70*7/16=30.625, Bob 70*4/16=17.50, Carol 70*5/16=21.875
+  //   2. Bob pays €30 taxi, Jun 2 only, everyone (overlap split — only Alice+Bob present)
+  //      Overlap: Alice 1 day, Bob 1 day, Carol 0 → shares: 15 each
+  //   3. Alice pays €45 dinner, specific people: [Bob, Carol] (equal split)
+  //      Shares: Bob 22.50, Carol 22.50
+  //
+  // Totals:
+  //   Alice: share 30.63+15=45.63, paid 70+45=115 → balance -69.38 (owed)
+  //   Bob:   share 17.50+15+22.50=55.00, paid 30 → balance +25.00 (owes)
+  //   Carol: share 21.88+0+22.50=44.38, paid 0 → balance +44.38 (owes)
+  //
+  // Transfers: Bob→Alice ~25, Carol→Alice ~44.38
+  test.describe('Mixed Expense Settlement', () => {
+    test('settles mixed expense types correctly: overlap, partial, and participants', async ({
+      playwright,
+    }) => {
+      const aliceContext = await playwright.request.newContext()
+      const { token: aliceToken, userId: aliceId } = await getTestSession(
+        aliceContext,
+        'e2e-mixed-settle-alice@example.com',
+        'Mixed Alice'
+      )
+
+      const { eventId } = await createResolvedEvent(
+        aliceContext,
+        'Mixed Expense Settlement'
+      )
+
+      const workspaceId = await getWorkspaceId(aliceContext)
+
+      // Create Bob and Carol, add to workspace, RSVP with partial dates
+      const bobContext = await playwright.request.newContext()
+      const { userId: bobId } = await getTestSession(
+        bobContext,
+        'e2e-mixed-settle-bob@example.com',
+        'Mixed Bob'
+      )
+      await addMemberToWorkspace(
+        aliceContext,
+        workspaceId,
+        'e2e-mixed-settle-bob@example.com'
+      )
+      await bobContext.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
+        data: {
+          attending: true,
+          start_date: '2026-06-01',
+          end_date: '2026-06-04',
+        },
+      })
+
+      const carolContext = await playwright.request.newContext()
+      const { userId: carolId } = await getTestSession(
+        carolContext,
+        'e2e-mixed-settle-carol@example.com',
+        'Mixed Carol'
+      )
+      await addMemberToWorkspace(
+        aliceContext,
+        workspaceId,
+        'e2e-mixed-settle-carol@example.com'
+      )
+      await carolContext.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
+        data: {
+          attending: true,
+          start_date: '2026-06-03',
+          end_date: '2026-06-07',
+        },
+      })
+
+      // Expense 1: Alice pays €70 groceries for everyone (RSVP overlap)
+      await aliceContext.post(`${API_BASE}/api/expenses`, {
+        data: {
+          event_id: eventId,
+          description: 'Groceries',
+          amount: 70,
+          start_date: DEFAULT_START,
+          end_date: DEFAULT_END,
+        },
+      })
+
+      // Expense 2: Bob pays €30 taxi on Jun 2 for everyone (only Alice+Bob overlap)
+      await bobContext.post(`${API_BASE}/api/expenses`, {
+        data: {
+          event_id: eventId,
+          description: 'Taxi',
+          amount: 30,
+          start_date: '2026-06-02',
+          end_date: '2026-06-02',
+        },
+      })
+
+      // Expense 3: Alice pays €45 dinner for specific people (Bob and Carol)
+      const dinnerResp = await aliceContext.post(`${API_BASE}/api/expenses`, {
+        data: {
+          event_id: eventId,
+          description: 'Dinner',
+          amount: 45,
+          start_date: '2026-06-03',
+          end_date: '2026-06-03',
+          participant_ids: [bobId, carolId],
+        },
+      })
+      expect(dinnerResp.status()).toBe(201)
+
+      // Verify the dinner expense has participants
+      const dinnerBody = await dinnerResp.json()
+      const dinnerExpense = getObjectByType(dinnerBody.objects, 'expense')
+      expect(dinnerExpense!.participantIds.length).toBe(2)
+
+      // Settle
+      const settleResp = await aliceContext.post(
+        `${API_BASE}/api/settlements`,
+        {
+          data: { event_id: eventId },
+        }
+      )
+      expect(settleResp.status()).toBe(201)
+      const settleBody = await settleResp.json()
+
+      const transfers = getObjectsByType(
+        settleBody.objects,
+        'settlementTransfer'
+      )
+      expect(transfers.length).toBe(2)
+
+      // Both transfers should go to Alice (she's owed money)
+      for (const t of transfers) {
+        expect(t.toUserId).toBe(aliceId)
+      }
+
+      // Find Bob's and Carol's transfers
+      const bobTransfer = transfers.find((t) => t.fromUserId === bobId)
+      const carolTransfer = transfers.find((t) => t.fromUserId === carolId)
+      expect(bobTransfer).toBeDefined()
+      expect(carolTransfer).toBeDefined()
+
+      // Bob: share ≈ 55.00, paid 30 → owes ≈ 25.00
+      expect(bobTransfer!.amount).toBeCloseTo(25.0, 1)
+      // Carol: share ≈ 44.38, paid 0 → owes ≈ 44.38
+      expect(carolTransfer!.amount).toBeCloseTo(44.38, 1)
+
+      // Total transferred should equal Alice's net (what she's owed)
+      const totalTransferred = transfers.reduce(
+        (sum: number, t: { amount: number }) => sum + t.amount,
+        0
+      )
+      // Alice paid 115, share ≈ 45.63 → owed ≈ 69.38
+      expect(totalTransferred).toBeCloseTo(69.38, 1)
+
+      // All expenses should now be marked as settled
+      const expenses = getObjectsByType(settleBody.objects, 'expense')
+      for (const e of expenses) {
+        expect(e.settlementId).toBe(
+          settleBody.objects.find(
+            (o: { objectType: string }) => o.objectType === 'settlement'
+          )!.id
+        )
+      }
+
+      await bobContext.dispose()
+      await carolContext.dispose()
+      await aliceContext.dispose()
     })
   })
 })

@@ -8,6 +8,7 @@ import {
   createBareEvent,
   createResolvedEvent,
   addMemberToWorkspace,
+  getWorkspaceId,
   PAGE_LOAD_TIMEOUT,
 } from '../helpers'
 
@@ -879,6 +880,133 @@ test.describe('Expenses Feature', () => {
         `${API_BASE}/api/expenses/${expense.id}`
       )
       expect(verifyResp.status()).toBe(410)
+    })
+  })
+
+  test.describe('Expense Participant Selection', () => {
+    const PARTICIPANT_EMAIL = 'e2e-expense-participants@example.com'
+    const PARTICIPANT_NAME = 'E2E Expense Participants'
+    const SECOND_EMAIL = 'e2e-expense-participants-2@example.com'
+    const SECOND_NAME = 'Participant Bob'
+
+    let apiContext: APIRequestContext
+    let secondContext: APIRequestContext
+    let sessionToken: string
+    let eventId: string
+    let secondUserId: string
+
+    test.beforeAll(async ({ playwright }) => {
+      apiContext = await playwright.request.newContext()
+      const { token } = await getTestSession(
+        apiContext,
+        PARTICIPANT_EMAIL,
+        PARTICIPANT_NAME
+      )
+      sessionToken = token
+
+      // Create event and resolve it
+      ;({ eventId } = await createResolvedEvent(
+        apiContext,
+        'Participant Test Event'
+      ))
+
+      // Add a second member and RSVP them
+      const workspaceId = await getWorkspaceId(apiContext)
+      secondContext = await playwright.request.newContext()
+      ;({ userId: secondUserId } = await getTestSession(
+        secondContext,
+        SECOND_EMAIL,
+        SECOND_NAME
+      ))
+      await addMemberToWorkspace(apiContext, workspaceId, SECOND_EMAIL)
+
+      // RSVP the second user as attending
+      await secondContext.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
+        data: { attending: true },
+      })
+    })
+
+    test.afterAll(async () => {
+      await apiContext.dispose()
+      await secondContext.dispose()
+    })
+
+    test('can create an expense with specific participants via the wizard', async ({
+      page,
+    }) => {
+      await setupAuthenticatedPage(page, sessionToken)
+      await page.goto(`/events/${eventId}/expenses`)
+
+      await expect(
+        page.getByRole('button', { name: 'Add expense' })
+      ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
+      await page.getByRole('button', { name: 'Add expense' }).click()
+
+      // Step 1: Details
+      await expect(page.getByTestId('expense-description-input')).toBeVisible()
+      await page.getByTestId('expense-description-input').fill('Dinner for Bob')
+      await page.getByTestId('expense-amount-input').fill('30')
+      await page.getByTestId('submit-button').click()
+
+      // Step 2: Date — just proceed with defaults
+      await expect(page.getByTestId('toggle-date-mode')).toBeVisible()
+      await page.getByTestId('submit-button').click()
+
+      // Step 3: People — switch to specific people and select second user
+      await expect(page.getByTestId('toggle-people-mode')).toBeVisible()
+
+      // Click "Specific people" in the segmented control
+      await page
+        .getByTestId('toggle-people-mode')
+        .getByRole('button', { name: 'Specific people' })
+        .click()
+
+      // Select the second user
+      const checkbox = page.getByTestId(`participant-${secondUserId}`)
+      await expect(checkbox).toBeVisible()
+      await checkbox.click()
+
+      // Submit the expense — wait for the API response
+      const [createResponse] = await Promise.all([
+        page.waitForResponse(
+          (resp) =>
+            resp.url().includes('/api/expenses') &&
+            resp.request().method() === 'POST'
+        ),
+        page.getByTestId('submit-button').click(),
+      ])
+      expect(createResponse.status()).toBe(201)
+
+      // Expense should appear in the list
+      const row = page
+        .getByTestId('expense-row')
+        .filter({ hasText: 'Dinner for Bob' })
+      await expect(row).toBeVisible()
+      await expect(row.getByText('€30.00')).toBeVisible()
+
+      // Expand the row and verify "Equal split" label
+      await row.click()
+      await expect(row.getByText('Equal split')).toBeVisible()
+      await expect(row.getByText(SECOND_NAME)).toBeVisible()
+
+      // Verify via API that participants were saved
+      const expensesResp = await apiContext.get(
+        `${API_BASE}/api/expenses?event_id=${eventId}`
+      )
+      const expensesBody = await expensesResp.json()
+      const expense = expensesBody.objects.find(
+        (o: { objectType: string; description: string }) =>
+          o.objectType === 'expense' && o.description === 'Dinner for Bob'
+      )
+      expect(expense).toBeDefined()
+      expect(expense.participantIds.length).toBeGreaterThan(0)
+
+      const participants = expensesBody.objects.filter(
+        (o: { objectType: string; expenseId: string }) =>
+          o.objectType === 'expenseParticipant' && o.expenseId === expense.id
+      )
+      expect(participants.length).toBe(1)
+      expect(participants[0].userId).toBe(secondUserId)
     })
   })
 })

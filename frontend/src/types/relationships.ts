@@ -125,5 +125,17 @@ export const relationshipSchema: RelationshipSchema = {
       targetType: 'member',
     },
   },
+  expenseParticipant: {
+    expense: {
+      type: 'belongsTo',
+      foreignKey: 'expenseId',
+      targetType: 'expense',
+    },
+    member: {
+      type: 'belongsTo',
+      foreignKey: 'userId',
+      targetType: 'member',
+    },
+  },
   workspaceInvite: {},
 } as const

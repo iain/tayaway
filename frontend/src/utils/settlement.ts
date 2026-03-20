@@ -11,6 +11,7 @@ interface ExpenseLike {
   startDate: string
   endDate: string
   amount: number
+  participantIds?: string[]
 }
 
 interface RsvpLike {
@@ -18,6 +19,12 @@ interface RsvpLike {
   startDate: string | null
   endDate: string | null
 }
+
+/**
+ * Resolve participant user IDs for an expense. If the expense has explicit
+ * participants, look them up via the provided resolver function.
+ */
+type ParticipantResolver = (participantId: string) => string | undefined
 
 /**
  * Compute net balance for each user: fair share - amount paid.
@@ -28,7 +35,8 @@ export function computeBalances(
   expenses: ExpenseLike[],
   rsvps: RsvpLike[],
   eventStartDate: string,
-  eventEndDate: string
+  eventEndDate: string,
+  resolveParticipantUserId?: ParticipantResolver
 ): Map<string, number> {
   const shareByUser = new Map<string, number>()
   const paidByUser = new Map<string, number>()
@@ -47,6 +55,24 @@ export function computeBalances(
       )
     }
 
+    // Check for explicit participants
+    const participantIds = expense.participantIds ?? []
+    if (participantIds.length > 0 && resolveParticipantUserId) {
+      // Equal split among explicit participants
+      const userIds = participantIds
+        .map((pid) => resolveParticipantUserId(pid))
+        .filter((uid): uid is string => uid !== undefined)
+
+      if (userIds.length > 0) {
+        const share = expense.amount / userIds.length
+        for (const userId of userIds) {
+          shareByUser.set(userId, (shareByUser.get(userId) ?? 0) + share)
+        }
+        continue
+      }
+    }
+
+    // RSVP overlap logic (default path)
     const overlaps: { userId: string; days: number }[] = []
 
     for (const rd of rsvpDates) {

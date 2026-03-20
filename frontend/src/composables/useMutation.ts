@@ -66,7 +66,7 @@ export function useMutation() {
       if (e instanceof CommandQueuedError) {
         return { queued: true }
       }
-      pool.remove(tempObject.objectType, tempObject.id)
+      pool.cascadeRemove(tempObject.objectType, tempObject.id)
       error.value = errorMessage
       throw e
     } finally {

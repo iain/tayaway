@@ -50,6 +50,10 @@ const isSettled = computed(() => {
   return !!props.expense.settlementId
 })
 
+const hasParticipants = computed(() => {
+  return (props.expense.participantIds ?? []).length > 0
+})
+
 interface ExpensePayer {
   name: string
   overlapDays: number
@@ -57,6 +61,27 @@ interface ExpensePayer {
 }
 
 const payers = computed((): ExpensePayer[] => {
+  // If expense has explicit participants, equal split
+  const participantIds = props.expense.participantIds ?? []
+  if (participantIds.length > 0) {
+    const participants = participantIds
+      .map((pid) => pool.get('expenseParticipant', pid))
+      .filter((p) => p != null)
+
+    if (participants.length === 0) return []
+
+    const share = props.expense.amount / participants.length
+    return participants.map((p) => {
+      const m = pool.findBy('member', 'userId', p.userId)
+      return {
+        name: m?.name ?? m?.email ?? 'Unknown',
+        overlapDays: 0,
+        share,
+      }
+    })
+  }
+
+  // Default: RSVP overlap logic
   const attendingRsvps = pool
     .getAll('rsvp')
     .filter((r) => r.eventId === props.event.id && r.attending)
@@ -129,6 +154,7 @@ async function handleDelete(e: Event) {
     data-testid="expense-row"
     interactive
     class="select-none"
+    :aria-expanded="expanded"
     @click="toggleExpand"
   >
     <div class="flex items-center px-4 py-3">
@@ -200,33 +226,43 @@ async function handleDelete(e: Event) {
       >
         No overlapping attendees for this expense.
       </p>
-      <table v-else class="w-full text-xs">
-        <thead>
-          <tr class="text-left text-gray-500 uppercase dark:text-stone-400">
-            <th class="pr-2 pb-1">Person</th>
-            <th class="pr-2 pb-1">Days</th>
-            <th class="pb-1 text-right">Share</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="payer in payers"
-            :key="payer.name"
-            class="text-gray-700 dark:text-stone-300"
-          >
-            <td
-              class="max-w-[6rem] truncate py-0.5 pr-2 sm:max-w-[10rem]"
-              :title="payer.name"
+      <template v-else>
+        <p
+          v-if="hasParticipants"
+          class="mb-1.5 text-xs font-medium text-amber-700 dark:text-amber-400"
+        >
+          Equal split
+        </p>
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="text-left text-gray-500 uppercase dark:text-stone-400">
+              <th class="pr-2 pb-1">Person</th>
+              <th v-if="!hasParticipants" class="pr-2 pb-1">Days</th>
+              <th class="pb-1 text-right">Share</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="(payer, index) in payers"
+              :key="index"
+              class="text-gray-700 dark:text-stone-300"
             >
-              {{ payer.name }}
-            </td>
-            <td class="py-0.5 pr-2">{{ payer.overlapDays }}</td>
-            <td class="py-0.5 text-right font-mono">
-              €{{ payer.share.toFixed(2) }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              <td
+                class="max-w-[6rem] truncate py-0.5 pr-2 sm:max-w-[10rem]"
+                :title="payer.name"
+              >
+                {{ payer.name }}
+              </td>
+              <td v-if="!hasParticipants" class="py-0.5 pr-2">
+                {{ payer.overlapDays }}
+              </td>
+              <td class="py-0.5 text-right font-mono">
+                €{{ payer.share.toFixed(2) }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </template>
     </div>
   </BaseCard>
 </template>

@@ -120,6 +120,135 @@ describe('computeBalances', () => {
     expect(balances.get('alice')).toBe(-5)
     expect(balances.get('bob')).toBe(5)
   })
+
+  describe('with explicit participants', () => {
+    const resolver = (pid: string) => {
+      const map: Record<string, string> = {
+        'p-alice': 'alice',
+        'p-bob': 'bob',
+        'p-carol': 'carol',
+      }
+      return map[pid]
+    }
+
+    it('splits equally among explicit participants', () => {
+      const expenses = [
+        {
+          userId: 'alice',
+          startDate: eventStart,
+          endDate: eventEnd,
+          amount: 90,
+          participantIds: ['p-bob', 'p-carol'],
+        },
+      ]
+      const rsvps = [
+        { userId: 'alice', startDate: null, endDate: null },
+        { userId: 'bob', startDate: null, endDate: null },
+        { userId: 'carol', startDate: null, endDate: null },
+      ]
+
+      const balances = computeBalances(
+        expenses,
+        rsvps,
+        eventStart,
+        eventEnd,
+        resolver
+      )
+      // Bob and Carol each owe 45 (90/2). Alice paid 90, owes 0.
+      expect(balances.get('alice')).toBe(-90)
+      expect(balances.get('bob')).toBe(45)
+      expect(balances.get('carol')).toBe(45)
+    })
+
+    it('handles creator excluded from participants', () => {
+      const expenses = [
+        {
+          userId: 'alice',
+          startDate: eventStart,
+          endDate: eventEnd,
+          amount: 30,
+          participantIds: ['p-bob'],
+        },
+      ]
+      const rsvps = [
+        { userId: 'alice', startDate: null, endDate: null },
+        { userId: 'bob', startDate: null, endDate: null },
+      ]
+
+      const balances = computeBalances(
+        expenses,
+        rsvps,
+        eventStart,
+        eventEnd,
+        resolver
+      )
+      // Bob owes 30, Alice paid 30. Bob→Alice 30
+      expect(balances.get('alice')).toBe(-30)
+      expect(balances.get('bob')).toBe(30)
+    })
+
+    it('handles mixed expenses: some with participants, some without', () => {
+      const expenses = [
+        // No participants → RSVP overlap split
+        {
+          userId: 'alice',
+          startDate: eventStart,
+          endDate: eventEnd,
+          amount: 30,
+        },
+        // With participants → equal split between alice and bob
+        {
+          userId: 'bob',
+          startDate: eventStart,
+          endDate: eventEnd,
+          amount: 20,
+          participantIds: ['p-alice', 'p-bob'],
+        },
+      ]
+      const rsvps = [
+        { userId: 'alice', startDate: null, endDate: null },
+        { userId: 'bob', startDate: null, endDate: null },
+        { userId: 'carol', startDate: null, endDate: null },
+      ]
+
+      const balances = computeBalances(
+        expenses,
+        rsvps,
+        eventStart,
+        eventEnd,
+        resolver
+      )
+      // Expense 1: 30 / 3 = 10 each → alice=10, bob=10, carol=10
+      // Expense 2: 20 / 2 = 10 each → alice=10, bob=10
+      // Total shares: alice=20, bob=20, carol=10
+      // Paid: alice=30, bob=20
+      // Balances: alice=20-30=-10, bob=20-20=0, carol=10-0=10
+      expect(balances.get('alice')).toBe(-10)
+      expect(balances.has('bob')).toBe(false) // 0, filtered out
+      expect(balances.get('carol')).toBe(10)
+    })
+
+    it('falls back to RSVP overlap when no resolver provided', () => {
+      const expenses = [
+        {
+          userId: 'alice',
+          startDate: eventStart,
+          endDate: eventEnd,
+          amount: 100,
+          participantIds: ['p-bob'],
+        },
+      ]
+      const rsvps = [
+        { userId: 'alice', startDate: null, endDate: null },
+        { userId: 'bob', startDate: null, endDate: null },
+      ]
+
+      // Without resolver, participantIds are ignored → normal RSVP split
+      const balances = computeBalances(expenses, rsvps, eventStart, eventEnd)
+      expect(balances.get('alice')).toBe(-50)
+      expect(balances.get('bob')).toBe(50)
+    })
+  })
 })
 
 describe('minimizeTransfers', () => {

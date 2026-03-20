@@ -33,6 +33,11 @@ module Expenses
         expense_id = expense.id
 
         DB.transaction do
+          # Track participant deletions before CASCADE removes them
+          ExpenseParticipant.for_expense(expense_id).each do |p|
+            DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "expense_participant", object_id: p.id)
+          end
+
           DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "expense", object_id: expense_id)
           DB[:expenses].where(id: expense_id).delete
           Broadcaster.object_deleted("expense", expense_id, workspace_id: workspace_id)

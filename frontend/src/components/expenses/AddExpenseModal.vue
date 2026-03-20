@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/vue/24/outline'
 import BaseModal from '@/components/common/BaseModal.vue'
-import IconButton from '@/components/common/IconButton.vue'
-import FormInput from '@/components/form/FormInput.vue'
 import FormActions from '@/components/form/FormActions.vue'
-import CalendarMonth from '@/components/calendar/CalendarMonth.vue'
+import WizardStepDetails from '@/components/expenses/WizardStepDetails.vue'
+import WizardStepDate from '@/components/expenses/WizardStepDate.vue'
+import WizardStepPeople from '@/components/expenses/WizardStepPeople.vue'
 import { useExpensesStore } from '@/stores/expenses'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useAuthStore } from '@/stores/auth'
-import { useCalendar, getMonthName } from '@/composables/useCalendar'
 import type { PoolEvent, PoolExpense } from '@/types/pool'
 
 const props = defineProps<{
@@ -25,18 +23,40 @@ const emit = defineEmits<{
 const expensesStore = useExpensesStore()
 const pool = useObjectPoolStore()
 const authStore = useAuthStore()
-const { formatDateDisplay } = useCalendar()
 
+// Wizard state
+const step = ref(1)
+
+// Steps: Details → Date (if event has dates or editing) → People
+const showDateStep = computed(
+  () =>
+    (props.event.startDate != null && props.event.endDate != null) ||
+    props.expense != null
+)
+const steps = computed(() => {
+  const s = ['details']
+  if (showDateStep.value) s.push('date')
+  s.push('people')
+  return s
+})
+const totalSteps = computed(() => steps.value.length)
+const currentStepName = computed(() => steps.value[step.value - 1])
+
+// Form state
 const description = ref('')
 const amount = ref('')
 const startDate = ref('')
 const endDate = ref('')
+const singleDate = ref(true)
 const submitting = ref(false)
 
 // Calendar navigation state
 const calendarYear = ref(new Date().getFullYear())
 const calendarMonth = ref(new Date().getMonth())
-const hoverDate = ref<string | null>(null)
+
+// People state
+const everyone = ref(true)
+const selectedUserIds = ref<string[]>([])
 
 const isEditing = computed(() => props.expense != null)
 
@@ -48,106 +68,80 @@ const eventHasDates = computed(
   () => props.event.startDate != null && props.event.endDate != null
 )
 
-const selectionText = computed(() => {
-  if (startDate.value && endDate.value) {
-    if (startDate.value === endDate.value) {
-      return formatDateDisplay(startDate.value)
-    }
-    return `${formatDateDisplay(startDate.value)} – ${formatDateDisplay(endDate.value)}`
+// Step validation
+const detailsValid = computed(() => {
+  const desc = description.value.trim()
+  const amt = parseFloat(amount.value)
+  return desc.length > 0 && !isNaN(amt) && amt > 0
+})
+
+const dateValid = computed(() => {
+  return !!startDate.value && !!endDate.value
+})
+
+const canProceed = computed(() => {
+  if (currentStepName.value === 'details') return detailsValid.value
+  if (currentStepName.value === 'date') return dateValid.value
+  if (currentStepName.value === 'people') {
+    // In specific-people mode, require at least one person selected
+    return everyone.value || selectedUserIds.value.length > 0
   }
-  if (startDate.value) {
-    return `${formatDateDisplay(startDate.value)} – Select end date`
-  }
-  return 'Select start date'
+  return true
 })
 
-const monthLabel = computed(
-  () => `${getMonthName(calendarMonth.value)} ${calendarYear.value}`
-)
-
-// Constrain navigation to months that overlap with the event range
-const canNavigatePrev = computed(() => {
-  if (!props.event.startDate) return true
-  const [minYear, minMonth] = props.event.startDate.split('-').map(Number) as [
-    number,
-    number,
-  ]
-  // Can go back if current month is after the event start month
-  return (
-    calendarYear.value > minYear ||
-    (calendarYear.value === minYear && calendarMonth.value > minMonth - 1)
-  )
+const submitLabel = computed(() => {
+  if (step.value < totalSteps.value) return 'Next'
+  return isEditing.value ? 'Save' : 'Add Expense'
 })
 
-const canNavigateNext = computed(() => {
-  if (!props.event.endDate) return true
-  const [maxYear, maxMonth] = props.event.endDate.split('-').map(Number) as [
-    number,
-    number,
-  ]
-  return (
-    calendarYear.value < maxYear ||
-    (calendarYear.value === maxYear && calendarMonth.value < maxMonth - 1)
-  )
+const loadingLabel = computed(() => {
+  return isEditing.value ? 'Saving...' : 'Adding...'
 })
 
-function navigatePrev(): void {
-  if (!canNavigatePrev.value) return
-  if (calendarMonth.value === 0) {
-    calendarMonth.value = 11
-    calendarYear.value--
-  } else {
-    calendarMonth.value--
+function nextStep(): void {
+  if (step.value < totalSteps.value) {
+    step.value++
   }
 }
 
-function navigateNext(): void {
-  if (!canNavigateNext.value) return
-  if (calendarMonth.value === 11) {
-    calendarMonth.value = 0
-    calendarYear.value++
-  } else {
-    calendarMonth.value++
+function prevStep(): void {
+  if (step.value > 1) {
+    step.value--
   }
-}
-
-function handleDateSelect(dateString: string): void {
-  if (!startDate.value || endDate.value) {
-    // Start new selection
-    startDate.value = dateString
-    endDate.value = ''
-  } else {
-    // Complete selection
-    let start = startDate.value
-    let end = dateString
-    if (dateString < startDate.value) {
-      start = dateString
-      end = startDate.value
-    }
-    startDate.value = start
-    endDate.value = end
-  }
-}
-
-function handleHover(date: string | null): void {
-  hoverDate.value = date
 }
 
 watch(
   () => props.open,
   (isOpen) => {
     if (isOpen) {
+      step.value = 1
+
       if (props.expense) {
         description.value = props.expense.description
         amount.value = props.expense.amount.toString()
         startDate.value = props.expense.startDate
         endDate.value = props.expense.endDate
+        singleDate.value = props.expense.startDate === props.expense.endDate
+
+        // Load existing participants
+        const participantIds = props.expense.participantIds ?? []
+        if (participantIds.length > 0) {
+          everyone.value = false
+          selectedUserIds.value = participantIds
+            .map((pid) => pool.get('expenseParticipant', pid)?.userId)
+            .filter((uid): uid is string => uid !== undefined)
+        } else {
+          everyone.value = true
+          selectedUserIds.value = []
+        }
       } else {
         description.value = ''
         amount.value = ''
+        everyone.value = true
+        selectedUserIds.value = []
+        singleDate.value = true
 
         if (eventHasDates.value) {
-          // Pre-fill from current user's RSVP dates if partial, otherwise event dates
           const userId = authStore.currentUserId
           const rsvp = userId
             ? pool
@@ -160,12 +154,20 @@ watch(
                 )
             : null
 
-          if (rsvp?.startDate && rsvp?.endDate) {
-            startDate.value = rsvp.startDate
-            endDate.value = rsvp.endDate
+          // Determine the effective date range (RSVP dates or event dates)
+          const rangeStart = rsvp?.startDate ?? props.event.startDate!
+          const rangeEnd = rsvp?.endDate ?? props.event.endDate!
+
+          // If today falls within the range, default to today (most likely adding a recent expense)
+          const today = new Date().toISOString().slice(0, 10)
+          if (today >= rangeStart && today <= rangeEnd) {
+            startDate.value = today
+            endDate.value = today
+            singleDate.value = true
           } else {
-            startDate.value = props.event.startDate!
-            endDate.value = props.event.endDate!
+            startDate.value = rangeStart
+            endDate.value = rangeEnd
+            singleDate.value = rangeStart === rangeEnd
           }
         } else {
           const today = new Date().toISOString().slice(0, 10)
@@ -195,10 +197,20 @@ watch(
 )
 
 async function handleSubmit(): Promise<void> {
+  if (step.value < totalSteps.value) {
+    nextStep()
+    return
+  }
+
   const desc = description.value.trim()
   const amt = parseFloat(amount.value)
   if (!desc || isNaN(amt) || amt <= 0) return
   if (!startDate.value || !endDate.value) return
+
+  const participantIds =
+    !everyone.value && selectedUserIds.value.length > 0
+      ? selectedUserIds.value
+      : undefined
 
   submitting.value = true
   try {
@@ -208,6 +220,7 @@ async function handleSubmit(): Promise<void> {
         amount: amt,
         startDate: startDate.value,
         endDate: endDate.value,
+        participantIds: participantIds ?? [],
       })
     } else {
       await expensesStore.createExpense(
@@ -215,7 +228,8 @@ async function handleSubmit(): Promise<void> {
         desc,
         amt,
         startDate.value,
-        endDate.value
+        endDate.value,
+        participantIds
       )
     }
     emit('close')
@@ -230,90 +244,77 @@ function handleClose(): void {
 </script>
 
 <template>
-  <BaseModal :open="open" :title="modalTitle" size="lg" :prevent-close="submitting" @close="handleClose">
+  <BaseModal
+    :open="open"
+    :title="modalTitle"
+    size="lg"
+    :prevent-close="submitting"
+    @close="handleClose"
+  >
     <form class="space-y-4" @submit.prevent="handleSubmit">
-      <FormInput
-        id="expense-description"
-        v-model="description"
-        label="Description"
-        placeholder="What was this expense for?"
-        data-testid="expense-description-input"
-        autofocus
-        :disabled="submitting"
-      />
-
-      <FormInput
-        id="expense-amount"
-        v-model="amount"
-        label="Amount"
-        placeholder="0.00"
-        data-testid="expense-amount-input"
-        prefix="€"
-        inputmode="decimal"
-        :disabled="submitting"
-      />
-
-      <div v-if="eventHasDates || isEditing">
-        <label
-          class="mb-2 block text-sm font-medium text-gray-700 dark:text-stone-300"
-        >
-          Expense period
-        </label>
-
+      <!-- Step indicator -->
+      <div
+        role="group"
+        :aria-label="`Step ${step} of ${totalSteps}`"
+        class="flex items-center justify-center gap-2"
+        data-testid="wizard-steps"
+      >
         <div
-          class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-stone-700 dark:bg-stone-800"
-        >
-          <!-- Month header with navigation -->
-          <div class="mb-2 flex items-center justify-between">
-            <IconButton
-              label="Previous month"
-              :disabled="!canNavigatePrev"
-              class="rounded-md p-1.5 hover:bg-gray-200 dark:hover:bg-white/10"
-              @click="navigatePrev"
-            >
-              <ChevronLeftIcon class="size-5" />
-            </IconButton>
-            <span class="text-sm font-semibold text-gray-900 dark:text-white">
-              {{ monthLabel }}
-            </span>
-            <IconButton
-              label="Next month"
-              :disabled="!canNavigateNext"
-              class="rounded-md p-1.5 hover:bg-gray-200 dark:hover:bg-white/10"
-              @click="navigateNext"
-            >
-              <ChevronRightIcon class="size-5" />
-            </IconButton>
-          </div>
-
-          <CalendarMonth
-            :year="calendarYear"
-            :month="calendarMonth"
-            :selected-start="startDate || null"
-            :selected-end="endDate || null"
-            :hover-date="hoverDate"
-            :min-date="event.startDate ?? undefined"
-            :max-date="event.endDate ?? undefined"
-            hide-header
-            @select="handleDateSelect"
-            @hover="handleHover"
-          />
-
-          <!-- Selection summary -->
-          <div
-            class="mt-2 text-center text-sm text-gray-500 dark:text-stone-400"
-          >
-            {{ selectionText }}
-          </div>
-        </div>
+          v-for="s in totalSteps"
+          :key="s"
+          role="img"
+          :aria-label="`Step ${s}${s === step ? ' (current)' : s < step ? ' (completed)' : ''}`"
+          class="size-2 rounded-full"
+          :class="
+            s === step
+              ? 'bg-rose-500'
+              : s < step
+                ? 'bg-rose-300 dark:bg-rose-700'
+                : 'bg-gray-300 dark:bg-stone-600'
+          "
+        />
       </div>
 
+      <!-- Step 1: Details -->
+      <WizardStepDetails
+        v-if="currentStepName === 'details'"
+        v-model:description="description"
+        v-model:amount="amount"
+        :disabled="submitting"
+      />
+
+      <!-- Step 2: Date (only when event has dates or editing) -->
+      <WizardStepDate
+        v-if="currentStepName === 'date'"
+        v-model:start-date="startDate"
+        v-model:end-date="endDate"
+        :event="event"
+        :calendar-year="calendarYear"
+        :calendar-month="calendarMonth"
+        :single-date="singleDate"
+        @update:calendar-year="calendarYear = $event"
+        @update:calendar-month="calendarMonth = $event"
+        @update:single-date="singleDate = $event"
+      />
+
+      <!-- Step: People -->
+      <WizardStepPeople
+        v-if="currentStepName === 'people'"
+        v-model:selected-user-ids="selectedUserIds"
+        :event="event"
+        :start-date="startDate"
+        :end-date="endDate"
+        :everyone="everyone"
+        @update:everyone="everyone = $event"
+      />
+
       <FormActions
-        :submit-label="isEditing ? 'Save' : 'Add Expense'"
-        :loading-label="isEditing ? 'Saving...' : 'Adding...'"
+        :submit-label="submitLabel"
+        :loading-label="loadingLabel"
         :loading="submitting"
-        :disabled="!description.trim() || !(parseFloat(amount) > 0)"
-        @cancel="handleClose"
+        :disabled="!canProceed"
+        :cancel-label="step > 1 ? 'Back' : 'Cancel'"
+        @cancel="step > 1 ? prevStep() : handleClose()"
       />
     </form>
   </BaseModal>

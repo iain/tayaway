@@ -388,6 +388,141 @@ RSpec.describe Settlements::Create do
     end
   end
 
+  describe "compute_balances: explicit participants" do # -- test helper
+    define_method(:insert_participant) do |expense_id:, user:|
+      DB[:expense_participants].insert(
+        id: SecureRandom.uuid,
+        expense_id: expense_id,
+        user_id: user[:id],
+        created_at: Time.now
+      )
+    end
+    it "splits equally among explicit participants instead of RSVP overlap" do
+      alice = TestFactories.user(name: "Alice")
+      bob = TestFactories.user(name: "Bob")
+      carol = TestFactories.user(name: "Carol")
+      event = TestFactories.event(workspace: workspace, user: creator)
+      event = set_event_dates(event, Date.new(2026, 1, 1), Date.new(2026, 1, 7))
+
+      # Alice pays 90, participants are Bob and Carol only (not Alice)
+      expense_id = insert_expense(event: event, user: alice, amount: 90.00, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 7))
+      insert_participant(expense_id: expense_id, user: bob)
+      insert_participant(expense_id: expense_id, user: carol)
+
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.rsvp(event: event, user: carol, attending: true)
+
+      result = described_class.call(
+        event_id: event[:id],
+        user_id: creator[:id],
+        workspace_id: workspace[:id]
+      )
+
+      expect(result.success?).to be true
+      transfers = transfers_from(result)
+      # Bob and Carol each owe 45. Alice paid 90 and owes 0. Alice is owed 90.
+      # Bob→Alice 45, Carol→Alice 45
+      expect(transfers.length).to eq(2)
+      transfers.each do |t|
+        expect(t[:toUserId].to_s).to eq(alice[:id].to_s)
+        expect(t[:amount]).to eq(45.0)
+      end
+    end
+
+    it "handles creator excluded from participants (bought-for-you scenario)" do
+      alice = TestFactories.user(name: "Alice")
+      bob = TestFactories.user(name: "Bob")
+      event = TestFactories.event(workspace: workspace, user: creator)
+      event = set_event_dates(event, Date.new(2026, 1, 1), Date.new(2026, 1, 3))
+
+      # Alice pays 30 for Bob only
+      expense_id = insert_expense(event: event, user: alice, amount: 30.00, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 3))
+      insert_participant(expense_id: expense_id, user: bob)
+
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      TestFactories.rsvp(event: event, user: bob, attending: true)
+
+      result = described_class.call(
+        event_id: event[:id],
+        user_id: creator[:id],
+        workspace_id: workspace[:id]
+      )
+
+      expect(result.success?).to be true
+      transfers = transfers_from(result)
+      # Bob owes 30, Alice paid 30. Bob→Alice 30
+      expect(transfers.length).to eq(1)
+      expect(transfers.first[:fromUserId].to_s).to eq(bob[:id].to_s)
+      expect(transfers.first[:toUserId].to_s).to eq(alice[:id].to_s)
+      expect(transfers.first[:amount]).to eq(30.0)
+    end
+
+    it "handles mixed: some expenses with participants, some without" do
+      alice = TestFactories.user(name: "Alice")
+      bob = TestFactories.user(name: "Bob")
+      carol = TestFactories.user(name: "Carol")
+      event = TestFactories.event(workspace: workspace, user: creator)
+      event = set_event_dates(event, Date.new(2026, 1, 1), Date.new(2026, 1, 3))
+
+      # Expense 1: Alice pays 30, no participants → split by RSVP overlap (10 each for 3 people)
+      insert_expense(event: event, user: alice, amount: 30.00, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 3))
+
+      # Expense 2: Bob pays 20, participants = [Alice, Bob] → equal split (10 each)
+      expense2_id = insert_expense(event: event, user: bob, amount: 20.00, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 3))
+      insert_participant(expense_id: expense2_id, user: alice)
+      insert_participant(expense_id: expense2_id, user: bob)
+
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.rsvp(event: event, user: carol, attending: true)
+
+      result = described_class.call(
+        event_id: event[:id],
+        user_id: creator[:id],
+        workspace_id: workspace[:id]
+      )
+
+      expect(result.success?).to be true
+      # Expense 1 (RSVP overlap): Alice share=10, Bob share=10, Carol share=10
+      # Expense 2 (participants): Alice share=10, Bob share=10
+      # Total shares: Alice=20, Bob=20, Carol=10
+      # Paid: Alice=30, Bob=20
+      # Balances: Alice=20-30=-10 (owed), Bob=20-20=0, Carol=10-0=10 (owes)
+      # Transfer: Carol→Alice 10
+      transfers = transfers_from(result)
+      expect(transfers.length).to eq(1)
+      expect(transfers.first[:fromUserId].to_s).to eq(carol[:id].to_s)
+      expect(transfers.first[:toUserId].to_s).to eq(alice[:id].to_s)
+      expect(transfers.first[:amount]).to eq(10.0)
+    end
+
+    it "handles single participant" do
+      alice = TestFactories.user(name: "Alice")
+      bob = TestFactories.user(name: "Bob")
+      event = TestFactories.event(workspace: workspace, user: creator)
+      event = set_event_dates(event, Date.new(2026, 1, 1), Date.new(2026, 1, 3))
+
+      # Alice pays 50 for Bob only
+      expense_id = insert_expense(event: event, user: alice, amount: 50.00, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 3))
+      insert_participant(expense_id: expense_id, user: bob)
+
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      TestFactories.rsvp(event: event, user: bob, attending: true)
+
+      result = described_class.call(
+        event_id: event[:id],
+        user_id: creator[:id],
+        workspace_id: workspace[:id]
+      )
+
+      expect(result.success?).to be true
+      transfers = transfers_from(result)
+      expect(transfers.length).to eq(1)
+      expect(transfers.first[:amount]).to eq(50.0)
+    end
+  end
+
   describe "successful settlement creation" do
     it "marks expenses as settled (links them to the settlement)" do
       alice = TestFactories.user(name: "Alice")

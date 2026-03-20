@@ -134,6 +134,7 @@ rsvps              id, event_id, user_id, attending (boolean), start_date (nulla
 task_lists         id, workspace_id (FK cascade), user_id (FK set_null, nullable), name TEXT, position FLOAT (ordered within workspace), timestamps
 task_items         id, task_list_id (FK cascade), user_id (FK set_null, nullable), content TEXT, completed_at (TIMESTAMPTZ nullable), position FLOAT (ordered within list), timestamps
 expenses           id (UUID), event_id (FK cascade), user_id (FK set_null, nullable), settlement_id (FK settlements set_null, nullable), amount NUMERIC NOT NULL (euros), description TEXT NOT NULL, start_date DATE NOT NULL, end_date DATE NOT NULL, timestamps, check(start_date <= end_date)
+expense_participants id (UUID), expense_id (FK cascade), user_id (FK users cascade), created_at, unique(expense_id, user_id)
 settlements        id (UUID), event_id (FK cascade), user_id (FK set_null, nullable), timestamps
 settlement_transfers  id (UUID), settlement_id (FK settlements cascade), from_user_id (FK set_null, nullable), to_user_id (FK set_null, nullable), amount NUMERIC NOT NULL, paid_at (TIMESTAMPTZ nullable), timestamps
 chore_rosters     id (UUID PK), event_id (FK events unique cascade), user_id (FK users set_null nullable), timestamps
@@ -145,6 +146,7 @@ workspace_invites  id (UUID), workspace_id (FK cascade), invited_by (FK set_null
 **Hierarchy:** Workspace -> Event -> DatePoll -> DateRange -> Vote
 **RSVP:** Event -> Rsvp (once event has dates set)
 **Settlement:** Event -> Settlement -> SettlementTransfer; Settlement -> Expenses (via settlement_id)
+**Expense Participants:** Expense -> ExpenseParticipant (empty = RSVP overlap split; populated = equal split among participants)
 **Chore Roster:** Event -> ChoreRoster -> Chore -> ChoreAssignment
 
 **Poll lifecycle:** open -> expired (past deadline) -> resolved (closed with winner) -> can reopen
@@ -280,6 +282,7 @@ These types must stay in sync between frontend and backend:
 | chore_roster        | `ChoreRoster`         | `choreRoster`        | `add_chore_roster`        |
 | chore               | `Chore`               | `chore`              | `add_chore`               |
 | chore_assignment    | `ChoreAssignment`     | `choreAssignment`    | `add_chore_assignment`    |
+| expense_participant | `ExpenseParticipant`  | `expenseParticipant` | `add_expense_participant` |
 | workspace_invite    | `WorkspaceInvite`     | `workspaceInvite`    | `add_workspace_invite`    |
 
 Defined in: `backend/app/object_registry.rb` and `frontend/src/types/pool.ts`

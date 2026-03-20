@@ -84,12 +84,11 @@ const CASCADE_RULES: Partial<
   ],
   datePoll: [{ childType: 'dateRange', foreignKey: 'datePollId' }],
   dateRange: [{ childType: 'vote', foreignKey: 'dateRangeId' }],
-  settlement: [
-    { childType: 'settlementTransfer', foreignKey: 'settlementId' },
-  ],
+  settlement: [{ childType: 'settlementTransfer', foreignKey: 'settlementId' }],
   choreRoster: [{ childType: 'chore', foreignKey: 'choreRosterId' }],
   chore: [{ childType: 'choreAssignment', foreignKey: 'choreId' }],
   taskList: [{ childType: 'taskItem', foreignKey: 'taskListId' }],
+  expense: [{ childType: 'expenseParticipant', foreignKey: 'expenseId' }],
 }
 
 export type ReadTransform = <T extends ObjectType>(

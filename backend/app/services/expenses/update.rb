@@ -17,15 +17,16 @@ module Expenses
           description: T.nilable(String),
           amount: T.nilable(Float),
           start_date: T.nilable(String),
-          end_date: T.nilable(String)
+          end_date: T.nilable(String),
+          participant_ids: T.nilable(T::Array[String])
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def call(expense_id:, current_user_id:, workspace_id:, description:, amount:, start_date: nil, end_date: nil)
+      def call(expense_id:, current_user_id:, workspace_id:, description:, amount:, start_date: nil, end_date: nil, participant_ids: nil)
         Expense.find_result(expense_id)
                .bind { |expense| check_not_settled(expense) }
                .bind { |expense| check_owner(expense, current_user_id) }
-               .bind { |expense| validate_update(expense, description, amount, start_date, end_date) }
-               .bind { |expense| update_expense(expense, workspace_id, description, amount, start_date, end_date) }
+               .bind { |expense| validate_update(expense, description, amount, start_date, end_date, participant_ids) }
+               .bind { |expense| update_expense(expense, workspace_id, description, amount, start_date, end_date, participant_ids) }
       end
 
       private
@@ -36,15 +37,17 @@ module Expenses
           description: T.nilable(String),
           amount: T.nilable(Float),
           start_date: T.nilable(String),
-          end_date: T.nilable(String)
+          end_date: T.nilable(String),
+          participant_ids: T.nilable(T::Array[String])
         ).returns(Result[Expense, ServiceError])
       end
-      def validate_update(expense, description, amount, start_date, end_date)
+      def validate_update(expense, description, amount, start_date, end_date, participant_ids)
         has_description = description && !description.empty?
         has_amount = !amount.nil?
         has_dates = (start_date && !start_date.empty?) || (end_date && !end_date.empty?)
+        has_participants = !participant_ids.nil?
 
-        if !has_description && !has_amount && !has_dates
+        if !has_description && !has_amount && !has_dates && !has_participants
           return T.cast(
             Failure(ServiceError.validation("Description, amount, or dates are required")),
             Result[Expense, ServiceError]
@@ -102,6 +105,17 @@ module Expenses
           end
         end
 
+        if has_participants && !T.must(participant_ids).empty?
+          deduped = T.must(participant_ids).uniq
+          existing_count = DB[:users].where(id: deduped).count
+          if existing_count != deduped.length
+            return T.cast(
+              Failure(ServiceError.validation("One or more participant user IDs are invalid")),
+              Result[Expense, ServiceError]
+            )
+          end
+        end
+
         T.cast(Success(expense), Result[Expense, ServiceError])
       end
 
@@ -112,10 +126,11 @@ module Expenses
           description: T.nilable(String),
           amount: T.nilable(Float),
           start_date: T.nilable(String),
-          end_date: T.nilable(String)
+          end_date: T.nilable(String),
+          participant_ids: T.nilable(T::Array[String])
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def update_expense(expense, workspace_id, description, amount, start_date, end_date)
+      def update_expense(expense, workspace_id, description, amount, start_date, end_date, participant_ids)
         DB.transaction do
           updates = { updated_at: Time.now }
           updates[:description] = description if description && !description.empty?
@@ -125,6 +140,9 @@ module Expenses
             updates[:end_date] = Date.parse(end_date)
           end
           DB[:expenses].where(id: expense.id).update(updates)
+
+          sync_participants(expense.id, participant_ids, workspace_id) unless participant_ids.nil?
+
           Broadcaster.object_changed("expense", expense.id, workspace_id: workspace_id)
         end
 
@@ -133,6 +151,43 @@ module Expenses
         pool.add_expense(updated)
 
         T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+      end
+
+      sig do
+        params(
+          expense_id: UUID,
+          participant_ids: T::Array[String],
+          workspace_id: T.any(String, UUID)
+        ).void
+      end
+      def sync_participants(expense_id, participant_ids, workspace_id)
+        participant_ids = participant_ids.uniq
+        existing = ExpenseParticipant.user_ids_for_expense(expense_id)
+        to_add = participant_ids - existing
+        to_remove = existing - participant_ids
+
+        # Remove old participants
+        unless to_remove.empty?
+          removed = ExpenseParticipant.for_expense(expense_id).select { |p| to_remove.include?(p.user_id.to_s) }
+          removed.each do |p|
+            DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "expense_participant", object_id: p.id)
+            Broadcaster.object_deleted("expense_participant", p.id, workspace_id: workspace_id)
+          end
+          DB[:expense_participants].where(expense_id: expense_id, user_id: to_remove).delete
+        end
+
+        # Add new participants
+        now = Time.now
+        to_add.each do |uid|
+          pid = SecureRandom.uuid
+          DB[:expense_participants].insert(
+            id: pid,
+            expense_id: expense_id,
+            user_id: uid,
+            created_at: now
+          )
+          Broadcaster.object_changed("expense_participant", pid, workspace_id: workspace_id)
+        end
       end
     end
   end

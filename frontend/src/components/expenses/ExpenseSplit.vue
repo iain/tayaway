@@ -55,6 +55,23 @@ const rows = computed((): SplitRow[] => {
 
   // For each expense, compute overlap and distribute cost
   for (const expense of expenses) {
+    // If expense has explicit participants, equal split
+    const participantIds = expense.participantIds ?? []
+    if (participantIds.length > 0) {
+      const participants = participantIds
+        .map((pid) => pool.get('expenseParticipant', pid))
+        .filter((p) => p != null)
+
+      if (participants.length > 0) {
+        const share = expense.amount / participants.length
+        for (const p of participants) {
+          shareByUser.set(p.userId, (shareByUser.get(p.userId) ?? 0) + share)
+        }
+      }
+      continue
+    }
+
+    // Default: RSVP overlap logic
     const overlaps: { userId: string; overlapDays: number }[] = []
 
     for (const { rsvp, start, end } of rsvpDates) {

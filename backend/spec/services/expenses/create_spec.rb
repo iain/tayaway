@@ -47,4 +47,62 @@ RSpec.describe Expenses::Create do
     expect(expense[:description]).to eq("Dinner")
     expect(expense[:amount]).to eq(42.5)
   end
+
+  describe "participant_ids" do
+    let(:alice) { TestFactories.user(name: "Alice") }
+    let(:bob) { TestFactories.user(name: "Bob") }
+
+    before do
+      TestFactories.rsvp(event: event, user: user, attending: true)
+    end
+
+    it "creates expense_participants when participant_ids provided" do
+      result = described_class.call(**valid_params, participant_ids: [alice[:id], bob[:id]])
+
+      expect(result.success?).to be true
+      participants = result.value![:objects].select { |o| o[:objectType] == "expenseParticipant" }
+      expect(participants.length).to eq(2)
+      expect(participants.map { |p| p[:userId] }).to contain_exactly(alice[:id], bob[:id])
+
+      expense = result.value![:objects].find { |o| o[:objectType] == "expense" }
+      expect(expense[:participantIds]).to contain_exactly(*participants.map { |p| p[:id] })
+    end
+
+    it "creates no participants when participant_ids is nil" do
+      result = described_class.call(**valid_params, participant_ids: nil)
+
+      expect(result.success?).to be true
+      expense = result.value![:objects].find { |o| o[:objectType] == "expense" }
+      expect(expense[:participantIds]).to eq([])
+    end
+
+    it "creates no participants when participant_ids is empty" do
+      result = described_class.call(**valid_params, participant_ids: [])
+
+      expect(result.success?).to be true
+      expense = result.value![:objects].find { |o| o[:objectType] == "expense" }
+      expect(expense[:participantIds]).to eq([])
+    end
+
+    it "fails when participant_ids contain invalid user IDs" do
+      result = described_class.call(**valid_params, participant_ids: [SecureRandom.uuid])
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("One or more participant user IDs are invalid")
+    end
+
+    it "preserves participants on idempotent replay" do
+      id = SecureRandom.uuid
+      result1 = described_class.call(**valid_params, id: id, participant_ids: [alice[:id]])
+
+      expect(result1.success?).to be true
+
+      result2 = described_class.call(**valid_params, id: id, participant_ids: [alice[:id]])
+
+      expect(result2.success?).to be true
+      participants = result2.value![:objects].select { |o| o[:objectType] == "expenseParticipant" }
+      expect(participants.length).to eq(1)
+      expect(participants.first[:userId]).to eq(alice[:id])
+    end
+  end
 end
