@@ -111,7 +111,7 @@ function toggleUser(userId: string): void {
           <label
             v-for="m in overlappingMembers"
             :key="m.userId"
-            class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-gray-100 dark:hover:bg-white/5"
+            class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors focus-within:bg-gray-100 hover:bg-gray-100 dark:focus-within:bg-white/5 dark:hover:bg-white/5"
             :data-testid="`participant-${m.userId}`"
           >
             <input
