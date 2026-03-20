@@ -154,14 +154,20 @@ watch(
                 )
             : null
 
-          if (rsvp?.startDate && rsvp?.endDate) {
-            startDate.value = rsvp.startDate
-            endDate.value = rsvp.endDate
-            singleDate.value = rsvp.startDate === rsvp.endDate
+          // Determine the effective date range (RSVP dates or event dates)
+          const rangeStart = rsvp?.startDate ?? props.event.startDate!
+          const rangeEnd = rsvp?.endDate ?? props.event.endDate!
+
+          // If today falls within the range, default to today (most likely adding a recent expense)
+          const today = new Date().toISOString().slice(0, 10)
+          if (today >= rangeStart && today <= rangeEnd) {
+            startDate.value = today
+            endDate.value = today
+            singleDate.value = true
           } else {
-            startDate.value = props.event.startDate!
-            endDate.value = props.event.endDate!
-            singleDate.value = props.event.startDate === props.event.endDate
+            startDate.value = rangeStart
+            endDate.value = rangeEnd
+            singleDate.value = rangeStart === rangeEnd
           }
         } else {
           const today = new Date().toISOString().slice(0, 10)
