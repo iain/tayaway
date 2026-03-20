@@ -124,12 +124,12 @@ function toggleMode(): void {
 <template>
   <div>
     <div class="mb-3 flex items-center justify-between">
-      <label class="text-sm font-medium text-gray-700 dark:text-stone-300">
+      <p class="text-sm font-medium text-gray-700 dark:text-stone-300">
         Expense period
-      </label>
+      </p>
       <button
         type="button"
-        class="text-xs font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
+        class="min-h-[44px] px-1 text-xs font-medium text-cyan-600 hover:text-cyan-700 sm:min-h-0 dark:text-cyan-400 dark:hover:text-cyan-300"
         data-testid="toggle-date-mode"
         @click="toggleMode"
       >

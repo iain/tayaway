@@ -82,6 +82,10 @@ const dateValid = computed(() => {
 const canProceed = computed(() => {
   if (currentStepName.value === 'details') return detailsValid.value
   if (currentStepName.value === 'date') return dateValid.value
+  if (currentStepName.value === 'people') {
+    // In specific-people mode, require at least one person selected
+    return everyone.value || selectedUserIds.value.length > 0
+  }
   return true
 })
 
@@ -244,13 +248,17 @@ function handleClose(): void {
     <form class="space-y-4" @submit.prevent="handleSubmit">
       <!-- Step indicator -->
       <div
+        role="group"
+        :aria-label="`Step ${step} of ${totalSteps}`"
         class="flex items-center justify-center gap-2"
         data-testid="wizard-steps"
       >
         <div
           v-for="s in totalSteps"
           :key="s"
-          class="size-2 rounded-full transition-colors"
+          role="img"
+          :aria-label="`Step ${s}${s === step ? ' (current)' : s < step ? ' (completed)' : ''}`"
+          class="size-2 rounded-full"
           :class="
             s === step
               ? 'bg-rose-500'

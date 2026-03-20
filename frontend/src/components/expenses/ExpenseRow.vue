@@ -235,8 +235,8 @@ async function handleDelete(e: Event) {
         </thead>
         <tbody>
           <tr
-            v-for="payer in payers"
-            :key="payer.name"
+            v-for="(payer, index) in payers"
+            :key="index"
             class="text-gray-700 dark:text-stone-300"
           >
             <td

@@ -80,12 +80,12 @@ function toggleUser(userId: string): void {
 <template>
   <div>
     <div class="mb-3 flex items-center justify-between">
-      <label class="text-sm font-medium text-gray-700 dark:text-stone-300">
+      <p class="text-sm font-medium text-gray-700 dark:text-stone-300">
         Who is this for?
-      </label>
+      </p>
       <button
         type="button"
-        class="text-xs font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
+        class="min-h-[44px] px-1 text-xs font-medium text-cyan-600 hover:text-cyan-700 sm:min-h-0 dark:text-cyan-400 dark:hover:text-cyan-300"
         data-testid="toggle-people-mode"
         @click="toggleEveryone"
       >
@@ -103,25 +103,32 @@ function toggleUser(userId: string): void {
         v-if="overlappingMembers.length === 0"
         class="text-sm text-gray-500 dark:text-stone-400"
       >
-        No attending members overlap with this expense period.
+        No attending members overlap with this expense period. Go back and
+        adjust the dates, or switch to Everyone.
       </p>
-      <div v-else class="space-y-1">
-        <label
-          v-for="m in overlappingMembers"
-          :key="m.userId"
-          class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-gray-100 dark:hover:bg-white/5"
-          :data-testid="`participant-${m.userId}`"
-        >
-          <input
-            type="checkbox"
-            class="size-4 rounded border-gray-300 text-rose-500 focus:ring-rose-500 dark:border-stone-600 dark:bg-stone-800"
-            :checked="selectedUserIds.includes(m.userId)"
-            @change="toggleUser(m.userId)"
-          />
-          <span class="text-sm text-gray-900 dark:text-white">
-            {{ m.name }}
-          </span>
-        </label>
+      <div v-else>
+        <div class="space-y-1">
+          <label
+            v-for="m in overlappingMembers"
+            :key="m.userId"
+            class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-gray-100 dark:hover:bg-white/5"
+            :data-testid="`participant-${m.userId}`"
+          >
+            <input
+              type="checkbox"
+              class="size-4 rounded border-gray-300 text-rose-500 focus:ring-rose-500 dark:border-stone-600 dark:bg-stone-800"
+              :checked="selectedUserIds.includes(m.userId)"
+              @change="toggleUser(m.userId)"
+            />
+            <span class="text-sm text-gray-900 dark:text-white">
+              {{ m.name }}
+            </span>
+          </label>
+        </div>
+        <p class="mt-2 text-xs text-gray-500 dark:text-stone-400">
+          {{ selectedUserIds.length }} of
+          {{ overlappingMembers.length }} selected
+        </p>
       </div>
     </div>
   </div>
