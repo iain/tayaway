@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { ClockIcon, InboxIcon } from '@heroicons/vue/24/outline'
+import { ChevronRightIcon, ClockIcon, InboxIcon } from '@heroicons/vue/24/outline'
 import {
   formatDeadline,
   isUrgent,
@@ -82,6 +82,10 @@ function navigateToEvent(eventId: string): void {
             >
               Overdue
             </AppBadge>
+            <ChevronRightIcon
+              class="size-5 shrink-0 text-gray-400 dark:text-stone-500"
+              aria-hidden="true"
+            />
           </div>
         </div>
       </BaseCard>

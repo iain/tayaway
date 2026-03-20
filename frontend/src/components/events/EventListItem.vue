@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ChevronRightIcon } from '@heroicons/vue/24/outline'
 import type { ObjectTypeMap } from '@/types/pool'
 import BaseCard from '@/components/common/BaseCard.vue'
 
@@ -21,7 +22,7 @@ defineEmits<{
     @click="$emit('click')"
   >
     <div class="px-4 py-5 sm:px-6">
-      <div class="flex items-center justify-between">
+      <div class="flex items-center justify-between gap-3">
         <div class="min-w-0 flex-1">
           <h3
             data-testid="event-name"
@@ -45,6 +46,10 @@ defineEmits<{
             >
           </div>
         </div>
+        <ChevronRightIcon
+          class="size-5 shrink-0 text-gray-400 dark:text-stone-500"
+          aria-hidden="true"
+        />
       </div>
     </div>
   </BaseCard>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { CalendarDaysIcon } from '@heroicons/vue/24/outline'
+import { CalendarDaysIcon, ChevronRightIcon } from '@heroicons/vue/24/outline'
 import {
   formatEventDateRange,
   type RsvpEventItem,
@@ -35,7 +35,7 @@ function navigateToEventPage(eventId: string): void {
         @click="navigateToEventPage(item.eventId)"
       >
         <div class="px-4 py-4 sm:px-6">
-          <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
             <div class="min-w-0 flex-1">
               <h3
                 class="truncate text-base font-semibold text-gray-900 dark:text-white"
@@ -53,6 +53,10 @@ function navigateToEventPage(eventId: string): void {
                 </span>
               </div>
             </div>
+            <ChevronRightIcon
+              class="size-5 shrink-0 text-gray-400 dark:text-stone-500"
+              aria-hidden="true"
+            />
           </div>
         </div>
       </BaseCard>

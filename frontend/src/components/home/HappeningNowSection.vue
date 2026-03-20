@@ -3,6 +3,7 @@ import { useRouter } from 'vue-router'
 import {
   BanknotesIcon,
   CalendarDaysIcon,
+  ChevronRightIcon,
   UserGroupIcon,
 } from '@heroicons/vue/24/outline'
 import BaseCard from '@/components/common/BaseCard.vue'
@@ -41,31 +42,37 @@ function navigateToEventPage(eventId: string): void {
       >
         <div class="px-4 py-4 sm:px-6">
           <div
-            class="cursor-pointer"
+            class="flex cursor-pointer items-center gap-3 transition-opacity active:opacity-70"
             role="button"
             tabindex="0"
             @click="navigateToEventPage(event.id)"
             @keydown.enter="navigateToEventPage(event.id)"
             @keydown.space.prevent="navigateToEventPage(event.id)"
           >
-            <h3
-              class="truncate text-base font-semibold text-gray-900 dark:text-white"
-            >
-              {{ event.name }}
-            </h3>
-            <div class="mt-1 flex flex-wrap items-center gap-3 text-sm">
-              <span
-                class="inline-flex items-center gap-1 text-gray-500 dark:text-stone-400"
+            <div class="min-w-0 flex-1">
+              <h3
+                class="truncate text-base font-semibold text-gray-900 dark:text-white"
               >
-                <CalendarDaysIcon
-                  class="size-4 text-amber-600 dark:text-amber-400"
-                />
-                <DateRangeDisplay
-                  :start-date="event.startDate!"
-                  :end-date="event.endDate!"
-                />
-              </span>
+                {{ event.name }}
+              </h3>
+              <div class="mt-1 flex flex-wrap items-center gap-3 text-sm">
+                <span
+                  class="inline-flex items-center gap-1 text-gray-500 dark:text-stone-400"
+                >
+                  <CalendarDaysIcon
+                    class="size-4 text-amber-600 dark:text-amber-400"
+                  />
+                  <DateRangeDisplay
+                    :start-date="event.startDate!"
+                    :end-date="event.endDate!"
+                  />
+                </span>
+              </div>
             </div>
+            <ChevronRightIcon
+              class="size-5 shrink-0 text-gray-400 dark:text-stone-500"
+              aria-hidden="true"
+            />
           </div>
           <div class="mt-3 flex flex-wrap gap-2">
             <router-link
