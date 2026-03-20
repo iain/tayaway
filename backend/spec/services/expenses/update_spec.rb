@@ -226,8 +226,11 @@ RSpec.describe Expenses::Update do
       )
 
       expect(result.success?).to be true
+      participants = result.value![:objects].select { |o| o[:objectType] == "expenseParticipant" }
+      expect(participants.map { |p| p[:userId] }).to contain_exactly(alice[:id], bob[:id])
+
       expense = result.value![:objects].find { |o| o[:objectType] == "expense" }
-      expect(expense[:participantIds]).to contain_exactly(alice[:id], bob[:id])
+      expect(expense[:participantIds]).to contain_exactly(*participants.map { |p| p[:id] })
     end
 
     it "syncs participants: adds new and removes old" do
@@ -248,8 +251,8 @@ RSpec.describe Expenses::Update do
       )
 
       expect(result.success?).to be true
-      expense = result.value![:objects].find { |o| o[:objectType] == "expense" }
-      expect(expense[:participantIds]).to contain_exactly(bob[:id], carol[:id])
+      participants = result.value![:objects].select { |o| o[:objectType] == "expenseParticipant" }
+      expect(participants.map { |p| p[:userId] }).to contain_exactly(bob[:id], carol[:id])
     end
 
     it "clears all participants when empty array provided" do

@@ -60,12 +60,12 @@ RSpec.describe Expenses::Create do
       result = described_class.call(**valid_params, participant_ids: [alice[:id], bob[:id]])
 
       expect(result.success?).to be true
-      expense = result.value![:objects].find { |o| o[:objectType] == "expense" }
-      expect(expense[:participantIds]).to contain_exactly(alice[:id], bob[:id])
-
       participants = result.value![:objects].select { |o| o[:objectType] == "expenseParticipant" }
       expect(participants.length).to eq(2)
       expect(participants.map { |p| p[:userId] }).to contain_exactly(alice[:id], bob[:id])
+
+      expense = result.value![:objects].find { |o| o[:objectType] == "expense" }
+      expect(expense[:participantIds]).to contain_exactly(*participants.map { |p| p[:id] })
     end
 
     it "creates no participants when participant_ids is nil" do
@@ -100,8 +100,9 @@ RSpec.describe Expenses::Create do
       result2 = described_class.call(**valid_params, id: id, participant_ids: [alice[:id]])
 
       expect(result2.success?).to be true
-      expense = result2.value![:objects].find { |o| o[:objectType] == "expense" }
-      expect(expense[:participantIds]).to eq([alice[:id]])
+      participants = result2.value![:objects].select { |o| o[:objectType] == "expenseParticipant" }
+      expect(participants.length).to eq(1)
+      expect(participants.first[:userId]).to eq(alice[:id])
     end
   end
 end

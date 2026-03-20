@@ -130,12 +130,12 @@ class PoolSerializer
     key = "expense:#{expense.id}"
     return if @objects.key?(key)
 
-    participant_ids = ExpenseParticipant.user_ids_for_expense(expense.id)
+    participants = ExpenseParticipant.for_expense(expense.id)
     hash = expense.to_api_hash
-    hash[:participantIds] = participant_ids
+    hash[:participantIds] = participants.map { |p| p.id.to_s }
     @objects[key] = hash
 
-    ExpenseParticipant.for_expense(expense.id).each { |p| add_expense_participant(p) }
+    participants.each { |p| add_expense_participant(p) }
   end
 
   sig { params(participant: ExpenseParticipant).void }
