@@ -6,11 +6,15 @@ export const API_BASE = 'http://localhost:9293'
 // for all state-changing requests (POST/PUT/PATCH/DELETE).
 export async function newApiContext(
   playwright: { request: { newContext: (options?: object) => Promise<APIRequestContext> } },
-  options?: object
+  options?: Record<string, unknown>
 ): Promise<APIRequestContext> {
+  const { extraHTTPHeaders, ...rest } = options ?? {}
   return playwright.request.newContext({
-    extraHTTPHeaders: { 'X-CSRF-Protection': '1' },
-    ...options,
+    extraHTTPHeaders: {
+      'X-CSRF-Protection': '1',
+      ...((extraHTTPHeaders as Record<string, string>) ?? {}),
+    },
+    ...rest,
   })
 }
 

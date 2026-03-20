@@ -27,6 +27,15 @@ RSpec.describe "CSRF protection" do
       expect(JSON.parse(last_response.body)).to eq("error" => "Forbidden")
     end
 
+    it "returns 403 on PATCH without CSRF header" do
+      patch "/api/events/00000000-0000-0000-0000-000000000000",
+            { name: "Updated" }.to_json,
+            auth_cookie.merge("CONTENT_TYPE" => "application/json")
+
+      expect(last_response.status).to eq(403)
+      expect(JSON.parse(last_response.body)).to eq("error" => "Forbidden")
+    end
+
     it "returns 403 on DELETE without CSRF header" do
       workspace = TestFactories.workspace
       TestFactories.workspace_membership(workspace: workspace, user: user)
