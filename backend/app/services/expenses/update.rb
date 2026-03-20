@@ -105,6 +105,17 @@ module Expenses
           end
         end
 
+        if has_participants && !T.must(participant_ids).empty?
+          deduped = T.must(participant_ids).uniq
+          existing_count = DB[:users].where(id: deduped).count
+          if existing_count != deduped.length
+            return T.cast(
+              Failure(ServiceError.validation("One or more participant user IDs are invalid")),
+              Result[Expense, ServiceError]
+            )
+          end
+        end
+
         T.cast(Success(expense), Result[Expense, ServiceError])
       end
 
@@ -150,6 +161,7 @@ module Expenses
         ).void
       end
       def sync_participants(expense_id, participant_ids, workspace_id)
+        participant_ids = participant_ids.uniq
         existing = ExpenseParticipant.user_ids_for_expense(expense_id)
         to_add = participant_ids - existing
         to_remove = existing - participant_ids

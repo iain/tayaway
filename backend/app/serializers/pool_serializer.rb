@@ -125,17 +125,31 @@ class PoolSerializer
     @objects[key] = task_item.to_api_hash
   end
 
-  sig { params(expense: Expense).void }
-  def add_expense(expense)
+  sig { params(expense: Expense, participants: T.nilable(T::Array[ExpenseParticipant])).void }
+  def add_expense(expense, participants: nil)
     key = "expense:#{expense.id}"
     return if @objects.key?(key)
 
-    participants = ExpenseParticipant.for_expense(expense.id)
+    participants ||= ExpenseParticipant.for_expense(expense.id)
     hash = expense.to_api_hash
     hash[:participantIds] = participants.map { |p| p.id.to_s }
     @objects[key] = hash
 
     participants.each { |p| add_expense_participant(p) }
+  end
+
+  # Batch-add expenses with a single participant query instead of N+1
+  sig { params(expenses: T::Array[Expense]).void }
+  def add_expenses_batch(expenses)
+    new_expenses = expenses.reject { |e| @objects.key?("expense:#{e.id}") }
+    return if new_expenses.empty?
+
+    expense_ids = new_expenses.map { |e| e.id.to_s }
+    participants_by_expense = ExpenseParticipant.for_expenses(expense_ids)
+
+    new_expenses.each do |expense|
+      add_expense(expense, participants: participants_by_expense[expense.id.to_s] || [])
+    end
   end
 
   sig { params(participant: ExpenseParticipant).void }

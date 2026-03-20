@@ -26,7 +26,7 @@ module Expenses
           .bind { |valid| validate_date_range(valid, event_id) }
           .bind { |valid| validate_rsvp(valid, event_id, user_id) }
           .bind { |valid| validate_participants(valid, participant_ids) }
-          .bind { |valid| create_expense(event_id, user_id, workspace_id, valid, id, participant_ids) }
+          .bind { |valid| create_expense(event_id, user_id, workspace_id, valid, id) }
       end
 
       private
@@ -138,17 +138,23 @@ module Expenses
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
       def validate_participants(valid, participant_ids)
-        return T.cast(Success(valid), Result[T::Hash[Symbol, T.untyped], ServiceError]) if participant_ids.nil? || participant_ids.empty?
+        if participant_ids.nil? || participant_ids.empty?
+          valid[:participant_ids] = nil
+          return T.cast(Success(valid), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        end
+
+        deduped = participant_ids.uniq
 
         # Verify all participant user_ids exist
-        existing_count = DB[:users].where(id: participant_ids).count
-        if existing_count != participant_ids.length
+        existing_count = DB[:users].where(id: deduped).count
+        if existing_count != deduped.length
           return T.cast(
             Failure(ServiceError.validation("One or more participant user IDs are invalid")),
             Result[T::Hash[Symbol, T.untyped], ServiceError]
           )
         end
 
+        valid[:participant_ids] = deduped
         T.cast(Success(valid), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
 
@@ -158,11 +164,10 @@ module Expenses
           user_id: T.any(String, UUID),
           workspace_id: T.any(String, UUID),
           valid: T::Hash[Symbol, T.untyped],
-          id: T.nilable(String),
-          participant_ids: T.nilable(T::Array[String])
+          id: T.nilable(String)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def create_expense(event_id, user_id, workspace_id, valid, id, participant_ids)
+      def create_expense(event_id, user_id, workspace_id, valid, id)
         # Idempotent replay: if client provided an ID and it already exists, return it
         if id
           existing = Expense.find(id)
@@ -190,7 +195,7 @@ module Expenses
               updated_at: now
             )
 
-            insert_participants(expense_id, participant_ids, workspace_id)
+            insert_participants(expense_id, valid[:participant_ids], workspace_id)
 
             Broadcaster.object_changed("expense", expense_id, workspace_id: workspace_id)
 

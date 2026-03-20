@@ -26,7 +26,21 @@ const authStore = useAuthStore()
 
 // Wizard state
 const step = ref(1)
-const totalSteps = 3
+
+// Steps: Details → Date (if event has dates or editing) → People
+const showDateStep = computed(
+  () =>
+    (props.event.startDate != null && props.event.endDate != null) ||
+    props.expense != null
+)
+const steps = computed(() => {
+  const s = ['details']
+  if (showDateStep.value) s.push('date')
+  s.push('people')
+  return s
+})
+const totalSteps = computed(() => steps.value.length)
+const currentStepName = computed(() => steps.value[step.value - 1])
 
 // Form state
 const description = ref('')
@@ -66,13 +80,13 @@ const dateValid = computed(() => {
 })
 
 const canProceed = computed(() => {
-  if (step.value === 1) return detailsValid.value
-  if (step.value === 2) return dateValid.value
+  if (currentStepName.value === 'details') return detailsValid.value
+  if (currentStepName.value === 'date') return dateValid.value
   return true
 })
 
 const submitLabel = computed(() => {
-  if (step.value < totalSteps) return 'Next'
+  if (step.value < totalSteps.value) return 'Next'
   return isEditing.value ? 'Save' : 'Add Expense'
 })
 
@@ -81,7 +95,7 @@ const loadingLabel = computed(() => {
 })
 
 function nextStep(): void {
-  if (step.value < totalSteps) {
+  if (step.value < totalSteps.value) {
     step.value++
   }
 }
@@ -173,7 +187,7 @@ watch(
 )
 
 async function handleSubmit(): Promise<void> {
-  if (step.value < totalSteps) {
+  if (step.value < totalSteps.value) {
     nextStep()
     return
   }
@@ -249,15 +263,15 @@ function handleClose(): void {
 
       <!-- Step 1: Details -->
       <WizardStepDetails
-        v-if="step === 1"
+        v-if="currentStepName === 'details'"
         v-model:description="description"
         v-model:amount="amount"
         :disabled="submitting"
       />
 
-      <!-- Step 2: Date -->
+      <!-- Step 2: Date (only when event has dates or editing) -->
       <WizardStepDate
-        v-if="step === 2 && (eventHasDates || isEditing)"
+        v-if="currentStepName === 'date'"
         v-model:start-date="startDate"
         v-model:end-date="endDate"
         :event="event"
@@ -269,9 +283,9 @@ function handleClose(): void {
         @update:single-date="singleDate = $event"
       />
 
-      <!-- Step 3: People -->
+      <!-- Step: People -->
       <WizardStepPeople
-        v-if="step === 3"
+        v-if="currentStepName === 'people'"
         v-model:selected-user-ids="selectedUserIds"
         :event="event"
         :start-date="startDate"

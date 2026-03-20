@@ -23,7 +23,7 @@ class App
 
         expenses = Expense.for_event(event_id)
         pool = PoolSerializer.new(workspace_id: event.workspace_id)
-        pool.add_all(expenses, type: :expense)
+        pool.add_expenses_batch(expenses)
 
         response.status = 200
         { objects: pool.to_a }
