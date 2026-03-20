@@ -9,7 +9,8 @@ RSpec.describe "Email change endpoints" do
   let(:user) { TestFactories.user(email: "old@example.com") }
   let(:session) { TestFactories.session(user: user) }
   let(:auth_cookie) { { "HTTP_COOKIE" => "session_token=#{session[:token]}" } }
-  let(:json_headers) { { "CONTENT_TYPE" => "application/json" }.merge(auth_cookie) }
+  let(:csrf_header) { { "HTTP_X_CSRF_PROTECTION" => "1" } }
+  let(:json_headers) { { "CONTENT_TYPE" => "application/json" }.merge(auth_cookie).merge(csrf_header) }
 
   describe "POST /api/users/email-change/request" do
     it "returns 401 without auth" do

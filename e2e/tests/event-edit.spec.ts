@@ -6,6 +6,7 @@ import {
   setupAuthenticatedPage,
   createBareEvent,
   PAGE_LOAD_TIMEOUT,
+  newApiContext,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-event-edit@example.com'
@@ -16,7 +17,7 @@ test.describe('Event Edit', () => {
   let apiContext: APIRequestContext
 
   test.beforeAll(async ({ playwright }) => {
-    apiContext = await playwright.request.newContext()
+    apiContext = await newApiContext(playwright)
     const { token } = await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
     sessionToken = token
   })

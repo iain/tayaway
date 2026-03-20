@@ -7,6 +7,7 @@ import {
   createResolvedEvent,
   getObjectsByType,
   PAGE_LOAD_TIMEOUT,
+  newApiContext,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-rsvp@example.com'
@@ -17,7 +18,7 @@ test.describe('RSVP Feature', () => {
   let apiContext: APIRequestContext
 
   test.beforeAll(async ({ playwright }) => {
-    apiContext = await playwright.request.newContext()
+    apiContext = await newApiContext(playwright)
     const { token } = await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
     sessionToken = token
   })

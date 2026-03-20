@@ -66,19 +66,39 @@ class App < Roda
     @_current_user = session ? User.find(session.user_id) : nil
   end
 
+  CSRF_HEADER = T.let("HTTP_X_CSRF_PROTECTION", String)
+  CSRF_MUTATING_METHODS = T.let(%w[POST PUT PATCH DELETE].freeze, T::Array[String])
+
+  def verify_csrf_header!
+    return unless CSRF_MUTATING_METHODS.include?(request.request_method)
+    return if request.env[CSRF_HEADER] == "1"
+
+    APP_LOGGER.warn do
+      "[CSRF] Missing or invalid X-CSRF-Protection header on " \
+        "#{request.request_method} #{request.path_info} from #{request.ip}"
+    end
+    request.halt [403, { "Content-Type" => "application/json" }, ['{"error":"Forbidden"}']]
+  end
+
   def require_auth
     user = current_user
-    return user if user
+    unless user
+      APP_LOGGER.warn { "[Auth] Unauthorized request: #{request.request_method} #{request.path_info} from #{request.ip}" }
+      request.halt [401, { "Content-Type" => "application/json" }, ['{"error":"Authorization required"}']]
+    end
 
-    APP_LOGGER.warn { "[Auth] Unauthorized request: #{request.request_method} #{request.path_info} from #{request.ip}" }
-    request.halt [401, { "Content-Type" => "application/json" }, ['{"error":"Authorization required"}']]
+    verify_csrf_header!
+    user
   end
 
   def require_session
     session = current_session
-    return session if session
+    unless session
+      request.halt [401, { "Content-Type" => "application/json" }, ['{"error":"Authorization required"}']]
+    end
 
-    request.halt [401, { "Content-Type" => "application/json" }, ['{"error":"Authorization required"}']]
+    verify_csrf_header!
+    session
   end
 
   def member_of_workspace?(workspace_id)

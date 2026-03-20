@@ -7,6 +7,8 @@ RSpec.describe "Auth sessions endpoints" do
   let(:user) { TestFactories.user }
   let(:session) { TestFactories.session(user: user) }
   let(:auth_cookie) { { "HTTP_COOKIE" => "session_token=#{session[:token]}" } }
+  let(:csrf_header) { { "HTTP_X_CSRF_PROTECTION" => "1" } }
+  let(:auth_headers) { auth_cookie.merge(csrf_header) }
 
   describe "GET /api/auth/sessions" do
     it "returns 401 without auth" do
@@ -52,7 +54,7 @@ RSpec.describe "Auth sessions endpoints" do
     it "deletes another session" do
       other_session = TestFactories.session(user: user)
 
-      delete "/api/auth/sessions/#{other_session[:id]}", {}, auth_cookie
+      delete "/api/auth/sessions/#{other_session[:id]}", {}, auth_headers
 
       expect(last_response.status).to eq(200)
       body = JSON.parse(last_response.body)
@@ -61,7 +63,7 @@ RSpec.describe "Auth sessions endpoints" do
     end
 
     it "prevents deleting the current session" do
-      delete "/api/auth/sessions/#{session[:id]}", {}, auth_cookie
+      delete "/api/auth/sessions/#{session[:id]}", {}, auth_headers
 
       expect(last_response.status).to eq(400)
       body = JSON.parse(last_response.body)
@@ -69,7 +71,7 @@ RSpec.describe "Auth sessions endpoints" do
     end
 
     it "returns 404 for non-existent session" do
-      delete "/api/auth/sessions/#{SecureRandom.uuid}", {}, auth_cookie
+      delete "/api/auth/sessions/#{SecureRandom.uuid}", {}, auth_headers
 
       expect(last_response.status).to eq(404)
     end
@@ -78,7 +80,7 @@ RSpec.describe "Auth sessions endpoints" do
       other_user = TestFactories.user
       other_session = TestFactories.session(user: other_user)
 
-      delete "/api/auth/sessions/#{other_session[:id]}", {}, auth_cookie
+      delete "/api/auth/sessions/#{other_session[:id]}", {}, auth_headers
 
       expect(last_response.status).to eq(403)
     end

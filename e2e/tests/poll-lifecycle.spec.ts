@@ -7,6 +7,7 @@ import {
   createEventWithPoll,
   createResolvedEvent,
   PAGE_LOAD_TIMEOUT,
+  newApiContext,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-poll@example.com'
@@ -17,7 +18,7 @@ test.describe('Poll Lifecycle UI', () => {
   let apiContext: APIRequestContext
 
   test.beforeAll(async ({ playwright }) => {
-    apiContext = await playwright.request.newContext()
+    apiContext = await newApiContext(playwright)
     const { token } = await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
     sessionToken = token
   })

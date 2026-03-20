@@ -5,6 +5,7 @@ import {
   getTestSession,
   setupAuthenticatedPage,
   PAGE_LOAD_TIMEOUT,
+  newApiContext,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-events@example.com'
@@ -36,7 +37,7 @@ test.describe('Events Feature', () => {
     let apiContext: APIRequestContext
 
     test.beforeAll(async ({ playwright }) => {
-      apiContext = await playwright.request.newContext()
+      apiContext = await newApiContext(playwright)
       await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
     })
 
@@ -161,7 +162,7 @@ test.describe('Events Feature', () => {
     let sessionToken: string
 
     test.beforeAll(async ({ playwright }) => {
-      const ctx = await playwright.request.newContext()
+      const ctx = await newApiContext(playwright)
       const { token } = await getTestSession(ctx, TEST_EMAIL, TEST_NAME)
       sessionToken = token
       await ctx.dispose()
@@ -218,7 +219,7 @@ test.describe('Events categorization - Happening Now', () => {
   let apiContext: APIRequestContext
 
   test.beforeAll(async ({ playwright }) => {
-    apiContext = await playwright.request.newContext()
+    apiContext = await newApiContext(playwright)
     const { token } = await getTestSession(
       apiContext,
       'e2e-events-categorization@example.com',

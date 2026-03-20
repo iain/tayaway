@@ -6,6 +6,7 @@ import {
   getWorkspaceId,
   createTaskList,
   addTaskItem,
+  newApiContext,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-tasks-keyboard@example.com'
@@ -18,7 +19,7 @@ test.describe('Task Keyboard Navigation', () => {
   const uid = Date.now()
 
   test.beforeAll(async ({ playwright }) => {
-    apiContext = await playwright.request.newContext()
+    apiContext = await newApiContext(playwright)
     const { token } = await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
     sessionToken = token
     workspaceId = await getWorkspaceId(apiContext)

@@ -10,6 +10,7 @@ import {
   addMemberToWorkspace,
   getWorkspaceId,
   PAGE_LOAD_TIMEOUT,
+  newApiContext,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-expenses@example.com'
@@ -52,7 +53,7 @@ test.describe('Expenses Feature', () => {
     let eventId: string
 
     test.beforeAll(async ({ playwright }) => {
-      apiContext = await playwright.request.newContext()
+      apiContext = await newApiContext(playwright)
       await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
       ;({ eventId } = await createResolvedEvent(
         apiContext,
@@ -315,7 +316,7 @@ test.describe('Expenses Feature', () => {
     let expenseId: string
 
     test.beforeAll(async ({ playwright }) => {
-      ownerContext = await playwright.request.newContext()
+      ownerContext = await newApiContext(playwright)
       await getTestSession(ownerContext, TEST_EMAIL, TEST_NAME)
       ;({ eventId } = await createResolvedEvent(
         ownerContext,
@@ -336,7 +337,7 @@ test.describe('Expenses Feature', () => {
       expenseId = getObjectByType(body.objects, 'expense')!.id
 
       // Create a second user and add them to the same workspace
-      otherContext = await playwright.request.newContext()
+      otherContext = await newApiContext(playwright)
       await getTestSession(
         otherContext,
         'e2e-expenses-other@example.com',
@@ -395,7 +396,7 @@ test.describe('Expenses Feature', () => {
       page,
       playwright,
     }) => {
-      const apiContext = await playwright.request.newContext()
+      const apiContext = await newApiContext(playwright)
       const { token } = await getTestSession(
         apiContext,
         SPLIT_USER_A_EMAIL,
@@ -419,7 +420,7 @@ test.describe('Expenses Feature', () => {
       page,
       playwright,
     }) => {
-      const apiContext = await playwright.request.newContext()
+      const apiContext = await newApiContext(playwright)
       const { token } = await getTestSession(
         apiContext,
         SPLIT_USER_A_EMAIL,
@@ -454,7 +455,7 @@ test.describe('Expenses Feature', () => {
       playwright,
     }) => {
       // User A creates event and is auto-RSVP'd attending after poll close
-      const apiContextA = await playwright.request.newContext()
+      const apiContextA = await newApiContext(playwright)
       const { token: tokenA } = await getTestSession(
         apiContextA,
         SPLIT_USER_A_EMAIL,
@@ -463,7 +464,7 @@ test.describe('Expenses Feature', () => {
       const { eventId } = await createResolvedEvent(apiContextA)
 
       // Add User B to the workspace and have them RSVP attending
-      const apiContextB = await playwright.request.newContext()
+      const apiContextB = await newApiContext(playwright)
       await getTestSession(apiContextB, SPLIT_USER_B_EMAIL, SPLIT_USER_B_NAME)
 
       const wsResp = await apiContextA.get(`${API_BASE}/api/workspaces`)
@@ -520,7 +521,7 @@ test.describe('Expenses Feature', () => {
       playwright,
     }) => {
       // User A creates event, both attend, but User B only attends partial dates
-      const apiContextA = await playwright.request.newContext()
+      const apiContextA = await newApiContext(playwright)
       const { token: tokenA } = await getTestSession(
         apiContextA,
         SPLIT_USER_A_EMAIL,
@@ -531,7 +532,7 @@ test.describe('Expenses Feature', () => {
         'Date Scoped Split'
       )
 
-      const apiContextB = await playwright.request.newContext()
+      const apiContextB = await newApiContext(playwright)
       await getTestSession(apiContextB, SPLIT_USER_B_EMAIL, SPLIT_USER_B_NAME)
 
       const wsResp = await apiContextA.get(`${API_BASE}/api/workspaces`)
@@ -590,7 +591,7 @@ test.describe('Expenses Feature', () => {
       page,
       playwright,
     }) => {
-      const apiContextA = await playwright.request.newContext()
+      const apiContextA = await newApiContext(playwright)
       const { token: tokenA } = await getTestSession(
         apiContextA,
         SPLIT_USER_A_EMAIL,
@@ -635,7 +636,7 @@ test.describe('Expenses Feature', () => {
       page,
       playwright,
     }) => {
-      const apiContext = await playwright.request.newContext()
+      const apiContext = await newApiContext(playwright)
       const { token } = await getTestSession(
         apiContext,
         'e2e-rsvp-dialog@example.com',
@@ -686,7 +687,7 @@ test.describe('Expenses Feature', () => {
     const uid = Date.now()
 
     test.beforeAll(async ({ playwright }) => {
-      apiContext = await playwright.request.newContext()
+      apiContext = await newApiContext(playwright)
       const { token } = await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
       sessionToken = token
       ;({ eventId } = await createResolvedEvent(
@@ -905,7 +906,7 @@ test.describe('Expenses Feature', () => {
     let secondUserId: string
 
     test.beforeAll(async ({ playwright }) => {
-      apiContext = await playwright.request.newContext()
+      apiContext = await newApiContext(playwright)
       const { token } = await getTestSession(
         apiContext,
         PARTICIPANT_EMAIL,
@@ -921,7 +922,7 @@ test.describe('Expenses Feature', () => {
 
       // Add a second member and RSVP them
       const workspaceId = await getWorkspaceId(apiContext)
-      secondContext = await playwright.request.newContext()
+      secondContext = await newApiContext(playwright)
       ;({ userId: secondUserId } = await getTestSession(
         secondContext,
         SECOND_EMAIL,

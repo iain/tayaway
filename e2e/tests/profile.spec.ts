@@ -5,6 +5,7 @@ import {
   getObjectByType,
   getTestSession,
   setupAuthenticatedPage,
+  newApiContext,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-profile@example.com'
@@ -16,7 +17,7 @@ test.describe('Profile Feature', () => {
     let userId: string
 
     test.beforeAll(async ({ playwright }) => {
-      apiContext = await playwright.request.newContext()
+      apiContext = await newApiContext(playwright)
       const session = await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
       userId = session.userId
     })
@@ -215,7 +216,7 @@ test.describe('Profile Feature', () => {
     let token: string
 
     test.beforeAll(async ({ playwright }) => {
-      const apiContext = await playwright.request.newContext()
+      const apiContext = await newApiContext(playwright)
       const session = await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
       token = session.token
       await apiContext.dispose()

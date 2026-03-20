@@ -8,6 +8,7 @@ import {
   createEventWithPoll,
   addMemberToWorkspace,
   PAGE_LOAD_TIMEOUT,
+  newApiContext,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-voting@example.com'
@@ -37,7 +38,7 @@ test.describe('Voting Feature', () => {
     let apiContext: APIRequestContext
 
     test.beforeAll(async ({ playwright }) => {
-      apiContext = await playwright.request.newContext()
+      apiContext = await newApiContext(playwright)
       await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
     })
 
@@ -230,7 +231,7 @@ test.describe('Voting Feature', () => {
       const vote = getObjectByType(createBody.objects, 'vote')
 
       // User 2 on separate request context
-      const user2Request = await playwright.request.newContext()
+      const user2Request = await newApiContext(playwright)
       await getTestSession(user2Request, TEST_EMAIL_2, TEST_NAME_2)
 
       // User 2 tries to delete User 1's vote
@@ -281,7 +282,7 @@ test.describe('Voting Feature', () => {
       const { eventId } = await createEventWithPoll(apiContext)
 
       // Other user on separate request context
-      const user2Request = await playwright.request.newContext()
+      const user2Request = await newApiContext(playwright)
       await getTestSession(user2Request, TEST_EMAIL_2, TEST_NAME_2)
 
       // Other user (not in workspace) cannot view the event
@@ -303,7 +304,7 @@ test.describe('Voting Feature', () => {
       const { eventId, dateRangeId } = await createEventWithPoll(apiContext)
 
       // Other user on separate request context
-      const user2Request = await playwright.request.newContext()
+      const user2Request = await newApiContext(playwright)
       await getTestSession(user2Request, TEST_EMAIL_2, TEST_NAME_2)
 
       // Other user (not in workspace) cannot vote on the event
@@ -329,7 +330,7 @@ test.describe('Voting Feature', () => {
     let apiContext: APIRequestContext
 
     test.beforeAll(async ({ playwright }) => {
-      apiContext = await playwright.request.newContext()
+      apiContext = await newApiContext(playwright)
       await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
     })
 
@@ -416,7 +417,7 @@ test.describe('Voting Feature', () => {
     let apiContext: APIRequestContext
 
     test.beforeAll(async ({ playwright }) => {
-      apiContext = await playwright.request.newContext()
+      apiContext = await newApiContext(playwright)
       const { token } = await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
       sessionToken = token
     })
@@ -544,7 +545,7 @@ test.describe('Voting Feature', () => {
       const newUserName = `New User ${Date.now()}`
       const newUserEmail = `new-user-${Date.now()}@example.com`
       // Create the user first via test session, then add as member
-      const newUserContext = await playwright.request.newContext()
+      const newUserContext = await newApiContext(playwright)
       await getTestSession(newUserContext, newUserEmail, newUserName)
       await addMemberToWorkspace(apiContext, workspaceId, newUserEmail)
       await newUserContext.dispose()
