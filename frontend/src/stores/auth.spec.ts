@@ -1,6 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
+const mockStopPersisting = vi.fn()
+vi.mock('@/composables/usePoolPersistence', () => ({
+  usePoolPersistence: vi.fn(() => ({
+    loadFromCache: vi.fn(),
+    startPersisting: vi.fn(),
+    stopPersisting: mockStopPersisting,
+  })),
+}))
+
 // Stub out stores that auth.ts imports but are irrelevant to initialize()
 vi.mock('./commandQueue', () => ({
   useCommandQueueStore: vi.fn(() => ({
@@ -236,5 +245,43 @@ describe('auth store – cached user TTL', () => {
     expect(raw).not.toBeNull()
     const entry = JSON.parse(raw!) as { cachedAt: number }
     expect(entry.cachedAt).toBeGreaterThanOrEqual(before)
+  })
+})
+
+describe('auth store – logout()', () => {
+  beforeEach(() => {
+    vi.resetModules()
+    setActivePinia(createPinia())
+    vi.stubGlobal('fetch', vi.fn())
+    localStorage.clear()
+    mockStopPersisting.mockClear()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('calls stopPersisting() during logout', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({}),
+    } as Response)
+
+    const { useAuthStore } = await import('./auth')
+    const store = useAuthStore()
+    await store.logout()
+
+    expect(mockStopPersisting).toHaveBeenCalledOnce()
+  })
+
+  it('calls stopPersisting() even when the logout API call fails', async () => {
+    vi.mocked(fetch).mockRejectedValue(new TypeError('Failed to fetch'))
+
+    const { useAuthStore } = await import('./auth')
+    const store = useAuthStore()
+    await store.logout().catch(() => {})
+
+    expect(mockStopPersisting).toHaveBeenCalledOnce()
   })
 })

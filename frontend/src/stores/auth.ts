@@ -8,6 +8,7 @@ import { useWorkspaceStore } from './workspace'
 import { useMutation } from '@/composables/useMutation'
 
 import * as poolDb from '@/api/poolDb'
+import { usePoolPersistence } from '@/composables/usePoolPersistence'
 import type {
   AuthUser,
   MagicLinkResponse,
@@ -174,6 +175,10 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       await api.post<LogoutResponse>('/auth/logout')
     } finally {
+      // Stop persisting pool changes before clearing state
+      const { stopPersisting } = usePoolPersistence()
+      stopPersisting()
+
       // Disconnect WebSocket first
       const ws = useWebSocketStore()
       ws.disconnect()
