@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "mise run dev",
+    "dev": "mise run serve",
     "build": "mise run build",
     "test": "mise run test",
     "test:e2e": "mise run test:e2e",

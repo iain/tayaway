@@ -31,7 +31,7 @@ This installs frontend (pnpm) and backend (bundler) dependencies, then creates a
 ## Development
 
 ```bash
-mise run dev
+mise run serve
 ```
 
 - Frontend: http://localhost:5173

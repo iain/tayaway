@@ -11,19 +11,19 @@ _.file = ["backend/.env.development"]
 
 # ── Dev ──────────────────────────────────────────────────────────────────────
 
-[tasks.dev]
+[tasks.serve]
 description = "Start both frontend and backend dev servers"
-depends = ["dev:backend", "dev:frontend"]
-wait_for = ["dev:backend"]
+depends = ["serve:backend", "serve:frontend"]
+wait_for = ["serve:backend"]
 run = "echo 'Development servers started'"
 
-[tasks."dev:backend"]
+[tasks."serve:backend"]
 description = "Start backend dev server"
 dir = "{{config_root}}/backend"
 env = { OBJC_DISABLE_INITIALIZE_FORK_SAFETY = "YES" }
 run = "bundle exec falcon serve --bind http://localhost:9292"
 
-[tasks."dev:frontend"]
+[tasks."serve:frontend"]
 description = "Start frontend dev server"
 dir = "{{config_root}}/frontend"
 run = "pnpm run dev"
@@ -154,7 +154,7 @@ run = "RACK_ENV=e2e bundle exec rake db:create db:migrate"
 [tasks.setup]
 description = "Set up the project after cloning"
 depends = ["setup:deps", "setup:db"]
-run = "echo \"Setup complete! Run 'mise run dev' to start the development server.\""
+run = "echo \"Setup complete! Run 'mise run serve' to start the development server.\""
 
 [tasks."setup:deps"]
 description = "Install all dependencies"

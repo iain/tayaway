@@ -60,4 +60,4 @@ RACK_ENV=development bundle exec rake db:migrate
 RACK_ENV=test bundle exec rake db:migrate
 RACK_ENV=e2e bundle exec rake db:migrate
 
-echo "Setup complete! Run 'mise run dev' to start the development server."
+echo "Setup complete! Run 'mise run serve' to start the development server."

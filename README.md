@@ -53,7 +53,7 @@ This starts the devcontainer (if not already running), pulls your OAuth token fr
 
 ```bash
 .devcontainer/exec.sh mise run fix
-.devcontainer/exec.sh mise run dev
+.devcontainer/exec.sh mise run serve
 .devcontainer/exec.sh bash
 ```
 
