@@ -30,9 +30,8 @@ RSpec.describe Auth::CreateMagicLink do
       logged_messages << block.call if block
     end
 
-    ENV["DEBUG_AUTH_LINKS"] = "1"
+    stub_const("APP_ENV", "development")
     described_class.call(email: "test@example.com")
-    ENV.delete("DEBUG_AUTH_LINKS")
 
     magic_link_log = logged_messages.find { |m| m.include?("MAGIC LINK") }
     expect(magic_link_log).to match(/auth\/verify\?token=eyJ/)

@@ -103,7 +103,7 @@ module Users
         frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:5173")
         verification_link = "#{frontend_url}/verify-email?token=#{jwt}"
 
-        APP_LOGGER.debug { "EMAIL CHANGE LINK FOR #{parsed_email}: #{verification_link}" } if ENV["DEBUG_AUTH_LINKS"]
+        APP_LOGGER.info { "EMAIL CHANGE LINK FOR #{parsed_email}: #{verification_link}" } if APP_ENV == "development"
         Mailers::EmailChange.send_email(email: parsed_email, verification_link: verification_link)
 
         T.cast(

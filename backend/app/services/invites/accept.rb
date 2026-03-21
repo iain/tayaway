@@ -135,7 +135,7 @@ module Invites
         workspaces = Workspace.for_user(user.id)
         workspace_name = workspaces.length == 1 ? T.must(workspaces.first).name : "Tayaway"
 
-        APP_LOGGER.debug { "MAGIC LINK FOR #{user.email}: #{magic_link}" } if ENV["DEBUG_AUTH_LINKS"]
+        APP_LOGGER.info { "MAGIC LINK FOR #{user.email}: #{magic_link}" } if APP_ENV == "development"
         Mailers::MagicLink.send_email(email: user.email, magic_link: magic_link, workspace_name: workspace_name)
       end
     end
