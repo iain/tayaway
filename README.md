@@ -80,7 +80,7 @@ tayaway/
 │       └── websocket/     Listener, ConnectionManager, MessageHandler
 │
 ├── e2e/                   Playwright end-to-end tests
-├── doc/                   Architecture documentation
+├── doc/                   Architecture docs (offline-support.md)
 └── config/                Capistrano deployment configuration
 ```
 
@@ -95,7 +95,6 @@ The app uses a normalized **object pool** pattern for state management:
 5. Vue reactivity re-renders affected components automatically
 6. On reconnect, partial sync via `since=<timestamp>` fetches only changed objects
 
-See [`doc/real-time-sync.md`](doc/real-time-sync.md) for the full architecture.
 
 ### Data Model
 
@@ -114,8 +113,6 @@ Workspace
 ```
 
 Users belong to workspaces through memberships (owner/admin/member roles). All domain data is workspace-scoped.
-
-See [`doc/workspaces.md`](doc/workspaces.md) for workspace switching and authorization details.
 
 ### Deployment
 
