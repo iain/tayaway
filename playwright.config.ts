@@ -15,6 +15,9 @@ export default defineConfig({
     baseURL: 'http://localhost:5174',
     locale: 'en-US',
     trace: 'on-first-retry',
+    extraHTTPHeaders: {
+      'X-CSRF-Protection': '1',
+    },
   },
   projects: [
     {

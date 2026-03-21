@@ -7,6 +7,7 @@ import {
   setupAuthenticatedPage,
   getWorkspaceId,
   addMemberToWorkspace,
+  newApiContext,
 } from '../helpers'
 
 const OWNER_EMAIL = 'e2e-members-owner@example.com'
@@ -30,12 +31,12 @@ test.describe('Member Role Management', () => {
 
     test.beforeAll(async ({ playwright }) => {
       // Create owner
-      ownerContext = await playwright.request.newContext()
+      ownerContext = await newApiContext(playwright)
       await getTestSession(ownerContext, OWNER_EMAIL, OWNER_NAME)
       workspaceId = await getWorkspaceId(ownerContext)
 
       // Create admin user and add to workspace
-      adminContext = await playwright.request.newContext()
+      adminContext = await newApiContext(playwright)
       await getTestSession(adminContext, ADMIN_EMAIL, ADMIN_NAME)
       adminMemberId = await addMemberToWorkspace(
         ownerContext,
@@ -44,7 +45,7 @@ test.describe('Member Role Management', () => {
       )
 
       // Create regular member and add to workspace
-      memberContext = await playwright.request.newContext()
+      memberContext = await newApiContext(playwright)
       await getTestSession(memberContext, MEMBER_EMAIL, MEMBER_NAME)
       memberMemberId = await addMemberToWorkspace(
         ownerContext,
@@ -138,7 +139,7 @@ test.describe('Member Role Management', () => {
     let workspaceId: string
 
     test.beforeAll(async ({ playwright }) => {
-      ownerContext = await playwright.request.newContext()
+      ownerContext = await newApiContext(playwright)
       const { token } = await getTestSession(
         ownerContext,
         OWNER_EMAIL,
@@ -148,7 +149,7 @@ test.describe('Member Role Management', () => {
       workspaceId = await getWorkspaceId(ownerContext)
 
       // Ensure another member exists so the role dropdown appears
-      const uiMemberContext = await playwright.request.newContext()
+      const uiMemberContext = await newApiContext(playwright)
       await getTestSession(uiMemberContext, MEMBER_EMAIL, MEMBER_NAME)
       await addMemberToWorkspace(ownerContext, workspaceId, MEMBER_EMAIL)
       await uiMemberContext.dispose()

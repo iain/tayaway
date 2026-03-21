@@ -6,6 +6,7 @@ import {
   createBareEvent,
   createEventWithPoll,
   createResolvedEvent,
+  newApiContext,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-command-palette@example.com'
@@ -25,7 +26,7 @@ test.describe('Command Palette', () => {
   let apiContext: APIRequestContext
 
   test.beforeAll(async ({ playwright }) => {
-    apiContext = await playwright.request.newContext()
+    apiContext = await newApiContext(playwright)
     const { token } = await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
     sessionToken = token
   })

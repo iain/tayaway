@@ -7,6 +7,8 @@ RSpec.describe "Task lists endpoints" do
   let(:user) { TestFactories.user }
   let(:session) { TestFactories.session(user: user) }
   let(:auth_cookie) { { "HTTP_COOKIE" => "session_token=#{session[:token]}" } }
+  let(:csrf_header) { { "HTTP_X_CSRF_PROTECTION" => "1" } }
+  let(:auth_headers) { auth_cookie.merge(csrf_header) }
   let(:workspace) { TestFactories.workspace }
 
   before { TestFactories.workspace_membership(workspace: workspace, user: user) }
@@ -49,7 +51,7 @@ RSpec.describe "Task lists endpoints" do
       other_workspace = TestFactories.workspace
 
       post "/api/task-lists", { workspace_id: other_workspace[:id], name: "My List" }.to_json,
-           auth_cookie.merge("CONTENT_TYPE" => "application/json")
+           auth_headers.merge("CONTENT_TYPE" => "application/json")
 
       expect(last_response.status).to eq(403)
     end
@@ -57,7 +59,7 @@ RSpec.describe "Task lists endpoints" do
     it "creates a task list" do
       post "/api/task-lists",
            { workspace_id: workspace[:id], name: "Groceries" }.to_json,
-           auth_cookie.merge("CONTENT_TYPE" => "application/json")
+           auth_headers.merge("CONTENT_TYPE" => "application/json")
 
       expect(last_response.status).to eq(201)
       body = JSON.parse(last_response.body)
@@ -68,7 +70,7 @@ RSpec.describe "Task lists endpoints" do
     it "returns 422 when name is missing" do
       post "/api/task-lists",
            { workspace_id: workspace[:id] }.to_json,
-           auth_cookie.merge("CONTENT_TYPE" => "application/json")
+           auth_headers.merge("CONTENT_TYPE" => "application/json")
 
       expect(last_response.status).to eq(400)
     end
@@ -78,7 +80,7 @@ RSpec.describe "Task lists endpoints" do
     it "returns 404 when task list not found" do
       put "/api/task-lists/#{SecureRandom.uuid}",
           { name: "New Name" }.to_json,
-          auth_cookie.merge("CONTENT_TYPE" => "application/json")
+          auth_headers.merge("CONTENT_TYPE" => "application/json")
 
       expect(last_response.status).to eq(404)
     end
@@ -88,7 +90,7 @@ RSpec.describe "Task lists endpoints" do
 
       put "/api/task-lists/#{list[:id]}",
           { name: "New" }.to_json,
-          auth_cookie.merge("CONTENT_TYPE" => "application/json")
+          auth_headers.merge("CONTENT_TYPE" => "application/json")
 
       expect(last_response.status).to eq(200)
       body = JSON.parse(last_response.body)
@@ -101,7 +103,7 @@ RSpec.describe "Task lists endpoints" do
     it "deletes a task list" do
       list = TestFactories.task_list(workspace: workspace, user: user)
 
-      delete "/api/task-lists/#{list[:id]}", {}, auth_cookie
+      delete "/api/task-lists/#{list[:id]}", {}, auth_headers
 
       expect(last_response.status).to eq(200)
       expect(DB[:task_lists].where(id: list[:id]).count).to eq(0)
@@ -114,7 +116,7 @@ RSpec.describe "Task lists endpoints" do
 
       post "/api/task-lists/#{list[:id]}/items",
            { content: "Buy milk" }.to_json,
-           auth_cookie.merge("CONTENT_TYPE" => "application/json")
+           auth_headers.merge("CONTENT_TYPE" => "application/json")
 
       expect(last_response.status).to eq(201)
       body = JSON.parse(last_response.body)
@@ -127,7 +129,7 @@ RSpec.describe "Task lists endpoints" do
 
       post "/api/task-lists/#{list[:id]}/items",
            {}.to_json,
-           auth_cookie.merge("CONTENT_TYPE" => "application/json")
+           auth_headers.merge("CONTENT_TYPE" => "application/json")
 
       expect(last_response.status).to eq(400)
     end
@@ -140,7 +142,7 @@ RSpec.describe "Task lists endpoints" do
 
       put "/api/task-lists/#{list[:id]}/items/#{item[:id]}",
           { completed: true }.to_json,
-          auth_cookie.merge("CONTENT_TYPE" => "application/json")
+          auth_headers.merge("CONTENT_TYPE" => "application/json")
 
       expect(last_response.status).to eq(200)
       body = JSON.parse(last_response.body)
@@ -154,7 +156,7 @@ RSpec.describe "Task lists endpoints" do
       list = TestFactories.task_list(workspace: workspace, user: user)
       item = TestFactories.task_item(task_list: list, user: user)
 
-      delete "/api/task-lists/#{list[:id]}/items/#{item[:id]}", {}, auth_cookie
+      delete "/api/task-lists/#{list[:id]}/items/#{item[:id]}", {}, auth_headers
 
       expect(last_response.status).to eq(200)
       expect(DB[:task_items].where(id: item[:id]).count).to eq(0)
@@ -167,7 +169,7 @@ RSpec.describe "Task lists endpoints" do
       item = TestFactories.task_item(task_list: list, user: user, completed_at: Time.now)
       TestFactories.task_item(task_list: list, user: user) # not completed
 
-      post "/api/task-lists/#{list[:id]}/clear-completed", {}, auth_cookie
+      post "/api/task-lists/#{list[:id]}/clear-completed", {}, auth_headers
 
       expect(last_response.status).to eq(200)
       expect(DB[:task_items].where(id: item[:id]).count).to eq(0)

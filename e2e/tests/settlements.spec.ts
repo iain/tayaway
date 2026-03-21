@@ -9,6 +9,7 @@ import {
   createResolvedEvent,
   addMemberToWorkspace,
   getWorkspaceId,
+  newApiContext,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-settlements@example.com'
@@ -45,7 +46,7 @@ test.describe('Settlements Feature', () => {
     let eventId: string
 
     test.beforeAll(async ({ playwright }) => {
-      apiContext = await playwright.request.newContext()
+      apiContext = await newApiContext(playwright)
       await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
       ;({ eventId } = await createResolvedEvent(
         apiContext,
@@ -131,7 +132,7 @@ test.describe('Settlements Feature', () => {
 
       // Add a second user
       const userBEmail = 'e2e-settle-b@example.com'
-      const userBContext = await playwright.request.newContext()
+      const userBContext = await newApiContext(playwright)
       await getTestSession(userBContext, userBEmail, 'Settle User B')
 
       const wsResp = await apiContext.get(`${API_BASE}/api/workspaces`)
@@ -206,7 +207,7 @@ test.describe('Settlements Feature', () => {
     let apiContext: APIRequestContext
 
     test.beforeAll(async ({ playwright }) => {
-      apiContext = await playwright.request.newContext()
+      apiContext = await newApiContext(playwright)
       const { token } = await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
       sessionToken = token
     })
@@ -328,7 +329,7 @@ test.describe('Settlements Feature', () => {
     test('settles mixed expense types correctly: overlap, partial, and participants', async ({
       playwright,
     }) => {
-      const aliceContext = await playwright.request.newContext()
+      const aliceContext = await newApiContext(playwright)
       const { token: aliceToken, userId: aliceId } = await getTestSession(
         aliceContext,
         'e2e-mixed-settle-alice@example.com',
@@ -343,7 +344,7 @@ test.describe('Settlements Feature', () => {
       const workspaceId = await getWorkspaceId(aliceContext)
 
       // Create Bob and Carol, add to workspace, RSVP with partial dates
-      const bobContext = await playwright.request.newContext()
+      const bobContext = await newApiContext(playwright)
       const { userId: bobId } = await getTestSession(
         bobContext,
         'e2e-mixed-settle-bob@example.com',
@@ -362,7 +363,7 @@ test.describe('Settlements Feature', () => {
         },
       })
 
-      const carolContext = await playwright.request.newContext()
+      const carolContext = await newApiContext(playwright)
       const { userId: carolId } = await getTestSession(
         carolContext,
         'e2e-mixed-settle-carol@example.com',

@@ -9,6 +9,7 @@ import {
   getWorkspaceId,
   createTaskList,
   addTaskItem,
+  newApiContext,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-tasks@example.com'
@@ -45,7 +46,7 @@ test.describe('Tasks Feature', () => {
     let workspaceId: string
 
     test.beforeAll(async ({ playwright }) => {
-      apiContext = await playwright.request.newContext()
+      apiContext = await newApiContext(playwright)
       await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
       workspaceId = await getWorkspaceId(apiContext)
     })
@@ -259,7 +260,7 @@ test.describe('Tasks Feature', () => {
     const uid = Date.now()
 
     test.beforeAll(async ({ playwright }) => {
-      apiContext = await playwright.request.newContext()
+      apiContext = await newApiContext(playwright)
       const { token } = await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
       sessionToken = token
       workspaceId = await getWorkspaceId(apiContext)

@@ -7,6 +7,7 @@ import {
   setupAuthenticatedPage,
   createResolvedEvent,
   PAGE_LOAD_TIMEOUT,
+  newApiContext,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-chores@example.com'
@@ -77,7 +78,7 @@ test.describe('Chore Rosters Feature', () => {
     let userId: string
 
     test.beforeAll(async ({ playwright }) => {
-      apiContext = await playwright.request.newContext()
+      apiContext = await newApiContext(playwright)
       const session = await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
       userId = session.userId
     })
@@ -343,7 +344,7 @@ test.describe('Chore Rosters Feature', () => {
     })
 
     test('delete roster rejects non-creator', async ({ playwright }) => {
-      const otherCtx = await playwright.request.newContext()
+      const otherCtx = await newApiContext(playwright)
       const otherSession = await getTestSession(
         otherCtx,
         'e2e-chores-other@example.com',
@@ -374,7 +375,7 @@ test.describe('Chore Rosters Feature', () => {
     const uid = Date.now()
 
     test.beforeAll(async ({ playwright }) => {
-      apiContext = await playwright.request.newContext()
+      apiContext = await newApiContext(playwright)
       const session = await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
       sessionToken = session.token
       userId = session.userId
@@ -921,7 +922,7 @@ test.describe('Chore Rosters Feature', () => {
       page,
       playwright,
     }) => {
-      const ctx = await playwright.request.newContext()
+      const ctx = await newApiContext(playwright)
       const { token } = await getTestSession(
         ctx,
         'e2e-chores-rsvp@example.com',

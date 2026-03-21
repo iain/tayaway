@@ -5,6 +5,7 @@ import {
   getTestSession,
   setupAuthenticatedPage,
   getWorkspaceId,
+  newApiContext,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-invites@example.com'
@@ -59,7 +60,7 @@ test.describe('Workspace Invites Feature', () => {
     let workspaceId: string
 
     test.beforeAll(async ({ playwright }) => {
-      apiContext = await playwright.request.newContext()
+      apiContext = await newApiContext(playwright)
       await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
       workspaceId = await getWorkspaceId(apiContext)
     })
@@ -149,7 +150,7 @@ test.describe('Workspace Invites Feature', () => {
     let workspaceId: string
 
     test.beforeAll(async ({ playwright }) => {
-      apiContext = await playwright.request.newContext()
+      apiContext = await newApiContext(playwright)
       const { token } = await getTestSession(apiContext, TEST_EMAIL, TEST_NAME)
       sessionToken = token
       workspaceId = await getWorkspaceId(apiContext)

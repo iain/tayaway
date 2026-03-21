@@ -2,6 +2,22 @@ import { Page, APIRequestContext } from '@playwright/test'
 
 export const API_BASE = 'http://localhost:9293'
 
+// Creates an API request context with the CSRF header required by the backend
+// for all state-changing requests (POST/PUT/PATCH/DELETE).
+export async function newApiContext(
+  playwright: { request: { newContext: (options?: object) => Promise<APIRequestContext> } },
+  options?: Record<string, unknown>
+): Promise<APIRequestContext> {
+  const { extraHTTPHeaders, ...rest } = options ?? {}
+  return playwright.request.newContext({
+    extraHTTPHeaders: {
+      'X-CSRF-Protection': '1',
+      ...((extraHTTPHeaders as Record<string, string>) ?? {}),
+    },
+    ...rest,
+  })
+}
+
 // Assertions that fire immediately after page.goto() need extra headroom for
 // the frontend to fetch data and render. Everything else uses the 5 s default
 // configured in playwright.config.ts.

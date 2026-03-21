@@ -104,6 +104,7 @@ class ApiClient {
     const url = `${this.baseUrl}${path}`
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
+      'X-CSRF-Protection': '1',
     }
 
     const response = await fetch(url, {
