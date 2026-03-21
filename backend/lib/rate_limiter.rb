@@ -49,8 +49,8 @@ module RateLimiter
 
     # Skip rate limiting in test and e2e environments
     unless %w[test e2e].include?(APP_ENV)
-      Rack::Attack.throttle("auth/magic-link", limit: 5, period: 60) do |req|
-        req.ip if req.post? && req.path == "/api/auth/magic-link"
+      Rack::Attack.throttle("auth/login-link", limit: 5, period: 60) do |req|
+        req.ip if req.post? && req.path == "/api/auth/login-link"
       end
 
       Rack::Attack.throttle("auth/verify", limit: 10, period: 60) do |req|

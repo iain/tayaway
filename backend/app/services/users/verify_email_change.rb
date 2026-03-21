@@ -86,9 +86,9 @@ module Users
             updated_at: Time.now
           )
 
-          # Invalidate all sessions, pending magic links, and WS tickets
+          # Invalidate all sessions, pending login links, and WS tickets
           DB[:sessions].where(user_id: email_token.user_id.to_s).delete
-          DB[:magic_link_tokens].where(user_id: email_token.user_id.to_s, used_at: nil).update(used_at: Time.now)
+          DB[:login_link_tokens].where(user_id: email_token.user_id.to_s, used_at: nil).update(used_at: Time.now)
           DB[:ws_tickets].where(user_id: email_token.user_id.to_s, used_at: nil).update(used_at: Time.now)
 
           # Broadcast member changes to all workspaces the user belongs to

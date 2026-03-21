@@ -18,12 +18,12 @@ async function handleSubmit() {
   loading.value = true
 
   try {
-    const response = await authStore.requestMagicLink(email.value)
+    const response = await authStore.requestLoginLink(email.value)
     message.value = response
     email.value = ''
   } catch {
     error.value =
-      'Could not send the magic link. Check your email address and try again.'
+      'Could not send the login link. Check your email address and try again.'
   } finally {
     loading.value = false
   }
@@ -38,10 +38,10 @@ async function handleSubmit() {
         data-testid="login-title"
         class="mb-2 text-center text-2xl font-bold text-white"
       >
-        Sign in to Tayaway
+        Log in to Tayaway
       </h1>
       <p class="mb-8 text-center text-sm/6 text-stone-400">
-        We'll send you a magic link to sign in without a password.
+        We'll send you a login link. No password needed.
       </p>
 
       <form class="space-y-6" @submit.prevent="handleSubmit">
@@ -66,7 +66,7 @@ async function handleSubmit() {
           loading-label="Sending..."
           full-width
         >
-          Send magic link
+          Send login link
         </AppButton>
       </form>
 

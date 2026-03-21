@@ -46,7 +46,7 @@ function getErrorMessage(status: number): string {
     case 400:
       return 'Invalid request. Please check your input and try again.'
     case 401:
-      return 'You need to sign in to continue.'
+      return 'You need to log in to continue.'
     case 403:
       return "You don't have permission to perform this action."
     case 404:

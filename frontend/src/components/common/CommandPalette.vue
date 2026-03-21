@@ -171,7 +171,7 @@ const quickActions = computed<NavAction[]>(() => [
   {
     type: 'action',
     id: 'logout',
-    name: 'Sign out',
+    name: 'Log out',
     icon: ArrowRightOnRectangleIcon,
     run: logout,
   },

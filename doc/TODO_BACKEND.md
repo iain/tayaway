@@ -114,15 +114,14 @@ observability, operability, performance, testability, and maintainability.
 
 - [ ] **[Observability] Silent email delivery failures**
       `app/mailers/base.rb:37-38` — `deliver` rescues and swallows exceptions. The caller
-      returns success ("magic link sent") even when no email was delivered.
+      returns success ("login link sent") even when no email was delivered.
       **Fix:** Re-raise in synchronous `deliver` so callers can handle failure. Add error
       tracking for `deliver_later`.
 
 - [ ] **[Observability] Sensitive tokens logged at DEBUG level**
-      `app/services/auth/create_magic_link.rb:45`, `invites/create.rb:107`, `invites/accept.rb:136`,
-      `invites/remind.rb:95`, `users/request_email_change.rb:106` — Full magic links and invite
-      URLs logged. Suppressed in production (INFO level) but fragile.
-      **Fix:** Remove or gate behind an explicit `DEBUG_AUTH_LINKS` env var.
+      `app/services/auth/create_login_link.rb:46`, `invites/create.rb:107`, `invites/accept.rb:138`,
+      `invites/remind.rb:95`, `users/request_email_change.rb:106` — Full login links and invite
+      URLs logged only in development mode via `APP_ENV == "development"` check.
 
 ### Performance
 
@@ -236,7 +235,7 @@ observability, operability, performance, testability, and maintainability.
       Could produce invalid JSON if message contains quotes.
       **Fix:** Use `{ error: error_msg }.to_json`.
 
-- [ ] **[Security] Magic links logged at DEBUG could leak in misconfigured production**
+- [ ] **[Security] Login links logged at INFO could leak in misconfigured production**
       See observability finding above. Defense in depth concern.
 
 - [ ] **[Security] Test reset endpoint accessible if RACK_ENV defaults to development**
@@ -377,8 +376,8 @@ observability, operability, performance, testability, and maintainability.
 - [ ] **[Maintainability] Route files use `# typed: false` — document exception in CLAUDE.md**
       All route files deviate from the `# typed: true` convention due to Roda DSL limitations.
 
-- [ ] **[Maintainability] Extract shared magic link creation logic**
-      `invites/accept.rb:112-138` and `auth/create_magic_link.rb:33-73` share nearly identical
+- [ ] **[Maintainability] Extract shared login link creation logic**
+      `invites/accept.rb:112-138` and `auth/create_login_link.rb:33-73` share nearly identical
       token creation, JWT building, and email sending logic.
 
 - [ ] **[Correctness] Concurrent settlement creation could double-settle expenses**

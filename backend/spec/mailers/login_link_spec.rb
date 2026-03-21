@@ -3,15 +3,15 @@
 
 require "spec_helper"
 
-RSpec.describe Mailers::MagicLink do
+RSpec.describe Mailers::LoginLink do
   before { Mail::TestMailer.deliveries.clear }
 
   describe ".send_email" do
     let(:email) { "user@example.com" }
-    let(:magic_link) { "https://tayaway.com/auth/verify?token=abc123" }
+    let(:login_link) { "https://tayaway.com/auth/verify?token=abc123" }
 
     context "with default workspace name" do
-      before { described_class.send_email(email: email, magic_link: magic_link) }
+      before { described_class.send_email(email: email, login_link: login_link) }
 
       it "delivers one email" do
         expect(Mail::TestMailer.deliveries.length).to eq(1)
@@ -26,21 +26,21 @@ RSpec.describe Mailers::MagicLink do
       end
 
       it "has the default subject" do
-        expect(Mail::TestMailer.deliveries.first.subject).to eq("Sign in to Tayaway")
+        expect(Mail::TestMailer.deliveries.first.subject).to eq("Log in to Tayaway")
       end
 
-      it "includes the magic link in the text part" do
+      it "includes the login link in the text part" do
         message = Mail::TestMailer.deliveries.first
         text_body = message.text_part.body.to_s
 
-        expect(text_body).to include(magic_link)
+        expect(text_body).to include(login_link)
       end
 
-      it "includes the magic link in the HTML part" do
+      it "includes the login link in the HTML part" do
         message = Mail::TestMailer.deliveries.first
         html_body = message.html_part.body.to_s
 
-        expect(html_body).to include(magic_link)
+        expect(html_body).to include(login_link)
       end
 
       it "has both text and HTML parts" do
@@ -52,22 +52,22 @@ RSpec.describe Mailers::MagicLink do
     end
 
     context "with custom workspace name" do
-      before { described_class.send_email(email: email, magic_link: magic_link, workspace_name: "My Team") }
+      before { described_class.send_email(email: email, login_link: login_link, workspace_name: "My Team") }
 
       it "uses the workspace name in the subject" do
-        expect(Mail::TestMailer.deliveries.first.subject).to eq("Sign in to My Team")
+        expect(Mail::TestMailer.deliveries.first.subject).to eq("Log in to My Team")
       end
 
       it "uses the workspace name in the text body" do
         text_body = Mail::TestMailer.deliveries.first.text_part.body.to_s
 
-        expect(text_body).to include("Sign in to My Team")
+        expect(text_body).to include("Log in to My Team")
       end
 
       it "uses the workspace name in the HTML body" do
         html_body = Mail::TestMailer.deliveries.first.html_part.body.to_s
 
-        expect(html_body).to include("Sign in to My Team")
+        expect(html_body).to include("Log in to My Team")
       end
     end
   end

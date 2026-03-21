@@ -83,7 +83,7 @@ async function handleAccept() {
           You've joined {{ workspaceName }}
         </h1>
         <p class="mb-6 text-sm/6 text-stone-400">
-          Check your email for a magic link to sign in.
+          Check your email for a login link.
         </p>
         <AppButton variant="amber" to="/login">Go to login</AppButton>
       </div>

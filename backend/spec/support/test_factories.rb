@@ -221,9 +221,9 @@ module TestFactories
       const :token, String
     end
 
-    class MagicTokenResult < T::Struct
+    class LoginTokenResult < T::Struct
       const :token, String
-      const :record, MagicLinkToken
+      const :record, LoginLinkToken
     end
 
     class EmailChangeTokenResult < T::Struct
@@ -245,11 +245,11 @@ module TestFactories
       TokenResult.new(token: token)
     end
 
-    def magic_link_token(user: nil, token: SecureRandom.hex(32), email: nil, expires_at: Time.now + (15 * 60), used_at: nil, id: SecureRandom.uuid)
+    def login_link_token(user: nil, token: SecureRandom.hex(32), email: nil, expires_at: Time.now + (15 * 60), used_at: nil, id: SecureRandom.uuid)
       user ||= self.user
       email ||= user[:email]
       now = Time.now
-      DB[:magic_link_tokens].insert(
+      DB[:login_link_tokens].insert(
         id: id,
         user_id: user[:id],
         token: Auth::Token.digest(token),
@@ -258,8 +258,8 @@ module TestFactories
         used_at: used_at,
         created_at: now
       )
-      record = MagicLinkToken.find(id)
-      MagicTokenResult.new(token:, record:)
+      record = LoginLinkToken.find(id)
+      LoginTokenResult.new(token:, record:)
     end
 
     def email_change_token(user: nil, token: SecureRandom.hex(32), email: nil, new_email: nil, expires_at: Time.now + (15 * 60), used_at: nil, id: SecureRandom.uuid)

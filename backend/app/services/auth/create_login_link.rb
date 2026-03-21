@@ -2,20 +2,20 @@
 # frozen_string_literal: true
 
 module Auth
-  # Service to create and send a magic link for authentication.
+  # Service to create and send a login link for authentication.
   #
   # @example
-  #   result = Auth::CreateMagicLink.call(email: "user@example.com")
+  #   result = Auth::CreateLoginLink.call(email: "user@example.com")
   #   result.success?  # => true
   #   result.value!    # => { message: "If an account exists..." }
-  module CreateMagicLink
+  module CreateLoginLink
     class << self
       extend T::Sig
       include Result::Methods
 
       sig { params(email: T.nilable(String)).returns(Result[T::Hash[Symbol, String], ServiceError]) }
       def call(email:)
-        validate_email(email).bind { |valid_email| generate_magic_link(valid_email) }
+        validate_email(email).bind { |valid_email| generate_login_link(valid_email) }
       end
 
       private
@@ -30,38 +30,38 @@ module Auth
       end
 
       sig { params(email: String).returns(Result[T::Hash[Symbol, String], ServiceError]) }
-      def generate_magic_link(email)
+      def generate_login_link(email)
         user = User.find_by_email(email)
 
         if user
-          raw_token = create_magic_link_token(user.id, user.email)
-          jwt = Auth::Token.encode_magic_link(token: raw_token, email: user.email.to_s)
+          raw_token = create_login_link_token(user.id, user.email)
+          jwt = Auth::Token.encode_login_link(token: raw_token, email: user.email.to_s)
           frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:5173")
-          magic_link = "#{frontend_url}/auth/verify?token=#{jwt}"
+          login_link = "#{frontend_url}/auth/verify?token=#{jwt}"
 
           workspaces = Workspace.for_user(user.id)
           workspace_name = workspaces.length == 1 ? T.must(workspaces.first).name : "Tayaway"
 
-          APP_LOGGER.info { "[Auth::CreateMagicLink] Magic link requested for user #{user.id}" }
-          APP_LOGGER.info { "[Auth::CreateMagicLink] MAGIC LINK FOR #{email}: #{magic_link}" } if APP_ENV == "development"
-          Mailers::MagicLink.send_email(email: email, magic_link: magic_link, workspace_name: workspace_name)
+          APP_LOGGER.info { "[Auth::CreateLoginLink] Login link requested for user #{user.id}" }
+          APP_LOGGER.info { "[Auth::CreateLoginLink] LOGIN LINK FOR #{email}: #{login_link}" } if APP_ENV == "development"
+          Mailers::LoginLink.send_email(email: email, login_link: login_link, workspace_name: workspace_name)
         else
-          APP_LOGGER.info { "[Auth::CreateMagicLink] Magic link requested for unknown email" }
+          APP_LOGGER.info { "[Auth::CreateLoginLink] Login link requested for unknown email" }
         end
 
-        T.cast(Success({ message: "If an account exists with this email, a magic link has been sent." }), Result[T::Hash[Symbol, String], ServiceError])
+        T.cast(Success({ message: "If an account exists with this email, a login link has been sent." }), Result[T::Hash[Symbol, String], ServiceError])
       end
 
       sig { params(user_id: T.any(String, UUID), email: T.any(String, EmailAddress)).returns(String) }
-      def create_magic_link_token(user_id, email)
-        DB[:magic_link_tokens].where(user_id: user_id.to_s, used_at: nil).update(used_at: Time.now)
+      def create_login_link_token(user_id, email)
+        DB[:login_link_tokens].where(user_id: user_id.to_s, used_at: nil).update(used_at: Time.now)
 
         now = Time.now
         id = SecureRandom.uuid
         token = SecureRandom.hex(32)
-        expires_at = now + (MagicLinkToken::EXPIRY_MINUTES * 60)
+        expires_at = now + (LoginLinkToken::EXPIRY_MINUTES * 60)
 
-        DB[:magic_link_tokens].insert(
+        DB[:login_link_tokens].insert(
           id: id,
           user_id: user_id,
           token: Auth::Token.digest(token),

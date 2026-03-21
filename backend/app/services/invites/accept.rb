@@ -3,7 +3,7 @@
 
 module Invites
   # Service to accept a workspace invitation.
-  # Creates user if needed, creates membership, marks invite accepted, sends magic link.
+  # Creates user if needed, creates membership, marks invite accepted, sends login link.
   module Accept
     class << self
       extend T::Sig
@@ -102,24 +102,24 @@ module Invites
         # Broadcast new member
         Broadcaster.object_changed("member", membership_id, workspace_id: invite.workspace_id.to_s)
 
-        # Send magic link so the user can sign in
-        send_magic_link(user)
+        # Send login link so the user can log in
+        send_login_link(user)
 
         T.cast(
-          Success({ message: "Invitation accepted. Check your email for a sign-in link." }),
+          Success({ message: "Invitation accepted. Check your email for a login link." }),
           Result[T::Hash[Symbol, String], ServiceError]
         )
       end
 
       sig { params(user: User).void }
-      def send_magic_link(user)
-        DB[:magic_link_tokens].where(user_id: user.id.to_s, used_at: nil).update(used_at: Time.now)
+      def send_login_link(user)
+        DB[:login_link_tokens].where(user_id: user.id.to_s, used_at: nil).update(used_at: Time.now)
 
         raw_token = SecureRandom.hex(32)
         now = Time.now
-        expires_at = now + (MagicLinkToken::EXPIRY_MINUTES * 60)
+        expires_at = now + (LoginLinkToken::EXPIRY_MINUTES * 60)
 
-        DB[:magic_link_tokens].insert(
+        DB[:login_link_tokens].insert(
           id: SecureRandom.uuid,
           user_id: user.id,
           token: Auth::Token.digest(raw_token),
@@ -128,15 +128,15 @@ module Invites
           created_at: now
         )
 
-        jwt = Auth::Token.encode_magic_link(token: raw_token, email: user.email.to_s)
+        jwt = Auth::Token.encode_login_link(token: raw_token, email: user.email.to_s)
         frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:5173")
-        magic_link = "#{frontend_url}/auth/verify?token=#{jwt}"
+        login_link = "#{frontend_url}/auth/verify?token=#{jwt}"
 
         workspaces = Workspace.for_user(user.id)
         workspace_name = workspaces.length == 1 ? T.must(workspaces.first).name : "Tayaway"
 
-        APP_LOGGER.info { "MAGIC LINK FOR #{user.email}: #{magic_link}" } if APP_ENV == "development"
-        Mailers::MagicLink.send_email(email: user.email, magic_link: magic_link, workspace_name: workspace_name)
+        APP_LOGGER.info { "LOGIN LINK FOR #{user.email}: #{login_link}" } if APP_ENV == "development"
+        Mailers::LoginLink.send_email(email: user.email, login_link: login_link, workspace_name: workspace_name)
       end
     end
   end

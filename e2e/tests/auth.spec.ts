@@ -16,12 +16,12 @@ test.describe('Authentication', () => {
 
     // Displays the login form
     await expect(page.getByTestId('login-title')).toContainText(
-      'Sign in to Tayaway'
+      'Log in to Tayaway'
     )
     await expect(page.getByTestId('email-input')).toBeVisible()
     await expect(page.getByTestId('submit-button')).toBeVisible()
 
-    // Shows success message after requesting magic link for known email
+    // Shows success message after requesting login link for known email
     await page.getByTestId('email-input').fill(TEST_EMAIL)
     await page.getByTestId('submit-button').click()
     await expect(page.getByTestId('success-message')).toBeVisible()
@@ -33,7 +33,7 @@ test.describe('Authentication', () => {
     await expect(page.getByTestId('success-message')).toBeVisible()
   })
 
-  test('magic link verification: shows errors for missing params and invalid token', async ({
+  test('login link verification: shows errors for missing params and invalid token', async ({
     page,
   }) => {
     // Missing parameters
@@ -42,28 +42,28 @@ test.describe('Authentication', () => {
 
     // Invalid token
     await page.goto('/auth/verify?token=invalid&email=test@example.com')
-    await page.getByTestId('confirm-sign-in').click()
+    await page.getByTestId('confirm-login').click()
     await expect(page.getByTestId('verify-error')).toBeVisible()
     await expect(
       page.getByRole('link', { name: 'Back to login' })
     ).toBeVisible()
   })
 
-  test('complete magic link request flow', async ({ page, request }) => {
-    // Step 1: Request magic link via API
-    const magicLinkResponse = await request.post(
-      `${API_BASE}/api/auth/magic-link`,
+  test('complete login link request flow', async ({ page, request }) => {
+    // Step 1: Request login link via API
+    const loginLinkResponse = await request.post(
+      `${API_BASE}/api/auth/login-link`,
       {
         data: { email: TEST_EMAIL },
       }
     )
-    expect(magicLinkResponse.ok()).toBeTruthy()
+    expect(loginLinkResponse.ok()).toBeTruthy()
 
     // Step 2: Visit home page - should redirect to login (not authenticated)
     await page.goto('/')
     await expect(page).toHaveURL('/login')
 
-    // Step 3: Request magic link via UI
+    // Step 3: Request login link via UI
     await page.getByTestId('email-input').fill(TEST_EMAIL)
     await page.getByTestId('submit-button').click()
     await expect(page.getByTestId('success-message')).toBeVisible()
@@ -91,21 +91,21 @@ test.describe('Authentication', () => {
     await page.getByTestId('user-menu-button').click()
     // Wait for dropdown menu to be visible
     await expect(page.getByText(authEmail)).toBeVisible()
-    await page.getByTestId('sign-out-button').click()
+    await page.getByTestId('log-out-button').click()
 
     // Should redirect to login
     await expect(page).toHaveURL('/login')
   })
 
-  test('magic-link endpoint: returns success for any email and error for missing email', async ({
+  test('login-link endpoint: returns success for any email and error for missing email', async ({
     request,
   }) => {
     // Returns success regardless of email existence (parallel requests)
     const [knownResponse, unknownResponse] = await Promise.all([
-      request.post(`${API_BASE}/api/auth/magic-link`, {
+      request.post(`${API_BASE}/api/auth/login-link`, {
         data: { email: TEST_EMAIL },
       }),
-      request.post(`${API_BASE}/api/auth/magic-link`, {
+      request.post(`${API_BASE}/api/auth/login-link`, {
         data: { email: 'nonexistent@example.com' },
       }),
     ])
@@ -122,7 +122,7 @@ test.describe('Authentication', () => {
 
     // Returns error for missing email
     const missingResponse = await request.post(
-      `${API_BASE}/api/auth/magic-link`,
+      `${API_BASE}/api/auth/login-link`,
       {
         data: {},
       }
@@ -154,7 +154,7 @@ test.describe('Authentication', () => {
     // Verify with invalid token
     expect(verifyInvalid.status()).toBe(401)
     const verifyInvalidBody = await verifyInvalid.json()
-    expect(verifyInvalidBody.error).toBe('Invalid or expired magic link')
+    expect(verifyInvalidBody.error).toBe('Invalid or expired login link')
 
     // Verify with missing params
     expect(verifyMissing.status()).toBe(400)
@@ -205,7 +205,7 @@ test.describe('Authentication', () => {
 
     // Should stay on login since the fake token is invalid
     await expect(page.getByTestId('login-title')).toContainText(
-      'Sign in to Tayaway'
+      'Log in to Tayaway'
     )
   })
 })

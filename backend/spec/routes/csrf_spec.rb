@@ -81,8 +81,8 @@ RSpec.describe "CSRF protection" do
   end
 
   describe "unauthenticated mutation endpoints are not affected" do
-    it "allows POST /api/auth/magic-link without CSRF header" do
-      post "/api/auth/magic-link",
+    it "allows POST /api/auth/login-link without CSRF header" do
+      post "/api/auth/login-link",
            { email: "test@example.com" }.to_json,
            { "CONTENT_TYPE" => "application/json" }
 

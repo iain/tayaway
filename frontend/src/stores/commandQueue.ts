@@ -127,7 +127,7 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
               const { useNotificationsStore } = await import('./notifications')
               const notifications = useNotificationsStore()
               notifications.showError(
-                'Your session has expired. Please sign in again.'
+                'Your session has expired. Please log in again.'
               )
               const { useWebSocketStore } = await import('./websocket')
               const wsStore = useWebSocketStore()

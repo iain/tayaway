@@ -2,36 +2,36 @@
 # frozen_string_literal: true
 
 module Mailers
-  # Builds and sends the magic link sign-in email.
+  # Builds and sends the login link sign-in email.
   #
   # @example
-  #   Mailers::MagicLink.send_email(email: "user@example.com", magic_link: "https://...")
-  module MagicLink
+  #   Mailers::LoginLink.send_email(email: "user@example.com", login_link: "https://...")
+  module LoginLink
     class << self
       extend T::Sig
 
-      sig { params(email: T.any(String, EmailAddress), magic_link: String, workspace_name: String).void }
-      def send_email(email:, magic_link:, workspace_name: "Tayaway")
-        message = build_message(email: email.to_s, magic_link: magic_link, workspace_name: workspace_name)
+      sig { params(email: T.any(String, EmailAddress), login_link: String, workspace_name: String).void }
+      def send_email(email:, login_link:, workspace_name: "Tayaway")
+        message = build_message(email: email.to_s, login_link: login_link, workspace_name: workspace_name)
         Mailers::Base.deliver_later(message)
       end
 
       private
 
-      sig { params(email: String, magic_link: String, workspace_name: String).returns(Mail::Message) }
-      def build_message(email:, magic_link:, workspace_name:)
+      sig { params(email: String, login_link: String, workspace_name: String).returns(Mail::Message) }
+      def build_message(email:, login_link:, workspace_name:)
         message = Mail.new
         message.to      email
         message.from    Mailers::Base.from_address
-        message.subject "Sign in to #{workspace_name}"
+        message.subject "Log in to #{workspace_name}"
 
         text = Mail::Part.new
         text.body = <<~TEXT
-          Sign in to #{workspace_name}
+          Log in to #{workspace_name}
 
-          Click the link below to sign in:
+          Click the link below to log in:
 
-          #{magic_link}
+          #{login_link}
 
           This link expires in 15 minutes. If you didn't request this, you can safely ignore this email.
         TEXT
@@ -48,16 +48,16 @@ module Mailers
               <tr><td align="center">
                 <table width="480" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;padding:40px;">
                   <tr><td style="text-align:center;">
-                    <h1 style="margin:0 0 16px;font-size:24px;color:#18181b;">Sign in to #{workspace_name}</h1>
+                    <h1 style="margin:0 0 16px;font-size:24px;color:#18181b;">Log in to #{workspace_name}</h1>
                     <p style="margin:0 0 32px;font-size:16px;color:#52525b;line-height:1.5;">
-                      Click the button below to sign in to your account.
+                      Click the button below to log in to your account.
                     </p>
-                    <a href="#{magic_link}" style="display:inline-block;background-color:#2563eb;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:12px 32px;border-radius:6px;">
-                      Sign in
+                    <a href="#{login_link}" style="display:inline-block;background-color:#2563eb;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:12px 32px;border-radius:6px;">
+                      Log in
                     </a>
                     <p style="margin:32px 0 0;font-size:13px;color:#a1a1aa;line-height:1.5;">
                       Or copy and paste this link:<br>
-                      <a href="#{magic_link}" style="color:#2563eb;word-break:break-all;">#{magic_link}</a>
+                      <a href="#{login_link}" style="color:#2563eb;word-break:break-all;">#{login_link}</a>
                     </p>
                     <p style="margin:24px 0 0;font-size:13px;color:#a1a1aa;">
                       This link expires in 15 minutes. If you didn&rsquo;t request this, you can safely ignore this email.

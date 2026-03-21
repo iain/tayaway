@@ -4,7 +4,7 @@ A real-time collaborative event planning app. Create events, propose date ranges
 
 ## Features
 
-- **Magic link authentication** — Passwordless email login with session management
+- **Login link authentication** — Passwordless email login with session management
 - **Workspaces** — Organize events by team or group; invite members by email with role-based access (owner/admin/member)
 - **Date polls** — Create polls with multiple date range options, set deadlines, and resolve a winner
 - **Live voting** — Vote yes/no/preferably not on each proposed date, with instant results

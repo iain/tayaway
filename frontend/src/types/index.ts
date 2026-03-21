@@ -2,7 +2,7 @@
 
 import type { VoteResponse } from '@/types/pool'
 
-export interface MagicLinkResponse {
+export interface LoginLinkResponse {
   message: string
 }
 

@@ -11,7 +11,7 @@ import * as poolDb from '@/api/poolDb'
 import { usePoolPersistence } from '@/composables/usePoolPersistence'
 import type {
   AuthUser,
-  MagicLinkResponse,
+  LoginLinkResponse,
   VerifyResponse,
   MeResponse,
   LogoutResponse,
@@ -146,8 +146,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function requestMagicLink(email: string): Promise<string> {
-    const response = await api.post<MagicLinkResponse>('/auth/magic-link', {
+  async function requestLoginLink(email: string): Promise<string> {
+    const response = await api.post<LoginLinkResponse>('/auth/login-link', {
       email,
     })
     return response.data.message
@@ -320,7 +320,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     currentUserId,
     initialize,
-    requestMagicLink,
+    requestLoginLink,
     verifyToken,
     logout,
     updateProfile,

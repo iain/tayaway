@@ -8,7 +8,7 @@
 #
 # @example In a route
 #   r.post do
-#     result = Auth::CreateMagicLink.call(email: r.params["email"])
+#     result = Auth::CreateLoginLink.call(email: r.params["email"])
 #     handle_result(result)
 #   end
 module ResultHandler

@@ -68,7 +68,7 @@ class App
     # POST /api/test/reset - Truncate all tables
     r.is "reset" do
       r.post do
-        DB.run("TRUNCATE votes, date_ranges, date_polls, events, sessions, magic_link_tokens, workspace_invites, workspace_memberships, workspaces, users CASCADE")
+        DB.run("TRUNCATE votes, date_ranges, date_polls, events, sessions, login_link_tokens, workspace_invites, workspace_memberships, workspaces, users CASCADE")
 
         response.status = 200
         { message: "Database reset" }

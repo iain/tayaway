@@ -19,7 +19,7 @@ Edit `backend/.env.development`:
 
 - Set `DATABASE_URL` to your PostgreSQL connection string
 - Generate `APP_SECRET` with: `ruby -e "require 'securerandom'; puts SecureRandom.base64(32)"`
-- Configure SMTP settings if you want emails sent (in development, magic links are printed to the console instead)
+- Configure SMTP settings if you want emails sent (in development, login links are printed to the console instead)
 
 ```bash
 # Install dependencies and set up databases
@@ -37,7 +37,7 @@ mise run serve
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:9292
 
-The frontend dev server proxies `/api/*` requests to the backend. Magic link URLs are printed to the backend console.
+The frontend dev server proxies `/api/*` requests to the backend. Login link URLs are printed to the backend console.
 
 ## Useful Commands
 

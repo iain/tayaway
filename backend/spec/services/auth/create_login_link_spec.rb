@@ -3,8 +3,8 @@
 
 require "spec_helper"
 
-RSpec.describe Auth::CreateMagicLink do
-  before { allow(Mailers::MagicLink).to receive(:send_email) }
+RSpec.describe Auth::CreateLoginLink do
+  before { allow(Mailers::LoginLink).to receive(:send_email) }
 
   it "returns failure when email is missing" do
     result = described_class.call(email: nil)
@@ -13,14 +13,14 @@ RSpec.describe Auth::CreateMagicLink do
     expect(result.failure.message).to eq("Email is required")
   end
 
-  it "returns success and creates magic link token for existing user" do
+  it "returns success and creates login link token for existing user" do
     user = TestFactories.user(email: "test@example.com")
 
     result = described_class.call(email: "test@example.com")
 
     expect(result.success?).to be true
     expect(result.value![:message]).to include("If an account exists")
-    expect(DB[:magic_link_tokens].where(user_id: user[:id]).count).to eq(1)
+    expect(DB[:login_link_tokens].where(user_id: user[:id]).count).to eq(1)
   end
 
   it "generates a URL with a single JWT token parameter" do
@@ -33,8 +33,8 @@ RSpec.describe Auth::CreateMagicLink do
     stub_const("APP_ENV", "development")
     described_class.call(email: "test@example.com")
 
-    magic_link_log = logged_messages.find { |m| m.include?("MAGIC LINK") }
-    expect(magic_link_log).to match(/auth\/verify\?token=eyJ/)
+    login_link_log = logged_messages.find { |m| m.include?("LOGIN LINK") }
+    expect(login_link_log).to match(/auth\/verify\?token=eyJ/)
   end
 
   it "returns success without creating token for non-existent user" do
@@ -42,17 +42,17 @@ RSpec.describe Auth::CreateMagicLink do
 
     expect(result.success?).to be true
     expect(result.value![:message]).to include("If an account exists")
-    expect(DB[:magic_link_tokens].count).to eq(0)
+    expect(DB[:login_link_tokens].count).to eq(0)
   end
 
-  it "sends a magic link email for existing user" do
+  it "sends a login link email for existing user" do
     TestFactories.user(email: "test@example.com")
 
     described_class.call(email: "test@example.com")
 
-    expect(Mailers::MagicLink).to have_received(:send_email).with(
+    expect(Mailers::LoginLink).to have_received(:send_email).with(
       email: "test@example.com",
-      magic_link: a_string_matching(%r{auth/verify\?token=eyJ}),
+      login_link: a_string_matching(%r{auth/verify\?token=eyJ}),
       workspace_name: "Tayaway"
     )
   end
@@ -64,9 +64,9 @@ RSpec.describe Auth::CreateMagicLink do
 
     described_class.call(email: "test@example.com")
 
-    expect(Mailers::MagicLink).to have_received(:send_email).with(
+    expect(Mailers::LoginLink).to have_received(:send_email).with(
       email: "test@example.com",
-      magic_link: a_string_matching(%r{auth/verify\?token=eyJ}),
+      login_link: a_string_matching(%r{auth/verify\?token=eyJ}),
       workspace_name: "My Team"
     )
   end
@@ -80,9 +80,9 @@ RSpec.describe Auth::CreateMagicLink do
 
     described_class.call(email: "test@example.com")
 
-    expect(Mailers::MagicLink).to have_received(:send_email).with(
+    expect(Mailers::LoginLink).to have_received(:send_email).with(
       email: "test@example.com",
-      magic_link: a_string_matching(%r{auth/verify\?token=eyJ}),
+      login_link: a_string_matching(%r{auth/verify\?token=eyJ}),
       workspace_name: "Tayaway"
     )
   end
@@ -90,6 +90,6 @@ RSpec.describe Auth::CreateMagicLink do
   it "does not send email for non-existent user" do
     described_class.call(email: "nonexistent@example.com")
 
-    expect(Mailers::MagicLink).not_to have_received(:send_email)
+    expect(Mailers::LoginLink).not_to have_received(:send_email)
   end
 end

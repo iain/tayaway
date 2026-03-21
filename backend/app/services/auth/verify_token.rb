@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 module Auth
-  # Service to verify a magic link token and create a session.
+  # Service to verify a login link token and create a session.
   #
   # @example
   #   result = Auth::VerifyToken.call(token: "<jwt>")
@@ -34,17 +34,17 @@ module Auth
           return T.cast(Failure(ServiceError.validation("Token is required")), Result[T::Hash[Symbol, String], ServiceError])
         end
 
-        decoded = Auth::Token.decode_magic_link(jwt)
+        decoded = Auth::Token.decode_login_link(jwt)
         T.cast(Success(decoded), Result[T::Hash[Symbol, String], ServiceError])
       rescue JWT::DecodeError => e
-        APP_LOGGER.warn { "[Auth] Magic link verification failed: #{e.class}" }
-        T.cast(Failure(ServiceError.unauthorized("Invalid or expired magic link")), Result[T::Hash[Symbol, String], ServiceError])
+        APP_LOGGER.warn { "[Auth] Login link verification failed: #{e.class}" }
+        T.cast(Failure(ServiceError.unauthorized("Invalid or expired login link")), Result[T::Hash[Symbol, String], ServiceError])
       end
 
       sig { params(token: String, email: String).returns(Result[String, ServiceError]) }
       def claim_magic_token(token, email)
         digest = Auth::Token.digest(token)
-        row = DB[:magic_link_tokens]
+        row = DB[:login_link_tokens]
               .where(token: digest, email: email, used_at: nil)
               .where(Sequel[:expires_at] > Time.now)
               .returning(:id, :user_id, :email)
@@ -52,12 +52,12 @@ module Auth
               .first
 
         unless row
-          return T.cast(Failure(ServiceError.unauthorized("Invalid or expired magic link")), Result[String, ServiceError])
+          return T.cast(Failure(ServiceError.unauthorized("Invalid or expired login link")), Result[String, ServiceError])
         end
 
         user = User.find(row[:user_id])
         unless user && user.email.to_s.downcase == email.downcase
-          return T.cast(Failure(ServiceError.unauthorized("Invalid or expired magic link")), Result[String, ServiceError])
+          return T.cast(Failure(ServiceError.unauthorized("Invalid or expired login link")), Result[String, ServiceError])
         end
 
         T.cast(Success(row[:user_id].to_s), Result[String, ServiceError])

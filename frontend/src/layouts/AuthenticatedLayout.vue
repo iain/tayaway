@@ -320,14 +320,14 @@ async function handleSignOut() {
                     <MenuItem v-slot="{ active }">
                       <button
                         type="button"
-                        data-testid="sign-out-button"
+                        data-testid="log-out-button"
                         :class="[
                           active ? 'bg-gray-100 dark:bg-stone-700' : '',
                           'block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-stone-300',
                         ]"
                         @click="handleSignOut"
                       >
-                        Sign out
+                        Log out
                       </button>
                     </MenuItem>
                   </MenuItems>
@@ -470,7 +470,7 @@ async function handleSignOut() {
                 }
               "
             >
-              Sign out
+              Log out
             </button>
           </div>
         </div>

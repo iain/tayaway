@@ -25,7 +25,7 @@ async function handleSignIn() {
     router.push('/')
   } catch {
     error.value =
-      'This magic link has expired or was already used. Request a new one to sign in.'
+      'This login link has expired or was already used. Request a new one to log in.'
     verifying.value = false
   }
 }
@@ -36,19 +36,19 @@ async function handleSignIn() {
     <div class="w-full max-w-md px-6 text-center">
       <img :src="appIcon" alt="Tayaway" class="mx-auto mb-8 size-16" />
       <div v-if="!error">
-        <h1 class="mb-2 text-2xl font-bold text-white">Sign in to Tayaway</h1>
+        <h1 class="mb-2 text-2xl font-bold text-white">Log in to Tayaway</h1>
         <p class="mb-8 text-sm/6 text-stone-400">
-          Click the button below to complete sign-in.
+          Click the button below to complete login.
         </p>
         <AppButton
-          data-testid="confirm-sign-in"
+          data-testid="confirm-login"
           variant="amber"
           :loading="verifying"
-          loading-label="Signing in..."
+          loading-label="Logging in..."
           full-width
           @click="handleSignIn"
         >
-          Sign in
+          Log in
         </AppButton>
       </div>
 

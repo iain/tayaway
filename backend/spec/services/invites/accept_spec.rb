@@ -53,11 +53,11 @@ RSpec.describe Invites::Accept do
     invite_row = DB[:workspace_invites].where(id: invite[:id]).first
     expect(invite_row[:accepted_at]).not_to be_nil
 
-    # Magic link email was sent
+    # Login link email was sent
     expect(Mail::TestMailer.deliveries.length).to eq(1)
     email = Mail::TestMailer.deliveries.first
     expect(email.to).to include("newuser@example.com")
-    expect(email.subject).to include("Sign in")
+    expect(email.subject).to include("Log in")
   end
 
   it "accepts an invite for an existing user" do

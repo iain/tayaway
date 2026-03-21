@@ -6,7 +6,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## Project Overview
 
-Tayaway is a real-time collaborative event planning app. Users authenticate via magic link email, belong to workspaces, and create events with date polls that members vote on. The app syncs all state in real-time via WebSockets and PostgreSQL LISTEN/NOTIFY.
+Tayaway is a real-time collaborative event planning app. Users authenticate via login link email, belong to workspaces, and create events with date polls that members vote on. The app syncs all state in real-time via WebSockets and PostgreSQL LISTEN/NOTIFY.
 
 **Monorepo layout:** pnpm workspace with `frontend/` and `e2e/` as packages. `backend/` is a standalone Ruby app (not a pnpm package).
 
@@ -119,7 +119,7 @@ All domain data belongs to a workspace. Backend routes verify membership. The fr
 ```
 users              id (UUID), email (CITEXT), name, phone_number (TEXT nullable), birthday (DATE nullable), location_name (TEXT nullable), location_coordinates (POINT nullable), iban (TEXT nullable), timestamps
 sessions           id, user_id, token, expires_at (30 days)
-magic_link_tokens  id, user_id, token, email, expires_at (15 min), used_at
+login_link_tokens  id, user_id, token, email, expires_at (15 min), used_at
 email_change_tokens id, user_id, token (hashed), email (CITEXT — current email), new_email (CITEXT), expires_at (15 min), used_at, timestamps
 ws_tickets         id, user_id, ticket (JWT), used_at
 
@@ -156,7 +156,7 @@ workspace_invites  id (UUID), workspace_id (FK cascade), invited_by (FK set_null
 
 **Authentication (`/api/auth`)**
 
-- `POST /magic-link` — Request magic link email
+- `POST /login-link` — Request login link email
 - `POST /verify` — Verify token and create session
 - `GET /me` — Get current user (requires auth)
 - `POST /logout` — End session (requires auth)
@@ -228,7 +228,7 @@ workspace_invites  id (UUID), workspace_id (FK cascade), invited_by (FK set_null
 Unauthenticated:
 
 - `GET /info?token=JWT` — Get invite info (workspace name, email)
-- `POST /accept` — Accept an invitation (creates user + membership, sends magic link)
+- `POST /accept` — Accept an invitation (creates user + membership, sends login link)
 
 Authenticated (admin/owner only):
 

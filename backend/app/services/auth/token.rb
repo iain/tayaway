@@ -16,21 +16,21 @@ module Auth
     end
 
     sig { params(token: String, email: String).returns(String) }
-    def self.encode_magic_link(token:, email:)
+    def self.encode_login_link(token:, email:)
       payload = {
         token: token,
         email: email,
-        typ: "magic_link",
-        exp: (Time.now + (MagicLinkToken::EXPIRY_MINUTES * 60)).to_i
+        typ: "login_link",
+        exp: (Time.now + (LoginLinkToken::EXPIRY_MINUTES * 60)).to_i
       }
       JWT.encode(payload, APP_SECRET, "HS256")
     end
 
     sig { params(jwt: String).returns(T::Hash[Symbol, String]) }
-    def self.decode_magic_link(jwt)
+    def self.decode_login_link(jwt)
       decoded = JWT.decode(jwt, APP_SECRET, true, algorithm: "HS256")
       payload = decoded.first
-      raise JWT::DecodeError, "Invalid token type" unless payload["typ"] == "magic_link"
+      raise JWT::DecodeError, "Invalid token type" unless payload["typ"] == "login_link"
 
       { token: payload["token"], email: payload["email"] }
     end

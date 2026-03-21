@@ -2,9 +2,9 @@
 # frozen_string_literal: true
 
 class App
-  hash_path "/api/auth/magic-link" do |r|
+  hash_path "/api/auth/login-link" do |r|
     r.post do
-      result = Auth::CreateMagicLink.call(email: r.params["email"]&.strip&.downcase)
+      result = Auth::CreateLoginLink.call(email: r.params["email"]&.strip&.downcase)
       handle_result(result)
     end
   end

@@ -285,11 +285,11 @@ cd e2e && pnpm exec playwright test -g "test name"
 
 ## Application Context
 
-Tayaway is a real-time collaborative event planning app. Users authenticate via magic link email, belong to workspaces, and create events with date polls that members vote on. The app syncs all state in real-time via WebSockets and PostgreSQL LISTEN/NOTIFY.
+Tayaway is a real-time collaborative event planning app. Users authenticate via login link email, belong to workspaces, and create events with date polls that members vote on. The app syncs all state in real-time via WebSockets and PostgreSQL LISTEN/NOTIFY.
 
 ### Features to Cover
 
-- **Magic link authentication** — Passwordless email login with session management
+- **Login link authentication** — Passwordless email login with session management
 - **Workspaces** — Organize events by team or group; invite members by email with role-based access (owner/admin/member)
 - **Date polls** — Create polls with multiple date range options, set deadlines, and resolve a winner
 - **Live voting** — Vote yes/no/preferably not on each proposed date, with instant results
@@ -355,7 +355,7 @@ Use these `objectType` values when calling `getObjectByType` / `getObjectsByType
 
 **Authentication (`/api/auth`)**
 
-- `POST /magic-link` — Request magic link email
+- `POST /login-link` — Request login link email
 - `POST /verify` — Verify token and create session
 - `GET /me` — Get current user (requires auth)
 - `POST /logout` — End session (requires auth)

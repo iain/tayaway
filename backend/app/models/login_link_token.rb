@@ -1,8 +1,8 @@
 # typed: true
 # frozen_string_literal: true
 
-# Read-only magic link token model.
-class MagicLinkToken < T::Struct
+# Read-only login link token model.
+class LoginLinkToken < T::Struct
   extend T::Sig
 
   EXPIRY_MINUTES = 15
@@ -18,12 +18,12 @@ class MagicLinkToken < T::Struct
   class << self
     extend T::Sig
 
-    sig { params(id: T.any(UUID, String)).returns(T.nilable(MagicLinkToken)) }
+    sig { params(id: T.any(UUID, String)).returns(T.nilable(LoginLinkToken)) }
     def find(id)
       dataset.where(id: id).first
     end
 
-    sig { params(token: String, email: String).returns(T.nilable(MagicLinkToken)) }
+    sig { params(token: String, email: String).returns(T.nilable(LoginLinkToken)) }
     def find_valid(token, email)
       record = dataset
                .where(token: Auth::Token.digest(token), email: email)
@@ -42,7 +42,7 @@ class MagicLinkToken < T::Struct
 
     private
 
-    sig { params(row: T::Hash[Symbol, T.untyped]).returns(MagicLinkToken) }
+    sig { params(row: T::Hash[Symbol, T.untyped]).returns(LoginLinkToken) }
     def from_row(row)
       new(
         id: UUID.new(row[:id]),
@@ -57,7 +57,7 @@ class MagicLinkToken < T::Struct
 
     sig { returns(Sequel::Dataset) }
     def dataset
-      DB[:magic_link_tokens].with_row_proc(method(:from_row))
+      DB[:login_link_tokens].with_row_proc(method(:from_row))
     end
   end
 end
