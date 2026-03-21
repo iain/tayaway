@@ -106,13 +106,15 @@ The backend must call `Broadcaster.object_changed` / `Broadcaster.object_deleted
 
 **Exception:** authentication-related operations (login, logout, session management) and sensitive data (tokens, IBANs) are not pooled and do not go through the command queue. Use direct `api.*` calls for those.
 
+**Connectivity:** The app must stay responsive on slow, flaky, or offline connections. Every fetch needs a timeout, loops must yield to the event loop, and rendering must never block on a network request. See `doc/connectivity-guidelines.md` for the full rules.
+
 ### Hydration (Frontend)
 
 `useHydratedEvent` denormalizes pool objects into nested structures for component consumption. The pool stays normalized for sync efficiency; hydrated views are computed properties.
 
 ### Workspace Scoping
 
-All domain data belongs to a workspace. Backend routes verify membership. The frontend switches one workspace at a time via WebSocket `switch_workspace` message. See `doc/workspaces.md`.
+All domain data belongs to a workspace. Backend routes verify membership. The frontend switches one workspace at a time via WebSocket `switch_workspace` message.
 
 ## Data Model
 
