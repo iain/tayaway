@@ -1,7 +1,7 @@
 ---
 name: review-prs
 description: Review all open PRs matching criteria (e.g. all drafts, all with a label). Spawns parallel review-pr agents. Use when asked to "review all draft PRs" or "review all open PRs".
-model: opus
+model: sonnet
 ---
 
 # Review PRs Agent
