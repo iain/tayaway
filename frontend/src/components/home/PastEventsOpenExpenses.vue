@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { BanknotesIcon, CalendarDaysIcon, ChevronRightIcon } from '@heroicons/vue/24/outline'
+import {
+  BanknotesIcon,
+  CalendarDaysIcon,
+  ChevronRightIcon,
+} from '@heroicons/vue/24/outline'
 import BaseCard from '@/components/common/BaseCard.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import type { PoolEvent } from '@/types/pool'
@@ -9,7 +13,6 @@ defineProps<{
   events: PoolEvent[]
   unsettledExpenseCountByEvent: Map<string, number>
   unpaidTransferCountByEvent: Map<string, number>
-  addTopMargin: boolean
 }>()
 
 const router = useRouter()
@@ -20,7 +23,7 @@ function navigateToEventPage(eventId: string): void {
 </script>
 
 <template>
-  <section :class="addTopMargin ? 'mt-8' : ''">
+  <section>
     <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
       Past events with open expenses
     </h2>

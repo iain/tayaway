@@ -15,7 +15,6 @@ defineProps<{
   transfersOwedToYou: PoolSettlementTransfer[]
   transfersYouOwe: PoolSettlementTransfer[]
   hasIban: boolean
-  addTopMargin: boolean
 }>()
 
 const router = useRouter()
@@ -71,7 +70,7 @@ function getEventIdForTransfer(
 </script>
 
 <template>
-  <section :class="addTopMargin ? 'mt-8' : ''">
+  <section>
     <h2 class="mb-1 text-lg font-medium text-gray-900 dark:text-white">
       Open settlements
     </h2>

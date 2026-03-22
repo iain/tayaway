@@ -14,7 +14,6 @@ defineProps<{
   events: PoolEvent[]
   attendeeCountByEvent: Map<string, number>
   unpaidTransferCountByEvent: Map<string, number>
-  addTopMargin: boolean
 }>()
 
 const router = useRouter()
@@ -25,10 +24,7 @@ function navigateToEventPage(eventId: string): void {
 </script>
 
 <template>
-  <section
-    data-testid="happening-now-section"
-    :class="addTopMargin ? 'mt-8' : ''"
-  >
+  <section data-testid="happening-now-section">
     <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
       Happening now
     </h2>
