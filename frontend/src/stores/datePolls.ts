@@ -85,7 +85,7 @@ export const useDatePollsStore = defineStore('datePolls', () => {
     }
 
     // Multi-object optimistic: add dateRange + update poll's dateRangeIds
-    pool.set(tempDateRange)
+    pool.set(tempDateRange, { isTemp: true })
     const pendingId = pool.addPending('datePoll', poll.id, {
       dateRangeIds: [...poll.dateRangeIds, dateRangeId],
     })

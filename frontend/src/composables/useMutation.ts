@@ -54,7 +54,7 @@ export function useMutation() {
     ) => Promise<ApiResponse<T>>
   ): Promise<MutationResult<T>> {
     const pool = useObjectPoolStore()
-    pool.set(tempObject)
+    pool.set(tempObject, { isTemp: true })
 
     loading.value = true
     error.value = null

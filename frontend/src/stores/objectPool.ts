@@ -123,6 +123,13 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   // Pending optimistic updates: Map<"type:id", PendingUpdate[]>
   const pendingUpdates = ref(new Map<string, PendingUpdate[]>())
 
+  // IDs of temp objects inserted via set() whose create commands are still in
+  // the command queue (not yet confirmed by the server). Cleared when the server
+  // confirms the object via importObjects() or replaceObjects(). Used by
+  // replaceObjects() to distinguish temp objects (which must survive a full sync)
+  // from server-confirmed objects that have since been deleted on the server.
+  const tempObjectIds = new Set<string>()
+
   // Per-type version counters to limit reactivity invalidation scope
   const typeVersions = ref(
     new Map<ObjectType, number>(OBJECT_TYPES.map((type) => [type, 0]))
@@ -172,6 +179,11 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
           pendingUpdates.value.delete(pendingKey)
           changed = true
         }
+      }
+
+      // Server has confirmed this object — it's no longer an unconfirmed temp object
+      if (tempObjectIds.has(obj.id)) {
+        tempObjectIds.delete(obj.id)
       }
 
       // Update pool object if newer or doesn't exist
@@ -342,11 +354,25 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     return Boolean(pending && pending.length > 0)
   }
 
-  // Set an object directly (for creating new objects optimistically)
-  function set<T extends ObjectType>(object: ObjectTypeMap[T]): void {
+  // Set an object directly.
+  //
+  // Pass `isTemp: true` when the object is an optimistic placeholder for a
+  // create command still in the queue. This records the ID in tempObjectIds
+  // so replaceObjects() can preserve the object during a full sync.
+  //
+  // Do NOT pass isTemp for rollback restores — those are server-confirmed
+  // objects being put back after a failed delete and must not be preserved
+  // beyond the next authoritative full sync.
+  function set<T extends ObjectType>(
+    object: ObjectTypeMap[T],
+    { isTemp = false }: { isTemp?: boolean } = {}
+  ): void {
     const typeMap = objects.value.get(object.objectType)
     if (typeMap) {
       typeMap.set(object.id, object)
+      if (isTemp) {
+        tempObjectIds.add(object.id)
+      }
       bumpVersion(object.objectType)
       triggerRef(objects)
       notifyChange({ type: 'set', object })
@@ -359,8 +385,9 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     if (typeMap) {
       typeMap.delete(objectId)
     }
-    // Also clear any pending updates
+    // Also clear any pending updates and temp tracking
     pendingUpdates.value.delete(`${objectType}:${objectId}`)
+    tempObjectIds.delete(objectId)
     bumpVersion(objectType)
     triggerRef(objects)
     triggerRef(pendingUpdates)
@@ -384,6 +411,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
         removed.push(obj)
         typeMap.delete(id)
         pendingUpdates.value.delete(`${type}:${id}`)
+        tempObjectIds.delete(id)
         typesChanged.add(type)
       }
 
@@ -437,11 +465,25 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
         clearedTypes.push(type)
       }
     }
-    // Clear pending updates for cleared types
+    // Clear pending updates and temp tracking for cleared types
     for (const [key] of pendingUpdates.value) {
       const objectType = key.split(':')[0] as ObjectType
       if (!keepSet.has(objectType)) {
         pendingUpdates.value.delete(key)
+      }
+    }
+    // Clear temp IDs whose objects were wiped. An ID belongs to a cleared type
+    // if it no longer appears in any kept type map (the cleared maps are empty now).
+    for (const id of tempObjectIds) {
+      let foundInKept = false
+      for (const type of keepTypes) {
+        if (objects.value.get(type)?.has(id)) {
+          foundInKept = true
+          break
+        }
+      }
+      if (!foundInKept) {
+        tempObjectIds.delete(id)
       }
     }
     bumpVersion(...clearedTypes)
@@ -452,7 +494,15 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   // Replace all objects — clears existing data then imports.
   // Used on sync to ensure server-side deletions are reflected.
   // Preserves pending updates that are newer than the server data (queued commands).
+  // Preserves temp objects (added via set()) absent from the server payload —
+  // these are optimistically-created objects whose create commands are still queued.
   function replaceObjects(poolObjects: PoolObject[]): void {
+    // Build set of IDs present in the server payload
+    const serverIds = new Set<string>()
+    for (const obj of poolObjects) {
+      serverIds.add(obj.id)
+    }
+
     // Build index of incoming server timestamps for pending-update comparison
     const serverTimestamps = new Map<string, number>()
     for (const obj of poolObjects) {
@@ -473,13 +523,44 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       }
     }
 
+    // Snapshot temp objects not present in the server payload.
+    // These are optimistically-created objects whose create commands are still
+    // in the command queue — they must survive the sync to stay visible in the UI.
+    // Objects that appear in the server payload are removed from tempObjectIds
+    // (the server has confirmed them) and replaced by the authoritative server data.
+    const tempObjectsToPreserve: PoolObject[] = []
+    for (const id of tempObjectIds) {
+      if (serverIds.has(id)) {
+        // Server confirmed this object — no longer an unconfirmed temp
+        tempObjectIds.delete(id)
+      } else {
+        // Still unconfirmed — find and preserve the object before clearing
+        for (const typeMap of objects.value.values()) {
+          const obj = typeMap.get(id)
+          if (obj) {
+            tempObjectsToPreserve.push(obj)
+            break
+          }
+        }
+      }
+    }
+
     // Clear all type maps
     for (const typeMap of objects.value.values()) {
       typeMap.clear()
     }
 
-    // Import the new objects
+    // Import the new objects from the server
     for (const obj of poolObjects) {
+      const typeMap = objects.value.get(obj.objectType)
+      if (typeMap) {
+        typeMap.set(obj.id, obj)
+      }
+    }
+
+    // Re-insert temp objects so they remain visible until the queued
+    // create command executes and the server confirms them.
+    for (const obj of tempObjectsToPreserve) {
       const typeMap = objects.value.get(obj.objectType)
       if (typeMap) {
         typeMap.set(obj.id, obj)
@@ -508,6 +589,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   function $reset(): void {
     objects.value = createEmptyStorage()
     pendingUpdates.value = new Map()
+    tempObjectIds.clear()
     getAllCache.clear()
   }
 
