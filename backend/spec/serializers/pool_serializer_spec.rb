@@ -70,12 +70,11 @@ RSpec.describe PoolSerializer do
   end
 
   describe "#add_date_ranges_batch" do
-    it "serializes multiple date ranges without N+1 vote queries" do
+    it "serializes multiple date ranges in a single batch" do
       event = TestFactories.event(workspace: workspace, user: user)
       poll = TestFactories.date_poll(event: event)
       range1 = TestFactories.date_range(date_poll: poll, start_date: Date.today, end_date: Date.today + 3)
       range2 = TestFactories.date_range(date_poll: poll, start_date: Date.today + 7, end_date: Date.today + 10)
-      vote = TestFactories.vote(date_range: range1, user: user)
 
       pool = described_class.new(workspace_id: workspace[:id])
       ranges = [DateRange.find(range1[:id]), DateRange.find(range2[:id])]
