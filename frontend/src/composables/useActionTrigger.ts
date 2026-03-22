@@ -1,15 +1,15 @@
-import { ref } from 'vue'
+import { ref, type Ref } from 'vue'
 
-export function useActionTrigger() {
-  const pending = ref(false)
+export function useActionTrigger(pending?: Ref<boolean>) {
+  const _pending = pending ?? ref(false)
 
   function trigger() {
-    pending.value = true
+    _pending.value = true
   }
 
   function reset() {
-    pending.value = false
+    _pending.value = false
   }
 
-  return { pending, trigger, reset }
+  return { pending: _pending, trigger, reset }
 }

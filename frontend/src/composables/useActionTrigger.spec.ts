@@ -1,5 +1,9 @@
-import { describe, it, expect } from 'vitest'
+import { ref } from 'vue'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { useActionTrigger } from './useActionTrigger'
+import { useTaskActions } from './useTaskActions'
+import { useDateRangeActions } from './useDateRangeActions'
+import { useExpenseActions } from './useExpenseActions'
 
 describe('useActionTrigger', () => {
   it('starts with pending false', () => {
@@ -35,5 +39,60 @@ describe('useActionTrigger', () => {
     a.trigger()
     expect(a.pending.value).toBe(true)
     expect(b.pending.value).toBe(false)
+  })
+
+  it('shares state when the same ref is passed in', () => {
+    const shared = ref(false)
+    const a = useActionTrigger(shared)
+    const b = useActionTrigger(shared)
+    a.trigger()
+    expect(b.pending.value).toBe(true)
+  })
+})
+
+describe('useTaskActions singleton', () => {
+  beforeEach(() => {
+    useTaskActions().resetNewList()
+  })
+
+  it('shares pendingNewList across separate calls', () => {
+    const caller1 = useTaskActions()
+    const caller2 = useTaskActions()
+    caller1.triggerNewList()
+    expect(caller2.pendingNewList.value).toBe(true)
+  })
+
+  it('reset is visible across calls', () => {
+    const caller1 = useTaskActions()
+    const caller2 = useTaskActions()
+    caller1.triggerNewList()
+    caller2.resetNewList()
+    expect(caller1.pendingNewList.value).toBe(false)
+  })
+})
+
+describe('useDateRangeActions singleton', () => {
+  beforeEach(() => {
+    useDateRangeActions().resetAdd()
+  })
+
+  it('shares pendingAdd across separate calls', () => {
+    const caller1 = useDateRangeActions()
+    const caller2 = useDateRangeActions()
+    caller1.triggerAdd()
+    expect(caller2.pendingAdd.value).toBe(true)
+  })
+})
+
+describe('useExpenseActions singleton', () => {
+  beforeEach(() => {
+    useExpenseActions().resetAdd()
+  })
+
+  it('shares pendingAdd across separate calls', () => {
+    const caller1 = useExpenseActions()
+    const caller2 = useExpenseActions()
+    caller1.triggerAdd()
+    expect(caller2.pendingAdd.value).toBe(true)
   })
 })
