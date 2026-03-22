@@ -122,6 +122,31 @@ RSpec.describe DatePolls::Close do
     expect(rsvp_objects.length).to eq(2)
   end
 
+  it "does not raise a unique constraint violation when a yes-voter already has an RSVP" do
+    owner = TestFactories.user
+    voter = TestFactories.user
+    event = TestFactories.event(user: owner)
+    date_poll = TestFactories.date_poll(event: event)
+    date_range = TestFactories.date_range(date_poll: date_poll)
+
+    TestFactories.vote(user: voter, date_range: date_range, response: "yes")
+    # Voter already has a pre-existing RSVP (e.g. set manually before the poll closed)
+    TestFactories.rsvp(event: event, user: voter, attending: false)
+
+    result = described_class.call(
+      event_id: event[:id],
+      current_user_id: owner[:id],
+      selected_date_range_id: date_range[:id]
+    )
+
+    expect(result.success?).to be true
+    rsvps = DB[:rsvps].where(event_id: event[:id], user_id: voter[:id]).all
+    # No duplicate RSVP should have been created
+    expect(rsvps.length).to eq(1)
+    # Existing RSVP should be updated to attending: true
+    expect(rsvps.first[:attending]).to be true
+  end
+
   describe "poll closed emails" do
     before { Mail::TestMailer.deliveries.clear }
 
