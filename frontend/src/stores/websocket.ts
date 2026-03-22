@@ -62,6 +62,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
   // Staleness level of cached data loaded from IndexedDB before the first sync.
   // Cleared once a live sync completes (hasSynced becomes true).
   const cacheStaleLevel = ref<StalenessLevel | null>(null)
+  // Set to true when ticket fetch fails so the loading screen exits and the
+  // connection badge becomes visible even before a first successful sync.
+  const connectionFailed = ref(false)
 
   // Track last sync timestamp per workspace for partial sync
   const syncTimestamps = new Map<string, string>()
@@ -129,7 +132,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
     // If already connecting or connected, skip
     if (state.value !== 'disconnected') return
 
+    connectionFailed.value = false
     state.value = 'connecting'
+    connectionFailed.value = false
 
     try {
       const url = await getWebSocketUrl()
@@ -170,6 +175,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
         router.push({ name: 'login' })
         return
       }
+      // Surface the failure: exit the loading screen so the connection badge
+      // is visible even when hasSynced and hasCachedData are both false.
+      connectionFailed.value = true
       scheduleReconnect()
     }
   }
@@ -397,6 +405,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     state.value = 'disconnected'
     hasSynced.value = false
     hasCachedData.value = false
+    connectionFailed.value = false
   }
 
   function $reset(): void {
@@ -413,6 +422,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     hasSynced,
     hasCachedData,
     cacheStaleLevel,
+    connectionFailed,
     gitSha,
     connect,
     reconnect,

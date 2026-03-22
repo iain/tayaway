@@ -519,3 +519,99 @@ describe('websocket store — cascade delete', () => {
     expect(pool.typeVersions.get('vote')).toBe(voteVersionBefore + 1)
   })
 })
+
+// ---- connectionFailed tests ------------------------------------------------
+
+describe('useWebSocketStore — connectionFailed', () => {
+  beforeEach(() => {
+    installWebSocketMock()
+    setActivePinia(createPinia())
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+    vi.resetModules()
+  })
+
+  it('sets connectionFailed when ticket fetch throws a network error', async () => {
+    const { api } = await import('@/api/client')
+    vi.mocked(api.post).mockRejectedValueOnce(new Error('Network error'))
+
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+
+    expect(store.connectionFailed).toBe(false)
+    await store.connect()
+    expect(store.connectionFailed).toBe(true)
+  })
+
+  it('sets connectionFailed when ticket fetch is aborted (timeout)', async () => {
+    const { api } = await import('@/api/client')
+    const abortError = new DOMException(
+      'The operation was aborted.',
+      'AbortError'
+    )
+    vi.mocked(api.post).mockRejectedValueOnce(abortError)
+
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+
+    expect(store.connectionFailed).toBe(false)
+    await store.connect()
+    expect(store.connectionFailed).toBe(true)
+  })
+
+  it('does not set connectionFailed on a 401 (session expired)', async () => {
+    const { api } = await import('@/api/client')
+    vi.mocked(api.post).mockRejectedValueOnce({
+      status: 401,
+      message: 'Unauthorized',
+    })
+
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+
+    await store.connect()
+    expect(store.connectionFailed).toBe(false)
+  })
+
+  it('does not set connectionFailed on a successful connection', async () => {
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+
+    await store.connect()
+    expect(store.connectionFailed).toBe(false)
+  })
+
+  it('resets connectionFailed on disconnect', async () => {
+    const { api } = await import('@/api/client')
+    vi.mocked(api.post).mockRejectedValueOnce(new Error('Network error'))
+
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+
+    await store.connect()
+    expect(store.connectionFailed).toBe(true)
+
+    store.disconnect()
+    expect(store.connectionFailed).toBe(false)
+  })
+
+  it('resets connectionFailed when a subsequent connect succeeds', async () => {
+    const { api } = await import('@/api/client')
+    vi.mocked(api.post).mockRejectedValueOnce(new Error('Network error'))
+
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+
+    await store.connect()
+    expect(store.connectionFailed).toBe(true)
+
+    // state is 'disconnected' after the failed attempt, so connect() can run again
+    await store.connect()
+    expect(store.connectionFailed).toBe(false)
+  })
+})
