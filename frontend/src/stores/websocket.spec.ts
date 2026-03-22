@@ -338,7 +338,10 @@ describe('useWebSocketStore — connection logging', () => {
 
     lastSocket.onopen!(new Event('open'))
 
-    expect(console.info).toHaveBeenCalledWith('[WebSocket] Connected')
+    expect(console.info).toHaveBeenCalledWith(
+      '[WebSocket] Connected to',
+      expect.stringContaining('ticket=<redacted>')
+    )
   })
 
   it('logs warn on error', async () => {
