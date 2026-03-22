@@ -356,6 +356,46 @@ describe('commandQueue store', () => {
       expect(store.isProcessing).toBe(false)
     })
 
+    it('yields to the event loop between command executions', async () => {
+      vi.useFakeTimers()
+      const store = useCommandQueueStore()
+      store.pendingCount = 2
+
+      const commands = [
+        {
+          id: 'cmd-a',
+          method: 'POST' as const,
+          path: '/api/events',
+          body: {},
+          createdAt: 1,
+        },
+        {
+          id: 'cmd-b',
+          method: 'PUT' as const,
+          path: '/api/events/1',
+          body: {},
+          createdAt: 2,
+        },
+      ]
+      vi.mocked(getPendingCommands).mockResolvedValueOnce(commands)
+      mockedApi.post.mockResolvedValueOnce(okResponse(null))
+      mockedApi.put.mockResolvedValueOnce(okResponse(null))
+
+      const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
+
+      const processing = store.processQueue()
+      await vi.runAllTimersAsync()
+      await processing
+
+      // setTimeout(r, 0) should be called once per command as the event-loop yield
+      const yieldCalls = setTimeoutSpy.mock.calls.filter(
+        ([, delay]) => delay === 0
+      )
+      expect(yieldCalls.length).toBeGreaterThanOrEqual(2)
+
+      vi.useRealTimers()
+    })
+
     it('handles auth errors by stopping and keeping commands', async () => {
       const store = useCommandQueueStore()
       store.pendingCount = 1

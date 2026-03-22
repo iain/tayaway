@@ -115,6 +115,9 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
 
         // Execute coalesced commands, removing original IDs on success
         for (const command of coalesced) {
+          // Yield to the event loop between commands so the browser can paint
+          // frames and handle user input during a long offline replay.
+          await new Promise<void>((r) => setTimeout(r, 0))
           try {
             await executeRequest(command.method, command.path, command.body)
             for (const id of command.originalIds) {
