@@ -22,16 +22,13 @@ module TaskLists
       sig { params(task_list: TaskList).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
       def clear_completed(task_list)
         completed_items = TaskItem.for_task_list(task_list.id).select { |i| !i.completed_at.nil? }
-        deleted = T.let([], T::Array[T::Hash[Symbol, T.untyped]])
+        deleted = []
 
         DB.transaction do
-          completed_items.each do |item|
-            DB[:deleted_items].insert(workspace_id: task_list.workspace_id, object_type: "task_item", object_id: item.id)
-            deleted << { objectType: "taskItem", id: item.id.to_s }
-          end
-
           unless completed_items.empty?
             ids = completed_items.map(&:id)
+            DeletedItems.bulk_insert(task_list.workspace_id, "task_item", ids)
+            deleted = completed_items.map { |item| { objectType: "taskItem", id: item.id.to_s } }
             DB[:task_items].where(id: ids).delete
             completed_items.each do |item|
               Broadcaster.object_deleted("task_item", item.id, workspace_id: task_list.workspace_id)

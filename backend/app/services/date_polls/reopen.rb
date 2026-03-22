@@ -67,8 +67,8 @@ module DatePolls
         DB.transaction do
           # Delete all RSVPs for this event
           rsvp_ids = Rsvp.ids_for_event(event.id)
+          DeletedItems.bulk_insert(event.workspace_id, "rsvp", rsvp_ids)
           rsvp_ids.each do |rid|
-            DB[:deleted_items].insert(workspace_id: event.workspace_id, object_type: "rsvp", object_id: rid)
             Broadcaster.object_deleted("rsvp", rid, workspace_id: event.workspace_id)
           end
           DB[:rsvps].where(event_id: event.id).delete

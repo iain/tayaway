@@ -43,9 +43,6 @@ gem "rake"
 gem "concurrent-ruby-ext", require: "concurrent"
 
 group :development do
-  gem "capistrano", require: false
-  gem "capistrano-bundler", require: false
-
   # listen for file changes
   gem "listen", require: false
 
