@@ -228,6 +228,81 @@ function sendDeleteBroadcast(objectType: string, id: string): void {
   } as MessageEvent)
 }
 
+// ---- Online event listener lifecycle tests ---------------------------------
+
+describe('useWebSocketStore — online listener lifecycle', () => {
+  let addSpy: ReturnType<typeof vi.spyOn>
+  let removeSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    installWebSocketMock()
+    setActivePinia(createPinia())
+    vi.spyOn(console, 'info').mockImplementation(() => {})
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.useFakeTimers()
+    addSpy = vi.spyOn(window, 'addEventListener')
+    removeSpy = vi.spyOn(window, 'removeEventListener')
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+    vi.resetModules()
+  })
+
+  it('does not register the online listener before connect()', async () => {
+    await import('./websocket')
+
+    const onlineCalls = addSpy.mock.calls.filter(([type]) => type === 'online')
+    expect(onlineCalls).toHaveLength(0)
+  })
+
+  it('registers the online listener when connect() is called', async () => {
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+    await store.connect()
+
+    const onlineCalls = addSpy.mock.calls.filter(([type]) => type === 'online')
+    expect(onlineCalls).toHaveLength(1)
+    expect(typeof onlineCalls[0][1]).toBe('function')
+  })
+
+  it('removes the online listener when disconnect() is called', async () => {
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+    await store.connect()
+
+    store.disconnect()
+
+    const removedOnlineCalls = removeSpy.mock.calls.filter(
+      ([type]) => type === 'online'
+    )
+    expect(removedOnlineCalls).toHaveLength(1)
+    // The same function reference is used for add and remove
+    expect(removedOnlineCalls[0][1]).toBe(
+      addSpy.mock.calls.filter(([type]) => type === 'online')[0][1]
+    )
+  })
+
+  it('does not trigger reconnect when online fires after disconnect()', async () => {
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+    await store.connect()
+    store.disconnect()
+
+    // Grab the handler that was registered and removed
+    const addedHandler = addSpy.mock.calls.find(
+      ([type]) => type === 'online'
+    )![1] as EventListener
+
+    // Manually invoke it as if the browser fired the event
+    addedHandler(new Event('online'))
+
+    // State should remain disconnected — no reconnect was triggered
+    expect(store.state).toBe('disconnected')
+  })
+})
+
 // ---- Connection logging tests ----------------------------------------------
 
 describe('useWebSocketStore — connection logging', () => {
