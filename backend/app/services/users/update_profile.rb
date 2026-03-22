@@ -163,9 +163,10 @@ module Users
             update_data[:birthday] = birthday.strip.empty? ? nil : Date.parse(birthday)
           end
 
-          # IBAN: blank -> nil, otherwise normalize (strip spaces, uppercase)
+          # IBAN: blank -> nil, otherwise normalize and encrypt
           unless iban.nil?
-            update_data[:iban] = iban.strip.empty? ? nil : iban.gsub(/\s/, "").upcase
+            normalized = iban.strip.empty? ? nil : iban.gsub(/\s/, "").upcase
+            update_data[:iban] = normalized ? Encryption.encrypt(normalized) : nil
           end
 
           # Location: blank -> clear both, otherwise set both

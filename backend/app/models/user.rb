@@ -56,6 +56,14 @@ class User < T::Struct
 
     private
 
+    sig { params(value: T.nilable(String)).returns(T.nilable(String)) }
+    def decrypt_iban(value)
+      return nil if value.nil?
+      return value unless Encryption.encrypted?(value)
+
+      Encryption.decrypt(value)
+    end
+
     sig { returns(Sequel::Dataset) }
     def dataset
       DB[:users].with_row_proc(method(:from_row))
@@ -71,7 +79,7 @@ class User < T::Struct
         birthday: row[:birthday],
         location_name: row[:location_name],
         location_coordinates: PointParser.parse(row[:location_coordinates]),
-        iban: row[:iban],
+        iban: decrypt_iban(row[:iban]),
         created_at: row[:created_at],
         updated_at: row[:updated_at]
       )
