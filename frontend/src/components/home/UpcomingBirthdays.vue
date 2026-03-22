@@ -8,7 +8,6 @@ import type { PoolMember } from '@/types/pool'
 
 defineProps<{
   members: PoolMember[]
-  addTopMargin: boolean
 }>()
 
 function formatBirthdayDate(member: PoolMember): string {
@@ -33,7 +32,7 @@ function formatBirthdayDate(member: PoolMember): string {
 </script>
 
 <template>
-  <section :class="addTopMargin ? 'mt-8' : ''">
+  <section>
     <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
       Upcoming birthdays
     </h2>

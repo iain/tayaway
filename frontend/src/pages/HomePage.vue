@@ -230,7 +230,7 @@ async function handleCreateEvent(
       icon-class="text-green-400 dark:text-green-500"
     />
 
-    <template v-else>
+    <div v-else class="flex flex-col gap-8">
       <TodayBirthdays
         v-if="todayBirthdays.length > 0"
         :members="todayBirthdays"
@@ -239,7 +239,6 @@ async function handleCreateEvent(
       <UpcomingBirthdays
         v-if="upcomingBirthdays.length > 0"
         :members="upcomingBirthdays"
-        :add-top-margin="todayBirthdays.length > 0"
       />
 
       <OpenSettlementsSection
@@ -247,7 +246,6 @@ async function handleCreateEvent(
         :transfers-owed-to-you="transfersOwedToYou"
         :transfers-you-owe="transfersYouOwe"
         :has-iban="!!user?.iban"
-        :add-top-margin="hasBirthdays"
       />
 
       <HappeningNowSection
@@ -255,7 +253,6 @@ async function handleCreateEvent(
         :events="currentEvents"
         :attendee-count-by-event="attendeeCountByEvent"
         :unpaid-transfer-count-by-event="unpaidTransferCountByEvent"
-        :add-top-margin="hasBirthdays || myUnpaidTransfers.length > 0"
       />
 
       <PastEventsOpenExpenses
@@ -263,36 +260,18 @@ async function handleCreateEvent(
         :events="pastEventsWithOpenExpenses"
         :unsettled-expense-count-by-event="unsettledExpenseCountByEvent"
         :unpaid-transfer-count-by-event="unpaidTransferCountByEvent"
-        :add-top-margin="
-          currentEvents.length > 0 ||
-          myUnpaidTransfers.length > 0 ||
-          hasBirthdays
-        "
       />
 
       <PollsNeedingAttention
         v-if="pollsNeedingAttention.length > 0"
         :polls="pollsNeedingAttention"
-        :add-top-margin="
-          currentEvents.length > 0 ||
-          pastEventsWithOpenExpenses.length > 0 ||
-          myUnpaidTransfers.length > 0 ||
-          hasBirthdays
-        "
       />
 
       <EventsNeedingRsvp
         v-if="eventsNeedingRsvp.length > 0"
         :events="eventsNeedingRsvp"
-        :add-top-margin="
-          pollsNeedingAttention.length > 0 ||
-          pastEventsWithOpenExpenses.length > 0 ||
-          currentEvents.length > 0 ||
-          myUnpaidTransfers.length > 0 ||
-          hasBirthdays
-        "
       />
-    </template>
+    </div>
 
     <AddEventModal
       :open="showEventModal"

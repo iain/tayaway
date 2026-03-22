@@ -9,7 +9,6 @@ import BaseCard from '@/components/common/BaseCard.vue'
 
 defineProps<{
   events: RsvpEventItem[]
-  addTopMargin: boolean
 }>()
 
 const router = useRouter()
@@ -20,7 +19,7 @@ function navigateToEventPage(eventId: string): void {
 </script>
 
 <template>
-  <section :class="addTopMargin ? 'mt-8' : ''">
+  <section>
     <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
       Events awaiting your RSVP
     </h2>

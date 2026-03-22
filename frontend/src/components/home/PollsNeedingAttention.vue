@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { ChevronRightIcon, ClockIcon, InboxIcon } from '@heroicons/vue/24/outline'
+import {
+  ChevronRightIcon,
+  ClockIcon,
+  InboxIcon,
+} from '@heroicons/vue/24/outline'
 import {
   formatDeadline,
   isUrgent,
@@ -12,7 +16,6 @@ import AppBadge from '@/components/common/AppBadge.vue'
 
 defineProps<{
   polls: PollItem[]
-  addTopMargin: boolean
 }>()
 
 const router = useRouter()
@@ -23,7 +26,7 @@ function navigateToEvent(eventId: string): void {
 </script>
 
 <template>
-  <section :class="addTopMargin ? 'mt-8' : ''">
+  <section>
     <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
       Polls awaiting your vote
     </h2>
