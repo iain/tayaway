@@ -38,8 +38,9 @@ RACK_ENV=e2e bundle exec rake db:reset
 
 **PR review and merge workflow:**
 
-- When reviewing PRs, submit a formal verdict by adding a label: `ready to merge` for approved PRs, or leave a `REQUEST_CHANGES` comment and do **not** add the label.
-- When merging PRs, only merge PRs that have the `ready to merge` label. Use squash merges.
+- **Creating PRs:** Never add the `ready to merge` label when creating a PR. PRs must be reviewed first.
+- **Reviewing PRs:** Perform a thorough review covering correctness, reliability, security, performance, and code style. Only add the `ready to merge` label if the review found zero issues — not even minor ones. If any issues are found (including minor suggestions), leave review comments and do **not** add the label.
+- **Merging PRs:** Only merge PRs that have the `ready to merge` label. Use squash merges.
 - PRs in draft status are not ready for review or merge — skip them unless explicitly asked to include drafts.
 
 ## Architecture
