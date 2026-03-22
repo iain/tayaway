@@ -37,17 +37,17 @@ module ChoreRosters
                            .where(Sequel[:chore_assignments][:pinned] => false)
                            .select_map(Sequel[:chore_assignments][:id])
 
-          non_pinned_ids.each do |aid|
-            DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "chore_assignment", object_id: aid)
-            Broadcaster.object_deleted("chore_assignment", aid, workspace_id: workspace_id)
-            deleted << { objectType: "choreAssignment", id: aid.to_s }
+          if non_pinned_ids.any?
+            deleted_rows = non_pinned_ids.map do |aid|
+              { workspace_id: workspace_id, object_type: "chore_assignment", object_id: aid }
+            end
+            DB[:deleted_items].multi_insert(deleted_rows)
+            deleted = non_pinned_ids.map { |aid| { objectType: "choreAssignment", id: aid.to_s } }
+            DB[:chore_assignments].where(id: non_pinned_ids).delete
           end
 
-          if non_pinned_ids.any?
-            DB[:chore_assignments]
-              .where(id: non_pinned_ids)
-              .delete
-          end
+          # Single broadcast for the entire roster change instead of one per deleted assignment
+          Broadcaster.object_changed("chore_roster", roster.id, workspace_id: workspace_id)
         end
 
         T.cast(Success({ deleted: deleted }), Result[T::Hash[Symbol, T.untyped], ServiceError])
