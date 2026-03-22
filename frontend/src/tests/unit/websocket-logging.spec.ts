@@ -64,6 +64,7 @@ class MockWebSocket {
   close = vi.fn()
   send = vi.fn()
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   constructor(_url: string) {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     lastSocket = this
@@ -224,9 +225,7 @@ describe('WebSocket store — connection logging', () => {
 
       expect(lastSocket).toBeDefined()
       // Trigger close → scheduleReconnect
-      lastSocket.onclose?.(
-        new CloseEvent('close', { code: 1006, reason: '' })
-      )
+      lastSocket.onclose?.(new CloseEvent('close', { code: 1006, reason: '' }))
 
       expect(console.info).toHaveBeenCalledWith(
         expect.stringContaining('Reconnect attempt 1 scheduled in')
