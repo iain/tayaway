@@ -18,6 +18,8 @@ When implementing a feature or fix, start coding after minimal exploration. Do n
 
 All commands run through mise. See `GETTING_STARTED.md` for the full list.
 
+**Deploying:** Run `bundle exec cap production deploy` from the **repo root** (not from `backend/`). Capistrano's config lives at the repo root (`Capfile`, `config/deploy.rb`).
+
 **Before committing:** Always run `mise run fix` and ensure it passes. This runs all CI checks (lint, typecheck, tests, e2e) and auto-fixes lint issues where possible.
 
 Run a single test:

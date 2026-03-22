@@ -1,7 +1,11 @@
 # typed: true
 # frozen_string_literal: true
 
+VALID_ENVIRONMENTS = %w[production development test e2e].freeze
 APP_ENV = ENV.fetch("RACK_ENV", "development")
+unless VALID_ENVIRONMENTS.include?(APP_ENV)
+  raise "Invalid RACK_ENV=#{APP_ENV.inspect}. Must be one of: #{VALID_ENVIRONMENTS.join(", ")}"
+end
 APP_DIR = Pathname(File.expand_path("..", __dir__))
 
 require "bundler/setup"

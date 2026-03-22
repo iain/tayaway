@@ -19,6 +19,7 @@ run = "echo 'Development servers started'"
 
 [tasks."serve:backend"]
 description = "Start backend dev server"
+depends = ["db:seed"]
 dir = "{{config_root}}/backend"
 env = { OBJC_DISABLE_INITIALIZE_FORK_SAFETY = "YES" }
 run = "bundle exec falcon serve --bind http://localhost:9292"
