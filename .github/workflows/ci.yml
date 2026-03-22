@@ -75,7 +75,7 @@ jobs:
         run: cd backend && bundle exec rake db:create db:migrate
 
       - name: Lint, typecheck, and test
-        run: mise run lint ::: typecheck ::: test
+        run: mise run check
 
   e2e:
     if: github.ref == 'refs/heads/main'

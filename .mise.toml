@@ -42,6 +42,11 @@ run = "pnpm run build"
 
 # ── CI / Test / Lint / Typecheck ─────────────────────────────────────────────
 
+[tasks.check]
+description = "Run lint, typecheck, and tests in parallel (no e2e)"
+depends = ["lint:frontend", "lint:backend", "typecheck:frontend", "typecheck:backend", "test:frontend", "test:backend"]
+run = "echo 'All checks complete'"
+
 [tasks.ci]
 description = "Run all CI checks (lint, typecheck, tests, e2e) in parallel"
 depends = ["lint:frontend", "lint:backend", "typecheck:frontend", "typecheck:backend", "test:frontend", "test:backend", "test:e2e"]
