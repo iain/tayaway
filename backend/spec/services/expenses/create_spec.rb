@@ -92,11 +92,18 @@ RSpec.describe Expenses::Create do
       expect(result.failure.message).to eq("Start date and end date are required")
       expect(result.failure.http_status).to eq(400)
     end
+
+    it "fails when end_date is nil" do
+      result = described_class.call(**valid_params, end_date: nil)
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Start date and end date are required")
+      expect(result.failure.http_status).to eq(400)
+    end
   end
 
   describe "event date range validation" do
-    it "fails when expense dates fall outside event date range" do
-      # Set event dates to a narrow range
+    it "fails when expense start_date is before event start_date" do
       DB[:events].where(id: event[:id]).update(
         start_date: Date.parse("2026-01-10"),
         end_date: Date.parse("2026-01-20")
@@ -104,6 +111,20 @@ RSpec.describe Expenses::Create do
       TestFactories.rsvp(event: event, user: user, attending: true)
 
       result = described_class.call(**valid_params, start_date: "2026-01-05", end_date: "2026-01-15")
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Expense dates must fall within event date range")
+      expect(result.failure.http_status).to eq(400)
+    end
+
+    it "fails when expense end_date is after event end_date" do
+      DB[:events].where(id: event[:id]).update(
+        start_date: Date.parse("2026-01-10"),
+        end_date: Date.parse("2026-01-20")
+      )
+      TestFactories.rsvp(event: event, user: user, attending: true)
+
+      result = described_class.call(**valid_params, start_date: "2026-01-15", end_date: "2026-01-25")
 
       expect(result.failure?).to be true
       expect(result.failure.message).to eq("Expense dates must fall within event date range")
