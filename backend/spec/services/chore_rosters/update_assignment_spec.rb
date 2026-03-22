@@ -54,6 +54,21 @@ RSpec.describe ChoreRosters::UpdateAssignment do
     expect(chore_obj).not_to be_nil
   end
 
+  it "clears an existing note when an empty string is given" do
+    DB[:chore_assignments].where(id: assignment[:id]).update(note: "Old note")
+
+    result = described_class.call(
+      assignment_id: assignment[:id],
+      roster_id: roster[:id],
+      workspace_id: workspace[:id],
+      note: ""
+    )
+
+    expect(result.success?).to be true
+    updated = result.value![:objects].find { |o| o[:objectType] == "choreAssignment" }
+    expect(updated[:note]).to eq("")
+  end
+
   it "fails when no changes provided" do
     result = described_class.call(
       assignment_id: assignment[:id],

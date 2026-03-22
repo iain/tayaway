@@ -52,7 +52,7 @@ module ChoreRosters
       end
       def update(assignment, workspace_id, note, user_id, pinned)
         updates = {}
-        updates[:note] = note if note
+        updates[:note] = note unless note.nil?
         updates[:user_id] = user_id if user_id
         updates[:pinned] = pinned unless pinned.nil?
 
