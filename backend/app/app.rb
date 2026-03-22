@@ -67,6 +67,14 @@ class App < Roda
     @_current_user = session ? User.find(session.user_id) : nil
   end
 
+  # Mask an IBAN for display: "NL02 •••• •••• 5678" — first 4 and last 4 visible.
+  def mask_iban(iban)
+    return nil if iban.nil?
+    return iban if iban.length <= 8
+
+    "#{iban[0, 4]} #{"•••• " * ((iban.length - 8) / 4)}#{iban[-4, 4]}"
+  end
+
   CSRF_HEADER = T.let("HTTP_X_CSRF_PROTECTION", String)
   CSRF_MUTATING_METHODS = T.let(%w[POST PUT PATCH DELETE].freeze, T::Array[String])
 

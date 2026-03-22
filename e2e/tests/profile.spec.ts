@@ -136,7 +136,7 @@ test.describe('Profile Feature', () => {
       const meResponse = await apiContext.get(`${API_BASE}/api/auth/me`)
       expect(meResponse.ok()).toBeTruthy()
       const meBody = await meResponse.json()
-      expect(meBody.iban).toBe('NL91ABNA0417164300')
+      expect(meBody.iban).toBe('NL91 •••• •••• 4300')
 
       // Clear IBAN
       const clearResponse = await apiContext.put(
@@ -366,18 +366,18 @@ test.describe('Profile Feature', () => {
       // Modal should close
       await expect(page.getByRole('dialog')).toBeHidden()
 
-      // IBAN should now appear on the profile page
-      await expect(page.getByText('NL91ABNA0417164300')).toBeVisible()
+      // Masked IBAN should appear on the profile page
+      await expect(page.getByText('NL91 •••• •••• 4300')).toBeVisible()
 
       // Edit again to clear it
       await page.getByTestId('edit-iban-button').click()
       await expect(page.getByRole('dialog')).toBeVisible()
 
-      // Modal should be pre-filled with current IBAN
+      // Modal should start empty (IBAN is masked, not pre-filled)
       const ibanInputAgain = page.getByLabel('IBAN')
-      await expect(ibanInputAgain).toHaveValue('NL91ABNA0417164300')
-      await ibanInputAgain.clear()
+      await expect(ibanInputAgain).toHaveValue('')
 
+      // Click "Remove IBAN" to clear it
       await Promise.all([
         page.waitForResponse(
           (resp) =>
@@ -385,13 +385,13 @@ test.describe('Profile Feature', () => {
             resp.request().method() === 'PUT' &&
             resp.status() === 200
         ),
-        page.getByRole('button', { name: 'Save' }).click(),
+        page.getByRole('button', { name: 'Remove IBAN' }).click(),
       ])
 
       await expect(page.getByRole('dialog')).toBeHidden()
 
-      // IBAN should no longer be visible on the page
-      await expect(page.getByText('NL91ABNA0417164300')).not.toBeVisible()
+      // Masked IBAN should no longer be visible
+      await expect(page.getByText('NL91 •••• •••• 4300')).not.toBeVisible()
     })
 
     test('can end a non-current session from the sessions list', async ({

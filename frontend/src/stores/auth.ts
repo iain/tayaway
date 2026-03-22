@@ -20,6 +20,13 @@ import type {
 } from '@/types'
 import type { PoolApiResponse } from '@/types/pool'
 
+/** Mask an IBAN for display: "NL02 •••• •••• 5678" */
+function maskIban(iban: string): string {
+  if (iban.length <= 8) return iban
+  const middle = Math.floor((iban.length - 8) / 4)
+  return `${iban.slice(0, 4)} ${'•••• '.repeat(middle)}${iban.slice(-4)}`
+}
+
 const AUTH_USER_KEY = 'tayaway_auth_user'
 const AUTH_USER_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 
@@ -293,7 +300,8 @@ export const useAuthStore = defineStore('auth', () => {
       user.value.locationName = fields.locationName
     if (fields.latitude !== undefined) user.value.latitude = fields.latitude
     if (fields.longitude !== undefined) user.value.longitude = fields.longitude
-    if (fields.iban !== undefined) user.value.iban = fields.iban || null
+    if (fields.iban !== undefined)
+      user.value.iban = fields.iban ? maskIban(fields.iban) : null
 
     try {
       const apiCall = (commandQueue: ReturnType<typeof useCommandQueueStore>) =>

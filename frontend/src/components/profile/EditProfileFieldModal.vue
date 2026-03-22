@@ -55,6 +55,7 @@ const title = computed(() => titles[props.field])
 
 const canSave = computed(() => {
   if (props.field === 'name') return !!name.value.trim()
+  if (props.field === 'iban') return !!iban.value.trim()
   return true
 })
 
@@ -68,7 +69,7 @@ watch(
       locationName.value = props.currentLocationName ?? ''
       latitude.value = props.currentLatitude
       longitude.value = props.currentLongitude
-      iban.value = props.currentIban ?? ''
+      iban.value = ''
     }
   }
 )
@@ -171,6 +172,15 @@ function handleClose(): void {
           Your IBAN is used to generate QR codes for bank transfers. It is never
           shared directly with other members.
         </p>
+        <button
+          v-if="currentIban"
+          type="button"
+          class="text-xs font-medium text-red-600 hover:text-red-500 dark:text-red-400 dark:hover:text-red-300"
+          :disabled="loading"
+          @click="emit('save', { iban: '' })"
+        >
+          Remove IBAN
+        </button>
       </template>
 
       <FormActions
