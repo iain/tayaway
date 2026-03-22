@@ -129,12 +129,15 @@ const router = createRouter({
   ],
 })
 
-router.onError((error) => {
-  const isChunkError =
-    error instanceof TypeError ||
-    /Loading chunk|Failed to fetch dynamically imported module/.test(error.message)
+export function isChunkLoadError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+  return /Loading chunk|Failed to fetch dynamically imported module/.test(
+    error.message
+  )
+}
 
-  if (!isChunkError) return
+router.onError((error) => {
+  if (!isChunkLoadError(error)) return
 
   const reloadKey = 'chunk_load_error_reloaded'
   if (sessionStorage.getItem(reloadKey)) return
