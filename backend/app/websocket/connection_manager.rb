@@ -42,8 +42,6 @@ module Websocket
 
     sig { params(connection_id: String).void }
     def unregister(connection_id)
-      user_id = T.let(nil, T.nilable(String))
-      total = T.let(0, Integer)
       @mutex.synchronize do
         connection = @connections.delete(connection_id)
         return unless connection
@@ -59,13 +57,12 @@ module Websocket
           @workspace_connections.delete(workspace_id) if ws_conns.empty?
         end
         total = @connections.size
+        APP_LOGGER.info { "[ConnectionManager] User #{user_id} disconnected (conn: #{connection_id}, total: #{total})" }
       end
-      APP_LOGGER.info { "[ConnectionManager] User #{user_id} disconnected (conn: #{connection_id}, total: #{total})" }
     end
 
     sig { params(connection_id: String, workspace_ids: T::Array[String]).void }
     def set_workspaces(connection_id, workspace_ids)
-      user_id = T.let(nil, T.nilable(String))
       @mutex.synchronize do
         connection = @connections[connection_id]
         return unless connection
@@ -87,8 +84,8 @@ module Websocket
           @workspace_connections[ws_id] ||= Set.new
           T.must(@workspace_connections[ws_id]).add(connection_id)
         end
+        APP_LOGGER.info { "[ConnectionManager] User #{user_id} switched workspaces (conn: #{connection_id}, workspaces: #{workspace_ids.join(', ')})" }
       end
-      APP_LOGGER.info { "[ConnectionManager] User #{user_id} switched workspaces (conn: #{connection_id}, workspaces: #{workspace_ids.join(', ')})" }
     end
 
     sig { params(connection_id: String).void }

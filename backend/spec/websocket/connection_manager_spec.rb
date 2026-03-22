@@ -88,9 +88,35 @@ RSpec.describe Websocket::ConnectionManager do
     it "is a no-op for an unknown connection ID" do
       expect { manager.unregister(SecureRandom.uuid) }.not_to raise_error
     end
+
+    it "does not log when the connection is not found" do
+      expect(APP_LOGGER).not_to receive(:info).with(anything)
+
+      manager.unregister(SecureRandom.uuid)
+    end
+
+    it "logs with the correct user ID and total when the connection is found" do
+      user_id = SecureRandom.uuid
+      conn_id = manager.register(FakeWebsocket.new, user_id)
+      manager.register(FakeWebsocket.new, SecureRandom.uuid) # one extra connection
+
+      expect(APP_LOGGER).to receive(:info) do |&block|
+        msg = block.call
+        expect(msg).to include(user_id)
+        expect(msg).to include("total: 1")
+      end
+
+      manager.unregister(conn_id)
+    end
   end
 
   describe "#set_workspaces" do
+    it "does not log when the connection is not found" do
+      expect(APP_LOGGER).not_to receive(:info).with(anything)
+
+      manager.set_workspaces(SecureRandom.uuid, [SecureRandom.uuid])
+    end
+
     it "associates the connection with the given workspaces" do
       ws = FakeWebsocket.new
       workspace_id = SecureRandom.uuid
