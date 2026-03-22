@@ -26,9 +26,7 @@ class App < Roda
     Pathname
   )
 
-  if STATIC_DIR.directory?
-    plugin :public, root: STATIC_DIR.to_s
-  end
+  plugin :public, root: STATIC_DIR.to_s
 
   Sequel.extension(:pg_json_ops)
 

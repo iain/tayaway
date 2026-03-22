@@ -4,6 +4,15 @@
 require "spec_helper"
 
 RSpec.describe "SPA fallback" do
+  before do
+    FileUtils.mkdir_p(App::STATIC_DIR.to_s)
+    File.write(App::STATIC_DIR.join("index.html"), "<html><body>App</body></html>")
+  end
+
+  after do
+    FileUtils.rm_rf(App::STATIC_DIR.to_s)
+  end
+
   describe "GET /" do
     it "returns Cache-Control: no-cache to prevent stale index.html after deploy" do
       get "/"
