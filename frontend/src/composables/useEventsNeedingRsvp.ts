@@ -20,7 +20,6 @@ export function useEventsNeedingRsvp() {
   const { now } = useNow()
 
   const eventsNeedingRsvp = computed<RsvpEventItem[]>(() => {
-    void pool.version
     const userId = currentUserId.value
     if (!userId) return []
 

@@ -47,7 +47,9 @@ const notificationsMocks = vi.hoisted(() => ({
 
 vi.mock('@/api/client', () => ({
   api: {
-    post: vi.fn().mockResolvedValue({ data: { ticket: 'test-ticket' }, status: 200 }),
+    post: vi
+      .fn()
+      .mockResolvedValue({ data: { ticket: 'test-ticket' }, status: 200 }),
   },
 }))
 
@@ -260,7 +262,9 @@ describe('useWebSocketStore — online listener lifecycle', () => {
   it('does not register the online listener before connect()', async () => {
     await import('./websocket')
 
-    const onlineCalls = addSpy.mock.calls.filter(([type]: [string]) => type === 'online')
+    const onlineCalls = addSpy.mock.calls.filter(
+      ([type]: [string]) => type === 'online'
+    )
     expect(onlineCalls).toHaveLength(0)
   })
 
@@ -269,7 +273,9 @@ describe('useWebSocketStore — online listener lifecycle', () => {
     const store = useWebSocketStore()
     await store.connect()
 
-    const onlineCalls = addSpy.mock.calls.filter(([type]: [string]) => type === 'online')
+    const onlineCalls = addSpy.mock.calls.filter(
+      ([type]: [string]) => type === 'online'
+    )
     expect(onlineCalls).toHaveLength(1)
     expect(typeof onlineCalls[0][1]).toBe('function')
   })
@@ -586,8 +592,9 @@ describe('websocket store — cascade delete', () => {
       makeVote({ id: 'vote-3', dateRangeId: 'dr-1' }),
     ])
 
-    const versionBefore = pool.version
-    const voteVersionBefore = pool.typeVersions.get('vote')!
+    const voteVersionBefore = pool.getVersion('vote')
+    // Type not involved should not change
+    const taskItemVersionBefore = pool.getVersion('taskItem')
 
     sendDeleteBroadcast('event', 'evt-1')
 
@@ -599,10 +606,10 @@ describe('websocket store — cascade delete', () => {
     expect(pool.get('vote', 'vote-2')).toBeUndefined()
     expect(pool.get('vote', 'vote-3')).toBeUndefined()
 
-    // Version bumped exactly once (one bumpVersion call for all types together)
-    expect(pool.version).toBe(versionBefore + 1)
     // vote type version bumped only once despite 3 votes being deleted
-    expect(pool.typeVersions.get('vote')).toBe(voteVersionBefore + 1)
+    expect(pool.getVersion('vote')).toBe(voteVersionBefore + 1)
+    // Unaffected types must not be bumped
+    expect(pool.getVersion('taskItem')).toBe(taskItemVersionBefore)
   })
 })
 

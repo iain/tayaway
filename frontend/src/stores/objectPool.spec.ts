@@ -567,11 +567,49 @@ describe('objectPool store', () => {
 
     it('does nothing with empty map', () => {
       const pool = useObjectPoolStore()
-      const versionBefore = pool.version
+      const eventVersionBefore = pool.getVersion('event')
 
       pool.restorePendingUpdates(new Map())
 
-      expect(pool.version).toBe(versionBefore)
+      expect(pool.getVersion('event')).toBe(eventVersionBefore)
+    })
+  })
+
+  describe('getVersion', () => {
+    it('returns 0 for an untouched type', () => {
+      const pool = useObjectPoolStore()
+      expect(pool.getVersion('event')).toBe(0)
+    })
+
+    it('increments only the affected type when an object is imported', () => {
+      const pool = useObjectPoolStore()
+      const eventVersionBefore = pool.getVersion('event')
+      const taskItemVersionBefore = pool.getVersion('taskItem')
+
+      pool.importObjects([makeEvent()])
+
+      expect(pool.getVersion('event')).toBe(eventVersionBefore + 1)
+      // Unrelated type must not be bumped
+      expect(pool.getVersion('taskItem')).toBe(taskItemVersionBefore)
+    })
+
+    it('increments only the affected type when an object is set', () => {
+      const pool = useObjectPoolStore()
+      const taskItemVersionBefore = pool.getVersion('taskItem')
+
+      pool.set(makeEvent())
+
+      expect(pool.getVersion('taskItem')).toBe(taskItemVersionBefore)
+    })
+
+    it('increments only the affected type when an object is removed', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeEvent()])
+      const taskItemVersionBefore = pool.getVersion('taskItem')
+
+      pool.remove('event', 'evt-1')
+
+      expect(pool.getVersion('taskItem')).toBe(taskItemVersionBefore)
     })
   })
 
@@ -845,19 +883,20 @@ describe('objectPool store', () => {
         makeVote({ id: 'vote-4', dateRangeId: 'dr-2' }),
       ])
 
-      const versionBefore = pool.version
-      const pollVersionBefore = pool.typeVersions.get('datePoll')!
-      const dateRangeVersionBefore = pool.typeVersions.get('dateRange')!
-      const voteVersionBefore = pool.typeVersions.get('vote')!
+      const pollVersionBefore = pool.getVersion('datePoll')
+      const dateRangeVersionBefore = pool.getVersion('dateRange')
+      const voteVersionBefore = pool.getVersion('vote')
+      // Types not involved should not change
+      const taskItemVersionBefore = pool.getVersion('taskItem')
 
       pool.cascadeRemove('event', 'evt-1')
 
-      // Global version should increment by exactly 1 (one bumpVersion call)
-      expect(pool.version).toBe(versionBefore + 1)
-      // Each affected type version should also only increment by 1
-      expect(pool.typeVersions.get('datePoll')).toBe(pollVersionBefore + 1)
-      expect(pool.typeVersions.get('dateRange')).toBe(dateRangeVersionBefore + 1)
-      expect(pool.typeVersions.get('vote')).toBe(voteVersionBefore + 1)
+      // Each affected type version should increment by exactly 1 (one bumpVersion call)
+      expect(pool.getVersion('datePoll')).toBe(pollVersionBefore + 1)
+      expect(pool.getVersion('dateRange')).toBe(dateRangeVersionBefore + 1)
+      expect(pool.getVersion('vote')).toBe(voteVersionBefore + 1)
+      // Unaffected types must not be bumped
+      expect(pool.getVersion('taskItem')).toBe(taskItemVersionBefore)
     })
 
     it('clears pending updates for removed objects', () => {
