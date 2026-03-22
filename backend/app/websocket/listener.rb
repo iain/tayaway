@@ -89,7 +89,7 @@ module Websocket
         end
       rescue StandardError => e
         if running_flag.true?
-          APP_LOGGER.error { "[Listener] Error in listen loop: #{e.message}" }
+          APP_LOGGER.error { "[Listener] Error in listen loop: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
           APP_LOGGER.info { "[Listener] Retrying in #{RETRY_DELAY} seconds..." }
           sleep RETRY_DELAY if running_flag.true?
         end
@@ -135,7 +135,7 @@ module Websocket
       rescue JSON::ParserError => e
         APP_LOGGER.error { "[Listener] Invalid JSON payload: #{e.message}" }
       rescue StandardError => e
-        APP_LOGGER.error { "[Listener] Error handling notification: #{e.message}" }
+        APP_LOGGER.error { "[Listener] Error handling notification: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
       end
     end
   end
