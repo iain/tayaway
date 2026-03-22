@@ -116,6 +116,20 @@ describe('useMutation', () => {
       expect(pool.get('event', 'temp-1')?.name).toBe('New Event')
     })
 
+    it('marks temp object with isTemp flag so it survives replaceObjects during sync', async () => {
+      const pool = useObjectPoolStore()
+      const { create } = useMutation()
+      const temp = makeEvent({ id: 'temp-1', name: 'Queued Event' })
+
+      await create('fail', temp, async () => okResponse({ id: 'real-1' }))
+
+      // Simulate a full sync that replaces all objects without the temp ID
+      pool.replaceObjects([makeEvent({ id: 'other-1', name: 'Server Event' })])
+
+      // Temp object must survive the sync because it was flagged as isTemp
+      expect(pool.get('event', 'temp-1')?.name).toBe('Queued Event')
+    })
+
     it('keeps temp object on CommandQueuedError', async () => {
       const pool = useObjectPoolStore()
       const { create } = useMutation()
