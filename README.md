@@ -95,7 +95,6 @@ The app uses a normalized **object pool** pattern for state management:
 5. Vue reactivity re-renders affected components automatically
 6. On reconnect, partial sync via `since=<timestamp>` fetches only changed objects
 
-
 ### Data Model
 
 ```
@@ -117,6 +116,36 @@ Users belong to workspaces through memberships (owner/admin/member roles). All d
 ### Deployment
 
 Production deploys via Capistrano to localhost over SSH. Falcon runs as a systemd service behind Nginx, which serves static frontend assets and proxies API/WebSocket requests.
+
+## Claude Code Agents
+
+Custom agents in `.claude/agents/` automate development workflows.
+
+### `bugfix`
+
+Picks up a GitHub issue, implements the fix in an isolated worktree, runs tests, and opens a PR.
+
+```
+@bugfix fix #42
+```
+
+- Reads the issue, plans the fix, implements, tests, and self-reviews
+- Runs in an isolated git worktree (won't touch your working tree)
+- Uses [Impeccable](https://github.com/ridemountainpig/impeccable) skills for UI/UX changes
+- Escalates architectural decisions back to you instead of guessing
+
+### `fix-issues`
+
+Orchestrator that batch-fixes all open issues matching a label filter. Spawns parallel `bugfix` agents, one per issue.
+
+```
+@fix-issues fix all issues with label reliability
+@fix-issues fix all critical backend bugs, mark PRs ready
+```
+
+- Fetches matching issues from GitHub, launches parallel agents in isolated worktrees
+- Tracks completions and reports a summary table with PR links
+- Copies labels from issues to PRs
 
 ## License
 
