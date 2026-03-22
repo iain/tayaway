@@ -85,6 +85,8 @@ class Session < T::Struct
     def touch_activity(session)
       return unless session.activity_update_needed?
 
+      # Intentionally updates only the DB row; the in-memory `session` struct
+      # remains stale. This is fine — the struct is not reused after the touch.
       DB.transaction(savepoint: true) do
         DB[:sessions].where(id: session.id.to_s).update(last_active_at: Time.now)
       end
