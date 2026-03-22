@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require "json"
+require "concurrent"
 
 module Websocket
   # Background task that listens for PostgreSQL NOTIFY events, fetches the
@@ -23,9 +24,9 @@ module Websocket
 
       sig { void }
       def start
-        return if @running
+        return if running_flag.true?
 
-        @running = true
+        running_flag.make_true
         @listen_db = T.let(nil, T.nilable(Sequel::Database))
         @thread = Thread.new { run_loop }
         @thread.abort_on_exception = true
@@ -34,9 +35,9 @@ module Websocket
 
       sig { void }
       def stop
-        return unless @running
+        return unless running_flag.true?
 
-        @running = false
+        running_flag.make_false
         # Disconnect the listen connection to unblock the listen loop
         @listen_db&.disconnect
         @thread&.join(RETRY_DELAY + 1)
@@ -46,7 +47,7 @@ module Websocket
 
       sig { returns(T::Boolean) }
       def running?
-        !!@running
+        running_flag.true?
       end
 
       sig { params(object_type: String).returns(T.untyped) }
@@ -65,9 +66,14 @@ module Websocket
 
       private
 
+      sig { returns(Concurrent::AtomicBoolean) }
+      def running_flag
+        @_running_flag ||= T.let(Concurrent::AtomicBoolean.new(false), T.nilable(Concurrent::AtomicBoolean))
+      end
+
       sig { void }
       def run_loop
-        while @running
+        while running_flag.true?
           listen_with_retry
         end
       end
@@ -77,15 +83,15 @@ module Websocket
         # Create a dedicated connection for listening (stored for graceful shutdown)
         @listen_db = Sequel.connect(ENV.fetch("DATABASE_URL"))
         @listen_db.listen(CHANNEL, loop: true) do |_channel, _pid, payload|
-          break unless @running
+          break unless running_flag.true?
 
           handle_notification(payload)
         end
       rescue StandardError => e
-        if @running
+        if running_flag.true?
           APP_LOGGER.error { "[Listener] Error in listen loop: #{e.message}" }
           APP_LOGGER.info { "[Listener] Retrying in #{RETRY_DELAY} seconds..." }
-          sleep RETRY_DELAY if @running
+          sleep RETRY_DELAY if running_flag.true?
         end
       ensure
         @listen_db&.disconnect
