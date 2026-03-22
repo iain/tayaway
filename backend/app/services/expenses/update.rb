@@ -84,8 +84,14 @@ module Expenses
               Result[Expense, ServiceError]
             )
           end
-          parsed_sd = Date.parse(sd)
-          parsed_ed = Date.parse(ed)
+          parsed_sd, parsed_ed = begin
+            [Date.strptime(sd, "%Y-%m-%d"), Date.strptime(ed, "%Y-%m-%d")]
+          rescue Date::Error
+            return T.cast(
+              Failure(ServiceError.validation("Dates must be in YYYY-MM-DD format")),
+              Result[Expense, ServiceError]
+            )
+          end
 
           if parsed_sd > parsed_ed
             return T.cast(
@@ -136,8 +142,8 @@ module Expenses
           updates[:description] = description if description && !description.empty?
           updates[:amount] = amount unless amount.nil?
           if start_date && !start_date.empty? && end_date && !end_date.empty?
-            updates[:start_date] = Date.parse(start_date)
-            updates[:end_date] = Date.parse(end_date)
+            updates[:start_date] = Date.strptime(T.must(start_date), "%Y-%m-%d")
+            updates[:end_date] = Date.strptime(T.must(end_date), "%Y-%m-%d")
           end
           DB[:expenses].where(id: expense.id).update(updates)
 

@@ -75,8 +75,14 @@ module Expenses
           )
         end
 
-        parsed_start = Date.parse(start_date)
-        parsed_end = Date.parse(end_date)
+        parsed_start, parsed_end = begin
+          [Date.strptime(start_date, "%Y-%m-%d"), Date.strptime(end_date, "%Y-%m-%d")]
+        rescue Date::Error
+          return T.cast(
+            Failure(ServiceError.validation("Dates must be in YYYY-MM-DD format")),
+            Result[T::Hash[Symbol, T.untyped], ServiceError]
+          )
+        end
 
         if parsed_start > parsed_end
           return T.cast(
