@@ -136,6 +136,11 @@ export const useWebSocketStore = defineStore('websocket', () => {
     state.value = 'connecting'
     connectionFailed.value = false
 
+    // Register online listener for this connection attempt.
+    // removeEventListener before adding ensures idempotency across reconnect cycles.
+    window.removeEventListener('online', onOnline)
+    window.addEventListener('online', onOnline)
+
     try {
       const url = await getWebSocketUrl()
       socket = new WebSocket(url)
@@ -377,14 +382,17 @@ export const useWebSocketStore = defineStore('websocket', () => {
     connect()
   }
 
-  // Reconnect immediately when browser comes back online
-  window.addEventListener('online', () => {
+  // Named ref so removeEventListener can target it exactly.
+  // Registered in connect() and removed in disconnect().
+  const onOnline = (): void => {
     if (state.value !== 'authenticated') {
       reconnect()
     }
-  })
+  }
 
   function disconnect(): void {
+    window.removeEventListener('online', onOnline)
+
     if (reconnectTimeout) {
       clearTimeout(reconnectTimeout)
       reconnectTimeout = null
