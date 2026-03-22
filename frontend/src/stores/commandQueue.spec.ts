@@ -332,6 +332,8 @@ describe('commandQueue store', () => {
         },
       ]
       vi.mocked(getPendingCommands).mockResolvedValueOnce(commands)
+      // Command is kept in DB, so resync at end of processQueue should see it
+      vi.mocked(dbCount).mockResolvedValueOnce(1)
 
       const safariError = new TypeError('Load failed')
       Object.defineProperty(navigator, 'onLine', {

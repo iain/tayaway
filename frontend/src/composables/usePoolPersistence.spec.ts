@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { usePoolPersistence } from './usePoolPersistence'
 import * as poolDb from '@/api/poolDb'
-import { onPoolChange } from '@/stores/objectPool'
+import { onPoolChange, type PoolChange } from '@/stores/objectPool'
+import type { PoolObject } from '@/types/pool'
 
 vi.mock('@/api/poolDb', () => ({
   CACHE_VERSION: 4,
@@ -102,7 +103,7 @@ describe('usePoolPersistence — visibilitychange flush', () => {
 
   it('flushes pending saves immediately when page becomes hidden', async () => {
     // Capture the pool change handler so we can simulate incoming pool changes
-    let capturedPoolChangeHandler: ((change: unknown) => void) | null = null
+    let capturedPoolChangeHandler: ((change: PoolChange) => void) | null = null
     vi.mocked(onPoolChange).mockImplementation((handler) => {
       capturedPoolChangeHandler = handler
     })
@@ -119,7 +120,7 @@ describe('usePoolPersistence — visibilitychange flush', () => {
         id: 'evt-1',
         objectType: 'event',
         updatedAt: '2026-01-01T00:00:00.000Z',
-      },
+      } as PoolObject,
     })
 
     // The debounce timer is now active — saveObjects has NOT been called yet
@@ -143,7 +144,7 @@ describe('usePoolPersistence — visibilitychange flush', () => {
   })
 
   it('does not flush when page becomes visible', async () => {
-    let capturedPoolChangeHandler: ((change: unknown) => void) | null = null
+    let capturedPoolChangeHandler: ((change: PoolChange) => void) | null = null
     vi.mocked(onPoolChange).mockImplementation((handler) => {
       capturedPoolChangeHandler = handler
     })
@@ -157,7 +158,7 @@ describe('usePoolPersistence — visibilitychange flush', () => {
         id: 'evt-2',
         objectType: 'event',
         updatedAt: '2026-01-01T00:00:00.000Z',
-      },
+      } as PoolObject,
     })
 
     // visibilityState remains 'visible' — handler should not flush

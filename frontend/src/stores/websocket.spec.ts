@@ -47,7 +47,7 @@ const notificationsMocks = vi.hoisted(() => ({
 
 vi.mock('@/api/client', () => ({
   api: {
-    post: vi.fn().mockResolvedValue({ data: { ticket: 'test-ticket' } }),
+    post: vi.fn().mockResolvedValue({ data: { ticket: 'test-ticket' }, status: 200 }),
   },
 }))
 
@@ -260,7 +260,7 @@ describe('useWebSocketStore — online listener lifecycle', () => {
   it('does not register the online listener before connect()', async () => {
     await import('./websocket')
 
-    const onlineCalls = addSpy.mock.calls.filter(([type]) => type === 'online')
+    const onlineCalls = addSpy.mock.calls.filter(([type]: [string]) => type === 'online')
     expect(onlineCalls).toHaveLength(0)
   })
 
@@ -269,7 +269,7 @@ describe('useWebSocketStore — online listener lifecycle', () => {
     const store = useWebSocketStore()
     await store.connect()
 
-    const onlineCalls = addSpy.mock.calls.filter(([type]) => type === 'online')
+    const onlineCalls = addSpy.mock.calls.filter(([type]: [string]) => type === 'online')
     expect(onlineCalls).toHaveLength(1)
     expect(typeof onlineCalls[0][1]).toBe('function')
   })
@@ -279,15 +279,19 @@ describe('useWebSocketStore — online listener lifecycle', () => {
     const store = useWebSocketStore()
     await store.connect()
 
+    // connect() calls removeEventListener('online') once (idempotent guard)
+    // before addEventListener, so clear the spy to isolate disconnect()'s call.
+    removeSpy.mockClear()
+
     store.disconnect()
 
     const removedOnlineCalls = removeSpy.mock.calls.filter(
-      ([type]) => type === 'online'
+      ([type]: [string]) => type === 'online'
     )
     expect(removedOnlineCalls).toHaveLength(1)
     // The same function reference is used for add and remove
     expect(removedOnlineCalls[0][1]).toBe(
-      addSpy.mock.calls.filter(([type]) => type === 'online')[0][1]
+      addSpy.mock.calls.filter(([type]: [string]) => type === 'online')[0][1]
     )
   })
 
@@ -299,7 +303,7 @@ describe('useWebSocketStore — online listener lifecycle', () => {
 
     // Grab the handler that was registered and removed
     const addedHandler = addSpy.mock.calls.find(
-      ([type]) => type === 'online'
+      ([type]: [string]) => type === 'online'
     )![1] as EventListener
 
     // Manually invoke it as if the browser fired the event
@@ -656,7 +660,7 @@ describe('useWebSocketStore — state reset after ticket failure', () => {
     // First call times out, second succeeds
     vi.mocked(api.post)
       .mockRejectedValueOnce(abortError)
-      .mockResolvedValueOnce({ data: { ticket: 'test-ticket' } })
+      .mockResolvedValueOnce({ data: { ticket: 'test-ticket' }, status: 200 })
 
     const { useWebSocketStore } = await import('./websocket')
     const store = useWebSocketStore()

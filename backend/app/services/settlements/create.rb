@@ -138,7 +138,7 @@ module Settlements
       def concurrent_settlement_exists?(event_id)
         DB[:settlements]
           .where(event_id: event_id)
-          .where { created_at >= Time.now - 5 }
+          .where(Sequel.expr(:created_at) >= Time.now - 5)
           .any?
       end
 
