@@ -11,11 +11,20 @@ namespace :db do
     database_url = ENV.fetch("DATABASE_URL")
     db_name = database_url.split("/").last
 
-    # Connect to a sibling tayaway database to issue CREATE DATABASE.
-    # We can't use `postgres` (restricted) or the target DB (may not exist yet).
-    siblings = %w[tayaway_development tayaway_test tayaway_e2e] - [db_name]
-    maintenance_url = database_url.sub(/\/[^\/]+$/, "/#{siblings.first}")
-    db = Sequel.connect(maintenance_url)
+    # Connect to a maintenance database to issue CREATE DATABASE.
+    # Try sibling tayaway databases first, fall back to `postgres`.
+    candidates = (%w[tayaway_development tayaway_test tayaway_e2e] - [db_name]) + ["postgres"]
+    db = nil
+    candidates.each do |candidate|
+      maintenance_url = database_url.sub(/\/[^\/]+$/, "/#{candidate}")
+      db = Sequel.connect(maintenance_url)
+      db.test_connection
+      break
+    rescue Sequel::DatabaseConnectionError
+      db&.disconnect
+      db = nil
+    end
+    raise "Could not connect to any maintenance database" unless db
 
     begin
       db.execute "CREATE DATABASE #{db_name}"
@@ -36,9 +45,18 @@ namespace :db do
     database_url = ENV.fetch("DATABASE_URL")
     db_name = database_url.split("/").last
 
-    siblings = %w[tayaway_development tayaway_test tayaway_e2e] - [db_name]
-    maintenance_url = database_url.sub(/\/[^\/]+$/, "/#{siblings.first}")
-    db = Sequel.connect(maintenance_url)
+    candidates = (%w[tayaway_development tayaway_test tayaway_e2e] - [db_name]) + ["postgres"]
+    db = nil
+    candidates.each do |candidate|
+      maintenance_url = database_url.sub(/\/[^\/]+$/, "/#{candidate}")
+      db = Sequel.connect(maintenance_url)
+      db.test_connection
+      break
+    rescue Sequel::DatabaseConnectionError
+      db&.disconnect
+      db = nil
+    end
+    raise "Could not connect to any maintenance database" unless db
 
     begin
       db.execute "DROP DATABASE IF EXISTS #{db_name}"
