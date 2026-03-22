@@ -6,6 +6,8 @@ export interface ApiResponse<T> {
   status: number
 }
 
+const DEFAULT_TIMEOUT_MS = 15_000
+
 interface DeletedObject {
   objectType: ObjectType
   id: string
@@ -71,8 +73,11 @@ class ApiClient {
     this.baseUrl = baseUrl
   }
 
-  async get<T>(path: string): Promise<ApiResponse<T>> {
-    return this.request<T>('GET', path)
+  async get<T>(
+    path: string,
+    options?: { signal?: AbortSignal }
+  ): Promise<ApiResponse<T>> {
+    return this.request<T>('GET', path, undefined, options)
   }
 
   async post<T>(
@@ -83,16 +88,27 @@ class ApiClient {
     return this.request<T>('POST', path, body, options)
   }
 
-  async put<T>(path: string, body?: unknown): Promise<ApiResponse<T>> {
-    return this.request<T>('PUT', path, body)
+  async put<T>(
+    path: string,
+    body?: unknown,
+    options?: { signal?: AbortSignal }
+  ): Promise<ApiResponse<T>> {
+    return this.request<T>('PUT', path, body, options)
   }
 
-  async patch<T>(path: string, body?: unknown): Promise<ApiResponse<T>> {
-    return this.request<T>('PATCH', path, body)
+  async patch<T>(
+    path: string,
+    body?: unknown,
+    options?: { signal?: AbortSignal }
+  ): Promise<ApiResponse<T>> {
+    return this.request<T>('PATCH', path, body, options)
   }
 
-  async delete<T>(path: string): Promise<ApiResponse<T>> {
-    return this.request<T>('DELETE', path)
+  async delete<T>(
+    path: string,
+    options?: { signal?: AbortSignal }
+  ): Promise<ApiResponse<T>> {
+    return this.request<T>('DELETE', path, undefined, options)
   }
 
   private async request<T>(
@@ -107,11 +123,16 @@ class ApiClient {
       'X-CSRF-Protection': '1',
     }
 
+    const timeoutSignal = AbortSignal.timeout(DEFAULT_TIMEOUT_MS)
+    const signal = options?.signal
+      ? AbortSignal.any([timeoutSignal, options.signal])
+      : timeoutSignal
+
     const response = await fetch(url, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
-      signal: options?.signal,
+      signal,
     })
 
     if (!response.ok) {
