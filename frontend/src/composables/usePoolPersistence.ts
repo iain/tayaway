@@ -16,6 +16,7 @@ let pendingDebounceTimer: ReturnType<typeof setTimeout> | null = null
 let pendingSaves: PoolObject[] = []
 let pendingRemoves: { objectType: string; id: string }[] = []
 let changeHandler: ((change: PoolChange) => void) | null = null
+let visibilityHandler: (() => void) | null = null
 
 async function flushWrites(): Promise<void> {
   const saves = pendingSaves
@@ -168,12 +169,25 @@ export function usePoolPersistence() {
     }
 
     onPoolChange(changeHandler)
+
+    visibilityHandler = () => {
+      if (document.visibilityState === 'hidden' && debounceTimer) {
+        clearTimeout(debounceTimer)
+        debounceTimer = null
+        flushWrites()
+      }
+    }
+    document.addEventListener('visibilitychange', visibilityHandler)
   }
 
   function stopPersisting(): void {
     if (changeHandler) {
       offPoolChange(changeHandler)
       changeHandler = null
+    }
+    if (visibilityHandler) {
+      document.removeEventListener('visibilitychange', visibilityHandler)
+      visibilityHandler = null
     }
     if (debounceTimer) {
       clearTimeout(debounceTimer)
