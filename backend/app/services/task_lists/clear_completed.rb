@@ -22,7 +22,7 @@ module TaskLists
       sig { params(task_list: TaskList).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
       def clear_completed(task_list)
         completed_items = TaskItem.for_task_list(task_list.id).select { |i| !i.completed_at.nil? }
-        deleted = T.let([], T::Array[T::Hash[Symbol, T.untyped]])
+        deleted = []
 
         DB.transaction do
           unless completed_items.empty?
