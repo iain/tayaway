@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/tayaway_test
+      RACK_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jdx/mise-action@v2
+        with:
+          install: true
+          cache: true
+
+      - name: Cache backend gems
+        uses: actions/cache@v4
+        with:
+          path: backend/vendor/bundle
+          key: gems-${{ runner.os }}-${{ hashFiles('backend/Gemfile.lock') }}
+          restore-keys: gems-${{ runner.os }}-
+
+      - name: Cache frontend node_modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            frontend/node_modules
+          key: node-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: node-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          cd backend && bundle config set --local path vendor/bundle && bundle install --jobs 4 --retry 3
+          pnpm install --frozen-lockfile
+
+      - name: Lint & typecheck
+        run: |
+          cd frontend && pnpm exec eslint src --max-warnings 0
+          cd frontend && pnpm exec vue-tsc -b
+          cd backend && bundle exec rubocop -f q
+          cd backend && bundle exec srb tc
+
+      - name: Set up test database
+        run: |
+          cd backend && bundle exec rake db:create db:migrate
+
+      - name: Backend tests
+        run: cd backend && bundle exec rspec --format progress
+
+      - name: Frontend tests
+        run: cd frontend && pnpm exec vitest run --reporter=dot
