@@ -164,6 +164,7 @@ function handleClose(): void {
           v-model="iban"
           label="IBAN"
           placeholder="NL00 BANK 0000 0000 00"
+          autocomplete="off"
           autofocus
           :maxlength="34"
           :disabled="loading"
