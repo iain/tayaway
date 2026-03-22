@@ -496,7 +496,14 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   // Preserves pending updates that are newer than the server data (queued commands).
   // Preserves temp objects (added via set()) absent from the server payload —
   // these are optimistically-created objects whose create commands are still queued.
-  function replaceObjects(poolObjects: PoolObject[]): void {
+  //
+  // Objects are inserted in chunks of REPLACE_CHUNK_SIZE with a setTimeout(0) yield
+  // between each chunk so the browser can paint frames and handle input during large
+  // syncs. Reactivity is triggered once after the final chunk — from the consumer's
+  // perspective the pool update is atomic (one version bump).
+  const REPLACE_CHUNK_SIZE = 500
+
+  function replaceObjects(poolObjects: PoolObject[]): Promise<void> {
     // Build set of IDs present in the server payload
     const serverIds = new Set<string>()
     for (const obj of poolObjects) {
@@ -545,32 +552,60 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       }
     }
 
-    // Clear all type maps
+    // Clear all type maps before inserting the new data
     for (const typeMap of objects.value.values()) {
       typeMap.clear()
     }
 
-    // Import the new objects from the server
-    for (const obj of poolObjects) {
-      const typeMap = objects.value.get(obj.objectType)
-      if (typeMap) {
-        typeMap.set(obj.id, obj)
+    // All objects to insert: server data + preserved temp objects
+    const allObjects: PoolObject[] = [...poolObjects, ...tempObjectsToPreserve]
+
+    // For small payloads, insert synchronously to avoid setTimeout overhead
+    if (allObjects.length <= REPLACE_CHUNK_SIZE) {
+      for (const obj of allObjects) {
+        const typeMap = objects.value.get(obj.objectType)
+        if (typeMap) {
+          typeMap.set(obj.id, obj)
+        }
       }
+      bumpVersion(...OBJECT_TYPES)
+      triggerRef(objects)
+      triggerRef(pendingUpdates)
+      notifyChange({ type: 'replace', objects: poolObjects })
+      return Promise.resolve()
     }
 
-    // Re-insert temp objects so they remain visible until the queued
-    // create command executes and the server confirms them.
-    for (const obj of tempObjectsToPreserve) {
-      const typeMap = objects.value.get(obj.objectType)
-      if (typeMap) {
-        typeMap.set(obj.id, obj)
-      }
-    }
+    // Large payload: insert in chunks, yielding to the event loop between each
+    // chunk so the browser can paint frames. Reactivity fires once at the end.
+    return new Promise<void>((resolve) => {
+      let offset = 0
 
-    bumpVersion(...OBJECT_TYPES)
-    triggerRef(objects)
-    triggerRef(pendingUpdates)
-    notifyChange({ type: 'replace', objects: poolObjects })
+      function processNextChunk(): void {
+        const chunk = allObjects.slice(offset, offset + REPLACE_CHUNK_SIZE)
+        offset += REPLACE_CHUNK_SIZE
+
+        for (const obj of chunk) {
+          const typeMap = objects.value.get(obj.objectType)
+          if (typeMap) {
+            typeMap.set(obj.id, obj)
+          }
+        }
+
+        if (offset < allObjects.length) {
+          // More chunks remain — yield to the event loop then continue
+          setTimeout(processNextChunk, 0)
+        } else {
+          // All chunks done — trigger reactivity once
+          bumpVersion(...OBJECT_TYPES)
+          triggerRef(objects)
+          triggerRef(pendingUpdates)
+          notifyChange({ type: 'replace', objects: poolObjects })
+          resolve()
+        }
+      }
+
+      setTimeout(processNextChunk, 0)
+    })
   }
 
   // Restore pending updates from cache (used on startup)
