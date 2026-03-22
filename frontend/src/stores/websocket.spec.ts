@@ -520,6 +520,76 @@ describe('websocket store — cascade delete', () => {
   })
 })
 
+// ---- state reset after ticket failure tests --------------------------------
+
+describe('useWebSocketStore — state reset after ticket failure', () => {
+  beforeEach(() => {
+    installWebSocketMock()
+    setActivePinia(createPinia())
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+    vi.resetModules()
+  })
+
+  it('resets state to disconnected when ticket fetch is aborted', async () => {
+    const { api } = await import('@/api/client')
+    const abortError = new DOMException(
+      'The operation was aborted.',
+      'AbortError'
+    )
+    vi.mocked(api.post).mockRejectedValueOnce(abortError)
+
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+
+    await store.connect()
+
+    // State must be 'disconnected' so the next connect() attempt is not blocked
+    expect(store.state).toBe('disconnected')
+  })
+
+  it('resets state to disconnected when ticket fetch throws a network error', async () => {
+    const { api } = await import('@/api/client')
+    vi.mocked(api.post).mockRejectedValueOnce(new Error('Network error'))
+
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+
+    await store.connect()
+
+    expect(store.state).toBe('disconnected')
+  })
+
+  it('allows a subsequent connect() after ticket timeout clears state', async () => {
+    const { api } = await import('@/api/client')
+    const abortError = new DOMException(
+      'The operation was aborted.',
+      'AbortError'
+    )
+    // First call times out, second succeeds
+    vi.mocked(api.post)
+      .mockRejectedValueOnce(abortError)
+      .mockResolvedValueOnce({ data: { ticket: 'test-ticket' } })
+
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+
+    await store.connect()
+    expect(store.state).toBe('disconnected')
+
+    // A second connect() must not be blocked by the guard — verify the ticket
+    // endpoint is called again (state was 'disconnected', so connect() ran)
+    vi.mocked(api.post).mockClear()
+    await store.connect()
+    expect(vi.mocked(api.post)).toHaveBeenCalledTimes(1)
+  })
+})
+
 // ---- connectionFailed tests ------------------------------------------------
 
 describe('useWebSocketStore — connectionFailed', () => {

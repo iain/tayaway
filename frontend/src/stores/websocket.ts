@@ -103,6 +103,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
         { silent: true, signal: controller.signal }
       )
       data = result.data
+    } catch (e) {
+      state.value = 'disconnected'
+      throw e
     } finally {
       clearTimeout(timeout)
     }
