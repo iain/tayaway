@@ -2,8 +2,20 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { isChunkLoadError } from './index'
 
 describe('isChunkLoadError', () => {
-  it('returns true for TypeError (browser chunk fetch failure)', () => {
-    expect(isChunkLoadError(new TypeError('Failed to fetch'))).toBe(true)
+  it('returns true for TypeError with a chunk-load message', () => {
+    expect(
+      isChunkLoadError(
+        new TypeError(
+          'Failed to fetch dynamically imported module: https://example.com/assets/chunk-abc.js'
+        )
+      )
+    ).toBe(true)
+  })
+
+  it('returns false for TypeError with an unrelated message', () => {
+    expect(
+      isChunkLoadError(new TypeError('Cannot read properties of undefined'))
+    ).toBe(false)
   })
 
   it('returns true for "Failed to fetch dynamically imported module" errors', () => {
@@ -55,13 +67,13 @@ describe('chunk reload guard', () => {
   })
 
   it('reloads on first chunk load error', () => {
-    runGuard(new TypeError('Failed to fetch'))
+    runGuard(new TypeError('Failed to fetch dynamically imported module: https://example.com/chunk.js'))
     expect(reloadSpy).toHaveBeenCalledOnce()
   })
 
   it('does not reload a second time when guard key is already set', () => {
     sessionStorage.setItem(reloadKey, '1')
-    runGuard(new TypeError('Failed to fetch'))
+    runGuard(new TypeError('Failed to fetch dynamically imported module: https://example.com/chunk.js'))
     expect(reloadSpy).not.toHaveBeenCalled()
   })
 

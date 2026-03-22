@@ -131,11 +131,8 @@ const router = createRouter({
 
 export function isChunkLoadError(error: unknown): boolean {
   if (!(error instanceof Error)) return false
-  return (
-    error instanceof TypeError ||
-    /Loading chunk|Failed to fetch dynamically imported module/.test(
-      error.message
-    )
+  return /Loading chunk|Failed to fetch dynamically imported module/.test(
+    error.message
   )
 }
 
