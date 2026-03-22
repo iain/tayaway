@@ -38,10 +38,7 @@ module ChoreRosters
                            .select_map(Sequel[:chore_assignments][:id])
 
           if non_pinned_ids.any?
-            deleted_rows = non_pinned_ids.map do |aid|
-              { workspace_id: workspace_id, object_type: "chore_assignment", object_id: aid }
-            end
-            DB[:deleted_items].multi_insert(deleted_rows)
+            DeletedItems.bulk_insert(workspace_id, "chore_assignment", non_pinned_ids)
             deleted = non_pinned_ids.map { |aid| { objectType: "choreAssignment", id: aid.to_s } }
             DB[:chore_assignments].where(id: non_pinned_ids).delete
 
