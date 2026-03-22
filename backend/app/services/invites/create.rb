@@ -104,6 +104,7 @@ module Invites
         workspace = Workspace.find(workspace_id)
         workspace_name = workspace ? workspace.name : "Tayaway"
 
+        APP_LOGGER.info { "[Invites::Create] Invite #{id} sent to #{email} in workspace #{workspace_id} by #{invited_by}" }
         APP_LOGGER.info { "INVITE LINK FOR #{email}: #{invite_link}" } if APP_ENV == "development"
         Mailers::WorkspaceInvite.send_email(email: email, invite_link: invite_link, workspace_name: workspace_name, name: name)
 

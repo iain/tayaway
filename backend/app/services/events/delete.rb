@@ -36,6 +36,7 @@ module Events
           Broadcaster.object_deleted("event", event_id, workspace_id: workspace_id)
         end
 
+        APP_LOGGER.info { "[Events::Delete] Event #{event_id} deleted from workspace #{workspace_id}" }
         T.cast(Success({ deleted: [{ objectType: "event", id: event_id.to_s }] }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
     end

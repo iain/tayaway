@@ -65,4 +65,16 @@ RSpec.describe Users::RequestEmailChange do
     expect(tokens.find { |t| t[:new_email] == "first@example.com" }[:used_at]).not_to be_nil
     expect(tokens.find { |t| t[:new_email] == "second@example.com" }[:used_at]).to be_nil
   end
+
+  it "logs info when email change is requested" do
+    user = TestFactories.user(email: "old@example.com")
+    logged_messages = []
+    allow(APP_LOGGER).to receive(:info) do |&block|
+      logged_messages << block.call if block
+    end
+
+    described_class.call(user_id: user[:id], new_email: "new@example.com")
+
+    expect(logged_messages).to include(a_string_including("[Users::RequestEmailChange]"))
+  end
 end

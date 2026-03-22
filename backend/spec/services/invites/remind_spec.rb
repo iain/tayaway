@@ -153,4 +153,16 @@ RSpec.describe Invites::Remind do
     expect(row[:last_reminded_at]).not_to be_nil
     expect(row[:token]).not_to eq(old_token)
   end
+
+  it "logs info when reminder is sent" do
+    invite_id = create_invite(created_at: Time.now - (25 * 3600))
+    logged_messages = []
+    allow(APP_LOGGER).to receive(:info) do |&block|
+      logged_messages << block.call if block
+    end
+
+    described_class.call(invite_id: invite_id, workspace_id: workspace[:id])
+
+    expect(logged_messages).to include(a_string_including("[Invites::Remind]"))
+  end
 end

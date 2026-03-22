@@ -203,6 +203,19 @@ RSpec.describe Events::Update do
     expect(updated_event[:longitude]).to be_within(0.001).of(2.2945)
   end
 
+  it "logs info when event is updated" do
+    user = TestFactories.user
+    event = TestFactories.event(user: user, name: "Original")
+    logged_messages = []
+    allow(APP_LOGGER).to receive(:info) do |&block|
+      logged_messages << block.call if block
+    end
+
+    described_class.call(event_id: event[:id], current_user_id: user[:id], name: "Updated", description: nil)
+
+    expect(logged_messages).to include(a_string_including("[Events::Update]"))
+  end
+
   it "clears location when location_name is empty" do
     user = TestFactories.user
     event = TestFactories.event(user: user)

@@ -239,7 +239,26 @@ RSpec.describe DatePolls::Close do
       expect(text_body).to include("Head to the event page to RSVP")
     end
 
-    it "does not break the API response if email sending fails" do
+    it "logs info when poll is closed" do
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
+    date_poll = TestFactories.date_poll(event: event)
+    date_range = TestFactories.date_range(date_poll: date_poll)
+    logged_messages = []
+    allow(APP_LOGGER).to receive(:info) do |&block|
+      logged_messages << block.call if block
+    end
+
+    described_class.call(
+      event_id: event[:id],
+      current_user_id: user[:id],
+      selected_date_range_id: date_range[:id]
+    )
+
+    expect(logged_messages).to include(a_string_including("[DatePolls::Close]"))
+  end
+
+  it "does not break the API response if email sending fails" do
       owner = TestFactories.user
       voter = TestFactories.user
       event = TestFactories.event(user: owner)

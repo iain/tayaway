@@ -102,6 +102,7 @@ module DatePolls
           Broadcaster.object_changed("event", event.id, workspace_id: event.workspace_id)
         end
 
+        APP_LOGGER.info { "[DatePolls::Close] Poll #{poll.id} closed on event #{event.id} with date range #{selected_date_range_id}" }
         send_poll_closed_emails(event, poll, date_range, yes_voter_ids)
 
         pool = PoolSerializer.new(workspace_id: event.workspace_id)

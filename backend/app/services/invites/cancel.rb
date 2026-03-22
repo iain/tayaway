@@ -55,6 +55,7 @@ module Invites
           Broadcaster.object_deleted("workspace_invite", invite_id, workspace_id: workspace_id.to_s)
         end
 
+        APP_LOGGER.info { "[Invites::Cancel] Invite #{invite_id} cancelled in workspace #{workspace_id}" }
         T.cast(
           Success({ deleted: [{ objectType: "workspaceInvite", id: invite_id.to_s }] }),
           Result[T::Hash[Symbol, T.untyped], ServiceError]

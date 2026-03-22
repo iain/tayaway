@@ -62,4 +62,16 @@ RSpec.describe Invites::Cancel do
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("This invitation has already been accepted")
   end
+
+  it "logs info when invite is cancelled" do
+    invite_id = create_invite
+    logged_messages = []
+    allow(APP_LOGGER).to receive(:info) do |&block|
+      logged_messages << block.call if block
+    end
+
+    described_class.call(invite_id: invite_id, workspace_id: workspace[:id])
+
+    expect(logged_messages).to include(a_string_including("[Invites::Cancel]"))
+  end
 end
