@@ -48,6 +48,31 @@ RSpec.describe Expenses::Create do
     expect(expense[:amount]).to eq(42.5)
   end
 
+  describe "date validation" do
+    it "fails when start_date is not in YYYY-MM-DD format" do
+      result = described_class.call(**valid_params, start_date: "01/01/2026", end_date: "2026-01-01")
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Dates must be in YYYY-MM-DD format")
+      expect(result.failure.http_status).to eq(400)
+    end
+
+    it "fails when end_date is not in YYYY-MM-DD format" do
+      result = described_class.call(**valid_params, start_date: "2026-01-01", end_date: "January 5, 2026")
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Dates must be in YYYY-MM-DD format")
+      expect(result.failure.http_status).to eq(400)
+    end
+
+    it "fails when start_date is after end_date" do
+      result = described_class.call(**valid_params, start_date: "2026-01-05", end_date: "2026-01-01")
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Start date must be on or before end date")
+    end
+  end
+
   describe "participant_ids" do
     let(:alice) { TestFactories.user(name: "Alice") }
     let(:bob) { TestFactories.user(name: "Bob") }

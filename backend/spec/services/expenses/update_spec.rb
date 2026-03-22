@@ -176,6 +176,42 @@ RSpec.describe Expenses::Update do
     expect(result.failure.message).to eq("Start date must be on or before end date")
   end
 
+  it "returns failure when start_date is not in YYYY-MM-DD format" do
+    expense_id = create_expense
+
+    result = described_class.call(
+      expense_id: expense_id,
+      current_user_id: user[:id],
+      workspace_id: workspace[:id],
+      description: nil,
+      amount: nil,
+      start_date: "01/05/2026",
+      end_date: "2026-01-05"
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Dates must be in YYYY-MM-DD format")
+    expect(result.failure.http_status).to eq(400)
+  end
+
+  it "returns failure when end_date is not in YYYY-MM-DD format" do
+    expense_id = create_expense
+
+    result = described_class.call(
+      expense_id: expense_id,
+      current_user_id: user[:id],
+      workspace_id: workspace[:id],
+      description: nil,
+      amount: nil,
+      start_date: "2026-01-01",
+      end_date: "January 5, 2026"
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Dates must be in YYYY-MM-DD format")
+    expect(result.failure.http_status).to eq(400)
+  end
+
   it "updates the description" do
     expense_id = create_expense
 
