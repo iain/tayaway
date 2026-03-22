@@ -64,10 +64,19 @@ jobs:
       - name: Lint & typecheck
         run: |
           (cd frontend && pnpm exec eslint src --max-warnings 0) &
+          pid1=$!
           (cd frontend && pnpm exec vue-tsc -b) &
+          pid2=$!
           (cd backend && bundle exec rubocop -f q) &
+          pid3=$!
           (cd backend && bundle exec srb tc) &
-          wait
+          pid4=$!
+          fail=0
+          wait $pid1 || fail=1
+          wait $pid2 || fail=1
+          wait $pid3 || fail=1
+          wait $pid4 || fail=1
+          exit $fail
 
       - name: Set up test database
         run: cd backend && bundle exec rake db:create db:migrate
