@@ -72,6 +72,9 @@ jobs:
           cd backend && bundle config set --local path vendor/bundle && bundle install --jobs 4 --retry 3
           pnpm install --frozen-lockfile
 
+      - name: Regenerate Sorbet RBI files for Linux
+        run: cd backend && bundle exec tapioca gems
+
       - name: Set up test database
         run: cd backend && bundle exec rake db:create db:migrate
 
