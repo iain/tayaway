@@ -78,7 +78,10 @@ onMounted(fetchSessions)
             </AppBadge>
           </div>
           <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
-            Expires {{ formatDate(session.expires_at) }}
+            <span v-if="session.last_active_at"
+              >Last active
+              {{ formatRelativeDate(session.last_active_at) }} &middot; </span
+            >Expires {{ formatDate(session.expires_at) }}
           </p>
         </div>
         <button
@@ -147,7 +150,13 @@ onMounted(fetchSessions)
                 </AppBadge>
               </div>
               <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
-                Expires {{ formatDate(session.expires_at) }}
+                <span v-if="session.last_active_at"
+                  >Last active
+                  {{
+                    formatRelativeDate(session.last_active_at)
+                  }}
+                  &middot; </span
+                >Expires {{ formatDate(session.expires_at) }}
               </p>
             </div>
             <button

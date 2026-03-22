@@ -31,14 +31,14 @@ class Session < T::Struct
   def inactive?
     return false unless last_active_at
 
-    last_active_at < Time.now - INACTIVITY_SECONDS
+    Time.now - T.must(last_active_at) > INACTIVITY_SECONDS
   end
 
   sig { returns(T::Boolean) }
   def activity_update_needed?
     return true unless last_active_at
 
-    last_active_at < Time.now - ACTIVITY_THROTTLE_SECONDS
+    Time.now - T.must(last_active_at) > ACTIVITY_THROTTLE_SECONDS
   end
 
   class << self
