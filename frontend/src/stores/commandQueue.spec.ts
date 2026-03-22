@@ -284,6 +284,8 @@ describe('commandQueue store', () => {
         configurable: true,
       })
       mockedApi.post.mockRejectedValueOnce(networkError)
+      // processQueue always resyncs count from IndexedDB at the end
+      vi.mocked(dbCount).mockResolvedValueOnce(2)
 
       await store.processQueue()
 
@@ -424,6 +426,8 @@ describe('commandQueue store', () => {
       ]
       vi.mocked(getPendingCommands).mockResolvedValueOnce(commands)
       mockedApi.post.mockRejectedValueOnce({ status: 401 })
+      // processQueue always resyncs count from IndexedDB at the end
+      vi.mocked(dbCount).mockResolvedValueOnce(1)
 
       await store.processQueue()
 
@@ -436,6 +440,8 @@ describe('commandQueue store', () => {
     it('loads pending count from db', async () => {
       vi.mocked(dbCount).mockResolvedValueOnce(3)
       vi.mocked(getPendingCommands).mockResolvedValueOnce([])
+      // processQueue (triggered by initialize) resyncs count at the end
+      vi.mocked(dbCount).mockResolvedValueOnce(3)
 
       const store = useCommandQueueStore()
       await store.initialize()
@@ -518,7 +524,7 @@ describe('commandQueue store', () => {
       expect(store.pendingCount).toBe(3)
     })
 
-    it('does not call dbCount on the happy path in processQueue', async () => {
+    it('always resyncs pendingCount from db at the end of processQueue', async () => {
       const store = useCommandQueueStore()
       store.pendingCount = 1
 
@@ -533,11 +539,28 @@ describe('commandQueue store', () => {
       ]
       vi.mocked(getPendingCommands).mockResolvedValueOnce(commands)
       mockedApi.post.mockResolvedValueOnce(okResponse(null))
+      vi.mocked(dbCount).mockResolvedValueOnce(0)
 
       await store.processQueue()
 
-      expect(dbCount).not.toHaveBeenCalled()
+      // dbCount is always called to reconcile in-memory count with IndexedDB
+      expect(dbCount).toHaveBeenCalled()
       expect(store.pendingCount).toBe(0)
+    })
+
+    it('corrects drift in pendingCount if IndexedDB is ahead of in-memory count after processQueue', async () => {
+      const store = useCommandQueueStore()
+      // Simulate drift: in-memory says 0 but IndexedDB still has 1 item
+      store.pendingCount = 0
+
+      vi.mocked(getPendingCommands).mockResolvedValueOnce([])
+      // IndexedDB reports 1 item (the in-memory count drifted low)
+      vi.mocked(dbCount).mockResolvedValueOnce(1)
+
+      await store.processQueue()
+
+      // pendingCount is corrected upward from IndexedDB ground truth
+      expect(store.pendingCount).toBe(1)
     })
   })
 

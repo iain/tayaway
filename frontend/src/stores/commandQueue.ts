@@ -115,7 +115,6 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
       return
     }
     isProcessing.value = true
-    let hadError = false
 
     try {
       do {
@@ -154,7 +153,6 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
               break
             }
             // Server error — remove and notify, continue with next
-            hadError = true
             try {
               for (const id of command.originalIds) {
                 await removeCommand(id)
@@ -173,12 +171,9 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
       } while (retryRequested.value)
     } catch {
       // Unexpected error escaped the inner loop — resync to avoid drift
-      hadError = true
     } finally {
       isProcessing.value = false
-      if (hadError) {
-        await resyncPendingCount()
-      }
+      await resyncPendingCount()
     }
   }
 
