@@ -18,7 +18,7 @@ import { useExpenseActions } from '@/composables/useExpenseActions'
 import type { PoolApiResponse, PoolExpense } from '@/types/pool'
 
 const route = useRoute()
-const { pendingAdd } = useExpenseActions()
+const { pendingAdd, resetAdd } = useExpenseActions()
 const authStore = useAuthStore()
 const pool = useObjectPoolStore()
 const { currentUserId } = storeToRefs(authStore)
@@ -29,7 +29,7 @@ const showRsvpDialog = ref(false)
 
 watch(pendingAdd, (val) => {
   if (val) {
-    pendingAdd.value = false
+    resetAdd()
     openAdd()
   }
 })

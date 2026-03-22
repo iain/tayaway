@@ -18,7 +18,7 @@ import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import { useDateRangeActions } from '@/composables/useDateRangeActions'
 
 const route = useRoute()
-const { pendingAdd: pendingAddDateRange } = useDateRangeActions()
+const { pendingAdd: pendingAddDateRange, resetAdd: resetAddDateRange } = useDateRangeActions()
 const authStore = useAuthStore()
 const datePollsStore = useDatePollsStore()
 const { currentUserId } = storeToRefs(authStore)
@@ -44,7 +44,7 @@ const dateRanges = computed(() => {
 
 watch(pendingAddDateRange, (val) => {
   if (val) {
-    pendingAddDateRange.value = false
+    resetAddDateRange()
     handleAddDateRange()
   }
 })
