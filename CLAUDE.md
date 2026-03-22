@@ -67,7 +67,7 @@ backend/                    Ruby 4 + Roda + Sequel + Falcon + Sorbet
   db/migrations/            Sequel migrations
 
 e2e/                        Playwright tests (auth, events, voting, poll lifecycle, profile)
-doc/                        Architecture docs (real-time-sync.md, workspaces.md)
+doc/                        Architecture docs (real-time-sync.md, workspaces.md, MIGRATIONS.md)
 ```
 
 ## Key Architectural Patterns
@@ -306,6 +306,21 @@ Defined in: `backend/app/object_registry.rb` and `frontend/src/types/pool.ts`
 5. **Frontend types:** Add to `OBJECT_TYPES` and `ObjectTypeMap` in `types/pool.ts`
 6. **Frontend store:** Create Pinia store that reads from the object pool
 7. **Update this file:** Add the new type to the Object Types table above
+
+## Database Migrations
+
+**All migrations must be additive.** Migrations run during `deploy:updated`, before the app restarts — meaning old code is still serving traffic when the migration executes. Destructive changes will break the running app.
+
+**Safe (additive):** adding nullable columns, adding tables, adding indexes, backfilling data.
+
+**Unsafe in a single deploy:** dropping columns, adding NOT NULL constraints to existing rows, renaming columns or tables.
+
+**Two-deploy pattern for destructive changes:**
+
+1. **Deploy 1:** Stop using the column/table in code (but leave it in the DB).
+2. **Deploy 2:** Drop the column/table in a migration (old code no longer references it).
+
+See `doc/MIGRATIONS.md` for detailed examples.
 
 ## Code Style
 
