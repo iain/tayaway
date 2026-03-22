@@ -74,6 +74,12 @@ module RateLimiter
       end
     end
 
+    Rack::Attack.throttled_callback = lambda do |req|
+      matched = req.env["rack.attack.matched"]
+      discriminator = req.env["rack.attack.match_discriminator"]
+      APP_LOGGER.warn { "[RateLimiter] Throttled #{matched} for #{discriminator}" }
+    end
+
     Rack::Attack.throttled_responder = lambda do |_req|
       [429, { "Content-Type" => "application/json" }, [{ error: "Rate limit exceeded. Try again later." }.to_json]]
     end
