@@ -50,11 +50,14 @@ class App < Roda
 
   # Memoized per request (Roda creates a new App instance per request).
   # Uses defined? to cache nil results (no cookie / no session).
+  # Throttled activity touch: updates last_active_at at most once per 5 minutes.
   def current_session
     return @_current_session if defined?(@_current_session)
 
     token = request.cookies["session_token"]
-    @_current_session = token ? Session.find_valid(token) : nil
+    session = token ? Session.find_valid(token) : nil
+    Session.touch_activity(session) if session
+    @_current_session = session
   end
 
   def current_user

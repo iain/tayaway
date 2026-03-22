@@ -30,10 +30,10 @@ module Mailers
 
       sig { params(message: Mail::Message).void }
       def deliver(message)
-        recipients = message.to&.join(", ")
-        APP_LOGGER.info { "[Mailer] Sending email to #{recipients} (subject: #{message.subject})" }
+        masked = mask_recipients(message.to)
+        APP_LOGGER.info { "[Mailer] Sending email to #{masked} (subject: #{message.subject})" }
         message.deliver
-        APP_LOGGER.info { "[Mailer] Email delivered to #{recipients}" }
+        APP_LOGGER.info { "[Mailer] Email delivered to #{masked}" }
       end
 
       sig { params(message: Mail::Message).void }
@@ -42,7 +42,7 @@ module Mailers
           Thread.new do
             deliver(message)
           rescue StandardError => e
-            APP_LOGGER.error { "[Mailer] Failed to deliver email to #{message.to&.join(", ")}: #{e.class} - #{e.message}" }
+            APP_LOGGER.error { "[Mailer] Failed to deliver email to #{mask_recipients(message.to)}: #{e.class} - #{e.message}" }
           end
         else
           deliver(message)
@@ -55,6 +55,19 @@ module Mailers
       end
 
       private
+
+      # Masks email addresses for logging: "iain@example.com" -> "i***@example.com"
+      sig { params(addresses: T.nilable(T::Array[String])).returns(String) }
+      def mask_recipients(addresses)
+        return "" if addresses.nil? || addresses.empty?
+
+        addresses.map do |addr|
+          local, domain = addr.split("@", 2)
+          next addr unless domain
+
+          "#{T.must(local)[0]}***@#{domain}"
+        end.join(", ")
+      end
 
       sig { void }
       def configure_smtp
