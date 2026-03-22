@@ -41,7 +41,6 @@ export const relationshipSchema: RelationshipSchema = {
   },
   dateRange: {
     event: { type: 'belongsTo', foreignKey: 'eventId', targetType: 'event' },
-    votes: { type: 'hasMany', foreignKey: 'voteIds', targetType: 'vote' },
   },
   vote: {
     dateRange: {

@@ -94,7 +94,6 @@ function makeDateRange(
     datePollId: 'poll-1',
     startDate: '2026-03-01',
     endDate: '2026-03-05',
-    voteIds: [],
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,
   }
@@ -369,7 +368,7 @@ describe('useHydratedEvent', () => {
       pool.importObjects([
         makeEvent({ datePollId: 'poll-1' }),
         makeDatePoll({ dateRangeIds: ['dr-1'] }),
-        makeDateRange({ voteIds: ['vote-1', 'vote-2'] }),
+        makeDateRange(),
         makeVote({ id: 'vote-1', userId: 'user-1', response: 'yes' }),
         makeVote({ id: 'vote-2', userId: 'user-2', response: 'no' }),
         makeMember({ id: 'mem-1', userId: 'user-1', name: 'Alice' }),
@@ -389,7 +388,7 @@ describe('useHydratedEvent', () => {
       pool.importObjects([
         makeEvent({ datePollId: 'poll-1' }),
         makeDatePoll({ dateRangeIds: ['dr-1'] }),
-        makeDateRange({ voteIds: ['vote-1'] }),
+        makeDateRange(),
         makeVote({ userId: 'user-1' }),
         makeMember({ userId: 'user-1', name: 'Alice' }),
       ])
@@ -406,7 +405,7 @@ describe('useHydratedEvent', () => {
       pool.importObjects([
         makeEvent({ datePollId: 'poll-1' }),
         makeDatePoll({ dateRangeIds: ['dr-1'] }),
-        makeDateRange({ voteIds: ['vote-1'] }),
+        makeDateRange(),
         makeVote({ userId: 'unknown-user' }),
       ])
 
@@ -421,7 +420,7 @@ describe('useHydratedEvent', () => {
       pool.importObjects([
         makeEvent({ datePollId: 'poll-1' }),
         makeDatePoll({ dateRangeIds: ['dr-1'] }),
-        makeDateRange({ voteIds: ['vote-1'] }),
+        makeDateRange(),
         makeVote({ comment: 'Works for me!' }),
       ])
 
@@ -438,7 +437,7 @@ describe('useHydratedEvent', () => {
       pool.importObjects([
         makeEvent({ datePollId: 'poll-1' }),
         makeDatePoll({ dateRangeIds: ['dr-1'] }),
-        makeDateRange({ voteIds: ['v1', 'v2', 'v3', 'v4'] }),
+        makeDateRange(),
         makeVote({ id: 'v1', userId: 'u1', response: 'yes' }),
         makeVote({ id: 'v2', userId: 'u2', response: 'yes' }),
         makeVote({ id: 'v3', userId: 'u3', response: 'no' }),
@@ -549,21 +548,18 @@ describe('useHydratedEvent', () => {
           datePollId: 'poll-1',
           startDate: '2026-03-01',
           endDate: '2026-03-03',
-          voteIds: ['v1', 'v2'],
         }),
         makeDateRange({
           id: 'dr-2',
           datePollId: 'poll-1',
           startDate: '2026-03-04',
           endDate: '2026-03-06',
-          voteIds: ['v3', 'v4'],
         }),
         makeDateRange({
           id: 'dr-3',
           datePollId: 'poll-1',
           startDate: '2026-03-07',
           endDate: '2026-03-09',
-          voteIds: ['v5', 'v6'],
         }),
         makeVote({
           id: 'v1',
@@ -624,7 +620,7 @@ describe('useHydratedEvent', () => {
       pool.importObjects([
         makeEvent({ datePollId: 'poll-1', rsvpIds: ['rsvp-1', 'rsvp-2'] }),
         makeDatePoll({ dateRangeIds: ['dr-1'] }),
-        makeDateRange({ voteIds: ['v1', 'v2'] }),
+        makeDateRange(),
         makeVote({
           id: 'v1',
           dateRangeId: 'dr-1',
@@ -687,7 +683,7 @@ describe('useHydratedEvent', () => {
           eventId: 'evt-1',
           dateRangeIds: ['dr-1'],
         }),
-        makeDateRange({ id: 'dr-1', datePollId: 'poll-1', voteIds: ['v1'] }),
+        makeDateRange({ id: 'dr-1', datePollId: 'poll-1' }),
         makeVote({ id: 'v1', dateRangeId: 'dr-1' }),
         makeVote({ id: 'v-other', dateRangeId: 'dr-other' }),
       ])

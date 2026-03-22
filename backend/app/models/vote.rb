@@ -40,21 +40,6 @@ class Vote < T::Struct
       dataset.where(date_range_id: date_range_id).all
     end
 
-    sig { params(date_range_id: T.any(String, UUID)).returns(T::Array[String]) }
-    def ids_for_date_range(date_range_id)
-      DB[:votes].where(date_range_id: date_range_id).select_map(:id)
-    end
-
-    sig { params(date_range_ids: T::Array[String]).returns(T::Hash[String, T::Array[String]]) }
-    def ids_for_date_range_ids(date_range_ids)
-      return {} if date_range_ids.empty?
-
-      DB[:votes]
-        .where(date_range_id: date_range_ids)
-        .select_map([:date_range_id, :id])
-        .each_with_object(Hash.new { |h, k| h[k] = [] }) { |(range_id, id), h| h[range_id.to_s] << id.to_s }
-    end
-
     sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[Vote]) }
     def changed_since(workspace_id, since)
       dataset

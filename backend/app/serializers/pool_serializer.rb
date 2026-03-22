@@ -112,22 +112,17 @@ class PoolSerializer
     key = "date_range:#{date_range.id}"
     return if @objects.key?(key)
 
-    vote_ids = Vote.ids_for_date_range(date_range.id)
-    @objects[key] = date_range.to_api_hash(vote_ids: vote_ids)
+    @objects[key] = date_range.to_api_hash
   end
 
-  # Batch-add date ranges with a single Vote ID query instead of N+1
+  # Batch-add date ranges
   sig { params(ranges: T::Array[DateRange]).void }
   def add_date_ranges_batch(ranges)
     new_ranges = ranges.reject { |r| @objects.key?("date_range:#{r.id}") }
     return if new_ranges.empty?
 
-    range_ids = new_ranges.map { |r| r.id.to_s }
-    vote_ids_by_range = Vote.ids_for_date_range_ids(range_ids)
-
     new_ranges.each do |range|
-      vote_ids = vote_ids_by_range[range.id.to_s] || []
-      @objects["date_range:#{range.id}"] = range.to_api_hash(vote_ids: vote_ids)
+      @objects["date_range:#{range.id}"] = range.to_api_hash
     end
   end
 
