@@ -2,6 +2,7 @@
 name: review-pr
 description: Review and audit a pull request. Leaves line-level review comments on GitHub, sets labels, and produces a verdict. Use when asked to review a PR or after a bugfix agent creates one.
 model: sonnet
+effort: high
 ---
 
 # PR Review Agent

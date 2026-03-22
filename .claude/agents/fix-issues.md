@@ -91,6 +91,17 @@ For agents that failed or produced incomplete results:
 2. If they failed entirely, report the failure clearly. Do not retry automatically
    unless the user asks.
 
+### Phase 5 — Next steps
+
+After reporting the summary, suggest the next steps in the workflow:
+
+1. **Review**: `@review-prs review all draft PRs` — runs parallel reviews with
+   line-level GitHub comments
+2. **Merge**: `@merge-prs merge all PRs labeled "ready to merge"` — merges approved PRs,
+   handles conflicts
+
+The user can also run these manually or skip straight to merging if they trust the fixes.
+
 ## Rules
 
 - Always use `isolation: worktree` to prevent agents from polluting the main tree.

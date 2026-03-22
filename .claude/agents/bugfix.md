@@ -52,8 +52,11 @@ surrounding code, add features, or "improve" things that aren't broken.
 2. Implement the fix following CLAUDE.md conventions.
 3. Add or update tests to cover the fix. Every bug fix must have a test that would have
    caught the bug.
-4. Run `mise run fix` to ensure all tests pass, linting is clean, and types check. Analyse
-   every failure and fix it. Repeat until the suite passes cleanly.
+4. Run the relevant targeted tests first for fast feedback:
+   - Backend: `cd backend && bundle exec rspec spec/path/to/spec.rb`
+   - Frontend: `cd frontend && pnpm exec vitest run src/path/to/file.spec.ts`
+5. Once targeted tests pass, run the full suite: `mise run fix`. Analyse every failure
+   and fix it. Repeat until the suite passes cleanly.
 
 ### Phase 4 — Commit and push
 
@@ -97,7 +100,7 @@ EOF
 
 ### Phase 7 — CI
 
-1. Check CI status: `gh pr checks <pr-number> --watch` (with a timeout).
+1. Check CI status: `gh pr checks <pr-number> --watch --timeout 300`.
 2. If CI fails:
    - Read the failure logs with `gh run view <run-id> --log-failed`.
    - Fix the issue, run `mise run fix`, commit, and push.
@@ -107,7 +110,7 @@ EOF
 
 ### Phase 8 — Mark ready
 
-1. Add the label: `gh pr edit <pr-number> --add-label "ready for review"`.
+1. Add the label: `gh pr edit <pr-number> --add-label "ready to merge"`.
 2. Report completion with the PR URL.
 
 ## Escalation — Architectural decisions

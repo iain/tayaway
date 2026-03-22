@@ -119,48 +119,61 @@ Production deploys via Capistrano to localhost over SSH. Falcon runs as a system
 
 ## Claude Code Agents
 
-Custom agents in `.claude/agents/` automate development workflows.
+Custom agents in `.claude/agents/` automate development workflows. They form a pipeline for going from GitHub issues to merged PRs:
 
-### `bugfix`
+```
+@fix-issues  →  @review-prs  →  @merge-prs
+ (fix bugs)     (audit PRs)     (ship it)
+```
 
-Picks up a GitHub issue, implements the fix in an isolated worktree, runs tests, and opens a PR.
+### Issue fixing
+
+**`@bugfix`** — Fix a single GitHub issue in an isolated worktree.
 
 ```
 @bugfix fix #42
 ```
 
-- Reads the issue, plans the fix, implements, tests, and self-reviews
-- Runs in an isolated git worktree (won't touch your working tree)
-- Uses [Impeccable](https://github.com/ridemountainpig/impeccable) skills for UI/UX changes
-- Escalates architectural decisions back to you instead of guessing
-
-### `fix-issues`
-
-Orchestrator that batch-fixes all open issues matching a label filter. Spawns parallel `bugfix` agents, one per issue.
+**`@fix-issues`** — Batch-fix all open issues matching a label filter. Spawns parallel `bugfix` agents.
 
 ```
 @fix-issues fix all issues with label reliability
 @fix-issues fix all critical backend bugs, mark PRs ready
 ```
 
-- Fetches matching issues from GitHub, launches parallel agents in isolated worktrees
-- Tracks completions and reports a summary table with PR links
-- Copies labels from issues to PRs
+### Review
 
-### `review-pr`
-
-Reviews a pull request across 7 dimensions (correctness, reliability, security, performance, testability, operability, completeness). Leaves line-level comments on GitHub and sets labels.
+**`@review-pr`** — Deep review of a single PR across 7 dimensions. Leaves line-level GitHub comments and sets labels.
 
 ```
 @review-pr review PR #42
-@review-pr review all draft PRs
 ```
 
-- Spawns 7 parallel audit agents, each reading full source files (not just the diff)
-- Leaves line-level review comments with severity tags (`[Critical]`, `[Major]`, etc.)
-- Uses Impeccable skills for UI/UX critique when the PR touches frontend components
-- Sets "ready to merge" label or keeps PR as draft based on findings
-- Checks for worktree contamination (common with automated bugfix agents)
+**`@review-prs`** — Batch-review all open PRs matching criteria. Spawns parallel `review-pr` agents.
+
+```
+@review-prs review all draft PRs
+```
+
+**`/review`** — Local review of changes on the current branch (no GitHub interaction). Run before pushing.
+
+### Merge
+
+**`@merge-prs`** — Merge all approved PRs sequentially, handling conflicts by rebasing.
+
+```
+@merge-prs merge all PRs labeled "ready to merge"
+```
+
+### Other
+
+| Command   | Purpose                                              |
+| --------- | ---------------------------------------------------- |
+| `/fix`    | Run tests, fix all failures, repeat until clean      |
+| `/commit` | Run tests then commit (prompts if changes are mixed) |
+| `/pr`     | Create a PR from the current branch                  |
+| `/deploy` | Deploy to production (checks for clean tree first)   |
+| `@e2e`    | Write Playwright e2e tests for a feature             |
 
 ## License
 

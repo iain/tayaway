@@ -1,16 +1,19 @@
 ---
 description: Audit recent changes across correctness, reliability, security, and more
-allowed-tools: Bash(git:*), Agent, AskUserQuestion
+allowed-tools: Bash(git:*), Agent, Skill, AskUserQuestion
 ---
 
 # Review
 
+Review changes on the current branch locally. For reviewing a PR on GitHub with
+line-level comments, use `@review-pr` instead.
+
 ## Context
 
 - Current branch: !`git branch --show-current`
-- Latest commit: !`git log --oneline -1`
-- Diff to review: !`git diff HEAD~1...HEAD`
-- Changed files: !`git diff HEAD~1...HEAD --name-only`
+- Commits on this branch: !`git log --oneline main..HEAD 2>/dev/null || echo "(on main)"`
+- Diff to review: !`git diff main...HEAD`
+- Changed files: !`git diff main...HEAD --name-only`
 - Recent commits: !`git log --oneline -10`
 - Project conventions: !`cat CLAUDE.md`
 
@@ -30,16 +33,19 @@ Use these definitions consistently when classifying findings:
 
 ### Step 0 — Determine scope
 
-Review the most recent commit on the current branch. State what you are reviewing at the
-top of the output.
+If the current branch is `main`, stop: "You are on `main`. Switch to a feature branch
+first."
+
+Review all changes on the current branch compared to `main`. State the branch name and
+number of commits at the top of the output.
 
 ### Step 1 — Launch 8 audit agents in parallel
 
 Spawn all 8 agents simultaneously using the Agent tool. Pass each agent:
 
-- The full diff
+- The full diff (`git diff main...HEAD`)
 - The list of changed files
-- The commit message
+- All commit messages on the branch
 - The contents of CLAUDE.md (project conventions)
 - The severity definitions from this command
 - This technology context: **Ruby 4 + Roda + Sequel + Falcon + Sorbet (backend) /
@@ -189,13 +195,31 @@ Read CLAUDE.md and the changed source files in full before forming any conclusio
 
 ---
 
-### Step 2 — Aggregate and report
+### Step 2 — UI/UX audit (if applicable)
 
-Collect all findings from all 8 agents. Deduplicate any finding that appears in more than
-one agent's output — keep the sharper description. Then produce the report:
+If any changed files are Vue components (`.vue`), layouts, or contain user-facing copy,
+run the most relevant Impeccable skill via the `Skill` tool:
+
+| What changed                               | Skill                 |
+| ------------------------------------------ | --------------------- |
+| New UI component or page                   | `impeccable:critique` |
+| Error messages, labels, microcopy          | `impeccable:clarify`  |
+| Spacing, alignment, visual consistency     | `impeccable:polish`   |
+| Loading states, error handling, edge cases | `impeccable:harden`   |
+| Responsive layout changes                  | `impeccable:adapt`    |
+| Animations or transitions                  | `impeccable:animate`  |
+| Accessibility or theming changes           | `impeccable:audit`    |
+
+Skip if no UI files changed.
+
+### Step 3 — Aggregate and report
+
+Collect all findings from all 8 agents (plus the Impeccable audit if run). Deduplicate
+any finding that appears in more than one agent's output — keep the sharper description.
+Then produce the report:
 
 ```
-## Review: <commit summary>
+## Review: <branch name> (<N> commits)
 
 ### Critical
 <findings>

@@ -1,4 +1,9 @@
-Deploy to production after ensuring the working tree is clean and pushed.
+---
+description: Deploy to production after ensuring the working tree is clean and pushed.
+allowed-tools: Bash(git:*), Bash(cd:*), Bash(bundle:*), AskUserQuestion
+---
+
+# Deploy
 
 ## Instructions
 
