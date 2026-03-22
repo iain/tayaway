@@ -63,10 +63,11 @@ jobs:
 
       - name: Lint & typecheck
         run: |
-          cd frontend && pnpm exec eslint src --max-warnings 0
-          cd frontend && pnpm exec vue-tsc -b
-          cd backend && bundle exec rubocop -f q
-          cd backend && bundle exec srb tc
+          (cd frontend && pnpm exec eslint src --max-warnings 0) &
+          (cd frontend && pnpm exec vue-tsc -b) &
+          (cd backend && bundle exec rubocop -f q) &
+          (cd backend && bundle exec srb tc) &
+          wait
 
       - name: Set up test database
         run: cd backend && bundle exec rake db:create db:migrate
@@ -132,6 +133,13 @@ jobs:
         run: |
           cd backend && bundle config set --local path vendor/bundle && bundle install --jobs 4 --retry 3
           pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: playwright-${{ runner.os }}-
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install chromium --with-deps
