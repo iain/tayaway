@@ -61,7 +61,7 @@ module Websocket
 
           begin
             pruned = Websocket::ConnectionManager.instance.ping_all(idle_timeout: IDLE_TIMEOUT)
-            APP_LOGGER.debug { "[Keepalive] Pinged all connections (pruned #{pruned} stale)" }
+            APP_LOGGER.debug { "[Keepalive] Pruned #{pruned} stale connections" } if pruned > 0
           rescue StandardError => e
             APP_LOGGER.error { "[Keepalive] Error during ping: #{e.message}" }
           end
