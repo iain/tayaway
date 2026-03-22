@@ -15,7 +15,7 @@ DB = Sequel.connect(
   ENV.fetch("DATABASE_URL"),
   preconnect: false,
   test: false,
-  max_connections: 16,
+  max_connections: Integer(ENV.fetch("DATABASE_POOL_SIZE", 16)),
   pool_timeout: 5,
   connect_timeout: 5,
   after_connect: proc { |conn| conn.exec("SET statement_timeout = '30s'") }
