@@ -117,17 +117,19 @@ module Settlements
             .update(settlement_id: settlement_id, updated_at: now)
 
           Broadcaster.object_changed("settlement", settlement_id, workspace_id: workspace_id)
+        end
 
-          Expense.for_event(event.id).select { |e| e.settlement_id&.to_s == settlement_id }.each do |expense|
-            Broadcaster.object_changed("expense", expense.id, workspace_id: workspace_id)
-          end
+        # Load expenses once after the transaction for both broadcasting and serialization
+        all_expenses = Expense.for_event(event.id)
+        all_expenses.select { |e| e.settlement_id&.to_s == settlement_id }.each do |expense|
+          Broadcaster.object_changed("expense", expense.id, workspace_id: workspace_id)
         end
 
         pool = PoolSerializer.new(workspace_id: workspace_id)
         settlement = T.must(Settlement.find(settlement_id))
         pool.add_settlement(settlement)
         SettlementTransfer.for_settlement(settlement_id).each { |t| pool.add_settlement_transfer(t) }
-        Expense.for_event(event.id).each { |e| pool.add_expense(e) }
+        all_expenses.each { |e| pool.add_expense(e) }
 
         T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
