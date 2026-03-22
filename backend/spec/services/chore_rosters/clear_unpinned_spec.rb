@@ -79,25 +79,28 @@ RSpec.describe ChoreRosters::ClearUnpinned do
     expect(DB[:deleted_items].where(object_type: "chore_assignment", object_id: assignment[:id]).count).to eq(1)
   end
 
-  it "broadcasts a single roster-level change instead of one notification per deleted assignment" do
+  it "sends one deletion broadcast per deleted assignment and one roster-level change" do
     workspace = TestFactories.workspace
     user = TestFactories.user
     event = TestFactories.event(workspace: workspace, user: user)
     roster = TestFactories.chore_roster(event: event, user: user)
     chore = TestFactories.chore(chore_roster: roster)
 
-    3.times do |i|
+    assignments = 3.times.map do |i|
       TestFactories.chore_assignment(chore: chore, user: user, date: Date.today + i, pinned: false)
     end
 
-    broadcast_count = 0
-    allow(Broadcaster).to receive(:object_changed) { broadcast_count += 1 }
     allow(Broadcaster).to receive(:object_deleted)
+    allow(Broadcaster).to receive(:object_changed)
 
     described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
 
-    expect(broadcast_count).to eq(1)
-    expect(Broadcaster).to have_received(:object_changed).with("chore_roster", anything, workspace_id: workspace[:id])
-    expect(Broadcaster).not_to have_received(:object_deleted)
+    assignments.each do |a|
+      expect(Broadcaster).to have_received(:object_deleted)
+        .with("chore_assignment", a[:id], workspace_id: workspace[:id])
+    end
+    expect(Broadcaster).to have_received(:object_changed)
+      .with("chore_roster", anything, workspace_id: workspace[:id]).once
+    expect(Broadcaster).to have_received(:object_changed).once
   end
 end

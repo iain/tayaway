@@ -45,7 +45,11 @@ module ChoreRosters
             deleted = non_pinned_ids.map { |aid| { objectType: "choreAssignment", id: aid.to_s } }
             DB[:chore_assignments].where(id: non_pinned_ids).delete
 
-            # Single broadcast for the entire roster change instead of one per deleted assignment
+            # Broadcast one deletion signal per assignment so clients remove them from the pool.
+            # This is N pg_notify calls after a single bulk DB delete — not N individual deletes.
+            non_pinned_ids.each do |aid|
+              Broadcaster.object_deleted("chore_assignment", aid, workspace_id: workspace_id)
+            end
             Broadcaster.object_changed("chore_roster", roster.id, workspace_id: workspace_id)
           end
         end
