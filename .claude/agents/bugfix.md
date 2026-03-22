@@ -116,10 +116,10 @@ EOF
    - If CI fails 3 times on the same issue, stop and report the blocker.
 3. Once CI is green, proceed.
 
-### Phase 8 — Mark ready
+### Phase 8 — Report
 
-1. Add the label: `gh pr edit <pr-number> --add-label "ready to merge"`.
-2. Report completion with the PR URL.
+Report completion with the PR URL. Do NOT add the `ready to merge` label — PRs must be
+reviewed by the review-pr agent (or a human) before they can be labelled for merge.
 
 ## Escalation — Architectural decisions
 

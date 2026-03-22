@@ -255,14 +255,18 @@ include:
 
 Based on your verdict:
 
-- **No Critical or Major findings**: mark as ready to merge.
+- **Zero findings of any severity** (no Critical, Major, Minor, or Suggestions): mark as
+  ready to merge. The bar is high — even minor issues or suggestions mean the label is
+  withheld until they are addressed.
 
   ```bash
   gh pr edit <number> --repo iain/tayaway --add-label "ready to merge"
   gh pr ready <number> --repo iain/tayaway  # if currently draft
   ```
 
-- **Has Critical or Major findings**: ensure it stays as draft (or convert to draft).
+- **Any findings at all** (even Minor or Suggestions): do NOT add the label. Leave the
+  review comments for the author to address. If there are Critical or Major findings,
+  also convert to draft:
   ```bash
   gh pr ready <number> --undo --repo iain/tayaway
   ```
