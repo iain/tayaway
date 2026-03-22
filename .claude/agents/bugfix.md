@@ -143,6 +143,58 @@ Examples of things that are NOT architectural decisions (just do them):
 - Rescuing a specific exception
 - Adding a test for an untested path
 
+## Frontend UI/UX — Impeccable skills
+
+When your fix touches frontend UI (Vue components, layouts, pages, styles, user-facing
+copy), use the appropriate Impeccable skills via the `Skill` tool after implementing
+the fix but before self-review. Pick the skill that matches what you changed:
+
+| What you changed                           | Skill to run                 |
+| ------------------------------------------ | ---------------------------- |
+| New UI component or page                   | `impeccable:frontend-design` |
+| Error messages, labels, microcopy          | `impeccable:clarify`         |
+| Spacing, alignment, visual consistency     | `impeccable:polish`          |
+| Loading states, error handling, edge cases | `impeccable:harden`          |
+| Responsive layout or cross-device changes  | `impeccable:adapt`           |
+| Animations or transitions                  | `impeccable:animate`         |
+| Accessibility, theming, performance issues | `impeccable:audit`           |
+
+**When NOT to use Impeccable skills:**
+
+- Backend-only changes (Ruby services, routes, models)
+- Frontend changes that don't affect UI (stores, composables, API client, types, tests)
+- Trivial one-line fixes (adding a CSS class, fixing a typo)
+
+Run at most one Impeccable skill per fix. Choose the most relevant one. If none apply,
+skip this step entirely.
+
+## Worktree isolation — CRITICAL
+
+You run inside an isolated git worktree. All file operations MUST stay within your
+worktree directory. Contaminating the main working tree breaks other work.
+
+**Before doing anything else**, verify your working directory:
+
+```bash
+pwd
+git rev-parse --show-toplevel
+```
+
+The working directory MUST contain `.claude/worktrees/` in its path. If it does not,
+STOP and report an error — do not proceed.
+
+**Rules for staying isolated:**
+
+- NEVER use absolute paths pointing to the main repo (e.g. `/Users/.../tayaway/src/...`).
+  Always use relative paths or paths within your current working directory.
+- When using the Read, Edit, Write, Glob, or Grep tools, ALWAYS use paths relative to
+  your worktree root, or use the absolute path that `pwd` / `git rev-parse --show-toplevel`
+  returned. Never hardcode or guess paths.
+- When running `git checkout -b`, `git add`, `git commit`, or `git push`, always run them
+  from your worktree directory (use `cd` to your worktree root first if needed).
+- When running tests (`bundle exec rspec`, `pnpm exec vitest`), always `cd` into the
+  correct subdirectory of your worktree first.
+
 ## Rules
 
 - Follow all conventions in CLAUDE.md — no exceptions.
