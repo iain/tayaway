@@ -15,6 +15,8 @@ vi.mock('./commandQueue', () => ({
   useCommandQueueStore: vi.fn(() => ({
     enqueue: vi.fn(),
     reset: vi.fn(),
+    pendingCount: 0,
+    processQueue: vi.fn(),
   })),
 }))
 
@@ -285,3 +287,4 @@ describe('auth store – logout()', () => {
     expect(mockStopPersisting).toHaveBeenCalledOnce()
   })
 })
+

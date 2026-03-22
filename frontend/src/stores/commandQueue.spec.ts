@@ -196,6 +196,19 @@ describe('commandQueue store', () => {
       expect(store.pendingCount).toBe(0)
     })
 
+    it('keeps command in db and throws CommandQueuedError on 401', async () => {
+      const store = useCommandQueueStore()
+      mockedApi.post.mockRejectedValueOnce({ status: 401 })
+
+      await expect(
+        store.enqueue('POST', '/api/events', { name: 'Test' })
+      ).rejects.toThrow(CommandQueuedError)
+
+      // Command stays in db — preserved for replay after re-auth
+      expect(removeCommand).not.toHaveBeenCalled()
+      expect(store.pendingCount).toBe(1)
+    })
+
     it('dispatches to the correct HTTP method', async () => {
       const store = useCommandQueueStore()
 
