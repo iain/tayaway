@@ -45,7 +45,7 @@ module ChoreRosters
           end
           if name.length > ValidationLimits::SHORT_STRING
             return T.cast(
-              Failure(ServiceError.validation("Name is too long (maximum 255 characters)")),
+              Failure(ServiceError.validation("Name is too long (maximum #{ValidationLimits::SHORT_STRING} characters)")),
               Result[T::Hash[Symbol, T.untyped], ServiceError]
             )
           end
@@ -53,9 +53,9 @@ module ChoreRosters
         end
 
         if people_per_day
-          if people_per_day < 1 || people_per_day > 50
+          if people_per_day < 1 || people_per_day > ValidationLimits::PEOPLE_PER_DAY_MAX
             return T.cast(
-              Failure(ServiceError.validation("People per day must be between 1 and 50")),
+              Failure(ServiceError.validation("People per day must be between 1 and #{ValidationLimits::PEOPLE_PER_DAY_MAX}")),
               Result[T::Hash[Symbol, T.untyped], ServiceError]
             )
           end

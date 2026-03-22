@@ -75,7 +75,7 @@ module Users
         if name.strip.empty?
           T.cast(Failure(ServiceError.validation("Name is required")), Result[User, ServiceError])
         elsif name.length > ValidationLimits::SHORT_STRING
-          T.cast(Failure(ServiceError.validation("Name is too long (maximum 255 characters)")), Result[User, ServiceError])
+          T.cast(Failure(ServiceError.validation("Name is too long (maximum #{ValidationLimits::SHORT_STRING} characters)")), Result[User, ServiceError])
         else
           T.cast(Success(user), Result[User, ServiceError])
         end
@@ -119,12 +119,12 @@ module Users
         ).returns(Result[User, ServiceError])
       end
       def validate_text_lengths(phone_number, location_name, user)
-        if phone_number && phone_number.length > 50
-          return T.cast(Failure(ServiceError.validation("Phone number is too long (maximum 50 characters)")), Result[User, ServiceError])
+        if phone_number && phone_number.length > ValidationLimits::PHONE_NUMBER
+          return T.cast(Failure(ServiceError.validation("Phone number is too long (maximum #{ValidationLimits::PHONE_NUMBER} characters)")), Result[User, ServiceError])
         end
 
         if location_name && location_name.length > ValidationLimits::SHORT_STRING
-          return T.cast(Failure(ServiceError.validation("Location name is too long (maximum 255 characters)")), Result[User, ServiceError])
+          return T.cast(Failure(ServiceError.validation("Location name is too long (maximum #{ValidationLimits::SHORT_STRING} characters)")), Result[User, ServiceError])
         end
 
         T.cast(Success(user), Result[User, ServiceError])
