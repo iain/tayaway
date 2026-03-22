@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useObjectPoolStore } from './objectPool'
 import type { ObjectTypeMap } from '@/types/pool'
@@ -513,6 +513,36 @@ describe('objectPool store', () => {
       // Full sync — temp-1 should not reappear
       pool.replaceObjects([makeEvent({ id: 'evt-2' })])
       expect(pool.get('event', 'temp-1')).toBeUndefined()
+    })
+
+    it('processes large payloads in chunks, resolving after all objects are inserted', async () => {
+      vi.useFakeTimers()
+      const pool = useObjectPoolStore()
+
+      // Create 1200 events — exceeds the 500-object chunk size threshold
+      const events = Array.from({ length: 1200 }, (_, i) =>
+        makeEvent({ id: `evt-${i}`, name: `Event ${i}` })
+      )
+
+      const promise = pool.replaceObjects(events)
+
+      // Before timers run: the first chunk (0–499) is inserted synchronously
+      // in the same call frame as the clear, so consumers never see an empty pool
+      expect(pool.get('event', 'evt-0')?.name).toBe('Event 0')
+      expect(pool.get('event', 'evt-499')?.name).toBe('Event 499')
+      // Objects beyond the first chunk are not yet inserted
+      expect(pool.get('event', 'evt-500')).toBeUndefined()
+
+      // Run all pending timers (each remaining chunk schedules a setTimeout)
+      await vi.runAllTimersAsync()
+      await promise
+
+      // All objects are inserted after all chunks complete
+      expect(pool.get('event', 'evt-0')?.name).toBe('Event 0')
+      expect(pool.get('event', 'evt-599')?.name).toBe('Event 599')
+      expect(pool.get('event', 'evt-1199')?.name).toBe('Event 1199')
+
+      vi.useRealTimers()
     })
   })
 
