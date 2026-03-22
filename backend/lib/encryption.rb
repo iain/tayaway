@@ -43,7 +43,8 @@ module Encryption
 
     sig { returns(RbNaCl::SimpleBox) }
     def box
-      @box = T.let(@box || RbNaCl::SimpleBox.from_secret_key(encryption_key), RbNaCl::SimpleBox)
+      @box = T.let(@box, T.nilable(RbNaCl::SimpleBox))
+      @_box ||= RbNaCl::SimpleBox.from_secret_key(encryption_key)
     end
 
     sig { returns(String) }
