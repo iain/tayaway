@@ -115,4 +115,32 @@ RSpec.describe DatePolls::AddDateRange do
     expect(result2.success?).to be true
     expect(DB[:date_ranges].where(id: client_id).count).to eq(1)
   end
+
+  it "handles TOCTOU race: returns existing date range when concurrent insert wins" do
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
+    date_poll = TestFactories.date_poll(event: event)
+    client_id = SecureRandom.uuid
+
+    # Pre-insert a date range with this ID (simulates concurrent request that won the race)
+    TestFactories.date_range(id: client_id, date_poll: date_poll)
+    existing_date_range = DateRange.find(client_id)
+
+    # Simulate the TOCTOU race: the early idempotency check sees nil (the race window),
+    # so the service proceeds to insert and hits UniqueConstraintViolation.
+    allow(DateRange).to receive(:find).with(client_id).and_return(nil, existing_date_range)
+
+    result = described_class.call(
+      event_id: event[:id],
+      current_user_id: user[:id],
+      start_date: "2024-06-01",
+      end_date: "2024-06-10",
+      id: client_id
+    )
+
+    expect(result.success?).to be true
+    date_range = result.value![:objects].find { |o| o[:objectType] == "dateRange" }
+    expect(date_range[:id]).to eq(client_id)
+    expect(DB[:date_ranges].where(id: client_id).count).to eq(1)
+  end
 end

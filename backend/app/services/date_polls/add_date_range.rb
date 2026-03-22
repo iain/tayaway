@@ -62,17 +62,21 @@ module DatePolls
         dr_id = id || SecureRandom.uuid
         now = Time.now
 
-        DB.transaction do
-          DB[:date_ranges].insert(
-            id: dr_id,
-            date_poll_id: poll.id,
-            start_date: date_input.start_date,
-            end_date: date_input.end_date,
-            created_at: now,
-            updated_at: now
-          )
+        begin
+          DB.transaction do
+            DB[:date_ranges].insert(
+              id: dr_id,
+              date_poll_id: poll.id,
+              start_date: date_input.start_date,
+              end_date: date_input.end_date,
+              created_at: now,
+              updated_at: now
+            )
 
-          Broadcaster.object_changed("date_range", dr_id, workspace_id: event.workspace_id)
+            Broadcaster.object_changed("date_range", dr_id, workspace_id: event.workspace_id)
+          end
+        rescue Sequel::UniqueConstraintViolation
+          dr_id = T.must(id)
         end
 
         pool = PoolSerializer.new(workspace_id: event.workspace_id)
