@@ -27,6 +27,7 @@ const eventDetailRoutes = new Set([
   'event-planning-date-ranges',
   'event-rsvp',
   'event-expenses',
+  'event-chores',
 ])
 
 export function useEventContextCommands() {
