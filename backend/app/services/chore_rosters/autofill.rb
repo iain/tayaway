@@ -53,6 +53,16 @@ module ChoreRosters
         availability = build_availability(dates, rsvps, event_start, event_end)
 
         chores = Chore.for_roster(roster.id)
+
+        # Guard against pathological cases (e.g. 60-day event with 20 chores = 1200 rows)
+        max_slots = dates.length * chores.sum(&:people_per_day)
+        if max_slots > 1000
+          return T.cast(
+            Failure(ServiceError.validation("Too many assignments to autofill (#{max_slots} slots). Reduce the number of chores or shorten the event dates.")),
+            Result[T::Hash[Symbol, T.untyped], ServiceError]
+          )
+        end
+
         deleted = T.let([], T::Array[T::Hash[Symbol, String]])
         pool = PoolSerializer.new(workspace_id: workspace_id)
 
