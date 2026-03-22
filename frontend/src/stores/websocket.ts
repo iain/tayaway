@@ -132,6 +132,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     // If already connecting or connected, skip
     if (state.value !== 'disconnected') return
 
+    connectionFailed.value = false
     state.value = 'connecting'
     connectionFailed.value = false
 

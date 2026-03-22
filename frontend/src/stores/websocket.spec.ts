@@ -599,4 +599,19 @@ describe('useWebSocketStore — connectionFailed', () => {
     store.disconnect()
     expect(store.connectionFailed).toBe(false)
   })
+
+  it('resets connectionFailed when a subsequent connect succeeds', async () => {
+    const { api } = await import('@/api/client')
+    vi.mocked(api.post).mockRejectedValueOnce(new Error('Network error'))
+
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+
+    await store.connect()
+    expect(store.connectionFailed).toBe(true)
+
+    // state is 'disconnected' after the failed attempt, so connect() can run again
+    await store.connect()
+    expect(store.connectionFailed).toBe(false)
+  })
 })
