@@ -69,8 +69,11 @@ module Settlements
                      .all
 
           if expenses.empty?
+            error_message = concurrent_settlement_exists?(event.id) ?
+              "These expenses were just settled by another member" :
+              "No unsettled expenses to settle"
             return T.cast(
-              Failure(ServiceError.validation("No unsettled expenses to settle")),
+              Failure(ServiceError.validation(error_message)),
               Result[T::Hash[Symbol, T.untyped], ServiceError]
             )
           end
@@ -127,6 +130,16 @@ module Settlements
         Expense.for_event(event.id).each { |e| pool.add_expense(e) }
 
         T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+      end
+
+      # Returns true if a settlement for this event was created within the last 60 seconds,
+      # indicating a concurrent settlement request just completed ahead of this one.
+      sig { params(event_id: T.any(String, UUID)).returns(T::Boolean) }
+      def concurrent_settlement_exists?(event_id)
+        DB[:settlements]
+          .where(event_id: event_id)
+          .where { created_at >= Time.now - 60 }
+          .any?
       end
 
       # Compute net balance for each user: share - paid

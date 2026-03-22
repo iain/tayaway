@@ -65,6 +65,37 @@ RSpec.describe Settlements::Create do
       expect(result.failure.message).to eq("No unsettled expenses to settle")
     end
 
+    it "returns a concurrent-settlement message when a recent settlement exists but no unsettled expenses remain" do
+      alice = TestFactories.user(name: "Alice")
+      bob = TestFactories.user(name: "Bob")
+      event = TestFactories.event(workspace: workspace, user: creator)
+      event = set_event_dates(event, Date.new(2026, 1, 1), Date.new(2026, 1, 7))
+
+      insert_expense(event: event, user: alice, amount: 100, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 7))
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      TestFactories.rsvp(event: event, user: bob, attending: true)
+
+      # First settlement consumes all expenses
+      first_result = described_class.call(
+        event_id: event[:id],
+        user_id: creator[:id],
+        workspace_id: workspace[:id]
+      )
+      expect(first_result.success?).to be true
+
+      # Second request arrives immediately after — no unsettled expenses remain,
+      # but a recent settlement was just created, so the error should be specific
+      result = described_class.call(
+        event_id: event[:id],
+        user_id: creator[:id],
+        workspace_id: workspace[:id]
+      )
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("These expenses were just settled by another member")
+      expect(result.failure.http_status).to eq(400)
+    end
+
     it "fails when there are no attending RSVPs" do
       alice = TestFactories.user(name: "Alice")
       event = TestFactories.event(workspace: workspace, user: creator)
