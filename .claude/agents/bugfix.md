@@ -23,6 +23,8 @@ You may also receive:
 - **`--draft`**: create the PR as a draft (add `--draft` to `gh pr create`)
 - **`--batch`**: you're running as part of a batch fix — skip the full `mise run fix`
   suite and rely on targeted tests only. CI will catch cross-cutting issues.
+- **`--test-first`**: write a failing test encoding the requirement before implementing
+  the fix. This prevents planning paralysis and ensures the fix is verifiable.
 
 ## Workflow
 
@@ -55,13 +57,16 @@ surrounding code, add features, or "improve" things that aren't broken.
    ```
    git checkout -b fix/<issue-number>-<short-slug>
    ```
-2. Implement the fix following CLAUDE.md conventions.
-3. Add or update tests to cover the fix. Every bug fix must have a test that would have
+2. If running in **test-first mode** (`--test-first`): write a failing test that captures
+   the expected behavior before writing any implementation code. Run it to confirm it
+   fails for the right reason. Then implement the minimum code to make it pass.
+3. Implement the fix following CLAUDE.md conventions.
+4. Add or update tests to cover the fix. Every bug fix must have a test that would have
    caught the bug.
-4. Run the relevant targeted tests first for fast feedback:
+5. Run the relevant targeted tests first for fast feedback:
    - Backend: `cd backend && bundle exec rspec spec/path/to/spec.rb`
    - Frontend: `cd frontend && pnpm exec vitest run src/path/to/file.spec.ts`
-5. If running in **batch mode** (`--batch`): targeted tests passing is sufficient.
+6. If running in **batch mode** (`--batch`): targeted tests passing is sufficient.
    Skip the full suite — CI will validate cross-cutting concerns after the PR is pushed.
    If running **standalone** (no `--batch` flag): run the full suite with `mise run fix`.
    Analyse every failure and fix it. Repeat until clean.

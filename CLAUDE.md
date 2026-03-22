@@ -10,6 +10,10 @@ Tayaway is a real-time collaborative event planning app. Users authenticate via 
 
 **Monorepo layout:** pnpm workspace with `frontend/` and `e2e/` as packages. `backend/` is a standalone Ruby app (not a pnpm package).
 
+## Working Style
+
+When implementing a feature or fix, start coding after minimal exploration. Do not spend extended time reading files and planning — gather context incrementally while implementing. If you need to understand a pattern, read one example and follow it. Ask clarifying questions only if truly blocked.
+
 ## Commands
 
 All commands run through mise. See `GETTING_STARTED.md` for the full list.
