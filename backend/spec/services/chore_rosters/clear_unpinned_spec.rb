@@ -40,11 +40,29 @@ RSpec.describe ChoreRosters::ClearUnpinned do
 
     TestFactories.chore_assignment(chore: chore, user: user, date: Date.today, pinned: true)
 
+    allow(Broadcaster).to receive(:object_changed)
+
     result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
 
     expect(result.success?).to be true
     expect(result.value![:deleted]).to eq([])
     expect(DB[:chore_assignments].count).to eq(1)
+    expect(Broadcaster).not_to have_received(:object_changed)
+  end
+
+  it "does not broadcast when roster has no assignments at all" do
+    workspace = TestFactories.workspace
+    user = TestFactories.user
+    event = TestFactories.event(workspace: workspace, user: user)
+    roster = TestFactories.chore_roster(event: event, user: user)
+
+    allow(Broadcaster).to receive(:object_changed)
+
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
+
+    expect(result.success?).to be true
+    expect(result.value![:deleted]).to eq([])
+    expect(Broadcaster).not_to have_received(:object_changed)
   end
 
   it "inserts deleted_items records for cleared assignments" do

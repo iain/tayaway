@@ -44,10 +44,10 @@ module ChoreRosters
             DB[:deleted_items].multi_insert(deleted_rows)
             deleted = non_pinned_ids.map { |aid| { objectType: "choreAssignment", id: aid.to_s } }
             DB[:chore_assignments].where(id: non_pinned_ids).delete
-          end
 
-          # Single broadcast for the entire roster change instead of one per deleted assignment
-          Broadcaster.object_changed("chore_roster", roster.id, workspace_id: workspace_id)
+            # Single broadcast for the entire roster change instead of one per deleted assignment
+            Broadcaster.object_changed("chore_roster", roster.id, workspace_id: workspace_id)
+          end
         end
 
         T.cast(Success({ deleted: deleted }), Result[T::Hash[Symbol, T.untyped], ServiceError])
