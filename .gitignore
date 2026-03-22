@@ -41,6 +41,7 @@ backend/vendor/bundle/
 *.gem
 
 # Sorbet
+backend/sorbet/rbi/gems/
 backend/sorbet/rbi/todo.rbi
 
 # Claude Code
