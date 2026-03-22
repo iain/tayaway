@@ -129,6 +129,9 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   // Pending optimistic updates: Map<"type:id", PendingUpdate[]>
   const pendingUpdates = ref(new Map<string, PendingUpdate[]>())
 
+  // Reverse index: pendingId → pendingKey for O(1) lookup in removePending
+  const pendingIdToKey = new Map<string, string>()
+
   // IDs of temp objects inserted via set() whose create commands are still in
   // the command queue (not yet confirmed by the server). Cleared when the server
   // confirms the object via importObjects() or replaceObjects(). Used by
@@ -187,6 +190,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
           (u) => u.timestamp > serverMs
         )
         if (!hasPendingNewerThanServer) {
+          for (const u of pending) pendingIdToKey.delete(u.id)
           pendingUpdates.value.delete(pendingKey)
           changed = true
         }
@@ -333,6 +337,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
 
     const existing = pendingUpdates.value.get(pendingKey) || []
     pendingUpdates.value.set(pendingKey, [...existing, update as PendingUpdate])
+    pendingIdToKey.set(pendingId, pendingKey)
     bumpVersion(objectType)
     triggerRef(pendingUpdates)
 
@@ -341,21 +346,23 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
 
   // Remove a specific pending update (for rollback)
   function removePending(pendingId: string): void {
-    const changedTypes = new Set<ObjectType>()
-    for (const [key, updates] of pendingUpdates.value.entries()) {
-      const filtered = updates.filter((u) => u.id !== pendingId)
-      if (filtered.length === 0) {
-        pendingUpdates.value.delete(key)
-        changedTypes.add(key.split(':')[0] as ObjectType)
-      } else if (filtered.length !== updates.length) {
-        pendingUpdates.value.set(key, filtered)
-        changedTypes.add(key.split(':')[0] as ObjectType)
-      }
+    const key = pendingIdToKey.get(pendingId)
+    if (!key) return
+
+    pendingIdToKey.delete(pendingId)
+
+    const updates = pendingUpdates.value.get(key)
+    if (!updates) return
+
+    const filtered = updates.filter((u) => u.id !== pendingId)
+    if (filtered.length === 0) {
+      pendingUpdates.value.delete(key)
+    } else {
+      pendingUpdates.value.set(key, filtered)
     }
-    if (changedTypes.size > 0) {
-      bumpVersion(...changedTypes)
-      triggerRef(pendingUpdates)
-    }
+
+    bumpVersion(key.split(':')[0] as ObjectType)
+    triggerRef(pendingUpdates)
   }
 
   // Check if an object has pending updates
@@ -397,7 +404,12 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       typeMap.delete(objectId)
     }
     // Also clear any pending updates and temp tracking
-    pendingUpdates.value.delete(`${objectType}:${objectId}`)
+    const removedKey = `${objectType}:${objectId}`
+    const removedPending = pendingUpdates.value.get(removedKey)
+    if (removedPending) {
+      for (const u of removedPending) pendingIdToKey.delete(u.id)
+    }
+    pendingUpdates.value.delete(removedKey)
     tempObjectIds.delete(objectId)
     bumpVersion(objectType)
     triggerRef(objects)
@@ -421,7 +433,12 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       if (obj) {
         removed.push(obj)
         typeMap.delete(id)
-        pendingUpdates.value.delete(`${type}:${id}`)
+        const cascadeKey = `${type}:${id}`
+        const cascadePending = pendingUpdates.value.get(cascadeKey)
+        if (cascadePending) {
+          for (const u of cascadePending) pendingIdToKey.delete(u.id)
+        }
+        pendingUpdates.value.delete(cascadeKey)
         tempObjectIds.delete(id)
         typesChanged.add(type)
       }
@@ -477,9 +494,10 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       }
     }
     // Clear pending updates and temp tracking for cleared types
-    for (const [key] of pendingUpdates.value) {
+    for (const [key, updates] of pendingUpdates.value) {
       const objectType = key.split(':')[0] as ObjectType
       if (!keepSet.has(objectType)) {
+        for (const u of updates) pendingIdToKey.delete(u.id)
         pendingUpdates.value.delete(key)
       }
     }
@@ -532,6 +550,8 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     for (const [key, updates] of pendingUpdates.value) {
       const serverMs = serverTimestamps.get(key) ?? 0
       const newer = updates.filter((u) => u.timestamp > serverMs)
+      const stale = updates.filter((u) => u.timestamp <= serverMs)
+      for (const u of stale) pendingIdToKey.delete(u.id)
       if (newer.length === 0) {
         pendingUpdates.value.delete(key)
       } else {
@@ -626,6 +646,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     const restoredTypes = new Set<ObjectType>()
     for (const [key, updates] of cached) {
       pendingUpdates.value.set(key, updates)
+      for (const u of updates) pendingIdToKey.set(u.id, key)
       restoredTypes.add(key.split(':')[0] as ObjectType)
     }
     bumpVersion(...restoredTypes)
@@ -636,6 +657,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   function $reset(): void {
     objects.value = createEmptyStorage()
     pendingUpdates.value = new Map()
+    pendingIdToKey.clear()
     tempObjectIds.clear()
     getAllCache.clear()
   }
