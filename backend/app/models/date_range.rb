@@ -54,6 +54,17 @@ class DateRange < T::Struct
       DB[:date_ranges].where(date_poll_id: date_poll_id).order(:start_date).select_map(:id)
     end
 
+    sig { params(date_poll_ids: T::Array[String]).returns(T::Hash[String, T::Array[String]]) }
+    def ids_for_date_poll_ids(date_poll_ids)
+      return {} if date_poll_ids.empty?
+
+      DB[:date_ranges]
+        .where(date_poll_id: date_poll_ids)
+        .order(:start_date)
+        .select_map([:date_poll_id, :id])
+        .each_with_object(Hash.new { |h, k| h[k] = [] }) { |(poll_id, id), h| h[poll_id.to_s] << id.to_s }
+    end
+
     private
 
     sig { returns(Sequel::Dataset) }

@@ -49,6 +49,17 @@ class SettlementTransfer < T::Struct
       DB[:settlement_transfers].where(settlement_id: settlement_id).order(:created_at).select_map(:id)
     end
 
+    sig { params(settlement_ids: T::Array[String]).returns(T::Hash[String, T::Array[String]]) }
+    def ids_for_settlement_ids(settlement_ids)
+      return {} if settlement_ids.empty?
+
+      DB[:settlement_transfers]
+        .where(settlement_id: settlement_ids)
+        .order(:created_at)
+        .select_map([:settlement_id, :id])
+        .each_with_object(Hash.new { |h, k| h[k] = [] }) { |(settlement_id, id), h| h[settlement_id.to_s] << id.to_s }
+    end
+
     sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[SettlementTransfer]) }
     def changed_since(workspace_id, since)
       dataset
