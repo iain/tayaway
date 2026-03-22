@@ -27,6 +27,9 @@ gem "mail", "~> 2.8"
 gem "chunky_png"
 gem "rqrcode"
 
+# Encryption (libsodium bindings)
+gem "rbnacl"
+
 # Autoloading
 gem "zeitwerk"
 

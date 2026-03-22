@@ -195,6 +195,8 @@ GEM
     rbi (0.3.9)
       prism (~> 1.0)
       rbs (>= 3.4.4)
+    rbnacl (7.1.2)
+      ffi (~> 1)
     rbs (4.0.1.dev.2)
       logger
       prism (>= 1.6.0)
@@ -350,6 +352,7 @@ DEPENDENCIES
   rack-attack
   rack-test
   rake
+  rbnacl
   roda (~> 3.98)
   roda-websockets
   rqrcode
@@ -465,6 +468,7 @@ CHECKSUMS
   rb-fsevent (0.11.2) sha256=43900b972e7301d6570f64b850a5aa67833ee7d87b458ee92805d56b7318aefe
   rb-inotify (0.11.1) sha256=a0a700441239b0ff18eb65e3866236cd78613d6b9f78fea1f9ac47a85e47be6e
   rbi (0.3.9) sha256=d6a187bd0b376e999d3d82a5e5798a61178be98b894b7b35741c14162c9ea015
+  rbnacl (7.1.2) sha256=c58433e93b390a7b8c03a9da9e54f2de67e6cc3d6731553265299c6aac889a60
   rbs (4.0.1.dev.2) sha256=0ae14050601187fc48adcbbb6f7d761c2cc4505dbd0b4a60615175b40549ffa6
   rdoc (7.2.0) sha256=8650f76cd4009c3b54955eb5d7e3a075c60a57276766ebf36f9085e8c9f23192
   regexp_parser (2.11.3) sha256=ca13f381a173b7a93450e53459075c9b76a10433caadcb2f1180f2c741fc55a4
