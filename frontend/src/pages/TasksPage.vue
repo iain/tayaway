@@ -29,13 +29,13 @@ const pool = useObjectPoolStore()
 const workspaceStore = useWorkspaceStore()
 const { currentWorkspaceId } = storeToRefs(workspaceStore)
 
-const { pendingNewList } = useTaskActions()
+const { pendingNewList, resetNewList } = useTaskActions()
 
 const isModalOpen = ref(false)
 
 watch(pendingNewList, (val) => {
   if (val) {
-    pendingNewList.value = false
+    resetNewList()
     openModal()
   }
 })

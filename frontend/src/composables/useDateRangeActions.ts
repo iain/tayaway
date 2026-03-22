@@ -1,11 +1,13 @@
 import { ref } from 'vue'
+import { useActionTrigger } from './useActionTrigger'
 
-const pendingAdd = ref(false)
+const pendingAddRef = ref(false)
 
 export function useDateRangeActions() {
-  function triggerAdd() {
-    pendingAdd.value = true
-  }
-
-  return { pendingAdd, triggerAdd }
+  const {
+    pending: pendingAdd,
+    trigger: triggerAdd,
+    reset: resetAdd,
+  } = useActionTrigger(pendingAddRef)
+  return { pendingAdd, triggerAdd, resetAdd }
 }

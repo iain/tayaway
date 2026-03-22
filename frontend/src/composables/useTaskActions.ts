@@ -1,11 +1,13 @@
 import { ref } from 'vue'
+import { useActionTrigger } from './useActionTrigger'
 
-const pendingNewList = ref(false)
+const pendingNewListRef = ref(false)
 
 export function useTaskActions() {
-  function triggerNewList() {
-    pendingNewList.value = true
-  }
-
-  return { pendingNewList, triggerNewList }
+  const {
+    pending: pendingNewList,
+    trigger: triggerNewList,
+    reset: resetNewList,
+  } = useActionTrigger(pendingNewListRef)
+  return { pendingNewList, triggerNewList, resetNewList }
 }
