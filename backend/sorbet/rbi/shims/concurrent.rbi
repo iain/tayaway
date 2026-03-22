@@ -1,6 +1,11 @@
 # typed: strict
 # frozen_string_literal: true
 
+# Tapioca's generated RBI for concurrent-ruby omits ReadWriteLock and
+# AtomicBoolean because they are loaded via autoload. We use both in
+# app/websocket/listener.rb (AtomicBoolean for the thread-safe running
+# flag) and implicitly via concurrent-ruby internals (ReadWriteLock).
+
 class Concurrent::ReadWriteLock
 end
 

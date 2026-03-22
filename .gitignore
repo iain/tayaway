@@ -41,7 +41,9 @@ backend/vendor/bundle/
 *.gem
 
 # Sorbet
-backend/sorbet/rbi/todo.rbi
+# Note: gem RBIs (backend/sorbet/rbi/gems/) are committed.
+# Shims (backend/sorbet/rbi/shims/) fill gaps where tapioca output is incomplete.
+# Do NOT use `srb rbi todo` — add proper shims instead.
 
 # Claude Code
 .claude/worktrees/

@@ -1,6 +1,12 @@
 # typed: true
 # frozen_string_literal: true
 
+# Tapioca generates an empty RBI for the mail gem because most of its
+# API is defined via method_missing / dynamic delegation. We use
+# Mail::Message in app/services/ for sending login links, invite
+# emails, and poll-closed notifications. These signatures cover the
+# methods we actually call.
+
 module Mail
   class Message
     sig { params(val: T.nilable(String)).returns(T.untyped) }
