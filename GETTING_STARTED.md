@@ -61,3 +61,19 @@ Run a single test:
 cd backend && bundle exec rspec spec/path/to/spec.rb
 cd frontend && pnpm exec vitest run src/path/to/file.spec.ts
 ```
+
+## Devcontainer (experimental)
+
+An alternative to local setup — a devcontainer with all dependencies pre-configured.
+
+```bash
+# Start Claude Code in the devcontainer
+.devcontainer/claude.sh
+
+# Run any command
+.devcontainer/exec.sh mise run fix
+.devcontainer/exec.sh mise run serve
+.devcontainer/exec.sh bash
+```
+
+`.devcontainer/claude.sh` starts the container (if needed), pulls your OAuth token from macOS Keychain, and launches Claude Code with `--dangerously-skip-permissions`. Extra args are forwarded: `.devcontainer/claude.sh -p "fix the login bug"`.
