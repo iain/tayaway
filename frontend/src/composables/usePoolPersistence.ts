@@ -12,6 +12,7 @@ import type { PoolChange } from '@/stores/objectPool'
 import type { PoolObject } from '@/types/pool'
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
+let idleCallbackHandle: number | null = null
 let pendingDebounceTimer: ReturnType<typeof setTimeout> | null = null
 let pendingSaves: PoolObject[] = []
 let pendingRemoves: { objectType: string; id: string }[] = []
@@ -19,6 +20,14 @@ let changeHandler: ((change: PoolChange) => void) | null = null
 let visibilityHandler: (() => void) | null = null
 
 async function flushWrites(): Promise<void> {
+  if (idleCallbackHandle !== null) {
+    if (typeof cancelIdleCallback === 'function') {
+      cancelIdleCallback(idleCallbackHandle)
+    } else {
+      clearTimeout(idleCallbackHandle)
+    }
+    idleCallbackHandle = null
+  }
   const saves = pendingSaves
   const removes = pendingRemoves
   pendingSaves = []
@@ -48,7 +57,17 @@ function schedulePendingFlush(): void {
 
 function scheduleFlush(): void {
   if (debounceTimer) return
-  debounceTimer = setTimeout(flushWrites, 500)
+  debounceTimer = setTimeout(() => {
+    debounceTimer = null
+    // Defer the write to an idle period so IndexedDB I/O doesn't compete with
+    // active user interactions. Falls back to an immediate async call for
+    // environments without requestIdleCallback (Safari < 16, test envs, etc.).
+    if (typeof requestIdleCallback === 'function') {
+      idleCallbackHandle = requestIdleCallback(flushWrites, { timeout: 2000 })
+    } else {
+      idleCallbackHandle = setTimeout(flushWrites, 0) as unknown as number
+    }
+  }, 500)
 }
 
 export function usePoolPersistence() {
@@ -171,9 +190,14 @@ export function usePoolPersistence() {
     onPoolChange(changeHandler)
 
     visibilityHandler = () => {
-      if (document.visibilityState === 'hidden' && debounceTimer) {
-        clearTimeout(debounceTimer)
-        debounceTimer = null
+      if (
+        document.visibilityState === 'hidden' &&
+        (debounceTimer !== null || idleCallbackHandle !== null)
+      ) {
+        if (debounceTimer !== null) {
+          clearTimeout(debounceTimer)
+          debounceTimer = null
+        }
         flushWrites()
       }
     }
@@ -192,6 +216,14 @@ export function usePoolPersistence() {
     if (debounceTimer) {
       clearTimeout(debounceTimer)
       debounceTimer = null
+    }
+    if (idleCallbackHandle !== null) {
+      if (typeof cancelIdleCallback === 'function') {
+        cancelIdleCallback(idleCallbackHandle)
+      } else {
+        clearTimeout(idleCallbackHandle)
+      }
+      idleCallbackHandle = null
     }
     if (pendingDebounceTimer) {
       clearTimeout(pendingDebounceTimer)

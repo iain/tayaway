@@ -5,6 +5,32 @@ import * as poolDb from '@/api/poolDb'
 import { onPoolChange, type PoolChange } from '@/stores/objectPool'
 import type { PoolObject } from '@/types/pool'
 
+// Minimal requestIdleCallback polyfill for JSDOM (which does not implement it).
+// Must be installed after vi.useFakeTimers() since fake timers may clobber globals.
+// The callbacks map is re-created each beforeEach to ensure clean state.
+let idleCallbacks: Map<number, IdleRequestCallback> = new Map()
+let idleHandle = 0
+
+function installIdlePolyfill(): void {
+  idleHandle = 0
+  idleCallbacks = new Map()
+  global.requestIdleCallback = (cb: IdleRequestCallback): number => {
+    const handle = ++idleHandle
+    idleCallbacks.set(handle, cb)
+    return handle
+  }
+  global.cancelIdleCallback = (handle: number): void => {
+    idleCallbacks.delete(handle)
+  }
+}
+
+function flushIdleCallbacks(): void {
+  for (const [handle, cb] of idleCallbacks) {
+    idleCallbacks.delete(handle)
+    cb({ didTimeout: false, timeRemaining: () => 50 } as IdleDeadline)
+  }
+}
+
 vi.mock('@/api/poolDb', () => ({
   CACHE_VERSION: 4,
   saveObjects: vi.fn().mockResolvedValue(undefined),
@@ -58,6 +84,8 @@ describe('usePoolPersistence — visibilitychange flush', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.useFakeTimers()
+    // Install the polyfill after useFakeTimers() so it isn't overridden
+    installIdlePolyfill()
     vi.mocked(poolDb.saveObjects).mockReset().mockResolvedValue(undefined)
     vi.mocked(poolDb.removeObjects).mockReset().mockResolvedValue(undefined)
     vi.mocked(onPoolChange).mockReset()
@@ -168,6 +196,103 @@ describe('usePoolPersistence — visibilitychange flush', () => {
     await Promise.resolve()
 
     // Debounce still pending — no write yet
+    expect(poolDb.saveObjects).not.toHaveBeenCalled()
+  })
+
+  it('defers writes via requestIdleCallback after the 500ms debounce', async () => {
+    let capturedPoolChangeHandler: ((change: PoolChange) => void) | null = null
+    vi.mocked(onPoolChange).mockImplementation((handler) => {
+      capturedPoolChangeHandler = handler
+    })
+
+    const { startPersisting } = usePoolPersistence()
+    startPersisting()
+
+    capturedPoolChangeHandler!({
+      type: 'set',
+      object: {
+        id: 'evt-3',
+        objectType: 'event',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      } as PoolObject,
+    })
+
+    // After the 500ms debounce fires, the write is pending as an idle callback —
+    // not yet executed.
+    await vi.advanceTimersByTimeAsync(500)
+    expect(poolDb.saveObjects).not.toHaveBeenCalled()
+    expect(idleCallbacks.size).toBe(1)
+
+    // Once the browser becomes idle, the write executes.
+    flushIdleCallbacks()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(poolDb.saveObjects).toHaveBeenCalledTimes(1)
+    expect(poolDb.saveObjects).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'evt-3', objectType: 'event' }),
+    ])
+  })
+
+  it('flushes immediately when page becomes hidden while idle callback is pending', async () => {
+    let capturedPoolChangeHandler: ((change: PoolChange) => void) | null = null
+    vi.mocked(onPoolChange).mockImplementation((handler) => {
+      capturedPoolChangeHandler = handler
+    })
+
+    const { startPersisting } = usePoolPersistence()
+    startPersisting()
+
+    capturedPoolChangeHandler!({
+      type: 'set',
+      object: {
+        id: 'evt-4',
+        objectType: 'event',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      } as PoolObject,
+    })
+
+    // Advance past debounce — idle callback is now registered but not yet run
+    await vi.advanceTimersByTimeAsync(500)
+    expect(idleCallbacks.size).toBe(1)
+    expect(poolDb.saveObjects).not.toHaveBeenCalled()
+
+    // Page becomes hidden — should flush immediately, cancelling the idle callback
+    triggerVisibilityChange('hidden')
+
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(poolDb.saveObjects).toHaveBeenCalledTimes(1)
+    // The idle callback should have been cancelled — flushing again should be a no-op
+    expect(idleCallbacks.size).toBe(0)
+  })
+
+  it('cancels the idle callback on stopPersisting', async () => {
+    let capturedPoolChangeHandler: ((change: PoolChange) => void) | null = null
+    vi.mocked(onPoolChange).mockImplementation((handler) => {
+      capturedPoolChangeHandler = handler
+    })
+
+    const { startPersisting, stopPersisting } = usePoolPersistence()
+    startPersisting()
+
+    capturedPoolChangeHandler!({
+      type: 'set',
+      object: {
+        id: 'evt-5',
+        objectType: 'event',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      } as PoolObject,
+    })
+
+    await vi.advanceTimersByTimeAsync(500)
+    expect(idleCallbacks.size).toBe(1)
+
+    stopPersisting()
+
+    expect(idleCallbacks.size).toBe(0)
+    // No writes should have happened
     expect(poolDb.saveObjects).not.toHaveBeenCalled()
   })
 })
