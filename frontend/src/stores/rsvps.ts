@@ -16,8 +16,8 @@ export const useRsvpsStore = defineStore('rsvps', () => {
     const pool = useObjectPoolStore()
     const userId = useAuthStore().currentUserId!
     const body: Record<string, unknown> = { attending }
-    if (startDate) body.start_date = startDate
-    if (endDate) body.end_date = endDate
+    if (startDate !== undefined) body.start_date = startDate
+    if (endDate !== undefined) body.end_date = endDate
 
     // Check for existing RSVP by this user on this event
     const existingRsvp = pool
