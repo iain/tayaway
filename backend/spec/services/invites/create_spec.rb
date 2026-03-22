@@ -57,4 +57,15 @@ RSpec.describe Invites::Create do
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("An invitation has already been sent to this email")
   end
+
+  it "logs info when invite is created" do
+    logged_messages = []
+    allow(APP_LOGGER).to receive(:info) do |&block|
+      logged_messages << block.call if block
+    end
+
+    described_class.call(email: "log@example.com", workspace_id: workspace[:id], invited_by: user[:id])
+
+    expect(logged_messages).to include(a_string_including("[Invites::Create]"))
+  end
 end

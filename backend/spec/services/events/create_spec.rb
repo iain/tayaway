@@ -125,6 +125,19 @@ RSpec.describe Events::Create do
     expect(result.failure.message).to eq("Start date must be before or equal to end date")
   end
 
+  it "logs info when event is created" do
+    user = TestFactories.user
+    workspace = TestFactories.workspace
+    logged_messages = []
+    allow(APP_LOGGER).to receive(:info) do |&block|
+      logged_messages << block.call if block
+    end
+
+    described_class.call(workspace_id: workspace[:id], user_id: user[:id], name: "Party", description: nil)
+
+    expect(logged_messages).to include(a_string_including("[Events::Create]"))
+  end
+
   it "returns existing event on idempotent replay with same id" do
     user = TestFactories.user
     workspace = TestFactories.workspace

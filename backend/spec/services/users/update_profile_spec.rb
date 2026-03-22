@@ -407,4 +407,18 @@ RSpec.describe Users::UpdateProfile do
     expect(updated_member[:latitude]).to be_nil
     expect(updated_member[:longitude]).to be_nil
   end
+
+  it "logs info when profile is updated" do
+    workspace = TestFactories.workspace
+    user = TestFactories.user(name: "Test")
+    TestFactories.workspace_membership(workspace: workspace, user: user)
+    logged_messages = []
+    allow(APP_LOGGER).to receive(:info) do |&block|
+      logged_messages << block.call if block
+    end
+
+    described_class.call(user_id: user[:id], current_user_id: user[:id], name: "Updated")
+
+    expect(logged_messages).to include(a_string_including("[Users::UpdateProfile]"))
+  end
 end

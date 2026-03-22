@@ -187,6 +187,8 @@ module Users
           end
         end
 
+        APP_LOGGER.info { "[Users::UpdateProfile] User #{user_id} updated their profile" }
+
         # Build pool with member objects for each workspace membership
         memberships = WorkspaceMembership.for_user(user_id)
 

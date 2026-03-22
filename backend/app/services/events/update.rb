@@ -170,6 +170,8 @@ module Events
           Broadcaster.object_changed("event", event_id, workspace_id: workspace_id)
         end
 
+        APP_LOGGER.info { "[Events::Update] Event #{event_id} updated in workspace #{workspace_id}" }
+
         pool = PoolSerializer.new(workspace_id: workspace_id)
         pool.add_event(T.must(Event.find(event_id)))
         T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])

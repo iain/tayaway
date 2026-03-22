@@ -92,6 +92,7 @@ module Invites
         workspace = Workspace.find(invite.workspace_id)
         workspace_name = workspace ? workspace.name : "Tayaway"
 
+        APP_LOGGER.info { "[Invites::Remind] Reminder sent for invite #{invite.id} to #{invite.email} in workspace #{invite.workspace_id}" }
         APP_LOGGER.info { "REMINDER INVITE LINK FOR #{invite.email}: #{invite_link}" } if APP_ENV == "development"
         Mailers::WorkspaceInvite.send_email(
           email: invite.email,

@@ -74,6 +74,24 @@ RSpec.describe DatePolls::Reopen do
     expect(db_poll[:selected_date_range_id]).to be_nil
   end
 
+  it "logs info when poll is reopened" do
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
+    TestFactories.date_poll(event: event, closed_at: Time.now)
+    logged_messages = []
+    allow(APP_LOGGER).to receive(:info) do |&block|
+      logged_messages << block.call if block
+    end
+
+    described_class.call(
+      event_id: event[:id],
+      current_user_id: user[:id],
+      deadline: (Time.now + 86_400).iso8601
+    )
+
+    expect(logged_messages).to include(a_string_including("[DatePolls::Reopen]"))
+  end
+
   it "deletes all RSVPs when reopening" do
     user = TestFactories.user
     voter = TestFactories.user
