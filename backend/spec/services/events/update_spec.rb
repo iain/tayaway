@@ -162,4 +162,75 @@ RSpec.describe Events::Update do
     expect(updated_event[:startDate]).to be_nil
     expect(updated_event[:endDate]).to be_nil
   end
+
+  it "sets location_name without coordinates" do
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
+
+    result = described_class.call(
+      event_id: event[:id],
+      current_user_id: user[:id],
+      name: "Event",
+      description: nil,
+      location_name: "Somewhere Nice"
+    )
+
+    expect(result.success?).to be true
+    updated_event = result.value![:objects].find { |o| o[:objectType] == "event" }
+    expect(updated_event[:locationName]).to eq("Somewhere Nice")
+    expect(updated_event[:latitude]).to be_nil
+    expect(updated_event[:longitude]).to be_nil
+  end
+
+  it "sets location_name with coordinates" do
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
+
+    result = described_class.call(
+      event_id: event[:id],
+      current_user_id: user[:id],
+      name: "Event",
+      description: nil,
+      location_name: "Eiffel Tower",
+      latitude: 48.8584,
+      longitude: 2.2945
+    )
+
+    expect(result.success?).to be true
+    updated_event = result.value![:objects].find { |o| o[:objectType] == "event" }
+    expect(updated_event[:locationName]).to eq("Eiffel Tower")
+    expect(updated_event[:latitude]).to be_within(0.001).of(48.8584)
+    expect(updated_event[:longitude]).to be_within(0.001).of(2.2945)
+  end
+
+  it "clears location when location_name is empty" do
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
+
+    # First set a location
+    described_class.call(
+      event_id: event[:id],
+      current_user_id: user[:id],
+      name: "Event",
+      description: nil,
+      location_name: "Somewhere Nice",
+      latitude: 48.8584,
+      longitude: 2.2945
+    )
+
+    # Then clear it
+    result = described_class.call(
+      event_id: event[:id],
+      current_user_id: user[:id],
+      name: "Event",
+      description: nil,
+      location_name: ""
+    )
+
+    expect(result.success?).to be true
+    updated_event = result.value![:objects].find { |o| o[:objectType] == "event" }
+    expect(updated_event[:locationName]).to be_nil
+    expect(updated_event[:latitude]).to be_nil
+    expect(updated_event[:longitude]).to be_nil
+  end
 end
