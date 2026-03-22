@@ -69,11 +69,83 @@ jobs:
           cd backend && bundle exec srb tc
 
       - name: Set up test database
-        run: |
-          cd backend && bundle exec rake db:create db:migrate
+        run: cd backend && bundle exec rake db:create db:migrate
 
       - name: Backend tests
         run: cd backend && bundle exec rspec --format progress
 
       - name: Frontend tests
         run: cd frontend && pnpm exec vitest run --reporter=dot
+
+  e2e:
+    if: github.ref == 'refs/heads/main'
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/tayaway_e2e
+      RACK_ENV: e2e
+      APP_SECRET: dGVzdHNlY3JldHRlc3RzZWNyZXR0ZXN0c2VjcmV0dGU=
+      FRONTEND_URL: http://localhost:5174
+      CI: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jdx/mise-action@v2
+        with:
+          install: true
+          cache: true
+
+      - name: Cache backend gems
+        uses: actions/cache@v4
+        with:
+          path: backend/vendor/bundle
+          key: gems-${{ runner.os }}-${{ hashFiles('backend/Gemfile.lock') }}
+          restore-keys: gems-${{ runner.os }}-
+
+      - name: Cache frontend node_modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            frontend/node_modules
+          key: node-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: node-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          cd backend && bundle config set --local path vendor/bundle && bundle install --jobs 4 --retry 3
+          pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: Set up e2e database
+        run: cd backend && bundle exec rake db:create db:migrate
+
+      - name: Run e2e tests
+        run: pnpm exec playwright test
+
+      - name: Upload test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
