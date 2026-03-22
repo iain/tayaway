@@ -12,15 +12,14 @@ class DateRange < T::Struct
   const :created_at, Time
   const :updated_at, Time
 
-  sig { params(vote_ids: T::Array[String]).returns(T::Hash[Symbol, T.untyped]) }
-  def to_api_hash(vote_ids:)
+  sig { returns(T::Hash[Symbol, T.untyped]) }
+  def to_api_hash
     {
       id: id.to_s,
       objectType: "dateRange",
       datePollId: date_poll_id.to_s,
       startDate: start_date.iso8601,
       endDate: end_date.iso8601,
-      voteIds: vote_ids,
       updatedAt: updated_at.iso8601(3)
     }
   end

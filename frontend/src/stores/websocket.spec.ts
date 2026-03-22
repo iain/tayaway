@@ -563,7 +563,6 @@ describe('websocket store — cascade delete', () => {
         datePollId: 'poll-1',
         startDate: '2026-06-10',
         endDate: '2026-06-12',
-        voteIds: [],
         updatedAt: new Date().toISOString(),
         ...overrides,
       }

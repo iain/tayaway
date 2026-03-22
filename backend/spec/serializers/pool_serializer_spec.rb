@@ -70,12 +70,11 @@ RSpec.describe PoolSerializer do
   end
 
   describe "#add_date_ranges_batch" do
-    it "serializes multiple date ranges without N+1 vote queries" do
+    it "serializes multiple date ranges in a single batch" do
       event = TestFactories.event(workspace: workspace, user: user)
       poll = TestFactories.date_poll(event: event)
       range1 = TestFactories.date_range(date_poll: poll, start_date: Date.today, end_date: Date.today + 3)
       range2 = TestFactories.date_range(date_poll: poll, start_date: Date.today + 7, end_date: Date.today + 10)
-      vote = TestFactories.vote(date_range: range1, user: user)
 
       pool = described_class.new(workspace_id: workspace[:id])
       ranges = [DateRange.find(range1[:id]), DateRange.find(range2[:id])]
@@ -86,8 +85,11 @@ RSpec.describe PoolSerializer do
       range1_obj = objects.find { |o| o[:objectType] == "dateRange" && o[:id] == range1[:id].to_s }
       range2_obj = objects.find { |o| o[:objectType] == "dateRange" && o[:id] == range2[:id].to_s }
 
-      expect(range1_obj[:voteIds]).to include(vote[:id].to_s)
-      expect(range2_obj[:voteIds]).to eq([])
+      expect(range1_obj[:objectType]).to eq("dateRange")
+      expect(range1_obj[:datePollId]).to eq(poll[:id].to_s)
+      expect(range2_obj[:datePollId]).to eq(poll[:id].to_s)
+      expect(range1_obj).not_to have_key(:voteIds)
+      expect(range2_obj).not_to have_key(:voteIds)
     end
   end
 

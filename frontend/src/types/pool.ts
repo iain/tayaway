@@ -82,7 +82,6 @@ export interface ObjectTypeMap {
     datePollId: string
     startDate: string
     endDate: string
-    voteIds: string[]
   }
   vote: PoolObjectBase<'vote'> & {
     dateRangeId: string

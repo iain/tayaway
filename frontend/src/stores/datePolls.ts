@@ -80,7 +80,6 @@ export const useDatePollsStore = defineStore('datePolls', () => {
       datePollId: poll.id,
       startDate,
       endDate,
-      voteIds: [],
       updatedAt: now,
     }
 

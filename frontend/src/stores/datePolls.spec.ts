@@ -33,7 +33,6 @@ function makeDateRange(
     datePollId: 'poll-1',
     startDate: '2026-03-01',
     endDate: '2026-03-05',
-    voteIds: [],
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,
   }
