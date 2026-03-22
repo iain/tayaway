@@ -252,5 +252,123 @@ describe('useMutation', () => {
 
       expect(pool.get('event', 'nonexistent')).toBeUndefined()
     })
+
+    describe('cascade behaviour', () => {
+      function makeTaskList(
+        overrides: Partial<ObjectTypeMap['taskList']> = {}
+      ): ObjectTypeMap['taskList'] {
+        return {
+          id: 'list-1',
+          objectType: 'taskList',
+          workspaceId: 'ws-1',
+          userId: 'user-1',
+          name: 'Shopping',
+          position: 1,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          ...overrides,
+        }
+      }
+
+      function makeTaskItem(
+        overrides: Partial<ObjectTypeMap['taskItem']> = {}
+      ): ObjectTypeMap['taskItem'] {
+        return {
+          id: 'item-1',
+          objectType: 'taskItem',
+          taskListId: 'list-1',
+          userId: null,
+          content: 'Milk',
+          completedAt: null,
+          position: 1,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          ...overrides,
+        }
+      }
+
+      it('removes child objects from the pool before the API call', async () => {
+        const pool = useObjectPoolStore()
+        pool.importObjects([
+          makeTaskList(),
+          makeTaskItem({ id: 'item-1', taskListId: 'list-1' }),
+          makeTaskItem({ id: 'item-2', taskListId: 'list-1' }),
+        ])
+        const { destroy } = useMutation()
+
+        let item1DuringCall: boolean | undefined
+        let item2DuringCall: boolean | undefined
+        await destroy('fail', 'taskList', 'list-1', async () => {
+          item1DuringCall = pool.get('taskItem', 'item-1') !== undefined
+          item2DuringCall = pool.get('taskItem', 'item-2') !== undefined
+          return okResponse(null)
+        })
+
+        expect(item1DuringCall).toBe(false)
+        expect(item2DuringCall).toBe(false)
+        expect(pool.get('taskItem', 'item-1')).toBeUndefined()
+        expect(pool.get('taskItem', 'item-2')).toBeUndefined()
+      })
+
+      it('does not remove child objects belonging to a different parent', async () => {
+        const pool = useObjectPoolStore()
+        pool.importObjects([
+          makeTaskList({ id: 'list-1' }),
+          makeTaskList({ id: 'list-2' }),
+          makeTaskItem({ id: 'item-1', taskListId: 'list-1' }),
+          makeTaskItem({ id: 'item-2', taskListId: 'list-2' }),
+        ])
+        const { destroy } = useMutation()
+
+        await destroy('fail', 'taskList', 'list-1', async () =>
+          okResponse(null)
+        )
+
+        expect(pool.get('taskList', 'list-2')).toBeDefined()
+        expect(pool.get('taskItem', 'item-2')).toBeDefined()
+      })
+
+      it('restores all children on server error', async () => {
+        const pool = useObjectPoolStore()
+        pool.importObjects([
+          makeTaskList(),
+          makeTaskItem({ id: 'item-1', taskListId: 'list-1' }),
+          makeTaskItem({ id: 'item-2', taskListId: 'list-1' }),
+        ])
+        const { destroy } = useMutation()
+
+        await expect(
+          destroy('fail', 'taskList', 'list-1', async () => {
+            throw new Error('Server error')
+          })
+        ).rejects.toThrow('Server error')
+
+        expect(pool.get('taskList', 'list-1')).toBeDefined()
+        expect(pool.get('taskItem', 'item-1')).toBeDefined()
+        expect(pool.get('taskItem', 'item-2')).toBeDefined()
+      })
+
+      it('keeps children removed when queued offline', async () => {
+        const pool = useObjectPoolStore()
+        pool.importObjects([
+          makeTaskList(),
+          makeTaskItem({ id: 'item-1', taskListId: 'list-1' }),
+        ])
+        const { destroy } = useMutation()
+
+        const result = await destroy(
+          'fail',
+          'taskList',
+          'list-1',
+          async () => {
+            throw new CommandQueuedError()
+          }
+        )
+
+        expect(result).toEqual({ queued: true })
+        expect(pool.get('taskList', 'list-1')).toBeUndefined()
+        expect(pool.get('taskItem', 'item-1')).toBeUndefined()
+      })
+    })
   })
 })
