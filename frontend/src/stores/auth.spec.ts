@@ -143,6 +143,27 @@ describe('auth store – initialize() error handling', () => {
     )
   })
 
+  it('logs a TypeError that does not match the network error pattern (programming bug, not network)', async () => {
+    // A TypeError from a programming mistake (e.g. accessing .json() on undefined)
+    // should be logged — only TypeErrors whose message matches the network pattern
+    // are treated as genuine network failures and swallowed silently.
+    seedCache()
+    const bug = new TypeError(
+      'Cannot read properties of undefined (reading "json")'
+    )
+    vi.mocked(fetch).mockRejectedValue(bug)
+
+    const { useAuthStore } = await import('./auth')
+    const store = useAuthStore()
+    await store.initialize()
+
+    expect(store.user).toMatchObject({ id: 'user-1' })
+    expect(consoleSpy).toHaveBeenCalledWith(
+      '[auth] initialize() caught unexpected error:',
+      bug
+    )
+  })
+
   it('falls back to null and logs when there is no cached user and an unexpected error occurs', async () => {
     // No cache seeded
     const bug = new SyntaxError('Unexpected token')
@@ -287,4 +308,3 @@ describe('auth store – logout()', () => {
     expect(mockStopPersisting).toHaveBeenCalledOnce()
   })
 })
-
