@@ -1,11 +1,13 @@
 import { computed } from 'vue'
 import { useObjectPoolStore } from '@/stores'
 import type { ObjectTypeMap } from '@/types/pool'
+import { useNow } from './useNow'
 
 export function useEventsList() {
   const pool = useObjectPoolStore()
+  const { now } = useNow()
 
-  const today = computed(() => new Date().toISOString().slice(0, 10))
+  const today = computed(() => now.value.toISOString().slice(0, 10))
 
   // Single pass: categorize all events at once instead of four separate filters
   const categorized = computed(() => {
