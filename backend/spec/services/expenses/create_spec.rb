@@ -20,6 +20,97 @@ RSpec.describe Expenses::Create do
     }
   end
 
+  describe "input validation" do
+    it "fails when description is nil" do
+      result = described_class.call(**valid_params, description: nil)
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Description is required")
+      expect(result.failure.http_status).to eq(400)
+    end
+
+    it "fails when description is empty" do
+      result = described_class.call(**valid_params, description: "")
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Description is required")
+      expect(result.failure.http_status).to eq(400)
+    end
+
+    it "fails when description exceeds 255 characters" do
+      result = described_class.call(**valid_params, description: "a" * 256)
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Description is too long (maximum 255 characters)")
+      expect(result.failure.http_status).to eq(400)
+    end
+
+    it "fails when amount is nil" do
+      result = described_class.call(**valid_params, amount: nil)
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Amount must be greater than zero")
+      expect(result.failure.http_status).to eq(400)
+    end
+
+    it "fails when amount is zero" do
+      result = described_class.call(**valid_params, amount: 0.0)
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Amount must be greater than zero")
+      expect(result.failure.http_status).to eq(400)
+    end
+
+    it "fails when amount is negative" do
+      result = described_class.call(**valid_params, amount: -5.0)
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Amount must be greater than zero")
+      expect(result.failure.http_status).to eq(400)
+    end
+
+    it "fails when amount exceeds 1,000,000" do
+      result = described_class.call(**valid_params, amount: 1_000_001.0)
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Amount cannot exceed 1,000,000")
+      expect(result.failure.http_status).to eq(400)
+    end
+
+    it "fails when start_date is nil" do
+      result = described_class.call(**valid_params, start_date: nil)
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Start date and end date are required")
+      expect(result.failure.http_status).to eq(400)
+    end
+
+    it "fails when end_date is empty" do
+      result = described_class.call(**valid_params, end_date: "")
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Start date and end date are required")
+      expect(result.failure.http_status).to eq(400)
+    end
+  end
+
+  describe "event date range validation" do
+    it "fails when expense dates fall outside event date range" do
+      # Set event dates to a narrow range
+      DB[:events].where(id: event[:id]).update(
+        start_date: Date.parse("2026-01-10"),
+        end_date: Date.parse("2026-01-20")
+      )
+      TestFactories.rsvp(event: event, user: user, attending: true)
+
+      result = described_class.call(**valid_params, start_date: "2026-01-05", end_date: "2026-01-15")
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Expense dates must fall within event date range")
+      expect(result.failure.http_status).to eq(400)
+    end
+  end
+
   it "fails when user has no RSVP for the event" do
     result = described_class.call(**valid_params)
 
