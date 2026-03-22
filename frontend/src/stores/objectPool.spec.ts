@@ -575,6 +575,154 @@ describe('objectPool store', () => {
       }
     }
 
+    function makeRsvp(
+      overrides: Partial<ObjectTypeMap['rsvp']> = {}
+    ): ObjectTypeMap['rsvp'] {
+      return {
+        id: 'rsvp-1',
+        objectType: 'rsvp',
+        eventId: 'evt-1',
+        userId: 'user-1',
+        attending: true,
+        startDate: null,
+        endDate: null,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        ...overrides,
+      }
+    }
+
+    function makeExpense(
+      overrides: Partial<ObjectTypeMap['expense']> = {}
+    ): ObjectTypeMap['expense'] {
+      return {
+        id: 'exp-1',
+        objectType: 'expense',
+        eventId: 'evt-1',
+        userId: 'user-1',
+        settlementId: null,
+        description: 'Dinner',
+        amount: 50,
+        startDate: '2026-01-01',
+        endDate: '2026-01-01',
+        participantIds: [],
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        ...overrides,
+      }
+    }
+
+    function makeExpenseParticipant(
+      overrides: Partial<ObjectTypeMap['expenseParticipant']> = {}
+    ): ObjectTypeMap['expenseParticipant'] {
+      return {
+        id: 'ep-1',
+        objectType: 'expenseParticipant',
+        expenseId: 'exp-1',
+        userId: 'user-2',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        ...overrides,
+      }
+    }
+
+    function makeSettlement(
+      overrides: Partial<ObjectTypeMap['settlement']> = {}
+    ): ObjectTypeMap['settlement'] {
+      return {
+        id: 'settlement-1',
+        objectType: 'settlement',
+        eventId: 'evt-1',
+        userId: 'user-1',
+        transferIds: [],
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        ...overrides,
+      }
+    }
+
+    function makeSettlementTransfer(
+      overrides: Partial<ObjectTypeMap['settlementTransfer']> = {}
+    ): ObjectTypeMap['settlementTransfer'] {
+      return {
+        id: 'transfer-1',
+        objectType: 'settlementTransfer',
+        settlementId: 'settlement-1',
+        fromUserId: 'user-2',
+        toUserId: 'user-1',
+        amount: 25,
+        paidAt: null,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        ...overrides,
+      }
+    }
+
+    function makeChoreRoster(
+      overrides: Partial<ObjectTypeMap['choreRoster']> = {}
+    ): ObjectTypeMap['choreRoster'] {
+      return {
+        id: 'roster-1',
+        objectType: 'choreRoster',
+        eventId: 'evt-1',
+        userId: 'user-1',
+        choreIds: [],
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        ...overrides,
+      }
+    }
+
+    function makeChore(
+      overrides: Partial<ObjectTypeMap['chore']> = {}
+    ): ObjectTypeMap['chore'] {
+      return {
+        id: 'chore-1',
+        objectType: 'chore',
+        choreRosterId: 'roster-1',
+        name: 'Dishes',
+        peoplePerDay: 1,
+        position: 1,
+        assignmentIds: [],
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        ...overrides,
+      }
+    }
+
+    function makeChoreAssignment(
+      overrides: Partial<ObjectTypeMap['choreAssignment']> = {}
+    ): ObjectTypeMap['choreAssignment'] {
+      return {
+        id: 'assign-1',
+        objectType: 'choreAssignment',
+        choreId: 'chore-1',
+        userId: 'user-1',
+        date: '2026-02-01',
+        pinned: false,
+        note: null,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        ...overrides,
+      }
+    }
+
+    function makeTaskList(
+      overrides: Partial<ObjectTypeMap['taskList']> = {}
+    ): ObjectTypeMap['taskList'] {
+      return {
+        id: 'list-1',
+        objectType: 'taskList',
+        workspaceId: 'ws-1',
+        userId: 'user-1',
+        name: 'Shopping',
+        position: 1,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        ...overrides,
+      }
+    }
+
     it('removes the object itself', () => {
       const pool = useObjectPoolStore()
       pool.importObjects([makeEvent()])
@@ -678,6 +826,199 @@ describe('objectPool store', () => {
       const pool = useObjectPoolStore()
 
       expect(() => pool.cascadeRemove('event', 'nonexistent')).not.toThrow()
+    })
+
+    it('removes event and its rsvps', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([
+        makeEvent(),
+        makeRsvp({ id: 'r1', eventId: 'evt-1' }),
+        makeRsvp({ id: 'r2', eventId: 'evt-1' }),
+      ])
+
+      pool.cascadeRemove('event', 'evt-1')
+
+      expect(pool.get('event', 'evt-1')).toBeUndefined()
+      expect(pool.get('rsvp', 'r1')).toBeUndefined()
+      expect(pool.get('rsvp', 'r2')).toBeUndefined()
+    })
+
+    it('removes event and its expenses with their participants', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([
+        makeEvent(),
+        makeExpense({ id: 'exp-1', eventId: 'evt-1' }),
+        makeExpenseParticipant({ id: 'ep-1', expenseId: 'exp-1' }),
+        makeExpenseParticipant({ id: 'ep-2', expenseId: 'exp-1' }),
+      ])
+
+      pool.cascadeRemove('event', 'evt-1')
+
+      expect(pool.get('event', 'evt-1')).toBeUndefined()
+      expect(pool.get('expense', 'exp-1')).toBeUndefined()
+      expect(pool.get('expenseParticipant', 'ep-1')).toBeUndefined()
+      expect(pool.get('expenseParticipant', 'ep-2')).toBeUndefined()
+    })
+
+    it('removes event and its settlements with their transfers', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([
+        makeEvent(),
+        makeSettlement({ id: 'settlement-1', eventId: 'evt-1' }),
+        makeSettlementTransfer({ id: 't1', settlementId: 'settlement-1' }),
+        makeSettlementTransfer({ id: 't2', settlementId: 'settlement-1' }),
+      ])
+
+      pool.cascadeRemove('event', 'evt-1')
+
+      expect(pool.get('event', 'evt-1')).toBeUndefined()
+      expect(pool.get('settlement', 'settlement-1')).toBeUndefined()
+      expect(pool.get('settlementTransfer', 't1')).toBeUndefined()
+      expect(pool.get('settlementTransfer', 't2')).toBeUndefined()
+    })
+
+    it('removes event and its choreRoster, chores, and assignments', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([
+        makeEvent(),
+        makeChoreRoster({ id: 'roster-1', eventId: 'evt-1' }),
+        makeChore({ id: 'chore-1', choreRosterId: 'roster-1' }),
+        makeChoreAssignment({ id: 'assign-1', choreId: 'chore-1' }),
+        makeChoreAssignment({ id: 'assign-2', choreId: 'chore-1' }),
+      ])
+
+      pool.cascadeRemove('event', 'evt-1')
+
+      expect(pool.get('event', 'evt-1')).toBeUndefined()
+      expect(pool.get('choreRoster', 'roster-1')).toBeUndefined()
+      expect(pool.get('chore', 'chore-1')).toBeUndefined()
+      expect(pool.get('choreAssignment', 'assign-1')).toBeUndefined()
+      expect(pool.get('choreAssignment', 'assign-2')).toBeUndefined()
+    })
+
+    it('removes settlement and its transfers when settlement is deleted directly', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([
+        makeSettlement(),
+        makeSettlementTransfer({ id: 't1', settlementId: 'settlement-1' }),
+      ])
+
+      pool.cascadeRemove('settlement', 'settlement-1')
+
+      expect(pool.get('settlement', 'settlement-1')).toBeUndefined()
+      expect(pool.get('settlementTransfer', 't1')).toBeUndefined()
+    })
+
+    it('removes choreRoster, chores, and assignments when roster is deleted directly', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([
+        makeChoreRoster(),
+        makeChore({ id: 'c1', choreRosterId: 'roster-1' }),
+        makeChore({ id: 'c2', choreRosterId: 'roster-1' }),
+        makeChoreAssignment({ id: 'a1', choreId: 'c1' }),
+        makeChoreAssignment({ id: 'a2', choreId: 'c2' }),
+      ])
+
+      pool.cascadeRemove('choreRoster', 'roster-1')
+
+      expect(pool.get('choreRoster', 'roster-1')).toBeUndefined()
+      expect(pool.get('chore', 'c1')).toBeUndefined()
+      expect(pool.get('chore', 'c2')).toBeUndefined()
+      expect(pool.get('choreAssignment', 'a1')).toBeUndefined()
+      expect(pool.get('choreAssignment', 'a2')).toBeUndefined()
+    })
+
+    it('removes expense and its participants when expense is deleted directly', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([
+        makeExpense(),
+        makeExpenseParticipant({ id: 'ep-1', expenseId: 'exp-1' }),
+        makeExpenseParticipant({ id: 'ep-2', expenseId: 'exp-1' }),
+      ])
+
+      pool.cascadeRemove('expense', 'exp-1')
+
+      expect(pool.get('expense', 'exp-1')).toBeUndefined()
+      expect(pool.get('expenseParticipant', 'ep-1')).toBeUndefined()
+      expect(pool.get('expenseParticipant', 'ep-2')).toBeUndefined()
+    })
+
+    it('removes taskList and its items', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([
+        makeTaskList(),
+        makeTaskItem({ id: 'i1', taskListId: 'list-1' }),
+        makeTaskItem({ id: 'i2', taskListId: 'list-1' }),
+      ])
+
+      pool.cascadeRemove('taskList', 'list-1')
+
+      expect(pool.get('taskList', 'list-1')).toBeUndefined()
+      expect(pool.get('taskItem', 'i1')).toBeUndefined()
+      expect(pool.get('taskItem', 'i2')).toBeUndefined()
+    })
+
+    it('does not remove sibling objects belonging to a different parent', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([
+        makeEvent({ id: 'evt-1' }),
+        makeEvent({ id: 'evt-2' }),
+        makeRsvp({ id: 'r1', eventId: 'evt-1' }),
+        makeRsvp({ id: 'r2', eventId: 'evt-2' }),
+        makeExpense({ id: 'e1', eventId: 'evt-1' }),
+        makeExpense({ id: 'e2', eventId: 'evt-2' }),
+      ])
+
+      pool.cascadeRemove('event', 'evt-1')
+
+      expect(pool.get('event', 'evt-2')).toBeDefined()
+      expect(pool.get('rsvp', 'r2')).toBeDefined()
+      expect(pool.get('expense', 'e2')).toBeDefined()
+      expect(pool.get('rsvp', 'r1')).toBeUndefined()
+      expect(pool.get('expense', 'e1')).toBeUndefined()
+    })
+
+    it('removes all children across every cascade chain in one event deletion', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([
+        makeEvent(),
+        // Poll chain
+        makeDatePoll(),
+        makeDateRange(),
+        makeVote(),
+        // RSVP
+        makeRsvp(),
+        // Expense chain
+        makeExpense(),
+        makeExpenseParticipant(),
+        // Settlement chain
+        makeSettlement(),
+        makeSettlementTransfer(),
+        // Chore chain
+        makeChoreRoster(),
+        makeChore(),
+        makeChoreAssignment(),
+      ])
+
+      pool.cascadeRemove('event', 'evt-1')
+
+      const types = [
+        'event',
+        'datePoll',
+        'dateRange',
+        'vote',
+        'rsvp',
+        'expense',
+        'expenseParticipant',
+        'settlement',
+        'settlementTransfer',
+        'choreRoster',
+        'chore',
+        'choreAssignment',
+      ] as const
+      for (const type of types) {
+        expect(pool.getAll(type)).toHaveLength(0)
+      }
     })
   })
 })
