@@ -33,9 +33,14 @@ class RequestLogger
     method = env["REQUEST_METHOD"]
     path = env["PATH_INFO"]
     query = env["QUERY_STRING"]
-    path = "#{path}?#{query}" unless query.nil? || query.empty?
+    path = "#{path}?#{redact_query(query)}" unless query.nil? || query.empty?
 
     APP_LOGGER.info { "#{method} #{path} #{status} #{format_duration(duration)}" }
+  end
+
+  sig { params(query: String).returns(String) }
+  def redact_query(query)
+    query.gsub(/=[^&]*/, "=[REDACTED]")
   end
 
   sig { params(seconds: T.any(Float, Integer)).returns(String) }

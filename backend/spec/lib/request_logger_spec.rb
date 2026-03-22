@@ -28,11 +28,30 @@ RSpec.describe RequestLogger do
       expect(log_output.string).to include("GET /api/health 200")
     end
 
-    it "includes the query string in the log when present" do
+    it "includes the query parameter name but redacts the value" do
       env["QUERY_STRING"] = "foo=bar"
       middleware.call(env)
 
-      expect(log_output.string).to include("GET /api/health?foo=bar 200")
+      expect(log_output.string).to include("GET /api/health?foo=[REDACTED] 200")
+      expect(log_output.string).not_to include("bar")
+    end
+
+    it "redacts the WebSocket ticket JWT from the logged path" do
+      env["PATH_INFO"] = "/ws"
+      env["QUERY_STRING"] = "ticket=eyJhbGciOiJIUzI1NiJ9.secret"
+      middleware.call(env)
+
+      expect(log_output.string).to include("GET /ws?ticket=[REDACTED] 200")
+      expect(log_output.string).not_to include("eyJhbGciOiJIUzI1NiJ9")
+    end
+
+    it "redacts all values when multiple query parameters are present" do
+      env["QUERY_STRING"] = "token=abc123&other=xyz"
+      middleware.call(env)
+
+      expect(log_output.string).to include("GET /api/health?token=[REDACTED]&other=[REDACTED] 200")
+      expect(log_output.string).not_to include("abc123")
+      expect(log_output.string).not_to include("xyz")
     end
 
     it "omits the query string separator when query string is empty" do
