@@ -80,7 +80,8 @@ namespace :db do
     require_relative "config/database"
 
     Sequel.extension :migration
-    Sequel::Migrator.run(DB, "db/migrations", target: Sequel::Migrator.run(DB, "db/migrations", target: 0) - 1)
+    current_version = Sequel::IntegerMigrator.new(DB, "db/migrations").current
+    Sequel::Migrator.run(DB, "db/migrations", target: current_version - 1)
     puts "Rollback complete"
   end
 
