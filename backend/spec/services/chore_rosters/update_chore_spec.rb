@@ -56,7 +56,7 @@ RSpec.describe ChoreRosters::UpdateChore do
     result = described_class.call(chore_id: chore[:id], workspace_id: workspace[:id], people_per_day: 0)
 
     expect(result.failure?).to be true
-    expect(result.failure.message).to include("between 1 and 50")
+    expect(result.failure.message).to include("between 1 and #{ValidationLimits::PEOPLE_PER_DAY_MAX}")
   end
 
   it "fails when no changes provided" do
