@@ -52,7 +52,7 @@ module Websocket
         while @running
           # Sleep in small increments so stop wakes up quickly
           PING_INTERVAL.times do
-            break unless @running
+            break unless T.unsafe(@running)
 
             sleep 1
           end
