@@ -77,6 +77,45 @@ module Websocket
       end
     end
 
+    sig { params(connection_id: String).void }
+    def update_last_pong(connection_id)
+      @mutex.synchronize do
+        connection = @connections[connection_id]
+        connection&.last_pong_at = Time.now
+      end
+    end
+
+    # Ping all connections and unregister those that have not responded within
+    # the idle timeout. Returns the number of connections pruned.
+    sig { params(idle_timeout: Numeric).returns(Integer) }
+    def ping_all(idle_timeout:)
+      deadline = Time.now - idle_timeout
+      stale_ids = []
+
+      connection_snapshot = @mutex.synchronize { @connections.dup }
+
+      connection_snapshot.each do |connection_id, connection|
+        if connection.last_pong_at < deadline
+          stale_ids << connection_id
+        else
+          begin
+            connection.websocket.write({ type: "ping" }.to_json)
+            connection.websocket.flush
+          rescue StandardError => e
+            APP_LOGGER.error { "[ConnectionManager] Error pinging conn #{connection_id}: #{e.message}" }
+            stale_ids << connection_id
+          end
+        end
+      end
+
+      stale_ids.each do |connection_id|
+        APP_LOGGER.info { "[ConnectionManager] Pruning stale connection #{connection_id}" }
+        unregister(connection_id)
+      end
+
+      stale_ids.size
+    end
+
     sig { params(workspace_id: String, message: T::Hash[Symbol, T.untyped]).void }
     def broadcast_to_workspace(workspace_id, message)
       connection_ids = @mutex.synchronize { (@workspace_connections[workspace_id] || Set.new).to_a }
@@ -114,6 +153,7 @@ module Websocket
       const :websocket, Object
       const :user_id, String
       prop :workspace_ids, T::Set[String], factory: -> { Set.new }
+      prop :last_pong_at, Time, factory: -> { Time.now }
     end
   end
 end
