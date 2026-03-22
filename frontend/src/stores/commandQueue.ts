@@ -21,7 +21,11 @@ function isNetworkError(e: unknown): boolean {
   if (!(e instanceof TypeError)) return false
   if (!navigator.onLine) return true
   const msg = e.message.toLowerCase()
-  return msg.includes('fetch') || msg.includes('network')
+  return (
+    msg.includes('fetch') ||
+    msg.includes('network') ||
+    msg.includes('load failed')
+  )
 }
 
 function isAuthError(e: unknown): boolean {
