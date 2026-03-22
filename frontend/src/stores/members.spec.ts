@@ -36,7 +36,7 @@ describe('members store — fetchInvites', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     apiGetImpl = async () => ({ data: { objects: [] }, status: 200 })
-    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
   })
 
   afterEach(() => {
@@ -54,10 +54,10 @@ describe('members store — fetchInvites', () => {
 
     const store = useMembersStore()
     await expect(store.fetchInvites()).resolves.toBeUndefined()
-    expect(console.error).not.toHaveBeenCalled()
+    expect(console.warn).not.toHaveBeenCalled()
   })
 
-  it('logs non-403 errors to console.error', async () => {
+  it('logs non-403 errors to console.warn', async () => {
     apiGetImpl = async () => {
       const err: { message: string; status: number } = {
         message: 'Internal Server Error',
@@ -69,13 +69,13 @@ describe('members store — fetchInvites', () => {
     const store = useMembersStore()
     await store.fetchInvites()
 
-    expect(console.error).toHaveBeenCalledWith(
+    expect(console.warn).toHaveBeenCalledWith(
       'Failed to fetch invites',
       expect.objectContaining({ status: 500 })
     )
   })
 
-  it('logs network errors (no status) to console.error', async () => {
+  it('logs network errors (no status) to console.warn', async () => {
     apiGetImpl = async () => {
       throw new TypeError('Failed to fetch')
     }
@@ -83,7 +83,7 @@ describe('members store — fetchInvites', () => {
     const store = useMembersStore()
     await store.fetchInvites()
 
-    expect(console.error).toHaveBeenCalledWith(
+    expect(console.warn).toHaveBeenCalledWith(
       'Failed to fetch invites',
       expect.any(TypeError)
     )
