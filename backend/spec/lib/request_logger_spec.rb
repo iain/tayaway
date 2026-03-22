@@ -4,7 +4,7 @@
 require "spec_helper"
 
 RSpec.describe RequestLogger do
-  let(:inner_app) { ->(env) { [200, {}, ["OK"]] } }
+  let(:inner_app) { ->(_env) { [200, {}, ["OK"]] } }
   let(:middleware) { described_class.new(inner_app) }
   let(:env) { { "REQUEST_METHOD" => "GET", "PATH_INFO" => "/api/health", "QUERY_STRING" => "" } }
   let(:log_output) { StringIO.new }
@@ -16,7 +16,7 @@ RSpec.describe RequestLogger do
 
   describe "#call" do
     it "returns the upstream response unchanged" do
-      status, headers, body = middleware.call(env)
+      status, _headers, body = middleware.call(env)
 
       expect(status).to eq(200)
       expect(body).to eq(["OK"])
