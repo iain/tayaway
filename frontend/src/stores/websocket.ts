@@ -149,7 +149,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
       socket = new WebSocket(url)
 
       socket.onopen = () => {
-        console.info('[WebSocket] Connected')
+        // Strip the ticket from the URL before logging to avoid leaking the JWT
+        const safeUrl = url.replace(/ticket=[^&]+/, 'ticket=<redacted>')
+        console.info('[WebSocket] Connected to', safeUrl)
       }
 
       socket.onmessage = (event) => {
@@ -176,6 +178,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
         'status' in e &&
         (e as { status: number }).status === 401
       ) {
+        console.warn('[WebSocket] Ticket fetch failed with 401 — session expired, redirecting to login')
         const { useAuthStore } = await import('./auth')
         const authStore = useAuthStore()
         authStore.$reset()
@@ -185,6 +188,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
       }
       // Surface the failure: exit the loading screen so the connection badge
       // is visible even when hasSynced and hasCachedData are both false.
+      console.warn('[WebSocket] Ticket fetch failed', e)
       connectionFailed.value = true
       scheduleReconnect()
     }
@@ -347,6 +351,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
     const jitter = Math.random() * 1000
     const delay = baseDelay + jitter
     reconnectAttempts++
+    console.info(
+      `[WebSocket] Reconnect attempt ${reconnectAttempts} scheduled in ${Math.round(delay)}ms`
+    )
 
     reconnectTimeout = setTimeout(async () => {
       // Don't reconnect if logged out — dynamic import avoids circular deps
