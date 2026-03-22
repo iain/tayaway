@@ -34,6 +34,8 @@ module Websocket
         case type
         when "ping"
           connection.write({ type: "pong", gitSha: GIT_SHA }.to_json)
+        when "pong"
+          Websocket::ConnectionManager.instance.update_last_pong(connection_id)
         when "switch_workspace"
           switch_workspace(connection, connection_id, user_id, data[:workspaceId], data[:since])
         else

@@ -11,6 +11,7 @@ use RequestLogger
 # Start WebSocket listener for PostgreSQL NOTIFY (skip in test environment)
 unless APP_ENV == "test"
   Websocket::Listener.start
+  Websocket::Keepalive.start
 end
 
 if APP_ENV == "development"
