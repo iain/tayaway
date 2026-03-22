@@ -354,14 +354,25 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     return Boolean(pending && pending.length > 0)
   }
 
-  // Set an object directly (for creating new objects optimistically).
-  // Records the object's ID in tempObjectIds so replaceObjects() can preserve
-  // it during a full sync while the create command is still in the queue.
-  function set<T extends ObjectType>(object: ObjectTypeMap[T]): void {
+  // Set an object directly.
+  //
+  // Pass `isTemp: true` when the object is an optimistic placeholder for a
+  // create command still in the queue. This records the ID in tempObjectIds
+  // so replaceObjects() can preserve the object during a full sync.
+  //
+  // Do NOT pass isTemp for rollback restores — those are server-confirmed
+  // objects being put back after a failed delete and must not be preserved
+  // beyond the next authoritative full sync.
+  function set<T extends ObjectType>(
+    object: ObjectTypeMap[T],
+    { isTemp = false }: { isTemp?: boolean } = {}
+  ): void {
     const typeMap = objects.value.get(object.objectType)
     if (typeMap) {
       typeMap.set(object.id, object)
-      tempObjectIds.add(object.id)
+      if (isTemp) {
+        tempObjectIds.add(object.id)
+      }
       bumpVersion(object.objectType)
       triggerRef(objects)
       notifyChange({ type: 'set', object })

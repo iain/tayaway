@@ -457,7 +457,7 @@ describe('objectPool store', () => {
       // Simulate an optimistic create: object inserted directly via set(),
       // no server confirmation yet (create command still in queue)
       const tempEvent = makeEvent({ id: 'temp-1', name: 'Temp Event' })
-      pool.set(tempEvent)
+      pool.set(tempEvent, { isTemp: true })
 
       // Full sync arrives — server does not know about temp-1 yet
       const serverEvent = makeEvent({ id: 'evt-2', name: 'Server Event' })
@@ -488,7 +488,7 @@ describe('objectPool store', () => {
         name: 'Temp Event',
         updatedAt: '2026-01-01T00:00:00.000Z',
       })
-      pool.set(tempEvent)
+      pool.set(tempEvent, { isTemp: true })
 
       // Server now includes it (create command was executed)
       const confirmedEvent = makeEvent({
@@ -505,7 +505,7 @@ describe('objectPool store', () => {
     it('does not preserve a temp object after cascadeRemove', () => {
       const pool = useObjectPoolStore()
       const tempEvent = makeEvent({ id: 'temp-1', name: 'Temp Event' })
-      pool.set(tempEvent)
+      pool.set(tempEvent, { isTemp: true })
 
       // User cancels / error path removes the temp object
       pool.cascadeRemove('event', 'temp-1')
