@@ -145,4 +145,36 @@ RSpec.describe Votes::Upsert do
     expect(result2.value![:created]).to be false
     expect(DB[:votes].where(id: client_id).count).to eq(1)
   end
+
+  it "handles TOCTOU race: returns existing vote when concurrent insert wins" do
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
+    date_poll = TestFactories.date_poll(event: event)
+    date_range = TestFactories.date_range(date_poll: date_poll)
+    client_id = SecureRandom.uuid
+
+    # Pre-insert a vote with this ID (simulates concurrent request that won the race)
+    TestFactories.vote(id: client_id, user: user, date_range: date_range, response: "yes")
+
+    existing_vote = Vote.find(client_id)
+
+    # Simulate the TOCTOU race: the early idempotency check sees nil (the race window).
+    # The existing vote also causes find_by_date_range_and_user to appear empty so the
+    # service attempts an insert, hits UniqueConstraintViolation, and rescues.
+    allow(Vote).to receive(:find).with(client_id).and_return(nil)
+    allow(Vote).to receive(:find_by_date_range_and_user).and_return(nil, existing_vote)
+
+    result = described_class.call(
+      event_id: event[:id],
+      user_id: user[:id],
+      date_range_id: date_range[:id],
+      vote_response: "yes",
+      comment: nil,
+      vote_id: client_id
+    )
+
+    expect(result.success?).to be true
+    expect(result.value![:vote_id].to_s).to eq(client_id)
+    expect(DB[:votes].count).to eq(1)
+  end
 end

@@ -141,4 +141,27 @@ RSpec.describe Events::Create do
     expect(result2.success?).to be true
     expect(DB[:events].where(id: client_id).count).to eq(1)
   end
+
+  it "handles TOCTOU race: returns existing event when concurrent insert wins" do
+    user = TestFactories.user
+    workspace = TestFactories.workspace
+    client_id = SecureRandom.uuid
+
+    # Pre-insert an event with this ID (simulates concurrent request that won the race)
+    TestFactories.event(id: client_id, user: user, workspace: workspace, name: "Test")
+    existing_event = Event.find(client_id)
+
+    # Simulate the TOCTOU race: the early idempotency check sees nil (the race window),
+    # so the service proceeds to insert and hits UniqueConstraintViolation.
+    allow(Event).to receive(:find).with(client_id).and_return(nil, existing_event)
+
+    result = described_class.call(
+      workspace_id: workspace[:id], user_id: user[:id], name: "Test", description: nil, id: client_id
+    )
+
+    expect(result.success?).to be true
+    event = result.value![:objects].find { |o| o[:objectType] == "event" }
+    expect(event[:id]).to eq(client_id)
+    expect(DB[:events].where(id: client_id).count).to eq(1)
+  end
 end
