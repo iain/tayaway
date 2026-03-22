@@ -37,4 +37,4 @@ namespace :falcon do
   end
 end
 
-after "deploy:publishing", "falcon:reload"
+after "deploy:publishing", "falcon:restart"
