@@ -62,6 +62,9 @@ export default defineConfig({
             warning.message.includes('is dynamically imported by') &&
             warning.message.includes('but also statically imported by'))
         ) {
+          if (process.env.NODE_ENV === 'development') {
+            console.debug('[vite] suppressed:', warning.code, warning.message)
+          }
           return
         }
         defaultHandler(warning)
