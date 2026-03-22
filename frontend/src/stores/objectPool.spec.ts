@@ -451,6 +451,69 @@ describe('objectPool store', () => {
       // so it should be preserved
       expect(pool.hasPending('event', 'evt-1')).toBe(true)
     })
+
+    it('preserves temp objects absent from server payload (queued create)', () => {
+      const pool = useObjectPoolStore()
+      // Simulate an optimistic create: object inserted directly via set(),
+      // no server confirmation yet (create command still in queue)
+      const tempEvent = makeEvent({ id: 'temp-1', name: 'Temp Event' })
+      pool.set(tempEvent)
+
+      // Full sync arrives — server does not know about temp-1 yet
+      const serverEvent = makeEvent({ id: 'evt-2', name: 'Server Event' })
+      pool.replaceObjects([serverEvent])
+
+      // Temp object must survive the sync so it stays visible in the UI
+      expect(pool.get('event', 'temp-1')?.name).toBe('Temp Event')
+      // Server object is present
+      expect(pool.get('event', 'evt-2')?.name).toBe('Server Event')
+    })
+
+    it('removes server-imported objects that are absent from the server payload', () => {
+      const pool = useObjectPoolStore()
+      // Object confirmed by server (imported normally, not a temp)
+      pool.importObjects([makeEvent({ id: 'evt-old' })])
+
+      // Full sync omits evt-old (deleted server-side)
+      pool.replaceObjects([makeEvent({ id: 'evt-new', name: 'New' })])
+
+      expect(pool.get('event', 'evt-old')).toBeUndefined()
+      expect(pool.get('event', 'evt-new')?.name).toBe('New')
+    })
+
+    it('does not re-insert a temp object once the server confirms it', () => {
+      const pool = useObjectPoolStore()
+      const tempEvent = makeEvent({
+        id: 'temp-1',
+        name: 'Temp Event',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      })
+      pool.set(tempEvent)
+
+      // Server now includes it (create command was executed)
+      const confirmedEvent = makeEvent({
+        id: 'temp-1',
+        name: 'Confirmed',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+      })
+      pool.replaceObjects([confirmedEvent])
+
+      // Server version wins — temp is replaced, not duplicated or reverted
+      expect(pool.get('event', 'temp-1')?.name).toBe('Confirmed')
+    })
+
+    it('does not preserve a temp object after cascadeRemove', () => {
+      const pool = useObjectPoolStore()
+      const tempEvent = makeEvent({ id: 'temp-1', name: 'Temp Event' })
+      pool.set(tempEvent)
+
+      // User cancels / error path removes the temp object
+      pool.cascadeRemove('event', 'temp-1')
+
+      // Full sync — temp-1 should not reappear
+      pool.replaceObjects([makeEvent({ id: 'evt-2' })])
+      expect(pool.get('event', 'temp-1')).toBeUndefined()
+    })
   })
 
   describe('clearExcept', () => {
