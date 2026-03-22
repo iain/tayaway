@@ -2,6 +2,7 @@ import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { useObjectPoolStore } from '@/stores'
+import { useNow } from './useNow'
 
 export interface RsvpEventItem {
   eventId: string
@@ -16,6 +17,7 @@ export function useEventsNeedingRsvp() {
   const pool = useObjectPoolStore()
   const authStore = useAuthStore()
   const { currentUserId } = storeToRefs(authStore)
+  const { now } = useNow()
 
   const eventsNeedingRsvp = computed<RsvpEventItem[]>(() => {
     void pool.version
@@ -31,11 +33,11 @@ export function useEventsNeedingRsvp() {
     )
 
     const items: RsvpEventItem[] = []
-    const now = new Date()
+    const currentNow = now.value
 
     for (const event of pool.getAll('event')) {
       if (!event.startDate || !event.endDate) continue
-      if (new Date(event.endDate) < now) continue
+      if (new Date(event.endDate) < currentNow) continue
       if (rsvpedEventIds.has(event.id)) continue
 
       items.push({
