@@ -4,6 +4,7 @@ import { api } from '@/api/client'
 import { useObjectPoolStore } from './objectPool'
 import { useWorkspaceStore } from './workspace'
 import type { PoolObject, ObjectType } from '@/types/pool'
+import type { StalenessLevel } from '@/composables/useStaleness'
 
 type ConnectionState =
   | 'disconnected'
@@ -58,6 +59,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
   const workspaceIds = ref<string[]>([])
   const hasSynced = ref(false)
   const hasCachedData = ref(false)
+  // Staleness level of cached data loaded from IndexedDB before the first sync.
+  // Cleared once a live sync completes (hasSynced becomes true).
+  const cacheStaleLevel = ref<StalenessLevel | null>(null)
 
   // Track last sync timestamp per workspace for partial sync
   const syncTimestamps = new Map<string, string>()
@@ -79,6 +83,10 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
   function restoreSyncTimestamp(workspaceId: string, syncedAt: string): void {
     syncTimestamps.set(workspaceId, syncedAt)
+  }
+
+  function setCacheStaleLevel(level: StalenessLevel): void {
+    cacheStaleLevel.value = level
   }
 
   async function getWebSocketUrl(): Promise<string> {
@@ -279,6 +287,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
     }
 
     hasSynced.value = true
+    // Once the server has sent authoritative data, staleness indicators are no longer relevant
+    cacheStaleLevel.value = null
   }
 
   function handleBroadcast(message: BroadcastMessage): void {
@@ -392,6 +402,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
   function $reset(): void {
     disconnect()
     syncTimestamps.clear()
+    cacheStaleLevel.value = null
   }
 
   return {
@@ -401,6 +412,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     isReconnecting,
     hasSynced,
     hasCachedData,
+    cacheStaleLevel,
     gitSha,
     connect,
     reconnect,
@@ -408,6 +420,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     sendSwitchWorkspace,
     getSyncedAt,
     restoreSyncTimestamp,
+    setCacheStaleLevel,
     $reset,
   }
 })

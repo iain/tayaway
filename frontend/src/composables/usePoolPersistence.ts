@@ -7,6 +7,7 @@ import { useWebSocketStore } from '@/stores/websocket'
 import { useWorkspaceStore } from '@/stores/workspace'
 import * as poolDb from '@/api/poolDb'
 import { CACHE_VERSION } from '@/api/poolDb'
+import { getStaleness } from '@/composables/useStaleness'
 import type { PoolChange } from '@/stores/objectPool'
 import type { PoolObject } from '@/types/pool'
 
@@ -71,6 +72,22 @@ export function usePoolPersistence() {
       const pool = useObjectPoolStore()
       const wsStore = useWebSocketStore()
       if (wsStore.hasSynced) return // Server already sent authoritative data
+
+      // Check cache age and apply staleness policy
+      if (syncedAt) {
+        const staleLevel = getStaleness(syncedAt)
+
+        if (staleLevel === 'expired') {
+          // Cache is older than 7 days — too stale to trust. Clear it and force
+          // a full sync without showing any cached data.
+          await poolDb.clearAll()
+          return
+        }
+
+        // Expose the staleness level so the UI can show appropriate indicators
+        wsStore.setCacheStaleLevel(staleLevel)
+      }
+
       if (objects.length > 0) {
         pool.importObjects(objects)
       }

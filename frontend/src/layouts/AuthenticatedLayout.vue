@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watchEffect } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter, useRoute } from 'vue-router'
 import {
@@ -18,6 +18,7 @@ import {
   MoonIcon,
   ChevronDownIcon,
   MagnifyingGlassIcon,
+  XCircleIcon,
 } from '@heroicons/vue/24/outline'
 import {
   useAuthStore,
@@ -27,6 +28,8 @@ import {
 } from '@/stores'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useDarkMode } from '@/composables/useDarkMode'
+import { staleDays } from '@/composables/useStaleness'
+import { formatRelativeDate } from '@/utils/date'
 import { getInitials } from '@/utils/member'
 import AppAvatar from '@/components/common/AppAvatar.vue'
 import CommandPalette from '@/components/common/CommandPalette.vue'
@@ -44,11 +47,48 @@ const workspaceStore = useWorkspaceStore()
 const commandQueueStore = useCommandQueueStore()
 const objectPoolStore = useObjectPoolStore()
 const { user } = storeToRefs(authStore)
-const { state: wsState, hasSynced, hasCachedData } = storeToRefs(wsStore)
+const {
+  state: wsState,
+  hasSynced,
+  hasCachedData,
+  cacheStaleLevel,
+} = storeToRefs(wsStore)
 const { pendingCount, isOnline } = storeToRefs(commandQueueStore)
 
 const showConnectionBadge = computed(() => wsState.value !== 'authenticated')
 const { currentWorkspace, otherWorkspaces } = storeToRefs(workspaceStore)
+
+// "Last synced X ago" text shown for the stale tier
+const lastSyncedText = computed(() => {
+  const since = wsStore.getSyncedAt(workspaceStore.currentWorkspaceId ?? '')
+  if (!since) return null
+  return `Last synced ${formatRelativeDate(since)}`
+})
+
+// Show "Last synced" only when we have stale cached data and are connected
+// (the connection badge already shows status when disconnected)
+const showLastSynced = computed(
+  () =>
+    !showConnectionBadge.value &&
+    !hasSynced.value &&
+    cacheStaleLevel.value === 'stale' &&
+    lastSyncedText.value !== null
+)
+
+// Dismissible warning banner for caches 1–7 days old
+const warningBannerDismissed = ref(false)
+const showWarningBanner = computed(
+  () =>
+    !hasSynced.value &&
+    cacheStaleLevel.value === 'warning' &&
+    !warningBannerDismissed.value
+)
+
+const warningBannerDays = computed(() => {
+  const since = wsStore.getSyncedAt(workspaceStore.currentWorkspaceId ?? '')
+  if (!since) return 1
+  return staleDays(since)
+})
 
 function handleSwitchWorkspace(workspaceId: string) {
   workspaceStore.switchWorkspace(workspaceId)
@@ -154,6 +194,36 @@ async function handleSignOut() {
   </div>
 
   <div v-else class="min-h-full">
+    <!-- Staleness warning banner (1–7 days old cache) -->
+    <Transition
+      enter-active-class="transition ease-out duration-200"
+      enter-from-class="-translate-y-full opacity-0"
+      enter-to-class="translate-y-0 opacity-100"
+      leave-active-class="transition ease-in duration-150"
+      leave-from-class="translate-y-0 opacity-100"
+      leave-to-class="-translate-y-full opacity-0"
+    >
+      <div
+        v-if="showWarningBanner"
+        class="relative flex items-center justify-between gap-x-4 bg-amber-500 px-4 py-2 text-sm font-medium text-white sm:px-6 dark:bg-amber-700"
+        role="alert"
+      >
+        <p>
+          You've been offline for {{ warningBannerDays }}
+          {{ warningBannerDays === 1 ? 'day' : 'days' }}. Some data may be
+          outdated.
+        </p>
+        <button
+          type="button"
+          class="-mr-1 shrink-0 rounded p-1 hover:bg-amber-400 dark:hover:bg-amber-600"
+          aria-label="Dismiss"
+          @click="warningBannerDismissed = true"
+        >
+          <XCircleIcon class="size-5" aria-hidden="true" />
+        </button>
+      </div>
+    </Transition>
+
     <Disclosure
       v-slot="{ open, close }"
       as="nav"
@@ -235,6 +305,14 @@ async function handleSignOut() {
           </div>
           <div class="hidden md:block">
             <div class="ml-4 flex items-center md:ml-6">
+              <!-- Stale cache indicator: "Last synced X ago" -->
+              <span
+                v-if="showLastSynced"
+                class="mr-3 text-xs text-gray-400 dark:text-stone-500"
+              >
+                {{ lastSyncedText }}
+              </span>
+
               <!-- Connection status badge -->
               <button
                 v-if="showConnectionBadge"
@@ -421,6 +499,13 @@ async function handleSignOut() {
             <div class="ml-3 min-w-0 flex-1">
               <div class="text-nav-text truncate text-base font-medium">
                 {{ user?.email }}
+              </div>
+              <!-- Mobile stale cache indicator -->
+              <div
+                v-if="showLastSynced"
+                class="text-xs text-gray-400 dark:text-stone-500"
+              >
+                {{ lastSyncedText }}
               </div>
             </div>
             <button
