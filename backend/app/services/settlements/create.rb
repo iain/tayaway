@@ -132,13 +132,13 @@ module Settlements
         T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
 
-      # Returns true if a settlement for this event was created within the last 60 seconds,
+      # Returns true if a settlement for this event was created within the last 5 seconds,
       # indicating a concurrent settlement request just completed ahead of this one.
       sig { params(event_id: T.any(String, UUID)).returns(T::Boolean) }
       def concurrent_settlement_exists?(event_id)
         DB[:settlements]
           .where(event_id: event_id)
-          .where { created_at >= Time.now - 60 }
+          .where { created_at >= Time.now - 5 }
           .any?
       end
 
