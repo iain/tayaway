@@ -13,7 +13,7 @@ RSpec.describe "Health endpoint" do
     end
 
     it "returns 503 when database is unreachable" do
-      allow(DB).to receive(:test_connection).and_raise(Sequel::DatabaseError.new("connection refused"))
+      allow(DB).to receive(:test_connection).and_raise(Sequel::Error.new("connection refused"))
 
       get "/health"
 

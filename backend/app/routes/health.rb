@@ -6,7 +6,7 @@ class App
     r.get do
       DB.test_connection
       { status: "healthy" }
-    rescue Sequel::DatabaseError => e
+    rescue Sequel::Error => e
       APP_LOGGER.error { "[Health] Database check failed: #{e.class} - #{e.message}" }
       response.status = 503
       { status: "unhealthy", reason: "database" }
