@@ -39,11 +39,15 @@ module Votes
           end
         end
 
-        validate_params(date_range_id, vote_response, vote_id)
+        # Generate a server-side ID if the client did not provide one (backwards
+        # compatibility with commands queued before client-ID enforcement).
+        resolved_vote_id = vote_id.nil? || vote_id.empty? ? SecureRandom.uuid : vote_id
+
+        validate_params(date_range_id, vote_response)
           .bind { |params| find_date_range(T.must(params[:date_range_id])) }
           .bind { |date_range| validate_date_range_belongs_to_event(date_range, event_id) }
           .bind { |date_range| validate_poll_open(date_range) }
-          .bind { |date_range| upsert_vote(date_range, user_id, T.must(vote_response), comment, T.must(vote_id)) }
+          .bind { |date_range| upsert_vote(date_range, user_id, T.must(vote_response), comment, resolved_vote_id) }
       end
 
       private
@@ -51,21 +55,16 @@ module Votes
       sig do
         params(
           date_range_id: T.nilable(String),
-          vote_response: T.nilable(String),
-          vote_id: T.nilable(String)
+          vote_response: T.nilable(String)
         ).returns(Result[T::Hash[Symbol, String], ServiceError])
       end
-      def validate_params(date_range_id, vote_response, vote_id)
+      def validate_params(date_range_id, vote_response)
         if date_range_id.nil? || date_range_id.empty?
           T.cast(Failure(ServiceError.validation("date_range_id is required")), Result[T::Hash[Symbol, String], ServiceError])
         elsif vote_response.nil? || vote_response.empty?
           T.cast(Failure(ServiceError.validation("response is required")), Result[T::Hash[Symbol, String], ServiceError])
         elsif !VoteResponse.valid?(vote_response)
           T.cast(Failure(ServiceError.validation("Invalid response value")), Result[T::Hash[Symbol, String], ServiceError])
-        elsif vote_id.nil? || vote_id.empty?
-          T.cast(Failure(ServiceError.validation("id is required")), Result[T::Hash[Symbol, String], ServiceError])
-        elsif !UUID::REGEX.match?(vote_id)
-          T.cast(Failure(ServiceError.validation("Invalid vote ID format")), Result[T::Hash[Symbol, String], ServiceError])
         else
           T.cast(Success({ date_range_id: date_range_id, vote_response: vote_response }), Result[T::Hash[Symbol, String], ServiceError])
         end
@@ -161,6 +160,7 @@ module Votes
           existing = Vote.find_by_date_range_and_user(date_range.id, user_id)
           result_vote_id = T.must(existing).id
           created = false
+          Broadcaster.object_changed("vote", T.must(result_vote_id), workspace_id: workspace_id)
         end
 
         T.cast(Success({ vote_id: result_vote_id, created: created }), Result[T::Hash[Symbol, T.untyped], ServiceError])

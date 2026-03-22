@@ -32,7 +32,7 @@ RSpec.describe Votes::Upsert do
     expect(result.failure.message).to eq("Invalid response value")
   end
 
-  it "returns failure when vote_id is missing" do
+  it "generates a server-side vote_id when none is provided" do
     user = TestFactories.user
     event = TestFactories.event(user: user)
     date_poll = TestFactories.date_poll(event: event)
@@ -43,8 +43,10 @@ RSpec.describe Votes::Upsert do
       vote_id: nil
     )
 
-    expect(result.failure?).to be true
-    expect(result.failure.message).to eq("id is required")
+    expect(result.success?).to be true
+    expect(result.value![:created]).to be true
+    expect(result.value![:vote_id]).not_to be_nil
+    expect(DB[:votes].count).to eq(1)
   end
 
   it "returns failure when date range not found" do

@@ -14,15 +14,17 @@ RSpec.describe Rsvps::Upsert do
     expect(result.failure.message).to eq("attending is required")
   end
 
-  it "returns failure when rsvp_id is missing" do
+  it "generates a server-side rsvp_id when none is provided" do
     user = TestFactories.user
     event = TestFactories.event(user: user)
     DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
 
     result = described_class.call(event_id: event[:id], user_id: user[:id], attending: true, rsvp_id: nil)
 
-    expect(result.failure?).to be true
-    expect(result.failure.message).to eq("id is required")
+    expect(result.success?).to be true
+    expect(result.value![:created]).to be true
+    expect(result.value![:rsvp_id]).not_to be_nil
+    expect(DB[:rsvps].count).to eq(1)
   end
 
   it "returns failure when event not found" do

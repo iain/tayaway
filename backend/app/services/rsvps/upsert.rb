@@ -37,29 +37,28 @@ module Rsvps
           end
         end
 
-        validate_params(attending, rsvp_id)
+        # Generate a server-side ID if the client did not provide one (backwards
+        # compatibility with commands queued before client-ID enforcement).
+        resolved_rsvp_id = rsvp_id.nil? || rsvp_id.empty? ? SecureRandom.uuid : rsvp_id
+
+        validate_params(attending)
           .bind { find_event(event_id) }
           .bind { |event| validate_event_has_dates(event) }
           .bind { |event| validate_no_expenses_when_declining(event, user_id, T.must(attending)) }
           .bind { |event| validate_partial_dates(event, attending, start_date, end_date) }
-          .bind { |event, parsed_start, parsed_end| upsert_rsvp(event, user_id, T.must(attending), parsed_start, parsed_end, T.must(rsvp_id)) }
+          .bind { |event, parsed_start, parsed_end| upsert_rsvp(event, user_id, T.must(attending), parsed_start, parsed_end, resolved_rsvp_id) }
       end
 
       private
 
       sig do
         params(
-          attending: T.nilable(T::Boolean),
-          rsvp_id: T.nilable(String)
+          attending: T.nilable(T::Boolean)
         ).returns(Result[T::Boolean, ServiceError])
       end
-      def validate_params(attending, rsvp_id)
+      def validate_params(attending)
         if attending.nil?
           T.cast(Failure(ServiceError.validation("attending is required")), Result[T::Boolean, ServiceError])
-        elsif rsvp_id.nil? || rsvp_id.empty?
-          T.cast(Failure(ServiceError.validation("id is required")), Result[T::Boolean, ServiceError])
-        elsif !UUID::REGEX.match?(rsvp_id)
-          T.cast(Failure(ServiceError.validation("Invalid RSVP ID format")), Result[T::Boolean, ServiceError])
         else
           T.cast(Success(attending), Result[T::Boolean, ServiceError])
         end
@@ -210,6 +209,7 @@ module Rsvps
           existing = Rsvp.find_by_event_and_user(event.id, user_id)
           result_rsvp_id = T.must(existing).id
           created = false
+          Broadcaster.object_changed("rsvp", T.must(result_rsvp_id), workspace_id: event.workspace_id)
         end
 
         T.cast(Success({ rsvp_id: result_rsvp_id, created: created }), Result[T::Hash[Symbol, T.untyped], ServiceError])
