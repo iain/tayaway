@@ -26,21 +26,29 @@ module Websocket
     sig { params(websocket: T.untyped, user_id: T.any(String, UUID)).returns(String) }
     def register(websocket, user_id)
       connection_id = SecureRandom.uuid
+      uid = user_id.to_s
+      total = T.let(0, Integer)
       @mutex.synchronize do
         @connections[connection_id] = Connection.new(
           id: connection_id,
           websocket: websocket,
-          user_id: user_id.to_s
+          user_id: uid
         )
+        total = @connections.size
       end
+      APP_LOGGER.info { "[ConnectionManager] User #{uid} connected (conn: #{connection_id}, total: #{total})" }
       connection_id
     end
 
     sig { params(connection_id: String).void }
     def unregister(connection_id)
+      user_id = T.let(nil, T.nilable(String))
+      total = T.let(nil, T.nilable(Integer))
       @mutex.synchronize do
         connection = @connections.delete(connection_id)
         return unless connection
+
+        user_id = connection.user_id
 
         # Clean up workspace associations
         connection.workspace_ids.each do |workspace_id|
@@ -50,14 +58,19 @@ module Websocket
           ws_conns.delete(connection_id)
           @workspace_connections.delete(workspace_id) if ws_conns.empty?
         end
+        total = @connections.size
       end
+      APP_LOGGER.info { "[ConnectionManager] User #{user_id} disconnected (conn: #{connection_id}, total: #{total})" }
     end
 
     sig { params(connection_id: String, workspace_ids: T::Array[String]).void }
     def set_workspaces(connection_id, workspace_ids)
+      user_id = T.let(nil, T.nilable(String))
       @mutex.synchronize do
         connection = @connections[connection_id]
         return unless connection
+
+        user_id = connection.user_id
 
         # Clear old workspace associations
         connection.workspace_ids.each do |old_ws_id|
@@ -75,6 +88,7 @@ module Websocket
           T.must(@workspace_connections[ws_id]).add(connection_id)
         end
       end
+      APP_LOGGER.info { "[ConnectionManager] User #{user_id} switched workspaces (conn: #{connection_id}, workspaces: #{workspace_ids.join(', ')})" }
     end
 
     sig { params(connection_id: String).void }
