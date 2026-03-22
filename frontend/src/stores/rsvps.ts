@@ -34,7 +34,7 @@ export const useRsvpsStore = defineStore('rsvps', () => {
           commandQueue.enqueue<PoolApiResponse>(
             'POST',
             `/events/${eventId}/rsvps`,
-            body
+            { ...body, id: existingRsvp.id }
           )
       )
       return { rsvpId: existingRsvp.id, queued: result.queued }
