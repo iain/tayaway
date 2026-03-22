@@ -57,7 +57,7 @@ export const useMembersStore = defineStore('members', () => {
         // Silently fail — user may not be admin
         return
       }
-      console.error('Failed to fetch invites', err)
+      console.warn('Failed to fetch invites', err)
     }
   }
 
