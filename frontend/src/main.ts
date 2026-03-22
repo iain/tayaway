@@ -8,7 +8,9 @@ import './style.css'
 const app = createApp(App)
 
 app.config.errorHandler = (err, instance, info) => {
-  console.error('[Vue error]', info, err, instance)
+  const componentName = instance?.$options?.name ?? 'anonymous'
+  const props = instance?.$props ?? {}
+  console.error('[Vue error]', { info, componentName, props }, err)
 }
 
 window.addEventListener('unhandledrejection', (event) => {
