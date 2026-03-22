@@ -32,9 +32,16 @@ class App < Roda
 
   Dir[File.expand_path("routes/**/*.rb", __dir__)].each { |f| require f }
 
+  # __Host- prefix enforces Secure, exact host match, and Path=/ in browsers.
+  # Only used in production since __Host- requires HTTPS.
+  COOKIE_NAME = T.let(
+    ENV["RACK_ENV"] == "production" ? "__Host-session_token" : "session_token",
+    String
+  )
+
   def set_session_cookie(token, expires_at)
     response.set_cookie(
-      "session_token",
+      COOKIE_NAME,
       value: token,
       path: "/",
       httponly: true,
@@ -45,7 +52,15 @@ class App < Roda
   end
 
   def clear_session_cookie
-    response.delete_cookie("session_token", path: "/")
+    response.set_cookie(
+      COOKIE_NAME,
+      value: "",
+      path: "/",
+      httponly: true,
+      secure: ENV["RACK_ENV"] == "production",
+      same_site: :lax,
+      expires: Time.at(0)
+    )
   end
 
   # Memoized per request (Roda creates a new App instance per request).
@@ -54,7 +69,7 @@ class App < Roda
   def current_session
     return @_current_session if defined?(@_current_session)
 
-    token = request.cookies["session_token"]
+    token = request.cookies[COOKIE_NAME]
     session = token ? Session.find_valid(token) : nil
     Session.touch_activity(session) if session
     @_current_session = session
