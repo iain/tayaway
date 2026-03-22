@@ -47,6 +47,16 @@ class Rsvp < T::Struct
       DB[:rsvps].where(event_id: event_id).select_map(:id)
     end
 
+    sig { params(event_ids: T::Array[String]).returns(T::Hash[String, T::Array[String]]) }
+    def ids_for_event_ids(event_ids)
+      return {} if event_ids.empty?
+
+      DB[:rsvps]
+        .where(event_id: event_ids)
+        .select_map([:event_id, :id])
+        .each_with_object(Hash.new { |h, k| h[k] = [] }) { |(event_id, id), h| h[event_id.to_s] << id.to_s }
+    end
+
     sig { params(event_id: T.any(String, UUID), user_id: T.any(String, UUID)).returns(T.nilable(Rsvp)) }
     def find_by_event_and_user(event_id, user_id)
       dataset.where(event_id: event_id, user_id: user_id).first

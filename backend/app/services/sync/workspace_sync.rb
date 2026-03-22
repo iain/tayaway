@@ -35,11 +35,24 @@ module Sync
         # (adding a member doesn't update the workspace's updated_at)
         pool.add_workspace(workspace)
 
+        batch_methods = {
+          "Event" => :add_events_batch,
+          "DatePoll" => :add_date_polls_batch,
+          "DateRange" => :add_date_ranges_batch,
+          "Settlement" => :add_settlements_batch,
+          "WorkspaceMembership" => :add_members_batch
+        }
+
         ObjectRegistry::TYPES.each do |entry|
           model = Object.const_get(entry.model)
           items = model.changed_since(workspace_id, effective_since)
-          items.each do |item|
-            pool.send(entry.pool_method, item)
+          next if items.empty?
+
+          batch_method = batch_methods[entry.model]
+          if batch_method
+            pool.send(batch_method, items)
+          else
+            items.each { |item| pool.send(entry.pool_method, item) }
           end
         end
 

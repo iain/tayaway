@@ -69,6 +69,13 @@ class DatePoll < T::Struct
       dataset.where(event_id: event_id).first
     end
 
+    sig { params(event_ids: T::Array[String]).returns(T::Hash[String, DatePoll]) }
+    def for_event_ids(event_ids)
+      return {} if event_ids.empty?
+
+      dataset.where(event_id: event_ids).each_with_object({}) { |p, h| h[p.event_id.to_s] = p }
+    end
+
     sig { params(event_id: T.any(String, UUID)).returns(Result[DatePoll, ServiceError]) }
     def find_by_event_result(event_id)
       poll = find_by_event(event_id)

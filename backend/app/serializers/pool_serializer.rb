@@ -65,6 +65,24 @@ class PoolSerializer
     @objects[key] = hash
   end
 
+  # Batch-add events with a single DatePoll query and a single Rsvp query instead of N+1
+  sig { params(events: T::Array[Event]).void }
+  def add_events_batch(events)
+    new_events = events.reject { |e| @objects.key?("event:#{e.id}") }
+    return if new_events.empty?
+
+    event_ids = new_events.map { |e| e.id.to_s }
+    polls_by_event = DatePoll.for_event_ids(event_ids)
+    rsvp_ids_by_event = Rsvp.ids_for_event_ids(event_ids)
+
+    new_events.each do |event|
+      date_poll = polls_by_event[event.id.to_s]
+      hash = event.to_api_hash(date_poll_id: date_poll&.id&.to_s)
+      hash[:rsvpIds] = rsvp_ids_by_event[event.id.to_s] || []
+      @objects["event:#{event.id}"] = hash
+    end
+  end
+
   sig { params(date_poll: DatePoll).void }
   def add_date_poll(date_poll)
     key = "date_poll:#{date_poll.id}"
@@ -74,6 +92,21 @@ class PoolSerializer
     @objects[key] = date_poll.to_api_hash(date_range_ids: date_range_ids)
   end
 
+  # Batch-add date polls with a single DateRange ID query instead of N+1
+  sig { params(polls: T::Array[DatePoll]).void }
+  def add_date_polls_batch(polls)
+    new_polls = polls.reject { |p| @objects.key?("date_poll:#{p.id}") }
+    return if new_polls.empty?
+
+    poll_ids = new_polls.map { |p| p.id.to_s }
+    range_ids_by_poll = DateRange.ids_for_date_poll_ids(poll_ids)
+
+    new_polls.each do |poll|
+      date_range_ids = range_ids_by_poll[poll.id.to_s] || []
+      @objects["date_poll:#{poll.id}"] = poll.to_api_hash(date_range_ids: date_range_ids)
+    end
+  end
+
   sig { params(date_range: DateRange).void }
   def add_date_range(date_range)
     key = "date_range:#{date_range.id}"
@@ -81,6 +114,21 @@ class PoolSerializer
 
     vote_ids = Vote.ids_for_date_range(date_range.id)
     @objects[key] = date_range.to_api_hash(vote_ids: vote_ids)
+  end
+
+  # Batch-add date ranges with a single Vote ID query instead of N+1
+  sig { params(ranges: T::Array[DateRange]).void }
+  def add_date_ranges_batch(ranges)
+    new_ranges = ranges.reject { |r| @objects.key?("date_range:#{r.id}") }
+    return if new_ranges.empty?
+
+    range_ids = new_ranges.map { |r| r.id.to_s }
+    vote_ids_by_range = Vote.ids_for_date_range_ids(range_ids)
+
+    new_ranges.each do |range|
+      vote_ids = vote_ids_by_range[range.id.to_s] || []
+      @objects["date_range:#{range.id}"] = range.to_api_hash(vote_ids: vote_ids)
+    end
   end
 
   sig { params(vote: Vote).void }
@@ -167,6 +215,21 @@ class PoolSerializer
 
     transfer_ids = SettlementTransfer.ids_for_settlement(settlement.id)
     @objects[key] = settlement.to_api_hash(transfer_ids: transfer_ids)
+  end
+
+  # Batch-add settlements with a single SettlementTransfer ID query instead of N+1
+  sig { params(settlements: T::Array[Settlement]).void }
+  def add_settlements_batch(settlements)
+    new_settlements = settlements.reject { |s| @objects.key?("settlement:#{s.id}") }
+    return if new_settlements.empty?
+
+    settlement_ids = new_settlements.map { |s| s.id.to_s }
+    transfer_ids_by_settlement = SettlementTransfer.ids_for_settlement_ids(settlement_ids)
+
+    new_settlements.each do |settlement|
+      transfer_ids = transfer_ids_by_settlement[settlement.id.to_s] || []
+      @objects["settlement:#{settlement.id}"] = settlement.to_api_hash(transfer_ids: transfer_ids)
+    end
   end
 
   sig { params(transfer: SettlementTransfer).void }
