@@ -39,6 +39,7 @@ module Events
              .bind { |event| validate_name_with_event(name, event) }
              .bind { |event| validate_text_lengths(description, location_name).fmap { event } }
              .bind { |event| validate_dates(start_date, end_date).fmap { |dates| [event, dates] } }
+             .bind { |(event, dates)| check_no_resolved_poll_when_clearing(event, dates).fmap { [event, dates] } }
              .bind do |(event, dates)|
                update_event(
                  event: event, name: name, description: description, dates: dates,
@@ -97,6 +98,26 @@ module Events
           Failure(ServiceError.validation("Invalid date format")),
           Result[T.nilable(T::Array[Date]), ServiceError]
         )
+      end
+
+      sig do
+        params(
+          event: Event,
+          dates: T.nilable(T::Array[Date])
+        ).returns(Result[T.untyped, ServiceError])
+      end
+      def check_no_resolved_poll_when_clearing(event, dates)
+        return T.cast(Success(nil), Result[T.untyped, ServiceError]) unless dates&.empty?
+
+        poll = DatePoll.find_by_event(event.id)
+        if poll&.closed_at
+          T.cast(
+            Failure(ServiceError.validation("Cannot clear dates while a resolved poll exists")),
+            Result[T.untyped, ServiceError]
+          )
+        else
+          T.cast(Success(nil), Result[T.untyped, ServiceError])
+        end
       end
 
       sig do
