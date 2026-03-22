@@ -39,10 +39,12 @@ gem "logger"
 # Tasks
 gem "rake"
 
+# Concurrency (extracted from default gems in Ruby 4.0)
+gem "concurrent-ruby-ext", require: "concurrent"
+
 group :development do
   gem "capistrano", require: false
   gem "capistrano-bundler", require: false
-  gem "concurrent-ruby-ext", require: false
 
   # listen for file changes
   gem "listen", require: false
