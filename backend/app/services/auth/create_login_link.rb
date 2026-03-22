@@ -32,7 +32,7 @@ module Auth
 
         email = user.email.to_s
 
-        APP_LOGGER.info { "[Auth::CreateLoginLink] Sending login link for user #{user.id}" }
+        APP_LOGGER.info { "[Auth::CreateLoginLink] Login link requested for user #{user.id}" }
         APP_LOGGER.info { "[Auth::CreateLoginLink] LOGIN LINK FOR #{email}: #{login_link}" } if APP_ENV == "development"
         Mailers::LoginLink.send_email(email: email, login_link: login_link, workspace_name: workspace_name)
       end
