@@ -86,7 +86,7 @@ RSpec.describe ChoreRosters::ClearUnpinned do
     roster = TestFactories.chore_roster(event: event, user: user)
     chore = TestFactories.chore(chore_roster: roster)
 
-    assignments = 3.times.map do |i|
+    assignments = Array.new(3) do |i|
       TestFactories.chore_assignment(chore: chore, user: user, date: Date.today + i, pinned: false)
     end
 
