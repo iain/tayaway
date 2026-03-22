@@ -15,7 +15,7 @@ class App
 
     unless result.success?
       error_msg = result.failure.message
-      r.halt [401, { "Content-Type" => "application/json" }, ["{\"error\":\"#{error_msg}\"}"]]
+      r.halt [401, { "Content-Type" => "application/json" }, [{ error: error_msg }.to_json]]
     end
 
     user_id = result.value![:user_id]
