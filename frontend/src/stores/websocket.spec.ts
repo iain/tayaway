@@ -40,6 +40,11 @@ function installWebSocketMock() {
   })
 }
 
+// hoisted so the vi.mock factory below can reference it
+const notificationsMocks = vi.hoisted(() => ({
+  showUpdate: vi.fn(),
+}))
+
 vi.mock('@/api/client', () => ({
   api: {
     post: vi.fn().mockResolvedValue({ data: { ticket: 'test-ticket' } }),
@@ -62,7 +67,9 @@ vi.mock('./commandQueue', () => ({
 }))
 
 vi.mock('./notifications', () => ({
-  useNotificationsStore: vi.fn(() => ({ showUpdate: vi.fn() })),
+  useNotificationsStore: vi.fn(() => ({
+    showUpdate: notificationsMocks.showUpdate,
+  })),
 }))
 
 vi.mock('@/router', () => ({
@@ -613,5 +620,116 @@ describe('useWebSocketStore — connectionFailed', () => {
     // state is 'disconnected' after the failed attempt, so connect() can run again
     await store.connect()
     expect(store.connectionFailed).toBe(false)
+  })
+})
+
+// ---- gitSha cache-clear tests ----------------------------------------------
+
+describe('useWebSocketStore — gitSha cache-clear on version change', () => {
+  let reloadMock: ReturnType<typeof vi.fn>
+  let cachesDeleteMock: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    installWebSocketMock()
+    setActivePinia(createPinia())
+    vi.spyOn(console, 'info').mockImplementation(() => {})
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    // jsdom's window.location is not configurable, so we replace it entirely
+    reloadMock = vi.fn()
+    vi.stubGlobal('location', {
+      ...window.location,
+      reload: reloadMock,
+    })
+
+    cachesDeleteMock = vi.fn().mockResolvedValue(true)
+    vi.stubGlobal('caches', {
+      keys: vi.fn().mockResolvedValue(['cache-v1', 'cache-v2']),
+      delete: cachesDeleteMock,
+    })
+
+    notificationsMocks.showUpdate.mockReset()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+    vi.resetModules()
+  })
+
+  it('calls showUpdate when the gitSha changes between pongs', async () => {
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+    await store.connect()
+    lastSocket.onopen!(new Event('open'))
+
+    // First pong — sets the initial gitSha, no update shown yet
+    lastSocket.onmessage!({
+      data: JSON.stringify({ type: 'pong', gitSha: 'abc123' }),
+    } as MessageEvent)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(notificationsMocks.showUpdate).not.toHaveBeenCalled()
+
+    // Second pong with a different gitSha — triggers the update notification
+    lastSocket.onmessage!({
+      data: JSON.stringify({ type: 'pong', gitSha: 'def456' }),
+    } as MessageEvent)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(notificationsMocks.showUpdate).toHaveBeenCalledOnce()
+  })
+
+  it('does not call showUpdate when the gitSha stays the same', async () => {
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+    await store.connect()
+    lastSocket.onopen!(new Event('open'))
+
+    lastSocket.onmessage!({
+      data: JSON.stringify({ type: 'pong', gitSha: 'abc123' }),
+    } as MessageEvent)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    lastSocket.onmessage!({
+      data: JSON.stringify({ type: 'pong', gitSha: 'abc123' }),
+    } as MessageEvent)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(notificationsMocks.showUpdate).not.toHaveBeenCalled()
+  })
+
+  it('cache-clear action awaits all deletions before calling reload', async () => {
+    // Capture the async action passed to showUpdate
+    let capturedAction: (() => void | Promise<void>) | undefined
+    notificationsMocks.showUpdate.mockImplementation(
+      (action: () => void | Promise<void>) => {
+        capturedAction = action
+      }
+    )
+
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+    await store.connect()
+    lastSocket.onopen!(new Event('open'))
+
+    // Trigger a gitSha change so showUpdate is called
+    lastSocket.onmessage!({
+      data: JSON.stringify({ type: 'pong', gitSha: 'abc123' }),
+    } as MessageEvent)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    lastSocket.onmessage!({
+      data: JSON.stringify({ type: 'pong', gitSha: 'def456' }),
+    } as MessageEvent)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(capturedAction).toBeDefined()
+
+    // Invoke the captured async action and await its completion
+    await capturedAction!()
+
+    // All cache keys deleted before reload is called
+    expect(cachesDeleteMock).toHaveBeenCalledWith('cache-v1')
+    expect(cachesDeleteMock).toHaveBeenCalledWith('cache-v2')
+    expect(cachesDeleteMock).toHaveBeenCalledTimes(2)
+    expect(reloadMock).toHaveBeenCalledOnce()
   })
 })
