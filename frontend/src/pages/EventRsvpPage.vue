@@ -37,7 +37,6 @@ const datesBlockedOpen = ref(false)
 
 const pool = useObjectPoolStore()
 const hasExpenses = computed(() => {
-  void pool.version
   return pool.getAll('expense').some((e) => e.eventId === eventId.value)
 })
 

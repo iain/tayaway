@@ -11,7 +11,6 @@ export function useEventsList() {
 
   // Single pass: categorize all events at once instead of four separate filters
   const categorized = computed(() => {
-    void pool.version
     const t = today.value
     const current: ObjectTypeMap['event'][] = []
     const upcoming: ObjectTypeMap['event'][] = []
@@ -42,7 +41,6 @@ export function useEventsList() {
   })
 
   const allEvents = computed(() => {
-    void pool.version
     return pool.getAll('event')
   })
 

@@ -134,8 +134,6 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   const typeVersions = ref(
     new Map<ObjectType, number>(OBJECT_TYPES.map((type) => [type, 0]))
   )
-  // Global version counter (for backwards compatibility and cross-type consumers)
-  const version = ref(0)
 
   // Memoization cache for getAll: type → { typeVersion, transformVersion, result }
   // Bounded by the number of object types — no memory leak risk.
@@ -148,8 +146,15 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     for (const type of types) {
       typeVersions.value.set(type, (typeVersions.value.get(type) ?? 0) + 1)
     }
-    version.value++
     triggerRef(typeVersions)
+  }
+
+  // Return the current version number for a specific type.
+  // Reading this inside a computed establishes a scoped reactive dependency:
+  // the computed will only re-evaluate when that type's data changes.
+  // Use this when you need explicit reactivity without calling getAll/get.
+  function getVersion(type: ObjectType): number {
+    return typeVersions.value.get(type) ?? 0
   }
 
   // Import objects from API response - no parsing needed
@@ -597,11 +602,11 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     // State
     objects,
     pendingUpdates,
-    version,
     typeVersions,
     stats,
 
     // Methods
+    getVersion,
     importObjects,
     get,
     getServer,

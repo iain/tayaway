@@ -33,12 +33,10 @@ const eventId = computed(() => route.params.id as string)
 const event = computed(() => pool.get('event', eventId.value))
 
 const roster = computed(() => {
-  void pool.version
   return pool.getAll('choreRoster').find((r) => r.eventId === eventId.value)
 })
 
 const chores = computed(() => {
-  void pool.version
   if (!roster.value) return []
   return pool
     .getAll('chore')
@@ -47,21 +45,18 @@ const chores = computed(() => {
 })
 
 const assignments = computed(() => {
-  void pool.version
   if (!roster.value) return []
   const choreIds = new Set(chores.value.map((c) => c.id))
   return pool.getAll('choreAssignment').filter((a) => choreIds.has(a.choreId))
 })
 
 const rsvps = computed(() => {
-  void pool.version
   return pool
     .getAll('rsvp')
     .filter((r) => r.eventId === eventId.value && r.attending)
 })
 
 const members = computed(() => {
-  void pool.version
   return pool.getAll('member')
 })
 

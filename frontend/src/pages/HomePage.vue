@@ -40,12 +40,10 @@ const { user } = storeToRefs(authStore)
 const showEventModal = ref(false)
 
 const isNewUser = computed(() => {
-  void pool.version
   return !hasEvents.value && pool.getAll('taskList').length === 0
 })
 
 const myUnpaidTransfers = computed(() => {
-  void pool.version
   const uid = currentUserId.value
   if (!uid) return []
   return pool
@@ -65,7 +63,6 @@ const transfersYouOwe = computed(() =>
 
 // Precompute attendee counts by event ID — O(rsvps) instead of O(events * rsvps)
 const attendeeCountByEvent = computed<Map<string, number>>(() => {
-  void pool.version
   const counts = new Map<string, number>()
   for (const r of pool.getAll('rsvp')) {
     if (r.attending) {
@@ -77,7 +74,6 @@ const attendeeCountByEvent = computed<Map<string, number>>(() => {
 
 // Precompute unsettled expense counts by event ID — O(expenses) instead of O(events * expenses)
 const unsettledExpenseCountByEvent = computed<Map<string, number>>(() => {
-  void pool.version
   const counts = new Map<string, number>()
   for (const e of pool.getAll('expense')) {
     if (!e.settlementId) {
@@ -89,7 +85,6 @@ const unsettledExpenseCountByEvent = computed<Map<string, number>>(() => {
 
 // Precompute unpaid transfer counts by event ID — O(settlements + transfers) instead of O(events * (settlements + transfers))
 const unpaidTransferCountByEvent = computed<Map<string, number>>(() => {
-  void pool.version
   // Build a map from settlementId -> eventId in one pass
   const eventBySettlement = new Map<string, string>()
   for (const s of pool.getAll('settlement')) {

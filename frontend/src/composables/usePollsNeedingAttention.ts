@@ -30,7 +30,6 @@ export function usePollsNeedingAttention() {
   const { currentUserId } = storeToRefs(authStore)
 
   const pollsNeedingAttention = computed<PollItem[]>(() => {
-    void pool.version
     const userId = currentUserId.value
     if (!userId) return []
 
