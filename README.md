@@ -147,6 +147,21 @@ Orchestrator that batch-fixes all open issues matching a label filter. Spawns pa
 - Tracks completions and reports a summary table with PR links
 - Copies labels from issues to PRs
 
+### `review-pr`
+
+Reviews a pull request across 7 dimensions (correctness, reliability, security, performance, testability, operability, completeness). Leaves line-level comments on GitHub and sets labels.
+
+```
+@review-pr review PR #42
+@review-pr review all draft PRs
+```
+
+- Spawns 7 parallel audit agents, each reading full source files (not just the diff)
+- Leaves line-level review comments with severity tags (`[Critical]`, `[Major]`, etc.)
+- Uses Impeccable skills for UI/UX critique when the PR touches frontend components
+- Sets "ready to merge" label or keeps PR as draft based on findings
+- Checks for worktree contamination (common with automated bugfix agents)
+
 ## License
 
 Private — all rights reserved.
