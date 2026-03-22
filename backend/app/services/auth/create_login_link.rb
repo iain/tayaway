@@ -18,6 +18,25 @@ module Auth
         validate_email(email).bind { |valid_email| generate_login_link(valid_email) }
       end
 
+      # Create a login link token, build the login URL, and send the email.
+      # Shared by Auth::CreateLoginLink and Invites::Accept.
+      sig { params(user: User).void }
+      def send_login_link(user)
+        raw_token = create_token(user.id, user.email)
+        jwt = Auth::Token.encode_login_link(token: raw_token, email: user.email.to_s)
+        frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:5173")
+        login_link = "#{frontend_url}/auth/verify?token=#{jwt}"
+
+        workspaces = Workspace.for_user(user.id)
+        workspace_name = workspaces.length == 1 ? T.must(workspaces.first).name : "Tayaway"
+
+        email = user.email.to_s
+
+        APP_LOGGER.info { "[Auth::CreateLoginLink] Login link requested for user #{user.id}" }
+        APP_LOGGER.info { "[Auth::CreateLoginLink] LOGIN LINK FOR #{email}: #{login_link}" } if APP_ENV == "development"
+        Mailers::LoginLink.send_email(email: email, login_link: login_link, workspace_name: workspace_name)
+      end
+
       private
 
       sig { params(email: T.nilable(String)).returns(Result[String, ServiceError]) }
@@ -34,17 +53,7 @@ module Auth
         user = User.find_by_email(email)
 
         if user
-          raw_token = create_login_link_token(user.id, user.email)
-          jwt = Auth::Token.encode_login_link(token: raw_token, email: user.email.to_s)
-          frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:5173")
-          login_link = "#{frontend_url}/auth/verify?token=#{jwt}"
-
-          workspaces = Workspace.for_user(user.id)
-          workspace_name = workspaces.length == 1 ? T.must(workspaces.first).name : "Tayaway"
-
-          APP_LOGGER.info { "[Auth::CreateLoginLink] Login link requested for user #{user.id}" }
-          APP_LOGGER.info { "[Auth::CreateLoginLink] LOGIN LINK FOR #{email}: #{login_link}" } if APP_ENV == "development"
-          Mailers::LoginLink.send_email(email: email, login_link: login_link, workspace_name: workspace_name)
+          send_login_link(user)
         else
           APP_LOGGER.info { "[Auth::CreateLoginLink] Login link requested for unknown email" }
         end
@@ -53,7 +62,7 @@ module Auth
       end
 
       sig { params(user_id: T.any(String, UUID), email: T.any(String, EmailAddress)).returns(String) }
-      def create_login_link_token(user_id, email)
+      def create_token(user_id, email)
         DB[:login_link_tokens].where(user_id: user_id.to_s, used_at: nil).update(used_at: Time.now)
 
         now = Time.now

@@ -103,40 +103,12 @@ module Invites
         Broadcaster.object_changed("member", membership_id, workspace_id: invite.workspace_id.to_s)
 
         # Send login link so the user can log in
-        send_login_link(user)
+        Auth::CreateLoginLink.send_login_link(user)
 
         T.cast(
           Success({ message: "Invitation accepted. Check your email for a login link." }),
           Result[T::Hash[Symbol, String], ServiceError]
         )
-      end
-
-      sig { params(user: User).void }
-      def send_login_link(user)
-        DB[:login_link_tokens].where(user_id: user.id.to_s, used_at: nil).update(used_at: Time.now)
-
-        raw_token = SecureRandom.hex(32)
-        now = Time.now
-        expires_at = now + (LoginLinkToken::EXPIRY_MINUTES * 60)
-
-        DB[:login_link_tokens].insert(
-          id: SecureRandom.uuid,
-          user_id: user.id,
-          token: Auth::Token.digest(raw_token),
-          email: user.email.to_s,
-          expires_at: expires_at,
-          created_at: now
-        )
-
-        jwt = Auth::Token.encode_login_link(token: raw_token, email: user.email.to_s)
-        frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:5173")
-        login_link = "#{frontend_url}/auth/verify?token=#{jwt}"
-
-        workspaces = Workspace.for_user(user.id)
-        workspace_name = workspaces.length == 1 ? T.must(workspaces.first).name : "Tayaway"
-
-        APP_LOGGER.info { "LOGIN LINK FOR #{user.email}: #{login_link}" } if APP_ENV == "development"
-        Mailers::LoginLink.send_email(email: user.email, login_link: login_link, workspace_name: workspace_name)
       end
     end
   end
