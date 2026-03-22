@@ -188,4 +188,31 @@ RSpec.describe Rsvps::Upsert do
     expect(result2.value![:created]).to be false
     expect(DB[:rsvps].where(id: client_id).count).to eq(1)
   end
+
+  it "handles TOCTOU race: returns existing RSVP when concurrent insert wins" do
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
+    DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
+    client_id = SecureRandom.uuid
+
+    # Pre-insert an RSVP with this ID (simulates concurrent request that won the race)
+    TestFactories.rsvp(id: client_id, event: event, user: user, attending: true)
+
+    existing_rsvp = Rsvp.find(client_id)
+
+    # Simulate the TOCTOU race: the early idempotency check sees nil (the race window).
+    # find_by_event_and_user also returns nil so the service attempts an insert, hits
+    # UniqueConstraintViolation, and rescues by re-fetching the winner.
+    allow(Rsvp).to receive(:find).with(client_id).and_return(nil)
+    allow(Rsvp).to receive(:find_by_event_and_user).and_return(nil, existing_rsvp)
+
+    result = described_class.call(
+      event_id: event[:id], user_id: user[:id], attending: true, rsvp_id: client_id
+    )
+
+    expect(result.success?).to be true
+    expect(result.value![:rsvp_id].to_s).to eq(client_id)
+    expect(result.value![:created]).to be false
+    expect(DB[:rsvps].count).to eq(1)
+  end
 end

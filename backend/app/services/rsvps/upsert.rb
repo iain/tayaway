@@ -172,35 +172,41 @@ module Rsvps
           end_date = nil
         end
 
-        DB.transaction do
-          now = Time.now
+        begin
+          DB.transaction do
+            now = Time.now
 
-          if existing_rsvp
-            DB[:rsvps].where(id: existing_rsvp.id).update(
-              attending: attending,
-              start_date: start_date,
-              end_date: end_date,
-              updated_at: now
-            )
-            result_rsvp_id = existing_rsvp.id
-            created = false
-          else
-            result_rsvp_id = rsvp_id || SecureRandom.uuid
+            if existing_rsvp
+              DB[:rsvps].where(id: existing_rsvp.id).update(
+                attending: attending,
+                start_date: start_date,
+                end_date: end_date,
+                updated_at: now
+              )
+              result_rsvp_id = existing_rsvp.id
+              created = false
+            else
+              result_rsvp_id = rsvp_id || SecureRandom.uuid
 
-            DB[:rsvps].insert(
-              id: result_rsvp_id,
-              event_id: event.id,
-              user_id: user_id,
-              attending: attending,
-              start_date: start_date,
-              end_date: end_date,
-              created_at: now,
-              updated_at: now
-            )
-            created = true
+              DB[:rsvps].insert(
+                id: result_rsvp_id,
+                event_id: event.id,
+                user_id: user_id,
+                attending: attending,
+                start_date: start_date,
+                end_date: end_date,
+                created_at: now,
+                updated_at: now
+              )
+              created = true
+            end
+
+            Broadcaster.object_changed("rsvp", T.must(result_rsvp_id), workspace_id: event.workspace_id)
           end
-
-          Broadcaster.object_changed("rsvp", T.must(result_rsvp_id), workspace_id: event.workspace_id)
+        rescue Sequel::UniqueConstraintViolation
+          existing = Rsvp.find_by_event_and_user(event.id, user_id)
+          result_rsvp_id = T.must(existing).id
+          created = false
         end
 
         T.cast(Success({ rsvp_id: result_rsvp_id, created: created }), Result[T::Hash[Symbol, T.untyped], ServiceError])
