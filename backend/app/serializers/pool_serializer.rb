@@ -294,9 +294,12 @@ class PoolSerializer
   sig { params(items: T::Enumerable[T.untyped], type: Symbol).void }
   def add_all(items, type:)
     entry = ObjectRegistry::BY_KEY[type.to_s]
-    if entry
-      items.each { |item| send(entry.pool_method, item) }
+    unless entry
+      APP_LOGGER.warn { "[PoolSerializer] Unknown type in add_all: #{type}" }
+      return
     end
+
+    items.each { |item| send(entry.pool_method, item) }
   end
 
   sig { returns(T::Array[T::Hash[Symbol, T.untyped]]) }
