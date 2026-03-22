@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { api } from '@/api/client'
-import { formatRelativeDate, formatDateShort } from '@/utils/date'
+import { formatRelativeDate } from '@/utils/date'
 import type { Session, SessionsResponse } from '@/types'
 import BaseCard from '@/components/common/BaseCard.vue'
 import AppBadge from '@/components/common/AppBadge.vue'
@@ -41,7 +41,11 @@ async function endSession(id: string) {
 }
 
 function formatDate(iso: string): string {
-  return formatDateShort(iso)
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }
 
 onMounted(fetchSessions)
