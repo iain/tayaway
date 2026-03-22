@@ -45,11 +45,11 @@ RSpec.describe ChoreRosters::UpdateChore do
     expect(result.failure.message).to include("empty")
   end
 
-  it "fails with name over 255 characters" do
-    result = described_class.call(chore_id: chore[:id], workspace_id: workspace[:id], name: "x" * 256)
+  it "fails with name over #{ValidationLimits::SHORT_STRING} characters" do
+    result = described_class.call(chore_id: chore[:id], workspace_id: workspace[:id], name: "x" * (ValidationLimits::SHORT_STRING + 1))
 
     expect(result.failure?).to be true
-    expect(result.failure.message).to include("255")
+    expect(result.failure.message).to include(ValidationLimits::SHORT_STRING.to_s)
   end
 
   it "fails with people_per_day out of range" do

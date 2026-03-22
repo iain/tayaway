@@ -75,7 +75,7 @@ module Users
         if name.strip.empty?
           T.cast(Failure(ServiceError.validation("Name is required")), Result[User, ServiceError])
         elsif name.length > ValidationLimits::SHORT_STRING
-          T.cast(Failure(ServiceError.validation("Name is too long (maximum 255 characters)")), Result[User, ServiceError])
+          T.cast(Failure(ServiceError.validation("Name is too long (maximum #{ValidationLimits::SHORT_STRING} characters)")), Result[User, ServiceError])
         else
           T.cast(Success(user), Result[User, ServiceError])
         end

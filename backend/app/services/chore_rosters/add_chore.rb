@@ -40,7 +40,7 @@ module ChoreRosters
 
         if name.length > ValidationLimits::SHORT_STRING
           return T.cast(
-            Failure(ServiceError.validation("Name is too long (maximum 255 characters)")),
+            Failure(ServiceError.validation("Name is too long (maximum #{ValidationLimits::SHORT_STRING} characters)")),
             Result[T::Hash[Symbol, T.untyped], ServiceError]
           )
         end
