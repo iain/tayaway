@@ -83,12 +83,6 @@ export interface UpdateEventRequest {
 }
 
 // Invite types
-export interface CreateInviteRequest {
-  email: string
-  name?: string
-  workspace_id: string
-}
-
 export interface InviteInfoResponse {
   workspaceName: string
   email: string
