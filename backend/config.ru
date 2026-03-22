@@ -12,6 +12,11 @@ use RequestLogger
 unless APP_ENV == "test"
   Websocket::Listener.start
   Websocket::Keepalive.start
+
+  at_exit do
+    Websocket::Listener.stop
+    Websocket::Keepalive.stop
+  end
 end
 
 if APP_ENV == "development"
