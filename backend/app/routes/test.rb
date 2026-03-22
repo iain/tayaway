@@ -1,6 +1,10 @@
 # typed: false
 # frozen_string_literal: true
 
+# Route files use `# typed: false` because Roda's DSL (hash_path, r.get,
+# r.post, etc.) cannot be statically typed by Sorbet. This is an intentional
+# exception to the project-wide `# typed: true` convention. See CLAUDE.md.
+
 # Test-only endpoints for e2e tests.
 # These endpoints should NOT be enabled in production.
 class App
