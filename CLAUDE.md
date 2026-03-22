@@ -36,6 +36,12 @@ RACK_ENV=e2e bundle exec rake db:reset
 - The body of the commit or PR should be short, only a few bullet points. No "Co-Authored-By", no fluff, no headers. Just the subject line unless a single sentence of context is genuinely needed (rare).
 - Always use the `/commit` and `/pr` commands.
 
+**PR review and merge workflow:**
+
+- When reviewing PRs, submit a formal verdict by adding a label: `ready to merge` for approved PRs, or leave a `REQUEST_CHANGES` comment and do **not** add the label.
+- When merging PRs, only merge PRs that have the `ready to merge` label. Use squash merges.
+- PRs in draft status are not ready for review or merge — skip them unless explicitly asked to include drafts.
+
 ## Architecture
 
 ```
