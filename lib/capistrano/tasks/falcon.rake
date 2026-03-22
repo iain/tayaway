@@ -1,10 +1,14 @@
 # frozen_string_literal: true
 
 namespace :falcon do
-  desc "Gracefully reload Falcon via systemd (zero-downtime; requires Falcon to be running)"
+  desc "Gracefully reload Falcon via systemd, falling back to restart if not running"
   task :reload do
     on roles(:app) do
-      execute :sudo, "systemctl", "reload", "tayaway-falcon"
+      if test("sudo systemctl is-active --quiet tayaway-falcon")
+        execute :sudo, "systemctl", "reload", "tayaway-falcon"
+      else
+        execute :sudo, "systemctl", "restart", "tayaway-falcon"
+      end
     end
   end
 
