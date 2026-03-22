@@ -59,12 +59,15 @@ Construct each agent's prompt with:
    - `frontend` labels: mention Vue 3, TypeScript, Pinia, no semicolons.
      Test command: `cd frontend && pnpm exec vitest run`. Lint/typecheck commands.
    - Both: include both sets of guidance.
-5. **PR creation instructions**:
-   - Draft or ready based on user preference.
+5. **Mode flags**: Always include `--batch` in the prompt so agents skip the full test
+   suite and rely on targeted tests + CI. If the user wants draft PRs (the default),
+   also include `--draft`. If the user explicitly asks for ready PRs, omit `--draft`.
+6. **PR creation instructions**:
+   - If `--draft`: add `--draft` to the `gh pr create` command.
    - Copy labels from the issue to the PR using `--label` flags on `gh pr create`.
    - Include `Fixes #<number>` in the PR body.
-6. **Commit message rules**: short, imperative, title case. No Co-Authored-By, no fluff.
-7. **PR format**: title under 70 chars, body with `## Summary` and `## Test plan`.
+7. **Commit message rules**: short, imperative, title case. No Co-Authored-By, no fluff.
+8. **PR format**: title under 70 chars, body with `## Summary` and `## Test plan`.
 
 Launch ALL agents in a single message to maximize parallelism.
 

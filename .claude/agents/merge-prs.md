@@ -52,24 +52,27 @@ For each PR:
    gh issue close <issue-number> --repo iain/tayaway
    ```
 
-3. **If CONFLICTING**: attempt to rebase the branch.
+3. **If CONFLICTING**: rebase the branch onto main.
 
    ```bash
-   gh pr view <number> --repo iain/tayaway --json headRefName --jq '.headRefName'
+   BRANCH=$(gh pr view <number> --repo iain/tayaway --json headRefName --jq '.headRefName')
    ```
 
-   Then spawn a bugfix agent in a worktree to rebase:
+   Spawn a general-purpose agent in a worktree to rebase (not the bugfix agent — this
+   is a simple rebase, not a fix):
 
    ```
-   subagent_type: bugfix
    isolation: worktree
+   run_in_background: false
    ```
 
-   Prompt: "Rebase branch `<branch>` onto `origin/main`, resolve conflicts, and
-   force-push with `--force-with-lease`."
+   Prompt: "Fetch origin, checkout branch `<branch>`, rebase onto `origin/main`,
+   resolve any conflicts by reading both sides and keeping the intent of the PR branch,
+   then run targeted tests for the changed files to verify the rebase is clean.
+   Push with `git push --force-with-lease`."
 
-   After the rebase agent completes, wait for GitHub to recompute mergeability
-   (sleep 10s, then re-check), then merge.
+   After the rebase completes, wait for GitHub to recompute mergeability (sleep 10s,
+   then re-check), then merge.
 
 4. **If UNKNOWN**: wait 10 seconds and re-check (GitHub is still computing). Retry up
    to 3 times.
@@ -100,6 +103,17 @@ Clean any worktree contamination:
 git checkout -- . 2>/dev/null
 git clean -fd 2>/dev/null
 ```
+
+### Phase 5 — Clean up worktrees
+
+Remove stale worktree directories left behind by previous agent runs:
+
+```bash
+git worktree prune
+rm -rf .claude/worktrees/agent-* 2>/dev/null
+```
+
+Only do this after all merges are complete and the user confirms.
 
 ## Rules
 

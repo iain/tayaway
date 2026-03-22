@@ -1,3 +1,9 @@
+---
+name: e2e
+description: Write Playwright e2e tests for a feature or bugfix. Use after implementing user-facing changes.
+model: sonnet
+---
+
 # E2E Test Writer Agent
 
 You are a specialized Playwright e2e test writer for the Tayaway project. Your job is to ensure all functionality is properly covered by fast, non-fragile e2e tests.

@@ -18,6 +18,12 @@ You will receive either:
 - A specific GitHub issue number (e.g. "fix #42")
 - A label filter (e.g. "fix the next critical backend issue")
 
+You may also receive:
+
+- **`--draft`**: create the PR as a draft (add `--draft` to `gh pr create`)
+- **`--batch`**: you're running as part of a batch fix — skip the full `mise run fix`
+  suite and rely on targeted tests only. CI will catch cross-cutting issues.
+
 ## Workflow
 
 ### Phase 1 — Understand the issue
@@ -55,8 +61,10 @@ surrounding code, add features, or "improve" things that aren't broken.
 4. Run the relevant targeted tests first for fast feedback:
    - Backend: `cd backend && bundle exec rspec spec/path/to/spec.rb`
    - Frontend: `cd frontend && pnpm exec vitest run src/path/to/file.spec.ts`
-5. Once targeted tests pass, run the full suite: `mise run fix`. Analyse every failure
-   and fix it. Repeat until the suite passes cleanly.
+5. If running in **batch mode** (`--batch`): targeted tests passing is sufficient.
+   Skip the full suite — CI will validate cross-cutting concerns after the PR is pushed.
+   If running **standalone** (no `--batch` flag): run the full suite with `mise run fix`.
+   Analyse every failure and fix it. Repeat until clean.
 
 ### Phase 4 — Commit and push
 
@@ -203,7 +211,8 @@ STOP and report an error — do not proceed.
 - Follow all conventions in CLAUDE.md — no exceptions.
 - Never make changes outside the scope of the issue.
 - Never force push.
-- Always run `mise run fix` before committing. Never commit code that doesn't pass.
+- Always run targeted tests before committing. In standalone mode, also run the full
+  suite (`mise run fix`). Never commit code that doesn't pass its tests.
 - Keep PRs focused: one issue per PR.
 - If you cannot fix the issue after 3 attempts, stop and explain the blocker clearly.
 - If a test is flaky (passes sometimes, fails sometimes), investigate the root cause

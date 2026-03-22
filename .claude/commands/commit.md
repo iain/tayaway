@@ -15,7 +15,11 @@ allowed-tools: Bash(mise:*), Bash(git:*)
 
 ### Step 1 — Run tests
 
-Run `mise run fix`. If tests fail, stop and report the failures. Do not commit.
+Check if `/fix` was already run in this conversation (look for a recent `mise run fix`
+with a clean result in the conversation history). If so, skip re-running and proceed
+to Step 2.
+
+Otherwise, run `mise run fix`. If tests fail, stop and report the failures. Do not commit.
 
 ### Step 2 — Assess the changes
 
