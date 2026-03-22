@@ -41,6 +41,7 @@ jobs:
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/tayaway_test
       RACK_ENV: test
+      APP_SECRET: dGVzdHNlY3JldHRlc3RzZWNyZXR0ZXN0c2VjcmV0dGU=
 
     steps:
       - uses: actions/checkout@v6
@@ -70,6 +71,9 @@ jobs:
         run: |
           cd backend && bundle config set --local path vendor/bundle && bundle install --jobs 4 --retry 3
           pnpm install --frozen-lockfile
+
+      - name: Generate Sorbet RBI files
+        run: cd backend && bundle exec tapioca gems
 
       - name: Set up test database
         run: cd backend && bundle exec rake db:create db:migrate
