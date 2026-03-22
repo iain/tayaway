@@ -14,12 +14,12 @@ let idleHandle = 0
 function installIdlePolyfill(): void {
   idleHandle = 0
   idleCallbacks = new Map()
-  global.requestIdleCallback = (cb: IdleRequestCallback): number => {
+  globalThis.requestIdleCallback = (cb: IdleRequestCallback): number => {
     const handle = ++idleHandle
     idleCallbacks.set(handle, cb)
     return handle
   }
-  global.cancelIdleCallback = (handle: number): void => {
+  globalThis.cancelIdleCallback = (handle: number): void => {
     idleCallbacks.delete(handle)
   }
 }
