@@ -96,6 +96,8 @@ RSpec.describe Websocket::ConnectionManager do
     end
 
     it "logs with the correct user ID and total when the connection is found" do
+      allow(APP_LOGGER).to receive(:info)
+
       user_id = SecureRandom.uuid
       conn_id = manager.register(FakeWebsocket.new, user_id)
       manager.register(FakeWebsocket.new, SecureRandom.uuid) # one extra connection
