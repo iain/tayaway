@@ -37,16 +37,20 @@ module ChoreRosters
                            .where(Sequel[:chore_assignments][:pinned] => false)
                            .select_map(Sequel[:chore_assignments][:id])
 
-          non_pinned_ids.each do |aid|
-            DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "chore_assignment", object_id: aid)
-            Broadcaster.object_deleted("chore_assignment", aid, workspace_id: workspace_id)
-            deleted << { objectType: "choreAssignment", id: aid.to_s }
-          end
-
           if non_pinned_ids.any?
-            DB[:chore_assignments]
-              .where(id: non_pinned_ids)
-              .delete
+            deleted_rows = non_pinned_ids.map do |aid|
+              { workspace_id: workspace_id, object_type: "chore_assignment", object_id: aid }
+            end
+            DB[:deleted_items].multi_insert(deleted_rows)
+            deleted = non_pinned_ids.map { |aid| { objectType: "choreAssignment", id: aid.to_s } }
+            DB[:chore_assignments].where(id: non_pinned_ids).delete
+
+            # Broadcast one deletion signal per assignment so clients remove them from the pool.
+            # This is N pg_notify calls after a single bulk DB delete — not N individual deletes.
+            non_pinned_ids.each do |aid|
+              Broadcaster.object_deleted("chore_assignment", aid, workspace_id: workspace_id)
+            end
+            Broadcaster.object_changed("chore_roster", roster.id, workspace_id: workspace_id)
           end
         end
 
