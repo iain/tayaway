@@ -52,6 +52,7 @@ const {
   hasSynced,
   hasCachedData,
   cacheStaleLevel,
+  connectionFailed,
 } = storeToRefs(wsStore)
 const { pendingCount, isOnline } = storeToRefs(commandQueueStore)
 
@@ -180,7 +181,7 @@ async function handleSignOut() {
 <template>
   <!-- Loading screen while waiting for initial sync -->
   <div
-    v-if="!hasSynced && !hasCachedData"
+    v-if="!hasSynced && !hasCachedData && !connectionFailed"
     class="flex min-h-screen flex-col items-center justify-center bg-gray-100 dark:bg-stone-900"
   >
     <div class="text-center">
