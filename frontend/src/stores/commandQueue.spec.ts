@@ -183,6 +183,24 @@ describe('commandQueue store', () => {
       })
     })
 
+    it('treats Safari "Load failed" TypeError as a network error', async () => {
+      const store = useCommandQueueStore()
+      const safariError = new TypeError('Load failed')
+      Object.defineProperty(navigator, 'onLine', {
+        value: true,
+        configurable: true,
+      })
+
+      mockedApi.post.mockRejectedValueOnce(safariError)
+
+      await expect(store.enqueue('POST', '/api/events', {})).rejects.toThrow(
+        CommandQueuedError
+      )
+
+      expect(removeCommand).not.toHaveBeenCalled()
+      expect(store.pendingCount).toBe(1)
+    })
+
     it('removes command from db and rethrows on server error', async () => {
       const store = useCommandQueueStore()
       const serverError = { status: 422, message: 'Validation failed' }
@@ -296,6 +314,34 @@ describe('commandQueue store', () => {
         value: true,
         configurable: true,
       })
+    })
+
+    it('stops processing on Safari "Load failed" TypeError and keeps commands', async () => {
+      const store = useCommandQueueStore()
+      store.pendingCount = 1
+
+      const commands = [
+        {
+          id: 'cmd-a',
+          method: 'POST' as const,
+          path: '/api/events',
+          body: {},
+          createdAt: 1,
+        },
+      ]
+      vi.mocked(getPendingCommands).mockResolvedValueOnce(commands)
+
+      const safariError = new TypeError('Load failed')
+      Object.defineProperty(navigator, 'onLine', {
+        value: true,
+        configurable: true,
+      })
+      mockedApi.post.mockRejectedValueOnce(safariError)
+
+      await store.processQueue()
+
+      expect(removeCommand).not.toHaveBeenCalled()
+      expect(store.pendingCount).toBe(1)
     })
 
     it('removes failed server-error commands and continues with next', async () => {
