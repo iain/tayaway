@@ -332,7 +332,7 @@ See `doc/MIGRATIONS.md` for detailed examples.
 
 **Backend (Ruby):**
 
-- Every file: `# typed: true` and `# frozen_string_literal: true`
+- Every file: `# typed: true` and `# frozen_string_literal: true` — **exception:** route files (`app/routes/*.rb`) use `# typed: false` because Roda's DSL cannot be statically typed by Sorbet
 - Double quotes for strings
 - Roda routes use `hash_routes` plugin pattern
 - Models are immutable `T::Struct` — `from_row` class method, `to_api_hash` instance method
