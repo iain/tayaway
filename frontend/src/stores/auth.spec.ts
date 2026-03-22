@@ -308,3 +308,126 @@ describe('auth store – logout()', () => {
     expect(mockStopPersisting).toHaveBeenCalledOnce()
   })
 })
+
+describe('auth store – initialize() with cached user (background validation)', () => {
+  const mockRouterPush = vi.fn()
+
+  beforeEach(() => {
+    vi.resetModules()
+    setActivePinia(createPinia())
+    vi.stubGlobal('fetch', vi.fn())
+    localStorage.clear()
+    mockRouterPush.mockReset()
+
+    // Stub the router so background validation can redirect without a real router
+    vi.doMock('@/router', () => ({
+      default: { push: mockRouterPush },
+    }))
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.doUnmock('@/router')
+  })
+
+  it('returns immediately from cache without awaiting the network', async () => {
+    seedCache()
+    // fetch never resolves — simulates an infinitely slow connection
+    vi.mocked(fetch).mockReturnValue(new Promise(() => {}))
+
+    const { useAuthStore } = await import('./auth')
+    const store = useAuthStore()
+
+    // initialize() must resolve instantly even though fetch is pending
+    await store.initialize()
+
+    expect(store.user).toMatchObject({ id: 'user-1' })
+    expect(store.initialized).toBe(true)
+    // fetch was called (background validation started) but we didn't wait for it
+    expect(fetch).toHaveBeenCalledWith('/api/auth/me', expect.any(Object))
+  })
+
+  it('redirects to login when the background /me check returns 401', async () => {
+    seedCache()
+    let resolveFetch!: (value: Response) => void
+    vi.mocked(fetch).mockReturnValue(
+      new Promise<Response>((resolve) => {
+        resolveFetch = resolve
+      })
+    )
+
+    const { useAuthStore } = await import('./auth')
+    const store = useAuthStore()
+    await store.initialize()
+
+    // Simulate server returning 401 after navigation has already rendered
+    resolveFetch({ ok: false, status: 401 } as Response)
+
+    // Flush microtasks so the .then() chain inside validateInBackground runs
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(store.user).toBeNull()
+    expect(localStorage.getItem(AUTH_USER_KEY)).toBeNull()
+    expect(mockRouterPush).toHaveBeenCalledWith({ name: 'login' })
+  })
+
+  it('redirects to login when the background /me check returns 403', async () => {
+    seedCache()
+    let resolveFetch!: (value: Response) => void
+    vi.mocked(fetch).mockReturnValue(
+      new Promise<Response>((resolve) => {
+        resolveFetch = resolve
+      })
+    )
+
+    const { useAuthStore } = await import('./auth')
+    const store = useAuthStore()
+    await store.initialize()
+
+    resolveFetch({ ok: false, status: 403 } as Response)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(store.user).toBeNull()
+    expect(mockRouterPush).toHaveBeenCalledWith({ name: 'login' })
+  })
+
+  it('keeps cached user when background /me check fails with a network error', async () => {
+    seedCache()
+    let rejectFetch!: (reason: unknown) => void
+    vi.mocked(fetch).mockReturnValue(
+      new Promise<Response>((_resolve, reject) => {
+        rejectFetch = reject
+      })
+    )
+
+    const { useAuthStore } = await import('./auth')
+    const store = useAuthStore()
+    await store.initialize()
+
+    rejectFetch(new TypeError('Failed to fetch'))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(store.user).toMatchObject({ id: 'user-1' })
+    expect(mockRouterPush).not.toHaveBeenCalled()
+  })
+
+  it('keeps cached user when background /me check returns 5xx', async () => {
+    seedCache()
+    let resolveFetch!: (value: Response) => void
+    vi.mocked(fetch).mockReturnValue(
+      new Promise<Response>((resolve) => {
+        resolveFetch = resolve
+      })
+    )
+
+    const { useAuthStore } = await import('./auth')
+    const store = useAuthStore()
+    await store.initialize()
+
+    resolveFetch({ ok: false, status: 503 } as Response)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(store.user).toMatchObject({ id: 'user-1' })
+    expect(mockRouterPush).not.toHaveBeenCalled()
+  })
+})

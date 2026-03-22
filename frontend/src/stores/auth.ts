@@ -87,16 +87,15 @@ export const useAuthStore = defineStore('auth', () => {
 
   const currentUserId = computed(() => user.value?.id ?? null)
 
-  async function initialize(): Promise<void> {
-    // If already initialized with a valid user, skip
-    if (initialized.value && user.value) return
-
+  /**
+   * Fetch /api/auth/me with a 5s timeout and process the result.
+   * Returns true if the session is valid, false if it is definitively invalid
+   * (401/403), and null if the server was unreachable (network/timeout/5xx).
+   */
+  async function fetchMe(): Promise<boolean | null> {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
     try {
-      loading.value = true
-      // Use raw fetch to silently probe — avoids error notification on 401
-      // Timeout after 5s so the app doesn't hang on bad connections (iOS PWA)
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 5000)
       const response = await fetch('/api/auth/me', {
         signal: controller.signal,
       })
@@ -106,23 +105,15 @@ export const useAuthStore = defineStore('auth', () => {
         const data = (await response.json()) as MeResponse
         user.value = mapMeResponseToAuthUser(data)
         cacheUser(user.value)
-
-        // Connect WebSocket after successful auth
-        const ws = useWebSocketStore()
-        ws.connect()
+        return true
       } else if (response.status === 401 || response.status === 403) {
-        // Session truly invalid — clear cache and require re-login
-        user.value = null
-        clearCachedUser()
+        return false
       } else {
-        // Server unavailable (5xx) — treat like network error, keep cached user
-        user.value = getCachedUser()
-        if (user.value) {
-          const ws = useWebSocketStore()
-          ws.connect()
-        }
+        // Server unavailable (5xx) — treat as unreachable
+        return null
       }
     } catch (e) {
+      clearTimeout(timeout)
       // Genuine network/abort errors are expected when offline or on slow
       // connections — fall back to cached user silently.
       // Any other error (programming bug, unexpected exception) should be
@@ -135,15 +126,86 @@ export const useAuthStore = defineStore('auth', () => {
       if (!isNetworkError) {
         console.error('[auth] initialize() caught unexpected error:', e)
       }
-      user.value = getCachedUser()
-      if (user.value) {
+      return null
+    }
+  }
+
+  async function initialize(): Promise<void> {
+    // If already initialized with a valid user, skip
+    if (initialized.value && user.value) return
+
+    const cached = getCachedUser()
+
+    if (cached) {
+      // Render immediately from cache — don't block navigation on the network.
+      user.value = cached
+      initialized.value = true
+
+      // Validate the session in the background. If 401/403, redirect to login.
+      validateInBackground()
+      return
+    }
+
+    // No cache — block until the network responds so we know whether to render
+    // protected content or redirect to login.
+    try {
+      loading.value = true
+      const valid = await fetchMe()
+
+      if (valid === true) {
+        // fetchMe() already set user.value and cached the user
         const ws = useWebSocketStore()
         ws.connect()
+      } else if (valid === false) {
+        // Session truly invalid — clear cache and require re-login
+        user.value = null
+        clearCachedUser()
+      } else {
+        // Server unreachable — no cached user, treat as logged out
+        user.value = null
       }
     } finally {
       loading.value = false
       initialized.value = true
     }
+  }
+
+  /**
+   * Re-validate the cached session against /api/auth/me in the background.
+   * Called after a cache-hit in initialize() so the UI renders immediately
+   * while we confirm the session is still live.
+   *
+   * - 200: refresh user data and connect WebSocket
+   * - 401/403: clear state and redirect to /login
+   * - Network error / 5xx: keep the cached state, connect WebSocket optimistically
+   */
+  function validateInBackground(): void {
+    // Connect WebSocket optimistically — the server will reject the ticket
+    // if the session is invalid, at which point we'll redirect.
+    const ws = useWebSocketStore()
+    ws.connect()
+
+    fetchMe()
+      .then(async (valid) => {
+        if (valid === true) {
+          // Session confirmed — WebSocket already connected, nothing else to do
+        } else if (valid === false) {
+          // Session expired — clear everything and force re-login
+          user.value = null
+          clearCachedUser()
+          ws.disconnect()
+          const { default: router } = await import('@/router')
+          await router.push({ name: 'login' })
+        }
+        // null (network error / 5xx): keep cached state, stay connected
+      })
+      .catch((e: unknown) => {
+        // Unexpected error in the background validator — log but don't crash
+        console.error(
+          '[auth] validateInBackground() caught unexpected error:',
+          e
+        )
+      })
   }
 
   async function requestLoginLink(email: string): Promise<string> {
