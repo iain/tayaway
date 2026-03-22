@@ -52,7 +52,15 @@ class App < Roda
   end
 
   def clear_session_cookie
-    response.delete_cookie(COOKIE_NAME, path: "/")
+    response.set_cookie(
+      COOKIE_NAME,
+      value: "",
+      path: "/",
+      httponly: true,
+      secure: ENV["RACK_ENV"] == "production",
+      same_site: :lax,
+      expires: Time.at(0)
+    )
   end
 
   # Memoized per request (Roda creates a new App instance per request).
