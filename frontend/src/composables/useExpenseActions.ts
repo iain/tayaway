@@ -1,11 +1,7 @@
-import { ref } from 'vue'
-
-const pendingAdd = ref(false)
+import { useActionTrigger } from './useActionTrigger'
 
 export function useExpenseActions() {
-  function triggerAdd() {
-    pendingAdd.value = true
-  }
-
+  const { pending: pendingAdd, trigger: triggerAdd } =
+    useActionTrigger('expenseAdd')
   return { pendingAdd, triggerAdd }
 }
