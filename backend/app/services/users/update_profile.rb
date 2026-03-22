@@ -119,7 +119,7 @@ module Users
         ).returns(Result[User, ServiceError])
       end
       def validate_text_lengths(phone_number, location_name, user)
-        if phone_number && phone_number.length > 50
+        if phone_number && phone_number.length > ValidationLimits::PHONE_NUMBER
           return T.cast(Failure(ServiceError.validation("Phone number is too long (maximum 50 characters)")), Result[User, ServiceError])
         end
 

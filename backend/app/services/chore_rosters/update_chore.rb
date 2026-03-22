@@ -53,7 +53,7 @@ module ChoreRosters
         end
 
         if people_per_day
-          if people_per_day < 1 || people_per_day > 50
+          if people_per_day < 1 || people_per_day > ValidationLimits::PEOPLE_PER_DAY_MAX
             return T.cast(
               Failure(ServiceError.validation("People per day must be between 1 and 50")),
               Result[T::Hash[Symbol, T.untyped], ServiceError]
