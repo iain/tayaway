@@ -10,7 +10,8 @@ module Votes
   #     user_id: "uuid",
   #     date_range_id: "dr-uuid",
   #     vote_response: "yes",
-  #     comment: "Looks good!"
+  #     comment: "Looks good!",
+  #     vote_id: "client-generated-uuid"
   #   )
   #   result.success?  # => true
   #   result.value!    # => { vote_id: "uuid", created: true }
@@ -29,7 +30,7 @@ module Votes
           vote_id: T.nilable(String)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def call(event_id:, user_id:, date_range_id:, vote_response:, comment:, vote_id: nil)
+      def call(event_id:, user_id:, date_range_id:, vote_response:, comment:, vote_id:)
         # Idempotent replay: if client provided an ID that already exists, return it
         if vote_id
           existing = Vote.find(vote_id)
@@ -42,7 +43,7 @@ module Votes
           .bind { |params| find_date_range(T.must(params[:date_range_id])) }
           .bind { |date_range| validate_date_range_belongs_to_event(date_range, event_id) }
           .bind { |date_range| validate_poll_open(date_range) }
-          .bind { |date_range| upsert_vote(date_range, user_id, T.must(vote_response), comment, vote_id) }
+          .bind { |date_range| upsert_vote(date_range, user_id, T.must(vote_response), comment, T.must(vote_id)) }
       end
 
       private
@@ -61,7 +62,9 @@ module Votes
           T.cast(Failure(ServiceError.validation("response is required")), Result[T::Hash[Symbol, String], ServiceError])
         elsif !VoteResponse.valid?(vote_response)
           T.cast(Failure(ServiceError.validation("Invalid response value")), Result[T::Hash[Symbol, String], ServiceError])
-        elsif vote_id && !UUID::REGEX.match?(vote_id)
+        elsif vote_id.nil? || vote_id.empty?
+          T.cast(Failure(ServiceError.validation("id is required")), Result[T::Hash[Symbol, String], ServiceError])
+        elsif !UUID::REGEX.match?(vote_id)
           T.cast(Failure(ServiceError.validation("Invalid vote ID format")), Result[T::Hash[Symbol, String], ServiceError])
         else
           T.cast(Success({ date_range_id: date_range_id, vote_response: vote_response }), Result[T::Hash[Symbol, String], ServiceError])
@@ -104,7 +107,7 @@ module Votes
           user_id: T.any(String, UUID),
           vote_response: String,
           comment: T.nilable(String),
-          vote_id: T.nilable(String)
+          vote_id: String
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
       def upsert_vote(date_range, user_id, vote_response, comment, vote_id)
@@ -138,7 +141,7 @@ module Votes
               result_vote_id = existing_vote.id
               created = false
             else
-              result_vote_id = vote_id || SecureRandom.uuid
+              result_vote_id = vote_id
 
               DB[:votes].insert(
                 id: result_vote_id,

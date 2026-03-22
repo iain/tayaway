@@ -8,10 +8,21 @@ RSpec.describe Rsvps::Upsert do
     user = TestFactories.user
     event = TestFactories.event(user: user)
 
-    result = described_class.call(event_id: event[:id], user_id: user[:id], attending: nil)
+    result = described_class.call(event_id: event[:id], user_id: user[:id], attending: nil, rsvp_id: SecureRandom.uuid)
 
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("attending is required")
+  end
+
+  it "returns failure when rsvp_id is missing" do
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
+    DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
+
+    result = described_class.call(event_id: event[:id], user_id: user[:id], attending: true, rsvp_id: nil)
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("id is required")
   end
 
   it "returns failure when event not found" do
@@ -20,7 +31,8 @@ RSpec.describe Rsvps::Upsert do
     result = described_class.call(
       event_id: "00000000-0000-0000-0000-000000000000",
       user_id: user[:id],
-      attending: true
+      attending: true,
+      rsvp_id: SecureRandom.uuid
     )
 
     expect(result.failure?).to be true
@@ -31,7 +43,7 @@ RSpec.describe Rsvps::Upsert do
     user = TestFactories.user
     event = TestFactories.event(user: user)
 
-    result = described_class.call(event_id: event[:id], user_id: user[:id], attending: true)
+    result = described_class.call(event_id: event[:id], user_id: user[:id], attending: true, rsvp_id: SecureRandom.uuid)
 
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("Event does not have dates set")
@@ -41,15 +53,29 @@ RSpec.describe Rsvps::Upsert do
     user = TestFactories.user
     event = TestFactories.event(user: user)
     DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
+    client_id = SecureRandom.uuid
 
-    result = described_class.call(event_id: event[:id], user_id: user[:id], attending: true)
+    result = described_class.call(event_id: event[:id], user_id: user[:id], attending: true, rsvp_id: client_id)
 
     expect(result.success?).to be true
     expect(result.value![:created]).to be true
+    expect(result.value![:rsvp_id].to_s).to eq(client_id)
     rsvp = DB[:rsvps].where(id: result.value![:rsvp_id]).first
     expect(rsvp[:attending]).to be true
     expect(rsvp[:start_date]).to be_nil
     expect(rsvp[:end_date]).to be_nil
+  end
+
+  it "uses client-provided rsvp_id for new RSVP" do
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
+    DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
+    client_id = SecureRandom.uuid
+
+    result = described_class.call(event_id: event[:id], user_id: user[:id], attending: true, rsvp_id: client_id)
+
+    expect(result.success?).to be true
+    expect(DB[:rsvps].where(id: client_id).count).to eq(1)
   end
 
   it "creates an RSVP with partial dates" do
@@ -62,7 +88,8 @@ RSpec.describe Rsvps::Upsert do
       user_id: user[:id],
       attending: true,
       start_date: (Date.today + 1).iso8601,
-      end_date: (Date.today + 3).iso8601
+      end_date: (Date.today + 3).iso8601,
+      rsvp_id: SecureRandom.uuid
     )
 
     expect(result.success?).to be true
@@ -82,7 +109,8 @@ RSpec.describe Rsvps::Upsert do
       user_id: user[:id],
       attending: true,
       start_date: (Date.today - 1).iso8601,
-      end_date: (Date.today + 3).iso8601
+      end_date: (Date.today + 3).iso8601,
+      rsvp_id: SecureRandom.uuid
     )
 
     expect(result.failure?).to be true
@@ -99,7 +127,8 @@ RSpec.describe Rsvps::Upsert do
       user_id: user[:id],
       attending: false,
       start_date: (Date.today + 1).iso8601,
-      end_date: (Date.today + 3).iso8601
+      end_date: (Date.today + 3).iso8601,
+      rsvp_id: SecureRandom.uuid
     )
 
     expect(result.success?).to be true
@@ -114,10 +143,10 @@ RSpec.describe Rsvps::Upsert do
     event = TestFactories.event(user: user)
     DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
 
-    result1 = described_class.call(event_id: event[:id], user_id: user[:id], attending: true)
+    result1 = described_class.call(event_id: event[:id], user_id: user[:id], attending: true, rsvp_id: SecureRandom.uuid)
     expect(result1.value![:created]).to be true
 
-    result2 = described_class.call(event_id: event[:id], user_id: user[:id], attending: false)
+    result2 = described_class.call(event_id: event[:id], user_id: user[:id], attending: false, rsvp_id: SecureRandom.uuid)
     expect(result2.success?).to be true
     expect(result2.value![:created]).to be false
 
@@ -132,7 +161,7 @@ RSpec.describe Rsvps::Upsert do
     DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
 
     # RSVP as attending first
-    described_class.call(event_id: event[:id], user_id: user[:id], attending: true)
+    described_class.call(event_id: event[:id], user_id: user[:id], attending: true, rsvp_id: SecureRandom.uuid)
 
     # Create an expense on this event
     now = Time.now
@@ -148,7 +177,7 @@ RSpec.describe Rsvps::Upsert do
       updated_at: now
     )
 
-    result = described_class.call(event_id: event[:id], user_id: user[:id], attending: false)
+    result = described_class.call(event_id: event[:id], user_id: user[:id], attending: false, rsvp_id: SecureRandom.uuid)
 
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("You cannot decline while you have expenses on this event")
@@ -160,9 +189,9 @@ RSpec.describe Rsvps::Upsert do
     event = TestFactories.event(user: user)
     DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
 
-    described_class.call(event_id: event[:id], user_id: user[:id], attending: true)
+    described_class.call(event_id: event[:id], user_id: user[:id], attending: true, rsvp_id: SecureRandom.uuid)
 
-    result = described_class.call(event_id: event[:id], user_id: user[:id], attending: false)
+    result = described_class.call(event_id: event[:id], user_id: user[:id], attending: false, rsvp_id: SecureRandom.uuid)
 
     expect(result.success?).to be true
     rsvp = DB[:rsvps].where(id: result.value![:rsvp_id]).first

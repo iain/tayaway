@@ -37,7 +37,7 @@ export const useVotesStore = defineStore('votes', () => {
           commandQueue.enqueue<PoolApiResponse>(
             'POST',
             `/events/${eventId}/votes`,
-            body
+            { ...body, id: existingVote.id }
           )
       )
       return { voteId: existingVote.id, queued: result.queued }

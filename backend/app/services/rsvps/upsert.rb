@@ -9,6 +9,7 @@ module Rsvps
   #     event_id: "event-uuid",
   #     user_id: "uuid",
   #     attending: true,
+  #     rsvp_id: "client-generated-uuid",
   #     start_date: "2026-03-10",
   #     end_date: "2026-03-12"
   #   )
@@ -22,12 +23,12 @@ module Rsvps
           event_id: T.any(String, UUID),
           user_id: T.any(String, UUID),
           attending: T.nilable(T::Boolean),
+          rsvp_id: T.nilable(String),
           start_date: T.nilable(String),
-          end_date: T.nilable(String),
-          rsvp_id: T.nilable(String)
+          end_date: T.nilable(String)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def call(event_id:, user_id:, attending:, start_date: nil, end_date: nil, rsvp_id: nil)
+      def call(event_id:, user_id:, attending:, rsvp_id:, start_date: nil, end_date: nil)
         # Idempotent replay: if client provided an ID that already exists, return it
         if rsvp_id
           existing = Rsvp.find(rsvp_id)
@@ -41,7 +42,7 @@ module Rsvps
           .bind { |event| validate_event_has_dates(event) }
           .bind { |event| validate_no_expenses_when_declining(event, user_id, T.must(attending)) }
           .bind { |event| validate_partial_dates(event, attending, start_date, end_date) }
-          .bind { |event, parsed_start, parsed_end| upsert_rsvp(event, user_id, T.must(attending), parsed_start, parsed_end, rsvp_id) }
+          .bind { |event, parsed_start, parsed_end| upsert_rsvp(event, user_id, T.must(attending), parsed_start, parsed_end, T.must(rsvp_id)) }
       end
 
       private
@@ -55,7 +56,9 @@ module Rsvps
       def validate_params(attending, rsvp_id)
         if attending.nil?
           T.cast(Failure(ServiceError.validation("attending is required")), Result[T::Boolean, ServiceError])
-        elsif rsvp_id && !UUID::REGEX.match?(rsvp_id)
+        elsif rsvp_id.nil? || rsvp_id.empty?
+          T.cast(Failure(ServiceError.validation("id is required")), Result[T::Boolean, ServiceError])
+        elsif !UUID::REGEX.match?(rsvp_id)
           T.cast(Failure(ServiceError.validation("Invalid RSVP ID format")), Result[T::Boolean, ServiceError])
         else
           T.cast(Success(attending), Result[T::Boolean, ServiceError])
@@ -158,7 +161,7 @@ module Rsvps
           attending: T::Boolean,
           start_date: T.nilable(Date),
           end_date: T.nilable(Date),
-          rsvp_id: T.nilable(String)
+          rsvp_id: String
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
       def upsert_rsvp(event, user_id, attending, start_date, end_date, rsvp_id)
@@ -186,7 +189,7 @@ module Rsvps
               result_rsvp_id = existing_rsvp.id
               created = false
             else
-              result_rsvp_id = rsvp_id || SecureRandom.uuid
+              result_rsvp_id = rsvp_id
 
               DB[:rsvps].insert(
                 id: result_rsvp_id,

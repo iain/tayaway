@@ -9,7 +9,8 @@ RSpec.describe Votes::Upsert do
     event = TestFactories.event(user: user)
 
     result = described_class.call(
-      event_id: event[:id], user_id: user[:id], date_range_id: nil, vote_response: "yes", comment: nil
+      event_id: event[:id], user_id: user[:id], date_range_id: nil, vote_response: "yes", comment: nil,
+      vote_id: SecureRandom.uuid
     )
 
     expect(result.failure?).to be true
@@ -23,11 +24,27 @@ RSpec.describe Votes::Upsert do
     date_range = TestFactories.date_range(date_poll: date_poll)
 
     result = described_class.call(
-      event_id: event[:id], user_id: user[:id], date_range_id: date_range[:id], vote_response: "invalid", comment: nil
+      event_id: event[:id], user_id: user[:id], date_range_id: date_range[:id], vote_response: "invalid", comment: nil,
+      vote_id: SecureRandom.uuid
     )
 
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("Invalid response value")
+  end
+
+  it "returns failure when vote_id is missing" do
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
+    date_poll = TestFactories.date_poll(event: event)
+    date_range = TestFactories.date_range(date_poll: date_poll)
+
+    result = described_class.call(
+      event_id: event[:id], user_id: user[:id], date_range_id: date_range[:id], vote_response: "yes", comment: nil,
+      vote_id: nil
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("id is required")
   end
 
   it "returns failure when date range not found" do
@@ -35,7 +52,8 @@ RSpec.describe Votes::Upsert do
     event = TestFactories.event(user: user)
 
     result = described_class.call(
-      event_id: event[:id], user_id: user[:id], date_range_id: "00000000-0000-0000-0000-000000000000", vote_response: "yes", comment: nil
+      event_id: event[:id], user_id: user[:id], date_range_id: "00000000-0000-0000-0000-000000000000", vote_response: "yes", comment: nil,
+      vote_id: SecureRandom.uuid
     )
 
     expect(result.failure?).to be true
@@ -50,7 +68,8 @@ RSpec.describe Votes::Upsert do
     date_range = TestFactories.date_range(date_poll: date_poll)
 
     result = described_class.call(
-      event_id: event1[:id], user_id: user[:id], date_range_id: date_range[:id], vote_response: "yes", comment: nil
+      event_id: event1[:id], user_id: user[:id], date_range_id: date_range[:id], vote_response: "yes", comment: nil,
+      vote_id: SecureRandom.uuid
     )
 
     expect(result.failure?).to be true
@@ -64,7 +83,8 @@ RSpec.describe Votes::Upsert do
     date_range = TestFactories.date_range(date_poll: date_poll)
 
     result = described_class.call(
-      event_id: event[:id], user_id: user[:id], date_range_id: date_range[:id], vote_response: "yes", comment: nil
+      event_id: event[:id], user_id: user[:id], date_range_id: date_range[:id], vote_response: "yes", comment: nil,
+      vote_id: SecureRandom.uuid
     )
 
     expect(result.failure?).to be true
@@ -76,21 +96,43 @@ RSpec.describe Votes::Upsert do
     event = TestFactories.event(user: user)
     date_poll = TestFactories.date_poll(event: event)
     date_range = TestFactories.date_range(date_poll: date_poll)
+    client_id = SecureRandom.uuid
 
     result = described_class.call(
       event_id: event[:id],
       user_id: user[:id],
       date_range_id: date_range[:id],
       vote_response: "yes",
-      comment: "Looks good!"
+      comment: "Looks good!",
+      vote_id: client_id
     )
 
     expect(result.success?).to be true
     expect(result.value![:created]).to be true
-    expect(result.value![:vote_id]).to be_a(String)
+    expect(result.value![:vote_id].to_s).to eq(client_id)
     vote = DB[:votes].where(id: result.value![:vote_id]).first
     expect(vote[:response]).to eq("yes")
     expect(vote[:comment]).to eq("Looks good!")
+  end
+
+  it "uses client-provided vote_id for new vote" do
+    user = TestFactories.user
+    event = TestFactories.event(user: user)
+    date_poll = TestFactories.date_poll(event: event)
+    date_range = TestFactories.date_range(date_poll: date_poll)
+    client_id = SecureRandom.uuid
+
+    result = described_class.call(
+      event_id: event[:id],
+      user_id: user[:id],
+      date_range_id: date_range[:id],
+      vote_response: "yes",
+      comment: nil,
+      vote_id: client_id
+    )
+
+    expect(result.success?).to be true
+    expect(DB[:votes].where(id: client_id).count).to eq(1)
   end
 
   it "updates existing vote and returns created: false" do
@@ -105,7 +147,8 @@ RSpec.describe Votes::Upsert do
       user_id: user[:id],
       date_range_id: date_range[:id],
       vote_response: "no",
-      comment: "Changed my mind"
+      comment: "Changed my mind",
+      vote_id: SecureRandom.uuid
     )
 
     expect(result.success?).to be true
