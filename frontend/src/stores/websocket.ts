@@ -225,11 +225,10 @@ export const useWebSocketStore = defineStore('websocket', () => {
     if (previous !== null && previous !== message.gitSha) {
       import('./notifications').then(({ useNotificationsStore }) => {
         const notifications = useNotificationsStore()
-        notifications.showUpdate(() => {
-          caches
-            .keys()
-            .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
-            .finally(() => window.location.reload())
+        notifications.showUpdate(async () => {
+          const keys = await caches.keys()
+          await Promise.all(keys.map((k) => caches.delete(k)))
+          window.location.reload()
         })
       })
     }

@@ -33,7 +33,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
     }, 4000)
   }
 
-  function showUpdate(action: () => void): void {
+  function showUpdate(action: () => void | Promise<void>): void {
     if (notifications.value.some((n) => n.type === 'update')) return
     const id = crypto.randomUUID()
     const notification: Notification = {
