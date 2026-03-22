@@ -72,6 +72,12 @@ module RateLimiter
       Rack::Attack.throttle("invites/create", limit: 10, period: 60) do |req|
         req.ip if req.post? && req.path == "/api/invites"
       end
+
+      Rack::Attack.throttled_callback = lambda do |req|
+        matched = req.env["rack.attack.matched"]
+        discriminator = req.env["rack.attack.match_discriminator"]
+        APP_LOGGER.warn { "[RateLimiter] Throttled #{matched} for #{discriminator}" }
+      end
     end
 
     Rack::Attack.throttled_responder = lambda do |_req|
