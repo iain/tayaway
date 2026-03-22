@@ -84,6 +84,11 @@ class App
       session = require_session
 
       user = User.find(session.user_id)
+      unless user
+        response.status = 401
+        next { error: "Invalid or expired session" }
+      end
+
       response.status = 200
       {
         user_id: user.id,
