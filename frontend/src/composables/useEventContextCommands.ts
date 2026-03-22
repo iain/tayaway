@@ -3,6 +3,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowDownTrayIcon,
   CalendarDaysIcon,
+  ClipboardDocumentListIcon,
   CurrencyEuroIcon,
   HandThumbUpIcon,
   PlusIcon,
@@ -90,6 +91,15 @@ export function useEventContextCommands() {
         name: 'Go to Expenses',
         icon: CurrencyEuroIcon,
         href: `/events/${eventId}/expenses`,
+      })
+    }
+
+    if (routeName !== 'event-chores') {
+      actions.push({
+        id: 'ctx-event-chores',
+        name: 'Go to Chores',
+        icon: ClipboardDocumentListIcon,
+        href: `/events/${eventId}/chores`,
       })
     }
 
