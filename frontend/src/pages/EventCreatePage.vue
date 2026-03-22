@@ -22,6 +22,9 @@ async function handleSubmit(data: EventFormData): Promise<void> {
       description: data.description || undefined,
       startDate: data.startDate || undefined,
       endDate: data.endDate || undefined,
+      locationName: data.locationName || undefined,
+      latitude: data.latitude ?? undefined,
+      longitude: data.longitude ?? undefined,
     })
     if (queued) {
       const notifications = useNotificationsStore()
