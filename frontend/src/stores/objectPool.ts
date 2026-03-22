@@ -14,6 +14,12 @@ function isNewer(a: string, b: string): boolean {
   return a > b
 }
 
+// Maximum objects inserted per synchronous chunk in replaceObjects().
+// The first chunk is always processed synchronously (in the same call frame as
+// the clear) so consumers never observe an empty pool. Subsequent chunks are
+// scheduled via setTimeout(0) to yield to the browser between each batch.
+const REPLACE_CHUNK_SIZE = 500
+
 // Generate unique ID for pending updates
 let pendingIdCounter = 0
 function generatePendingId(): string {
@@ -497,12 +503,10 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   // Preserves temp objects (added via set()) absent from the server payload —
   // these are optimistically-created objects whose create commands are still queued.
   //
-  // Objects are inserted in chunks of REPLACE_CHUNK_SIZE with a setTimeout(0) yield
-  // between each chunk so the browser can paint frames and handle input during large
-  // syncs. Reactivity is triggered once after the final chunk — from the consumer's
-  // perspective the pool update is atomic (one version bump).
-  const REPLACE_CHUNK_SIZE = 500
-
+  // Objects are inserted in chunks of REPLACE_CHUNK_SIZE. The clear and the first
+  // chunk are always processed in the same synchronous call frame so consumers never
+  // observe an empty pool. Subsequent chunks are scheduled via setTimeout(0) to yield
+  // to the browser between each batch. Reactivity fires once after the final chunk.
   function replaceObjects(poolObjects: PoolObject[]): Promise<void> {
     // Build set of IDs present in the server payload
     const serverIds = new Set<string>()
@@ -552,22 +556,25 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       }
     }
 
-    // Clear all type maps before inserting the new data
-    for (const typeMap of objects.value.values()) {
-      typeMap.clear()
-    }
-
     // All objects to insert: server data + preserved temp objects
     const allObjects: PoolObject[] = [...poolObjects, ...tempObjectsToPreserve]
 
-    // For small payloads, insert synchronously to avoid setTimeout overhead
-    if (allObjects.length <= REPLACE_CHUNK_SIZE) {
-      for (const obj of allObjects) {
-        const typeMap = objects.value.get(obj.objectType)
-        if (typeMap) {
-          typeMap.set(obj.id, obj)
-        }
+    // Clear all type maps and insert the first chunk synchronously so that
+    // consumers never observe an empty pool — the clear and first insertion
+    // happen in the same call frame.
+    for (const typeMap of objects.value.values()) {
+      typeMap.clear()
+    }
+    const firstChunk = allObjects.slice(0, REPLACE_CHUNK_SIZE)
+    for (const obj of firstChunk) {
+      const typeMap = objects.value.get(obj.objectType)
+      if (typeMap) {
+        typeMap.set(obj.id, obj)
       }
+    }
+
+    // For small payloads (or when the first chunk covered everything), we're done
+    if (allObjects.length <= REPLACE_CHUNK_SIZE) {
       bumpVersion(...OBJECT_TYPES)
       triggerRef(objects)
       triggerRef(pendingUpdates)
@@ -575,10 +582,10 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       return Promise.resolve()
     }
 
-    // Large payload: insert in chunks, yielding to the event loop between each
-    // chunk so the browser can paint frames. Reactivity fires once at the end.
+    // Large payload: insert remaining chunks via setTimeout(0) so the browser
+    // can paint frames between each batch. Reactivity fires once at the end.
     return new Promise<void>((resolve) => {
-      let offset = 0
+      let offset = REPLACE_CHUNK_SIZE
 
       function processNextChunk(): void {
         const chunk = allObjects.slice(offset, offset + REPLACE_CHUNK_SIZE)

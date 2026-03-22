@@ -526,10 +526,14 @@ describe('objectPool store', () => {
 
       const promise = pool.replaceObjects(events)
 
-      // Before timers run: pool maps are cleared but objects are not yet inserted
-      expect(pool.get('event', 'evt-0')).toBeUndefined()
+      // Before timers run: the first chunk (0–499) is inserted synchronously
+      // in the same call frame as the clear, so consumers never see an empty pool
+      expect(pool.get('event', 'evt-0')?.name).toBe('Event 0')
+      expect(pool.get('event', 'evt-499')?.name).toBe('Event 499')
+      // Objects beyond the first chunk are not yet inserted
+      expect(pool.get('event', 'evt-500')).toBeUndefined()
 
-      // Run all pending timers (each chunk schedules a setTimeout)
+      // Run all pending timers (each remaining chunk schedules a setTimeout)
       await vi.runAllTimersAsync()
       await promise
 
