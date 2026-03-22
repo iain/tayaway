@@ -67,4 +67,16 @@ RSpec.describe ChoreRosters::DeleteChore do
     expect(result.failure?).to be true
     expect(result.failure.http_status).to eq(404)
   end
+
+  it "fails when chore belongs to a different roster" do
+    other_event = TestFactories.event(workspace: workspace, user: user)
+    other_roster = TestFactories.chore_roster(event: other_event, user: user)
+    other_chore = TestFactories.chore(chore_roster: other_roster, name: "Cleaning")
+
+    result = described_class.call(chore_id: other_chore[:id], roster_id: roster[:id], workspace_id: workspace[:id])
+
+    expect(result.failure?).to be true
+    expect(result.failure.http_status).to eq(404)
+    expect(DB[:chores].where(id: other_chore[:id]).count).to eq(1)
+  end
 end

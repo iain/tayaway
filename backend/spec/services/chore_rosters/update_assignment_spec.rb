@@ -91,4 +91,22 @@ RSpec.describe ChoreRosters::UpdateAssignment do
     expect(result.failure?).to be true
     expect(result.failure.http_status).to eq(404)
   end
+
+  it "fails when assignment belongs to a different roster" do
+    other_event = TestFactories.event(workspace: workspace, user: user)
+    other_roster = TestFactories.chore_roster(event: other_event, user: user)
+    other_chore = TestFactories.chore(chore_roster: other_roster, name: "Cleaning")
+    other_assignment = TestFactories.chore_assignment(chore: other_chore, user: user, date: Date.new(2026, 3, 2), pinned: true)
+
+    result = described_class.call(
+      assignment_id: other_assignment[:id],
+      roster_id: roster[:id],
+      workspace_id: workspace[:id],
+      note: "Hacked"
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.http_status).to eq(404)
+    expect(DB[:chore_assignments].where(id: other_assignment[:id]).first[:note]).to be_nil
+  end
 end
