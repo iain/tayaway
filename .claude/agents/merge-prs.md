@@ -20,14 +20,15 @@ You will receive criteria for which PRs to merge, e.g.:
 
 ### Phase 1 — Discover PRs
 
-Fetch matching PRs:
+Fetch matching PRs. Unless the user specifies different criteria, default to PRs with
+the `ready to merge` label:
 
 ```bash
-gh pr list --repo iain/tayaway --state open --json number,title,isDraft,labels,mergeable --limit 100
+gh pr list --repo iain/tayaway --state open --label "ready to merge" --json number,title,isDraft,labels,mergeable --limit 100
 ```
 
-Filter based on the user's criteria. Present the list and ask for confirmation before
-proceeding.
+If the user explicitly asks to merge all open PRs or specific PR numbers, drop the label
+filter. Present the list and ask for confirmation before proceeding.
 
 ### Phase 2 — Merge sequentially
 

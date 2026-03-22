@@ -269,13 +269,13 @@ When asked to write or update e2e tests:
 2. **Check existing coverage** — read existing test files to avoid duplicating tests.
 3. **Add data-testid** — if components lack testable selectors, add `data-testid` attributes to the Vue components first.
 4. **Write tests** — create or update the spec file following the patterns above.
-5. **Verify** — ensure the tests can be run with `mise run test_e2e` or `cd e2e && pnpm exec playwright test tests/<file>.spec.ts`.
+5. **Verify** — ensure the tests can be run with `mise run test:e2e` or `cd e2e && pnpm exec playwright test tests/<file>.spec.ts`.
 
 ## Running Tests
 
 ```bash
 # Run all e2e tests
-mise run test_e2e
+mise run test:e2e
 
 # Run a specific test file
 cd e2e && pnpm exec playwright test tests/<file>.spec.ts
@@ -289,54 +289,12 @@ cd e2e && pnpm exec playwright test -g "test name"
 
 **Before committing:** Always run `mise run ci` and ensure it passes before creating a commit.
 
-## Application Context
+## E2E-Specific Context
 
-Tayaway is a real-time collaborative event planning app. Users authenticate via login link email, belong to workspaces, and create events with date polls that members vote on. The app syncs all state in real-time via WebSockets and PostgreSQL LISTEN/NOTIFY.
+Project overview, architecture, data model, and API endpoints are documented in CLAUDE.md
+(loaded automatically). The following is e2e-specific context only.
 
-### Features to Cover
-
-- **Login link authentication** — Passwordless email login with session management
-- **Workspaces** — Organize events by team or group; invite members by email with role-based access (owner/admin/member)
-- **Date polls** — Create polls with multiple date range options, set deadlines, and resolve a winner
-- **Live voting** — Vote yes/no/preferably not on each proposed date, with instant results
-- **RSVPs** — Confirm attendance with custom date ranges once event dates are set
-- **Expense tracking** — Log event expenses and split costs by nights attended
-- **Settlements** — Compute balances and minimize transfers between members
-- **Task lists** — Workspace-scoped task lists with drag-and-drop reordering and vim-style keyboard navigation
-- **ICS export** — Download `.ics` calendar files for events
-- **Command palette** — Cmd+K to search, navigate, and take actions
-- **Real-time sync** — All changes broadcast instantly to connected clients via WebSockets
-- **Dark mode** — System-aware light/dark theme with manual toggle
-- **Dashboard** — Polls needing attention, events needing RSVP, and currently happening events at a glance
-
-### Monorepo Layout
-
-pnpm workspace with `frontend/` and `e2e/` as packages. `backend/` is a standalone Ruby app (not a pnpm package).
-
-**Three databases:** `tayaway_development`, `tayaway_test`, `tayaway_e2e`. E2e tests run against `tayaway_e2e` (RACK_ENV=e2e).
-
-### Data Model
-
-```
-Workspace
-  ├── Event
-  │     ├── DatePoll (open → expired → resolved)
-  │     │     └── DateRange
-  │     │           └── Vote (yes / no / preferably_not)
-  │     ├── Rsvp (attending + custom date range)
-  │     ├── Expense (amount + description + date range)
-  │     └── Settlement
-  │           └── SettlementTransfer (from_user → to_user, amount, paid_at)
-  └── TaskList
-        └── TaskItem
-```
-
-**Hierarchy:** Workspace -> Event -> DatePoll -> DateRange -> Vote
-**RSVP:** Event -> Rsvp (once event has dates set)
-**Settlement:** Event -> Settlement -> SettlementTransfer; Settlement -> Expenses (via settlement_id)
-
-**Poll lifecycle:** open -> expired (past deadline) -> resolved (closed with winner) -> can reopen
-**RSVP lifecycle:** Closing a poll auto-RSVPs "yes" voters as attending. Reopening a poll deletes all RSVPs.
+E2e tests run against `tayaway_e2e` database (RACK_ENV=e2e).
 
 ### Object Types (for pool assertions)
 
@@ -356,117 +314,3 @@ Use these `objectType` values when calling `getObjectByType` / `getObjectsByType
 | `expense`            | Expense               |
 | `settlement`         | Settlement            |
 | `settlementTransfer` | Settlement transfer   |
-
-### API Endpoints
-
-**Authentication (`/api/auth`)**
-
-- `POST /login-link` — Request login link email
-- `POST /verify` — Verify token and create session
-- `GET /me` — Get current user (requires auth)
-- `POST /logout` — End session (requires auth)
-- `POST /ws-ticket` — Get single-use WebSocket JWT (requires auth)
-- `GET /sessions` — List user's sessions (requires auth)
-- `DELETE /sessions/:id` — Delete a session (requires auth)
-
-**Events (`/api/events`)** — All require authentication + workspace membership
-
-- `GET /` — List events in current workspace
-- `POST /` — Create event
-- `GET /:id` — Get event details
-- `PUT /:id` — Update event (owner only)
-- `DELETE /:id` — Delete event (owner only)
-- `POST /:id/poll` — Create date poll
-- `POST /:id/poll/close` — Close poll with selected winner
-- `POST /:id/poll/reopen` — Reopen a resolved poll
-- `POST /:id/poll/date-ranges` — Add date range to poll
-- `DELETE /:id/poll/date-ranges/:dr_id` — Remove date range
-- `GET /:id/rsvps` — Get RSVPs for event
-- `POST /:id/rsvps` — Create or update RSVP
-- `DELETE /:id/rsvps/:rsvp_id` — Delete RSVP
-- `GET /:id/votes` — Get votes for event
-- `POST /:id/votes` — Create or update vote
-- `DELETE /:id/votes/:vote_id` — Delete vote
-
-**Task Lists (`/api/task-lists`)** — All require authentication + workspace membership
-
-- `GET /` — List task lists for workspace (workspace_id query param)
-- `POST /` — Create task list
-- `PUT /:id` — Update task list (name and/or position; at least one required)
-- `DELETE /:id` — Delete task list
-- `POST /:id/items` — Add item to list
-- `PUT /:id/items/:item_id` — Update item (content, completed boolean, position, and/or task_list_id for cross-list move)
-- `DELETE /:id/items/:item_id` — Delete item
-- `POST /:id/clear-completed` — Delete all completed items
-
-**Expenses (`/api/expenses`)** — All require authentication + workspace membership (via event)
-
-- `GET /?event_id=xxx` — List expenses for event
-- `POST /` — Create expense (body: event_id, description, amount, id?)
-- `PUT /:id` — Update expense (creator-only; description and/or amount)
-- `DELETE /:id` — Delete expense (creator-only)
-
-**Settlements (`/api/settlements`)** — All require authentication + workspace membership (via event)
-
-- `GET /?event_id=X` — List settlements + transfers for event
-- `POST /` — Create settlement (computes balances and minimizes transfers)
-- `DELETE /:id` — Delete settlement (creator or event owner)
-- `PUT /transfers/:id` — Toggle paid status on a transfer
-
-**Invites (`/api/invites`)** — Mixed authentication
-
-- `GET /info?token=JWT` — Get invite info (workspace name, email) (unauthenticated)
-- `POST /accept` — Accept an invitation (unauthenticated)
-- `GET /?workspace_id=X` — List pending invites (admin/owner only)
-- `POST /` — Create an invitation (admin/owner only)
-- `DELETE /:id?workspace_id=X` — Cancel a pending invitation (admin/owner only)
-
-**Members (`/api/members`)** — Requires authentication
-
-- `PUT /:id` — Update member role (owner can change any; admin can change admin/member but not owner)
-
-**Workspaces (`/api/workspaces`)** — Requires authentication
-
-- `GET /` — List user's workspaces
-
-**Users (`/api/users`)** — Mixed authentication
-
-- `PUT /name` — Update display name (requires auth)
-- `POST /email-change/request` — Request email change verification link (requires auth)
-- `POST /email-change/verify` — Verify email change token and update email (unauthenticated)
-
-**WebSocket (`/ws?ticket=<jwt>`)** — Authenticated via single-use JWT ticket
-
-- Server sends: `authenticated`, `sync`, `broadcast`, `pong`, `error`
-- Client sends: `ping`, `switch_workspace`
-
-### Frontend Code Style
-
-When adding `data-testid` attributes to Vue components:
-
-- `<script setup lang="ts">` syntax
-- Tailwind CSS for all styling with `dark:` prefix for dark mode
-- No semicolons (Prettier-enforced)
-
-### Real-Time Sync
-
-All API responses return normalized `{ objects: [...] }` payloads. For delete operations, responses return `{ deleted: [{ objectType, id }] }`. The frontend merges objects into a type-keyed pool by timestamp (newer wins). Real-time updates arrive via WebSocket broadcast.
-
-### Architecture Reference
-
-```
-frontend/
-  src/api/client.ts         Fetch-based HTTP client; auto-imports pool objects from responses
-  src/pages/                Page components (Home, Login, Events, Vote, Profile, Members)
-  src/components/           Reusable components (events/, calendar/, votes/, form/, common/)
-  src/composables/          Vue composables (useHydratedEvent, useCalendar, useMutation, useDarkMode)
-  src/stores/               Pinia stores (objectPool, websocket, commandQueue, auth, workspace, events, votes, ...)
-  src/types/pool.ts         Object pool type registry (ObjectTypeMap, OBJECT_TYPES)
-  src/router/               Vue Router with auth guards
-
-backend/
-  app/routes/               Route files (auth, events, members, workspaces, users, ws, health)
-  app/models/               Immutable T::Struct models with from_row / to_api_hash
-  app/services/             Business logic using Result monad (Success/Failure with bind chains)
-  app/serializers/          PoolSerializer — collects related objects for normalized API responses
-```

@@ -34,7 +34,7 @@ RACK_ENV=e2e bundle exec rake db:reset
 
 - Write a title that is **short, imperative, title case** (capitalise each significant word), easy to scan in a `git log --oneline`.
 - The body of the commit or PR should be short, only a few bullet points. No "Co-Authored-By", no fluff, no headers. Just the subject line unless a single sentence of context is genuinely needed (rare).
-- Always use the `/commit` and `/pr` commands.
+- In the main conversation, always use the `/commit` and `/pr` commands. Subagents have their own commit/PR instructions and cannot use slash commands.
 
 **PR review and merge workflow:**
 
