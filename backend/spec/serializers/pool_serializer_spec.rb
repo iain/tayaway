@@ -86,8 +86,11 @@ RSpec.describe PoolSerializer do
       range1_obj = objects.find { |o| o[:objectType] == "dateRange" && o[:id] == range1[:id].to_s }
       range2_obj = objects.find { |o| o[:objectType] == "dateRange" && o[:id] == range2[:id].to_s }
 
-      expect(range1_obj[:id]).to eq(range1[:id].to_s)
-      expect(range2_obj[:id]).to eq(range2[:id].to_s)
+      expect(range1_obj[:objectType]).to eq("dateRange")
+      expect(range1_obj[:datePollId]).to eq(poll[:id].to_s)
+      expect(range2_obj[:datePollId]).to eq(poll[:id].to_s)
+      expect(range1_obj).not_to have_key(:voteIds)
+      expect(range2_obj).not_to have_key(:voteIds)
     end
   end
 
