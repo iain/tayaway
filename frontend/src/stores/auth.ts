@@ -99,7 +99,6 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await fetch('/api/auth/me', {
         signal: controller.signal,
       })
-      clearTimeout(timeout)
 
       if (response.ok) {
         const data = (await response.json()) as MeResponse
@@ -113,7 +112,6 @@ export const useAuthStore = defineStore('auth', () => {
         return null
       }
     } catch (e) {
-      clearTimeout(timeout)
       // Genuine network/abort errors are expected when offline or on slow
       // connections — fall back to cached user silently.
       // Any other error (programming bug, unexpected exception) should be
@@ -127,6 +125,8 @@ export const useAuthStore = defineStore('auth', () => {
         console.error('[auth] initialize() caught unexpected error:', e)
       }
       return null
+    } finally {
+      clearTimeout(timeout)
     }
   }
 
