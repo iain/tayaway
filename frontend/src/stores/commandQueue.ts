@@ -78,6 +78,11 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
       if (isNetworkError(e)) {
         throw new CommandQueuedError()
       }
+      if (isAuthError(e)) {
+        // Session expired — keep command in queue for replay after re-auth
+        await handleAuthError()
+        throw new CommandQueuedError()
+      }
       // Server error — remove from queue and rethrow
       try {
         await removeCommand(commandId)
@@ -88,6 +93,20 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
       }
       throw e
     }
+  }
+
+  async function handleAuthError(): Promise<void> {
+    const { useNotificationsStore } = await import('./notifications')
+    const notifications = useNotificationsStore()
+    notifications.showError('Your session has expired. Please log in again.')
+    const { useWebSocketStore } = await import('./websocket')
+    const wsStore = useWebSocketStore()
+    wsStore.disconnect()
+    const { useAuthStore } = await import('./auth')
+    const authStore = useAuthStore()
+    authStore.$reset()
+    const { default: router } = await import('@/router')
+    router.push({ name: 'login' })
   }
 
   async function processQueue(): Promise<void> {
@@ -127,19 +146,7 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
           } catch (e) {
             if (isAuthError(e)) {
               // Session expired — keep commands, redirect to login
-              const { useNotificationsStore } = await import('./notifications')
-              const notifications = useNotificationsStore()
-              notifications.showError(
-                'Your session has expired. Please log in again.'
-              )
-              const { useWebSocketStore } = await import('./websocket')
-              const wsStore = useWebSocketStore()
-              wsStore.disconnect()
-              const { useAuthStore } = await import('./auth')
-              const authStore = useAuthStore()
-              authStore.$reset()
-              const { default: router } = await import('@/router')
-              router.push({ name: 'login' })
+              await handleAuthError()
               break
             }
             if (isNetworkError(e)) {

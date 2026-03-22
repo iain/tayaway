@@ -168,6 +168,12 @@ export const useAuthStore = defineStore('auth', () => {
     const ws = useWebSocketStore()
     ws.connect()
 
+    // Resume any commands that were preserved when the session expired
+    const commandQueue = useCommandQueueStore()
+    if (commandQueue.pendingCount > 0) {
+      commandQueue.processQueue()
+    }
+
     return verifiedUser
   }
 
