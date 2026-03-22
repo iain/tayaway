@@ -102,7 +102,7 @@ module Websocket
             connection.websocket.write({ type: "ping" }.to_json)
             connection.websocket.flush
           rescue StandardError => e
-            APP_LOGGER.error { "[ConnectionManager] Error pinging conn #{connection_id}: #{e.message}" }
+            APP_LOGGER.error { "[ConnectionManager] Error pinging conn #{connection_id}: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
             stale_ids << connection_id
           end
         end
@@ -129,7 +129,7 @@ module Websocket
           connection.websocket.write(json_message)
           connection.websocket.flush
         rescue StandardError => e
-          APP_LOGGER.error { "[ConnectionManager] Error broadcasting to workspace #{workspace_id}, conn #{connection_id}: #{e.message}" }
+          APP_LOGGER.error { "[ConnectionManager] Error broadcasting to workspace #{workspace_id}, conn #{connection_id}: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
           unregister(connection_id)
         end
       end
