@@ -13,6 +13,11 @@ defineProps<{
 const emit = defineEmits<{
   dismiss: [id: string]
 }>()
+
+function handleAction(notification: Notification) {
+  notification.action?.()
+  emit('dismiss', notification.id)
+}
 </script>
 
 <template>
@@ -54,10 +59,7 @@ const emit = defineEmits<{
             v-if="notification.actionLabel && notification.action"
             type="button"
             class="mt-1 text-sm font-medium text-amber-600 hover:text-amber-500 dark:text-amber-400 dark:hover:text-amber-300"
-            @click="
-              notification.action?.()
-              emit('dismiss', notification.id)
-            "
+            @click="handleAction(notification)"
           >
             {{ notification.actionLabel }}
           </button>
