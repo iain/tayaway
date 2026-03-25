@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { api } from '@/api/client'
 import { formatRelativeDate } from '@/utils/date'
 import type { Session, SessionsResponse } from '@/types'
+import { useNotificationsStore } from '@/stores'
 import BaseCard from '@/components/common/BaseCard.vue'
 import AppBadge from '@/components/common/AppBadge.vue'
 
@@ -10,14 +11,18 @@ defineProps<{
   bare?: boolean
 }>()
 
+const notifications = useNotificationsStore()
 const sessions = ref<Session[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
-const deletingId = ref<string | null>(null)
 
 const hasGeolocation = computed(() =>
   sessions.value.some((s) => s.city || s.country)
 )
+
+const pendingRevokes = ref<
+  Map<string, { session: Session; timer: ReturnType<typeof setTimeout> }>
+>(new Map())
 
 async function fetchSessions() {
   loading.value = true
@@ -32,15 +37,45 @@ async function fetchSessions() {
   }
 }
 
-async function endSession(id: string) {
-  deletingId.value = id
+function endSession(id: string) {
+  const session = sessions.value.find((s) => s.id === id)
+  if (!session) return
+
+  sessions.value = sessions.value.filter((s) => s.id !== id)
+
+  const timer = setTimeout(() => {
+    executeRevoke(id)
+  }, 4000)
+
+  pendingRevokes.value.set(id, { session, timer })
+
+  notifications.showInfo('Session revoked', {
+    actionLabel: 'Undo',
+    duration: 4000,
+    action: () => undoRevoke(id),
+  })
+}
+
+function undoRevoke(id: string) {
+  const pending = pendingRevokes.value.get(id)
+  if (!pending) return
+
+  clearTimeout(pending.timer)
+  pendingRevokes.value.delete(id)
+
+  sessions.value.push(pending.session)
+  sessions.value.sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  )
+}
+
+async function executeRevoke(id: string) {
+  pendingRevokes.value.delete(id)
   try {
     await api.delete(`/auth/sessions/${id}`)
-    sessions.value = sessions.value.filter((s) => s.id !== id)
   } catch {
     // Error notification handled by api client
-  } finally {
-    deletingId.value = null
   }
 }
 
@@ -68,6 +103,13 @@ function sessionContext(session: Session): string {
 }
 
 onMounted(fetchSessions)
+
+onUnmounted(() => {
+  for (const [id, { timer }] of pendingRevokes.value) {
+    clearTimeout(timer)
+    executeRevoke(id)
+  }
+})
 </script>
 
 <template>
@@ -106,13 +148,6 @@ onMounted(fetchSessions)
           {{ error }}
         </div>
 
-        <p
-          v-else-if="sessions.length === 0"
-          class="py-4 text-sm text-gray-500 dark:text-stone-400"
-        >
-          No active sessions found.
-        </p>
-
         <ul
           v-else
           :class="[
@@ -145,19 +180,16 @@ onMounted(fetchSessions)
                   >Last active
                   {{ formatRelativeDate(session.last_active_at) }}
                   &middot; </span
-                >Created {{ formatRelativeDate(session.created_at) }} &middot;
-                Expires
-                {{ formatDate(session.expires_at) }}
+                >Expires {{ formatDate(session.expires_at) }}
               </p>
             </div>
             <button
               v-if="!session.current"
               type="button"
-              :disabled="deletingId === session.id"
-              class="ml-4 shrink-0 rounded-md px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
+              class="ml-4 shrink-0 rounded-md px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-red-400 dark:hover:text-red-300"
               @click="endSession(session.id)"
             >
-              {{ deletingId === session.id ? 'Revoking...' : 'Revoke' }}
+              Revoke
             </button>
           </li>
         </ul>

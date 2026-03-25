@@ -19,18 +19,25 @@ export const useNotificationsStore = defineStore('notifications', () => {
     }, 5000)
   }
 
-  function showInfo(message: string): void {
+  function showInfo(
+    message: string,
+    options?: { action?: () => void; actionLabel?: string; duration?: number }
+  ): string {
     const id = crypto.randomUUID()
     const notification: Notification = {
       id,
       type: 'info',
       message,
+      action: options?.action,
+      actionLabel: options?.actionLabel,
     }
     notifications.value.push(notification)
 
     setTimeout(() => {
       dismiss(id)
-    }, 4000)
+    }, options?.duration ?? 4000)
+
+    return id
   }
 
   function showUpdate(action: () => void | Promise<void>): void {
