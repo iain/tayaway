@@ -158,6 +158,25 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     triggerRef(typeVersions)
   }
 
+  // Microtask-debounce state for importObjects().
+  // When multiple importObjects() calls arrive in the same event loop tick
+  // (e.g. during a WebSocket sync burst), we increment version counters eagerly
+  // so the final values are correct, but defer all triggerRef() calls until the
+  // microtask queue drains. This coalesces N Vue reactivity triggers into one
+  // per burst, eliminating redundant recomputation of pool consumers.
+  let importTriggerScheduled = false
+
+  function scheduleImportTrigger(): void {
+    if (importTriggerScheduled) return
+    importTriggerScheduled = true
+    queueMicrotask(() => {
+      importTriggerScheduled = false
+      triggerRef(typeVersions)
+      triggerRef(objects)
+      triggerRef(pendingUpdates)
+    })
+  }
+
   // Return the current version number for a specific type.
   // Reading this inside a computed establishes a scoped reactive dependency:
   // the computed will only re-evaluate when that type's data changes.
@@ -208,12 +227,19 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
         changed = true
       }
     }
-    // Trigger reactivity for nested Map changes
+    // Trigger reactivity for nested Map changes — deferred to a microtask so
+    // that multiple importObjects() calls within the same event loop tick
+    // (e.g. during a WebSocket sync burst) coalesce into a single Vue trigger.
     if (changed) {
-      const changedTypes = new Set(imported.map((o) => o.objectType))
-      bumpVersion(...changedTypes)
-      triggerRef(objects)
-      triggerRef(pendingUpdates)
+      // Increment per-type version counters eagerly so getAll() cache
+      // invalidation is correct when the deferred triggerRef() fires.
+      for (const obj of imported) {
+        typeVersions.value.set(
+          obj.objectType,
+          (typeVersions.value.get(obj.objectType) ?? 0) + 1
+        )
+      }
+      scheduleImportTrigger()
     }
     if (imported.length > 0) {
       notifyChange({ type: 'import', objects: imported })

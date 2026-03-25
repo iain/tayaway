@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
+import { watchEffect } from 'vue'
 import { useObjectPoolStore } from './objectPool'
 import type { ObjectTypeMap } from '@/types/pool'
 
@@ -1150,6 +1151,89 @@ describe('objectPool store', () => {
       for (const type of types) {
         expect(pool.getAll(type)).toHaveLength(0)
       }
+    })
+  })
+
+  describe('importObjects reactivity debounce', () => {
+    it('coalesces multiple importObjects calls within one tick into a single trigger', async () => {
+      const pool = useObjectPoolStore()
+      let triggerCount = 0
+
+      // watchEffect runs once synchronously on setup, then re-runs whenever
+      // a reactive dependency it read changes. getAll() reads typeVersions,
+      // so it establishes a scoped reactivity dependency.
+      const stop = watchEffect(() => {
+        pool.getAll('event')
+        triggerCount++
+      })
+
+      // Initial synchronous run
+      expect(triggerCount).toBe(1)
+
+      // Two separate importObjects calls — both in the same synchronous tick
+      pool.importObjects([makeEvent({ id: 'evt-1', name: 'A' })])
+      pool.importObjects([
+        makeEvent({
+          id: 'evt-2',
+          name: 'B',
+          updatedAt: '2026-06-01T00:00:00.000Z',
+        }),
+      ])
+
+      // Triggers have NOT fired yet (microtask is still pending)
+      expect(triggerCount).toBe(1)
+
+      // Flush the microtask queue — exactly one trigger should fire for both imports
+      await Promise.resolve()
+
+      expect(triggerCount).toBe(2)
+
+      stop()
+    })
+
+    it('fires separate triggers for imports in different event loop ticks', async () => {
+      const pool = useObjectPoolStore()
+      let triggerCount = 0
+
+      const stop = watchEffect(() => {
+        pool.getAll('event')
+        triggerCount++
+      })
+
+      expect(triggerCount).toBe(1)
+
+      // First tick
+      pool.importObjects([makeEvent({ id: 'evt-1' })])
+      await Promise.resolve()
+      expect(triggerCount).toBe(2)
+
+      // Second tick (new event loop turn)
+      pool.importObjects([
+        makeEvent({ id: 'evt-2', updatedAt: '2026-06-01T00:00:00.000Z' }),
+      ])
+      await Promise.resolve()
+      expect(triggerCount).toBe(3)
+
+      stop()
+    })
+
+    it('reflects all coalesced objects after the deferred trigger fires', async () => {
+      const pool = useObjectPoolStore()
+
+      pool.importObjects([makeEvent({ id: 'evt-1', name: 'Alpha' })])
+      pool.importObjects([
+        makeEvent({
+          id: 'evt-2',
+          name: 'Beta',
+          updatedAt: '2026-06-01T00:00:00.000Z',
+        }),
+      ])
+
+      await Promise.resolve()
+
+      const all = pool.getAll('event')
+      expect(all).toHaveLength(2)
+      expect(all.map((e) => e.name).sort()).toEqual(['Alpha', 'Beta'])
     })
   })
 })
