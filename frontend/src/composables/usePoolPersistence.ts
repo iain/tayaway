@@ -9,7 +9,19 @@ import * as poolDb from '@/api/poolDb'
 import { CACHE_VERSION } from '@/api/poolDb'
 import { getStaleness } from '@/composables/useStaleness'
 import type { PoolChange } from '@/stores/objectPool'
-import type { PoolObject } from '@/types/pool'
+import type { PoolObject, ObjectType } from '@/types/pool'
+import { OBJECT_TYPES } from '@/types/pool'
+
+// Object types to load first — these are needed to render the app shell.
+// Members and workspace context are required by the nav/header; events are
+// the primary content type visible on the home screen.
+const PRIORITY_TYPES: ObjectType[] = ['member', 'workspace', 'event']
+
+// Remaining types, in a sensible dependency order so parent objects always
+// arrive in the pool before their children.
+const DEFERRED_TYPES: ObjectType[] = OBJECT_TYPES.filter(
+  (t) => !PRIORITY_TYPES.includes(t)
+)
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 let idleCallbackHandle: number | null = null
@@ -78,8 +90,9 @@ export function usePoolPersistence() {
     if (!expectedWorkspaceId) return
 
     try {
-      const { workspaceId, syncedAt, cacheVersion, objects, pendingUpdates } =
-        await poolDb.loadAll()
+      // Phase 1: Read lightweight metadata only. This is fast on all devices
+      // and lets us validate the cache identity before reading any objects.
+      const { workspaceId, syncedAt, cacheVersion } = await poolDb.loadMeta()
       if (
         workspaceId !== expectedWorkspaceId ||
         cacheVersion !== CACHE_VERSION
@@ -87,7 +100,6 @@ export function usePoolPersistence() {
         await poolDb.clearAll()
         return
       }
-      if (objects.length === 0 && pendingUpdates.size === 0) return
 
       const pool = useObjectPoolStore()
       const wsStore = useWebSocketStore()
@@ -108,12 +120,41 @@ export function usePoolPersistence() {
         wsStore.setCacheStaleLevel(staleLevel)
       }
 
-      if (objects.length > 0) {
-        pool.importObjects(objects)
+      // Phase 2: Load priority types first (member, workspace, event) so the
+      // app shell can render immediately with the most important data.
+      let anyLoaded = false
+      for (const type of PRIORITY_TYPES) {
+        if (wsStore.hasSynced) return // Server beat us — stop loading stale cache
+        const objects = await poolDb.loadObjectsByType(type)
+        if (objects.length > 0) {
+          pool.importObjects(objects)
+          anyLoaded = true
+        }
       }
-      if (pendingUpdates.size > 0) {
-        pool.restorePendingUpdates(pendingUpdates)
+
+      // Phase 3: Load remaining types progressively, yielding to the event loop
+      // between each type so the browser can paint frames as data arrives.
+      for (const type of DEFERRED_TYPES) {
+        if (wsStore.hasSynced) break // Server beat us — stop loading stale cache
+        await new Promise<void>((resolve) => setTimeout(resolve, 0))
+        const objects = await poolDb.loadObjectsByType(type)
+        if (objects.length > 0) {
+          pool.importObjects(objects)
+          anyLoaded = true
+        }
       }
+
+      // Phase 4: Restore pending updates regardless of whether cached objects
+      // were found — offline changes must survive app restarts even if the
+      // object cache was empty.
+      if (!wsStore.hasSynced) {
+        const pendingUpdates = await poolDb.loadPendingUpdatesFromDb()
+        if (pendingUpdates.size > 0) {
+          pool.restorePendingUpdates(pendingUpdates)
+        }
+      }
+
+      if (!anyLoaded) return
 
       wsStore.hasCachedData = true
 

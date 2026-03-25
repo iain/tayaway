@@ -173,6 +173,57 @@ export async function loadAll(): Promise<{
   }
 }
 
+/**
+ * Read only the lightweight metadata record from the cache.
+ * This is fast even on large datasets because it reads three small records
+ * rather than iterating over every cached object.
+ */
+export async function loadMeta(): Promise<{
+  workspaceId: string | null
+  syncedAt: string | null
+  cacheVersion: number | null
+}> {
+  const db = await getDb()
+  const tx = db.transaction('meta', 'readonly')
+  const meta = await tx.store.get('workspace')
+  const syncedAtMeta = await tx.store.get('syncedAt')
+  const versionMeta = await tx.store.get('cacheVersion')
+  return {
+    workspaceId: meta?.workspaceId ?? null,
+    syncedAt: syncedAtMeta?.syncedAt ?? null,
+    cacheVersion: versionMeta?.cacheVersion ?? null,
+  }
+}
+
+/**
+ * Read all cached objects of a single object type using the objectType index.
+ * Callers should yield to the event loop between successive type loads so the
+ * browser can paint frames while the cache is being restored progressively.
+ */
+export async function loadObjectsByType(
+  objectType: ObjectType
+): Promise<PoolObject[]> {
+  const db = await getDb()
+  const tx = db.transaction('objects', 'readonly')
+  const stored = await tx.store.index('objectType').getAll(objectType)
+  return stored.map((s) => s.data)
+}
+
+/**
+ * Read all pending updates from the cache.
+ */
+export async function loadPendingUpdatesFromDb(): Promise<
+  Map<string, PendingUpdate[]>
+> {
+  const db = await getDb()
+  const stored = await db.getAll('pendingUpdates')
+  const map = new Map<string, PendingUpdate[]>()
+  for (const entry of stored) {
+    map.set(entry.key, entry.updates)
+  }
+  return map
+}
+
 export { CACHE_VERSION }
 
 export async function saveSyncedAt(syncedAt: string): Promise<void> {
