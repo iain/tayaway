@@ -19,31 +19,34 @@ RSpec.describe "POST /api/csp-report" do
   end
 
   it "returns 204 and logs the violation" do
-    expect(APP_LOGGER).to receive(:warn)
+    allow(APP_LOGGER).to receive(:warn)
 
     post "/api/csp-report", valid_report, csp_report_headers
 
     expect(last_response.status).to eq(204)
+    expect(APP_LOGGER).to have_received(:warn)
   end
 
   it "returns 204 without logging for chrome-extension:// blocked-uri" do
-    expect(APP_LOGGER).not_to receive(:warn)
+    allow(APP_LOGGER).to receive(:warn)
 
     post "/api/csp-report",
          valid_report("blocked-uri" => "chrome-extension://abc/inject.js"),
          csp_report_headers
 
     expect(last_response.status).to eq(204)
+    expect(APP_LOGGER).not_to have_received(:warn)
   end
 
   it "returns 204 without logging for moz-extension:// blocked-uri" do
-    expect(APP_LOGGER).not_to receive(:warn)
+    allow(APP_LOGGER).to receive(:warn)
 
     post "/api/csp-report",
          valid_report("blocked-uri" => "moz-extension://xyz/content.js"),
          csp_report_headers
 
     expect(last_response.status).to eq(204)
+    expect(APP_LOGGER).not_to have_received(:warn)
   end
 
   it "returns 400 for invalid JSON" do
@@ -60,10 +63,11 @@ RSpec.describe "POST /api/csp-report" do
   end
 
   it "handles missing csp-report key gracefully" do
-    expect(APP_LOGGER).to receive(:warn)
+    allow(APP_LOGGER).to receive(:warn)
 
     post "/api/csp-report", {}.to_json, csp_report_headers
 
     expect(last_response.status).to eq(204)
+    expect(APP_LOGGER).to have_received(:warn)
   end
 end
