@@ -17,6 +17,9 @@ module Sync
     RETENTION_PERIOD = 7 * 24 * 60 * 60 # 7 days in seconds
 
     # Maps registry key to the batch pool method to use when adding items.
+    # Only covers the 5 types with dedicated batch methods. The remaining 12
+    # types fall through to the per-item path (pool.send(entry.pool_method, item)),
+    # so a new type added to SUBQUERIES without a batch method will still work.
     BATCH_POOL_METHODS = T.let(
       {
         "event" => :add_events_batch,
