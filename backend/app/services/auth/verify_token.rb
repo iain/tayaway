@@ -14,13 +14,13 @@ module Auth
       include Result::Methods
 
       sig do
-        params(token: T.nilable(String))
+        params(token: T.nilable(String), ip: T.nilable(String), user_agent: T.nilable(String))
           .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def call(token:)
+      def call(token:, ip: nil, user_agent: nil)
         decode_jwt(token)
           .bind { |params| claim_magic_token(T.must(params[:token]), T.must(params[:email])) }
-          .bind { |user_id| create_session(user_id) }
+          .bind { |user_id| create_session(user_id, ip: ip, user_agent: user_agent) }
       end
 
       private
@@ -63,19 +63,30 @@ module Auth
         T.cast(Success(row[:user_id].to_s), Result[String, ServiceError])
       end
 
-      sig { params(user_id: String).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
-      def create_session(user_id)
+      sig do
+        params(user_id: String, ip: T.nilable(String), user_agent: T.nilable(String))
+          .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
+      end
+      def create_session(user_id, ip: nil, user_agent: nil)
         now = Time.now
         id = SecureRandom.uuid
         token = SecureRandom.hex(32)
         expires_at = now + Session::EXPIRY_SECONDS
+
+        geo = ip ? GeoIP.lookup(ip) : nil
+        browser_info = user_agent ? parse_user_agent(user_agent) : nil
 
         DB[:sessions].insert(
           id: id,
           user_id: user_id,
           token: Auth::Token.digest(token),
           expires_at: expires_at,
-          created_at: now
+          created_at: now,
+          ip_address: ip,
+          city: geo&.dig(:city),
+          country: geo&.dig(:country),
+          browser_name: browser_info&.dig(:browser_name),
+          os_name: browser_info&.dig(:os_name)
         )
 
         APP_LOGGER.info { "[Auth::VerifyToken] Session created for user #{user_id}" }
@@ -85,6 +96,19 @@ module Auth
         }
                       ), Result[T::Hash[Symbol, T.untyped], ServiceError]
         )
+      end
+
+      sig { params(user_agent: String).returns(T::Hash[Symbol, T.nilable(String)]) }
+      def parse_user_agent(user_agent)
+        b = Browser.new(user_agent)
+        browser_name = b.name
+        os_name = b.platform.name
+        {
+          browser_name: browser_name.empty? ? nil : browser_name,
+          os_name: os_name.empty? ? nil : os_name
+        }
+      rescue StandardError
+        { browser_name: nil, os_name: nil }
       end
     end
   end

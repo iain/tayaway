@@ -16,6 +16,11 @@ class Session < T::Struct
   const :expires_at, Time
   const :last_active_at, T.nilable(Time)
   const :created_at, Time
+  const :ip_address, T.nilable(String)
+  const :city, T.nilable(String)
+  const :country, T.nilable(String)
+  const :browser_name, T.nilable(String)
+  const :os_name, T.nilable(String)
 
   sig { returns(T::Hash[Symbol, T.untyped]) }
   def to_api_hash
@@ -23,7 +28,11 @@ class Session < T::Struct
       id: id.to_s,
       created_at: created_at.iso8601,
       expires_at: expires_at.iso8601,
-      last_active_at: last_active_at&.iso8601
+      last_active_at: last_active_at&.iso8601,
+      city: city,
+      country: country,
+      browser_name: browser_name,
+      os_name: os_name
     }
   end
 
@@ -111,7 +120,12 @@ class Session < T::Struct
         token: row[:token],
         expires_at: row[:expires_at],
         last_active_at: row[:last_active_at],
-        created_at: row[:created_at]
+        created_at: row[:created_at],
+        ip_address: row[:ip_address],
+        city: row[:city],
+        country: row[:country],
+        browser_name: row[:browser_name],
+        os_name: row[:os_name]
       )
     end
   end

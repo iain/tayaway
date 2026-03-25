@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { api } from '@/api/client'
 import { formatRelativeDate } from '@/utils/date'
 import type { Session, SessionsResponse } from '@/types'
@@ -14,6 +14,10 @@ const sessions = ref<Session[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const deletingId = ref<string | null>(null)
+
+const hasGeolocation = computed(() =>
+  sessions.value.some((s) => s.city || s.country)
+)
 
 async function fetchSessions() {
   loading.value = true
@@ -48,6 +52,21 @@ function formatDate(iso: string): string {
   })
 }
 
+function sessionContext(session: Session): string {
+  const parts: string[] = []
+  if (session.browser_name || session.os_name) {
+    const device = [session.browser_name, session.os_name]
+      .filter(Boolean)
+      .join(' on ')
+    parts.push(device)
+  }
+  if (session.city || session.country) {
+    const location = [session.city, session.country].filter(Boolean).join(', ')
+    parts.push(location)
+  }
+  return parts.join(' \u2014 ')
+}
+
 onMounted(fetchSessions)
 </script>
 
@@ -62,6 +81,13 @@ onMounted(fetchSessions)
       {{ error }}
     </div>
 
+    <p
+      v-else-if="sessions.length === 0"
+      class="py-4 text-sm text-gray-500 dark:text-stone-400"
+    >
+      No active sessions found.
+    </p>
+
     <ul v-else class="divide-y divide-gray-200 dark:divide-stone-700">
       <li
         v-for="session in sessions"
@@ -70,8 +96,10 @@ onMounted(fetchSessions)
       >
         <div class="min-w-0">
           <div class="flex items-center gap-2">
-            <p class="text-sm font-medium text-gray-900 dark:text-white">
-              Created {{ formatRelativeDate(session.created_at) }}
+            <p
+              class="truncate text-sm font-medium text-gray-900 dark:text-white"
+            >
+              {{ sessionContext(session) || 'Unknown device' }}
             </p>
             <AppBadge
               v-if="session.current"
@@ -85,7 +113,9 @@ onMounted(fetchSessions)
             <span v-if="session.last_active_at"
               >Last active
               {{ formatRelativeDate(session.last_active_at) }} &middot; </span
-            >Expires {{ formatDate(session.expires_at) }}
+            >Created {{ formatRelativeDate(session.created_at) }} &middot;
+            Expires
+            {{ formatDate(session.expires_at) }}
           </p>
         </div>
         <button
@@ -131,6 +161,13 @@ onMounted(fetchSessions)
           {{ error }}
         </div>
 
+        <p
+          v-else-if="sessions.length === 0"
+          class="py-4 text-sm text-gray-500 dark:text-stone-400"
+        >
+          No active sessions found.
+        </p>
+
         <ul
           v-else
           class="divide-y divide-gray-200 border-t border-gray-200 dark:divide-stone-700 dark:border-stone-700"
@@ -142,8 +179,10 @@ onMounted(fetchSessions)
           >
             <div class="min-w-0">
               <div class="flex items-center gap-2">
-                <p class="text-sm font-medium text-gray-900 dark:text-white">
-                  Created {{ formatRelativeDate(session.created_at) }}
+                <p
+                  class="truncate text-sm font-medium text-gray-900 dark:text-white"
+                >
+                  {{ sessionContext(session) || 'Unknown device' }}
                 </p>
                 <AppBadge
                   v-if="session.current"
@@ -156,11 +195,11 @@ onMounted(fetchSessions)
               <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
                 <span v-if="session.last_active_at"
                   >Last active
-                  {{
-                    formatRelativeDate(session.last_active_at)
-                  }}
+                  {{ formatRelativeDate(session.last_active_at) }}
                   &middot; </span
-                >Expires {{ formatDate(session.expires_at) }}
+                >Created {{ formatRelativeDate(session.created_at) }} &middot;
+                Expires
+                {{ formatDate(session.expires_at) }}
               </p>
             </div>
             <button
@@ -174,6 +213,19 @@ onMounted(fetchSessions)
             </button>
           </li>
         </ul>
+        <p
+          v-if="hasGeolocation"
+          class="text-xs text-gray-400 dark:text-stone-500"
+        >
+          IP Geolocation by
+          <a
+            href="https://db-ip.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="underline hover:text-gray-600 dark:hover:text-stone-300"
+            >DB-IP</a
+          >
+        </p>
       </div>
     </div>
   </BaseCard>

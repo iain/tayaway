@@ -53,4 +53,46 @@ RSpec.describe Auth::VerifyToken do
     expect(updated_token[:used_at]).not_to be_nil
     expect(DB[:sessions].where(user_id: user[:id]).count).to eq(1)
   end
+
+  it "stores browser name and OS when user_agent is provided" do
+    user = TestFactories.user(email: "ua@example.com")
+    login_token = TestFactories.login_link_token(user: user)
+    jwt = Auth::Token.encode_login_link(token: login_token.token, email: "ua@example.com")
+    chrome_ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " \
+                "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+    result = described_class.call(token: jwt, user_agent: chrome_ua)
+
+    expect(result.success?).to be true
+    session = DB[:sessions].where(user_id: user[:id]).first
+    expect(session[:browser_name]).not_to be_nil
+    expect(session[:os_name]).not_to be_nil
+  end
+
+  it "stores IP address when ip is provided" do
+    user = TestFactories.user(email: "ip@example.com")
+    login_token = TestFactories.login_link_token(user: user)
+    jwt = Auth::Token.encode_login_link(token: login_token.token, email: "ip@example.com")
+
+    result = described_class.call(token: jwt, ip: "93.184.216.34")
+
+    expect(result.success?).to be true
+    session = DB[:sessions].where(user_id: user[:id]).first
+    expect(session[:ip_address]).to eq("93.184.216.34")
+    # city/country may be nil when mmdb file is absent (expected in test env)
+  end
+
+  it "creates session without context when ip and user_agent are omitted" do
+    user = TestFactories.user(email: "nocontext@example.com")
+    login_token = TestFactories.login_link_token(user: user)
+    jwt = Auth::Token.encode_login_link(token: login_token.token, email: "nocontext@example.com")
+
+    result = described_class.call(token: jwt)
+
+    expect(result.success?).to be true
+    session = DB[:sessions].where(user_id: user[:id]).first
+    expect(session[:ip_address]).to be_nil
+    expect(session[:browser_name]).to be_nil
+    expect(session[:os_name]).to be_nil
+  end
 end

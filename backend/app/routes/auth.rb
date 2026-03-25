@@ -15,7 +15,11 @@ class App
 
   hash_path "/api/auth/verify" do |r|
     r.post do
-      result = Auth::VerifyToken.call(token: r.params["token"])
+      result = Auth::VerifyToken.call(
+        token: r.params["token"],
+        ip: request.ip,
+        user_agent: request.env["HTTP_USER_AGENT"]
+      )
       if result.success?
         set_session_cookie(result.value![:session_token], Time.now + Session::EXPIRY_SECONDS)
       end
