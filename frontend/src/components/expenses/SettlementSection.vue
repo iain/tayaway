@@ -324,19 +324,20 @@ async function handlePaidClick(
                   memberHasIban(transfer.toUserId)
                 "
                 type="button"
-                class="cursor-pointer rounded-md bg-gray-100 p-1.5 text-gray-600 transition-colors hover:bg-gray-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600"
+                class="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-amber-600 px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 dark:bg-amber-600 dark:hover:bg-amber-500"
                 title="Show QR code for bank transfer"
                 @click="openQrModal(transfer)"
               >
-                <QrCodeIcon class="size-5" aria-hidden="true" />
+                <QrCodeIcon class="size-4" aria-hidden="true" />
+                Pay via QR
               </button>
               <button
                 type="button"
-                class="cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500"
+                class="cursor-pointer rounded-md px-3 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
                 :class="
                   transfer.paidAt
-                    ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600'
+                    ? 'bg-green-100 text-green-700 hover:bg-green-200 focus-visible:outline-green-500 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
+                    : 'bg-cyan-600 text-white shadow-sm hover:bg-cyan-700 focus-visible:outline-cyan-600 dark:bg-cyan-700 dark:hover:bg-cyan-600'
                 "
                 @click="
                   handlePaidClick(
