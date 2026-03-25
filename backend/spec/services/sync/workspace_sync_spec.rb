@@ -79,4 +79,52 @@ RSpec.describe Sync::WorkspaceSync do
 
     expect(result[:syncType]).to eq("partial")
   end
+
+  it "includes votes synced via multi-level join" do
+    event = TestFactories.event(workspace: workspace, user: user)
+    poll = TestFactories.date_poll(event: event)
+    range = TestFactories.date_range(date_poll: poll)
+    TestFactories.vote(date_range: range, user: user, response: "yes")
+
+    result = described_class.call(workspace_id: workspace[:id])
+
+    vote_obj = result[:objects].find { |o| o[:objectType] == "vote" }
+    expect(vote_obj).not_to be_nil
+    expect(vote_obj[:response]).to eq("yes")
+  end
+
+  it "includes task items synced via task list join" do
+    list = TestFactories.task_list(workspace: workspace, user: user)
+    TestFactories.task_item(task_list: list, user: user, content: "Buy milk")
+
+    result = described_class.call(workspace_id: workspace[:id])
+
+    item_obj = result[:objects].find { |o| o[:objectType] == "taskItem" }
+    expect(item_obj).not_to be_nil
+    expect(item_obj[:content]).to eq("Buy milk")
+  end
+
+  it "includes chore assignments synced via chore/roster/event join" do
+    event = TestFactories.event(workspace: workspace, user: user)
+    roster = TestFactories.chore_roster(event: event, user: user)
+    chore = TestFactories.chore(chore_roster: roster, name: "Dishes")
+    TestFactories.chore_assignment(chore: chore, user: user)
+
+    result = described_class.call(workspace_id: workspace[:id])
+
+    assignment_obj = result[:objects].find { |o| o[:objectType] == "choreAssignment" }
+    expect(assignment_obj).not_to be_nil
+  end
+
+  it "excludes objects from other workspaces" do
+    other_workspace = TestFactories.workspace
+    other_user = TestFactories.user
+    TestFactories.workspace_membership(workspace: other_workspace, user: other_user)
+    TestFactories.event(workspace: other_workspace, user: other_user, name: "Other Event")
+
+    result = described_class.call(workspace_id: workspace[:id])
+
+    event_objs = result[:objects].select { |o| o[:objectType] == "event" }
+    expect(event_objs.map { |e| e[:name] }).not_to include("Other Event")
+  end
 end
