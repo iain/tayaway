@@ -61,12 +61,12 @@ run = "echo 'All tests complete'"
 [tasks."test:frontend"]
 description = "Run frontend tests"
 dir = "{{config_root}}/frontend"
-run = "pnpm exec vitest run --reporter=dot"
+run = "pnpm exec vitest run --reporter=dot --silent"
 
 [tasks."test:backend"]
 description = "Run backend tests"
 dir = "{{config_root}}/backend"
-run = "RACK_ENV=test bundle exec rspec"
+run = "RACK_ENV=test bundle exec rspec -f progress"
 
 [tasks."test:e2e"]
 description = "Run E2E tests"

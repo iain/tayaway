@@ -29,7 +29,8 @@ require "logger"
 APP_LOGGER = Logger.new($stdout)
 APP_LOGGER.level = case APP_ENV
                    when "production" then Logger::INFO
-                   when "test", "e2e" then Logger::WARN
+                   when "test" then Logger::FATAL
+                   when "e2e" then Logger::WARN
                    else Logger::DEBUG
                    end
 APP_LOGGER.formatter = if APP_ENV == "production"
