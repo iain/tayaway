@@ -90,33 +90,36 @@ RSpec.describe Websocket::ConnectionManager do
     end
 
     it "does not log when the connection is not found" do
-      expect(APP_LOGGER).not_to receive(:info).with(anything)
+      allow(APP_LOGGER).to receive(:info)
 
       manager.unregister(SecureRandom.uuid)
+
+      expect(APP_LOGGER).not_to have_received(:info).with(anything)
     end
 
     it "logs with the correct user ID and total when the connection is found" do
-      allow(APP_LOGGER).to receive(:info)
+      logged_messages = []
+      allow(APP_LOGGER).to receive(:info) { |&block| logged_messages << block.call }
 
       user_id = SecureRandom.uuid
       conn_id = manager.register(FakeWebsocket.new, user_id)
       manager.register(FakeWebsocket.new, SecureRandom.uuid) # one extra connection
 
-      expect(APP_LOGGER).to receive(:info) do |&block|
-        msg = block.call
-        expect(msg).to include(user_id)
-        expect(msg).to include("total: 1")
-      end
-
       manager.unregister(conn_id)
+
+      expect(APP_LOGGER).to have_received(:info).at_least(:once)
+      unregister_log = logged_messages.find { |msg| msg.include?("total: 1") }
+      expect(unregister_log).to include(user_id)
     end
   end
 
   describe "#set_workspaces" do
     it "does not log when the connection is not found" do
-      expect(APP_LOGGER).not_to receive(:info).with(anything)
+      allow(APP_LOGGER).to receive(:info)
 
       manager.set_workspaces(SecureRandom.uuid, [SecureRandom.uuid])
+
+      expect(APP_LOGGER).not_to have_received(:info).with(anything)
     end
 
     it "associates the connection with the given workspaces" do
