@@ -6,6 +6,16 @@ require "rack/attack"
 module RateLimiter
   # Minimal in-memory cache store compatible with Rack::Attack.
   # Supports increment, read, write, and delete with TTL expiry.
+  #
+  # Trade-off: state is stored in process memory and is therefore not persistent.
+  # All counters reset on every application restart or deploy. In a multi-process
+  # setup (e.g. multiple Falcon workers) each process maintains independent counters,
+  # so effective limits are multiplied by the number of worker processes.
+  #
+  # For the current scale (infrequent deploys, small user base) this is acceptable —
+  # the 60-second window is short and the limits (5–20 req/60s) are generous enough
+  # that a post-deploy burst is unlikely to cause harm. Switch to a Redis-backed store
+  # if shared, persistent state becomes a requirement.
   class MemoryStore
     def initialize
       @data = {}
