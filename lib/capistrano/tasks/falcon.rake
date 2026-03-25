@@ -12,23 +12,23 @@ namespace :falcon do
       # RbConfig::CONFIG['ruby_version'] (e.g. "4.0.0") is the API/ABI version
       # used by RubyGems and Bundler for gem directory names — it stays on the
       # major.minor.0 series even as patch releases are installed.
-      # Must run within the release path so mise can find .mise.toml and resolve Ruby.
-      within release_path do
-        ruby_version = capture("/home/ubuntu/.local/bin/mise", "exec", "--", "ruby", "-e", "print RUBY_VERSION").strip
-        ruby_gem_version = capture("/home/ubuntu/.local/bin/mise", "exec", "--", "ruby", "-e", "print RbConfig::CONFIG['ruby_version']").strip
+      # Uses `cd` in the command so mise can find .mise.toml and resolve Ruby.
+      mise = "/home/ubuntu/.local/bin/mise"
+      rp = release_path
+      ruby_version = capture("cd #{rp} && #{mise} exec -- ruby -e 'print RUBY_VERSION'").strip
+      ruby_gem_version = capture("cd #{rp} && #{mise} exec -- ruby -e 'print RbConfig::CONFIG[\"ruby_version\"]'").strip
 
-        template_path = File.expand_path("../../../config/deploy/tayaway-falcon.service.erb", __dir__)
-        rendered = ERB.new(File.read(template_path)).result(binding)
+      template_path = File.expand_path("../../../config/deploy/tayaway-falcon.service.erb", __dir__)
+      rendered = ERB.new(File.read(template_path)).result(binding)
 
-        Tempfile.create("tayaway-falcon.service") do |f|
-          f.write(rendered)
-          f.flush
-          upload! f.path, "/tmp/tayaway-falcon.service"
-        end
-
-        execute :sudo, "mv", "/tmp/tayaway-falcon.service", "/etc/systemd/system/tayaway-falcon.service"
-        execute :sudo, "systemctl", "daemon-reload"
+      Tempfile.create("tayaway-falcon.service") do |f|
+        f.write(rendered)
+        f.flush
+        upload! f.path, "/tmp/tayaway-falcon.service"
       end
+
+      execute :sudo, "mv", "/tmp/tayaway-falcon.service", "/etc/systemd/system/tayaway-falcon.service"
+      execute :sudo, "systemctl", "daemon-reload"
     end
   end
 
