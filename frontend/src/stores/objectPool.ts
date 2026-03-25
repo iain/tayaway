@@ -107,20 +107,18 @@ type ReverseIndex = Map<ReverseIndexKey, Map<string, Set<string>>>
 // type can be referenced by at most one parent, but we store as array for
 // generality and to match CASCADE_RULES structure).
 interface ChildRuleRef {
-  parentType: ObjectType
   childType: ObjectType
   foreignKey: string
   indexKey: ReverseIndexKey
 }
 
 const CHILD_RULE_REFS: Partial<Record<ObjectType, ChildRuleRef[]>> = {}
-for (const [parentType, rules] of Object.entries(CASCADE_RULES) as [
+for (const [, rules] of Object.entries(CASCADE_RULES) as [
   ObjectType,
   { childType: ObjectType; foreignKey: string }[],
 ][]) {
   for (const rule of rules) {
     const ref: ChildRuleRef = {
-      parentType,
       childType: rule.childType,
       foreignKey: rule.foreignKey,
       indexKey: `${rule.childType}:${rule.foreignKey}`,
