@@ -25,7 +25,7 @@ set :keep_releases, 5
 
 # Files and dirs shared across releases
 set :linked_files, %w[backend/.env.production]
-set :linked_dirs, %w[backend/vendor/bundle backend/log backend/.bundle]
+set :linked_dirs, %w[backend/vendor/bundle backend/log backend/.bundle backend/data]
 
 # Bundler — install gems from backend/Gemfile into shared/backend/vendor/bundle
 set :bundle_gemfile, -> { release_path.join("backend", "Gemfile") }
