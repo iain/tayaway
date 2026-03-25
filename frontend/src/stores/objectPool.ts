@@ -355,6 +355,8 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       'pool:importObjects:start',
       'pool:importObjects:end'
     )
+    performance.clearMarks('pool:importObjects:start')
+    performance.clearMarks('pool:importObjects:end')
   }
 
   // Get an object by type and id, with pending updates merged

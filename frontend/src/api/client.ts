@@ -139,6 +139,8 @@ class ApiClient {
     })
     performance.mark(`${markName}:end`)
     performance.measure(markName, `${markName}:start`, `${markName}:end`)
+    performance.clearMarks(`${markName}:start`)
+    performance.clearMarks(`${markName}:end`)
 
     if (!response.ok) {
       let serverMessage: string | undefined
