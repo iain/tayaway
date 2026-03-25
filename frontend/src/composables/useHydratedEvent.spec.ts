@@ -3,134 +3,15 @@ import { createPinia, setActivePinia } from 'pinia'
 import { computed } from 'vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useHydratedEvent } from './useHydratedEvent'
-import type { ObjectTypeMap } from '@/types/pool'
-
-// --- Factory helpers ---
-
-function makeEvent(
-  overrides: Partial<ObjectTypeMap['event']> = {}
-): ObjectTypeMap['event'] {
-  return {
-    id: 'evt-1',
-    objectType: 'event',
-    name: 'Test Event',
-    description: null,
-    startDate: null,
-    endDate: null,
-    locationName: null,
-    latitude: null,
-    longitude: null,
-    workspaceId: 'ws-1',
-    userId: 'user-1',
-    datePollId: null,
-    rsvpIds: [],
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-    ...overrides,
-  }
-}
-
-function makeMember(
-  overrides: Partial<ObjectTypeMap['member']> = {}
-): ObjectTypeMap['member'] {
-  return {
-    id: 'mem-1',
-    objectType: 'member',
-    workspaceId: 'ws-1',
-    userId: 'user-1',
-    email: 'alice@example.com',
-    name: 'Alice',
-    phoneNumber: null,
-    birthday: null,
-    locationName: null,
-    latitude: null,
-    longitude: null,
-    hasIban: false,
-    role: 'member',
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-    ...overrides,
-  }
-}
-
-function makeWorkspace(
-  overrides: Partial<ObjectTypeMap['workspace']> = {}
-): ObjectTypeMap['workspace'] {
-  return {
-    id: 'ws-1',
-    objectType: 'workspace',
-    name: 'Test Workspace',
-    memberIds: ['mem-1'],
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-    ...overrides,
-  }
-}
-
-function makeDatePoll(
-  overrides: Partial<ObjectTypeMap['datePoll']> = {}
-): ObjectTypeMap['datePoll'] {
-  return {
-    id: 'poll-1',
-    objectType: 'datePoll',
-    eventId: 'evt-1',
-    deadline: '2026-02-01T00:00:00.000Z',
-    selectedDateRangeId: null,
-    closedAt: null,
-    status: 'open',
-    dateRangeIds: [],
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-    ...overrides,
-  }
-}
-
-function makeDateRange(
-  overrides: Partial<ObjectTypeMap['dateRange']> = {}
-): ObjectTypeMap['dateRange'] {
-  return {
-    id: 'dr-1',
-    objectType: 'dateRange',
-    datePollId: 'poll-1',
-    startDate: '2026-03-01',
-    endDate: '2026-03-05',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-    ...overrides,
-  }
-}
-
-function makeVote(
-  overrides: Partial<ObjectTypeMap['vote']> = {}
-): ObjectTypeMap['vote'] {
-  return {
-    id: 'vote-1',
-    objectType: 'vote',
-    dateRangeId: 'dr-1',
-    userId: 'user-1',
-    response: 'yes',
-    comment: null,
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-    ...overrides,
-  }
-}
-
-function makeRsvp(
-  overrides: Partial<ObjectTypeMap['rsvp']> = {}
-): ObjectTypeMap['rsvp'] {
-  return {
-    id: 'rsvp-1',
-    objectType: 'rsvp',
-    eventId: 'evt-1',
-    userId: 'user-1',
-    attending: true,
-    startDate: null,
-    endDate: null,
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-    ...overrides,
-  }
-}
+import {
+  makeEvent,
+  makeMember,
+  makeWorkspace,
+  makeDatePoll,
+  makeDateRange,
+  makeVote,
+  makeRsvp,
+} from '@/test/factories'
 
 describe('useHydratedEvent', () => {
   beforeEach(() => {
