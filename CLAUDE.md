@@ -155,7 +155,10 @@ chore_rosters     id (UUID PK), event_id (FK events unique cascade), user_id (FK
 chores            id (UUID PK), chore_roster_id (FK cascade), name (VARCHAR 255), people_per_day (INT default 1), position (FLOAT), timestamps
 chore_assignments id (UUID PK), chore_id (FK cascade), user_id (FK users cascade), date (DATE), pinned (BOOL default false), note (TEXT nullable), timestamps, unique(chore_id, user_id, date)
 workspace_invites  id (UUID), workspace_id (FK cascade), invited_by (FK set_null, nullable), email (CITEXT), token (hashed), expires_at (24h), accepted_at (nullable), last_reminded_at (nullable), timestamps; partial unique(workspace_id, email) WHERE accepted_at IS NULL
+deleted_items      id (UUID), workspace_id, object_type (STRING), object_id (UUID), deleted_at (TIMESTAMPTZ default now); index(workspace_id, deleted_at)
 ```
+
+**Deletion tracking:** `deleted_items` records every object deletion so partial sync can tell reconnecting clients which objects were removed. Rows older than 7 days are cleaned up via `rake db:cleanup_deleted_items` (clients that haven't synced within 7 days get a full sync instead). Services insert rows via `DeletedItems.bulk_insert`.
 
 **Hierarchy:** Workspace -> Event -> DatePoll -> DateRange -> Vote
 **RSVP:** Event -> Rsvp (once event has dates set)
