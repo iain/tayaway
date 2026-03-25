@@ -67,6 +67,9 @@ jobs:
           key: node-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: node-${{ runner.os }}-
 
+      - name: Install system dependencies
+        run: sudo apt-get install -y libmaxminddb-dev
+
       - name: Install dependencies
         run: |
           cd backend && bundle config set --local path vendor/bundle && bundle install --jobs 4 --retry 3
