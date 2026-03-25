@@ -20,16 +20,16 @@ module Expenses
         Expense.find_result(expense_id)
                .bind { |expense| check_not_settled(expense) }
                .bind { |expense| check_owner(expense, current_user_id, action: "delete") }
-               .bind { |expense| delete_expense(expense, workspace_id) }
+               .bind { |expense| delete_expense(expense, current_user_id, workspace_id) }
       end
 
       private
 
       sig do
-        params(expense: Expense, workspace_id: T.any(String, UUID))
+        params(expense: Expense, current_user_id: T.any(String, UUID), workspace_id: T.any(String, UUID))
           .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def delete_expense(expense, workspace_id)
+      def delete_expense(expense, current_user_id, workspace_id)
         expense_id = expense.id
 
         DB.transaction do
@@ -42,6 +42,14 @@ module Expenses
           DB[:expenses].where(id: expense_id).delete
           Broadcaster.object_deleted("expense", expense_id, workspace_id: workspace_id)
         end
+
+        AuditLog.record(
+          user_id: current_user_id,
+          action: "delete",
+          object_type: "expense",
+          object_id: expense_id,
+          workspace_id: workspace_id
+        )
 
         T.cast(
           Success({ deleted: [{ objectType: "expense", id: expense_id.to_s }] }),

@@ -145,6 +145,13 @@ module Users
       def update_profile(user, name, phone_number, birthday, location_name, latitude, longitude, iban)
         user_id = user.id
 
+        changed_fields = []
+        changed_fields << "name" unless name.nil?
+        changed_fields << "phone_number" unless phone_number.nil?
+        changed_fields << "birthday" unless birthday.nil?
+        changed_fields << "iban" unless iban.nil?
+        changed_fields << "location" unless location_name.nil?
+
         DB.transaction do
           update_data = {
             updated_at: Time.now
@@ -187,6 +194,15 @@ module Users
             Broadcaster.object_changed("member", m.id, workspace_id: m.workspace_id)
           end
         end
+
+        AuditLog.record(
+          user_id: user_id,
+          action: "update",
+          object_type: "user",
+          object_id: user_id,
+          workspace_id: nil,
+          metadata: changed_fields.empty? ? nil : { "changed_fields" => changed_fields }
+        )
 
         APP_LOGGER.info { "[Users::UpdateProfile] User #{user_id} updated their profile" }
 

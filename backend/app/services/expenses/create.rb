@@ -211,6 +211,14 @@ module Expenses
           T.must(Expense.find(T.must(id)))
         end
 
+        AuditLog.record(
+          user_id: user_id,
+          action: "create",
+          object_type: "expense",
+          object_id: expense.id,
+          workspace_id: workspace_id
+        )
+
         pool = PoolSerializer.new(workspace_id: workspace_id)
         pool.add_expense(expense)
 

@@ -152,6 +152,14 @@ module Events
           T.must(Event.find(T.must(id)))
         end
 
+        AuditLog.record(
+          user_id: user_id,
+          action: "create",
+          object_type: "event",
+          object_id: event.id,
+          workspace_id: workspace_id
+        )
+
         APP_LOGGER.info { "[Events::Create] User #{user_id} created event #{event.id} in workspace #{workspace_id}" }
 
         pool = PoolSerializer.new(workspace_id: workspace_id)

@@ -20,13 +20,16 @@ module Events
       def call(event_id:, current_user_id:)
         Event.find_result(event_id)
              .bind { |event| Event.authorize_owner(event, current_user_id) }
-             .bind { |event| delete_event(event) }
+             .bind { |event| delete_event(event, current_user_id) }
       end
 
       private
 
-      sig { params(event: Event).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
-      def delete_event(event)
+      sig do
+        params(event: Event, current_user_id: T.any(String, UUID))
+          .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
+      end
+      def delete_event(event, current_user_id)
         event_id = event.id
         workspace_id = event.workspace_id
 
@@ -35,6 +38,14 @@ module Events
           DB[:events].where(id: event_id).delete
           Broadcaster.object_deleted("event", event_id, workspace_id: workspace_id)
         end
+
+        AuditLog.record(
+          user_id: current_user_id,
+          action: "delete",
+          object_type: "event",
+          object_id: event_id,
+          workspace_id: workspace_id
+        )
 
         APP_LOGGER.info { "[Events::Delete] Event #{event_id} deleted from workspace #{workspace_id}" }
         T.cast(Success({ deleted: [{ objectType: "event", id: event_id.to_s }] }), Result[T::Hash[Symbol, T.untyped], ServiceError])

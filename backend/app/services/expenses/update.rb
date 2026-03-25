@@ -26,7 +26,7 @@ module Expenses
                .bind { |expense| check_not_settled(expense) }
                .bind { |expense| check_owner(expense, current_user_id) }
                .bind { |expense| validate_update(expense, description, amount, start_date, end_date, participant_ids) }
-               .bind { |expense| update_expense(expense, workspace_id, description, amount, start_date, end_date, participant_ids) }
+               .bind { |expense| update_expense(expense, current_user_id, workspace_id, description, amount, start_date, end_date, participant_ids) }
       end
 
       private
@@ -128,6 +128,7 @@ module Expenses
       sig do
         params(
           expense: Expense,
+          current_user_id: T.any(String, UUID),
           workspace_id: T.any(String, UUID),
           description: T.nilable(String),
           amount: T.nilable(Float),
@@ -136,7 +137,7 @@ module Expenses
           participant_ids: T.nilable(T::Array[String])
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def update_expense(expense, workspace_id, description, amount, start_date, end_date, participant_ids)
+      def update_expense(expense, current_user_id, workspace_id, description, amount, start_date, end_date, participant_ids)
         DB.transaction do
           updates = { updated_at: Time.now }
           updates[:description] = description if description && !description.empty?
@@ -151,6 +152,14 @@ module Expenses
 
           Broadcaster.object_changed("expense", expense.id, workspace_id: workspace_id)
         end
+
+        AuditLog.record(
+          user_id: current_user_id,
+          action: "update",
+          object_type: "expense",
+          object_id: expense.id,
+          workspace_id: workspace_id
+        )
 
         updated = T.must(Expense.find(expense.id))
         pool = PoolSerializer.new(workspace_id: workspace_id)
