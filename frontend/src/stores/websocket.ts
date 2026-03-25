@@ -244,7 +244,11 @@ export const useWebSocketStore = defineStore('websocket', () => {
   function handleAuthenticated(message: AuthenticatedMessage): void {
     if (hasSynced.value) {
       performance.mark('ws:reconnect')
-      performance.measure('ws:reconnection', 'ws:disconnect', 'ws:reconnect')
+      try {
+        performance.measure('ws:reconnection', 'ws:disconnect', 'ws:reconnect')
+      } catch {
+        // Marks may have been cleared externally
+      }
     }
     state.value = 'authenticated'
     reconnectAttempts = 0
