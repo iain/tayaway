@@ -64,6 +64,8 @@ module Sync
           FROM events t
           WHERE t.workspace_id = ?::uuid AND t.updated_at > ?
         SQL
+        # Workspaces: filter by primary key (id), not workspace_id — the table
+        # has no workspace_id column since the row itself IS the workspace.
         ["workspace", <<~SQL],
           SELECT 'workspace' AS object_type, row_to_json(t.*) AS data
           FROM workspaces t
@@ -261,7 +263,11 @@ module Sync
         union_sql = sql_parts.join("\nUNION ALL\n")
 
         DB.fetch(union_sql, *binds).each_with_object(Hash.new { |h, k| h[k] = [] }) do |row, groups|
-          groups[row[:object_type].to_s] << coerce_json_row(T.unsafe(row[:data]))
+          # row_to_json returns pg json type — Sequel's pg_json extension auto-parses
+          # to Hash, but guard against String in case extension is bypassed.
+          data = T.unsafe(row[:data])
+          data = JSON.parse(data) if data.is_a?(String)
+          groups[row[:object_type].to_s] << coerce_json_row(data)
         end
       end
 
