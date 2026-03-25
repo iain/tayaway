@@ -131,7 +131,7 @@ function getEventIdForTransfer(
           <button
             type="button"
             :disabled="markingPaidIds.has(transfer.id)"
-            class="cursor-pointer rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600"
+            class="cursor-pointer rounded-md bg-cyan-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-cyan-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-cyan-700 dark:hover:bg-cyan-600"
             @click="handleMarkPaid(transfer.id)"
           >
             {{ markingPaidIds.has(transfer.id) ? 'Marking...' : 'Mark paid' }}
@@ -174,11 +174,12 @@ function getEventIdForTransfer(
           <button
             v-if="memberHasIban(transfer.toUserId)"
             type="button"
-            class="cursor-pointer rounded-lg bg-amber-600 p-2 text-white shadow-sm transition-colors hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 dark:bg-amber-600 dark:hover:bg-amber-500"
+            class="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 dark:bg-amber-600 dark:hover:bg-amber-500"
             title="Show QR code for bank transfer"
             @click="openQrModal(transfer)"
           >
-            <QrCodeIcon class="size-5" />
+            <QrCodeIcon class="size-4" aria-hidden="true" />
+            Pay via QR
           </button>
         </div>
       </BaseCard>
