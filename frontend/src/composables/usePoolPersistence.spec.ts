@@ -329,7 +329,7 @@ describe('usePoolPersistence — progressive cache loading', () => {
       pendingUpdates: new Map(),
       importObjects: vi.fn(),
       restorePendingUpdates: vi.fn(),
-    } as ReturnType<typeof useObjectPoolStore>)
+    } as unknown as ReturnType<typeof useObjectPoolStore>)
 
     vi.mocked(useWebSocketStore).mockReturnValue({
       hasSynced: false,
@@ -337,7 +337,7 @@ describe('usePoolPersistence — progressive cache loading', () => {
       setCacheStaleLevel: vi.fn(),
       restoreSyncTimestamp: vi.fn(),
       getSyncedAt: vi.fn(() => null),
-    } as ReturnType<typeof useWebSocketStore>)
+    } as unknown as ReturnType<typeof useWebSocketStore>)
   })
 
   afterEach(() => {
@@ -418,7 +418,8 @@ describe('usePoolPersistence — progressive cache loading', () => {
       if (type === 'member') {
         memberCallCount++
         // Simulate server sync arriving while loading members
-        ;(wsStore as Record<string, unknown>).hasSynced = true
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(wsStore as any).hasSynced = true
         return []
       }
       return []
@@ -439,7 +440,7 @@ describe('usePoolPersistence — progressive cache loading', () => {
     const pendingMap = new Map([
       ['event:e-1', [{ id: 'p-1', objectType: 'event', objectId: 'e-1', changes: { name: 'New' }, timestamp: Date.now() }]],
     ])
-    vi.mocked(poolDb.loadPendingUpdatesFromDb).mockResolvedValue(pendingMap as Map<string, unknown[]>)
+    vi.mocked(poolDb.loadPendingUpdatesFromDb).mockResolvedValue(pendingMap as unknown as Awaited<ReturnType<typeof poolDb.loadPendingUpdatesFromDb>>)
     vi.mocked(poolDb.loadObjectsByType).mockImplementation(async (type) => {
       if (type === 'member') {
         return [{ id: 'm-1', objectType: 'member', updatedAt: '2026-01-01T00:00:00.000Z' } as PoolObject]
@@ -459,7 +460,8 @@ describe('usePoolPersistence — progressive cache loading', () => {
 
   it('does not load pending updates when hasSynced is true before completion', async () => {
     const wsStore = useWebSocketStore()
-    ;(wsStore as Record<string, unknown>).hasSynced = true
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(wsStore as any).hasSynced = true
 
     const { loadFromCache } = usePoolPersistence()
     await loadFromCache()
