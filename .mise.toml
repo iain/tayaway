@@ -44,13 +44,13 @@ run = "pnpm run build"
 # ── CI / Test / Lint / Typecheck ─────────────────────────────────────────────
 
 [tasks.check]
-description = "Run lint, typecheck, and tests in parallel (no e2e)"
-depends = ["lint:frontend", "lint:backend", "typecheck:frontend", "typecheck:backend", "test:frontend", "test:backend"]
+description = "Run lint, typecheck, tests, and audits in parallel (no e2e)"
+depends = ["lint:frontend", "lint:backend", "typecheck:frontend", "typecheck:backend", "test:frontend", "test:backend", "audit:frontend", "audit:backend"]
 run = "echo 'All checks complete'"
 
 [tasks.ci]
-description = "Run all CI checks (lint, typecheck, tests, e2e) in parallel"
-depends = ["lint:frontend", "lint:backend", "typecheck:frontend", "typecheck:backend", "test:frontend", "test:backend", "test:e2e"]
+description = "Run all CI checks (lint, typecheck, tests, e2e, audits) in parallel"
+depends = ["lint:frontend", "lint:backend", "typecheck:frontend", "typecheck:backend", "test:frontend", "test:backend", "test:e2e", "audit:frontend", "audit:backend"]
 run = "echo 'All CI checks complete'"
 
 [tasks.test]
@@ -103,9 +103,24 @@ description = "Run backend type checker"
 dir = "{{config_root}}/backend"
 run = "bundle exec srb tc"
 
+[tasks.audit]
+description = "Run dependency vulnerability audits"
+depends = ["audit:frontend", "audit:backend"]
+run = "echo 'Audits complete'"
+
+[tasks."audit:backend"]
+description = "Audit Ruby gems for known vulnerabilities"
+dir = "{{config_root}}/backend"
+run = "bundle exec bundler-audit check --update"
+
+[tasks."audit:frontend"]
+description = "Audit npm packages for known vulnerabilities"
+dir = "{{config_root}}/frontend"
+run = "pnpm audit --audit-level=high"
+
 [tasks.fix]
 description = "Run all CI checks, auto-fixing lint issues where possible"
-depends = ["fix:lint_frontend", "fix:lint_backend", "typecheck:frontend", "typecheck:backend", "test:frontend", "test:backend", "test:e2e"]
+depends = ["fix:lint_frontend", "fix:lint_backend", "typecheck:frontend", "typecheck:backend", "test:frontend", "test:backend", "test:e2e", "audit:frontend", "audit:backend"]
 run = "echo 'All CI checks complete (with autofix)'"
 
 [tasks."fix:lint_frontend"]
