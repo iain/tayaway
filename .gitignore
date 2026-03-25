@@ -49,6 +49,9 @@ backend/vendor/bundle/
 .claude/worktrees/
 .claude/settings.local.json
 
+# GeoIP database
+backend/data/
+
 # Misc
 *.pid
 *.seed
