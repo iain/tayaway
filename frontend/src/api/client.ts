@@ -128,12 +128,17 @@ class ApiClient {
       ? AbortSignal.any([timeoutSignal, options.signal])
       : timeoutSignal
 
+    const markName = `api:${method}:${path}`
+    performance.mark(`${markName}:start`)
+
     const response = await fetch(url, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
       signal,
     })
+    performance.mark(`${markName}:end`)
+    performance.measure(markName, `${markName}:start`, `${markName}:end`)
 
     if (!response.ok) {
       let serverMessage: string | undefined

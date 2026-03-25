@@ -162,6 +162,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
         console.warn(
           `[WebSocket] Closed — code: ${event.code}, reason: ${event.reason || '(none)'}, reconnect attempt: ${reconnectAttempts + 1}`
         )
+        performance.mark('ws:disconnect')
         cleanup()
         scheduleReconnect()
       }
@@ -178,7 +179,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
         'status' in e &&
         (e as { status: number }).status === 401
       ) {
-        console.warn('[WebSocket] Ticket fetch failed with 401 — session expired, redirecting to login')
+        console.warn(
+          '[WebSocket] Ticket fetch failed with 401 — session expired, redirecting to login'
+        )
         const { useAuthStore } = await import('./auth')
         const authStore = useAuthStore()
         authStore.$reset()
@@ -239,6 +242,10 @@ export const useWebSocketStore = defineStore('websocket', () => {
   }
 
   function handleAuthenticated(message: AuthenticatedMessage): void {
+    if (hasSynced.value) {
+      performance.mark('ws:reconnect')
+      performance.measure('ws:reconnection', 'ws:disconnect', 'ws:reconnect')
+    }
     state.value = 'authenticated'
     reconnectAttempts = 0
     gitSha.value = null

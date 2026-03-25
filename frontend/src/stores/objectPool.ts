@@ -147,10 +147,7 @@ function createEmptyReverseIndex(): ReverseIndex {
 }
 
 // Add a child object to the reverse index
-function reverseIndexAdd(
-  index: ReverseIndex,
-  obj: PoolObject
-): void {
+function reverseIndexAdd(index: ReverseIndex, obj: PoolObject): void {
   const refs = CHILD_RULE_REFS[obj.objectType]
   if (!refs) return
   const raw = obj as unknown as Record<string, unknown>
@@ -170,10 +167,7 @@ function reverseIndexAdd(
 
 // Remove a child object from the reverse index.
 // oldObj is the previous version of the object (needed to get the old FK value).
-function reverseIndexRemove(
-  index: ReverseIndex,
-  obj: PoolObject
-): void {
+function reverseIndexRemove(index: ReverseIndex, obj: PoolObject): void {
   const refs = CHILD_RULE_REFS[obj.objectType]
   if (!refs) return
   const raw = obj as unknown as Record<string, unknown>
@@ -294,6 +288,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
 
   // Import objects from API response - no parsing needed
   function importObjects(poolObjects: PoolObject[]): void {
+    performance.mark('pool:importObjects:start')
     let changed = false
     const imported: PoolObject[] = []
     for (const obj of poolObjects) {
@@ -354,6 +349,12 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     if (imported.length > 0) {
       notifyChange({ type: 'import', objects: imported })
     }
+    performance.mark('pool:importObjects:end')
+    performance.measure(
+      'pool:importObjects',
+      'pool:importObjects:start',
+      'pool:importObjects:end'
+    )
   }
 
   // Get an object by type and id, with pending updates merged
@@ -592,7 +593,12 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       for (const rule of rules) {
         // Snapshot child IDs before iterating — removeRecursive modifies the index
         const childIds = Array.from(
-          reverseIndexChildren(cascadeIndex, rule.childType, rule.foreignKey, id)
+          reverseIndexChildren(
+            cascadeIndex,
+            rule.childType,
+            rule.foreignKey,
+            id
+          )
         )
         for (const childId of childIds) {
           removeRecursive(rule.childType, childId)
