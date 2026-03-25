@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { CheckCircleIcon } from '@heroicons/vue/24/outline'
+import { CheckCircleIcon } from '@heroicons/vue/24/solid'
 import { usePollsNeedingAttention } from '@/composables/usePollsNeedingAttention'
 import { useEventsNeedingRsvp } from '@/composables/useEventsNeedingRsvp'
 import { useEventsList } from '@/composables/useEventsList'
@@ -15,7 +15,6 @@ import {
   useWorkspaceStore,
 } from '@/stores'
 import PageHeader from '@/components/common/PageHeader.vue'
-import EmptyState from '@/components/common/EmptyState.vue'
 import type { PoolMember } from '@/types/pool'
 import TodayBirthdays from '@/components/home/TodayBirthdays.vue'
 import UpcomingBirthdays from '@/components/home/UpcomingBirthdays.vue'
@@ -222,13 +221,18 @@ async function handleCreateEvent(
       @create-event="showEventModal = true"
     />
 
-    <EmptyState
-      v-else-if="allCaughtUp"
-      :icon="CheckCircleIcon"
-      heading="You're all caught up"
-      description="Nothing needs your attention right now."
-      icon-class="text-green-400 dark:text-green-500"
-    />
+    <div v-else-if="allCaughtUp" class="py-16 text-center">
+      <CheckCircleIcon
+        class="mx-auto size-16 text-amber-500 dark:text-amber-400"
+        aria-hidden="true"
+      />
+      <h2 class="mt-4 text-xl font-semibold text-gray-900 dark:text-white">
+        Nice work — nothing needs your attention.
+      </h2>
+      <p class="mt-2 text-sm text-gray-500 dark:text-stone-400">
+        You're all caught up. Enjoy the quiet.
+      </p>
+    </div>
 
     <div v-else class="flex flex-col gap-8">
       <TodayBirthdays
