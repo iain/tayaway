@@ -12,7 +12,7 @@ class App
     # with {"csp-report": {...}}. Does not handle the modern Reporting API format
     # (application/reports+json with [{"type": "csp-violation", "body": {...}}]).
     r.post do
-      body = request.body.read
+      body = request.body.read(8_192)
       parsed = JSON.parse(body)
       report = parsed["csp-report"] || {}
 
