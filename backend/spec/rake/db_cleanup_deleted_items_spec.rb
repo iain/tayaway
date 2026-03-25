@@ -16,8 +16,7 @@ RSpec.describe "rake db:cleanup_deleted_items" do
 
   before do
     allow(DB).to receive(:[]).with(:deleted_items).and_return(fake_dataset)
-    allow(fake_dataset).to receive(:where).and_return(fake_dataset)
-    allow(fake_dataset).to receive(:delete).and_return(0)
+    allow(fake_dataset).to receive_messages(where: fake_dataset, delete: 0)
   end
 
   after do
