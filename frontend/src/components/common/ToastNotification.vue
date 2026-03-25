@@ -35,8 +35,14 @@ const emit = defineEmits<{
         </div>
         <div
           class="ml-3 w-0 flex-1 pt-0.5"
-          :class="notification.action ? 'cursor-pointer' : ''"
-          @click="notification.action?.()"
+          :class="
+            notification.action && !notification.actionLabel
+              ? 'cursor-pointer'
+              : ''
+          "
+          @click="
+            !notification.actionLabel ? notification.action?.() : undefined
+          "
         >
           <p class="text-sm font-medium text-gray-900 dark:text-white">
             {{ notification.type === 'info' ? 'Info' : 'Error' }}
@@ -44,6 +50,17 @@ const emit = defineEmits<{
           <p class="mt-1 text-sm text-gray-600 dark:text-stone-300">
             {{ notification.message }}
           </p>
+          <button
+            v-if="notification.actionLabel && notification.action"
+            type="button"
+            class="mt-1 text-sm font-medium text-amber-600 hover:text-amber-500 dark:text-amber-400 dark:hover:text-amber-300"
+            @click="
+              notification.action?.()
+              emit('dismiss', notification.id)
+            "
+          >
+            {{ notification.actionLabel }}
+          </button>
         </div>
         <div class="ml-4 flex shrink-0">
           <button

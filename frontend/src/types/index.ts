@@ -46,6 +46,10 @@ export interface Session {
   expires_at: string
   last_active_at: string | null
   current: boolean
+  city: string | null
+  country: string | null
+  browser_name: string | null
+  os_name: string | null
 }
 
 export interface SessionsResponse {

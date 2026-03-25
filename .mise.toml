@@ -212,6 +212,22 @@ RACK_ENV=e2e bundle exec rake db:create db:migrate
 echo "All databases ready"
 """
 
+# ── Data ──────────────────────────────────────────────────────────────────────
+
+[tasks."data:geoip"]
+description = "Download DB-IP Lite city database for IP geolocation"
+dir = "{{config_root}}/backend"
+run = """
+mkdir -p data
+MONTH=$(date +%Y-%m)
+URL="https://download.db-ip.com/free/dbip-city-lite-${MONTH}.mmdb.gz"
+echo "Downloading DB-IP Lite city database (${MONTH})..."
+curl -fSL -o /tmp/dbip-city-lite.mmdb.gz "$URL"
+gunzip -c /tmp/dbip-city-lite.mmdb.gz > data/dbip-city-lite.mmdb
+rm /tmp/dbip-city-lite.mmdb.gz
+echo "Saved to backend/data/dbip-city-lite.mmdb"
+"""
+
 # ── Misc ──────────────────────────────────────────────────────────────────────
 
 [tasks.console]

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { api } from '@/api/client'
 import { formatRelativeDate } from '@/utils/date'
 import type { Session, SessionsResponse } from '@/types'
+import { useNotificationsStore } from '@/stores'
 import BaseCard from '@/components/common/BaseCard.vue'
 import AppBadge from '@/components/common/AppBadge.vue'
 
@@ -10,10 +11,18 @@ defineProps<{
   bare?: boolean
 }>()
 
+const notifications = useNotificationsStore()
 const sessions = ref<Session[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
-const deletingId = ref<string | null>(null)
+
+const hasGeolocation = computed(() =>
+  sessions.value.some((s) => s.city || s.country)
+)
+
+const pendingRevokes = ref<
+  Map<string, { session: Session; timer: ReturnType<typeof setTimeout> }>
+>(new Map())
 
 async function fetchSessions() {
   loading.value = true
@@ -28,15 +37,45 @@ async function fetchSessions() {
   }
 }
 
-async function endSession(id: string) {
-  deletingId.value = id
+function endSession(id: string) {
+  const session = sessions.value.find((s) => s.id === id)
+  if (!session) return
+
+  sessions.value = sessions.value.filter((s) => s.id !== id)
+
+  const timer = setTimeout(() => {
+    executeRevoke(id)
+  }, 4000)
+
+  pendingRevokes.value.set(id, { session, timer })
+
+  notifications.showInfo('Session revoked', {
+    actionLabel: 'Undo',
+    duration: 4000,
+    action: () => undoRevoke(id),
+  })
+}
+
+function undoRevoke(id: string) {
+  const pending = pendingRevokes.value.get(id)
+  if (!pending) return
+
+  clearTimeout(pending.timer)
+  pendingRevokes.value.delete(id)
+
+  sessions.value.push(pending.session)
+  sessions.value.sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  )
+}
+
+async function executeRevoke(id: string) {
+  pendingRevokes.value.delete(id)
   try {
     await api.delete(`/auth/sessions/${id}`)
-    sessions.value = sessions.value.filter((s) => s.id !== id)
   } catch {
     // Error notification handled by api client
-  } finally {
-    deletingId.value = null
   }
 }
 
@@ -48,64 +87,39 @@ function formatDate(iso: string): string {
   })
 }
 
+function sessionContext(session: Session): string {
+  const parts: string[] = []
+  if (session.browser_name || session.os_name) {
+    const device = [session.browser_name, session.os_name]
+      .filter(Boolean)
+      .join(' on ')
+    parts.push(device)
+  }
+  if (session.city || session.country) {
+    const location = [session.city, session.country].filter(Boolean).join(', ')
+    parts.push(location)
+  }
+  return parts.join(' \u2014 ')
+}
+
 onMounted(fetchSessions)
+
+onUnmounted(() => {
+  for (const [id, { timer }] of pendingRevokes.value) {
+    clearTimeout(timer)
+    executeRevoke(id)
+  }
+})
 </script>
 
 <template>
-  <!-- Bare mode: just the session list content, no card wrapper -->
-  <div v-if="bare">
-    <div v-if="loading" class="py-4 text-sm text-gray-500 dark:text-stone-400">
-      Loading sessions...
-    </div>
-
-    <div v-else-if="error" class="py-4 text-sm text-red-600 dark:text-red-400">
-      {{ error }}
-    </div>
-
-    <ul v-else class="divide-y divide-gray-200 dark:divide-stone-700">
-      <li
-        v-for="session in sessions"
-        :key="session.id"
-        class="flex items-center justify-between py-4"
-      >
-        <div class="min-w-0">
-          <div class="flex items-center gap-2">
-            <p class="text-sm font-medium text-gray-900 dark:text-white">
-              Created {{ formatRelativeDate(session.created_at) }}
-            </p>
-            <AppBadge
-              v-if="session.current"
-              data-testid="current-session-badge"
-              variant="green"
-            >
-              Current session
-            </AppBadge>
-          </div>
-          <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
-            <span v-if="session.last_active_at"
-              >Last active
-              {{ formatRelativeDate(session.last_active_at) }} &middot; </span
-            >Expires {{ formatDate(session.expires_at) }}
-          </p>
-        </div>
-        <button
-          v-if="!session.current"
-          type="button"
-          :disabled="deletingId === session.id"
-          class="ml-4 shrink-0 rounded-md px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
-          @click="endSession(session.id)"
-        >
-          {{ deletingId === session.id ? 'Revoking...' : 'Revoke' }}
-        </button>
-      </li>
-    </ul>
-  </div>
-
-  <!-- Default mode: full card with heading -->
-  <BaseCard v-else class="overflow-hidden">
-    <div class="px-4 py-5 sm:p-6">
-      <div class="space-y-4">
-        <div>
+  <component
+    :is="bare ? 'div' : BaseCard"
+    :class="bare ? undefined : 'overflow-hidden'"
+  >
+    <div :class="bare ? undefined : 'px-4 py-5 sm:p-6'">
+      <div :class="bare ? undefined : 'space-y-4'">
+        <div v-if="!bare">
           <h3
             data-testid="active-sessions-heading"
             class="text-lg font-medium text-gray-900 dark:text-white"
@@ -119,6 +133,8 @@ onMounted(fetchSessions)
 
         <div
           v-if="loading"
+          role="status"
+          aria-live="polite"
           class="py-4 text-sm text-gray-500 dark:text-stone-400"
         >
           Loading sessions...
@@ -126,6 +142,7 @@ onMounted(fetchSessions)
 
         <div
           v-else-if="error"
+          role="alert"
           class="py-4 text-sm text-red-600 dark:text-red-400"
         >
           {{ error }}
@@ -133,17 +150,22 @@ onMounted(fetchSessions)
 
         <ul
           v-else
-          class="divide-y divide-gray-200 border-t border-gray-200 dark:divide-stone-700 dark:border-stone-700"
+          :class="[
+            'divide-y divide-gray-200 dark:divide-stone-700',
+            !bare && 'border-t border-gray-200 dark:border-stone-700',
+          ]"
         >
           <li
             v-for="session in sessions"
             :key="session.id"
             class="flex items-center justify-between py-4"
           >
-            <div class="min-w-0">
+            <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
-                <p class="text-sm font-medium text-gray-900 dark:text-white">
-                  Created {{ formatRelativeDate(session.created_at) }}
+                <p
+                  class="truncate text-sm font-medium text-gray-900 dark:text-white"
+                >
+                  {{ sessionContext(session) || 'Unknown device' }}
                 </p>
                 <AppBadge
                   v-if="session.current"
@@ -156,9 +178,7 @@ onMounted(fetchSessions)
               <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
                 <span v-if="session.last_active_at"
                   >Last active
-                  {{
-                    formatRelativeDate(session.last_active_at)
-                  }}
+                  {{ formatRelativeDate(session.last_active_at) }}
                   &middot; </span
                 >Expires {{ formatDate(session.expires_at) }}
               </p>
@@ -166,15 +186,29 @@ onMounted(fetchSessions)
             <button
               v-if="!session.current"
               type="button"
-              :disabled="deletingId === session.id"
-              class="ml-4 shrink-0 rounded-md px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
+              class="ml-4 shrink-0 rounded-md px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-red-400 dark:hover:text-red-300"
               @click="endSession(session.id)"
             >
-              {{ deletingId === session.id ? 'Revoking...' : 'Revoke' }}
+              Revoke
             </button>
           </li>
         </ul>
+
+        <p
+          v-if="hasGeolocation"
+          class="text-xs text-gray-400 dark:text-stone-500"
+        >
+          IP Geolocation by
+          <a
+            href="https://db-ip.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="DB-IP (opens in new tab)"
+            class="underline hover:text-gray-600 dark:hover:text-stone-300"
+            >DB-IP</a
+          >
+        </p>
       </div>
     </div>
-  </BaseCard>
+  </component>
 </template>

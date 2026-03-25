@@ -46,7 +46,7 @@ APP_LOGGER.formatter = if APP_ENV == "production"
 require_relative "database"
 
 LOADER = Zeitwerk::Loader.new
-LOADER.inflector.inflect("uuid" => "UUID")
+LOADER.inflector.inflect("uuid" => "UUID", "geo_ip" => "GeoIP")
 LOADER.push_dir(File.expand_path("../lib", __dir__))
 LOADER.push_dir(File.expand_path("../app", __dir__))
 LOADER.push_dir(File.expand_path("../app/models", __dir__))

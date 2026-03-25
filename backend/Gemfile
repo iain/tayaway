@@ -30,6 +30,10 @@ gem "rqrcode"
 # Encryption (libsodium bindings)
 gem "rbnacl"
 
+# Session context — user-agent parsing and IP geolocation
+gem "browser"
+gem "mmdb"
+
 # Autoloading
 gem "zeitwerk"
 
