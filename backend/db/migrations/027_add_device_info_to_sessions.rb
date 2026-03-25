@@ -4,7 +4,7 @@
 Sequel.migration do
   up do
     alter_table :sessions do
-      add_column :ip_address, :text
+      add_column :ip_address, :inet
       add_column :city, :text
       add_column :country, :text
       add_column :browser_name, :text

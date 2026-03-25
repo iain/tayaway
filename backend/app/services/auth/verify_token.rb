@@ -82,7 +82,7 @@ module Auth
           token: Auth::Token.digest(token),
           expires_at: expires_at,
           created_at: now,
-          ip_address: ip,
+          ip_address: ip && IPAddr.new(ip),
           city: geo&.dig(:city),
           country: geo&.dig(:country),
           browser_name: browser_info&.dig(:browser_name),

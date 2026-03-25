@@ -78,7 +78,7 @@ RSpec.describe Auth::VerifyToken do
 
     expect(result.success?).to be true
     session = DB[:sessions].where(user_id: user[:id]).first
-    expect(session[:ip_address]).to eq("93.184.216.34")
+    expect(session[:ip_address].to_s).to eq("93.184.216.34")
     # city/country may be nil when mmdb file is absent (expected in test env)
   end
 

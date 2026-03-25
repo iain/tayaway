@@ -23,6 +23,7 @@ DB = Sequel.connect(
 
 DB.extension :pg_json
 DB.extension :pg_array
+DB.extension :pg_inet
 
 # Pre-cache the server version before Falcon forks workers.
 # Under Falcon's fiber scheduler, the pg gem may return the version as a

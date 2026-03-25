@@ -16,7 +16,7 @@ class Session < T::Struct
   const :expires_at, Time
   const :last_active_at, T.nilable(Time)
   const :created_at, Time
-  const :ip_address, T.nilable(String)
+  const :ip_address, T.nilable(IPAddr)
   const :city, T.nilable(String)
   const :country, T.nilable(String)
   const :browser_name, T.nilable(String)
@@ -121,7 +121,7 @@ class Session < T::Struct
         expires_at: row[:expires_at],
         last_active_at: row[:last_active_at],
         created_at: row[:created_at],
-        ip_address: row[:ip_address],
+        ip_address: row[:ip_address] && IPAddr.new(row[:ip_address].to_s),
         city: row[:city],
         country: row[:country],
         browser_name: row[:browser_name],
