@@ -55,6 +55,9 @@ group :development do
   gem "rubocop-rspec", require: false
   gem "rubocop-sequel", require: false
   gem "rubocop-sorbet", require: false
+
+  # Vulnerability scanning
+  gem "bundler-audit", require: false
 end
 
 group :development, :test do
