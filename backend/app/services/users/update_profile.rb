@@ -150,7 +150,7 @@ module Users
         changed_fields << "phone_number" unless phone_number.nil?
         changed_fields << "birthday" unless birthday.nil?
         changed_fields << "iban" unless iban.nil?
-        changed_fields << "location" unless location_name.nil?
+        changed_fields << "location" unless location_name.nil? && latitude.nil? && longitude.nil?
 
         DB.transaction do
           update_data = {
