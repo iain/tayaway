@@ -12,8 +12,13 @@ namespace :falcon do
       # RbConfig::CONFIG['ruby_version'] (e.g. "4.0.0") is the API/ABI version
       # used by RubyGems and Bundler for gem directory names — it stays on the
       # major.minor.0 series even as patch releases are installed.
-      ruby_version = capture("/home/ubuntu/.local/bin/mise", "exec", "--", "ruby", "-e", "print RUBY_VERSION").strip
-      ruby_gem_version = capture("/home/ubuntu/.local/bin/mise", "exec", "--", "ruby", "-e", "print RbConfig::CONFIG['ruby_version']").strip
+      # Must run within the release path so mise can find .mise.toml and resolve Ruby.
+      ruby_version = nil
+      ruby_gem_version = nil
+      within release_path do
+        ruby_version = capture("/home/ubuntu/.local/bin/mise", "exec", "--", "ruby", "-e", "print RUBY_VERSION").strip
+        ruby_gem_version = capture("/home/ubuntu/.local/bin/mise", "exec", "--", "ruby", "-e", "print RbConfig::CONFIG['ruby_version']").strip
+      end
 
       template_path = File.expand_path("../../../config/deploy/tayaway-falcon.service.erb", __dir__)
       rendered = ERB.new(File.read(template_path)).result(binding)
