@@ -1,7 +1,22 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useObjectPoolStore } from './objectPool'
-import { makeEvent, makeTaskItem } from '@/test/factories'
+import {
+  makeEvent,
+  makeTaskItem,
+  makeDatePoll,
+  makeDateRange,
+  makeVote,
+  makeRsvp,
+  makeExpense,
+  makeExpenseParticipant,
+  makeSettlement,
+  makeSettlementTransfer,
+  makeChoreRoster,
+  makeChore,
+  makeChoreAssignment,
+  makeTaskList,
+} from '@/test/factories'
 
 describe('objectPool store', () => {
   beforeEach(() => {
@@ -617,202 +632,6 @@ describe('objectPool store', () => {
   })
 
   describe('cascadeRemove', () => {
-    function makeDatePoll(
-      overrides: Partial<ObjectTypeMap['datePoll']> = {}
-    ): ObjectTypeMap['datePoll'] {
-      return {
-        id: 'poll-1',
-        objectType: 'datePoll',
-        eventId: 'evt-1',
-        deadline: '2026-06-01T00:00:00.000Z',
-        selectedDateRangeId: null,
-        closedAt: null,
-        status: 'open',
-        dateRangeIds: [],
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-        ...overrides,
-      }
-    }
-
-    function makeDateRange(
-      overrides: Partial<ObjectTypeMap['dateRange']> = {}
-    ): ObjectTypeMap['dateRange'] {
-      return {
-        id: 'dr-1',
-        objectType: 'dateRange',
-        datePollId: 'poll-1',
-        startDate: '2026-06-10',
-        endDate: '2026-06-12',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-        ...overrides,
-      }
-    }
-
-    function makeVote(
-      overrides: Partial<ObjectTypeMap['vote']> = {}
-    ): ObjectTypeMap['vote'] {
-      return {
-        id: 'vote-1',
-        objectType: 'vote',
-        dateRangeId: 'dr-1',
-        userId: 'user-1',
-        response: 'yes',
-        comment: null,
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-        ...overrides,
-      }
-    }
-
-    function makeRsvp(
-      overrides: Partial<ObjectTypeMap['rsvp']> = {}
-    ): ObjectTypeMap['rsvp'] {
-      return {
-        id: 'rsvp-1',
-        objectType: 'rsvp',
-        eventId: 'evt-1',
-        userId: 'user-1',
-        attending: true,
-        startDate: null,
-        endDate: null,
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-        ...overrides,
-      }
-    }
-
-    function makeExpense(
-      overrides: Partial<ObjectTypeMap['expense']> = {}
-    ): ObjectTypeMap['expense'] {
-      return {
-        id: 'exp-1',
-        objectType: 'expense',
-        eventId: 'evt-1',
-        userId: 'user-1',
-        settlementId: null,
-        description: 'Dinner',
-        amount: 50,
-        startDate: '2026-01-01',
-        endDate: '2026-01-01',
-        participantIds: [],
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-        ...overrides,
-      }
-    }
-
-    function makeExpenseParticipant(
-      overrides: Partial<ObjectTypeMap['expenseParticipant']> = {}
-    ): ObjectTypeMap['expenseParticipant'] {
-      return {
-        id: 'ep-1',
-        objectType: 'expenseParticipant',
-        expenseId: 'exp-1',
-        userId: 'user-2',
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-        ...overrides,
-      }
-    }
-
-    function makeSettlement(
-      overrides: Partial<ObjectTypeMap['settlement']> = {}
-    ): ObjectTypeMap['settlement'] {
-      return {
-        id: 'settlement-1',
-        objectType: 'settlement',
-        eventId: 'evt-1',
-        userId: 'user-1',
-        transferIds: [],
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-        ...overrides,
-      }
-    }
-
-    function makeSettlementTransfer(
-      overrides: Partial<ObjectTypeMap['settlementTransfer']> = {}
-    ): ObjectTypeMap['settlementTransfer'] {
-      return {
-        id: 'transfer-1',
-        objectType: 'settlementTransfer',
-        settlementId: 'settlement-1',
-        fromUserId: 'user-2',
-        toUserId: 'user-1',
-        amount: 25,
-        paidAt: null,
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-        ...overrides,
-      }
-    }
-
-    function makeChoreRoster(
-      overrides: Partial<ObjectTypeMap['choreRoster']> = {}
-    ): ObjectTypeMap['choreRoster'] {
-      return {
-        id: 'roster-1',
-        objectType: 'choreRoster',
-        eventId: 'evt-1',
-        userId: 'user-1',
-        choreIds: [],
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-        ...overrides,
-      }
-    }
-
-    function makeChore(
-      overrides: Partial<ObjectTypeMap['chore']> = {}
-    ): ObjectTypeMap['chore'] {
-      return {
-        id: 'chore-1',
-        objectType: 'chore',
-        choreRosterId: 'roster-1',
-        name: 'Dishes',
-        peoplePerDay: 1,
-        position: 1,
-        assignmentIds: [],
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-        ...overrides,
-      }
-    }
-
-    function makeChoreAssignment(
-      overrides: Partial<ObjectTypeMap['choreAssignment']> = {}
-    ): ObjectTypeMap['choreAssignment'] {
-      return {
-        id: 'assign-1',
-        objectType: 'choreAssignment',
-        choreId: 'chore-1',
-        userId: 'user-1',
-        date: '2026-02-01',
-        pinned: false,
-        note: null,
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-        ...overrides,
-      }
-    }
-
-    function makeTaskList(
-      overrides: Partial<ObjectTypeMap['taskList']> = {}
-    ): ObjectTypeMap['taskList'] {
-      return {
-        id: 'list-1',
-        objectType: 'taskList',
-        workspaceId: 'ws-1',
-        userId: 'user-1',
-        name: 'Shopping',
-        position: 1,
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-        ...overrides,
-      }
-    }
-
     it('removes the object itself', () => {
       const pool = useObjectPoolStore()
       pool.importObjects([makeEvent()])
