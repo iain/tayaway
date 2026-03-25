@@ -15,10 +15,9 @@ class App
 
   hash_path "/api/auth/verify" do |r|
     r.post do
-      client_ip = request.env["HTTP_X_FORWARDED_FOR"]&.split(",")&.first&.strip || request.ip
       result = Auth::VerifyToken.call(
         token: r.params["token"],
-        ip: client_ip,
+        ip: request.ip,
         user_agent: request.env["HTTP_USER_AGENT"]
       )
       if result.success?
