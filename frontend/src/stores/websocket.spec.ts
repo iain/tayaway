@@ -1,7 +1,19 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useObjectPoolStore } from './objectPool'
-import type { ObjectTypeMap } from '@/types/pool'
+import {
+  makeEvent,
+  makeRsvp,
+  makeExpense,
+  makeSettlement,
+  makeSettlementTransfer,
+  makeChoreRoster,
+  makeChore,
+  makeChoreAssignment,
+  makeDatePoll,
+  makeDateRange,
+  makeVote,
+} from '@/test/factories'
 
 // ---- WebSocket mock --------------------------------------------------------
 
@@ -79,151 +91,6 @@ vi.mock('@/router', () => ({
 }))
 
 // ---- Helpers ---------------------------------------------------------------
-
-function ts(offset = 0): string {
-  return new Date(Date.now() + offset).toISOString()
-}
-
-function makeEvent(
-  overrides: Partial<ObjectTypeMap['event']> = {}
-): ObjectTypeMap['event'] {
-  return {
-    id: 'evt-1',
-    objectType: 'event',
-    name: 'Test Event',
-    description: null,
-    startDate: null,
-    endDate: null,
-    locationName: null,
-    latitude: null,
-    longitude: null,
-    workspaceId: 'ws-1',
-    userId: 'user-1',
-    datePollId: null,
-    rsvpIds: [],
-    createdAt: ts(),
-    updatedAt: ts(),
-    ...overrides,
-  }
-}
-
-function makeRsvp(
-  overrides: Partial<ObjectTypeMap['rsvp']> = {}
-): ObjectTypeMap['rsvp'] {
-  return {
-    id: 'rsvp-1',
-    objectType: 'rsvp',
-    eventId: 'evt-1',
-    userId: 'user-1',
-    attending: true,
-    startDate: null,
-    endDate: null,
-    createdAt: ts(),
-    updatedAt: ts(),
-    ...overrides,
-  }
-}
-
-function makeExpense(
-  overrides: Partial<ObjectTypeMap['expense']> = {}
-): ObjectTypeMap['expense'] {
-  return {
-    id: 'exp-1',
-    objectType: 'expense',
-    eventId: 'evt-1',
-    userId: 'user-1',
-    settlementId: null,
-    description: 'Hotel',
-    amount: 100,
-    startDate: '2026-03-01',
-    endDate: '2026-03-03',
-    participantIds: [],
-    createdAt: ts(),
-    updatedAt: ts(),
-    ...overrides,
-  }
-}
-
-function makeSettlement(
-  overrides: Partial<ObjectTypeMap['settlement']> = {}
-): ObjectTypeMap['settlement'] {
-  return {
-    id: 'settle-1',
-    objectType: 'settlement',
-    eventId: 'evt-1',
-    userId: 'user-1',
-    transferIds: [],
-    createdAt: ts(),
-    updatedAt: ts(),
-    ...overrides,
-  }
-}
-
-function makeSettlementTransfer(
-  overrides: Partial<ObjectTypeMap['settlementTransfer']> = {}
-): ObjectTypeMap['settlementTransfer'] {
-  return {
-    id: 'transfer-1',
-    objectType: 'settlementTransfer',
-    settlementId: 'settle-1',
-    fromUserId: 'user-1',
-    toUserId: 'user-2',
-    amount: 50,
-    paidAt: null,
-    createdAt: ts(),
-    updatedAt: ts(),
-    ...overrides,
-  }
-}
-
-function makeChoreRoster(
-  overrides: Partial<ObjectTypeMap['choreRoster']> = {}
-): ObjectTypeMap['choreRoster'] {
-  return {
-    id: 'roster-1',
-    objectType: 'choreRoster',
-    eventId: 'evt-1',
-    userId: 'user-1',
-    choreIds: [],
-    createdAt: ts(),
-    updatedAt: ts(),
-    ...overrides,
-  }
-}
-
-function makeChore(
-  overrides: Partial<ObjectTypeMap['chore']> = {}
-): ObjectTypeMap['chore'] {
-  return {
-    id: 'chore-1',
-    objectType: 'chore',
-    choreRosterId: 'roster-1',
-    name: 'Dishes',
-    peoplePerDay: 1,
-    position: 1,
-    assignmentIds: [],
-    createdAt: ts(),
-    updatedAt: ts(),
-    ...overrides,
-  }
-}
-
-function makeChoreAssignment(
-  overrides: Partial<ObjectTypeMap['choreAssignment']> = {}
-): ObjectTypeMap['choreAssignment'] {
-  return {
-    id: 'assign-1',
-    objectType: 'choreAssignment',
-    choreId: 'chore-1',
-    userId: 'user-1',
-    date: '2026-03-10',
-    pinned: false,
-    note: null,
-    createdAt: ts(),
-    updatedAt: ts(),
-    ...overrides,
-  }
-}
 
 /** Send a broadcast-delete message through the WebSocket mock. */
 function sendDeleteBroadcast(objectType: string, id: string): void {
@@ -535,54 +402,6 @@ describe('websocket store — cascade delete', () => {
 
   it('increments the pool version only once per type when cascading many deletions', () => {
     const pool = useObjectPoolStore()
-
-    function makeDatePoll(
-      overrides: Partial<ObjectTypeMap['datePoll']> = {}
-    ): ObjectTypeMap['datePoll'] {
-      return {
-        id: 'poll-1',
-        objectType: 'datePoll',
-        eventId: 'evt-1',
-        deadline: '2026-06-01T00:00:00.000Z',
-        selectedDateRangeId: null,
-        closedAt: null,
-        status: 'open',
-        dateRangeIds: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        ...overrides,
-      }
-    }
-
-    function makeDateRange(
-      overrides: Partial<ObjectTypeMap['dateRange']> = {}
-    ): ObjectTypeMap['dateRange'] {
-      return {
-        id: 'dr-1',
-        objectType: 'dateRange',
-        datePollId: 'poll-1',
-        startDate: '2026-06-10',
-        endDate: '2026-06-12',
-        updatedAt: new Date().toISOString(),
-        ...overrides,
-      }
-    }
-
-    function makeVote(
-      overrides: Partial<ObjectTypeMap['vote']> = {}
-    ): ObjectTypeMap['vote'] {
-      return {
-        id: 'vote-1',
-        objectType: 'vote',
-        dateRangeId: 'dr-1',
-        userId: 'user-1',
-        response: 'yes',
-        comment: null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        ...overrides,
-      }
-    }
 
     // Build: 1 event → 1 datePoll → 1 dateRange → 3 votes (6 total objects)
     pool.importObjects([

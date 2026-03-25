@@ -1,47 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useObjectPoolStore } from './objectPool'
-import type { ObjectTypeMap } from '@/types/pool'
-
-function makeEvent(
-  overrides: Partial<ObjectTypeMap['event']> = {}
-): ObjectTypeMap['event'] {
-  return {
-    id: 'evt-1',
-    objectType: 'event',
-    name: 'Test Event',
-    description: null,
-    startDate: null,
-    endDate: null,
-    locationName: null,
-    latitude: null,
-    longitude: null,
-    workspaceId: 'ws-1',
-    userId: 'user-1',
-    datePollId: null,
-    rsvpIds: [],
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-    ...overrides,
-  }
-}
-
-function makeTaskItem(
-  overrides: Partial<ObjectTypeMap['taskItem']> = {}
-): ObjectTypeMap['taskItem'] {
-  return {
-    id: 'item-1',
-    objectType: 'taskItem',
-    taskListId: 'list-1',
-    userId: null,
-    content: 'Do something',
-    completedAt: null,
-    position: 1,
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-    ...overrides,
-  }
-}
+import { makeEvent, makeTaskItem } from '@/test/factories'
 
 describe('objectPool store', () => {
   beforeEach(() => {
