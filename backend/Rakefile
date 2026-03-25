@@ -93,6 +93,16 @@ namespace :db do
     require_relative "db/seeds"
     puts "Seeding complete"
   end
+
+  desc "Delete deleted_items rows older than DELETED_ITEMS_RETENTION_DAYS (default: 7)"
+  task :cleanup_deleted_items do
+    require_relative "config/database"
+
+    retention_days = Integer(ENV.fetch("DELETED_ITEMS_RETENTION_DAYS", "7"))
+    cutoff = Time.now - (retention_days * 24 * 60 * 60)
+    count = DB[:deleted_items].where { deleted_at < cutoff }.delete
+    puts "Deleted #{count} deleted_items rows older than #{retention_days} days"
+  end
 end
 
 namespace :sorbet do
