@@ -44,7 +44,7 @@ class AuditLog < T::Struct
         created_at: Time.now
       )
     rescue => e
-      APP_LOGGER.error { "[AuditLog] Failed to record audit log: #{e.message}" }
+      APP_LOGGER.error { "[AuditLog] Failed to record audit log: #{e.class}: #{e.message}" }
     end
 
     private
