@@ -122,9 +122,11 @@ export function usePoolPersistence() {
 
       // Phase 2: Load priority types first (member, workspace, event) so the
       // app shell can render immediately with the most important data.
+      // Yield between types so the browser can paint frames.
       let anyLoaded = false
       for (const type of PRIORITY_TYPES) {
         if (wsStore.hasSynced) return // Server beat us — stop loading stale cache
+        await new Promise<void>((resolve) => setTimeout(resolve, 0))
         const objects = await poolDb.loadObjectsByType(type)
         if (objects.length > 0) {
           pool.importObjects(objects)

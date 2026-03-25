@@ -82,9 +82,10 @@ async function fetchSuggestions(q: string): Promise<void> {
   abortController = new AbortController()
 
   try {
+    const timeoutSignal = AbortSignal.timeout(10_000)
     const res = await fetch(
       `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5`,
-      { signal: abortController.signal }
+      { signal: AbortSignal.any([abortController.signal, timeoutSignal]) }
     )
     const data = await res.json()
     suggestions.value = data.features ?? []

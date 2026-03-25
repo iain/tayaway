@@ -132,6 +132,7 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
           if (!survivingIds.has(cmd.id)) {
             await removeCommand(cmd.id)
             pendingCount.value--
+            await new Promise<void>((r) => setTimeout(r, 0))
           }
         }
 
@@ -144,6 +145,7 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
             await executeRequest(command.method, command.path, command.body)
             for (const id of command.originalIds) {
               await removeCommand(id)
+              await new Promise<void>((r) => setTimeout(r, 0))
             }
             pendingCount.value -= command.originalIds.length
           } catch (e) {
@@ -160,6 +162,7 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
             try {
               for (const id of command.originalIds) {
                 await removeCommand(id)
+                await new Promise<void>((r) => setTimeout(r, 0))
               }
               pendingCount.value -= command.originalIds.length
             } catch {

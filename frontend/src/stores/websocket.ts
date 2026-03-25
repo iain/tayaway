@@ -168,6 +168,11 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
       socket.onerror = (event) => {
         console.warn('[WebSocket] Error', event)
+        // Reset state so the close handler (or reconnect logic) can proceed.
+        // Without this, a socket error without a close event leaves state stuck.
+        if (state.value === 'authenticated' || state.value === 'connecting') {
+          state.value = 'disconnected'
+        }
       }
     } catch (e) {
       state.value = 'disconnected'
@@ -178,7 +183,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
         'status' in e &&
         (e as { status: number }).status === 401
       ) {
-        console.warn('[WebSocket] Ticket fetch failed with 401 — session expired, redirecting to login')
+        console.warn(
+          '[WebSocket] Ticket fetch failed with 401 — session expired, redirecting to login'
+        )
         const { useAuthStore } = await import('./auth')
         const authStore = useAuthStore()
         authStore.$reset()

@@ -100,11 +100,9 @@ export const useAuthStore = defineStore('auth', () => {
    * (401/403), and null if the server was unreachable (network/timeout/5xx).
    */
   async function fetchMe(): Promise<boolean | null> {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 5000)
     try {
       const response = await fetch('/api/auth/me', {
-        signal: controller.signal,
+        signal: AbortSignal.timeout(5000),
       })
 
       if (response.ok) {
@@ -132,8 +130,6 @@ export const useAuthStore = defineStore('auth', () => {
         console.error('[auth] initialize() caught unexpected error:', e)
       }
       return null
-    } finally {
-      clearTimeout(timeout)
     }
   }
 

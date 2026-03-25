@@ -55,8 +55,8 @@ export const useExpensesStore = defineStore('expenses', () => {
     })
 
     // Insert temp participants into pool before the create call
-    for (const tp of tempParticipants) {
-      pool.importObjects([tp])
+    if (tempParticipants.length > 0) {
+      pool.importObjects(tempParticipants)
     }
 
     const apiBody: Record<string, unknown> = {

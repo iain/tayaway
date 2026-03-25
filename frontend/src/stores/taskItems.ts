@@ -119,10 +119,8 @@ export const useTaskItemsStore = defineStore('taskItems', () => {
       .map((id) => pool.getServer('taskItem', id))
       .filter(Boolean)
 
-    // Optimistic: remove completed items from pool
-    for (const id of completedItemIds) {
-      pool.remove('taskItem', id)
-    }
+    // Optimistic: remove completed items from pool (single reactivity trigger)
+    pool.removeMany('taskItem', completedItemIds)
 
     loading.value = true
     error.value = null

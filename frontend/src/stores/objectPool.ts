@@ -18,7 +18,7 @@ function isNewer(a: string, b: string): boolean {
 // The first chunk is always processed synchronously (in the same call frame as
 // the clear) so consumers never observe an empty pool. Subsequent chunks are
 // scheduled via setTimeout(0) to yield to the browser between each batch.
-const REPLACE_CHUNK_SIZE = 500
+const REPLACE_CHUNK_SIZE = 200
 
 // Generate unique ID for pending updates
 let pendingIdCounter = 0
@@ -147,10 +147,7 @@ function createEmptyReverseIndex(): ReverseIndex {
 }
 
 // Add a child object to the reverse index
-function reverseIndexAdd(
-  index: ReverseIndex,
-  obj: PoolObject
-): void {
+function reverseIndexAdd(index: ReverseIndex, obj: PoolObject): void {
   const refs = CHILD_RULE_REFS[obj.objectType]
   if (!refs) return
   const raw = obj as unknown as Record<string, unknown>
@@ -170,10 +167,7 @@ function reverseIndexAdd(
 
 // Remove a child object from the reverse index.
 // oldObj is the previous version of the object (needed to get the old FK value).
-function reverseIndexRemove(
-  index: ReverseIndex,
-  obj: PoolObject
-): void {
+function reverseIndexRemove(index: ReverseIndex, obj: PoolObject): void {
   const refs = CHILD_RULE_REFS[obj.objectType]
   if (!refs) return
   const raw = obj as unknown as Record<string, unknown>
@@ -558,6 +552,34 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     notifyChange({ type: 'remove', objectType, id: objectId })
   }
 
+  // Batch remove: removes multiple objects of the same type with a single
+  // reactivity trigger instead of one per object.
+  function removeMany(objectType: ObjectType, objectIds: string[]): void {
+    const typeMap = objects.value.get(objectType)
+    for (const objectId of objectIds) {
+      if (typeMap) {
+        const existing = typeMap.get(objectId)
+        if (existing) reverseIndexRemove(cascadeIndex, existing)
+        typeMap.delete(objectId)
+      }
+      const removedKey = `${objectType}:${objectId}`
+      const removedPending = pendingUpdates.value.get(removedKey)
+      if (removedPending) {
+        for (const u of removedPending) pendingIdToKey.delete(u.id)
+      }
+      pendingUpdates.value.delete(removedKey)
+      tempObjectIds.delete(objectId)
+    }
+    if (objectIds.length > 0) {
+      bumpVersion(objectType)
+      triggerRef(objects)
+      triggerRef(pendingUpdates)
+      for (const id of objectIds) {
+        notifyChange({ type: 'remove', objectType, id })
+      }
+    }
+  }
+
   // Cascade-remove an object and all its children, returning all removed objects for rollback
   function cascadeRemove(
     objectType: ObjectType,
@@ -592,7 +614,12 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       for (const rule of rules) {
         // Snapshot child IDs before iterating — removeRecursive modifies the index
         const childIds = Array.from(
-          reverseIndexChildren(cascadeIndex, rule.childType, rule.foreignKey, id)
+          reverseIndexChildren(
+            cascadeIndex,
+            rule.childType,
+            rule.foreignKey,
+            id
+          )
         )
         for (const childId of childIds) {
           removeRecursive(rule.childType, childId)
@@ -835,6 +862,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     hasPending,
     set,
     remove,
+    removeMany,
     cascadeRemove,
     replaceObjects,
     restorePendingUpdates,

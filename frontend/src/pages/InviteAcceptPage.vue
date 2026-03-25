@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { api } from '@/api/client'
 import type { InviteInfoResponse } from '@/types'
 import AppButton from '@/components/common/AppButton.vue'
 import appIcon from '@/assets/app-icon.svg'
@@ -22,11 +23,9 @@ onMounted(async () => {
   }
 
   try {
-    const res = await fetch(
-      `/api/invites/info?token=${encodeURIComponent(token)}`
+    const { data } = await api.get<InviteInfoResponse>(
+      `/invites/info?token=${encodeURIComponent(token)}`
     )
-    if (!res.ok) throw new Error('Invalid invite')
-    const data: InviteInfoResponse = await res.json()
     workspaceName.value = data.workspaceName
     email.value = data.email
   } catch {
@@ -43,12 +42,7 @@ async function handleAccept() {
   error.value = ''
 
   try {
-    const res = await fetch('/api/invites/accept', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token }),
-    })
-    if (!res.ok) throw new Error('Accept failed')
+    await api.post('/invites/accept', { token }, { silent: true })
     accepted.value = true
   } catch {
     error.value =

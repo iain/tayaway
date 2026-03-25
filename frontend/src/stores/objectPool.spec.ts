@@ -495,19 +495,19 @@ describe('objectPool store', () => {
       vi.useFakeTimers()
       const pool = useObjectPoolStore()
 
-      // Create 1200 events — exceeds the 500-object chunk size threshold
+      // Create 1200 events — exceeds the 200-object chunk size threshold
       const events = Array.from({ length: 1200 }, (_, i) =>
         makeEvent({ id: `evt-${i}`, name: `Event ${i}` })
       )
 
       const promise = pool.replaceObjects(events)
 
-      // Before timers run: the first chunk (0–499) is inserted synchronously
+      // Before timers run: the first chunk (0–199) is inserted synchronously
       // in the same call frame as the clear, so consumers never see an empty pool
       expect(pool.get('event', 'evt-0')?.name).toBe('Event 0')
-      expect(pool.get('event', 'evt-499')?.name).toBe('Event 499')
+      expect(pool.get('event', 'evt-199')?.name).toBe('Event 199')
       // Objects beyond the first chunk are not yet inserted
-      expect(pool.get('event', 'evt-500')).toBeUndefined()
+      expect(pool.get('event', 'evt-200')).toBeUndefined()
 
       // Run all pending timers (each remaining chunk schedules a setTimeout)
       await vi.runAllTimersAsync()
