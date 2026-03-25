@@ -42,7 +42,10 @@ RSpec.describe Mailers::Base do
     end
 
     context "when in production" do
-      before { stub_const("APP_ENV", "production") }
+      before do
+        stub_const("APP_ENV", "production")
+        allow(described_class).to receive(:apply_smtp_settings)
+      end
 
       it "delivers the message in a background thread" do
         message = Mail.new(to: "test@example.com", from: "noreply@tayaway.com", subject: "Test")
@@ -66,6 +69,28 @@ RSpec.describe Mailers::Base do
         sleep 0.1
         expect(Mail::TestMailer.deliveries).to be_empty
         expect(logged_errors).to include(a_string_matching(/SMTP unreachable/))
+      end
+    end
+  end
+
+  describe ".configure!" do
+    context "when in production with missing SMTP credentials" do
+      let(:saved_env) { ENV.to_h }
+
+      before do
+        saved_env # evaluate before deleting
+        stub_const("APP_ENV", "production")
+        %w[SMTP_HOST SMTP_USERNAME SMTP_PASSWORD].each { |k| ENV.delete(k) }
+      end
+
+      after do
+        saved_env.each { |k, v| ENV[k] = v }
+        # Restore test delivery method after stubbing production
+        Mail.defaults { T.unsafe(self).delivery_method :test }
+      end
+
+      it "does not raise at boot even when SMTP credentials are absent" do
+        expect { described_class.configure! }.not_to raise_error
       end
     end
   end

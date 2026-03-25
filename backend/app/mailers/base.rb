@@ -17,19 +17,16 @@ module Mailers
       sig { void }
       def configure!
         if APP_ENV == "production"
-          configure_smtp
+          APP_LOGGER.info { "[Mailer] SMTP delivery configured (credentials loaded on first send)" }
         else
           Mail.defaults { T.unsafe(self).delivery_method :test }
-        end
-        if APP_ENV == "production"
-          APP_LOGGER.info { "[Mailer] Configured SMTP delivery via #{ENV.fetch("SMTP_HOST", "?")}:#{ENV.fetch("SMTP_PORT", "587")}" }
-        else
           APP_LOGGER.info { "[Mailer] Configured test delivery method" }
         end
       end
 
       sig { params(message: Mail::Message).void }
       def deliver(message)
+        apply_smtp_settings(message) if APP_ENV == "production"
         masked = mask_recipients(message.to)
         APP_LOGGER.info { "[Mailer] Sending email to #{masked} (subject: #{message.subject})" }
         message.deliver
@@ -69,8 +66,11 @@ module Mailers
         end.join(", ")
       end
 
-      sig { void }
-      def configure_smtp
+      # Applies SMTP settings directly to the message, reading credentials at
+      # send time rather than at boot. This means missing SMTP vars only raise
+      # when email is actually sent, not when the app starts.
+      sig { params(message: Mail::Message).void }
+      def apply_smtp_settings(message)
         smtp_host = ENV.fetch("SMTP_HOST")
         smtp_port = ENV.fetch("SMTP_PORT", "587").to_i
         smtp_username = ENV.fetch("SMTP_USERNAME")
@@ -84,16 +84,15 @@ module Mailers
                         { ssl: false, enable_starttls_auto: true }
                       end
 
-        Mail.defaults do
-          T.unsafe(self).delivery_method :smtp, {
-            address: smtp_host,
-            port: smtp_port,
-            user_name: smtp_username,
-            password: smtp_password,
-            domain: smtp_domain,
-            authentication: "plain"
-          }.merge(tls_options)
-        end
+        T.unsafe(message).delivery_method(:smtp, {
+          address: smtp_host,
+          port: smtp_port,
+          user_name: smtp_username,
+          password: smtp_password,
+          domain: smtp_domain,
+          authentication: "plain"
+        }.merge(tls_options)
+        )
       end
     end
   end
