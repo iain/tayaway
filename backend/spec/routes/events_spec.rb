@@ -280,6 +280,7 @@ RSpec.describe "Events endpoints" do
       event = TestFactories.event(workspace: workspace, user: user)
       dr = nil
 
+      # Manually resolve the poll via DB — no factory helper for this state
       DB.transaction do
         poll = TestFactories.date_poll(event: event)
         dr = TestFactories.date_range(date_poll: poll)
