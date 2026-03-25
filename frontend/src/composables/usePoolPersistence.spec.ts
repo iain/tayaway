@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { usePoolPersistence } from './usePoolPersistence'
 import * as poolDb from '@/api/poolDb'
-import { onPoolChange, type PoolChange } from '@/stores/objectPool'
+import { onPoolChange, useObjectPoolStore, type PoolChange } from '@/stores/objectPool'
+import { useWebSocketStore } from '@/stores/websocket'
 import type { PoolObject } from '@/types/pool'
 
 // Minimal requestIdleCallback polyfill for JSDOM (which does not implement it).
@@ -45,11 +46,22 @@ vi.mock('@/api/poolDb', () => ({
     objects: [],
     pendingUpdates: new Map(),
   }),
+  loadMeta: vi.fn().mockResolvedValue({
+    workspaceId: null,
+    syncedAt: null,
+    cacheVersion: 4,
+  }),
+  loadObjectsByType: vi.fn().mockResolvedValue([]),
+  loadPendingUpdatesFromDb: vi.fn().mockResolvedValue(new Map()),
   clearAll: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('@/stores/objectPool', () => ({
-  useObjectPoolStore: vi.fn(() => ({ pendingUpdates: new Map() })),
+  useObjectPoolStore: vi.fn(() => ({
+    pendingUpdates: new Map(),
+    importObjects: vi.fn(),
+    restorePendingUpdates: vi.fn(),
+  })),
   onPoolChange: vi.fn(),
   offPoolChange: vi.fn(),
 }))
@@ -294,5 +306,165 @@ describe('usePoolPersistence — visibilitychange flush', () => {
     expect(idleCallbacks.size).toBe(0)
     // No writes should have happened
     expect(poolDb.saveObjects).not.toHaveBeenCalled()
+  })
+})
+
+describe('usePoolPersistence — progressive cache loading', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.useFakeTimers()
+    installIdlePolyfill()
+    localStorage.setItem('current_workspace_id', 'ws-1')
+
+    vi.mocked(poolDb.loadMeta).mockReset().mockResolvedValue({
+      workspaceId: 'ws-1',
+      syncedAt: new Date().toISOString(),
+      cacheVersion: 4,
+    })
+    vi.mocked(poolDb.loadObjectsByType).mockReset().mockResolvedValue([])
+    vi.mocked(poolDb.loadPendingUpdatesFromDb).mockReset().mockResolvedValue(new Map())
+    vi.mocked(poolDb.clearAll).mockReset().mockResolvedValue(undefined)
+
+    vi.mocked(useObjectPoolStore).mockReturnValue({
+      pendingUpdates: new Map(),
+      importObjects: vi.fn(),
+      restorePendingUpdates: vi.fn(),
+    } as ReturnType<typeof useObjectPoolStore>)
+
+    vi.mocked(useWebSocketStore).mockReturnValue({
+      hasSynced: false,
+      hasCachedData: false,
+      setCacheStaleLevel: vi.fn(),
+      restoreSyncTimestamp: vi.fn(),
+      getSyncedAt: vi.fn(() => null),
+    } as ReturnType<typeof useWebSocketStore>)
+  })
+
+  afterEach(() => {
+    localStorage.removeItem('current_workspace_id')
+    usePoolPersistence().stopPersisting()
+    vi.useRealTimers()
+  })
+
+  it('reads metadata first then loads objects by type', async () => {
+    const memberObj = {
+      id: 'm-1',
+      objectType: 'member',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    } as PoolObject
+    const eventObj = {
+      id: 'e-1',
+      objectType: 'event',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    } as PoolObject
+
+    vi.mocked(poolDb.loadObjectsByType).mockImplementation(async (type) => {
+      if (type === 'member') return [memberObj]
+      if (type === 'event') return [eventObj]
+      return []
+    })
+
+    const pool = useObjectPoolStore()
+    const { loadFromCache } = usePoolPersistence()
+
+    // Run all timers and microtasks to complete progressive loading
+    const loadPromise = loadFromCache()
+    await vi.runAllTimersAsync()
+    await loadPromise
+
+    expect(poolDb.loadMeta).toHaveBeenCalledTimes(1)
+    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith('member')
+    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith('event')
+    expect(pool.importObjects).toHaveBeenCalledWith([memberObj])
+    expect(pool.importObjects).toHaveBeenCalledWith([eventObj])
+  })
+
+  it('clears cache and returns when workspaceId does not match', async () => {
+    vi.mocked(poolDb.loadMeta).mockResolvedValue({
+      workspaceId: 'ws-other',
+      syncedAt: null,
+      cacheVersion: 4,
+    })
+
+    const pool = useObjectPoolStore()
+    const { loadFromCache } = usePoolPersistence()
+    await loadFromCache()
+
+    expect(poolDb.clearAll).toHaveBeenCalledTimes(1)
+    expect(pool.importObjects).not.toHaveBeenCalled()
+    expect(poolDb.loadObjectsByType).not.toHaveBeenCalled()
+  })
+
+  it('clears cache and returns when cacheVersion is stale', async () => {
+    vi.mocked(poolDb.loadMeta).mockResolvedValue({
+      workspaceId: 'ws-1',
+      syncedAt: null,
+      cacheVersion: 1, // old version
+    })
+
+    const pool = useObjectPoolStore()
+    const { loadFromCache } = usePoolPersistence()
+    await loadFromCache()
+
+    expect(poolDb.clearAll).toHaveBeenCalledTimes(1)
+    expect(pool.importObjects).not.toHaveBeenCalled()
+  })
+
+  it('stops loading deferred types when server syncs mid-load', async () => {
+    const wsStore = useWebSocketStore()
+
+    let memberCallCount = 0
+    vi.mocked(poolDb.loadObjectsByType).mockImplementation(async (type) => {
+      if (type === 'member') {
+        memberCallCount++
+        // Simulate server sync arriving while loading members
+        ;(wsStore as Record<string, unknown>).hasSynced = true
+        return []
+      }
+      return []
+    })
+
+    const pool = useObjectPoolStore()
+    const { loadFromCache } = usePoolPersistence()
+    const loadPromise = loadFromCache()
+    await vi.runAllTimersAsync()
+    await loadPromise
+
+    // Should have stopped after detecting hasSynced = true
+    expect(memberCallCount).toBe(1)
+    expect(pool.importObjects).not.toHaveBeenCalled()
+  })
+
+  it('loads pending updates after all objects are loaded', async () => {
+    const pendingMap = new Map([
+      ['event:e-1', [{ id: 'p-1', objectType: 'event', objectId: 'e-1', changes: { name: 'New' }, timestamp: Date.now() }]],
+    ])
+    vi.mocked(poolDb.loadPendingUpdatesFromDb).mockResolvedValue(pendingMap as Map<string, unknown[]>)
+    vi.mocked(poolDb.loadObjectsByType).mockImplementation(async (type) => {
+      if (type === 'member') {
+        return [{ id: 'm-1', objectType: 'member', updatedAt: '2026-01-01T00:00:00.000Z' } as PoolObject]
+      }
+      return []
+    })
+
+    const pool = useObjectPoolStore()
+    const { loadFromCache } = usePoolPersistence()
+    const loadPromise = loadFromCache()
+    await vi.runAllTimersAsync()
+    await loadPromise
+
+    expect(poolDb.loadPendingUpdatesFromDb).toHaveBeenCalledTimes(1)
+    expect(pool.restorePendingUpdates).toHaveBeenCalledWith(pendingMap)
+  })
+
+  it('does not load pending updates when hasSynced is true before completion', async () => {
+    const wsStore = useWebSocketStore()
+    ;(wsStore as Record<string, unknown>).hasSynced = true
+
+    const { loadFromCache } = usePoolPersistence()
+    await loadFromCache()
+
+    expect(poolDb.loadObjectsByType).not.toHaveBeenCalled()
+    expect(poolDb.loadPendingUpdatesFromDb).not.toHaveBeenCalled()
   })
 })
