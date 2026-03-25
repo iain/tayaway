@@ -34,7 +34,7 @@ APP_LOGGER.level = case APP_ENV
                    end
 APP_LOGGER.formatter = if APP_ENV == "production"
                          proc { |severity, time, _progname, msg|
-                           JSON.generate({ timestamp: time.utc.iso8601(3), level: severity, message: msg }) + "\n"
+                           JSON.generate({ timestamp: time.utc.iso8601(3), level: severity, message: msg.to_s }) + "\n"
                          }
                        else
                          proc { |severity, _time, _progname, msg|
