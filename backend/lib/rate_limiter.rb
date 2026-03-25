@@ -83,6 +83,10 @@ module RateLimiter
         req.ip if req.post? && req.path == "/api/invites"
       end
 
+      Rack::Attack.throttle("csp/csp-report", limit: 20, period: 60) do |req|
+        req.ip if req.post? && req.path == "/api/csp-report"
+      end
+
     end
 
     Rack::Attack.throttled_responder = lambda do |req|
