@@ -97,6 +97,110 @@ const CASCADE_RULES: Partial<
   expense: [{ childType: 'expenseParticipant', foreignKey: 'expenseId' }],
 }
 
+// Reverse index for O(1) cascade lookups.
+// Structure: Map<"childType:foreignKey", Map<parentId, Set<childId>>>
+// One entry per cascade rule. Maintained in sync with the object pool.
+type ReverseIndexKey = string // `${childType}:${foreignKey}`
+type ReverseIndex = Map<ReverseIndexKey, Map<string, Set<string>>>
+
+// Pre-compute a lookup from childType → rules that reference it (one child
+// type can be referenced by at most one parent, but we store as array for
+// generality and to match CASCADE_RULES structure).
+interface ChildRuleRef {
+  childType: ObjectType
+  foreignKey: string
+  indexKey: ReverseIndexKey
+}
+
+const CHILD_RULE_REFS: Partial<Record<ObjectType, ChildRuleRef[]>> = {}
+for (const [, rules] of Object.entries(CASCADE_RULES) as [
+  ObjectType,
+  { childType: ObjectType; foreignKey: string }[],
+][]) {
+  for (const rule of rules) {
+    const ref: ChildRuleRef = {
+      childType: rule.childType,
+      foreignKey: rule.foreignKey,
+      indexKey: `${rule.childType}:${rule.foreignKey}`,
+    }
+    if (!CHILD_RULE_REFS[rule.childType]) {
+      CHILD_RULE_REFS[rule.childType] = []
+    }
+    CHILD_RULE_REFS[rule.childType]!.push(ref)
+  }
+}
+
+function createEmptyReverseIndex(): ReverseIndex {
+  const index: ReverseIndex = new Map()
+  for (const rules of Object.values(CASCADE_RULES) as {
+    childType: ObjectType
+    foreignKey: string
+  }[][]) {
+    for (const rule of rules) {
+      const key: ReverseIndexKey = `${rule.childType}:${rule.foreignKey}`
+      if (!index.has(key)) {
+        index.set(key, new Map())
+      }
+    }
+  }
+  return index
+}
+
+// Add a child object to the reverse index
+function reverseIndexAdd(
+  index: ReverseIndex,
+  obj: PoolObject
+): void {
+  const refs = CHILD_RULE_REFS[obj.objectType]
+  if (!refs) return
+  const raw = obj as unknown as Record<string, unknown>
+  for (const ref of refs) {
+    const parentId = raw[ref.foreignKey] as string | null | undefined
+    if (!parentId) continue
+    const parentMap = index.get(ref.indexKey)
+    if (!parentMap) continue
+    let childSet = parentMap.get(parentId)
+    if (!childSet) {
+      childSet = new Set()
+      parentMap.set(parentId, childSet)
+    }
+    childSet.add(obj.id)
+  }
+}
+
+// Remove a child object from the reverse index.
+// oldObj is the previous version of the object (needed to get the old FK value).
+function reverseIndexRemove(
+  index: ReverseIndex,
+  obj: PoolObject
+): void {
+  const refs = CHILD_RULE_REFS[obj.objectType]
+  if (!refs) return
+  const raw = obj as unknown as Record<string, unknown>
+  for (const ref of refs) {
+    const parentId = raw[ref.foreignKey] as string | null | undefined
+    if (!parentId) continue
+    const parentMap = index.get(ref.indexKey)
+    if (!parentMap) continue
+    const childSet = parentMap.get(parentId)
+    if (childSet) {
+      childSet.delete(obj.id)
+      if (childSet.size === 0) parentMap.delete(parentId)
+    }
+  }
+}
+
+// Look up child IDs for a given parent in the reverse index
+function reverseIndexChildren(
+  index: ReverseIndex,
+  childType: ObjectType,
+  foreignKey: string,
+  parentId: string
+): Set<string> {
+  const key: ReverseIndexKey = `${childType}:${foreignKey}`
+  return index.get(key)?.get(parentId) ?? new Set()
+}
+
 export type ReadTransform = <T extends ObjectType>(
   type: T,
   obj: ObjectTypeMap[T]
@@ -105,6 +209,9 @@ export type ReadTransform = <T extends ObjectType>(
 export const useObjectPoolStore = defineStore('objectPool', () => {
   // Storage: Map<ObjectType, Map<id, object>>
   const objects = ref(createEmptyStorage())
+
+  // Reverse index for O(1) cascade lookups: childType:foreignKey → parentId → Set<childId>
+  const cascadeIndex = createEmptyReverseIndex()
 
   // Transform applied to all consumer-facing reads (get/getAll/getMany).
   // No-op by default; will become the decryption layer.
@@ -222,6 +329,9 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
 
       // Update pool object if newer or doesn't exist
       if (!existing || isNewer(obj.updatedAt, existing.updatedAt)) {
+        // Update reverse index: remove old FK entry (if any), add new one
+        if (existing) reverseIndexRemove(cascadeIndex, existing)
+        reverseIndexAdd(cascadeIndex, obj)
         typeMap.set(obj.id, obj)
         imported.push(obj)
         changed = true
@@ -413,6 +523,9 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   ): void {
     const typeMap = objects.value.get(object.objectType)
     if (typeMap) {
+      const existing = typeMap.get(object.id)
+      if (existing) reverseIndexRemove(cascadeIndex, existing)
+      reverseIndexAdd(cascadeIndex, object)
       typeMap.set(object.id, object)
       if (isTemp) {
         tempObjectIds.add(object.id)
@@ -427,6 +540,8 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   function remove(objectType: ObjectType, objectId: string): void {
     const typeMap = objects.value.get(objectType)
     if (typeMap) {
+      const existing = typeMap.get(objectId)
+      if (existing) reverseIndexRemove(cascadeIndex, existing)
       typeMap.delete(objectId)
     }
     // Also clear any pending updates and temp tracking
@@ -458,6 +573,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       const obj = typeMap.get(id)
       if (obj) {
         removed.push(obj)
+        reverseIndexRemove(cascadeIndex, obj)
         typeMap.delete(id)
         const cascadeKey = `${type}:${id}`
         const cascadePending = pendingUpdates.value.get(cascadeKey)
@@ -469,21 +585,17 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
         typesChanged.add(type)
       }
 
-      // Find and remove children
+      // Find and remove children using the reverse index for O(1) lookups
       const rules = CASCADE_RULES[type]
       if (!rules) return
 
       for (const rule of rules) {
-        const childMap = objects.value.get(rule.childType)
-        if (!childMap) continue
-
-        for (const [childId, child] of childMap) {
-          if (
-            (child as unknown as Record<string, unknown>)[rule.foreignKey] ===
-            id
-          ) {
-            removeRecursive(rule.childType, childId)
-          }
+        // Snapshot child IDs before iterating — removeRecursive modifies the index
+        const childIds = Array.from(
+          reverseIndexChildren(cascadeIndex, rule.childType, rule.foreignKey, id)
+        )
+        for (const childId of childIds) {
+          removeRecursive(rule.childType, childId)
         }
       }
     }
@@ -517,6 +629,13 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       if (!keepSet.has(type)) {
         objects.value.get(type)?.clear()
         clearedTypes.push(type)
+      }
+    }
+    // Clear reverse index entries for child types that were cleared
+    for (const [indexKey, parentMap] of cascadeIndex) {
+      const childType = indexKey.split(':')[0] as ObjectType
+      if (!keepSet.has(childType)) {
+        parentMap.clear()
       }
     }
     // Clear pending updates and temp tracking for cleared types
@@ -610,17 +729,21 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     // All objects to insert: server data + preserved temp objects
     const allObjects: PoolObject[] = [...poolObjects, ...tempObjectsToPreserve]
 
-    // Clear all type maps and insert the first chunk synchronously so that
-    // consumers never observe an empty pool — the clear and first insertion
-    // happen in the same call frame.
+    // Clear all type maps and rebuild the reverse index, then insert the first
+    // chunk synchronously so that consumers never observe an empty pool — the
+    // clear and first insertion happen in the same call frame.
     for (const typeMap of objects.value.values()) {
       typeMap.clear()
+    }
+    for (const parentMap of cascadeIndex.values()) {
+      parentMap.clear()
     }
     const firstChunk = allObjects.slice(0, REPLACE_CHUNK_SIZE)
     for (const obj of firstChunk) {
       const typeMap = objects.value.get(obj.objectType)
       if (typeMap) {
         typeMap.set(obj.id, obj)
+        reverseIndexAdd(cascadeIndex, obj)
       }
     }
 
@@ -646,6 +769,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
           const typeMap = objects.value.get(obj.objectType)
           if (typeMap) {
             typeMap.set(obj.id, obj)
+            reverseIndexAdd(cascadeIndex, obj)
           }
         }
 
@@ -686,6 +810,9 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     pendingIdToKey.clear()
     tempObjectIds.clear()
     getAllCache.clear()
+    for (const parentMap of cascadeIndex.values()) {
+      parentMap.clear()
+    }
   }
 
   return {

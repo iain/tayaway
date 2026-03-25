@@ -1152,6 +1152,72 @@ describe('objectPool store', () => {
         expect(pool.getAll(type)).toHaveLength(0)
       }
     })
+
+    it('keeps reverse index consistent after remove so re-added children are found', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([
+        makeEvent(),
+        makeRsvp({ id: 'r1', eventId: 'evt-1' }),
+        makeRsvp({ id: 'r2', eventId: 'evt-1' }),
+      ])
+
+      // Remove one child and re-add it
+      pool.remove('rsvp', 'r1')
+      pool.importObjects([makeRsvp({ id: 'r1', eventId: 'evt-1' })])
+
+      pool.cascadeRemove('event', 'evt-1')
+
+      expect(pool.get('rsvp', 'r1')).toBeUndefined()
+      expect(pool.get('rsvp', 'r2')).toBeUndefined()
+    })
+
+    it('keeps reverse index consistent after set so children added via set are cascaded', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeEvent()])
+      pool.set(makeRsvp({ id: 'r1', eventId: 'evt-1' }))
+      pool.set(makeRsvp({ id: 'r2', eventId: 'evt-1' }))
+
+      pool.cascadeRemove('event', 'evt-1')
+
+      expect(pool.get('rsvp', 'r1')).toBeUndefined()
+      expect(pool.get('rsvp', 'r2')).toBeUndefined()
+    })
+
+    it('rebuilds reverse index correctly after replaceObjects', async () => {
+      const pool = useObjectPoolStore()
+      // First populate with some objects
+      pool.importObjects([
+        makeEvent({ id: 'evt-old' }),
+        makeRsvp({ id: 'r-old', eventId: 'evt-old' }),
+      ])
+
+      // Replace with a different set
+      await pool.replaceObjects([
+        makeEvent({ id: 'evt-1' }),
+        makeRsvp({ id: 'r1', eventId: 'evt-1' }),
+        makeRsvp({ id: 'r2', eventId: 'evt-1' }),
+      ])
+
+      pool.cascadeRemove('event', 'evt-1')
+
+      expect(pool.get('rsvp', 'r1')).toBeUndefined()
+      expect(pool.get('rsvp', 'r2')).toBeUndefined()
+      // Old objects should be gone from the replace
+      expect(pool.get('rsvp', 'r-old')).toBeUndefined()
+    })
+
+    it('handles large numbers of children with O(1) index — all children removed', () => {
+      const pool = useObjectPoolStore()
+      const childCount = 200
+      const children = Array.from({ length: childCount }, (_, i) =>
+        makeRsvp({ id: `r${i}`, eventId: 'evt-1' })
+      )
+      pool.importObjects([makeEvent(), ...children])
+
+      pool.cascadeRemove('event', 'evt-1')
+
+      expect(pool.getAll('rsvp')).toHaveLength(0)
+    })
   })
 
   describe('importObjects reactivity debounce', () => {
