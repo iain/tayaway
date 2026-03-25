@@ -6,7 +6,7 @@ require "spec_helper"
 RSpec.describe "Logger JSON formatter" do
   let(:production_formatter) do
     proc { |severity, time, _progname, msg|
-      JSON.generate({ timestamp: time.utc.iso8601(3), level: severity, message: msg }) + "\n"
+      JSON.generate({ timestamp: time.utc.iso8601(3), level: severity, message: msg.to_s }) + "\n"
     }
   end
 
@@ -46,5 +46,13 @@ RSpec.describe "Logger JSON formatter" do
     lines = output.lines
     expect(lines.length).to eq(1)
     expect { JSON.parse(lines.first) }.not_to raise_error
+  end
+
+  it "serializes an Exception message via .to_s" do
+    error = StandardError.new("something broke")
+    output = production_formatter.call("ERROR", time, nil, error)
+    parsed = JSON.parse(output)
+
+    expect(parsed["message"]).to eq("something broke")
   end
 end
