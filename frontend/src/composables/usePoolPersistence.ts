@@ -144,15 +144,17 @@ export function usePoolPersistence() {
         }
       }
 
-      if (!anyLoaded) return
-
-      // Phase 4: Restore pending updates and sync timestamp after all objects load.
+      // Phase 4: Restore pending updates regardless of whether cached objects
+      // were found — offline changes must survive app restarts even if the
+      // object cache was empty.
       if (!wsStore.hasSynced) {
         const pendingUpdates = await poolDb.loadPendingUpdatesFromDb()
         if (pendingUpdates.size > 0) {
           pool.restorePendingUpdates(pendingUpdates)
         }
       }
+
+      if (!anyLoaded) return
 
       wsStore.hasCachedData = true
 
