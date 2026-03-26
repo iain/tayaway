@@ -179,6 +179,7 @@ deleted_items      id (UUID), workspace_id, object_type (STRING), object_id (UUI
 - `POST /logout` — End session (requires auth)
 - `POST /ws-ticket` — Get single-use WebSocket JWT (requires auth)
 - `GET /sessions` — List user's sessions (requires auth)
+- `DELETE /sessions` — Delete all sessions except the current one (requires auth)
 - `DELETE /sessions/:id` — Delete a session (requires auth)
 
 **Events (`/api/events`)** — All require authentication + workspace membership

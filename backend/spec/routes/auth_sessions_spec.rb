@@ -44,6 +44,44 @@ RSpec.describe "Auth sessions endpoints" do
     end
   end
 
+  describe "DELETE /api/auth/sessions" do
+    it "returns 401 without auth" do
+      delete "/api/auth/sessions"
+
+      expect(last_response.status).to eq(401)
+    end
+
+    it "deletes all other sessions except the current one" do
+      other_session1 = TestFactories.session(user: user)
+      other_session2 = TestFactories.session(user: user)
+
+      delete "/api/auth/sessions", {}, auth_headers
+
+      expect(last_response.status).to eq(200)
+      body = JSON.parse(last_response.body)
+      expect(body["message"]).to eq("All other sessions ended successfully")
+
+      expect(DB[:sessions].where(id: session[:id]).count).to eq(1)
+      expect(DB[:sessions].where(id: other_session1[:id]).count).to eq(0)
+      expect(DB[:sessions].where(id: other_session2[:id]).count).to eq(0)
+    end
+
+    it "does not delete sessions belonging to other users" do
+      other_user = TestFactories.user
+      other_user_session = TestFactories.session(user: other_user)
+
+      delete "/api/auth/sessions", {}, auth_headers
+
+      expect(DB[:sessions].where(id: other_user_session[:id]).count).to eq(1)
+    end
+
+    it "succeeds with no other sessions" do
+      delete "/api/auth/sessions", {}, auth_headers
+
+      expect(last_response.status).to eq(200)
+    end
+  end
+
   describe "DELETE /api/auth/sessions/:id" do
     it "returns 401 without auth" do
       delete "/api/auth/sessions/#{SecureRandom.uuid}"

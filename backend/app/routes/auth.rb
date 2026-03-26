@@ -70,6 +70,12 @@ class App
           end
         }
       end
+
+      r.delete do
+        DB[:sessions].where(user_id: user.id).exclude(id: session.id).delete
+        response.status = 200
+        { message: "All other sessions ended successfully" }
+      end
     end
 
     r.on String do |session_id|

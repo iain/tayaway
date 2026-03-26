@@ -24,6 +24,25 @@ const pendingRevokes = ref<
   Map<string, { session: Session; timer: ReturnType<typeof setTimeout> }>
 >(new Map())
 
+const otherSessions = computed(() =>
+  sessions.value.filter((s) => !s.current)
+)
+
+const revokeAllLoading = ref(false)
+
+async function endAllOtherSessions() {
+  revokeAllLoading.value = true
+  try {
+    await api.delete('/auth/sessions')
+    sessions.value = sessions.value.filter((s) => s.current)
+    notifications.showInfo('All other sessions signed out')
+  } catch {
+    // Error notification handled by api client
+  } finally {
+    revokeAllLoading.value = false
+  }
+}
+
 async function fetchSessions() {
   loading.value = true
   error.value = null
@@ -193,6 +212,21 @@ onUnmounted(() => {
             </button>
           </li>
         </ul>
+
+        <div
+          v-if="!loading && !error && otherSessions.length > 0"
+          class="pt-2"
+        >
+          <button
+            type="button"
+            :disabled="revokeAllLoading"
+            class="text-sm font-medium text-red-600 transition-colors hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
+            data-testid="revoke-all-sessions-button"
+            @click="endAllOtherSessions"
+          >
+            {{ revokeAllLoading ? 'Signing out...' : 'Sign out all other sessions' }}
+          </button>
+        </div>
 
         <p
           v-if="hasGeolocation"
