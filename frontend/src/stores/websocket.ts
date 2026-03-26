@@ -253,9 +253,22 @@ export const useWebSocketStore = defineStore('websocket', () => {
     const { useAuthStore } = await import('./auth')
     const authStore = useAuthStore()
     authStore.$reset()
+
+    // Full cleanup: clear pool, command queue, and persisted cache
+    const { useObjectPoolStore } = await import('./objectPool')
+    const { useCommandQueueStore } = await import('./commandQueue')
+    const { useWorkspaceStore } = await import('./workspace')
+    const poolDb = await import('@/api/poolDb')
+
+    const commandQueue = useCommandQueueStore()
+    await commandQueue.reset()
+    await poolDb.clearAll()
+    useObjectPoolStore().$reset()
+    useWorkspaceStore().$reset()
+
     disconnect()
     const { default: router } = await import('@/router')
-    await router.push({ name: 'login' })
+    await router.push({ name: 'login', query: { reason: 'session_revoked' } })
   }
 
   function handleAuthenticated(message: AuthenticatedMessage): void {
