@@ -16,6 +16,11 @@ const sessions = ref<Session[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 
+const hasOtherSessions = computed(() =>
+  sessions.value.some((s) => !s.current)
+)
+const revokingAll = ref(false)
+
 const hasGeolocation = computed(() =>
   sessions.value.some((s) => s.city || s.country)
 )
@@ -76,6 +81,19 @@ async function executeRevoke(id: string) {
     await api.delete(`/auth/sessions/${id}`)
   } catch {
     // Error notification handled by api client
+  }
+}
+
+async function endAllOtherSessions() {
+  revokingAll.value = true
+  try {
+    await api.delete('/auth/sessions')
+    sessions.value = sessions.value.filter((s) => s.current)
+    notifications.showInfo('All other sessions revoked')
+  } catch {
+    // Error notification handled by api client
+  } finally {
+    revokingAll.value = false
   }
 }
 
@@ -148,13 +166,24 @@ onUnmounted(() => {
           {{ error }}
         </div>
 
-        <ul
-          v-else
-          :class="[
-            'divide-y divide-gray-200 dark:divide-stone-700',
-            !bare && 'border-t border-gray-200 dark:border-stone-700',
-          ]"
-        >
+        <template v-else>
+          <div v-if="hasOtherSessions" class="flex justify-end">
+            <button
+              type="button"
+              :disabled="revokingAll"
+              class="rounded-md px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
+              @click="endAllOtherSessions"
+            >
+              {{ revokingAll ? 'Revoking…' : 'Sign out all other sessions' }}
+            </button>
+          </div>
+
+          <ul
+            :class="[
+              'divide-y divide-gray-200 dark:divide-stone-700',
+              !bare && 'border-t border-gray-200 dark:border-stone-700',
+            ]"
+          >
           <li
             v-for="session in sessions"
             :key="session.id"
@@ -192,7 +221,8 @@ onUnmounted(() => {
               Revoke
             </button>
           </li>
-        </ul>
+          </ul>
+        </template>
 
         <p
           v-if="hasGeolocation"

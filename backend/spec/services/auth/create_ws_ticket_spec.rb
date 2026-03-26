@@ -7,7 +7,8 @@ RSpec.describe Auth::CreateWsTicket do
   it "returns a JWT ticket for a valid user" do
     user = TestFactories.user
 
-    result = described_class.call(user_id: user[:id])
+    session = TestFactories.session(user: user)
+    result = described_class.call(user_id: user[:id], session_id: session[:id])
 
     expect(result.success?).to be true
     expect(result.value![:ticket]).to be_a(String)

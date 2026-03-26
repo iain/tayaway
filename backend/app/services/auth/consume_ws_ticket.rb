@@ -16,7 +16,10 @@ module Auth
       extend T::Sig
       include Result::Methods
 
-      sig { params(ticket_jwt: T.nilable(String)).returns(Result[T::Hash[Symbol, UUID], ServiceError]) }
+      sig do
+        params(ticket_jwt: T.nilable(String))
+          .returns(Result[T::Hash[Symbol, T.any(UUID, T.nilable(String))], ServiceError])
+      end
       def call(ticket_jwt:)
         decode_jwt(ticket_jwt)
           .bind { |raw_token| claim_ticket(raw_token) }
@@ -39,7 +42,9 @@ module Auth
       # Atomically find and mark the ticket as used in a single UPDATE.
       # This prevents race conditions where two concurrent handshakes
       # could both consume the same ticket.
-      sig { params(raw_token: String).returns(Result[T::Hash[Symbol, UUID], ServiceError]) }
+      sig do
+        params(raw_token: String).returns(Result[T::Hash[Symbol, T.any(UUID, T.nilable(String))], ServiceError])
+      end
       def claim_ticket(raw_token)
         hashed = Auth::Token.digest(raw_token)
         now = Time.now
@@ -47,14 +52,20 @@ module Auth
         ticket = DB[:ws_tickets]
                  .where(token: hashed, used_at: nil)
                  .where(Sequel[:expires_at] > now)
-                 .returning(:user_id)
+                 .returning(:user_id, :session_id)
                  .update(used_at: now)
                  .first
 
         if ticket
-          T.cast(Success({ user_id: UUID.new(ticket[:user_id]) }), Result[T::Hash[Symbol, UUID], ServiceError])
+          T.cast(
+            Success({ user_id: UUID.new(ticket[:user_id]), session_id: ticket[:session_id]&.to_s }),
+            Result[T::Hash[Symbol, T.any(UUID, T.nilable(String))], ServiceError]
+          )
         else
-          T.cast(Failure(ServiceError.unauthorized("Invalid or expired ticket")), Result[T::Hash[Symbol, UUID], ServiceError])
+          T.cast(
+            Failure(ServiceError.unauthorized("Invalid or expired ticket")),
+            Result[T::Hash[Symbol, T.any(UUID, T.nilable(String))], ServiceError]
+          )
         end
       end
     end

@@ -223,6 +223,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
       case 'pong':
         handlePong(message as unknown as { type: 'pong'; gitSha?: string })
         break
+      case 'session_revoked':
+        handleSessionRevoked()
+        break
       case 'error':
         console.warn('[WebSocket] Server error:', message.message)
         break
@@ -243,6 +246,16 @@ export const useWebSocketStore = defineStore('websocket', () => {
         })
       })
     }
+  }
+
+  async function handleSessionRevoked(): Promise<void> {
+    console.warn('[WebSocket] Session revoked by another device')
+    const { useAuthStore } = await import('./auth')
+    const authStore = useAuthStore()
+    authStore.$reset()
+    disconnect()
+    const { default: router } = await import('@/router')
+    await router.push({ name: 'login' })
   }
 
   function handleAuthenticated(message: AuthenticatedMessage): void {

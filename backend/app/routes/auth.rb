@@ -42,7 +42,7 @@ class App
     r.post do
       session = require_session
 
-      result = Auth::CreateWsTicket.call(user_id: session.user_id)
+      result = Auth::CreateWsTicket.call(user_id: session.user_id, session_id: session.id)
       handle_result(result)
     end
   end
@@ -69,6 +69,20 @@ class App
             s.to_api_hash.merge(current: s.id == session.id)
           end
         }
+      end
+
+      r.delete do
+        deleted_ids = DB[:sessions]
+                      .where(user_id: user.id.to_s)
+                      .exclude(id: session.id.to_s)
+                      .returning(:id)
+                      .delete
+                      .map { |row| row[:id] }
+
+        Websocket::ConnectionManager.instance.close_sessions(deleted_ids)
+
+        response.status = 200
+        { message: "All other sessions have been revoked" }
       end
     end
 
