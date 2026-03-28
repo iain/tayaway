@@ -48,8 +48,6 @@ class App
           next { error: "Access denied" }
         end
 
-        lat = r.params["latitude"]
-        lng = r.params["longitude"]
         result = Events::Create.call(
           workspace_id: workspace_id,
           user_id: user.id,
@@ -59,8 +57,8 @@ class App
           start_date: r.params["start_date"]&.strip,
           end_date: r.params["end_date"]&.strip,
           location_name: r.params["location_name"]&.strip,
-          latitude: lat && lat != "" ? lat.to_f : nil,
-          longitude: lng && lng != "" ? lng.to_f : nil
+          latitude: ValidationLimits.parse_coordinate(r.params["latitude"]),
+          longitude: ValidationLimits.parse_coordinate(r.params["longitude"])
         )
         handle_result(result, success_status: 201)
       end
@@ -92,8 +90,6 @@ class App
 
         # PUT /api/events/:id - Update event (owner only)
         r.put do
-          lat = r.params["latitude"]
-          lng = r.params["longitude"]
           result = Events::Update.call(
             event_id: event.id,
             current_user_id: user.id,
@@ -102,8 +98,8 @@ class App
             start_date: r.params["start_date"]&.strip,
             end_date: r.params["end_date"]&.strip,
             location_name: r.params["location_name"]&.strip,
-            latitude: lat && lat != "" ? lat.to_f : nil,
-            longitude: lng && lng != "" ? lng.to_f : nil
+            latitude: ValidationLimits.parse_coordinate(r.params["latitude"]),
+            longitude: ValidationLimits.parse_coordinate(r.params["longitude"])
           )
           handle_result(result)
         end

@@ -41,6 +41,7 @@ module Users
           .bind { |user| authorize(user, current_user_id) }
           .bind { |user| validate_name(name, user) }
           .bind { |user| validate_birthday(birthday, user) }
+          .bind { |user| validate_coordinates(latitude, longitude, user) }
           .bind { |user| validate_iban(iban, user) }
           .bind { |user| validate_text_lengths(phone_number, location_name, user) }
           .bind { |user| update_profile(user, name, phone_number, birthday, location_name, latitude, longitude, iban) }
@@ -84,11 +85,30 @@ module Users
       sig { params(birthday: T.nilable(String), user: User).returns(Result[User, ServiceError]) }
       def validate_birthday(birthday, user)
         if birthday && !birthday.empty?
-          Date.parse(birthday)
+          parsed = Date.parse(birthday)
+          if parsed < ValidationLimits::BIRTHDAY_MIN
+            return T.cast(Failure(ServiceError.validation("Birthday is too far in the past")), Result[User, ServiceError])
+          end
+          if parsed > Date.today
+            return T.cast(Failure(ServiceError.validation("Birthday cannot be in the future")), Result[User, ServiceError])
+          end
         end
         T.cast(Success(user), Result[User, ServiceError])
       rescue Date::Error
         T.cast(Failure(ServiceError.validation("Invalid birthday format")), Result[User, ServiceError])
+      end
+
+      sig { params(latitude: T.nilable(Float), longitude: T.nilable(Float), user: User).returns(Result[User, ServiceError]) }
+      def validate_coordinates(latitude, longitude, user)
+        if latitude && !ValidationLimits::LATITUDE_RANGE.cover?(latitude)
+          return T.cast(Failure(ServiceError.validation("Latitude must be between -90 and 90")), Result[User, ServiceError])
+        end
+
+        if longitude && !ValidationLimits::LONGITUDE_RANGE.cover?(longitude)
+          return T.cast(Failure(ServiceError.validation("Longitude must be between -180 and 180")), Result[User, ServiceError])
+        end
+
+        T.cast(Success(user), Result[User, ServiceError])
       end
 
       sig { params(iban: T.nilable(String), user: User).returns(Result[User, ServiceError]) }

@@ -408,6 +408,67 @@ RSpec.describe Users::UpdateProfile do
     expect(updated_member[:longitude]).to be_nil
   end
 
+  it "returns failure when latitude is out of range" do
+    user = TestFactories.user(name: "Test")
+
+    result = described_class.call(
+      user_id: user[:id],
+      current_user_id: user[:id],
+      name: "Test",
+      location_name: "Nowhere",
+      latitude: 91.0,
+      longitude: 0.0
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Latitude must be between -90 and 90")
+  end
+
+  it "returns failure when longitude is out of range" do
+    user = TestFactories.user(name: "Test")
+
+    result = described_class.call(
+      user_id: user[:id],
+      current_user_id: user[:id],
+      name: "Test",
+      location_name: "Nowhere",
+      latitude: 0.0,
+      longitude: 181.0
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Longitude must be between -180 and 180")
+  end
+
+  it "returns failure for birthday too far in the past" do
+    user = TestFactories.user(name: "Test")
+
+    result = described_class.call(
+      user_id: user[:id],
+      current_user_id: user[:id],
+      name: "Test",
+      birthday: "1899-12-31"
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Birthday is too far in the past")
+  end
+
+  it "returns failure for birthday in the future" do
+    user = TestFactories.user(name: "Test")
+    future = (Date.today + 1).iso8601
+
+    result = described_class.call(
+      user_id: user[:id],
+      current_user_id: user[:id],
+      name: "Test",
+      birthday: future
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Birthday cannot be in the future")
+  end
+
   it "logs info when profile is updated" do
     workspace = TestFactories.workspace
     user = TestFactories.user(name: "Test")

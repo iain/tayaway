@@ -24,5 +24,23 @@ module Events
 
       T.cast(Success(true), Result[TrueClass, ServiceError])
     end
+
+    sig do
+      params(
+        latitude: T.nilable(Float),
+        longitude: T.nilable(Float)
+      ).returns(Result[TrueClass, ServiceError])
+    end
+    def validate_coordinates(latitude, longitude)
+      if latitude && !ValidationLimits::LATITUDE_RANGE.cover?(latitude)
+        return T.cast(Failure(ServiceError.validation("Latitude must be between -90 and 90")), Result[TrueClass, ServiceError])
+      end
+
+      if longitude && !ValidationLimits::LONGITUDE_RANGE.cover?(longitude)
+        return T.cast(Failure(ServiceError.validation("Longitude must be between -180 and 180")), Result[TrueClass, ServiceError])
+      end
+
+      T.cast(Success(true), Result[TrueClass, ServiceError])
+    end
   end
 end

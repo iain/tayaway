@@ -38,6 +38,7 @@ module Events
              .bind { |event| Event.authorize_owner(event, current_user_id) }
              .bind { |event| validate_name_with_event(name, event) }
              .bind { |event| validate_text_lengths(description, location_name).fmap { event } }
+             .bind { |event| validate_coordinates(latitude, longitude).fmap { event } }
              .bind { |event| validate_dates(start_date, end_date).fmap { |dates| [event, dates] } }
              .bind { |(event, dates)| check_no_resolved_poll_when_clearing(event, dates).fmap { [event, dates] } }
              .bind do |(event, dates)|

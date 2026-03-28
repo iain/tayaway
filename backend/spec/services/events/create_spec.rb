@@ -155,6 +155,61 @@ RSpec.describe Events::Create do
     expect(DB[:events].where(id: client_id).count).to eq(1)
   end
 
+  it "creates event with valid coordinates" do
+    user = TestFactories.user
+    workspace = TestFactories.workspace
+
+    result = described_class.call(
+      workspace_id: workspace[:id],
+      user_id: user[:id],
+      name: "Located Event",
+      description: nil,
+      location_name: "Berlin",
+      latitude: 52.52,
+      longitude: 13.405
+    )
+
+    expect(result.success?).to be true
+    event = result.value![:objects].find { |o| o[:objectType] == "event" }
+    expect(event[:locationName]).to eq("Berlin")
+  end
+
+  it "returns failure when latitude is out of range" do
+    user = TestFactories.user
+    workspace = TestFactories.workspace
+
+    result = described_class.call(
+      workspace_id: workspace[:id],
+      user_id: user[:id],
+      name: "Event",
+      description: nil,
+      location_name: "Nowhere",
+      latitude: 91.0,
+      longitude: 0.0
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Latitude must be between -90 and 90")
+  end
+
+  it "returns failure when longitude is out of range" do
+    user = TestFactories.user
+    workspace = TestFactories.workspace
+
+    result = described_class.call(
+      workspace_id: workspace[:id],
+      user_id: user[:id],
+      name: "Event",
+      description: nil,
+      location_name: "Nowhere",
+      latitude: 0.0,
+      longitude: -181.0
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Longitude must be between -180 and 180")
+  end
+
   it "handles TOCTOU race: returns existing event when concurrent insert wins" do
     user = TestFactories.user
     workspace = TestFactories.workspace

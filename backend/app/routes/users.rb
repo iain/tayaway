@@ -44,8 +44,8 @@ class App
             phone_number: r.params["phoneNumber"],
             birthday: r.params["birthday"],
             location_name: r.params["locationName"],
-            latitude: (lat = r.params["latitude"]; lat && lat != "" ? lat.to_f : nil),
-            longitude: (lng = r.params["longitude"]; lng && lng != "" ? lng.to_f : nil),
+            latitude: ValidationLimits.parse_coordinate(r.params["latitude"]),
+            longitude: ValidationLimits.parse_coordinate(r.params["longitude"]),
             iban: r.params["iban"]
           )
           handle_result(result)
