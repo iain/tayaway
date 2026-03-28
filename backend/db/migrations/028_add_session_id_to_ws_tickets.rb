@@ -2,8 +2,10 @@
 
 Sequel.migration do
   up do
-    # Delete all sessions so existing ws_tickets (which may lack session_id) are
-    # cascade-deleted. Users will need to log in again after this deploy.
+    # Delete all ws_tickets and sessions. ws_tickets still FK→users at this point,
+    # so deleting sessions won't cascade to them — clear both explicitly.
+    # Users will need to log in again after this deploy.
+    run "DELETE FROM ws_tickets"
     run "DELETE FROM sessions"
 
     alter_table(:ws_tickets) do
