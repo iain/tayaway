@@ -135,7 +135,7 @@ users              id (UUID), email (CITEXT), name, phone_number (TEXT nullable)
 sessions           id, user_id, token, expires_at (30 days)
 login_link_tokens  id, user_id, token, email, expires_at (15 min), used_at
 email_change_tokens id, user_id, token (hashed), email (CITEXT — current email), new_email (CITEXT), expires_at (15 min), used_at, timestamps
-ws_tickets         id, user_id, ticket (JWT), used_at
+ws_tickets         id, session_id (FK sessions cascade, NOT NULL), token (hashed), expires_at, used_at, created_at
 
 workspaces              id, name, timestamps
 workspace_memberships   id, workspace_id, user_id, role (owner/admin/member), unique(workspace_id, user_id)

@@ -8,7 +8,7 @@ class WsTicket < T::Struct
   EXPIRY_SECONDS = 30
 
   const :id, UUID
-  const :user_id, UUID
+  const :session_id, UUID
   const :token, String
   const :expires_at, Time
   const :used_at, T.nilable(Time)
@@ -32,7 +32,7 @@ class WsTicket < T::Struct
     def from_row(row)
       new(
         id: UUID.new(row[:id]),
-        user_id: UUID.new(row[:user_id]),
+        session_id: UUID.new(row[:session_id]),
         token: row[:token],
         expires_at: row[:expires_at],
         used_at: row[:used_at],

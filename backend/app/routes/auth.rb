@@ -42,7 +42,7 @@ class App
     r.post do
       session = require_session
 
-      result = Auth::CreateWsTicket.call(user_id: session.user_id, session_id: session.id)
+      result = Auth::CreateWsTicket.call(session_id: session.id)
       handle_result(result)
     end
   end

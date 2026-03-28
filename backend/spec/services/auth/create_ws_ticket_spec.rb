@@ -4,11 +4,11 @@
 require "spec_helper"
 
 RSpec.describe Auth::CreateWsTicket do
-  it "returns a JWT ticket for a valid user" do
+  it "returns a JWT ticket for a valid session" do
     user = TestFactories.user
-
     session = TestFactories.session(user: user)
-    result = described_class.call(user_id: user[:id], session_id: session[:id])
+
+    result = described_class.call(session_id: session[:id])
 
     expect(result.success?).to be true
     expect(result.value![:ticket]).to be_a(String)
@@ -17,7 +17,8 @@ RSpec.describe Auth::CreateWsTicket do
     decoded = Auth::Token.decode_ws_ticket(result.value![:ticket])
     expect(decoded[:token]).to be_a(String)
 
-    # Verify ticket was stored with hashed token
-    expect(DB[:ws_tickets].where(user_id: user[:id]).count).to eq(1)
+    # Verify ticket was stored with session_id
+    ticket = DB[:ws_tickets].where(session_id: session[:id]).first
+    expect(ticket).not_to be_nil
   end
 end
