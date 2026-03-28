@@ -42,7 +42,7 @@ class App
     r.post do
       session = require_session
 
-      result = Auth::CreateWsTicket.call(user_id: session.user_id)
+      result = Auth::CreateWsTicket.call(session_id: session.id)
       handle_result(result)
     end
   end
@@ -69,6 +69,11 @@ class App
             s.to_api_hash.merge(current: s.id == session.id)
           end
         }
+      end
+
+      r.delete do
+        result = Auth::RevokeOtherSessions.call(user_id: user.id, current_session_id: session.id)
+        handle_result(result)
       end
     end
 

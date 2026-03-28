@@ -852,7 +852,7 @@ test.describe('Chore Rosters Feature', () => {
 
       const workloadHeaders = page
         .locator('h2', { hasText: 'Workload' })
-        .locator('..')
+        .locator('../..')
         .locator('thead th')
       const gridHeaders = page.locator('.chore-col')
 

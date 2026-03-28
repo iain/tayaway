@@ -1,5 +1,6 @@
 import { useNotificationsStore, useObjectPoolStore } from '@/stores'
 import type { PoolObject, ObjectType } from '@/types/pool'
+import { handleSessionExpired } from '@/api/sessionExpired'
 
 export interface ApiResponse<T> {
   data: T
@@ -136,6 +137,15 @@ class ApiClient {
     })
 
     if (!response.ok) {
+      // Redirect to login on 401 for non-auth endpoints
+      const AUTH_PATHS = ['/auth/login-link', '/auth/verify', '/auth/me']
+      if (
+        response.status === 401 &&
+        !AUTH_PATHS.some((p) => path.startsWith(p))
+      ) {
+        handleSessionExpired()
+      }
+
       let serverMessage: string | undefined
       try {
         const body = (await response.json()) as unknown

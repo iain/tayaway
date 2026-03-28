@@ -7,17 +7,17 @@ RSpec.describe WsTicket do
   describe ".find_valid" do
     it "returns a ticket matching the hashed token" do
       user = TestFactories.user
-      result = TestFactories.ws_ticket(user: user)
+      session = TestFactories.session(user: user)
+      result = TestFactories.ws_ticket(session: session)
 
       ticket = described_class.find_valid(Auth::Token.digest(result.token))
 
       expect(ticket).not_to be_nil
-      expect(ticket.user_id.to_s).to eq(user[:id])
+      expect(ticket.session_id.to_s).to eq(session[:id])
     end
 
     it "returns nil for an expired ticket" do
-      user = TestFactories.user
-      result = TestFactories.ws_ticket(user: user, expires_at: Time.now - 60)
+      result = TestFactories.ws_ticket(expires_at: Time.now - 60)
 
       ticket = described_class.find_valid(Auth::Token.digest(result.token))
 
@@ -25,8 +25,7 @@ RSpec.describe WsTicket do
     end
 
     it "returns nil for an already-used ticket" do
-      user = TestFactories.user
-      result = TestFactories.ws_ticket(user: user, used_at: Time.now)
+      result = TestFactories.ws_ticket(used_at: Time.now)
 
       ticket = described_class.find_valid(Auth::Token.digest(result.token))
 

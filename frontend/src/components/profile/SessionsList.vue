@@ -6,6 +6,7 @@ import type { Session, SessionsResponse } from '@/types'
 import { useNotificationsStore } from '@/stores'
 import BaseCard from '@/components/common/BaseCard.vue'
 import AppBadge from '@/components/common/AppBadge.vue'
+import TextButton from '@/components/common/TextButton.vue'
 
 defineProps<{
   bare?: boolean
@@ -15,6 +16,11 @@ const notifications = useNotificationsStore()
 const sessions = ref<Session[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
+
+const hasOtherSessions = computed(() =>
+  sessions.value.some((s) => !s.current)
+)
+const revokingAll = ref(false)
 
 const hasGeolocation = computed(() =>
   sessions.value.some((s) => s.city || s.country)
@@ -79,6 +85,23 @@ async function executeRevoke(id: string) {
   }
 }
 
+async function endAllOtherSessions() {
+  // Cancel any pending individual revokes to avoid racing with the bulk delete
+  for (const [, { timer }] of pendingRevokes.value) clearTimeout(timer)
+  pendingRevokes.value.clear()
+
+  revokingAll.value = true
+  try {
+    await api.delete('/auth/sessions')
+    sessions.value = sessions.value.filter((s) => s.current)
+    notifications.showInfo('All other sessions revoked')
+  } catch {
+    // Error notification handled by api client
+  } finally {
+    revokingAll.value = false
+  }
+}
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
     month: 'short',
@@ -101,6 +124,14 @@ function sessionContext(session: Session): string {
   }
   return parts.join(' \u2014 ')
 }
+
+defineExpose({
+  hasOtherSessions,
+  revokingAll,
+  loading,
+  error,
+  endAllOtherSessions,
+})
 
 onMounted(fetchSessions)
 
@@ -148,51 +179,52 @@ onUnmounted(() => {
           {{ error }}
         </div>
 
-        <ul
-          v-else
-          :class="[
-            'divide-y divide-gray-200 dark:divide-stone-700',
-            !bare && 'border-t border-gray-200 dark:border-stone-700',
-          ]"
-        >
-          <li
-            v-for="session in sessions"
-            :key="session.id"
-            class="flex items-center justify-between py-4"
+        <template v-else>
+          <ul
+            :class="[
+              'divide-y divide-gray-200 dark:divide-stone-700',
+              !bare && 'border-t border-gray-200 dark:border-stone-700',
+            ]"
           >
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2">
-                <p
-                  class="truncate text-sm font-medium text-gray-900 dark:text-white"
-                >
-                  {{ sessionContext(session) || 'Unknown device' }}
-                </p>
-                <AppBadge
-                  v-if="session.current"
-                  data-testid="current-session-badge"
-                  variant="green"
-                >
-                  Current session
-                </AppBadge>
-              </div>
-              <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
-                <span v-if="session.last_active_at"
-                  >Last active
-                  {{ formatRelativeDate(session.last_active_at) }}
-                  &middot; </span
-                >Expires {{ formatDate(session.expires_at) }}
-              </p>
-            </div>
-            <button
-              v-if="!session.current"
-              type="button"
-              class="ml-4 shrink-0 rounded-md px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-red-400 dark:hover:text-red-300"
-              @click="endSession(session.id)"
+            <li
+              v-for="session in sessions"
+              :key="session.id"
+              class="flex items-center justify-between py-4"
             >
-              Revoke
-            </button>
-          </li>
-        </ul>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <p
+                    class="truncate text-sm font-medium text-gray-900 dark:text-white"
+                  >
+                    {{ sessionContext(session) || 'Unknown device' }}
+                  </p>
+                  <AppBadge
+                    v-if="session.current"
+                    data-testid="current-session-badge"
+                    variant="green"
+                  >
+                    Current session
+                  </AppBadge>
+                </div>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
+                  <span v-if="session.last_active_at"
+                    >Last active
+                    {{ formatRelativeDate(session.last_active_at) }}
+                    &middot; </span
+                  >Expires {{ formatDate(session.expires_at) }}
+                </p>
+              </div>
+              <TextButton
+                v-if="!session.current"
+                variant="danger"
+                class="ml-4 shrink-0"
+                @click="endSession(session.id)"
+              >
+                Revoke
+              </TextButton>
+            </li>
+          </ul>
+        </template>
 
         <p
           v-if="hasGeolocation"

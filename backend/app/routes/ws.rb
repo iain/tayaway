@@ -23,9 +23,10 @@ class App
     end
 
     user_id = result.value![:user_id]
+    session_id = result.value![:session_id]
 
     r.websocket do |connection|
-      connection_id = Websocket::ConnectionManager.instance.register(connection, user_id)
+      connection_id = Websocket::ConnectionManager.instance.register(connection, user_id, session_id)
 
       # Load workspaces for user
       workspaces = Workspace.for_user(user_id)

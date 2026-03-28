@@ -3,7 +3,7 @@ import { computed } from 'vue'
 
 const props = withDefaults(
   defineProps<{
-    variant?: 'primary' | 'secondary'
+    variant?: 'primary' | 'secondary' | 'danger'
     disabled?: boolean
   }>(),
   { variant: 'primary' }
@@ -13,11 +13,16 @@ defineEmits<{
   click: []
 }>()
 
-const variantClass = computed(() =>
-  props.variant === 'secondary'
-    ? 'text-gray-500 hover:text-gray-700 dark:text-stone-400 dark:hover:text-stone-300'
-    : 'text-cyan-600 underline hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300'
-)
+const variantClasses: Record<string, string> = {
+  primary:
+    'text-cyan-600 underline hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300',
+  secondary:
+    'text-gray-500 hover:text-gray-700 dark:text-stone-400 dark:hover:text-stone-300',
+  danger:
+    'text-red-600 hover:text-red-500 dark:text-red-400 dark:hover:text-red-300',
+}
+
+const variantClass = computed(() => variantClasses[props.variant])
 </script>
 
 <template>

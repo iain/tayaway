@@ -4,6 +4,7 @@ import { useChoreRostersStore } from '@/stores/choreRosters'
 import PushPinIcon from '@/components/icons/PushPinIcon.vue'
 import type { PoolChoreAssignment, PoolMember } from '@/types/pool'
 import { getMemberNameFromMap } from '@/utils/member'
+import TextButton from '@/components/common/TextButton.vue'
 
 const props = defineProps<{
   assignment: PoolChoreAssignment
@@ -102,13 +103,9 @@ onBeforeUnmount(() => {
     />
 
     <div class="flex items-center justify-between">
-      <button
-        type="button"
-        class="cursor-pointer rounded text-xs text-red-600 transition-colors hover:text-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-red-400 dark:hover:text-red-300"
-        @click="handleRemove"
-      >
+      <TextButton variant="danger" @click="handleRemove">
         Remove
-      </button>
+      </TextButton>
       <button
         type="button"
         class="cursor-pointer rounded-md bg-rose-600 px-2 py-1 text-xs font-medium text-white transition-colors hover:bg-rose-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500"

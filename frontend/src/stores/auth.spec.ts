@@ -323,11 +323,21 @@ describe('auth store – initialize() with cached user (background validation)',
     vi.doMock('@/router', () => ({
       default: { push: mockRouterPush },
     }))
+
+    // Stub handleSessionExpired to avoid needing full store setup
+    vi.doMock('@/api/sessionExpired', () => ({
+      handleSessionExpired: async () => {
+        const { useAuthStore } = await import('./auth')
+        useAuthStore().$reset()
+        await mockRouterPush({ name: 'login', query: { reason: 'session_revoked' } })
+      },
+    }))
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
     vi.doUnmock('@/router')
+    vi.doUnmock('@/api/sessionExpired')
   })
 
   it('returns immediately from cache without awaiting the network', async () => {
@@ -368,7 +378,7 @@ describe('auth store – initialize() with cached user (background validation)',
 
     expect(store.user).toBeNull()
     expect(localStorage.getItem(AUTH_USER_KEY)).toBeNull()
-    expect(mockRouterPush).toHaveBeenCalledWith({ name: 'login' })
+    expect(mockRouterPush).toHaveBeenCalledWith({ name: 'login', query: { reason: 'session_revoked' } })
   })
 
   it('redirects to login when the background /me check returns 403', async () => {
@@ -388,7 +398,7 @@ describe('auth store – initialize() with cached user (background validation)',
     await new Promise((resolve) => setTimeout(resolve, 0))
 
     expect(store.user).toBeNull()
-    expect(mockRouterPush).toHaveBeenCalledWith({ name: 'login' })
+    expect(mockRouterPush).toHaveBeenCalledWith({ name: 'login', query: { reason: 'session_revoked' } })
   })
 
   it('keeps cached user when background /me check fails with a network error', async () => {

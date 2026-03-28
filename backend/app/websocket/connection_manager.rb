@@ -23,8 +23,8 @@ module Websocket
       @workspace_connections = T.let({}, T::Hash[String, T::Set[String]])
     end
 
-    sig { params(websocket: T.untyped, user_id: T.any(String, UUID)).returns(String) }
-    def register(websocket, user_id)
+    sig { params(websocket: T.untyped, user_id: T.any(String, UUID), session_id: T.nilable(String)).returns(String) }
+    def register(websocket, user_id, session_id = nil)
       connection_id = SecureRandom.uuid
       uid = user_id.to_s
       total = T.let(0, Integer)
@@ -32,7 +32,8 @@ module Websocket
         @connections[connection_id] = Connection.new(
           id: connection_id,
           websocket: websocket,
-          user_id: uid
+          user_id: uid,
+          session_id: session_id
         )
         total = @connections.size
       end
@@ -156,6 +157,30 @@ module Websocket
       end
     end
 
+    # Send a session_revoked message and close all connections tied to the given session IDs.
+    sig { params(session_ids: T::Array[String]).void }
+    def close_sessions(session_ids)
+      return if session_ids.empty?
+
+      id_set = session_ids.to_set
+      targets = @mutex.synchronize do
+        @connections.values.select { |c| c.session_id && id_set.include?(T.must(c.session_id)) }
+      end
+
+      message = { type: "session_revoked" }.to_json
+      targets.each do |connection|
+        begin
+          connection.websocket.write(message)
+          connection.websocket.flush
+        rescue StandardError => e
+          APP_LOGGER.error { "[ConnectionManager] Error sending session_revoked to conn #{connection.id}: #{e.class}: #{e.message}" }
+        end
+        unregister(connection.id)
+      end
+
+      APP_LOGGER.info { "[ConnectionManager] Closed #{targets.size} connection(s) for revoked sessions" } if targets.any?
+    end
+
     sig { returns(Integer) }
     def connection_count
       @mutex.synchronize { @connections.size }
@@ -166,6 +191,7 @@ module Websocket
       const :id, String
       const :websocket, Object
       const :user_id, String
+      const :session_id, T.nilable(String)
       prop :workspace_ids, T::Set[String], factory: -> { Set.new }
       prop :last_pong_at, Time, factory: -> { Time.now }
     end

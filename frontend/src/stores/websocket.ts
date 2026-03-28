@@ -176,21 +176,14 @@ export const useWebSocketStore = defineStore('websocket', () => {
       }
     } catch (e) {
       state.value = 'disconnected'
-      // 401 from ws-ticket means session expired — redirect to login
+      // 401 from ws-ticket means session expired — the API client
+      // triggers handleSessionExpired, so just bail out here
       if (
         typeof e === 'object' &&
         e !== null &&
         'status' in e &&
         (e as { status: number }).status === 401
       ) {
-        console.warn(
-          '[WebSocket] Ticket fetch failed with 401 — session expired, redirecting to login'
-        )
-        const { useAuthStore } = await import('./auth')
-        const authStore = useAuthStore()
-        authStore.$reset()
-        const { default: router } = await import('@/router')
-        router.push({ name: 'login' })
         return
       }
       // Surface the failure: exit the loading screen so the connection badge
@@ -223,6 +216,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
       case 'pong':
         handlePong(message as unknown as { type: 'pong'; gitSha?: string })
         break
+      case 'session_revoked':
+        handleSessionRevoked()
+        break
       case 'error':
         console.warn('[WebSocket] Server error:', message.message)
         break
@@ -243,6 +239,12 @@ export const useWebSocketStore = defineStore('websocket', () => {
         })
       })
     }
+  }
+
+  async function handleSessionRevoked(): Promise<void> {
+    console.warn('[WebSocket] Session revoked by another device')
+    const { handleSessionExpired } = await import('@/api/sessionExpired')
+    await handleSessionExpired()
   }
 
   function handleAuthenticated(message: AuthenticatedMessage): void {

@@ -100,17 +100,8 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
   }
 
   async function handleAuthError(): Promise<void> {
-    const { useNotificationsStore } = await import('./notifications')
-    const notifications = useNotificationsStore()
-    notifications.showError('Your session has expired. Please log in again.')
-    const { useWebSocketStore } = await import('./websocket')
-    const wsStore = useWebSocketStore()
-    wsStore.disconnect()
-    const { useAuthStore } = await import('./auth')
-    const authStore = useAuthStore()
-    authStore.$reset()
-    const { default: router } = await import('@/router')
-    router.push({ name: 'login' })
+    const { handleSessionExpired } = await import('@/api/sessionExpired')
+    await handleSessionExpired()
   }
 
   async function processQueue(): Promise<void> {

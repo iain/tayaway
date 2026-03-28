@@ -36,6 +36,10 @@ vi.mock('@/router', () => ({
   default: { push: vi.fn() },
 }))
 
+vi.mock('@/api/sessionExpired', () => ({
+  handleSessionExpired: vi.fn(),
+}))
+
 // Mock the @/stores barrel used by the api client
 vi.mock('@/stores', () => ({
   useObjectPoolStore: () => ({
@@ -199,9 +203,9 @@ describe('WebSocket store — connection logging', () => {
       )
     })
 
-    it('logs a specific 401 warning before redirecting to login', async () => {
+    it('silently returns on 401 without scheduling a reconnect', async () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-        new Response(JSON.stringify({}), {
+        new Response(JSON.stringify({ error: 'Unauthorized' }), {
           status: 401,
           headers: { 'Content-Type': 'application/json' },
         })
@@ -210,8 +214,9 @@ describe('WebSocket store — connection logging', () => {
       const store = useWebSocketStore()
       await store.connect()
 
-      const warnCalls = vi.mocked(console.warn).mock.calls.flat().join(' ')
-      expect(warnCalls).toContain('401')
+      // Should not log a reconnect attempt
+      const infoCalls = vi.mocked(console.info).mock.calls.flat().join(' ')
+      expect(infoCalls).not.toContain('Reconnect attempt')
     })
   })
 

@@ -193,12 +193,9 @@ export const useAuthStore = defineStore('auth', () => {
         if (valid === true) {
           // Session confirmed — WebSocket already connected, nothing else to do
         } else if (valid === false) {
-          // Session expired — clear everything and force re-login
-          user.value = null
-          clearCachedUser()
-          ws.disconnect()
-          const { default: router } = await import('@/router')
-          await router.push({ name: 'login' })
+          // Session expired — full cleanup and redirect to login
+          const { handleSessionExpired } = await import('@/api/sessionExpired')
+          await handleSessionExpired()
         }
         // null (network error / 5xx): keep cached state, stay connected
       })
@@ -250,22 +247,29 @@ export const useAuthStore = defineStore('auth', () => {
       const { stopPersisting } = usePoolPersistence()
       stopPersisting()
 
-      // Disconnect WebSocket first
+      // Disconnect WebSocket to stop reconnect loops
       const ws = useWebSocketStore()
       ws.disconnect()
 
-      // Clear command queue and pool cache
+      // Clear queued commands and IndexedDB cache
       const commandQueue = useCommandQueueStore()
       await commandQueue.reset()
       await poolDb.clearAll()
 
+      // Reset all Pinia stores
       clearCachedUser()
       user.value = null
-      // Reset stores on logout
-      const pool = useObjectPoolStore()
-      pool.$reset()
-      const workspaceStore = useWorkspaceStore()
-      workspaceStore.$reset()
+      useObjectPoolStore().$reset()
+      useWorkspaceStore().$reset()
+
+      // Wipe all client-side storage
+      localStorage.clear()
+      try {
+        const keys = await caches.keys()
+        await Promise.all(keys.map((k) => caches.delete(k)))
+      } catch {
+        // Caches API may be unavailable
+      }
     }
   }
 

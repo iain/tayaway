@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { FormInput } from '@/components/form'
 import AppButton from '@/components/common/AppButton.vue'
 import appIcon from '@/assets/app-icon.svg'
 
+const route = useRoute()
 const authStore = useAuthStore()
 
 const email = ref('')
 const message = ref('')
 const error = ref('')
 const loading = ref(false)
+const sessionRevoked = route.query.reason === 'session_revoked'
 
 async function handleSubmit() {
   error.value = ''
@@ -43,6 +46,15 @@ async function handleSubmit() {
       <p class="mb-8 text-center text-sm/6 text-stone-400">
         We'll send you a login link. No password needed.
       </p>
+
+      <div
+        v-if="sessionRevoked"
+        class="mb-6 rounded-md border border-amber-500/20 bg-amber-500/10 p-4"
+      >
+        <p class="text-sm text-amber-400">
+          Your session was ended from another device. Log in again to continue.
+        </p>
+      </div>
 
       <form class="space-y-6" @submit.prevent="handleSubmit">
         <FormInput

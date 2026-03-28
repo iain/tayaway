@@ -4,18 +4,20 @@
 require "spec_helper"
 
 RSpec.describe Auth::ConsumeWsTicket do
-  it "returns user_id for a valid ticket JWT" do
+  it "returns user_id and session_id for a valid ticket JWT" do
     user = TestFactories.user
-    result = TestFactories.ws_ticket(user: user)
+    session = TestFactories.session(user: user)
+    result = TestFactories.ws_ticket(session: session)
     jwt = Auth::Token.encode_ws_ticket(token: result.token)
 
     consume_result = described_class.call(ticket_jwt: jwt)
 
     expect(consume_result.success?).to be true
     expect(consume_result.value![:user_id].to_s).to eq(user[:id])
+    expect(consume_result.value![:session_id]).to eq(session[:id])
 
     # Verify ticket is marked as used
-    updated = DB[:ws_tickets].where(user_id: user[:id]).first
+    updated = DB[:ws_tickets].where(session_id: session[:id]).first
     expect(updated[:used_at]).not_to be_nil
   end
 
