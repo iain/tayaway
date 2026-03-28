@@ -6,6 +6,7 @@ import type { Session, SessionsResponse } from '@/types'
 import { useNotificationsStore } from '@/stores'
 import BaseCard from '@/components/common/BaseCard.vue'
 import AppBadge from '@/components/common/AppBadge.vue'
+import TextButton from '@/components/common/TextButton.vue'
 
 defineProps<{
   bare?: boolean
@@ -124,6 +125,14 @@ function sessionContext(session: Session): string {
   return parts.join(' \u2014 ')
 }
 
+defineExpose({
+  hasOtherSessions,
+  revokingAll,
+  loading,
+  error,
+  endAllOtherSessions,
+})
+
 onMounted(fetchSessions)
 
 onUnmounted(() => {
@@ -171,17 +180,6 @@ onUnmounted(() => {
         </div>
 
         <template v-else>
-          <div v-if="hasOtherSessions" class="flex justify-end">
-            <button
-              type="button"
-              :disabled="revokingAll"
-              class="rounded-md px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
-              @click="endAllOtherSessions"
-            >
-              {{ revokingAll ? 'Revoking…' : 'Sign out all other sessions' }}
-            </button>
-          </div>
-
           <ul
             :class="[
               'divide-y divide-gray-200 dark:divide-stone-700',
@@ -216,14 +214,14 @@ onUnmounted(() => {
                   >Expires {{ formatDate(session.expires_at) }}
                 </p>
               </div>
-              <button
+              <TextButton
                 v-if="!session.current"
-                type="button"
-                class="ml-4 shrink-0 rounded-md px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-red-400 dark:hover:text-red-300"
+                variant="danger"
+                class="ml-4 shrink-0"
                 @click="endSession(session.id)"
               >
                 Revoke
-              </button>
+              </TextButton>
             </li>
           </ul>
         </template>

@@ -14,9 +14,12 @@ import SessionsList from '@/components/profile/SessionsList.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
+import TextButton from '@/components/common/TextButton.vue'
 
 const authStore = useAuthStore()
 const { user } = storeToRefs(authStore)
+
+const sessionsRef = ref<InstanceType<typeof SessionsList> | null>(null)
 
 const editEmailOpen = ref(false)
 const editEmailLoading = ref(false)
@@ -81,8 +84,17 @@ async function handleRequestEmailChange(email: string): Promise<void> {
 
     <!-- Active Sessions Section -->
     <BaseCard padded class="mt-6">
-      <SectionHeading :icon="ComputerDesktopIcon" title="Active Sessions" />
-      <SessionsList bare />
+      <SectionHeading :icon="ComputerDesktopIcon" title="Active Sessions">
+        <TextButton
+          v-if="sessionsRef?.hasOtherSessions && !sessionsRef?.loading && !sessionsRef?.error"
+          variant="danger"
+          :disabled="sessionsRef?.revokingAll"
+          @click="sessionsRef?.endAllOtherSessions()"
+        >
+          {{ sessionsRef?.revokingAll ? 'Revoking…' : 'Sign out all other sessions' }}
+        </TextButton>
+      </SectionHeading>
+      <SessionsList ref="sessionsRef" bare />
     </BaseCard>
 
     <ChangeEmailModal
