@@ -16,6 +16,10 @@ class User < T::Struct
   const :created_at, Time
   const :updated_at, Time
 
+  # Serializes the user for API responses. IBAN is deliberately excluded —
+  # it must only appear (masked) in the authenticated /api/auth/me response.
+  # All other consumers (PoolSerializer, broadcasts) build their own hashes
+  # and expose only `hasIban: true/false`.
   sig { returns(T::Hash[Symbol, T.untyped]) }
   def to_api_hash
     {
@@ -28,7 +32,6 @@ class User < T::Struct
       locationName: location_name,
       latitude: location_coordinates&.[](1),
       longitude: location_coordinates&.[](0),
-      iban: iban,
       createdAt: created_at.iso8601(3),
       updatedAt: updated_at.iso8601(3)
     }
