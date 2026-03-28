@@ -176,21 +176,14 @@ export const useWebSocketStore = defineStore('websocket', () => {
       }
     } catch (e) {
       state.value = 'disconnected'
-      // 401 from ws-ticket means session expired — redirect to login
+      // 401 from ws-ticket means session expired — the API client
+      // triggers handleSessionExpired, so just bail out here
       if (
         typeof e === 'object' &&
         e !== null &&
         'status' in e &&
         (e as { status: number }).status === 401
       ) {
-        console.warn(
-          '[WebSocket] Ticket fetch failed with 401 — session expired, redirecting to login'
-        )
-        const { useAuthStore } = await import('./auth')
-        const authStore = useAuthStore()
-        authStore.$reset()
-        const { default: router } = await import('@/router')
-        router.push({ name: 'login' })
         return
       }
       // Surface the failure: exit the loading screen so the connection badge
@@ -250,25 +243,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
   async function handleSessionRevoked(): Promise<void> {
     console.warn('[WebSocket] Session revoked by another device')
-    const { useAuthStore } = await import('./auth')
-    const authStore = useAuthStore()
-    authStore.$reset()
-
-    // Full cleanup: clear pool, command queue, and persisted cache
-    const { useObjectPoolStore } = await import('./objectPool')
-    const { useCommandQueueStore } = await import('./commandQueue')
-    const { useWorkspaceStore } = await import('./workspace')
-    const poolDb = await import('@/api/poolDb')
-
-    const commandQueue = useCommandQueueStore()
-    await commandQueue.reset()
-    await poolDb.clearAll()
-    useObjectPoolStore().$reset()
-    useWorkspaceStore().$reset()
-
-    disconnect()
-    const { default: router } = await import('@/router')
-    await router.push({ name: 'login', query: { reason: 'session_revoked' } })
+    const { handleSessionExpired } = await import('@/api/sessionExpired')
+    await handleSessionExpired()
   }
 
   function handleAuthenticated(message: AuthenticatedMessage): void {

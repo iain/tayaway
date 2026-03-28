@@ -326,6 +326,63 @@ RSpec.describe Websocket::ConnectionManager do
     end
   end
 
+  describe "#close_sessions" do
+    it "sends session_revoked and unregisters matching connections" do
+      session_id = SecureRandom.uuid
+      ws = FakeWebsocket.new
+      manager.register(ws, SecureRandom.uuid, session_id)
+
+      manager.close_sessions([session_id])
+
+      expect(ws.written).to include({ type: "session_revoked" }.to_json)
+      expect(manager.connection_count).to eq(0)
+    end
+
+    it "does not affect connections with a different session_id" do
+      ws_target = FakeWebsocket.new
+      ws_other = FakeWebsocket.new
+      target_sid = SecureRandom.uuid
+      other_sid = SecureRandom.uuid
+
+      manager.register(ws_target, SecureRandom.uuid, target_sid)
+      manager.register(ws_other, SecureRandom.uuid, other_sid)
+
+      manager.close_sessions([target_sid])
+
+      expect(ws_target.written).to include({ type: "session_revoked" }.to_json)
+      expect(ws_other.written).to be_empty
+      expect(manager.connection_count).to eq(1)
+    end
+
+    it "skips connections with nil session_id" do
+      ws = FakeWebsocket.new
+      manager.register(ws, SecureRandom.uuid) # no session_id
+
+      manager.close_sessions([SecureRandom.uuid])
+
+      expect(ws.written).to be_empty
+      expect(manager.connection_count).to eq(1)
+    end
+
+    it "is a no-op when session_ids is empty" do
+      ws = FakeWebsocket.new
+      manager.register(ws, SecureRandom.uuid, SecureRandom.uuid)
+
+      manager.close_sessions([])
+
+      expect(ws.written).to be_empty
+      expect(manager.connection_count).to eq(1)
+    end
+
+    it "handles write errors gracefully and still unregisters" do
+      session_id = SecureRandom.uuid
+      manager.register(BrokenWebsocket.new, SecureRandom.uuid, session_id)
+
+      expect { manager.close_sessions([session_id]) }.not_to raise_error
+      expect(manager.connection_count).to eq(0)
+    end
+  end
+
   describe "#connection_count" do
     it "returns 0 when no connections are registered" do
       expect(manager.connection_count).to eq(0)

@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
+const mockHandleSessionExpired = vi.fn()
+vi.mock('@/api/sessionExpired', () => ({
+  handleSessionExpired: mockHandleSessionExpired,
+}))
+
 vi.mock('@/stores', () => ({
   useNotificationsStore: vi.fn(() => ({ showError: vi.fn() })),
   useObjectPoolStore: vi.fn(() => ({
@@ -81,5 +86,51 @@ describe('ApiClient console logging', () => {
     await api.get('/events')
 
     expect(console.error).not.toHaveBeenCalled()
+  })
+})
+
+describe('ApiClient 401 interceptor', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockHandleSessionExpired.mockReset()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('calls handleSessionExpired on 401 from regular endpoints', async () => {
+    mockFetchResponse(401, { error: 'Unauthorized' }, false)
+
+    await expect(api.get('/events')).rejects.toMatchObject({ status: 401 })
+    expect(mockHandleSessionExpired).toHaveBeenCalledOnce()
+  })
+
+  it.each(['/auth/login-link', '/auth/verify', '/auth/me'])(
+    'does not call handleSessionExpired on 401 from %s',
+    async (path) => {
+      mockFetchResponse(401, { error: 'Unauthorized' }, false)
+
+      await expect(api.post(path, {})).rejects.toMatchObject({ status: 401 })
+      expect(mockHandleSessionExpired).not.toHaveBeenCalled()
+    }
+  )
+
+  it('calls handleSessionExpired on 401 from /auth/ws-ticket', async () => {
+    mockFetchResponse(401, { error: 'Unauthorized' }, false)
+
+    await expect(api.post('/auth/ws-ticket')).rejects.toMatchObject({
+      status: 401,
+    })
+    expect(mockHandleSessionExpired).toHaveBeenCalledOnce()
+  })
+
+  it('does not call handleSessionExpired on non-401 errors', async () => {
+    mockFetchResponse(403, { error: 'Forbidden' }, false)
+
+    await expect(api.get('/events')).rejects.toMatchObject({ status: 403 })
+    expect(mockHandleSessionExpired).not.toHaveBeenCalled()
   })
 })
