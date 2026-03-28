@@ -61,7 +61,7 @@ class Event < T::Struct
     def for_workspace_ids(workspace_ids)
       return [] if workspace_ids.empty?
 
-      dataset.where(workspace_id: workspace_ids).order(:created_at).all
+      dataset.where(workspace_id: workspace_ids).order(:created_at).limit(ValidationLimits::QUERY_LIMIT).all
     end
 
     sig { params(event: Event, current_user_id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }

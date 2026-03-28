@@ -70,6 +70,7 @@ class WorkspaceInvite < T::Struct
         .where(workspace_id: workspace_id)
         .where(accepted_at: nil)
         .order(:created_at)
+        .limit(ValidationLimits::QUERY_LIMIT)
         .all
     end
 

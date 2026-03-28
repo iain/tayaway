@@ -86,6 +86,7 @@ class Session < T::Struct
         .where(user_id: user_id.to_s)
         .where(Sequel[:expires_at] > Time.now)
         .order(Sequel.desc(:created_at))
+        .limit(ValidationLimits::QUERY_LIMIT)
         .all
         .reject(&:inactive?)
     end

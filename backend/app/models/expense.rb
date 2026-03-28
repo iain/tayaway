@@ -45,7 +45,7 @@ class Expense < T::Struct
 
     sig { params(event_id: T.any(String, UUID)).returns(T::Array[Expense]) }
     def for_event(event_id)
-      dataset.where(event_id: event_id).order(:created_at).all
+      dataset.where(event_id: event_id).order(:created_at).limit(ValidationLimits::QUERY_LIMIT).all
     end
 
     sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[Expense]) }
