@@ -4,58 +4,72 @@
 require "rack/attack"
 
 module RateLimiter
-  # Minimal in-memory cache store compatible with Rack::Attack.
-  # Supports increment, read, write, and delete with TTL expiry.
+  # PostgreSQL-backed cache store compatible with Rack::Attack.
+  # Uses the `rate_limits` table for atomic, shared-state rate limiting
+  # that works correctly across multiple Falcon workers and survives restarts.
   #
-  # Trade-off: state is stored in process memory and is therefore not persistent.
-  # All counters reset on every application restart or deploy. In a multi-process
-  # setup (e.g. multiple Falcon workers) each process maintains independent counters,
-  # so effective limits are multiplied by the number of worker processes.
-  #
-  # For the current scale (infrequent deploys, small user base) this is acceptable —
-  # the 60-second window is short and the limits (5–20 req/60s) are generous enough
-  # that a post-deploy burst is unlikely to cause harm. Switch to a Redis-backed store
-  # if shared, persistent state becomes a requirement.
-  class MemoryStore
+  # Expired rows are cleaned up opportunistically on read/increment. A periodic
+  # cleanup of all expired rows runs on every 100th increment to keep the table small.
+  class PgStore
+    CLEANUP_INTERVAL = 100
+
     def initialize
-      @data = {}
-      @expires_at = {}
+      @increment_count = 0
     end
 
     def read(key)
-      sweep(key)
-      @data[key]
+      row = DB[:rate_limits].where(key: key).where { expires_at > Time.now }.first
+      row&.[](:count)
     end
 
     def write(key, value, expires_in: nil, **)
-      @data[key] = value
-      @expires_at[key] = Time.now.to_f + expires_in if expires_in
+      expires_at = expires_in ? Time.now + expires_in : Time.now + 120
+      DB[:rate_limits]
+        .insert_conflict(target: :key, update: { count: value, expires_at: expires_at })
+        .insert(key: key, count: value, expires_at: expires_at)
     end
 
     def increment(key, amount = 1, expires_in: nil, **)
-      sweep(key)
-      @data[key] = (@data[key] || 0) + amount
-      @expires_at[key] = Time.now.to_f + expires_in if expires_in && !@expires_at.key?(key)
-      @data[key]
+      expires_at = expires_in ? Time.now + expires_in : Time.now + 120
+
+      # Atomic upsert: insert with count=amount, or increment existing if not expired.
+      # If the row is expired, reset count to the new amount with a fresh expiry.
+      result = DB[<<~SQL, key, amount, expires_at, amount, amount, expires_at].first
+        INSERT INTO rate_limits (key, count, expires_at)
+        VALUES (?, ?, ?)
+        ON CONFLICT (key) DO UPDATE SET
+          count = CASE
+            WHEN rate_limits.expires_at <= NOW() THEN ?
+            ELSE rate_limits.count + ?
+          END,
+          expires_at = CASE
+            WHEN rate_limits.expires_at <= NOW() THEN ?
+            ELSE rate_limits.expires_at
+          END
+        RETURNING count
+      SQL
+
+      maybe_cleanup
+      result[:count]
     end
 
     def delete(key)
-      @data.delete(key)
-      @expires_at.delete(key)
+      DB[:rate_limits].where(key: key).delete
     end
 
     private
 
-    def sweep(key)
-      if (exp = @expires_at[key]) && Time.now.to_f > exp
-        @data.delete(key)
-        @expires_at.delete(key)
-      end
+    def maybe_cleanup
+      @increment_count += 1
+      return unless @increment_count >= CLEANUP_INTERVAL
+
+      @increment_count = 0
+      DB[:rate_limits].where { expires_at <= Time.now }.delete
     end
   end
 
   def self.configure!
-    Rack::Attack.cache.store = MemoryStore.new
+    Rack::Attack.cache.store = PgStore.new
 
     # Skip rate limiting in test and e2e environments
     unless %w[test e2e].include?(APP_ENV)
