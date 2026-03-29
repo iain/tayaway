@@ -60,6 +60,19 @@ LOADER.enable_reloading if APP_ENV == "development"
 LOADER.setup
 LOADER.eager_load if APP_ENV == "production"
 
+FRONTEND_URL = T.let(ENV.fetch("FRONTEND_URL", "http://localhost:5173").freeze, String)
+
+WebAuthn.configure do |config|
+  config.allowed_origins = [FRONTEND_URL]
+  config.rp_name = "Tayaway"
+  config.rp_id = URI.parse(FRONTEND_URL).host
+end
+
+require "fido_metadata/test_cache_store"
+FidoMetadata.configure do |config|
+  config.cache_backend = FidoMetadata::TestCacheStore.new
+end
+
 Mailers::Base.configure!
 RateLimiter.configure!
 

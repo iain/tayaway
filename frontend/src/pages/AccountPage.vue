@@ -6,11 +6,13 @@ import {
   PencilIcon,
   EnvelopeIcon,
   ComputerDesktopIcon,
+  KeyIcon,
 } from '@heroicons/vue/24/outline'
 import IconButton from '@/components/common/IconButton.vue'
 import AlertBox from '@/components/common/AlertBox.vue'
 import ChangeEmailModal from '@/components/profile/ChangeEmailModal.vue'
 import SessionsList from '@/components/profile/SessionsList.vue'
+import PasskeysList from '@/components/profile/PasskeysList.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
@@ -82,16 +84,30 @@ async function handleRequestEmailChange(email: string): Promise<void> {
       </dl>
     </BaseCard>
 
+    <!-- Passkeys Section -->
+    <BaseCard padded class="mt-6">
+      <SectionHeading :icon="KeyIcon" title="Passkeys" />
+      <PasskeysList />
+    </BaseCard>
+
     <!-- Active Sessions Section -->
     <BaseCard padded class="mt-6">
       <SectionHeading :icon="ComputerDesktopIcon" title="Active Sessions">
         <TextButton
-          v-if="sessionsRef?.hasOtherSessions && !sessionsRef?.loading && !sessionsRef?.error"
+          v-if="
+            sessionsRef?.hasOtherSessions &&
+            !sessionsRef?.loading &&
+            !sessionsRef?.error
+          "
           variant="danger"
           :disabled="sessionsRef?.revokingAll"
           @click="sessionsRef?.endAllOtherSessions()"
         >
-          {{ sessionsRef?.revokingAll ? 'Revoking…' : 'Sign out all other sessions' }}
+          {{
+            sessionsRef?.revokingAll
+              ? 'Revoking…'
+              : 'Sign out all other sessions'
+          }}
         </TextButton>
       </SectionHeading>
       <SessionsList ref="sessionsRef" bare />

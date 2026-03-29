@@ -93,5 +93,26 @@ module Auth
 
       { token: payload["token"], email: payload["email"] }
     end
+
+    WEBAUTHN_CHALLENGE_EXPIRY_SECONDS = 300 # 5 minutes
+
+    sig { params(challenge: String).returns(String) }
+    def self.encode_webauthn_challenge(challenge:)
+      payload = {
+        challenge: challenge,
+        typ: "webauthn_challenge",
+        exp: (Time.now + WEBAUTHN_CHALLENGE_EXPIRY_SECONDS).to_i
+      }
+      JWT.encode(payload, APP_SECRET, "HS256")
+    end
+
+    sig { params(jwt: String).returns(T::Hash[Symbol, String]) }
+    def self.decode_webauthn_challenge(jwt)
+      decoded = JWT.decode(jwt, APP_SECRET, true, algorithm: "HS256")
+      payload = decoded.first
+      raise JWT::DecodeError, "Invalid token type" unless payload["typ"] == "webauthn_challenge"
+
+      { challenge: payload["challenge"] }
+    end
   end
 end

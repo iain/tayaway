@@ -47,6 +47,105 @@ class App
     end
   end
 
+  hash_branch("api/auth", "passkeys") do |r|
+    # Unauthenticated: passkey authentication
+    r.on "authenticate" do
+      r.hash_routes("api/auth/passkeys/authenticate")
+    end
+
+    # Authenticated: passkey management
+    session = require_session
+
+    user = User.find(session.user_id)
+    unless user
+      response.status = 401
+      next { error: "Invalid or expired session" }
+    end
+
+    r.is do
+      r.get do
+        passkeys = PasskeyCredential.for_user(user.id)
+        response.status = 200
+        { passkeys: passkeys.map(&:to_api_hash) }
+      end
+    end
+
+    r.on "register" do
+      r.hash_routes("api/auth/passkeys/register")
+    end
+
+    r.on String do |passkey_id|
+      r.is do
+        r.put do
+          name = r.params["name"]&.strip
+          unless name && !name.empty?
+            response.status = 400
+            next { error: "Name is required" }
+          end
+
+          passkey = PasskeyCredential.find(passkey_id)
+          unless passkey && passkey.user_id.to_s == user.id.to_s
+            response.status = 404
+            next { error: "Passkey not found" }
+          end
+
+          DB[:passkey_credentials].where(id: passkey_id).update(name: name)
+          updated = PasskeyCredential.find(passkey_id)
+          response.status = 200
+          { passkey: T.must(updated).to_api_hash }
+        end
+
+        r.delete do
+          result = Auth::Passkeys::Delete.call(user_id: user.id.to_s, passkey_id: passkey_id)
+          handle_result(result)
+        end
+      end
+    end
+  end
+
+  hash_path "/api/auth/passkeys/register/begin" do |r|
+    r.post do
+      session = require_session
+      result = Auth::Passkeys::BeginRegistration.call(user_id: session.user_id.to_s)
+      handle_result(result)
+    end
+  end
+
+  hash_path "/api/auth/passkeys/register/complete" do |r|
+    r.post do
+      session = require_session
+      result = Auth::Passkeys::CompleteRegistration.call(
+        user_id: session.user_id.to_s,
+        challenge_token: r.params["challengeToken"],
+        credential: r.params["credential"],
+        name: r.params["name"]
+      )
+      handle_result(result)
+    end
+  end
+
+  hash_path "/api/auth/passkeys/authenticate/begin" do |r|
+    r.post do
+      result = Auth::Passkeys::BeginAuthentication.call
+      handle_result(result)
+    end
+  end
+
+  hash_path "/api/auth/passkeys/authenticate/complete" do |r|
+    r.post do
+      result = Auth::Passkeys::CompleteAuthentication.call(
+        challenge_token: r.params["challengeToken"],
+        credential: r.params["credential"],
+        ip: request.ip,
+        user_agent: request.env["HTTP_USER_AGENT"]
+      )
+      if result.success?
+        set_session_cookie(result.value![:session_token], Time.now + Session::EXPIRY_SECONDS)
+      end
+      handle_result(result)
+    end
+  end
+
   hash_branch("api", "auth") do |r|
     r.hash_routes("api/auth")
   end

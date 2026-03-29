@@ -1,6 +1,10 @@
 // Shared types for the frontend application
 
 import type { VoteResponse } from '@/types/pool'
+import type {
+  PublicKeyCredentialCreationOptionsJSON,
+  PublicKeyCredentialRequestOptionsJSON,
+} from '@simplewebauthn/browser'
 
 export interface LoginLinkResponse {
   message: string
@@ -98,5 +102,35 @@ export interface EmailChangeRequestResponse {
 }
 
 export interface EmailChangeVerifyResponse {
+  message: string
+}
+
+// Passkey types
+export interface Passkey {
+  id: string
+  name: string | null
+  aaguid: string | null
+  createdAt: string
+}
+
+export interface PasskeysListResponse {
+  passkeys: Passkey[]
+}
+
+export interface PasskeyRegistrationBeginResponse {
+  options: PublicKeyCredentialCreationOptionsJSON
+  challengeToken: string
+}
+
+export interface PasskeyAuthenticationBeginResponse {
+  options: PublicKeyCredentialRequestOptionsJSON
+  challengeToken: string
+}
+
+export interface PasskeyRegistrationResponse {
+  passkey: Passkey
+}
+
+export interface PasskeyDeleteResponse {
   message: string
 }

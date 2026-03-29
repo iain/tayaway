@@ -9,6 +9,7 @@ import { useMutation } from '@/composables/useMutation'
 
 import * as poolDb from '@/api/poolDb'
 import { usePoolPersistence } from '@/composables/usePoolPersistence'
+import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
 import type {
   AuthUser,
   LoginLinkResponse,
@@ -17,6 +18,12 @@ import type {
   LogoutResponse,
   EmailChangeRequestResponse,
   EmailChangeVerifyResponse,
+  Passkey,
+  PasskeysListResponse,
+  PasskeyRegistrationBeginResponse,
+  PasskeyAuthenticationBeginResponse,
+  PasskeyRegistrationResponse,
+  PasskeyDeleteResponse,
 } from '@/types'
 import type { PoolApiResponse } from '@/types/pool'
 
@@ -382,6 +389,89 @@ export const useAuthStore = defineStore('auth', () => {
     return response.data.message
   }
 
+  // --- Passkey methods ---
+
+  async function listPasskeys(): Promise<Passkey[]> {
+    const { data } = await api.get<PasskeysListResponse>('/auth/passkeys')
+    return data.passkeys
+  }
+
+  async function registerPasskey(name?: string): Promise<Passkey> {
+    const { data: beginData } =
+      await api.post<PasskeyRegistrationBeginResponse>(
+        '/auth/passkeys/register/begin'
+      )
+
+    const credential = await startRegistration({
+      optionsJSON: beginData.options,
+    })
+
+    const { data } = await api.post<PasskeyRegistrationResponse>(
+      '/auth/passkeys/register/complete',
+      {
+        challengeToken: beginData.challengeToken,
+        credential: credential,
+        name,
+      }
+    )
+
+    return data.passkey
+  }
+
+  async function authenticateWithPasskey(options?: {
+    mediation?: CredentialMediationRequirement
+    signal?: AbortSignal
+  }): Promise<AuthUser> {
+    const { data: beginData } =
+      await api.post<PasskeyAuthenticationBeginResponse>(
+        '/auth/passkeys/authenticate/begin',
+        undefined,
+        { silent: true }
+      )
+
+    const credential = await startAuthentication({
+      optionsJSON: beginData.options,
+      useBrowserAutofill: options?.mediation === 'conditional',
+    })
+
+    await api.post(
+      '/auth/passkeys/authenticate/complete',
+      {
+        challengeToken: beginData.challengeToken,
+        credential: credential,
+      },
+      { silent: true }
+    )
+
+    // Session cookie is now set — fetch user info
+    const meResponse = await api.get<MeResponse>('/auth/me')
+    const verifiedUser = mapMeResponseToAuthUser(meResponse.data)
+    user.value = verifiedUser
+    cacheUser(verifiedUser)
+
+    const ws = useWebSocketStore()
+    ws.connect()
+
+    const commandQueue = useCommandQueueStore()
+    if (commandQueue.pendingCount > 0) {
+      commandQueue.processQueue()
+    }
+
+    return verifiedUser
+  }
+
+  async function renamePasskey(id: string, name: string): Promise<Passkey> {
+    const { data } = await api.put<{ passkey: Passkey }>(
+      `/auth/passkeys/${id}`,
+      { name }
+    )
+    return data.passkey
+  }
+
+  async function deletePasskey(id: string): Promise<void> {
+    await api.delete<PasskeyDeleteResponse>(`/auth/passkeys/${id}`)
+  }
+
   function $reset() {
     clearCachedUser()
     user.value = null
@@ -403,6 +493,11 @@ export const useAuthStore = defineStore('auth', () => {
     updateName,
     requestEmailChange,
     verifyEmailChange,
+    listPasskeys,
+    registerPasskey,
+    authenticateWithPasskey,
+    renamePasskey,
+    deletePasskey,
     $reset,
   }
 })
