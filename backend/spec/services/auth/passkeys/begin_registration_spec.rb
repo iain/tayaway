@@ -29,6 +29,15 @@ RSpec.describe Auth::Passkeys::BeginRegistration do
     expect(exclude.first[:id]).to eq("existing-cred-id")
   end
 
+  it "returns failure when user has reached the passkey limit" do
+    20.times { TestFactories.passkey_credential(user: user) }
+
+    result = described_class.call(user_id: user[:id])
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Maximum number of passkeys reached")
+  end
+
   it "returns failure for non-existent user" do
     result = described_class.call(user_id: SecureRandom.uuid)
 

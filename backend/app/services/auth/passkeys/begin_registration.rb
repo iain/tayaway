@@ -8,6 +8,8 @@ module Auth
         extend T::Sig
         include Result::Methods
 
+        MAX_PASSKEYS_PER_USER = 20
+
         sig { params(user_id: String).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
         def call(user_id:)
           find_user(user_id)
@@ -29,6 +31,14 @@ module Auth
         sig { params(user: User).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
         def generate_options(user)
           existing = PasskeyCredential.for_user(user.id)
+
+          if existing.length >= MAX_PASSKEYS_PER_USER
+            return T.cast(
+              Failure(ServiceError.validation("Maximum number of passkeys reached")),
+              Result[T::Hash[Symbol, T.untyped], ServiceError]
+            )
+          end
+
           exclude = existing.map { |c| c.external_id }
 
           options = WebAuthn::Credential.options_for_create(

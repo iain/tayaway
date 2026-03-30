@@ -426,13 +426,16 @@ export const useAuthStore = defineStore('auth', () => {
       await api.post<PasskeyAuthenticationBeginResponse>(
         '/auth/passkeys/authenticate/begin',
         undefined,
-        { silent: true }
+        { silent: true, signal: options?.signal }
       )
 
     const credential = await startAuthentication({
       optionsJSON: beginData.options,
       useBrowserAutofill: options?.mediation === 'conditional',
     })
+
+    // If aborted between begin and complete, bail out
+    options?.signal?.throwIfAborted()
 
     await api.post(
       '/auth/passkeys/authenticate/complete',

@@ -77,22 +77,12 @@ class App
     r.on String do |passkey_id|
       r.is do
         r.put do
-          name = r.params["name"]&.strip
-          unless name && !name.empty?
-            response.status = 400
-            next { error: "Name is required" }
-          end
-
-          passkey = PasskeyCredential.find(passkey_id)
-          unless passkey && passkey.user_id.to_s == user.id.to_s
-            response.status = 404
-            next { error: "Passkey not found" }
-          end
-
-          DB[:passkey_credentials].where(id: passkey_id).update(name: name)
-          updated = PasskeyCredential.find(passkey_id)
-          response.status = 200
-          { passkey: T.must(updated).to_api_hash }
+          result = Auth::Passkeys::Rename.call(
+            user_id: user.id.to_s,
+            passkey_id: passkey_id,
+            name: r.params["name"]
+          )
+          handle_result(result)
         end
 
         r.delete do

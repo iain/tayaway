@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores'
 import type { Passkey } from '@/types'
@@ -81,18 +81,48 @@ async function savePasskeyName() {
   notifications.showInfo('Passkey added')
 }
 
-async function deletePasskey(id: string) {
+const pendingDeletes = ref<
+  Map<string, { passkey: Passkey; timer: ReturnType<typeof setTimeout> }>
+>(new Map())
+
+function deletePasskey(id: string) {
   const passkey = passkeys.value.find((p) => p.id === id)
   if (!passkey) return
 
   passkeys.value = passkeys.value.filter((p) => p.id !== id)
 
+  const timer = setTimeout(() => {
+    executeDelete(id)
+  }, 4000)
+
+  pendingDeletes.value.set(id, { passkey, timer })
+
+  notifications.showInfo('Passkey removed', {
+    actionLabel: 'Undo',
+    duration: 4000,
+    action: () => undoDelete(id),
+  })
+}
+
+function undoDelete(id: string) {
+  const pending = pendingDeletes.value.get(id)
+  if (!pending) return
+
+  clearTimeout(pending.timer)
+  pendingDeletes.value.delete(id)
+
+  passkeys.value.push(pending.passkey)
+  passkeys.value.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
+}
+
+async function executeDelete(id: string) {
+  pendingDeletes.value.delete(id)
   try {
     await authStore.deletePasskey(id)
-    notifications.showInfo('Passkey removed')
   } catch {
-    // Restore on failure
-    passkeys.value.push(passkey)
+    // Error notification handled by api client
   }
 }
 
@@ -105,6 +135,13 @@ function formatDate(iso: string): string {
 }
 
 onMounted(fetchPasskeys)
+
+onUnmounted(() => {
+  for (const [id, { timer }] of pendingDeletes.value) {
+    clearTimeout(timer)
+    executeDelete(id)
+  }
+})
 </script>
 
 <template>
@@ -130,18 +167,22 @@ onMounted(fetchPasskeys)
       <!-- Name prompt for newly registered passkey -->
       <div
         v-if="showNamePrompt"
-        class="mb-4 rounded-md border border-stone-700 bg-stone-800 p-4"
+        class="mb-4 rounded-md border border-gray-300 bg-gray-100 p-4 dark:border-stone-700 dark:bg-stone-800"
       >
-        <p class="mb-2 text-sm text-white">
+        <label
+          for="passkey-name"
+          class="mb-2 block text-sm text-gray-900 dark:text-white"
+        >
           Give this passkey a name so you can identify it later:
-        </p>
+        </label>
         <form class="flex gap-2" @submit.prevent="savePasskeyName">
           <input
+            id="passkey-name"
             v-model="nameInput"
             type="text"
             placeholder='e.g. "MacBook", "iPhone"'
             maxlength="100"
-            class="block min-w-0 flex-1 rounded-md bg-white/5 px-3 py-1.5 text-sm text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-stone-500 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500"
+            class="block min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
           />
           <AppButton type="submit" variant="amber"> Save </AppButton>
         </form>
