@@ -97,6 +97,14 @@ module RateLimiter
         req.ip if req.post? && req.path == "/api/invites"
       end
 
+      Rack::Attack.throttle("auth/passkeys/authenticate", limit: 10, period: 60) do |req|
+        req.ip if req.post? && req.path.start_with?("/api/auth/passkeys/authenticate")
+      end
+
+      Rack::Attack.throttle("auth/passkeys/register", limit: 10, period: 60) do |req|
+        req.ip if req.post? && req.path.start_with?("/api/auth/passkeys/register")
+      end
+
     end
 
     Rack::Attack.throttled_responder = lambda do |req|

@@ -133,6 +133,7 @@ All domain data belongs to a workspace. Backend routes verify membership. The fr
 ```
 users              id (UUID), email (CITEXT), name, phone_number (TEXT nullable), birthday (DATE nullable), location_name (TEXT nullable), location_coordinates (POINT nullable), iban (TEXT nullable), timestamps
 sessions           id, user_id, token, expires_at (30 days)
+passkey_credentials id (UUID), user_id (FK users cascade), external_id (STRING unique), public_key (STRING), sign_count (INT), aaguid (STRING nullable), name (STRING nullable), created_at
 login_link_tokens  id, user_id, token, email, expires_at (15 min), used_at
 email_change_tokens id, user_id, token (hashed), email (CITEXT — current email), new_email (CITEXT), expires_at (15 min), used_at, timestamps
 ws_tickets         id, session_id (FK sessions cascade, NOT NULL), token (hashed), expires_at, used_at, created_at
@@ -180,6 +181,13 @@ deleted_items      id (UUID), workspace_id, object_type (STRING), object_id (UUI
 - `POST /ws-ticket` — Get single-use WebSocket JWT (requires auth)
 - `GET /sessions` — List user's sessions (requires auth)
 - `DELETE /sessions/:id` — Delete a session (requires auth)
+- `GET /passkeys` — List user's passkeys (requires auth)
+- `POST /passkeys/register/begin` — Start passkey registration (requires auth)
+- `POST /passkeys/register/complete` — Complete passkey registration (requires auth)
+- `POST /passkeys/authenticate/begin` — Start passkey authentication (unauthenticated)
+- `POST /passkeys/authenticate/complete` — Complete passkey authentication (unauthenticated, sets session cookie)
+- `PUT /passkeys/:id` — Rename a passkey (requires auth)
+- `DELETE /passkeys/:id` — Delete a passkey (requires auth)
 
 **Events (`/api/events`)** — All require authentication + workspace membership
 

@@ -9,6 +9,7 @@ import { useMutation } from '@/composables/useMutation'
 
 import * as poolDb from '@/api/poolDb'
 import { usePoolPersistence } from '@/composables/usePoolPersistence'
+import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
 import type {
   AuthUser,
   LoginLinkResponse,
@@ -17,6 +18,12 @@ import type {
   LogoutResponse,
   EmailChangeRequestResponse,
   EmailChangeVerifyResponse,
+  Passkey,
+  PasskeysListResponse,
+  PasskeyRegistrationBeginResponse,
+  PasskeyAuthenticationBeginResponse,
+  PasskeyRegistrationResponse,
+  PasskeyDeleteResponse,
 } from '@/types'
 import type { PoolApiResponse } from '@/types/pool'
 
@@ -215,28 +222,26 @@ export const useAuthStore = defineStore('auth', () => {
     return response.data.message
   }
 
-  async function verifyToken(token: string): Promise<AuthUser> {
-    await api.post<VerifyResponse>('/auth/verify', { token })
-
-    // Cookie is set by the backend response — no localStorage needed
-
-    // After verify, we need to fetch user info
+  async function completeLogin(): Promise<AuthUser> {
     const meResponse = await api.get<MeResponse>('/auth/me')
     const verifiedUser = mapMeResponseToAuthUser(meResponse.data)
     user.value = verifiedUser
     cacheUser(verifiedUser)
 
-    // Connect WebSocket after successful verification
     const ws = useWebSocketStore()
     ws.connect()
 
-    // Resume any commands that were preserved when the session expired
     const commandQueue = useCommandQueueStore()
     if (commandQueue.pendingCount > 0) {
       commandQueue.processQueue()
     }
 
     return verifiedUser
+  }
+
+  async function verifyToken(token: string): Promise<AuthUser> {
+    await api.post<VerifyResponse>('/auth/verify', { token })
+    return completeLogin()
   }
 
   async function logout(): Promise<void> {
@@ -382,6 +387,79 @@ export const useAuthStore = defineStore('auth', () => {
     return response.data.message
   }
 
+  // --- Passkey methods ---
+
+  async function listPasskeys(): Promise<Passkey[]> {
+    const { data } = await api.get<PasskeysListResponse>('/auth/passkeys')
+    return data.passkeys
+  }
+
+  async function registerPasskey(name?: string): Promise<Passkey> {
+    const { data: beginData } =
+      await api.post<PasskeyRegistrationBeginResponse>(
+        '/auth/passkeys/register/begin'
+      )
+
+    const credential = await startRegistration({
+      optionsJSON: beginData.options,
+    })
+
+    const { data } = await api.post<PasskeyRegistrationResponse>(
+      '/auth/passkeys/register/complete',
+      {
+        challengeToken: beginData.challengeToken,
+        credential: credential,
+        name,
+      }
+    )
+
+    return data.passkey
+  }
+
+  async function authenticateWithPasskey(options?: {
+    mediation?: CredentialMediationRequirement
+    signal?: AbortSignal
+  }): Promise<AuthUser> {
+    const { data: beginData } =
+      await api.post<PasskeyAuthenticationBeginResponse>(
+        '/auth/passkeys/authenticate/begin',
+        undefined,
+        { silent: true, signal: options?.signal }
+      )
+
+    const credential = await startAuthentication({
+      optionsJSON: beginData.options,
+      useBrowserAutofill: options?.mediation === 'conditional',
+    })
+
+    // If aborted between begin and complete, bail out
+    options?.signal?.throwIfAborted()
+
+    await api.post(
+      '/auth/passkeys/authenticate/complete',
+      {
+        challengeToken: beginData.challengeToken,
+        credential: credential,
+      },
+      { silent: true }
+    )
+
+    // Session cookie is now set — complete the login flow
+    return completeLogin()
+  }
+
+  async function renamePasskey(id: string, name: string): Promise<Passkey> {
+    const { data } = await api.put<{ passkey: Passkey }>(
+      `/auth/passkeys/${id}`,
+      { name }
+    )
+    return data.passkey
+  }
+
+  async function deletePasskey(id: string): Promise<void> {
+    await api.delete<PasskeyDeleteResponse>(`/auth/passkeys/${id}`)
+  }
+
   function $reset() {
     clearCachedUser()
     user.value = null
@@ -403,6 +481,11 @@ export const useAuthStore = defineStore('auth', () => {
     updateName,
     requestEmailChange,
     verifyEmailChange,
+    listPasskeys,
+    registerPasskey,
+    authenticateWithPasskey,
+    renamePasskey,
+    deletePasskey,
     $reset,
   }
 })

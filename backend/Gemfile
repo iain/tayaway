@@ -30,6 +30,10 @@ gem "rqrcode"
 # Encryption (libsodium bindings)
 gem "rbnacl"
 
+# WebAuthn / Passkeys
+gem "fido_metadata"
+gem "webauthn"
+
 # Session context — user-agent parsing and IP geolocation
 gem "browser"
 gem "mmdb"

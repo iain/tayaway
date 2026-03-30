@@ -93,5 +93,35 @@ module Auth
 
       { token: payload["token"], email: payload["email"] }
     end
+
+    WEBAUTHN_CHALLENGE_EXPIRY_SECONDS = 300 # 5 minutes
+
+    sig { params(challenge: String, user_id: T.nilable(String)).returns(String) }
+    def self.encode_webauthn_challenge(challenge:, user_id: nil)
+      typ = user_id ? "webauthn_register" : "webauthn_authenticate"
+      payload = {
+        challenge: challenge,
+        typ: typ,
+        exp: (Time.now + WEBAUTHN_CHALLENGE_EXPIRY_SECONDS).to_i
+      }
+      payload[:sub] = user_id if user_id
+      JWT.encode(payload, APP_SECRET, "HS256")
+    end
+
+    sig { params(jwt: String, user_id: T.nilable(String)).returns(T::Hash[Symbol, String]) }
+    def self.decode_webauthn_challenge(jwt, user_id: nil)
+      decoded = JWT.decode(jwt, APP_SECRET, true, algorithm: "HS256")
+      payload = decoded.first
+
+      expected_typ = user_id ? "webauthn_register" : "webauthn_authenticate"
+      raise JWT::DecodeError, "Invalid token type" unless payload["typ"] == expected_typ
+
+      if user_id
+        raise JWT::DecodeError, "Challenge missing subject" unless payload["sub"]
+        raise JWT::DecodeError, "Challenge token was issued for a different user" unless payload["sub"] == user_id
+      end
+
+      { challenge: payload["challenge"] }
+    end
   end
 end

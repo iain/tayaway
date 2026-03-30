@@ -60,6 +60,36 @@ LOADER.enable_reloading if APP_ENV == "development"
 LOADER.setup
 LOADER.eager_load if APP_ENV == "production"
 
+FRONTEND_URL = T.let(ENV.fetch("FRONTEND_URL", "http://localhost:5173").freeze, String)
+
+WEBAUTHN_EXTRA_ORIGINS = T.let(
+  ENV.fetch("WEBAUTHN_EXTRA_ORIGINS", "").split(",").map(&:strip).reject(&:empty?).freeze,
+  T::Array[String],
+)
+
+WebAuthn.configure do |config|
+  config.allowed_origins = [FRONTEND_URL, *WEBAUTHN_EXTRA_ORIGINS]
+  config.rp_name = "Tayaway"
+  config.rp_id = URI.parse(FRONTEND_URL).host
+end
+
+# FIDO Metadata Service cache — used to look up authenticator device names by AAGUID.
+# File-backed cache persists the MDS blob across restarts so only the first boot after
+# deploy fetches from the network. The blob is pre-warmed in a background thread at boot.
+FidoMetadata.configure do |config|
+  config.cache_backend = FidoCacheStore.new(dir: "#{APP_DIR}/tmp/cache/fido_metadata")
+end
+
+# Pre-warm the FIDO metadata cache in a background thread so no user request pays the cost.
+if %w[production development].include?(APP_ENV)
+  Thread.new do
+    FidoMetadata::Store.new.table_of_contents
+    APP_LOGGER.info { "[FidoMetadata] Cache warmed" }
+  rescue StandardError => e
+    APP_LOGGER.debug { "[FidoMetadata] Cache warm failed: #{e.message}" }
+  end
+end
+
 Mailers::Base.configure!
 RateLimiter.configure!
 

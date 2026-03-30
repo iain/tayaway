@@ -281,6 +281,24 @@ module TestFactories
       EmailChangeTokenResult.new(token:, record:)
     end
 
+    def passkey_credential(user: nil, external_id: nil, public_key: nil, sign_count: 0, aaguid: nil, name: nil, id: SecureRandom.uuid)
+      user ||= self.user
+      external_id ||= SecureRandom.urlsafe_base64(32)
+      public_key ||= SecureRandom.urlsafe_base64(64)
+      now = Time.now
+      DB[:passkey_credentials].insert(
+        id: id,
+        user_id: user[:id],
+        external_id: external_id,
+        public_key: public_key,
+        sign_count: sign_count,
+        aaguid: aaguid,
+        name: name,
+        created_at: now
+      )
+      DB[:passkey_credentials].where(id: id).first
+    end
+
     def reset_sequences!
       @sequences = {}
     end
