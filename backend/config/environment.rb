@@ -62,8 +62,13 @@ LOADER.eager_load if APP_ENV == "production"
 
 FRONTEND_URL = T.let(ENV.fetch("FRONTEND_URL", "http://localhost:5173").freeze, String)
 
+WEBAUTHN_EXTRA_ORIGINS = T.let(
+  ENV.fetch("WEBAUTHN_EXTRA_ORIGINS", "").split(",").map(&:strip).reject(&:empty?).freeze,
+  T::Array[String],
+)
+
 WebAuthn.configure do |config|
-  config.allowed_origins = [FRONTEND_URL]
+  config.allowed_origins = [FRONTEND_URL, *WEBAUTHN_EXTRA_ORIGINS]
   config.rp_name = "Tayaway"
   config.rp_id = URI.parse(FRONTEND_URL).host
 end
