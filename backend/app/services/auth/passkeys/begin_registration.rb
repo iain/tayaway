@@ -29,7 +29,7 @@ module Auth
         sig { params(user: User).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
         def generate_options(user)
           existing = PasskeyCredential.for_user(user.id)
-          exclude = existing.map { |c| { id: c.external_id, type: "public-key" } }
+          exclude = existing.map { |c| c.external_id }
 
           options = WebAuthn::Credential.options_for_create(
             user: {

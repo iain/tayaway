@@ -44,7 +44,13 @@ async function startRegistration() {
       notifications.showInfo('Passkey added')
     }
   } catch (e) {
-    if (e instanceof DOMException && e.name === 'NotAllowedError') return
+    const name = e instanceof Error ? e.name : ''
+    if (name === 'NotAllowedError') return
+    if (name === 'InvalidStateError') {
+      error.value =
+        'This authenticator is already registered. Use a different device or security key.'
+      return
+    }
     error.value = 'Failed to register passkey. Please try again.'
   } finally {
     registering.value = false

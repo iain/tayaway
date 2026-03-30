@@ -52,7 +52,7 @@ async function handlePasskeyLogin() {
     router.push('/')
   } catch (e) {
     // Don't show error if user cancelled the ceremony
-    if (e instanceof DOMException && e.name === 'NotAllowedError') return
+    if (e instanceof Error && e.name === 'NotAllowedError') return
     error.value = 'Passkey authentication failed. Please try again.'
   } finally {
     passkeyLoading.value = false
