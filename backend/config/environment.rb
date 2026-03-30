@@ -74,14 +74,20 @@ WebAuthn.configure do |config|
 end
 
 # FIDO Metadata Service cache — used to look up authenticator device names by AAGUID.
-# In-memory cache: each process fetches the MDS blob once and caches it for its lifetime.
-# This is acceptable because device-name lookup is best-effort and non-critical.
-# Note: TestCacheStore is the gem's name for a simple in-memory hash — it is intentionally
-# used here despite the "test" prefix. No file-backed or Redis cache is needed.
-require "fido_metadata/test_cache_store"
-FIDO_METADATA_CACHE = T.let(FidoMetadata::TestCacheStore.new, FidoMetadata::TestCacheStore)
+# File-backed cache persists the MDS blob across restarts so only the first boot after
+# deploy fetches from the network. The blob is pre-warmed in a background thread at boot.
 FidoMetadata.configure do |config|
-  config.cache_backend = FIDO_METADATA_CACHE
+  config.cache_backend = FidoCacheStore.new(dir: "#{APP_DIR}/tmp/cache/fido_metadata")
+end
+
+# Pre-warm the FIDO metadata cache in a background thread so no user request pays the cost.
+if %w[production development].include?(APP_ENV)
+  Thread.new do
+    FidoMetadata::Store.new.table_of_contents
+    APP_LOGGER.info { "[FidoMetadata] Cache warmed" }
+  rescue StandardError => e
+    APP_LOGGER.debug { "[FidoMetadata] Cache warm failed: #{e.message}" }
+  end
 end
 
 Mailers::Base.configure!
