@@ -226,6 +226,50 @@ describe('auth store – passkey methods', () => {
     })
   })
 
+  describe('registerPasskey() — error paths', () => {
+    it('propagates error when begin endpoint fails', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse({ error: 'fail' }, 500)
+      )
+
+      const { useAuthStore } = await import('./auth')
+      const store = useAuthStore()
+
+      await expect(store.registerPasskey()).rejects.toThrow()
+    })
+
+    it('propagates error when startRegistration throws', async () => {
+      const beginResponse = {
+        options: { challenge: 'c', rp: {}, user: {}, pubKeyCredParams: [] },
+        challengeToken: 'jwt',
+      }
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(beginResponse))
+
+      const { startRegistration } = await import('@simplewebauthn/browser')
+      const notAllowed = new Error('not allowed')
+      notAllowed.name = 'NotAllowedError'
+      vi.mocked(startRegistration).mockRejectedValue(notAllowed)
+
+      const { useAuthStore } = await import('./auth')
+      const store = useAuthStore()
+
+      await expect(store.registerPasskey()).rejects.toThrow()
+    })
+  })
+
+  describe('authenticateWithPasskey() — error paths', () => {
+    it('propagates error when begin endpoint fails', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse({ error: 'fail' }, 500)
+      )
+
+      const { useAuthStore } = await import('./auth')
+      const store = useAuthStore()
+
+      await expect(store.authenticateWithPasskey()).rejects.toThrow()
+    })
+  })
+
   describe('deletePasskey()', () => {
     it('calls DELETE on the passkey endpoint', async () => {
       vi.mocked(fetch).mockResolvedValue(

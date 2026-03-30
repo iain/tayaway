@@ -33,6 +33,7 @@ module Auth
           existing = PasskeyCredential.for_user(user.id)
 
           if existing.length >= MAX_PASSKEYS_PER_USER
+            APP_LOGGER.warn { "[Auth::Passkeys] User #{user.id} reached max passkeys limit (#{MAX_PASSKEYS_PER_USER})" }
             return T.cast(
               Failure(ServiceError.validation("Maximum number of passkeys reached")),
               Result[T::Hash[Symbol, T.untyped], ServiceError]
@@ -54,7 +55,7 @@ module Auth
             }
           )
 
-          challenge_token = Auth::Token.encode_webauthn_challenge(challenge: options.challenge)
+          challenge_token = Auth::Token.encode_webauthn_challenge(challenge: options.challenge, user_id: user.id.to_s)
 
           T.cast(Success({
             options: options.as_json,

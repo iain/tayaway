@@ -33,6 +33,7 @@ module Auth
         sig { params(passkey: PasskeyCredential).returns(Result[T::Hash[Symbol, String], ServiceError]) }
         def delete_passkey(passkey)
           DB[:passkey_credentials].where(id: passkey.id.to_s).delete
+          APP_LOGGER.info { "[Auth::Passkeys] Passkey #{passkey.id} deleted for user #{passkey.user_id}" }
           T.cast(Success({ message: "Passkey deleted" }), Result[T::Hash[Symbol, String], ServiceError])
         end
       end

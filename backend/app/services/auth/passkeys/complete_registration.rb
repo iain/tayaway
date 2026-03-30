@@ -4,9 +4,12 @@
 module Auth
   module Passkeys
     module CompleteRegistration
+      MAX_NAME_LENGTH = 100
+
       class << self
         extend T::Sig
         include Result::Methods
+        include ChallengeValidation
 
         sig do
           params(
@@ -17,31 +20,12 @@ module Auth
           ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
         end
         def call(user_id:, challenge_token:, credential:, name: nil)
-          validate_inputs(challenge_token, credential)
+          validate_challenge_inputs(challenge_token, credential, user_id: user_id)
             .bind { |challenge| verify_credential(T.must(credential), challenge) }
             .bind { |webauthn_credential| store_credential(user_id, webauthn_credential, name) }
         end
 
         private
-
-        sig do
-          params(challenge_token: T.nilable(String), credential: T.nilable(T::Hash[String, T.untyped]))
-            .returns(Result[String, ServiceError])
-        end
-        def validate_inputs(challenge_token, credential)
-          if challenge_token.nil? || challenge_token.empty?
-            return T.cast(Failure(ServiceError.validation("Challenge token is required")), Result[String, ServiceError])
-          end
-
-          if credential.nil? || credential.empty?
-            return T.cast(Failure(ServiceError.validation("Credential is required")), Result[String, ServiceError])
-          end
-
-          decoded = Auth::Token.decode_webauthn_challenge(challenge_token)
-          T.cast(Success(decoded[:challenge]), Result[String, ServiceError])
-        rescue JWT::DecodeError
-          T.cast(Failure(ServiceError.unauthorized("Invalid or expired challenge")), Result[String, ServiceError])
-        end
 
         sig do
           params(credential: T::Hash[String, T.untyped], challenge: String)
@@ -72,6 +56,7 @@ module Auth
         def store_credential(user_id, webauthn_credential, name)
           aaguid = webauthn_credential.response.authenticator_data.aaguid
           device_name = name.nil? || name.strip.empty? ? lookup_device_name(aaguid) : name.strip
+          device_name = device_name&.slice(0, MAX_NAME_LENGTH)
 
           id = SecureRandom.uuid
           now = Time.now
@@ -88,11 +73,20 @@ module Auth
           )
 
           passkey = PasskeyCredential.find(id)
+          unless passkey
+            return T.cast(
+              Failure(ServiceError.validation("Failed to store passkey")),
+              Result[T::Hash[Symbol, T.untyped], ServiceError]
+            )
+          end
 
-          T.cast(Success({
-            passkey: T.must(passkey).to_api_hash
-          }
-                        ), Result[T::Hash[Symbol, T.untyped], ServiceError]
+          APP_LOGGER.info { "[Auth::Passkeys] Passkey #{id} registered for user #{user_id}" }
+          T.cast(Success({ passkey: passkey.to_api_hash }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        rescue Sequel::Error => e
+          APP_LOGGER.warn { "[Auth::Passkeys] Registration DB error: #{e.class}" }
+          T.cast(
+            Failure(ServiceError.validation("Failed to store passkey")),
+            Result[T::Hash[Symbol, T.untyped], ServiceError]
           )
         end
 

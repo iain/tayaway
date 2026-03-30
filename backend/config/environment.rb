@@ -73,9 +73,13 @@ WebAuthn.configure do |config|
   config.rp_id = URI.parse(FRONTEND_URL).host
 end
 
+# FIDO Metadata Service cache — used to look up authenticator device names by AAGUID.
+# In-memory cache: each process fetches the MDS blob once and caches it for its lifetime.
+# This is acceptable because device-name lookup is best-effort and non-critical.
 require "fido_metadata/test_cache_store"
+FIDO_METADATA_CACHE = T.let(FidoMetadata::TestCacheStore.new, FidoMetadata::TestCacheStore)
 FidoMetadata.configure do |config|
-  config.cache_backend = FidoMetadata::TestCacheStore.new
+  config.cache_backend = FIDO_METADATA_CACHE
 end
 
 Mailers::Base.configure!

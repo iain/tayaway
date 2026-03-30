@@ -222,28 +222,26 @@ export const useAuthStore = defineStore('auth', () => {
     return response.data.message
   }
 
-  async function verifyToken(token: string): Promise<AuthUser> {
-    await api.post<VerifyResponse>('/auth/verify', { token })
-
-    // Cookie is set by the backend response — no localStorage needed
-
-    // After verify, we need to fetch user info
+  async function completeLogin(): Promise<AuthUser> {
     const meResponse = await api.get<MeResponse>('/auth/me')
     const verifiedUser = mapMeResponseToAuthUser(meResponse.data)
     user.value = verifiedUser
     cacheUser(verifiedUser)
 
-    // Connect WebSocket after successful verification
     const ws = useWebSocketStore()
     ws.connect()
 
-    // Resume any commands that were preserved when the session expired
     const commandQueue = useCommandQueueStore()
     if (commandQueue.pendingCount > 0) {
       commandQueue.processQueue()
     }
 
     return verifiedUser
+  }
+
+  async function verifyToken(token: string): Promise<AuthUser> {
+    await api.post<VerifyResponse>('/auth/verify', { token })
+    return completeLogin()
   }
 
   async function logout(): Promise<void> {
@@ -446,21 +444,8 @@ export const useAuthStore = defineStore('auth', () => {
       { silent: true }
     )
 
-    // Session cookie is now set — fetch user info
-    const meResponse = await api.get<MeResponse>('/auth/me')
-    const verifiedUser = mapMeResponseToAuthUser(meResponse.data)
-    user.value = verifiedUser
-    cacheUser(verifiedUser)
-
-    const ws = useWebSocketStore()
-    ws.connect()
-
-    const commandQueue = useCommandQueueStore()
-    if (commandQueue.pendingCount > 0) {
-      commandQueue.processQueue()
-    }
-
-    return verifiedUser
+    // Session cookie is now set — complete the login flow
+    return completeLogin()
   }
 
   async function renamePasskey(id: string, name: string): Promise<Passkey> {

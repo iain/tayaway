@@ -83,4 +83,38 @@ RSpec.describe Auth::Passkeys::CompleteRegistration do
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("Invalid or expired challenge")
   end
+
+  it "returns failure for tampered credential (WebAuthn verification failure)" do
+    challenge_token, _credential = begin_and_create
+
+    # Use a different client to generate a credential against a different challenge
+    other_client = WebAuthn::FakeClient.new("http://localhost:5173")
+    other_options = WebAuthn::Credential.options_for_create(
+      user: { id: "other", name: "other@example.com" }
+    )
+    tampered = other_client.create(challenge: other_options.challenge)
+
+    result = described_class.call(
+      user_id: user[:id],
+      challenge_token: challenge_token,
+      credential: tampered
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Passkey verification failed")
+  end
+
+  it "truncates name to 100 characters" do
+    challenge_token, credential = begin_and_create
+
+    result = described_class.call(
+      user_id: user[:id],
+      challenge_token: challenge_token,
+      credential: credential,
+      name: "x" * 200
+    )
+
+    expect(result.success?).to be true
+    expect(result.value![:passkey][:name].length).to eq(100)
+  end
 end

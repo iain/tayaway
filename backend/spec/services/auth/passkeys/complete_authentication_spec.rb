@@ -91,4 +91,45 @@ RSpec.describe Auth::Passkeys::CompleteAuthentication do
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("Credential is required")
   end
+
+  it "returns failure for tampered assertion (WebAuthn verification failure)" do
+    register_passkey
+
+    # Get a valid challenge but use a different client's assertion
+    auth_result = Auth::Passkeys::BeginAuthentication.call
+    options = auth_result.value!
+    other_client = WebAuthn::FakeClient.new("http://localhost:5173")
+    other_client.create(challenge: WebAuthn::Credential.options_for_create(
+      user: { id: "other", name: "other@example.com" }
+    ).challenge)
+    tampered = other_client.get(challenge: options[:options][:challenge])
+
+    result = described_class.call(
+      challenge_token: options[:challengeToken],
+      credential: tampered
+    )
+
+    expect(result.failure?).to be true
+    # Unrecognized because the credential ID doesn't match any stored passkey
+    expect(result.failure.message).to eq("Passkey not recognized")
+  end
+
+  it "returns failure when user has been deleted" do
+    register_passkey
+
+    challenge_token, assertion = begin_and_get
+
+    # Delete user between verification and session creation
+    DB.run("SET session_replication_role = replica")
+    DB[:users].where(id: user[:id]).delete
+    DB.run("SET session_replication_role = DEFAULT")
+
+    result = described_class.call(
+      challenge_token: challenge_token,
+      credential: assertion
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("User not found")
+  end
 end

@@ -99,6 +99,12 @@ RSpec.describe "Auth passkeys routes" do
       expect(body["options"]).to include("challenge", "rpId")
       expect(body["challengeToken"]).to be_a(String)
     end
+
+    it "works without CSRF header (unauthenticated endpoint)" do
+      post "/api/auth/passkeys/authenticate/begin", nil, { "CONTENT_TYPE" => "application/json" }
+
+      expect(last_response.status).to eq(200)
+    end
   end
 
   describe "POST /api/auth/passkeys/authenticate/complete" do

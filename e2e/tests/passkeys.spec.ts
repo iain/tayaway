@@ -172,26 +172,10 @@ test.describe('Passkeys', () => {
       await page.getByRole('button', { name: 'Add passkey' }).click()
 
       // The virtual authenticator auto-completes the ceremony.
-      // Wait for either the name prompt or the error to appear.
+      // Wait for the name prompt to appear.
       await expect(
-        page
-          .getByPlaceholder('e.g. "MacBook", "iPhone"')
-          .or(page.getByText('Failed to register'))
-          .or(page.getByText('Passkey added'))
+        page.getByPlaceholder('e.g. "MacBook", "iPhone"')
       ).toBeVisible({ timeout: 15_000 })
-
-      // Debug: what showed up?
-      const errorVisible = await page
-        .getByText('Failed to register')
-        .isVisible()
-        .catch(() => false)
-      await expect(
-        page.getByPlaceholder('e.g. "MacBook", "iPhone"')
-      ).toBeVisible()
-
-      await expect(
-        page.getByPlaceholder('e.g. "MacBook", "iPhone"')
-      ).toBeVisible()
 
       // Enter a name and save
       await page.getByPlaceholder('e.g. "MacBook", "iPhone"').fill('Test Key')

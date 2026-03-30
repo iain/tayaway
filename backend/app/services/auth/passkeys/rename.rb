@@ -59,6 +59,7 @@ module Auth
         def update_name(passkey_id, name)
           DB[:passkey_credentials].where(id: passkey_id).update(name: name)
           updated = PasskeyCredential.find(passkey_id)
+          APP_LOGGER.info { "[Auth::Passkeys] Passkey #{passkey_id} renamed" }
           T.cast(Success({ passkey: T.must(updated).to_api_hash }), Result[T::Hash[Symbol, T.untyped], ServiceError])
         end
       end
