@@ -88,9 +88,15 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="dark flex min-h-screen items-center justify-center bg-stone-900">
-    <div class="w-full max-w-md px-6">
+  <main
+    class="dark flex min-h-screen flex-col items-center justify-center bg-stone-900 px-4"
+  >
+    <div class="w-full max-w-md">
       <img :src="appIcon" alt="Tayaway" class="mx-auto mb-8 size-16" />
+    </div>
+    <div
+      class="w-full max-w-md rounded-xl border border-stone-800 bg-stone-800/40 p-8 shadow-xl sm:p-10"
+    >
       <h1
         data-testid="login-title"
         class="mb-2 text-center text-2xl font-bold text-white"
@@ -138,13 +144,10 @@ onUnmounted(() => {
       </form>
 
       <div v-if="passkeyAvailable" class="mt-4">
-        <div class="relative my-4">
-          <div class="absolute inset-0 flex items-center">
-            <div class="w-full border-t border-stone-700" />
-          </div>
-          <div class="relative flex justify-center text-sm">
-            <span class="bg-stone-900 px-2 text-stone-500">or</span>
-          </div>
+        <div class="my-4 flex items-center gap-3">
+          <div class="h-px flex-1 bg-stone-700" />
+          <span class="text-sm text-stone-500">or</span>
+          <div class="h-px flex-1 bg-stone-700" />
         </div>
 
         <AppButton
