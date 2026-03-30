@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted, onUnmounted } from 'vue'
-import { PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import {
+  PencilIcon,
+  TrashIcon,
+  CheckIcon,
+  XMarkIcon,
+} from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores'
 import type { Passkey } from '@/types'
@@ -207,16 +212,24 @@ onUnmounted(() => {
               class="flex items-center gap-2"
               @submit.prevent="saveEdit(passkey.id)"
             >
+              <label :for="`rename-${passkey.id}`" class="sr-only">
+                Passkey name
+              </label>
               <input
                 :id="`rename-${passkey.id}`"
                 v-model="editName"
                 type="text"
                 maxlength="100"
-                aria-label="Passkey name"
-                class="block min-w-0 flex-1 rounded-md bg-gray-100 px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10"
+                placeholder="Enter a name"
+                class="block min-w-0 flex-1 rounded-md bg-gray-100 px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
                 @keydown.escape="cancelEdit"
-                @blur="saveEdit(passkey.id)"
               />
+              <IconButton label="Save name" @click="saveEdit(passkey.id)">
+                <CheckIcon class="size-4" />
+              </IconButton>
+              <IconButton label="Cancel" @click="cancelEdit">
+                <XMarkIcon class="size-4" />
+              </IconButton>
             </form>
 
             <!-- Display mode -->
