@@ -1,16 +1,14 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted, onUnmounted } from 'vue'
-import {
-  PencilIcon,
-  TrashIcon,
-  CheckIcon,
-  XMarkIcon,
-} from '@heroicons/vue/24/outline'
+import { PencilIcon, TrashIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores'
 import type { Passkey } from '@/types'
 import AppButton from '@/components/common/AppButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
+import BaseModal from '@/components/common/BaseModal.vue'
+import FormInput from '@/components/form/FormInput.vue'
+import FormActions from '@/components/form/FormActions.vue'
 
 const UNDO_DELAY_MS = 4000
 
@@ -20,7 +18,16 @@ const notifications = useNotificationsStore()
 const passkeys = ref<Passkey[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
-const registering = ref(false)
+
+// --- Registration modal state ---
+const registerOpen = ref(false)
+const registerStep = ref<'ceremony' | 'name'>('ceremony')
+const registerError = ref<string | null>(null)
+const registerSaving = ref(false)
+const pendingPasskey = ref<Passkey | null>(null)
+const passkeyName = ref('')
+
+// --- Inline rename state ---
 const editingId = ref<string | null>(null)
 const editName = ref('')
 
@@ -36,42 +43,62 @@ async function fetchPasskeys() {
   }
 }
 
-function defaultName(): string {
-  return `Passkey (${new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })})`
-}
+async function openRegisterModal() {
+  registerOpen.value = true
+  registerStep.value = 'ceremony'
+  registerError.value = null
+  pendingPasskey.value = null
+  passkeyName.value = ''
 
-async function startRegistration() {
-  registering.value = true
-  error.value = null
   try {
     const passkey = await authStore.registerPasskey()
-    // If FIDO metadata didn't provide a name, use a default
-    if (!passkey.name) {
-      const name = defaultName()
-      try {
-        const updated = await authStore.renamePasskey(passkey.id, name)
-        passkeys.value.unshift(updated)
-      } catch {
-        passkeys.value.unshift({ ...passkey, name })
-      }
-    } else {
-      passkeys.value.unshift(passkey)
-    }
-    notifications.showInfo('Passkey added')
+    pendingPasskey.value = passkey
+    passkeyName.value = passkey.name || ''
+    registerStep.value = 'name'
   } catch (e) {
     const name = e instanceof Error ? e.name : ''
-    if (name === 'NotAllowedError') return
+    if (name === 'NotAllowedError') {
+      registerOpen.value = false
+      return
+    }
     if (name === 'InvalidStateError') {
-      error.value =
+      registerError.value =
         'This authenticator is already registered. Use a different device or security key.'
       return
     }
-    error.value = 'Failed to register passkey. Please try again.'
-  } finally {
-    registering.value = false
+    registerError.value = 'Failed to register passkey. Please try again.'
   }
 }
 
+async function savePasskeyName() {
+  if (!pendingPasskey.value) return
+  const name = passkeyName.value.trim()
+  if (!name) return
+
+  registerSaving.value = true
+  try {
+    const updated = await authStore.renamePasskey(pendingPasskey.value.id, name)
+    passkeys.value.unshift(updated)
+    pendingPasskey.value = null // Clear before closing to prevent double-add in closeRegisterModal
+    registerOpen.value = false
+    notifications.showInfo('Passkey added')
+  } catch {
+    registerError.value = 'Failed to save name. Please try again.'
+  } finally {
+    registerSaving.value = false
+  }
+}
+
+function closeRegisterModal() {
+  // If we have a pending passkey that wasn't named yet, still add it to the list
+  if (pendingPasskey.value && registerStep.value === 'name') {
+    passkeys.value.unshift(pendingPasskey.value)
+    notifications.showInfo('Passkey added')
+  }
+  registerOpen.value = false
+}
+
+// --- Inline rename ---
 function startEditing(passkey: Passkey) {
   editingId.value = passkey.id
   editName.value = passkey.name || ''
@@ -94,14 +121,12 @@ async function saveEdit(id: string) {
     return
   }
 
-  // Optimistic update
   passkeys.value = passkeys.value.map((p) => (p.id === id ? { ...p, name } : p))
   editingId.value = null
 
   try {
     await authStore.renamePasskey(id, name)
   } catch {
-    // Revert on failure
     if (original) {
       passkeys.value = passkeys.value.map((p) => (p.id === id ? original : p))
     }
@@ -112,6 +137,7 @@ function cancelEdit() {
   editingId.value = null
 }
 
+// --- Delete with undo ---
 const pendingDeletes = ref<
   Map<string, { passkey: Passkey; timer: ReturnType<typeof setTimeout> }>
 >(new Map())
@@ -206,14 +232,13 @@ onUnmounted(() => {
           class="flex items-center justify-between py-4"
         >
           <div class="min-w-0 flex-1">
-            <!-- Inline rename form -->
             <form
               v-if="editingId === passkey.id"
               class="flex items-center gap-2"
               @submit.prevent="saveEdit(passkey.id)"
             >
               <label :for="`rename-${passkey.id}`" class="sr-only">
-                Passkey name
+                Rename passkey
               </label>
               <input
                 :id="`rename-${passkey.id}`"
@@ -224,15 +249,12 @@ onUnmounted(() => {
                 class="block min-w-0 flex-1 rounded-md bg-gray-100 px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
                 @keydown.escape="cancelEdit"
               />
-              <IconButton label="Save name" @click="saveEdit(passkey.id)">
-                <CheckIcon class="size-4" />
-              </IconButton>
-              <IconButton label="Cancel" @click="cancelEdit">
-                <XMarkIcon class="size-4" />
-              </IconButton>
+              <AppButton type="submit" size="sm"> Save </AppButton>
+              <AppButton size="sm" variant="secondary" @click="cancelEdit">
+                Cancel
+              </AppButton>
             </form>
 
-            <!-- Display mode -->
             <template v-else>
               <p
                 class="truncate text-sm font-medium text-gray-900 dark:text-white"
@@ -267,15 +289,76 @@ onUnmounted(() => {
       </p>
 
       <div class="mt-4">
-        <AppButton
-          variant="secondary"
-          :loading="registering"
-          loading-label="Registering..."
-          @click="startRegistration"
-        >
+        <AppButton variant="secondary" @click="openRegisterModal">
           Add passkey
         </AppButton>
       </div>
     </template>
+
+    <!-- Registration modal -->
+    <BaseModal
+      :open="registerOpen"
+      title="Add Passkey"
+      :prevent-close="registerStep === 'ceremony' && !registerError"
+      @close="closeRegisterModal"
+    >
+      <!-- Step 1: Ceremony in progress -->
+      <div
+        v-if="registerStep === 'ceremony' && !registerError"
+        class="flex flex-col items-center gap-4 py-6"
+      >
+        <ArrowPathIcon
+          class="size-8 animate-spin text-gray-400 dark:text-stone-500"
+        />
+        <p class="text-sm text-gray-500 dark:text-stone-400">
+          Follow your browser's prompt to create a passkey...
+        </p>
+      </div>
+
+      <!-- Step 2: Name the passkey -->
+      <form
+        v-else-if="registerStep === 'name'"
+        class="space-y-4"
+        @submit.prevent="savePasskeyName"
+      >
+        <p class="text-sm text-gray-500 dark:text-stone-400">
+          Give this passkey a name so you can identify it later.
+        </p>
+
+        <FormInput
+          id="passkey-name"
+          v-model="passkeyName"
+          label="Passkey name"
+          placeholder='e.g. "MacBook", "iPhone"'
+          :maxlength="100"
+          autofocus
+          required
+          :disabled="registerSaving"
+        />
+
+        <p v-if="registerError" class="text-sm text-red-600 dark:text-red-400">
+          {{ registerError }}
+        </p>
+
+        <FormActions
+          submit-label="Save"
+          :loading="registerSaving"
+          :disabled="!passkeyName.trim()"
+          @cancel="closeRegisterModal"
+        />
+      </form>
+
+      <!-- Error during ceremony -->
+      <div v-else-if="registerError" class="space-y-4">
+        <p class="text-sm text-red-600 dark:text-red-400">
+          {{ registerError }}
+        </p>
+        <div class="flex justify-end">
+          <AppButton variant="secondary" @click="registerOpen = false">
+            Close
+          </AppButton>
+        </div>
+      </div>
+    </BaseModal>
   </div>
 </template>

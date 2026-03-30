@@ -151,7 +151,7 @@ test.describe('Passkeys', () => {
       ).toBeVisible()
     })
 
-    test('register a passkey via virtual authenticator and see it in the list', async ({
+    test('register a passkey via modal and see it in the list', async ({
       page,
       request,
     }) => {
@@ -167,11 +167,21 @@ test.describe('Passkeys', () => {
 
       const { cdp } = await addVirtualAuthenticator(page)
 
-      // Click "Add passkey" — virtual authenticator auto-completes the ceremony
+      // Click "Add passkey" — opens modal, virtual authenticator completes ceremony
       await page.getByRole('button', { name: 'Add passkey' }).click()
 
-      // Passkey appears in the list with a default name containing the date
-      await expect(page.getByText('Passkey (')).toBeVisible({ timeout: 15_000 })
+      // Modal shows name input after ceremony completes
+      const dialog = page.getByRole('dialog')
+      await expect(dialog).toBeVisible({ timeout: 15_000 })
+      await expect(dialog.getByLabel('Passkey name')).toBeVisible()
+
+      // Enter name and save
+      await dialog.getByLabel('Passkey name').fill('Test Key')
+      await dialog.getByRole('button', { name: 'Save' }).click()
+
+      // Modal closes, passkey appears in the list
+      await expect(dialog).not.toBeVisible()
+      await expect(page.getByText('Test Key')).toBeVisible()
       await expect(page.getByText('No passkeys registered')).not.toBeVisible()
 
       await cdp.detach()
@@ -190,20 +200,25 @@ test.describe('Passkeys', () => {
 
       const { cdp } = await addVirtualAuthenticator(page)
 
-      // Register a passkey
+      // Register a passkey through the modal
       await page.getByRole('button', { name: 'Add passkey' }).click()
-      await expect(page.getByText('Passkey (')).toBeVisible({ timeout: 15_000 })
+      const dialog = page.getByRole('dialog')
+      await expect(dialog.getByLabel('Passkey name')).toBeVisible({
+        timeout: 15_000,
+      })
+      await dialog.getByLabel('Passkey name').fill('Old Name')
+      await dialog.getByRole('button', { name: 'Save' }).click()
+      await expect(dialog).not.toBeVisible()
 
-      // Click edit button and rename
+      // Click edit button and rename inline
       await page.getByRole('button', { name: 'Rename passkey' }).click()
-      const input = page.getByLabel('Passkey name')
+      const input = page.getByLabel('Rename passkey')
       await expect(input).toBeVisible()
       await input.clear()
-      await input.fill('My YubiKey')
-      await input.press('Enter')
+      await input.fill('New Name')
+      await page.getByRole('button', { name: 'Save' }).click()
 
-      // Renamed passkey visible
-      await expect(page.getByText('My YubiKey')).toBeVisible()
+      await expect(page.getByText('New Name')).toBeVisible()
 
       await cdp.detach()
     })
@@ -221,9 +236,15 @@ test.describe('Passkeys', () => {
 
       const { cdp } = await addVirtualAuthenticator(page)
 
-      // Register a passkey
+      // Register through modal
       await page.getByRole('button', { name: 'Add passkey' }).click()
-      await expect(page.getByText('Passkey (')).toBeVisible({ timeout: 15_000 })
+      const dialog = page.getByRole('dialog')
+      await expect(dialog.getByLabel('Passkey name')).toBeVisible({
+        timeout: 15_000,
+      })
+      await dialog.getByLabel('Passkey name').fill('Temp Key')
+      await dialog.getByRole('button', { name: 'Save' }).click()
+      await expect(dialog).not.toBeVisible()
 
       // Delete it
       await page.getByRole('button', { name: 'Delete passkey' }).click()
@@ -262,7 +283,13 @@ test.describe('Passkeys', () => {
       const { cdp } = await addVirtualAuthenticator(page)
 
       await page.getByRole('button', { name: 'Add passkey' }).click()
-      await expect(page.getByText('Passkey (')).toBeVisible({ timeout: 15_000 })
+      const dialog = page.getByRole('dialog')
+      await expect(dialog.getByLabel('Passkey name')).toBeVisible({
+        timeout: 15_000,
+      })
+      await dialog.getByLabel('Passkey name').fill('Login Key')
+      await dialog.getByRole('button', { name: 'Save' }).click()
+      await expect(dialog).not.toBeVisible()
 
       // Step 2: Log out
       await page.getByTestId('user-menu-button').click()
