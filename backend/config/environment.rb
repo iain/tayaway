@@ -76,6 +76,8 @@ end
 # FIDO Metadata Service cache — used to look up authenticator device names by AAGUID.
 # In-memory cache: each process fetches the MDS blob once and caches it for its lifetime.
 # This is acceptable because device-name lookup is best-effort and non-critical.
+# Note: TestCacheStore is the gem's name for a simple in-memory hash — it is intentionally
+# used here despite the "test" prefix. No file-backed or Redis cache is needed.
 require "fido_metadata/test_cache_store"
 FIDO_METADATA_CACHE = T.let(FidoMetadata::TestCacheStore.new, FidoMetadata::TestCacheStore)
 FidoMetadata.configure do |config|

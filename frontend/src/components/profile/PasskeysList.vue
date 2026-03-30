@@ -21,7 +21,7 @@ const error = ref<string | null>(null)
 
 // --- Registration modal state ---
 const registerOpen = ref(false)
-const registerStep = ref<'ready' | 'ceremony' | 'name'>('ready')
+const registerStep = ref<'ready' | 'ceremony' | 'name' | 'error'>('ready')
 const registerError = ref<string | null>(null)
 const registerSaving = ref(false)
 const pendingPasskey = ref<Passkey | null>(null)
@@ -70,9 +70,11 @@ async function startCeremony() {
     if (name === 'InvalidStateError') {
       registerError.value =
         'This authenticator is already registered. Use a different device or security key.'
+      registerStep.value = 'error'
       return
     }
     registerError.value = 'Failed to register passkey. Please try again.'
+    registerStep.value = 'error'
   }
 }
 
@@ -376,7 +378,7 @@ onUnmounted(() => {
       </form>
 
       <!-- Error during ceremony -->
-      <div v-else-if="registerError" class="space-y-4">
+      <div v-else-if="registerStep === 'error'" class="space-y-4">
         <p class="text-sm text-red-600 dark:text-red-400">
           {{ registerError }}
         </p>

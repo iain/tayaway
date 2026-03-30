@@ -24,6 +24,7 @@ module Auth
           end
 
           if passkey.user_id.to_s != user_id
+            APP_LOGGER.warn { "[Auth::Passkeys] User #{user_id} attempted to delete passkey #{passkey_id} owned by another user" }
             return T.cast(Failure(ServiceError.forbidden("Not authorized")), Result[PasskeyCredential, ServiceError])
           end
 

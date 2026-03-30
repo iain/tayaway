@@ -138,7 +138,8 @@ RSpec.describe "Auth passkeys routes" do
       unknown_client = WebAuthn::FakeClient.new("http://localhost:5173")
       unknown_client.create(challenge: WebAuthn::Credential.options_for_create(
         user: { id: "x", name: "x@example.com" }
-      ).challenge)
+      ).challenge
+                           )
 
       post "/api/auth/passkeys/authenticate/begin", nil, csrf_header.merge("CONTENT_TYPE" => "application/json")
       begin_auth = JSON.parse(last_response.body)

@@ -285,6 +285,17 @@ describe('auth store – passkey methods', () => {
         expect.objectContaining({ method: 'DELETE' })
       )
     })
+
+    it('throws when the DELETE endpoint fails', async () => {
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse({ error: 'Not found' }, 404)
+      )
+
+      const { useAuthStore } = await import('./auth')
+      const store = useAuthStore()
+
+      await expect(store.deletePasskey('pk-missing')).rejects.toThrow()
+    })
   })
 
   describe('renamePasskey()', () => {

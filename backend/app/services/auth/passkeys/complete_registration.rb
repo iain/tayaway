@@ -61,9 +61,22 @@ module Auth
           id = SecureRandom.uuid
           now = Time.now
 
-          DB[:passkey_credentials].insert(
-            id: id,
-            user_id: user_id,
+          DB.transaction do
+            DB[:passkey_credentials].insert(
+              id: id,
+              user_id: user_id,
+              external_id: webauthn_credential.id.to_s,
+              public_key: webauthn_credential.public_key.to_s,
+              sign_count: webauthn_credential.sign_count.to_i,
+              aaguid: aaguid&.to_s,
+              name: device_name,
+              created_at: now
+            )
+          end
+
+          passkey = PasskeyCredential.new(
+            id: UUID.new(id),
+            user_id: UUID.new(user_id),
             external_id: webauthn_credential.id.to_s,
             public_key: webauthn_credential.public_key.to_s,
             sign_count: webauthn_credential.sign_count.to_i,
@@ -71,14 +84,6 @@ module Auth
             name: device_name,
             created_at: now
           )
-
-          passkey = PasskeyCredential.find(id)
-          unless passkey
-            return T.cast(
-              Failure(ServiceError.validation("Failed to store passkey")),
-              Result[T::Hash[Symbol, T.untyped], ServiceError]
-            )
-          end
 
           APP_LOGGER.info { "[Auth::Passkeys] Passkey #{id} registered for user #{user_id}" }
           T.cast(Success({ passkey: passkey.to_api_hash }), Result[T::Hash[Symbol, T.untyped], ServiceError])
@@ -90,12 +95,16 @@ module Auth
           )
         end
 
+        sig { returns(FidoMetadata::Store) }
+        def fido_store
+          @_fido_store ||= FidoMetadata::Store.new
+        end
+
         sig { params(aaguid: T.nilable(String)).returns(T.nilable(String)) }
         def lookup_device_name(aaguid)
           return nil if aaguid.nil? || aaguid == "00000000-0000-0000-0000-000000000000"
 
-          store = FidoMetadata::Store.new
-          entry = store.fetch_entry(aaguid: aaguid)
+          entry = fido_store.fetch_entry(aaguid: aaguid)
           return nil unless entry
 
           statement = entry.metadata_statement

@@ -8,7 +8,7 @@ RSpec.describe Auth::Passkeys::CompleteRegistration do
   let(:user) { TestFactories.user }
   let(:fake_client) { WebAuthn::FakeClient.new("http://localhost:5173") }
 
-  def begin_and_create
+  define_method(:begin_and_create) do
     begin_result = Auth::Passkeys::BeginRegistration.call(user_id: user[:id])
     options = begin_result.value!
     credential = fake_client.create(challenge: options[:options][:challenge])

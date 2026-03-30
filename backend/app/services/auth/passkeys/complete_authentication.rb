@@ -57,11 +57,13 @@ module Auth
             )
           end
 
-          # Wrap sign_count update + session creation in a transaction
+          # Wrap sign_count update + session creation in a transaction.
+          # Use GREATEST to prevent concurrent logins from regressing the sign count.
+          new_sign_count = webauthn_credential.sign_count.to_i
           result = DB.transaction do
             DB[:passkey_credentials]
               .where(id: stored.id.to_s)
-              .update(sign_count: webauthn_credential.sign_count.to_i)
+              .update(sign_count: Sequel.function(:GREATEST, :sign_count, new_sign_count))
 
             Auth::SessionCreator.create(stored.user_id.to_s, ip: ip, user_agent: user_agent)
           end

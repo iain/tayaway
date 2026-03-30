@@ -26,7 +26,8 @@ module Auth
 
         decoded = Auth::Token.decode_webauthn_challenge(challenge_token, user_id: user_id)
         T.cast(Success(decoded[:challenge]), Result[String, ServiceError])
-      rescue JWT::DecodeError
+      rescue JWT::DecodeError => e
+        APP_LOGGER.warn { "[Auth::Passkeys] Challenge validation failed: #{e.class}" }
         T.cast(Failure(ServiceError.unauthorized("Invalid or expired challenge")), Result[String, ServiceError])
       end
     end

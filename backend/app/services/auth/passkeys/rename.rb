@@ -4,8 +4,6 @@
 module Auth
   module Passkeys
     module Rename
-      MAX_NAME_LENGTH = 100
-
       class << self
         extend T::Sig
         include Result::Methods
@@ -17,7 +15,7 @@ module Auth
         def call(user_id:, passkey_id:, name:)
           validate_name(name)
             .bind { |valid_name| find_passkey(user_id, passkey_id, valid_name) }
-            .bind { |params| update_name(params[:passkey_id], params[:name]) }
+            .bind { |params| update_name(params[:passkey], params[:name]) }
         end
 
         private
@@ -29,9 +27,9 @@ module Auth
             return T.cast(Failure(ServiceError.validation("Name is required")), Result[String, ServiceError])
           end
 
-          if stripped.length > MAX_NAME_LENGTH
+          if stripped.length > CompleteRegistration::MAX_NAME_LENGTH
             return T.cast(
-              Failure(ServiceError.validation("Name must be #{MAX_NAME_LENGTH} characters or fewer")),
+              Failure(ServiceError.validation("Name must be #{CompleteRegistration::MAX_NAME_LENGTH} characters or fewer")),
               Result[String, ServiceError]
             )
           end
@@ -52,15 +50,33 @@ module Auth
             )
           end
 
-          T.cast(Success({ passkey_id: passkey_id, name: name }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+          T.cast(Success({ passkey: passkey, name: name }), Result[T::Hash[Symbol, T.untyped], ServiceError])
         end
 
-        sig { params(passkey_id: String, name: String).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
-        def update_name(passkey_id, name)
-          DB[:passkey_credentials].where(id: passkey_id).update(name: name)
-          updated = PasskeyCredential.find(passkey_id)
-          APP_LOGGER.info { "[Auth::Passkeys] Passkey #{passkey_id} renamed" }
-          T.cast(Success({ passkey: T.must(updated).to_api_hash }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        sig { params(passkey: PasskeyCredential, name: String).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
+        def update_name(passkey, name)
+          DB[:passkey_credentials].where(id: passkey.id.to_s).update(name: name)
+
+          # Build updated model from known values — avoids an extra SELECT
+          updated = PasskeyCredential.new(
+            id: passkey.id,
+            user_id: passkey.user_id,
+            external_id: passkey.external_id,
+            public_key: passkey.public_key,
+            sign_count: passkey.sign_count,
+            aaguid: passkey.aaguid,
+            name: name,
+            created_at: passkey.created_at
+          )
+
+          APP_LOGGER.info { "[Auth::Passkeys] Passkey #{passkey.id} renamed" }
+          T.cast(Success({ passkey: updated.to_api_hash }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        rescue Sequel::Error => e
+          APP_LOGGER.warn { "[Auth::Passkeys] Rename DB error: #{e.class}" }
+          T.cast(
+            Failure(ServiceError.validation("Failed to rename passkey")),
+            Result[T::Hash[Symbol, T.untyped], ServiceError]
+          )
         end
       end
     end

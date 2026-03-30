@@ -1,3 +1,5 @@
+// These tests require Chromium — they use CDP's WebAuthn.addVirtualAuthenticator
+// which is not available in Firefox or WebKit.
 import {
   test,
   expect,

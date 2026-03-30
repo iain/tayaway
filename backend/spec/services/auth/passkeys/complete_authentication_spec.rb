@@ -8,7 +8,7 @@ RSpec.describe Auth::Passkeys::CompleteAuthentication do
   let(:user) { TestFactories.user }
   let(:fake_client) { WebAuthn::FakeClient.new("http://localhost:5173") }
 
-  def register_passkey
+  define_method(:register_passkey) do
     begin_result = Auth::Passkeys::BeginRegistration.call(user_id: user[:id])
     options = begin_result.value!
     credential = fake_client.create(challenge: options[:options][:challenge])
@@ -20,7 +20,7 @@ RSpec.describe Auth::Passkeys::CompleteAuthentication do
     )
   end
 
-  def begin_and_get
+  define_method(:begin_and_get) do
     auth_result = Auth::Passkeys::BeginAuthentication.call
     options = auth_result.value!
     assertion = fake_client.get(challenge: options[:options][:challenge])
@@ -63,7 +63,8 @@ RSpec.describe Auth::Passkeys::CompleteAuthentication do
     other_client = WebAuthn::FakeClient.new("http://localhost:5173")
     other_client.create(challenge: WebAuthn::Credential.options_for_create(
       user: { id: "other", name: "other@example.com" }
-    ).challenge)
+    ).challenge
+                       )
 
     auth_result = Auth::Passkeys::BeginAuthentication.call
     options = auth_result.value!
@@ -101,7 +102,8 @@ RSpec.describe Auth::Passkeys::CompleteAuthentication do
     other_client = WebAuthn::FakeClient.new("http://localhost:5173")
     other_client.create(challenge: WebAuthn::Credential.options_for_create(
       user: { id: "other", name: "other@example.com" }
-    ).challenge)
+    ).challenge
+                       )
     tampered = other_client.get(challenge: options[:options][:challenge])
 
     result = described_class.call(

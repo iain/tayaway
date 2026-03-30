@@ -29,6 +29,12 @@ module Auth
           }
                         ), Result[T::Hash[Symbol, T.untyped], ServiceError]
           )
+        rescue WebAuthn::Error => e
+          APP_LOGGER.warn { "[Auth::Passkeys] Authentication options generation failed: #{e.class}" }
+          T.cast(
+            Failure(ServiceError.validation("Failed to generate authentication options")),
+            Result[T::Hash[Symbol, T.untyped], ServiceError]
+          )
         end
       end
     end
