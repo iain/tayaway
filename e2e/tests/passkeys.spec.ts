@@ -167,8 +167,9 @@ test.describe('Passkeys', () => {
 
       const { cdp } = await addVirtualAuthenticator(page)
 
-      // Click "Add passkey" — opens modal, virtual authenticator completes ceremony
+      // Click "Add passkey" — opens modal with intro, then "Continue" starts ceremony
       await page.getByRole('button', { name: 'Add passkey' }).click()
+      await page.getByRole('button', { name: 'Continue' }).click()
 
       // Modal shows name input after ceremony completes
       const dialog = page.getByRole('dialog')
@@ -202,6 +203,7 @@ test.describe('Passkeys', () => {
 
       // Register a passkey through the modal
       await page.getByRole('button', { name: 'Add passkey' }).click()
+      await page.getByRole('button', { name: 'Continue' }).click()
       const dialog = page.getByRole('dialog')
       await expect(dialog.getByLabel('Passkey name')).toBeVisible({
         timeout: 15_000,
@@ -238,6 +240,7 @@ test.describe('Passkeys', () => {
 
       // Register through modal
       await page.getByRole('button', { name: 'Add passkey' }).click()
+      await page.getByRole('button', { name: 'Continue' }).click()
       const dialog = page.getByRole('dialog')
       await expect(dialog.getByLabel('Passkey name')).toBeVisible({
         timeout: 15_000,
@@ -283,6 +286,7 @@ test.describe('Passkeys', () => {
       const { cdp } = await addVirtualAuthenticator(page)
 
       await page.getByRole('button', { name: 'Add passkey' }).click()
+      await page.getByRole('button', { name: 'Continue' }).click()
       const dialog = page.getByRole('dialog')
       await expect(dialog.getByLabel('Passkey name')).toBeVisible({
         timeout: 15_000,

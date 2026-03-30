@@ -21,7 +21,7 @@ const error = ref<string | null>(null)
 
 // --- Registration modal state ---
 const registerOpen = ref(false)
-const registerStep = ref<'ceremony' | 'name'>('ceremony')
+const registerStep = ref<'ready' | 'ceremony' | 'name'>('ready')
 const registerError = ref<string | null>(null)
 const registerSaving = ref(false)
 const pendingPasskey = ref<Passkey | null>(null)
@@ -43,18 +43,24 @@ async function fetchPasskeys() {
   }
 }
 
-async function openRegisterModal() {
+function openRegisterModal() {
   registerOpen.value = true
-  registerStep.value = 'ceremony'
+  registerStep.value = 'ready'
   registerError.value = null
   pendingPasskey.value = null
   passkeyName.value = ''
+}
+
+async function startCeremony() {
+  registerStep.value = 'ceremony'
+  registerError.value = null
 
   try {
     const passkey = await authStore.registerPasskey()
     pendingPasskey.value = passkey
     passkeyName.value = passkey.name || ''
     registerStep.value = 'name'
+    nextTick(() => document.getElementById('passkey-name')?.focus())
   } catch (e) {
     const name = e instanceof Error ? e.name : ''
     if (name === 'NotAllowedError') {
@@ -299,12 +305,30 @@ onUnmounted(() => {
     <BaseModal
       :open="registerOpen"
       title="Add Passkey"
-      :prevent-close="registerStep === 'ceremony' && !registerError"
+      :prevent-close="registerStep === 'ceremony'"
       @close="closeRegisterModal"
     >
-      <!-- Step 1: Ceremony in progress -->
+      <!-- Step 1: Ready to start -->
+      <div v-if="registerStep === 'ready'" class="space-y-4">
+        <p class="text-sm text-gray-500 dark:text-stone-400">
+          Your browser will ask you to verify your identity. This usually means
+          using Touch ID, Face ID, Windows Hello, or a security key.
+        </p>
+        <div class="flex justify-end gap-x-6">
+          <button
+            type="button"
+            class="min-h-[44px] px-3 py-2 text-sm/6 font-semibold text-gray-900 sm:min-h-0 dark:text-white"
+            @click="registerOpen = false"
+          >
+            Cancel
+          </button>
+          <AppButton autofocus @click="startCeremony"> Continue </AppButton>
+        </div>
+      </div>
+
+      <!-- Step 2: Ceremony in progress -->
       <div
-        v-if="registerStep === 'ceremony' && !registerError"
+        v-else-if="registerStep === 'ceremony'"
         class="flex flex-col items-center gap-4 py-6"
       >
         <ArrowPathIcon
@@ -315,7 +339,7 @@ onUnmounted(() => {
         </p>
       </div>
 
-      <!-- Step 2: Name the passkey -->
+      <!-- Step 3: Name the passkey -->
       <form
         v-else-if="registerStep === 'name'"
         class="space-y-4"
@@ -331,7 +355,6 @@ onUnmounted(() => {
           label="Passkey name"
           placeholder='e.g. "MacBook", "iPhone"'
           :maxlength="100"
-          autofocus
           required
           :disabled="registerSaving"
         />
