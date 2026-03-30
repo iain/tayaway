@@ -95,11 +95,15 @@ async function savePasskeyName() {
   }
 }
 
-function closeRegisterModal() {
-  // If we have a pending passkey that wasn't named yet, still add it to the list
-  if (pendingPasskey.value && registerStep.value === 'name') {
-    passkeys.value.unshift(pendingPasskey.value)
-    notifications.showInfo('Passkey added')
+async function closeRegisterModal() {
+  // Canceling deletes the passkey — name is mandatory
+  if (pendingPasskey.value) {
+    try {
+      await authStore.deletePasskey(pendingPasskey.value.id)
+    } catch {
+      // Best-effort cleanup
+    }
+    pendingPasskey.value = null
   }
   registerOpen.value = false
 }
