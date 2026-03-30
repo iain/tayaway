@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, nextTick, onMounted, onUnmounted } from 'vue'
+import { PencilIcon } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores'
 import type { Passkey } from '@/types'
 import AppButton from '@/components/common/AppButton.vue'
+import IconButton from '@/components/common/IconButton.vue'
 import TextButton from '@/components/common/TextButton.vue'
+
+const UNDO_DELAY_MS = 4000
 
 const authStore = useAuthStore()
 const notifications = useNotificationsStore()
@@ -13,9 +17,8 @@ const passkeys = ref<Passkey[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const registering = ref(false)
-const nameInput = ref('')
-const showNamePrompt = ref(false)
-const pendingPasskey = ref<Passkey | null>(null)
+const editingId = ref<string | null>(null)
+const editName = ref('')
 
 async function fetchPasskeys() {
   loading.value = true
@@ -29,20 +32,28 @@ async function fetchPasskeys() {
   }
 }
 
+function defaultName(): string {
+  return `Passkey (${new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })})`
+}
+
 async function startRegistration() {
   registering.value = true
   error.value = null
   try {
     const passkey = await authStore.registerPasskey()
-    // If the device had no FIDO metadata name, prompt user for a name
+    // If FIDO metadata didn't provide a name, use a default
     if (!passkey.name) {
-      pendingPasskey.value = passkey
-      showNamePrompt.value = true
-      nameInput.value = ''
+      const name = defaultName()
+      try {
+        const updated = await authStore.renamePasskey(passkey.id, name)
+        passkeys.value.unshift(updated)
+      } catch {
+        passkeys.value.unshift({ ...passkey, name })
+      }
     } else {
       passkeys.value.unshift(passkey)
-      notifications.showInfo('Passkey added')
     }
+    notifications.showInfo('Passkey added')
   } catch (e) {
     const name = e instanceof Error ? e.name : ''
     if (name === 'NotAllowedError') return
@@ -57,28 +68,44 @@ async function startRegistration() {
   }
 }
 
-async function savePasskeyName() {
-  if (!pendingPasskey.value) return
-  const name = nameInput.value.trim()
+function startEditing(passkey: Passkey) {
+  editingId.value = passkey.id
+  editName.value = passkey.name || ''
+  nextTick(() => {
+    const input = document.getElementById(`rename-${passkey.id}`)
+    input?.focus()
+  })
+}
 
-  if (name) {
-    try {
-      const updated = await authStore.renamePasskey(
-        pendingPasskey.value.id,
-        name
-      )
-      passkeys.value.unshift(updated)
-    } catch {
-      // If rename fails, still show the passkey with no name
-      passkeys.value.unshift(pendingPasskey.value)
-    }
-  } else {
-    passkeys.value.unshift(pendingPasskey.value)
+async function saveEdit(id: string) {
+  const name = editName.value.trim()
+  if (!name) {
+    editingId.value = null
+    return
   }
 
-  showNamePrompt.value = false
-  pendingPasskey.value = null
-  notifications.showInfo('Passkey added')
+  const original = passkeys.value.find((p) => p.id === id)
+  if (original && original.name === name) {
+    editingId.value = null
+    return
+  }
+
+  // Optimistic update
+  passkeys.value = passkeys.value.map((p) => (p.id === id ? { ...p, name } : p))
+  editingId.value = null
+
+  try {
+    await authStore.renamePasskey(id, name)
+  } catch {
+    // Revert on failure
+    if (original) {
+      passkeys.value = passkeys.value.map((p) => (p.id === id ? original : p))
+    }
+  }
+}
+
+function cancelEdit() {
+  editingId.value = null
 }
 
 const pendingDeletes = ref<
@@ -90,16 +117,17 @@ function deletePasskey(id: string) {
   if (!passkey) return
 
   passkeys.value = passkeys.value.filter((p) => p.id !== id)
+  editingId.value = null
 
   const timer = setTimeout(() => {
     executeDelete(id)
-  }, 4000)
+  }, UNDO_DELAY_MS)
 
   pendingDeletes.value.set(id, { passkey, timer })
 
   notifications.showInfo('Passkey removed', {
     actionLabel: 'Undo',
-    duration: 4000,
+    duration: UNDO_DELAY_MS,
     action: () => undoDelete(id),
   })
 }
@@ -164,30 +192,6 @@ onUnmounted(() => {
     </div>
 
     <template v-else>
-      <!-- Name prompt for newly registered passkey -->
-      <div
-        v-if="showNamePrompt"
-        class="mb-4 rounded-md border border-gray-300 bg-gray-100 p-4 dark:border-stone-700 dark:bg-stone-800"
-      >
-        <label
-          for="passkey-name"
-          class="mb-2 block text-sm text-gray-900 dark:text-white"
-        >
-          Give this passkey a name so you can identify it later:
-        </label>
-        <form class="flex gap-2" @submit.prevent="savePasskeyName">
-          <input
-            id="passkey-name"
-            v-model="nameInput"
-            type="text"
-            placeholder='e.g. "MacBook", "iPhone"'
-            maxlength="100"
-            class="block min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
-          />
-          <AppButton type="submit" variant="amber"> Save </AppButton>
-        </form>
-      </div>
-
       <ul
         v-if="passkeys.length > 0"
         class="divide-y divide-gray-200 dark:divide-stone-700"
@@ -195,19 +199,50 @@ onUnmounted(() => {
         <li
           v-for="passkey in passkeys"
           :key="passkey.id"
-          class="flex items-center justify-between py-4"
+          class="group flex items-center justify-between py-4"
         >
           <div class="min-w-0 flex-1">
-            <p
-              class="truncate text-sm font-medium text-gray-900 dark:text-white"
+            <!-- Inline rename form -->
+            <form
+              v-if="editingId === passkey.id"
+              class="flex items-center gap-2"
+              @submit.prevent="saveEdit(passkey.id)"
             >
-              {{ passkey.name || 'Unnamed passkey' }}
-            </p>
-            <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
-              Added {{ formatDate(passkey.createdAt) }}
-            </p>
+              <input
+                :id="`rename-${passkey.id}`"
+                v-model="editName"
+                type="text"
+                maxlength="100"
+                aria-label="Passkey name"
+                class="block min-w-0 flex-1 rounded-md bg-gray-100 px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10"
+                @keydown.escape="cancelEdit"
+                @blur="saveEdit(passkey.id)"
+              />
+            </form>
+
+            <!-- Display mode -->
+            <template v-else>
+              <div class="flex items-center gap-1">
+                <p
+                  class="truncate text-sm font-medium text-gray-900 dark:text-white"
+                >
+                  {{ passkey.name || 'Unnamed passkey' }}
+                </p>
+                <IconButton
+                  hover-reveal
+                  label="Rename passkey"
+                  @click="startEditing(passkey)"
+                >
+                  <PencilIcon class="size-3.5" />
+                </IconButton>
+              </div>
+              <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
+                Added {{ formatDate(passkey.createdAt) }}
+              </p>
+            </template>
           </div>
           <TextButton
+            v-if="editingId !== passkey.id"
             variant="danger"
             class="ml-4 shrink-0"
             @click="deletePasskey(passkey.id)"
@@ -217,10 +252,7 @@ onUnmounted(() => {
         </li>
       </ul>
 
-      <p
-        v-else-if="!showNamePrompt"
-        class="py-4 text-sm text-gray-500 dark:text-stone-400"
-      >
+      <p v-else class="py-4 text-sm text-gray-500 dark:text-stone-400">
         No passkeys registered. Add a passkey for faster, more secure sign-in.
       </p>
 

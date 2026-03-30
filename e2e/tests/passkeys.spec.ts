@@ -165,27 +165,46 @@ test.describe('Passkeys', () => {
         { timeout: PAGE_LOAD_TIMEOUT }
       )
 
-      // Attach virtual authenticator via CDP
       const { cdp } = await addVirtualAuthenticator(page)
 
-      // Click "Add passkey"
+      // Click "Add passkey" — virtual authenticator auto-completes the ceremony
       await page.getByRole('button', { name: 'Add passkey' }).click()
 
-      // The virtual authenticator auto-completes the ceremony.
-      // Wait for the name prompt to appear.
-      await expect(
-        page.getByPlaceholder('e.g. "MacBook", "iPhone"')
-      ).toBeVisible({ timeout: 15_000 })
-
-      // Enter a name and save
-      await page.getByPlaceholder('e.g. "MacBook", "iPhone"').fill('Test Key')
-      await page.getByRole('button', { name: 'Save' }).click()
-
-      // Passkey should appear in the list
-      await expect(page.getByText('Test Key')).toBeVisible()
+      // Passkey appears in the list with a default name containing the date
+      await expect(page.getByText('Passkey (')).toBeVisible({ timeout: 15_000 })
       await expect(page.getByText('No passkeys registered')).not.toBeVisible()
 
-      // Clean up
+      await cdp.detach()
+    })
+
+    test('rename a passkey via edit button', async ({ page, request }) => {
+      const email = `e2e-passkeys-rename-${crypto.randomUUID()}@example.com`
+      const { token } = await getTestSession(request, email, 'Passkey Rename')
+
+      await setupAuthenticatedPage(page, token)
+      await page.goto('/account')
+
+      await expect(page.getByRole('heading', { name: 'Passkeys' })).toBeVisible(
+        { timeout: PAGE_LOAD_TIMEOUT }
+      )
+
+      const { cdp } = await addVirtualAuthenticator(page)
+
+      // Register a passkey
+      await page.getByRole('button', { name: 'Add passkey' }).click()
+      await expect(page.getByText('Passkey (')).toBeVisible({ timeout: 15_000 })
+
+      // Click edit button and rename
+      await page.getByRole('button', { name: 'Rename passkey' }).click()
+      const input = page.getByLabel('Passkey name')
+      await expect(input).toBeVisible()
+      await input.clear()
+      await input.fill('My YubiKey')
+      await input.press('Enter')
+
+      // Renamed passkey visible
+      await expect(page.getByText('My YubiKey')).toBeVisible()
+
       await cdp.detach()
     })
 
@@ -204,19 +223,13 @@ test.describe('Passkeys', () => {
 
       // Register a passkey
       await page.getByRole('button', { name: 'Add passkey' }).click()
-      await expect(
-        page.getByPlaceholder('e.g. "MacBook", "iPhone"')
-      ).toBeVisible({ timeout: 10_000 })
-      await page.getByPlaceholder('e.g. "MacBook", "iPhone"').fill('Temp Key')
-      await page.getByRole('button', { name: 'Save' }).click()
-      await expect(page.getByText('Temp Key')).toBeVisible()
+      await expect(page.getByText('Passkey (')).toBeVisible({ timeout: 15_000 })
 
       // Delete it
       await page.getByRole('button', { name: 'Remove' }).click()
 
       // Should return to empty state
       await expect(page.getByText('No passkeys registered')).toBeVisible()
-      await expect(page.getByText('Temp Key')).not.toBeVisible()
 
       await cdp.detach()
     })
@@ -249,12 +262,7 @@ test.describe('Passkeys', () => {
       const { cdp } = await addVirtualAuthenticator(page)
 
       await page.getByRole('button', { name: 'Add passkey' }).click()
-      await expect(
-        page.getByPlaceholder('e.g. "MacBook", "iPhone"')
-      ).toBeVisible({ timeout: 10_000 })
-      await page.getByPlaceholder('e.g. "MacBook", "iPhone"').fill('Login Key')
-      await page.getByRole('button', { name: 'Save' }).click()
-      await expect(page.getByText('Login Key')).toBeVisible()
+      await expect(page.getByText('Passkey (')).toBeVisible({ timeout: 15_000 })
 
       // Step 2: Log out
       await page.getByTestId('user-menu-button').click()
