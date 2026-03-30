@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted, onUnmounted } from 'vue'
-import { PencilIcon } from '@heroicons/vue/24/outline'
+import { PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores'
 import type { Passkey } from '@/types'
 import AppButton from '@/components/common/AppButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
-import TextButton from '@/components/common/TextButton.vue'
 
 const UNDO_DELAY_MS = 4000
 
@@ -199,7 +198,7 @@ onUnmounted(() => {
         <li
           v-for="passkey in passkeys"
           :key="passkey.id"
-          class="group flex items-center justify-between py-4"
+          class="flex items-center justify-between py-4"
         >
           <div class="min-w-0 flex-1">
             <!-- Inline rename form -->
@@ -222,33 +221,31 @@ onUnmounted(() => {
 
             <!-- Display mode -->
             <template v-else>
-              <div class="flex items-center gap-1">
-                <p
-                  class="truncate text-sm font-medium text-gray-900 dark:text-white"
-                >
-                  {{ passkey.name || 'Unnamed passkey' }}
-                </p>
-                <IconButton
-                  hover-reveal
-                  label="Rename passkey"
-                  @click="startEditing(passkey)"
-                >
-                  <PencilIcon class="size-3.5" />
-                </IconButton>
-              </div>
+              <p
+                class="truncate text-sm font-medium text-gray-900 dark:text-white"
+              >
+                {{ passkey.name || 'Unnamed passkey' }}
+              </p>
               <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
                 Added {{ formatDate(passkey.createdAt) }}
               </p>
             </template>
           </div>
-          <TextButton
+          <div
             v-if="editingId !== passkey.id"
-            variant="danger"
-            class="ml-4 shrink-0"
-            @click="deletePasskey(passkey.id)"
+            class="ml-4 flex shrink-0 items-center gap-1"
           >
-            Remove
-          </TextButton>
+            <IconButton label="Rename passkey" @click="startEditing(passkey)">
+              <PencilIcon class="size-4" />
+            </IconButton>
+            <IconButton
+              variant="danger"
+              label="Delete passkey"
+              @click="deletePasskey(passkey.id)"
+            >
+              <TrashIcon class="size-4" />
+            </IconButton>
+          </div>
         </li>
       </ul>
 

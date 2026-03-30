@@ -226,7 +226,7 @@ test.describe('Passkeys', () => {
       await expect(page.getByText('Passkey (')).toBeVisible({ timeout: 15_000 })
 
       // Delete it
-      await page.getByRole('button', { name: 'Remove' }).click()
+      await page.getByRole('button', { name: 'Delete passkey' }).click()
 
       // Should return to empty state
       await expect(page.getByText('No passkeys registered')).toBeVisible()
