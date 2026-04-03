@@ -4,9 +4,9 @@ import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { PlusIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline'
 import { formatDateRange } from '@/utils/date'
-import { useEventsStore, useNotificationsStore } from '@/stores'
+import { useEventsStore } from '@/stores'
 import { useEventsList } from '@/composables/useEventsList'
-import AddEventModal from '@/components/events/AddEventModal.vue'
+import CreateEventWizard from '@/components/events/CreateEventWizard.vue'
 import EventListItem from '@/components/events/EventListItem.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -15,9 +15,9 @@ import AppButton from '@/components/common/AppButton.vue'
 
 const router = useRouter()
 const eventsStore = useEventsStore()
-const { loading, error } = storeToRefs(eventsStore)
+const { error } = storeToRefs(eventsStore)
 
-const showModal = ref(false)
+const showWizard = ref(false)
 
 const {
   currentEvents,
@@ -32,45 +32,6 @@ const {
 function getOwnerName(userId: string): string {
   const owner = getEventOwner(userId)
   return owner?.name || owner?.email || 'Unknown'
-}
-
-function handleCreate(): void {
-  showModal.value = true
-}
-
-async function handleModalSave(
-  name: string,
-  description: string,
-  startDate: string | undefined,
-  endDate: string | undefined,
-  locationName: string | undefined,
-  latitude: number | undefined,
-  longitude: number | undefined
-): Promise<void> {
-  try {
-    const { eventId, queued } = await eventsStore.createEvent({
-      name,
-      description: description || undefined,
-      startDate,
-      endDate,
-      locationName,
-      latitude,
-      longitude,
-    })
-    showModal.value = false
-    if (queued) {
-      const notifications = useNotificationsStore()
-      notifications.showInfo('Event will be created when back online')
-    } else {
-      router.push(`/events/${eventId}`)
-    }
-  } catch {
-    // Error is handled by the store
-  }
-}
-
-function handleModalClose(): void {
-  showModal.value = false
 }
 
 function handleView(id: string): void {
@@ -90,7 +51,7 @@ function formatDateRangeSummary(
 <template>
   <div>
     <PageHeader title="Events" data-testid="page-title">
-      <AppButton data-testid="new-event-button" @click="handleCreate">
+      <AppButton data-testid="new-event-button" @click="showWizard = true">
         <PlusIcon class="size-5" />
         New Event
       </AppButton>
@@ -106,7 +67,7 @@ function formatDateRangeSummary(
       heading="No events yet"
       description="Create an event to start planning dates, splitting costs, and organising your group."
     >
-      <AppButton @click="handleCreate">
+      <AppButton @click="showWizard = true">
         <PlusIcon class="size-5" />
         New Event
       </AppButton>
@@ -217,11 +178,6 @@ function formatDateRangeSummary(
       </section>
     </div>
 
-    <AddEventModal
-      :open="showModal"
-      :loading="loading"
-      @save="handleModalSave"
-      @close="handleModalClose"
-    />
+    <CreateEventWizard :open="showWizard" @close="showWizard = false" />
   </div>
 </template>

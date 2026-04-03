@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { CheckCircleIcon } from '@heroicons/vue/24/solid'
 import { usePollsNeedingAttention } from '@/composables/usePollsNeedingAttention'
 import { useEventsNeedingRsvp } from '@/composables/useEventsNeedingRsvp'
@@ -8,9 +7,7 @@ import { useEventsList } from '@/composables/useEventsList'
 import { storeToRefs } from 'pinia'
 import {
   useAuthStore,
-  useEventsStore,
   useMembersStore,
-  useNotificationsStore,
   useObjectPoolStore,
   useWorkspaceStore,
 } from '@/stores'
@@ -24,7 +21,7 @@ import PastEventsOpenExpenses from '@/components/home/PastEventsOpenExpenses.vue
 import PollsNeedingAttention from '@/components/home/PollsNeedingAttention.vue'
 import EventsNeedingRsvp from '@/components/home/EventsNeedingRsvp.vue'
 import WelcomeSection from '@/components/home/WelcomeSection.vue'
-import AddEventModal from '@/components/events/AddEventModal.vue'
+import CreateEventWizard from '@/components/events/CreateEventWizard.vue'
 
 const pool = useObjectPoolStore()
 const authStore = useAuthStore()
@@ -169,41 +166,6 @@ const allCaughtUp = computed(
     pollsNeedingAttention.value.length === 0 &&
     eventsNeedingRsvp.value.length === 0
 )
-
-const eventsStore = useEventsStore()
-const { loading: eventLoading } = storeToRefs(eventsStore)
-const router = useRouter()
-
-async function handleCreateEvent(
-  name: string,
-  description: string,
-  startDate: string | undefined,
-  endDate: string | undefined,
-  locationName: string | undefined,
-  latitude: number | undefined,
-  longitude: number | undefined
-): Promise<void> {
-  try {
-    const { eventId, queued } = await eventsStore.createEvent({
-      name,
-      description: description || undefined,
-      startDate,
-      endDate,
-      locationName,
-      latitude,
-      longitude,
-    })
-    showEventModal.value = false
-    if (queued) {
-      const notifications = useNotificationsStore()
-      notifications.showInfo('Event will be created when back online')
-    } else {
-      router.push(`/events/${eventId}`)
-    }
-  } catch {
-    // Error handled by store
-  }
-}
 </script>
 
 <template>
@@ -277,11 +239,6 @@ async function handleCreateEvent(
       />
     </div>
 
-    <AddEventModal
-      :open="showEventModal"
-      :loading="eventLoading"
-      @save="handleCreateEvent"
-      @close="showEventModal = false"
-    />
+    <CreateEventWizard :open="showEventModal" @close="showEventModal = false" />
   </div>
 </template>
