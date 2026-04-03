@@ -199,13 +199,16 @@ async function handleNewListSubmit(): Promise<void> {
   isSubmitting.value = true
 
   try {
-    const { queued } = await taskListsStore.createTaskList(name)
+    const { listId, queued } = await taskListsStore.createTaskList(name)
     newListName.value = ''
     showNewListInput.value = false
     if (queued) {
       const notifications = useNotificationsStore()
       notifications.showInfo('Task list will be created when back online')
     }
+    // Focus the new list's item input so the user can immediately add items
+    await nextTick()
+    cardRefs.value[listId]?.focusInput()
   } catch {
     formError.value = 'Failed to create task list'
   } finally {
