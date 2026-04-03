@@ -155,7 +155,7 @@ onMounted(async () => {
           You need to RSVP as attending before you can add expenses. This
           ensures costs are split among attendees only.
         </p>
-        <div class="mt-4 flex justify-end gap-3">
+        <div class="mt-6 flex justify-end gap-3">
           <TextButton variant="secondary" @click="showRsvpDialog = false">
             Cancel
           </TextButton>

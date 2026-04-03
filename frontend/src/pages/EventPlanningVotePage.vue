@@ -49,9 +49,11 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
     <div
       v-else-if="!event.datePoll || !pollOpen"
       data-testid="poll-closed-message"
-      class="py-8 text-center text-gray-500 dark:text-stone-400"
+      class="py-12 text-center text-gray-500 dark:text-stone-400"
     >
-      <p class="mb-2 text-lg font-medium">Voting has ended</p>
+      <p class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
+        Voting has ended
+      </p>
       <p>The date poll is closed and no longer accepting votes.</p>
       <div v-if="isOwner && isPollResolved(event.datePoll)" class="mt-4">
         <AppButton variant="amber" @click="showReopenModal = true">
@@ -78,7 +80,7 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
           </router-link>
         </div>
 
-        <div v-if="dateRanges.length === 0" class="py-8 text-center">
+        <div v-if="dateRanges.length === 0" class="py-12 text-center">
           <p class="text-gray-500 dark:text-stone-400">
             No date options have been added yet. The event organiser can add
             dates to vote on.

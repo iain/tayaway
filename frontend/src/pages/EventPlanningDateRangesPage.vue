@@ -14,11 +14,13 @@ import VotersList from '@/components/votes/VotersList.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
+import PageHeader from '@/components/common/PageHeader.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import { useDateRangeActions } from '@/composables/useDateRangeActions'
 
 const route = useRoute()
-const { pendingAdd: pendingAddDateRange, resetAdd: resetAddDateRange } = useDateRangeActions()
+const { pendingAdd: pendingAddDateRange, resetAdd: resetAddDateRange } =
+  useDateRangeActions()
 const authStore = useAuthStore()
 const datePollsStore = useDatePollsStore()
 const { currentUserId } = storeToRefs(authStore)
@@ -108,13 +110,7 @@ async function deleteRange(dateRangeId: string): Promise<void> {
     </div>
 
     <div v-else>
-      <header class="mb-8">
-        <h1
-          class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white"
-        >
-          Edit Date Ranges
-        </h1>
-      </header>
+      <PageHeader title="Edit Date Ranges" size="sm" />
 
       <section>
         <div class="mb-4 flex items-center justify-between">
@@ -131,7 +127,7 @@ async function deleteRange(dateRangeId: string): Promise<void> {
           </AppButton>
         </div>
 
-        <div v-if="dateRanges.length === 0" class="py-8 text-center">
+        <div v-if="dateRanges.length === 0" class="py-12 text-center">
           <p class="mb-4 text-gray-500 dark:text-stone-400">
             No date ranges added yet.
           </p>
@@ -145,7 +141,7 @@ async function deleteRange(dateRangeId: string): Promise<void> {
           </AppButton>
         </div>
 
-        <ul v-else class="space-y-2">
+        <ul v-else class="space-y-3">
           <BaseCard
             v-for="dateRange in dateRanges"
             :key="dateRange.id"

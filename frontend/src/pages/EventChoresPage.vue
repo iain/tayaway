@@ -14,6 +14,7 @@ import AssignMemberPopover from '@/components/chores/AssignMemberPopover.vue'
 import EditAssignmentPopover from '@/components/chores/EditAssignmentPopover.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
+import PageHeader from '@/components/common/PageHeader.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import TextButton from '@/components/common/TextButton.vue'
 import { ClipboardDocumentListIcon } from '@heroicons/vue/24/outline'
@@ -262,18 +263,13 @@ onMounted(async () => {
     </div>
 
     <div v-else>
-      <div class="mb-6 flex items-center justify-between">
-        <h1
-          class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white"
-        >
-          Chores
-        </h1>
+      <PageHeader title="Chores" size="sm">
         <ChoreRosterToolbar
           @add-chore="openAddChore"
           @autofill="handleAutofillClick"
           @delete-roster="handleDeleteRoster"
         />
-      </div>
+      </PageHeader>
 
       <div v-if="chores.length > 0">
         <ChoreRosterGrid
@@ -345,7 +341,7 @@ onMounted(async () => {
         Delete "{{ confirmDeleteChoreName }}"? This will remove all its
         assignments.
       </p>
-      <div class="mt-4 flex justify-end gap-3">
+      <div class="mt-6 flex justify-end gap-3">
         <TextButton variant="secondary" @click="confirmDeleteChoreId = null">
           Cancel
         </TextButton>
@@ -365,7 +361,7 @@ onMounted(async () => {
         This will clear all non-pinned assignments and redistribute them fairly
         among attendees. Pinned assignments stay as they are.
       </p>
-      <div class="mt-4 flex justify-end gap-3">
+      <div class="mt-6 flex justify-end gap-3">
         <TextButton variant="secondary" @click="confirmAutofill = false">
           Cancel
         </TextButton>
@@ -400,7 +396,7 @@ onMounted(async () => {
       <p class="text-sm text-gray-600 dark:text-stone-400">
         You need to RSVP as attending before you can manage chores.
       </p>
-      <div class="mt-4 flex justify-end gap-3">
+      <div class="mt-6 flex justify-end gap-3">
         <TextButton variant="secondary" @click="showRsvpDialog = false">
           Cancel
         </TextButton>

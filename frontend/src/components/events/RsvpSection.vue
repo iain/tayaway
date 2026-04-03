@@ -338,7 +338,7 @@ async function handleClearPartialDates(): Promise<void> {
         You have expenses on this event. Delete your expenses before changing
         your RSVP to not attending.
       </p>
-      <div class="mt-4 flex justify-end gap-3">
+      <div class="mt-6 flex justify-end gap-3">
         <TextButton variant="secondary" @click="showExpensesDialog = false">
           Cancel
         </TextButton>

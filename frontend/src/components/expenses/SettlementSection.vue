@@ -408,7 +408,7 @@ async function handlePaidClick(
         All balances are settled &mdash; no transfers needed.
       </p>
 
-      <div class="mt-5 flex justify-end gap-3">
+      <div class="mt-6 flex justify-end gap-3">
         <AppButton
           variant="secondary"
           size="sm"
@@ -437,7 +437,7 @@ async function handlePaidClick(
       <p class="text-sm text-gray-600 dark:text-stone-400">
         Only the person receiving the money can mark a transfer as paid.
       </p>
-      <div class="mt-4 flex justify-end">
+      <div class="mt-6 flex justify-end">
         <AppButton
           variant="secondary"
           size="sm"
