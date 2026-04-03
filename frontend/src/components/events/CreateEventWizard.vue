@@ -342,11 +342,11 @@ const submitLabel = computed(() => {
         </button>
       </div>
 
-      <div class="mt-5 flex items-center justify-between">
+      <div class="mt-6 flex items-center justify-between">
         <TextButton variant="secondary" @click="goBack"> Back </TextButton>
         <AppButton
+          variant="secondary"
           :loading="submitting"
-          :disabled="!canSubmit"
           @click="handleSubmit"
         >
           Skip — no dates yet
