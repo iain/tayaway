@@ -288,21 +288,18 @@ test.describe('Tasks Feature', () => {
       })
       await expect(page.getByTestId('add-task-list-button')).toBeVisible()
 
-      // New List button opens the create modal
+      // New List button reveals inline input
       await page.getByTestId('add-task-list-button').click()
-      await expect(page.getByRole('dialog')).toBeVisible()
-      await expect(
-        page.getByRole('dialog').getByRole('heading', { name: 'New Task List' })
-      ).toBeVisible()
-      await expect(page.getByLabel('Name')).toBeVisible()
+      await expect(page.getByTestId('new-list-form')).toBeVisible()
+      await expect(page.getByTestId('new-list-name-input')).toBeFocused()
       await expect(page.getByTestId('submit-button')).toBeVisible()
 
-      // Can create a task list through the modal
+      // Can create a task list through the inline form
       const listName = `Shopping List ${uid}`
-      await page.getByLabel('Name').fill(listName)
+      await page.getByTestId('new-list-name-input').fill(listName)
       await page.getByTestId('submit-button').click()
 
-      await expect(page.getByRole('dialog')).not.toBeVisible()
+      await expect(page.getByTestId('new-list-form')).not.toBeVisible()
       await expect(page.getByText(listName)).toBeVisible()
     })
 

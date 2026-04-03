@@ -19,7 +19,6 @@ import PageHeader from '@/components/common/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import AlertBox from '@/components/common/AlertBox.vue'
-import AddTaskListModal from '@/components/tasks/AddTaskListModal.vue'
 import TaskListCard from '@/components/tasks/TaskListCard.vue'
 import { useTaskActions } from '@/composables/useTaskActions'
 import type { PoolTaskList, PoolTaskItem } from '@/types/pool'
@@ -31,12 +30,14 @@ const { currentWorkspaceId } = storeToRefs(workspaceStore)
 
 const { pendingNewList, resetNewList } = useTaskActions()
 
-const isModalOpen = ref(false)
+const showNewListInput = ref(false)
+const newListName = ref('')
+const newListInput = ref<HTMLInputElement | null>(null)
 
 watch(pendingNewList, (val) => {
   if (val) {
     resetNewList()
-    openModal()
+    openNewListInput()
   }
 })
 
@@ -102,7 +103,7 @@ function isInputActive(): boolean {
 }
 
 async function handleKeydown(e: KeyboardEvent): Promise<void> {
-  if (isInputActive() || isModalOpen.value) return
+  if (isInputActive()) return
   const items = allItems.value
 
   if (e.key === 'j') {
@@ -177,22 +178,30 @@ async function handleListDragEnd(event: SortableEvent) {
   await taskListsStore.repositionList(movedList.id, before, after)
 }
 
-function openModal(): void {
+async function openNewListInput(): Promise<void> {
   formError.value = null
-  isModalOpen.value = true
+  newListName.value = ''
+  showNewListInput.value = true
+  await nextTick()
+  newListInput.value?.focus()
 }
 
-function closeModal(): void {
-  isModalOpen.value = false
+function cancelNewList(): void {
+  showNewListInput.value = false
+  newListName.value = ''
 }
 
-async function handleSave(name: string): Promise<void> {
+async function handleNewListSubmit(): Promise<void> {
+  const name = newListName.value.trim()
+  if (!name || isSubmitting.value) return
+
   formError.value = null
   isSubmitting.value = true
 
   try {
     const { queued } = await taskListsStore.createTaskList(name)
-    isModalOpen.value = false
+    newListName.value = ''
+    showNewListInput.value = false
     if (queued) {
       const notifications = useNotificationsStore()
       notifications.showInfo('Task list will be created when back online')
@@ -203,12 +212,18 @@ async function handleSave(name: string): Promise<void> {
     isSubmitting.value = false
   }
 }
+
+function handleNewListBlur(): void {
+  if (!newListName.value.trim()) {
+    cancelNewList()
+  }
+}
 </script>
 
 <template>
   <div>
     <PageHeader title="Tasks" data-testid="page-title">
-      <AppButton data-testid="add-task-list-button" @click="openModal">
+      <AppButton data-testid="add-task-list-button" @click="openNewListInput">
         <PlusIcon class="size-5" />
         New List
       </AppButton>
@@ -218,20 +233,50 @@ async function handleSave(name: string): Promise<void> {
       {{ formError }}
     </AlertBox>
 
+    <!-- Inline new list input -->
+    <div v-if="showNewListInput" class="mb-6" data-testid="new-list-form">
+      <form
+        class="flex items-center gap-3"
+        @submit.prevent="handleNewListSubmit"
+      >
+        <input
+          ref="newListInput"
+          v-model="newListName"
+          type="text"
+          placeholder="List name"
+          data-testid="new-list-name-input"
+          class="flex-1 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-gray-300 ring-inset placeholder:font-normal placeholder:text-gray-400 focus:ring-2 focus:ring-rose-500 focus:ring-inset dark:bg-stone-800 dark:text-white dark:ring-stone-600 dark:placeholder:text-stone-500 dark:focus:ring-rose-500"
+          :disabled="isSubmitting"
+          @keyup.escape="cancelNewList"
+          @blur="handleNewListBlur"
+        />
+        <AppButton
+          type="submit"
+          size="sm"
+          data-testid="submit-button"
+          :disabled="!newListName.trim()"
+          :loading="isSubmitting"
+          loading-label="Creating..."
+        >
+          Create
+        </AppButton>
+      </form>
+    </div>
+
     <EmptyState
-      v-if="taskListsLocal.length === 0"
+      v-if="taskListsLocal.length === 0 && !showNewListInput"
       :icon="ClipboardDocumentListIcon"
       heading="No task lists yet"
       description="Create a list to track what needs doing — packing, shopping, or anything your group needs to coordinate."
     >
-      <AppButton @click="openModal">
+      <AppButton @click="openNewListInput">
         <PlusIcon class="size-5" />
         New List
       </AppButton>
     </EmptyState>
 
     <VueDraggable
-      v-else
+      v-else-if="taskListsLocal.length > 0"
       v-model="taskListsLocal"
       class="space-y-6"
       handle=".list-drag-handle"
@@ -248,12 +293,5 @@ async function handleSave(name: string): Promise<void> {
         @highlight="highlightedItemId = $event"
       />
     </VueDraggable>
-
-    <AddTaskListModal
-      :open="isModalOpen"
-      :loading="isSubmitting"
-      @close="closeModal"
-      @save="handleSave"
-    />
   </div>
 </template>
