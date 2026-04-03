@@ -175,6 +175,7 @@ async function removeIban(): Promise<void> {
                 ref="editInputRef"
                 v-model="editName"
                 type="text"
+                aria-label="Name"
                 autocomplete="name"
                 placeholder="Your name"
                 :maxlength="255"
@@ -223,6 +224,7 @@ async function removeIban(): Promise<void> {
                 ref="editInputRef"
                 v-model="editPhone"
                 type="tel"
+                aria-label="Phone"
                 autocomplete="tel"
                 placeholder="Phone number"
                 :disabled="saving"
@@ -256,6 +258,7 @@ async function removeIban(): Promise<void> {
               <input
                 ref="editInputRef"
                 v-model="editBirthday"
+                aria-label="Birthday"
                 type="date"
                 :disabled="saving"
                 class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:[color-scheme:dark] dark:outline-white/10"
@@ -288,6 +291,7 @@ async function removeIban(): Promise<void> {
             <div>
               <LocationInput
                 v-model="editLocationName"
+                aria-label="Address"
                 :latitude="editLatitude"
                 :longitude="editLongitude"
                 :disabled="saving"
@@ -340,6 +344,7 @@ async function removeIban(): Promise<void> {
                   ref="editInputRef"
                   v-model="editIban"
                   type="text"
+                  aria-label="IBAN"
                   autocomplete="off"
                   placeholder="NL00 BANK 0000 0000 00"
                   :maxlength="34"

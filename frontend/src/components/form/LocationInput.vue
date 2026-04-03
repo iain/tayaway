@@ -8,6 +8,7 @@ const props = defineProps<{
   longitude: number | null
   disabled?: boolean
   label?: string
+  ariaLabel?: string
 }>()
 
 const emit = defineEmits<{
@@ -171,6 +172,7 @@ onBeforeUnmount(() => {
         ref="inputEl"
         type="text"
         :value="query"
+        :aria-label="!label ? ariaLabel : undefined"
         :disabled="disabled"
         placeholder="Search for a location..."
         autocomplete="off"
