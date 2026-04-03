@@ -162,7 +162,7 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
             const { useNotificationsStore } = await import('./notifications')
             const notifications = useNotificationsStore()
             notifications.showError(
-              `Failed to sync offline change: ${command.method} ${command.path}`
+              "An offline change couldn't be saved. Please try again."
             )
           }
         }

@@ -47,23 +47,23 @@ export interface ApiError {
 function getErrorMessage(status: number): string {
   switch (status) {
     case 400:
-      return 'Invalid request. Please check your input and try again.'
+      return 'Something was wrong with that request. Check your input and try again.'
     case 401:
       return 'You need to log in to continue.'
     case 403:
-      return "You don't have permission to perform this action."
+      return "You don't have permission to do that."
     case 404:
-      return 'The requested resource was not found.'
+      return "That couldn't be found. It may have been deleted."
     case 422:
-      return 'The request could not be processed. Please check your input.'
+      return 'Check your input and try again.'
     case 500:
-      return 'Something went wrong on our end. Please try again later.'
+      return 'Something went wrong on our end. Try again in a moment.'
     case 502:
     case 503:
     case 504:
-      return 'The server is temporarily unavailable. Please try again later.'
+      return 'The server is temporarily unavailable. Try again in a moment.'
     default:
-      return 'An unexpected error occurred. Please try again.'
+      return 'Something went wrong. Please try again.'
   }
 }
 

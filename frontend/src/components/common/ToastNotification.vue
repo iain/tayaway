@@ -50,9 +50,6 @@ function handleAction(notification: Notification) {
           "
         >
           <p class="text-sm font-medium text-gray-900 dark:text-white">
-            {{ notification.type === 'info' ? 'Info' : 'Error' }}
-          </p>
-          <p class="mt-1 text-sm text-gray-600 dark:text-stone-300">
             {{ notification.message }}
           </p>
           <button
