@@ -247,6 +247,7 @@ function handleNewListBlur(): void {
           v-model="newListName"
           type="text"
           placeholder="List name"
+          aria-label="List name"
           data-testid="new-list-name-input"
           class="flex-1 rounded-md bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:font-normal placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
           :disabled="isSubmitting"
