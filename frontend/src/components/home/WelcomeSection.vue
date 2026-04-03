@@ -2,10 +2,13 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
+  ArrowRightIcon,
   CalendarDaysIcon,
   UserGroupIcon,
   ClipboardDocumentListIcon,
 } from '@heroicons/vue/24/outline'
+import AppButton from '@/components/common/AppButton.vue'
+
 const props = defineProps<{
   workspaceName: string
   userName: string | null
@@ -35,69 +38,55 @@ function navigateToTasks(): void {
 
 <template>
   <div>
-    <div class="mb-6">
+    <!-- Greeting + primary CTA -->
+    <div
+      class="rounded-xl border border-amber-200 bg-amber-50/50 p-6 sm:p-8 dark:border-amber-800/40 dark:bg-amber-950/20"
+    >
       <h2
         class="text-xl font-semibold tracking-tight text-gray-900 dark:text-white"
       >
         {{ greeting }}
       </h2>
-      <p class="mt-1 text-sm text-gray-500 dark:text-stone-400">
-        Here's how to get started with {{ workspaceName }}.
+      <p class="mt-1 text-sm text-gray-600 dark:text-stone-400">
+        Start by creating an event — a trip, party, or anything your group is
+        planning. From there you can vote on dates, split costs, and organise
+        chores.
       </p>
+      <AppButton class="mt-5" @click="emit('createEvent')">
+        <CalendarDaysIcon class="size-5" />
+        Create your first event
+      </AppButton>
     </div>
 
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      <!-- Step 1: Create an event -->
+    <!-- Secondary suggestions -->
+    <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
       <button
         type="button"
-        class="group cursor-pointer rounded-lg border border-gray-200 p-4 text-left transition-colors hover:border-amber-300 hover:bg-amber-50 dark:border-stone-700 dark:hover:border-amber-700 dark:hover:bg-amber-900/10"
-        @click="emit('createEvent')"
-      >
-        <CalendarDaysIcon
-          class="mb-3 size-8 text-amber-600 dark:text-amber-400"
-        />
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-          Create an event
-        </h3>
-        <p class="mt-1 text-xs text-gray-500 dark:text-stone-400">
-          Plan a trip, party, or activity. Add dates and let everyone vote.
-        </p>
-      </button>
-
-      <!-- Step 2: Invite people -->
-      <button
-        type="button"
-        class="group cursor-pointer rounded-lg border border-gray-200 p-4 text-left transition-colors hover:border-amber-300 hover:bg-amber-50 dark:border-stone-700 dark:hover:border-amber-700 dark:hover:bg-amber-900/10"
+        class="group inline-flex cursor-pointer items-center gap-2 text-sm text-gray-600 transition-colors hover:text-amber-700 dark:text-stone-400 dark:hover:text-amber-400"
         @click="navigateToMembers"
       >
-        <UserGroupIcon class="mb-3 size-8 text-amber-600 dark:text-amber-400" />
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-          Invite your group
-        </h3>
-        <p class="mt-1 text-xs text-gray-500 dark:text-stone-400">
+        <UserGroupIcon class="size-4 shrink-0" />
+        <span>
           {{
             memberCount <= 1
-              ? 'Add friends so they can vote on dates and split costs.'
-              : `${memberCount} members so far. Invite more to get everyone on board.`
+              ? 'Invite your group'
+              : `${memberCount} members — invite more`
           }}
-        </p>
+        </span>
+        <ArrowRightIcon
+          class="size-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+        />
       </button>
-
-      <!-- Step 3: Shared tasks -->
       <button
         type="button"
-        class="group cursor-pointer rounded-lg border border-gray-200 p-4 text-left transition-colors hover:border-amber-300 hover:bg-amber-50 dark:border-stone-700 dark:hover:border-amber-700 dark:hover:bg-amber-900/10"
+        class="group inline-flex cursor-pointer items-center gap-2 text-sm text-gray-600 transition-colors hover:text-amber-700 dark:text-stone-400 dark:hover:text-amber-400"
         @click="navigateToTasks"
       >
-        <ClipboardDocumentListIcon
-          class="mb-3 size-8 text-amber-600 dark:text-amber-400"
+        <ClipboardDocumentListIcon class="size-4 shrink-0" />
+        <span>Create a shared task list</span>
+        <ArrowRightIcon
+          class="size-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
         />
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-          Create a task list
-        </h3>
-        <p class="mt-1 text-xs text-gray-500 dark:text-stone-400">
-          Keep track of what needs doing — packing lists, shopping, logistics.
-        </p>
       </button>
     </div>
   </div>
