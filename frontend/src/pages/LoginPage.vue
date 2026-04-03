@@ -158,7 +158,7 @@ onUnmounted(() => {
           full-width
           @click="handlePasskeyLogin"
         >
-          <KeyIcon class="mr-2 size-4" />
+          <KeyIcon class="size-4" />
           Sign in with a passkey
         </AppButton>
       </div>
