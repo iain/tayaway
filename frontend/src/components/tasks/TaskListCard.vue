@@ -12,6 +12,7 @@ import {
   useNotificationsStore,
 } from '@/stores'
 import { useObjectPoolStore } from '@/stores/objectPool'
+import { useUndoDelete } from '@/composables/useUndoDelete'
 import TaskItemRow from './TaskItemRow.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import type { PoolTaskList, PoolTaskItem } from '@/types/pool'
@@ -28,6 +29,7 @@ const emit = defineEmits<{
 const taskListsStore = useTaskListsStore()
 const taskItemsStore = useTaskItemsStore()
 const pool = useObjectPoolStore()
+const { undoableDelete } = useUndoDelete()
 
 const newItemContent = ref('')
 const isAddingItem = ref(false)
@@ -163,12 +165,13 @@ async function handleToggle(item: PoolTaskItem): Promise<void> {
   }
 }
 
-async function handleDeleteItem(item: PoolTaskItem): Promise<void> {
-  try {
-    await taskItemsStore.deleteItem(props.taskList.id, item.id)
-  } catch {
-    // error shown via store
-  }
+function handleDeleteItem(item: PoolTaskItem): void {
+  undoableDelete({
+    objectType: 'taskItem',
+    objectId: item.id,
+    message: 'Item deleted',
+    apiPath: `/task-lists/${props.taskList.id}/items/${item.id}`,
+  })
 }
 
 async function handleClearCompleted(): Promise<void> {
@@ -208,12 +211,13 @@ async function commitRename(): Promise<void> {
   }
 }
 
-async function handleDeleteList(): Promise<void> {
-  try {
-    await taskListsStore.deleteTaskList(props.taskList.id)
-  } catch {
-    // error shown via store
-  }
+function handleDeleteList(): void {
+  undoableDelete({
+    objectType: 'taskList',
+    objectId: props.taskList.id,
+    message: 'List deleted',
+    apiPath: `/task-lists/${props.taskList.id}`,
+  })
 }
 
 defineExpose({
@@ -224,7 +228,7 @@ defineExpose({
     void handleToggle(item)
   },
   deleteItem(item: PoolTaskItem): void {
-    void handleDeleteItem(item)
+    handleDeleteItem(item)
   },
 })
 </script>
