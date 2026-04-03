@@ -3,13 +3,12 @@ import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import {
-  PencilIcon,
   EnvelopeIcon,
   ComputerDesktopIcon,
   KeyIcon,
 } from '@heroicons/vue/24/outline'
-import IconButton from '@/components/common/IconButton.vue'
 import AlertBox from '@/components/common/AlertBox.vue'
+import DefinitionRow from '@/components/common/DefinitionRow.vue'
 import ChangeEmailModal from '@/components/profile/ChangeEmailModal.vue'
 import SessionsList from '@/components/profile/SessionsList.vue'
 import PasskeysList from '@/components/profile/PasskeysList.vue'
@@ -52,24 +51,15 @@ async function handleRequestEmailChange(email: string): Promise<void> {
       <SectionHeading :icon="EnvelopeIcon" title="Email" />
 
       <dl class="divide-y divide-gray-200 dark:divide-stone-700">
-        <div class="group flex items-center justify-between py-3">
-          <div>
-            <dt class="text-sm font-medium text-gray-500 dark:text-stone-400">
-              Email
-            </dt>
-            <dd class="truncate text-sm text-gray-900 dark:text-white">
-              {{ user?.email }}
-            </dd>
-          </div>
-          <IconButton
-            hover-reveal
-            label="Edit email"
-            data-testid="edit-email-button"
-            @click="editEmailOpen = true"
-          >
-            <PencilIcon class="size-4" />
-          </IconButton>
-        </div>
+        <DefinitionRow
+          label="Email"
+          value-class="truncate"
+          edit-label="Edit email"
+          edit-testid="edit-email-button"
+          @edit="editEmailOpen = true"
+        >
+          {{ user?.email }}
+        </DefinitionRow>
 
         <!-- Email change success alert -->
         <AlertBox

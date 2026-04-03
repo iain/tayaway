@@ -2,14 +2,8 @@
 import { ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
-import {
-  PencilIcon,
-  UserIcon,
-  PhoneIcon,
-  BanknotesIcon,
-} from '@heroicons/vue/24/outline'
+import { UserIcon, PhoneIcon, BanknotesIcon } from '@heroicons/vue/24/outline'
 import { formatBirthday } from '@/utils/date'
-import IconButton from '@/components/common/IconButton.vue'
 import EditProfileFieldModal from '@/components/profile/EditProfileFieldModal.vue'
 import type {
   ProfileField,
@@ -18,6 +12,7 @@ import type {
 import PageHeader from '@/components/common/PageHeader.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
+import DefinitionRow from '@/components/common/DefinitionRow.vue'
 
 const authStore = useAuthStore()
 const { user } = storeToRefs(authStore)
@@ -82,25 +77,14 @@ async function handleSaveField(fields: ProfileFieldValues): Promise<void> {
       <SectionHeading :icon="UserIcon" title="Account" />
 
       <dl class="divide-y divide-gray-200 dark:divide-stone-700">
-        <!-- Name -->
-        <div class="group flex items-center justify-between gap-2 py-3">
-          <div class="min-w-0">
-            <dt class="text-sm font-medium text-gray-500 dark:text-stone-400">
-              Name
-            </dt>
-            <dd class="text-sm text-gray-900 dark:text-white">
-              {{ user?.name ?? 'Not set' }}
-            </dd>
-          </div>
-          <IconButton
-            hover-reveal
-            label="Edit name"
-            data-testid="edit-name-button"
-            @click="openField('name')"
-          >
-            <PencilIcon class="size-4" />
-          </IconButton>
-        </div>
+        <DefinitionRow
+          label="Name"
+          edit-label="Edit name"
+          edit-testid="edit-name-button"
+          @edit="openField('name')"
+        >
+          {{ user?.name ?? 'Not set' }}
+        </DefinitionRow>
       </dl>
     </BaseCard>
 
@@ -109,65 +93,34 @@ async function handleSaveField(fields: ProfileFieldValues): Promise<void> {
       <SectionHeading :icon="PhoneIcon" title="Contact Information" />
 
       <dl class="divide-y divide-gray-200 dark:divide-stone-700">
-        <!-- Phone -->
-        <div class="group flex items-center justify-between gap-2 py-3">
-          <div class="min-w-0">
-            <dt class="text-sm font-medium text-gray-500 dark:text-stone-400">
-              Phone
-            </dt>
-            <dd class="truncate text-sm text-gray-900 dark:text-white">
-              {{ user?.phoneNumber ?? 'Not set' }}
-            </dd>
-          </div>
-          <IconButton
-            hover-reveal
-            label="Edit phone"
-            data-testid="edit-contact-button"
-            @click="openField('phone')"
-          >
-            <PencilIcon class="size-4" />
-          </IconButton>
-        </div>
+        <DefinitionRow
+          label="Phone"
+          value-class="truncate"
+          edit-label="Edit phone"
+          edit-testid="edit-contact-button"
+          @edit="openField('phone')"
+        >
+          {{ user?.phoneNumber ?? 'Not set' }}
+        </DefinitionRow>
 
-        <!-- Birthday -->
-        <div class="group flex items-center justify-between gap-2 py-3">
-          <div class="min-w-0">
-            <dt class="text-sm font-medium text-gray-500 dark:text-stone-400">
-              Birthday
-            </dt>
-            <dd class="text-sm text-gray-900 dark:text-white">
-              {{ user?.birthday ? formatBirthday(user.birthday) : 'Not set' }}
-            </dd>
-          </div>
-          <IconButton
-            hover-reveal
-            label="Edit birthday"
-            data-testid="edit-birthday-button"
-            @click="openField('birthday')"
-          >
-            <PencilIcon class="size-4" />
-          </IconButton>
-        </div>
+        <DefinitionRow
+          label="Birthday"
+          edit-label="Edit birthday"
+          edit-testid="edit-birthday-button"
+          @edit="openField('birthday')"
+        >
+          {{ user?.birthday ? formatBirthday(user.birthday) : 'Not set' }}
+        </DefinitionRow>
 
-        <!-- Address -->
-        <div class="group flex items-center justify-between gap-2 py-3">
-          <div class="min-w-0">
-            <dt class="text-sm font-medium text-gray-500 dark:text-stone-400">
-              Address
-            </dt>
-            <dd class="truncate text-sm text-gray-900 dark:text-white">
-              {{ user?.locationName ?? 'Not set' }}
-            </dd>
-          </div>
-          <IconButton
-            hover-reveal
-            label="Edit address"
-            data-testid="edit-address-button"
-            @click="openField('address')"
-          >
-            <PencilIcon class="size-4" />
-          </IconButton>
-        </div>
+        <DefinitionRow
+          label="Address"
+          value-class="truncate"
+          edit-label="Edit address"
+          edit-testid="edit-address-button"
+          @edit="openField('address')"
+        >
+          {{ user?.locationName ?? 'Not set' }}
+        </DefinitionRow>
       </dl>
     </BaseCard>
 
@@ -183,25 +136,15 @@ async function handleSaveField(fields: ProfileFieldValues): Promise<void> {
       </p>
 
       <dl class="divide-y divide-gray-200 dark:divide-stone-700">
-        <!-- IBAN -->
-        <div class="group flex items-center justify-between gap-2 py-3">
-          <div class="min-w-0">
-            <dt class="text-sm font-medium text-gray-500 dark:text-stone-400">
-              IBAN
-            </dt>
-            <dd class="truncate font-mono text-sm text-gray-900 dark:text-white">
-              {{ user?.iban ?? 'Not set' }}
-            </dd>
-          </div>
-          <IconButton
-            hover-reveal
-            label="Edit IBAN"
-            data-testid="edit-iban-button"
-            @click="openField('iban')"
-          >
-            <PencilIcon class="size-4" />
-          </IconButton>
-        </div>
+        <DefinitionRow
+          label="IBAN"
+          value-class="truncate font-mono"
+          edit-label="Edit IBAN"
+          edit-testid="edit-iban-button"
+          @edit="openField('iban')"
+        >
+          {{ user?.iban ?? 'Not set' }}
+        </DefinitionRow>
       </dl>
     </BaseCard>
 
