@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -9,7 +9,6 @@ import { api } from '@/api/client'
 import ChoreRosterGrid from '@/components/chores/ChoreRosterGrid.vue'
 import ChoreSummaryTable from '@/components/chores/ChoreSummaryTable.vue'
 import ChoreRosterToolbar from '@/components/chores/ChoreRosterToolbar.vue'
-import AddChoreModal from '@/components/chores/AddChoreModal.vue'
 import AssignMemberPopover from '@/components/chores/AssignMemberPopover.vue'
 import EditAssignmentPopover from '@/components/chores/EditAssignmentPopover.vue'
 import AppButton from '@/components/common/AppButton.vue'
@@ -83,7 +82,11 @@ const eventDates = computed(() => {
   return dates
 })
 
-const isAddChoreOpen = ref(false)
+const showAddChoreForm = ref(false)
+const newChoreName = ref('')
+const newChorePpd = ref('1')
+const addChoreInput = ref<HTMLInputElement | null>(null)
+const addChoreSubmitting = ref(false)
 const showRsvpDialog = ref(false)
 const assignPopover = ref<{
   choreId: string
@@ -128,12 +131,46 @@ async function handleCreateRoster() {
   }
 }
 
-function openAddChore() {
+async function openAddChore() {
   if (!userIsAttending.value) {
     showRsvpDialog.value = true
     return
   }
-  isAddChoreOpen.value = true
+  newChoreName.value = ''
+  newChorePpd.value = '1'
+  showAddChoreForm.value = true
+  await nextTick()
+  addChoreInput.value?.focus()
+}
+
+function cancelAddChore() {
+  showAddChoreForm.value = false
+  newChoreName.value = ''
+}
+
+async function handleAddChoreSubmit() {
+  const name = newChoreName.value.trim()
+  if (!name || addChoreSubmitting.value || !roster.value) return
+
+  addChoreSubmitting.value = true
+  try {
+    await choreRostersStore.addChore(
+      roster.value.id,
+      name,
+      parseInt(newChorePpd.value, 10) || 1
+    )
+    newChoreName.value = ''
+    newChorePpd.value = '1'
+    showAddChoreForm.value = false
+  } finally {
+    addChoreSubmitting.value = false
+  }
+}
+
+function handleAddChoreBlur() {
+  if (!newChoreName.value.trim()) {
+    cancelAddChore()
+  }
 }
 
 function openAssign(choreId: string, date: string, anchorEl: HTMLElement) {
@@ -294,7 +331,7 @@ onMounted(async () => {
       </div>
 
       <EmptyState
-        v-else
+        v-else-if="!showAddChoreForm"
         :icon="ClipboardDocumentListIcon"
         heading="No chores yet"
         description="Add your first chore to start building the roster."
@@ -302,11 +339,61 @@ onMounted(async () => {
         <AppButton @click="openAddChore">Add chore</AppButton>
       </EmptyState>
 
-      <AddChoreModal
-        :open="isAddChoreOpen"
-        :roster-id="roster.id"
-        @close="isAddChoreOpen = false"
-      />
+      <!-- Inline add chore form -->
+      <div v-if="showAddChoreForm" class="mt-4">
+        <form
+          class="flex items-end gap-3"
+          @submit.prevent="handleAddChoreSubmit"
+        >
+          <div class="min-w-0 flex-1">
+            <label
+              for="new-chore-name"
+              class="mb-1 block text-xs font-medium text-gray-500 dark:text-stone-400"
+            >
+              Chore name
+            </label>
+            <input
+              id="new-chore-name"
+              ref="addChoreInput"
+              v-model="newChoreName"
+              type="text"
+              placeholder="e.g. Cooking, Washing up"
+              class="w-full rounded-md bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:font-normal placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
+              :maxlength="255"
+              :disabled="addChoreSubmitting"
+              @keyup.escape="cancelAddChore"
+              @blur="handleAddChoreBlur"
+            />
+          </div>
+          <div class="w-20 shrink-0">
+            <label
+              for="new-chore-ppd"
+              class="mb-1 block text-xs font-medium text-gray-500 dark:text-stone-400"
+            >
+              People/day
+            </label>
+            <input
+              id="new-chore-ppd"
+              v-model="newChorePpd"
+              type="number"
+              min="1"
+              max="50"
+              class="w-full rounded-md bg-gray-100 px-3 py-2 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10"
+              :disabled="addChoreSubmitting"
+              @keyup.escape="cancelAddChore"
+            />
+          </div>
+          <AppButton
+            type="submit"
+            size="sm"
+            :disabled="!newChoreName.trim()"
+            :loading="addChoreSubmitting"
+            loading-label="Adding..."
+          >
+            Add
+          </AppButton>
+        </form>
+      </div>
 
       <AssignMemberPopover
         v-if="assignPopover"
