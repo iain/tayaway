@@ -17,9 +17,7 @@ const sessions = ref<Session[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 
-const hasOtherSessions = computed(() =>
-  sessions.value.some((s) => !s.current)
-)
+const hasOtherSessions = computed(() => sessions.value.some((s) => !s.current))
 const revokingAll = ref(false)
 
 const hasGeolocation = computed(() =>
@@ -153,7 +151,7 @@ onUnmounted(() => {
         <div v-if="!bare">
           <h3
             data-testid="active-sessions-heading"
-            class="text-lg font-medium text-gray-900 dark:text-white"
+            class="text-lg font-semibold text-gray-900 dark:text-white"
           >
             Active Sessions
           </h3>

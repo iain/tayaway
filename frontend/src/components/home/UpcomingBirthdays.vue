@@ -33,7 +33,7 @@ function formatBirthdayDate(member: PoolMember): string {
 
 <template>
   <section>
-    <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
+    <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
       Upcoming birthdays
     </h2>
 

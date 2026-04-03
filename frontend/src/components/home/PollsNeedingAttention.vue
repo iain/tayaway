@@ -27,7 +27,7 @@ function navigateToEvent(eventId: string): void {
 
 <template>
   <section>
-    <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
+    <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
       Polls awaiting your vote
     </h2>
 

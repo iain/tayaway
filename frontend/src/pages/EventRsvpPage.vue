@@ -104,7 +104,7 @@ function handleDownloadIcs(): void {
         class="flex flex-col items-center py-12 text-center"
       >
         <ClockIcon class="mb-4 size-12 text-amber-500 dark:text-amber-400" />
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-stone-100">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
           Voting in progress
         </h2>
         <p class="mt-1 max-w-sm text-gray-500 dark:text-stone-400">
@@ -133,7 +133,7 @@ function handleDownloadIcs(): void {
         <CalendarDaysIcon
           class="mb-4 size-12 text-amber-500 dark:text-amber-400"
         />
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-stone-100">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
           No dates confirmed yet
         </h2>
         <p class="mt-1 max-w-sm text-gray-500 dark:text-stone-400">

@@ -103,7 +103,7 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
         <CheckCircleIcon
           class="mb-4 size-12 text-gray-400 dark:text-stone-500"
         />
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-stone-100">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
           Date poll closed
         </h2>
         <p class="mt-1 max-w-sm text-gray-500 dark:text-stone-400">
@@ -131,7 +131,7 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
         <CalendarDaysIcon
           class="mb-4 size-12 text-amber-500 dark:text-amber-400"
         />
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-stone-100">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
           Plan your event dates
         </h2>
         <p class="mt-1 max-w-sm text-gray-500 dark:text-stone-400">

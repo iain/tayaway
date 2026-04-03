@@ -117,7 +117,7 @@ function formatDateRangeSummary(
         v-if="currentEvents.length > 0"
         data-testid="happening-now-section"
       >
-        <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
+        <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
           Happening Now
         </h2>
         <ul class="space-y-4">
@@ -144,7 +144,7 @@ function formatDateRangeSummary(
       </section>
 
       <section v-if="upcomingEvents.length > 0" data-testid="upcoming-section">
-        <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
+        <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
           Upcoming
         </h2>
         <ul class="space-y-4">
@@ -171,7 +171,7 @@ function formatDateRangeSummary(
       </section>
 
       <section v-if="planningEvents.length > 0">
-        <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
+        <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
           Planning
         </h2>
         <ul class="space-y-4">
@@ -190,7 +190,7 @@ function formatDateRangeSummary(
       </section>
 
       <section v-if="pastEvents.length > 0">
-        <h2 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
+        <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
           Past
         </h2>
         <ul class="space-y-4">
