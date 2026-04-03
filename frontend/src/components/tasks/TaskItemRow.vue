@@ -17,8 +17,8 @@ const emit = defineEmits<{
 
 <template>
   <li
-    class="flex items-center gap-3 py-3"
-    :class="highlighted ? 'rounded bg-rose-50 dark:bg-rose-900/20' : ''"
+    class="-mx-2 flex items-center gap-3 rounded px-2 py-3"
+    :class="highlighted ? 'bg-amber-50 dark:bg-amber-900/15' : ''"
     :data-item-id="item.id"
     :data-highlighted="highlighted ? 'true' : undefined"
     data-testid="task-item-row"
