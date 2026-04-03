@@ -15,7 +15,6 @@ import { generateIcs, downloadIcs } from '@/utils/ics'
 import { useEventsStore } from '@/stores'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import RsvpSection from '@/components/events/RsvpSection.vue'
-import EditEventModal from '@/components/events/EditEventModal.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import TextButton from '@/components/common/TextButton.vue'
@@ -32,7 +31,6 @@ const isOwner = computed(() => currentUserId.value === event.value?.userId)
 
 const eventsStore = useEventsStore()
 const { loading } = storeToRefs(eventsStore)
-const modalOpen = ref(false)
 const datesBlockedOpen = ref(false)
 
 const pool = useObjectPoolStore()
@@ -40,34 +38,29 @@ const hasExpenses = computed(() => {
   return pool.getAll('expense').some((e) => e.eventId === eventId.value)
 })
 
+// Inline date editing
+const showDateForm = ref(false)
+const editStartDate = ref('')
+const editEndDate = ref('')
+
 function openDatesEdit(): void {
   if (hasExpenses.value) {
     datesBlockedOpen.value = true
     return
   }
-  modalOpen.value = true
+  editStartDate.value = event.value?.startDate ?? ''
+  editEndDate.value = event.value?.endDate ?? ''
+  showDateForm.value = true
 }
 
-async function handleSave(data: {
-  name: string
-  description: string | undefined
-  startDate: string | null
-  endDate: string | null
-  locationName: string | undefined
-  latitude: number | undefined
-  longitude: number | undefined
-}): Promise<void> {
-  if (!event.value) return
+async function saveDates(): Promise<void> {
+  if (!event.value || loading.value) return
   await eventsStore.updateEvent(eventId.value, {
-    name: data.name,
-    description: data.description,
-    startDate: data.startDate ?? undefined,
-    endDate: data.endDate ?? undefined,
-    locationName: data.locationName,
-    latitude: data.latitude,
-    longitude: data.longitude,
+    name: event.value.name,
+    startDate: editStartDate.value || undefined,
+    endDate: editEndDate.value || undefined,
   })
-  modalOpen.value = false
+  showDateForm.value = false
 }
 
 function handleDownloadIcs(): void {
@@ -128,7 +121,7 @@ function handleDownloadIcs(): void {
         </TextButton>
       </template>
 
-      <!-- No dates yet: show empty state -->
+      <!-- No dates yet: show empty state with inline date form -->
       <div v-else class="flex flex-col items-center py-12 text-center">
         <CalendarDaysIcon
           class="mb-4 size-12 text-amber-500 dark:text-amber-400"
@@ -145,31 +138,65 @@ function handleDownloadIcs(): void {
         >
           Go to Planning
         </router-link>
-        <TextButton
-          v-if="isOwner"
-          variant="secondary"
-          class="mt-2"
-          @click="openDatesEdit"
-        >
-          or set dates directly
-        </TextButton>
-      </div>
 
-      <EditEventModal
-        v-if="event"
-        :open="modalOpen"
-        field="dates"
-        :current-name="event.name"
-        :current-description="event.description"
-        :current-start-date="event.startDate"
-        :current-end-date="event.endDate"
-        :current-location-name="event.locationName"
-        :current-latitude="event.latitude"
-        :current-longitude="event.longitude"
-        :loading="loading"
-        @close="modalOpen = false"
-        @save="handleSave"
-      />
+        <template v-if="isOwner">
+          <div v-if="showDateForm" class="mt-4">
+            <form
+              class="flex flex-wrap items-end justify-center gap-3"
+              @submit.prevent="saveDates"
+            >
+              <div>
+                <label
+                  for="rsvp-start-date"
+                  class="mb-1 block text-xs font-medium text-gray-500 dark:text-stone-400"
+                >
+                  Start date
+                </label>
+                <input
+                  id="rsvp-start-date"
+                  v-model="editStartDate"
+                  type="date"
+                  :disabled="loading"
+                  class="rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:[color-scheme:dark] dark:outline-white/10"
+                />
+              </div>
+              <div>
+                <label
+                  for="rsvp-end-date"
+                  class="mb-1 block text-xs font-medium text-gray-500 dark:text-stone-400"
+                >
+                  End date
+                </label>
+                <input
+                  id="rsvp-end-date"
+                  v-model="editEndDate"
+                  type="date"
+                  :disabled="loading"
+                  class="rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:[color-scheme:dark] dark:outline-white/10"
+                />
+              </div>
+              <AppButton type="submit" size="sm" :loading="loading">
+                Save
+              </AppButton>
+              <TextButton
+                variant="secondary"
+                :disabled="loading"
+                @click="showDateForm = false"
+              >
+                Cancel
+              </TextButton>
+            </form>
+          </div>
+          <TextButton
+            v-else
+            variant="secondary"
+            class="mt-2"
+            @click="openDatesEdit"
+          >
+            or set dates directly
+          </TextButton>
+        </template>
+      </div>
 
       <BaseModal
         :open="datesBlockedOpen"
