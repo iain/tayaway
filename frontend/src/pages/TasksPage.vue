@@ -245,7 +245,7 @@ function handleNewListBlur(): void {
           type="text"
           placeholder="List name"
           data-testid="new-list-name-input"
-          class="flex-1 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-gray-300 ring-inset placeholder:font-normal placeholder:text-gray-400 focus:ring-2 focus:ring-rose-500 focus:ring-inset dark:bg-stone-800 dark:text-white dark:ring-stone-600 dark:placeholder:text-stone-500 dark:focus:ring-rose-500"
+          class="flex-1 rounded-md bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:font-normal placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
           :disabled="isSubmitting"
           @keyup.escape="cancelNewList"
           @blur="handleNewListBlur"
