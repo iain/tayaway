@@ -22,6 +22,7 @@ import StaticMap from '@/components/common/StaticMap.vue'
 import LocationInput from '@/components/form/LocationInput.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useEventsStore } from '@/stores'
+import { useRsvpsStore } from '@/stores/rsvps'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useCalendar } from '@/composables/useCalendar'
 import { generateIcs, downloadIcs } from '@/utils/ics'
@@ -48,9 +49,24 @@ const mapsUrl = computed(() => {
   return `https://maps.google.com/?q=${event.value.latitude},${event.value.longitude}`
 })
 
+const rsvpsStore = useRsvpsStore()
+
 type EditField = 'name' | 'description' | 'dates' | 'location'
 const editField = ref<EditField | null>(null)
 const datesBlockedOpen = ref(false)
+const showRsvpWarning = ref(false)
+
+const eventRsvps = computed(() =>
+  pool.getAll('rsvp').filter((r) => r.eventId === eventId.value)
+)
+
+const datesActuallyChanged = computed(() => {
+  if (!event.value) return false
+  return (
+    editStartDate.value !== (event.value.startDate ?? null) ||
+    editEndDate.value !== (event.value.endDate ?? null)
+  )
+})
 
 const { formatDateDisplay } = useCalendar()
 
@@ -169,6 +185,22 @@ function cancelEdit(): void {
 async function saveEdit(): Promise<void> {
   if (!event.value || loading.value) return
 
+  // When changing dates, warn if RSVPs exist and dates actually changed
+  if (
+    editField.value === 'dates' &&
+    datesActuallyChanged.value &&
+    eventRsvps.value.length > 0
+  ) {
+    showRsvpWarning.value = true
+    return
+  }
+
+  await commitEdit()
+}
+
+async function commitEdit(): Promise<void> {
+  if (!event.value || loading.value) return
+
   const data: Record<string, unknown> = {
     name: event.value.name,
     description: event.value.description || undefined,
@@ -178,6 +210,11 @@ async function saveEdit(): Promise<void> {
     latitude: event.value.latitude ?? undefined,
     longitude: event.value.longitude ?? undefined,
   }
+
+  const resetRsvps =
+    editField.value === 'dates' &&
+    datesActuallyChanged.value &&
+    eventRsvps.value.length > 0
 
   switch (editField.value) {
     case 'name':
@@ -199,7 +236,20 @@ async function saveEdit(): Promise<void> {
   }
 
   await eventsStore.updateEvent(eventId.value, data)
+  showRsvpWarning.value = false
   editField.value = null
+
+  // Delete all RSVPs after dates change
+  if (resetRsvps) {
+    const rsvpIds = eventRsvps.value.map((r) => ({ id: r.id }))
+    for (const { id } of rsvpIds) {
+      try {
+        await rsvpsStore.deleteRsvp(eventId.value, id)
+      } catch {
+        // Best effort — some may fail
+      }
+    }
+  }
 }
 
 function handleDownloadIcs(): void {
@@ -520,6 +570,28 @@ function handleDownloadIcs(): void {
       <div class="mt-6 flex justify-end">
         <AppButton variant="cyan" @click="datesBlockedOpen = false">
           Got it
+        </AppButton>
+      </div>
+    </BaseModal>
+
+    <BaseModal
+      :open="showRsvpWarning"
+      title="Reset RSVPs?"
+      size="sm"
+      @close="showRsvpWarning = false"
+    >
+      <p class="text-sm text-gray-600 dark:text-stone-400">
+        {{ eventRsvps.length }}
+        {{ eventRsvps.length === 1 ? 'member has' : 'members have' }} already
+        RSVPed. Changing the dates will reset all RSVPs so members can
+        re-confirm for the new dates.
+      </p>
+      <div class="mt-6 flex justify-end gap-3">
+        <TextButton variant="secondary" @click="showRsvpWarning = false">
+          Cancel
+        </TextButton>
+        <AppButton :loading="loading" @click="commitEdit">
+          Change dates &amp; reset RSVPs
         </AppButton>
       </div>
     </BaseModal>
