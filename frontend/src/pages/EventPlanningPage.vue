@@ -180,7 +180,7 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
           Open Date Poll
         </AppButton>
         <p
-          v-if="canReopenPoll && eventHasStarted"
+          v-if="canCreatePoll && eventHasStarted"
           class="mt-4 text-sm text-gray-400 dark:text-stone-500"
         >
           A date poll can't be opened because the event has already started.
