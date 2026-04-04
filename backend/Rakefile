@@ -94,6 +94,34 @@ namespace :db do
     puts "Seeding complete"
   end
 
+  desc "Encrypt plaintext phone_number and birthday fields for all users"
+  task :encrypt_pii do
+    require_relative "config/environment"
+
+    count = 0
+    DB[:users].each do |row|
+      updates = {}
+
+      phone = row[:phone_number]
+      if phone && !Encryption.encrypted?(phone)
+        updates[:phone_number] = Encryption.encrypt(phone)
+      end
+
+      birthday = row[:birthday]
+      if birthday.is_a?(String) && !birthday.empty? && !Encryption.encrypted?(birthday)
+        updates[:birthday] = Encryption.encrypt(birthday)
+      end
+
+      unless updates.empty?
+        updates[:updated_at] = Time.now
+        DB[:users].where(id: row[:id]).update(updates)
+        count += 1
+      end
+    end
+
+    puts "Encrypted PII for #{count} users"
+  end
+
   desc "Delete deleted_items rows older than DELETED_ITEMS_RETENTION_DAYS (default: 7)"
   task :cleanup_deleted_items do
     require_relative "config/database"

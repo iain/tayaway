@@ -5,7 +5,7 @@ require "rbnacl"
 require "openssl"
 require "base64"
 
-# libsodium (XSalsa20-Poly1305) encryption helper for sensitive fields (e.g. IBANs).
+# libsodium (XSalsa20-Poly1305) encryption helper for sensitive fields.
 # RbNaCl::SimpleBox handles nonce generation automatically. The ciphertext is stored
 # as Base64-encoded "nonce + mac + ciphertext" so it can live in a TEXT column.
 module Encryption
@@ -27,12 +27,11 @@ module Encryption
       box.open(Base64.strict_decode64(encoded))
     end
 
-    # Detect whether a value is encrypted (Base64-encoded with enough bytes for nonce + mac).
+    # Detect whether a value looks like our encrypted format (Base64 with enough
+    # bytes for nonce + mac). Plaintext values are short strings, phone numbers,
+    # dates, etc. — they won't produce 40+ raw bytes when Base64-decoded.
     sig { params(value: String).returns(T::Boolean) }
     def encrypted?(value)
-      # Plaintext IBANs are alphanumeric (A-Z0-9), never contain + / =
-      return false if value.match?(/\A[A-Z]{2}\d{2}[A-Z0-9]{4,30}\z/)
-
       raw = Base64.strict_decode64(value)
       raw.bytesize >= MIN_ENCRYPTED_BYTES
     rescue ArgumentError

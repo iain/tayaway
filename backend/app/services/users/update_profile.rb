@@ -173,14 +173,16 @@ module Users
           # Name: nil means "don't change"
           update_data[:name] = name.strip unless name.nil?
 
-          # Phone number: blank -> nil
+          # Phone number: blank -> nil, otherwise encrypt
           unless phone_number.nil?
-            update_data[:phone_number] = phone_number.strip.empty? ? nil : phone_number.strip
+            stripped = phone_number.strip
+            update_data[:phone_number] = stripped.empty? ? nil : Encryption.encrypt(stripped)
           end
 
-          # Birthday: blank -> nil, otherwise parse
+          # Birthday: blank -> nil, otherwise encrypt (stored as encrypted ISO 8601 string)
           unless birthday.nil?
-            update_data[:birthday] = birthday.strip.empty? ? nil : Date.parse(birthday)
+            stripped = birthday.strip
+            update_data[:birthday] = stripped.empty? ? nil : Encryption.encrypt(stripped)
           end
 
           # IBAN: blank -> nil, otherwise normalize and encrypt

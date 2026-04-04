@@ -60,7 +60,7 @@ class User < T::Struct
     private
 
     sig { params(value: T.nilable(String)).returns(T.nilable(String)) }
-    def decrypt_iban(value)
+    def decrypt_field(value)
       return nil if value.nil?
       return value unless Encryption.encrypted?(value)
 
@@ -74,15 +74,28 @@ class User < T::Struct
 
     sig { params(row: T::Hash[Symbol, T.untyped]).returns(User) }
     def from_row(row)
+      phone = decrypt_field(row[:phone_number])
+
+      # Birthday is stored as DATE (plaintext) or encrypted STRING.
+      # Decrypt if encrypted, then parse to Date.
+      raw_birthday = row[:birthday]
+      birthday = if raw_birthday.is_a?(Date)
+                   raw_birthday
+                 elsif raw_birthday.is_a?(String) && Encryption.encrypted?(raw_birthday)
+                   Date.parse(Encryption.decrypt(raw_birthday))
+                 elsif raw_birthday.is_a?(String)
+                   Date.parse(raw_birthday)
+                 end
+
       User.new(
         id: UUID.new(row[:id]),
         email: EmailAddress.new(row[:email]),
         name: row[:name],
-        phone_number: row[:phone_number],
-        birthday: row[:birthday],
+        phone_number: phone,
+        birthday: birthday,
         location_name: row[:location_name],
         location_coordinates: PointParser.parse(row[:location_coordinates]),
-        iban: decrypt_iban(row[:iban]),
+        iban: decrypt_field(row[:iban]),
         created_at: row[:created_at],
         updated_at: row[:updated_at]
       )
