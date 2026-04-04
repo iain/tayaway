@@ -11,7 +11,6 @@ export type VoteResponse = 'yes' | 'no' | 'preferably_not'
 export interface AbilityResult {
   allowed: boolean
   reason?: string
-  hint?: 'hidden' | 'disabled'
 }
 
 // Base fields all pool objects must have

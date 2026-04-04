@@ -60,8 +60,8 @@ class EventPolicy < BasePolicy
   sig { returns(Ability) }
   def delete_ability
     return deny(reason: "not_owner") unless owner?
-    return deny(reason: "has_settlements", hint: Hint::Disabled) if @context.has_settlements
-    return deny(reason: "has_expenses", hint: Hint::Disabled) if @context.has_expenses
+    return deny(reason: "has_settlements") if @context.has_settlements
+    return deny(reason: "has_expenses") if @context.has_expenses
 
     ALLOWED
   end

@@ -1,15 +1,32 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
 import type { AbilityResult } from '@/types/pool'
 
+type Hint = 'hidden' | 'disabled'
+
 interface AbilityCheck {
   /** Whether the action is allowed */
   allowed: ComputedRef<boolean>
   /** Machine-readable reason code (e.g. "not_owner", "has_expenses") */
   reason: ComputedRef<string | undefined>
-  /** UI hint: "hidden" or "disabled" */
-  hint: ComputedRef<'hidden' | 'disabled'>
+  /** UI hint derived from the reason: "hidden" or "disabled" */
+  hint: ComputedRef<Hint>
   /** Whether the UI control should be visible (allowed OR hint is "disabled") */
   visible: ComputedRef<boolean>
+}
+
+// Reasons that indicate a temporary or situational block — the user has
+// permission in principle but something else prevents the action right now.
+// These are shown as disabled controls with an explanation, not hidden.
+const DISABLED_REASONS = new Set([
+  'has_expenses',
+  'has_settlements',
+  'is_settled',
+  'poll_closed',
+  'not_attending',
+])
+
+function hintForReason(reason: string | undefined): Hint {
+  return reason && DISABLED_REASONS.has(reason) ? 'disabled' : 'hidden'
 }
 
 /**
@@ -35,7 +52,7 @@ export function useAbility(
 
   const allowed = computed(() => ability.value?.allowed ?? false)
   const reason = computed(() => ability.value?.reason)
-  const hint = computed(() => ability.value?.hint ?? 'hidden')
+  const hint = computed(() => hintForReason(reason.value))
   const visible = computed(() => allowed.value || hint.value === 'disabled')
 
   return { allowed, reason, hint, visible }

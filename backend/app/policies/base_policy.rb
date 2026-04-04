@@ -6,7 +6,8 @@
 # Ability values (either Allowed or Denied).
 #
 # Reason codes are machine-readable snake_case strings (e.g. "not_owner",
-# "has_expenses"). The frontend maps these to display text.
+# "has_expenses"). The frontend maps these to display text and decides
+# how to render denied actions (hidden vs. disabled) based on the reason.
 #
 # Deny-by-default: if an ability is missing from the hash, the frontend
 # treats it as denied. All allowed abilities must be explicitly granted.
@@ -21,14 +22,6 @@ class BasePolicy
   extend T::Helpers
 
   abstract!
-
-  # Controls how the frontend renders a denied ability.
-  class Hint < T::Enum
-    enums do
-      Hidden = new("hidden")
-      Disabled = new("disabled")
-    end
-  end
 
   # Granted ability — the user may perform this action.
   class Allowed < T::Struct
@@ -45,11 +38,10 @@ class BasePolicy
     extend T::Sig
 
     const :reason, String
-    const :hint, Hint, default: Hint::Hidden
 
     sig { returns(T::Hash[Symbol, T.untyped]) }
     def to_api_hash
-      { allowed: false, reason: reason, hint: hint.serialize }
+      { allowed: false, reason: reason }
     end
   end
 
@@ -94,8 +86,8 @@ class BasePolicy
   sig { returns(T.nilable(WorkspaceMembership)) }
   attr_reader :membership
 
-  sig { params(reason: String, hint: Hint).returns(Denied) }
-  def deny(reason:, hint: Hint::Hidden)
-    Denied.new(reason: reason, hint: hint)
+  sig { params(reason: String).returns(Denied) }
+  def deny(reason:)
+    Denied.new(reason: reason)
   end
 end

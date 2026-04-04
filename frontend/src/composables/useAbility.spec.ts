@@ -25,9 +25,6 @@ describe('useAbility', () => {
 
   it('returns denied and hidden when specific ability is missing', () => {
     const obj = ref({
-      id: '1',
-      objectType: 'event' as const,
-      updatedAt: '',
       abilities: { delete: { allowed: true } },
     })
     const { allowed, visible } = useAbility(obj, 'update')
@@ -38,9 +35,6 @@ describe('useAbility', () => {
 
   it('returns allowed when ability is granted', () => {
     const obj = ref({
-      id: '1',
-      objectType: 'event' as const,
-      updatedAt: '',
       abilities: { update: { allowed: true } },
     })
     const { allowed, visible, reason } = useAbility(obj, 'update')
@@ -50,52 +44,41 @@ describe('useAbility', () => {
     expect(reason.value).toBeUndefined()
   })
 
-  it('returns denied and hidden for denied ability with default hint', () => {
+  it('hides denied abilities with permanent reasons like not_owner', () => {
     const obj = ref({
-      id: '1',
-      objectType: 'event' as const,
-      updatedAt: '',
-      abilities: {
-        update: {
-          allowed: false,
-          reason: 'not_owner',
-          hint: 'hidden' as const,
-        },
-      },
+      abilities: { update: { allowed: false, reason: 'not_owner' } },
     })
-    const { allowed, visible, reason, hint } = useAbility(obj, 'update')
+    const { allowed, visible, hint } = useAbility(obj, 'update')
 
     expect(allowed.value).toBe(false)
     expect(visible.value).toBe(false)
-    expect(reason.value).toBe('not_owner')
     expect(hint.value).toBe('hidden')
   })
 
-  it('returns denied but visible for disabled hint', () => {
+  it('shows disabled for situational reasons like has_expenses', () => {
     const obj = ref({
-      id: '1',
-      objectType: 'event' as const,
-      updatedAt: '',
-      abilities: {
-        delete: {
-          allowed: false,
-          reason: 'has_expenses',
-          hint: 'disabled' as const,
-        },
-      },
+      abilities: { delete: { allowed: false, reason: 'has_expenses' } },
     })
-    const { allowed, visible, reason } = useAbility(obj, 'delete')
+    const { allowed, visible, hint, reason } = useAbility(obj, 'delete')
 
     expect(allowed.value).toBe(false)
     expect(visible.value).toBe(true)
+    expect(hint.value).toBe('disabled')
     expect(reason.value).toBe('has_expenses')
+  })
+
+  it('shows disabled for has_settlements reason', () => {
+    const obj = ref({
+      abilities: { delete: { allowed: false, reason: 'has_settlements' } },
+    })
+    const { hint } = useAbility(obj, 'delete')
+
+    expect(hint.value).toBe('disabled')
   })
 
   it('reacts to object changes', () => {
     const obj = ref<{ abilities?: Record<string, AbilityResult> } | undefined>({
-      abilities: {
-        update: { allowed: false, reason: 'not_owner', hint: 'hidden' },
-      },
+      abilities: { update: { allowed: false, reason: 'not_owner' } },
     })
     const { allowed, visible } = useAbility(obj, 'update')
 

@@ -32,7 +32,6 @@ RSpec.describe EventPolicy do
         %i[update delete create_poll close_poll reopen_poll add_date_range remove_date_range].each do |ability|
           expect(abilities[ability]).to be_a(BasePolicy::Denied)
           expect(abilities[ability].reason).to eq("not_owner")
-          expect(abilities[ability].hint).to eq(BasePolicy::Hint::Hidden)
         end
       end
     end
@@ -43,10 +42,9 @@ RSpec.describe EventPolicy do
         described_class.new(event: event, user_id: owner[:id].to_s, context: context).abilities
       end
 
-      it "disables delete with has_expenses reason" do
+      it "denies delete with has_expenses reason" do
         expect(abilities[:delete]).to be_a(BasePolicy::Denied)
         expect(abilities[:delete].reason).to eq("has_expenses")
-        expect(abilities[:delete].hint).to eq(BasePolicy::Hint::Disabled)
       end
 
       it "still allows other owner actions" do
@@ -61,10 +59,9 @@ RSpec.describe EventPolicy do
         described_class.new(event: event, user_id: owner[:id].to_s, context: context).abilities
       end
 
-      it "disables delete with has_settlements reason" do
+      it "denies delete with has_settlements reason" do
         expect(abilities[:delete]).to be_a(BasePolicy::Denied)
         expect(abilities[:delete].reason).to eq("has_settlements")
-        expect(abilities[:delete].hint).to eq(BasePolicy::Hint::Disabled)
       end
     end
 
@@ -74,7 +71,7 @@ RSpec.describe EventPolicy do
         described_class.new(event: event, user_id: owner[:id].to_s, context: context).abilities
       end
 
-      it "disables delete with has_settlements reason (settlements checked first)" do
+      it "reports has_settlements reason (settlements checked first)" do
         expect(abilities[:delete].reason).to eq("has_settlements")
       end
     end
@@ -110,15 +107,9 @@ RSpec.describe EventPolicy do
       expect(api[:update]).to eq({ allowed: true })
     end
 
-    it "serializes denied abilities with reason and hint" do
+    it "serializes denied abilities with reason" do
       api = described_class.new(event: event, user_id: other_user[:id].to_s).abilities_api_hash
-      expect(api[:update]).to eq({ allowed: false, reason: "not_owner", hint: "hidden" })
-    end
-
-    it "serializes disabled abilities with disabled hint" do
-      context = described_class::Context.new(has_expenses: true)
-      api = described_class.new(event: event, user_id: owner[:id].to_s, context: context).abilities_api_hash
-      expect(api[:delete]).to eq({ allowed: false, reason: "has_expenses", hint: "disabled" })
+      expect(api[:update]).to eq({ allowed: false, reason: "not_owner" })
     end
   end
 end
