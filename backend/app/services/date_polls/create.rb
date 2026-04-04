@@ -17,7 +17,7 @@ module DatePolls
       end
       def call(event_id:, current_user_id:, deadline:)
         Event.find_result(event_id)
-             .bind { |event| Event.authorize_owner(event, current_user_id) }
+             .bind { |event| EventPolicy.new(event: event, user_id: current_user_id.to_s).authorize!(:create_poll, value: event) }
              .bind { |event| validate_no_existing_poll(event) }
              .bind { |event| validate_deadline(deadline, event) }
              .bind { |(event, parsed_deadline)| create_poll(event, parsed_deadline) }

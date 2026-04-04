@@ -12,7 +12,7 @@ RSpec.describe Events::Delete do
     result = described_class.call(event_id: event[:id], current_user_id: other_user[:id])
 
     expect(result.failure?).to be true
-    expect(result.failure.message).to eq("Access denied")
+    expect(result.failure.message).to eq("not_owner")
     expect(DB[:events].where(id: event[:id]).count).to eq(1)
   end
 

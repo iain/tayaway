@@ -17,7 +17,7 @@ module DatePolls
       end
       def call(event_id:, current_user_id:, selected_date_range_id:)
         Event.find_result(event_id)
-             .bind { |event| Event.authorize_owner(event, current_user_id) }
+             .bind { |event| EventPolicy.new(event: event, user_id: current_user_id.to_s).authorize!(:close_poll, value: event) }
              .bind { |event| DatePoll.find_by_event_result(event.id).fmap { |poll| [event, poll] } }
              .bind { |(event, poll)| validate_not_resolved(event, poll) }
              .bind { |(event, poll)| validate_date_range(event, poll, selected_date_range_id) }

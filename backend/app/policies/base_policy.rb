@@ -65,12 +65,13 @@ class BasePolicy
   end
 
   # Checks a single ability and returns a Result for use in service bind chains.
-  sig { params(ability_name: Symbol).returns(Result[T.untyped, ServiceError]) }
-  def authorize!(ability_name)
+  # Pass `value` to carry an object through on success (e.g. the event).
+  sig { params(ability_name: Symbol, value: T.untyped).returns(Result[T.untyped, ServiceError]) }
+  def authorize!(ability_name, value: nil)
     ability = abilities[ability_name]
     case ability
     when Allowed
-      T.cast(Result::Success.new(nil), Result[T.untyped, ServiceError])
+      T.cast(Result::Success.new(value), Result[T.untyped, ServiceError])
     when Denied
       T.cast(Result::Failure.new(ServiceError.forbidden(ability.reason)), Result[T.untyped, ServiceError])
     else

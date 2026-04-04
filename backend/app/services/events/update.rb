@@ -35,7 +35,7 @@ module Events
       def call(event_id:, current_user_id:, name:, description:, start_date: nil, end_date: nil,
                location_name: nil, latitude: nil, longitude: nil)
         Event.find_result(event_id)
-             .bind { |event| Event.authorize_owner(event, current_user_id) }
+             .bind { |event| EventPolicy.new(event: event, user_id: current_user_id.to_s).authorize!(:update, value: event) }
              .bind { |event| validate_name_with_event(name, event) }
              .bind { |event| validate_text_lengths(description, location_name).fmap { event } }
              .bind { |event| validate_coordinates(latitude, longitude).fmap { event } }

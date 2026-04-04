@@ -19,11 +19,22 @@ module Events
       end
       def call(event_id:, current_user_id:)
         Event.find_result(event_id)
-             .bind { |event| Event.authorize_owner(event, current_user_id) }
+             .bind { |event| authorize_delete(event, current_user_id) }
              .bind { |event| delete_event(event) }
       end
 
       private
+
+      sig { params(event: Event, current_user_id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }
+      def authorize_delete(event, current_user_id)
+        eid = event.id.to_s
+        context = EventPolicy::Context.new(
+          has_expenses: DB[:expenses].where(event_id: eid).limit(1).any?,
+          has_settlements: DB[:settlements].where(event_id: eid).limit(1).any?
+        )
+        EventPolicy.new(event: event, user_id: current_user_id.to_s, context: context)
+                   .authorize!(:delete, value: event)
+      end
 
       sig { params(event: Event).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
       def delete_event(event)

@@ -64,15 +64,6 @@ class Event < T::Struct
       dataset.where(workspace_id: workspace_ids).order(:created_at).limit(ValidationLimits::QUERY_LIMIT).all
     end
 
-    sig { params(event: Event, current_user_id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }
-    def authorize_owner(event, current_user_id)
-      if event.user_id == current_user_id
-        T.cast(Success(event), Result[Event, ServiceError])
-      else
-        T.cast(Failure(ServiceError.forbidden("Access denied")), Result[Event, ServiceError])
-      end
-    end
-
     private
 
     sig { returns(Sequel::Dataset) }

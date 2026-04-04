@@ -16,7 +16,7 @@ RSpec.describe DatePolls::Create do
     )
 
     expect(result.failure?).to be true
-    expect(result.failure.message).to eq("Access denied")
+    expect(result.failure.message).to eq("not_owner")
   end
 
   it "returns failure when a poll already exists" do

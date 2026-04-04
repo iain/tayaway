@@ -18,7 +18,7 @@ RSpec.describe DatePolls::Close do
     )
 
     expect(result.failure?).to be true
-    expect(result.failure.message).to eq("Access denied")
+    expect(result.failure.message).to eq("not_owner")
   end
 
   it "returns failure when poll is already resolved" do

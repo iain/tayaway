@@ -19,7 +19,7 @@ module DatePolls
       end
       def call(event_id:, current_user_id:, start_date:, end_date:, id: nil)
         Event.find_result(event_id)
-             .bind { |event| Event.authorize_owner(event, current_user_id) }
+             .bind { |event| EventPolicy.new(event: event, user_id: current_user_id.to_s).authorize!(:add_date_range, value: event) }
              .bind { |event| DatePoll.find_by_event_result(event.id).fmap { |poll| [event, poll] } }
              .bind { |(event, poll)| DatePoll.validate_open(poll).fmap { |_| [event, poll] } }
              .bind { |(event, poll)| parse_dates(start_date, end_date, event, poll) }
