@@ -151,21 +151,21 @@ async function handleClearPartialDates(): Promise<void> {
       </div>
 
       <!-- Partial attendance -->
-      <div v-if="currentUserRsvp?.attending" class="mt-3">
-        <div v-if="currentUserRsvp.startDate && currentUserRsvp.endDate">
-          <p class="text-sm text-gray-600 dark:text-stone-400">
-            <CalendarDaysIcon class="inline size-4" />
-            <DateRangeDisplay
-              :start-date="currentUserRsvp.startDate"
-              :end-date="currentUserRsvp.endDate"
-            />
-            (partial)
-          </p>
+      <div v-if="currentUserRsvp?.attending" class="mt-4">
+        <div
+          v-if="currentUserRsvp.startDate && currentUserRsvp.endDate"
+          class="mb-2 flex items-center gap-1.5 text-sm text-gray-600 dark:text-stone-400"
+        >
+          <CalendarDaysIcon class="size-4 shrink-0" />
+          <DateRangeDisplay
+            :start-date="currentUserRsvp.startDate"
+            :end-date="currentUserRsvp.endDate"
+          />
+          <span class="text-gray-400 dark:text-stone-500">(partial)</span>
         </div>
         <TextButton
           v-if="!showPartialPicker"
           data-testid="rsvp-change-dates"
-          class="mt-1"
           @click="openPartialPicker"
         >
           {{ currentUserRsvp.startDate ? 'Change dates' : 'Set partial dates' }}
