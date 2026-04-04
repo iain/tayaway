@@ -91,7 +91,7 @@ module DatePolls
 
         APP_LOGGER.info { "[DatePolls::Reopen] Poll #{poll.id} reopened on event #{event.id}" }
 
-        pool = PoolSerializer.new(workspace_id: event.workspace_id)
+        pool = PoolSerializer.new(workspace_id: event.workspace_id, user_id: current_user_id.to_s)
         pool.add_event(T.must(Event.find(event.id)))
         pool.add_date_poll(T.must(DatePoll.find(poll.id)))
 

@@ -20,7 +20,7 @@ module DatePolls
              .bind { |event| EventPolicy.new(event: event, user_id: current_user_id.to_s).authorize!(:create_poll, value: event) }
              .bind { |event| validate_no_existing_poll(event) }
              .bind { |event| validate_deadline(deadline, event) }
-             .bind { |(event, parsed_deadline)| create_poll(event, parsed_deadline) }
+             .bind { |(event, parsed_deadline)| create_poll(event, parsed_deadline, current_user_id) }
       end
 
       private
@@ -54,8 +54,8 @@ module DatePolls
         T.cast(Success([event, parsed]), Result[T::Array[T.untyped], ServiceError])
       end
 
-      sig { params(event: Event, deadline: Time).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
-      def create_poll(event, deadline)
+      sig { params(event: Event, deadline: Time, current_user_id: T.any(String, UUID)).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
+      def create_poll(event, deadline, current_user_id)
         poll_id = SecureRandom.uuid
         now = Time.now
 
@@ -71,7 +71,7 @@ module DatePolls
           Broadcaster.object_changed("date_poll", poll_id, workspace_id: event.workspace_id)
         end
 
-        pool = PoolSerializer.new(workspace_id: event.workspace_id)
+        pool = PoolSerializer.new(workspace_id: event.workspace_id, user_id: current_user_id.to_s)
         pool.add_event(T.must(Event.find(event.id)))
         pool.add_date_poll(T.must(DatePoll.find(poll_id)))
         T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])

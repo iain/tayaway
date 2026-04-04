@@ -57,7 +57,7 @@ class App
       if synced_workspace_id
         Websocket::ConnectionManager.instance.set_workspaces(connection_id, [synced_workspace_id])
         since_time = Websocket::MessageHandler.safe_parse_time(initial_since)
-        sync_result = Sync::WorkspaceSync.call(workspace_id: synced_workspace_id, since: since_time)
+        sync_result = Sync::WorkspaceSync.call(workspace_id: synced_workspace_id, user_id: user_id, since: since_time)
         connection.write({ type: "sync", data: sync_result }.to_json)
       end
 

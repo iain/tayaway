@@ -323,6 +323,13 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
 
       // Update pool object if newer or doesn't exist
       if (!existing || isNewer(obj.updatedAt, existing.updatedAt)) {
+        // Preserve abilities from the existing object when the incoming one
+        // doesn't include them (e.g. WebSocket broadcasts don't carry abilities
+        // because the serializer doesn't know the user).
+        if (existing && 'abilities' in existing && !('abilities' in obj)) {
+          ;(obj as unknown as Record<string, unknown>).abilities =
+            existing.abilities
+        }
         // Update reverse index: remove old FK entry (if any), add new one
         if (existing) reverseIndexRemove(cascadeIndex, existing)
         reverseIndexAdd(cascadeIndex, obj)

@@ -43,8 +43,8 @@ module Events
              .bind { |(event, dates)| check_no_resolved_poll_when_clearing(event, dates).fmap { [event, dates] } }
              .bind do |(event, dates)|
                update_event(
-                 event: event, name: name, description: description, dates: dates,
-                 location_name: location_name, latitude: latitude, longitude: longitude
+                 event: event, current_user_id: current_user_id, name: name, description: description,
+                 dates: dates, location_name: location_name, latitude: latitude, longitude: longitude
                )
              end
       end
@@ -124,6 +124,7 @@ module Events
       sig do
         params(
           event: Event,
+          current_user_id: T.any(String, UUID),
           name: T.nilable(String),
           description: T.nilable(String),
           dates: T.nilable(T::Array[Date]),
@@ -132,7 +133,7 @@ module Events
           longitude: T.nilable(Float)
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def update_event(event:, name:, description:, dates:, location_name:, latitude:, longitude:)
+      def update_event(event:, current_user_id:, name:, description:, dates:, location_name:, latitude:, longitude:)
         event_id = event.id
         workspace_id = event.workspace_id
 
@@ -173,7 +174,7 @@ module Events
 
         APP_LOGGER.info { "[Events::Update] Event #{event_id} updated in workspace #{workspace_id}" }
 
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool = PoolSerializer.new(workspace_id: workspace_id, user_id: current_user_id.to_s)
         pool.add_event(T.must(Event.find(event_id)))
         T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
       end

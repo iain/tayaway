@@ -21,7 +21,7 @@ module DatePolls
              .bind { |event| DatePoll.find_by_event_result(event.id).fmap { |poll| [event, poll] } }
              .bind { |(event, poll)| validate_not_resolved(event, poll) }
              .bind { |(event, poll)| validate_date_range(event, poll, selected_date_range_id) }
-             .bind { |(event, poll, dr_id)| close_poll(event, poll, dr_id) }
+             .bind { |(event, poll, dr_id)| close_poll(event, poll, dr_id, current_user_id) }
       end
 
       private
@@ -62,10 +62,10 @@ module DatePolls
       end
 
       sig do
-        params(event: Event, poll: DatePoll, selected_date_range_id: String)
+        params(event: Event, poll: DatePoll, selected_date_range_id: String, current_user_id: T.any(String, UUID))
           .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def close_poll(event, poll, selected_date_range_id)
+      def close_poll(event, poll, selected_date_range_id, current_user_id)
         date_range = T.must(DateRange.find(selected_date_range_id))
         yes_voter_ids = T.let([], T::Array[String])
 
@@ -105,7 +105,7 @@ module DatePolls
         APP_LOGGER.info { "[DatePolls::Close] Poll #{poll.id} closed on event #{event.id} with date range #{selected_date_range_id}" }
         send_poll_closed_emails(event, poll, date_range, yes_voter_ids)
 
-        pool = PoolSerializer.new(workspace_id: event.workspace_id)
+        pool = PoolSerializer.new(workspace_id: event.workspace_id, user_id: current_user_id.to_s)
         pool.add_event(T.must(Event.find(event.id)))
         pool.add_date_poll(T.must(DatePoll.find(poll.id)))
         Rsvp.for_event(event.id).each { |r| pool.add_rsvp(r) }

@@ -17,10 +17,10 @@ module Sync
       extend T::Sig
 
       sig do
-        params(workspace_id: T.any(String, UUID), since: T.nilable(Time))
+        params(workspace_id: T.any(String, UUID), user_id: T.nilable(T.any(String, UUID)), since: T.nilable(Time))
           .returns(T::Hash[Symbol, T.untyped])
       end
-      def call(workspace_id:, since: nil)
+      def call(workspace_id:, user_id: nil, since: nil)
         cutoff = T.cast(Time.now - RETENTION_PERIOD, Time)
         full = since.nil? || since < cutoff
         effective_since = full ? Time.at(0) : T.must(since)
@@ -29,7 +29,7 @@ module Sync
         workspace = Workspace.find(workspace_id)
         return empty_response(synced_at, full ? "full" : "partial") unless workspace
 
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool = PoolSerializer.new(workspace_id: workspace_id, user_id: user_id&.to_s)
 
         # Always include workspace so memberIds stays current on partial syncs
         # (adding a member doesn't update the workspace's updated_at)
