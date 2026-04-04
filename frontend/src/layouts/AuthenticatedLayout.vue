@@ -238,13 +238,16 @@ async function handleSignOut() {
               <router-link
                 v-if="otherWorkspaces.length === 0"
                 to="/"
-                class="text-nav-text text-xl font-bold"
+                class="text-nav-text rounded text-xl font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
                 {{ currentWorkspace?.name ?? 'Tayaway' }}
               </router-link>
               <!-- Multiple workspaces: name links to dashboard, chevron opens dropdown -->
               <div v-else class="relative flex items-center gap-0.5">
-                <router-link to="/" class="text-nav-text text-xl font-bold">
+                <router-link
+                  to="/"
+                  class="text-nav-text rounded text-xl font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                >
                   {{ currentWorkspace?.name ?? 'Tayaway' }}
                 </router-link>
                 <Menu as="div" class="relative">
@@ -295,7 +298,7 @@ async function handleSignOut() {
                     isActive(item.routeName)
                       ? 'bg-nav-active text-nav-text shadow-[inset_0_1px_2px_rgba(0,0,0,0.15)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)]'
                       : 'text-nav-text hover:bg-nav-hover hover:bg-opacity-75',
-                    'rounded-md px-3 py-2 text-sm font-medium',
+                    'rounded-md px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white',
                   ]"
                   :aria-current="isActive(item.routeName) ? 'page' : undefined"
                 >
@@ -335,7 +338,7 @@ async function handleSignOut() {
               <!-- Dark mode toggle -->
               <button
                 type="button"
-                class="bg-nav text-nav-text-muted hover:text-nav-text focus:ring-offset-nav relative rounded-full p-1 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:outline-hidden"
+                class="bg-nav text-nav-text-muted hover:text-nav-text relative rounded-full p-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                 @click="toggleDarkMode"
               >
                 <span class="sr-only">Toggle dark mode</span>
@@ -348,7 +351,7 @@ async function handleSignOut() {
                 <div>
                   <MenuButton
                     data-testid="user-menu-button"
-                    class="bg-nav focus:ring-offset-nav relative flex max-w-xs items-center rounded-full text-sm focus:ring-2 focus:ring-white focus:ring-offset-2 focus:outline-hidden"
+                    class="bg-nav relative flex max-w-xs items-center rounded-full text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                   >
                     <span class="sr-only">Open user menu</span>
                     <AppAvatar
@@ -417,7 +420,7 @@ async function handleSignOut() {
           <div class="-mr-2 flex md:hidden">
             <!-- Mobile menu button -->
             <DisclosureButton
-              class="group bg-nav text-nav-text-muted hover:bg-nav-hover hover:bg-opacity-75 hover:text-nav-text focus:ring-offset-nav relative inline-flex items-center justify-center rounded-md p-2 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:outline-hidden"
+              class="group bg-nav text-nav-text-muted hover:bg-nav-hover hover:bg-opacity-75 hover:text-nav-text relative inline-flex items-center justify-center rounded-md p-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
               <span class="sr-only">Open main menu</span>
               <Bars3Icon
@@ -527,7 +530,7 @@ async function handleSignOut() {
             </button>
             <button
               type="button"
-              class="bg-nav text-nav-text-muted hover:text-nav-text focus:ring-offset-nav shrink-0 rounded-full p-1 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:outline-hidden"
+              class="bg-nav text-nav-text-muted hover:text-nav-text shrink-0 rounded-full p-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               :class="!showConnectionBadge ? 'relative ml-auto' : 'ml-2'"
               @click="toggleDarkMode"
             >
