@@ -72,6 +72,14 @@ Playwright tests run against separate servers (backend :9293, frontend :5174) wi
 
 Migrations run **before** the app restarts during deploy — old code is still serving traffic. All migrations must be **additive**. Destructive changes (drop column/table, rename, add NOT NULL) require a two-deploy pattern. See `doc/MIGRATIONS.md` for details.
 
+## Commits and PRs
+
+- **Commit messages**: Free-form imperative subject (e.g. "Fix request body consumption in rate limiter"). No conventional commit prefixes. Always explain _why_ in the body unless the change is truly trivial. Don't list what changed unless it's not obvious from the diff.
+- **PRs**: Default to draft. Body should be minimal and focused on _why_, no headers or sections, no test plan. We squash-merge to keep main clean, so write the PR title+body as if it will become the final commit message.
+- **No trailers or footers** — no "Generated with Claude Code", no Co-Authored-By.
+- **Cohesive commits**: Split unrelated changes into separate commits, but don't over-split. Use judgement.
+- **Don't push to main** without asking first.
+
 ## Environment
 
 - Required env vars: `DATABASE_URL`, `APP_SECRET`, `FRONTEND_URL`
