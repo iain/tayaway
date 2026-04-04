@@ -82,7 +82,7 @@ module RateLimiter
       Rack::Attack.throttle("auth/login-link/email", limit: 3, period: 3600) do |req|
         if req.post? && req.path == "/api/auth/login-link"
           body = req.body.read
-          req.body.rewind
+          req.env["rack.input"] = StringIO.new(body)
           email = begin
             JSON.parse(body)["email"]&.strip&.downcase
           rescue StandardError
