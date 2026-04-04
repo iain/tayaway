@@ -11,6 +11,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useDatePollsStore } from '@/stores/datePolls'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
 import { isPollActive, isPollResolved } from '@/utils/poll'
+import { eventHasDates } from '@/utils/event'
 import DatePollSection from '@/components/events/DatePollSection.vue'
 import AwaitingVotesSection from '@/components/events/AwaitingVotesSection.vue'
 import OpenPollModal from '@/components/events/OpenPollModal.vue'
@@ -126,59 +127,50 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
         </p>
       </div>
 
-      <!-- No poll: show empty state -->
+      <!-- No poll, dates already set -->
+      <div
+        v-else-if="eventHasDates(event)"
+        class="flex flex-col items-center py-12 text-center"
+      >
+        <CheckCircleIcon
+          class="mb-4 size-12 text-amber-500 dark:text-amber-400"
+        />
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+          Dates are set
+        </h2>
+        <p class="mt-1 max-w-sm text-gray-500 dark:text-stone-400">
+          This event already has dates. Members can RSVP on the RSVP tab.
+        </p>
+        <p
+          v-if="canOpenOrReopenPoll"
+          class="mt-4 max-w-sm text-sm text-gray-400 dark:text-stone-500"
+        >
+          Need to reconsider? Opening a date poll lets members vote on
+          alternatives. When you close the poll, the winning dates will replace
+          the current ones and RSVPs will be reset.
+        </p>
+        <AppButton
+          v-if="canOpenOrReopenPoll"
+          variant="secondary"
+          class="mt-4"
+          @click="handleOpenPoll"
+        >
+          Open Date Poll Anyway
+        </AppButton>
+      </div>
+
+      <!-- No poll, no dates -->
       <div v-else class="flex flex-col items-center py-12 text-center">
         <CalendarDaysIcon
           class="mb-4 size-12 text-amber-500 dark:text-amber-400"
         />
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-          Plan your event dates
+          No dates yet
         </h2>
         <p class="mt-1 max-w-sm text-gray-500 dark:text-stone-400">
-          Use a date poll to find the best dates for your event. Members vote on
-          proposed dates and the organiser picks the winner.
+          Open a date poll to let members vote on when to go. You propose date
+          options, everyone votes, then you pick the winner.
         </p>
-        <ol class="mt-6 space-y-3 text-left text-sm">
-          <li class="flex gap-3">
-            <span
-              class="flex size-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-700 dark:bg-sky-900 dark:text-sky-300"
-              >1</span
-            >
-            <span class="text-gray-700 dark:text-stone-300"
-              ><strong>Create a date poll</strong> — Set a voting deadline</span
-            >
-          </li>
-          <li class="flex gap-3">
-            <span
-              class="flex size-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-700 dark:bg-sky-900 dark:text-sky-300"
-              >2</span
-            >
-            <span class="text-gray-700 dark:text-stone-300"
-              ><strong>Add date options</strong> — Propose date ranges to vote
-              on</span
-            >
-          </li>
-          <li class="flex gap-3">
-            <span
-              class="flex size-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-700 dark:bg-sky-900 dark:text-sky-300"
-              >3</span
-            >
-            <span class="text-gray-700 dark:text-stone-300"
-              ><strong>Members vote</strong> — Everyone picks their preferred
-              dates</span
-            >
-          </li>
-          <li class="flex gap-3">
-            <span
-              class="flex size-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-700 dark:bg-sky-900 dark:text-sky-300"
-              >4</span
-            >
-            <span class="text-gray-700 dark:text-stone-300"
-              ><strong>Confirm the dates</strong> — Lock in the best date for
-              the event</span
-            >
-          </li>
-        </ol>
         <AppButton
           v-if="canOpenOrReopenPoll"
           class="mt-6"
