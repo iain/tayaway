@@ -218,6 +218,12 @@ rm /tmp/dbip-city-lite.mmdb.gz
 echo "Saved to backend/data/dbip-city-lite.mmdb"
 """
 
+# ── Backup ───────────────────────────────────────────────────────────────────
+
+[tasks."db:backup"]
+description = "Trigger a database backup on the production server"
+run = "ssh -p 50022 ubuntu@tayaway.nl '/var/www/tayaway/current/config/deploy/backup-db.sh'"
+
 # ── Misc ─────────────────────────────────────────────────────────────────────
 
 [tasks.console]
