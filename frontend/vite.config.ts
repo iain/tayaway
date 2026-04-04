@@ -70,13 +70,9 @@ export default defineConfig({
         defaultHandler(warning)
       },
       output: {
-        manualChunks(id) {
-          if (id.includes('node_modules/leaflet')) return 'leaflet'
-          if (
-            id.includes('node_modules/vue-draggable-plus') ||
-            id.includes('node_modules/sortablejs')
-          )
-            return 'vue-draggable'
+        manualChunks: {
+          leaflet: ['leaflet'],
+          'vue-draggable': ['vue-draggable-plus'],
         },
       },
     },
