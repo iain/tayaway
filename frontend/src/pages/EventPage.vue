@@ -475,16 +475,16 @@ function handleDownloadIcs(): void {
       </TextButton>
     </div>
 
-    <!-- Right column: map -->
+    <!-- Map -->
     <div
       v-if="event.latitude != null && event.longitude != null"
-      class="hidden w-1/2 shrink-0 lg:block"
+      class="mt-6 lg:mt-0 lg:w-1/2 lg:shrink-0"
     >
-      <div class="sticky top-4">
+      <div class="lg:sticky lg:top-4">
         <StaticMap
           :latitude="event.latitude"
           :longitude="event.longitude"
-          class="h-72 rounded-xl shadow-sm"
+          class="h-48 rounded-xl shadow-sm sm:h-60 lg:h-72"
         />
       </div>
     </div>
