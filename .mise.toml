@@ -9,139 +9,130 @@ pnpm = "latest"
 [env]
 _.file = ["backend/.env.development"]
 
-# ── Dev ──────────────────────────────────────────────────────────────────────
+# ── Workflows ────────────────────────────────────────────────────────────────
+#
+#   dev     Start frontend + backend servers
+#   check   Pre-commit: lint, typecheck, test, audit (no e2e)
+#   ci      Full verification: check + e2e
+#
 
-[tasks.serve]
-description = "Start both frontend and backend dev servers"
-depends = ["serve:backend", "serve:frontend"]
-wait_for = ["serve:backend"]
-run = "echo 'Development servers started'"
+[tasks.dev]
+description = "Start frontend + backend dev servers"
+depends = ["dev:backend", "dev:frontend"]
+wait_for = ["dev:backend"]
+run = "echo 'Dev servers started'"
 
-[tasks."serve:backend"]
+[tasks."dev:backend"]
 description = "Start backend dev server"
 depends = ["db:seed"]
 dir = "{{config_root}}/backend"
 env = { OBJC_DISABLE_INITIALIZE_FORK_SAFETY = "YES" }
 run = "bundle exec falcon serve --bind http://localhost:9292"
 
-[tasks."serve:frontend"]
+[tasks."dev:frontend"]
 description = "Start frontend dev server"
 dir = "{{config_root}}/frontend"
 run = "pnpm run dev"
 
-# ── Build ─────────────────────────────────────────────────────────────────────
-
-[tasks.build]
-description = "Build production assets"
-depends = ["build:frontend"]
-run = "echo 'Build complete'"
-
-[tasks."build:frontend"]
-description = "Build frontend for production"
-dir = "{{config_root}}/frontend"
-run = "pnpm run build"
-
-# ── CI / Test / Lint / Typecheck ─────────────────────────────────────────────
-
 [tasks.check]
-description = "Run lint, typecheck, tests, and audits in parallel (no e2e)"
-depends = ["lint:frontend", "lint:backend", "typecheck:frontend", "typecheck:backend", "test:frontend", "test:backend", "audit:frontend", "audit:backend", "build:frontend"]
-run = "echo 'All checks complete'"
+description = "Pre-commit: lint, typecheck, test, audit (no e2e)"
+depends = ["lint:*", "typecheck:*", "test:*", "audit:*"]
 
 [tasks.ci]
-description = "Run all CI checks (lint, typecheck, tests, e2e, audits) in parallel"
-depends = ["lint:frontend", "lint:backend", "typecheck:frontend", "typecheck:backend", "test:frontend", "test:backend", "test:e2e", "audit:frontend", "audit:backend"]
-run = "echo 'All CI checks complete'"
+description = "Full CI: check + e2e"
+depends = ["check", "e2e"]
 
-[tasks.test]
-description = "Run all tests"
-depends = ["test:frontend", "test:backend"]
-run = "echo 'All tests complete'"
-
-[tasks."test:frontend"]
-description = "Run frontend tests"
-dir = "{{config_root}}/frontend"
-run = "pnpm exec vitest run --reporter=dot --silent"
-
-[tasks."test:backend"]
-description = "Run backend tests"
-dir = "{{config_root}}/backend"
-run = "RACK_ENV=test bundle exec rspec -f progress"
-
-[tasks."test:e2e"]
-description = "Run E2E tests"
-depends = ["db:setup_e2e"]
-run = "pnpm exec playwright test"
+# ── Lint (always autofix) ────────────────────────────────────────────────────
 
 [tasks.lint]
-description = "Run all linters"
-depends = ["lint:frontend", "lint:backend"]
-run = "echo 'Linting complete'"
+description = "Lint and autofix all code"
+depends = ["lint:*"]
 
 [tasks."lint:frontend"]
-description = "Run frontend linter"
+description = "ESLint with autofix"
 dir = "{{config_root}}/frontend"
 run = "pnpm exec eslint src --fix"
 
 [tasks."lint:backend"]
-description = "Run backend linter"
+description = "RuboCop with autofix"
 dir = "{{config_root}}/backend"
-run = "bundle exec rubocop -f q"
+run = "bundle exec rubocop -A -f q"
+
+# ── Typecheck ────────────────────────────────────────────────────────────────
 
 [tasks.typecheck]
 description = "Run all type checkers"
-depends = ["typecheck:frontend", "typecheck:backend"]
-run = "echo 'Type checking complete'"
+depends = ["typecheck:*"]
 
 [tasks."typecheck:frontend"]
-description = "Run frontend type checker"
+description = "Vue + TypeScript type checking"
 dir = "{{config_root}}/frontend"
 run = "pnpm exec vue-tsc -b"
 
 [tasks."typecheck:backend"]
-description = "Run backend type checker"
+description = "Sorbet type checking"
 dir = "{{config_root}}/backend"
 run = "bundle exec srb tc"
 
-[tasks.audit]
-description = "Run dependency vulnerability audits"
-depends = ["audit:frontend", "audit:backend"]
-run = "echo 'Audits complete'"
+# ── Test ─────────────────────────────────────────────────────────────────────
 
-[tasks."audit:backend"]
-description = "Audit Ruby gems for known vulnerabilities"
+[tasks.test]
+description = "Run unit and integration tests"
+depends = ["test:*"]
+
+[tasks."test:frontend"]
+description = "Vitest"
+dir = "{{config_root}}/frontend"
+run = "pnpm exec vitest run --reporter=dot --silent"
+
+[tasks."test:backend"]
+description = "RSpec"
 dir = "{{config_root}}/backend"
-run = "bundle exec bundler-audit check --update"
+run = "RACK_ENV=test bundle exec rspec -f progress"
+
+# ── E2E (standalone — not part of test:*) ────────────────────────────────────
+
+[tasks.e2e]
+description = "Playwright end-to-end tests"
+depends = ["db:setup-e2e"]
+run = "pnpm exec playwright test"
+
+# ── Audit ────────────────────────────────────────────────────────────────────
+
+[tasks.audit]
+description = "Dependency vulnerability scanning"
+depends = ["audit:*"]
 
 [tasks."audit:frontend"]
-description = "Audit npm packages for known vulnerabilities"
+description = "pnpm audit"
 dir = "{{config_root}}/frontend"
 run = "pnpm audit --audit-level=high"
 
-[tasks.fix]
-description = "Run all CI checks, auto-fixing lint issues where possible"
-depends = ["fix:lint_frontend", "fix:lint_backend", "typecheck:frontend", "typecheck:backend", "test:frontend", "test:backend", "test:e2e", "audit:frontend", "audit:backend"]
-run = "echo 'All CI checks complete (with autofix)'"
-
-[tasks."fix:lint_frontend"]
-description = "Run frontend linter with autofix"
-dir = "{{config_root}}/frontend"
-run = "pnpm exec eslint src --fix"
-
-[tasks."fix:lint_backend"]
-description = "Run backend linter with autofix"
+[tasks."audit:backend"]
+description = "bundler-audit"
 dir = "{{config_root}}/backend"
-run = "bundle exec rubocop -A -f q"
+run = "bundle exec bundler-audit check --update"
 
-# ── Database ──────────────────────────────────────────────────────────────────
+# ── Build & Deploy ───────────────────────────────────────────────────────────
+
+[tasks.build]
+description = "Build production frontend assets"
+dir = "{{config_root}}/frontend"
+run = "pnpm run build"
+
+[tasks.deploy]
+description = "Deploy to production"
+run = "bundle exec cap production deploy"
+
+# ── Database ─────────────────────────────────────────────────────────────────
 
 [tasks."db:create"]
-description = "Create the database"
+description = "Create the development database"
 dir = "{{config_root}}/backend"
 run = "bundle exec rake db:create"
 
 [tasks."db:drop"]
-description = "Drop the database"
+description = "Drop the development database"
 dir = "{{config_root}}/backend"
 run = "bundle exec rake db:drop"
 
@@ -156,43 +147,42 @@ dir = "{{config_root}}/backend"
 run = "bundle exec rake db:rollback"
 
 [tasks."db:reset"]
-description = "Reset the database"
+description = "Reset the development database"
 dir = "{{config_root}}/backend"
 run = "bundle exec rake db:reset"
 
 [tasks."db:seed"]
-description = "Seed the database"
+description = "Seed the development database"
 dir = "{{config_root}}/backend"
 run = "bundle exec rake db:seed"
 
-[tasks."db:setup_e2e"]
+[tasks."db:setup-e2e"]
 description = "Create and migrate the e2e database"
 dir = "{{config_root}}/backend"
 run = "RACK_ENV=e2e bundle exec rake db:create db:migrate"
 
-# ── Setup ─────────────────────────────────────────────────────────────────────
+# ── Setup ────────────────────────────────────────────────────────────────────
 
 [tasks.setup]
 description = "Set up the project after cloning"
 depends = ["setup:deps", "setup:db"]
-run = "echo \"Setup complete! Run 'mise run serve' to start the development server.\""
+run = "echo \"Setup complete! Run 'mise run dev' to start.\""
 
 [tasks."setup:deps"]
 description = "Install all dependencies"
-depends = ["setup:deps_frontend", "setup:deps_backend", "setup:deps_root"]
-run = "echo 'Dependencies installed'"
+depends = ["setup:deps-frontend", "setup:deps-backend", "setup:deps-root"]
 
-[tasks."setup:deps_frontend"]
+[tasks."setup:deps-frontend"]
 description = "Install frontend dependencies"
 dir = "{{config_root}}/frontend"
 run = "pnpm install"
 
-[tasks."setup:deps_backend"]
+[tasks."setup:deps-backend"]
 description = "Install backend dependencies"
 dir = "{{config_root}}/backend"
 run = "bundle install"
 
-[tasks."setup:deps_root"]
+[tasks."setup:deps-root"]
 description = "Install root dependencies (Playwright)"
 run = "pnpm install"
 
@@ -212,7 +202,7 @@ RACK_ENV=e2e bundle exec rake db:create db:migrate
 echo "All databases ready"
 """
 
-# ── Data ──────────────────────────────────────────────────────────────────────
+# ── Data ─────────────────────────────────────────────────────────────────────
 
 [tasks."data:geoip"]
 description = "Download DB-IP Lite city database for IP geolocation"
@@ -228,7 +218,7 @@ rm /tmp/dbip-city-lite.mmdb.gz
 echo "Saved to backend/data/dbip-city-lite.mmdb"
 """
 
-# ── Misc ──────────────────────────────────────────────────────────────────────
+# ── Misc ─────────────────────────────────────────────────────────────────────
 
 [tasks.console]
 description = "Open a Ruby console with the app loaded"

@@ -20,7 +20,7 @@ All commands run through mise. See `GETTING_STARTED.md` for the full list.
 
 **Deploying:** Run `bundle exec cap production deploy` from the **repo root** (not from `backend/`). Capistrano's config lives at the repo root (`Capfile`, `config/deploy.rb`).
 
-**Before committing:** Always run `mise run fix` and ensure it passes. This runs all CI checks (lint, typecheck, tests, e2e) and auto-fixes lint issues where possible.
+**Before committing:** Always run `mise run check` and ensure it passes. This runs lint (with autofix), typecheck, tests, and audits in parallel. For the full CI suite including e2e, run `mise run ci`.
 
 Run a single test:
 

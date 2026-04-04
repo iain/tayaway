@@ -31,7 +31,7 @@ This installs frontend (pnpm) and backend (bundler) dependencies, then creates a
 ## Development
 
 ```bash
-mise run serve
+mise run dev
 ```
 
 - Frontend: http://localhost:5173
@@ -72,7 +72,7 @@ An alternative to local setup — a devcontainer with all dependencies pre-confi
 
 # Run any command
 .devcontainer/exec.sh mise run fix
-.devcontainer/exec.sh mise run serve
+.devcontainer/exec.sh mise run dev
 .devcontainer/exec.sh bash
 ```
 
