@@ -11,14 +11,17 @@ module DeletedItems
       params(
         workspace_id: T.any(String, UUID),
         object_type: String,
-        object_ids: T::Array[T.any(String, UUID)]
+        object_ids: T::Array[T.any(String, UUID)],
+        deleted_by: T.nilable(T.any(String, UUID))
       ).void
     end
-    def bulk_insert(workspace_id, object_type, object_ids)
+    def bulk_insert(workspace_id, object_type, object_ids, deleted_by: nil)
       return if object_ids.empty?
 
       rows = object_ids.map do |oid|
-        { workspace_id: workspace_id, object_type: object_type, object_id: oid }
+        row = { workspace_id: workspace_id, object_type: object_type, object_id: oid }
+        row[:deleted_by] = deleted_by if deleted_by
+        row
       end
       DB[:deleted_items].multi_insert(rows)
     end

@@ -77,6 +77,21 @@ module RateLimiter
         req.ip if req.post? && req.path == "/api/auth/login-link"
       end
 
+      # Per-email rate limit: prevents targeted harassment of a single email address
+      # regardless of source IP (3 requests per hour per email)
+      Rack::Attack.throttle("auth/login-link/email", limit: 3, period: 3600) do |req|
+        if req.post? && req.path == "/api/auth/login-link"
+          body = req.body.read
+          req.body.rewind
+          email = begin
+            JSON.parse(body)["email"]&.strip&.downcase
+          rescue StandardError
+            nil
+          end
+          email if email && !email.empty?
+        end
+      end
+
       Rack::Attack.throttle("auth/verify", limit: 10, period: 60) do |req|
         req.ip if req.post? && req.path == "/api/auth/verify"
       end

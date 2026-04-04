@@ -21,7 +21,7 @@ module DatePolls
              .bind { |event| DatePoll.find_by_event_result(event.id).fmap { |poll| [event, poll] } }
              .bind { |(event, poll)| validate_resolved(event, poll) }
              .bind { |(event, poll)| validate_deadline(deadline, event, poll) }
-             .bind { |(event, poll, parsed_deadline)| reopen_poll(event, poll, parsed_deadline) }
+             .bind { |(event, poll, parsed_deadline)| reopen_poll(event, poll, parsed_deadline, current_user_id) }
       end
 
       private
@@ -58,16 +58,16 @@ module DatePolls
       end
 
       sig do
-        params(event: Event, poll: DatePoll, deadline: Time)
+        params(event: Event, poll: DatePoll, deadline: Time, current_user_id: T.any(String, UUID))
           .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def reopen_poll(event, poll, deadline)
+      def reopen_poll(event, poll, deadline, current_user_id)
         deleted_rsvp_ids = T.let([], T::Array[String])
 
         DB.transaction do
           # Delete all RSVPs for this event
           rsvp_ids = Rsvp.ids_for_event(event.id)
-          DeletedItems.bulk_insert(event.workspace_id, "rsvp", rsvp_ids)
+          DeletedItems.bulk_insert(event.workspace_id, "rsvp", rsvp_ids, deleted_by: current_user_id)
           rsvp_ids.each do |rid|
             Broadcaster.object_deleted("rsvp", rid, workspace_id: event.workspace_id)
           end
