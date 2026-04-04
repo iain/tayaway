@@ -113,25 +113,26 @@ module Websocket
           return
         end
 
-        message = { type: "broadcast", workspaceId: workspace_id, action: action }
+        base_message = { type: "broadcast", workspaceId: workspace_id, action: action }
 
         case action
         when "update"
           object = find_object(object_type, object_id)
           if object
-            pool = PoolSerializer.new(workspace_id: workspace_id)
-            pool.send(config.pool_method, object)
-            message[:data] = { objects: pool.to_a }
+            Websocket::ConnectionManager.instance.broadcast_to_workspace_per_user(workspace_id) do |user_id|
+              pool = PoolSerializer.new(workspace_id: workspace_id, user_id: user_id)
+              pool.send(config.pool_method, object)
+              base_message.merge(data: { objects: pool.to_a })
+            end
           else
             # Object was deleted between notify and fetch
-            message[:action] = "delete"
-            message[:data] = { deleted: [{ objectType: config.client_type, id: object_id }] }
+            message = base_message.merge(action: "delete", data: { deleted: [{ objectType: config.client_type, id: object_id }] })
+            Websocket::ConnectionManager.instance.broadcast_to_workspace(workspace_id, message)
           end
         when "delete"
-          message[:data] = { deleted: [{ objectType: config.client_type, id: object_id }] }
+          message = base_message.merge(data: { deleted: [{ objectType: config.client_type, id: object_id }] })
+          Websocket::ConnectionManager.instance.broadcast_to_workspace(workspace_id, message)
         end
-
-        Websocket::ConnectionManager.instance.broadcast_to_workspace(workspace_id, message)
       rescue JSON::ParserError => e
         APP_LOGGER.error { "[Listener] Invalid JSON payload: #{e.message}" }
       rescue StandardError => e

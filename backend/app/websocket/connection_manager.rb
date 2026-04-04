@@ -133,19 +133,33 @@ module Websocket
 
     sig { params(workspace_id: String, message: T::Hash[Symbol, T.untyped]).void }
     def broadcast_to_workspace(workspace_id, message)
-      connection_ids = @mutex.synchronize { (@workspace_connections[workspace_id] || Set.new).to_a }
-      json_message = message.to_json
+      broadcast_to_workspace_per_user(workspace_id) { |_user_id| message }
+    end
 
-      connection_ids.each do |connection_id|
-        connection = @mutex.synchronize { @connections[connection_id] }
-        next unless connection
+    # Broadcasts to all connections in a workspace, calling the block once per
+    # unique user_id to build a per-user message. Connections for the same user
+    # share the same serialized payload.
+    sig { params(workspace_id: String, blk: T.proc.params(user_id: String).returns(T::Hash[Symbol, T.untyped])).void }
+    def broadcast_to_workspace_per_user(workspace_id, &blk)
+      connections_snapshot = @mutex.synchronize do
+        conn_ids = @workspace_connections[workspace_id]
+        next [] unless conn_ids
+
+        conn_ids.filter_map { |cid| @connections[cid] }
+      end
+
+      # Group by user_id so we serialize once per unique user
+      json_cache = T.let({}, T::Hash[String, String])
+
+      connections_snapshot.each do |connection|
+        json_message = json_cache[connection.user_id] ||= yield(connection.user_id).to_json
 
         begin
           connection.websocket.write(json_message)
           connection.websocket.flush
         rescue StandardError => e
-          APP_LOGGER.error { "[ConnectionManager] Error broadcasting to workspace #{workspace_id}, conn #{connection_id}: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
-          unregister(connection_id)
+          APP_LOGGER.error { "[ConnectionManager] Error broadcasting to workspace #{workspace_id}, conn #{connection.id}: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
+          unregister(connection.id)
         end
       end
     end

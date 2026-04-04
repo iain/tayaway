@@ -155,7 +155,7 @@ module Events
 
         APP_LOGGER.info { "[Events::Create] User #{user_id} created event #{event.id} in workspace #{workspace_id}" }
 
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool = PoolSerializer.new(workspace_id: workspace_id, user_id: user_id.to_s)
         pool.add_event(event)
 
         T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
