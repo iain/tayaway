@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import {
   ArrowDownTrayIcon,
   CalendarDaysIcon,
@@ -8,6 +9,7 @@ import {
   ChevronRightIcon,
   MapPinIcon,
   PencilIcon,
+  TrashIcon,
 } from '@heroicons/vue/24/outline'
 import AppButton from '@/components/common/AppButton.vue'
 import TextButton from '@/components/common/TextButton.vue'
@@ -28,6 +30,7 @@ import { useCalendar } from '@/composables/useCalendar'
 import { generateIcs, downloadIcs } from '@/utils/ics'
 
 const route = useRoute()
+const router = useRouter()
 const eventId = computed(() => route.params.id as string)
 const { event } = useHydratedEvent(eventId)
 
@@ -67,6 +70,62 @@ const datesActuallyChanged = computed(() => {
     editEndDate.value !== (event.value.endDate ?? null)
   )
 })
+
+// Delete event
+const showDeleteConfirm = ref(false)
+const deleting = ref(false)
+
+const hasSettlements = computed(() =>
+  pool.getAll('settlement').some((s) => s.eventId === eventId.value)
+)
+
+const deleteBlockedByExpenses = computed(
+  () => hasExpenses.value || hasSettlements.value
+)
+
+const eventVoteCount = computed(() => {
+  const dateRangeIds = new Set(
+    pool
+      .getAll('dateRange')
+      .filter((dr) => {
+        const poll = pool.getAll('datePoll').find((p) => p.id === dr.datePollId)
+        return poll?.eventId === eventId.value
+      })
+      .map((dr) => dr.id)
+  )
+  return pool.getAll('vote').filter((v) => dateRangeIds.has(v.dateRangeId))
+    .length
+})
+
+const hasChoreRoster = computed(() =>
+  pool.getAll('choreRoster').some((r) => r.eventId === eventId.value)
+)
+
+const deleteSummary = computed(() => {
+  const parts: string[] = []
+  const rsvpCount = eventRsvps.value.length
+  const voteCount = eventVoteCount.value
+  if (rsvpCount > 0)
+    parts.push(`${rsvpCount} ${rsvpCount === 1 ? 'RSVP' : 'RSVPs'}`)
+  if (voteCount > 0)
+    parts.push(`${voteCount} ${voteCount === 1 ? 'vote' : 'votes'}`)
+  if (hasChoreRoster.value) parts.push('the chore roster')
+  return parts
+})
+
+async function handleDeleteEvent(): Promise<void> {
+  if (deleting.value) return
+  deleting.value = true
+  try {
+    await eventsStore.deleteEvent(eventId.value)
+    showDeleteConfirm.value = false
+    router.push('/events')
+  } catch {
+    // Error handled by store
+  } finally {
+    deleting.value = false
+  }
+}
 
 const { formatDateDisplay } = useCalendar()
 
@@ -534,6 +593,16 @@ function handleDownloadIcs(): void {
         <ArrowDownTrayIcon class="size-5" />
         Add to calendar
       </TextButton>
+
+      <div
+        v-if="isOwner"
+        class="mt-10 border-t border-gray-200 pt-6 dark:border-stone-700"
+      >
+        <TextButton variant="danger" @click="showDeleteConfirm = true">
+          <TrashIcon class="size-4" />
+          Delete event
+        </TextButton>
+      </div>
     </div>
 
     <!-- Map -->
@@ -594,6 +663,53 @@ function handleDownloadIcs(): void {
           Change dates &amp; reset RSVPs
         </AppButton>
       </div>
+    </BaseModal>
+
+    <BaseModal
+      :open="showDeleteConfirm"
+      title="Delete event"
+      size="sm"
+      @close="showDeleteConfirm = false"
+    >
+      <template v-if="deleteBlockedByExpenses">
+        <p class="text-sm text-gray-600 dark:text-stone-400">
+          This event has expenses or settlements. Settle up and delete expenses
+          before deleting the event.
+        </p>
+        <div class="mt-6 flex justify-end">
+          <AppButton variant="cyan" @click="showDeleteConfirm = false">
+            Got it
+          </AppButton>
+        </div>
+      </template>
+
+      <template v-else>
+        <p class="text-sm text-gray-600 dark:text-stone-400">
+          Permanently delete
+          <strong class="text-gray-900 dark:text-white">{{
+            event?.name
+          }}</strong
+          >? This can't be undone.
+        </p>
+        <p
+          v-if="deleteSummary.length > 0"
+          class="mt-2 text-sm text-gray-500 dark:text-stone-400"
+        >
+          This will also delete {{ deleteSummary.join(', ') }}.
+        </p>
+        <div class="mt-6 flex justify-end gap-3">
+          <TextButton variant="secondary" @click="showDeleteConfirm = false">
+            Cancel
+          </TextButton>
+          <AppButton
+            variant="danger"
+            :loading="deleting"
+            @click="handleDeleteEvent"
+          >
+            Delete event
+          </AppButton>
+        </div>
+      </template>
     </BaseModal>
   </div>
 </template>
