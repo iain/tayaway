@@ -10,19 +10,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#d97706" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
     <meta name="apple-mobile-web-app-title" content="Tayaway" />
     <title>Tayaway</title>
-    <script>
-      ;(function () {
-        const saved = localStorage.getItem('dark_mode')
-        const systemDark = window.matchMedia(
-          '(prefers-color-scheme: dark)'
-        ).matches
-        const isDark = saved === 'dark' || (saved !== 'light' && systemDark)
-        if (isDark) document.documentElement.classList.add('dark')
-      })()
-    </script>
+    <script src="/dark-mode.js"></script>
   </head>
   <body class="h-full">
     <div id="app"></div>
