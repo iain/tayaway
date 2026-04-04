@@ -181,7 +181,7 @@ function handleDownloadIcs(): void {
           </TextButton>
         </form>
       </div>
-      <div v-else class="group flex items-start gap-2">
+      <div v-else class="group flex items-start gap-0.5">
         <h1
           class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl lg:text-4xl dark:text-white"
         >
@@ -192,7 +192,7 @@ function handleDownloadIcs(): void {
           hover-reveal
           label="Edit name"
           data-testid="edit-name-button"
-          class="mt-2 shrink-0"
+          class="-mt-1.5 shrink-0 sm:mt-2"
           @click="openEdit('name')"
         >
           <PencilIcon class="size-5" />
@@ -227,7 +227,7 @@ function handleDownloadIcs(): void {
           </div>
         </form>
       </div>
-      <div v-else class="group mt-3 flex items-start gap-2">
+      <div v-else class="group mt-3 flex items-start gap-0.5">
         <p
           v-if="event.description"
           class="text-xl text-gray-600 dark:text-stone-300"
@@ -245,7 +245,7 @@ function handleDownloadIcs(): void {
           hover-reveal
           label="Edit description"
           data-testid="edit-description-button"
-          class="mt-1 shrink-0"
+          class="-mt-2 shrink-0 sm:mt-1"
           @click="openEdit('description')"
         >
           <PencilIcon class="size-4" />
@@ -300,7 +300,7 @@ function handleDownloadIcs(): void {
           </TextButton>
         </form>
       </div>
-      <div v-else class="group mt-4 flex items-center gap-2">
+      <div v-else class="group mt-4 flex items-center gap-0.5">
         <div
           v-if="eventHasDates(event)"
           class="flex items-center gap-2 text-gray-500 dark:text-stone-400"
@@ -323,7 +323,7 @@ function handleDownloadIcs(): void {
           hover-reveal
           label="Edit dates"
           data-testid="edit-dates-button"
-          class="shrink-0"
+          class="-my-2 shrink-0 sm:my-0"
           @click="openEdit('dates')"
         >
           <PencilIcon class="size-4" />
@@ -354,7 +354,7 @@ function handleDownloadIcs(): void {
           </TextButton>
         </div>
       </div>
-      <div v-else class="group mt-4 flex items-center gap-2">
+      <div v-else class="group mt-4 flex items-center gap-0.5">
         <div
           v-if="event.locationName"
           class="flex items-center gap-2 text-gray-500 dark:text-stone-400"
@@ -376,7 +376,7 @@ function handleDownloadIcs(): void {
           hover-reveal
           label="Edit location"
           data-testid="edit-location-button"
-          class="shrink-0"
+          class="-my-2 shrink-0 sm:my-0"
           @click="openEdit('location')"
         >
           <PencilIcon class="size-4" />
