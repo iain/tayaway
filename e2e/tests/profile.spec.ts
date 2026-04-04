@@ -222,7 +222,7 @@ test.describe('Profile Feature', () => {
       await apiContext.dispose()
     })
 
-    test('displays profile info, opens edit modal, and updates name', async ({
+    test('displays profile info, edits name inline, and updates', async ({
       page,
     }) => {
       await setupAuthenticatedPage(page, token)
@@ -234,17 +234,12 @@ test.describe('Profile Feature', () => {
       })
       await expect(page.getByText(TEST_EMAIL).first()).toBeVisible()
 
-      // Edit button opens pre-filled name modal
+      // Edit button triggers inline editing
       const editButton = page.getByTestId('edit-name-button')
       await expect(editButton).toBeVisible()
       await editButton.click()
 
-      await expect(page.getByRole('dialog')).toBeVisible()
-      await expect(
-        page.getByRole('dialog').getByRole('heading', { name: 'Edit Name' })
-      ).toBeVisible()
-
-      // Clear and type new name
+      // Clear and type new name in the inline input
       const input = page.getByLabel('Name')
       await input.clear()
       await input.fill('New E2E Name')
@@ -259,14 +254,11 @@ test.describe('Profile Feature', () => {
         page.getByRole('button', { name: 'Save' }).click(),
       ])
 
-      // Modal should close
-      await expect(page.getByRole('dialog')).toBeHidden()
-
       // Updated name should appear on the profile page
       await expect(page.getByText('New E2E Name').first()).toBeVisible()
     })
 
-    test('displays contact fields and can edit them via modal', async ({
+    test('displays contact fields and can edit them inline', async ({
       page,
       request,
     }) => {
@@ -296,14 +288,10 @@ test.describe('Profile Feature', () => {
       await expect(page.getByText('+31600000000')).toBeVisible()
       await expect(page.getByText('01/15/1990')).toBeVisible()
 
-      // Click edit contact button to open the modal
+      // Click edit contact button to trigger inline editing
       await page.getByTestId('edit-contact-button').click()
-      await expect(page.getByRole('dialog')).toBeVisible()
-      await expect(
-        page.getByRole('dialog').getByRole('heading', { name: 'Edit Phone' })
-      ).toBeVisible()
 
-      // Update phone number in the modal
+      // Update phone number inline
       const phoneInput = page.getByLabel('Phone')
       await phoneInput.clear()
       await phoneInput.fill('+31611111111')
@@ -318,14 +306,11 @@ test.describe('Profile Feature', () => {
         page.getByRole('button', { name: 'Save' }).click(),
       ])
 
-      // Modal should close
-      await expect(page.getByRole('dialog')).toBeHidden()
-
       // Updated phone should appear on the profile page
       await expect(page.getByText('+31611111111')).toBeVisible()
     })
 
-    test('can edit IBAN via profile modal', async ({ page, request }) => {
+    test('can edit IBAN inline on profile', async ({ page, request }) => {
       // Use a unique user for this test
       const ibanEmail = `e2e-profile-iban-${crypto.randomUUID()}@example.com`
       const { token: ibanToken } = await getTestSession(
@@ -342,14 +327,10 @@ test.describe('Profile Feature', () => {
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
-      // Click edit IBAN button to open modal
+      // Click edit IBAN button to trigger inline editing
       await page.getByTestId('edit-iban-button').click()
-      await expect(page.getByRole('dialog')).toBeVisible()
-      await expect(
-        page.getByRole('dialog').getByRole('heading', { name: 'Edit IBAN' })
-      ).toBeVisible()
 
-      // Enter a valid IBAN
+      // Enter a valid IBAN inline
       const ibanInput = page.getByLabel('IBAN')
       await ibanInput.fill('NL91ABNA0417164300')
 
@@ -363,17 +344,13 @@ test.describe('Profile Feature', () => {
         page.getByRole('button', { name: 'Save' }).click(),
       ])
 
-      // Modal should close
-      await expect(page.getByRole('dialog')).toBeHidden()
-
       // Masked IBAN should appear on the profile page
       await expect(page.getByText('NL91 •••• •••• 4300')).toBeVisible()
 
       // Edit again to clear it
       await page.getByTestId('edit-iban-button').click()
-      await expect(page.getByRole('dialog')).toBeVisible()
 
-      // Modal should start empty (IBAN is masked, not pre-filled)
+      // Input should start empty (IBAN is masked, not pre-filled)
       const ibanInputAgain = page.getByLabel('IBAN')
       await expect(ibanInputAgain).toHaveValue('')
 
@@ -387,8 +364,6 @@ test.describe('Profile Feature', () => {
         ),
         page.getByRole('button', { name: 'Remove IBAN' }).click(),
       ])
-
-      await expect(page.getByRole('dialog')).toBeHidden()
 
       // Masked IBAN should no longer be visible
       await expect(page.getByText('NL91 •••• •••• 4300')).not.toBeVisible()

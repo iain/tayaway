@@ -129,30 +129,25 @@ test.describe('Event Edit', () => {
     // Hover the group to reveal the hidden edit button, then click
     await page.getByTestId('edit-name-button').locator('..').hover()
     await page.getByTestId('edit-name-button').click()
-    await expect(page.getByRole('dialog')).toBeVisible()
     await expect(page.getByTestId('edit-name-input')).toHaveValue(
       'Edit Flow Test'
     )
 
-    // Cancel closes modal without saving
+    // Cancel closes inline edit without saving
     await page.getByTestId('edit-name-input').fill('Changed Name')
-    await page.getByTestId('cancel-button').click()
-    await expect(page.getByRole('dialog')).not.toBeVisible()
+    await page.getByRole('button', { name: 'Cancel' }).click()
     await expect(page.getByTestId('event-name')).toContainText('Edit Flow Test')
 
     // Can update event name
     await page.getByTestId('edit-name-button').locator('..').hover()
     await page.getByTestId('edit-name-button').click()
-    await expect(page.getByRole('dialog')).toBeVisible()
     await page.getByTestId('edit-name-input').fill('Updated Name')
-    await page.getByTestId('submit-button').click()
-    await expect(page.getByRole('dialog')).not.toBeVisible()
+    await page.getByRole('button', { name: 'Save' }).click()
     await expect(page.getByTestId('event-name')).toContainText('Updated Name')
 
-    // Description modal is pre-populated with current description
+    // Description inline edit is pre-populated with current description
     await page.getByTestId('edit-description-button').locator('..').hover()
     await page.getByTestId('edit-description-button').click()
-    await expect(page.getByRole('dialog')).toBeVisible()
     await expect(page.getByTestId('edit-description-input')).toHaveValue(
       'Test event'
     )
@@ -169,17 +164,25 @@ test.describe('Event Edit', () => {
       timeout: PAGE_LOAD_TIMEOUT,
     })
 
-    // Date fields are empty when event has no dates
+    // Open calendar modal for dates
     await page.getByTestId('edit-dates-button').locator('..').hover()
     await page.getByTestId('edit-dates-button').click()
     await expect(page.getByRole('dialog')).toBeVisible()
-    await expect(page.getByTestId('edit-start-date-input')).toHaveValue('')
-    await expect(page.getByTestId('edit-end-date-input')).toHaveValue('')
+    await expect(
+      page.getByRole('dialog').getByRole('heading', { name: 'Event dates' })
+    ).toBeVisible()
 
-    // Can set start and end dates
-    await page.getByTestId('edit-start-date-input').fill('2026-09-01')
-    await page.getByTestId('edit-end-date-input').fill('2026-09-05')
-    await page.getByTestId('submit-button').click()
+    // Can set start and end dates by clicking calendar days
+    // Navigate to September 2026 if needed
+    while (!(await page.getByText('September 2026').isVisible())) {
+      await page
+        .getByRole('dialog')
+        .getByRole('button', { name: /next/i })
+        .click()
+    }
+    await page.getByTestId('calendar-day-2026-09-01').first().click()
+    await page.getByTestId('calendar-day-2026-09-05').first().click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
     await expect(page.getByRole('dialog')).not.toBeVisible()
 
     await expect(page.getByTestId('event-dates')).toBeVisible()
@@ -190,23 +193,21 @@ test.describe('Event Edit', () => {
     await page.getByTestId('edit-dates-button').locator('..').hover()
     await page.getByTestId('edit-dates-button').click()
     await expect(page.getByRole('dialog')).toBeVisible()
-    await page.getByTestId('edit-start-date-input').fill('2026-12-25')
-    await page.getByTestId('edit-end-date-input').fill('2026-12-25')
-    await page.getByTestId('submit-button').click()
+    // Navigate to December 2026
+    while (!(await page.getByText('December 2026').isVisible())) {
+      await page
+        .getByRole('dialog')
+        .getByRole('button', { name: /next/i })
+        .click()
+    }
+    // Click same day twice for single-day event
+    await page.getByTestId('calendar-day-2026-12-25').first().click()
+    await page.getByTestId('calendar-day-2026-12-25').first().click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
     await expect(page.getByRole('dialog')).not.toBeVisible()
 
     await expect(page.getByTestId('event-dates')).toBeVisible()
     await expect(page.getByTestId('event-dates')).toContainText(/Dec 25/)
-
-    // Can clear dates by emptying the fields
-    await page.getByTestId('edit-dates-button').locator('..').hover()
-    await page.getByTestId('edit-dates-button').click()
-    await expect(page.getByRole('dialog')).toBeVisible()
-    await page.getByTestId('edit-start-date-input').fill('')
-    await page.getByTestId('edit-end-date-input').fill('')
-    await page.getByTestId('submit-button').click()
-
-    await expect(page.getByTestId('event-dates')).not.toBeVisible()
   })
 
   test('location set via API is displayed on event page', async ({ page }) => {
@@ -249,21 +250,25 @@ test.describe('Event Edit', () => {
       timeout: PAGE_LOAD_TIMEOUT,
     })
 
-    // Date fields are pre-populated with existing dates
+    // Open calendar modal for dates
     await page.getByTestId('edit-dates-button').locator('..').hover()
     await page.getByTestId('edit-dates-button').click()
     await expect(page.getByRole('dialog')).toBeVisible()
-    await expect(page.getByTestId('edit-start-date-input')).toHaveValue(
-      '2026-08-01'
-    )
-    await expect(page.getByTestId('edit-end-date-input')).toHaveValue(
-      '2026-08-07'
-    )
+    await expect(
+      page.getByRole('dialog').getByRole('heading', { name: 'Event dates' })
+    ).toBeVisible()
 
-    // Can update existing dates
-    await page.getByTestId('edit-start-date-input').fill('2026-10-15')
-    await page.getByTestId('edit-end-date-input').fill('2026-10-20')
-    await page.getByTestId('submit-button').click()
+    // Pick new dates (clicking a new start clears the existing selection)
+    // Navigate to October 2026
+    while (!(await page.getByText('October 2026').isVisible())) {
+      await page
+        .getByRole('dialog')
+        .getByRole('button', { name: /next/i })
+        .click()
+    }
+    await page.getByTestId('calendar-day-2026-10-15').first().click()
+    await page.getByTestId('calendar-day-2026-10-20').first().click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
     await expect(page.getByRole('dialog')).not.toBeVisible()
 
     await expect(page.getByTestId('event-dates')).toBeVisible()

@@ -451,7 +451,7 @@ test.describe('Chore Rosters Feature', () => {
       await expect(page.getByText(/no chores yet/i)).toBeVisible()
     })
 
-    test('can add a chore via the modal', async ({ page }) => {
+    test('can add a chore via the inline form', async ({ page }) => {
       const { eventId } = await createResolvedEvent(
         apiContext,
         `Add Chore Modal ${uid}`
@@ -467,22 +467,17 @@ test.describe('Chore Rosters Feature', () => {
       ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
       await page.getByRole('button', { name: 'Add chore' }).first().click()
 
-      // Modal should open
-      await expect(
-        page.getByRole('heading', { name: 'Add Chore' })
-      ).toBeVisible()
+      // Fill in the inline form
+      await page.getByLabel('Chore name').fill('Cooking')
+      await page.getByLabel('People/day').fill('2')
 
-      // Fill in name
-      await page.getByLabel('Name').fill('Cooking')
-      await page.getByLabel('People per day').fill('2')
-
-      // Submit via the form submit button
+      // Submit via the Add button
       const [addResp] = await Promise.all([
         page.waitForResponse(
           (resp) =>
             resp.url().includes('/chores') && resp.request().method() === 'POST'
         ),
-        page.getByTestId('submit-button').click(),
+        page.getByRole('button', { name: 'Add', exact: true }).first().click(),
       ])
       expect(addResp.status()).toBe(201)
 
@@ -801,7 +796,9 @@ test.describe('Chore Rosters Feature', () => {
 
       // Action dialog should appear with options
       await expect(
-        page.locator('dialog').getByRole('button', { name: 'Delete entire roster' })
+        page
+          .locator('dialog')
+          .getByRole('button', { name: 'Delete entire roster' })
       ).toBeVisible()
 
       // Click "Delete entire roster" in the dialog

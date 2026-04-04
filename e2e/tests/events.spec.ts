@@ -186,7 +186,7 @@ test.describe('Events Feature', () => {
       })
       await expect(page.getByTestId('new-event-button')).toBeVisible()
 
-      // New event button opens modal with required fields
+      // New event button opens wizard
       await page.getByTestId('new-event-button').click()
       await expect(page.getByRole('dialog')).toBeVisible()
       await expect(
@@ -194,12 +194,12 @@ test.describe('Events Feature', () => {
       ).toBeVisible()
       await expect(page.getByLabel('Name')).toBeVisible()
       await expect(page.getByLabel(/Description/)).toBeVisible()
-      await expect(page.getByTestId('modal-save-button')).toBeVisible()
 
-      // Fill in the form and create an event
+      // Fill in the form, advance through wizard, and create event
       await page.getByLabel('Name').fill('Modal Test Event')
-      await page.getByLabel(/Description/).fill('Created via modal test')
-      await page.getByTestId('modal-save-button').click()
+      await page.getByLabel(/Description/).fill('Created via wizard test')
+      await page.getByRole('button', { name: 'Next' }).click()
+      await page.getByRole('button', { name: /Skip/ }).click()
 
       // Should navigate to the event page
       await expect(page).toHaveURL(/\/events\/[\w-]+$/, {
