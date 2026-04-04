@@ -38,6 +38,7 @@ RSpec.describe Settlements::MarkPaid do
   it "returns 404 when transfer not found" do
     result = described_class.call(
       transfer_id: SecureRandom.uuid,
+      current_user_id: recipient[:id],
       paid: true,
       workspace_id: workspace[:id]
     )
@@ -46,11 +47,26 @@ RSpec.describe Settlements::MarkPaid do
     expect(result.failure.http_status).to eq(404)
   end
 
+  it "returns failure when user is not the recipient" do
+    transfer_id = create_transfer
+
+    result = described_class.call(
+      transfer_id: transfer_id,
+      current_user_id: user[:id],
+      paid: true,
+      workspace_id: workspace[:id]
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("not_recipient")
+  end
+
   it "marks a transfer as paid" do
     transfer_id = create_transfer
 
     result = described_class.call(
       transfer_id: transfer_id,
+      current_user_id: recipient[:id],
       paid: true,
       workspace_id: workspace[:id]
     )
@@ -66,6 +82,7 @@ RSpec.describe Settlements::MarkPaid do
 
     result = described_class.call(
       transfer_id: transfer_id,
+      current_user_id: recipient[:id],
       paid: false,
       workspace_id: workspace[:id]
     )

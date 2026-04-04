@@ -203,6 +203,9 @@ class PoolSerializer
     participants ||= ExpenseParticipant.for_expense(expense.id)
     hash = expense.to_api_hash
     hash[:participantIds] = participants.map { |p| p.id.to_s }
+    if @user_id
+      hash[:abilities] = ExpensePolicy.new(expense: expense, user_id: T.must(@user_id)).abilities_api_hash
+    end
     @objects[key] = hash
 
     participants.each { |p| add_expense_participant(p) }
@@ -230,13 +233,21 @@ class PoolSerializer
     @objects[key] = participant.to_api_hash
   end
 
-  sig { params(settlement: Settlement).void }
-  def add_settlement(settlement)
+  sig { params(settlement: Settlement, event_owner_user_id: T.nilable(String)).void }
+  def add_settlement(settlement, event_owner_user_id: nil)
     key = "settlement:#{settlement.id}"
     return if @objects.key?(key)
 
     transfer_ids = SettlementTransfer.ids_for_settlement(settlement.id)
-    @objects[key] = settlement.to_api_hash(transfer_ids: transfer_ids)
+    hash = settlement.to_api_hash(transfer_ids: transfer_ids)
+    if @user_id
+      owner_id = event_owner_user_id || Event.find(settlement.event_id)&.user_id&.to_s
+      hash[:abilities] = SettlementPolicy.new(
+        settlement: settlement, user_id: T.must(@user_id),
+        context: SettlementPolicy::Context.new(event_owner_user_id: owner_id || "")
+      ).abilities_api_hash
+    end
+    @objects[key] = hash
   end
 
   # Batch-add settlements with a single SettlementTransfer ID query instead of N+1
@@ -248,9 +259,26 @@ class PoolSerializer
     settlement_ids = new_settlements.map { |s| s.id.to_s }
     transfer_ids_by_settlement = SettlementTransfer.ids_for_settlement_ids(settlement_ids)
 
+    # Pre-load event owners for abilities
+    event_owners = T.let({}, T::Hash[String, String])
+    if @user_id
+      event_ids = new_settlements.map { |s| s.event_id.to_s }.uniq
+      DB[:events].where(id: event_ids).select_map(%i[id user_id]).each do |eid, uid|
+        event_owners[eid.to_s] = uid.to_s
+      end
+    end
+
     new_settlements.each do |settlement|
       transfer_ids = transfer_ids_by_settlement[settlement.id.to_s] || []
-      @objects["settlement:#{settlement.id}"] = settlement.to_api_hash(transfer_ids: transfer_ids)
+      hash = settlement.to_api_hash(transfer_ids: transfer_ids)
+      if @user_id
+        owner_id = event_owners[settlement.event_id.to_s] || ""
+        hash[:abilities] = SettlementPolicy.new(
+          settlement: settlement, user_id: T.must(@user_id),
+          context: SettlementPolicy::Context.new(event_owner_user_id: owner_id)
+        ).abilities_api_hash
+      end
+      @objects["settlement:#{settlement.id}"] = hash
     end
   end
 
@@ -259,7 +287,11 @@ class PoolSerializer
     key = "settlement_transfer:#{transfer.id}"
     return if @objects.key?(key)
 
-    @objects[key] = transfer.to_api_hash
+    hash = transfer.to_api_hash
+    if @user_id
+      hash[:abilities] = SettlementTransferPolicy.new(transfer: transfer, user_id: T.must(@user_id)).abilities_api_hash
+    end
+    @objects[key] = hash
   end
 
   sig { params(roster: ChoreRoster).void }
@@ -269,7 +301,11 @@ class PoolSerializer
 
     chores = Chore.for_roster(roster.id)
     chore_ids = chores.map { |c| c.id.to_s }
-    @objects[key] = roster.to_api_hash(chore_ids: chore_ids)
+    hash = roster.to_api_hash(chore_ids: chore_ids)
+    if @user_id
+      hash[:abilities] = ChoreRosterPolicy.new(roster: roster, user_id: T.must(@user_id)).abilities_api_hash
+    end
+    @objects[key] = hash
 
     # Batch-load all assignments for this roster in one query
     all_assignments = ChoreAssignment.for_roster(roster.id)

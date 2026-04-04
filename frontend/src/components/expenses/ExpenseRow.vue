@@ -42,13 +42,10 @@ const formattedAmount = computed(() => {
   return `€${props.expense.amount.toFixed(2)}`
 })
 
-const isOwner = computed(() => {
-  return props.expense.userId === props.currentUserId
-})
-
-const isSettled = computed(() => {
-  return !!props.expense.settlementId
-})
+const canUpdate = computed(
+  () => props.expense.abilities?.update?.allowed ?? false
+)
+const isSettled = computed(() => !!props.expense.settlementId)
 
 const hasParticipants = computed(() => {
   return (props.expense.participantIds ?? []).length > 0
@@ -187,9 +184,8 @@ async function handleDelete(e: Event) {
             class="size-4 text-gray-400 dark:text-stone-500"
             title="Part of a settlement"
           />
-          <template v-else>
+          <template v-if="canUpdate">
             <IconButton
-              v-if="isOwner"
               label="Edit expense"
               data-testid="edit-expense"
               @click="handleEdit"
@@ -197,7 +193,6 @@ async function handleDelete(e: Event) {
               <PencilIcon class="size-4" />
             </IconButton>
             <IconButton
-              v-if="isOwner"
               variant="danger"
               label="Delete expense"
               :disabled="deleting"

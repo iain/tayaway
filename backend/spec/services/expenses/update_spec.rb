@@ -63,7 +63,7 @@ RSpec.describe Expenses::Update do
     )
 
     expect(result.failure?).to be true
-    expect(result.failure.message).to eq("Expense is part of a settlement. Delete the settlement first to edit.")
+    expect(result.failure.message).to eq("is_settled")
   end
 
   it "returns 403 when user is not the creator" do
@@ -79,7 +79,7 @@ RSpec.describe Expenses::Update do
 
     expect(result.failure?).to be true
     expect(result.failure.http_status).to eq(403)
-    expect(result.failure.message).to eq("Not authorized to update this expense")
+    expect(result.failure.message).to eq("not_owner")
   end
 
   it "returns failure when no fields provided" do
@@ -332,7 +332,7 @@ RSpec.describe Expenses::Update do
       )
 
       expect(result.failure?).to be true
-      expect(result.failure.message).to include("settlement")
+      expect(result.failure.message).to eq("is_settled")
     end
   end
 end

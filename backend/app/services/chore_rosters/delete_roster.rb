@@ -17,28 +17,11 @@ module ChoreRosters
       end
       def call(roster_id:, current_user_id:, workspace_id:)
         ChoreRoster.find_result(roster_id)
-                   .bind { |roster| check_creator(roster, current_user_id) }
+                   .bind { |roster| ChoreRosterPolicy.new(roster: roster, user_id: current_user_id.to_s).authorize!(:delete, value: roster) }
                    .bind { |roster| delete(roster, workspace_id) }
       end
 
       private
-
-      sig do
-        params(
-          roster: ChoreRoster,
-          current_user_id: T.any(String, UUID)
-        ).returns(Result[ChoreRoster, ServiceError])
-      end
-      def check_creator(roster, current_user_id)
-        if roster.user_id && roster.user_id.to_s == current_user_id.to_s
-          T.cast(Success(roster), Result[ChoreRoster, ServiceError])
-        else
-          T.cast(
-            Failure(ServiceError.forbidden("Only the roster creator can delete it")),
-            Result[ChoreRoster, ServiceError]
-          )
-        end
-      end
 
       sig do
         params(

@@ -3,6 +3,10 @@ import { TrashIcon } from '@heroicons/vue/24/outline'
 import AppButton from '@/components/common/AppButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
 
+defineProps<{
+  canDeleteRoster?: boolean
+}>()
+
 defineEmits<{
   addChore: []
   autofill: []
@@ -12,7 +16,11 @@ defineEmits<{
 
 <template>
   <div class="flex items-center gap-2">
-    <IconButton label="Delete roster" @click="$emit('deleteRoster')">
+    <IconButton
+      v-if="canDeleteRoster"
+      label="Delete roster"
+      @click="$emit('deleteRoster')"
+    >
       <TrashIcon class="size-4 text-red-500 dark:text-red-400" />
     </IconButton>
     <AppButton variant="secondary" @click="$emit('autofill')">

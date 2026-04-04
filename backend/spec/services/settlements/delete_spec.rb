@@ -77,7 +77,7 @@ RSpec.describe Settlements::Delete do
 
     expect(result.failure?).to be true
     expect(result.failure.http_status).to eq(403)
-    expect(result.failure.message).to eq("Not authorized to delete this settlement")
+    expect(result.failure.message).to eq("not_owner")
   end
 
   it "allows the settlement creator to delete" do

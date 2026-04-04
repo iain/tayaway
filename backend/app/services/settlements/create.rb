@@ -125,7 +125,7 @@ module Settlements
           Broadcaster.object_changed("expense", expense.id, workspace_id: workspace_id)
         end
 
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool = PoolSerializer.new(workspace_id: workspace_id, user_id: user_id.to_s)
         settlement = T.must(Settlement.find(settlement_id))
         pool.add_settlement(settlement)
         SettlementTransfer.for_settlement(settlement_id).each { |t| pool.add_settlement_transfer(t) }

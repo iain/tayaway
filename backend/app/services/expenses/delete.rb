@@ -7,7 +7,6 @@ module Expenses
     class << self
       extend T::Sig
       include Result::Methods
-      include Expenses::Validators
 
       sig do
         params(
@@ -18,8 +17,7 @@ module Expenses
       end
       def call(expense_id:, current_user_id:, workspace_id:)
         Expense.find_result(expense_id)
-               .bind { |expense| check_not_settled(expense) }
-               .bind { |expense| check_owner(expense, current_user_id, action: "delete") }
+               .bind { |expense| ExpensePolicy.new(expense: expense, user_id: current_user_id.to_s).authorize!(:delete, value: expense) }
                .bind { |expense| delete_expense(expense, workspace_id) }
       end
 

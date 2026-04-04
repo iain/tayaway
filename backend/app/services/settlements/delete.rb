@@ -18,8 +18,8 @@ module Settlements
       end
       def call(settlement_id:, current_user_id:, workspace_id:)
         Settlement.find_result(settlement_id)
-                  .bind { |settlement| authorize(settlement, current_user_id) }
-                  .bind { |settlement| delete_settlement(settlement, workspace_id) }
+                  .bind { |settlement| authorize_delete(settlement, current_user_id) }
+                  .bind { |settlement| delete_settlement(settlement, current_user_id, workspace_id) }
       end
 
       private
@@ -28,30 +28,19 @@ module Settlements
         params(settlement: Settlement, current_user_id: T.any(String, UUID))
           .returns(Result[Settlement, ServiceError])
       end
-      def authorize(settlement, current_user_id)
-        # Creator can delete
-        if settlement.user_id&.to_s == current_user_id.to_s
-          return T.cast(Success(settlement), Result[Settlement, ServiceError])
-        end
-
-        # Event owner can delete
+      def authorize_delete(settlement, current_user_id)
         event = Event.find(settlement.event_id)
-        if event && event.user_id.to_s == current_user_id.to_s
-          return T.cast(Success(settlement), Result[Settlement, ServiceError])
-        end
-
-        T.cast(
-          Failure(ServiceError.forbidden("Not authorized to delete this settlement")),
-          Result[Settlement, ServiceError]
-        )
+        context = SettlementPolicy::Context.new(event_owner_user_id: event&.user_id.to_s)
+        SettlementPolicy.new(settlement: settlement, user_id: current_user_id.to_s, context: context)
+                        .authorize!(:delete, value: settlement)
       end
 
       sig do
-        params(settlement: Settlement, workspace_id: T.any(String, UUID))
+        params(settlement: Settlement, current_user_id: T.any(String, UUID), workspace_id: T.any(String, UUID))
           .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def delete_settlement(settlement, workspace_id)
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+      def delete_settlement(settlement, current_user_id, workspace_id)
+        pool = PoolSerializer.new(workspace_id: workspace_id, user_id: current_user_id.to_s)
         deleted = []
 
         DB.transaction do

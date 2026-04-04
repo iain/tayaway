@@ -7,7 +7,6 @@ module Expenses
     class << self
       extend T::Sig
       include Result::Methods
-      include Expenses::Validators
 
       sig do
         params(
@@ -23,10 +22,9 @@ module Expenses
       end
       def call(expense_id:, current_user_id:, workspace_id:, description:, amount:, start_date: nil, end_date: nil, participant_ids: nil)
         Expense.find_result(expense_id)
-               .bind { |expense| check_not_settled(expense) }
-               .bind { |expense| check_owner(expense, current_user_id) }
+               .bind { |expense| ExpensePolicy.new(expense: expense, user_id: current_user_id.to_s).authorize!(:update, value: expense) }
                .bind { |expense| validate_update(expense, description, amount, start_date, end_date, participant_ids) }
-               .bind { |expense| update_expense(expense, workspace_id, description, amount, start_date, end_date, participant_ids) }
+               .bind { |expense| update_expense(expense, current_user_id, workspace_id, description, amount, start_date, end_date, participant_ids) }
       end
 
       private
@@ -128,6 +126,7 @@ module Expenses
       sig do
         params(
           expense: Expense,
+          current_user_id: T.any(String, UUID),
           workspace_id: T.any(String, UUID),
           description: T.nilable(String),
           amount: T.nilable(Float),
@@ -136,7 +135,7 @@ module Expenses
           participant_ids: T.nilable(T::Array[String])
         ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
       end
-      def update_expense(expense, workspace_id, description, amount, start_date, end_date, participant_ids)
+      def update_expense(expense, current_user_id, workspace_id, description, amount, start_date, end_date, participant_ids)
         DB.transaction do
           updates = { updated_at: Time.now }
           updates[:description] = description if description && !description.empty?
@@ -153,7 +152,7 @@ module Expenses
         end
 
         updated = T.must(Expense.find(expense.id))
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool = PoolSerializer.new(workspace_id: workspace_id, user_id: current_user_id.to_s)
         pool.add_expense(updated)
 
         T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])

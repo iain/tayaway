@@ -59,7 +59,7 @@ RSpec.describe Expenses::Delete do
     )
 
     expect(result.failure?).to be true
-    expect(result.failure.message).to eq("Expense is part of a settlement. Delete the settlement first to edit.")
+    expect(result.failure.message).to eq("is_settled")
   end
 
   it "returns 403 when user is not the creator" do
@@ -73,7 +73,7 @@ RSpec.describe Expenses::Delete do
 
     expect(result.failure?).to be true
     expect(result.failure.http_status).to eq(403)
-    expect(result.failure.message).to eq("Not authorized to delete this expense")
+    expect(result.failure.message).to eq("not_owner")
   end
 
   it "deletes the expense and returns deleted payload" do

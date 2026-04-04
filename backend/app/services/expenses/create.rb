@@ -178,7 +178,7 @@ module Expenses
         if id
           existing = Expense.find(id)
           if existing
-            pool = PoolSerializer.new(workspace_id: workspace_id)
+            pool = PoolSerializer.new(workspace_id: workspace_id, user_id: user_id.to_s)
             pool.add_expense(existing)
             return T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
           end
@@ -211,7 +211,7 @@ module Expenses
           T.must(Expense.find(T.must(id)))
         end
 
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool = PoolSerializer.new(workspace_id: workspace_id, user_id: user_id.to_s)
         pool.add_expense(expense)
 
         T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])

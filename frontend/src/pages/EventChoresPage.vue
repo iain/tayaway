@@ -36,6 +36,10 @@ const roster = computed(() => {
   return pool.getAll('choreRoster').find((r) => r.eventId === eventId.value)
 })
 
+const canDeleteRoster = computed(
+  () => roster.value?.abilities?.delete?.allowed ?? false
+)
+
 const chores = computed(() => {
   if (!roster.value) return []
   return pool
@@ -302,6 +306,7 @@ onMounted(async () => {
     <div v-else>
       <PageHeader title="Chores" size="sm">
         <ChoreRosterToolbar
+          :can-delete-roster="canDeleteRoster"
           @add-chore="openAddChore"
           @autofill="handleAutofillClick"
           @delete-roster="handleDeleteRoster"
