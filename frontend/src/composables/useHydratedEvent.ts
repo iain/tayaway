@@ -1,6 +1,7 @@
 import { computed, type ComputedRef } from 'vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import type {
+  AbilityResult,
   PoolEvent,
   PoolDateRange,
   PoolMember,
@@ -91,6 +92,7 @@ export interface HydratedEvent {
   member: PoolMember | undefined
   datePoll: HydratedDatePoll | null
   rsvps: HydratedRsvp[]
+  abilities?: Record<string, AbilityResult>
   createdAt: string
   updatedAt: string
 }
@@ -204,6 +206,7 @@ function hydrateEvent(poolEvent: PoolEvent, pool: Pool): HydratedEvent {
     member,
     datePoll,
     rsvps,
+    abilities: poolEvent.abilities,
     createdAt: poolEvent.createdAt,
     updatedAt: poolEvent.updatedAt,
   }

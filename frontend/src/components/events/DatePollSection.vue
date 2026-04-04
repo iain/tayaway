@@ -12,7 +12,7 @@ import {
   isPollOpen,
   isPollExpired,
   isPollResolved,
-  canClosePoll,
+  canClosePoll as canClosePollFn,
   formatPollDeadline,
 } from '@/utils/poll'
 import VoteSummaryBar from '@/components/votes/VoteSummaryBar.vue'
@@ -24,7 +24,7 @@ import AppButton from '@/components/common/AppButton.vue'
 
 const props = defineProps<{
   event: HydratedEvent
-  isOwner: boolean
+  canClosePoll: boolean
   currentUserId: string | null
 }>()
 
@@ -214,7 +214,7 @@ function handleVote(): void {
 
       <!-- Owner actions -->
       <div
-        v-if="isOwner && canClosePoll(poll, rankedDateRanges.length)"
+        v-if="canClosePoll && canClosePollFn(poll, rankedDateRanges.length)"
         class="mt-4"
       >
         <AppButton @click="handleClosePoll">Select Winner</AppButton>

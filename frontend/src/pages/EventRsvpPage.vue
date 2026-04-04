@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 import {
   ArrowDownTrayIcon,
   CalendarDaysIcon,
   ClockIcon,
 } from '@heroicons/vue/24/outline'
+import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
+import { useAbility } from '@/composables/useAbility'
 import { isPollActive } from '@/utils/poll'
 import { eventHasDates } from '@/utils/event'
 import { generateIcs, downloadIcs } from '@/utils/ics'
@@ -27,7 +28,7 @@ const eventId = computed(() => route.params.id as string)
 
 const { event } = useHydratedEvent(eventId)
 
-const isOwner = computed(() => currentUserId.value === event.value?.userId)
+const { allowed: canUpdate } = useAbility(event, 'update')
 
 const eventsStore = useEventsStore()
 const { loading } = storeToRefs(eventsStore)
@@ -139,7 +140,7 @@ function handleDownloadIcs(): void {
           Go to Planning
         </router-link>
 
-        <template v-if="isOwner">
+        <template v-if="canUpdate">
           <div v-if="showDateForm" class="mt-4">
             <form
               class="flex flex-wrap items-end justify-center gap-3"

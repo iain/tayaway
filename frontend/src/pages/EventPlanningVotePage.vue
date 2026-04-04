@@ -6,6 +6,7 @@ import { ArrowPathIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 import { useDatePollsStore } from '@/stores/datePolls'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
+import { useAbility } from '@/composables/useAbility'
 import { isPollOpen, isPollResolved } from '@/utils/poll'
 import AppButton from '@/components/common/AppButton.vue'
 import VotingCard from '@/components/votes/VotingCard.vue'
@@ -22,7 +23,8 @@ const eventId = computed(() => route.params.id as string)
 const { event } = useHydratedEvent(eventId)
 
 const pollOpen = computed(() => isPollOpen(event.value?.datePoll))
-const isOwner = computed(() => currentUserId.value === event.value?.userId)
+const { allowed: canReopenPoll } = useAbility(event, 'reopen_poll')
+const { allowed: canEditDateRanges } = useAbility(event, 'add_date_range')
 
 const dateRanges = computed(() => {
   return event.value?.datePoll?.dateRanges ?? []
@@ -55,7 +57,7 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
         Voting has ended
       </p>
       <p>The date poll is closed and no longer accepting votes.</p>
-      <div v-if="isOwner && isPollResolved(event.datePoll)" class="mt-4">
+      <div v-if="canReopenPoll && isPollResolved(event.datePoll)" class="mt-4">
         <AppButton variant="amber" @click="showReopenModal = true">
           <ArrowPathIcon class="size-4" />
           Reopen Poll
@@ -71,7 +73,7 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
             Date Options
           </h2>
           <router-link
-            v-if="isOwner"
+            v-if="canEditDateRanges"
             :to="`/events/${eventId}/planning/date-ranges`"
             class="inline-flex items-center gap-1.5 text-sm text-cyan-600 underline hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
           >
