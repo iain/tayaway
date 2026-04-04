@@ -7,11 +7,19 @@
 
 export type VoteResponse = 'yes' | 'no' | 'preferably_not'
 
+// Result of a single ability check from the backend policy
+export interface AbilityResult {
+  allowed: boolean
+  reason?: string
+  hint?: 'hidden' | 'disabled'
+}
+
 // Base fields all pool objects must have
 interface PoolObjectBase<T extends string> {
   id: string
   objectType: T
   updatedAt: string // ISO8601 with milliseconds
+  abilities?: Record<string, AbilityResult>
 }
 
 // ============================================================================

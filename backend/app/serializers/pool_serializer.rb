@@ -11,10 +11,18 @@
 class PoolSerializer
   extend T::Sig
 
-  sig { params(workspace_id: T.nilable(T.any(String, UUID))).void }
-  def initialize(workspace_id: nil)
+  sig do
+    params(
+      workspace_id: T.nilable(T.any(String, UUID)),
+      user_id: T.nilable(String),
+      membership: T.nilable(WorkspaceMembership)
+    ).void
+  end
+  def initialize(workspace_id: nil, user_id: nil, membership: nil)
     @objects = T.let({}, T::Hash[String, T::Hash[Symbol, T.untyped]])
     @workspace_id = T.let(workspace_id&.to_s, T.nilable(String))
+    @user_id = T.let(user_id, T.nilable(String))
+    @membership = T.let(membership, T.nilable(WorkspaceMembership))
   end
 
   # Serializes a workspace membership as a member pool object by fetching the user.
@@ -61,6 +69,7 @@ class PoolSerializer
     date_poll = DatePoll.find_by_event(event.id)
     hash = event.to_api_hash(date_poll_id: date_poll&.id&.to_s)
     hash[:rsvpIds] = Rsvp.ids_for_event(event.id)
+    attach_event_abilities(hash, event) if @user_id
 
     @objects[key] = hash
   end
@@ -75,10 +84,25 @@ class PoolSerializer
     polls_by_event = DatePoll.for_event_ids(event_ids)
     rsvp_ids_by_event = Rsvp.ids_for_event_ids(event_ids)
 
+    # Pre-load expense/settlement existence for abilities
+    expense_event_ids = T.let(Set.new, T::Set[String])
+    settlement_event_ids = T.let(Set.new, T::Set[String])
+    if @user_id
+      eid_list = new_events.map { |e| e.id.to_s }
+      expense_event_ids = DB[:expenses].where(event_id: eid_list).select_map(:event_id).map(&:to_s).to_set
+      settlement_event_ids = DB[:settlements].where(event_id: eid_list).select_map(:event_id).map(&:to_s).to_set
+    end
+
     new_events.each do |event|
       date_poll = polls_by_event[event.id.to_s]
       hash = event.to_api_hash(date_poll_id: date_poll&.id&.to_s)
       hash[:rsvpIds] = rsvp_ids_by_event[event.id.to_s] || []
+      if @user_id
+        eid = event.id.to_s
+        attach_event_abilities(hash, event, has_expenses: expense_event_ids.include?(eid),
+                                            has_settlements: settlement_event_ids.include?(eid)
+        )
+      end
       @objects["event:#{event.id}"] = hash
     end
   end
@@ -303,6 +327,24 @@ class PoolSerializer
   end
 
   private
+
+  sig do
+    params(
+      hash: T::Hash[Symbol, T.untyped],
+      event: Event,
+      has_expenses: T.nilable(T::Boolean),
+      has_settlements: T.nilable(T::Boolean)
+    ).void
+  end
+  def attach_event_abilities(hash, event, has_expenses: nil, has_settlements: nil)
+    uid = T.must(@user_id)
+    eid = event.id.to_s
+    has_expenses = DB[:expenses].where(event_id: eid).count.positive? if has_expenses.nil?
+    has_settlements = DB[:settlements].where(event_id: eid).count.positive? if has_settlements.nil?
+    policy = EventPolicy.new(event: event, user_id: uid, membership: @membership)
+    policy.with_context(has_expenses: T.must(has_expenses), has_settlements: T.must(has_settlements))
+    hash[:abilities] = policy.abilities
+  end
 
   sig { params(user: User, membership: WorkspaceMembership).returns(T::Hash[Symbol, T.untyped]) }
   def build_member_hash(user, membership)
