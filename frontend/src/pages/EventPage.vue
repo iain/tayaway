@@ -4,12 +4,15 @@ import { useRoute } from 'vue-router'
 import {
   ArrowDownTrayIcon,
   CalendarDaysIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   MapPinIcon,
   PencilIcon,
 } from '@heroicons/vue/24/outline'
 import AppButton from '@/components/common/AppButton.vue'
 import TextButton from '@/components/common/TextButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
+import CalendarMonth from '@/components/calendar/CalendarMonth.vue'
 import { storeToRefs } from 'pinia'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
 import { eventHasDates } from '@/utils/event'
@@ -20,6 +23,7 @@ import LocationInput from '@/components/form/LocationInput.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useEventsStore } from '@/stores'
 import { useObjectPoolStore } from '@/stores/objectPool'
+import { useCalendar } from '@/composables/useCalendar'
 import { generateIcs, downloadIcs } from '@/utils/ics'
 
 const route = useRoute()
@@ -42,16 +46,76 @@ type EditField = 'name' | 'description' | 'dates' | 'location'
 const editField = ref<EditField | null>(null)
 const datesBlockedOpen = ref(false)
 
+const { formatDateDisplay } = useCalendar()
+
 // Edit state
 const editName = ref('')
 const editDescription = ref('')
-const editStartDate = ref('')
-const editEndDate = ref('')
+const editStartDate = ref<string | null>(null)
+const editEndDate = ref<string | null>(null)
+const hoverDate = ref<string | null>(null)
 const editLocationName = ref('')
 const editLatitude = ref<number | null>(null)
 const editLongitude = ref<number | null>(null)
 
 const editInputRef = ref<HTMLInputElement | HTMLTextAreaElement | null>(null)
+
+// Calendar navigation for date editing
+const calYear = ref(new Date().getFullYear())
+const calMonth = ref(new Date().getMonth())
+
+const rightYear = computed(() =>
+  calMonth.value === 11 ? calYear.value + 1 : calYear.value
+)
+const rightMonth = computed(() => (calMonth.value + 1) % 12)
+
+function calPrev(): void {
+  if (calMonth.value === 0) {
+    calMonth.value = 11
+    calYear.value--
+  } else {
+    calMonth.value--
+  }
+}
+
+function calNext(): void {
+  if (calMonth.value === 11) {
+    calMonth.value = 0
+    calYear.value++
+  } else {
+    calMonth.value++
+  }
+}
+
+function handleDateSelect(dateString: string): void {
+  if (!editStartDate.value || editEndDate.value) {
+    editStartDate.value = dateString
+    editEndDate.value = null
+  } else {
+    let start = editStartDate.value
+    let end = dateString
+    if (dateString < editStartDate.value) {
+      start = dateString
+      end = editStartDate.value
+    }
+    editStartDate.value = start
+    editEndDate.value = end
+  }
+}
+
+const dateSelectionText = computed(() => {
+  if (editStartDate.value && editEndDate.value) {
+    return `${formatDateDisplay(editStartDate.value)} — ${formatDateDisplay(editEndDate.value)}`
+  }
+  if (editStartDate.value) {
+    return `${formatDateDisplay(editStartDate.value)} — pick end date`
+  }
+  return 'Pick start date'
+})
+
+const canSaveDates = computed(
+  () => !!editStartDate.value && !!editEndDate.value
+)
 
 async function openEdit(field: EditField): Promise<void> {
   if (field === 'dates' && hasExpenses.value) {
@@ -67,8 +131,20 @@ async function openEdit(field: EditField): Promise<void> {
       editDescription.value = event.value?.description ?? ''
       break
     case 'dates':
-      editStartDate.value = event.value?.startDate ?? ''
-      editEndDate.value = event.value?.endDate ?? ''
+      editStartDate.value = event.value?.startDate ?? null
+      editEndDate.value = event.value?.endDate ?? null
+      hoverDate.value = null
+      if (event.value?.startDate) {
+        const [y, m] = event.value.startDate.split('-').map(Number) as [
+          number,
+          number,
+        ]
+        calYear.value = y
+        calMonth.value = m - 1
+      } else {
+        calYear.value = new Date().getFullYear()
+        calMonth.value = new Date().getMonth()
+      }
       break
     case 'location':
       editLocationName.value = event.value?.locationName ?? ''
@@ -253,54 +329,60 @@ function handleDownloadIcs(): void {
       </div>
 
       <!-- Dates -->
-      <div v-if="editField === 'dates'" class="mt-4">
-        <form class="flex flex-wrap items-end gap-3" @submit.prevent="saveEdit">
-          <div>
-            <label
-              for="edit-start-date"
-              class="mb-1 block text-xs font-medium text-gray-500 dark:text-stone-400"
-            >
-              Start date
-            </label>
-            <input
-              id="edit-start-date"
-              ref="editInputRef"
-              v-model="editStartDate"
-              type="date"
-              :disabled="loading"
-              data-testid="edit-start-date-input"
-              class="rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:[color-scheme:dark] dark:outline-white/10"
-            />
-          </div>
-          <div>
-            <label
-              for="edit-end-date"
-              class="mb-1 block text-xs font-medium text-gray-500 dark:text-stone-400"
-            >
-              End date
-            </label>
-            <input
-              id="edit-end-date"
-              v-model="editEndDate"
-              type="date"
-              :disabled="loading"
-              data-testid="edit-end-date-input"
-              class="rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:[color-scheme:dark] dark:outline-white/10"
-            />
-          </div>
-          <AppButton type="submit" size="sm" :loading="loading">
-            Save
-          </AppButton>
-          <TextButton
-            variant="secondary"
-            :disabled="loading"
-            @click="cancelEdit"
-          >
+      <BaseModal
+        :open="editField === 'dates'"
+        title="Event dates"
+        size="2xl"
+        @close="cancelEdit"
+      >
+        <div class="mb-4 text-sm text-gray-500 dark:text-stone-400">
+          {{ dateSelectionText }}
+        </div>
+
+        <div class="mb-4 flex items-center justify-between">
+          <IconButton label="Previous month" @click="calPrev">
+            <ChevronLeftIcon class="size-5" />
+          </IconButton>
+          <IconButton label="Next month" @click="calNext">
+            <ChevronRightIcon class="size-5" />
+          </IconButton>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-8">
+          <CalendarMonth
+            :year="calYear"
+            :month="calMonth"
+            :selected-start="editStartDate"
+            :selected-end="editEndDate"
+            :hover-date="hoverDate"
+            @select="handleDateSelect"
+            @hover="hoverDate = $event"
+          />
+          <CalendarMonth
+            :year="rightYear"
+            :month="rightMonth"
+            :selected-start="editStartDate"
+            :selected-end="editEndDate"
+            :hover-date="hoverDate"
+            @select="handleDateSelect"
+            @hover="hoverDate = $event"
+          />
+        </div>
+
+        <div class="mt-6 flex items-center justify-end gap-3">
+          <TextButton variant="secondary" @click="cancelEdit">
             Cancel
           </TextButton>
-        </form>
-      </div>
-      <div v-else class="group mt-4 flex items-center gap-0.5">
+          <AppButton
+            :disabled="!canSaveDates"
+            :loading="loading"
+            @click="saveEdit"
+          >
+            Save
+          </AppButton>
+        </div>
+      </BaseModal>
+      <div class="group mt-4 flex items-center gap-0.5">
         <div
           v-if="eventHasDates(event)"
           class="flex items-center gap-2 text-gray-500 dark:text-stone-400"
