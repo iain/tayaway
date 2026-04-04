@@ -3006,7 +3006,7 @@ class Sequel::Dataset
   #   # SELECT * FROM table WHERE id = ? LIMIT 1 -- (1)
   #   # => {:id=>1}
   #
-  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:346
+  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:349
   def bind(bind_vars = T.unsafe(nil)); end
 
   # Append literalization of boolean constant to SQL string.
@@ -3032,7 +3032,7 @@ class Sequel::Dataset
   #   # UPDATE table WHERE id = ? SET col = ? -- (2, 1)
   #   # => 1
   #
-  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:377
+  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:380
   def call(type, bind_variables = T.unsafe(nil), *values, &block); end
 
   # Append literalization of case expression to SQL string.
@@ -4311,7 +4311,7 @@ class Sequel::Dataset
   #   # UPDATE table WHERE id = ? SET name = ? -- (1, 'Blah')
   #   # => 1
   #
-  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:405
+  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:408
   def prepare(type, name, *values); end
 
   # Set the type of SQL to use for prepared statements based on this
@@ -4324,7 +4324,7 @@ class Sequel::Dataset
   #
   # Other types are treated as :select.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:430
+  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:433
   def prepare_sql_type(type); end
 
   # Whether this dataset will provide accurate number of rows matched for
@@ -5582,7 +5582,7 @@ class Sequel::Dataset
   # Return a cloned copy of the current dataset extended with
   # PreparedStatementMethods, setting the type and modify values.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:438
+  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:441
   def to_prepared_statement(type, values = T.unsafe(nil), opts = T.unsafe(nil)); end
 
   private
@@ -5772,7 +5772,7 @@ class Sequel::Dataset
   #
   # @return [Boolean]
   #
-  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:450
+  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:453
   def allow_preparing_prepared_statements?; end
 
   # Append aliasing expression to SQL string.
@@ -5785,7 +5785,7 @@ class Sequel::Dataset
   # pkg:gem/sequel#lib/sequel/dataset/actions.rb:1230
   def auto_alias_expression(v); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:454
+  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:457
   def bound_variable_modules; end
 
   # Don't allow caching SQL if specifically marked not to.
@@ -5919,7 +5919,7 @@ class Sequel::Dataset
   # Return self if the dataset already has a server, or a cloned dataset with the
   # default server otherwise.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/query.rb:1549
+  # pkg:gem/sequel#lib/sequel/dataset/query.rb:1552
   def default_server; end
 
   # Set the server to use to :default unless it is already set in the passed opts
@@ -5943,16 +5943,16 @@ class Sequel::Dataset
   # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1165
   def delete_from_sql(sql); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1648
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1653
   def delete_order_sql(sql); end
 
   # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1337
   def delete_returning_sql(sql); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1661
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1666
   def delete_where_sql(sql); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1694
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1699
   def delete_with_sql(sql); end
 
   # Append the column aliases to the SQL.
@@ -5989,7 +5989,7 @@ class Sequel::Dataset
   #
   # @return [Boolean]
   #
-  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:460
+  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:463
   def emulate_prepared_statements?; end
 
   # Execute the given select SQL on the database using execute. Use the
@@ -6021,7 +6021,7 @@ class Sequel::Dataset
 
   # SQL expression object based on the expr type.  See +where+.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/query.rb:1479
+  # pkg:gem/sequel#lib/sequel/dataset/query.rb:1482
   def filter_expr(expr = T.unsafe(nil), &block); end
 
   # Format the timestamp based on the default_timestamp_format.
@@ -6066,14 +6066,14 @@ class Sequel::Dataset
   # clause from the given dataset added to it, and the second a clone of
   # the given dataset with the WITH clause removed.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/query.rb:1521
+  # pkg:gem/sequel#lib/sequel/dataset/query.rb:1524
   def hoist_cte(ds); end
 
   # Whether CTEs need to be hoisted from the given ds into the current ds.
   #
   # @return [Boolean]
   #
-  # pkg:gem/sequel#lib/sequel/dataset/query.rb:1526
+  # pkg:gem/sequel#lib/sequel/dataset/query.rb:1529
   def hoist_cte?(ds); end
 
   # Append literalization of identifier to SQL string, considering regular strings
@@ -6138,7 +6138,7 @@ class Sequel::Dataset
   # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1308
   def insert_values_sql(sql); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1695
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1700
   def insert_with_sql(sql); end
 
   # Inverts the given order by breaking it into a list of column references
@@ -6147,7 +6147,7 @@ class Sequel::Dataset
   #   DB[:items].invert_order([Sequel.desc(:id)]]) #=> [Sequel.asc(:id)]
   #   DB[:items].invert_order([:category, Sequel.desc(:price)]) #=> [Sequel.desc(:category), Sequel.asc(:price)]
   #
-  # pkg:gem/sequel#lib/sequel/dataset/query.rb:1535
+  # pkg:gem/sequel#lib/sequel/dataset/query.rb:1538
   def invert_order(order); end
 
   # SQL fragment specifying a JOIN type, converts underscores to
@@ -6227,9 +6227,14 @@ class Sequel::Dataset
   # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1423
   def literal_integer(v); end
 
-  # SQL fragment for nil
+  # Append string to SQL string.
   #
   # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1428
+  def literal_literal_string_append(sql, v); end
+
+  # SQL fragment for nil
+  #
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1433
   def literal_nil; end
 
   # Append a literalization of the object to the given SQL string.
@@ -6237,48 +6242,48 @@ class Sequel::Dataset
   # calls +sql_literal+ if object responds to it, otherwise raises an error.
   # If a database specific type is allowed, this should be overriden in a subclass.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1436
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1441
   def literal_other_append(sql, v); end
 
   # Append a literalization of the set to SQL string.
   # Treats as an expression as an SQL value list.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1454
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1459
   def literal_set_append(sql, v); end
 
   # SQL fragment for Sequel::SQLTime, containing just the time part
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1459
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1464
   def literal_sqltime(v); end
 
   # Append literalization of Sequel::SQLTime to SQL string.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1464
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1469
   def literal_sqltime_append(sql, v); end
 
   # Append literalization of string to SQL string.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1469
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1474
   def literal_string_append(sql, v); end
 
   # Append literalization of symbol to SQL string.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1474
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1479
   def literal_symbol_append(sql, v); end
 
   # SQL fragment for Time
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1485
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1490
   def literal_time(v); end
 
   # Append literalization of Time to SQL string.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1490
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1495
   def literal_time_append(sql, v); end
 
   # SQL fragment for true
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1495
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1500
   def literal_true; end
 
   # What strategy to use for import/multi_insert.  While SQL-92 defaults
@@ -6286,19 +6291,19 @@ class Sequel::Dataset
   # that don't allow that that it can't be the default.  Use separate queries
   # by default, which works everywhere.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1503
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1508
   def multi_insert_sql_strategy; end
 
   # Get the native function name given the emulated function name.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1509
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1514
   def native_function_name(emulated_function); end
 
   # Whether the given option key does not affect the generated SQL.
   #
   # @return [Boolean]
   #
-  # pkg:gem/sequel#lib/sequel/dataset/query.rb:1554
+  # pkg:gem/sequel#lib/sequel/dataset/query.rb:1557
   def non_sql_option?(key); end
 
   # Downcase identifiers by default when outputing them from the database.
@@ -6317,21 +6322,21 @@ class Sequel::Dataset
   # The argument placeholder.  Most databases used unnumbered
   # arguments with question marks, so that is the default.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:470
+  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:473
   def prepared_arg_placeholder; end
 
-  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:464
+  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:467
   def prepared_statement_modules; end
 
   # Returns a qualified column name (including a table name) if the column
   # name isn't already qualified.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1515
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1520
   def qualified_column_name(column, table); end
 
   # Qualify the given expression to the given table.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1535
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1540
   def qualified_expression(e, table); end
 
   # Wrap the alias symbol in an SQL::Identifier if the identifier on which is based
@@ -6363,73 +6368,73 @@ class Sequel::Dataset
   # pkg:gem/sequel#lib/sequel/dataset/actions.rb:1362
   def returning_fetch_rows(sql, &block); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1539
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1544
   def select_columns_sql(sql); end
 
   # Modify the sql to add a dataset to the via an EXCEPT, INTERSECT, or UNION clause.
   # This uses a subselect for the compound datasets used, because using parantheses doesn't
   # work on all databases.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1558
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1563
   def select_compounds_sql(sql); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1544
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1549
   def select_distinct_sql(sql); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1568
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1573
   def select_from_sql(sql); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1577
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1582
   def select_group_sql(sql); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1599
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1604
   def select_having_sql(sql); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1606
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1611
   def select_join_sql(sql); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1612
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1617
   def select_limit_sql(sql); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1625
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1630
   def select_lock_sql(sql); end
 
   # Used only if there is an offset and no limit, making it easier to override
   # in the adapter, as many databases do not support just a plain offset with
   # no limit.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1637
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1642
   def select_only_offset_sql(sql); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1642
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1647
   def select_order_sql(sql); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1651
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1656
   def select_select_sql(sql); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1655
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1660
   def select_where_sql(sql); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1664
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1669
   def select_window_sql(sql); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1680
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1685
   def select_with_sql(sql); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1698
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1703
   def select_with_sql_base; end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1702
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1707
   def select_with_sql_cte(sql, cte); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1707
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1712
   def select_with_sql_prefix(sql, w); end
 
   # Whether the symbol cache should be skipped when literalizing the dataset
   #
   # @return [Boolean]
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1725
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1730
   def skip_symbol_cache?; end
 
   # Append literalization of array of sources/tables to SQL string, raising an Error if there
@@ -6437,24 +6442,24 @@ class Sequel::Dataset
   #
   # @raise [Error]
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1731
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1736
   def source_list_append(sql, sources); end
 
   # Delegate to Sequel.split_symbol.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1737
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1742
   def split_symbol(sym); end
 
   # The string that is appended to to create the SQL query, the empty
   # string by default.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1743
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1748
   def sql_string_origin; end
 
   # The precision to use for SQLTime instances (time column values without dates).
   # Defaults to timestamp_precision.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1749
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1754
   def sqltime_precision; end
 
   # SQL to use if this dataset uses static SQL.  Since static SQL
@@ -6462,18 +6467,18 @@ class Sequel::Dataset
   # we literalize nonstrings.  If there is an append_sql for this
   # dataset, append to that SQL instead of returning the value.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1757
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1762
   def static_sql(sql); end
 
   # Append literalization of the subselect to SQL string.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1774
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1779
   def subselect_sql_append(sql, ds); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1788
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1793
   def subselect_sql_append_sql(sql, ds); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1784
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1789
   def subselect_sql_dataset(sql, ds); end
 
   # Whether common table expressions are supported in UNION/INTERSECT/EXCEPT clauses.
@@ -6500,7 +6505,7 @@ class Sequel::Dataset
 
   # The number of decimal digits of precision to use in timestamps.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1793
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1798
   def timestamp_precision; end
 
   # Return the unaliased part of the identifier.  Handles both
@@ -6510,28 +6515,28 @@ class Sequel::Dataset
   # pkg:gem/sequel#lib/sequel/dataset/actions.rb:1376
   def unaliased_identifier(c); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1649
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1654
   def update_order_sql(sql); end
 
   # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1338
   def update_returning_sql(sql); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1803
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1808
   def update_set_sql(sql); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1813
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1818
   def update_sql_values_hash(sql, values); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1797
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1802
   def update_table_sql(sql); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1829
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1834
   def update_update_sql(sql); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1662
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1667
   def update_where_sql(sql); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1696
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1701
   def update_with_sql(sql); end
 
   # Whether the RETURNING clause is used for the given dataset.
@@ -6552,7 +6557,7 @@ class Sequel::Dataset
   # Treat the +block+ as a virtual_row block if not +nil+ and
   # add the resulting columns to the +columns+ array (modifies +columns+).
   #
-  # pkg:gem/sequel#lib/sequel/dataset/query.rb:1560
+  # pkg:gem/sequel#lib/sequel/dataset/query.rb:1563
   def virtual_row_columns(columns, block); end
 
   # Return the class name for this dataset, but skip anonymous classes
@@ -6560,7 +6565,7 @@ class Sequel::Dataset
   # pkg:gem/sequel#lib/sequel/dataset/misc.rb:375
   def visible_class_name; end
 
-  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1833
+  # pkg:gem/sequel#lib/sequel/dataset/sql.rb:1838
   def window_frame_boundary_sql_append(sql, boundary, direction); end
 
   class << self
@@ -6841,10 +6846,10 @@ module Sequel::Dataset::EmulatePreparedStatementMethods
   # Associates the argument with name k with the next position in
   # the output array.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:328
+  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:331
   def prepared_arg(k); end
 
-  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:333
+  # pkg:gem/sequel#lib/sequel/dataset/prepared_statements.rb:336
   def subselect_sql_dataset(sql, ds); end
 end
 
@@ -6881,6 +6886,9 @@ Sequel::Dataset::N_ARITY_OPERATORS = T.let(T.unsafe(nil), Array)
 
 # pkg:gem/sequel#lib/sequel/dataset.rb:30
 Sequel::Dataset::OPTS = T.let(T.unsafe(nil), Hash)
+
+# pkg:gem/sequel#lib/sequel/dataset/query.rb:1478
+Sequel::Dataset::PAREN_WRAPPER = T.let(T.unsafe(nil), Array)
 
 # ---------------------
 # :section: 8 - Methods related to prepared statements or bound variables
@@ -6940,58 +6948,58 @@ class Sequel::Dataset::PlaceholderLiteralizer
   #
   # @return [PlaceholderLiteralizer] a new instance of PlaceholderLiteralizer
   #
-  # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:152
+  # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:155
   def initialize(dataset, fragments, final_sql, arity); end
 
   # Return an array of all objects by running the SQL query for the given arguments.
   # If a block is given, yields all objects to the block after loading them.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:179
+  # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:182
   def all(*args, &block); end
 
   # Append the SQL query to use for the given arguments to the given SQL string.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:207
+  # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:210
   def append_sql(sql, *args); end
 
   # Run the SQL query for the given arguments, yielding each returned row to the block.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:184
+  # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:187
   def each(*args, &block); end
 
   # Run the SQL query for the given arguments, returning the first row.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:189
+  # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:192
   def first(*args); end
 
   # Freeze the fragments and final SQL when freezing the literalizer.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:161
+  # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:164
   def freeze; end
 
   # Run the SQL query for the given arguments, returning the first value.  For this to
   # make sense, the dataset should return a single row with a single value (or no rows).
   #
-  # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:195
+  # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:198
   def get(*args); end
 
   # Return the SQL query to use for the given arguments.
   #
   # @raise [Error]
   #
-  # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:200
+  # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:203
   def sql(*args); end
 
   # Return a new PlaceholderLiteralizer with a modified dataset.  This yields the
   # receiver's dataset to the block, and the block should return the new dataset
   # to use.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:170
+  # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:173
   def with_dataset; end
 
   private
 
-  # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:225
+  # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:228
   def sql_origin; end
 
   class << self
@@ -6999,7 +7007,7 @@ class Sequel::Dataset::PlaceholderLiteralizer
     # given block, recording the offsets at which the recorders arguments
     # are used in the query.
     #
-    # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:147
+    # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:150
     def loader(dataset, &block); end
   end
 end
@@ -7069,7 +7077,7 @@ class Sequel::Dataset::PlaceholderLiteralizer::Recorder
 
   # Internals of #loader and #prepared_sql_and_frags.
   #
-  # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:124
+  # pkg:gem/sequel#lib/sequel/dataset/placeholder_literalizer.rb:126
   def process(dataset); end
 end
 
@@ -14720,14 +14728,16 @@ module Sequel::Schema; end
 # For more information on Sequel's support for schema modification, see
 # the {"Schema Modification" guide}[link:files/doc/schema_modification_rdoc.html].
 #
-# pkg:gem/sequel#lib/sequel/database/schema_generator.rb:431
+# pkg:gem/sequel#lib/sequel/database/schema_generator.rb:460
 class Sequel::Schema::AlterTableGenerator
+  include ::Sequel::Schema::ColumnOptionMerger
+
   # Set the Database object to which to apply the changes, and evaluate the
   # block in the context of this object.
   #
   # @return [AlterTableGenerator] a new instance of AlterTableGenerator
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:437
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:468
   def initialize(db, &block); end
 
   # Add a column with the given name, type, and opts.
@@ -14744,7 +14754,7 @@ class Sequel::Schema::AlterTableGenerator
   # :after :: The name of an existing column that the new column should be positioned after
   # :first :: Create this new column before all other existing columns
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:456
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:487
   def add_column(name, type, opts = T.unsafe(nil)); end
 
   # Add a constraint with the given name and args.
@@ -14755,7 +14765,7 @@ class Sequel::Schema::AlterTableGenerator
   #   add_constraint({name: :valid_name, deferrable: true}, Sequel.like(:name, 'A%'))
   #   # ADD CONSTRAINT valid_name CHECK (name LIKE 'A%' ESCAPE '\') DEFERRABLE INITIALLY DEFERRED
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:471
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:502
   def add_constraint(name, *args, &block); end
 
   # Add a foreign key with the given name and referencing the given table.
@@ -14781,13 +14791,13 @@ class Sequel::Schema::AlterTableGenerator
   #               to mark the constraint as valid.  Note that this option only makes
   #               sense when using an array of columns.
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:520
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:551
   def add_foreign_key(name, table, opts = T.unsafe(nil)); end
 
   # Add a full text index on the given columns.
   # See CreateTableGenerator#full_text_index for available options.
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:527
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:558
   def add_full_text_index(columns, opts = T.unsafe(nil)); end
 
   # Add an index on the given columns. See
@@ -14795,7 +14805,7 @@ class Sequel::Schema::AlterTableGenerator
   #
   #   add_index(:artist_id) # CREATE INDEX table_artist_id_index ON table (artist_id)
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:535
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:566
   def add_index(columns, opts = T.unsafe(nil)); end
 
   # Add a primary key.  See CreateTableGenerator#column
@@ -14813,13 +14823,13 @@ class Sequel::Schema::AlterTableGenerator
   # :without_overlaps :: Use WITHOUT OVERLAPS clause to specify an exclusion constraint
   #                      on the final column (PostgreSQL 18+, composite primary keys only).
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:554
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:585
   def add_primary_key(name, opts = T.unsafe(nil)); end
 
   # Add a spatial index on the given columns.
   # See CreateTableGenerator#index for available options.
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:562
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:593
   def add_spatial_index(columns, opts = T.unsafe(nil)); end
 
   # Add a unique constraint to the given column(s)
@@ -14839,7 +14849,7 @@ class Sequel::Schema::AlterTableGenerator
   # :without_overlaps :: Use WITHOUT OVERLAPS clause to specify an exclusion constraint
   #                      on the final column (PostgreSQL 18+, composite unique constraints only).
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:493
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:524
   def add_unique_constraint(columns, opts = T.unsafe(nil)); end
 
   # Remove a column from the table.
@@ -14856,7 +14866,7 @@ class Sequel::Schema::AlterTableGenerator
   # :if_exists :: Use IF EXISTS, so no error is raised if the column does not
   #               exist.
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:579
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:610
   def drop_column(name, opts = T.unsafe(nil)); end
 
   # Remove a constraint from the table:
@@ -14869,7 +14879,7 @@ class Sequel::Schema::AlterTableGenerator
   # :type :: Set the type of constraint to drop, either :primary_key, :foreign_key,
   #          or :unique.
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:593
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:624
   def drop_constraint(name, opts = T.unsafe(nil)); end
 
   # Remove a foreign key and the associated column from the table. General options:
@@ -14883,7 +14893,7 @@ class Sequel::Schema::AlterTableGenerator
   #   drop_foreign_key(:artist_id) # DROP CONSTRAINT table_artist_id_fkey, DROP COLUMN artist_id
   #   drop_foreign_key([:name]) # DROP CONSTRAINT table_name_fkey
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:608
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:639
   def drop_foreign_key(name, opts = T.unsafe(nil)); end
 
   # Remove an index from the table. General options:
@@ -14902,19 +14912,19 @@ class Sequel::Schema::AlterTableGenerator
   #   drop_index([:a, :b]) # DROP INDEX table_a_b_index
   #   drop_index([:a, :b], name: :foo) # DROP INDEX foo
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:632
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:663
   def drop_index(columns, options = T.unsafe(nil)); end
 
   # An array of operations to perform
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:433
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:464
   def operations; end
 
   # Rename one of the table's columns.
   #
   #   rename_column(:name, :artist_name) # RENAME COLUMN name TO artist_name
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:640
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:671
   def rename_column(name, new_name, opts = T.unsafe(nil)); end
 
   # Set a given column as allowing NULL values.
@@ -14924,7 +14934,7 @@ class Sequel::Schema::AlterTableGenerator
   # On MySQL, make sure to use a symbol for the name of the column, as otherwise you
   # can lose the default and type for the column.
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:683
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:714
   def set_column_allow_null(name, allow_null = T.unsafe(nil)); end
 
   # Modify the default value for one of the table's column.
@@ -14938,7 +14948,7 @@ class Sequel::Schema::AlterTableGenerator
   # On MySQL, make sure to use a symbol for the name of the column, as otherwise you
   # can lose the type and NULL/NOT NULL setting for the column.
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:655
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:686
   def set_column_default(name, default); end
 
   # Set a given column as not allowing NULL values.
@@ -14948,7 +14958,7 @@ class Sequel::Schema::AlterTableGenerator
   # On MySQL, make sure to use a symbol for the name of the column, as otherwise you
   # can lose the default and type for the column.
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:694
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:725
   def set_column_not_null(name); end
 
   # Modify the type of one of the table's column. The given options are considered when
@@ -14964,25 +14974,38 @@ class Sequel::Schema::AlterTableGenerator
   # On MySQL, make sure to use a symbol for the name of the column, as otherwise you
   # can lose the default and NULL/NOT NULL setting for the column.
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:672
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:703
   def set_column_type(name, type, opts = T.unsafe(nil)); end
 
   private
 
   # Add a composite foreign key constraint
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:707
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:738
   def add_composite_foreign_key(columns, table, opts); end
 
   # Add a composite primary key constraint
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:701
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:732
   def add_composite_primary_key(columns, opts); end
 
   # Drop a composite foreign key constraint
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:713
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:744
   def drop_composite_foreign_key(columns, opts); end
+end
+
+# pkg:gem/sequel#lib/sequel/database/schema_generator.rb:6
+module Sequel::Schema::ColumnOptionMerger
+  private
+
+  # Merge given options into the column's default options. For backwards compatibility,
+  # the options take priority, but in cases where the option value overrides the argument
+  # value, and the values are different, we warn as this is likely to be an error in the
+  # code.
+  #
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:13
+  def _merge_column_options(defaults, opts); end
 end
 
 # Schema::CreateTableGenerator is an internal class that the user is not expected
@@ -14999,59 +15022,61 @@ end
 # For more information on Sequel's support for schema modification, see
 # the {"Schema Modification" guide}[rdoc-ref:doc/schema_modification.rdoc].
 #
-# pkg:gem/sequel#lib/sequel/database/schema_generator.rb:19
+# pkg:gem/sequel#lib/sequel/database/schema_generator.rb:46
 class Sequel::Schema::CreateTableGenerator
+  include ::Sequel::Schema::ColumnOptionMerger
+
   # Set the database in which to create the table, and evaluate the block
   # in the context of this object.
   #
   # @return [CreateTableGenerator] a new instance of CreateTableGenerator
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:34
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:63
   def initialize(db, &block); end
 
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:69
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:98
   def BigDecimal(name, opts = T.unsafe(nil)); end
 
   # Use custom Bignum method to use :Bignum instead of Bignum class, to work
   # correctly in cases where Bignum is the same as Integer.
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:45
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:74
   def Bignum(name, opts = T.unsafe(nil)); end
 
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:69
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:98
   def Date(name, opts = T.unsafe(nil)); end
 
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:69
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:98
   def DateTime(name, opts = T.unsafe(nil)); end
 
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:69
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:98
   def FalseClass(name, opts = T.unsafe(nil)); end
 
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:69
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:98
   def File(name, opts = T.unsafe(nil)); end
 
   # Use custom Fixnum method to use Integer instead of Fixnum class, to avoid
   # warnings on ruby 2.4+.
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:51
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:80
   def Fixnum(name, opts = T.unsafe(nil)); end
 
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:69
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:98
   def Float(name, opts = T.unsafe(nil)); end
 
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:69
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:98
   def Integer(name, opts = T.unsafe(nil)); end
 
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:69
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:98
   def Numeric(name, opts = T.unsafe(nil)); end
 
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:69
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:98
   def String(name, opts = T.unsafe(nil)); end
 
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:69
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:98
   def Time(name, opts = T.unsafe(nil)); end
 
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:69
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:98
   def TrueClass(name, opts = T.unsafe(nil)); end
 
   # Add an unnamed constraint, specified by the given block
@@ -15060,7 +15085,7 @@ class Sequel::Schema::CreateTableGenerator
   #   check(num: 1..5) # CHECK num >= 1 AND num <= 5
   #   check{num > 5}   # CHECK num > 5
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:79
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:108
   def check(*args, &block); end
 
   # Add a column with the given name, type, and opts:
@@ -15156,12 +15181,12 @@ class Sequel::Schema::CreateTableGenerator
   # :clustered :: When using :primary_key or :unique, marks the primary key or unique
   #               constraint as CLUSTERED (if true), or NONCLUSTERED (if false).
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:175
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:204
   def column(name, type, opts = T.unsafe(nil)); end
 
   # Column hashes created by this generator
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:24
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:53
   def columns; end
 
   # Adds a named CHECK constraint (or unnamed if name is nil),
@@ -15185,12 +15210,12 @@ class Sequel::Schema::CreateTableGenerator
   # :not_enforced :: Whether the CHECK constraint should be marked NOT ENFORCED.
   # :not_valid :: Whether the CHECK constraint should be marked NOT VALID.
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:203
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:232
   def constraint(name, *args, &block); end
 
   # Constraint hashes created by this generator
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:27
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:56
   def constraints; end
 
   # Add a foreign key in the table that references another table. See #column
@@ -15224,7 +15249,7 @@ class Sequel::Schema::CreateTableGenerator
   #   foreign_key([:artist_name, :artist_location], :artists, name: :artist_fk)
   #   # ADD CONSTRAINT artist_fk FOREIGN KEY (artist_name, artist_location) REFERENCES artists
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:239
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:268
   def foreign_key(name, table = T.unsafe(nil), opts = T.unsafe(nil)); end
 
   # Add a full text index on the given columns.
@@ -15235,14 +15260,14 @@ class Sequel::Schema::CreateTableGenerator
   #                default GIN index.
   # :language :: Set a language to use for the index (default: simple).
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:259
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:288
   def full_text_index(columns, opts = T.unsafe(nil)); end
 
   # True if the generator includes the creation of a column with the given name.
   #
   # @return [Boolean]
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:264
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:293
   def has_column?(name); end
 
   # Add an index on the given column(s) with the given options. Examples:
@@ -15285,18 +15310,18 @@ class Sequel::Schema::CreateTableGenerator
   #
   # :key_index :: Sets the KEY INDEX to the given value.
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:307
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:336
   def index(columns, opts = T.unsafe(nil)); end
 
   # Index hashes created by this generator
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:30
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:59
   def indexes; end
 
   # Add a column with the given type, name, and opts.  See #column for available
   # options.
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:314
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:343
   def method_missing(type, name = T.unsafe(nil), opts = T.unsafe(nil)); end
 
   # Adds an autoincrementing primary key column or a primary key constraint.
@@ -15329,18 +15354,18 @@ class Sequel::Schema::CreateTableGenerator
   #   primary_key(:id, type: :Bignum, keep_order: true)
   #   primary_key([:street_number, :house_number], name: :some_constraint_name)
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:352
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:381
   def primary_key(name, *args); end
 
   # The name of the primary key for this generator, if it has a primary key.
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:374
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:403
   def primary_key_name; end
 
   # Add a spatial index on the given columns.
   # See #index for additional options.
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:380
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:409
   def spatial_index(columns, opts = T.unsafe(nil)); end
 
   # Add a unique constraint on the given columns.
@@ -15359,26 +15384,26 @@ class Sequel::Schema::CreateTableGenerator
   # :without_overlaps :: Use WITHOUT OVERLAPS clause to specify an exclusion constraint
   #                      on the final column (PostgreSQL 18+, composite unique only).
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:399
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:428
   def unique(columns, opts = T.unsafe(nil)); end
 
   private
 
   # Add a composite foreign key constraint
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:414
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:443
   def composite_foreign_key(columns, opts); end
 
   # Add a composite primary key constraint
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:407
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:436
   def composite_primary_key(columns, *args); end
 
   # This object responds to all methods.
   #
   # @return [Boolean]
   #
-  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:319
+  # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:348
   def respond_to_missing?(meth, include_private); end
 
   class << self
@@ -15387,14 +15412,14 @@ class Sequel::Schema::CreateTableGenerator
     # be constants/classes or a capitalized string/symbol with the same name
     # as a constant/class.
     #
-    # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:59
+    # pkg:gem/sequel#lib/sequel/database/schema_generator.rb:88
     def add_type_method(*types); end
   end
 end
 
 # Classes specifying generic types that Sequel will convert to database-specific types.
 #
-# pkg:gem/sequel#lib/sequel/database/schema_generator.rb:21
+# pkg:gem/sequel#lib/sequel/database/schema_generator.rb:50
 Sequel::Schema::CreateTableGenerator::GENERIC_TYPES = T.let(T.unsafe(nil), Array)
 
 # Sequel doesn't pay much attention to timezones by default, but you can set it to

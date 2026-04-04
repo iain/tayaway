@@ -6656,6 +6656,9 @@ module RSpec::Core::HashImitatable
   # pkg:gem/rspec-core#lib/rspec/core/metadata.rb:367
   def to_a(*args, &block); end
 
+  # pkg:gem/rspec-core#lib/rspec/core/metadata.rb:367
+  def to_cbor(*args, &block); end
+
   # pkg:gem/rspec-core#lib/rspec/core/metadata.rb:354
   def to_h; end
 

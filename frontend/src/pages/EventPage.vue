@@ -24,6 +24,7 @@ import StaticMap from '@/components/common/StaticMap.vue'
 import LocationInput from '@/components/form/LocationInput.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useEventsStore } from '@/stores'
+import type { UpdateEventRequest } from '@/types'
 import { useRsvpsStore } from '@/stores/rsvps'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useCalendar } from '@/composables/useCalendar'
@@ -260,7 +261,7 @@ async function saveEdit(): Promise<void> {
 async function commitEdit(): Promise<void> {
   if (!event.value || loading.value) return
 
-  const data: Record<string, unknown> = {
+  const data: UpdateEventRequest = {
     name: event.value.name,
     description: event.value.description || undefined,
     startDate: event.value.startDate ?? undefined,

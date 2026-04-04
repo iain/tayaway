@@ -1058,6 +1058,9 @@ module RuboCop::AST::CollectionNode
   def to_ary(*_arg0, **_arg1, &_arg2); end
 
   # pkg:gem/rubocop-ast#lib/rubocop/ast/node/mixin/collection_node.rb:13
+  def to_cbor(*_arg0, **_arg1, &_arg2); end
+
+  # pkg:gem/rubocop-ast#lib/rubocop/ast/node/mixin/collection_node.rb:13
   def to_h(*_arg0, **_arg1, &_arg2); end
 
   # pkg:gem/rubocop-ast#lib/rubocop/ast/node/mixin/collection_node.rb:13

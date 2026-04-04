@@ -2182,18 +2182,18 @@ end
 class Rack::Multipart::Parser
   # @return [Parser] a new instance of Parser
   #
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:235
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:254
   def initialize(boundary, tempfile, bufsize, query_parser); end
 
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:254
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:275
   def parse(io); end
 
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:277
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:299
   def result; end
 
   # Returns the value of attribute state.
   #
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:233
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:252
   def state; end
 
   private
@@ -2203,23 +2203,23 @@ class Rack::Multipart::Parser
   # end of the boundary.  If we don't find the start or end of the
   # boundary, clear the buffer and return nil.
   #
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:493
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:534
   def consume_boundary; end
 
   # Return the related Encoding object. However, because
   # enc is submitted by the user, it may be invalid, so
   # use a binary encoding in that case.
   #
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:548
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:589
   def find_encoding(enc); end
 
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:330
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:358
   def handle_consume_token; end
 
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:563
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:604
   def handle_dummy_encoding(name, body); end
 
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:573
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:614
   def handle_empty_content!(content); end
 
   # This handles the initial parser state.  We read until we find the starting
@@ -2230,32 +2230,32 @@ class Rack::Multipart::Parser
   # boundary.  The client would have to deliberately craft a response
   # with the opening boundary beyond the buffer size for that to happen.
   #
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:303
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:331
   def handle_fast_forward; end
 
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:460
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:501
   def handle_mime_body; end
 
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:342
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:373
   def handle_mime_head; end
 
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:502
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:543
   def normalize_filename(filename); end
 
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:290
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:312
   def read_data(io, outbuf); end
 
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:515
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:556
   def tag_multipart_encoding(filename, content_type, name, body); end
 
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:482
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:523
   def update_retained_size(size); end
 
   class << self
-    # pkg:gem/rack#lib/rack/multipart/parser.rb:122
+    # pkg:gem/rack#lib/rack/multipart/parser.rb:137
     def parse(io, content_length, content_type, tmpfile, bufsize, qp); end
 
-    # pkg:gem/rack#lib/rack/multipart/parser.rb:115
+    # pkg:gem/rack#lib/rack/multipart/parser.rb:122
     def parse_boundary(content_type); end
   end
 end
@@ -2269,96 +2269,99 @@ Rack::Multipart::Parser::BUFFERED_UPLOAD_BYTESIZE_LIMIT = T.let(T.unsafe(nil), I
 # pkg:gem/rack#lib/rack/multipart/parser.rb:54
 Rack::Multipart::Parser::BUFSIZE = T.let(T.unsafe(nil), Integer)
 
-# pkg:gem/rack#lib/rack/multipart/parser.rb:83
+# pkg:gem/rack#lib/rack/multipart/parser.rb:90
 class Rack::Multipart::Parser::BoundedIO
   # @return [BoundedIO] a new instance of BoundedIO
   #
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:84
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:91
   def initialize(io, content_length); end
 
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:90
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:97
   def read(size, outbuf = T.unsafe(nil)); end
 end
 
-# pkg:gem/rack#lib/rack/multipart/parser.rb:512
+# pkg:gem/rack#lib/rack/multipart/parser.rb:553
 Rack::Multipart::Parser::CHARSET = T.let(T.unsafe(nil), String)
 
-# pkg:gem/rack#lib/rack/multipart/parser.rb:341
+# pkg:gem/rack#lib/rack/multipart/parser.rb:369
 Rack::Multipart::Parser::CONTENT_DISPOSITION_MAX_BYTES = T.let(T.unsafe(nil), Integer)
 
-# pkg:gem/rack#lib/rack/multipart/parser.rb:340
+# pkg:gem/rack#lib/rack/multipart/parser.rb:368
 Rack::Multipart::Parser::CONTENT_DISPOSITION_MAX_PARAMS = T.let(T.unsafe(nil), Integer)
 
-# pkg:gem/rack#lib/rack/multipart/parser.rb:142
+# pkg:gem/rack#lib/rack/multipart/parser.rb:87
+Rack::Multipart::Parser::CONTENT_DISPOSITION_QUOTED_ESCAPES_LIMIT = T.let(T.unsafe(nil), Integer)
+
+# pkg:gem/rack#lib/rack/multipart/parser.rb:161
 class Rack::Multipart::Parser::Collector
   include ::Enumerable
 
   # @return [Collector] a new instance of Collector
   #
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:178
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:197
   def initialize(tempfile); end
 
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:184
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:203
   def each; end
 
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:204
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:223
   def on_mime_body(mime_index, content); end
 
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:208
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:227
   def on_mime_finish(mime_index); end
 
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:188
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:207
   def on_mime_head(mime_index, head, filename, content_type, name); end
 
   private
 
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:213
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:232
   def check_part_limits; end
 end
 
-# pkg:gem/rack#lib/rack/multipart/parser.rb:166
+# pkg:gem/rack#lib/rack/multipart/parser.rb:185
 class Rack::Multipart::Parser::Collector::BufferPart < ::Rack::Multipart::Parser::Collector::MimePart
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:168
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:187
   def close; end
 
   # @return [Boolean]
   #
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:167
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:186
   def file?; end
 end
 
-# pkg:gem/rack#lib/rack/multipart/parser.rb:143
+# pkg:gem/rack#lib/rack/multipart/parser.rb:162
 class Rack::Multipart::Parser::Collector::MimePart < ::Struct
   # @yield [data]
   #
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:144
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:163
   def get_data; end
 end
 
-# pkg:gem/rack#lib/rack/multipart/parser.rb:171
+# pkg:gem/rack#lib/rack/multipart/parser.rb:190
 class Rack::Multipart::Parser::Collector::TempfilePart < ::Rack::Multipart::Parser::Collector::MimePart
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:173
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:192
   def close; end
 
   # @return [Boolean]
   #
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:172
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:191
   def file?; end
 end
 
-# pkg:gem/rack#lib/rack/multipart/parser.rb:113
+# pkg:gem/rack#lib/rack/multipart/parser.rb:120
 Rack::Multipart::Parser::EMPTY = T.let(T.unsafe(nil), Rack::Multipart::Parser::MultipartInfo)
 
 # pkg:gem/rack#lib/rack/multipart/parser.rb:65
 Rack::Multipart::Parser::MIME_HEADER_BYTESIZE_LIMIT = T.let(T.unsafe(nil), Integer)
 
-# pkg:gem/rack#lib/rack/multipart/parser.rb:112
+# pkg:gem/rack#lib/rack/multipart/parser.rb:119
 class Rack::Multipart::Parser::MultipartInfo < ::Struct
   # Returns the value of attribute params
   #
   # @return [Object] the current value of params
   #
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:112
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:119
   def params; end
 
   # Sets the attribute params
@@ -2366,14 +2369,14 @@ class Rack::Multipart::Parser::MultipartInfo < ::Struct
   # @param value [Object] the value to set the attribute params to.
   # @return [Object] the newly set value
   #
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:112
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:119
   def params=(_); end
 
   # Returns the value of attribute tmp_files
   #
   # @return [Object] the current value of tmp_files
   #
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:112
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:119
   def tmp_files; end
 
   # Sets the attribute tmp_files
@@ -2381,28 +2384,34 @@ class Rack::Multipart::Parser::MultipartInfo < ::Struct
   # @param value [Object] the value to set the attribute tmp_files to.
   # @return [Object] the newly set value
   #
-  # pkg:gem/rack#lib/rack/multipart/parser.rb:112
+  # pkg:gem/rack#lib/rack/multipart/parser.rb:119
   def tmp_files=(_); end
 
   class << self
-    # pkg:gem/rack#lib/rack/multipart/parser.rb:112
+    # pkg:gem/rack#lib/rack/multipart/parser.rb:119
     def [](*_arg0); end
 
-    # pkg:gem/rack#lib/rack/multipart/parser.rb:112
+    # pkg:gem/rack#lib/rack/multipart/parser.rb:119
     def inspect; end
 
-    # pkg:gem/rack#lib/rack/multipart/parser.rb:112
+    # pkg:gem/rack#lib/rack/multipart/parser.rb:119
     def keyword_init?; end
 
-    # pkg:gem/rack#lib/rack/multipart/parser.rb:112
+    # pkg:gem/rack#lib/rack/multipart/parser.rb:119
     def members; end
 
-    # pkg:gem/rack#lib/rack/multipart/parser.rb:112
+    # pkg:gem/rack#lib/rack/multipart/parser.rb:119
     def new(*_arg0); end
   end
 end
 
-# pkg:gem/rack#lib/rack/multipart/parser.rb:554
+# pkg:gem/rack#lib/rack/multipart/parser.rb:370
+Rack::Multipart::Parser::OBS_UNFOLD = T.let(T.unsafe(nil), Regexp)
+
+# pkg:gem/rack#lib/rack/multipart/parser.rb:84
+Rack::Multipart::Parser::PARSER_BYTESIZE_LIMIT = T.let(T.unsafe(nil), Integer)
+
+# pkg:gem/rack#lib/rack/multipart/parser.rb:595
 Rack::Multipart::Parser::REENCODE_DUMMY_ENCODINGS = T.let(T.unsafe(nil), Hash)
 
 # pkg:gem/rack#lib/rack/multipart/parser.rb:56
@@ -4093,7 +4102,7 @@ Rack::SET_COOKIE = T.let(T.unsafe(nil), String)
 #
 # The `x-accel-mapping` header should specify the location on the file system,
 # followed by an equals sign (=), followed name of the private URL pattern
-# that it maps to. The middleware performs a simple substitution on the
+# that it maps to. The middleware performs a case-insensitive substitution on the
 # resulting path.
 #
 # To enable `x-accel-redirect`, you must configure the middleware explicitly:
@@ -4487,24 +4496,24 @@ class Rack::Static
 
   # @return [Boolean]
   #
-  # pkg:gem/rack#lib/rack/static.rb:109
+  # pkg:gem/rack#lib/rack/static.rb:112
   def add_index_root?(path); end
 
   # Convert HTTP header rules to HTTP headers
   #
-  # pkg:gem/rack#lib/rack/static.rb:167
+  # pkg:gem/rack#lib/rack/static.rb:170
   def applicable_rules(path); end
 
-  # pkg:gem/rack#lib/rack/static.rb:125
+  # pkg:gem/rack#lib/rack/static.rb:128
   def call(env); end
 
-  # pkg:gem/rack#lib/rack/static.rb:121
+  # pkg:gem/rack#lib/rack/static.rb:124
   def can_serve(path); end
 
-  # pkg:gem/rack#lib/rack/static.rb:113
+  # pkg:gem/rack#lib/rack/static.rb:116
   def overwrite_file_path(path); end
 
-  # pkg:gem/rack#lib/rack/static.rb:117
+  # pkg:gem/rack#lib/rack/static.rb:120
   def route_file(path); end
 end
 
@@ -4577,7 +4586,7 @@ module Rack::Utils
   # matches (same specificity and quality), the value returned
   # is arbitrary.
   #
-  # pkg:gem/rack#lib/rack/utils.rb:167
+  # pkg:gem/rack#lib/rack/utils.rb:227
   def best_q_match(q_value_header, available_mimes); end
 
   # pkg:gem/rack#lib/rack/utils.rb:120
@@ -4590,10 +4599,10 @@ module Rack::Utils
   # Returns nil if the header is missing or syntactically invalid.
   # Returns an empty array if none of the ranges are satisfiable.
   #
-  # pkg:gem/rack#lib/rack/utils.rb:402
-  def byte_ranges(env, size); end
+  # pkg:gem/rack#lib/rack/utils.rb:492
+  def byte_ranges(env, size, max_ranges: T.unsafe(nil)); end
 
-  # pkg:gem/rack#lib/rack/utils.rb:600
+  # pkg:gem/rack#lib/rack/utils.rb:692
   def clean_path_info(path_info); end
 
   # :nocov:
@@ -4601,7 +4610,7 @@ module Rack::Utils
   # pkg:gem/rack#lib/rack/utils.rb:91
   def clock_time; end
 
-  # pkg:gem/rack#lib/rack/utils.rb:360
+  # pkg:gem/rack#lib/rack/utils.rb:450
   def delete_cookie_header!(headers, key, value = T.unsafe(nil)); end
 
   # :call-seq:
@@ -4618,7 +4627,7 @@ module Rack::Utils
   #   delete_set_cookie_header("myname")
   #   # => "myname=; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT"
   #
-  # pkg:gem/rack#lib/rack/utils.rb:356
+  # pkg:gem/rack#lib/rack/utils.rb:446
   def delete_set_cookie_header(key, value = T.unsafe(nil)); end
 
   # :call-seq:
@@ -4639,7 +4648,7 @@ module Rack::Utils
   #   header
   #   # => ["mycookie=; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT"]
   #
-  # pkg:gem/rack#lib/rack/utils.rb:384
+  # pkg:gem/rack#lib/rack/utils.rb:474
   def delete_set_cookie_header!(header, key, value = T.unsafe(nil)); end
 
   # URI escapes. (CGI style space to +)
@@ -4649,7 +4658,7 @@ module Rack::Utils
 
   # Escape ampersands, brackets and quotes to their HTML/XML entities.
   #
-  # pkg:gem/rack#lib/rack/utils.rb:183
+  # pkg:gem/rack#lib/rack/utils.rb:243
   def escape_html(_arg0); end
 
   # Like URI escaping, but with %20 instead of +. Strictly speaking this is
@@ -4658,11 +4667,11 @@ module Rack::Utils
   # pkg:gem/rack#lib/rack/utils.rb:46
   def escape_path(s); end
 
-  # pkg:gem/rack#lib/rack/utils.rb:149
+  # pkg:gem/rack#lib/rack/utils.rb:152
   def forwarded_values(forwarded_header); end
 
-  # pkg:gem/rack#lib/rack/utils.rb:406
-  def get_byte_ranges(http_range, size); end
+  # pkg:gem/rack#lib/rack/utils.rb:496
+  def get_byte_ranges(http_range, size, max_ranges: T.unsafe(nil)); end
 
   # :call-seq:
   #   parse_cookies(env) -> hash
@@ -4673,7 +4682,7 @@ module Rack::Utils
   #   parse_cookies({'HTTP_COOKIE' => 'myname=myvalue'})
   #   # => {'myname' => 'myvalue'}
   #
-  # pkg:gem/rack#lib/rack/utils.rb:257
+  # pkg:gem/rack#lib/rack/utils.rb:347
   def parse_cookies(env); end
 
   # :call-seq:
@@ -4686,7 +4695,7 @@ module Rack::Utils
   #   parse_cookies_header('myname=myvalue; max-age=0')
   #   # => {"myname"=>"myvalue", "max-age"=>"0"}
   #
-  # pkg:gem/rack#lib/rack/utils.rb:238
+  # pkg:gem/rack#lib/rack/utils.rb:328
   def parse_cookies_header(value); end
 
   # pkg:gem/rack#lib/rack/utils.rb:106
@@ -4698,15 +4707,34 @@ module Rack::Utils
   # pkg:gem/rack#lib/rack/utils.rb:138
   def q_values(q_value_header); end
 
-  # pkg:gem/rack#lib/rack/utils.rb:395
+  # pkg:gem/rack#lib/rack/utils.rb:485
   def rfc2822(time); end
 
   # :nocov:
   #
-  # pkg:gem/rack#lib/rack/utils.rb:448
+  # pkg:gem/rack#lib/rack/utils.rb:540
   def secure_compare(a, b); end
 
-  # pkg:gem/rack#lib/rack/utils.rb:196
+  # Given an array of available encoding strings, and an array of
+  # acceptable encodings for a request, where each element of the
+  # acceptable encodings array is an array where the first element
+  # is an encoding name and the second element is the numeric
+  # priority for the encoding, return the available encoding with
+  # the highest priority.
+  #
+  # The accept_encoding argument is typically generated by calling
+  # Request#accept_encoding.
+  #
+  # Example:
+  #
+  #   select_best_encoding(%w(compress gzip identity),
+  #                        [["compress", 0.5], ["gzip", 1.0]])
+  #   # => "gzip"
+  #
+  # To reduce denial of service potential, only the first 16
+  # acceptable encodings are considered.
+  #
+  # pkg:gem/rack#lib/rack/utils.rb:274
   def select_best_encoding(available_encodings, accept_encoding); end
 
   # :call-seq:
@@ -4729,7 +4757,7 @@ module Rack::Utils
   #   set_cookie_header("myname", {value: "myvalue", max_age: 10})
   #   # => "myname=myvalue; max-age=10"
   #
-  # pkg:gem/rack#lib/rack/utils.rb:286
+  # pkg:gem/rack#lib/rack/utils.rb:376
   def set_cookie_header(key, value); end
 
   # :call-seq:
@@ -4741,10 +4769,10 @@ module Rack::Utils
   # If the headers already contains a +set-cookie+ key, it will be converted
   # to an +Array+ if not already, and appended to.
   #
-  # pkg:gem/rack#lib/rack/utils.rb:330
+  # pkg:gem/rack#lib/rack/utils.rb:420
   def set_cookie_header!(headers, key, value); end
 
-  # pkg:gem/rack#lib/rack/utils.rb:582
+  # pkg:gem/rack#lib/rack/utils.rb:674
   def status_code(status); end
 
   # Unescapes a URI escaped string with +encoding+. +encoding+ will be the
@@ -4759,7 +4787,7 @@ module Rack::Utils
   # pkg:gem/rack#lib/rack/utils.rb:52
   def unescape_path(s); end
 
-  # pkg:gem/rack#lib/rack/utils.rb:617
+  # pkg:gem/rack#lib/rack/utils.rb:709
   def valid_path?(path); end
 
   class << self
@@ -4768,7 +4796,7 @@ module Rack::Utils
     # matches (same specificity and quality), the value returned
     # is arbitrary.
     #
-    # pkg:gem/rack#lib/rack/utils.rb:167
+    # pkg:gem/rack#lib/rack/utils.rb:227
     def best_q_match(q_value_header, available_mimes); end
 
     # pkg:gem/rack#lib/rack/utils.rb:120
@@ -4781,10 +4809,10 @@ module Rack::Utils
     # Returns nil if the header is missing or syntactically invalid.
     # Returns an empty array if none of the ranges are satisfiable.
     #
-    # pkg:gem/rack#lib/rack/utils.rb:402
-    def byte_ranges(env, size); end
+    # pkg:gem/rack#lib/rack/utils.rb:492
+    def byte_ranges(env, size, max_ranges: T.unsafe(nil)); end
 
-    # pkg:gem/rack#lib/rack/utils.rb:600
+    # pkg:gem/rack#lib/rack/utils.rb:692
     def clean_path_info(path_info); end
 
     # pkg:gem/rack#lib/rack/utils.rb:91
@@ -4802,7 +4830,7 @@ module Rack::Utils
     # pkg:gem/rack#lib/rack/utils.rb:30
     def default_query_parser=(_arg0); end
 
-    # pkg:gem/rack#lib/rack/utils.rb:360
+    # pkg:gem/rack#lib/rack/utils.rb:450
     def delete_cookie_header!(headers, key, value = T.unsafe(nil)); end
 
     # :call-seq:
@@ -4819,7 +4847,7 @@ module Rack::Utils
     #   delete_set_cookie_header("myname")
     #   # => "myname=; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT"
     #
-    # pkg:gem/rack#lib/rack/utils.rb:356
+    # pkg:gem/rack#lib/rack/utils.rb:446
     def delete_set_cookie_header(key, value = T.unsafe(nil)); end
 
     # :call-seq:
@@ -4840,7 +4868,7 @@ module Rack::Utils
     #   header
     #   # => ["mycookie=; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT"]
     #
-    # pkg:gem/rack#lib/rack/utils.rb:384
+    # pkg:gem/rack#lib/rack/utils.rb:474
     def delete_set_cookie_header!(header, key, value = T.unsafe(nil)); end
 
     # URI escapes. (CGI style space to +)
@@ -4848,7 +4876,7 @@ module Rack::Utils
     # pkg:gem/rack#lib/rack/utils.rb:40
     def escape(s); end
 
-    # pkg:gem/rack#lib/rack/utils.rb:183
+    # pkg:gem/rack#lib/rack/utils.rb:243
     def escape_html(_arg0); end
 
     # Like URI escaping, but with %20 instead of +. Strictly speaking this is
@@ -4857,11 +4885,11 @@ module Rack::Utils
     # pkg:gem/rack#lib/rack/utils.rb:46
     def escape_path(s); end
 
-    # pkg:gem/rack#lib/rack/utils.rb:149
+    # pkg:gem/rack#lib/rack/utils.rb:152
     def forwarded_values(forwarded_header); end
 
-    # pkg:gem/rack#lib/rack/utils.rb:406
-    def get_byte_ranges(http_range, size); end
+    # pkg:gem/rack#lib/rack/utils.rb:496
+    def get_byte_ranges(http_range, size, max_ranges: T.unsafe(nil)); end
 
     # Returns the value of attribute multipart_file_limit.
     #
@@ -4916,7 +4944,7 @@ module Rack::Utils
     #   parse_cookies({'HTTP_COOKIE' => 'myname=myvalue'})
     #   # => {'myname' => 'myvalue'}
     #
-    # pkg:gem/rack#lib/rack/utils.rb:257
+    # pkg:gem/rack#lib/rack/utils.rb:347
     def parse_cookies(env); end
 
     # :call-seq:
@@ -4929,7 +4957,7 @@ module Rack::Utils
     #   parse_cookies_header('myname=myvalue; max-age=0')
     #   # => {"myname"=>"myvalue", "max-age"=>"0"}
     #
-    # pkg:gem/rack#lib/rack/utils.rb:238
+    # pkg:gem/rack#lib/rack/utils.rb:328
     def parse_cookies_header(value); end
 
     # pkg:gem/rack#lib/rack/utils.rb:106
@@ -4941,13 +4969,32 @@ module Rack::Utils
     # pkg:gem/rack#lib/rack/utils.rb:138
     def q_values(q_value_header); end
 
-    # pkg:gem/rack#lib/rack/utils.rb:395
+    # pkg:gem/rack#lib/rack/utils.rb:485
     def rfc2822(time); end
 
-    # pkg:gem/rack#lib/rack/utils.rb:448
+    # pkg:gem/rack#lib/rack/utils.rb:540
     def secure_compare(a, b); end
 
-    # pkg:gem/rack#lib/rack/utils.rb:196
+    # Given an array of available encoding strings, and an array of
+    # acceptable encodings for a request, where each element of the
+    # acceptable encodings array is an array where the first element
+    # is an encoding name and the second element is the numeric
+    # priority for the encoding, return the available encoding with
+    # the highest priority.
+    #
+    # The accept_encoding argument is typically generated by calling
+    # Request#accept_encoding.
+    #
+    # Example:
+    #
+    #   select_best_encoding(%w(compress gzip identity),
+    #                        [["compress", 0.5], ["gzip", 1.0]])
+    #   # => "gzip"
+    #
+    # To reduce denial of service potential, only the first 16
+    # acceptable encodings are considered.
+    #
+    # pkg:gem/rack#lib/rack/utils.rb:274
     def select_best_encoding(available_encodings, accept_encoding); end
 
     # :call-seq:
@@ -4970,7 +5017,7 @@ module Rack::Utils
     #   set_cookie_header("myname", {value: "myvalue", max_age: 10})
     #   # => "myname=myvalue; max-age=10"
     #
-    # pkg:gem/rack#lib/rack/utils.rb:286
+    # pkg:gem/rack#lib/rack/utils.rb:376
     def set_cookie_header(key, value); end
 
     # :call-seq:
@@ -4982,10 +5029,10 @@ module Rack::Utils
     # If the headers already contains a +set-cookie+ key, it will be converted
     # to an +Array+ if not already, and appended to.
     #
-    # pkg:gem/rack#lib/rack/utils.rb:330
+    # pkg:gem/rack#lib/rack/utils.rb:420
     def set_cookie_header!(headers, key, value); end
 
-    # pkg:gem/rack#lib/rack/utils.rb:582
+    # pkg:gem/rack#lib/rack/utils.rb:674
     def status_code(status); end
 
     # Unescapes a URI escaped string with +encoding+. +encoding+ will be the
@@ -5002,10 +5049,13 @@ module Rack::Utils
 
     # @return [Boolean]
     #
-    # pkg:gem/rack#lib/rack/utils.rb:617
+    # pkg:gem/rack#lib/rack/utils.rb:709
     def valid_path?(path); end
   end
 end
+
+# pkg:gem/rack#lib/rack/utils.rb:149
+Rack::Utils::ALLOWED_FORWARED_PARAMS = T.let(T.unsafe(nil), Hash)
 
 # pkg:gem/rack#lib/rack/utils.rb:25
 Rack::Utils::COMMON_SEP = T.let(T.unsafe(nil), Hash)
@@ -5016,30 +5066,30 @@ Rack::Utils::COMMON_SEP = T.let(T.unsafe(nil), Hash)
 # would be the request environment. The second of which would be the rack
 # application that the request would be forwarded to.
 #
-# pkg:gem/rack#lib/rack/utils.rb:471
+# pkg:gem/rack#lib/rack/utils.rb:563
 class Rack::Utils::Context
   # @return [Context] a new instance of Context
   #
-  # pkg:gem/rack#lib/rack/utils.rb:474
+  # pkg:gem/rack#lib/rack/utils.rb:566
   def initialize(app_f, app_r); end
 
   # Returns the value of attribute app.
   #
-  # pkg:gem/rack#lib/rack/utils.rb:472
+  # pkg:gem/rack#lib/rack/utils.rb:564
   def app; end
 
-  # pkg:gem/rack#lib/rack/utils.rb:479
+  # pkg:gem/rack#lib/rack/utils.rb:571
   def call(env); end
 
-  # pkg:gem/rack#lib/rack/utils.rb:487
+  # pkg:gem/rack#lib/rack/utils.rb:579
   def context(env, app = T.unsafe(nil)); end
 
   # Returns the value of attribute for.
   #
-  # pkg:gem/rack#lib/rack/utils.rb:472
+  # pkg:gem/rack#lib/rack/utils.rb:564
   def for; end
 
-  # pkg:gem/rack#lib/rack/utils.rb:483
+  # pkg:gem/rack#lib/rack/utils.rb:575
   def recontext(app); end
 end
 
@@ -5053,7 +5103,7 @@ Rack::Utils::DEFAULT_SEP = T.let(T.unsafe(nil), Regexp)
 #     .reject {|v| v['Description'] == 'Unassigned' or v['Description'].include? '(' } \
 #     .map {|v| %Q/#{v['Value']} => '#{v['Description']}'/ }.join(','+?\n)"
 #
-# pkg:gem/rack#lib/rack/utils.rb:498
+# pkg:gem/rack#lib/rack/utils.rb:590
 Rack::Utils::HTTP_STATUS_CODES = T.let(T.unsafe(nil), Hash)
 
 # pkg:gem/rack#lib/rack/utils.rb:22
@@ -5062,16 +5112,16 @@ Rack::Utils::InvalidParameterError = Rack::QueryParser::InvalidParameterError
 # pkg:gem/rack#lib/rack/utils.rb:26
 Rack::Utils::KeySpaceConstrainedParams = Rack::QueryParser::Params
 
-# pkg:gem/rack#lib/rack/utils.rb:615
+# pkg:gem/rack#lib/rack/utils.rb:707
 Rack::Utils::NULL_BYTE = T.let(T.unsafe(nil), String)
 
-# pkg:gem/rack#lib/rack/utils.rb:568
+# pkg:gem/rack#lib/rack/utils.rb:660
 Rack::Utils::OBSOLETE_SYMBOLS_TO_STATUS_CODES = T.let(T.unsafe(nil), Hash)
 
-# pkg:gem/rack#lib/rack/utils.rb:576
+# pkg:gem/rack#lib/rack/utils.rb:668
 Rack::Utils::OBSOLETE_SYMBOL_MAPPINGS = T.let(T.unsafe(nil), Hash)
 
-# pkg:gem/rack#lib/rack/utils.rb:598
+# pkg:gem/rack#lib/rack/utils.rb:690
 Rack::Utils::PATH_SEPS = T.let(T.unsafe(nil), Regexp)
 
 # pkg:gem/rack#lib/rack/utils.rb:21
@@ -5082,10 +5132,10 @@ Rack::Utils::ParamsTooDeepError = Rack::QueryParser::QueryLimitError
 
 # Responses with HTTP status codes that should not have an entity body
 #
-# pkg:gem/rack#lib/rack/utils.rb:562
+# pkg:gem/rack#lib/rack/utils.rb:654
 Rack::Utils::STATUS_WITH_NO_ENTITY_BODY = T.let(T.unsafe(nil), Hash)
 
-# pkg:gem/rack#lib/rack/utils.rb:564
+# pkg:gem/rack#lib/rack/utils.rb:656
 Rack::Utils::SYMBOL_TO_STATUS_CODE = T.let(T.unsafe(nil), Hash)
 
 # pkg:gem/rack#lib/rack/utils.rb:27
@@ -5094,7 +5144,7 @@ Rack::Utils::URI_PARSER = T.let(T.unsafe(nil), URI::RFC2396_Parser)
 # A valid cookie key according to RFC6265 and RFC2616.
 # A <cookie-name> can be any US-ASCII characters, except control characters, spaces, or tabs. It also must not contain a separator character like the following: ( ) < > @ , ; : \ " / [ ] ? = { }.
 #
-# pkg:gem/rack#lib/rack/utils.rb:263
+# pkg:gem/rack#lib/rack/utils.rb:353
 Rack::Utils::VALID_COOKIE_KEY = T.let(T.unsafe(nil), Regexp)
 
 # pkg:gem/rack#lib/rack/version.rb:9
