@@ -169,10 +169,14 @@ onMounted(async () => {
         </div>
       </BaseModal>
 
-      <ExpenseSplit v-if="event" :event="event" :total="total" />
+      <ExpenseSplit
+        v-if="event && expenses.length > 0"
+        :event="event"
+        :total="total"
+      />
 
       <SettlementSection
-        v-if="event"
+        v-if="event && expenses.length > 0"
         :event="event"
         :current-user-id="currentUserId"
       />
