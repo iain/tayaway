@@ -5,16 +5,24 @@ import {
   XCircleIcon,
   UserGroupIcon,
 } from '@heroicons/vue/24/solid'
-import { UserIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline'
+import {
+  UserIcon,
+  CalendarDaysIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from '@heroicons/vue/24/outline'
 import { useRsvpsStore } from '@/stores/rsvps'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import type { HydratedEvent } from '@/composables/useHydratedEvent'
+import { useCalendar } from '@/composables/useCalendar'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import TextButton from '@/components/common/TextButton.vue'
+import IconButton from '@/components/common/IconButton.vue'
+import CalendarMonth from '@/components/calendar/CalendarMonth.vue'
 
 const props = defineProps<{
   event: HydratedEvent
@@ -23,11 +31,17 @@ const props = defineProps<{
 
 const rsvpsStore = useRsvpsStore()
 const pool = useObjectPoolStore()
+const { formatDateDisplay } = useCalendar()
 
 const showPartialPicker = ref(false)
 const showExpensesDialog = ref(false)
-const partialStartDate = ref('')
-const partialEndDate = ref('')
+const partialStartDate = ref<string | null>(null)
+const partialEndDate = ref<string | null>(null)
+const hoverDate = ref<string | null>(null)
+
+// Calendar navigation — start on the month of the event start date
+const calYear = ref(new Date().getFullYear())
+const calMonth = ref(new Date().getMonth())
 
 const currentUserRsvp = computed(() => {
   if (!props.currentUserId) return undefined
@@ -76,12 +90,73 @@ async function handleDecline(): Promise<void> {
 }
 
 function openPartialPicker(): void {
-  partialStartDate.value = props.event.startDate ?? ''
-  partialEndDate.value = props.event.endDate ?? ''
+  const rsvp = currentUserRsvp.value
+  partialStartDate.value = rsvp?.startDate ?? null
+  partialEndDate.value = rsvp?.endDate ?? null
+  hoverDate.value = null
+
+  // Navigate to the month of the event start
+  if (props.event.startDate) {
+    const [y, m] = props.event.startDate.split('-').map(Number) as [
+      number,
+      number,
+    ]
+    calYear.value = y
+    calMonth.value = m - 1
+  }
   showPartialPicker.value = true
 }
 
+function handleCalendarSelect(dateString: string): void {
+  if (!partialStartDate.value || partialEndDate.value) {
+    partialStartDate.value = dateString
+    partialEndDate.value = null
+  } else {
+    let start = partialStartDate.value
+    let end = dateString
+    if (dateString < partialStartDate.value) {
+      start = dateString
+      end = partialStartDate.value
+    }
+    partialStartDate.value = start
+    partialEndDate.value = end
+  }
+}
+
+function navigatePrev(): void {
+  if (calMonth.value === 0) {
+    calMonth.value = 11
+    calYear.value--
+  } else {
+    calMonth.value--
+  }
+}
+
+function navigateNext(): void {
+  if (calMonth.value === 11) {
+    calMonth.value = 0
+    calYear.value++
+  } else {
+    calMonth.value++
+  }
+}
+
+const partialSelectionText = computed(() => {
+  if (partialStartDate.value && partialEndDate.value) {
+    return `${formatDateDisplay(partialStartDate.value)} — ${formatDateDisplay(partialEndDate.value)}`
+  }
+  if (partialStartDate.value) {
+    return `${formatDateDisplay(partialStartDate.value)} — pick end date`
+  }
+  return 'Pick your first day'
+})
+
+const canSavePartial = computed(
+  () => !!partialStartDate.value && !!partialEndDate.value
+)
+
 async function handleSavePartialDates(): Promise<void> {
+  if (!partialStartDate.value || !partialEndDate.value) return
   try {
     await rsvpsStore.submitRsvp(
       props.event.id,
@@ -171,48 +246,64 @@ async function handleClearPartialDates(): Promise<void> {
           {{ currentUserRsvp.startDate ? 'Change dates' : 'Set partial dates' }}
         </TextButton>
 
-        <!-- Partial date picker -->
-        <div
-          v-if="showPartialPicker"
-          class="mt-3 rounded-md border border-gray-200 p-3 dark:border-stone-600"
+        <!-- Partial date picker modal -->
+        <BaseModal
+          :open="showPartialPicker"
+          title="Your attendance dates"
+          size="sm"
+          @close="showPartialPicker = false"
         >
-          <p class="mb-2 text-sm font-medium text-gray-700 dark:text-stone-300">
-            Your attendance dates
-          </p>
-          <div class="flex items-center gap-2">
-            <input
-              v-model="partialStartDate"
-              type="date"
-              :min="event.startDate ?? undefined"
-              :max="event.endDate ?? undefined"
-              class="rounded-md bg-gray-100 px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10"
-            />
-            <span class="text-gray-500 dark:text-stone-400">to</span>
-            <input
-              v-model="partialEndDate"
-              type="date"
-              :min="event.startDate ?? undefined"
-              :max="event.endDate ?? undefined"
-              class="rounded-md bg-gray-100 px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10"
-            />
+          <div class="mb-4 text-sm text-gray-500 dark:text-stone-400">
+            {{ partialSelectionText }}
           </div>
-          <div class="mt-2 flex gap-2">
-            <AppButton size="sm" @click="handleSavePartialDates">
-              Save
-            </AppButton>
-            <AppButton
-              v-if="currentUserRsvp.startDate"
-              variant="secondary"
-              size="sm"
-              @click="handleClearPartialDates"
-            >
-              Full Event
-            </AppButton>
-            <TextButton variant="secondary" @click="showPartialPicker = false">
-              Cancel
-            </TextButton>
+
+          <div class="mb-4 flex items-center justify-between">
+            <IconButton label="Previous month" @click="navigatePrev">
+              <ChevronLeftIcon class="size-5" />
+            </IconButton>
+            <IconButton label="Next month" @click="navigateNext">
+              <ChevronRightIcon class="size-5" />
+            </IconButton>
           </div>
-        </div>
+
+          <CalendarMonth
+            :year="calYear"
+            :month="calMonth"
+            :selected-start="partialStartDate"
+            :selected-end="partialEndDate"
+            :hover-date="hoverDate"
+            :min-date="event.startDate ?? undefined"
+            :max-date="event.endDate ?? undefined"
+            @select="handleCalendarSelect"
+            @hover="hoverDate = $event"
+          />
+
+          <div class="mt-6 flex items-center justify-between">
+            <div>
+              <TextButton
+                v-if="currentUserRsvp?.startDate"
+                variant="secondary"
+                @click="handleClearPartialDates"
+              >
+                Attend full event
+              </TextButton>
+            </div>
+            <div class="flex items-center gap-3">
+              <TextButton
+                variant="secondary"
+                @click="showPartialPicker = false"
+              >
+                Cancel
+              </TextButton>
+              <AppButton
+                :disabled="!canSavePartial"
+                @click="handleSavePartialDates"
+              >
+                Save
+              </AppButton>
+            </div>
+          </div>
+        </BaseModal>
       </div>
     </div>
 
