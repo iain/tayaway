@@ -172,9 +172,7 @@ class ApiClient {
 
       if (!options?.silent) {
         const notificationsStore = useNotificationsStore()
-        notificationsStore.showError(
-          serverMessage || getErrorMessage(response.status)
-        )
+        notificationsStore.showError(getErrorMessage(response.status))
       }
       throw error
     }
