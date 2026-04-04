@@ -42,6 +42,12 @@ const hasExpenses = computed(() => {
   return pool.getAll('expense').some((e) => e.eventId === eventId.value)
 })
 
+const mapsUrl = computed(() => {
+  if (event.value?.latitude == null || event.value?.longitude == null)
+    return null
+  return `https://maps.google.com/?q=${event.value.latitude},${event.value.longitude}`
+})
+
 type EditField = 'name' | 'description' | 'dates' | 'location'
 const editField = ref<EditField | null>(null)
 const datesBlockedOpen = ref(false)
@@ -437,15 +443,20 @@ function handleDownloadIcs(): void {
         </div>
       </div>
       <div v-else class="group mt-4 flex items-center gap-0.5">
-        <div
+        <component
+          :is="mapsUrl ? 'a' : 'div'"
           v-if="event.locationName"
+          :href="mapsUrl ?? undefined"
+          :target="mapsUrl ? '_blank' : undefined"
+          :rel="mapsUrl ? 'noopener noreferrer' : undefined"
           class="flex items-center gap-2 text-gray-500 dark:text-stone-400"
+          :class="mapsUrl && 'hover:text-amber-700 dark:hover:text-amber-400'"
         >
           <MapPinIcon
             class="size-5 shrink-0 text-amber-600 dark:text-amber-400"
           />
           <span>{{ event.locationName }}</span>
-        </div>
+        </component>
         <div
           v-else-if="isOwner"
           class="flex items-center gap-2 text-gray-400 dark:text-stone-500"
@@ -481,11 +492,18 @@ function handleDownloadIcs(): void {
       class="mt-6 lg:mt-0 lg:w-1/2 lg:shrink-0"
     >
       <div class="lg:sticky lg:top-4">
-        <StaticMap
-          :latitude="event.latitude"
-          :longitude="event.longitude"
-          class="h-48 rounded-xl shadow-sm sm:h-60 lg:h-72"
-        />
+        <a
+          :href="mapsUrl!"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="block"
+        >
+          <StaticMap
+            :latitude="event.latitude"
+            :longitude="event.longitude"
+            class="h-48 rounded-xl shadow-sm transition-shadow hover:shadow-md sm:h-60 lg:h-72"
+          />
+        </a>
       </div>
     </div>
 
