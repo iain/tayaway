@@ -222,7 +222,7 @@ function handleDownloadIcs(): void {
     Event not found
   </div>
 
-  <div v-else class="flex lg:gap-8">
+  <div v-else class="flex flex-col lg:flex-row lg:gap-8">
     <!-- Left column: event details -->
     <div class="min-w-0 flex-1">
       <!-- Name -->
