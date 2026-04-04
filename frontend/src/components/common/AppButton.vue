@@ -28,14 +28,14 @@ defineEmits<{
 
 const variantClasses: Record<string, string> = {
   primary:
-    'bg-rose-600 text-white hover:bg-rose-500 focus-visible:outline-rose-600',
+    'bg-rose-600 text-white hover:bg-rose-500 focus-visible:outline-rose-500',
   secondary:
     'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600',
   cyan: 'bg-cyan-600 text-white hover:bg-cyan-700 dark:bg-cyan-700 dark:hover:bg-cyan-600',
   amber:
     'bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600',
   danger:
-    'bg-red-600 text-white hover:bg-red-500 focus-visible:outline-red-600',
+    'bg-red-600 text-white hover:bg-red-500 focus-visible:outline-rose-500',
 }
 
 const sizeClasses: Record<string, string> = {
