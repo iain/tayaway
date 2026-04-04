@@ -25,7 +25,7 @@ A real-time collaborative event planning app. Create events, propose date ranges
 
 | Layer     | Technologies                                                 |
 | --------- | ------------------------------------------------------------ |
-| Frontend  | Vue 3.5, TypeScript 5.9, Vite 7, Tailwind CSS 4, Pinia 3     |
+| Frontend  | Vue 3.5, TypeScript 6, Vite 7, Tailwind CSS 4, Pinia 3       |
 | Backend   | Ruby 4.0, Roda 3, Sequel 5, Sorbet                           |
 | Database  | PostgreSQL 18 (LISTEN/NOTIFY for real-time)                  |
 | WebSocket | roda-websockets, Falcon                                      |
@@ -95,66 +95,4 @@ Users belong to workspaces through memberships (owner/admin/member roles). All d
 
 ### Deployment
 
-Production deploys via Capistrano to localhost over SSH. Falcon runs as a systemd service behind Nginx, which serves static frontend assets and proxies API/WebSocket requests.
-
-## Claude Code Agents
-
-Custom agents in `.claude/agents/` automate development workflows. They form a pipeline for going from GitHub issues to merged PRs:
-
-```
-@fix-issues  →  @review-prs  →  @merge-prs
- (fix bugs)     (audit PRs)     (ship it)
-```
-
-### Issue fixing
-
-**`@bugfix`** — Fix a single GitHub issue in an isolated worktree.
-
-```
-@bugfix fix #42
-```
-
-**`@fix-issues`** — Batch-fix all open issues matching a label filter. Spawns parallel `bugfix` agents.
-
-```
-@fix-issues fix all issues with label reliability
-@fix-issues fix all critical backend bugs, mark PRs ready
-```
-
-### Review
-
-**`@review-pr`** — Deep review of a single PR across 7 dimensions. Leaves line-level GitHub comments and sets labels.
-
-```
-@review-pr review PR #42
-```
-
-**`@review-prs`** — Batch-review all open PRs matching criteria. Spawns parallel `review-pr` agents.
-
-```
-@review-prs review all draft PRs
-```
-
-**`/review`** — Local review of changes on the current branch (no GitHub interaction). Run before pushing.
-
-### Merge
-
-**`@merge-prs`** — Merge all approved PRs sequentially, handling conflicts by rebasing.
-
-```
-@merge-prs merge all PRs labeled "ready to merge"
-```
-
-### Other
-
-| Command   | Purpose                                              |
-| --------- | ---------------------------------------------------- |
-| `/fix`    | Run tests, fix all failures, repeat until clean      |
-| `/commit` | Run tests then commit (prompts if changes are mixed) |
-| `/pr`     | Create a PR from the current branch                  |
-| `/deploy` | Deploy to production (checks for clean tree first)   |
-| `@e2e`    | Write Playwright e2e tests for a feature             |
-
-## License
-
-Private — all rights reserved.
+Production deploys via Capistrano over SSH. Falcon runs as a systemd service behind Nginx, which serves static frontend assets and proxies API/WebSocket requests.
