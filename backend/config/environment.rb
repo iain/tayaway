@@ -20,7 +20,7 @@ GIT_SHA = T.let(
   String,
 )
 
-Dotenv.overload("#{APP_DIR}/.env.#{APP_ENV}") unless APP_ENV == "production"
+Dotenv.load("#{APP_DIR}/.env.#{APP_ENV}") unless APP_ENV == "production"
 
 require "base64"
 APP_SECRET = Base64.strict_decode64(ENV.fetch("APP_SECRET"))
