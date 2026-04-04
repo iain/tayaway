@@ -593,16 +593,6 @@ function handleDownloadIcs(): void {
         <ArrowDownTrayIcon class="size-5" />
         Add to calendar
       </TextButton>
-
-      <div
-        v-if="isOwner"
-        class="mt-10 border-t border-gray-200 pt-6 dark:border-stone-700"
-      >
-        <TextButton variant="danger" @click="showDeleteConfirm = true">
-          <TrashIcon class="size-4" />
-          Delete event
-        </TextButton>
-      </div>
     </div>
 
     <!-- Map -->
@@ -625,7 +615,20 @@ function handleDownloadIcs(): void {
         </a>
       </div>
     </div>
+  </div>
 
+  <!-- Delete (owner only, below the two-column layout) -->
+  <div
+    v-if="event && isOwner"
+    class="mt-12 border-t border-gray-200 pt-6 dark:border-stone-700"
+  >
+    <TextButton variant="danger" @click="showDeleteConfirm = true">
+      <TrashIcon class="size-4" />
+      Delete event
+    </TextButton>
+  </div>
+
+  <template v-if="event">
     <BaseModal
       :open="datesBlockedOpen"
       title="Can't change dates"
@@ -711,5 +714,5 @@ function handleDownloadIcs(): void {
         </div>
       </template>
     </BaseModal>
-  </div>
+  </template>
 </template>
