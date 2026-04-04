@@ -559,7 +559,10 @@ function handleDownloadIcs(): void {
           :target="mapsUrl ? '_blank' : undefined"
           :rel="mapsUrl ? 'noopener noreferrer' : undefined"
           class="flex items-center gap-2 text-gray-500 dark:text-stone-400"
-          :class="mapsUrl && 'hover:text-amber-700 dark:hover:text-amber-400'"
+          :class="
+            mapsUrl &&
+            'rounded hover:text-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:hover:text-amber-400'
+          "
         >
           <MapPinIcon
             class="size-5 shrink-0 text-amber-600 dark:text-amber-400"
