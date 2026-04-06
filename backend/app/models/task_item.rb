@@ -1,20 +1,29 @@
-# typed: true
 # frozen_string_literal: true
 
 # Read-only TaskItem model.
-class TaskItem < T::Struct
-  extend T::Sig
+class TaskItem
+  attr_reader :id, :task_list_id, :user_id, :content, :completed_at, :position, :created_at, :updated_at
 
-  const :id, UUID
-  const :task_list_id, UUID
-  const :user_id, T.nilable(UUID)
-  const :content, String
-  const :completed_at, T.nilable(Time)
-  const :position, Float
-  const :created_at, Time
-  const :updated_at, Time
+  def initialize(
+    id:,
+    task_list_id:,
+    user_id:,
+    content:,
+    completed_at:,
+    position:,
+    created_at:,
+    updated_at:
+  )
+    @id = id
+    @task_list_id = task_list_id
+    @user_id = user_id
+    @content = content
+    @completed_at = completed_at
+    @position = position
+    @created_at = created_at
+    @updated_at = updated_at
+  end
 
-  sig { returns(T::Hash[Symbol, T.untyped]) }
   def to_api_hash
     {
       id: id.to_s,
@@ -30,21 +39,17 @@ class TaskItem < T::Struct
   end
 
   class << self
-    extend T::Sig
     include Result::Methods
     include Findable
 
-    sig { params(id: T.any(String, UUID)).returns(T.nilable(TaskItem)) }
     def find(id)
       dataset.where(id: id).first
     end
 
-    sig { params(task_list_id: T.any(String, UUID)).returns(T::Array[TaskItem]) }
     def for_task_list(task_list_id)
       dataset.where(task_list_id: task_list_id).order(:position).all
     end
 
-    sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[TaskItem]) }
     def changed_since(workspace_id, since)
       dataset
         .join(:task_lists, id: :task_list_id)
@@ -54,19 +59,16 @@ class TaskItem < T::Struct
         .all
     end
 
-    sig { params(task_list_id: T.any(String, UUID)).returns(Float) }
     def max_position(task_list_id)
       DB[:task_items].where(task_list_id: task_list_id).max(:position).to_f
     end
 
     private
 
-    sig { returns(Sequel::Dataset) }
     def dataset
       DB[:task_items].with_row_proc(method(:from_row))
     end
 
-    sig { params(row: T::Hash[Symbol, T.untyped]).returns(TaskItem) }
     def from_row(row)
       TaskItem.new(
         id: UUID.new(row[:id]),

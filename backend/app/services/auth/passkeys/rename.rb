@@ -1,17 +1,11 @@
-# typed: true
 # frozen_string_literal: true
 
 module Auth
   module Passkeys
     module Rename
       class << self
-        extend T::Sig
         include Result::Methods
 
-        sig do
-          params(user_id: String, passkey_id: String, name: T.nilable(String))
-            .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-        end
         def call(user_id:, passkey_id:, name:)
           validate_name(name)
             .bind { |valid_name| find_passkey(user_id, passkey_id, valid_name) }
@@ -20,40 +14,28 @@ module Auth
 
         private
 
-        sig { params(name: T.nilable(String)).returns(Result[String, ServiceError]) }
         def validate_name(name)
           stripped = name&.strip
           if stripped.nil? || stripped.empty?
-            return T.cast(Failure(ServiceError.validation("Name is required")), Result[String, ServiceError])
+            return Failure(ServiceError.validation("Name is required"))
           end
 
           if stripped.length > CompleteRegistration::MAX_NAME_LENGTH
-            return T.cast(
-              Failure(ServiceError.validation("Name must be #{CompleteRegistration::MAX_NAME_LENGTH} characters or fewer")),
-              Result[String, ServiceError]
-            )
+            return Failure(ServiceError.validation("Name must be #{CompleteRegistration::MAX_NAME_LENGTH} characters or fewer"))
           end
 
-          T.cast(Success(stripped), Result[String, ServiceError])
+          Success(stripped)
         end
 
-        sig do
-          params(user_id: String, passkey_id: String, name: String)
-            .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-        end
         def find_passkey(user_id, passkey_id, name)
           passkey = PasskeyCredential.find(passkey_id)
           if passkey.nil? || passkey.user_id.to_s != user_id
-            return T.cast(
-              Failure(ServiceError.not_found("Passkey not found")),
-              Result[T::Hash[Symbol, T.untyped], ServiceError]
-            )
+            return Failure(ServiceError.not_found("Passkey not found"))
           end
 
-          T.cast(Success({ passkey: passkey, name: name }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+          Success({ passkey: passkey, name: name })
         end
 
-        sig { params(passkey: PasskeyCredential, name: String).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
         def update_name(passkey, name)
           DB[:passkey_credentials].where(id: passkey.id.to_s).update(name: name)
 
@@ -70,13 +52,10 @@ module Auth
           )
 
           APP_LOGGER.info { "[Auth::Passkeys] Passkey #{passkey.id} renamed" }
-          T.cast(Success({ passkey: updated.to_api_hash }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+          Success({ passkey: updated.to_api_hash })
         rescue Sequel::Error => e
           APP_LOGGER.warn { "[Auth::Passkeys] Rename DB error: #{e.class}" }
-          T.cast(
-            Failure(ServiceError.validation("Failed to rename passkey")),
-            Result[T::Hash[Symbol, T.untyped], ServiceError]
-          )
+          Failure(ServiceError.validation("Failed to rename passkey"))
         end
       end
     end

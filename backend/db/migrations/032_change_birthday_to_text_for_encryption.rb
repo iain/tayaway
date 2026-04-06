@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 # Change birthday from DATE to TEXT so it can store encrypted ciphertext.

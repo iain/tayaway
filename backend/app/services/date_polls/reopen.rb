@@ -1,20 +1,11 @@
-# typed: true
 # frozen_string_literal: true
 
 module DatePolls
   # Service to reopen a resolved date poll with a new deadline.
   module Reopen
     class << self
-      extend T::Sig
       include Result::Methods
 
-      sig do
-        params(
-          event_id: T.any(String, UUID),
-          current_user_id: T.any(String, UUID),
-          deadline: T.nilable(String)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def call(event_id:, current_user_id:, deadline:)
         Event.find_result(event_id)
              .bind { |event| Event.authorize_owner(event, current_user_id) }
@@ -26,43 +17,34 @@ module DatePolls
 
       private
 
-      sig { params(event: Event, poll: DatePoll).returns(Result[T::Array[T.untyped], ServiceError]) }
       def validate_resolved(event, poll)
         unless poll.closed_at
-          return T.cast(Failure(ServiceError.validation("Poll is not resolved")), Result[T::Array[T.untyped], ServiceError])
+          return Failure(ServiceError.validation("Poll is not resolved"))
         end
 
-        T.cast(Success([event, poll]), Result[T::Array[T.untyped], ServiceError])
+        Success([event, poll])
       end
 
-      sig do
-        params(deadline: T.nilable(String), event: Event, poll: DatePoll)
-          .returns(Result[T::Array[T.untyped], ServiceError])
-      end
       def validate_deadline(deadline, event, poll)
         if deadline.nil? || deadline.empty?
-          return T.cast(Failure(ServiceError.validation("Deadline is required")), Result[T::Array[T.untyped], ServiceError])
+          return Failure(ServiceError.validation("Deadline is required"))
         end
 
         begin
           parsed = Time.parse(deadline)
         rescue ArgumentError
-          return T.cast(Failure(ServiceError.validation("Invalid deadline format")), Result[T::Array[T.untyped], ServiceError])
+          return Failure(ServiceError.validation("Invalid deadline format"))
         end
 
         if parsed <= Time.now
-          return T.cast(Failure(ServiceError.validation("Deadline must be in the future")), Result[T::Array[T.untyped], ServiceError])
+          return Failure(ServiceError.validation("Deadline must be in the future"))
         end
 
-        T.cast(Success([event, poll, parsed]), Result[T::Array[T.untyped], ServiceError])
+        Success([event, poll, parsed])
       end
 
-      sig do
-        params(event: Event, poll: DatePoll, deadline: Time, current_user_id: T.any(String, UUID))
-          .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def reopen_poll(event, poll, deadline, current_user_id)
-        deleted_rsvp_ids = T.let([], T::Array[String])
+        deleted_rsvp_ids = []
 
         DB.transaction do
           # Delete all RSVPs for this event
@@ -92,11 +74,11 @@ module DatePolls
         APP_LOGGER.info { "[DatePolls::Reopen] Poll #{poll.id} reopened on event #{event.id}" }
 
         pool = PoolSerializer.new(workspace_id: event.workspace_id)
-        pool.add_event(T.must(Event.find(event.id)))
-        pool.add_date_poll(T.must(DatePoll.find(poll.id)))
+        pool.add_event(Event.find(event.id))
+        pool.add_date_poll(DatePoll.find(poll.id))
 
         deleted = deleted_rsvp_ids.map { |rid| { objectType: "rsvp", id: rid } }
-        T.cast(Success({ objects: pool.to_a, deleted: deleted }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        Success({ objects: pool.to_a, deleted: deleted })
       end
     end
   end

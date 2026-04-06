@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 # Existing plaintext IBANs are encrypted lazily by the application layer:

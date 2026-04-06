@@ -1,4 +1,3 @@
-# typed: false
 # frozen_string_literal: true
 
 require "spec_helper"
@@ -7,7 +6,7 @@ RSpec.describe WorkspaceInvite do
   let(:workspace) { TestFactories.workspace }
   let(:user) { TestFactories.user }
 
-  # rubocop:disable Sorbet/BlockMethodDefinition -- test helper used across examples
+  # -- test helper used across examples
   def create_invite(email: "invite@example.com", workspace_id: workspace[:id], invited_by: user[:id], expires_at: Time.now + 3600, accepted_at: nil)
     now = Time.now
     id = SecureRandom.uuid
@@ -24,8 +23,6 @@ RSpec.describe WorkspaceInvite do
     )
     described_class.find(id)
   end
-  # rubocop:enable Sorbet/BlockMethodDefinition
-
   describe ".find" do
     it "returns an invite by id" do
       invite = create_invite

@@ -1,20 +1,29 @@
-# typed: true
 # frozen_string_literal: true
 
 # Read-only RSVP model.
-class Rsvp < T::Struct
-  extend T::Sig
+class Rsvp
+  attr_reader :id, :event_id, :user_id, :attending, :start_date, :end_date, :created_at, :updated_at
 
-  const :id, UUID
-  const :event_id, UUID
-  const :user_id, UUID
-  const :attending, T::Boolean
-  const :start_date, T.nilable(Date)
-  const :end_date, T.nilable(Date)
-  const :created_at, Time
-  const :updated_at, Time
+  def initialize(
+    id:,
+    event_id:,
+    user_id:,
+    attending:,
+    start_date:,
+    end_date:,
+    created_at:,
+    updated_at:
+  )
+    @id = id
+    @event_id = event_id
+    @user_id = user_id
+    @attending = attending
+    @start_date = start_date
+    @end_date = end_date
+    @created_at = created_at
+    @updated_at = updated_at
+  end
 
-  sig { returns(T::Hash[Symbol, T.untyped]) }
   def to_api_hash
     {
       id: id.to_s,
@@ -30,24 +39,18 @@ class Rsvp < T::Struct
   end
 
   class << self
-    extend T::Sig
-
-    sig { params(id: T.any(String, UUID)).returns(T.nilable(Rsvp)) }
     def find(id)
       dataset.where(id: id).first
     end
 
-    sig { params(event_id: T.any(String, UUID)).returns(T::Array[Rsvp]) }
     def for_event(event_id)
       dataset.where(event_id: event_id).all
     end
 
-    sig { params(event_id: T.any(String, UUID)).returns(T::Array[String]) }
     def ids_for_event(event_id)
       DB[:rsvps].where(event_id: event_id).select_map(:id)
     end
 
-    sig { params(event_ids: T::Array[String]).returns(T::Hash[String, T::Array[String]]) }
     def ids_for_event_ids(event_ids)
       return {} if event_ids.empty?
 
@@ -57,12 +60,10 @@ class Rsvp < T::Struct
         .each_with_object(Hash.new { |h, k| h[k] = [] }) { |(event_id, id), h| h[event_id.to_s] << id.to_s }
     end
 
-    sig { params(event_id: T.any(String, UUID), user_id: T.any(String, UUID)).returns(T.nilable(Rsvp)) }
     def find_by_event_and_user(event_id, user_id)
       dataset.where(event_id: event_id, user_id: user_id).first
     end
 
-    sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[Rsvp]) }
     def changed_since(workspace_id, since)
       dataset
         .join(:events, id: :event_id)
@@ -74,12 +75,10 @@ class Rsvp < T::Struct
 
     private
 
-    sig { returns(Sequel::Dataset) }
     def dataset
       DB[:rsvps].with_row_proc(method(:from_row))
     end
 
-    sig { params(row: T::Hash[Symbol, T.untyped]).returns(Rsvp) }
     def from_row(row)
       Rsvp.new(
         id: UUID.new(row[:id]),

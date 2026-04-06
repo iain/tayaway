@@ -1,17 +1,11 @@
-# typed: true
 # frozen_string_literal: true
 
 module TaskLists
   # Service to bulk-delete all completed items from a task list.
   module ClearCompleted
     class << self
-      extend T::Sig
       include Result::Methods
 
-      sig do
-        params(task_list_id: T.any(String, UUID))
-          .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def call(task_list_id:)
         TaskList.find_result(task_list_id)
                 .bind { |task_list| clear_completed(task_list) }
@@ -19,10 +13,9 @@ module TaskLists
 
       private
 
-      sig { params(task_list: TaskList).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
       def clear_completed(task_list)
         completed_items = TaskItem.for_task_list(task_list.id).select { |i| !i.completed_at.nil? }
-        deleted = T.let([], T::Array[T::Hash[Symbol, String]])
+        deleted = []
 
         DB.transaction do
           unless completed_items.empty?
@@ -36,7 +29,7 @@ module TaskLists
           end
         end
 
-        T.cast(Success({ deleted: deleted }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        Success({ deleted: deleted })
       end
     end
   end

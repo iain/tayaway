@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 module Rsvps
@@ -15,25 +14,14 @@ module Rsvps
   #   )
   module Upsert
     class << self
-      extend T::Sig
       include Result::Methods
 
-      sig do
-        params(
-          event_id: T.any(String, UUID),
-          user_id: T.any(String, UUID),
-          attending: T.nilable(T::Boolean),
-          rsvp_id: T.nilable(String),
-          start_date: T.nilable(String),
-          end_date: T.nilable(String)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def call(event_id:, user_id:, attending:, rsvp_id:, start_date: nil, end_date: nil)
         # Idempotent replay: if client provided an ID that already exists, return it
         if rsvp_id
           existing = Rsvp.find(rsvp_id)
           if existing
-            return T.cast(Success({ rsvp_id: existing.id, created: false }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+            return Success({ rsvp_id: existing.id, created: false })
           end
         end
 
@@ -44,129 +32,82 @@ module Rsvps
         validate_params(attending)
           .bind { find_event(event_id) }
           .bind { |event| validate_event_has_dates(event) }
-          .bind { |event| validate_no_expenses_when_declining(event, user_id, T.must(attending)) }
+          .bind { |event| validate_no_expenses_when_declining(event, user_id, attending) }
           .bind { |event| validate_partial_dates(event, attending, start_date, end_date) }
-          .bind { |event, parsed_start, parsed_end| upsert_rsvp(event, user_id, T.must(attending), parsed_start, parsed_end, resolved_rsvp_id) }
+          .bind { |event, parsed_start, parsed_end| upsert_rsvp(event, user_id, attending, parsed_start, parsed_end, resolved_rsvp_id) }
       end
 
       private
 
-      sig do
-        params(
-          attending: T.nilable(T::Boolean)
-        ).returns(Result[T::Boolean, ServiceError])
-      end
       def validate_params(attending)
         if attending.nil?
-          T.cast(Failure(ServiceError.validation("attending is required")), Result[T::Boolean, ServiceError])
+          Failure(ServiceError.validation("attending is required"))
         else
-          T.cast(Success(attending), Result[T::Boolean, ServiceError])
+          Success(attending)
         end
       end
 
-      sig { params(event_id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }
       def find_event(event_id)
         event = Event.find(event_id)
         if event
-          T.cast(Success(event), Result[Event, ServiceError])
+          Success(event)
         else
-          T.cast(Failure(ServiceError.not_found("Event not found")), Result[Event, ServiceError])
+          Failure(ServiceError.not_found("Event not found"))
         end
       end
 
-      sig { params(event: Event).returns(Result[Event, ServiceError]) }
       def validate_event_has_dates(event)
         if event.start_date && event.end_date
-          T.cast(Success(event), Result[Event, ServiceError])
+          Success(event)
         else
-          T.cast(Failure(ServiceError.validation("Event does not have dates set")), Result[Event, ServiceError])
+          Failure(ServiceError.validation("Event does not have dates set"))
         end
       end
 
-      sig do
-        params(
-          event: Event,
-          user_id: T.any(String, UUID),
-          attending: T::Boolean
-        ).returns(Result[Event, ServiceError])
-      end
       def validate_no_expenses_when_declining(event, user_id, attending)
         if !attending && DB[:expenses].where(event_id: event.id, user_id: user_id).count > 0
-          return T.cast(
-            Failure(ServiceError.forbidden("You cannot decline while you have expenses on this event")),
-            Result[Event, ServiceError]
-          )
+          return Failure(ServiceError.forbidden("You cannot decline while you have expenses on this event"))
         end
 
-        T.cast(Success(event), Result[Event, ServiceError])
+        Success(event)
       end
 
-      sig do
-        params(
-          event: Event,
-          attending: T.nilable(T::Boolean),
-          start_date: T.nilable(String),
-          end_date: T.nilable(String)
-        ).returns(Result[T::Array[T.untyped], ServiceError])
-      end
       def validate_partial_dates(event, attending, start_date, end_date)
         # Not attending or no partial dates specified — pass through
         unless attending && (start_date || end_date)
-          return T.cast(Success([event, nil, nil]), Result[T::Array[T.untyped], ServiceError])
+          return Success([event, nil, nil])
         end
 
         # Both must be provided
         if start_date.nil? || end_date.nil?
-          return T.cast(
-            Failure(ServiceError.validation("Both start_date and end_date are required for partial attendance")),
-            Result[T::Array[T.untyped], ServiceError]
-          )
+          return Failure(ServiceError.validation("Both start_date and end_date are required for partial attendance"))
         end
 
         begin
           parsed_start = Date.parse(start_date)
           parsed_end = Date.parse(end_date)
         rescue Date::Error
-          return T.cast(
-            Failure(ServiceError.validation("Invalid date format")),
-            Result[T::Array[T.untyped], ServiceError]
-          )
+          return Failure(ServiceError.validation("Invalid date format"))
         end
 
         if parsed_start > parsed_end
-          return T.cast(
-            Failure(ServiceError.validation("start_date must be before or equal to end_date")),
-            Result[T::Array[T.untyped], ServiceError]
-          )
+          return Failure(ServiceError.validation("start_date must be before or equal to end_date"))
         end
 
-        event_start = T.must(event.start_date)
-        event_end = T.must(event.end_date)
+        event_start = event.start_date
+        event_end = event.end_date
 
         if parsed_start < event_start || parsed_end > event_end
-          return T.cast(
-            Failure(ServiceError.validation("Partial dates must fall within the event date range")),
-            Result[T::Array[T.untyped], ServiceError]
-          )
+          return Failure(ServiceError.validation("Partial dates must fall within the event date range"))
         end
 
-        T.cast(Success([event, parsed_start, parsed_end]), Result[T::Array[T.untyped], ServiceError])
+        Success([event, parsed_start, parsed_end])
       end
 
-      sig do
-        params(
-          event: Event,
-          user_id: T.any(String, UUID),
-          attending: T::Boolean,
-          start_date: T.nilable(Date),
-          end_date: T.nilable(Date),
-          rsvp_id: String
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def upsert_rsvp(event, user_id, attending, start_date, end_date, rsvp_id)
         existing_rsvp = Rsvp.find_by_event_and_user(event.id, user_id)
-        result_rsvp_id = T.let(nil, T.nilable(T.any(String, UUID)))
-        created = T.let(false, T::Boolean)
+        result_rsvp_id = nil
+        created = false
 
         # Clear partial dates if not attending
         unless attending
@@ -203,16 +144,16 @@ module Rsvps
               created = true
             end
 
-            Broadcaster.object_changed("rsvp", T.must(result_rsvp_id), workspace_id: event.workspace_id)
+            Broadcaster.object_changed("rsvp", result_rsvp_id, workspace_id: event.workspace_id)
           end
         rescue Sequel::UniqueConstraintViolation
           existing = Rsvp.find_by_event_and_user(event.id, user_id)
-          result_rsvp_id = T.must(existing).id
+          result_rsvp_id = existing.id
           created = false
-          Broadcaster.object_changed("rsvp", T.must(result_rsvp_id), workspace_id: event.workspace_id)
+          Broadcaster.object_changed("rsvp", result_rsvp_id, workspace_id: event.workspace_id)
         end
 
-        T.cast(Success({ rsvp_id: result_rsvp_id, created: created }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        Success({ rsvp_id: result_rsvp_id, created: created })
       end
     end
   end

@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 module Settlements
@@ -6,16 +5,8 @@ module Settlements
   # Only the settlement creator or event owner can delete.
   module Delete
     class << self
-      extend T::Sig
       include Result::Methods
 
-      sig do
-        params(
-          settlement_id: T.any(String, UUID),
-          current_user_id: T.any(String, UUID),
-          workspace_id: T.any(String, UUID)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def call(settlement_id:, current_user_id:, workspace_id:)
         Settlement.find_result(settlement_id)
                   .bind { |settlement| authorize(settlement, current_user_id) }
@@ -24,32 +15,21 @@ module Settlements
 
       private
 
-      sig do
-        params(settlement: Settlement, current_user_id: T.any(String, UUID))
-          .returns(Result[Settlement, ServiceError])
-      end
       def authorize(settlement, current_user_id)
         # Creator can delete
         if settlement.user_id&.to_s == current_user_id.to_s
-          return T.cast(Success(settlement), Result[Settlement, ServiceError])
+          return Success(settlement)
         end
 
         # Event owner can delete
         event = Event.find(settlement.event_id)
         if event && event.user_id.to_s == current_user_id.to_s
-          return T.cast(Success(settlement), Result[Settlement, ServiceError])
+          return Success(settlement)
         end
 
-        T.cast(
-          Failure(ServiceError.forbidden("Not authorized to delete this settlement")),
-          Result[Settlement, ServiceError]
-        )
+        Failure(ServiceError.forbidden("Not authorized to delete this settlement"))
       end
 
-      sig do
-        params(settlement: Settlement, workspace_id: T.any(String, UUID))
-          .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def delete_settlement(settlement, workspace_id)
         pool = PoolSerializer.new(workspace_id: workspace_id)
         deleted = []
@@ -84,10 +64,7 @@ module Settlements
         # Re-fetch updated expenses for the response
         Expense.for_event(settlement.event_id).each { |e| pool.add_expense(e) }
 
-        T.cast(
-          Success({ objects: pool.to_a, deleted: deleted }),
-          Result[T::Hash[Symbol, T.untyped], ServiceError]
-        )
+        Success({ objects: pool.to_a, deleted: deleted })
       end
     end
   end

@@ -1,26 +1,11 @@
-# typed: true
 # frozen_string_literal: true
 
 module Expenses
   # Service to create a new expense on an event.
   module Create
     class << self
-      extend T::Sig
       include Result::Methods
 
-      sig do
-        params(
-          event_id: T.any(String, UUID),
-          user_id: T.any(String, UUID),
-          workspace_id: T.any(String, UUID),
-          description: T.nilable(String),
-          amount: T.nilable(Float),
-          start_date: T.nilable(String),
-          end_date: T.nilable(String),
-          id: T.nilable(String),
-          participant_ids: T.nilable(T::Array[String])
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def call(event_id:, user_id:, workspace_id:, description:, amount:, start_date:, end_date:, id: nil, participant_ids: nil)
         validate(description, amount, start_date, end_date)
           .bind { |valid| validate_date_range(valid, event_id) }
@@ -31,122 +16,65 @@ module Expenses
 
       private
 
-      sig do
-        params(
-          description: T.nilable(String),
-          amount: T.nilable(Float),
-          start_date: T.nilable(String),
-          end_date: T.nilable(String)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def validate(description, amount, start_date, end_date)
         if description.nil? || description.empty?
-          return T.cast(
-            Failure(ServiceError.validation("Description is required")),
-            Result[T::Hash[Symbol, T.untyped], ServiceError]
-          )
+          return Failure(ServiceError.validation("Description is required"))
         end
 
         if description.length > ValidationLimits::SHORT_STRING
-          return T.cast(
-            Failure(ServiceError.validation("Description is too long (maximum 255 characters)")),
-            Result[T::Hash[Symbol, T.untyped], ServiceError]
-          )
+          return Failure(ServiceError.validation("Description is too long (maximum 255 characters)"))
         end
 
         if amount.nil? || amount <= 0
-          return T.cast(
-            Failure(ServiceError.validation("Amount must be greater than zero")),
-            Result[T::Hash[Symbol, T.untyped], ServiceError]
-          )
+          return Failure(ServiceError.validation("Amount must be greater than zero"))
         end
 
         if amount > ValidationLimits::EXPENSE_AMOUNT_MAX
-          return T.cast(
-            Failure(ServiceError.validation("Amount cannot exceed 1,000,000")),
-            Result[T::Hash[Symbol, T.untyped], ServiceError]
-          )
+          return Failure(ServiceError.validation("Amount cannot exceed 1,000,000"))
         end
 
         if start_date.nil? || start_date.empty? || end_date.nil? || end_date.empty?
-          return T.cast(
-            Failure(ServiceError.validation("Start date and end date are required")),
-            Result[T::Hash[Symbol, T.untyped], ServiceError]
-          )
+          return Failure(ServiceError.validation("Start date and end date are required"))
         end
 
         parsed_start, parsed_end = begin
           [Date.strptime(start_date, "%Y-%m-%d"), Date.strptime(end_date, "%Y-%m-%d")]
         rescue Date::Error
-          return T.cast(
-            Failure(ServiceError.validation("Dates must be in YYYY-MM-DD format")),
-            Result[T::Hash[Symbol, T.untyped], ServiceError]
-          )
+          return Failure(ServiceError.validation("Dates must be in YYYY-MM-DD format"))
         end
 
         if parsed_start > parsed_end
-          return T.cast(
-            Failure(ServiceError.validation("Start date must be on or before end date")),
-            Result[T::Hash[Symbol, T.untyped], ServiceError]
-          )
+          return Failure(ServiceError.validation("Start date must be on or before end date"))
         end
 
-        T.cast(
-          Success({ description: description, amount: amount, start_date: parsed_start, end_date: parsed_end }),
-          Result[T::Hash[Symbol, T.untyped], ServiceError]
-        )
+        Success({ description: description, amount: amount, start_date: parsed_start, end_date: parsed_end })
       end
 
-      sig do
-        params(
-          valid: T::Hash[Symbol, T.untyped],
-          event_id: T.any(String, UUID)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def validate_date_range(valid, event_id)
         event = Event.find(event_id)
         if event&.start_date && event.end_date
           if valid[:start_date] < event.start_date || valid[:end_date] > event.end_date
-            return T.cast(
-              Failure(ServiceError.validation("Expense dates must fall within event date range")),
-              Result[T::Hash[Symbol, T.untyped], ServiceError]
-            )
+            return Failure(ServiceError.validation("Expense dates must fall within event date range"))
           end
         end
 
-        T.cast(Success(valid), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        Success(valid)
       end
 
-      sig do
-        params(
-          valid: T::Hash[Symbol, T.untyped],
-          event_id: T.any(String, UUID),
-          user_id: T.any(String, UUID)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def validate_rsvp(valid, event_id, user_id)
         rsvp = Rsvp.find_by_event_and_user(event_id, user_id)
 
         if rsvp.nil? || !rsvp.attending
-          return T.cast(
-            Failure(ServiceError.forbidden("You must RSVP to this event before adding expenses")),
-            Result[T::Hash[Symbol, T.untyped], ServiceError]
-          )
+          return Failure(ServiceError.forbidden("You must RSVP to this event before adding expenses"))
         end
 
-        T.cast(Success(valid), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        Success(valid)
       end
 
-      sig do
-        params(
-          valid: T::Hash[Symbol, T.untyped],
-          participant_ids: T.nilable(T::Array[String])
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def validate_participants(valid, participant_ids)
         if participant_ids.nil? || participant_ids.empty?
           valid[:participant_ids] = nil
-          return T.cast(Success(valid), Result[T::Hash[Symbol, T.untyped], ServiceError])
+          return Success(valid)
         end
 
         deduped = participant_ids.uniq
@@ -154,25 +82,13 @@ module Expenses
         # Verify all participant user_ids exist
         existing_count = DB[:users].where(id: deduped).count
         if existing_count != deduped.length
-          return T.cast(
-            Failure(ServiceError.validation("One or more participant user IDs are invalid")),
-            Result[T::Hash[Symbol, T.untyped], ServiceError]
-          )
+          return Failure(ServiceError.validation("One or more participant user IDs are invalid"))
         end
 
         valid[:participant_ids] = deduped
-        T.cast(Success(valid), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        Success(valid)
       end
 
-      sig do
-        params(
-          event_id: T.any(String, UUID),
-          user_id: T.any(String, UUID),
-          workspace_id: T.any(String, UUID),
-          valid: T::Hash[Symbol, T.untyped],
-          id: T.nilable(String)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def create_expense(event_id, user_id, workspace_id, valid, id)
         # Idempotent replay: if client provided an ID and it already exists, return it
         if id
@@ -180,7 +96,7 @@ module Expenses
           if existing
             pool = PoolSerializer.new(workspace_id: workspace_id)
             pool.add_expense(existing)
-            return T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+            return Success({ objects: pool.to_a })
           end
         end
 
@@ -208,22 +124,15 @@ module Expenses
             Expense.find(expense_id)
           end
         rescue Sequel::UniqueConstraintViolation
-          T.must(Expense.find(T.must(id)))
+          Expense.find(id)
         end
 
         pool = PoolSerializer.new(workspace_id: workspace_id)
         pool.add_expense(expense)
 
-        T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        Success({ objects: pool.to_a })
       end
 
-      sig do
-        params(
-          expense_id: T.any(String, UUID),
-          participant_ids: T.nilable(T::Array[String]),
-          workspace_id: T.any(String, UUID)
-        ).void
-      end
       def insert_participants(expense_id, participant_ids, workspace_id)
         return if participant_ids.nil? || participant_ids.empty?
 

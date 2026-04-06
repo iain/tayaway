@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 require "json"
@@ -15,28 +14,16 @@ module Broadcaster
   CHANNEL = "tayaway_objects"
 
   class << self
-    extend T::Sig
-
-    sig { params(object_type: String, object_id: T.any(String, UUID), workspace_id: T.any(String, UUID)).void }
     def object_changed(object_type, object_id, workspace_id:)
       notify(object_type, object_id, workspace_id: workspace_id, action: "update")
     end
 
-    sig { params(object_type: String, object_id: T.any(String, UUID), workspace_id: T.any(String, UUID)).void }
     def object_deleted(object_type, object_id, workspace_id:)
       notify(object_type, object_id, workspace_id: workspace_id, action: "delete")
     end
 
     private
 
-    sig do
-      params(
-        object_type: String,
-        object_id: T.any(String, UUID),
-        workspace_id: T.any(String, UUID),
-        action: String
-      ).void
-    end
     def notify(object_type, object_id, workspace_id:, action:)
       payload = {
         workspaceId: workspace_id.to_s,

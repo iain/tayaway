@@ -1,4 +1,3 @@
-# typed: false
 # frozen_string_literal: true
 
 require "spec_helper"
@@ -9,7 +8,7 @@ RSpec.describe Expenses::Update do
   let(:workspace) { TestFactories.workspace }
   let(:event) { TestFactories.event(workspace: workspace, user: user) }
 
-  # rubocop:disable Sorbet/BlockMethodDefinition -- test helper used across examples
+  # -- test helper used across examples
   def create_expense(user_row: user, settlement_id: nil)
     id = SecureRandom.uuid
     now = Time.now
@@ -27,8 +26,6 @@ RSpec.describe Expenses::Update do
     )
     id
   end
-  # rubocop:enable Sorbet/BlockMethodDefinition
-
   it "returns 404 when expense not found" do
     result = described_class.call(
       expense_id: SecureRandom.uuid,

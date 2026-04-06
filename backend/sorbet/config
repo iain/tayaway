@@ -1,4 +1,0 @@
---dir
-.
---ignore=vendor/
---ignore=db/migrations/

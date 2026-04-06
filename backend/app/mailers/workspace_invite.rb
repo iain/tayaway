@@ -1,13 +1,9 @@
-# typed: true
 # frozen_string_literal: true
 
 module Mailers
   # Builds and sends the workspace invitation email.
   module WorkspaceInvite
     class << self
-      extend T::Sig
-
-      sig { params(email: T.any(String, EmailAddress), invite_link: String, workspace_name: String, name: T.nilable(String)).void }
       def send_email(email:, invite_link:, workspace_name:, name: nil)
         message = build_message(email: email.to_s, invite_link: invite_link, workspace_name: workspace_name, name: name)
         Mailers::Base.deliver_later(message)
@@ -15,7 +11,6 @@ module Mailers
 
       private
 
-      sig { params(email: String, invite_link: String, workspace_name: String, name: T.nilable(String)).returns(Mail::Message) }
       def build_message(email:, invite_link:, workspace_name:, name: nil)
         message = Mail.new
         message.to      email

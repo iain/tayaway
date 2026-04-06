@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 module Auth
@@ -14,21 +13,14 @@ module Auth
   #   result.value!    # => { ticket: "<jwt>" }
   module CreateWsTicket
     class << self
-      extend T::Sig
       include Result::Methods
 
-      sig do
-        params(session_id: T.any(String, UUID)).returns(Result[T::Hash[Symbol, String], ServiceError])
-      end
       def call(session_id:)
         generate_ticket(session_id)
       end
 
       private
 
-      sig do
-        params(session_id: T.any(String, UUID)).returns(Result[T::Hash[Symbol, String], ServiceError])
-      end
       def generate_ticket(session_id)
         raw_token = SecureRandom.hex(32)
         now = Time.now
@@ -43,7 +35,7 @@ module Auth
         )
 
         jwt = Auth::Token.encode_ws_ticket(token: raw_token)
-        T.cast(Success({ ticket: jwt }), Result[T::Hash[Symbol, String], ServiceError])
+        Success({ ticket: jwt })
       end
     end
   end

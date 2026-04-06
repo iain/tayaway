@@ -1,19 +1,11 @@
-# typed: true
 # frozen_string_literal: true
 
 module ChoreRosters
   # Deletes all non-pinned assignments for a roster.
   module ClearUnpinned
     class << self
-      extend T::Sig
       include Result::Methods
 
-      sig do
-        params(
-          roster_id: T.any(String, UUID),
-          workspace_id: T.any(String, UUID)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def call(roster_id:, workspace_id:)
         ChoreRoster.find_result(roster_id)
                    .bind { |roster| clear_unpinned(roster, workspace_id) }
@@ -21,14 +13,8 @@ module ChoreRosters
 
       private
 
-      sig do
-        params(
-          roster: ChoreRoster,
-          workspace_id: T.any(String, UUID)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def clear_unpinned(roster, workspace_id)
-        deleted = T.let([], T::Array[T::Hash[Symbol, T.untyped]])
+        deleted = []
 
         DB.transaction do
           non_pinned_ids = DB[:chore_assignments]
@@ -51,7 +37,7 @@ module ChoreRosters
           end
         end
 
-        T.cast(Success({ deleted: deleted }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        Success({ deleted: deleted })
       end
     end
   end

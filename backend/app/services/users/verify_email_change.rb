@@ -1,17 +1,14 @@
-# typed: true
 # frozen_string_literal: true
 
 module Users
   # Service to verify an email change token and update the user's email.
   module VerifyEmailChange
     class << self
-      extend T::Sig
       include Result::Methods
 
-      sig { params(token: T.nilable(String)).returns(Result[T::Hash[Symbol, String], ServiceError]) }
       def call(token:)
         decode_jwt(token)
-          .bind { |params| find_token(T.must(params[:token]), T.must(params[:email])) }
+          .bind { |params| find_token(params[:token], params[:email]) }
           .bind { |email_token| validate_not_taken(email_token) }
           .bind { |email_token| validate_email_unchanged(email_token) }
           .bind { |email_token| update_email(email_token) }
@@ -19,64 +16,44 @@ module Users
 
       private
 
-      sig { params(jwt: T.nilable(String)).returns(Result[T::Hash[Symbol, String], ServiceError]) }
       def decode_jwt(jwt)
         if jwt.nil?
-          return T.cast(
-            Failure(ServiceError.validation("Token is required")),
-            Result[T::Hash[Symbol, String], ServiceError]
-          )
+          return Failure(ServiceError.validation("Token is required"))
         end
 
         decoded = Auth::Token.decode_email_change(jwt)
-        T.cast(Success(decoded), Result[T::Hash[Symbol, String], ServiceError])
+        Success(decoded)
       rescue JWT::DecodeError
-        T.cast(
-          Failure(ServiceError.unauthorized("Invalid or expired verification link")),
-          Result[T::Hash[Symbol, String], ServiceError]
-        )
+        Failure(ServiceError.unauthorized("Invalid or expired verification link"))
       end
 
-      sig { params(token: String, new_email: String).returns(Result[EmailChangeToken, ServiceError]) }
       def find_token(token, new_email)
         email_token = EmailChangeToken.find_valid(token, new_email)
         if email_token
-          T.cast(Success(email_token), Result[EmailChangeToken, ServiceError])
+          Success(email_token)
         else
-          T.cast(
-            Failure(ServiceError.unauthorized("Invalid or expired verification link")),
-            Result[EmailChangeToken, ServiceError]
-          )
+          Failure(ServiceError.unauthorized("Invalid or expired verification link"))
         end
       end
 
-      sig { params(email_token: EmailChangeToken).returns(Result[EmailChangeToken, ServiceError]) }
       def validate_not_taken(email_token)
         existing = User.find_by_email(email_token.new_email)
         if existing
-          T.cast(
-            Failure(ServiceError.validation("This email is already in use by another account")),
-            Result[EmailChangeToken, ServiceError]
-          )
+          Failure(ServiceError.validation("This email is already in use by another account"))
         else
-          T.cast(Success(email_token), Result[EmailChangeToken, ServiceError])
+          Success(email_token)
         end
       end
 
-      sig { params(email_token: EmailChangeToken).returns(Result[EmailChangeToken, ServiceError]) }
       def validate_email_unchanged(email_token)
         user = User.find(email_token.user_id)
         if user && user.email.downcase == email_token.email.downcase
-          T.cast(Success(email_token), Result[EmailChangeToken, ServiceError])
+          Success(email_token)
         else
-          T.cast(
-            Failure(ServiceError.validation("Your email has already been changed. Please request a new verification link.")),
-            Result[EmailChangeToken, ServiceError]
-          )
+          Failure(ServiceError.validation("Your email has already been changed. Please request a new verification link."))
         end
       end
 
-      sig { params(email_token: EmailChangeToken).returns(Result[T::Hash[Symbol, String], ServiceError]) }
       def update_email(email_token)
         DB.transaction do
           DB[:email_change_tokens].where(id: email_token.id.to_s).update(used_at: Time.now)
@@ -98,10 +75,7 @@ module Users
         end
 
         APP_LOGGER.info { "[Users::VerifyEmailChange] User #{email_token.user_id} changed email from #{email_token.email} to #{email_token.new_email}" }
-        T.cast(
-          Success({ message: "Your email has been updated successfully." }),
-          Result[T::Hash[Symbol, String], ServiceError]
-        )
+        Success({ message: "Your email has been updated successfully." })
       end
     end
   end

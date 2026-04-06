@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 module Events
@@ -10,13 +9,8 @@ module Events
   #   result.value!    # => { message: "Event deleted successfully" }
   module Delete
     class << self
-      extend T::Sig
       include Result::Methods
 
-      sig do
-        params(event_id: T.any(String, UUID), current_user_id: T.any(String, UUID))
-          .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def call(event_id:, current_user_id:)
         Event.find_result(event_id)
              .bind { |event| Event.authorize_owner(event, current_user_id) }
@@ -25,7 +19,6 @@ module Events
 
       private
 
-      sig { params(event: Event).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
       def delete_event(event)
         event_id = event.id
         workspace_id = event.workspace_id
@@ -37,7 +30,7 @@ module Events
         end
 
         APP_LOGGER.info { "[Events::Delete] Event #{event_id} deleted from workspace #{workspace_id}" }
-        T.cast(Success({ deleted: [{ objectType: "event", id: event_id.to_s }] }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        Success({ deleted: [{ objectType: "event", id: event_id.to_s }] })
       end
     end
   end

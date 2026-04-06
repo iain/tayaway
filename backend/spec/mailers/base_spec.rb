@@ -1,4 +1,3 @@
-# typed: false
 # frozen_string_literal: true
 
 require "spec_helper"
@@ -86,7 +85,7 @@ RSpec.describe Mailers::Base do
       after do
         saved_env.each { |k, v| ENV[k] = v }
         # Restore test delivery method after stubbing production
-        Mail.defaults { T.unsafe(self).delivery_method :test }
+        Mail.defaults { self.delivery_method :test }
       end
 
       it "does not raise at boot even when SMTP credentials are absent" do

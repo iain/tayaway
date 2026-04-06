@@ -1,20 +1,11 @@
-# typed: true
 # frozen_string_literal: true
 
 module DatePolls
   # Service to close a date poll by selecting a winning date range.
   module Close
     class << self
-      extend T::Sig
       include Result::Methods
 
-      sig do
-        params(
-          event_id: T.any(String, UUID),
-          current_user_id: T.any(String, UUID),
-          selected_date_range_id: T.nilable(String)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def call(event_id:, current_user_id:, selected_date_range_id:)
         Event.find_result(event_id)
              .bind { |event| Event.authorize_owner(event, current_user_id) }
@@ -26,48 +17,30 @@ module DatePolls
 
       private
 
-      sig { params(event: Event, poll: DatePoll).returns(Result[T::Array[T.untyped], ServiceError]) }
       def validate_not_resolved(event, poll)
         if poll.closed_at
-          T.cast(Failure(ServiceError.validation("Poll is already resolved")), Result[T::Array[T.untyped], ServiceError])
+          Failure(ServiceError.validation("Poll is already resolved"))
         else
-          T.cast(Success([event, poll]), Result[T::Array[T.untyped], ServiceError])
+          Success([event, poll])
         end
       end
 
-      sig do
-        params(
-          event: Event,
-          poll: DatePoll,
-          selected_date_range_id: T.nilable(String)
-        ).returns(Result[T::Array[T.untyped], ServiceError])
-      end
       def validate_date_range(event, poll, selected_date_range_id)
         if selected_date_range_id.nil? || selected_date_range_id.empty?
-          return T.cast(
-            Failure(ServiceError.validation("selected_date_range_id is required")),
-            Result[T::Array[T.untyped], ServiceError]
-          )
+          return Failure(ServiceError.validation("selected_date_range_id is required"))
         end
 
         date_range = DateRange.find(selected_date_range_id)
         unless date_range && date_range.date_poll_id == poll.id
-          return T.cast(
-            Failure(ServiceError.validation("Date range does not belong to this poll")),
-            Result[T::Array[T.untyped], ServiceError]
-          )
+          return Failure(ServiceError.validation("Date range does not belong to this poll"))
         end
 
-        T.cast(Success([event, poll, selected_date_range_id]), Result[T::Array[T.untyped], ServiceError])
+        Success([event, poll, selected_date_range_id])
       end
 
-      sig do
-        params(event: Event, poll: DatePoll, selected_date_range_id: String)
-          .returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def close_poll(event, poll, selected_date_range_id)
-        date_range = T.must(DateRange.find(selected_date_range_id))
-        yes_voter_ids = T.let([], T::Array[String])
+        date_range = DateRange.find(selected_date_range_id)
+        yes_voter_ids = []
 
         DB.transaction do
           DB[:date_polls].where(id: poll.id).update(
@@ -106,15 +79,12 @@ module DatePolls
         send_poll_closed_emails(event, poll, date_range, yes_voter_ids)
 
         pool = PoolSerializer.new(workspace_id: event.workspace_id)
-        pool.add_event(T.must(Event.find(event.id)))
-        pool.add_date_poll(T.must(DatePoll.find(poll.id)))
+        pool.add_event(Event.find(event.id))
+        pool.add_date_poll(DatePoll.find(poll.id))
         Rsvp.for_event(event.id).each { |r| pool.add_rsvp(r) }
-        T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        Success({ objects: pool.to_a })
       end
 
-      sig do
-        params(event: Event, poll: DatePoll, date_range: DateRange, yes_voter_ids: T::Array[String]).void
-      end
       def send_poll_closed_emails(event, poll, date_range, yes_voter_ids)
         all_date_range_ids = DateRange.ids_for_date_poll(poll.id)
         all_votes = Vote.for_date_range_ids(all_date_range_ids)
@@ -152,7 +122,6 @@ module DatePolls
         APP_LOGGER.error { "[DatePolls::Close] Failed to send poll closed emails: #{e.class} - #{e.message}" }
       end
 
-      sig { params(start_date: Date, end_date: Date).returns(String) }
       def format_date_label(start_date, end_date)
         if start_date == end_date
           start_date.strftime("%B %-d, %Y")

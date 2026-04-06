@@ -1,49 +1,27 @@
-# typed: true
 # frozen_string_literal: true
 
 module ChoreRosters
   # Service to delete a chore. Cascades assignments.
   module DeleteChore
     class << self
-      extend T::Sig
       include Result::Methods
 
-      sig do
-        params(
-          chore_id: T.any(String, UUID),
-          roster_id: T.any(String, UUID),
-          workspace_id: T.any(String, UUID)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def call(chore_id:, roster_id:, workspace_id:)
         Chore.find_result(chore_id)
              .bind { |chore| validate_belongs_to_roster(chore, roster_id) }
              .bind { |chore| delete(chore, roster_id, workspace_id) }
       end
 
-      sig do
-        params(
-          chore: Chore,
-          roster_id: T.any(String, UUID)
-        ).returns(Result[Chore, ServiceError])
-      end
       def validate_belongs_to_roster(chore, roster_id)
         if chore.chore_roster_id.to_s == roster_id.to_s
-          T.cast(Success(chore), Result[Chore, ServiceError])
+          Success(chore)
         else
-          T.cast(Failure(ServiceError.not_found("Chore not found")), Result[Chore, ServiceError])
+          Failure(ServiceError.not_found("Chore not found"))
         end
       end
 
       private
 
-      sig do
-        params(
-          chore: Chore,
-          roster_id: T.any(String, UUID),
-          workspace_id: T.any(String, UUID)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def delete(chore, roster_id, workspace_id)
         deleted = []
 
@@ -68,13 +46,10 @@ module ChoreRosters
         end
 
         pool = PoolSerializer.new(workspace_id: workspace_id)
-        roster = T.must(ChoreRoster.find(roster_id))
+        roster = ChoreRoster.find(roster_id)
         pool.add_chore_roster(roster)
 
-        T.cast(
-          Success({ objects: pool.to_a, deleted: deleted }),
-          Result[T::Hash[Symbol, T.untyped], ServiceError]
-        )
+        Success({ objects: pool.to_a, deleted: deleted })
       end
     end
   end

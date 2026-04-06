@@ -1,24 +1,9 @@
-# typed: true
 # frozen_string_literal: true
 
 module Mailers
   # Builds and sends the poll-closed notification email with ICS attachment.
   module PollClosed
     class << self
-      extend T::Sig
-
-      sig do
-        params(
-          email: T.any(String, EmailAddress),
-          user_name: T.nilable(String),
-          event_name: String,
-          date_label: String,
-          event_url: String,
-          ics_content: String,
-          ics_filename: String,
-          auto_rsvped: T::Boolean
-        ).void
-      end
       def send_email(email:, user_name:, event_name:, date_label:, event_url:, ics_content:, ics_filename:, auto_rsvped:)
         message = build_message(
           email: email.to_s,
@@ -35,18 +20,6 @@ module Mailers
 
       private
 
-      sig do
-        params(
-          email: String,
-          user_name: T.nilable(String),
-          event_name: String,
-          date_label: String,
-          event_url: String,
-          ics_content: String,
-          ics_filename: String,
-          auto_rsvped: T::Boolean
-        ).returns(Mail::Message)
-      end
       def build_message(email:, user_name:, event_name:, date_label:, event_url:, ics_content:, ics_filename:, auto_rsvped:)
         greeting = user_name && !user_name.empty? ? "Hi #{user_name}," : "Hi,"
         rsvp_text = if auto_rsvped

@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 module Settlements
@@ -11,16 +10,8 @@ module Settlements
     BALANCE_EPSILON = 0.005
 
     class << self
-      extend T::Sig
       include Result::Methods
 
-      sig do
-        params(
-          event_id: T.any(String, UUID),
-          user_id: T.any(String, UUID),
-          workspace_id: T.any(String, UUID)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def call(event_id:, user_id:, workspace_id:)
         find_event(event_id)
           .bind { |event| check_event_dates(event) }
@@ -29,32 +20,20 @@ module Settlements
 
       private
 
-      sig { params(event_id: T.any(String, UUID)).returns(Result[Event, ServiceError]) }
       def find_event(event_id)
         Event.find_result(event_id)
       end
 
-      sig { params(event: Event).returns(Result[Event, ServiceError]) }
       def check_event_dates(event)
         if event.start_date && event.end_date
-          T.cast(Success(event), Result[Event, ServiceError])
+          Success(event)
         else
-          T.cast(
-            Failure(ServiceError.validation("Event must have dates set before settling expenses")),
-            Result[Event, ServiceError]
-          )
+          Failure(ServiceError.validation("Event must have dates set before settling expenses"))
         end
       end
 
       # Run the entire settlement inside a single transaction with row-level locking.
       # This prevents concurrent expense mutations from causing stale-data settlements.
-      sig do
-        params(
-          event: Event,
-          user_id: T.any(String, UUID),
-          workspace_id: T.any(String, UUID)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def settle(event, user_id, workspace_id)
         settlement_id = SecureRandom.uuid
         now = Time.now
@@ -72,19 +51,13 @@ module Settlements
             error_message = concurrent_settlement_exists?(event.id) ?
               "These expenses were just settled by another member" :
               "No unsettled expenses to settle"
-            return T.cast(
-              Failure(ServiceError.validation(error_message)),
-              Result[T::Hash[Symbol, T.untyped], ServiceError]
-            )
+            return Failure(ServiceError.validation(error_message))
           end
 
           rsvps = Rsvp.for_event(event.id).select(&:attending)
 
           if rsvps.empty?
-            return T.cast(
-              Failure(ServiceError.validation("No attending RSVPs found for this event")),
-              Result[T::Hash[Symbol, T.untyped], ServiceError]
-            )
+            return Failure(ServiceError.validation("No attending RSVPs found for this event"))
           end
 
           balances = compute_balances(event, expenses, rsvps)
@@ -126,17 +99,16 @@ module Settlements
         end
 
         pool = PoolSerializer.new(workspace_id: workspace_id)
-        settlement = T.must(Settlement.find(settlement_id))
+        settlement = Settlement.find(settlement_id)
         pool.add_settlement(settlement)
         SettlementTransfer.for_settlement(settlement_id).each { |t| pool.add_settlement_transfer(t) }
         all_expenses.each { |e| pool.add_expense(e) }
 
-        T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        Success({ objects: pool.to_a })
       end
 
       # Returns true if a settlement for this event was created within the last 5 seconds,
       # indicating a concurrent settlement request just completed ahead of this one.
-      sig { params(event_id: T.any(String, UUID)).returns(T::Boolean) }
       def concurrent_settlement_exists?(event_id)
         DB[:settlements]
           .where(event_id: event_id)
@@ -146,19 +118,12 @@ module Settlements
 
       # Compute net balance for each user: share - paid
       # Positive balance means user owes money; negative means user is owed money
-      sig do
-        params(
-          event: Event,
-          expenses: T::Array[T.untyped],
-          rsvps: T::Array[Rsvp]
-        ).returns(T::Hash[String, Float])
-      end
       def compute_balances(event, expenses, rsvps)
         share_by_user = Hash.new(0.0)
         paid_by_user = Hash.new(0.0)
 
-        event_start = T.must(event.start_date)
-        event_end = T.must(event.end_date)
+        event_start = event.start_date
+        event_end = event.end_date
 
         # Pre-compute RSVP effective dates
         rsvp_dates = rsvps.map do |rsvp|
@@ -230,7 +195,6 @@ module Settlements
       end
 
       # Greedy algorithm to minimize transfers
-      sig { params(balances: T::Hash[String, Float]).returns(T::Array[T::Hash[Symbol, T.untyped]]) }
       def minimize_transfers(balances)
         debtors = balances.select { |_, v| v > 0 }.sort_by { |_, v| -v }.map { |k, v| [k, v] }
         creditors = balances.select { |_, v| v < 0 }.sort_by { |_, v| v }.map { |k, v| [k, -v] }
@@ -240,8 +204,8 @@ module Settlements
         c_idx = 0
 
         while d_idx < debtors.length && c_idx < creditors.length
-          debtor_id, debt = T.must(debtors[d_idx])
-          creditor_id, credit = T.must(creditors[c_idx])
+          debtor_id, debt = debtors[d_idx]
+          creditor_id, credit = creditors[c_idx]
 
           amount = [debt, credit].min.round(2).to_f
 

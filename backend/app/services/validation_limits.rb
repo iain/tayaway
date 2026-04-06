@@ -1,10 +1,7 @@
-# typed: true
 # frozen_string_literal: true
 
 # Shared string-length and value limits used across service validations.
 module ValidationLimits
-  extend T::Sig
-
   # Maximum length for short strings (names, descriptions of items, locations).
   SHORT_STRING = 255
 
@@ -27,18 +24,17 @@ module ValidationLimits
   QUERY_LIMIT = 500
 
   # Valid latitude range (-90 to 90).
-  LATITUDE_RANGE = T.let((-90.0..90.0), T::Range[Float])
+  LATITUDE_RANGE = (-90.0..90.0)
 
   # Valid longitude range (-180 to 180).
-  LONGITUDE_RANGE = T.let((-180.0..180.0), T::Range[Float])
+  LONGITUDE_RANGE = (-180.0..180.0)
 
   # Reasonable birthday range.
-  BIRTHDAY_MIN = T.let(Date.new(1900, 1, 1), Date)
+  BIRTHDAY_MIN = Date.new(1900, 1, 1)
 
   # Parses a coordinate value strictly, returning nil for blank/invalid input.
   # Accepts both numeric types (from JSON) and strings (from form data).
   # Uses Float() instead of to_f to reject non-numeric strings like "abc".
-  sig { params(value: T.untyped).returns(T.nilable(Float)) }
   def self.parse_coordinate(value)
     return nil if value.nil?
     return value.to_f if value.is_a?(Numeric)

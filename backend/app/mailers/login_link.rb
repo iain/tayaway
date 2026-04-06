@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 module Mailers
@@ -8,9 +7,6 @@ module Mailers
   #   Mailers::LoginLink.send_email(email: "user@example.com", login_link: "https://...")
   module LoginLink
     class << self
-      extend T::Sig
-
-      sig { params(email: T.any(String, EmailAddress), login_link: String, workspace_name: String).void }
       def send_email(email:, login_link:, workspace_name: "Tayaway")
         message = build_message(email: email.to_s, login_link: login_link, workspace_name: workspace_name)
         Mailers::Base.deliver_later(message)
@@ -18,7 +14,6 @@ module Mailers
 
       private
 
-      sig { params(email: String, login_link: String, workspace_name: String).returns(Mail::Message) }
       def build_message(email:, login_link:, workspace_name:)
         message = Mail.new
         message.to      email

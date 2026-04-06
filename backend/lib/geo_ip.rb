@@ -1,4 +1,3 @@
-# typed: false
 # frozen_string_literal: true
 
 # IP geolocation using a DB-IP Lite .mmdb database file.
@@ -9,13 +8,10 @@
 # The database file is expected at backend/data/dbip-city-lite.mmdb.
 # If the file is missing (e.g. in test/CI) all lookups return nil gracefully.
 module GeoIP
-  MMDB_PATH = T.let(
-    File.expand_path("../data/dbip-city-lite.mmdb", __dir__),
-    String
-  )
+  MMDB_PATH = File.expand_path("../data/dbip-city-lite.mmdb", __dir__)
 
-  @db = T.let(nil, T.untyped)
-  @db_loaded = T.let(false, T::Boolean)
+  @db = nil
+  @db_loaded = false
 
   class << self
     # Returns { city: "Amsterdam", country: "Netherlands" } or nil.

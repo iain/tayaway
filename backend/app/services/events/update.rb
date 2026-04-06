@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 module Events
@@ -15,23 +14,9 @@ module Events
   #   result.value!    # => { objects: [...] }
   module Update
     class << self
-      extend T::Sig
       include Result::Methods
       include Events::Validators
 
-      sig do
-        params(
-          event_id: T.any(String, UUID),
-          current_user_id: T.any(String, UUID),
-          name: T.nilable(String),
-          description: T.nilable(String),
-          start_date: T.nilable(String),
-          end_date: T.nilable(String),
-          location_name: T.nilable(String),
-          latitude: T.nilable(Float),
-          longitude: T.nilable(Float)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def call(event_id:, current_user_id:, name:, description:, start_date: nil, end_date: nil,
                location_name: nil, latitude: nil, longitude: nil)
         Event.find_result(event_id)
@@ -51,87 +36,51 @@ module Events
 
       private
 
-      sig { params(name: T.nilable(String), event: Event).returns(Result[Event, ServiceError]) }
       def validate_name_with_event(name, event)
         if name.nil? || name.empty?
-          T.cast(Failure(ServiceError.validation("Name is required")), Result[Event, ServiceError])
+          Failure(ServiceError.validation("Name is required"))
         elsif name.length > ValidationLimits::SHORT_STRING
-          T.cast(Failure(ServiceError.validation("Name is too long (maximum 255 characters)")), Result[Event, ServiceError])
+          Failure(ServiceError.validation("Name is too long (maximum 255 characters)"))
         else
-          T.cast(Success(event), Result[Event, ServiceError])
+          Success(event)
         end
       end
 
-      sig do
-        params(
-          start_date: T.nilable(String),
-          end_date: T.nilable(String)
-        ).returns(Result[T.nilable(T::Array[Date]), ServiceError])
-      end
       def validate_dates(start_date, end_date)
-        return T.cast(Success(nil), Result[T.nilable(T::Array[Date]), ServiceError]) if start_date.nil? && end_date.nil?
+        return Success(nil) if start_date.nil? && end_date.nil?
 
         # Both empty string — clear dates
         if (start_date.nil? || start_date.empty?) && (end_date.nil? || end_date.empty?)
-          return T.cast(Success([]), Result[T.nilable(T::Array[Date]), ServiceError])
+          return Success([])
         end
 
         if start_date.nil? || start_date.empty? || end_date.nil? || end_date.empty?
-          return T.cast(
-            Failure(ServiceError.validation("Both start date and end date must be provided")),
-            Result[T.nilable(T::Array[Date]), ServiceError]
-          )
+          return Failure(ServiceError.validation("Both start date and end date must be provided"))
         end
 
         parsed_start = Date.parse(start_date)
         parsed_end = Date.parse(end_date)
 
         if parsed_start > parsed_end
-          return T.cast(
-            Failure(ServiceError.validation("Start date must be before or equal to end date")),
-            Result[T.nilable(T::Array[Date]), ServiceError]
-          )
+          return Failure(ServiceError.validation("Start date must be before or equal to end date"))
         end
 
-        T.cast(Success([parsed_start, parsed_end]), Result[T.nilable(T::Array[Date]), ServiceError])
+        Success([parsed_start, parsed_end])
       rescue Date::Error
-        T.cast(
-          Failure(ServiceError.validation("Invalid date format")),
-          Result[T.nilable(T::Array[Date]), ServiceError]
-        )
+        Failure(ServiceError.validation("Invalid date format"))
       end
 
-      sig do
-        params(
-          event: Event,
-          dates: T.nilable(T::Array[Date])
-        ).returns(Result[T.untyped, ServiceError])
-      end
       def check_no_resolved_poll_when_clearing(event, dates)
-        return T.cast(Success(nil), Result[T.untyped, ServiceError]) unless dates&.empty?
+        return Success(nil) unless dates&.empty?
 
         poll = DatePoll.find_by_event(event.id)
         if poll&.closed_at
-          T.cast(
-            Failure(ServiceError.validation("Cannot clear dates while a resolved poll exists")),
-            Result[T.untyped, ServiceError]
-          )
+          Failure(ServiceError.validation("Cannot clear dates while a resolved poll exists"))
         else
-          T.cast(Success(nil), Result[T.untyped, ServiceError])
+          Success(nil)
         end
       end
 
-      sig do
-        params(
-          event: Event,
-          name: T.nilable(String),
-          description: T.nilable(String),
-          dates: T.nilable(T::Array[Date]),
-          location_name: T.nilable(String),
-          latitude: T.nilable(Float),
-          longitude: T.nilable(Float)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def update_event(event:, name:, description:, dates:, location_name:, latitude:, longitude:)
         event_id = event.id
         workspace_id = event.workspace_id
@@ -174,8 +123,8 @@ module Events
         APP_LOGGER.info { "[Events::Update] Event #{event_id} updated in workspace #{workspace_id}" }
 
         pool = PoolSerializer.new(workspace_id: workspace_id)
-        pool.add_event(T.must(Event.find(event_id)))
-        T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        pool.add_event(Event.find(event_id))
+        Success({ objects: pool.to_a })
       end
     end
   end

@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 require "json"
@@ -13,21 +12,18 @@ module Websocket
   #   ConnectionManager.instance.broadcast_to_workspace("workspace-uuid", { type: "update", data: {...} })
   #   ConnectionManager.instance.unregister(conn_id)
   class ConnectionManager
-    extend T::Sig
     include Singleton
 
-    sig { void }
     def initialize
       @mutex = Mutex.new
-      @connections = T.let({}, T::Hash[String, Connection])
-      @workspace_connections = T.let({}, T::Hash[String, T::Set[String]])
+      @connections = {}
+      @workspace_connections = {}
     end
 
-    sig { params(websocket: T.untyped, user_id: T.any(String, UUID), session_id: T.nilable(String)).returns(String) }
     def register(websocket, user_id, session_id = nil)
       connection_id = SecureRandom.uuid
       uid = user_id.to_s
-      total = T.let(0, Integer)
+      total = 0
       @mutex.synchronize do
         @connections[connection_id] = Connection.new(
           id: connection_id,
@@ -41,10 +37,9 @@ module Websocket
       connection_id
     end
 
-    sig { params(connection_id: String).void }
     def unregister(connection_id)
-      user_id = T.let(nil, T.nilable(String))
-      total = T.let(nil, T.nilable(Integer))
+      user_id = nil
+      total = nil
       @mutex.synchronize do
         connection = @connections.delete(connection_id)
         return unless connection
@@ -64,9 +59,8 @@ module Websocket
       APP_LOGGER.info { "[ConnectionManager] User #{user_id} disconnected (conn: #{connection_id}, total: #{total})" }
     end
 
-    sig { params(connection_id: String, workspace_ids: T::Array[String]).void }
     def set_workspaces(connection_id, workspace_ids)
-      user_id = T.let(nil, T.nilable(String))
+      user_id = nil
       @mutex.synchronize do
         connection = @connections[connection_id]
         return unless connection
@@ -86,13 +80,12 @@ module Websocket
         connection.workspace_ids = workspace_ids.to_set
         workspace_ids.each do |ws_id|
           @workspace_connections[ws_id] ||= Set.new
-          T.must(@workspace_connections[ws_id]).add(connection_id)
+          @workspace_connections[ws_id].add(connection_id)
         end
       end
       APP_LOGGER.info { "[ConnectionManager] User #{user_id} switched workspaces (conn: #{connection_id}, workspaces: #{workspace_ids.join(', ')})" }
     end
 
-    sig { params(connection_id: String).void }
     def update_last_pong(connection_id)
       @mutex.synchronize do
         connection = @connections[connection_id]
@@ -102,7 +95,6 @@ module Websocket
 
     # Ping all connections and unregister those that have not responded within
     # the idle timeout. Returns the number of connections pruned.
-    sig { params(idle_timeout: Numeric).returns(Integer) }
     def ping_all(idle_timeout:)
       deadline = Time.now - idle_timeout
       stale_ids = []
@@ -131,7 +123,6 @@ module Websocket
       stale_ids.size
     end
 
-    sig { params(workspace_id: String, message: T::Hash[Symbol, T.untyped]).void }
     def broadcast_to_workspace(workspace_id, message)
       connection_ids = @mutex.synchronize { (@workspace_connections[workspace_id] || Set.new).to_a }
       json_message = message.to_json
@@ -150,7 +141,6 @@ module Websocket
       end
     end
 
-    sig { params(user_id: String).returns(T::Array[String]) }
     def connections_for_user(user_id)
       @mutex.synchronize do
         @connections.values.select { |c| c.user_id == user_id }.map(&:id)
@@ -158,13 +148,12 @@ module Websocket
     end
 
     # Send a session_revoked message and close all connections tied to the given session IDs.
-    sig { params(session_ids: T::Array[String]).void }
     def close_sessions(session_ids)
       return if session_ids.empty?
 
       id_set = session_ids.to_set
       targets = @mutex.synchronize do
-        @connections.values.select { |c| c.session_id && id_set.include?(T.must(c.session_id)) }
+        @connections.values.select { |c| c.session_id && id_set.include?(c.session_id) }
       end
 
       message = { type: "session_revoked" }.to_json
@@ -181,19 +170,30 @@ module Websocket
       APP_LOGGER.info { "[ConnectionManager] Closed #{targets.size} connection(s) for revoked sessions" } if targets.any?
     end
 
-    sig { returns(Integer) }
     def connection_count
       @mutex.synchronize { @connections.size }
     end
 
     # Internal connection struct
-    class Connection < T::Struct
-      const :id, String
-      const :websocket, Object
-      const :user_id, String
-      const :session_id, T.nilable(String)
-      prop :workspace_ids, T::Set[String], factory: -> { Set.new }
-      prop :last_pong_at, Time, factory: -> { Time.now }
+    class Connection
+      attr_reader :id, :websocket, :user_id, :session_id
+      attr_accessor :workspace_ids, :last_pong_at
+
+      def initialize(
+        id:,
+        websocket:,
+        user_id:,
+        session_id:,
+        workspace_ids: Set.new,
+        last_pong_at: Time.now
+      )
+        @id = id
+        @websocket = websocket
+        @user_id = user_id
+        @session_id = session_id
+        @workspace_ids = workspace_ids
+        @last_pong_at = last_pong_at
+      end
     end
   end
 end

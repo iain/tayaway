@@ -1,18 +1,25 @@
-# typed: true
 # frozen_string_literal: true
 
 # Read-only workspace membership model (join table for users <-> workspaces).
-class WorkspaceMembership < T::Struct
-  extend T::Sig
+class WorkspaceMembership
+  attr_reader :id, :workspace_id, :user_id, :role, :created_at, :updated_at
 
-  const :id, UUID
-  const :workspace_id, UUID
-  const :user_id, UUID
-  const :role, String
-  const :created_at, Time
-  const :updated_at, Time
+  def initialize(
+    id:,
+    workspace_id:,
+    user_id:,
+    role:,
+    created_at:,
+    updated_at:
+  )
+    @id = id
+    @workspace_id = workspace_id
+    @user_id = user_id
+    @role = role
+    @created_at = created_at
+    @updated_at = updated_at
+  end
 
-  sig { returns(T::Hash[Symbol, T.untyped]) }
   def to_api_hash
     {
       id: id.to_s,
@@ -25,53 +32,38 @@ class WorkspaceMembership < T::Struct
   end
 
   class << self
-    extend T::Sig
-
-    sig { params(id: T.any(String, UUID)).returns(T.nilable(WorkspaceMembership)) }
     def find(id)
       dataset.where(id: id).first
     end
 
-    sig { params(workspace_id: T.any(String, UUID)).returns(T::Array[WorkspaceMembership]) }
     def for_workspace(workspace_id)
       dataset.where(workspace_id: workspace_id).order(:created_at).all
     end
 
-    sig { params(user_id: T.any(String, UUID)).returns(T::Array[WorkspaceMembership]) }
     def for_user(user_id)
       dataset.where(user_id: user_id).order(:created_at).all
     end
 
-    sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[WorkspaceMembership]) }
     def changed_since(workspace_id, since)
       dataset.where(workspace_id: workspace_id).where(Sequel.lit("updated_at > ?", since)).all
     end
 
-    sig { params(workspace_id: T.any(String, UUID)).returns(T::Array[String]) }
     def ids_for_workspace(workspace_id)
       DB[:workspace_memberships]
         .where(workspace_id: workspace_id)
         .select_map(:id)
     end
 
-    sig do
-      params(
-        workspace_id: T.any(String, UUID),
-        user_id: T.any(String, UUID)
-      ).returns(T.nilable(WorkspaceMembership))
-    end
     def find_by_workspace_and_user(workspace_id, user_id)
       dataset.where(workspace_id: workspace_id, user_id: user_id).first
     end
 
     private
 
-    sig { returns(Sequel::Dataset) }
     def dataset
       DB[:workspace_memberships].with_row_proc(method(:from_row))
     end
 
-    sig { params(row: T::Hash[Symbol, T.untyped]).returns(WorkspaceMembership) }
     def from_row(row)
       WorkspaceMembership.new(
         id: UUID.new(row[:id]),

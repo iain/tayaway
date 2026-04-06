@@ -1,4 +1,3 @@
-# typed: false
 # frozen_string_literal: true
 
 # Route files use `# typed: false` because Roda's DSL (hash_path, r.get,

@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 module Auth
@@ -10,12 +9,8 @@ module Auth
   #   result.value!    # => { message: "All other sessions have been revoked" }
   module RevokeOtherSessions
     class << self
-      extend T::Sig
       include Result::Methods
 
-      sig do
-        params(user_id: UUID, current_session_id: UUID).returns(Result[T::Hash[Symbol, String], ServiceError])
-      end
       def call(user_id:, current_session_id:)
         deleted_ids = DB[:sessions]
                       .where(user_id: user_id.to_s)
@@ -27,7 +22,7 @@ module Auth
         Websocket::ConnectionManager.instance.close_sessions(deleted_ids)
         APP_LOGGER.info { "[Auth::RevokeOtherSessions] Revoked #{deleted_ids.size} sessions for user #{user_id}" }
 
-        T.cast(Success({ message: "All other sessions have been revoked" }), Result[T::Hash[Symbol, String], ServiceError])
+        Success({ message: "All other sessions have been revoked" })
       end
     end
   end

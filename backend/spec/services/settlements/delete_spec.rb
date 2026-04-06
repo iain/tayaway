@@ -1,4 +1,3 @@
-# typed: false
 # frozen_string_literal: true
 
 require "spec_helper"
@@ -10,7 +9,7 @@ RSpec.describe Settlements::Delete do
   let(:workspace) { TestFactories.workspace }
   let(:event) { TestFactories.event(workspace: workspace, user: event_owner) }
 
-  # rubocop:disable Sorbet/BlockMethodDefinition -- test helper used across examples
+  # -- test helper used across examples
   def create_settlement(user_row: creator, with_expense: false, with_transfer: false)
     settlement_id = SecureRandom.uuid
     now = Time.now
@@ -53,8 +52,6 @@ RSpec.describe Settlements::Delete do
 
     settlement_id
   end
-  # rubocop:enable Sorbet/BlockMethodDefinition
-
   it "returns 404 when settlement not found" do
     result = described_class.call(
       settlement_id: SecureRandom.uuid,
