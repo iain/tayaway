@@ -1,28 +1,40 @@
-# typed: true
 # frozen_string_literal: true
 
 # Read-only session model.
-class Session < T::Struct
-  extend T::Sig
-
+class Session
   EXPIRY_DAYS = 30
   EXPIRY_SECONDS = EXPIRY_DAYS * 24 * 60 * 60
   INACTIVITY_SECONDS = 7 * 24 * 60 * 60 # 7 days
   ACTIVITY_THROTTLE_SECONDS = 5 * 60 # 5 minutes
 
-  const :id, UUID
-  const :user_id, UUID
-  const :token, String
-  const :expires_at, Time
-  const :last_active_at, T.nilable(Time)
-  const :created_at, Time
-  const :ip_address, T.nilable(IPAddr)
-  const :city, T.nilable(String)
-  const :country, T.nilable(String)
-  const :browser_name, T.nilable(String)
-  const :os_name, T.nilable(String)
+  attr_reader :id, :user_id, :token, :expires_at, :last_active_at, :created_at, :ip_address, :city, :country, :browser_name, :os_name
 
-  sig { returns(T::Hash[Symbol, T.untyped]) }
+  def initialize(
+    id:,
+    user_id:,
+    token:,
+    expires_at:,
+    last_active_at:,
+    created_at:,
+    ip_address:,
+    city:,
+    country:,
+    browser_name:,
+    os_name:
+  )
+    @id = id
+    @user_id = user_id
+    @token = token
+    @expires_at = expires_at
+    @last_active_at = last_active_at
+    @created_at = created_at
+    @ip_address = ip_address
+    @city = city
+    @country = country
+    @browser_name = browser_name
+    @os_name = os_name
+  end
+
   def to_api_hash
     {
       id: id.to_s,
@@ -36,24 +48,19 @@ class Session < T::Struct
     }
   end
 
-  sig { returns(T::Boolean) }
   def inactive?
     return false unless last_active_at
 
-    Time.now - T.must(last_active_at) > INACTIVITY_SECONDS
+    Time.now - last_active_at > INACTIVITY_SECONDS
   end
 
-  sig { returns(T::Boolean) }
   def activity_update_needed?
     return true unless last_active_at
 
-    Time.now - T.must(last_active_at) > ACTIVITY_THROTTLE_SECONDS
+    Time.now - last_active_at > ACTIVITY_THROTTLE_SECONDS
   end
 
   class << self
-    extend T::Sig
-
-    sig { params(token: String).returns(T.nilable(Session)) }
     def find_valid(token)
       session = dataset
                 .where(token: Auth::Token.digest(token))
@@ -64,12 +71,10 @@ class Session < T::Struct
       session
     end
 
-    sig { params(token: String).returns(T.nilable(Session)) }
     def find_by_token(token)
       dataset.where(token: Auth::Token.digest(token)).first
     end
 
-    sig { params(id: String).returns(T.nilable(Session)) }
     def find_valid_by_id(id)
       session = dataset
                 .where(id: id)
@@ -80,7 +85,6 @@ class Session < T::Struct
       session
     end
 
-    sig { params(user_id: UUID).returns(T::Array[Session]) }
     def for_user(user_id)
       dataset
         .where(user_id: user_id.to_s)
@@ -91,7 +95,6 @@ class Session < T::Struct
         .reject(&:inactive?)
     end
 
-    sig { params(session: Session).void }
     def touch_activity(session)
       return unless session.activity_update_needed?
 
@@ -108,12 +111,10 @@ class Session < T::Struct
 
     private
 
-    sig { returns(Sequel::Dataset) }
     def dataset
       DB[:sessions].with_row_proc(method(:from_row))
     end
 
-    sig { params(row: T::Hash[Symbol, T.untyped]).returns(Session) }
     def from_row(row)
       Session.new(
         id: UUID.new(row[:id]),

@@ -1,14 +1,7 @@
-# typed: true
 # frozen_string_literal: true
 
 module Auth
   module SessionCreator
-    extend T::Sig
-
-    sig do
-      params(user_id: String, ip: T.nilable(String), user_agent: T.nilable(String))
-        .returns(T::Hash[Symbol, T.untyped])
-    end
     def self.create(user_id, ip: nil, user_agent: nil)
       now = Time.now
       id = SecureRandom.uuid
@@ -46,7 +39,6 @@ module Auth
       { session_token: token, user_id: user_id }
     end
 
-    sig { params(user_agent: String).returns(T::Hash[Symbol, T.nilable(String)]) }
     def self.parse_user_agent(user_agent)
       b = Browser.new(user_agent)
       {

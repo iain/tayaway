@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 require "rbnacl"
@@ -15,14 +14,10 @@ module Encryption
   MIN_ENCRYPTED_BYTES = NONCE_BYTES + MAC_BYTES # 40
 
   class << self
-    extend T::Sig
-
-    sig { params(plaintext: String).returns(String) }
     def encrypt(plaintext)
       Base64.strict_encode64(box.box(plaintext))
     end
 
-    sig { params(encoded: String).returns(String) }
     def decrypt(encoded)
       box.open(Base64.strict_decode64(encoded))
     end
@@ -30,7 +25,6 @@ module Encryption
     # Detect whether a value looks like our encrypted format (Base64 with enough
     # bytes for nonce + mac). Plaintext values are short strings, phone numbers,
     # dates, etc. — they won't produce 40+ raw bytes when Base64-decoded.
-    sig { params(value: String).returns(T::Boolean) }
     def encrypted?(value)
       raw = Base64.strict_decode64(value)
       raw.bytesize >= MIN_ENCRYPTED_BYTES
@@ -40,13 +34,10 @@ module Encryption
 
     private
 
-    sig { returns(RbNaCl::SimpleBox) }
     def box
-      @box = T.let(@box, T.nilable(RbNaCl::SimpleBox))
       @_box ||= RbNaCl::SimpleBox.from_secret_key(encryption_key)
     end
 
-    sig { returns(String) }
     def encryption_key
       # Derive a 32-byte key from APP_SECRET using HKDF
       OpenSSL::KDF.hkdf(

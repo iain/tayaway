@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 require "openssl"
@@ -7,15 +6,11 @@ require "jwt"
 
 module Auth
   module Token
-    extend T::Sig
-
-    sig { params(message: String).returns(String) }
     def self.digest(message)
       digest = OpenSSL::HMAC.digest("SHA3-512", APP_SECRET, message)
       Base64.urlsafe_encode64(digest[0, 32], padding: false)
     end
 
-    sig { params(token: String, email: String).returns(String) }
     def self.encode_login_link(token:, email:)
       payload = {
         token: token,
@@ -26,7 +21,6 @@ module Auth
       JWT.encode(payload, APP_SECRET, "HS256")
     end
 
-    sig { params(jwt: String).returns(T::Hash[Symbol, String]) }
     def self.decode_login_link(jwt)
       decoded = JWT.decode(jwt, APP_SECRET, true, algorithm: "HS256")
       payload = decoded.first
@@ -35,7 +29,6 @@ module Auth
       { token: payload["token"], email: payload["email"] }
     end
 
-    sig { params(token: String).returns(String) }
     def self.encode_ws_ticket(token:)
       payload = {
         token: token,
@@ -45,7 +38,6 @@ module Auth
       JWT.encode(payload, APP_SECRET, "HS256")
     end
 
-    sig { params(jwt: String).returns(T::Hash[Symbol, String]) }
     def self.decode_ws_ticket(jwt)
       decoded = JWT.decode(jwt, APP_SECRET, true, algorithm: "HS256")
       payload = decoded.first
@@ -54,7 +46,6 @@ module Auth
       { token: payload["token"] }
     end
 
-    sig { params(token: String, email: String).returns(String) }
     def self.encode_invite(token:, email:)
       payload = {
         token: token,
@@ -65,7 +56,6 @@ module Auth
       JWT.encode(payload, APP_SECRET, "HS256")
     end
 
-    sig { params(jwt: String).returns(T::Hash[Symbol, String]) }
     def self.decode_invite(jwt)
       decoded = JWT.decode(jwt, APP_SECRET, true, algorithm: "HS256")
       payload = decoded.first
@@ -74,7 +64,6 @@ module Auth
       { token: payload["token"], email: payload["email"] }
     end
 
-    sig { params(token: String, email: String).returns(String) }
     def self.encode_email_change(token:, email:)
       payload = {
         token: token,
@@ -85,7 +74,6 @@ module Auth
       JWT.encode(payload, APP_SECRET, "HS256")
     end
 
-    sig { params(jwt: String).returns(T::Hash[Symbol, String]) }
     def self.decode_email_change(jwt)
       decoded = JWT.decode(jwt, APP_SECRET, true, algorithm: "HS256")
       payload = decoded.first
@@ -96,7 +84,6 @@ module Auth
 
     WEBAUTHN_CHALLENGE_EXPIRY_SECONDS = 300 # 5 minutes
 
-    sig { params(challenge: String, user_id: T.nilable(String)).returns(String) }
     def self.encode_webauthn_challenge(challenge:, user_id: nil)
       typ = user_id ? "webauthn_register" : "webauthn_authenticate"
       payload = {
@@ -108,7 +95,6 @@ module Auth
       JWT.encode(payload, APP_SECRET, "HS256")
     end
 
-    sig { params(jwt: String, user_id: T.nilable(String)).returns(T::Hash[Symbol, String]) }
     def self.decode_webauthn_challenge(jwt, user_id: nil)
       decoded = JWT.decode(jwt, APP_SECRET, true, algorithm: "HS256")
       payload = decoded.first

@@ -1,29 +1,26 @@
-# typed: true
 # frozen_string_literal: true
 
 # Read-only login link token model.
-class LoginLinkToken < T::Struct
-  extend T::Sig
-
+class LoginLinkToken
   EXPIRY_MINUTES = 15
 
-  const :id, UUID
-  const :user_id, UUID
-  const :token, String
-  const :email, EmailAddress
-  const :expires_at, Time
-  const :used_at, T.nilable(Time)
-  const :created_at, Time
+  attr_reader :id, :user_id, :token, :email, :expires_at, :used_at, :created_at
+
+  def initialize(id:, user_id:, token:, email:, expires_at:, used_at:, created_at:)
+    @id = id
+    @user_id = user_id
+    @token = token
+    @email = email
+    @expires_at = expires_at
+    @used_at = used_at
+    @created_at = created_at
+  end
 
   class << self
-    extend T::Sig
-
-    sig { params(id: T.any(UUID, String)).returns(T.nilable(LoginLinkToken)) }
     def find(id)
       dataset.where(id: id).first
     end
 
-    sig { params(token: String, email: String).returns(T.nilable(LoginLinkToken)) }
     def find_valid(token, email)
       record = dataset
                .where(token: Auth::Token.digest(token), email: email)
@@ -42,7 +39,6 @@ class LoginLinkToken < T::Struct
 
     private
 
-    sig { params(row: T::Hash[Symbol, T.untyped]).returns(LoginLinkToken) }
     def from_row(row)
       new(
         id: UUID.new(row[:id]),
@@ -55,7 +51,6 @@ class LoginLinkToken < T::Struct
       )
     end
 
-    sig { returns(Sequel::Dataset) }
     def dataset
       DB[:login_link_tokens].with_row_proc(method(:from_row))
     end

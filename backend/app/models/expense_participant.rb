@@ -1,16 +1,21 @@
-# typed: true
 # frozen_string_literal: true
 
 # Read-only ExpenseParticipant model.
-class ExpenseParticipant < T::Struct
-  extend T::Sig
+class ExpenseParticipant
+  attr_reader :id, :expense_id, :user_id, :created_at
 
-  const :id, UUID
-  const :expense_id, UUID
-  const :user_id, UUID
-  const :created_at, Time
+  def initialize(
+    id:,
+    expense_id:,
+    user_id:,
+    created_at:
+  )
+    @id = id
+    @expense_id = expense_id
+    @user_id = user_id
+    @created_at = created_at
+  end
 
-  sig { returns(T::Hash[Symbol, T.untyped]) }
   def to_api_hash
     {
       id: id.to_s,
@@ -23,33 +28,27 @@ class ExpenseParticipant < T::Struct
   end
 
   class << self
-    extend T::Sig
     include Result::Methods
     include Findable
 
-    sig { params(id: T.any(String, UUID)).returns(T.nilable(ExpenseParticipant)) }
     def find(id)
       dataset.where(id: id).first
     end
 
-    sig { params(expense_id: T.any(String, UUID)).returns(T::Array[ExpenseParticipant]) }
     def for_expense(expense_id)
       dataset.where(expense_id: expense_id).all
     end
 
-    sig { params(expense_ids: T::Array[String]).returns(T::Hash[String, T::Array[ExpenseParticipant]]) }
     def for_expenses(expense_ids)
       return {} if expense_ids.empty?
 
       dataset.where(expense_id: expense_ids).all.group_by { |p| p.expense_id.to_s }
     end
 
-    sig { params(expense_id: T.any(String, UUID)).returns(T::Array[String]) }
     def user_ids_for_expense(expense_id)
       DB[:expense_participants].where(expense_id: expense_id).select_map(:user_id).map(&:to_s)
     end
 
-    sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[ExpenseParticipant]) }
     def changed_since(workspace_id, since)
       dataset
         .join(:expenses, id: :expense_id)
@@ -62,12 +61,10 @@ class ExpenseParticipant < T::Struct
 
     private
 
-    sig { returns(Sequel::Dataset) }
     def dataset
       DB[:expense_participants].with_row_proc(method(:from_row))
     end
 
-    sig { params(row: T::Hash[Symbol, T.untyped]).returns(ExpenseParticipant) }
     def from_row(row)
       ExpenseParticipant.new(
         id: UUID.new(row[:id]),

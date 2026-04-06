@@ -1,22 +1,11 @@
-# typed: true
 # frozen_string_literal: true
 
 module ChoreRosters
   # Service to add a chore to a roster.
   module AddChore
     class << self
-      extend T::Sig
       include Result::Methods
 
-      sig do
-        params(
-          roster_id: T.any(String, UUID),
-          workspace_id: T.any(String, UUID),
-          name: T.nilable(String),
-          people_per_day: T.nilable(Integer),
-          id: T.nilable(String)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def call(roster_id:, workspace_id:, name:, people_per_day:, id: nil)
         validate(name, people_per_day)
           .bind { |valid| create_chore(roster_id, workspace_id, valid, id) }
@@ -24,49 +13,23 @@ module ChoreRosters
 
       private
 
-      sig do
-        params(
-          name: T.nilable(String),
-          people_per_day: T.nilable(Integer)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def validate(name, people_per_day)
         if name.nil? || name.empty?
-          return T.cast(
-            Failure(ServiceError.validation("Name is required")),
-            Result[T::Hash[Symbol, T.untyped], ServiceError]
-          )
+          return Failure(ServiceError.validation("Name is required"))
         end
 
         if name.length > ValidationLimits::SHORT_STRING
-          return T.cast(
-            Failure(ServiceError.validation("Name is too long (maximum #{ValidationLimits::SHORT_STRING} characters)")),
-            Result[T::Hash[Symbol, T.untyped], ServiceError]
-          )
+          return Failure(ServiceError.validation("Name is too long (maximum #{ValidationLimits::SHORT_STRING} characters)"))
         end
 
         ppd = people_per_day || 1
         if ppd < 1 || ppd > ValidationLimits::PEOPLE_PER_DAY_MAX
-          return T.cast(
-            Failure(ServiceError.validation("People per day must be between 1 and #{ValidationLimits::PEOPLE_PER_DAY_MAX}")),
-            Result[T::Hash[Symbol, T.untyped], ServiceError]
-          )
+          return Failure(ServiceError.validation("People per day must be between 1 and #{ValidationLimits::PEOPLE_PER_DAY_MAX}"))
         end
 
-        T.cast(
-          Success({ name: name, people_per_day: ppd }),
-          Result[T::Hash[Symbol, T.untyped], ServiceError]
-        )
+        Success({ name: name, people_per_day: ppd })
       end
 
-      sig do
-        params(
-          roster_id: T.any(String, UUID),
-          workspace_id: T.any(String, UUID),
-          valid: T::Hash[Symbol, T.untyped],
-          id: T.nilable(String)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def create_chore(roster_id, workspace_id, valid, id)
         # Idempotent replay
         if id
@@ -74,7 +37,7 @@ module ChoreRosters
           if existing
             pool = PoolSerializer.new(workspace_id: workspace_id)
             pool.add_chore(existing)
-            return T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+            return Success({ objects: pool.to_a })
           end
         end
 
@@ -97,12 +60,12 @@ module ChoreRosters
         end
 
         pool = PoolSerializer.new(workspace_id: workspace_id)
-        chore = T.must(Chore.find(chore_id))
+        chore = Chore.find(chore_id)
         pool.add_chore(chore)
-        roster = T.must(ChoreRoster.find(roster_id))
+        roster = ChoreRoster.find(roster_id)
         pool.add_chore_roster(roster)
 
-        T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        Success({ objects: pool.to_a })
       end
     end
   end

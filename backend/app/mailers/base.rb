@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 require "mail"
@@ -12,19 +11,15 @@ module Mailers
   #   Mailers::Base.deliver(message)
   module Base
     class << self
-      extend T::Sig
-
-      sig { void }
       def configure!
         if APP_ENV == "production"
           APP_LOGGER.info { "[Mailer] SMTP delivery configured (credentials loaded on first send)" }
         else
-          Mail.defaults { T.unsafe(self).delivery_method :test }
+          Mail.defaults { self.delivery_method :test }
           APP_LOGGER.info { "[Mailer] Configured test delivery method" }
         end
       end
 
-      sig { params(message: Mail::Message).void }
       def deliver(message)
         apply_smtp_settings(message) if APP_ENV == "production"
         masked = mask_recipients(message.to)
@@ -33,7 +28,6 @@ module Mailers
         APP_LOGGER.info { "[Mailer] Email delivered to #{masked}" }
       end
 
-      sig { params(message: Mail::Message).void }
       def deliver_later(message)
         if APP_ENV == "production"
           Thread.new do
@@ -46,7 +40,6 @@ module Mailers
         end
       end
 
-      sig { returns(String) }
       def from_address
         ENV.fetch("SMTP_FROM_EMAIL", "noreply@tayaway.com")
       end
@@ -54,7 +47,6 @@ module Mailers
       private
 
       # Masks email addresses for logging: "iain@example.com" -> "i***@example.com"
-      sig { params(addresses: T.nilable(T::Array[String])).returns(String) }
       def mask_recipients(addresses)
         return "" if addresses.nil? || addresses.empty?
 
@@ -62,14 +54,13 @@ module Mailers
           local, domain = addr.split("@", 2)
           next addr unless domain
 
-          "#{T.must(local)[0]}***@#{domain}"
+          "#{local[0]}***@#{domain}"
         end.join(", ")
       end
 
       # Applies SMTP settings directly to the message, reading credentials at
       # send time rather than at boot. This means missing SMTP vars only raise
       # when email is actually sent, not when the app starts.
-      sig { params(message: Mail::Message).void }
       def apply_smtp_settings(message)
         smtp_host = ENV.fetch("SMTP_HOST")
         smtp_port = ENV.fetch("SMTP_PORT", "587").to_i
@@ -84,7 +75,7 @@ module Mailers
                         { ssl: false, enable_starttls_auto: true }
                       end
 
-        T.unsafe(message).delivery_method(:smtp, {
+        message.delivery_method(:smtp, {
           address: smtp_host,
           port: smtp_port,
           user_name: smtp_username,

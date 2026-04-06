@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 module Auth
@@ -10,17 +9,14 @@ module Auth
   #   result.value!    # => { message: "If an account exists..." }
   module CreateLoginLink
     class << self
-      extend T::Sig
       include Result::Methods
 
-      sig { params(email: T.nilable(String)).returns(Result[T::Hash[Symbol, String], ServiceError]) }
       def call(email:)
         validate_email(email).bind { |valid_email| generate_login_link(valid_email) }
       end
 
       # Create a login link token, build the login URL, and send the email.
       # Shared by Auth::CreateLoginLink and Invites::Accept.
-      sig { params(user: User).void }
       def send_login_link(user)
         raw_token = create_token(user.id, user.email)
         jwt = Auth::Token.encode_login_link(token: raw_token, email: user.email.to_s)
@@ -28,7 +24,7 @@ module Auth
         login_link = "#{frontend_url}/auth/verify?token=#{jwt}"
 
         workspaces = Workspace.for_user(user.id)
-        workspace_name = workspaces.length == 1 ? T.must(workspaces.first).name : "Tayaway"
+        workspace_name = workspaces.length == 1 ? workspaces.first.name : "Tayaway"
 
         email = user.email.to_s
 
@@ -39,16 +35,14 @@ module Auth
 
       private
 
-      sig { params(email: T.nilable(String)).returns(Result[String, ServiceError]) }
       def validate_email(email)
         if email.nil? || email.empty?
-          T.cast(Failure(ServiceError.validation("Email is required")), Result[String, ServiceError])
+          Failure(ServiceError.validation("Email is required"))
         else
-          T.cast(Success(email), Result[String, ServiceError])
+          Success(email)
         end
       end
 
-      sig { params(email: String).returns(Result[T::Hash[Symbol, String], ServiceError]) }
       def generate_login_link(email)
         user = User.find_by_email(email)
 
@@ -58,10 +52,9 @@ module Auth
           APP_LOGGER.info { "[Auth::CreateLoginLink] Login link requested for unknown email" }
         end
 
-        T.cast(Success({ message: "If an account exists with this email, a login link has been sent." }), Result[T::Hash[Symbol, String], ServiceError])
+        Success({ message: "If an account exists with this email, a login link has been sent." })
       end
 
-      sig { params(user_id: T.any(String, UUID), email: T.any(String, EmailAddress)).returns(String) }
       def create_token(user_id, email)
         DB[:login_link_tokens].where(user_id: user_id.to_s, used_at: nil).update(used_at: Time.now)
 

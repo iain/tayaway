@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 require "json"
@@ -8,9 +7,6 @@ module Websocket
   # defining private methods on App from route files (which risks name collisions).
   module MessageHandler
     class << self
-      extend T::Sig
-
-      sig { params(value: T.nilable(String)).returns(T.nilable(Time)) }
       def safe_parse_time(value)
         return nil unless value
 
@@ -19,14 +15,6 @@ module Websocket
         nil
       end
 
-      sig do
-        params(
-          connection: T.untyped,
-          connection_id: String,
-          user_id: T.untyped,
-          raw_message: String
-        ).void
-      end
       def handle(connection, connection_id, user_id, raw_message)
         data = JSON.parse(raw_message, symbolize_names: true)
         type = data[:type]
@@ -50,15 +38,6 @@ module Websocket
 
       private
 
-      sig do
-        params(
-          connection: T.untyped,
-          connection_id: String,
-          user_id: T.untyped,
-          workspace_id: T.nilable(String),
-          since: T.nilable(String)
-        ).void
-      end
       def switch_workspace(connection, connection_id, user_id, workspace_id, since = nil)
         unless workspace_id
           connection.write({ type: "error", message: "Missing workspaceId" }.to_json)

@@ -1,4 +1,3 @@
-# typed: false
 # frozen_string_literal: true
 
 require "spec_helper"
@@ -9,7 +8,7 @@ RSpec.describe Settlements::MarkPaid do
   let(:workspace) { TestFactories.workspace }
   let(:event) { TestFactories.event(workspace: workspace, user: user) }
 
-  # rubocop:disable Sorbet/BlockMethodDefinition -- test helper used across examples
+  # -- test helper used across examples
   def create_transfer(paid_at: nil)
     settlement_id = SecureRandom.uuid
     now = Time.now
@@ -33,8 +32,6 @@ RSpec.describe Settlements::MarkPaid do
     )
     transfer_id
   end
-  # rubocop:enable Sorbet/BlockMethodDefinition
-
   it "returns 404 when transfer not found" do
     result = described_class.call(
       transfer_id: SecureRandom.uuid,

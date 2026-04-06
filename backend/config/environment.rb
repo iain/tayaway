@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 VALID_ENVIRONMENTS = %w[production development test e2e].freeze
@@ -11,14 +10,11 @@ APP_DIR = Pathname(File.expand_path("..", __dir__))
 require "bundler/setup"
 Bundler.require(:default, APP_ENV)
 
-GIT_SHA = T.let(
-  (
+GIT_SHA = (
     ENV["GIT_SHA"] ||
     (File.read("#{APP_DIR}/REVISION").strip[0, 7] if File.exist?("#{APP_DIR}/REVISION")) ||
     `git rev-parse --short HEAD 2>/dev/null`.strip
-  ).freeze,
-  String,
-)
+  ).freeze
 
 Dotenv.load("#{APP_DIR}/.env.#{APP_ENV}") unless APP_ENV == "production"
 
@@ -60,12 +56,9 @@ LOADER.enable_reloading if APP_ENV == "development"
 LOADER.setup
 LOADER.eager_load if APP_ENV == "production"
 
-FRONTEND_URL = T.let(ENV.fetch("FRONTEND_URL", "http://localhost:5173").freeze, String)
+FRONTEND_URL = ENV.fetch("FRONTEND_URL", "http://localhost:5173").freeze
 
-WEBAUTHN_EXTRA_ORIGINS = T.let(
-  ENV.fetch("WEBAUTHN_EXTRA_ORIGINS", "").split(",").map(&:strip).reject(&:empty?).freeze,
-  T::Array[String],
-)
+WEBAUTHN_EXTRA_ORIGINS = ENV.fetch("WEBAUTHN_EXTRA_ORIGINS", "").split(",").map(&:strip).reject(&:empty?).freeze
 
 WebAuthn.configure do |config|
   config.allowed_origins = [FRONTEND_URL, *WEBAUTHN_EXTRA_ORIGINS]

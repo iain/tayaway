@@ -41,9 +41,6 @@ gem "mmdb"
 # Autoloading
 gem "zeitwerk"
 
-# Runtime type checking
-gem "sorbet-static-and-runtime", require: "sorbet-runtime"
-
 # Logging (extracted from default gems in Ruby 4.0)
 gem "logger"
 
@@ -62,8 +59,6 @@ group :development do
   gem "rubocop-rake", require: false
   gem "rubocop-rspec", require: false
   gem "rubocop-sequel", require: false
-  gem "rubocop-sorbet", require: false
-
   # Vulnerability scanning
   gem "bundler-audit", require: false
 end
@@ -71,7 +66,6 @@ end
 group :development, :test do
   gem "irb", require: false # Required for YARD compatibility with Ruby 4.0
   gem "pry", require: false
-  gem "tapioca", ">= 0.17.10", require: false
 end
 
 group :test do

@@ -1,19 +1,27 @@
-# typed: true
 # frozen_string_literal: true
 
 # Read-only TaskList model.
-class TaskList < T::Struct
-  extend T::Sig
+class TaskList
+  attr_reader :id, :workspace_id, :user_id, :name, :position, :created_at, :updated_at
 
-  const :id, UUID
-  const :workspace_id, UUID
-  const :user_id, T.nilable(UUID)
-  const :name, String
-  const :position, Float
-  const :created_at, Time
-  const :updated_at, Time
+  def initialize(
+    id:,
+    workspace_id:,
+    user_id:,
+    name:,
+    position:,
+    created_at:,
+    updated_at:
+  )
+    @id = id
+    @workspace_id = workspace_id
+    @user_id = user_id
+    @name = name
+    @position = position
+    @created_at = created_at
+    @updated_at = updated_at
+  end
 
-  sig { returns(T::Hash[Symbol, T.untyped]) }
   def to_api_hash
     {
       id: id.to_s,
@@ -28,21 +36,17 @@ class TaskList < T::Struct
   end
 
   class << self
-    extend T::Sig
     include Result::Methods
     include Findable
 
-    sig { params(id: T.any(String, UUID)).returns(T.nilable(TaskList)) }
     def find(id)
       dataset.where(id: id).first
     end
 
-    sig { params(workspace_id: T.any(String, UUID)).returns(T::Array[TaskList]) }
     def for_workspace(workspace_id)
       dataset.where(workspace_id: workspace_id).order(:position).all
     end
 
-    sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[TaskList]) }
     def changed_since(workspace_id, since)
       dataset
         .where(workspace_id: workspace_id)
@@ -50,19 +54,16 @@ class TaskList < T::Struct
         .all
     end
 
-    sig { params(workspace_id: T.any(String, UUID)).returns(Float) }
     def max_position(workspace_id)
       DB[:task_lists].where(workspace_id: workspace_id).max(:position).to_f
     end
 
     private
 
-    sig { returns(Sequel::Dataset) }
     def dataset
       DB[:task_lists].with_row_proc(method(:from_row))
     end
 
-    sig { params(row: T::Hash[Symbol, T.untyped]).returns(TaskList) }
     def from_row(row)
       TaskList.new(
         id: UUID.new(row[:id]),

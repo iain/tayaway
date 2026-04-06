@@ -132,11 +132,3 @@ namespace :db do
     puts "Deleted #{count} deleted_items rows older than #{retention_days} days"
   end
 end
-
-namespace :sorbet do
-  desc "Update Sorbet RBI files"
-  task :update do
-    sh "bundle exec tapioca gems"
-    sh "bundle exec tapioca dsl"
-  end
-end

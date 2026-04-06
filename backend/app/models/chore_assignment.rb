@@ -1,20 +1,29 @@
-# typed: true
 # frozen_string_literal: true
 
 # Read-only ChoreAssignment model.
-class ChoreAssignment < T::Struct
-  extend T::Sig
+class ChoreAssignment
+  attr_reader :id, :chore_id, :user_id, :date, :pinned, :note, :created_at, :updated_at
 
-  const :id, UUID
-  const :chore_id, UUID
-  const :user_id, UUID
-  const :date, Date
-  const :pinned, T::Boolean
-  const :note, T.nilable(String)
-  const :created_at, Time
-  const :updated_at, Time
+  def initialize(
+    id:,
+    chore_id:,
+    user_id:,
+    date:,
+    pinned:,
+    note:,
+    created_at:,
+    updated_at:
+  )
+    @id = id
+    @chore_id = chore_id
+    @user_id = user_id
+    @date = date
+    @pinned = pinned
+    @note = note
+    @created_at = created_at
+    @updated_at = updated_at
+  end
 
-  sig { returns(T::Hash[Symbol, T.untyped]) }
   def to_api_hash
     {
       id: id.to_s,
@@ -30,26 +39,21 @@ class ChoreAssignment < T::Struct
   end
 
   class << self
-    extend T::Sig
     include Result::Methods
     include Findable
 
-    sig { params(id: T.any(String, UUID)).returns(T.nilable(ChoreAssignment)) }
     def find(id)
       dataset.where(Sequel[:chore_assignments][:id] => id).first
     end
 
-    sig { params(chore_id: T.any(String, UUID)).returns(T::Array[ChoreAssignment]) }
     def for_chore(chore_id)
       dataset.where(Sequel[:chore_assignments][:chore_id] => chore_id).order(Sequel[:chore_assignments][:date]).all
     end
 
-    sig { params(chore_id: T.any(String, UUID)).returns(T::Array[String]) }
     def ids_for_chore(chore_id)
       DB[:chore_assignments].where(chore_id: chore_id).select_map(:id)
     end
 
-    sig { params(chore_roster_id: T.any(String, UUID)).returns(T::Array[ChoreAssignment]) }
     def for_roster(chore_roster_id)
       dataset
         .join(:chores, id: Sequel[:chore_assignments][:chore_id])
@@ -58,7 +62,6 @@ class ChoreAssignment < T::Struct
         .all
     end
 
-    sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[ChoreAssignment]) }
     def changed_since(workspace_id, since)
       dataset
         .join(:chores, id: Sequel[:chore_assignments][:chore_id])
@@ -72,12 +75,10 @@ class ChoreAssignment < T::Struct
 
     private
 
-    sig { returns(Sequel::Dataset) }
     def dataset
       DB[:chore_assignments].with_row_proc(method(:from_row))
     end
 
-    sig { params(row: T::Hash[Symbol, T.untyped]).returns(ChoreAssignment) }
     def from_row(row)
       ChoreAssignment.new(
         id: UUID.new(row[:id]),

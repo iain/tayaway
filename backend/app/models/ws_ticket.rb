@@ -1,23 +1,21 @@
-# typed: true
 # frozen_string_literal: true
 
 # Read-only WebSocket ticket model.
-class WsTicket < T::Struct
-  extend T::Sig
-
+class WsTicket
   EXPIRY_SECONDS = 30
 
-  const :id, UUID
-  const :session_id, UUID
-  const :token, String
-  const :expires_at, Time
-  const :used_at, T.nilable(Time)
-  const :created_at, Time
+  attr_reader :id, :session_id, :token, :expires_at, :used_at, :created_at
+
+  def initialize(id:, session_id:, token:, expires_at:, used_at:, created_at:)
+    @id = id
+    @session_id = session_id
+    @token = token
+    @expires_at = expires_at
+    @used_at = used_at
+    @created_at = created_at
+  end
 
   class << self
-    extend T::Sig
-
-    sig { params(hashed_token: String).returns(T.nilable(WsTicket)) }
     def find_valid(hashed_token)
       dataset
         .where(token: hashed_token)
@@ -28,7 +26,6 @@ class WsTicket < T::Struct
 
     private
 
-    sig { params(row: T::Hash[Symbol, T.untyped]).returns(WsTicket) }
     def from_row(row)
       new(
         id: UUID.new(row[:id]),
@@ -40,7 +37,6 @@ class WsTicket < T::Struct
       )
     end
 
-    sig { returns(Sequel::Dataset) }
     def dataset
       DB[:ws_tickets].with_row_proc(method(:from_row))
     end

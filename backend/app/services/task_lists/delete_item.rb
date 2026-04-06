@@ -1,20 +1,12 @@
-# typed: true
 # frozen_string_literal: true
 
 module TaskLists
   # Service to delete a single task item.
   module DeleteItem
     class << self
-      extend T::Sig
       include Result::Methods
       include TaskLists::Validators
 
-      sig do
-        params(
-          task_list_id: T.any(String, UUID),
-          task_item_id: T.any(String, UUID)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def call(task_list_id:, task_item_id:)
         TaskList.find_result(task_list_id)
                 .bind { |task_list| TaskItem.find_result(task_item_id).fmap { |item| [task_list, item] } }
@@ -24,7 +16,6 @@ module TaskLists
 
       private
 
-      sig { params(task_list: TaskList, item: TaskItem).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
       def delete_item(task_list, item)
         item_id = item.id
 
@@ -35,10 +26,7 @@ module TaskLists
           Broadcaster.object_deleted("task_item", item_id, workspace_id: task_list.workspace_id)
         end
 
-        T.cast(
-          Success({ deleted: [{ objectType: "taskItem", id: item_id.to_s }] }),
-          Result[T::Hash[Symbol, T.untyped], ServiceError]
-        )
+        Success({ deleted: [{ objectType: "taskItem", id: item_id.to_s }] })
       end
     end
   end

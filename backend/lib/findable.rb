@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 # Mixin providing a standard find_result class method for models that
@@ -13,19 +12,17 @@
 # "Settlement transfer").
 #
 # @example
-#   class Event < T::Struct
+#   class Event
 #     class << self
 #       include Result::Methods
 #       include Findable
 #     end
 #   end
 module Findable
-  extend T::Sig
   include Result::Methods
 
-  sig { params(id: T.any(String, UUID)).returns(T.untyped) }
   def find_result(id)
-    item = T.unsafe(self).find(id)
+    item = self.find(id)
     if item
       Success(item)
     elsif DB[:deleted_items].where(object_type: deleted_item_object_type, object_id: id).first
@@ -37,13 +34,11 @@ module Findable
 
   private
 
-  sig { returns(String) }
   def deleted_item_object_type
-    T.must(T.unsafe(self).name).gsub(/([a-z])([A-Z])/, '\1_\2').downcase
+    self.name.gsub(/([a-z])([A-Z])/, '\1_\2').downcase
   end
 
-  sig { returns(String) }
   def deleted_item_label
-    T.must(T.unsafe(self).name).gsub(/([a-z])([A-Z])/, '\1 \2').downcase.capitalize
+    self.name.gsub(/([a-z])([A-Z])/, '\1 \2').downcase.capitalize
   end
 end

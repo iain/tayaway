@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 # Collects and serializes objects for pool-based API responses.
@@ -9,17 +8,13 @@
 #   pool.add_event(event)
 #   { objects: pool.to_a }
 class PoolSerializer
-  extend T::Sig
-
-  sig { params(workspace_id: T.nilable(T.any(String, UUID))).void }
   def initialize(workspace_id: nil)
-    @objects = T.let({}, T::Hash[String, T::Hash[Symbol, T.untyped]])
-    @workspace_id = T.let(workspace_id&.to_s, T.nilable(String))
+    @objects = {}
+    @workspace_id = workspace_id&.to_s
   end
 
   # Serializes a workspace membership as a member pool object by fetching the user.
   # This is the canonical entry point used by add_workspace, listener, and sync.
-  sig { params(membership: WorkspaceMembership).void }
   def add_member_from_membership(membership)
     key = "member:#{membership.id}"
     return if @objects.key?(key)
@@ -31,13 +26,11 @@ class PoolSerializer
   end
 
   # Public alias for add_member_from_membership
-  sig { params(membership: WorkspaceMembership).void }
   def add_member(membership)
     add_member_from_membership(membership)
   end
 
   # Batch-add members with a single User query instead of N+1
-  sig { params(memberships: T::Array[WorkspaceMembership]).void }
   def add_members_batch(memberships)
     new_memberships = memberships.reject { |m| @objects.key?("member:#{m.id}") }
     return if new_memberships.empty?
@@ -53,7 +46,6 @@ class PoolSerializer
     end
   end
 
-  sig { params(event: Event).void }
   def add_event(event)
     key = "event:#{event.id}"
     return if @objects.key?(key)
@@ -66,7 +58,6 @@ class PoolSerializer
   end
 
   # Batch-add events with a single DatePoll query and a single Rsvp query instead of N+1
-  sig { params(events: T::Array[Event]).void }
   def add_events_batch(events)
     new_events = events.reject { |e| @objects.key?("event:#{e.id}") }
     return if new_events.empty?
@@ -83,7 +74,6 @@ class PoolSerializer
     end
   end
 
-  sig { params(date_poll: DatePoll).void }
   def add_date_poll(date_poll)
     key = "date_poll:#{date_poll.id}"
     return if @objects.key?(key)
@@ -93,7 +83,6 @@ class PoolSerializer
   end
 
   # Batch-add date polls with a single DateRange ID query instead of N+1
-  sig { params(polls: T::Array[DatePoll]).void }
   def add_date_polls_batch(polls)
     new_polls = polls.reject { |p| @objects.key?("date_poll:#{p.id}") }
     return if new_polls.empty?
@@ -107,7 +96,6 @@ class PoolSerializer
     end
   end
 
-  sig { params(date_range: DateRange).void }
   def add_date_range(date_range)
     key = "date_range:#{date_range.id}"
     return if @objects.key?(key)
@@ -116,7 +104,6 @@ class PoolSerializer
   end
 
   # Batch-add date ranges
-  sig { params(ranges: T::Array[DateRange]).void }
   def add_date_ranges_batch(ranges)
     new_ranges = ranges.reject { |r| @objects.key?("date_range:#{r.id}") }
     return if new_ranges.empty?
@@ -126,7 +113,6 @@ class PoolSerializer
     end
   end
 
-  sig { params(vote: Vote).void }
   def add_vote(vote)
     key = "vote:#{vote.id}"
     return if @objects.key?(key)
@@ -134,7 +120,6 @@ class PoolSerializer
     @objects[key] = vote.to_api_hash
   end
 
-  sig { params(rsvp: Rsvp).void }
   def add_rsvp(rsvp)
     key = "rsvp:#{rsvp.id}"
     return if @objects.key?(key)
@@ -142,7 +127,6 @@ class PoolSerializer
     @objects[key] = rsvp.to_api_hash
   end
 
-  sig { params(workspace: Workspace).void }
   def add_workspace(workspace)
     key = "workspace:#{workspace.id}"
     return if @objects.key?(key)
@@ -151,7 +135,6 @@ class PoolSerializer
     @objects[key] = workspace.to_api_hash(member_ids: member_ids)
   end
 
-  sig { params(task_list: TaskList).void }
   def add_task_list(task_list)
     key = "task_list:#{task_list.id}"
     return if @objects.key?(key)
@@ -160,7 +143,6 @@ class PoolSerializer
     TaskItem.for_task_list(task_list.id).each { |item| add_task_item(item) }
   end
 
-  sig { params(task_item: TaskItem).void }
   def add_task_item(task_item)
     key = "task_item:#{task_item.id}"
     return if @objects.key?(key)
@@ -168,7 +150,6 @@ class PoolSerializer
     @objects[key] = task_item.to_api_hash
   end
 
-  sig { params(expense: Expense, participants: T.nilable(T::Array[ExpenseParticipant])).void }
   def add_expense(expense, participants: nil)
     key = "expense:#{expense.id}"
     return if @objects.key?(key)
@@ -182,7 +163,6 @@ class PoolSerializer
   end
 
   # Batch-add expenses with a single participant query instead of N+1
-  sig { params(expenses: T::Array[Expense]).void }
   def add_expenses_batch(expenses)
     new_expenses = expenses.reject { |e| @objects.key?("expense:#{e.id}") }
     return if new_expenses.empty?
@@ -195,7 +175,6 @@ class PoolSerializer
     end
   end
 
-  sig { params(participant: ExpenseParticipant).void }
   def add_expense_participant(participant)
     key = "expense_participant:#{participant.id}"
     return if @objects.key?(key)
@@ -203,7 +182,6 @@ class PoolSerializer
     @objects[key] = participant.to_api_hash
   end
 
-  sig { params(settlement: Settlement).void }
   def add_settlement(settlement)
     key = "settlement:#{settlement.id}"
     return if @objects.key?(key)
@@ -213,7 +191,6 @@ class PoolSerializer
   end
 
   # Batch-add settlements with a single SettlementTransfer ID query instead of N+1
-  sig { params(settlements: T::Array[Settlement]).void }
   def add_settlements_batch(settlements)
     new_settlements = settlements.reject { |s| @objects.key?("settlement:#{s.id}") }
     return if new_settlements.empty?
@@ -227,7 +204,6 @@ class PoolSerializer
     end
   end
 
-  sig { params(transfer: SettlementTransfer).void }
   def add_settlement_transfer(transfer)
     key = "settlement_transfer:#{transfer.id}"
     return if @objects.key?(key)
@@ -235,7 +211,6 @@ class PoolSerializer
     @objects[key] = transfer.to_api_hash
   end
 
-  sig { params(roster: ChoreRoster).void }
   def add_chore_roster(roster)
     key = "chore_roster:#{roster.id}"
     return if @objects.key?(key)
@@ -259,7 +234,6 @@ class PoolSerializer
     end
   end
 
-  sig { params(chore: Chore).void }
   def add_chore(chore)
     key = "chore:#{chore.id}"
     return if @objects.key?(key)
@@ -270,7 +244,6 @@ class PoolSerializer
     assignments.each { |a| add_chore_assignment(a) }
   end
 
-  sig { params(assignment: ChoreAssignment).void }
   def add_chore_assignment(assignment)
     key = "chore_assignment:#{assignment.id}"
     return if @objects.key?(key)
@@ -278,7 +251,6 @@ class PoolSerializer
     @objects[key] = assignment.to_api_hash
   end
 
-  sig { params(invite: WorkspaceInvite).void }
   def add_workspace_invite(invite)
     key = "workspace_invite:#{invite.id}"
     return if @objects.key?(key)
@@ -286,7 +258,6 @@ class PoolSerializer
     @objects[key] = invite.to_api_hash
   end
 
-  sig { params(items: T::Enumerable[T.untyped], type: Symbol).void }
   def add_all(items, type:)
     entry = ObjectRegistry::BY_KEY[type.to_s]
     unless entry
@@ -297,14 +268,12 @@ class PoolSerializer
     items.each { |item| send(entry.pool_method, item) }
   end
 
-  sig { returns(T::Array[T::Hash[Symbol, T.untyped]]) }
   def to_a
     @objects.values
   end
 
   private
 
-  sig { params(user: User, membership: WorkspaceMembership).returns(T::Hash[Symbol, T.untyped]) }
   def build_member_hash(user, membership)
     {
       id: membership.id.to_s,

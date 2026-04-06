@@ -1,22 +1,33 @@
-# typed: true
 # frozen_string_literal: true
 
 # Read-only Expense model.
-class Expense < T::Struct
-  extend T::Sig
+class Expense
+  attr_reader :id, :event_id, :user_id, :settlement_id, :amount, :description, :start_date, :end_date, :created_at, :updated_at
 
-  const :id, UUID
-  const :event_id, UUID
-  const :user_id, T.nilable(UUID)
-  const :settlement_id, T.nilable(UUID)
-  const :amount, Float
-  const :description, String
-  const :start_date, Date
-  const :end_date, Date
-  const :created_at, Time
-  const :updated_at, Time
+  def initialize(
+    id:,
+    event_id:,
+    user_id:,
+    settlement_id:,
+    amount:,
+    description:,
+    start_date:,
+    end_date:,
+    created_at:,
+    updated_at:
+  )
+    @id = id
+    @event_id = event_id
+    @user_id = user_id
+    @settlement_id = settlement_id
+    @amount = amount
+    @description = description
+    @start_date = start_date
+    @end_date = end_date
+    @created_at = created_at
+    @updated_at = updated_at
+  end
 
-  sig { returns(T::Hash[Symbol, T.untyped]) }
   def to_api_hash
     {
       id: id.to_s,
@@ -34,21 +45,17 @@ class Expense < T::Struct
   end
 
   class << self
-    extend T::Sig
     include Result::Methods
     include Findable
 
-    sig { params(id: T.any(String, UUID)).returns(T.nilable(Expense)) }
     def find(id)
       dataset.where(id: id).first
     end
 
-    sig { params(event_id: T.any(String, UUID)).returns(T::Array[Expense]) }
     def for_event(event_id)
       dataset.where(event_id: event_id).order(:created_at).limit(ValidationLimits::QUERY_LIMIT).all
     end
 
-    sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[Expense]) }
     def changed_since(workspace_id, since)
       dataset
         .join(:events, id: :event_id)
@@ -60,12 +67,10 @@ class Expense < T::Struct
 
     private
 
-    sig { returns(Sequel::Dataset) }
     def dataset
       DB[:expenses].with_row_proc(method(:from_row))
     end
 
-    sig { params(row: T::Hash[Symbol, T.untyped]).returns(Expense) }
     def from_row(row)
       Expense.new(
         id: UUID.new(row[:id]),

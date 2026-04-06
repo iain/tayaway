@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 module Invites
@@ -6,12 +5,8 @@ module Invites
   # Creates user if needed, creates membership, marks invite accepted, sends login link.
   module Accept
     class << self
-      extend T::Sig
       include Result::Methods
 
-      sig do
-        params(token_jwt: T.nilable(String)).returns(Result[T::Hash[Symbol, String], ServiceError])
-      end
       def call(token_jwt:)
         decode_token(token_jwt)
           .bind { |decoded| find_invite(decoded) }
@@ -20,36 +15,33 @@ module Invites
 
       private
 
-      sig { params(token_jwt: T.nilable(String)).returns(Result[T::Hash[Symbol, String], ServiceError]) }
       def decode_token(token_jwt)
         if token_jwt.nil? || token_jwt.empty?
-          return T.cast(Failure(ServiceError.validation("Token is required")), Result[T::Hash[Symbol, String], ServiceError])
+          return Failure(ServiceError.validation("Token is required"))
         end
 
         decoded = Auth::Token.decode_invite(token_jwt)
-        T.cast(Success(decoded), Result[T::Hash[Symbol, String], ServiceError])
+        Success(decoded)
       rescue JWT::ExpiredSignature
-        T.cast(Failure(ServiceError.gone("This invitation has expired")), Result[T::Hash[Symbol, String], ServiceError])
+        Failure(ServiceError.gone("This invitation has expired"))
       rescue JWT::DecodeError
-        T.cast(Failure(ServiceError.validation("Invalid invitation link")), Result[T::Hash[Symbol, String], ServiceError])
+        Failure(ServiceError.validation("Invalid invitation link"))
       end
 
-      sig { params(decoded: T::Hash[Symbol, String]).returns(Result[WorkspaceInvite, ServiceError]) }
       def find_invite(decoded)
-        token_hash = Auth::Token.digest(T.must(decoded[:token]))
-        invite = WorkspaceInvite.find_valid(token_hash, T.must(decoded[:email]))
+        token_hash = Auth::Token.digest(decoded[:token])
+        invite = WorkspaceInvite.find_valid(token_hash, decoded[:email])
 
         if invite
-          T.cast(Success(invite), Result[WorkspaceInvite, ServiceError])
+          Success(invite)
         else
-          T.cast(Failure(ServiceError.gone("This invitation is no longer valid")), Result[WorkspaceInvite, ServiceError])
+          Failure(ServiceError.gone("This invitation is no longer valid"))
         end
       end
 
-      sig { params(invite: WorkspaceInvite).returns(Result[T::Hash[Symbol, String], ServiceError]) }
       def accept_invite(invite)
         now = Time.now
-        user = T.let(nil, T.nilable(User))
+        user = nil
         membership_id = SecureRandom.uuid
 
         DB.transaction do
@@ -64,7 +56,7 @@ module Invites
               created_at: now,
               updated_at: now
             )
-            user = T.must(User.find(user_id))
+            user = User.find(user_id)
           end
 
           # Check not already a member (race condition guard)
@@ -74,10 +66,7 @@ module Invites
             DB[:workspace_invites].where(id: invite.id).update(accepted_at: now, updated_at: now)
             DB[:deleted_items].insert(workspace_id: invite.workspace_id, object_type: "workspace_invite", object_id: invite.id)
             Broadcaster.object_deleted("workspace_invite", invite.id, workspace_id: invite.workspace_id.to_s)
-            return T.cast(
-              Success({ message: "You are already a member of this workspace" }),
-              Result[T::Hash[Symbol, String], ServiceError]
-            )
+            return Success({ message: "You are already a member of this workspace" })
           end
 
           # Create membership
@@ -95,8 +84,6 @@ module Invites
           Broadcaster.object_deleted("workspace_invite", invite.id, workspace_id: invite.workspace_id.to_s)
         end
 
-        user = T.must(user)
-
         APP_LOGGER.info { "[Invites::Accept] User #{user.id} (#{user.email}) accepted invite to workspace #{invite.workspace_id}" }
 
         # Broadcast new member
@@ -105,10 +92,7 @@ module Invites
         # Send login link so the user can log in
         Auth::CreateLoginLink.send_login_link(user)
 
-        T.cast(
-          Success({ message: "Invitation accepted. Check your email for a login link." }),
-          Result[T::Hash[Symbol, String], ServiceError]
-        )
+        Success({ message: "Invitation accepted. Check your email for a login link." })
       end
     end
   end

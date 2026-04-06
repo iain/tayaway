@@ -1,13 +1,9 @@
-# typed: true
 # frozen_string_literal: true
 
 module Mailers
   # Builds and sends the email change verification email.
   module EmailChange
     class << self
-      extend T::Sig
-
-      sig { params(email: T.any(String, EmailAddress), verification_link: String).void }
       def send_email(email:, verification_link:)
         message = build_message(email: email.to_s, verification_link: verification_link)
         Mailers::Base.deliver_later(message)
@@ -15,7 +11,6 @@ module Mailers
 
       private
 
-      sig { params(email: String, verification_link: String).returns(Mail::Message) }
       def build_message(email:, verification_link:)
         message = Mail.new
         message.to      email

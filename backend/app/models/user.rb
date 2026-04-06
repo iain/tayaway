@@ -1,26 +1,37 @@
-# typed: true
 # frozen_string_literal: true
 
 # Read-only user model.
-class User < T::Struct
-  extend T::Sig
+class User
+  attr_reader :id, :email, :name, :phone_number, :birthday, :location_name, :location_coordinates, :iban, :created_at, :updated_at
 
-  const :id, UUID
-  const :email, EmailAddress
-  const :name, T.nilable(String)
-  const :phone_number, T.nilable(String)
-  const :birthday, T.nilable(Date)
-  const :location_name, T.nilable(String)
-  const :location_coordinates, T.nilable(T::Array[Float])
-  const :iban, T.nilable(String)
-  const :created_at, Time
-  const :updated_at, Time
+  def initialize(
+    id:,
+    email:,
+    name:,
+    phone_number:,
+    birthday:,
+    location_name:,
+    location_coordinates:,
+    iban:,
+    created_at:,
+    updated_at:
+  )
+    @id = id
+    @email = email
+    @name = name
+    @phone_number = phone_number
+    @birthday = birthday
+    @location_name = location_name
+    @location_coordinates = location_coordinates
+    @iban = iban
+    @created_at = created_at
+    @updated_at = updated_at
+  end
 
   # Serializes the user for API responses. IBAN is deliberately excluded —
   # it must only appear (masked) in the authenticated /api/auth/me response.
   # All other consumers (PoolSerializer, broadcasts) build their own hashes
   # and expose only `hasIban: true/false`.
-  sig { returns(T::Hash[Symbol, T.untyped]) }
   def to_api_hash
     {
       id: id.to_s,
@@ -38,19 +49,14 @@ class User < T::Struct
   end
 
   class << self
-    extend T::Sig
-
-    sig { params(id: T.any(String, UUID)).returns(T.nilable(User)) }
     def find(id)
       dataset.where(id: id).first
     end
 
-    sig { params(email: T.any(String, EmailAddress)).returns(T.nilable(User)) }
     def find_by_email(email)
       dataset.where(Sequel.lit("LOWER(email) = ?", email.to_s.downcase)).first
     end
 
-    sig { params(ids: T::Array[T.any(String, UUID)]).returns(T::Array[User]) }
     def for_ids(ids)
       return [] if ids.empty?
 
@@ -59,7 +65,6 @@ class User < T::Struct
 
     private
 
-    sig { params(value: T.nilable(String)).returns(T.nilable(String)) }
     def decrypt_field(value)
       return nil if value.nil?
       return value unless Encryption.encrypted?(value)
@@ -67,12 +72,10 @@ class User < T::Struct
       Encryption.decrypt(value)
     end
 
-    sig { returns(Sequel::Dataset) }
     def dataset
       DB[:users].with_row_proc(method(:from_row))
     end
 
-    sig { params(row: T::Hash[Symbol, T.untyped]).returns(User) }
     def from_row(row)
       phone = decrypt_field(row[:phone_number])
 

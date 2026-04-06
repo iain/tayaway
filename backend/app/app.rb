@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 require "roda"
@@ -21,10 +20,7 @@ class App < Roda
     { error: "Internal server error" }
   end
 
-  STATIC_DIR = T.let(
-    Pathname.new(ENV.fetch("STATIC_DIR", File.expand_path("../../frontend/dist", __dir__))),
-    Pathname
-  )
+  STATIC_DIR = Pathname.new(ENV.fetch("STATIC_DIR", File.expand_path("../../frontend/dist", __dir__)))
 
   plugin :public, root: STATIC_DIR.to_s
 
@@ -34,10 +30,7 @@ class App < Roda
 
   # __Host- prefix enforces Secure, exact host match, and Path=/ in browsers.
   # Only used in production since __Host- requires HTTPS.
-  COOKIE_NAME = T.let(
-    ENV["RACK_ENV"] == "production" ? "__Host-session_token" : "session_token",
-    String
-  )
+  COOKIE_NAME = ENV["RACK_ENV"] == "production" ? "__Host-session_token" : "session_token"
 
   def set_session_cookie(token, expires_at)
     response.set_cookie(
@@ -90,8 +83,8 @@ class App < Roda
     "#{iban[0, 4]} #{"•••• " * ((iban.length - 8) / 4)}#{iban[-4, 4]}"
   end
 
-  CSRF_HEADER = T.let("HTTP_X_CSRF_PROTECTION", String)
-  CSRF_MUTATING_METHODS = T.let(%w[POST PUT PATCH DELETE].freeze, T::Array[String])
+  CSRF_HEADER = "HTTP_X_CSRF_PROTECTION"
+  CSRF_MUTATING_METHODS = %w[POST PUT PATCH DELETE].freeze
 
   def verify_csrf_header!
     return unless CSRF_MUTATING_METHODS.include?(request.request_method)

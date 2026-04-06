@@ -1,4 +1,3 @@
-# typed: false
 # frozen_string_literal: true
 
 require "spec_helper"
@@ -9,7 +8,7 @@ RSpec.describe Invites::Accept do
 
   before { TestFactories.workspace_membership(workspace: workspace, user: inviter, role: "admin") }
 
-  # rubocop:disable Sorbet/BlockMethodDefinition -- test helper used across examples
+  # -- test helper used across examples
   def create_invite_with_token(email:)
     raw_token = SecureRandom.hex(32)
     token_hash = Auth::Token.digest(raw_token)
@@ -30,8 +29,6 @@ RSpec.describe Invites::Accept do
     jwt = Auth::Token.encode_invite(token: raw_token, email: email)
     { jwt: jwt, id: id }
   end
-  # rubocop:enable Sorbet/BlockMethodDefinition
-
   it "accepts an invite for a new user" do
     invite = create_invite_with_token(email: "newuser@example.com")
 

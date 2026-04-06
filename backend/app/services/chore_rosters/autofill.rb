@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 module ChoreRosters
@@ -6,15 +5,8 @@ module ChoreRosters
   # Respects RSVP availability, pinned assignments, and a one-chore-per-day soft rule.
   module Autofill
     class << self
-      extend T::Sig
       include Result::Methods
 
-      sig do
-        params(
-          roster_id: T.any(String, UUID),
-          workspace_id: T.any(String, UUID)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def call(roster_id:, workspace_id:)
         ChoreRoster.find_result(roster_id)
                    .bind { |roster| find_event(roster) }
@@ -23,29 +15,18 @@ module ChoreRosters
 
       private
 
-      sig { params(roster: ChoreRoster).returns(Result[T::Array[T.untyped], ServiceError]) }
       def find_event(roster)
         event = Event.find(roster.event_id)
         if event && event.start_date && event.end_date
-          T.cast(Success([roster, event]), Result[T::Array[T.untyped], ServiceError])
+          Success([roster, event])
         else
-          T.cast(
-            Failure(ServiceError.validation("Event must have dates set")),
-            Result[T::Array[T.untyped], ServiceError]
-          )
+          Failure(ServiceError.validation("Event must have dates set"))
         end
       end
 
-      sig do
-        params(
-          roster: ChoreRoster,
-          event: Event,
-          workspace_id: T.any(String, UUID)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def run_autofill(roster, event, workspace_id)
-        event_start = T.must(event.start_date)
-        event_end = T.must(event.end_date)
+        event_start = event.start_date
+        event_end = event.end_date
         dates = (event_start..event_end).to_a
 
         # Build availability map from attending RSVPs
@@ -57,13 +38,10 @@ module ChoreRosters
         # Guard against pathological cases (e.g. 60-day event with 20 chores = 1200 rows)
         max_slots = dates.length * chores.sum(&:people_per_day)
         if max_slots > 1000
-          return T.cast(
-            Failure(ServiceError.validation("Too many assignments to autofill (#{max_slots} slots). Reduce the number of chores or shorten the event dates.")),
-            Result[T::Hash[Symbol, T.untyped], ServiceError]
-          )
+          return Failure(ServiceError.validation("Too many assignments to autofill (#{max_slots} slots). Reduce the number of chores or shorten the event dates."))
         end
 
-        deleted = T.let([], T::Array[T::Hash[Symbol, String]])
+        deleted = []
         pool = PoolSerializer.new(workspace_id: workspace_id)
 
         DB.transaction do
@@ -172,23 +150,12 @@ module ChoreRosters
         end
 
         # Serialize full roster state
-        roster = T.must(ChoreRoster.find(roster.id))
+        roster = ChoreRoster.find(roster.id)
         pool.add_chore_roster(roster)
 
-        T.cast(
-          Success({ objects: pool.to_a, deleted: deleted }),
-          Result[T::Hash[Symbol, T.untyped], ServiceError]
-        )
+        Success({ objects: pool.to_a, deleted: deleted })
       end
 
-      sig do
-        params(
-          dates: T::Array[Date],
-          rsvps: T::Array[Rsvp],
-          event_start: Date,
-          event_end: Date
-        ).returns(T::Hash[Date, Set])
-      end
       def build_availability(dates, rsvps, event_start, event_end)
         availability = {}
         dates.each { |d| availability[d] = Set.new }

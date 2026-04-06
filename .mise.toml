@@ -69,11 +69,6 @@ description = "Vue + TypeScript type checking"
 dir = "{{config_root}}/frontend"
 run = "pnpm exec vue-tsc -b"
 
-[tasks."typecheck:backend"]
-description = "Sorbet type checking"
-dir = "{{config_root}}/backend"
-run = "bundle exec srb tc"
-
 # ── Test ─────────────────────────────────────────────────────────────────────
 
 [tasks.test]

@@ -1,18 +1,14 @@
-# typed: true
 # frozen_string_literal: true
 
 # Enum for vote response types.
-class VoteResponse < T::Enum
-  extend T::Sig
+module VoteResponse
+  YES = "yes"
+  NO = "no"
+  PREFERABLY_NOT = "preferably_not"
 
-  enums do
-    Yes = new("yes")
-    No = new("no")
-    PreferablyNot = new("preferably_not")
-  end
+  VALUES = [YES, NO, PREFERABLY_NOT].freeze
 
-  sig { params(value: String).returns(T::Boolean) }
   def self.valid?(value)
-    values.map(&:serialize).include?(value)
+    VALUES.include?(value)
   end
 end

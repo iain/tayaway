@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 module Invites
@@ -8,15 +7,8 @@ module Invites
     COOLDOWN_HOURS = 24
 
     class << self
-      extend T::Sig
       include Result::Methods
 
-      sig do
-        params(
-          invite_id: T.nilable(String),
-          workspace_id: T.any(String, UUID)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def call(invite_id:, workspace_id:)
         find_invite(invite_id, workspace_id)
           .bind { |invite| check_not_accepted(invite) }
@@ -26,52 +18,42 @@ module Invites
 
       private
 
-      sig { params(invite_id: T.nilable(String), workspace_id: T.any(String, UUID)).returns(Result[WorkspaceInvite, ServiceError]) }
       def find_invite(invite_id, workspace_id)
         if invite_id.nil? || invite_id.empty?
-          return T.cast(Failure(ServiceError.validation("Invite ID is required")), Result[WorkspaceInvite, ServiceError])
+          return Failure(ServiceError.validation("Invite ID is required"))
         end
 
         invite = WorkspaceInvite.find(invite_id)
 
         if invite.nil?
-          return T.cast(Failure(ServiceError.not_found("Invitation not found")), Result[WorkspaceInvite, ServiceError])
+          return Failure(ServiceError.not_found("Invitation not found"))
         end
 
         if invite.workspace_id.to_s != workspace_id.to_s
-          return T.cast(Failure(ServiceError.not_found("Invitation not found")), Result[WorkspaceInvite, ServiceError])
+          return Failure(ServiceError.not_found("Invitation not found"))
         end
 
-        T.cast(Success(invite), Result[WorkspaceInvite, ServiceError])
+        Success(invite)
       end
 
-      sig { params(invite: WorkspaceInvite).returns(Result[WorkspaceInvite, ServiceError]) }
       def check_not_accepted(invite)
         if invite.accepted_at
-          T.cast(
-            Failure(ServiceError.validation("This invitation has already been accepted")),
-            Result[WorkspaceInvite, ServiceError]
-          )
+          Failure(ServiceError.validation("This invitation has already been accepted"))
         else
-          T.cast(Success(invite), Result[WorkspaceInvite, ServiceError])
+          Success(invite)
         end
       end
 
-      sig { params(invite: WorkspaceInvite).returns(Result[WorkspaceInvite, ServiceError]) }
       def check_rate_limit(invite)
         last_sent_at = invite.last_reminded_at || invite.created_at
         cooldown_until = last_sent_at + (COOLDOWN_HOURS * 3600)
         if Time.now < cooldown_until
-          T.cast(
-            Failure(ServiceError.validation("A reminder was already sent recently. Please wait before sending another.")),
-            Result[WorkspaceInvite, ServiceError]
-          )
+          Failure(ServiceError.validation("A reminder was already sent recently. Please wait before sending another."))
         else
-          T.cast(Success(invite), Result[WorkspaceInvite, ServiceError])
+          Success(invite)
         end
       end
 
-      sig { params(invite: WorkspaceInvite).returns(Result[T::Hash[Symbol, T.untyped], ServiceError]) }
       def resend(invite)
         now = Time.now
         raw_token = SecureRandom.hex(32)
@@ -103,10 +85,10 @@ module Invites
 
         Broadcaster.object_changed("workspace_invite", invite.id, workspace_id: invite.workspace_id.to_s)
 
-        updated_invite = T.must(WorkspaceInvite.find(invite.id))
+        updated_invite = WorkspaceInvite.find(invite.id)
         pool = PoolSerializer.new(workspace_id: invite.workspace_id)
         pool.add_workspace_invite(updated_invite)
-        T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        Success({ objects: pool.to_a })
       end
     end
   end

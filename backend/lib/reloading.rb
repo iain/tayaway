@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 require "concurrent/atomic/read_write_lock"

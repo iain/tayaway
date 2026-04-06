@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 module Events
@@ -14,24 +13,9 @@ module Events
   #   result.value!    # => { objects: [...] }
   module Create
     class << self
-      extend T::Sig
       include Result::Methods
       include Events::Validators
 
-      sig do
-        params(
-          workspace_id: T.any(String, UUID),
-          user_id: T.any(String, UUID),
-          name: T.nilable(String),
-          description: T.nilable(String),
-          id: T.nilable(String),
-          start_date: T.nilable(String),
-          end_date: T.nilable(String),
-          location_name: T.nilable(String),
-          latitude: T.nilable(Float),
-          longitude: T.nilable(Float)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def call(workspace_id:, user_id:, name:, description:, id: nil, start_date: nil, end_date: nil,
                location_name: nil, latitude: nil, longitude: nil)
         validate_name(name)
@@ -49,64 +33,35 @@ module Events
 
       private
 
-      sig { params(name: T.nilable(String)).returns(Result[String, ServiceError]) }
       def validate_name(name)
         if name.nil? || name.empty?
-          T.cast(Failure(ServiceError.validation("Name is required")), Result[String, ServiceError])
+          Failure(ServiceError.validation("Name is required"))
         elsif name.length > ValidationLimits::SHORT_STRING
-          T.cast(Failure(ServiceError.validation("Name is too long (maximum 255 characters)")), Result[String, ServiceError])
+          Failure(ServiceError.validation("Name is too long (maximum 255 characters)"))
         else
-          T.cast(Success(name), Result[String, ServiceError])
+          Success(name)
         end
       end
 
-      sig do
-        params(
-          start_date: T.nilable(String),
-          end_date: T.nilable(String)
-        ).returns(Result[T.nilable(T::Array[Date]), ServiceError])
-      end
       def validate_dates(start_date, end_date)
-        return T.cast(Success(nil), Result[T.nilable(T::Array[Date]), ServiceError]) if start_date.nil? && end_date.nil?
+        return Success(nil) if start_date.nil? && end_date.nil?
 
         if start_date.nil? || end_date.nil?
-          return T.cast(
-            Failure(ServiceError.validation("Both start date and end date must be provided")),
-            Result[T.nilable(T::Array[Date]), ServiceError]
-          )
+          return Failure(ServiceError.validation("Both start date and end date must be provided"))
         end
 
         parsed_start = Date.parse(start_date)
         parsed_end = Date.parse(end_date)
 
         if parsed_start > parsed_end
-          return T.cast(
-            Failure(ServiceError.validation("Start date must be before or equal to end date")),
-            Result[T.nilable(T::Array[Date]), ServiceError]
-          )
+          return Failure(ServiceError.validation("Start date must be before or equal to end date"))
         end
 
-        T.cast(Success([parsed_start, parsed_end]), Result[T.nilable(T::Array[Date]), ServiceError])
+        Success([parsed_start, parsed_end])
       rescue Date::Error
-        T.cast(
-          Failure(ServiceError.validation("Invalid date format")),
-          Result[T.nilable(T::Array[Date]), ServiceError]
-        )
+        Failure(ServiceError.validation("Invalid date format"))
       end
 
-      sig do
-        params(
-          workspace_id: T.any(String, UUID),
-          user_id: T.any(String, UUID),
-          name: String,
-          description: T.nilable(String),
-          id: T.nilable(String),
-          dates: T.nilable(T::Array[Date]),
-          location_name: T.nilable(String),
-          latitude: T.nilable(Float),
-          longitude: T.nilable(Float)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def create_event(workspace_id:, user_id:, name:, description:, id:, dates:, location_name:, latitude:, longitude:)
         # Idempotent replay: if client provided an ID and it already exists, return it
         if id
@@ -114,7 +69,7 @@ module Events
           if existing
             pool = PoolSerializer.new(workspace_id: workspace_id)
             pool.add_event(existing)
-            return T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+            return Success({ objects: pool.to_a })
           end
         end
 
@@ -150,7 +105,7 @@ module Events
             Event.find(event_id)
           end
         rescue Sequel::UniqueConstraintViolation
-          T.must(Event.find(T.must(id)))
+          Event.find(id)
         end
 
         APP_LOGGER.info { "[Events::Create] User #{user_id} created event #{event.id} in workspace #{workspace_id}" }
@@ -158,7 +113,7 @@ module Events
         pool = PoolSerializer.new(workspace_id: workspace_id)
         pool.add_event(event)
 
-        T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        Success({ objects: pool.to_a })
       end
     end
   end

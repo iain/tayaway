@@ -1,4 +1,3 @@
-# typed: false
 # frozen_string_literal: true
 
 require "securerandom"
@@ -217,18 +216,30 @@ module TestFactories
       DB[:sessions].where(id: id).first.merge(token: token)
     end
 
-    class TokenResult < T::Struct
-      const :token, String
+    class TokenResult
+      attr_reader :token
+
+      def initialize(token:)
+        @token = token
+      end
     end
 
-    class LoginTokenResult < T::Struct
-      const :token, String
-      const :record, LoginLinkToken
+    class LoginTokenResult
+      attr_reader :token, :record
+
+      def initialize(token:, record:)
+        @token = token
+        @record = record
+      end
     end
 
-    class EmailChangeTokenResult < T::Struct
-      const :token, String
-      const :record, EmailChangeToken
+    class EmailChangeTokenResult
+      attr_reader :token, :record
+
+      def initialize(token:, record:)
+        @token = token
+        @record = record
+      end
     end
 
     def ws_ticket(session: nil, user: nil, token: SecureRandom.hex(32), expires_at: Time.now + WsTicket::EXPIRY_SECONDS, used_at: nil, id: SecureRandom.uuid)

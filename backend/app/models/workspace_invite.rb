@@ -1,25 +1,37 @@
-# typed: true
 # frozen_string_literal: true
 
 # Read-only workspace invite model.
-class WorkspaceInvite < T::Struct
-  extend T::Sig
-
+class WorkspaceInvite
   EXPIRY_HOURS = 24
 
-  const :id, UUID
-  const :workspace_id, UUID
-  const :invited_by, T.nilable(UUID)
-  const :email, EmailAddress
-  const :name, T.nilable(String)
-  const :token, String
-  const :expires_at, Time
-  const :accepted_at, T.nilable(Time)
-  const :last_reminded_at, T.nilable(Time)
-  const :created_at, Time
-  const :updated_at, Time
+  attr_reader :id, :workspace_id, :invited_by, :email, :name, :token, :expires_at, :accepted_at, :last_reminded_at, :created_at, :updated_at
 
-  sig { returns(T::Hash[Symbol, T.untyped]) }
+  def initialize(
+    id:,
+    workspace_id:,
+    invited_by:,
+    email:,
+    name:,
+    token:,
+    expires_at:,
+    accepted_at:,
+    last_reminded_at:,
+    created_at:,
+    updated_at:
+  )
+    @id = id
+    @workspace_id = workspace_id
+    @invited_by = invited_by
+    @email = email
+    @name = name
+    @token = token
+    @expires_at = expires_at
+    @accepted_at = accepted_at
+    @last_reminded_at = last_reminded_at
+    @created_at = created_at
+    @updated_at = updated_at
+  end
+
   def to_api_hash
     {
       id: id.to_s,
@@ -37,15 +49,11 @@ class WorkspaceInvite < T::Struct
   end
 
   class << self
-    extend T::Sig
-
-    sig { params(id: T.any(String, UUID)).returns(T.nilable(WorkspaceInvite)) }
     def find(id)
       dataset.where(id: id).first
     end
 
     # Find a valid (not expired, not accepted) invite by token hash and email.
-    sig { params(token_hash: String, email: String).returns(T.nilable(WorkspaceInvite)) }
     def find_valid(token_hash, email)
       dataset
         .where(token: token_hash, email: email)
@@ -55,7 +63,6 @@ class WorkspaceInvite < T::Struct
     end
 
     # Find a pending (not accepted) invite for a given workspace and email.
-    sig { params(workspace_id: T.any(String, UUID), email: String).returns(T.nilable(WorkspaceInvite)) }
     def find_pending(workspace_id, email)
       dataset
         .where(workspace_id: workspace_id, email: email)
@@ -64,7 +71,6 @@ class WorkspaceInvite < T::Struct
     end
 
     # List all non-accepted invites (pending + expired) for a workspace.
-    sig { params(workspace_id: T.any(String, UUID)).returns(T::Array[WorkspaceInvite]) }
     def all_non_accepted_for_workspace(workspace_id)
       dataset
         .where(workspace_id: workspace_id)
@@ -75,7 +81,6 @@ class WorkspaceInvite < T::Struct
     end
 
     # Return non-accepted invites changed since a given timestamp (for pool sync).
-    sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[WorkspaceInvite]) }
     def changed_since(workspace_id, since)
       dataset
         .where(workspace_id: workspace_id)
@@ -86,7 +91,6 @@ class WorkspaceInvite < T::Struct
 
     private
 
-    sig { params(row: T::Hash[Symbol, T.untyped]).returns(WorkspaceInvite) }
     def from_row(row)
       new(
         id: UUID.new(row[:id]),
@@ -103,7 +107,6 @@ class WorkspaceInvite < T::Struct
       )
     end
 
-    sig { returns(Sequel::Dataset) }
     def dataset
       DB[:workspace_invites].with_row_proc(method(:from_row))
     end

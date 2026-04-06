@@ -1,20 +1,29 @@
-# typed: true
 # frozen_string_literal: true
 
 # Read-only SettlementTransfer model.
-class SettlementTransfer < T::Struct
-  extend T::Sig
+class SettlementTransfer
+  attr_reader :id, :settlement_id, :from_user_id, :to_user_id, :amount, :paid_at, :created_at, :updated_at
 
-  const :id, UUID
-  const :settlement_id, UUID
-  const :from_user_id, T.nilable(UUID)
-  const :to_user_id, T.nilable(UUID)
-  const :amount, Float
-  const :paid_at, T.nilable(Time)
-  const :created_at, Time
-  const :updated_at, Time
+  def initialize(
+    id:,
+    settlement_id:,
+    from_user_id:,
+    to_user_id:,
+    amount:,
+    paid_at:,
+    created_at:,
+    updated_at:
+  )
+    @id = id
+    @settlement_id = settlement_id
+    @from_user_id = from_user_id
+    @to_user_id = to_user_id
+    @amount = amount
+    @paid_at = paid_at
+    @created_at = created_at
+    @updated_at = updated_at
+  end
 
-  sig { returns(T::Hash[Symbol, T.untyped]) }
   def to_api_hash
     {
       id: id.to_s,
@@ -30,26 +39,21 @@ class SettlementTransfer < T::Struct
   end
 
   class << self
-    extend T::Sig
     include Result::Methods
     include Findable
 
-    sig { params(id: T.any(String, UUID)).returns(T.nilable(SettlementTransfer)) }
     def find(id)
       dataset.where(id: id).first
     end
 
-    sig { params(settlement_id: T.any(String, UUID)).returns(T::Array[SettlementTransfer]) }
     def for_settlement(settlement_id)
       dataset.where(settlement_id: settlement_id).order(:created_at).all
     end
 
-    sig { params(settlement_id: T.any(String, UUID)).returns(T::Array[String]) }
     def ids_for_settlement(settlement_id)
       DB[:settlement_transfers].where(settlement_id: settlement_id).order(:created_at).select_map(:id)
     end
 
-    sig { params(settlement_ids: T::Array[String]).returns(T::Hash[String, T::Array[String]]) }
     def ids_for_settlement_ids(settlement_ids)
       return {} if settlement_ids.empty?
 
@@ -60,7 +64,6 @@ class SettlementTransfer < T::Struct
         .each_with_object(Hash.new { |h, k| h[k] = [] }) { |(settlement_id, id), h| h[settlement_id.to_s] << id.to_s }
     end
 
-    sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[SettlementTransfer]) }
     def changed_since(workspace_id, since)
       dataset
         .join(:settlements, id: :settlement_id)
@@ -73,12 +76,10 @@ class SettlementTransfer < T::Struct
 
     private
 
-    sig { returns(Sequel::Dataset) }
     def dataset
       DB[:settlement_transfers].with_row_proc(method(:from_row))
     end
 
-    sig { params(row: T::Hash[Symbol, T.untyped]).returns(SettlementTransfer) }
     def from_row(row)
       SettlementTransfer.new(
         id: UUID.new(row[:id]),

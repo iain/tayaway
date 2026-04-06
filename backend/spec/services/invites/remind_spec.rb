@@ -1,4 +1,3 @@
-# typed: false
 # frozen_string_literal: true
 
 require "spec_helper"
@@ -7,7 +6,7 @@ RSpec.describe Invites::Remind do
   let(:workspace) { TestFactories.workspace(name: "Camp Workspace") }
   let(:user) { TestFactories.user }
 
-  # rubocop:disable Sorbet/BlockMethodDefinition -- test helper used across examples
+  # -- test helper used across examples
   def create_invite(accepted_at: nil, last_reminded_at: nil, created_at: nil)
     id = SecureRandom.uuid
     now = Time.now
@@ -26,8 +25,6 @@ RSpec.describe Invites::Remind do
     )
     id
   end
-  # rubocop:enable Sorbet/BlockMethodDefinition
-
   it "returns failure when invite_id is nil" do
     result = described_class.call(invite_id: nil, workspace_id: workspace[:id])
 

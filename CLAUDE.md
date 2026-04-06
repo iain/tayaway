@@ -37,8 +37,7 @@ cd frontend && pnpm exec vitest run src/path/to/file.spec.ts
 
 - **Framework**: Roda 3 with `hash_routes` plugin, served by Falcon (fiber-based)
 - **ORM**: Sequel 5 with PostgreSQL
-- **Type checking**: Sorbet (`bundle exec srb tc`). Route files are `# typed: false` due to Roda DSL limitations
-- **Models** (`app/models/`): Immutable `T::Struct` classes with factory class methods for queries and `to_api_hash` for serialization
+- **Models** (`app/models/`): Immutable plain Ruby classes with keyword `initialize`, factory class methods for queries, and `to_api_hash` for serialization
 - **Services** (`app/services/`): Return `Result[Success, ServiceError]` monad. Entry point is `.call()`. Chain with `.bind()`
 - **Routes** (`app/routes/`): Roda hash_routes organized by domain. Auth via session cookies, CSRF via `X-CSRF-Protection: 1` header
 - **Serializers** (`app/serializers/`): `PoolSerializer` normalizes all objects into a flat pool format `{ objects: [{ id, objectType, ...fields }] }`

@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 module Sync
@@ -14,16 +13,10 @@ module Sync
     RETENTION_PERIOD = 7 * 24 * 60 * 60 # 7 days in seconds
 
     class << self
-      extend T::Sig
-
-      sig do
-        params(workspace_id: T.any(String, UUID), since: T.nilable(Time))
-          .returns(T::Hash[Symbol, T.untyped])
-      end
       def call(workspace_id:, since: nil)
-        cutoff = T.cast(Time.now - RETENTION_PERIOD, Time)
+        cutoff = Time.now - RETENTION_PERIOD
         full = since.nil? || since < cutoff
-        effective_since = full ? Time.at(0) : T.must(since)
+        effective_since = full ? Time.at(0) : since
 
         synced_at = Time.now
         workspace = Workspace.find(workspace_id)
@@ -79,7 +72,6 @@ module Sync
 
       private
 
-      sig { params(synced_at: Time, sync_type: String).returns(T::Hash[Symbol, T.untyped]) }
       def empty_response(synced_at, sync_type)
         {
           syncType: sync_type,

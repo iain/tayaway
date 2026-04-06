@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 require "json"
@@ -14,26 +13,20 @@ module Websocket
   #   Listener.start  # Starts background thread
   #   Listener.stop   # Stops the listener
   class Listener
-    extend T::Sig
-
     CHANNEL = "tayaway_objects"
     RETRY_DELAY = 5 # seconds
 
     class << self
-      extend T::Sig
-
-      sig { void }
       def start
         return if running_flag.true?
 
         running_flag.make_true
-        @listen_db = T.let(nil, T.nilable(Sequel::Database))
+        @listen_db = nil
         @thread = Thread.new { run_loop }
         @thread.abort_on_exception = true
         APP_LOGGER.info { "[Listener] Started PostgreSQL LISTEN on #{CHANNEL}" }
       end
 
-      sig { void }
       def stop
         return unless running_flag.true?
 
@@ -45,17 +38,14 @@ module Websocket
         APP_LOGGER.info { "[Listener] Stopped" }
       end
 
-      sig { returns(T::Boolean) }
       def running?
         running_flag.true?
       end
 
-      sig { params(object_type: String).returns(T.untyped) }
       def type_config(object_type)
         ObjectRegistry::BY_KEY[object_type]
       end
 
-      sig { params(object_type: String, object_id: String).returns(T.untyped) }
       def find_object(object_type, object_id)
         config = type_config(object_type)
         return nil unless config
@@ -66,19 +56,16 @@ module Websocket
 
       private
 
-      sig { returns(Concurrent::AtomicBoolean) }
       def running_flag
-        @_running_flag ||= T.let(Concurrent::AtomicBoolean.new(false), T.nilable(Concurrent::AtomicBoolean))
+        @_running_flag ||= Concurrent::AtomicBoolean.new(false)
       end
 
-      sig { void }
       def run_loop
         while running_flag.true?
           listen_with_retry
         end
       end
 
-      sig { void }
       def listen_with_retry
         # Create a dedicated connection for listening (stored for graceful shutdown)
         @listen_db = Sequel.connect(ENV.fetch("DATABASE_URL"))
@@ -98,7 +85,6 @@ module Websocket
         @listen_db = nil
       end
 
-      sig { params(payload: String).void }
       def handle_notification(payload)
         data = JSON.parse(payload, symbolize_names: true)
         workspace_id = data[:workspaceId]

@@ -1,4 +1,3 @@
-# typed: true
 # frozen_string_literal: true
 
 module Websocket
@@ -12,15 +11,10 @@ module Websocket
   #   Keepalive.start  # Starts background thread
   #   Keepalive.stop   # Stops the thread
   class Keepalive
-    extend T::Sig
-
-    PING_INTERVAL = T.let(30, Integer) # seconds between pings
-    IDLE_TIMEOUT  = T.let(90, Integer) # seconds before a connection is pruned
+    PING_INTERVAL = 30 # seconds between pings
+    IDLE_TIMEOUT  = 90 # seconds before a connection is pruned
 
     class << self
-      extend T::Sig
-
-      sig { void }
       def start
         return if @running
 
@@ -30,7 +24,6 @@ module Websocket
         APP_LOGGER.info { "[Keepalive] Started (interval=#{PING_INTERVAL}s, idle_timeout=#{IDLE_TIMEOUT}s)" }
       end
 
-      sig { void }
       def stop
         return unless @running
 
@@ -40,19 +33,17 @@ module Websocket
         APP_LOGGER.info { "[Keepalive] Stopped" }
       end
 
-      sig { returns(T::Boolean) }
       def running?
         !!@running
       end
 
       private
 
-      sig { void }
       def run_loop
         while @running
           # Sleep in small increments so stop wakes up quickly
           PING_INTERVAL.times do
-            break unless T.unsafe(@running)
+            break unless @running
 
             sleep 1
           end

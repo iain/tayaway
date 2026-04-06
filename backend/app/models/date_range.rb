@@ -1,18 +1,25 @@
-# typed: true
 # frozen_string_literal: true
 
 # Read-only date range model.
-class DateRange < T::Struct
-  extend T::Sig
+class DateRange
+  attr_reader :id, :date_poll_id, :start_date, :end_date, :created_at, :updated_at
 
-  const :id, UUID
-  const :date_poll_id, UUID
-  const :start_date, Date
-  const :end_date, Date
-  const :created_at, Time
-  const :updated_at, Time
+  def initialize(
+    id:,
+    date_poll_id:,
+    start_date:,
+    end_date:,
+    created_at:,
+    updated_at:
+  )
+    @id = id
+    @date_poll_id = date_poll_id
+    @start_date = start_date
+    @end_date = end_date
+    @created_at = created_at
+    @updated_at = updated_at
+  end
 
-  sig { returns(T::Hash[Symbol, T.untyped]) }
   def to_api_hash
     {
       id: id.to_s,
@@ -25,19 +32,14 @@ class DateRange < T::Struct
   end
 
   class << self
-    extend T::Sig
-
-    sig { params(id: T.any(String, UUID)).returns(T.nilable(DateRange)) }
     def find(id)
       dataset.where(id: id).first
     end
 
-    sig { params(date_poll_id: T.any(String, UUID)).returns(T::Array[DateRange]) }
     def for_date_poll(date_poll_id)
       dataset.where(date_poll_id: date_poll_id).order(:start_date).all
     end
 
-    sig { params(workspace_id: T.any(String, UUID), since: Time).returns(T::Array[DateRange]) }
     def changed_since(workspace_id, since)
       dataset
         .join(:date_polls, id: :date_poll_id)
@@ -48,12 +50,10 @@ class DateRange < T::Struct
         .all
     end
 
-    sig { params(date_poll_id: T.any(String, UUID)).returns(T::Array[String]) }
     def ids_for_date_poll(date_poll_id)
       DB[:date_ranges].where(date_poll_id: date_poll_id).order(:start_date).select_map(:id)
     end
 
-    sig { params(date_poll_ids: T::Array[String]).returns(T::Hash[String, T::Array[String]]) }
     def ids_for_date_poll_ids(date_poll_ids)
       return {} if date_poll_ids.empty?
 
@@ -66,12 +66,10 @@ class DateRange < T::Struct
 
     private
 
-    sig { returns(Sequel::Dataset) }
     def dataset
       DB[:date_ranges].with_row_proc(method(:from_row))
     end
 
-    sig { params(row: T::Hash[Symbol, T.untyped]).returns(DateRange) }
     def from_row(row)
       DateRange.new(
         id: UUID.new(row[:id]),

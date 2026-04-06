@@ -1,4 +1,3 @@
-# typed: false
 # frozen_string_literal: true
 
 require "spec_helper"
@@ -7,7 +6,7 @@ RSpec.describe Invites::Cancel do
   let(:workspace) { TestFactories.workspace }
   let(:user) { TestFactories.user }
 
-  # rubocop:disable Sorbet/BlockMethodDefinition -- test helper used across examples
+  # -- test helper used across examples
   def create_invite(email: "cancel@example.com", accepted_at: nil)
     now = Time.now
     id = SecureRandom.uuid
@@ -24,8 +23,6 @@ RSpec.describe Invites::Cancel do
     )
     id
   end
-  # rubocop:enable Sorbet/BlockMethodDefinition
-
   it "deletes a pending invite" do
     invite_id = create_invite
 

@@ -3,26 +3,13 @@ plugins:
   - rubocop-rake
   - rubocop-rspec
   - rubocop-sequel
-  - rubocop-sorbet
 
 AllCops:
   NewCops: enable
   DisplayCopNames: true
   ExtraDetails: true
   Exclude:
-    - sorbet/**/*.rbi
     - vendor/**/*
-
-Sorbet/FalseSigil:
-  Enabled: false
-
-Sorbet/ValidSigil:
-  Enabled: true
-  SuggestedStrictness: 'true'
-  RequireSigilOnAllFiles: true
-
-Sorbet/ConstantsFromStrings:
-  Enabled: false
 
 Performance:
   Enabled: true

@@ -1,21 +1,11 @@
-# typed: true
 # frozen_string_literal: true
 
 module TaskLists
   # Service to create a new task list.
   module Create
     class << self
-      extend T::Sig
       include Result::Methods
 
-      sig do
-        params(
-          workspace_id: T.any(String, UUID),
-          user_id: T.any(String, UUID),
-          name: T.nilable(String),
-          id: T.nilable(String)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def call(workspace_id:, user_id:, name:, id: nil)
         validate_name(name)
           .bind { |valid_name| create_task_list(workspace_id, user_id, valid_name, id) }
@@ -23,25 +13,16 @@ module TaskLists
 
       private
 
-      sig { params(name: T.nilable(String)).returns(Result[String, ServiceError]) }
       def validate_name(name)
         if name.nil? || name.empty?
-          T.cast(Failure(ServiceError.validation("Name is required")), Result[String, ServiceError])
+          Failure(ServiceError.validation("Name is required"))
         elsif name.length > ValidationLimits::SHORT_STRING
-          T.cast(Failure(ServiceError.validation("Name is too long (maximum 255 characters)")), Result[String, ServiceError])
+          Failure(ServiceError.validation("Name is too long (maximum 255 characters)"))
         else
-          T.cast(Success(name), Result[String, ServiceError])
+          Success(name)
         end
       end
 
-      sig do
-        params(
-          workspace_id: T.any(String, UUID),
-          user_id: T.any(String, UUID),
-          name: String,
-          id: T.nilable(String)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def create_task_list(workspace_id, user_id, name, id)
         # Idempotent replay: if client provided an ID and it already exists, return it
         if id
@@ -49,7 +30,7 @@ module TaskLists
           if existing
             pool = PoolSerializer.new(workspace_id: workspace_id)
             pool.add_task_list(existing)
-            return T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+            return Success({ objects: pool.to_a })
           end
         end
 
@@ -76,7 +57,7 @@ module TaskLists
         pool = PoolSerializer.new(workspace_id: workspace_id)
         pool.add_task_list(task_list)
 
-        T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        Success({ objects: pool.to_a })
       end
     end
   end

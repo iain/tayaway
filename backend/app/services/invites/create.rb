@@ -1,21 +1,11 @@
-# typed: true
 # frozen_string_literal: true
 
 module Invites
   # Service to create a workspace invitation and send the invite email.
   module Create
     class << self
-      extend T::Sig
       include Result::Methods
 
-      sig do
-        params(
-          email: T.nilable(String),
-          workspace_id: T.any(String, UUID),
-          invited_by: T.any(String, UUID),
-          name: T.nilable(String)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def call(email:, workspace_id:, invited_by:, name: nil)
         sanitized_name = name&.strip&.then { |n| n.empty? ? nil : n }
         validate_email(email)
@@ -27,57 +17,39 @@ module Invites
 
       private
 
-      sig { params(email: T.nilable(String)).returns(Result[String, ServiceError]) }
       def validate_email(email)
         if email.nil? || email.empty?
-          T.cast(Failure(ServiceError.validation("Email is required")), Result[String, ServiceError])
+          Failure(ServiceError.validation("Email is required"))
         else
-          T.cast(Success(email), Result[String, ServiceError])
+          Success(email)
         end
       end
 
-      sig { params(name: T.nilable(String)).returns(Result[TrueClass, ServiceError]) }
       def validate_name_length(name)
         if name && name.length > ValidationLimits::SHORT_STRING
-          T.cast(Failure(ServiceError.validation("Name is too long (maximum 255 characters)")), Result[TrueClass, ServiceError])
+          Failure(ServiceError.validation("Name is too long (maximum 255 characters)"))
         else
-          T.cast(Success(true), Result[TrueClass, ServiceError])
+          Success(true)
         end
       end
 
-      sig { params(email: String, workspace_id: T.any(String, UUID)).returns(Result[String, ServiceError]) }
       def check_not_already_member(email, workspace_id)
         user = User.find_by_email(email)
         if user && WorkspaceMembership.find_by_workspace_and_user(workspace_id, user.id)
-          T.cast(
-            Failure(ServiceError.validation("This user is already a member of this workspace")),
-            Result[String, ServiceError]
-          )
+          Failure(ServiceError.validation("This user is already a member of this workspace"))
         else
-          T.cast(Success(email), Result[String, ServiceError])
+          Success(email)
         end
       end
 
-      sig { params(email: String, workspace_id: T.any(String, UUID)).returns(Result[String, ServiceError]) }
       def check_no_pending_invite(email, workspace_id)
         if WorkspaceInvite.find_pending(workspace_id, email)
-          T.cast(
-            Failure(ServiceError.validation("An invitation has already been sent to this email")),
-            Result[String, ServiceError]
-          )
+          Failure(ServiceError.validation("An invitation has already been sent to this email"))
         else
-          T.cast(Success(email), Result[String, ServiceError])
+          Success(email)
         end
       end
 
-      sig do
-        params(
-          email: String,
-          workspace_id: T.any(String, UUID),
-          invited_by: T.any(String, UUID),
-          name: T.nilable(String)
-        ).returns(Result[T::Hash[Symbol, T.untyped], ServiceError])
-      end
       def create_invite(email, workspace_id, invited_by, name)
         now = Time.now
         id = SecureRandom.uuid
@@ -110,10 +82,10 @@ module Invites
 
         Broadcaster.object_changed("workspace_invite", id, workspace_id: workspace_id.to_s)
 
-        invite = T.must(WorkspaceInvite.find(id))
+        invite = WorkspaceInvite.find(id)
         pool = PoolSerializer.new(workspace_id: workspace_id)
         pool.add_workspace_invite(invite)
-        T.cast(Success({ objects: pool.to_a }), Result[T::Hash[Symbol, T.untyped], ServiceError])
+        Success({ objects: pool.to_a })
       end
     end
   end
