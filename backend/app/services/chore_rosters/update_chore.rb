@@ -4,7 +4,7 @@ module ChoreRosters
   # Service to update a chore (name, people_per_day, position).
   module UpdateChore
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(chore_id:, workspace_id:, name: nil, people_per_day: nil, position: nil)
         Chore.find_result(chore_id)

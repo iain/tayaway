@@ -3,7 +3,7 @@
 module Events
   # Shared validators for Events services.
   module Validators
-    include Result::Methods
+    include Dry::Monads[:result]
 
     def validate_text_lengths(description, location_name)
       if description && description.length > ValidationLimits::LONG_TEXT

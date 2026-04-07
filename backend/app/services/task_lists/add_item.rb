@@ -4,7 +4,7 @@ module TaskLists
   # Service to add an item to a task list.
   module AddItem
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(task_list_id:, user_id:, content:, id: nil)
         TaskList.find_result(task_list_id)

@@ -4,7 +4,7 @@ module ChoreRosters
   # Service to delete a chore assignment.
   module DeleteAssignment
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(assignment_id:, roster_id:, workspace_id:)
         ChoreAssignment.find_result(assignment_id)

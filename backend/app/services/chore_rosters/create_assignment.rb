@@ -4,7 +4,7 @@ module ChoreRosters
   # Service to pin an assignment (always pinned=true).
   module CreateAssignment
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(roster_id:, workspace_id:, chore_id:, user_id:, date:, note: nil, id: nil)
         validate(chore_id, user_id, date)

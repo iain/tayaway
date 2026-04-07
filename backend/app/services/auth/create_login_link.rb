@@ -9,7 +9,7 @@ module Auth
   #   result.value!    # => { message: "If an account exists..." }
   module CreateLoginLink
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(email:)
         validate_email(email).bind { |valid_email| generate_login_link(valid_email) }

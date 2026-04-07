@@ -31,7 +31,7 @@ class Settlement
   end
 
   class << self
-    include Result::Methods
+    include Dry::Monads[:result]
     include Findable
 
     def find(id)

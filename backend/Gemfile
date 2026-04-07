@@ -38,6 +38,9 @@ gem "webauthn"
 gem "browser"
 gem "mmdb"
 
+# Monads
+gem "dry-monads"
+
 # Autoloading
 gem "zeitwerk"
 

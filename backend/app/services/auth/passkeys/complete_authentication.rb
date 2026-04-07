@@ -4,7 +4,7 @@ module Auth
   module Passkeys
     module CompleteAuthentication
       class << self
-        include Result::Methods
+        include Dry::Monads[:result]
         include ChallengeValidation
 
         def call(challenge_token:, credential:, ip: nil, user_agent: nil)

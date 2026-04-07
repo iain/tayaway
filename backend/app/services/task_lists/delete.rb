@@ -4,7 +4,7 @@ module TaskLists
   # Service to delete a task list (cascades to items in DB).
   module Delete
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(task_list_id:)
         TaskList.find_result(task_list_id)

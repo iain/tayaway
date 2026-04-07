@@ -4,7 +4,7 @@ module DatePolls
   # Service to add a date range to a date poll.
   module AddDateRange
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(event_id:, current_user_id:, start_date:, end_date:, id: nil)
         Event.find_result(event_id)

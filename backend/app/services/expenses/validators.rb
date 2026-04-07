@@ -3,7 +3,7 @@
 module Expenses
   # Shared validators for Expenses services.
   module Validators
-    include Result::Methods
+    include Dry::Monads[:result]
 
     def check_not_settled(expense)
       if expense.settlement_id

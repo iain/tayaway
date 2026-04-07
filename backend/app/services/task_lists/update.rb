@@ -4,7 +4,7 @@ module TaskLists
   # Service to update a task list (rename and/or reposition).
   module Update
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(task_list_id:, name:, position: nil)
         TaskList.find_result(task_list_id)

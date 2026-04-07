@@ -5,7 +5,7 @@ module Settlements
   # Only the transfer recipient (to_user) can mark/unmark a transfer as paid.
   module MarkPaid
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(transfer_id:, paid:, workspace_id:)
         SettlementTransfer.find_result(transfer_id)

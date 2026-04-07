@@ -4,7 +4,7 @@ module Users
   # Service to verify an email change token and update the user's email.
   module VerifyEmailChange
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(token:)
         decode_jwt(token)

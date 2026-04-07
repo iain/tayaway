@@ -4,7 +4,7 @@ module Invites
   # Service to cancel (delete) a pending workspace invitation.
   module Cancel
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(invite_id:, workspace_id:)
         find_invite(invite_id, workspace_id)

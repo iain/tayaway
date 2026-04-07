@@ -4,7 +4,7 @@ module ChoreRosters
   # Service to create a chore roster for an event.
   module Create
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(event_id:, user_id:, workspace_id:, id: nil)
         find_event(event_id)

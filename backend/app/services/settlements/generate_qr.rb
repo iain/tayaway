@@ -9,7 +9,7 @@ module Settlements
   # the recipient's IBAN which is otherwise kept private.
   module GenerateQr
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(transfer_id:, current_user_id:)
         SettlementTransfer.find_result(transfer_id)

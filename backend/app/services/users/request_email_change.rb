@@ -4,7 +4,7 @@ module Users
   # Service to request an email change. Sends a verification link to the new address.
   module RequestEmailChange
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(user_id:, new_email:)
         find_user(user_id)

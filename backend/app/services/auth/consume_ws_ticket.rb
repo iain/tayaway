@@ -12,7 +12,7 @@ module Auth
   #   result.value!    # => { user_id: UUID("..."), session_id: "..." }
   module ConsumeWsTicket
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(ticket_jwt:)
         decode_jwt(ticket_jwt)

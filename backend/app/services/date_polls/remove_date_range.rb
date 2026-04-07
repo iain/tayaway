@@ -4,7 +4,7 @@ module DatePolls
   # Service to remove a date range from a date poll.
   module RemoveDateRange
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(event_id:, current_user_id:, date_range_id:)
         Event.find_result(event_id)

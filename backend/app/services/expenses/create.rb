@@ -4,7 +4,7 @@ module Expenses
   # Service to create a new expense on an event.
   module Create
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(event_id:, user_id:, workspace_id:, description:, amount:, start_date:, end_date:, id: nil, participant_ids: nil)
         validate(description, amount, start_date, end_date)

@@ -52,7 +52,7 @@ class DatePoll
   end
 
   class << self
-    include Result::Methods
+    include Dry::Monads[:result]
 
     def find(id)
       dataset.where(id: id).first

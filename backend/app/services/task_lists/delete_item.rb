@@ -4,7 +4,7 @@ module TaskLists
   # Service to delete a single task item.
   module DeleteItem
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
       include TaskLists::Validators
 
       def call(task_list_id:, task_item_id:)

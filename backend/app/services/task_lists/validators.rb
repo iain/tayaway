@@ -3,7 +3,7 @@
 module TaskLists
   # Shared validators for TaskLists services.
   module Validators
-    include Result::Methods
+    include Dry::Monads[:result]
 
     def validate_belongs_to_list(item, task_list)
       if item.task_list_id == task_list.id

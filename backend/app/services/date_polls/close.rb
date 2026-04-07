@@ -4,7 +4,7 @@ module DatePolls
   # Service to close a date poll by selecting a winning date range.
   module Close
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(event_id:, current_user_id:, selected_date_range_id:)
         Event.find_result(event_id)

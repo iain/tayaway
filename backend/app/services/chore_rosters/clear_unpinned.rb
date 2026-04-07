@@ -4,7 +4,7 @@ module ChoreRosters
   # Deletes all non-pinned assignments for a roster.
   module ClearUnpinned
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(roster_id:, workspace_id:)
         ChoreRoster.find_result(roster_id)

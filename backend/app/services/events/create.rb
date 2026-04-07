@@ -13,7 +13,7 @@ module Events
   #   result.value!    # => { objects: [...] }
   module Create
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
       include Events::Validators
 
       def call(workspace_id:, user_id:, name:, description:, id: nil, start_date: nil, end_date: nil,

@@ -5,7 +5,7 @@ module ChoreRosters
   # Respects RSVP availability, pinned assignments, and a one-chore-per-day soft rule.
   module Autofill
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(roster_id:, workspace_id:)
         ChoreRoster.find_result(roster_id)

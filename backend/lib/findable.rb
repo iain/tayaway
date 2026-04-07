@@ -14,12 +14,12 @@
 # @example
 #   class Event
 #     class << self
-#       include Result::Methods
+#       include Dry::Monads[:result]
 #       include Findable
 #     end
 #   end
 module Findable
-  include Result::Methods
+  include Dry::Monads[:result]
 
   def find_result(id)
     item = self.find(id)

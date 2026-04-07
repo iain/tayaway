@@ -6,7 +6,7 @@ module Auth
       MAX_NAME_LENGTH = 100
 
       class << self
-        include Result::Methods
+        include Dry::Monads[:result]
         include ChallengeValidation
 
         def call(user_id:, challenge_token:, credential:, name: nil)

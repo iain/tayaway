@@ -4,7 +4,7 @@ module Auth
   module Passkeys
     # Shared input validation for passkey registration and authentication completion.
     module ChallengeValidation
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def validate_challenge_inputs(challenge_token, credential, user_id: nil)
         if challenge_token.nil? || challenge_token.empty?

@@ -4,7 +4,7 @@ module DatePolls
   # Service to create a date poll for an event.
   module Create
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(event_id:, current_user_id:, deadline:)
         Event.find_result(event_id)

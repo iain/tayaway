@@ -9,7 +9,7 @@ module Auth
   #   result.value!    # => { message: "All other sessions have been revoked" }
   module RevokeOtherSessions
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(user_id:, current_session_id:)
         deleted_ids = DB[:sessions]

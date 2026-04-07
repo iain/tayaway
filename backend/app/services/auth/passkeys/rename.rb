@@ -4,7 +4,7 @@ module Auth
   module Passkeys
     module Rename
       class << self
-        include Result::Methods
+        include Dry::Monads[:result]
 
         def call(user_id:, passkey_id:, name:)
           validate_name(name)

@@ -4,7 +4,7 @@ module Expenses
   # Service to delete an expense. Creator-only.
   module Delete
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
       include Expenses::Validators
 
       def call(expense_id:, current_user_id:, workspace_id:)

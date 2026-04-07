@@ -4,7 +4,7 @@ module TaskLists
   # Service to create a new task list.
   module Create
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(workspace_id:, user_id:, name:, id: nil)
         validate_name(name)

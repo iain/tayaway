@@ -4,7 +4,7 @@ module Auth
   module Passkeys
     module BeginRegistration
       class << self
-        include Result::Methods
+        include Dry::Monads[:result]
 
         MAX_PASSKEYS_PER_USER = 20
 

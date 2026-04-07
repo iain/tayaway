@@ -40,7 +40,7 @@ class UUID
   end
 
   class << self
-    include Result::Methods
+    include Dry::Monads[:result]
 
     def parse(value)
       if value.nil? || value.empty?

@@ -16,7 +16,7 @@ module Votes
   #   result.value!    # => { vote_id: "uuid", created: true }
   module Upsert
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(event_id:, user_id:, date_range_id:, vote_response:, comment:, vote_id:)
         # Idempotent replay: if client provided an ID that already exists, return it

@@ -5,7 +5,7 @@ module Invites
   # Creates user if needed, creates membership, marks invite accepted, sends login link.
   module Accept
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(token_jwt:)
         decode_token(token_jwt)

@@ -4,7 +4,7 @@ module ChoreRosters
   # Service to update a chore assignment (note, user_id).
   module UpdateAssignment
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(assignment_id:, roster_id:, workspace_id:, note: nil, user_id: nil, pinned: nil)
         ChoreAssignment.find_result(assignment_id)

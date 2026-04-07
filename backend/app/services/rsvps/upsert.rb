@@ -14,7 +14,7 @@ module Rsvps
   #   )
   module Upsert
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(event_id:, user_id:, attending:, rsvp_id:, start_date: nil, end_date: nil)
         # Idempotent replay: if client provided an ID that already exists, return it

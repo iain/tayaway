@@ -4,7 +4,7 @@ module ChoreRosters
   # Service to add a chore to a roster.
   module AddChore
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(roster_id:, workspace_id:, name:, people_per_day:, id: nil)
         validate(name, people_per_day)

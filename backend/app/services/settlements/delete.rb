@@ -5,7 +5,7 @@ module Settlements
   # Only the settlement creator or event owner can delete.
   module Delete
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(settlement_id:, current_user_id:, workspace_id:)
         Settlement.find_result(settlement_id)

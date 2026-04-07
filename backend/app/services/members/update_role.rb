@@ -8,7 +8,7 @@ module Members
   #   - member: cannot change any roles
   module UpdateRole
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       VALID_ROLES = ["owner", "admin", "member"]
 

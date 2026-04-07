@@ -4,7 +4,7 @@ module Invites
   # Service to create a workspace invitation and send the invite email.
   module Create
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(email:, workspace_id:, invited_by:, name: nil)
         sanitized_name = name&.strip&.then { |n| n.empty? ? nil : n }

@@ -7,7 +7,7 @@ module Rsvps
   #   result = Rsvps::Delete.call(event_id: "event-uuid", rsvp_id: "uuid", user_id: "uuid")
   module Delete
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(event_id:, rsvp_id:, user_id:)
         find_rsvp(rsvp_id)

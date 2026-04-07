@@ -10,7 +10,7 @@ module Settlements
     BALANCE_EPSILON = 0.005
 
     class << self
-      include Result::Methods
+      include Dry::Monads[:result]
 
       def call(event_id:, user_id:, workspace_id:)
         find_event(event_id)
