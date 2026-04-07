@@ -58,18 +58,27 @@ class EventPolicy
   end
 
   def edit
-    return Failure(:not_owner) unless @owner
-    Success()
+    if @owner
+      Success()
+    else
+      Failure(:not_owner)
+    end
   end
 
   def delete
-    return Failure(:not_owner) unless @owner
-    Success()
+    if @owner
+      Success()
+    else
+      Failure(:not_owner)
+    end
   end
 
   def create_poll
-    return Failure(:not_owner) unless @owner
-    Success()
+    if @owner
+      Success()
+    else
+      Failure(:not_owner)
+    end
   end
 
   # ... other actions follow the same pattern
@@ -91,8 +100,11 @@ class SettlementPolicy
   end
 
   def delete
-    return Failure(:not_creator_or_event_owner) unless @creator || @event_owner
-    Success()
+    if @creator || @event_owner
+      Success()
+    else
+      Failure(:not_creator_or_event_owner)
+    end
   end
 end
 ```
@@ -111,20 +123,27 @@ class MemberPolicy
   end
 
   def change_role
-    return Failure(:cannot_change_own_role) if @self
-    return Failure(:not_admin_or_owner) unless %w[admin owner].include?(@role)
-    return Failure(:cannot_change_owner) if @member.role == "owner" && @role != "owner"
-    Success()
+    if @self
+      Failure(:cannot_change_own_role)
+    elsif !%w[admin owner].include?(@role)
+      Failure(:not_admin_or_owner)
+    elsif @member.role == "owner" && @role != "owner"
+      Failure(:cannot_change_owner)
+    else
+      Success()
+    end
   end
 
   # Non-boolean permission: which roles the current user can assign to this member
   def available_roles
-    return [] if change_role.failure?
-
-    case @role
-    when "owner" then %w[member admin owner]
-    when "admin" then %w[member admin]
-    else []
+    if change_role.failure?
+      []
+    else
+      case @role
+      when "owner" then %w[member admin owner]
+      when "admin" then %w[member admin]
+      else []
+      end
     end
   end
 
