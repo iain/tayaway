@@ -11,23 +11,15 @@ class DatePollPolicy
     @event_owner = @event&.user_id == membership.user_id
   end
 
-  def close
-    if @event_owner
-      Success()
-    else
-      Failure(:not_event_owner)
-    end
-  end
+  def close = require_event_owner
 
-  def reopen
-    if @event_owner
-      Success()
-    else
-      Failure(:not_event_owner)
-    end
-  end
+  def reopen = require_event_owner
 
-  def create_date_range
+  def create_date_range = require_event_owner
+
+  private
+
+  def require_event_owner
     if @event_owner
       Success()
     else

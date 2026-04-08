@@ -11,17 +11,13 @@ class ExpensePolicy
     @settled = !expense.settlement_id.nil?
   end
 
-  def edit
-    if @settled
-      Failure(:settled)
-    elsif @creator
-      Success()
-    else
-      Failure(:not_creator)
-    end
-  end
+  def edit = require_unsettled_creator
 
-  def delete
+  def delete = require_unsettled_creator
+
+  private
+
+  def require_unsettled_creator
     if @settled
       Failure(:settled)
     elsif @creator
