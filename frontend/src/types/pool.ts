@@ -7,11 +7,17 @@
 
 export type VoteResponse = 'yes' | 'no' | 'preferably_not'
 
+export interface Permission {
+  allowed: boolean
+  reason?: string
+}
+
 // Base fields all pool objects must have
 interface PoolObjectBase<T extends string> {
   id: string
   objectType: T
   updatedAt: string // ISO8601 with milliseconds
+  permissions?: Record<string, Permission | string[]>
 }
 
 // ============================================================================
