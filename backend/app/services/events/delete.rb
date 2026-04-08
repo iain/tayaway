@@ -13,18 +13,11 @@ module Events
 
       def call(event_id:, membership:)
         Event.find_result(event_id)
-             .bind { |event| authorize(event, membership) }
+             .bind { |event| EventPolicy.enforce(:delete, event, membership: membership) }
              .bind { |event| delete_event(event) }
       end
 
       private
-
-      def authorize(event, membership)
-        EventPolicy.new(event, membership: membership)
-                   .delete
-                   .bind { Success(event) }
-                   .or { |reason| Failure(ServiceError.forbidden(reason.to_s)) }
-      end
 
       def delete_event(event)
         event_id = event.id

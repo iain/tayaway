@@ -8,19 +8,12 @@ module Expenses
 
       def call(expense_id:, membership:, workspace_id:, description:, amount:, start_date: nil, end_date: nil, participant_ids: nil)
         Expense.find_result(expense_id)
-               .bind { |expense| authorize(expense, membership) }
+               .bind { |expense| ExpensePolicy.enforce(:edit, expense, membership: membership) }
                .bind { |expense| validate_update(expense, description, amount, start_date, end_date, participant_ids) }
                .bind { |expense| update_expense(expense, workspace_id, description, amount, start_date, end_date, participant_ids) }
       end
 
       private
-
-      def authorize(expense, membership)
-        ExpensePolicy.new(expense, membership: membership)
-                     .edit
-                     .bind { Success(expense) }
-                     .or { |reason| Failure(ServiceError.forbidden(reason.to_s)) }
-      end
 
       def validate_update(expense, description, amount, start_date, end_date, participant_ids)
         has_description = description && !description.empty?

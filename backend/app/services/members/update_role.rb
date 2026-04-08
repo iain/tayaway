@@ -15,7 +15,7 @@ module Members
       def call(membership:, membership_id:, new_role:)
         validate_role(new_role)
           .bind { |role| find_target(membership_id).fmap { |target| [target, role] } }
-          .bind { |(target, role)| authorize(target, membership).fmap { |_| [target, role] } }
+          .bind { |(target, role)| MemberPolicy.enforce(:change_role, target, membership: membership).fmap { |_| [target, role] } }
           .bind { |(target, role)| perform(membership, target, role) }
       end
 
@@ -36,12 +36,6 @@ module Members
         else
           Failure(ServiceError.not_found("Member not found"))
         end
-      end
-
-      def authorize(target, membership)
-        MemberPolicy.new(target, membership: membership)
-                    .change_role
-                    .or { |reason| Failure(ServiceError.forbidden(reason.to_s)) }
       end
 
       def perform(membership, target, new_role)

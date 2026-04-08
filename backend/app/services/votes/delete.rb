@@ -13,7 +13,7 @@ module Votes
 
       def call(event_id:, vote_id:, membership:)
         find_vote(vote_id)
-          .bind { |vote| authorize(vote, membership) }
+          .bind { |vote| VotePolicy.enforce(:delete, vote, membership: membership) }
           .bind { |vote| validate_vote_belongs_to_event(vote, event_id) }
           .bind { |vote| validate_poll_open(vote) }
           .bind { |vote| delete_vote(vote, event_id) }
@@ -30,13 +30,6 @@ module Votes
         else
           Failure(ServiceError.not_found("Vote not found"))
         end
-      end
-
-      def authorize(vote, membership)
-        VotePolicy.new(vote, membership: membership)
-                  .delete
-                  .bind { Success(vote) }
-                  .or { |reason| Failure(ServiceError.forbidden(reason.to_s)) }
       end
 
       def validate_vote_belongs_to_event(vote, event_id)

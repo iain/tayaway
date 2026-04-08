@@ -9,18 +9,11 @@ module Settlements
 
       def call(settlement_id:, membership:, workspace_id:)
         Settlement.find_result(settlement_id)
-                  .bind { |settlement| authorize(settlement, membership) }
+                  .bind { |settlement| SettlementPolicy.enforce(:delete, settlement, membership: membership) }
                   .bind { |settlement| delete_settlement(settlement, workspace_id) }
       end
 
       private
-
-      def authorize(settlement, membership)
-        SettlementPolicy.new(settlement, membership: membership)
-                        .delete
-                        .bind { Success(settlement) }
-                        .or { |reason| Failure(ServiceError.forbidden(reason.to_s)) }
-      end
 
       def delete_settlement(settlement, workspace_id)
         pool = PoolSerializer.new(workspace_id: workspace_id)

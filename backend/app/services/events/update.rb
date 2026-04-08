@@ -20,7 +20,7 @@ module Events
       def call(event_id:, membership:, name:, description:, start_date: nil, end_date: nil,
                location_name: nil, latitude: nil, longitude: nil)
         Event.find_result(event_id)
-             .bind { |event| authorize(event, membership) }
+             .bind { |event| EventPolicy.enforce(:edit, event, membership: membership) }
              .bind { |event| validate_name_with_event(name, event) }
              .bind { |event| validate_text_lengths(description, location_name).fmap { event } }
              .bind { |event| validate_coordinates(latitude, longitude).fmap { event } }
@@ -35,13 +35,6 @@ module Events
       end
 
       private
-
-      def authorize(event, membership)
-        EventPolicy.new(event, membership: membership)
-                   .edit
-                   .bind { Success(event) }
-                   .or { |reason| Failure(ServiceError.forbidden(reason.to_s)) }
-      end
 
       def validate_name_with_event(name, event)
         if name.nil? || name.empty?

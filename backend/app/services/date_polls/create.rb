@@ -8,20 +8,13 @@ module DatePolls
 
       def call(event_id:, membership:, deadline:)
         Event.find_result(event_id)
-             .bind { |event| authorize(event, membership) }
+             .bind { |event| EventPolicy.enforce(:create_poll, event, membership: membership) }
              .bind { |event| validate_no_existing_poll(event) }
              .bind { |event| validate_deadline(deadline, event) }
              .bind { |(event, parsed_deadline)| create_poll(event, parsed_deadline) }
       end
 
       private
-
-      def authorize(event, membership)
-        EventPolicy.new(event, membership: membership)
-                   .create_poll
-                   .bind { Success(event) }
-                   .or { |reason| Failure(ServiceError.forbidden(reason.to_s)) }
-      end
 
       def validate_no_existing_poll(event)
         existing = DatePoll.find_by_event(event.id)

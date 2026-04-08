@@ -32,6 +32,52 @@ RSpec.describe "Policy module" do
     end
   end
 
+  describe ".enforce" do
+    let(:subject_object) { Object.new }
+
+    let(:enforce_policy_class) do
+      Class.new do
+        include Policy
+
+        const_set(:ACTIONS, %i[edit delete].freeze)
+
+        def initialize(_subject, allowed:, **)
+          @allowed = allowed
+        end
+
+        def edit
+          @allowed ? Success() : Failure(:not_owner)
+        end
+
+        def delete
+          @allowed ? Success() : Failure(:has_settlements)
+        end
+      end
+    end
+
+    it "returns Success with the subject when allowed" do
+      result = enforce_policy_class.enforce(:edit, subject_object, allowed: true)
+
+      expect(result).to be_success
+      expect(result.value!).to equal(subject_object)
+    end
+
+    it "returns Failure with ServiceError when denied" do
+      result = enforce_policy_class.enforce(:edit, subject_object, allowed: false)
+
+      expect(result).to be_failure
+      expect(result.failure).to be_a(ServiceError)
+      expect(result.failure.http_status).to eq(403)
+      expect(result.failure.message).to include("not_owner")
+    end
+
+    it "raises ArgumentError for unknown actions" do
+      expect {
+        enforce_policy_class.enforce(:fly, subject_object, allowed: true)
+      }.to raise_error(ArgumentError, /Unknown action :fly/)
+    end
+  end
+
   describe "#permissions" do
     it "returns allowed: true for successful actions" do
       policy = test_policy_class.new(allowed_edit: true, allowed_delete: true)

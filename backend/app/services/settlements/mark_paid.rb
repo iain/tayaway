@@ -9,18 +9,11 @@ module Settlements
 
       def call(transfer_id:, paid:, membership:, workspace_id:)
         SettlementTransfer.find_result(transfer_id)
-                          .bind { |transfer| authorize(transfer, membership) }
+                          .bind { |transfer| SettlementTransferPolicy.enforce(:mark_paid, transfer, membership: membership) }
                           .bind { |transfer| update_paid(transfer, paid, workspace_id) }
       end
 
       private
-
-      def authorize(transfer, membership)
-        SettlementTransferPolicy.new(transfer, membership: membership)
-                                .mark_paid
-                                .bind { Success(transfer) }
-                                .or { |reason| Failure(ServiceError.forbidden(reason.to_s)) }
-      end
 
       def update_paid(transfer, paid, workspace_id)
         paid_at = paid ? Time.now : nil

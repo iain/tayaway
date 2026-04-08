@@ -8,18 +8,11 @@ module ChoreRosters
 
       def call(roster_id:, membership:, workspace_id:)
         ChoreRoster.find_result(roster_id)
-                   .bind { |roster| authorize(roster, membership) }
+                   .bind { |roster| ChoreRosterPolicy.enforce(:delete, roster, membership: membership) }
                    .bind { |roster| delete(roster, workspace_id) }
       end
 
       private
-
-      def authorize(roster, membership)
-        ChoreRosterPolicy.new(roster, membership: membership)
-                         .delete
-                         .bind { Success(roster) }
-                         .or { |reason| Failure(ServiceError.forbidden(reason.to_s)) }
-      end
 
       def delete(roster, workspace_id)
         deleted = []

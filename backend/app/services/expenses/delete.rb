@@ -8,18 +8,11 @@ module Expenses
 
       def call(expense_id:, membership:, workspace_id:)
         Expense.find_result(expense_id)
-               .bind { |expense| authorize(expense, membership) }
+               .bind { |expense| ExpensePolicy.enforce(:delete, expense, membership: membership) }
                .bind { |expense| delete_expense(expense, workspace_id) }
       end
 
       private
-
-      def authorize(expense, membership)
-        ExpensePolicy.new(expense, membership: membership)
-                     .delete
-                     .bind { Success(expense) }
-                     .or { |reason| Failure(ServiceError.forbidden(reason.to_s)) }
-      end
 
       def delete_expense(expense, workspace_id)
         expense_id = expense.id

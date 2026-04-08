@@ -8,7 +8,7 @@ module DatePolls
 
       def call(event_id:, membership:, deadline:)
         Event.find_result(event_id)
-             .bind { |event| authorize(event, membership) }
+             .bind { |event| EventPolicy.enforce(:edit, event, membership: membership) }
              .bind { |event| DatePoll.find_by_event_result(event.id).fmap { |poll| [event, poll] } }
              .bind { |(event, poll)| validate_resolved(event, poll) }
              .bind { |(event, poll)| validate_deadline(deadline, event, poll) }
@@ -16,13 +16,6 @@ module DatePolls
       end
 
       private
-
-      def authorize(event, membership)
-        EventPolicy.new(event, membership: membership)
-                   .edit
-                   .bind { Success(event) }
-                   .or { |reason| Failure(ServiceError.forbidden(reason.to_s)) }
-      end
 
       def validate_resolved(event, poll)
         unless poll.closed_at
