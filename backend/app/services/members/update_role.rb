@@ -12,9 +12,11 @@ module Members
 
       VALID_ROLES = ["owner", "admin", "member"]
 
-      def call(acting_user_id:, membership_id:, new_role:)
+      def call(membership:, membership_id:, new_role:)
         validate_role(new_role)
-          .bind { |role| perform(acting_user_id, membership_id, role) }
+          .bind { |role| find_target(membership_id).fmap { |target| [target, role] } }
+          .bind { |(target, role)| authorize(target, membership).fmap { |_| [target, role] } }
+          .bind { |(target, role)| perform(membership, target, role) }
       end
 
       private
@@ -27,32 +29,23 @@ module Members
         end
       end
 
-      def perform(acting_user_id, membership_id, new_role)
+      def find_target(membership_id)
         target = WorkspaceMembership.find(membership_id)
-        unless target
-          return Failure(ServiceError.not_found("Member not found"))
+        if target
+          Success(target)
+        else
+          Failure(ServiceError.not_found("Member not found"))
         end
+      end
 
-        acting = WorkspaceMembership.find_by_workspace_and_user(target.workspace_id, acting_user_id)
-        unless acting
-          return Failure(ServiceError.forbidden("Access denied"))
-        end
+      def authorize(target, membership)
+        MemberPolicy.new(target, membership: membership)
+                    .change_role
+                    .or { |reason| Failure(ServiceError.forbidden(reason.to_s)) }
+      end
 
-        if acting.user_id == target.user_id
-          return Failure(ServiceError.forbidden("Cannot change your own role"))
-        end
-
-        authorized = case acting.role
-                     when "owner" then true
-                     when "admin" then target.role != "owner" && new_role != "owner"
-                     else false
-                     end
-
-        unless authorized
-          return Failure(ServiceError.forbidden("Insufficient permissions to change this member's role"))
-        end
-
-        APP_LOGGER.info { "[Members::UpdateRole] User #{acting_user_id} changed member #{target.id} role from #{target.role} to #{new_role} in workspace #{target.workspace_id}" }
+      def perform(membership, target, new_role)
+        APP_LOGGER.info { "[Members::UpdateRole] User #{membership.user_id} changed member #{target.id} role from #{target.role} to #{new_role} in workspace #{target.workspace_id}" }
         DB[:workspace_memberships]
           .where(id: target.id.to_s)
           .update(role: new_role, updated_at: Time.now)

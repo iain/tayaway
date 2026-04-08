@@ -4,16 +4,16 @@ module Votes
   # Service to delete a vote.
   #
   # @example
-  #   result = Votes::Delete.call(event_id: "event-uuid", vote_id: "uuid", user_id: "uuid")
+  #   result = Votes::Delete.call(event_id: "event-uuid", vote_id: "uuid", membership: membership)
   #   result.success?  # => true
   #   result.value!    # => { message: "Vote deleted successfully" }
   module Delete
     class << self
       include Dry::Monads[:result]
 
-      def call(event_id:, vote_id:, user_id:)
+      def call(event_id:, vote_id:, membership:)
         find_vote(vote_id)
-          .bind { |vote| authorize_owner(vote, user_id) }
+          .bind { |vote| authorize(vote, membership) }
           .bind { |vote| validate_vote_belongs_to_event(vote, event_id) }
           .bind { |vote| validate_poll_open(vote) }
           .bind { |vote| delete_vote(vote, event_id) }
@@ -32,12 +32,11 @@ module Votes
         end
       end
 
-      def authorize_owner(vote, user_id)
-        if vote.user_id == user_id
-          Success(vote)
-        else
-          Failure(ServiceError.forbidden("Access denied"))
-        end
+      def authorize(vote, membership)
+        VotePolicy.new(vote, membership: membership)
+                  .delete
+                  .bind { Success(vote) }
+                  .or { |reason| Failure(ServiceError.forbidden(reason.to_s)) }
       end
 
       def validate_vote_belongs_to_event(vote, event_id)

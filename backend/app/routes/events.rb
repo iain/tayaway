@@ -92,7 +92,7 @@ class App
         r.put do
           result = Events::Update.call(
             event_id: event.id,
-            current_user_id: user.id,
+            membership: current_membership,
             name: r.params["name"]&.strip,
             description: r.params["description"]&.strip,
             start_date: r.params["start_date"]&.strip,
@@ -106,7 +106,7 @@ class App
 
         # DELETE /api/events/:id - Delete event (owner only)
         r.delete do
-          result = Events::Delete.call(event_id: event.id, current_user_id: user.id)
+          result = Events::Delete.call(event_id: event.id, membership: current_membership)
           handle_result(result)
         end
       end
@@ -118,7 +118,7 @@ class App
           r.post do
             result = DatePolls::Create.call(
               event_id: event.id,
-              current_user_id: user.id,
+              membership: current_membership,
               deadline: r.params["deadline"]
             )
             handle_result(result, success_status: 201)
@@ -130,7 +130,7 @@ class App
           r.post do
             result = DatePolls::Close.call(
               event_id: event.id,
-              current_user_id: user.id,
+              membership: current_membership,
               selected_date_range_id: r.params["selected_date_range_id"]
             )
             handle_result(result)
@@ -142,7 +142,7 @@ class App
           r.post do
             result = DatePolls::Reopen.call(
               event_id: event.id,
-              current_user_id: user.id,
+              membership: current_membership,
               deadline: r.params["deadline"]
             )
             handle_result(result)
@@ -156,7 +156,7 @@ class App
             r.post do
               result = DatePolls::AddDateRange.call(
                 event_id: event.id,
-                current_user_id: user.id,
+                membership: current_membership,
                 start_date: r.params["start_date"],
                 end_date: r.params["end_date"],
                 id: r.params["id"]
@@ -170,7 +170,7 @@ class App
             r.delete do
               result = DatePolls::RemoveDateRange.call(
                 event_id: event.id,
-                current_user_id: user.id,
+                membership: current_membership,
                 date_range_id: dr_id
               )
               handle_result(result)
@@ -223,7 +223,7 @@ class App
         # DELETE /api/events/:id/rsvps/:rsvp_id - Remove RSVP
         r.on String do |rsvp_id|
           r.delete do
-            result = Rsvps::Delete.call(event_id: event.id, rsvp_id: rsvp_id, user_id: user.id)
+            result = Rsvps::Delete.call(event_id: event.id, rsvp_id: rsvp_id, membership: current_membership)
             handle_result(result)
           end
         end
@@ -275,7 +275,7 @@ class App
         # DELETE /api/events/:id/votes/:vote_id - Remove vote
         r.on String do |vote_id|
           r.delete do
-            result = Votes::Delete.call(event_id: event.id, vote_id: vote_id, user_id: user.id)
+            result = Votes::Delete.call(event_id: event.id, vote_id: vote_id, membership: current_membership)
             handle_result(result)
           end
         end

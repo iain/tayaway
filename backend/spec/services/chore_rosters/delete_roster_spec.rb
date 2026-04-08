@@ -3,8 +3,8 @@
 require "spec_helper"
 
 RSpec.describe ChoreRosters::DeleteRoster do
-  let(:user) { TestFactories.user }
   let(:workspace) { TestFactories.workspace }
+  let(:user) { TestFactories.user }
   let(:event) do
     e = TestFactories.event(workspace: workspace, user: user)
     DB[:events].where(id: e[:id]).update(start_date: Date.new(2026, 3, 1), end_date: Date.new(2026, 3, 7))
@@ -12,10 +12,15 @@ RSpec.describe ChoreRosters::DeleteRoster do
   end
   let(:roster) { TestFactories.chore_roster(event: event, user: user) }
 
+  def membership_for(u)
+    row = TestFactories.workspace_membership(workspace: workspace, user: u)
+    WorkspaceMembership.find(row[:id])
+  end
+
   it "deletes the roster" do
     roster_id = roster[:id]
 
-    result = described_class.call(roster_id: roster_id, current_user_id: user[:id], workspace_id: workspace[:id])
+    result = described_class.call(roster_id: roster_id, membership: membership_for(user), workspace_id: workspace[:id])
 
     expect(result.success?).to be true
     expect(DB[:chore_rosters].where(id: roster_id).count).to eq(0)
@@ -25,7 +30,7 @@ RSpec.describe ChoreRosters::DeleteRoster do
     chore = TestFactories.chore(chore_roster: roster, name: "Cooking")
     assignment = TestFactories.chore_assignment(chore: chore, user: user, date: Date.new(2026, 3, 1))
 
-    result = described_class.call(roster_id: roster[:id], current_user_id: user[:id], workspace_id: workspace[:id])
+    result = described_class.call(roster_id: roster[:id], membership: membership_for(user), workspace_id: workspace[:id])
 
     expect(result.success?).to be true
     expect(DB[:chores].where(id: chore[:id]).count).to eq(0)
@@ -36,7 +41,7 @@ RSpec.describe ChoreRosters::DeleteRoster do
     chore = TestFactories.chore(chore_roster: roster, name: "Cooking")
     TestFactories.chore_assignment(chore: chore, user: user, date: Date.new(2026, 3, 1))
 
-    described_class.call(roster_id: roster[:id], current_user_id: user[:id], workspace_id: workspace[:id])
+    described_class.call(roster_id: roster[:id], membership: membership_for(user), workspace_id: workspace[:id])
 
     expect(DB[:deleted_items].where(object_type: "chore_roster", object_id: roster[:id]).count).to eq(1)
     expect(DB[:deleted_items].where(object_type: "chore", object_id: chore[:id]).count).to eq(1)
@@ -47,7 +52,7 @@ RSpec.describe ChoreRosters::DeleteRoster do
     chore = TestFactories.chore(chore_roster: roster, name: "Cooking")
     assignment = TestFactories.chore_assignment(chore: chore, user: user, date: Date.new(2026, 3, 1))
 
-    result = described_class.call(roster_id: roster[:id], current_user_id: user[:id], workspace_id: workspace[:id])
+    result = described_class.call(roster_id: roster[:id], membership: membership_for(user), workspace_id: workspace[:id])
 
     deleted = result.value![:deleted]
     types = deleted.map { |d| d[:objectType] }
@@ -60,14 +65,14 @@ RSpec.describe ChoreRosters::DeleteRoster do
   it "rejects non-creator" do
     other_user = TestFactories.user(email: "other@example.com")
 
-    result = described_class.call(roster_id: roster[:id], current_user_id: other_user[:id], workspace_id: workspace[:id])
+    result = described_class.call(roster_id: roster[:id], membership: membership_for(other_user), workspace_id: workspace[:id])
 
     expect(result.failure?).to be true
     expect(result.failure.http_status).to eq(403)
   end
 
   it "fails for nonexistent roster" do
-    result = described_class.call(roster_id: SecureRandom.uuid, current_user_id: user[:id], workspace_id: workspace[:id])
+    result = described_class.call(roster_id: SecureRandom.uuid, membership: membership_for(user), workspace_id: workspace[:id])
 
     expect(result.failure?).to be true
     expect(result.failure.http_status).to eq(404)

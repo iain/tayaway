@@ -94,7 +94,7 @@ class App
 
         result = Expenses::Update.call(
           expense_id: expense.id,
-          current_user_id: user.id,
+          membership: current_membership,
           workspace_id: event.workspace_id,
           description: r.params["description"]&.strip,
           amount: amount,
@@ -109,7 +109,7 @@ class App
       r.delete do
         result = Expenses::Delete.call(
           expense_id: expense.id,
-          current_user_id: user.id,
+          membership: current_membership,
           workspace_id: event.workspace_id
         )
         handle_result(result)

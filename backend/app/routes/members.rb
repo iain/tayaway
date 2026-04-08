@@ -11,8 +11,19 @@ class App
     # PUT /api/members/:id - Update member role
     r.on String do |id|
       r.put do
+        target = WorkspaceMembership.find(id)
+        unless target
+          response.status = 404
+          next { error: "Member not found" }
+        end
+
+        unless member_of_workspace?(target.workspace_id)
+          response.status = 403
+          next { error: "Access denied" }
+        end
+
         result = Members::UpdateRole.call(
-          acting_user_id: current_user.id,
+          membership: current_membership,
           membership_id: id,
           new_role: r.params["role"]
         )

@@ -6,9 +6,9 @@ module DatePolls
     class << self
       include Dry::Monads[:result]
 
-      def call(event_id:, current_user_id:, start_date:, end_date:, id: nil)
+      def call(event_id:, membership:, start_date:, end_date:, id: nil)
         Event.find_result(event_id)
-             .bind { |event| Event.authorize_owner(event, current_user_id) }
+             .bind { |event| authorize(event, membership) }
              .bind { |event| DatePoll.find_by_event_result(event.id).fmap { |poll| [event, poll] } }
              .bind { |(event, poll)| DatePoll.validate_open(poll).fmap { |_| [event, poll] } }
              .bind { |(event, poll)| parse_dates(start_date, end_date, event, poll) }
@@ -16,6 +16,13 @@ module DatePolls
       end
 
       private
+
+      def authorize(event, membership)
+        EventPolicy.new(event, membership: membership)
+                   .create_poll
+                   .bind { Success(event) }
+                   .or { |reason| Failure(ServiceError.forbidden(reason.to_s)) }
+      end
 
       def parse_dates(start_date, end_date, event, poll)
         DateRangeInput.parse_strings(start_date, end_date).fmap { |date_input| [event, poll, date_input] }

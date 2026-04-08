@@ -3,32 +3,39 @@
 require "spec_helper"
 
 RSpec.describe DatePolls::Close do
+  let(:workspace) { TestFactories.workspace }
+
+  def membership_for(u)
+    row = TestFactories.workspace_membership(workspace: workspace, user: u)
+    WorkspaceMembership.find(row[:id])
+  end
+
   it "returns failure when user is not the event owner" do
     owner = TestFactories.user
     other_user = TestFactories.user
-    event = TestFactories.event(user: owner)
+    event = TestFactories.event(workspace: workspace, user: owner)
     date_poll = TestFactories.date_poll(event: event)
     date_range = TestFactories.date_range(date_poll: date_poll)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: other_user[:id],
+      membership: membership_for(other_user),
       selected_date_range_id: date_range[:id]
     )
 
     expect(result.failure?).to be true
-    expect(result.failure.message).to eq("Access denied")
+    expect(result.failure.message).to eq("not_owner")
   end
 
   it "returns failure when poll is already resolved" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    event = TestFactories.event(workspace: workspace, user: user)
     date_poll = TestFactories.date_poll(event: event, closed_at: Time.now)
     date_range = TestFactories.date_range(date_poll: date_poll)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership_for(user),
       selected_date_range_id: date_range[:id]
     )
 
@@ -38,12 +45,12 @@ RSpec.describe DatePolls::Close do
 
   it "returns failure when selected_date_range_id is missing" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    event = TestFactories.event(workspace: workspace, user: user)
     TestFactories.date_poll(event: event)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership_for(user),
       selected_date_range_id: nil
     )
 
@@ -53,15 +60,15 @@ RSpec.describe DatePolls::Close do
 
   it "returns failure when date range does not belong to poll" do
     user = TestFactories.user
-    event1 = TestFactories.event(user: user)
-    event2 = TestFactories.event(user: user)
+    event1 = TestFactories.event(workspace: workspace, user: user)
+    event2 = TestFactories.event(workspace: workspace, user: user)
     TestFactories.date_poll(event: event1)
     other_poll = TestFactories.date_poll(event: event2)
     other_range = TestFactories.date_range(date_poll: other_poll)
 
     result = described_class.call(
       event_id: event1[:id],
-      current_user_id: user[:id],
+      membership: membership_for(user),
       selected_date_range_id: other_range[:id]
     )
 
@@ -71,13 +78,13 @@ RSpec.describe DatePolls::Close do
 
   it "closes the poll and sets the winner" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    event = TestFactories.event(workspace: workspace, user: user)
     date_poll = TestFactories.date_poll(event: event)
     date_range = TestFactories.date_range(date_poll: date_poll)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership_for(user),
       selected_date_range_id: date_range[:id]
     )
 
@@ -96,7 +103,7 @@ RSpec.describe DatePolls::Close do
     voter1 = TestFactories.user
     voter2 = TestFactories.user
     voter3 = TestFactories.user
-    event = TestFactories.event(user: owner)
+    event = TestFactories.event(workspace: workspace, user: owner)
     date_poll = TestFactories.date_poll(event: event)
     date_range = TestFactories.date_range(date_poll: date_poll)
 
@@ -106,7 +113,7 @@ RSpec.describe DatePolls::Close do
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: owner[:id],
+      membership: membership_for(owner),
       selected_date_range_id: date_range[:id]
     )
 
@@ -124,7 +131,7 @@ RSpec.describe DatePolls::Close do
   it "does not raise a unique constraint violation when a yes-voter already has an RSVP" do
     owner = TestFactories.user
     voter = TestFactories.user
-    event = TestFactories.event(user: owner)
+    event = TestFactories.event(workspace: workspace, user: owner)
     date_poll = TestFactories.date_poll(event: event)
     date_range = TestFactories.date_range(date_poll: date_poll)
 
@@ -134,7 +141,7 @@ RSpec.describe DatePolls::Close do
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: owner[:id],
+      membership: membership_for(owner),
       selected_date_range_id: date_range[:id]
     )
 
@@ -154,7 +161,7 @@ RSpec.describe DatePolls::Close do
       voter1 = TestFactories.user(name: "Voter One", email: "voter1@example.com")
       voter2 = TestFactories.user(name: "Voter Two", email: "voter2@example.com")
       voter3 = TestFactories.user(name: "Voter Three", email: "voter3@example.com")
-      event = TestFactories.event(user: owner, name: "Beach Trip")
+      event = TestFactories.event(workspace: workspace, user: owner, name: "Beach Trip")
       date_poll = TestFactories.date_poll(event: event)
       winning_range = TestFactories.date_range(date_poll: date_poll, start_date: Date.new(2026, 3, 10), end_date: Date.new(2026, 3, 12))
       other_range = TestFactories.date_range(date_poll: date_poll, start_date: Date.new(2026, 4, 1), end_date: Date.new(2026, 4, 3))
@@ -165,7 +172,7 @@ RSpec.describe DatePolls::Close do
 
       described_class.call(
         event_id: event[:id],
-        current_user_id: owner[:id],
+        membership: membership_for(owner),
         selected_date_range_id: winning_range[:id]
       )
 
@@ -176,7 +183,7 @@ RSpec.describe DatePolls::Close do
     it "includes ICS attachment with event details" do
       owner = TestFactories.user
       voter = TestFactories.user(email: "voter@example.com")
-      event = TestFactories.event(user: owner, name: "Summer Trip")
+      event = TestFactories.event(workspace: workspace, user: owner, name: "Summer Trip")
       date_poll = TestFactories.date_poll(event: event)
       date_range = TestFactories.date_range(date_poll: date_poll, start_date: Date.new(2026, 6, 1), end_date: Date.new(2026, 6, 5))
 
@@ -184,7 +191,7 @@ RSpec.describe DatePolls::Close do
 
       described_class.call(
         event_id: event[:id],
-        current_user_id: owner[:id],
+        membership: membership_for(owner),
         selected_date_range_id: date_range[:id]
       )
 
@@ -201,7 +208,7 @@ RSpec.describe DatePolls::Close do
     it "sends auto-RSVPed messaging to yes-voters on the winning range" do
       owner = TestFactories.user
       yes_voter = TestFactories.user(email: "yes@example.com")
-      event = TestFactories.event(user: owner)
+      event = TestFactories.event(workspace: workspace, user: owner)
       date_poll = TestFactories.date_poll(event: event)
       date_range = TestFactories.date_range(date_poll: date_poll)
 
@@ -209,7 +216,7 @@ RSpec.describe DatePolls::Close do
 
       described_class.call(
         event_id: event[:id],
-        current_user_id: owner[:id],
+        membership: membership_for(owner),
         selected_date_range_id: date_range[:id]
       )
 
@@ -221,7 +228,7 @@ RSpec.describe DatePolls::Close do
     it "sends RSVP prompt to voters who were not auto-RSVPed" do
       owner = TestFactories.user
       no_voter = TestFactories.user(email: "no@example.com")
-      event = TestFactories.event(user: owner)
+      event = TestFactories.event(workspace: workspace, user: owner)
       date_poll = TestFactories.date_poll(event: event)
       date_range = TestFactories.date_range(date_poll: date_poll)
 
@@ -229,7 +236,7 @@ RSpec.describe DatePolls::Close do
 
       described_class.call(
         event_id: event[:id],
-        current_user_id: owner[:id],
+        membership: membership_for(owner),
         selected_date_range_id: date_range[:id]
       )
 
@@ -241,7 +248,7 @@ RSpec.describe DatePolls::Close do
     it "does not break the API response if email sending fails" do
       owner = TestFactories.user
       voter = TestFactories.user
-      event = TestFactories.event(user: owner)
+      event = TestFactories.event(workspace: workspace, user: owner)
       date_poll = TestFactories.date_poll(event: event)
       date_range = TestFactories.date_range(date_poll: date_poll)
 
@@ -251,7 +258,7 @@ RSpec.describe DatePolls::Close do
 
       result = described_class.call(
         event_id: event[:id],
-        current_user_id: owner[:id],
+        membership: membership_for(owner),
         selected_date_range_id: date_range[:id]
       )
 
@@ -261,7 +268,7 @@ RSpec.describe DatePolls::Close do
 
   it "logs info when poll is closed" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    event = TestFactories.event(workspace: workspace, user: user)
     date_poll = TestFactories.date_poll(event: event)
     date_range = TestFactories.date_range(date_poll: date_poll)
     logged_messages = []
@@ -271,7 +278,7 @@ RSpec.describe DatePolls::Close do
 
     described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership_for(user),
       selected_date_range_id: date_range[:id]
     )
 

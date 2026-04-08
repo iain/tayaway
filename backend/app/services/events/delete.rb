@@ -4,20 +4,27 @@ module Events
   # Service to delete an event.
   #
   # @example
-  #   result = Events::Delete.call(event_id: "uuid", current_user_id: "uuid")
+  #   result = Events::Delete.call(event_id: "uuid", membership: membership)
   #   result.success?  # => true
   #   result.value!    # => { message: "Event deleted successfully" }
   module Delete
     class << self
       include Dry::Monads[:result]
 
-      def call(event_id:, current_user_id:)
+      def call(event_id:, membership:)
         Event.find_result(event_id)
-             .bind { |event| Event.authorize_owner(event, current_user_id) }
+             .bind { |event| authorize(event, membership) }
              .bind { |event| delete_event(event) }
       end
 
       private
+
+      def authorize(event, membership)
+        EventPolicy.new(event, membership: membership)
+                   .delete
+                   .bind { Success(event) }
+                   .or { |reason| Failure(ServiceError.forbidden(reason.to_s)) }
+      end
 
       def delete_event(event)
         event_id = event.id

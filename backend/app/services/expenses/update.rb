@@ -5,17 +5,21 @@ module Expenses
   module Update
     class << self
       include Dry::Monads[:result]
-      include Expenses::Validators
-
-      def call(expense_id:, current_user_id:, workspace_id:, description:, amount:, start_date: nil, end_date: nil, participant_ids: nil)
+      def call(expense_id:, membership:, workspace_id:, description:, amount:, start_date: nil, end_date: nil, participant_ids: nil)
         Expense.find_result(expense_id)
-               .bind { |expense| check_not_settled(expense) }
-               .bind { |expense| check_owner(expense, current_user_id) }
+               .bind { |expense| authorize(expense, membership) }
                .bind { |expense| validate_update(expense, description, amount, start_date, end_date, participant_ids) }
                .bind { |expense| update_expense(expense, workspace_id, description, amount, start_date, end_date, participant_ids) }
       end
 
       private
+
+      def authorize(expense, membership)
+        ExpensePolicy.new(expense, membership: membership)
+                     .edit
+                     .bind { Success(expense) }
+                     .or { |reason| Failure(ServiceError.forbidden(reason.to_s)) }
+      end
 
       def validate_update(expense, description, amount, start_date, end_date, participant_ids)
         has_description = description && !description.empty?

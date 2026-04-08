@@ -175,7 +175,7 @@ class App
       r.delete do
         result = ChoreRosters::DeleteRoster.call(
           roster_id: roster.id,
-          current_user_id: user.id,
+          membership: current_membership,
           workspace_id: workspace_id
         )
         handle_result(result)

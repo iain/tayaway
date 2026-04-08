@@ -105,16 +105,12 @@ class App
         end
 
         r.put do
-          unless transfer.to_user_id&.to_s == user.id.to_s
-            response.status = 403
-            next { error: "Only the recipient can mark a transfer as paid" }
-          end
-
           paid = r.params["paid"]
 
           result = Settlements::MarkPaid.call(
             transfer_id: transfer_id,
             paid: paid == true || paid == "true",
+            membership: current_membership,
             workspace_id: event.workspace_id
           )
           handle_result(result)
@@ -141,7 +137,7 @@ class App
       r.delete do
         result = Settlements::Delete.call(
           settlement_id: settlement.id,
-          current_user_id: user.id,
+          membership: current_membership,
           workspace_id: event.workspace_id
         )
         handle_result(result)

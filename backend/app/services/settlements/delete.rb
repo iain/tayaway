@@ -7,27 +7,19 @@ module Settlements
     class << self
       include Dry::Monads[:result]
 
-      def call(settlement_id:, current_user_id:, workspace_id:)
+      def call(settlement_id:, membership:, workspace_id:)
         Settlement.find_result(settlement_id)
-                  .bind { |settlement| authorize(settlement, current_user_id) }
+                  .bind { |settlement| authorize(settlement, membership) }
                   .bind { |settlement| delete_settlement(settlement, workspace_id) }
       end
 
       private
 
-      def authorize(settlement, current_user_id)
-        # Creator can delete
-        if settlement.user_id&.to_s == current_user_id.to_s
-          return Success(settlement)
-        end
-
-        # Event owner can delete
-        event = Event.find(settlement.event_id)
-        if event && event.user_id.to_s == current_user_id.to_s
-          return Success(settlement)
-        end
-
-        Failure(ServiceError.forbidden("Not authorized to delete this settlement"))
+      def authorize(settlement, membership)
+        SettlementPolicy.new(settlement, membership: membership)
+                        .delete
+                        .bind { Success(settlement) }
+                        .or { |reason| Failure(ServiceError.forbidden(reason.to_s)) }
       end
 
       def delete_settlement(settlement, workspace_id)

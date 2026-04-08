@@ -5,16 +5,20 @@ module Expenses
   module Delete
     class << self
       include Dry::Monads[:result]
-      include Expenses::Validators
-
-      def call(expense_id:, current_user_id:, workspace_id:)
+      def call(expense_id:, membership:, workspace_id:)
         Expense.find_result(expense_id)
-               .bind { |expense| check_not_settled(expense) }
-               .bind { |expense| check_owner(expense, current_user_id, action: "delete") }
+               .bind { |expense| authorize(expense, membership) }
                .bind { |expense| delete_expense(expense, workspace_id) }
       end
 
       private
+
+      def authorize(expense, membership)
+        ExpensePolicy.new(expense, membership: membership)
+                     .delete
+                     .bind { Success(expense) }
+                     .or { |reason| Failure(ServiceError.forbidden(reason.to_s)) }
+      end
 
       def delete_expense(expense, workspace_id)
         expense_id = expense.id
