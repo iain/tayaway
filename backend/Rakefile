@@ -12,8 +12,9 @@ namespace :db do
     db_name = database_url.split("/").last
 
     # Connect to a maintenance database to issue CREATE DATABASE.
-    # Try sibling tayaway databases first, fall back to `postgres`.
-    candidates = (%w[tayaway_development tayaway_test tayaway_e2e] - [db_name]) + ["postgres"]
+    # Prefer `postgres` to avoid connecting to sibling app databases, which
+    # can break DatabaseCleaner transaction isolation during parallel CI runs.
+    candidates = ["postgres"] + (%w[tayaway_development tayaway_test tayaway_e2e] - [db_name])
     db = nil
     candidates.each do |candidate|
       maintenance_url = database_url.sub(/\/[^\/]+$/, "/#{candidate}")
@@ -45,7 +46,7 @@ namespace :db do
     database_url = ENV.fetch("DATABASE_URL")
     db_name = database_url.split("/").last
 
-    candidates = (%w[tayaway_development tayaway_test tayaway_e2e] - [db_name]) + ["postgres"]
+    candidates = ["postgres"] + (%w[tayaway_development tayaway_test tayaway_e2e] - [db_name])
     db = nil
     candidates.each do |candidate|
       maintenance_url = database_url.sub(/\/[^\/]+$/, "/#{candidate}")
