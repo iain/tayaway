@@ -13,7 +13,7 @@ module Sync
     RETENTION_PERIOD = 7 * 24 * 60 * 60 # 7 days in seconds
 
     class << self
-      def call(workspace_id:, since: nil)
+      def call(workspace_id:, since: nil, membership: nil)
         cutoff = Time.now - RETENTION_PERIOD
         full = since.nil? || since < cutoff
         effective_since = full ? Time.at(0) : since
@@ -22,7 +22,11 @@ module Sync
         workspace = Workspace.find(workspace_id)
         return empty_response(synced_at, full ? "full" : "partial") unless workspace
 
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool = if membership
+                 PoolSerializer.new(membership: membership)
+               else
+                 PoolSerializer.new(workspace_id: workspace_id)
+               end
 
         # Always include workspace so memberIds stays current on partial syncs
         # (adding a member doesn't update the workspace's updated_at)

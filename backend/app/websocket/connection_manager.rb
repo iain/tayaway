@@ -86,6 +86,13 @@ module Websocket
       APP_LOGGER.info { "[ConnectionManager] User #{user_id} switched workspaces (conn: #{connection_id}, workspaces: #{workspace_ids.join(', ')})" }
     end
 
+    def set_membership(connection_id, membership)
+      @mutex.synchronize do
+        connection = @connections[connection_id]
+        connection&.membership = membership
+      end
+    end
+
     def update_last_pong(connection_id)
       @mutex.synchronize do
         connection = @connections[connection_id]
@@ -125,18 +132,26 @@ module Websocket
 
     def broadcast_to_workspace(workspace_id, message)
       connection_ids = @mutex.synchronize { (@workspace_connections[workspace_id] || Set.new).to_a }
-      json_message = message.to_json
 
-      connection_ids.each do |connection_id|
-        connection = @mutex.synchronize { @connections[connection_id] }
-        next unless connection
+      has_objects = message.dig(:data, :objects)&.any?
+      raw_objects = message.delete(:_raw_objects) || {}
+      context = message.delete(:_context) || {}
 
-        begin
-          connection.websocket.write(json_message)
-          connection.websocket.flush
-        rescue StandardError => e
-          APP_LOGGER.error { "[ConnectionManager] Error broadcasting to workspace #{workspace_id}, conn #{connection_id}: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
-          unregister(connection_id)
+      if has_objects
+        connection_ids.each do |connection_id|
+          connection = @mutex.synchronize { @connections[connection_id] }
+          next unless connection
+
+          personalized = attach_permissions(message, connection.membership, raw_objects, context)
+          send_to_connection(connection, connection_id, personalized.to_json, workspace_id)
+        end
+      else
+        json_message = message.to_json
+        connection_ids.each do |connection_id|
+          connection = @mutex.synchronize { @connections[connection_id] }
+          next unless connection
+
+          send_to_connection(connection, connection_id, json_message, workspace_id)
         end
       end
     end
@@ -174,10 +189,41 @@ module Websocket
       @mutex.synchronize { @connections.size }
     end
 
+    private
+
+    def attach_permissions(message, membership, raw_objects, context)
+      return message unless membership
+
+      objects = message[:data][:objects].map do |obj|
+        entry = ObjectRegistry::TYPES.find { |e| e.client_type == obj[:objectType] }
+        next obj unless entry&.policy
+
+        raw_object = raw_objects[entry.key]
+        next obj unless raw_object
+
+        policy_class = Object.const_get(entry.policy)
+        policy = policy_class.new(raw_object, membership: membership, **context)
+        obj.merge(permissions: policy.permissions)
+      rescue StandardError => e
+        APP_LOGGER.warn { "[ConnectionManager] Failed to compute permissions for #{obj[:objectType]}: #{e.message}" }
+        obj
+      end
+
+      message.merge(data: message[:data].merge(objects: objects))
+    end
+
+    def send_to_connection(connection, connection_id, json_message, workspace_id)
+      connection.websocket.write(json_message)
+      connection.websocket.flush
+    rescue StandardError => e
+      APP_LOGGER.error { "[ConnectionManager] Error broadcasting to workspace #{workspace_id}, conn #{connection_id}: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
+      unregister(connection_id)
+    end
+
     # Internal connection struct
     class Connection
       attr_reader :id, :websocket, :user_id, :session_id
-      attr_accessor :workspace_ids, :last_pong_at
+      attr_accessor :workspace_ids, :last_pong_at, :membership
 
       def initialize(
         id:,

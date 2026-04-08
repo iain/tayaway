@@ -53,10 +53,11 @@ module Websocket
 
         # Subscribe only to this workspace
         Websocket::ConnectionManager.instance.set_workspaces(connection_id, [workspace_id.to_s])
+        Websocket::ConnectionManager.instance.set_membership(connection_id, membership)
 
         # Sync workspace data (full or partial based on since parameter)
         since_time = safe_parse_time(since)
-        result = Sync::WorkspaceSync.call(workspace_id: workspace_id, since: since_time)
+        result = Sync::WorkspaceSync.call(workspace_id: workspace_id, since: since_time, membership: membership)
         connection.write({ type: "sync", data: result }.to_json)
       end
     end

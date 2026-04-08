@@ -85,6 +85,23 @@ module Websocket
         @listen_db = nil
       end
 
+      def prefetch_policy_context(config, object)
+        context = {}
+        case config.key
+        when "settlement", "settlement_transfer"
+          settlement = config.key == "settlement" ? object : Settlement.find(object.settlement_id)
+          context[:event] = Event.find(settlement.event_id) if settlement
+        when "date_poll", "date_range"
+          if config.key == "date_poll"
+            context[:event] = Event.find(object.event_id)
+          else
+            poll = DatePoll.find(object.date_poll_id)
+            context[:event] = Event.find(poll.event_id) if poll
+          end
+        end
+        context
+      end
+
       def handle_notification(payload)
         data = JSON.parse(payload, symbolize_names: true)
         workspace_id = data[:workspaceId]
@@ -108,6 +125,8 @@ module Websocket
             pool = PoolSerializer.new(workspace_id: workspace_id)
             pool.send(config.pool_method, object)
             message[:data] = { objects: pool.to_a }
+            message[:_raw_objects] = { config.key => object }
+            message[:_context] = prefetch_policy_context(config, object)
           else
             # Object was deleted between notify and fetch
             message[:action] = "delete"
