@@ -183,7 +183,7 @@ class App
 
       # GET /api/chore-rosters/:id - Get roster with all chores and assignments
       r.get do
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool = PoolSerializer.new(membership: current_membership)
         pool.add_chore_roster(roster)
 
         response.status = 200

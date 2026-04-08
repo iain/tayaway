@@ -25,7 +25,7 @@ class App
         end
 
         expenses = Expense.for_event(event_id)
-        pool = PoolSerializer.new(workspace_id: event.workspace_id)
+        pool = PoolSerializer.new(membership: current_membership)
         pool.add_expenses_batch(expenses)
 
         response.status = 200

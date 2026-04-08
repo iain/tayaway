@@ -35,7 +35,7 @@ class App
       # GET /api/workspaces/:id - Get workspace details
       r.is do
         r.get do
-          pool = PoolSerializer.new(workspace_id: workspace.id)
+          pool = PoolSerializer.new(membership: membership)
           pool.add_workspace(workspace)
 
           response.status = 200

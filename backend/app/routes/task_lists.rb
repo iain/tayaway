@@ -19,7 +19,7 @@ class App
         end
 
         task_lists = TaskList.for_workspace(workspace_id)
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool = PoolSerializer.new(membership: current_membership)
         pool.add_all(task_lists, type: :task_list)
 
         response.status = 200

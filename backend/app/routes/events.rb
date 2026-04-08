@@ -18,7 +18,8 @@ class App
         # Group events by workspace for correct member resolution
         all_objects = []
         events.group_by(&:workspace_id).each do |ws_id, ws_events|
-          pool = PoolSerializer.new(workspace_id: ws_id)
+          membership = WorkspaceMembership.find_by_workspace_and_user(ws_id, user.id)
+          pool = PoolSerializer.new(membership: membership)
           pool.add_all(ws_events, type: :event)
           all_objects.concat(pool.to_a)
         end
@@ -80,7 +81,7 @@ class App
       # GET /api/events/:id - Get event details (any authenticated user can view)
       r.is do
         r.get do
-          pool = PoolSerializer.new(workspace_id: event.workspace_id)
+          pool = PoolSerializer.new(membership: current_membership)
           pool.add_event(event)
 
           response.status = 200
@@ -184,7 +185,7 @@ class App
         r.is do
           r.get do
             rsvps = Rsvp.for_event(event.id)
-            pool = PoolSerializer.new(workspace_id: event.workspace_id)
+            pool = PoolSerializer.new(membership: current_membership)
             pool.add_all(rsvps, type: :rsvp)
 
             response.status = 200
@@ -205,7 +206,7 @@ class App
             result.either(
               ->(value) {
                 rsvp = Rsvp.find(value[:rsvp_id])
-                pool = PoolSerializer.new(workspace_id: event.workspace_id)
+                pool = PoolSerializer.new(membership: current_membership)
                 pool.add_rsvp(rsvp)
 
                 response.status = value[:created] ? 201 : 200
@@ -236,7 +237,7 @@ class App
             poll = DatePoll.find_by_event(event.id)
             date_range_ids = poll ? DateRange.ids_for_date_poll(poll.id) : []
             votes = Vote.for_date_range_ids(date_range_ids)
-            pool = PoolSerializer.new(workspace_id: event.workspace_id)
+            pool = PoolSerializer.new(membership: current_membership)
             pool.add_all(votes, type: :vote)
 
             response.status = 200
@@ -257,7 +258,7 @@ class App
             result.either(
               ->(value) {
                 vote = Vote.find(value[:vote_id])
-                pool = PoolSerializer.new(workspace_id: event.workspace_id)
+                pool = PoolSerializer.new(membership: current_membership)
                 pool.add_vote(vote)
 
                 response.status = value[:created] ? 201 : 200

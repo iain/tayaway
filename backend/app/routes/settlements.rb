@@ -26,7 +26,7 @@ class App
         end
 
         settlements = Settlement.for_event(event_id)
-        pool = PoolSerializer.new(workspace_id: event.workspace_id)
+        pool = PoolSerializer.new(membership: current_membership)
         settlements.each do |settlement|
           pool.add_settlement(settlement)
           SettlementTransfer.for_settlement(settlement.id).each { |t| pool.add_settlement_transfer(t) }
