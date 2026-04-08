@@ -117,6 +117,7 @@ module Websocket
         end
 
         message = { type: "broadcast", workspaceId: workspace_id, action: action }
+        policy_context = nil
 
         case action
         when "update"
@@ -125,8 +126,10 @@ module Websocket
             pool = PoolSerializer.new(workspace_id: workspace_id)
             pool.send(config.pool_method, object)
             message[:data] = { objects: pool.to_a }
-            message[:_raw_objects] = { config.key => object }
-            message[:_context] = prefetch_policy_context(config, object)
+            policy_context = Websocket::PolicyContext.new(
+              raw_objects: { config.key => object },
+              kwargs: prefetch_policy_context(config, object)
+            )
           else
             # Object was deleted between notify and fetch
             message[:action] = "delete"
@@ -136,7 +139,9 @@ module Websocket
           message[:data] = { deleted: [{ objectType: config.client_type, id: object_id }] }
         end
 
-        Websocket::ConnectionManager.instance.broadcast_to_workspace(workspace_id, message)
+        Websocket::ConnectionManager.instance.broadcast_to_workspace(
+          workspace_id, message, policy_context: policy_context
+        )
       rescue JSON::ParserError => e
         APP_LOGGER.error { "[Listener] Invalid JSON payload: #{e.message}" }
       rescue StandardError => e

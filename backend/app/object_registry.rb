@@ -44,4 +44,5 @@ module ObjectRegistry
   ].freeze
 
   BY_KEY = TYPES.each_with_object({}) { |t, h| h[t.key] = t }.freeze
+  BY_CLIENT_TYPE = TYPES.each_with_object({}) { |t, h| h[t.client_type] = t }.freeze
 end

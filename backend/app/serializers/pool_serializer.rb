@@ -325,8 +325,7 @@ class PoolSerializer
   def attach_permissions(hash, object)
     return unless @membership
 
-    object_type = hash[:objectType]
-    entry = ObjectRegistry::TYPES.find { |e| e.client_type == object_type }
+    entry = ObjectRegistry::BY_CLIENT_TYPE[hash[:objectType]]
     return unless entry&.policy
 
     policy_class = Object.const_get(entry.policy)

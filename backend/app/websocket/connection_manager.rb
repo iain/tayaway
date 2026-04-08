@@ -11,6 +11,11 @@ module Websocket
   #   ConnectionManager.instance.set_workspaces(conn_id, ["workspace-uuid"])
   #   ConnectionManager.instance.broadcast_to_workspace("workspace-uuid", { type: "update", data: {...} })
   #   ConnectionManager.instance.unregister(conn_id)
+  # Context for per-user permission computation during broadcasts.
+  # Carries the raw model objects and extra kwargs (e.g., event:) that
+  # policies need but aren't in the serialized JSON.
+  PolicyContext = Struct.new(:raw_objects, :kwargs, keyword_init: true)
+
   class ConnectionManager
     include Singleton
 
@@ -130,19 +135,15 @@ module Websocket
       stale_ids.size
     end
 
-    def broadcast_to_workspace(workspace_id, message)
+    def broadcast_to_workspace(workspace_id, message, policy_context: nil)
       connection_ids = @mutex.synchronize { (@workspace_connections[workspace_id] || Set.new).to_a }
 
-      has_objects = message.dig(:data, :objects)&.any?
-      raw_objects = message.delete(:_raw_objects) || {}
-      context = message.delete(:_context) || {}
-
-      if has_objects
+      if policy_context
         connection_ids.each do |connection_id|
           connection = @mutex.synchronize { @connections[connection_id] }
           next unless connection
 
-          personalized = attach_permissions(message, connection.membership, raw_objects, context)
+          personalized = attach_permissions(message, connection.membership, policy_context)
           send_to_connection(connection, connection_id, personalized.to_json, workspace_id)
         end
       else
@@ -191,21 +192,21 @@ module Websocket
 
     private
 
-    def attach_permissions(message, membership, raw_objects, context)
+    def attach_permissions(message, membership, policy_context)
       return message unless membership
 
       objects = message[:data][:objects].map do |obj|
-        entry = ObjectRegistry::TYPES.find { |e| e.client_type == obj[:objectType] }
+        entry = ObjectRegistry::BY_CLIENT_TYPE[obj[:objectType]]
         next obj unless entry&.policy
 
-        raw_object = raw_objects[entry.key]
+        raw_object = policy_context.raw_objects[entry.key]
         next obj unless raw_object
 
         policy_class = Object.const_get(entry.policy)
-        policy = policy_class.new(raw_object, membership: membership, **context)
+        policy = policy_class.new(raw_object, membership: membership, **policy_context.kwargs)
         obj.merge(permissions: policy.permissions)
       rescue StandardError => e
-        APP_LOGGER.warn { "[ConnectionManager] Failed to compute permissions for #{obj[:objectType]}: #{e.message}" }
+        APP_LOGGER.error { "[ConnectionManager] Failed to compute permissions for #{obj[:objectType]}: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
         obj
       end
 
