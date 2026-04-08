@@ -12,8 +12,8 @@ RSpec.describe ChoreRosters::DeleteRoster do
   end
   let(:roster) { TestFactories.chore_roster(event: event, user: user) }
 
-  def membership_for(u)
-    row = TestFactories.workspace_membership(workspace: workspace, user: u)
+  def membership_for(usr)
+    row = TestFactories.workspace_membership(workspace: workspace, user: usr)
     WorkspaceMembership.find(row[:id])
   end
 

@@ -5,6 +5,7 @@ module Expenses
   module Update
     class << self
       include Dry::Monads[:result]
+
       def call(expense_id:, membership:, workspace_id:, description:, amount:, start_date: nil, end_date: nil, participant_ids: nil)
         Expense.find_result(expense_id)
                .bind { |expense| authorize(expense, membership) }

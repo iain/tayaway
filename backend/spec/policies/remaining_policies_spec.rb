@@ -2,6 +2,7 @@
 
 require "spec_helper"
 
+# rubocop:disable RSpec/MultipleMemoizedHelpers
 RSpec.describe "Remaining policies" do
   let(:workspace) { TestFactories.workspace }
   let(:user_a) { TestFactories.user }
@@ -152,3 +153,4 @@ RSpec.describe "Remaining policies" do
     end
   end
 end
+# rubocop:enable RSpec/MultipleMemoizedHelpers

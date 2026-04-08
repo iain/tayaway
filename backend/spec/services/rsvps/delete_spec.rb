@@ -5,8 +5,8 @@ require "spec_helper"
 RSpec.describe Rsvps::Delete do
   let(:workspace) { TestFactories.workspace }
 
-  def membership_for(u)
-    row = TestFactories.workspace_membership(workspace: workspace, user: u)
+  def membership_for(usr)
+    row = TestFactories.workspace_membership(workspace: workspace, user: usr)
     WorkspaceMembership.find(row[:id])
   end
 

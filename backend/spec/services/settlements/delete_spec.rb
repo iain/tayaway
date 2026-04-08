@@ -9,8 +9,8 @@ RSpec.describe Settlements::Delete do
   let(:other_user) { TestFactories.user }
   let(:event) { TestFactories.event(workspace: workspace, user: event_owner) }
 
-  def membership_for(u)
-    row = TestFactories.workspace_membership(workspace: workspace, user: u)
+  def membership_for(usr)
+    row = TestFactories.workspace_membership(workspace: workspace, user: usr)
     WorkspaceMembership.find(row[:id])
   end
 

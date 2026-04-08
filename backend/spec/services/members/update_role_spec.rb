@@ -160,7 +160,7 @@ RSpec.describe Members::UpdateRole do
     end
   end
 
-  context "when acting as member" do
+  context "when acting as member" do # rubocop:disable RSpec/MultipleMemoizedHelpers
     let(:member_user) { TestFactories.user(email: "member@example.com") }
     let(:member_membership_row) { TestFactories.workspace_membership(workspace: workspace, user: member_user, role: "member") }
     let(:member_membership) { WorkspaceMembership.find(member_membership_row[:id]) }

@@ -5,6 +5,7 @@ module Expenses
   module Delete
     class << self
       include Dry::Monads[:result]
+
       def call(expense_id:, membership:, workspace_id:)
         Expense.find_result(expense_id)
                .bind { |expense| authorize(expense, membership) }
