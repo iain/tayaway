@@ -12,11 +12,11 @@ module Members
 
       VALID_ROLES = ["owner", "admin", "member"]
 
-      def call(membership:, membership_id:, new_role:)
+      def call(acting_membership:, membership_id:, new_role:)
         validate_role(new_role)
           .bind { |role| find_target(membership_id).fmap { |target| [target, role] } }
-          .bind { |(target, role)| MemberPolicy.enforce(:change_role, target, membership: membership).fmap { |_| [target, role] } }
-          .bind { |(target, role)| perform(membership, target, role) }
+          .bind { |(target, role)| MemberPolicy.enforce(:change_role, target, membership: acting_membership).fmap { |_| [target, role] } }
+          .bind { |(target, role)| perform(acting_membership, target, role) }
       end
 
       private
@@ -38,8 +38,8 @@ module Members
         end
       end
 
-      def perform(membership, target, new_role)
-        APP_LOGGER.info { "[Members::UpdateRole] User #{membership.user_id} changed member #{target.id} role from #{target.role} to #{new_role} in workspace #{target.workspace_id}" }
+      def perform(acting_membership, target, new_role)
+        APP_LOGGER.info { "[Members::UpdateRole] User #{acting_membership.user_id} changed member #{target.id} role from #{target.role} to #{new_role} in workspace #{target.workspace_id}" }
         DB[:workspace_memberships]
           .where(id: target.id.to_s)
           .update(role: new_role, updated_at: Time.now)

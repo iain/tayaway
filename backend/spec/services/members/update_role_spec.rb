@@ -17,7 +17,7 @@ RSpec.describe Members::UpdateRole do
 
   it "returns failure for an invalid role" do
     result = described_class.call(
-      membership: owner_membership,
+      acting_membership: owner_membership,
       membership_id: target_membership_row[:id],
       new_role: "superadmin"
     )
@@ -28,7 +28,7 @@ RSpec.describe Members::UpdateRole do
 
   it "returns failure when target member is not found" do
     result = described_class.call(
-      membership: owner_membership,
+      acting_membership: owner_membership,
       membership_id: SecureRandom.uuid,
       new_role: "admin"
     )
@@ -44,7 +44,7 @@ RSpec.describe Members::UpdateRole do
     other_membership = WorkspaceMembership.find(other_membership_row[:id])
 
     result = described_class.call(
-      membership: other_membership,
+      acting_membership: other_membership,
       membership_id: target_membership_row[:id],
       new_role: "admin"
     )
@@ -55,7 +55,7 @@ RSpec.describe Members::UpdateRole do
 
   it "returns failure when acting user tries to change their own role" do
     result = described_class.call(
-      membership: owner_membership,
+      acting_membership: owner_membership,
       membership_id: owner_membership_row[:id],
       new_role: "admin"
     )
@@ -67,7 +67,7 @@ RSpec.describe Members::UpdateRole do
   context "when acting as owner" do
     it "can promote a member to admin" do
       result = described_class.call(
-        membership: owner_membership,
+        acting_membership: owner_membership,
         membership_id: target_membership_row[:id],
         new_role: "admin"
       )
@@ -79,7 +79,7 @@ RSpec.describe Members::UpdateRole do
 
     it "can promote a member to owner" do
       result = described_class.call(
-        membership: owner_membership,
+        acting_membership: owner_membership,
         membership_id: target_membership_row[:id],
         new_role: "owner"
       )
@@ -89,7 +89,7 @@ RSpec.describe Members::UpdateRole do
 
     it "can demote an admin to member" do
       result = described_class.call(
-        membership: owner_membership,
+        acting_membership: owner_membership,
         membership_id: admin_membership_row[:id],
         new_role: "member"
       )
@@ -101,7 +101,7 @@ RSpec.describe Members::UpdateRole do
 
     it "returns objects in the response" do
       result = described_class.call(
-        membership: owner_membership,
+        acting_membership: owner_membership,
         membership_id: target_membership_row[:id],
         new_role: "admin"
       )
@@ -115,7 +115,7 @@ RSpec.describe Members::UpdateRole do
   context "when acting as admin" do
     it "can promote a member to admin" do
       result = described_class.call(
-        membership: admin_membership,
+        acting_membership: admin_membership,
         membership_id: target_membership_row[:id],
         new_role: "admin"
       )
@@ -128,7 +128,7 @@ RSpec.describe Members::UpdateRole do
       other_admin_membership_row = TestFactories.workspace_membership(workspace: workspace, user: other_admin, role: "admin")
 
       result = described_class.call(
-        membership: admin_membership,
+        acting_membership: admin_membership,
         membership_id: other_admin_membership_row[:id],
         new_role: "member"
       )
@@ -138,7 +138,7 @@ RSpec.describe Members::UpdateRole do
 
     it "cannot change an owner's role" do
       result = described_class.call(
-        membership: admin_membership,
+        acting_membership: admin_membership,
         membership_id: owner_membership_row[:id],
         new_role: "member"
       )
@@ -149,7 +149,7 @@ RSpec.describe Members::UpdateRole do
 
     it "can promote a member to owner" do
       result = described_class.call(
-        membership: admin_membership,
+        acting_membership: admin_membership,
         membership_id: target_membership_row[:id],
         new_role: "owner"
       )
@@ -169,7 +169,7 @@ RSpec.describe Members::UpdateRole do
 
     it "cannot change any roles" do
       result = described_class.call(
-        membership: member_membership,
+        acting_membership: member_membership,
         membership_id: target_membership_row[:id],
         new_role: "admin"
       )

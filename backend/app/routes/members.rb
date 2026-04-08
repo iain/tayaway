@@ -23,7 +23,7 @@ class App
         end
 
         result = Members::UpdateRole.call(
-          membership: current_membership,
+          acting_membership: current_membership,
           membership_id: id,
           new_role: r.params["role"]
         )
