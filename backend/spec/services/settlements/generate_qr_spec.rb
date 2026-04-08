@@ -8,9 +8,14 @@ RSpec.describe Settlements::GenerateQr do
   let(:recipient) { TestFactories.user(name: "Recipient") }
   let(:event) { TestFactories.event(workspace: workspace, user: sender, name: "Trip") }
 
+  let(:sender_membership_row) { TestFactories.workspace_membership(workspace: workspace, user: sender) }
+  let(:sender_membership) { WorkspaceMembership.find(sender_membership_row[:id]) }
+  let(:recipient_membership_row) { TestFactories.workspace_membership(workspace: workspace, user: recipient) }
+  let(:recipient_membership) { WorkspaceMembership.find(recipient_membership_row[:id]) }
+
   before do
-    TestFactories.workspace_membership(workspace: workspace, user: sender)
-    TestFactories.workspace_membership(workspace: workspace, user: recipient)
+    sender_membership
+    recipient_membership
     DB[:users].where(id: recipient[:id]).update(iban: "NL91ABNA0417164300")
   end
 
@@ -42,7 +47,7 @@ RSpec.describe Settlements::GenerateQr do
 
     result = described_class.call(
       transfer_id: transfer_id,
-      current_user_id: sender[:id]
+      membership: sender_membership
     )
 
     expect(result.success?).to be true
@@ -56,12 +61,12 @@ RSpec.describe Settlements::GenerateQr do
 
     result = described_class.call(
       transfer_id: transfer_id,
-      current_user_id: recipient[:id]
+      membership: recipient_membership
     )
 
     expect(result.failure?).to be true
     expect(result.failure.http_status).to eq(403)
-    expect(result.failure.message).to eq("Only the sender can request the QR code")
+    expect(result.failure.message).to eq("not_sender")
   end
 
   it "returns 400 when recipient has no IBAN" do
@@ -70,32 +75,34 @@ RSpec.describe Settlements::GenerateQr do
 
     result = described_class.call(
       transfer_id: transfer_id,
-      current_user_id: sender[:id]
+      membership: sender_membership
     )
 
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("Recipient has no IBAN configured")
   end
 
-  it "returns 403 when sender is not a workspace member" do
-    # Create a user who is the from_user but not in the workspace
-    outsider = TestFactories.user(name: "Outsider")
-    transfer_id = create_transfer(from_user: outsider)
+  it "returns 403 when a different workspace member requests the QR code" do
+    # A third workspace member who is neither sender nor recipient
+    other_user = TestFactories.user(name: "Other Member")
+    other_membership_row = TestFactories.workspace_membership(workspace: workspace, user: other_user)
+    other_membership = WorkspaceMembership.find(other_membership_row[:id])
+    transfer_id = create_transfer
 
     result = described_class.call(
       transfer_id: transfer_id,
-      current_user_id: outsider[:id]
+      membership: other_membership
     )
 
     expect(result.failure?).to be true
     expect(result.failure.http_status).to eq(403)
-    expect(result.failure.message).to eq("Access denied")
+    expect(result.failure.message).to eq("not_sender")
   end
 
   it "returns 404 for missing transfer" do
     result = described_class.call(
       transfer_id: "00000000-0000-0000-0000-000000000000",
-      current_user_id: sender[:id]
+      membership: sender_membership
     )
 
     expect(result.failure?).to be true

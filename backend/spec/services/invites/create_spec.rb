@@ -5,14 +5,14 @@ require "spec_helper"
 RSpec.describe Invites::Create do
   let(:workspace) { TestFactories.workspace(name: "Test Workspace") }
   let(:user) { TestFactories.user }
-
-  before { TestFactories.workspace_membership(workspace: workspace, user: user, role: "admin") }
+  let(:membership_row) { TestFactories.workspace_membership(workspace: workspace, user: user, role: "admin") }
+  let(:membership) { WorkspaceMembership.find(membership_row[:id]) }
 
   it "creates an invite and sends email" do
     result = described_class.call(
       email: "new@example.com",
       workspace_id: workspace[:id],
-      invited_by: user[:id]
+      membership: membership
     )
 
     expect(result.success?).to be true
@@ -32,7 +32,7 @@ RSpec.describe Invites::Create do
   end
 
   it "returns failure when email is empty" do
-    result = described_class.call(email: "", workspace_id: workspace[:id], invited_by: user[:id])
+    result = described_class.call(email: "", workspace_id: workspace[:id], membership: membership)
 
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("Email is required")
@@ -42,16 +42,16 @@ RSpec.describe Invites::Create do
     existing = TestFactories.user(email: "existing@example.com")
     TestFactories.workspace_membership(workspace: workspace, user: existing)
 
-    result = described_class.call(email: "existing@example.com", workspace_id: workspace[:id], invited_by: user[:id])
+    result = described_class.call(email: "existing@example.com", workspace_id: workspace[:id], membership: membership)
 
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("This user is already a member of this workspace")
   end
 
   it "returns failure when a pending invite already exists" do
-    described_class.call(email: "dupe@example.com", workspace_id: workspace[:id], invited_by: user[:id])
+    described_class.call(email: "dupe@example.com", workspace_id: workspace[:id], membership: membership)
 
-    result = described_class.call(email: "dupe@example.com", workspace_id: workspace[:id], invited_by: user[:id])
+    result = described_class.call(email: "dupe@example.com", workspace_id: workspace[:id], membership: membership)
 
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("An invitation has already been sent to this email")
@@ -63,7 +63,7 @@ RSpec.describe Invites::Create do
       logged_messages << block.call if block
     end
 
-    described_class.call(email: "log@example.com", workspace_id: workspace[:id], invited_by: user[:id])
+    described_class.call(email: "log@example.com", workspace_id: workspace[:id], membership: membership)
 
     expect(logged_messages).to include(a_string_including("[Invites::Create]"))
   end

@@ -6,7 +6,7 @@ module Votes
   # @example
   #   result = Votes::Upsert.call(
   #     event_id: "event-uuid",
-  #     user_id: "uuid",
+  #     membership: membership,
   #     date_range_id: "dr-uuid",
   #     vote_response: "yes",
   #     comment: "Looks good!",
@@ -18,7 +18,9 @@ module Votes
     class << self
       include Dry::Monads[:result]
 
-      def call(event_id:, user_id:, date_range_id:, vote_response:, comment:, vote_id:)
+      def call(event_id:, membership:, date_range_id:, vote_response:, comment:, vote_id:)
+        user_id = membership.user_id
+
         # Idempotent replay: if client provided an ID that already exists, return it
         if vote_id
           existing = Vote.find(vote_id)
@@ -34,6 +36,7 @@ module Votes
         validate_params(date_range_id, vote_response)
           .bind { |params| find_date_range(params[:date_range_id]) }
           .bind { |date_range| validate_date_range_belongs_to_event(date_range, event_id) }
+          .bind { |date_range| DateRangePolicy.enforce(:create_vote, date_range, membership: membership) }
           .bind { |date_range| validate_poll_open(date_range) }
           .bind { |date_range| upsert_vote(date_range, user_id, vote_response, comment, resolved_vote_id) }
       end

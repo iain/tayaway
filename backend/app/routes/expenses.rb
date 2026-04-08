@@ -6,7 +6,7 @@
 
 class App
   hash_branch("api", "expenses") do |r|
-    user = require_auth
+    require_auth
 
     # GET /api/expenses?event_id=xxx - List expenses for an event
     r.is do
@@ -55,7 +55,7 @@ class App
 
         result = Expenses::Create.call(
           event_id: event_id,
-          user_id: user.id,
+          membership: current_membership,
           workspace_id: event.workspace_id,
           description: r.params["description"]&.strip,
           amount: amount,

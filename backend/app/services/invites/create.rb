@@ -6,13 +6,17 @@ module Invites
     class << self
       include Dry::Monads[:result]
 
-      def call(email:, workspace_id:, invited_by:, name: nil)
+      def call(email:, workspace_id:, membership:, name: nil)
         sanitized_name = name&.strip&.then { |n| n.empty? ? nil : n }
-        validate_email(email)
-          .bind { |valid_email| validate_name_length(sanitized_name).fmap { valid_email } }
-          .bind { |valid_email| check_not_already_member(valid_email, workspace_id) }
-          .bind { |valid_email| check_no_pending_invite(valid_email, workspace_id) }
-          .bind { |valid_email| create_invite(valid_email, workspace_id, invited_by, sanitized_name) }
+        workspace = Workspace.find(workspace_id)
+        return Failure(ServiceError.not_found("Workspace not found")) unless workspace
+
+        WorkspacePolicy.enforce(:invite, workspace, membership: membership)
+                       .bind { validate_email(email) }
+                       .bind { |valid_email| validate_name_length(sanitized_name).fmap { valid_email } }
+                       .bind { |valid_email| check_not_already_member(valid_email, workspace_id) }
+                       .bind { |valid_email| check_no_pending_invite(valid_email, workspace_id) }
+                       .bind { |valid_email| create_invite(valid_email, workspace_id, membership.user_id, sanitized_name) }
       end
 
       private

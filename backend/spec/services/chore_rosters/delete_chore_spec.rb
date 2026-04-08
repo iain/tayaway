@@ -13,10 +13,15 @@ RSpec.describe ChoreRosters::DeleteChore do
   let(:roster) { TestFactories.chore_roster(event: event, user: user) }
   let(:chore) { TestFactories.chore(chore_roster: roster, name: "Cooking") }
 
+  def membership_for(usr)
+    row = TestFactories.workspace_membership(workspace: workspace, user: usr)
+    WorkspaceMembership.find(row[:id])
+  end
+
   it "deletes the chore" do
     chore_id = chore[:id]
 
-    result = described_class.call(chore_id: chore_id, roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(chore_id: chore_id, roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user))
 
     expect(result.success?).to be true
     expect(DB[:chores].where(id: chore_id).count).to eq(0)
@@ -25,7 +30,7 @@ RSpec.describe ChoreRosters::DeleteChore do
   it "cascades deletion to assignments" do
     assignment = TestFactories.chore_assignment(chore: chore, user: user, date: Date.new(2026, 3, 1))
 
-    result = described_class.call(chore_id: chore[:id], roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(chore_id: chore[:id], roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user))
 
     expect(result.success?).to be true
     expect(DB[:chore_assignments].where(id: assignment[:id]).count).to eq(0)
@@ -34,7 +39,7 @@ RSpec.describe ChoreRosters::DeleteChore do
   it "tracks deletions in deleted_items" do
     TestFactories.chore_assignment(chore: chore, user: user, date: Date.new(2026, 3, 1))
 
-    described_class.call(chore_id: chore[:id], roster_id: roster[:id], workspace_id: workspace[:id])
+    described_class.call(chore_id: chore[:id], roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user))
 
     expect(DB[:deleted_items].where(object_type: "chore", object_id: chore[:id]).count).to eq(1)
     expect(DB[:deleted_items].where(object_type: "chore_assignment").count).to eq(1)
@@ -43,7 +48,7 @@ RSpec.describe ChoreRosters::DeleteChore do
   it "returns deleted items in response" do
     assignment = TestFactories.chore_assignment(chore: chore, user: user, date: Date.new(2026, 3, 1))
 
-    result = described_class.call(chore_id: chore[:id], roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(chore_id: chore[:id], roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user))
 
     deleted = result.value![:deleted]
     types = deleted.map { |d| d[:objectType] }
@@ -53,7 +58,7 @@ RSpec.describe ChoreRosters::DeleteChore do
   end
 
   it "returns updated roster in response" do
-    result = described_class.call(chore_id: chore[:id], roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(chore_id: chore[:id], roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user))
 
     roster_obj = result.value![:objects].find { |o| o[:objectType] == "choreRoster" }
     expect(roster_obj).not_to be_nil
@@ -61,7 +66,7 @@ RSpec.describe ChoreRosters::DeleteChore do
   end
 
   it "fails for nonexistent chore" do
-    result = described_class.call(chore_id: SecureRandom.uuid, roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(chore_id: SecureRandom.uuid, roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user))
 
     expect(result.failure?).to be true
     expect(result.failure.http_status).to eq(404)
@@ -72,7 +77,7 @@ RSpec.describe ChoreRosters::DeleteChore do
     other_roster = TestFactories.chore_roster(event: other_event, user: user)
     other_chore = TestFactories.chore(chore_roster: other_roster, name: "Cleaning")
 
-    result = described_class.call(chore_id: other_chore[:id], roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(chore_id: other_chore[:id], roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user))
 
     expect(result.failure?).to be true
     expect(result.failure.http_status).to eq(404)

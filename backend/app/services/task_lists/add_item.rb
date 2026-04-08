@@ -6,10 +6,11 @@ module TaskLists
     class << self
       include Dry::Monads[:result]
 
-      def call(task_list_id:, user_id:, content:, id: nil)
+      def call(task_list_id:, membership:, content:, id: nil)
         TaskList.find_result(task_list_id)
+                .bind { |task_list| TaskListPolicy.enforce(:create_task_item, task_list, membership: membership) }
                 .bind { |task_list| validate_content(content).fmap { |valid_content| [task_list, valid_content] } }
-                .bind { |(task_list, valid_content)| add_item(task_list, user_id, valid_content, id) }
+                .bind { |(task_list, valid_content)| add_item(task_list, membership.user_id, valid_content, id) }
       end
 
       private

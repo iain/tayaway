@@ -6,7 +6,7 @@ module Rsvps
   # @example
   #   result = Rsvps::Upsert.call(
   #     event_id: "event-uuid",
-  #     user_id: "uuid",
+  #     membership: membership,
   #     attending: true,
   #     rsvp_id: "client-generated-uuid",
   #     start_date: "2026-03-10",
@@ -16,7 +16,9 @@ module Rsvps
     class << self
       include Dry::Monads[:result]
 
-      def call(event_id:, user_id:, attending:, rsvp_id:, start_date: nil, end_date: nil)
+      def call(event_id:, membership:, attending:, rsvp_id:, start_date: nil, end_date: nil)
+        user_id = membership.user_id
+
         # Idempotent replay: if client provided an ID that already exists, return it
         if rsvp_id
           existing = Rsvp.find(rsvp_id)
@@ -31,6 +33,7 @@ module Rsvps
 
         validate_params(attending)
           .bind { find_event(event_id) }
+          .bind { |event| EventPolicy.enforce(:create_rsvp, event, membership: membership) }
           .bind { |event| validate_event_has_dates(event) }
           .bind { |event| validate_no_expenses_when_declining(event, user_id, attending) }
           .bind { |event| validate_partial_dates(event, attending, start_date, end_date) }

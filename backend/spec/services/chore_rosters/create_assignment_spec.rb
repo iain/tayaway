@@ -14,10 +14,16 @@ RSpec.describe ChoreRosters::CreateAssignment do
   let(:roster) { TestFactories.chore_roster(event: event, user: user) }
   let(:chore) { TestFactories.chore(chore_roster: roster, name: "Cooking") }
 
+  def membership_for(usr)
+    row = TestFactories.workspace_membership(workspace: workspace, user: usr)
+    WorkspaceMembership.find(row[:id])
+  end
+
   it "creates a pinned assignment" do
     result = described_class.call(
       roster_id: roster[:id],
       workspace_id: workspace[:id],
+      membership: membership_for(user),
       chore_id: chore[:id].to_s,
       user_id: assignee[:id].to_s,
       date: "2026-03-02",
@@ -35,6 +41,7 @@ RSpec.describe ChoreRosters::CreateAssignment do
     result = described_class.call(
       roster_id: roster[:id],
       workspace_id: workspace[:id],
+      membership: membership_for(user),
       chore_id: chore[:id].to_s,
       user_id: assignee[:id].to_s,
       date: "2026-04-01"
@@ -58,6 +65,7 @@ RSpec.describe ChoreRosters::CreateAssignment do
     result = described_class.call(
       roster_id: roster[:id],
       workspace_id: workspace[:id],
+      membership: membership_for(user),
       chore_id: other_chore[:id].to_s,
       user_id: assignee[:id].to_s,
       date: "2026-03-02"

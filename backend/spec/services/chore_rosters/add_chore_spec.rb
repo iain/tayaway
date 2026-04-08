@@ -12,10 +12,16 @@ RSpec.describe ChoreRosters::AddChore do
   end
   let(:roster) { TestFactories.chore_roster(event: event, user: user) }
 
+  def membership_for(usr)
+    row = TestFactories.workspace_membership(workspace: workspace, user: usr)
+    WorkspaceMembership.find(row[:id])
+  end
+
   it "adds a chore to the roster" do
     result = described_class.call(
       roster_id: roster[:id],
       workspace_id: workspace[:id],
+      membership: membership_for(user),
       name: "Cooking",
       people_per_day: 2
     )
@@ -30,6 +36,7 @@ RSpec.describe ChoreRosters::AddChore do
     result = described_class.call(
       roster_id: roster[:id],
       workspace_id: workspace[:id],
+      membership: membership_for(user),
       name: "",
       people_per_day: 1
     )
@@ -41,8 +48,9 @@ RSpec.describe ChoreRosters::AddChore do
   it "is idempotent with client ID" do
     chore_id = SecureRandom.uuid
 
-    result1 = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], name: "Test", people_per_day: 1, id: chore_id)
-    result2 = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], name: "Test", people_per_day: 1, id: chore_id)
+    membership = membership_for(user)
+    result1 = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership, name: "Test", people_per_day: 1, id: chore_id)
+    result2 = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership, name: "Test", people_per_day: 1, id: chore_id)
 
     expect(result1.success?).to be true
     expect(result2.success?).to be true

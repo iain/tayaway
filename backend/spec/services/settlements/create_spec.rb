@@ -5,6 +5,10 @@ require "spec_helper"
 RSpec.describe Settlements::Create do
   let(:workspace) { TestFactories.workspace }
   let(:creator) { TestFactories.user(name: "Creator") }
+  let(:creator_membership) do
+    row = TestFactories.workspace_membership(workspace: workspace, user: creator)
+    WorkspaceMembership.find(row[:id])
+  end
 
   # Convenience: insert an expense for an event, covering a date range
   define_method(:insert_expense) do |event:, user:, amount:, start_date:, end_date:|
@@ -41,7 +45,7 @@ RSpec.describe Settlements::Create do
 
       result = described_class.call(
         event_id: event[:id],
-        user_id: creator[:id],
+        membership: creator_membership,
         workspace_id: workspace[:id]
       )
 
@@ -56,7 +60,7 @@ RSpec.describe Settlements::Create do
 
       result = described_class.call(
         event_id: event[:id],
-        user_id: creator[:id],
+        membership: creator_membership,
         workspace_id: workspace[:id]
       )
 
@@ -77,7 +81,7 @@ RSpec.describe Settlements::Create do
       # First settlement consumes all expenses
       first_result = described_class.call(
         event_id: event[:id],
-        user_id: creator[:id],
+        membership: creator_membership,
         workspace_id: workspace[:id]
       )
       expect(first_result.success?).to be true
@@ -86,7 +90,7 @@ RSpec.describe Settlements::Create do
       # but a recent settlement was just created, so the error should be specific
       result = described_class.call(
         event_id: event[:id],
-        user_id: creator[:id],
+        membership: creator_membership,
         workspace_id: workspace[:id]
       )
 
@@ -103,7 +107,7 @@ RSpec.describe Settlements::Create do
 
       result = described_class.call(
         event_id: event[:id],
-        user_id: creator[:id],
+        membership: creator_membership,
         workspace_id: workspace[:id]
       )
 
@@ -129,7 +133,7 @@ RSpec.describe Settlements::Create do
 
       result = described_class.call(
         event_id: event[:id],
-        user_id: creator[:id],
+        membership: creator_membership,
         workspace_id: workspace[:id]
       )
 
@@ -158,7 +162,7 @@ RSpec.describe Settlements::Create do
 
       result = described_class.call(
         event_id: event[:id],
-        user_id: creator[:id],
+        membership: creator_membership,
         workspace_id: workspace[:id]
       )
 
@@ -196,7 +200,7 @@ RSpec.describe Settlements::Create do
 
       result = described_class.call(
         event_id: event[:id],
-        user_id: creator[:id],
+        membership: creator_membership,
         workspace_id: workspace[:id]
       )
 
@@ -223,7 +227,7 @@ RSpec.describe Settlements::Create do
 
       result = described_class.call(
         event_id: event[:id],
-        user_id: creator[:id],
+        membership: creator_membership,
         workspace_id: workspace[:id]
       )
 
@@ -261,7 +265,7 @@ RSpec.describe Settlements::Create do
 
       result = described_class.call(
         event_id: event[:id],
-        user_id: creator[:id],
+        membership: creator_membership,
         workspace_id: workspace[:id]
       )
 
@@ -293,7 +297,7 @@ RSpec.describe Settlements::Create do
 
       result = described_class.call(
         event_id: event[:id],
-        user_id: creator[:id],
+        membership: creator_membership,
         workspace_id: workspace[:id]
       )
 
@@ -328,7 +332,7 @@ RSpec.describe Settlements::Create do
 
       result = described_class.call(
         event_id: event[:id],
-        user_id: creator[:id],
+        membership: creator_membership,
         workspace_id: workspace[:id]
       )
 
@@ -355,7 +359,7 @@ RSpec.describe Settlements::Create do
 
       result = described_class.call(
         event_id: event[:id],
-        user_id: creator[:id],
+        membership: creator_membership,
         workspace_id: workspace[:id]
       )
 
@@ -380,7 +384,7 @@ RSpec.describe Settlements::Create do
 
       result = described_class.call(
         event_id: event[:id],
-        user_id: creator[:id],
+        membership: creator_membership,
         workspace_id: workspace[:id]
       )
 
@@ -405,7 +409,7 @@ RSpec.describe Settlements::Create do
 
       result = described_class.call(
         event_id: event[:id],
-        user_id: creator[:id],
+        membership: creator_membership,
         workspace_id: workspace[:id]
       )
 
@@ -445,7 +449,7 @@ RSpec.describe Settlements::Create do
 
       result = described_class.call(
         event_id: event[:id],
-        user_id: creator[:id],
+        membership: creator_membership,
         workspace_id: workspace[:id]
       )
 
@@ -475,7 +479,7 @@ RSpec.describe Settlements::Create do
 
       result = described_class.call(
         event_id: event[:id],
-        user_id: creator[:id],
+        membership: creator_membership,
         workspace_id: workspace[:id]
       )
 
@@ -509,7 +513,7 @@ RSpec.describe Settlements::Create do
 
       result = described_class.call(
         event_id: event[:id],
-        user_id: creator[:id],
+        membership: creator_membership,
         workspace_id: workspace[:id]
       )
 
@@ -542,7 +546,7 @@ RSpec.describe Settlements::Create do
 
       result = described_class.call(
         event_id: event[:id],
-        user_id: creator[:id],
+        membership: creator_membership,
         workspace_id: workspace[:id]
       )
 
@@ -567,7 +571,7 @@ RSpec.describe Settlements::Create do
 
       result = described_class.call(
         event_id: event[:id],
-        user_id: creator[:id],
+        membership: creator_membership,
         workspace_id: workspace[:id]
       )
 
@@ -589,7 +593,7 @@ RSpec.describe Settlements::Create do
 
       result = described_class.call(
         event_id: event[:id],
-        user_id: creator[:id],
+        membership: creator_membership,
         workspace_id: workspace[:id]
       )
 
@@ -610,11 +614,11 @@ RSpec.describe Settlements::Create do
 
       # First settlement
       insert_expense(event: event, user: alice, amount: 50.00, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 4))
-      described_class.call(event_id: event[:id], user_id: creator[:id], workspace_id: workspace[:id])
+      described_class.call(event_id: event[:id], membership: creator_membership, workspace_id: workspace[:id])
 
       # Second expense — only this one should be unsettled
       insert_expense(event: event, user: bob, amount: 30.00, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 4))
-      result2 = described_class.call(event_id: event[:id], user_id: creator[:id], workspace_id: workspace[:id])
+      result2 = described_class.call(event_id: event[:id], membership: creator_membership, workspace_id: workspace[:id])
 
       expect(result2.success?).to be true
       # Only the second expense appears as newly settled in this settlement

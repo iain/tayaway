@@ -6,9 +6,10 @@ module ChoreRosters
     class << self
       include Dry::Monads[:result]
 
-      def call(assignment_id:, roster_id:, workspace_id:)
+      def call(assignment_id:, roster_id:, workspace_id:, membership:)
         ChoreAssignment.find_result(assignment_id)
                        .bind { |assignment| validate_belongs_to_roster(assignment, roster_id) }
+                       .bind { |assignment| ChoreAssignmentPolicy.enforce(:delete, assignment, membership: membership) }
                        .bind { |assignment| delete(assignment, workspace_id) }
       end
 

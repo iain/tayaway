@@ -80,12 +80,10 @@ class App
           next { error: "Access denied" }
         end
 
-        require_admin_or_owner!(workspace_id)
-
         result = Invites::Create.call(
           email: r.params["email"]&.strip&.downcase,
           workspace_id: workspace_id,
-          invited_by: current_user.id,
+          membership: current_membership,
           name: r.params["name"]
         )
         handle_result(result, success_status: 201)
@@ -102,9 +100,7 @@ class App
           next { error: "Access denied" }
         end
 
-        require_admin_or_owner!(workspace_id)
-
-        result = Invites::Cancel.call(invite_id: id, workspace_id: workspace_id)
+        result = Invites::Cancel.call(invite_id: id, workspace_id: workspace_id, membership: current_membership)
         handle_result(result)
       end
 
@@ -118,9 +114,7 @@ class App
             next { error: "Access denied" }
           end
 
-          require_admin_or_owner!(workspace_id)
-
-          result = Invites::Remind.call(invite_id: id, workspace_id: workspace_id)
+          result = Invites::Remind.call(invite_id: id, workspace_id: workspace_id, membership: current_membership)
           handle_result(result)
         end
       end

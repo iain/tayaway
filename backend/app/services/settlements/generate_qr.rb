@@ -11,24 +11,16 @@ module Settlements
     class << self
       include Dry::Monads[:result]
 
-      def call(transfer_id:, current_user_id:)
+      def call(transfer_id:, membership:)
         SettlementTransfer.find_result(transfer_id)
-                          .bind { |transfer| authorize(transfer, current_user_id) }
-                          .bind { |transfer| load_context(transfer, current_user_id) }
+                          .bind { |transfer| SettlementTransferPolicy.enforce(:generate_qr, transfer, membership: membership) }
+                          .bind { |transfer| load_context(transfer) }
                           .bind { |ctx| generate_png(ctx) }
       end
 
       private
 
-      def authorize(transfer, current_user_id)
-        if transfer.from_user_id&.to_s == current_user_id.to_s
-          Success(transfer)
-        else
-          Failure(ServiceError.forbidden("Only the sender can request the QR code"))
-        end
-      end
-
-      def load_context(transfer, current_user_id)
+      def load_context(transfer)
         settlement = Settlement.find(transfer.settlement_id)
         unless settlement
           return Failure(ServiceError.not_found("Settlement not found"))
@@ -37,10 +29,6 @@ module Settlements
         event = Event.find(settlement.event_id)
         unless event
           return Failure(ServiceError.not_found("Event not found"))
-        end
-
-        unless WorkspaceMembership.find_by_workspace_and_user(event.workspace_id, current_user_id)
-          return Failure(ServiceError.forbidden("Access denied"))
         end
 
         recipient = User.find(transfer.to_user_id)

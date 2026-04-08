@@ -6,7 +6,7 @@
 
 class App
   hash_branch("api", "settlements") do |r|
-    user = require_auth
+    require_auth
 
     # GET /api/settlements?event_id=xxx - List settlements for an event
     # POST /api/settlements - Create a settlement
@@ -52,7 +52,7 @@ class App
 
         result = Settlements::Create.call(
           event_id: event_id,
-          user_id: user.id,
+          membership: current_membership,
           workspace_id: event.workspace_id
         )
         handle_result(result, success_status: 201)
@@ -62,28 +62,6 @@ class App
     # /api/settlements/transfers/:id - Toggle paid on a transfer, or get QR code
     r.on "transfers" do
       r.on String do |transfer_id|
-        # GET /api/settlements/transfers/:id/qr - Generate EPC QR code PNG
-        r.on "qr" do
-          r.get do
-            result = Settlements::GenerateQr.call(
-              transfer_id: transfer_id,
-              current_user_id: user.id
-            )
-
-            if result.success?
-              png = result.value!
-              response.status = 200
-              response["Content-Type"] = "image/png"
-              response["Cache-Control"] = "private, max-age=300"
-              r.halt [200, { "Content-Type" => "image/png", "Cache-Control" => "private, max-age=300" }, [png]]
-            else
-              error = result.failure
-              response.status = error.http_status
-              next error.to_api_hash
-            end
-          end
-        end
-
         find_result = SettlementTransfer.find_result(transfer_id)
         unless find_result.success?
           error = find_result.failure
@@ -102,6 +80,28 @@ class App
         unless event && member_of_workspace?(event.workspace_id)
           response.status = 403
           next { error: "Access denied" }
+        end
+
+        # GET /api/settlements/transfers/:id/qr - Generate EPC QR code PNG
+        r.on "qr" do
+          r.get do
+            result = Settlements::GenerateQr.call(
+              transfer_id: transfer_id,
+              membership: current_membership
+            )
+
+            if result.success?
+              png = result.value!
+              response.status = 200
+              response["Content-Type"] = "image/png"
+              response["Cache-Control"] = "private, max-age=300"
+              r.halt [200, { "Content-Type" => "image/png", "Cache-Control" => "private, max-age=300" }, [png]]
+            else
+              error = result.failure
+              response.status = error.http_status
+              next error.to_api_hash
+            end
+          end
         end
 
         r.put do

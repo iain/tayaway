@@ -5,7 +5,7 @@ module Events
   #
   # @example
   #   result = Events::Create.call(
-  #     user_id: "uuid",
+  #     membership: membership,
   #     name: "Team Meeting",
   #     description: "Weekly sync"
   #   )
@@ -16,19 +16,21 @@ module Events
       include Dry::Monads[:result]
       include Events::Validators
 
-      def call(workspace_id:, user_id:, name:, description:, id: nil, start_date: nil, end_date: nil,
+      def call(workspace_id:, membership:, name:, description:, id: nil, start_date: nil, end_date: nil,
                location_name: nil, latitude: nil, longitude: nil)
-        validate_name(name)
-          .bind { |valid_name| validate_text_lengths(description, location_name).fmap { valid_name } }
-          .bind { |valid_name| validate_coordinates(latitude, longitude).fmap { valid_name } }
-          .bind { |valid_name| validate_dates(start_date, end_date).fmap { |dates| [valid_name, dates] } }
-          .bind do |(valid_name, dates)|
-            create_event(
-              workspace_id: workspace_id, user_id: user_id, name: valid_name,
-              description: description, id: id, dates: dates,
-              location_name: location_name, latitude: latitude, longitude: longitude
-            )
-          end
+        workspace = Workspace.find(workspace_id)
+        WorkspacePolicy.enforce(:create_event, workspace, membership: membership)
+                       .bind { validate_name(name) }
+                       .bind { |valid_name| validate_text_lengths(description, location_name).fmap { valid_name } }
+                       .bind { |valid_name| validate_coordinates(latitude, longitude).fmap { valid_name } }
+                       .bind { |valid_name| validate_dates(start_date, end_date).fmap { |dates| [valid_name, dates] } }
+                       .bind do |(valid_name, dates)|
+                         create_event(
+                           workspace_id: workspace_id, user_id: membership.user_id, name: valid_name,
+                           description: description, id: id, dates: dates,
+                           location_name: location_name, latitude: latitude, longitude: longitude
+                         )
+                       end
       end
 
       private

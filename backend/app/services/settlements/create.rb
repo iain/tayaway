@@ -12,10 +12,11 @@ module Settlements
     class << self
       include Dry::Monads[:result]
 
-      def call(event_id:, user_id:, workspace_id:)
+      def call(event_id:, membership:, workspace_id:)
         find_event(event_id)
+          .bind { |event| EventPolicy.enforce(:create_settlement, event, membership: membership) }
           .bind { |event| check_event_dates(event) }
-          .bind { |event| settle(event, user_id, workspace_id) }
+          .bind { |event| settle(event, membership.user_id, workspace_id) }
       end
 
       private

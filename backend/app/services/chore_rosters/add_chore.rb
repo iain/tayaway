@@ -6,8 +6,9 @@ module ChoreRosters
     class << self
       include Dry::Monads[:result]
 
-      def call(roster_id:, workspace_id:, name:, people_per_day:, id: nil)
+      def call(roster_id:, workspace_id:, membership:, name:, people_per_day:, id: nil)
         validate(name, people_per_day)
+          .bind { |valid| enforce_policy(roster_id, membership, valid) }
           .bind { |valid| create_chore(roster_id, workspace_id, valid, id) }
       end
 
@@ -28,6 +29,14 @@ module ChoreRosters
         end
 
         Success({ name: name, people_per_day: ppd })
+      end
+
+      def enforce_policy(roster_id, membership, valid)
+        roster = ChoreRoster.find(roster_id)
+        return Failure(ServiceError.not_found("Roster not found")) unless roster
+
+        ChoreRosterPolicy.enforce(:create_chore, roster, membership: membership)
+                         .fmap { valid }
       end
 
       def create_chore(roster_id, workspace_id, valid, id)

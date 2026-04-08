@@ -50,7 +50,7 @@ class App
 
         result = Events::Create.call(
           workspace_id: workspace_id,
-          user_id: user.id,
+          membership: current_membership,
           name: r.params["name"]&.strip,
           description: r.params["description"]&.strip,
           id: r.params["id"],
@@ -196,7 +196,7 @@ class App
           r.post do
             result = Rsvps::Upsert.call(
               event_id: event.id,
-              user_id: user.id,
+              membership: current_membership,
               attending: r.params["attending"],
               start_date: r.params["start_date"]&.strip,
               end_date: r.params["end_date"]&.strip,
@@ -248,7 +248,7 @@ class App
           r.post do
             result = Votes::Upsert.call(
               event_id: event.id,
-              user_id: user.id,
+              membership: current_membership,
               date_range_id: r.params["date_range_id"],
               vote_response: r.params["response"],
               comment: r.params["comment"]&.strip,

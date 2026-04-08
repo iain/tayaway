@@ -6,8 +6,9 @@ module ChoreRosters
     class << self
       include Dry::Monads[:result]
 
-      def call(chore_id:, workspace_id:, name: nil, people_per_day: nil, position: nil)
+      def call(chore_id:, workspace_id:, membership:, name: nil, people_per_day: nil, position: nil)
         Chore.find_result(chore_id)
+             .bind { |chore| ChorePolicy.enforce(:edit, chore, membership: membership) }
              .bind { |chore| validate_and_update(chore, workspace_id, name, people_per_day, position) }
       end
 

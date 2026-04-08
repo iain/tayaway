@@ -15,11 +15,17 @@ RSpec.describe ChoreRosters::UpdateAssignment do
   let(:chore) { TestFactories.chore(chore_roster: roster, name: "Cooking") }
   let(:assignment) { TestFactories.chore_assignment(chore: chore, user: user, date: Date.new(2026, 3, 1), pinned: true) }
 
+  def membership_for(usr)
+    row = TestFactories.workspace_membership(workspace: workspace, user: usr)
+    WorkspaceMembership.find(row[:id])
+  end
+
   it "updates the note" do
     result = described_class.call(
       assignment_id: assignment[:id],
       roster_id: roster[:id],
       workspace_id: workspace[:id],
+      membership: membership_for(user),
       note: "Pizza night"
     )
 
@@ -33,6 +39,7 @@ RSpec.describe ChoreRosters::UpdateAssignment do
       assignment_id: assignment[:id],
       roster_id: roster[:id],
       workspace_id: workspace[:id],
+      membership: membership_for(user),
       user_id: other_user[:id].to_s
     )
 
@@ -46,6 +53,7 @@ RSpec.describe ChoreRosters::UpdateAssignment do
       assignment_id: assignment[:id],
       roster_id: roster[:id],
       workspace_id: workspace[:id],
+      membership: membership_for(user),
       note: "Updated"
     )
 
@@ -60,6 +68,7 @@ RSpec.describe ChoreRosters::UpdateAssignment do
       assignment_id: assignment[:id],
       roster_id: roster[:id],
       workspace_id: workspace[:id],
+      membership: membership_for(user),
       note: ""
     )
 
@@ -72,7 +81,8 @@ RSpec.describe ChoreRosters::UpdateAssignment do
     result = described_class.call(
       assignment_id: assignment[:id],
       roster_id: roster[:id],
-      workspace_id: workspace[:id]
+      workspace_id: workspace[:id],
+      membership: membership_for(user)
     )
 
     expect(result.failure?).to be true
@@ -84,6 +94,7 @@ RSpec.describe ChoreRosters::UpdateAssignment do
       assignment_id: SecureRandom.uuid,
       roster_id: roster[:id],
       workspace_id: workspace[:id],
+      membership: membership_for(user),
       note: "test"
     )
 
@@ -101,6 +112,7 @@ RSpec.describe ChoreRosters::UpdateAssignment do
       assignment_id: other_assignment[:id],
       roster_id: roster[:id],
       workspace_id: workspace[:id],
+      membership: membership_for(user),
       note: "Hacked"
     )
 

@@ -5,12 +5,16 @@ require "spec_helper"
 RSpec.describe Expenses::Create do
   let(:user) { TestFactories.user }
   let(:workspace) { TestFactories.workspace }
+  let(:membership) do
+    row = TestFactories.workspace_membership(workspace: workspace, user: user)
+    WorkspaceMembership.find(row[:id])
+  end
   let(:event) { TestFactories.event(workspace: workspace, user: user) }
 
   let(:valid_params) do
     {
       event_id: event[:id],
-      user_id: user[:id],
+      membership: membership,
       workspace_id: workspace[:id],
       description: "Dinner",
       amount: 42.50,

@@ -16,6 +16,12 @@ RSpec.describe ChoreRosters::Autofill do
   end
   let(:roster) { TestFactories.chore_roster(event: event, user: user_a) }
 
+  def membership_for(usr)
+    existing = DB[:workspace_memberships].where(workspace_id: workspace[:id], user_id: usr[:id]).first
+    row = existing || TestFactories.workspace_membership(workspace: workspace, user: usr)
+    WorkspaceMembership.find(row[:id])
+  end
+
   define_method(:create_rsvp) do |user, start_date: nil, end_date: nil|
     TestFactories.rsvp(event: event, user: user, attending: true, start_date: start_date, end_date: end_date)
   end
@@ -42,7 +48,7 @@ RSpec.describe ChoreRosters::Autofill do
     create_rsvp(user_b)
     chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
 
-    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
 
     expect(result.success?).to be true
 
@@ -71,7 +77,7 @@ RSpec.describe ChoreRosters::Autofill do
       note: "Pizza night"
     )
 
-    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
     expect(result.success?).to be true
 
     # Pinned assignment should still exist
@@ -88,7 +94,7 @@ RSpec.describe ChoreRosters::Autofill do
     TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
     TestFactories.chore(chore_roster: roster, name: "Washing", people_per_day: 1)
 
-    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
     expect(result.success?).to be true
 
     # With 2 people and 2 chores, no one should have 2 chores on the same day
@@ -105,7 +111,7 @@ RSpec.describe ChoreRosters::Autofill do
     TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
     TestFactories.chore(chore_roster: roster, name: "Washing", people_per_day: 1)
 
-    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
     expect(result.success?).to be true
 
     # Should fill all 6 slots (3 days * 2 chores) with Alice
@@ -120,7 +126,7 @@ RSpec.describe ChoreRosters::Autofill do
     create_rsvp(user_b, start_date: event_start, end_date: event_start)
     chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
 
-    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
     expect(result.success?).to be true
 
     assignments = non_pinned_assignments.select { |a| a[:chore_id] == chore[:id] }
@@ -140,12 +146,12 @@ RSpec.describe ChoreRosters::Autofill do
     TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
 
     # First autofill
-    described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
+    described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
     first_ids = non_pinned_assignments.map { |a| a[:id] }
     expect(first_ids.length).to eq(3)
 
     # Second autofill — old non-pinned should be deleted
-    described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
+    described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
     second_ids = non_pinned_assignments.map { |a| a[:id] }
     expect(second_ids.length).to eq(3)
 
@@ -159,7 +165,7 @@ RSpec.describe ChoreRosters::Autofill do
     create_rsvp(user_c, start_date: event_end, end_date: event_end)
     chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
 
-    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
     expect(result.success?).to be true
 
     assignments = non_pinned_assignments.select { |a| a[:chore_id] == chore[:id] }
@@ -172,7 +178,7 @@ RSpec.describe ChoreRosters::Autofill do
   it "succeeds with no RSVPs (no assignments created)" do
     TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
 
-    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
 
     expect(result.success?).to be true
     expect(non_pinned_assignments.length).to eq(0)
@@ -181,7 +187,7 @@ RSpec.describe ChoreRosters::Autofill do
   it "succeeds with no chores (nothing to fill)" do
     create_rsvp(user_a)
 
-    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
 
     expect(result.success?).to be true
     expect(all_assignments.length).to eq(0)
@@ -196,7 +202,7 @@ RSpec.describe ChoreRosters::Autofill do
     TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
     TestFactories.chore(chore_roster: roster, name: "Cleaning", people_per_day: 1)
 
-    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
     expect(result.success?).to be true
 
     assignments = non_pinned_assignments
@@ -219,7 +225,7 @@ RSpec.describe ChoreRosters::Autofill do
       TestFactories.chore_assignment(chore: chore, user: user_a, date: date, pinned: true)
     end
 
-    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
 
     expect(result.success?).to be true
     # All 3 pinned should remain, no non-pinned created (slots full)

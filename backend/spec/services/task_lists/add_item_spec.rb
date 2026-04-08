@@ -6,17 +6,23 @@ RSpec.describe TaskLists::AddItem do
   it "returns failure when content is missing" do
     workspace = TestFactories.workspace
     user = TestFactories.user
+    membership_row = TestFactories.workspace_membership(workspace: workspace, user: user)
+    membership = WorkspaceMembership.find(membership_row[:id])
     list = TestFactories.task_list(workspace: workspace, user: user)
 
-    result = described_class.call(task_list_id: list[:id], user_id: user[:id], content: nil)
+    result = described_class.call(task_list_id: list[:id], membership: membership, content: nil)
 
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("Content is required")
   end
 
   it "returns failure when task list not found" do
+    workspace = TestFactories.workspace
     user = TestFactories.user
-    result = described_class.call(task_list_id: SecureRandom.uuid, user_id: user[:id], content: "Do thing")
+    membership_row = TestFactories.workspace_membership(workspace: workspace, user: user)
+    membership = WorkspaceMembership.find(membership_row[:id])
+
+    result = described_class.call(task_list_id: SecureRandom.uuid, membership: membership, content: "Do thing")
 
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("Task list not found")
@@ -25,10 +31,11 @@ RSpec.describe TaskLists::AddItem do
   it "adds item to the task list" do
     workspace = TestFactories.workspace
     user = TestFactories.user
-    TestFactories.workspace_membership(workspace: workspace, user: user)
+    membership_row = TestFactories.workspace_membership(workspace: workspace, user: user)
+    membership = WorkspaceMembership.find(membership_row[:id])
     list = TestFactories.task_list(workspace: workspace, user: user)
 
-    result = described_class.call(task_list_id: list[:id], user_id: user[:id], content: "Buy milk")
+    result = described_class.call(task_list_id: list[:id], membership: membership, content: "Buy milk")
 
     expect(result.success?).to be true
     item = result.value![:objects].find { |o| o[:objectType] == "taskItem" }
@@ -39,12 +46,13 @@ RSpec.describe TaskLists::AddItem do
   it "is idempotent with client-provided id" do
     workspace = TestFactories.workspace
     user = TestFactories.user
-    TestFactories.workspace_membership(workspace: workspace, user: user)
+    membership_row = TestFactories.workspace_membership(workspace: workspace, user: user)
+    membership = WorkspaceMembership.find(membership_row[:id])
     list = TestFactories.task_list(workspace: workspace, user: user)
     item_id = SecureRandom.uuid
 
-    described_class.call(task_list_id: list[:id], user_id: user[:id], content: "Buy milk", id: item_id)
-    result2 = described_class.call(task_list_id: list[:id], user_id: user[:id], content: "Buy milk", id: item_id)
+    described_class.call(task_list_id: list[:id], membership: membership, content: "Buy milk", id: item_id)
+    result2 = described_class.call(task_list_id: list[:id], membership: membership, content: "Buy milk", id: item_id)
 
     expect(result2.success?).to be true
     expect(DB[:task_items].where(id: item_id).count).to eq(1)

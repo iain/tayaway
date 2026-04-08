@@ -6,7 +6,7 @@
 
 class App
   hash_branch("api", "task-lists") do |r|
-    user = require_auth
+    require_auth
 
     # GET /api/task-lists - List all task lists for a workspace
     r.is do
@@ -37,7 +37,7 @@ class App
 
         result = TaskLists::Create.call(
           workspace_id: workspace_id,
-          user_id: user.id,
+          membership: current_membership,
           name: r.params["name"]&.strip,
           id: r.params["id"]
         )
@@ -66,14 +66,15 @@ class App
           result = TaskLists::Update.call(
             task_list_id: task_list.id,
             name: r.params["name"]&.strip,
-            position: position
+            position: position,
+            membership: current_membership
           )
           handle_result(result)
         end
 
         # DELETE /api/task-lists/:id - Delete a task list
         r.delete do
-          result = TaskLists::Delete.call(task_list_id: task_list.id)
+          result = TaskLists::Delete.call(task_list_id: task_list.id, membership: current_membership)
           handle_result(result)
         end
       end
@@ -84,7 +85,7 @@ class App
           r.post do
             result = TaskLists::AddItem.call(
               task_list_id: task_list.id,
-              user_id: user.id,
+              membership: current_membership,
               content: r.params["content"]&.strip,
               id: r.params["id"]
             )
@@ -105,6 +106,7 @@ class App
             result = TaskLists::UpdateItem.call(
               task_list_id: task_list.id,
               task_item_id: item_id,
+              membership: current_membership,
               content: r.params["content"]&.strip,
               completed: completed,
               position: position,
@@ -117,7 +119,8 @@ class App
           r.delete do
             result = TaskLists::DeleteItem.call(
               task_list_id: task_list.id,
-              task_item_id: item_id
+              task_item_id: item_id,
+              membership: current_membership
             )
             handle_result(result)
           end
@@ -127,7 +130,7 @@ class App
       # POST /api/task-lists/:id/clear-completed - Delete all completed items
       r.on "clear-completed" do
         r.post do
-          result = TaskLists::ClearCompleted.call(task_list_id: task_list.id)
+          result = TaskLists::ClearCompleted.call(task_list_id: task_list.id, membership: current_membership)
           handle_result(result)
         end
       end

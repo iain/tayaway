@@ -6,11 +6,12 @@ module ChoreRosters
     class << self
       include Dry::Monads[:result]
 
-      def call(event_id:, user_id:, workspace_id:, id: nil)
+      def call(event_id:, membership:, workspace_id:, id: nil)
         find_event(event_id)
+          .bind { |event| EventPolicy.enforce(:create_chore_roster, event, membership: membership) }
           .bind { |event| check_event_dates(event) }
           .bind { |event| check_no_existing_roster(event, id) }
-          .bind { |event| create_roster(event, user_id, workspace_id, id) }
+          .bind { |event| create_roster(event, membership.user_id, workspace_id, id) }
       end
 
       private

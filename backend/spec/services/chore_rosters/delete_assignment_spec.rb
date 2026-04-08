@@ -14,10 +14,15 @@ RSpec.describe ChoreRosters::DeleteAssignment do
   let(:chore) { TestFactories.chore(chore_roster: roster, name: "Cooking") }
   let(:assignment) { TestFactories.chore_assignment(chore: chore, user: user, date: Date.new(2026, 3, 1), pinned: true) }
 
+  def membership_for(usr)
+    row = TestFactories.workspace_membership(workspace: workspace, user: usr)
+    WorkspaceMembership.find(row[:id])
+  end
+
   it "deletes the assignment" do
     assignment_id = assignment[:id]
 
-    result = described_class.call(assignment_id: assignment_id, roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(assignment_id: assignment_id, roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user))
 
     expect(result.success?).to be true
     expect(DB[:chore_assignments].where(id: assignment_id).count).to eq(0)
@@ -26,13 +31,13 @@ RSpec.describe ChoreRosters::DeleteAssignment do
   it "tracks deletion in deleted_items" do
     assignment_id = assignment[:id]
 
-    described_class.call(assignment_id: assignment_id, roster_id: roster[:id], workspace_id: workspace[:id])
+    described_class.call(assignment_id: assignment_id, roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user))
 
     expect(DB[:deleted_items].where(object_type: "chore_assignment", object_id: assignment_id).count).to eq(1)
   end
 
   it "returns the deleted item in response" do
-    result = described_class.call(assignment_id: assignment[:id], roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(assignment_id: assignment[:id], roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user))
 
     deleted = result.value![:deleted]
     expect(deleted.length).to eq(1)
@@ -41,7 +46,7 @@ RSpec.describe ChoreRosters::DeleteAssignment do
   end
 
   it "returns the parent chore in response" do
-    result = described_class.call(assignment_id: assignment[:id], roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(assignment_id: assignment[:id], roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user))
 
     chore_obj = result.value![:objects].find { |o| o[:objectType] == "chore" }
     expect(chore_obj).not_to be_nil
@@ -49,7 +54,7 @@ RSpec.describe ChoreRosters::DeleteAssignment do
   end
 
   it "fails for nonexistent assignment" do
-    result = described_class.call(assignment_id: SecureRandom.uuid, roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(assignment_id: SecureRandom.uuid, roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user))
 
     expect(result.failure?).to be true
     expect(result.failure.http_status).to eq(404)
@@ -61,7 +66,7 @@ RSpec.describe ChoreRosters::DeleteAssignment do
     other_chore = TestFactories.chore(chore_roster: other_roster, name: "Cleaning")
     other_assignment = TestFactories.chore_assignment(chore: other_chore, user: user, date: Date.new(2026, 3, 2), pinned: true)
 
-    result = described_class.call(assignment_id: other_assignment[:id], roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(assignment_id: other_assignment[:id], roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user))
 
     expect(result.failure?).to be true
     expect(result.failure.http_status).to eq(404)

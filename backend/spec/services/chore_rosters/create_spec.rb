@@ -5,6 +5,10 @@ require "spec_helper"
 RSpec.describe ChoreRosters::Create do
   let(:user) { TestFactories.user }
   let(:workspace) { TestFactories.workspace }
+  let(:membership) do
+    row = TestFactories.workspace_membership(workspace: workspace, user: user)
+    WorkspaceMembership.find(row[:id])
+  end
   let(:event) do
     e = TestFactories.event(workspace: workspace, user: user)
     DB[:events].where(id: e[:id]).update(start_date: Date.new(2026, 3, 1), end_date: Date.new(2026, 3, 7))
@@ -12,7 +16,7 @@ RSpec.describe ChoreRosters::Create do
   end
 
   let(:params) do
-    { event_id: event[:id], user_id: user[:id], workspace_id: workspace[:id] }
+    { event_id: event[:id], membership: membership, workspace_id: workspace[:id] }
   end
 
   it "creates a chore roster" do
@@ -28,7 +32,7 @@ RSpec.describe ChoreRosters::Create do
 
     result = described_class.call(
       event_id: no_dates_event[:id],
-      user_id: user[:id],
+      membership: membership,
       workspace_id: workspace[:id]
     )
 
@@ -52,7 +56,7 @@ RSpec.describe ChoreRosters::Create do
     roster_id = SecureRandom.uuid
     described_class.call(
       event_id: other_event[:id],
-      user_id: user[:id],
+      membership: membership,
       workspace_id: workspace[:id],
       id: roster_id
     )
