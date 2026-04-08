@@ -16,6 +16,7 @@ import DatePollSection from '@/components/events/DatePollSection.vue'
 import AwaitingVotesSection from '@/components/events/AwaitingVotesSection.vue'
 import OpenPollModal from '@/components/events/OpenPollModal.vue'
 import AppButton from '@/components/common/AppButton.vue'
+import { can } from '@/composables/usePermission'
 
 const route = useRoute()
 const router = useRouter()
@@ -29,9 +30,9 @@ const eventId = computed(() => route.params.id as string)
 
 const { event } = useHydratedEvent(eventId)
 
-const isOwner = computed(() => {
-  return currentUserId.value === event.value?.userId
-})
+const canCreatePoll = computed(() =>
+  can(event.value?.permissions, 'create_poll')
+)
 
 const eventHasStarted = computed(() => {
   const sd = event.value?.startDate
@@ -39,7 +40,7 @@ const eventHasStarted = computed(() => {
 })
 
 const canOpenOrReopenPoll = computed(() => {
-  return isOwner.value && !!event.value && !eventHasStarted.value
+  return canCreatePoll.value && !!event.value && !eventHasStarted.value
 })
 
 function handleVote(): void {
@@ -85,7 +86,7 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
       >
         <DatePollSection
           :event="event"
-          :is-owner="isOwner"
+          :is-owner="canCreatePoll"
           :current-user-id="currentUserId"
           @vote="handleVote"
         />
@@ -120,7 +121,7 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
           Reopen Poll
         </AppButton>
         <p
-          v-if="isOwner && eventHasStarted"
+          v-if="canCreatePoll && eventHasStarted"
           class="mt-4 text-sm text-gray-400 dark:text-stone-500"
         >
           The poll can't be reopened because the event has already started.
@@ -179,7 +180,7 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
           Open Date Poll
         </AppButton>
         <p
-          v-if="isOwner && eventHasStarted"
+          v-if="canCreatePoll && eventHasStarted"
           class="mt-4 text-sm text-gray-400 dark:text-stone-500"
         >
           A date poll can't be opened because the event has already started.

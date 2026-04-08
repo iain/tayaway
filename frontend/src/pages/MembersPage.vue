@@ -24,6 +24,7 @@ import AppBadge from '@/components/common/AppBadge.vue'
 import AppAvatar from '@/components/common/AppAvatar.vue'
 import AlertBox from '@/components/common/AlertBox.vue'
 import type { PoolMember, PoolWorkspaceInvite } from '@/types/pool'
+import { can } from '@/composables/usePermission'
 import { formatBirthday, formatRelativeDate } from '@/utils/date'
 import { generateVCard, downloadVCard } from '@/utils/vcard'
 import { getInitials } from '@/utils/member'
@@ -46,18 +47,12 @@ const currentMember = computed((): PoolMember | null => {
 })
 
 function canChangeRole(member: PoolMember): boolean {
-  const me = currentMember.value
-  if (!me || me.id === member.id) return false
-  if (me.role === 'owner') return true
-  if (me.role === 'admin') return member.role !== 'owner'
-  return false
+  return can(member.permissions, 'change_role')
 }
 
-function availableRolesFor(): string[] {
-  const me = currentMember.value
-  if (!me) return []
-  if (me.role === 'owner') return ['owner', 'admin', 'member']
-  if (me.role === 'admin') return ['admin', 'member']
+function availableRolesFor(member: PoolMember): string[] {
+  const perm = member.permissions?.availableRoles
+  if (Array.isArray(perm)) return perm
   return []
 }
 
@@ -390,7 +385,7 @@ onMounted(() => {
                 "
               >
                 <option
-                  v-for="role in availableRolesFor()"
+                  v-for="role in availableRolesFor(member)"
                   :key="role"
                   :value="role"
                 >

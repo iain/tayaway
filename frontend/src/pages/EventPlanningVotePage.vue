@@ -10,6 +10,7 @@ import { isPollOpen, isPollResolved } from '@/utils/poll'
 import AppButton from '@/components/common/AppButton.vue'
 import VotingCard from '@/components/votes/VotingCard.vue'
 import OpenPollModal from '@/components/events/OpenPollModal.vue'
+import { can } from '@/composables/usePermission'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -22,7 +23,9 @@ const eventId = computed(() => route.params.id as string)
 const { event } = useHydratedEvent(eventId)
 
 const pollOpen = computed(() => isPollOpen(event.value?.datePoll))
-const isOwner = computed(() => currentUserId.value === event.value?.userId)
+const canManagePoll = computed(() =>
+  can(event.value?.permissions, 'create_poll')
+)
 
 const dateRanges = computed(() => {
   return event.value?.datePoll?.dateRanges ?? []
@@ -55,7 +58,7 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
         Voting has ended
       </p>
       <p>The date poll is closed and no longer accepting votes.</p>
-      <div v-if="isOwner && isPollResolved(event.datePoll)" class="mt-4">
+      <div v-if="canManagePoll && isPollResolved(event.datePoll)" class="mt-4">
         <AppButton variant="amber" @click="showReopenModal = true">
           <ArrowPathIcon class="size-4" />
           Reopen Poll
@@ -71,7 +74,7 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
             Date Options
           </h2>
           <router-link
-            v-if="isOwner"
+            v-if="canManagePoll"
             :to="`/events/${eventId}/planning/date-ranges`"
             class="inline-flex items-center gap-1.5 text-sm text-cyan-600 underline hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
           >

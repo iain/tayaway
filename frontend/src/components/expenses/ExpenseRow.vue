@@ -13,6 +13,7 @@ import { countDays } from '@/utils/event'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import type { PoolExpense, PoolEvent } from '@/types/pool'
 import BaseCard from '@/components/common/BaseCard.vue'
+import { can } from '@/composables/usePermission'
 
 const props = defineProps<{
   expense: PoolExpense
@@ -42,9 +43,10 @@ const formattedAmount = computed(() => {
   return `€${props.expense.amount.toFixed(2)}`
 })
 
-const isOwner = computed(() => {
-  return props.expense.userId === props.currentUserId
-})
+const canEditExpense = computed(() => can(props.expense.permissions, 'edit'))
+const canDeleteExpense = computed(() =>
+  can(props.expense.permissions, 'delete')
+)
 
 const isSettled = computed(() => {
   return !!props.expense.settlementId
@@ -189,7 +191,7 @@ async function handleDelete(e: Event) {
           />
           <template v-else>
             <IconButton
-              v-if="isOwner"
+              v-if="canEditExpense"
               label="Edit expense"
               data-testid="edit-expense"
               @click="handleEdit"
@@ -197,7 +199,7 @@ async function handleDelete(e: Event) {
               <PencilIcon class="size-4" />
             </IconButton>
             <IconButton
-              v-if="isOwner"
+              v-if="canDeleteExpense"
               variant="danger"
               label="Delete expense"
               :disabled="deleting"

@@ -25,7 +25,12 @@ import AppBadge from '@/components/common/AppBadge.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import EpcQrModal from '@/components/expenses/EpcQrModal.vue'
-import type { PoolEvent } from '@/types/pool'
+import type {
+  PoolEvent,
+  PoolSettlement,
+  PoolSettlementTransfer,
+} from '@/types/pool'
+import { can } from '@/composables/usePermission'
 
 const props = defineProps<{
   event: PoolEvent
@@ -55,11 +60,8 @@ const hasExpenses = computed(
     0
 )
 
-function canDeleteSettlement(settlementUserId: string | null): boolean {
-  if (!props.currentUserId) return false
-  if (settlementUserId === props.currentUserId) return true
-  if (props.event.userId === props.currentUserId) return true
-  return false
+function canDeleteSettlement(settlement: PoolSettlement): boolean {
+  return can(settlement.permissions, 'delete')
 }
 
 function transfersForSettlement(settlementId: string) {
@@ -150,20 +152,19 @@ function openQrModal(transfer: {
   showQrModal.value = true
 }
 
-function canMarkPaid(toUserId: string | null): boolean {
-  return props.currentUserId !== null && toUserId === props.currentUserId
+function canMarkPaid(transfer: PoolSettlementTransfer): boolean {
+  return can(transfer.permissions, 'mark_paid')
 }
 
 async function handlePaidClick(
-  transferId: string,
-  currentlyPaid: boolean,
-  toUserId: string | null
+  transfer: PoolSettlementTransfer,
+  currentlyPaid: boolean
 ) {
-  if (!canMarkPaid(toUserId)) {
+  if (!canMarkPaid(transfer)) {
     showRecipientOnlyModal.value = true
     return
   }
-  await settlementsStore.markTransferPaid(transferId, !currentlyPaid)
+  await settlementsStore.markTransferPaid(transfer.id, !currentlyPaid)
 }
 </script>
 
@@ -284,7 +285,7 @@ async function handlePaidClick(
             </AppBadge>
           </div>
           <IconButton
-            v-if="canDeleteSettlement(settlement.userId)"
+            v-if="canDeleteSettlement(settlement)"
             variant="danger"
             label="Delete settlement"
             data-testid="delete-settlement-button"
@@ -339,13 +340,7 @@ async function handlePaidClick(
                     ? 'bg-green-100 text-green-700 hover:bg-green-200 focus-visible:outline-green-500 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
                     : 'bg-cyan-600 text-white shadow-sm hover:bg-cyan-700 focus-visible:outline-cyan-600 dark:bg-cyan-700 dark:hover:bg-cyan-600'
                 "
-                @click="
-                  handlePaidClick(
-                    transfer.id,
-                    !!transfer.paidAt,
-                    transfer.toUserId
-                  )
-                "
+                @click="handlePaidClick(transfer, !!transfer.paidAt)"
               >
                 {{ transfer.paidAt ? 'Paid' : 'Mark paid' }}
               </button>
