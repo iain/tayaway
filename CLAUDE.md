@@ -74,7 +74,7 @@ Migrations run **before** the app restarts during deploy — old code is still s
 ## Commits and PRs
 
 - **Commit messages**: Free-form imperative subject (e.g. "Fix request body consumption in rate limiter"). No conventional commit prefixes. Always explain _why_ in the body unless the change is truly trivial. Don't list what changed unless it's not obvious from the diff.
-- **PRs**: Default to draft. Body should be minimal and focused on _why_, no headers or sections, no test plan. We squash-merge to keep main clean, so write the PR title+body as if it will become the final commit message.
+- **PRs**: Default to draft. Body should be minimal and focused on _why_, no headers or sections, no test plan. We squash-merge to keep main clean, so write the PR title+body as if it will become the final commit message. Always base the description on the actual diff against the base branch (`git diff main...HEAD`), not on individual commit messages — intermediate work that was later reverted should not appear in the description.
 - **No trailers or footers** — no "Generated with Claude Code", no Co-Authored-By.
 - **Cohesive commits**: Split unrelated changes into separate commits, but don't over-split. Use judgement.
 - **Don't push to main** without asking first.
