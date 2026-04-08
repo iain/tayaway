@@ -48,6 +48,7 @@ backend/vendor/bundle/
 # Claude Code
 .claude/worktrees/
 .claude/settings.local.json
+.worktrees/
 
 # GeoIP database
 backend/data/
