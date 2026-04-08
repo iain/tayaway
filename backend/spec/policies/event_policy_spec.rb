@@ -56,7 +56,7 @@ RSpec.describe EventPolicy do
 
       expect(perms.keys).to contain_exactly(
         :edit, :delete, :create_poll, :create_expense, :create_settlement,
-        :create_rsvp, :create_chore_roster, :create_task_list
+        :create_rsvp, :create_chore_roster
       )
       expect(perms[:edit]).to eq({ allowed: true })
     end

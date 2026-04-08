@@ -3,13 +3,17 @@
 class WorkspacePolicy
   include Policy
 
-  ACTIONS = %i[create_event invite manage_members].freeze
+  ACTIONS = %i[create_event create_task_list invite manage_members].freeze
 
   def initialize(_workspace, membership:, **)
     @admin_or_owner = %w[admin owner].include?(membership.role)
   end
 
   def create_event
+    Success()
+  end
+
+  def create_task_list
     Success()
   end
 

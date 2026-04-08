@@ -4,7 +4,7 @@ class EventPolicy
   include Policy
 
   ACTIONS = %i[edit delete create_poll create_expense create_settlement
-               create_rsvp create_chore_roster create_task_list].freeze
+               create_rsvp create_chore_roster].freeze
 
   def initialize(event, membership:, **)
     @event = event
@@ -48,10 +48,6 @@ class EventPolicy
   end
 
   def create_chore_roster
-    Success()
-  end
-
-  def create_task_list
     Success()
   end
 end
