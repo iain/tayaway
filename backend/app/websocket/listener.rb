@@ -88,6 +88,8 @@ module Websocket
       def prefetch_policy_context(config, object)
         context = {}
         case config.key
+        when "event"
+          context[:has_expenses] = DB[:expenses].where(event_id: object.id).any? || DB[:settlements].where(event_id: object.id).any?
         when "settlement", "settlement_transfer"
           settlement = config.key == "settlement" ? object : Settlement.find(object.settlement_id)
           context[:event] = Event.find(settlement.event_id) if settlement

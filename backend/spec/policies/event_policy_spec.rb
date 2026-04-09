@@ -35,6 +35,12 @@ RSpec.describe EventPolicy do
       expect(policy.delete).to be_failure
       expect(policy.delete.failure).to eq(:not_owner)
     end
+
+    it "rejects when event has expenses" do
+      policy = described_class.new(event, membership: WorkspaceMembership.find(owner_membership[:id]), has_expenses: true)
+      expect(policy.delete).to be_failure
+      expect(policy.delete.failure).to eq(:has_expenses)
+    end
   end
 
   describe "#create_poll" do

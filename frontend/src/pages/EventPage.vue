@@ -75,14 +75,6 @@ const datesActuallyChanged = computed(() => {
 const showDeleteConfirm = ref(false)
 const deleting = ref(false)
 
-const hasSettlements = computed(() =>
-  pool.getAll('settlement').some((s) => s.eventId === eventId.value)
-)
-
-const deleteBlockedByExpenses = computed(
-  () => hasExpenses.value || hasSettlements.value
-)
-
 const eventVoteCount = computed(() => {
   const dateRangeIds = new Set(
     pool
@@ -622,7 +614,7 @@ function handleDownloadIcs(): void {
 
   <!-- Delete (owner only, below the two-column layout) -->
   <div
-    v-if="event && canDelete"
+    v-if="event && canEdit"
     class="mt-12 border-t border-gray-200 pt-6 dark:border-stone-700"
   >
     <TextButton variant="danger" @click="showDeleteConfirm = true">
@@ -677,7 +669,7 @@ function handleDownloadIcs(): void {
       size="sm"
       @close="showDeleteConfirm = false"
     >
-      <template v-if="deleteBlockedByExpenses">
+      <template v-if="!canDelete">
         <p class="text-sm text-gray-600 dark:text-stone-400">
           This event has expenses or settlements. Settle up and delete expenses
           before deleting the event.

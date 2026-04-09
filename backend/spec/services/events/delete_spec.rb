@@ -20,6 +20,26 @@ RSpec.describe Events::Delete do
     expect(DB[:events].where(id: event[:id]).count).to eq(1)
   end
 
+  it "returns failure when event has expenses" do
+    user = TestFactories.user
+    membership_row = TestFactories.workspace_membership(workspace: workspace, user: user)
+    event = TestFactories.event(workspace: workspace, user: user)
+    membership = WorkspaceMembership.find(membership_row[:id])
+
+    now = Time.now
+    DB[:expenses].insert(
+      id: SecureRandom.uuid, event_id: event[:id], user_id: user[:id],
+      description: "Test", amount: 10.0, start_date: Date.today, end_date: Date.today,
+      created_at: now, updated_at: now
+    )
+
+    result = described_class.call(event_id: event[:id], membership: membership)
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to include("has_expenses")
+    expect(DB[:events].where(id: event[:id]).count).to eq(1)
+  end
+
   it "deletes event when user is owner" do
     user = TestFactories.user
     membership_row = TestFactories.workspace_membership(workspace: workspace, user: user)

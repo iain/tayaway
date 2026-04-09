@@ -6,9 +6,10 @@ class EventPolicy
   ACTIONS = %i[edit delete create_poll create_expense create_settlement
                create_rsvp create_chore_roster].freeze
 
-  def initialize(event, membership:, **)
+  def initialize(event, membership:, has_expenses: false, **)
     @event = event
     @owner = event.user_id == membership.user_id
+    @has_expenses = has_expenses
   end
 
   def edit
@@ -20,10 +21,12 @@ class EventPolicy
   end
 
   def delete
-    if @owner
-      Success()
-    else
+    if !@owner
       Failure(:not_owner)
+    elsif @has_expenses
+      Failure(:has_expenses)
+    else
+      Success()
     end
   end
 

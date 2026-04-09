@@ -62,7 +62,8 @@ class PoolSerializer
     date_poll = DatePoll.find_by_event(event.id)
     hash = event.to_api_hash(date_poll_id: date_poll&.id&.to_s)
     hash[:rsvpIds] = Rsvp.ids_for_event(event.id)
-    attach_permissions(hash, event)
+    has_expenses = DB[:expenses].where(event_id: event.id).any? || DB[:settlements].where(event_id: event.id).any?
+    attach_permissions(hash, event, has_expenses: has_expenses)
 
     @objects[key] = hash
   end
@@ -75,12 +76,15 @@ class PoolSerializer
     event_ids = new_events.map { |e| e.id.to_s }
     polls_by_event = DatePoll.for_event_ids(event_ids)
     rsvp_ids_by_event = Rsvp.ids_for_event_ids(event_ids)
+    events_with_expenses = DB[:expenses].where(event_id: event_ids).distinct.select_map(:event_id).to_set
+    events_with_settlements = DB[:settlements].where(event_id: event_ids).distinct.select_map(:event_id).to_set
+    events_with_financial_data = events_with_expenses | events_with_settlements
 
     new_events.each do |event|
       date_poll = polls_by_event[event.id.to_s]
       hash = event.to_api_hash(date_poll_id: date_poll&.id&.to_s)
       hash[:rsvpIds] = rsvp_ids_by_event[event.id.to_s] || []
-      attach_permissions(hash, event)
+      attach_permissions(hash, event, has_expenses: events_with_financial_data.include?(event.id.to_s))
       @objects["event:#{event.id}"] = hash
     end
   end
@@ -322,14 +326,14 @@ class PoolSerializer
 
   private
 
-  def attach_permissions(hash, object)
+  def attach_permissions(hash, object, **policy_kwargs)
     return unless @membership
 
     entry = ObjectRegistry::BY_CLIENT_TYPE[hash[:objectType]]
     return unless entry&.policy
 
     policy_class = Object.const_get(entry.policy)
-    policy = policy_class.new(object, membership: @membership)
+    policy = policy_class.new(object, membership: @membership, **policy_kwargs)
     hash[:permissions] = policy.permissions
   end
 
