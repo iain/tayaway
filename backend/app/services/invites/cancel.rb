@@ -6,8 +6,9 @@ module Invites
     class << self
       include Dry::Monads[:result]
 
-      def call(invite_id:, workspace_id:)
+      def call(invite_id:, workspace_id:, membership:)
         find_invite(invite_id, workspace_id)
+          .bind { |invite| WorkspaceInvitePolicy.enforce(:delete, invite, membership: membership) }
           .bind { |invite| delete_invite(invite) }
       end
 

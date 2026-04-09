@@ -118,10 +118,15 @@ class App < Roda
     session
   end
 
-  def member_of_workspace?(workspace_id)
-    return false unless current_user
+  def current_membership(workspace_id = nil)
+    return @_current_membership if @_current_membership && workspace_id.nil?
+    return nil unless current_user && workspace_id
 
-    !WorkspaceMembership.find_by_workspace_and_user(workspace_id, current_user.id).nil?
+    @_current_membership = WorkspaceMembership.find_by_workspace_and_user(workspace_id, current_user.id)
+  end
+
+  def member_of_workspace?(workspace_id)
+    !current_membership(workspace_id).nil?
   end
 
   def require_admin_or_owner!(workspace_id)

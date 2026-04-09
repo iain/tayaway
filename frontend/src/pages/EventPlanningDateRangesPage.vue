@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 import { PlusIcon, TrashIcon } from '@heroicons/vue/24/outline'
-import { useAuthStore } from '@/stores/auth'
 import { useDatePollsStore } from '@/stores'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
 import type { HydratedDateRange } from '@/composables/useHydratedEvent'
@@ -17,13 +15,12 @@ import BaseCard from '@/components/common/BaseCard.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import { useDateRangeActions } from '@/composables/useDateRangeActions'
+import { can } from '@/composables/usePermission'
 
 const route = useRoute()
 const { pendingAdd: pendingAddDateRange, resetAdd: resetAddDateRange } =
   useDateRangeActions()
-const authStore = useAuthStore()
 const datePollsStore = useDatePollsStore()
-const { currentUserId } = storeToRefs(authStore)
 const { addDays } = useCalendar()
 
 const eventId = computed(() => route.params.id as string)
@@ -36,9 +33,9 @@ const modalPreselectedEnd = ref<string | null>(null)
 
 const confirmingDateRange = ref<HydratedDateRange | null>(null)
 
-const isOwner = computed(() => {
-  return currentUserId.value === event.value?.userId
-})
+const canManageDateRanges = computed(() =>
+  can(event.value?.permissions, 'create_poll')
+)
 
 const dateRanges = computed(() => {
   return event.value?.datePoll?.dateRanges ?? []
@@ -118,7 +115,7 @@ async function deleteRange(dateRangeId: string): Promise<void> {
             Date Options
           </h2>
           <AppButton
-            v-if="isOwner"
+            v-if="canManageDateRanges"
             :disabled="datePollsStore.loading"
             @click="handleAddDateRange"
           >
@@ -132,7 +129,7 @@ async function deleteRange(dateRangeId: string): Promise<void> {
             No date ranges added yet.
           </p>
           <AppButton
-            v-if="isOwner"
+            v-if="canManageDateRanges"
             :disabled="datePollsStore.loading"
             @click="handleAddDateRange"
           >
@@ -162,7 +159,7 @@ async function deleteRange(dateRangeId: string): Promise<void> {
               </span>
             </div>
             <IconButton
-              v-if="isOwner"
+              v-if="canManageDateRanges"
               variant="danger"
               label="Remove"
               :disabled="datePollsStore.loading"

@@ -22,22 +22,21 @@ import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import StaticMap from '@/components/common/StaticMap.vue'
 import LocationInput from '@/components/form/LocationInput.vue'
-import { useAuthStore } from '@/stores/auth'
 import { useEventsStore } from '@/stores'
 import type { UpdateEventRequest } from '@/types'
 import { useRsvpsStore } from '@/stores/rsvps'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useCalendar } from '@/composables/useCalendar'
 import { generateIcs, downloadIcs } from '@/utils/ics'
+import { can } from '@/composables/usePermission'
 
 const route = useRoute()
 const router = useRouter()
 const eventId = computed(() => route.params.id as string)
 const { event } = useHydratedEvent(eventId)
 
-const authStore = useAuthStore()
-const { currentUserId } = storeToRefs(authStore)
-const isOwner = computed(() => currentUserId.value === event.value?.userId)
+const canEdit = computed(() => can(event.value?.permissions, 'edit'))
+const canDelete = computed(() => can(event.value?.permissions, 'delete'))
 
 const eventsStore = useEventsStore()
 const { loading } = storeToRefs(eventsStore)
@@ -75,14 +74,6 @@ const datesActuallyChanged = computed(() => {
 // Delete event
 const showDeleteConfirm = ref(false)
 const deleting = ref(false)
-
-const hasSettlements = computed(() =>
-  pool.getAll('settlement').some((s) => s.eventId === eventId.value)
-)
-
-const deleteBlockedByExpenses = computed(
-  () => hasExpenses.value || hasSettlements.value
-)
 
 const eventVoteCount = computed(() => {
   const dateRangeIds = new Set(
@@ -380,7 +371,7 @@ function handleDownloadIcs(): void {
           {{ event.name }}
         </h1>
         <IconButton
-          v-if="isOwner"
+          v-if="canEdit"
           hover-reveal
           label="Edit name"
           data-testid="edit-name-button"
@@ -427,13 +418,13 @@ function handleDownloadIcs(): void {
           {{ event.description }}
         </p>
         <p
-          v-else-if="isOwner"
+          v-else-if="canEdit"
           class="text-xl text-gray-400 italic dark:text-stone-500"
         >
           No description
         </p>
         <IconButton
-          v-if="isOwner"
+          v-if="canEdit"
           hover-reveal
           label="Edit description"
           data-testid="edit-description-button"
@@ -510,14 +501,14 @@ function handleDownloadIcs(): void {
           />
         </div>
         <div
-          v-else-if="isOwner"
+          v-else-if="canEdit"
           class="flex items-center gap-2 text-gray-400 dark:text-stone-500"
         >
           <CalendarDaysIcon class="size-5" />
           <span class="italic">No dates set</span>
         </div>
         <IconButton
-          v-if="isOwner"
+          v-if="canEdit"
           hover-reveal
           label="Edit dates"
           data-testid="edit-dates-button"
@@ -571,14 +562,14 @@ function handleDownloadIcs(): void {
           <span>{{ event.locationName }}</span>
         </component>
         <div
-          v-else-if="isOwner"
+          v-else-if="canEdit"
           class="flex items-center gap-2 text-gray-400 dark:text-stone-500"
         >
           <MapPinIcon class="size-5" />
           <span class="italic">No location set</span>
         </div>
         <IconButton
-          v-if="isOwner"
+          v-if="canEdit"
           hover-reveal
           label="Edit location"
           data-testid="edit-location-button"
@@ -623,7 +614,7 @@ function handleDownloadIcs(): void {
 
   <!-- Delete (owner only, below the two-column layout) -->
   <div
-    v-if="event && isOwner"
+    v-if="event && canEdit"
     class="mt-12 border-t border-gray-200 pt-6 dark:border-stone-700"
   >
     <TextButton variant="danger" @click="showDeleteConfirm = true">
@@ -678,7 +669,7 @@ function handleDownloadIcs(): void {
       size="sm"
       @close="showDeleteConfirm = false"
     >
-      <template v-if="deleteBlockedByExpenses">
+      <template v-if="!canDelete">
         <p class="text-sm text-gray-600 dark:text-stone-400">
           This event has expenses or settlements. Settle up and delete expenses
           before deleting the event.

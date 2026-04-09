@@ -12,10 +12,11 @@ module Settlements
     class << self
       include Dry::Monads[:result]
 
-      def call(event_id:, user_id:, workspace_id:)
+      def call(event_id:, membership:, workspace_id:)
         find_event(event_id)
+          .bind { |event| EventPolicy.enforce(:create_settlement, event, membership: membership) }
           .bind { |event| check_event_dates(event) }
-          .bind { |event| settle(event, user_id, workspace_id) }
+          .bind { |event| settle(event, membership, workspace_id) }
       end
 
       private
@@ -34,7 +35,7 @@ module Settlements
 
       # Run the entire settlement inside a single transaction with row-level locking.
       # This prevents concurrent expense mutations from causing stale-data settlements.
-      def settle(event, user_id, workspace_id)
+      def settle(event, membership, workspace_id)
         settlement_id = SecureRandom.uuid
         now = Time.now
 
@@ -66,7 +67,7 @@ module Settlements
           DB[:settlements].insert(
             id: settlement_id,
             event_id: event.id,
-            user_id: user_id,
+            user_id: membership.user_id,
             created_at: now,
             updated_at: now
           )
@@ -98,7 +99,7 @@ module Settlements
           Broadcaster.object_changed("expense", expense.id, workspace_id: workspace_id)
         end
 
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool = PoolSerializer.new(membership: membership)
         settlement = Settlement.find(settlement_id)
         pool.add_settlement(settlement)
         SettlementTransfer.for_settlement(settlement_id).each { |t| pool.add_settlement_transfer(t) }

@@ -3,29 +3,36 @@
 require "spec_helper"
 
 RSpec.describe DatePolls::Create do
+  let(:workspace) { TestFactories.workspace }
+
+  def membership_for(usr)
+    row = TestFactories.workspace_membership(workspace: workspace, user: usr)
+    WorkspaceMembership.find(row[:id])
+  end
+
   it "returns failure when user is not the event owner" do
     owner = TestFactories.user
     other_user = TestFactories.user
-    event = TestFactories.event(user: owner)
+    event = TestFactories.event(workspace: workspace, user: owner)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: other_user[:id],
+      membership: membership_for(other_user),
       deadline: (Time.now + 86_400).iso8601
     )
 
     expect(result.failure?).to be true
-    expect(result.failure.message).to eq("Access denied")
+    expect(result.failure.message).to eq("not_owner")
   end
 
   it "returns failure when a poll already exists" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    event = TestFactories.event(workspace: workspace, user: user)
     TestFactories.date_poll(event: event)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership_for(user),
       deadline: (Time.now + 86_400).iso8601
     )
 
@@ -35,11 +42,11 @@ RSpec.describe DatePolls::Create do
 
   it "returns failure when deadline is missing" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    event = TestFactories.event(workspace: workspace, user: user)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership_for(user),
       deadline: nil
     )
 
@@ -49,11 +56,11 @@ RSpec.describe DatePolls::Create do
 
   it "returns failure when deadline is in the past" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    event = TestFactories.event(workspace: workspace, user: user)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership_for(user),
       deadline: (Time.now - 86_400).iso8601
     )
 
@@ -63,12 +70,12 @@ RSpec.describe DatePolls::Create do
 
   it "creates a date poll and returns success" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    event = TestFactories.event(workspace: workspace, user: user)
     deadline = (Time.now + 86_400).iso8601
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership_for(user),
       deadline: deadline
     )
 

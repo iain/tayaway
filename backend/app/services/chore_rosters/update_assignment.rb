@@ -6,10 +6,11 @@ module ChoreRosters
     class << self
       include Dry::Monads[:result]
 
-      def call(assignment_id:, roster_id:, workspace_id:, note: nil, user_id: nil, pinned: nil)
+      def call(assignment_id:, roster_id:, workspace_id:, membership:, note: nil, user_id: nil, pinned: nil)
         ChoreAssignment.find_result(assignment_id)
                        .bind { |assignment| validate_belongs_to_roster(assignment, roster_id) }
-                       .bind { |assignment| update(assignment, workspace_id, note, user_id, pinned) }
+                       .bind { |assignment| ChoreAssignmentPolicy.enforce(:edit, assignment, membership: membership) }
+                       .bind { |assignment| update(assignment, workspace_id, note, user_id, pinned, membership) }
       end
 
       def validate_belongs_to_roster(assignment, roster_id)
@@ -23,7 +24,7 @@ module ChoreRosters
 
       private
 
-      def update(assignment, workspace_id, note, user_id, pinned)
+      def update(assignment, workspace_id, note, user_id, pinned, membership)
         updates = {}
         updates[:note] = note unless note.nil?
         updates[:user_id] = user_id if user_id
@@ -40,7 +41,7 @@ module ChoreRosters
           Broadcaster.object_changed("chore", assignment.chore_id, workspace_id: workspace_id) if user_id
         end
 
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool = PoolSerializer.new(membership: membership)
         updated = ChoreAssignment.find(assignment.id)
         pool.add_chore_assignment(updated)
         chore = Chore.find(assignment.chore_id)

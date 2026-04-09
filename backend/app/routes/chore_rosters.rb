@@ -6,7 +6,7 @@
 
 class App
   hash_branch("api", "chore-rosters") do |r|
-    user = require_auth
+    require_auth
 
     # POST /api/chore-rosters - Create a chore roster
     r.is do
@@ -26,7 +26,7 @@ class App
 
         result = ChoreRosters::Create.call(
           event_id: event_id,
-          user_id: user.id,
+          membership: current_membership,
           workspace_id: event.workspace_id,
           id: r.params["id"]
         )
@@ -57,7 +57,8 @@ class App
         r.post do
           result = ChoreRosters::Autofill.call(
             roster_id: roster.id,
-            workspace_id: workspace_id
+            workspace_id: workspace_id,
+            membership: current_membership
           )
           handle_result(result)
         end
@@ -68,7 +69,8 @@ class App
         r.post do
           result = ChoreRosters::ClearUnpinned.call(
             roster_id: roster.id,
-            workspace_id: workspace_id
+            workspace_id: workspace_id,
+            membership: current_membership
           )
           handle_result(result)
         end
@@ -90,6 +92,7 @@ class App
               assignment_id: aid,
               roster_id: roster.id,
               workspace_id: workspace_id,
+              membership: current_membership,
               note: r.params["note"],
               user_id: r.params["user_id"],
               pinned: pinned
@@ -102,7 +105,8 @@ class App
             result = ChoreRosters::DeleteAssignment.call(
               assignment_id: aid,
               roster_id: roster.id,
-              workspace_id: workspace_id
+              workspace_id: workspace_id,
+              membership: current_membership
             )
             handle_result(result)
           end
@@ -113,6 +117,7 @@ class App
           result = ChoreRosters::CreateAssignment.call(
             roster_id: roster.id,
             workspace_id: workspace_id,
+            membership: current_membership,
             chore_id: r.params["chore_id"],
             user_id: r.params["user_id"],
             date: r.params["date"],
@@ -137,6 +142,7 @@ class App
             result = ChoreRosters::UpdateChore.call(
               chore_id: cid,
               workspace_id: workspace_id,
+              membership: current_membership,
               name: r.params["name"]&.strip,
               people_per_day: ppd,
               position: pos
@@ -149,7 +155,8 @@ class App
             result = ChoreRosters::DeleteChore.call(
               chore_id: cid,
               roster_id: roster.id,
-              workspace_id: workspace_id
+              workspace_id: workspace_id,
+              membership: current_membership
             )
             handle_result(result)
           end
@@ -163,6 +170,7 @@ class App
           result = ChoreRosters::AddChore.call(
             roster_id: roster.id,
             workspace_id: workspace_id,
+            membership: current_membership,
             name: r.params["name"]&.strip,
             people_per_day: ppd,
             id: r.params["id"]
@@ -175,7 +183,7 @@ class App
       r.delete do
         result = ChoreRosters::DeleteRoster.call(
           roster_id: roster.id,
-          current_user_id: user.id,
+          membership: current_membership,
           workspace_id: workspace_id
         )
         handle_result(result)
@@ -183,7 +191,7 @@ class App
 
       # GET /api/chore-rosters/:id - Get roster with all chores and assignments
       r.get do
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool = PoolSerializer.new(membership: current_membership)
         pool.add_chore_roster(roster)
 
         response.status = 200

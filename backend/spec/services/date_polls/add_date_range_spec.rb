@@ -3,31 +3,38 @@
 require "spec_helper"
 
 RSpec.describe DatePolls::AddDateRange do
+  let(:workspace) { TestFactories.workspace }
+
+  def membership_for(usr)
+    row = TestFactories.workspace_membership(workspace: workspace, user: usr)
+    WorkspaceMembership.find(row[:id])
+  end
+
   it "returns failure when user is not the event owner" do
     owner = TestFactories.user
     other_user = TestFactories.user
-    event = TestFactories.event(user: owner)
+    event = TestFactories.event(workspace: workspace, user: owner)
     TestFactories.date_poll(event: event)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: other_user[:id],
+      membership: membership_for(other_user),
       start_date: "2024-06-01",
       end_date: "2024-06-10"
     )
 
     expect(result.failure?).to be true
-    expect(result.failure.message).to eq("Access denied")
+    expect(result.failure.message).to eq("not_event_owner")
   end
 
   it "returns failure when poll is not open" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    event = TestFactories.event(workspace: workspace, user: user)
     TestFactories.date_poll(event: event, closed_at: Time.now)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership_for(user),
       start_date: "2024-06-01",
       end_date: "2024-06-10"
     )
@@ -38,12 +45,12 @@ RSpec.describe DatePolls::AddDateRange do
 
   it "returns failure when dates are invalid" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    event = TestFactories.event(workspace: workspace, user: user)
     TestFactories.date_poll(event: event)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership_for(user),
       start_date: "2024-06-10",
       end_date: "2024-06-01"
     )
@@ -53,12 +60,12 @@ RSpec.describe DatePolls::AddDateRange do
 
   it "adds a date range to the poll" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    event = TestFactories.event(workspace: workspace, user: user)
     date_poll = TestFactories.date_poll(event: event)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership_for(user),
       start_date: "2024-06-01",
       end_date: "2024-06-10"
     )
@@ -72,13 +79,13 @@ RSpec.describe DatePolls::AddDateRange do
 
   it "uses client-provided id when given" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    event = TestFactories.event(workspace: workspace, user: user)
     TestFactories.date_poll(event: event)
     client_id = SecureRandom.uuid
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership_for(user),
       start_date: "2024-06-01",
       end_date: "2024-06-10",
       id: client_id
@@ -91,20 +98,21 @@ RSpec.describe DatePolls::AddDateRange do
 
   it "returns existing date range on idempotent replay with same id" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    event = TestFactories.event(workspace: workspace, user: user)
     TestFactories.date_poll(event: event)
     client_id = SecureRandom.uuid
+    membership = membership_for(user)
 
     result1 = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership,
       start_date: "2024-06-01",
       end_date: "2024-06-10",
       id: client_id
     )
     result2 = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership,
       start_date: "2024-06-01",
       end_date: "2024-06-10",
       id: client_id
@@ -117,7 +125,7 @@ RSpec.describe DatePolls::AddDateRange do
 
   it "handles TOCTOU race: returns existing date range when concurrent insert wins" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    event = TestFactories.event(workspace: workspace, user: user)
     date_poll = TestFactories.date_poll(event: event)
     client_id = SecureRandom.uuid
 
@@ -131,7 +139,7 @@ RSpec.describe DatePolls::AddDateRange do
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership_for(user),
       start_date: "2024-06-01",
       end_date: "2024-06-10",
       id: client_id

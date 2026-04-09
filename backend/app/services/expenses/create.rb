@@ -6,12 +6,14 @@ module Expenses
     class << self
       include Dry::Monads[:result]
 
-      def call(event_id:, user_id:, workspace_id:, description:, amount:, start_date:, end_date:, id: nil, participant_ids: nil)
-        validate(description, amount, start_date, end_date)
-          .bind { |valid| validate_date_range(valid, event_id) }
-          .bind { |valid| validate_rsvp(valid, event_id, user_id) }
-          .bind { |valid| validate_participants(valid, participant_ids) }
-          .bind { |valid| create_expense(event_id, user_id, workspace_id, valid, id) }
+      def call(event_id:, membership:, workspace_id:, description:, amount:, start_date:, end_date:, id: nil, participant_ids: nil)
+        Event.find_result(event_id)
+             .bind { |event| EventPolicy.enforce(:create_expense, event, membership: membership) }
+             .bind { validate(description, amount, start_date, end_date) }
+             .bind { |valid| validate_date_range(valid, event_id) }
+             .bind { |valid| validate_rsvp(valid, event_id, membership.user_id) }
+             .bind { |valid| validate_participants(valid, participant_ids) }
+             .bind { |valid| create_expense(event_id, membership, workspace_id, valid, id) }
       end
 
       private
@@ -89,12 +91,12 @@ module Expenses
         Success(valid)
       end
 
-      def create_expense(event_id, user_id, workspace_id, valid, id)
+      def create_expense(event_id, membership, workspace_id, valid, id)
         # Idempotent replay: if client provided an ID and it already exists, return it
         if id
           existing = Expense.find(id)
           if existing
-            pool = PoolSerializer.new(workspace_id: workspace_id)
+            pool = PoolSerializer.new(membership: membership)
             pool.add_expense(existing)
             return Success({ objects: pool.to_a })
           end
@@ -108,7 +110,7 @@ module Expenses
             DB[:expenses].insert(
               id: expense_id,
               event_id: event_id,
-              user_id: user_id,
+              user_id: membership.user_id,
               amount: valid[:amount],
               description: valid[:description],
               start_date: valid[:start_date],
@@ -127,7 +129,7 @@ module Expenses
           Expense.find(id)
         end
 
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool = PoolSerializer.new(membership: membership)
         pool.add_expense(expense)
 
         Success({ objects: pool.to_a })

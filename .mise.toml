@@ -7,7 +7,6 @@ ruby = "4"
 pnpm = "latest"
 
 [env]
-_.file = ["backend/.env.development"]
 
 # ── Workflows ────────────────────────────────────────────────────────────────
 #

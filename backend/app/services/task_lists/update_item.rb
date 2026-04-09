@@ -7,12 +7,13 @@ module TaskLists
       include Dry::Monads[:result]
       include TaskLists::Validators
 
-      def call(task_list_id:, task_item_id:, content: nil, completed: nil, position: nil, new_task_list_id: nil)
+      def call(task_list_id:, task_item_id:, membership:, content: nil, completed: nil, position: nil, new_task_list_id: nil)
         TaskList.find_result(task_list_id)
                 .bind { |task_list| TaskItem.find_result(task_item_id).fmap { |item| [task_list, item] } }
                 .bind { |(task_list, item)| validate_belongs_to_list(item, task_list).fmap { [task_list, item] } }
+                .bind { |(task_list, item)| TaskItemPolicy.enforce(:edit, item, membership: membership).fmap { [task_list, item] } }
                 .bind { |(task_list, item)| resolve_target_list(task_list, new_task_list_id).fmap { |target| [task_list, item, target] } }
-                .bind { |(task_list, item, target)| update_item(task_list, item, target, content, completed, position) }
+                .bind { |(task_list, item, target)| update_item(task_list, item, target, content, completed, position, membership) }
       end
 
       private
@@ -32,7 +33,7 @@ module TaskLists
         Success(target)
       end
 
-      def update_item(source_list, item, target_list, content, completed, position)
+      def update_item(source_list, item, target_list, content, completed, position, membership)
         if content && content.length > ValidationLimits::LONG_TEXT
           return Failure(ServiceError.validation("Content is too long (maximum 5000 characters)"))
         end
@@ -56,7 +57,7 @@ module TaskLists
         end
 
         updated_item = TaskItem.find(item.id)
-        pool = PoolSerializer.new(workspace_id: source_list.workspace_id)
+        pool = PoolSerializer.new(membership: membership)
         pool.add_task_item(updated_item)
 
         Success({ objects: pool.to_a })

@@ -8,9 +8,14 @@
 #   pool.add_event(event)
 #   { objects: pool.to_a }
 class PoolSerializer
-  def initialize(workspace_id: nil)
+  def initialize(workspace_id: nil, membership: nil)
     @objects = {}
-    @workspace_id = workspace_id&.to_s
+    @membership = membership
+    @workspace_id = if membership
+                      membership.workspace_id.to_s
+                    else
+                      workspace_id&.to_s
+                    end
   end
 
   # Serializes a workspace membership as a member pool object by fetching the user.
@@ -22,7 +27,9 @@ class PoolSerializer
     user = User.find(membership.user_id)
     return unless user
 
-    @objects[key] = build_member_hash(user, membership)
+    hash = build_member_hash(user, membership)
+    attach_permissions(hash, membership)
+    @objects[key] = hash
   end
 
   # Public alias for add_member_from_membership
@@ -42,7 +49,9 @@ class PoolSerializer
       user = users_by_id[m.user_id.to_s]
       next unless user
 
-      @objects["member:#{m.id}"] = build_member_hash(user, m)
+      hash = build_member_hash(user, m)
+      attach_permissions(hash, m)
+      @objects["member:#{m.id}"] = hash
     end
   end
 
@@ -53,6 +62,8 @@ class PoolSerializer
     date_poll = DatePoll.find_by_event(event.id)
     hash = event.to_api_hash(date_poll_id: date_poll&.id&.to_s)
     hash[:rsvpIds] = Rsvp.ids_for_event(event.id)
+    has_expenses = DB[:expenses].where(event_id: event.id).any? || DB[:settlements].where(event_id: event.id).any?
+    attach_permissions(hash, event, has_expenses: has_expenses)
 
     @objects[key] = hash
   end
@@ -65,11 +76,15 @@ class PoolSerializer
     event_ids = new_events.map { |e| e.id.to_s }
     polls_by_event = DatePoll.for_event_ids(event_ids)
     rsvp_ids_by_event = Rsvp.ids_for_event_ids(event_ids)
+    events_with_expenses = DB[:expenses].where(event_id: event_ids).distinct.select_map(:event_id).to_set
+    events_with_settlements = DB[:settlements].where(event_id: event_ids).distinct.select_map(:event_id).to_set
+    events_with_financial_data = events_with_expenses | events_with_settlements
 
     new_events.each do |event|
       date_poll = polls_by_event[event.id.to_s]
       hash = event.to_api_hash(date_poll_id: date_poll&.id&.to_s)
       hash[:rsvpIds] = rsvp_ids_by_event[event.id.to_s] || []
+      attach_permissions(hash, event, has_expenses: events_with_financial_data.include?(event.id.to_s))
       @objects["event:#{event.id}"] = hash
     end
   end
@@ -79,7 +94,9 @@ class PoolSerializer
     return if @objects.key?(key)
 
     date_range_ids = DateRange.ids_for_date_poll(date_poll.id)
-    @objects[key] = date_poll.to_api_hash(date_range_ids: date_range_ids)
+    hash = date_poll.to_api_hash(date_range_ids: date_range_ids)
+    attach_permissions(hash, date_poll)
+    @objects[key] = hash
   end
 
   # Batch-add date polls with a single DateRange ID query instead of N+1
@@ -89,10 +106,13 @@ class PoolSerializer
 
     poll_ids = new_polls.map { |p| p.id.to_s }
     range_ids_by_poll = DateRange.ids_for_date_poll_ids(poll_ids)
+    events_by_id = Event.for_ids(new_polls.map { |p| p.event_id.to_s }.uniq).each_with_object({}) { |e, h| h[e.id.to_s] = e }
 
     new_polls.each do |poll|
       date_range_ids = range_ids_by_poll[poll.id.to_s] || []
-      @objects["date_poll:#{poll.id}"] = poll.to_api_hash(date_range_ids: date_range_ids)
+      hash = poll.to_api_hash(date_range_ids: date_range_ids)
+      attach_permissions(hash, poll, event: events_by_id[poll.event_id.to_s])
+      @objects["date_poll:#{poll.id}"] = hash
     end
   end
 
@@ -100,7 +120,9 @@ class PoolSerializer
     key = "date_range:#{date_range.id}"
     return if @objects.key?(key)
 
-    @objects[key] = date_range.to_api_hash
+    hash = date_range.to_api_hash
+    attach_permissions(hash, date_range)
+    @objects[key] = hash
   end
 
   # Batch-add date ranges
@@ -108,8 +130,16 @@ class PoolSerializer
     new_ranges = ranges.reject { |r| @objects.key?("date_range:#{r.id}") }
     return if new_ranges.empty?
 
+    poll_ids = new_ranges.map { |r| r.date_poll_id.to_s }.uniq
+    polls_by_id = DB[:date_polls].where(id: poll_ids).select_hash(:id, :event_id)
+    event_ids = polls_by_id.values.map(&:to_s).uniq
+    events_by_id = Event.for_ids(event_ids).each_with_object({}) { |e, h| h[e.id.to_s] = e }
+
     new_ranges.each do |range|
-      @objects["date_range:#{range.id}"] = range.to_api_hash
+      event_id = polls_by_id[range.date_poll_id.to_s]&.to_s
+      hash = range.to_api_hash
+      attach_permissions(hash, range, event: events_by_id[event_id])
+      @objects["date_range:#{range.id}"] = hash
     end
   end
 
@@ -117,14 +147,18 @@ class PoolSerializer
     key = "vote:#{vote.id}"
     return if @objects.key?(key)
 
-    @objects[key] = vote.to_api_hash
+    hash = vote.to_api_hash
+    attach_permissions(hash, vote)
+    @objects[key] = hash
   end
 
   def add_rsvp(rsvp)
     key = "rsvp:#{rsvp.id}"
     return if @objects.key?(key)
 
-    @objects[key] = rsvp.to_api_hash
+    hash = rsvp.to_api_hash
+    attach_permissions(hash, rsvp)
+    @objects[key] = hash
   end
 
   def add_workspace(workspace)
@@ -132,14 +166,18 @@ class PoolSerializer
     return if @objects.key?(key)
 
     member_ids = WorkspaceMembership.ids_for_workspace(workspace.id)
-    @objects[key] = workspace.to_api_hash(member_ids: member_ids)
+    hash = workspace.to_api_hash(member_ids: member_ids)
+    attach_permissions(hash, workspace)
+    @objects[key] = hash
   end
 
   def add_task_list(task_list)
     key = "task_list:#{task_list.id}"
     return if @objects.key?(key)
 
-    @objects[key] = task_list.to_api_hash
+    hash = task_list.to_api_hash
+    attach_permissions(hash, task_list)
+    @objects[key] = hash
     TaskItem.for_task_list(task_list.id).each { |item| add_task_item(item) }
   end
 
@@ -147,7 +185,9 @@ class PoolSerializer
     key = "task_item:#{task_item.id}"
     return if @objects.key?(key)
 
-    @objects[key] = task_item.to_api_hash
+    hash = task_item.to_api_hash
+    attach_permissions(hash, task_item)
+    @objects[key] = hash
   end
 
   def add_expense(expense, participants: nil)
@@ -157,6 +197,7 @@ class PoolSerializer
     participants ||= ExpenseParticipant.for_expense(expense.id)
     hash = expense.to_api_hash
     hash[:participantIds] = participants.map { |p| p.id.to_s }
+    attach_permissions(hash, expense)
     @objects[key] = hash
 
     participants.each { |p| add_expense_participant(p) }
@@ -179,7 +220,9 @@ class PoolSerializer
     key = "expense_participant:#{participant.id}"
     return if @objects.key?(key)
 
-    @objects[key] = participant.to_api_hash
+    hash = participant.to_api_hash
+    attach_permissions(hash, participant)
+    @objects[key] = hash
   end
 
   def add_settlement(settlement)
@@ -187,7 +230,9 @@ class PoolSerializer
     return if @objects.key?(key)
 
     transfer_ids = SettlementTransfer.ids_for_settlement(settlement.id)
-    @objects[key] = settlement.to_api_hash(transfer_ids: transfer_ids)
+    hash = settlement.to_api_hash(transfer_ids: transfer_ids)
+    attach_permissions(hash, settlement)
+    @objects[key] = hash
   end
 
   # Batch-add settlements with a single SettlementTransfer ID query instead of N+1
@@ -197,10 +242,13 @@ class PoolSerializer
 
     settlement_ids = new_settlements.map { |s| s.id.to_s }
     transfer_ids_by_settlement = SettlementTransfer.ids_for_settlement_ids(settlement_ids)
+    events_by_id = Event.for_ids(new_settlements.map { |s| s.event_id.to_s }.uniq).each_with_object({}) { |e, h| h[e.id.to_s] = e }
 
     new_settlements.each do |settlement|
       transfer_ids = transfer_ids_by_settlement[settlement.id.to_s] || []
-      @objects["settlement:#{settlement.id}"] = settlement.to_api_hash(transfer_ids: transfer_ids)
+      hash = settlement.to_api_hash(transfer_ids: transfer_ids)
+      attach_permissions(hash, settlement, event: events_by_id[settlement.event_id.to_s])
+      @objects["settlement:#{settlement.id}"] = hash
     end
   end
 
@@ -208,7 +256,9 @@ class PoolSerializer
     key = "settlement_transfer:#{transfer.id}"
     return if @objects.key?(key)
 
-    @objects[key] = transfer.to_api_hash
+    hash = transfer.to_api_hash
+    attach_permissions(hash, transfer)
+    @objects[key] = hash
   end
 
   def add_chore_roster(roster)
@@ -217,7 +267,9 @@ class PoolSerializer
 
     chores = Chore.for_roster(roster.id)
     chore_ids = chores.map { |c| c.id.to_s }
-    @objects[key] = roster.to_api_hash(chore_ids: chore_ids)
+    hash = roster.to_api_hash(chore_ids: chore_ids)
+    attach_permissions(hash, roster)
+    @objects[key] = hash
 
     # Batch-load all assignments for this roster in one query
     all_assignments = ChoreAssignment.for_roster(roster.id)
@@ -229,7 +281,9 @@ class PoolSerializer
 
       chore_assignments = assignments_by_chore[chore.id.to_s] || []
       assignment_ids = chore_assignments.map { |a| a.id.to_s }
-      @objects[chore_key] = chore.to_api_hash(assignment_ids: assignment_ids)
+      chore_hash = chore.to_api_hash(assignment_ids: assignment_ids)
+      attach_permissions(chore_hash, chore)
+      @objects[chore_key] = chore_hash
       chore_assignments.each { |a| add_chore_assignment(a) }
     end
   end
@@ -240,7 +294,9 @@ class PoolSerializer
 
     assignments = ChoreAssignment.for_chore(chore.id)
     assignment_ids = assignments.map { |a| a.id.to_s }
-    @objects[key] = chore.to_api_hash(assignment_ids: assignment_ids)
+    hash = chore.to_api_hash(assignment_ids: assignment_ids)
+    attach_permissions(hash, chore)
+    @objects[key] = hash
     assignments.each { |a| add_chore_assignment(a) }
   end
 
@@ -248,14 +304,18 @@ class PoolSerializer
     key = "chore_assignment:#{assignment.id}"
     return if @objects.key?(key)
 
-    @objects[key] = assignment.to_api_hash
+    hash = assignment.to_api_hash
+    attach_permissions(hash, assignment)
+    @objects[key] = hash
   end
 
   def add_workspace_invite(invite)
     key = "workspace_invite:#{invite.id}"
     return if @objects.key?(key)
 
-    @objects[key] = invite.to_api_hash
+    hash = invite.to_api_hash
+    attach_permissions(hash, invite)
+    @objects[key] = hash
   end
 
   def add_all(items, type:)
@@ -273,6 +333,17 @@ class PoolSerializer
   end
 
   private
+
+  def attach_permissions(hash, object, **policy_kwargs)
+    return unless @membership
+
+    entry = ObjectRegistry::BY_CLIENT_TYPE[hash[:objectType]]
+    return unless entry&.policy
+
+    policy_class = Object.const_get(entry.policy)
+    policy = policy_class.new(object, membership: @membership, **policy_kwargs)
+    hash[:permissions] = policy.permissions
+  end
 
   def build_member_hash(user, membership)
     {

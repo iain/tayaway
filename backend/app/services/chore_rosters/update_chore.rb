@@ -6,14 +6,15 @@ module ChoreRosters
     class << self
       include Dry::Monads[:result]
 
-      def call(chore_id:, workspace_id:, name: nil, people_per_day: nil, position: nil)
+      def call(chore_id:, workspace_id:, membership:, name: nil, people_per_day: nil, position: nil)
         Chore.find_result(chore_id)
-             .bind { |chore| validate_and_update(chore, workspace_id, name, people_per_day, position) }
+             .bind { |chore| ChorePolicy.enforce(:edit, chore, membership: membership) }
+             .bind { |chore| validate_and_update(chore, workspace_id, name, people_per_day, position, membership) }
       end
 
       private
 
-      def validate_and_update(chore, workspace_id, name, people_per_day, position)
+      def validate_and_update(chore, workspace_id, name, people_per_day, position, membership)
         updates = {}
 
         if name
@@ -44,7 +45,7 @@ module ChoreRosters
           Broadcaster.object_changed("chore", chore.id, workspace_id: workspace_id)
         end
 
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool = PoolSerializer.new(membership: membership)
         updated_chore = Chore.find(chore.id)
         pool.add_chore(updated_chore)
 

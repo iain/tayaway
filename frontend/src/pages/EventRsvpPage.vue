@@ -18,6 +18,7 @@ import RsvpSection from '@/components/events/RsvpSection.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import TextButton from '@/components/common/TextButton.vue'
+import { can } from '@/composables/usePermission'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -27,7 +28,7 @@ const eventId = computed(() => route.params.id as string)
 
 const { event } = useHydratedEvent(eventId)
 
-const isOwner = computed(() => currentUserId.value === event.value?.userId)
+const canEditEvent = computed(() => can(event.value?.permissions, 'edit'))
 
 const eventsStore = useEventsStore()
 const { loading } = storeToRefs(eventsStore)
@@ -139,7 +140,7 @@ function handleDownloadIcs(): void {
           Go to Planning
         </router-link>
 
-        <template v-if="isOwner">
+        <template v-if="canEditEvent">
           <div v-if="showDateForm" class="mt-4">
             <form
               class="flex flex-wrap items-end justify-center gap-3"

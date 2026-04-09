@@ -6,13 +6,13 @@ module DatePolls
     class << self
       include Dry::Monads[:result]
 
-      def call(event_id:, current_user_id:, start_date:, end_date:, id: nil)
+      def call(event_id:, membership:, start_date:, end_date:, id: nil)
         Event.find_result(event_id)
-             .bind { |event| Event.authorize_owner(event, current_user_id) }
              .bind { |event| DatePoll.find_by_event_result(event.id).fmap { |poll| [event, poll] } }
+             .bind { |(event, poll)| DatePollPolicy.enforce(:create_date_range, poll, membership: membership, event: event).fmap { |_| [event, poll] } }
              .bind { |(event, poll)| DatePoll.validate_open(poll).fmap { |_| [event, poll] } }
              .bind { |(event, poll)| parse_dates(start_date, end_date, event, poll) }
-             .bind { |(event, poll, date_input)| insert_date_range(event, poll, date_input, id) }
+             .bind { |(event, poll, date_input)| insert_date_range(event, poll, date_input, id, membership) }
       end
 
       private
@@ -21,12 +21,12 @@ module DatePolls
         DateRangeInput.parse_strings(start_date, end_date).fmap { |date_input| [event, poll, date_input] }
       end
 
-      def insert_date_range(event, poll, date_input, id)
+      def insert_date_range(event, poll, date_input, id, membership)
         # Idempotent replay: if client provided an ID and it already exists, return current state
         if id
           existing = DateRange.find(id)
           if existing
-            pool = PoolSerializer.new(workspace_id: event.workspace_id)
+            pool = PoolSerializer.new(membership: membership)
             pool.add_date_poll(DatePoll.find(poll.id))
             pool.add_date_range(existing)
             return Success({ objects: pool.to_a })
@@ -53,7 +53,7 @@ module DatePolls
           dr_id = id
         end
 
-        pool = PoolSerializer.new(workspace_id: event.workspace_id)
+        pool = PoolSerializer.new(membership: membership)
         pool.add_date_poll(DatePoll.find(poll.id))
         pool.add_date_range(DateRange.find(dr_id))
         Success({ objects: pool.to_a })

@@ -9,11 +9,12 @@ module Invites
     class << self
       include Dry::Monads[:result]
 
-      def call(invite_id:, workspace_id:)
+      def call(invite_id:, workspace_id:, membership:)
         find_invite(invite_id, workspace_id)
+          .bind { |invite| WorkspaceInvitePolicy.enforce(:remind, invite, membership: membership) }
           .bind { |invite| check_not_accepted(invite) }
           .bind { |invite| check_rate_limit(invite) }
-          .bind { |invite| resend(invite) }
+          .bind { |invite| resend(invite, membership) }
       end
 
       private
@@ -54,7 +55,7 @@ module Invites
         end
       end
 
-      def resend(invite)
+      def resend(invite, membership)
         now = Time.now
         raw_token = SecureRandom.hex(32)
         token_hash = Auth::Token.digest(raw_token)
@@ -86,7 +87,7 @@ module Invites
         Broadcaster.object_changed("workspace_invite", invite.id, workspace_id: invite.workspace_id.to_s)
 
         updated_invite = WorkspaceInvite.find(invite.id)
-        pool = PoolSerializer.new(workspace_id: invite.workspace_id)
+        pool = PoolSerializer.new(membership: membership)
         pool.add_workspace_invite(updated_invite)
         Success({ objects: pool.to_a })
       end

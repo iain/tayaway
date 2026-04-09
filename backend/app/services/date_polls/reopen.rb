@@ -6,13 +6,13 @@ module DatePolls
     class << self
       include Dry::Monads[:result]
 
-      def call(event_id:, current_user_id:, deadline:)
+      def call(event_id:, membership:, deadline:)
         Event.find_result(event_id)
-             .bind { |event| Event.authorize_owner(event, current_user_id) }
              .bind { |event| DatePoll.find_by_event_result(event.id).fmap { |poll| [event, poll] } }
+             .bind { |(event, poll)| DatePollPolicy.enforce(:reopen, poll, membership: membership, event: event).fmap { |_| [event, poll] } }
              .bind { |(event, poll)| validate_resolved(event, poll) }
              .bind { |(event, poll)| validate_deadline(deadline, event, poll) }
-             .bind { |(event, poll, parsed_deadline)| reopen_poll(event, poll, parsed_deadline, current_user_id) }
+             .bind { |(event, poll, parsed_deadline)| reopen_poll(event, poll, parsed_deadline, membership) }
       end
 
       private
@@ -43,13 +43,13 @@ module DatePolls
         Success([event, poll, parsed])
       end
 
-      def reopen_poll(event, poll, deadline, current_user_id)
+      def reopen_poll(event, poll, deadline, membership)
         deleted_rsvp_ids = []
 
         DB.transaction do
           # Delete all RSVPs for this event
           rsvp_ids = Rsvp.ids_for_event(event.id)
-          DeletedItems.bulk_insert(event.workspace_id, "rsvp", rsvp_ids, deleted_by: current_user_id)
+          DeletedItems.bulk_insert(event.workspace_id, "rsvp", rsvp_ids, deleted_by: membership.user_id)
           rsvp_ids.each do |rid|
             Broadcaster.object_deleted("rsvp", rid, workspace_id: event.workspace_id)
           end
@@ -73,7 +73,7 @@ module DatePolls
 
         APP_LOGGER.info { "[DatePolls::Reopen] Poll #{poll.id} reopened on event #{event.id}" }
 
-        pool = PoolSerializer.new(workspace_id: event.workspace_id)
+        pool = PoolSerializer.new(membership: membership)
         pool.add_event(Event.find(event.id))
         pool.add_date_poll(DatePoll.find(poll.id))
 

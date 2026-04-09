@@ -6,7 +6,7 @@
 
 class App
   hash_branch("api", "expenses") do |r|
-    user = require_auth
+    require_auth
 
     # GET /api/expenses?event_id=xxx - List expenses for an event
     r.is do
@@ -25,7 +25,7 @@ class App
         end
 
         expenses = Expense.for_event(event_id)
-        pool = PoolSerializer.new(workspace_id: event.workspace_id)
+        pool = PoolSerializer.new(membership: current_membership)
         pool.add_expenses_batch(expenses)
 
         response.status = 200
@@ -55,7 +55,7 @@ class App
 
         result = Expenses::Create.call(
           event_id: event_id,
-          user_id: user.id,
+          membership: current_membership,
           workspace_id: event.workspace_id,
           description: r.params["description"]&.strip,
           amount: amount,
@@ -94,7 +94,7 @@ class App
 
         result = Expenses::Update.call(
           expense_id: expense.id,
-          current_user_id: user.id,
+          membership: current_membership,
           workspace_id: event.workspace_id,
           description: r.params["description"]&.strip,
           amount: amount,
@@ -109,7 +109,7 @@ class App
       r.delete do
         result = Expenses::Delete.call(
           expense_id: expense.id,
-          current_user_id: user.id,
+          membership: current_membership,
           workspace_id: event.workspace_id
         )
         handle_result(result)

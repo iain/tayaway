@@ -3,11 +3,16 @@
 require "spec_helper"
 
 RSpec.describe Settlements::Delete do
+  let(:workspace) { TestFactories.workspace }
   let(:creator) { TestFactories.user }
   let(:event_owner) { TestFactories.user }
   let(:other_user) { TestFactories.user }
-  let(:workspace) { TestFactories.workspace }
   let(:event) { TestFactories.event(workspace: workspace, user: event_owner) }
+
+  def membership_for(usr)
+    row = TestFactories.workspace_membership(workspace: workspace, user: usr)
+    WorkspaceMembership.find(row[:id])
+  end
 
   # -- test helper used across examples
   def create_settlement(user_row: creator, with_expense: false, with_transfer: false)
@@ -55,7 +60,7 @@ RSpec.describe Settlements::Delete do
   it "returns 404 when settlement not found" do
     result = described_class.call(
       settlement_id: SecureRandom.uuid,
-      current_user_id: creator[:id],
+      membership: membership_for(creator),
       workspace_id: workspace[:id]
     )
 
@@ -68,13 +73,13 @@ RSpec.describe Settlements::Delete do
 
     result = described_class.call(
       settlement_id: settlement_id,
-      current_user_id: other_user[:id],
+      membership: membership_for(other_user),
       workspace_id: workspace[:id]
     )
 
     expect(result.failure?).to be true
     expect(result.failure.http_status).to eq(403)
-    expect(result.failure.message).to eq("Not authorized to delete this settlement")
+    expect(result.failure.message).to eq("not_creator_or_event_owner")
   end
 
   it "allows the settlement creator to delete" do
@@ -82,7 +87,7 @@ RSpec.describe Settlements::Delete do
 
     result = described_class.call(
       settlement_id: settlement_id,
-      current_user_id: creator[:id],
+      membership: membership_for(creator),
       workspace_id: workspace[:id]
     )
 
@@ -95,7 +100,7 @@ RSpec.describe Settlements::Delete do
 
     result = described_class.call(
       settlement_id: settlement_id,
-      current_user_id: event_owner[:id],
+      membership: membership_for(event_owner),
       workspace_id: workspace[:id]
     )
 
@@ -109,7 +114,7 @@ RSpec.describe Settlements::Delete do
 
     described_class.call(
       settlement_id: settlement_id,
-      current_user_id: creator[:id],
+      membership: membership_for(creator),
       workspace_id: workspace[:id]
     )
 
@@ -123,7 +128,7 @@ RSpec.describe Settlements::Delete do
 
     result = described_class.call(
       settlement_id: settlement_id,
-      current_user_id: creator[:id],
+      membership: membership_for(creator),
       workspace_id: workspace[:id]
     )
 
@@ -138,7 +143,7 @@ RSpec.describe Settlements::Delete do
 
     described_class.call(
       settlement_id: settlement_id,
-      current_user_id: creator[:id],
+      membership: membership_for(creator),
       workspace_id: workspace[:id]
     )
 

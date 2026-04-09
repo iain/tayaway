@@ -4,14 +4,14 @@ module Rsvps
   # Service to delete an RSVP.
   #
   # @example
-  #   result = Rsvps::Delete.call(event_id: "event-uuid", rsvp_id: "uuid", user_id: "uuid")
+  #   result = Rsvps::Delete.call(event_id: "event-uuid", rsvp_id: "uuid", membership: membership)
   module Delete
     class << self
       include Dry::Monads[:result]
 
-      def call(event_id:, rsvp_id:, user_id:)
+      def call(event_id:, rsvp_id:, membership:)
         find_rsvp(rsvp_id)
-          .bind { |rsvp| authorize_owner(rsvp, user_id) }
+          .bind { |rsvp| RsvpPolicy.enforce(:delete, rsvp, membership: membership) }
           .bind { |rsvp| validate_rsvp_belongs_to_event(rsvp, event_id) }
           .bind { |rsvp| delete_rsvp(rsvp, event_id) }
       end
@@ -26,14 +26,6 @@ module Rsvps
           Failure(ServiceError.gone("RSVP not found"))
         else
           Failure(ServiceError.not_found("RSVP not found"))
-        end
-      end
-
-      def authorize_owner(rsvp, user_id)
-        if rsvp.user_id == user_id
-          Success(rsvp)
-        else
-          Failure(ServiceError.forbidden("Access denied"))
         end
       end
 

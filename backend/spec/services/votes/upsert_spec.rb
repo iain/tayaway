@@ -3,12 +3,18 @@
 require "spec_helper"
 
 RSpec.describe Votes::Upsert do
-  it "returns failure when date_range_id is missing" do
-    user = TestFactories.user
-    event = TestFactories.event(user: user)
+  let(:workspace) { TestFactories.workspace }
+  let(:user) { TestFactories.user }
+  let(:event) { TestFactories.event(workspace: workspace, user: user) }
 
+  def membership_for(usr)
+    row = TestFactories.workspace_membership(workspace: workspace, user: usr)
+    WorkspaceMembership.find(row[:id])
+  end
+
+  it "returns failure when date_range_id is missing" do
     result = described_class.call(
-      event_id: event[:id], user_id: user[:id], date_range_id: nil, vote_response: "yes", comment: nil,
+      event_id: event[:id], membership: membership_for(user), date_range_id: nil, vote_response: "yes", comment: nil,
       vote_id: SecureRandom.uuid
     )
 
@@ -17,13 +23,11 @@ RSpec.describe Votes::Upsert do
   end
 
   it "returns failure when response is invalid" do
-    user = TestFactories.user
-    event = TestFactories.event(user: user)
     date_poll = TestFactories.date_poll(event: event)
     date_range = TestFactories.date_range(date_poll: date_poll)
 
     result = described_class.call(
-      event_id: event[:id], user_id: user[:id], date_range_id: date_range[:id], vote_response: "invalid", comment: nil,
+      event_id: event[:id], membership: membership_for(user), date_range_id: date_range[:id], vote_response: "invalid", comment: nil,
       vote_id: SecureRandom.uuid
     )
 
@@ -32,13 +36,11 @@ RSpec.describe Votes::Upsert do
   end
 
   it "generates a server-side vote_id when none is provided" do
-    user = TestFactories.user
-    event = TestFactories.event(user: user)
     date_poll = TestFactories.date_poll(event: event)
     date_range = TestFactories.date_range(date_poll: date_poll)
 
     result = described_class.call(
-      event_id: event[:id], user_id: user[:id], date_range_id: date_range[:id], vote_response: "yes", comment: nil,
+      event_id: event[:id], membership: membership_for(user), date_range_id: date_range[:id], vote_response: "yes", comment: nil,
       vote_id: nil
     )
 
@@ -49,11 +51,8 @@ RSpec.describe Votes::Upsert do
   end
 
   it "returns failure when date range not found" do
-    user = TestFactories.user
-    event = TestFactories.event(user: user)
-
     result = described_class.call(
-      event_id: event[:id], user_id: user[:id], date_range_id: "00000000-0000-0000-0000-000000000000", vote_response: "yes", comment: nil,
+      event_id: event[:id], membership: membership_for(user), date_range_id: "00000000-0000-0000-0000-000000000000", vote_response: "yes", comment: nil,
       vote_id: SecureRandom.uuid
     )
 
@@ -62,14 +61,12 @@ RSpec.describe Votes::Upsert do
   end
 
   it "returns failure when date range belongs to different event" do
-    user = TestFactories.user
-    event1 = TestFactories.event(user: user)
-    event2 = TestFactories.event(user: user)
+    event2 = TestFactories.event(workspace: workspace, user: user)
     date_poll = TestFactories.date_poll(event: event2)
     date_range = TestFactories.date_range(date_poll: date_poll)
 
     result = described_class.call(
-      event_id: event1[:id], user_id: user[:id], date_range_id: date_range[:id], vote_response: "yes", comment: nil,
+      event_id: event[:id], membership: membership_for(user), date_range_id: date_range[:id], vote_response: "yes", comment: nil,
       vote_id: SecureRandom.uuid
     )
 
@@ -78,13 +75,11 @@ RSpec.describe Votes::Upsert do
   end
 
   it "returns failure when poll is not open" do
-    user = TestFactories.user
-    event = TestFactories.event(user: user)
     date_poll = TestFactories.date_poll(event: event, closed_at: Time.now)
     date_range = TestFactories.date_range(date_poll: date_poll)
 
     result = described_class.call(
-      event_id: event[:id], user_id: user[:id], date_range_id: date_range[:id], vote_response: "yes", comment: nil,
+      event_id: event[:id], membership: membership_for(user), date_range_id: date_range[:id], vote_response: "yes", comment: nil,
       vote_id: SecureRandom.uuid
     )
 
@@ -93,15 +88,13 @@ RSpec.describe Votes::Upsert do
   end
 
   it "creates new vote and returns created: true" do
-    user = TestFactories.user
-    event = TestFactories.event(user: user)
     date_poll = TestFactories.date_poll(event: event)
     date_range = TestFactories.date_range(date_poll: date_poll)
     client_id = SecureRandom.uuid
 
     result = described_class.call(
       event_id: event[:id],
-      user_id: user[:id],
+      membership: membership_for(user),
       date_range_id: date_range[:id],
       vote_response: "yes",
       comment: "Looks good!",
@@ -117,15 +110,13 @@ RSpec.describe Votes::Upsert do
   end
 
   it "uses client-provided vote_id for new vote" do
-    user = TestFactories.user
-    event = TestFactories.event(user: user)
     date_poll = TestFactories.date_poll(event: event)
     date_range = TestFactories.date_range(date_poll: date_poll)
     client_id = SecureRandom.uuid
 
     result = described_class.call(
       event_id: event[:id],
-      user_id: user[:id],
+      membership: membership_for(user),
       date_range_id: date_range[:id],
       vote_response: "yes",
       comment: nil,
@@ -137,15 +128,14 @@ RSpec.describe Votes::Upsert do
   end
 
   it "updates existing vote and returns created: false" do
-    user = TestFactories.user
-    event = TestFactories.event(user: user)
+    membership = membership_for(user)
     date_poll = TestFactories.date_poll(event: event)
     date_range = TestFactories.date_range(date_poll: date_poll)
     TestFactories.vote(user: user, date_range: date_range, response: "yes")
 
     result = described_class.call(
       event_id: event[:id],
-      user_id: user[:id],
+      membership: membership,
       date_range_id: date_range[:id],
       vote_response: "no",
       comment: "Changed my mind",
@@ -160,15 +150,14 @@ RSpec.describe Votes::Upsert do
   end
 
   it "returns existing vote on idempotent replay with same vote_id" do
-    user = TestFactories.user
-    event = TestFactories.event(user: user)
+    membership = membership_for(user)
     date_poll = TestFactories.date_poll(event: event)
     date_range = TestFactories.date_range(date_poll: date_poll)
     client_id = SecureRandom.uuid
 
     result1 = described_class.call(
       event_id: event[:id],
-      user_id: user[:id],
+      membership: membership,
       date_range_id: date_range[:id],
       vote_response: "yes",
       comment: nil,
@@ -176,7 +165,7 @@ RSpec.describe Votes::Upsert do
     )
     result2 = described_class.call(
       event_id: event[:id],
-      user_id: user[:id],
+      membership: membership,
       date_range_id: date_range[:id],
       vote_response: "yes",
       comment: nil,
@@ -191,8 +180,7 @@ RSpec.describe Votes::Upsert do
   end
 
   it "handles TOCTOU race: returns existing vote when concurrent insert wins" do
-    user = TestFactories.user
-    event = TestFactories.event(user: user)
+    membership = membership_for(user)
     date_poll = TestFactories.date_poll(event: event)
     date_range = TestFactories.date_range(date_poll: date_poll)
     client_id = SecureRandom.uuid
@@ -210,7 +198,7 @@ RSpec.describe Votes::Upsert do
 
     result = described_class.call(
       event_id: event[:id],
-      user_id: user[:id],
+      membership: membership,
       date_range_id: date_range[:id],
       vote_response: "yes",
       comment: nil,

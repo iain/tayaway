@@ -3,30 +3,37 @@
 require "spec_helper"
 
 RSpec.describe DatePolls::Reopen do
+  let(:workspace) { TestFactories.workspace }
+
+  def membership_for(usr)
+    row = TestFactories.workspace_membership(workspace: workspace, user: usr)
+    WorkspaceMembership.find(row[:id])
+  end
+
   it "returns failure when user is not the event owner" do
     owner = TestFactories.user
     other_user = TestFactories.user
-    event = TestFactories.event(user: owner)
+    event = TestFactories.event(workspace: workspace, user: owner)
     TestFactories.date_poll(event: event, closed_at: Time.now)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: other_user[:id],
+      membership: membership_for(other_user),
       deadline: (Time.now + 86_400).iso8601
     )
 
     expect(result.failure?).to be true
-    expect(result.failure.message).to eq("Access denied")
+    expect(result.failure.message).to eq("not_event_owner")
   end
 
   it "returns failure when poll is not resolved" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    event = TestFactories.event(workspace: workspace, user: user)
     TestFactories.date_poll(event: event)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership_for(user),
       deadline: (Time.now + 86_400).iso8601
     )
 
@@ -36,12 +43,12 @@ RSpec.describe DatePolls::Reopen do
 
   it "returns failure when deadline is missing" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    event = TestFactories.event(workspace: workspace, user: user)
     TestFactories.date_poll(event: event, closed_at: Time.now)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership_for(user),
       deadline: nil
     )
 
@@ -51,7 +58,7 @@ RSpec.describe DatePolls::Reopen do
 
   it "reopens the poll with a new deadline" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    event = TestFactories.event(workspace: workspace, user: user)
     date_poll = TestFactories.date_poll(event: event, closed_at: Time.now)
     date_range = TestFactories.date_range(date_poll: date_poll)
     DB[:date_polls].where(id: date_poll[:id]).update(selected_date_range_id: date_range[:id])
@@ -59,7 +66,7 @@ RSpec.describe DatePolls::Reopen do
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership_for(user),
       deadline: new_deadline
     )
 
@@ -75,7 +82,7 @@ RSpec.describe DatePolls::Reopen do
 
   it "logs info when poll is reopened" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    event = TestFactories.event(workspace: workspace, user: user)
     TestFactories.date_poll(event: event, closed_at: Time.now)
     logged_messages = []
     allow(APP_LOGGER).to receive(:info) do |&block|
@@ -84,7 +91,7 @@ RSpec.describe DatePolls::Reopen do
 
     described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership_for(user),
       deadline: (Time.now + 86_400).iso8601
     )
 
@@ -94,7 +101,7 @@ RSpec.describe DatePolls::Reopen do
   it "deletes all RSVPs when reopening" do
     user = TestFactories.user
     voter = TestFactories.user
-    event = TestFactories.event(user: user)
+    event = TestFactories.event(workspace: workspace, user: user)
     date_poll = TestFactories.date_poll(event: event, closed_at: Time.now)
     date_range = TestFactories.date_range(date_poll: date_poll)
     DB[:date_polls].where(id: date_poll[:id]).update(selected_date_range_id: date_range[:id])
@@ -105,7 +112,7 @@ RSpec.describe DatePolls::Reopen do
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership_for(user),
       deadline: new_deadline
     )
 

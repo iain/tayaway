@@ -6,11 +6,12 @@ module ChoreRosters
     class << self
       include Dry::Monads[:result]
 
-      def call(roster_id:, workspace_id:, chore_id:, user_id:, date:, note: nil, id: nil)
+      def call(roster_id:, workspace_id:, membership:, chore_id:, user_id:, date:, note: nil, id: nil)
         validate(chore_id, user_id, date)
+          .bind { |valid| enforce_policy(roster_id, membership, valid) }
           .bind { |valid| validate_chore_belongs(valid, roster_id) }
           .bind { |valid| validate_date_in_range(valid, roster_id) }
-          .bind { |valid| create_assignment(valid, workspace_id, note, id) }
+          .bind { |valid| create_assignment(valid, workspace_id, note, id, membership) }
       end
 
       private
@@ -29,6 +30,14 @@ module ChoreRosters
         end
 
         Success({ chore_id: chore_id, user_id: user_id, date: Date.parse(date) })
+      end
+
+      def enforce_policy(roster_id, membership, valid)
+        roster = ChoreRoster.find(roster_id)
+        return Failure(ServiceError.not_found("Roster not found")) unless roster
+
+        ChoreRosterPolicy.enforce(:edit, roster, membership: membership)
+                         .fmap { valid }
       end
 
       def validate_chore_belongs(valid, roster_id)
@@ -56,12 +65,12 @@ module ChoreRosters
         Success(valid)
       end
 
-      def create_assignment(valid, workspace_id, note, id)
+      def create_assignment(valid, workspace_id, note, id, membership)
         # Idempotent replay
         if id
           existing = ChoreAssignment.find(id)
           if existing
-            pool = PoolSerializer.new(workspace_id: workspace_id)
+            pool = PoolSerializer.new(membership: membership)
             pool.add_chore_assignment(existing)
             return Success({ objects: pool.to_a })
           end
@@ -86,7 +95,7 @@ module ChoreRosters
           Broadcaster.object_changed("chore", valid[:chore_id], workspace_id: workspace_id)
         end
 
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool = PoolSerializer.new(membership: membership)
         assignment = ChoreAssignment.find(assignment_id)
         pool.add_chore_assignment(assignment)
         chore = Chore.find(valid[:chore_id])

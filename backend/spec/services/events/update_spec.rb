@@ -3,30 +3,40 @@
 require "spec_helper"
 
 RSpec.describe Events::Update do
+  let(:workspace) { TestFactories.workspace }
+
+  def membership_for(user)
+    row = TestFactories.workspace_membership(workspace: workspace, user: user)
+    WorkspaceMembership.find(row[:id])
+  end
+
   it "returns failure when user is not the owner" do
     owner = TestFactories.user
     other_user = TestFactories.user
-    event = TestFactories.event(user: owner)
+    membership_for(owner)
+    other_membership = membership_for(other_user)
+    event = TestFactories.event(workspace: workspace, user: owner)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: other_user[:id],
+      membership: other_membership,
       name: "Updated",
       description: nil
     )
 
     expect(result.failure?).to be true
-    expect(result.failure.message).to eq("Access denied")
+    expect(result.failure.message).to include("not_owner")
     expect(result.failure.http_status).to eq(403)
   end
 
   it "returns failure when name is missing" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    membership = membership_for(user)
+    event = TestFactories.event(workspace: workspace, user: user)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership,
       name: "",
       description: nil
     )
@@ -37,11 +47,12 @@ RSpec.describe Events::Update do
 
   it "updates event name and description" do
     user = TestFactories.user
-    event = TestFactories.event(user: user, name: "Original")
+    membership = membership_for(user)
+    event = TestFactories.event(workspace: workspace, user: user, name: "Original")
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership,
       name: "Updated Name",
       description: "New description"
     )
@@ -54,11 +65,12 @@ RSpec.describe Events::Update do
 
   it "updates event with start and end dates" do
     user = TestFactories.user
-    event = TestFactories.event(user: user, name: "Trip")
+    membership = membership_for(user)
+    event = TestFactories.event(workspace: workspace, user: user, name: "Trip")
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership,
       name: "Trip",
       description: nil,
       start_date: "2026-04-01",
@@ -73,11 +85,12 @@ RSpec.describe Events::Update do
 
   it "returns failure when only one date is provided" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    membership = membership_for(user)
+    event = TestFactories.event(workspace: workspace, user: user)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership,
       name: "Event",
       description: nil,
       start_date: "2026-04-01"
@@ -89,11 +102,12 @@ RSpec.describe Events::Update do
 
   it "returns failure when start_date is after end_date" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    membership = membership_for(user)
+    event = TestFactories.event(workspace: workspace, user: user)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership,
       name: "Event",
       description: nil,
       start_date: "2026-04-10",
@@ -106,12 +120,13 @@ RSpec.describe Events::Update do
 
   it "returns failure when clearing dates while a resolved poll exists" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    membership = membership_for(user)
+    event = TestFactories.event(workspace: workspace, user: user)
     TestFactories.date_poll(event: event, closed_at: Time.now)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership,
       name: "Event",
       description: nil,
       start_date: "",
@@ -125,11 +140,12 @@ RSpec.describe Events::Update do
 
   it "allows clearing dates when no poll exists" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    membership = membership_for(user)
+    event = TestFactories.event(workspace: workspace, user: user)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership,
       name: "Event",
       description: nil,
       start_date: "",
@@ -144,12 +160,13 @@ RSpec.describe Events::Update do
 
   it "allows clearing dates when an open poll exists" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    membership = membership_for(user)
+    event = TestFactories.event(workspace: workspace, user: user)
     TestFactories.date_poll(event: event, deadline: Time.now + (7 * 24 * 60 * 60))
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership,
       name: "Event",
       description: nil,
       start_date: "",
@@ -164,11 +181,12 @@ RSpec.describe Events::Update do
 
   it "sets location_name without coordinates" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    membership = membership_for(user)
+    event = TestFactories.event(workspace: workspace, user: user)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership,
       name: "Event",
       description: nil,
       location_name: "Somewhere Nice"
@@ -183,11 +201,12 @@ RSpec.describe Events::Update do
 
   it "sets location_name with coordinates" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    membership = membership_for(user)
+    event = TestFactories.event(workspace: workspace, user: user)
 
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership,
       name: "Event",
       description: nil,
       location_name: "Eiffel Tower",
@@ -204,25 +223,27 @@ RSpec.describe Events::Update do
 
   it "logs info when event is updated" do
     user = TestFactories.user
-    event = TestFactories.event(user: user, name: "Original")
+    membership = membership_for(user)
+    event = TestFactories.event(workspace: workspace, user: user, name: "Original")
     logged_messages = []
     allow(APP_LOGGER).to receive(:info) do |&block|
       logged_messages << block.call if block
     end
 
-    described_class.call(event_id: event[:id], current_user_id: user[:id], name: "Updated", description: nil)
+    described_class.call(event_id: event[:id], membership: membership, name: "Updated", description: nil)
 
     expect(logged_messages).to include(a_string_including("[Events::Update]"))
   end
 
   it "clears location when location_name is empty" do
     user = TestFactories.user
-    event = TestFactories.event(user: user)
+    membership = membership_for(user)
+    event = TestFactories.event(workspace: workspace, user: user)
 
     # First set a location
     described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership,
       name: "Event",
       description: nil,
       location_name: "Somewhere Nice",
@@ -233,7 +254,7 @@ RSpec.describe Events::Update do
     # Then clear it
     result = described_class.call(
       event_id: event[:id],
-      current_user_id: user[:id],
+      membership: membership,
       name: "Event",
       description: nil,
       location_name: ""

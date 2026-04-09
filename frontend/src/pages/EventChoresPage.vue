@@ -22,6 +22,7 @@ import type {
   PoolChoreAssignment,
   PoolMember,
 } from '@/types/pool'
+import { can } from '@/composables/usePermission'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -35,6 +36,8 @@ const event = computed(() => pool.get('event', eventId.value))
 const roster = computed(() => {
   return pool.getAll('choreRoster').find((r) => r.eventId === eventId.value)
 })
+
+const canDeleteRoster = computed(() => can(roster.value?.permissions, 'delete'))
 
 const chores = computed(() => {
   if (!roster.value) return []
@@ -302,6 +305,7 @@ onMounted(async () => {
     <div v-else>
       <PageHeader title="Chores" size="sm">
         <ChoreRosterToolbar
+          :can-delete="canDeleteRoster"
           @add-chore="openAddChore"
           @autofill="handleAutofillClick"
           @delete-roster="handleDeleteRoster"

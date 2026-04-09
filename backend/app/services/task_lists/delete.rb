@@ -6,8 +6,9 @@ module TaskLists
     class << self
       include Dry::Monads[:result]
 
-      def call(task_list_id:)
+      def call(task_list_id:, membership:)
         TaskList.find_result(task_list_id)
+                .bind { |task_list| TaskListPolicy.enforce(:delete, task_list, membership: membership) }
                 .bind { |task_list| delete_task_list(task_list) }
       end
 

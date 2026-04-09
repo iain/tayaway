@@ -11,6 +11,11 @@ module Websocket
   #   ConnectionManager.instance.set_workspaces(conn_id, ["workspace-uuid"])
   #   ConnectionManager.instance.broadcast_to_workspace("workspace-uuid", { type: "update", data: {...} })
   #   ConnectionManager.instance.unregister(conn_id)
+  # Context for per-user permission computation during broadcasts.
+  # Carries the raw model objects and extra kwargs (e.g., event:) that
+  # policies need but aren't in the serialized JSON.
+  PolicyContext = Struct.new(:raw_objects, :kwargs, keyword_init: true)
+
   class ConnectionManager
     include Singleton
 
@@ -86,6 +91,13 @@ module Websocket
       APP_LOGGER.info { "[ConnectionManager] User #{user_id} switched workspaces (conn: #{connection_id}, workspaces: #{workspace_ids.join(', ')})" }
     end
 
+    def set_membership(connection_id, membership)
+      @mutex.synchronize do
+        connection = @connections[connection_id]
+        connection&.membership = membership
+      end
+    end
+
     def update_last_pong(connection_id)
       @mutex.synchronize do
         connection = @connections[connection_id]
@@ -123,20 +135,24 @@ module Websocket
       stale_ids.size
     end
 
-    def broadcast_to_workspace(workspace_id, message)
+    def broadcast_to_workspace(workspace_id, message, policy_context: nil)
       connection_ids = @mutex.synchronize { (@workspace_connections[workspace_id] || Set.new).to_a }
-      json_message = message.to_json
 
-      connection_ids.each do |connection_id|
-        connection = @mutex.synchronize { @connections[connection_id] }
-        next unless connection
+      if policy_context
+        connection_ids.each do |connection_id|
+          connection = @mutex.synchronize { @connections[connection_id] }
+          next unless connection
 
-        begin
-          connection.websocket.write(json_message)
-          connection.websocket.flush
-        rescue StandardError => e
-          APP_LOGGER.error { "[ConnectionManager] Error broadcasting to workspace #{workspace_id}, conn #{connection_id}: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
-          unregister(connection_id)
+          personalized = attach_permissions(message, connection.membership, policy_context)
+          send_to_connection(connection, connection_id, personalized.to_json, workspace_id)
+        end
+      else
+        json_message = message.to_json
+        connection_ids.each do |connection_id|
+          connection = @mutex.synchronize { @connections[connection_id] }
+          next unless connection
+
+          send_to_connection(connection, connection_id, json_message, workspace_id)
         end
       end
     end
@@ -174,10 +190,41 @@ module Websocket
       @mutex.synchronize { @connections.size }
     end
 
+    private
+
+    def attach_permissions(message, membership, policy_context)
+      return message unless membership
+
+      objects = message[:data][:objects].map do |obj|
+        entry = ObjectRegistry::BY_CLIENT_TYPE[obj[:objectType]]
+        next obj unless entry&.policy
+
+        raw_object = policy_context.raw_objects[entry.key]
+        next obj unless raw_object
+
+        policy_class = Object.const_get(entry.policy)
+        policy = policy_class.new(raw_object, membership: membership, **policy_context.kwargs)
+        obj.merge(permissions: policy.permissions)
+      rescue StandardError => e
+        APP_LOGGER.error { "[ConnectionManager] Failed to compute permissions for #{obj[:objectType]}: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
+        obj
+      end
+
+      message.merge(data: message[:data].merge(objects: objects))
+    end
+
+    def send_to_connection(connection, connection_id, json_message, workspace_id)
+      connection.websocket.write(json_message)
+      connection.websocket.flush
+    rescue StandardError => e
+      APP_LOGGER.error { "[ConnectionManager] Error broadcasting to workspace #{workspace_id}, conn #{connection_id}: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
+      unregister(connection_id)
+    end
+
     # Internal connection struct
     class Connection
       attr_reader :id, :websocket, :user_id, :session_id
-      attr_accessor :workspace_ids, :last_pong_at
+      attr_accessor :workspace_ids, :last_pong_at, :membership
 
       def initialize(
         id:,

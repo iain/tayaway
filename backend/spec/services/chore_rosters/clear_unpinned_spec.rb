@@ -3,8 +3,15 @@
 require "spec_helper"
 
 RSpec.describe ChoreRosters::ClearUnpinned do
+  def membership_for(workspace, usr)
+    row = TestFactories.workspace_membership(workspace: workspace, user: usr)
+    WorkspaceMembership.find(row[:id])
+  end
+
   it "returns failure when roster not found" do
-    result = described_class.call(roster_id: SecureRandom.uuid, workspace_id: SecureRandom.uuid)
+    workspace = TestFactories.workspace
+    user = TestFactories.user
+    result = described_class.call(roster_id: SecureRandom.uuid, workspace_id: workspace[:id], membership: membership_for(workspace, user))
 
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("Chore roster not found")
@@ -21,7 +28,7 @@ RSpec.describe ChoreRosters::ClearUnpinned do
     unpinned1 = TestFactories.chore_assignment(chore: chore, user: user, date: Date.today + 1, pinned: false)
     unpinned2 = TestFactories.chore_assignment(chore: chore, user: user, date: Date.today + 2, pinned: false)
 
-    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(workspace, user))
 
     expect(result.success?).to be true
     expect(result.value![:deleted].map { |d| d[:id] }).to contain_exactly(unpinned1[:id], unpinned2[:id])
@@ -41,7 +48,7 @@ RSpec.describe ChoreRosters::ClearUnpinned do
 
     allow(Broadcaster).to receive(:object_changed)
 
-    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(workspace, user))
 
     expect(result.success?).to be true
     expect(result.value![:deleted]).to eq([])
@@ -57,7 +64,7 @@ RSpec.describe ChoreRosters::ClearUnpinned do
 
     allow(Broadcaster).to receive(:object_changed)
 
-    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(workspace, user))
 
     expect(result.success?).to be true
     expect(result.value![:deleted]).to eq([])
@@ -73,7 +80,7 @@ RSpec.describe ChoreRosters::ClearUnpinned do
 
     assignment = TestFactories.chore_assignment(chore: chore, user: user, date: Date.today, pinned: false)
 
-    described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
+    described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(workspace, user))
 
     expect(DB[:deleted_items].where(object_type: "chore_assignment", object_id: assignment[:id]).count).to eq(1)
   end
@@ -92,7 +99,7 @@ RSpec.describe ChoreRosters::ClearUnpinned do
     allow(Broadcaster).to receive(:object_deleted)
     allow(Broadcaster).to receive(:object_changed)
 
-    described_class.call(roster_id: roster[:id], workspace_id: workspace[:id])
+    described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(workspace, user))
 
     assignments.each do |a|
       expect(Broadcaster).to have_received(:object_deleted)

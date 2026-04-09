@@ -71,12 +71,10 @@ class Event
       dataset.where(workspace_id: workspace_ids).order(:created_at).limit(ValidationLimits::QUERY_LIMIT).all
     end
 
-    def authorize_owner(event, current_user_id)
-      if event.user_id == current_user_id
-        Success(event)
-      else
-        Failure(ServiceError.forbidden("Access denied"))
-      end
+    def for_ids(ids)
+      return [] if ids.empty?
+
+      dataset.where(id: ids).all
     end
 
     private

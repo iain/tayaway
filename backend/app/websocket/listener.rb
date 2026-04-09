@@ -85,6 +85,25 @@ module Websocket
         @listen_db = nil
       end
 
+      def prefetch_policy_context(config, object)
+        context = {}
+        case config.key
+        when "event"
+          context[:has_expenses] = DB[:expenses].where(event_id: object.id).any? || DB[:settlements].where(event_id: object.id).any?
+        when "settlement", "settlement_transfer"
+          settlement = config.key == "settlement" ? object : Settlement.find(object.settlement_id)
+          context[:event] = Event.find(settlement.event_id) if settlement
+        when "date_poll", "date_range"
+          if config.key == "date_poll"
+            context[:event] = Event.find(object.event_id)
+          else
+            poll = DatePoll.find(object.date_poll_id)
+            context[:event] = Event.find(poll.event_id) if poll
+          end
+        end
+        context
+      end
+
       def handle_notification(payload)
         data = JSON.parse(payload, symbolize_names: true)
         workspace_id = data[:workspaceId]
@@ -100,6 +119,7 @@ module Websocket
         end
 
         message = { type: "broadcast", workspaceId: workspace_id, action: action }
+        policy_context = nil
 
         case action
         when "update"
@@ -108,6 +128,10 @@ module Websocket
             pool = PoolSerializer.new(workspace_id: workspace_id)
             pool.send(config.pool_method, object)
             message[:data] = { objects: pool.to_a }
+            policy_context = Websocket::PolicyContext.new(
+              raw_objects: { config.key => object },
+              kwargs: prefetch_policy_context(config, object)
+            )
           else
             # Object was deleted between notify and fetch
             message[:action] = "delete"
@@ -117,7 +141,9 @@ module Websocket
           message[:data] = { deleted: [{ objectType: config.client_type, id: object_id }] }
         end
 
-        Websocket::ConnectionManager.instance.broadcast_to_workspace(workspace_id, message)
+        Websocket::ConnectionManager.instance.broadcast_to_workspace(
+          workspace_id, message, policy_context: policy_context
+        )
       rescue JSON::ParserError => e
         APP_LOGGER.error { "[Listener] Invalid JSON payload: #{e.message}" }
       rescue StandardError => e

@@ -6,8 +6,9 @@ module ChoreRosters
     class << self
       include Dry::Monads[:result]
 
-      def call(roster_id:, workspace_id:)
+      def call(roster_id:, workspace_id:, membership:)
         ChoreRoster.find_result(roster_id)
+                   .bind { |roster| ChoreRosterPolicy.enforce(:edit, roster, membership: membership) }
                    .bind { |roster| clear_unpinned(roster, workspace_id) }
       end
 

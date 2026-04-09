@@ -6,21 +6,13 @@ module ChoreRosters
     class << self
       include Dry::Monads[:result]
 
-      def call(roster_id:, current_user_id:, workspace_id:)
+      def call(roster_id:, membership:, workspace_id:)
         ChoreRoster.find_result(roster_id)
-                   .bind { |roster| check_creator(roster, current_user_id) }
+                   .bind { |roster| ChoreRosterPolicy.enforce(:delete, roster, membership: membership) }
                    .bind { |roster| delete(roster, workspace_id) }
       end
 
       private
-
-      def check_creator(roster, current_user_id)
-        if roster.user_id && roster.user_id.to_s == current_user_id.to_s
-          Success(roster)
-        else
-          Failure(ServiceError.forbidden("Only the roster creator can delete it"))
-        end
-      end
 
       def delete(roster, workspace_id)
         deleted = []

@@ -3,11 +3,17 @@
 require "spec_helper"
 
 RSpec.describe Events::Create do
+  def membership_for(user, workspace)
+    row = TestFactories.workspace_membership(workspace: workspace, user: user)
+    WorkspaceMembership.find(row[:id])
+  end
+
   it "returns failure when name is missing" do
     user = TestFactories.user
     workspace = TestFactories.workspace
+    membership = membership_for(user, workspace)
 
-    result = described_class.call(workspace_id: workspace[:id], user_id: user[:id], name: nil, description: nil)
+    result = described_class.call(workspace_id: workspace[:id], membership: membership, name: nil, description: nil)
 
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("Name is required")
@@ -16,10 +22,11 @@ RSpec.describe Events::Create do
   it "creates event and returns success" do
     user = TestFactories.user
     workspace = TestFactories.workspace
+    membership = membership_for(user, workspace)
 
     result = described_class.call(
       workspace_id: workspace[:id],
-      user_id: user[:id],
+      membership: membership,
       name: "Team Meeting",
       description: "Weekly sync"
     )
@@ -34,8 +41,9 @@ RSpec.describe Events::Create do
   it "sets description to nil when empty" do
     user = TestFactories.user
     workspace = TestFactories.workspace
+    membership = membership_for(user, workspace)
 
-    result = described_class.call(workspace_id: workspace[:id], user_id: user[:id], name: "Event", description: "")
+    result = described_class.call(workspace_id: workspace[:id], membership: membership, name: "Event", description: "")
 
     expect(result.success?).to be true
     event = result.value![:objects].find { |o| o[:objectType] == "event" }
@@ -45,10 +53,11 @@ RSpec.describe Events::Create do
   it "uses client-provided id when given" do
     user = TestFactories.user
     workspace = TestFactories.workspace
+    membership = membership_for(user, workspace)
     client_id = SecureRandom.uuid
 
     result = described_class.call(
-      workspace_id: workspace[:id], user_id: user[:id], name: "Test", description: nil, id: client_id
+      workspace_id: workspace[:id], membership: membership, name: "Test", description: nil, id: client_id
     )
 
     expect(result.success?).to be true
@@ -59,10 +68,11 @@ RSpec.describe Events::Create do
   it "creates event with start and end dates" do
     user = TestFactories.user
     workspace = TestFactories.workspace
+    membership = membership_for(user, workspace)
 
     result = described_class.call(
       workspace_id: workspace[:id],
-      user_id: user[:id],
+      membership: membership,
       name: "Holiday Trip",
       description: nil,
       start_date: "2026-03-15",
@@ -78,10 +88,11 @@ RSpec.describe Events::Create do
   it "returns failure when only start_date is provided" do
     user = TestFactories.user
     workspace = TestFactories.workspace
+    membership = membership_for(user, workspace)
 
     result = described_class.call(
       workspace_id: workspace[:id],
-      user_id: user[:id],
+      membership: membership,
       name: "Event",
       description: nil,
       start_date: "2026-03-15"
@@ -94,10 +105,11 @@ RSpec.describe Events::Create do
   it "returns failure when only end_date is provided" do
     user = TestFactories.user
     workspace = TestFactories.workspace
+    membership = membership_for(user, workspace)
 
     result = described_class.call(
       workspace_id: workspace[:id],
-      user_id: user[:id],
+      membership: membership,
       name: "Event",
       description: nil,
       end_date: "2026-03-20"
@@ -110,10 +122,11 @@ RSpec.describe Events::Create do
   it "returns failure when start_date is after end_date" do
     user = TestFactories.user
     workspace = TestFactories.workspace
+    membership = membership_for(user, workspace)
 
     result = described_class.call(
       workspace_id: workspace[:id],
-      user_id: user[:id],
+      membership: membership,
       name: "Event",
       description: nil,
       start_date: "2026-03-20",
@@ -127,12 +140,13 @@ RSpec.describe Events::Create do
   it "logs info when event is created" do
     user = TestFactories.user
     workspace = TestFactories.workspace
+    membership = membership_for(user, workspace)
     logged_messages = []
     allow(APP_LOGGER).to receive(:info) do |&block|
       logged_messages << block.call if block
     end
 
-    described_class.call(workspace_id: workspace[:id], user_id: user[:id], name: "Party", description: nil)
+    described_class.call(workspace_id: workspace[:id], membership: membership, name: "Party", description: nil)
 
     expect(logged_messages).to include(a_string_including("[Events::Create]"))
   end
@@ -140,13 +154,14 @@ RSpec.describe Events::Create do
   it "returns existing event on idempotent replay with same id" do
     user = TestFactories.user
     workspace = TestFactories.workspace
+    membership = membership_for(user, workspace)
     client_id = SecureRandom.uuid
 
     result1 = described_class.call(
-      workspace_id: workspace[:id], user_id: user[:id], name: "Test", description: nil, id: client_id
+      workspace_id: workspace[:id], membership: membership, name: "Test", description: nil, id: client_id
     )
     result2 = described_class.call(
-      workspace_id: workspace[:id], user_id: user[:id], name: "Test", description: nil, id: client_id
+      workspace_id: workspace[:id], membership: membership, name: "Test", description: nil, id: client_id
     )
 
     expect(result1.success?).to be true
@@ -157,10 +172,11 @@ RSpec.describe Events::Create do
   it "creates event with valid coordinates" do
     user = TestFactories.user
     workspace = TestFactories.workspace
+    membership = membership_for(user, workspace)
 
     result = described_class.call(
       workspace_id: workspace[:id],
-      user_id: user[:id],
+      membership: membership,
       name: "Located Event",
       description: nil,
       location_name: "Berlin",
@@ -176,10 +192,11 @@ RSpec.describe Events::Create do
   it "returns failure when latitude is out of range" do
     user = TestFactories.user
     workspace = TestFactories.workspace
+    membership = membership_for(user, workspace)
 
     result = described_class.call(
       workspace_id: workspace[:id],
-      user_id: user[:id],
+      membership: membership,
       name: "Event",
       description: nil,
       location_name: "Nowhere",
@@ -194,10 +211,11 @@ RSpec.describe Events::Create do
   it "returns failure when longitude is out of range" do
     user = TestFactories.user
     workspace = TestFactories.workspace
+    membership = membership_for(user, workspace)
 
     result = described_class.call(
       workspace_id: workspace[:id],
-      user_id: user[:id],
+      membership: membership,
       name: "Event",
       description: nil,
       location_name: "Nowhere",
@@ -212,6 +230,7 @@ RSpec.describe Events::Create do
   it "handles TOCTOU race: returns existing event when concurrent insert wins" do
     user = TestFactories.user
     workspace = TestFactories.workspace
+    membership = membership_for(user, workspace)
     client_id = SecureRandom.uuid
 
     # Pre-insert an event with this ID (simulates concurrent request that won the race)
@@ -223,7 +242,7 @@ RSpec.describe Events::Create do
     allow(Event).to receive(:find).with(client_id).and_return(nil, existing_event)
 
     result = described_class.call(
-      workspace_id: workspace[:id], user_id: user[:id], name: "Test", description: nil, id: client_id
+      workspace_id: workspace[:id], membership: membership, name: "Test", description: nil, id: client_id
     )
 
     expect(result.success?).to be true

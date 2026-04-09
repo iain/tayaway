@@ -6,11 +6,12 @@ module ChoreRosters
     class << self
       include Dry::Monads[:result]
 
-      def call(event_id:, user_id:, workspace_id:, id: nil)
+      def call(event_id:, membership:, workspace_id:, id: nil)
         find_event(event_id)
+          .bind { |event| EventPolicy.enforce(:create_chore_roster, event, membership: membership) }
           .bind { |event| check_event_dates(event) }
           .bind { |event| check_no_existing_roster(event, id) }
-          .bind { |event| create_roster(event, user_id, workspace_id, id) }
+          .bind { |event| create_roster(event, membership, workspace_id, id) }
       end
 
       private
@@ -43,12 +44,12 @@ module ChoreRosters
         end
       end
 
-      def create_roster(event, user_id, workspace_id, id)
+      def create_roster(event, membership, workspace_id, id)
         # Idempotent replay — only skip creation if the existing roster matches this event
         if id
           existing = ChoreRoster.find(id)
           if existing && existing.event_id.to_s == event.id.to_s
-            pool = PoolSerializer.new(workspace_id: workspace_id)
+            pool = PoolSerializer.new(membership: membership)
             pool.add_chore_roster(existing)
             return Success({ objects: pool.to_a })
           end
@@ -62,14 +63,14 @@ module ChoreRosters
           DB[:chore_rosters].insert(
             id: roster_id,
             event_id: event.id,
-            user_id: user_id,
+            user_id: membership.user_id,
             created_at: now,
             updated_at: now
           )
           Broadcaster.object_changed("chore_roster", roster_id, workspace_id: workspace_id)
         end
 
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool = PoolSerializer.new(membership: membership)
         roster = ChoreRoster.find(roster_id)
         pool.add_chore_roster(roster)
 

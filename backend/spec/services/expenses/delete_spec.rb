@@ -3,10 +3,15 @@
 require "spec_helper"
 
 RSpec.describe Expenses::Delete do
+  let(:workspace) { TestFactories.workspace }
   let(:user) { TestFactories.user }
   let(:other_user) { TestFactories.user }
-  let(:workspace) { TestFactories.workspace }
   let(:event) { TestFactories.event(workspace: workspace, user: user) }
+
+  def membership_for(usr)
+    row = TestFactories.workspace_membership(workspace: workspace, user: usr)
+    WorkspaceMembership.find(row[:id])
+  end
 
   # -- test helper used across examples
   def create_expense(user_row: user, settlement_id: nil)
@@ -29,7 +34,7 @@ RSpec.describe Expenses::Delete do
   it "returns 404 when expense not found" do
     result = described_class.call(
       expense_id: SecureRandom.uuid,
-      current_user_id: user[:id],
+      membership: membership_for(user),
       workspace_id: workspace[:id]
     )
 
@@ -51,12 +56,12 @@ RSpec.describe Expenses::Delete do
 
     result = described_class.call(
       expense_id: expense_id,
-      current_user_id: user[:id],
+      membership: membership_for(user),
       workspace_id: workspace[:id]
     )
 
     expect(result.failure?).to be true
-    expect(result.failure.message).to eq("Expense is part of a settlement. Delete the settlement first to edit.")
+    expect(result.failure.message).to eq("settled")
   end
 
   it "returns 403 when user is not the creator" do
@@ -64,13 +69,13 @@ RSpec.describe Expenses::Delete do
 
     result = described_class.call(
       expense_id: expense_id,
-      current_user_id: other_user[:id],
+      membership: membership_for(other_user),
       workspace_id: workspace[:id]
     )
 
     expect(result.failure?).to be true
     expect(result.failure.http_status).to eq(403)
-    expect(result.failure.message).to eq("Not authorized to delete this expense")
+    expect(result.failure.message).to eq("not_creator")
   end
 
   it "deletes the expense and returns deleted payload" do
@@ -78,7 +83,7 @@ RSpec.describe Expenses::Delete do
 
     result = described_class.call(
       expense_id: expense_id,
-      current_user_id: user[:id],
+      membership: membership_for(user),
       workspace_id: workspace[:id]
     )
 
@@ -92,7 +97,7 @@ RSpec.describe Expenses::Delete do
 
     described_class.call(
       expense_id: expense_id,
-      current_user_id: user[:id],
+      membership: membership_for(user),
       workspace_id: workspace[:id]
     )
 

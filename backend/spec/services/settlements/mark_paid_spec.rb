@@ -3,10 +3,15 @@
 require "spec_helper"
 
 RSpec.describe Settlements::MarkPaid do
+  let(:workspace) { TestFactories.workspace }
   let(:user) { TestFactories.user }
   let(:recipient) { TestFactories.user }
-  let(:workspace) { TestFactories.workspace }
   let(:event) { TestFactories.event(workspace: workspace, user: user) }
+
+  def membership_for(usr)
+    row = TestFactories.workspace_membership(workspace: workspace, user: usr)
+    WorkspaceMembership.find(row[:id])
+  end
 
   # -- test helper used across examples
   def create_transfer(paid_at: nil)
@@ -36,6 +41,7 @@ RSpec.describe Settlements::MarkPaid do
     result = described_class.call(
       transfer_id: SecureRandom.uuid,
       paid: true,
+      membership: membership_for(recipient),
       workspace_id: workspace[:id]
     )
 
@@ -49,6 +55,7 @@ RSpec.describe Settlements::MarkPaid do
     result = described_class.call(
       transfer_id: transfer_id,
       paid: true,
+      membership: membership_for(recipient),
       workspace_id: workspace[:id]
     )
 
@@ -64,6 +71,7 @@ RSpec.describe Settlements::MarkPaid do
     result = described_class.call(
       transfer_id: transfer_id,
       paid: false,
+      membership: membership_for(recipient),
       workspace_id: workspace[:id]
     )
 
@@ -71,5 +79,20 @@ RSpec.describe Settlements::MarkPaid do
     obj = result.value![:objects].find { |o| o[:objectType] == "settlementTransfer" }
     expect(obj[:paidAt]).to be_nil
     expect(DB[:settlement_transfers].where(id: transfer_id).first[:paid_at]).to be_nil
+  end
+
+  it "returns 403 when user is not the recipient" do
+    transfer_id = create_transfer
+
+    result = described_class.call(
+      transfer_id: transfer_id,
+      paid: true,
+      membership: membership_for(user),
+      workspace_id: workspace[:id]
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.http_status).to eq(403)
+    expect(result.failure.message).to eq("not_recipient")
   end
 end

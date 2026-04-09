@@ -14,6 +14,7 @@ import {
 import { useMembersStore, useNotificationsStore } from '@/stores'
 import { useAuthStore } from '@/stores/auth'
 import { useObjectPoolStore } from '@/stores/objectPool'
+import { useWorkspaceStore } from '@/stores/workspace'
 import InviteMemberModal from '@/components/members/InviteMemberModal.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
@@ -24,6 +25,7 @@ import AppBadge from '@/components/common/AppBadge.vue'
 import AppAvatar from '@/components/common/AppAvatar.vue'
 import AlertBox from '@/components/common/AlertBox.vue'
 import type { PoolMember, PoolWorkspaceInvite } from '@/types/pool'
+import { can } from '@/composables/usePermission'
 import { formatBirthday, formatRelativeDate } from '@/utils/date'
 import { generateVCard, downloadVCard } from '@/utils/vcard'
 import { getInitials } from '@/utils/member'
@@ -32,6 +34,11 @@ const membersStore = useMembersStore()
 const { members, pendingInvites } = storeToRefs(membersStore)
 const authStore = useAuthStore()
 const pool = useObjectPoolStore()
+const workspaceStore = useWorkspaceStore()
+
+const canInvite = computed(() =>
+  can(workspaceStore.currentWorkspace?.permissions, 'invite')
+)
 
 const isModalOpen = ref(false)
 const isSubmitting = ref(false)
@@ -46,18 +53,12 @@ const currentMember = computed((): PoolMember | null => {
 })
 
 function canChangeRole(member: PoolMember): boolean {
-  const me = currentMember.value
-  if (!me || me.id === member.id) return false
-  if (me.role === 'owner') return true
-  if (me.role === 'admin') return member.role !== 'owner'
-  return false
+  return can(member.permissions, 'change_role')
 }
 
-function availableRolesFor(): string[] {
-  const me = currentMember.value
-  if (!me) return []
-  if (me.role === 'owner') return ['owner', 'admin', 'member']
-  if (me.role === 'admin') return ['admin', 'member']
+function availableRolesFor(member: PoolMember): string[] {
+  const perm = member.permissions?.availableRoles
+  if (Array.isArray(perm)) return perm
   return []
 }
 
@@ -204,7 +205,11 @@ onMounted(() => {
 <template>
   <div>
     <PageHeader title="Members" data-testid="page-title">
-      <AppButton data-testid="invite-member-button" @click="openModal">
+      <AppButton
+        v-if="canInvite"
+        data-testid="invite-member-button"
+        @click="openModal"
+      >
         <PlusIcon class="size-5" />
         Invite Member
       </AppButton>
@@ -271,7 +276,10 @@ onMounted(() => {
                   </div>
                 </div>
               </div>
-              <div class="flex items-center gap-1">
+              <div
+                v-if="can(invite.permissions, 'remind')"
+                class="flex items-center gap-1"
+              >
                 <IconButton
                   :label="
                     isExpired(invite) ? 'Resend invitation' : 'Send reminder'
@@ -390,7 +398,7 @@ onMounted(() => {
                 "
               >
                 <option
-                  v-for="role in availableRolesFor()"
+                  v-for="role in availableRolesFor(member)"
                   :key="role"
                   :value="role"
                 >

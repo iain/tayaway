@@ -1,6 +1,7 @@
 import { computed, type ComputedRef } from 'vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import type {
+  Permission,
   PoolEvent,
   PoolDateRange,
   PoolMember,
@@ -46,6 +47,7 @@ export interface HydratedDatePoll {
   selectedDateRange: HydratedDateRange | undefined
   closedAt: string | null
   dateRanges: HydratedDateRange[]
+  permissions?: Record<string, Permission | string[]>
   createdAt: string
   updatedAt: string
 }
@@ -91,6 +93,7 @@ export interface HydratedEvent {
   member: PoolMember | undefined
   datePoll: HydratedDatePoll | null
   rsvps: HydratedRsvp[]
+  permissions?: Record<string, Permission | string[]>
   createdAt: string
   updatedAt: string
 }
@@ -204,6 +207,7 @@ function hydrateEvent(poolEvent: PoolEvent, pool: Pool): HydratedEvent {
     member,
     datePoll,
     rsvps,
+    permissions: poolEvent.permissions,
     createdAt: poolEvent.createdAt,
     updatedAt: poolEvent.updatedAt,
   }
@@ -240,6 +244,7 @@ function hydrateDatePoll(
     selectedDateRange,
     closedAt: pollData.closedAt,
     dateRanges,
+    permissions: pollData.permissions,
     createdAt: pollData.createdAt,
     updatedAt: pollData.updatedAt,
   }
