@@ -8,10 +8,10 @@ module DatePolls
 
       def call(event_id:, membership:, date_range_id:)
         Event.find_result(event_id)
-             .bind { |event| EventPolicy.enforce(:edit, event, membership: membership) }
              .bind { |event| DatePoll.find_by_event_result(event.id).fmap { |poll| [event, poll] } }
              .bind { |(event, poll)| DatePoll.validate_open(poll).fmap { |_| [event, poll] } }
              .bind { |(event, poll)| validate_date_range(event, poll, date_range_id) }
+             .bind { |(event, poll, date_range)| DateRangePolicy.enforce(:delete, date_range, membership: membership, event: event).fmap { |_| [event, poll, date_range.id] } }
              .bind { |(event, poll, dr_id)| delete_date_range(event, poll, dr_id) }
       end
 
@@ -27,7 +27,7 @@ module DatePolls
           return Failure(ServiceError.validation("Date range does not belong to this poll"))
         end
 
-        Success([event, poll, date_range_id])
+        Success([event, poll, date_range])
       end
 
       def delete_date_range(event, poll, date_range_id)

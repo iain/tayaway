@@ -24,7 +24,7 @@ RSpec.describe DatePolls::Close do
     )
 
     expect(result.failure?).to be true
-    expect(result.failure.message).to eq("not_owner")
+    expect(result.failure.message).to eq("not_event_owner")
   end
 
   it "returns failure when poll is already resolved" do

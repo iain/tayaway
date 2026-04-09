@@ -8,8 +8,8 @@ module DatePolls
 
       def call(event_id:, membership:, deadline:)
         Event.find_result(event_id)
-             .bind { |event| EventPolicy.enforce(:edit, event, membership: membership) }
              .bind { |event| DatePoll.find_by_event_result(event.id).fmap { |poll| [event, poll] } }
+             .bind { |(event, poll)| DatePollPolicy.enforce(:reopen, poll, membership: membership, event: event).fmap { |_| [event, poll] } }
              .bind { |(event, poll)| validate_resolved(event, poll) }
              .bind { |(event, poll)| validate_deadline(deadline, event, poll) }
              .bind { |(event, poll, parsed_deadline)| reopen_poll(event, poll, parsed_deadline, membership) }
