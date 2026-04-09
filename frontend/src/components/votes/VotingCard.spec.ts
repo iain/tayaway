@@ -17,14 +17,11 @@ function makeDateRange(
 ): HydratedDateRange {
   return {
     id: 'dr-1',
-    objectType: 'dateRange' as const,
     datePollId: 'poll-1',
     startDate: '2026-06-01',
     endDate: '2026-06-03',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-    createdAt: '2026-01-01T00:00:00.000Z',
     votes: [],
-    voteSummary: { yes: 0, no: 0, preferablyNot: 0, total: 0 },
+    voteSummary: { yes: 0, no: 0, preferably_not: 0, total: 0 },
     ...overrides,
   }
 }
@@ -40,14 +37,13 @@ describe('VotingCard', () => {
       votes: [
         {
           id: 'vote-1',
-          objectType: 'vote' as const,
           dateRangeId: 'dr-1',
           userId: 'user-1',
+          member: undefined,
           response: 'yes' as const,
           comment: 'Old comment',
           updatedAt: '2026-01-01T00:00:00.000Z',
           createdAt: '2026-01-01T00:00:00.000Z',
-          memberName: 'Test',
         },
       ],
     })
@@ -82,14 +78,13 @@ describe('VotingCard', () => {
       votes: [
         {
           id: 'vote-1',
-          objectType: 'vote' as const,
           dateRangeId: 'dr-1',
           userId: 'user-1',
+          member: undefined,
           response: 'yes' as const,
           comment: 'Old comment',
           updatedAt: '2026-01-01T00:00:00.000Z',
           createdAt: '2026-01-01T00:00:00.000Z',
-          memberName: 'Test',
         },
       ],
     })
