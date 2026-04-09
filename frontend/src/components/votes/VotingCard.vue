@@ -62,7 +62,7 @@ async function handleVote(response: VoteResponse) {
       props.eventId,
       props.dateRange.id,
       response,
-      currentUserVote.value?.comment || undefined
+      comment.value || undefined
     )
   } finally {
     loading.value = false
