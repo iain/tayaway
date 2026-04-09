@@ -71,6 +71,12 @@ class Event
       dataset.where(workspace_id: workspace_ids).order(:created_at).limit(ValidationLimits::QUERY_LIMIT).all
     end
 
+    def for_ids(ids)
+      return [] if ids.empty?
+
+      dataset.where(id: ids).all
+    end
+
     private
 
     def dataset

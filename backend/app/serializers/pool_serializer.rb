@@ -106,11 +106,12 @@ class PoolSerializer
 
     poll_ids = new_polls.map { |p| p.id.to_s }
     range_ids_by_poll = DateRange.ids_for_date_poll_ids(poll_ids)
+    events_by_id = Event.for_ids(new_polls.map { |p| p.event_id.to_s }.uniq).each_with_object({}) { |e, h| h[e.id.to_s] = e }
 
     new_polls.each do |poll|
       date_range_ids = range_ids_by_poll[poll.id.to_s] || []
       hash = poll.to_api_hash(date_range_ids: date_range_ids)
-      attach_permissions(hash, poll)
+      attach_permissions(hash, poll, event: events_by_id[poll.event_id.to_s])
       @objects["date_poll:#{poll.id}"] = hash
     end
   end
@@ -129,9 +130,15 @@ class PoolSerializer
     new_ranges = ranges.reject { |r| @objects.key?("date_range:#{r.id}") }
     return if new_ranges.empty?
 
+    poll_ids = new_ranges.map { |r| r.date_poll_id.to_s }.uniq
+    polls_by_id = DB[:date_polls].where(id: poll_ids).select_hash(:id, :event_id)
+    event_ids = polls_by_id.values.map(&:to_s).uniq
+    events_by_id = Event.for_ids(event_ids).each_with_object({}) { |e, h| h[e.id.to_s] = e }
+
     new_ranges.each do |range|
+      event_id = polls_by_id[range.date_poll_id.to_s]&.to_s
       hash = range.to_api_hash
-      attach_permissions(hash, range)
+      attach_permissions(hash, range, event: events_by_id[event_id])
       @objects["date_range:#{range.id}"] = hash
     end
   end
@@ -235,11 +242,12 @@ class PoolSerializer
 
     settlement_ids = new_settlements.map { |s| s.id.to_s }
     transfer_ids_by_settlement = SettlementTransfer.ids_for_settlement_ids(settlement_ids)
+    events_by_id = Event.for_ids(new_settlements.map { |s| s.event_id.to_s }.uniq).each_with_object({}) { |e, h| h[e.id.to_s] = e }
 
     new_settlements.each do |settlement|
       transfer_ids = transfer_ids_by_settlement[settlement.id.to_s] || []
       hash = settlement.to_api_hash(transfer_ids: transfer_ids)
-      attach_permissions(hash, settlement)
+      attach_permissions(hash, settlement, event: events_by_id[settlement.event_id.to_s])
       @objects["settlement:#{settlement.id}"] = hash
     end
   end
