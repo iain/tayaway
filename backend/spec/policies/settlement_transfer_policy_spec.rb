@@ -45,4 +45,26 @@ RSpec.describe SettlementTransferPolicy do
       expect(policy.mark_paid).to be_failure
     end
   end
+
+  describe "#generate_qr" do
+    it "allows the sender" do
+      transfer = create_transfer(from_user: sender, to_user: recipient)
+      policy = described_class.new(transfer, membership: WorkspaceMembership.find(sender_membership[:id]))
+      expect(policy.generate_qr).to be_success
+    end
+
+    it "rejects the recipient" do
+      transfer = create_transfer(from_user: sender, to_user: recipient)
+      policy = described_class.new(transfer, membership: WorkspaceMembership.find(recipient_membership[:id]))
+      expect(policy.generate_qr).to be_failure
+      expect(policy.generate_qr.failure).to eq(:not_sender)
+    end
+
+    it "rejects other users" do
+      transfer = create_transfer(from_user: sender, to_user: recipient)
+      policy = described_class.new(transfer, membership: WorkspaceMembership.find(other_membership[:id]))
+      expect(policy.generate_qr).to be_failure
+      expect(policy.generate_qr.failure).to eq(:not_sender)
+    end
+  end
 end

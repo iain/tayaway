@@ -25,6 +25,20 @@ RSpec.describe Invites::Cancel do
     )
     id
   end
+  it "rejects non-admin users" do
+    invite_id = create_invite
+    member_user = TestFactories.user
+    member_row = TestFactories.workspace_membership(workspace: workspace, user: member_user, role: "member")
+    member_membership = WorkspaceMembership.find(member_row[:id])
+
+    result = described_class.call(invite_id: invite_id, workspace_id: workspace[:id], membership: member_membership)
+
+    expect(result.failure?).to be true
+    expect(result.failure.http_status).to eq(403)
+    expect(result.failure.message).to include("not_admin_or_owner")
+    expect(DB[:workspace_invites].where(id: invite_id).count).to eq(1)
+  end
+
   it "deletes a pending invite" do
     invite_id = create_invite
 

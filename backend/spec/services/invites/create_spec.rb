@@ -31,6 +31,18 @@ RSpec.describe Invites::Create do
     expect(email.subject).to include("Test Workspace")
   end
 
+  it "rejects non-admin users" do
+    member_user = TestFactories.user
+    member_row = TestFactories.workspace_membership(workspace: workspace, user: member_user, role: "member")
+    member_membership = WorkspaceMembership.find(member_row[:id])
+
+    result = described_class.call(email: "new@example.com", workspace_id: workspace[:id], membership: member_membership)
+
+    expect(result.failure?).to be true
+    expect(result.failure.http_status).to eq(403)
+    expect(result.failure.message).to include("not_admin_or_owner")
+  end
+
   it "returns failure when email is empty" do
     result = described_class.call(email: "", workspace_id: workspace[:id], membership: membership)
 
