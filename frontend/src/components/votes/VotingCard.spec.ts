@@ -17,12 +17,28 @@ function makeDateRange(
 ): HydratedDateRange {
   return {
     id: 'dr-1',
+    objectType: 'dateRange',
     datePollId: 'poll-1',
     startDate: '2026-06-01',
     endDate: '2026-06-03',
+    updatedAt: '2026-01-01T00:00:00.000Z',
     votes: [],
     voteSummary: { yes: 0, no: 0, preferably_not: 0, total: 0 },
     ...overrides,
+  }
+}
+
+function makeVote(comment: string) {
+  return {
+    id: 'vote-1',
+    objectType: 'vote' as const,
+    dateRangeId: 'dr-1',
+    userId: 'user-1',
+    member: undefined,
+    response: 'yes' as const,
+    comment,
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    createdAt: '2026-01-01T00:00:00.000Z',
   }
 }
 
@@ -34,18 +50,7 @@ describe('VotingCard', () => {
 
   it('passes the comment input value when changing vote response', async () => {
     const dateRange = makeDateRange({
-      votes: [
-        {
-          id: 'vote-1',
-          dateRangeId: 'dr-1',
-          userId: 'user-1',
-          member: undefined,
-          response: 'yes' as const,
-          comment: 'Old comment',
-          updatedAt: '2026-01-01T00:00:00.000Z',
-          createdAt: '2026-01-01T00:00:00.000Z',
-        },
-      ],
+      votes: [makeVote('Old comment')],
     })
 
     const wrapper = mount(VotingCard, {
@@ -75,18 +80,7 @@ describe('VotingCard', () => {
 
   it('passes undefined when comment input is empty', async () => {
     const dateRange = makeDateRange({
-      votes: [
-        {
-          id: 'vote-1',
-          dateRangeId: 'dr-1',
-          userId: 'user-1',
-          member: undefined,
-          response: 'yes' as const,
-          comment: 'Old comment',
-          updatedAt: '2026-01-01T00:00:00.000Z',
-          createdAt: '2026-01-01T00:00:00.000Z',
-        },
-      ],
+      votes: [makeVote('Old comment')],
     })
 
     const wrapper = mount(VotingCard, {

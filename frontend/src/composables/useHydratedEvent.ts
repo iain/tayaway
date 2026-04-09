@@ -1,25 +1,18 @@
 import { computed, type ComputedRef } from 'vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import type {
-  Permission,
-  PoolEvent,
+  PoolDatePoll,
   PoolDateRange,
+  PoolEvent,
   PoolMember,
+  PoolRsvp,
   PoolVote,
-  VoteResponse,
-  DatePollStatus,
+  PoolWorkspace,
 } from '@/types/pool'
 
-// Hydrated types - these match the nested structure components expect
-export interface HydratedVote {
-  id: string
-  dateRangeId: string
-  userId: string
+// Hydrated types extend pool types with joined/computed fields.
+export type HydratedVote = PoolVote & {
   member: PoolMember | undefined
-  response: VoteResponse
-  comment: string | null
-  createdAt: string
-  updatedAt: string
 }
 
 export interface VoteSummary {
@@ -29,73 +22,34 @@ export interface VoteSummary {
   total: number
 }
 
-export interface HydratedDateRange {
-  id: string
-  datePollId: string
-  startDate: string
-  endDate: string
+export type HydratedDateRange = PoolDateRange & {
   votes: HydratedVote[]
   voteSummary: VoteSummary
 }
 
-export interface HydratedDatePoll {
-  id: string
-  eventId: string
-  deadline: string
-  status: DatePollStatus
-  selectedDateRangeId: string | null
+export type HydratedDatePoll = PoolDatePoll & {
   selectedDateRange: HydratedDateRange | undefined
-  closedAt: string | null
   dateRanges: HydratedDateRange[]
-  permissions?: Record<string, Permission | string[]>
-  createdAt: string
-  updatedAt: string
 }
 
-export interface HydratedMember {
-  id: string
-  userId: string
-  email: string
-  name: string | null
-  role: string
-}
+export type HydratedMember = Pick<
+  PoolMember,
+  'id' | 'objectType' | 'userId' | 'email' | 'name' | 'role' | 'updatedAt'
+>
 
-export interface HydratedWorkspace {
-  id: string
-  name: string
+export type HydratedWorkspace = PoolWorkspace & {
   members: HydratedMember[]
 }
 
-export interface HydratedRsvp {
-  id: string
-  eventId: string
-  userId: string
+export type HydratedRsvp = PoolRsvp & {
   member: PoolMember | undefined
-  attending: boolean
-  startDate: string | null
-  endDate: string | null
-  createdAt: string
-  updatedAt: string
 }
 
-export interface HydratedEvent {
-  id: string
-  name: string
-  description: string | null
-  startDate: string | null
-  endDate: string | null
-  locationName: string | null
-  latitude: number | null
-  longitude: number | null
-  workspaceId: string
+export type HydratedEvent = PoolEvent & {
   workspace: HydratedWorkspace | undefined
-  userId: string
   member: PoolMember | undefined
   datePoll: HydratedDatePoll | null
   rsvps: HydratedRsvp[]
-  permissions?: Record<string, Permission | string[]>
-  createdAt: string
-  updatedAt: string
 }
 
 /**
@@ -193,23 +147,11 @@ function hydrateEvent(poolEvent: PoolEvent, pool: Pool): HydratedEvent {
   const rsvps = hydrateRsvps(poolEvent.id, pool, memberIndex)
 
   return {
-    id: poolEvent.id,
-    name: poolEvent.name,
-    description: poolEvent.description,
-    startDate: poolEvent.startDate,
-    endDate: poolEvent.endDate,
-    locationName: poolEvent.locationName,
-    latitude: poolEvent.latitude,
-    longitude: poolEvent.longitude,
-    workspaceId: poolEvent.workspaceId,
+    ...poolEvent,
     workspace,
-    userId: poolEvent.userId,
     member,
     datePoll,
     rsvps,
-    permissions: poolEvent.permissions,
-    createdAt: poolEvent.createdAt,
-    updatedAt: poolEvent.updatedAt,
   }
 }
 
@@ -236,17 +178,9 @@ function hydrateDatePoll(
     : undefined
 
   return {
-    id: pollData.id,
-    eventId: pollData.eventId,
-    deadline: pollData.deadline,
-    status: pollData.status,
-    selectedDateRangeId: pollData.selectedDateRangeId,
+    ...pollData,
     selectedDateRange,
-    closedAt: pollData.closedAt,
     dateRanges,
-    permissions: pollData.permissions,
-    createdAt: pollData.createdAt,
-    updatedAt: pollData.updatedAt,
   }
 }
 
@@ -260,20 +194,12 @@ function hydrateWorkspace(
   const workspace = pool.get('workspace', workspaceId)
   if (!workspace) return undefined
 
-  const members = pool
+  const members: HydratedMember[] = pool
     .getAll('member')
     .filter((m) => m.workspaceId === workspaceId)
-    .map((member) => ({
-      id: member.id,
-      userId: member.userId,
-      email: member.email,
-      name: member.name,
-      role: member.role,
-    }))
 
   return {
-    id: workspace.id,
-    name: workspace.name,
+    ...workspace,
     members,
   }
 }
@@ -287,34 +213,17 @@ function hydrateDateRange(
   votesByDateRange: Map<string, ReturnType<Pool['getAll']>>,
   memberIndex: Map<string, PoolMember>
 ): HydratedDateRange {
-  const rawVotes = (votesByDateRange.get(dateRange.id) ?? []) as Array<{
-    id: string
-    dateRangeId: string
-    userId: string
-    response: VoteResponse
-    comment: string | null
-    createdAt: string
-    updatedAt: string
-  }>
+  const rawVotes = (votesByDateRange.get(dateRange.id) ?? []) as PoolVote[]
 
   const votes: HydratedVote[] = rawVotes.map((vote) => ({
-    id: vote.id,
-    dateRangeId: vote.dateRangeId,
-    userId: vote.userId,
+    ...vote,
     member: memberIndex.get(vote.userId),
-    response: vote.response,
-    comment: vote.comment,
-    createdAt: vote.createdAt,
-    updatedAt: vote.updatedAt,
   }))
 
   const voteSummary = calculateVoteSummary(votes)
 
   return {
-    id: dateRange.id,
-    datePollId: dateRange.datePollId,
-    startDate: dateRange.startDate,
-    endDate: dateRange.endDate,
+    ...dateRange,
     votes,
     voteSummary,
   }
@@ -332,15 +241,8 @@ function hydrateRsvps(
     .getAll('rsvp')
     .filter((r) => r.eventId === eventId)
     .map((rsvp) => ({
-      id: rsvp.id,
-      eventId: rsvp.eventId,
-      userId: rsvp.userId,
+      ...rsvp,
       member: memberIndex.get(rsvp.userId),
-      attending: rsvp.attending,
-      startDate: rsvp.startDate,
-      endDate: rsvp.endDate,
-      createdAt: rsvp.createdAt,
-      updatedAt: rsvp.updatedAt,
     }))
 }
 
