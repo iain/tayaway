@@ -326,7 +326,7 @@ async function handlePaidClick(
               <button
                 v-if="
                   !transfer.paidAt &&
-                  transfer.fromUserId === currentUserId &&
+                  can(transfer.permissions, 'generate_qr') &&
                   memberHasIban(transfer.toUserId)
                 "
                 type="button"
