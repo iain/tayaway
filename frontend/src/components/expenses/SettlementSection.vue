@@ -30,7 +30,11 @@ import type {
   PoolSettlement,
   PoolSettlementTransfer,
 } from '@/types/pool'
-import { permissionUx, type PermissionUx } from '@/composables/usePermission'
+import {
+  can,
+  permissionUx,
+  type PermissionUx,
+} from '@/composables/usePermission'
 
 const props = defineProps<{
   event: PoolEvent
