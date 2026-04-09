@@ -54,9 +54,11 @@ class App
 
       # If we have a valid initial workspace, subscribe and sync immediately
       if synced_workspace_id
+        membership = WorkspaceMembership.find_by_workspace_and_user(synced_workspace_id, user_id)
         Websocket::ConnectionManager.instance.set_workspaces(connection_id, [synced_workspace_id])
+        Websocket::ConnectionManager.instance.set_membership(connection_id, membership)
         since_time = Websocket::MessageHandler.safe_parse_time(initial_since)
-        sync_result = Sync::WorkspaceSync.call(workspace_id: synced_workspace_id, since: since_time)
+        sync_result = Sync::WorkspaceSync.call(workspace_id: synced_workspace_id, since: since_time, membership: membership)
         connection.write({ type: "sync", data: sync_result }.to_json)
       end
 

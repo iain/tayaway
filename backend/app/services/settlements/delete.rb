@@ -10,13 +10,13 @@ module Settlements
       def call(settlement_id:, membership:, workspace_id:)
         Settlement.find_result(settlement_id)
                   .bind { |settlement| SettlementPolicy.enforce(:delete, settlement, membership: membership) }
-                  .bind { |settlement| delete_settlement(settlement, workspace_id) }
+                  .bind { |settlement| delete_settlement(settlement, workspace_id, membership) }
       end
 
       private
 
-      def delete_settlement(settlement, workspace_id)
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+      def delete_settlement(settlement, workspace_id, membership)
+        pool = PoolSerializer.new(membership: membership)
         deleted = []
 
         DB.transaction do

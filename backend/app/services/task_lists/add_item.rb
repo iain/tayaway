@@ -10,7 +10,7 @@ module TaskLists
         TaskList.find_result(task_list_id)
                 .bind { |task_list| TaskListPolicy.enforce(:create_task_item, task_list, membership: membership) }
                 .bind { |task_list| validate_content(content).fmap { |valid_content| [task_list, valid_content] } }
-                .bind { |(task_list, valid_content)| add_item(task_list, membership.user_id, valid_content, id) }
+                .bind { |(task_list, valid_content)| add_item(task_list, membership, valid_content, id) }
       end
 
       private
@@ -25,12 +25,12 @@ module TaskLists
         end
       end
 
-      def add_item(task_list, user_id, content, id)
+      def add_item(task_list, membership, content, id)
         # Idempotent replay: if client provided an ID and it already exists, return the item
         if id
           existing = TaskItem.find(id)
           if existing
-            pool = PoolSerializer.new(workspace_id: task_list.workspace_id)
+            pool = PoolSerializer.new(membership: membership)
             pool.add_task_item(existing)
             return Success({ objects: pool.to_a })
           end
@@ -45,7 +45,7 @@ module TaskLists
           DB[:task_items].insert(
             id: item_id,
             task_list_id: task_list.id,
-            user_id: user_id,
+            user_id: membership.user_id,
             content: content,
             position: position,
             created_at: now,
@@ -56,7 +56,7 @@ module TaskLists
         end
 
         item = TaskItem.find(item_id)
-        pool = PoolSerializer.new(workspace_id: task_list.workspace_id)
+        pool = PoolSerializer.new(membership: membership)
         pool.add_task_item(item)
 
         Success({ objects: pool.to_a })

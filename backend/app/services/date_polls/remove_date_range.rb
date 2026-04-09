@@ -12,7 +12,7 @@ module DatePolls
              .bind { |(event, poll)| DatePoll.validate_open(poll).fmap { |_| [event, poll] } }
              .bind { |(event, poll)| validate_date_range(event, poll, date_range_id) }
              .bind { |(event, poll, date_range)| DateRangePolicy.enforce(:delete, date_range, membership: membership, event: event).fmap { |_| [event, poll, date_range.id] } }
-             .bind { |(event, poll, dr_id)| delete_date_range(event, poll, dr_id) }
+             .bind { |(event, poll, dr_id)| delete_date_range(event, poll, dr_id, membership) }
       end
 
       private
@@ -30,14 +30,14 @@ module DatePolls
         Success([event, poll, date_range])
       end
 
-      def delete_date_range(event, poll, date_range_id)
+      def delete_date_range(event, poll, date_range_id, membership)
         DB.transaction do
           DB[:deleted_items].insert(workspace_id: event.workspace_id, object_type: "dateRange", object_id: date_range_id)
           DB[:date_ranges].where(id: date_range_id).delete
           Broadcaster.object_deleted("date_range", date_range_id, workspace_id: event.workspace_id)
         end
 
-        pool = PoolSerializer.new(workspace_id: event.workspace_id)
+        pool = PoolSerializer.new(membership: membership)
         pool.add_date_poll(DatePoll.find(poll.id))
 
         Success({ objects: pool.to_a, deleted: [{ objectType: "dateRange", id: date_range_id }] })

@@ -16,7 +16,7 @@ module Invites
                        .bind { |valid_email| validate_name_length(sanitized_name).fmap { valid_email } }
                        .bind { |valid_email| check_not_already_member(valid_email, workspace_id) }
                        .bind { |valid_email| check_no_pending_invite(valid_email, workspace_id) }
-                       .bind { |valid_email| create_invite(valid_email, workspace_id, membership.user_id, sanitized_name) }
+                       .bind { |valid_email| create_invite(valid_email, workspace_id, membership, sanitized_name) }
       end
 
       private
@@ -54,7 +54,7 @@ module Invites
         end
       end
 
-      def create_invite(email, workspace_id, invited_by, name)
+      def create_invite(email, workspace_id, membership, name)
         now = Time.now
         id = SecureRandom.uuid
         raw_token = SecureRandom.hex(32)
@@ -64,7 +64,7 @@ module Invites
         DB[:workspace_invites].insert(
           id: id,
           workspace_id: workspace_id.to_s,
-          invited_by: invited_by.to_s,
+          invited_by: membership.user_id.to_s,
           email: email,
           name: name,
           token: token_hash,
@@ -80,14 +80,14 @@ module Invites
         workspace = Workspace.find(workspace_id)
         workspace_name = workspace ? workspace.name : "Tayaway"
 
-        APP_LOGGER.info { "[Invites::Create] Invite #{id} sent to #{email} in workspace #{workspace_id} by #{invited_by}" }
+        APP_LOGGER.info { "[Invites::Create] Invite #{id} sent to #{email} in workspace #{workspace_id} by #{membership.user_id}" }
         APP_LOGGER.info { "INVITE LINK FOR #{email}: #{invite_link}" } if APP_ENV == "development"
         Mailers::WorkspaceInvite.send_email(email: email, invite_link: invite_link, workspace_name: workspace_name, name: name)
 
         Broadcaster.object_changed("workspace_invite", id, workspace_id: workspace_id.to_s)
 
         invite = WorkspaceInvite.find(id)
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool = PoolSerializer.new(membership: membership)
         pool.add_workspace_invite(invite)
         Success({ objects: pool.to_a })
       end

@@ -10,7 +10,7 @@ module ChoreRosters
         Chore.find_result(chore_id)
              .bind { |chore| validate_belongs_to_roster(chore, roster_id) }
              .bind { |chore| ChorePolicy.enforce(:delete, chore, membership: membership) }
-             .bind { |chore| delete(chore, roster_id, workspace_id) }
+             .bind { |chore| delete(chore, roster_id, workspace_id, membership) }
       end
 
       def validate_belongs_to_roster(chore, roster_id)
@@ -23,7 +23,7 @@ module ChoreRosters
 
       private
 
-      def delete(chore, roster_id, workspace_id)
+      def delete(chore, roster_id, workspace_id, membership)
         deleted = []
 
         DB.transaction do
@@ -46,7 +46,7 @@ module ChoreRosters
           Broadcaster.object_changed("chore_roster", roster_id, workspace_id: workspace_id)
         end
 
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool = PoolSerializer.new(membership: membership)
         roster = ChoreRoster.find(roster_id)
         pool.add_chore_roster(roster)
 

@@ -47,7 +47,7 @@ module Members
         Broadcaster.object_changed("member", target.id.to_s, workspace_id: target.workspace_id.to_s)
 
         updated = WorkspaceMembership.find(target.id)
-        pool = PoolSerializer.new(workspace_id: target.workspace_id)
+        pool = PoolSerializer.new(membership: acting_membership)
         pool.add_member(updated)
 
         Success({ objects: pool.to_a })

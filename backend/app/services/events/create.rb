@@ -26,7 +26,7 @@ module Events
                        .bind { |valid_name| validate_dates(start_date, end_date).fmap { |dates| [valid_name, dates] } }
                        .bind do |(valid_name, dates)|
                          create_event(
-                           workspace_id: workspace_id, user_id: membership.user_id, name: valid_name,
+                           workspace_id: workspace_id, membership: membership, name: valid_name,
                            description: description, id: id, dates: dates,
                            location_name: location_name, latitude: latitude, longitude: longitude
                          )
@@ -64,12 +64,12 @@ module Events
         Failure(ServiceError.validation("Invalid date format"))
       end
 
-      def create_event(workspace_id:, user_id:, name:, description:, id:, dates:, location_name:, latitude:, longitude:)
+      def create_event(workspace_id:, membership:, name:, description:, id:, dates:, location_name:, latitude:, longitude:)
         # Idempotent replay: if client provided an ID and it already exists, return it
         if id
           existing = Event.find(id)
           if existing
-            pool = PoolSerializer.new(workspace_id: workspace_id)
+            pool = PoolSerializer.new(membership: membership)
             pool.add_event(existing)
             return Success({ objects: pool.to_a })
           end
@@ -83,7 +83,7 @@ module Events
             insert_data = {
               id: event_id,
               workspace_id: workspace_id,
-              user_id: user_id,
+              user_id: membership.user_id,
               name: name,
               description: description&.empty? ? nil : description,
               created_at: now,
@@ -110,9 +110,9 @@ module Events
           Event.find(id)
         end
 
-        APP_LOGGER.info { "[Events::Create] User #{user_id} created event #{event.id} in workspace #{workspace_id}" }
+        APP_LOGGER.info { "[Events::Create] User #{membership.user_id} created event #{event.id} in workspace #{workspace_id}" }
 
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool = PoolSerializer.new(membership: membership)
         pool.add_event(event)
 
         Success({ objects: pool.to_a })

@@ -12,7 +12,7 @@ module DatePolls
              .bind { |(event, poll)| DatePollPolicy.enforce(:close, poll, membership: membership, event: event).fmap { |_| [event, poll] } }
              .bind { |(event, poll)| validate_not_resolved(event, poll) }
              .bind { |(event, poll)| validate_date_range(event, poll, selected_date_range_id) }
-             .bind { |(event, poll, dr_id)| close_poll(event, poll, dr_id) }
+             .bind { |(event, poll, dr_id)| close_poll(event, poll, dr_id, membership) }
       end
 
       private
@@ -38,7 +38,7 @@ module DatePolls
         Success([event, poll, selected_date_range_id])
       end
 
-      def close_poll(event, poll, selected_date_range_id)
+      def close_poll(event, poll, selected_date_range_id, membership)
         date_range = DateRange.find(selected_date_range_id)
         yes_voter_ids = []
 
@@ -78,7 +78,7 @@ module DatePolls
         APP_LOGGER.info { "[DatePolls::Close] Poll #{poll.id} closed on event #{event.id} with date range #{selected_date_range_id}" }
         send_poll_closed_emails(event, poll, date_range, yes_voter_ids)
 
-        pool = PoolSerializer.new(workspace_id: event.workspace_id)
+        pool = PoolSerializer.new(membership: membership)
         pool.add_event(Event.find(event.id))
         pool.add_date_poll(DatePoll.find(poll.id))
         Rsvp.for_event(event.id).each { |r| pool.add_rsvp(r) }

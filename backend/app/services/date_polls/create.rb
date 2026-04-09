@@ -11,7 +11,7 @@ module DatePolls
              .bind { |event| EventPolicy.enforce(:create_poll, event, membership: membership) }
              .bind { |event| validate_no_existing_poll(event) }
              .bind { |event| validate_deadline(deadline, event) }
-             .bind { |(event, parsed_deadline)| create_poll(event, parsed_deadline) }
+             .bind { |(event, parsed_deadline)| create_poll(event, parsed_deadline, membership) }
       end
 
       private
@@ -43,7 +43,7 @@ module DatePolls
         Success([event, parsed])
       end
 
-      def create_poll(event, deadline)
+      def create_poll(event, deadline, membership)
         poll_id = SecureRandom.uuid
         now = Time.now
 
@@ -59,7 +59,7 @@ module DatePolls
           Broadcaster.object_changed("date_poll", poll_id, workspace_id: event.workspace_id)
         end
 
-        pool = PoolSerializer.new(workspace_id: event.workspace_id)
+        pool = PoolSerializer.new(membership: membership)
         pool.add_event(Event.find(event.id))
         pool.add_date_poll(DatePoll.find(poll_id))
         Success({ objects: pool.to_a })

@@ -9,7 +9,7 @@ module ChoreRosters
       def call(roster_id:, workspace_id:, membership:, name:, people_per_day:, id: nil)
         validate(name, people_per_day)
           .bind { |valid| enforce_policy(roster_id, membership, valid) }
-          .bind { |valid| create_chore(roster_id, workspace_id, valid, id) }
+          .bind { |valid| create_chore(roster_id, workspace_id, valid, id, membership) }
       end
 
       private
@@ -39,12 +39,12 @@ module ChoreRosters
                          .fmap { valid }
       end
 
-      def create_chore(roster_id, workspace_id, valid, id)
+      def create_chore(roster_id, workspace_id, valid, id, membership)
         # Idempotent replay
         if id
           existing = Chore.find(id)
           if existing
-            pool = PoolSerializer.new(workspace_id: workspace_id)
+            pool = PoolSerializer.new(membership: membership)
             pool.add_chore(existing)
             return Success({ objects: pool.to_a })
           end
@@ -68,7 +68,7 @@ module ChoreRosters
           Broadcaster.object_changed("chore_roster", roster_id, workspace_id: workspace_id)
         end
 
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool = PoolSerializer.new(membership: membership)
         chore = Chore.find(chore_id)
         pool.add_chore(chore)
         roster = ChoreRoster.find(roster_id)

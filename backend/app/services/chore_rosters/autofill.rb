@@ -11,7 +11,7 @@ module ChoreRosters
         ChoreRoster.find_result(roster_id)
                    .bind { |roster| ChoreRosterPolicy.enforce(:edit, roster, membership: membership) }
                    .bind { |roster| find_event(roster) }
-                   .bind { |roster, event| run_autofill(roster, event, workspace_id) }
+                   .bind { |roster, event| run_autofill(roster, event, workspace_id, membership) }
       end
 
       private
@@ -25,7 +25,7 @@ module ChoreRosters
         end
       end
 
-      def run_autofill(roster, event, workspace_id)
+      def run_autofill(roster, event, workspace_id, membership)
         event_start = event.start_date
         event_end = event.end_date
         dates = (event_start..event_end).to_a
@@ -43,7 +43,7 @@ module ChoreRosters
         end
 
         deleted = []
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool = PoolSerializer.new(membership: membership)
 
         DB.transaction do
           # Delete all non-pinned assignments and track them

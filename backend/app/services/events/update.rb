@@ -28,7 +28,7 @@ module Events
              .bind { |(event, dates)| check_no_resolved_poll_when_clearing(event, dates).fmap { [event, dates] } }
              .bind do |(event, dates)|
                update_event(
-                 event: event, name: name, description: description, dates: dates,
+                 event: event, membership: membership, name: name, description: description, dates: dates,
                  location_name: location_name, latitude: latitude, longitude: longitude
                )
              end
@@ -81,7 +81,7 @@ module Events
         end
       end
 
-      def update_event(event:, name:, description:, dates:, location_name:, latitude:, longitude:)
+      def update_event(event:, membership:, name:, description:, dates:, location_name:, latitude:, longitude:)
         event_id = event.id
         workspace_id = event.workspace_id
 
@@ -122,7 +122,7 @@ module Events
 
         APP_LOGGER.info { "[Events::Update] Event #{event_id} updated in workspace #{workspace_id}" }
 
-        pool = PoolSerializer.new(workspace_id: workspace_id)
+        pool = PoolSerializer.new(membership: membership)
         pool.add_event(Event.find(event_id))
         Success({ objects: pool.to_a })
       end
