@@ -14,6 +14,7 @@ import {
 import { useMembersStore, useNotificationsStore } from '@/stores'
 import { useAuthStore } from '@/stores/auth'
 import { useObjectPoolStore } from '@/stores/objectPool'
+import { useWorkspaceStore } from '@/stores/workspace'
 import InviteMemberModal from '@/components/members/InviteMemberModal.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
@@ -33,6 +34,11 @@ const membersStore = useMembersStore()
 const { members, pendingInvites } = storeToRefs(membersStore)
 const authStore = useAuthStore()
 const pool = useObjectPoolStore()
+const workspaceStore = useWorkspaceStore()
+
+const canInvite = computed(() =>
+  can(workspaceStore.currentWorkspace?.permissions, 'invite')
+)
 
 const isModalOpen = ref(false)
 const isSubmitting = ref(false)
@@ -199,7 +205,11 @@ onMounted(() => {
 <template>
   <div>
     <PageHeader title="Members" data-testid="page-title">
-      <AppButton data-testid="invite-member-button" @click="openModal">
+      <AppButton
+        v-if="canInvite"
+        data-testid="invite-member-button"
+        @click="openModal"
+      >
         <PlusIcon class="size-5" />
         Invite Member
       </AppButton>
@@ -266,7 +276,10 @@ onMounted(() => {
                   </div>
                 </div>
               </div>
-              <div class="flex items-center gap-1">
+              <div
+                v-if="can(invite.permissions, 'remind')"
+                class="flex items-center gap-1"
+              >
                 <IconButton
                   :label="
                     isExpired(invite) ? 'Resend invitation' : 'Send reminder'

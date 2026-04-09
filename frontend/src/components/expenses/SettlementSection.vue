@@ -30,7 +30,7 @@ import type {
   PoolSettlement,
   PoolSettlementTransfer,
 } from '@/types/pool'
-import { can } from '@/composables/usePermission'
+import { permissionUx, type PermissionUx } from '@/composables/usePermission'
 
 const props = defineProps<{
   event: PoolEvent
@@ -61,7 +61,7 @@ const hasExpenses = computed(
 )
 
 function canDeleteSettlement(settlement: PoolSettlement): boolean {
-  return can(settlement.permissions, 'delete')
+  return permissionUx(settlement.permissions, 'delete').behavior === 'enabled'
 }
 
 function transfersForSettlement(settlementId: string) {
@@ -152,18 +152,23 @@ function openQrModal(transfer: {
   showQrModal.value = true
 }
 
-function canMarkPaid(transfer: PoolSettlementTransfer): boolean {
-  return can(transfer.permissions, 'mark_paid')
+const recipientOnlyMessage = ref('')
+
+function markPaidUx(transfer: PoolSettlementTransfer): PermissionUx {
+  return permissionUx(transfer.permissions, 'mark_paid')
 }
 
 async function handlePaidClick(
   transfer: PoolSettlementTransfer,
   currentlyPaid: boolean
 ) {
-  if (!canMarkPaid(transfer)) {
+  const ux = markPaidUx(transfer)
+  if (ux.behavior === 'modal') {
+    recipientOnlyMessage.value = ux.message
     showRecipientOnlyModal.value = true
     return
   }
+  if (ux.behavior !== 'enabled') return
   await settlementsStore.markTransferPaid(transfer.id, !currentlyPaid)
 }
 </script>
@@ -430,7 +435,7 @@ async function handlePaidClick(
       @close="showRecipientOnlyModal = false"
     >
       <p class="text-sm text-gray-600 dark:text-stone-400">
-        Only the person receiving the money can mark a transfer as paid.
+        {{ recipientOnlyMessage }}
       </p>
       <div class="mt-6 flex justify-end">
         <AppButton

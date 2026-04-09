@@ -13,7 +13,7 @@ import { countDays } from '@/utils/event'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import type { PoolExpense, PoolEvent } from '@/types/pool'
 import BaseCard from '@/components/common/BaseCard.vue'
-import { can } from '@/composables/usePermission'
+import { permissionUx } from '@/composables/usePermission'
 
 const props = defineProps<{
   expense: PoolExpense
@@ -43,9 +43,9 @@ const formattedAmount = computed(() => {
   return `€${props.expense.amount.toFixed(2)}`
 })
 
-const canEditExpense = computed(() => can(props.expense.permissions, 'edit'))
-const canDeleteExpense = computed(() =>
-  can(props.expense.permissions, 'delete')
+const editUx = computed(() => permissionUx(props.expense.permissions, 'edit'))
+const deleteUx = computed(() =>
+  permissionUx(props.expense.permissions, 'delete')
 )
 
 const isSettled = computed(() => {
@@ -189,26 +189,35 @@ async function handleDelete(e: Event) {
             class="size-4 text-gray-400 dark:text-stone-500"
             title="Part of a settlement"
           />
-          <template v-else>
+          <span
+            v-if="editUx.behavior !== 'hidden'"
+            :title="editUx.behavior === 'disabled' ? editUx.tooltip : undefined"
+          >
             <IconButton
-              v-if="canEditExpense"
               label="Edit expense"
               data-testid="edit-expense"
+              :disabled="editUx.behavior === 'disabled'"
               @click="handleEdit"
             >
               <PencilIcon class="size-4" />
             </IconButton>
+          </span>
+          <span
+            v-if="deleteUx.behavior !== 'hidden'"
+            :title="
+              deleteUx.behavior === 'disabled' ? deleteUx.tooltip : undefined
+            "
+          >
             <IconButton
-              v-if="canDeleteExpense"
               variant="danger"
               label="Delete expense"
-              :disabled="deleting"
+              :disabled="deleteUx.behavior === 'disabled' || deleting"
               data-testid="delete-expense"
               @click="handleDelete"
             >
               <TrashIcon class="size-4" />
             </IconButton>
-          </template>
+          </span>
           <ChevronDownIcon
             class="size-4 text-gray-400 transition-transform duration-200 dark:text-stone-500"
             :class="{ 'rotate-180': expanded }"
