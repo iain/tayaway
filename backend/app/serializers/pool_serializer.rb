@@ -18,6 +18,15 @@ class PoolSerializer
                     end
   end
 
+  # New unified entry point. Takes a registry key (symbol or string) and
+  # an array of items. Dispatches to the registered serializer_class.
+  def add(key, items)
+    entry = ObjectRegistry::BY_KEY[key.to_s]
+    raise ArgumentError, "Unknown object key: #{key.inspect}" unless entry
+
+    add_batch(entry, Array(items))
+  end
+
   # Serializes a workspace membership as a member pool object.
   def add_member_from_membership(membership)
     add_batch(ObjectRegistry::BY_KEY["member"], [membership])
@@ -69,13 +78,7 @@ class PoolSerializer
   end
 
   def add_task_list(task_list)
-    key = "task_list:#{task_list.id}"
-    return if @objects.key?(key)
-
-    hash = task_list.to_api_hash
-    attach_permissions(hash, task_list)
-    @objects[key] = hash
-    TaskItem.for_task_list(task_list.id).each { |item| add_task_item(item) }
+    add_batch(ObjectRegistry::BY_KEY["task_list"], [task_list])
   end
 
   def add_task_item(task_item)

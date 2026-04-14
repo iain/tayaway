@@ -50,6 +50,12 @@ class TaskItem
       dataset.where(task_list_id: task_list_id).order(:position).all
     end
 
+    def for_task_lists(task_list_ids)
+      return [] if task_list_ids.empty?
+
+      dataset.where(task_list_id: task_list_ids).order(:task_list_id, :position).all
+    end
+
     def changed_since(workspace_id, since)
       dataset
         .join(:task_lists, id: :task_list_id)
