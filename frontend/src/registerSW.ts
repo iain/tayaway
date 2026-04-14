@@ -13,26 +13,20 @@ export function registerServiceWorker(): void {
           // SW update failed — fall through to manual reload
         }
 
-        // Always clear caches before reloading. On iOS standalone PWA,
-        // skipWaiting() can silently fail, leaving the old SW active.
-        // Clearing caches ensures reload fetches fresh content regardless.
-        try {
-          const keys = await caches.keys()
-          await Promise.all(keys.map((k) => caches.delete(k)))
-        } catch {
-          // Cache API unavailable
-        }
-
         window.location.reload()
       })
     },
     onRegisteredSW(_url, registration) {
       if (!registration) return
 
-      const onUpdateError = (err: unknown) => console.warn('SW update failed:', err)
+      const onUpdateError = (err: unknown) =>
+        console.warn('SW update failed:', err)
 
       // Check for updates every 60 minutes
-      setInterval(() => registration.update().catch(onUpdateError), 60 * 60 * 1000)
+      setInterval(
+        () => registration.update().catch(onUpdateError),
+        60 * 60 * 1000
+      )
 
       // Check for updates when tab becomes visible (throttled to 30s)
       let lastVisibilityCheck = 0
