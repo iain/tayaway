@@ -4,12 +4,9 @@ import { api } from '@/api/client'
 import { useCommandQueueStore } from './commandQueue'
 import { useObjectPoolStore } from './objectPool'
 import { useWebSocketStore } from './websocket'
-import { useWorkspaceStore } from './workspace'
 import { useMutation } from '@/composables/useMutation'
 
-import * as poolDb from '@/api/poolDb'
-import { clearUserCaches } from '@/api/clearUserCaches'
-import { usePoolPersistence } from '@/composables/usePoolPersistence'
+import { teardownSession } from '@/api/teardownSession'
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
 import type {
   AuthUser,
@@ -249,28 +246,8 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       await api.post<LogoutResponse>('/auth/logout')
     } finally {
-      // Stop persisting pool changes before clearing state
-      const { stopPersisting } = usePoolPersistence()
-      stopPersisting()
-
-      // Disconnect WebSocket to stop reconnect loops
-      const ws = useWebSocketStore()
-      ws.disconnect()
-
-      // Clear queued commands and IndexedDB cache
-      const commandQueue = useCommandQueueStore()
-      await commandQueue.reset()
-      await poolDb.clearAll()
-
-      // Reset all Pinia stores
-      clearCachedUser()
       user.value = null
-      useObjectPoolStore().$reset()
-      useWorkspaceStore().$reset()
-
-      // Wipe all client-side storage
-      localStorage.clear()
-      await clearUserCaches()
+      await teardownSession()
     }
   }
 

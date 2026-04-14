@@ -29,7 +29,7 @@ let pendingDebounceTimer: ReturnType<typeof setTimeout> | null = null
 let pendingSaves: PoolObject[] = []
 let pendingRemoves: { objectType: string; id: string }[] = []
 let changeHandler: ((change: PoolChange) => void) | null = null
-let visibilityHandler: (() => void) | null = null
+let pageHideHandler: (() => void) | null = null
 
 async function flushWrites(): Promise<void> {
   if (idleCallbackHandle !== null) {
@@ -232,19 +232,29 @@ export function usePoolPersistence() {
 
     onPoolChange(changeHandler)
 
-    visibilityHandler = () => {
-      if (
-        document.visibilityState === 'hidden' &&
-        (debounceTimer !== null || idleCallbackHandle !== null)
-      ) {
-        if (debounceTimer !== null) {
-          clearTimeout(debounceTimer)
-          debounceTimer = null
-        }
-        flushWrites()
+    // Flush any debounced writes when the page becomes hidden so we don't
+    // lose them if the tab is backgrounded, frozen for bfcache, or closed.
+    // We listen on BOTH visibilitychange and pagehide:
+    //   - visibilitychange fires when the tab loses visibility (OS switch,
+    //     new tab, minimise) but the page may still be alive.
+    //   - pagehide fires on actual unload/bfcache, including iOS PWA force-
+    //     close from the app switcher, which does NOT trigger a prior
+    //     visibilitychange. Without this, force-closing the PWA loses any
+    //     pool changes that were still sitting in the debounced buffer.
+    // The handler is fire-and-forget — we can't reliably await async work
+    // from these events, but the browser's unload grace period is typically
+    // enough for small IndexedDB writes to commit.
+    pageHideHandler = () => {
+      if (document.visibilityState !== 'hidden') return
+      if (debounceTimer === null && idleCallbackHandle === null) return
+      if (debounceTimer !== null) {
+        clearTimeout(debounceTimer)
+        debounceTimer = null
       }
+      void flushWrites()
     }
-    document.addEventListener('visibilitychange', visibilityHandler)
+    document.addEventListener('visibilitychange', pageHideHandler)
+    window.addEventListener('pagehide', pageHideHandler)
   }
 
   function stopPersisting(): void {
@@ -252,9 +262,10 @@ export function usePoolPersistence() {
       offPoolChange(changeHandler)
       changeHandler = null
     }
-    if (visibilityHandler) {
-      document.removeEventListener('visibilitychange', visibilityHandler)
-      visibilityHandler = null
+    if (pageHideHandler) {
+      document.removeEventListener('visibilitychange', pageHideHandler)
+      window.removeEventListener('pagehide', pageHideHandler)
+      pageHideHandler = null
     }
     if (debounceTimer) {
       clearTimeout(debounceTimer)

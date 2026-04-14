@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { api, type ApiResponse } from '@/api/client'
 import {
@@ -9,6 +9,7 @@ import {
   clearAll,
 } from '@/api/commandDb'
 import { coalesceCommands } from '@/api/coalesceCommands'
+import { useWebSocketStore } from './websocket'
 
 export class CommandQueuedError extends Error {
   constructor() {
@@ -18,14 +19,11 @@ export class CommandQueuedError extends Error {
 }
 
 function isNetworkError(e: unknown): boolean {
-  if (!(e instanceof TypeError)) return false
-  if (!navigator.onLine) return true
-  const msg = e.message.toLowerCase()
-  return (
-    msg.includes('fetch') ||
-    msg.includes('network') ||
-    msg.includes('load failed')
-  )
+  // fetch() rejects with TypeError only for network failures per the fetch
+  // spec, so instanceof alone is a complete and robust check. The previous
+  // substring match on browser-specific wordings ("Failed to fetch", "Load
+  // failed", "NetworkError…") would silently regress on any wording change.
+  return e instanceof TypeError
 }
 
 function isAuthError(e: unknown): boolean {
@@ -40,22 +38,18 @@ function isAuthError(e: unknown): boolean {
 export const useCommandQueueStore = defineStore('commandQueue', () => {
   const pendingCount = ref(0)
   const isProcessing = ref(false)
-  const isOnline = ref(navigator.onLine)
   const retryRequested = ref(false)
 
-  function handleOnline() {
-    isOnline.value = true
-    processQueue()
-  }
-
-  function handleOffline() {
-    isOnline.value = false
-  }
+  // A working, authenticated WebSocket is the only reliable "we are online"
+  // signal. navigator.onLine returns true on captive portals, dead WiFi, and
+  // any network that dropped without the OS noticing, so we can't trust it.
+  // Reconnecting the WS already triggers processQueue() from the websocket
+  // store's handleAuthenticated callback, so we don't need separate online
+  // listeners here.
+  const isOnline = computed(() => useWebSocketStore().state === 'authenticated')
 
   async function initialize(): Promise<void> {
     pendingCount.value = await dbCount()
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
     if (pendingCount.value > 0) {
       processQueue()
     }
@@ -176,8 +170,6 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
   }
 
   async function reset(): Promise<void> {
-    window.removeEventListener('online', handleOnline)
-    window.removeEventListener('offline', handleOffline)
     await clearAll()
     pendingCount.value = 0
     isProcessing.value = false
@@ -187,7 +179,6 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
     // Synchronous reset for Pinia — async cleanup handled by reset()
     pendingCount.value = 0
     isProcessing.value = false
-    isOnline.value = navigator.onLine
   }
 
   return {

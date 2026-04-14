@@ -54,7 +54,7 @@ const {
   cacheStaleLevel,
   connectionFailed,
 } = storeToRefs(wsStore)
-const { pendingCount, isOnline } = storeToRefs(commandQueueStore)
+const { pendingCount } = storeToRefs(commandQueueStore)
 
 const showConnectionBadge = computed(() => wsState.value !== 'authenticated')
 const { currentWorkspace, otherWorkspaces } = storeToRefs(workspaceStore)
@@ -325,14 +325,8 @@ async function handleSignOut() {
                 title="Click to reconnect"
                 @click="wsStore.reconnect()"
               >
-                <template v-if="!isOnline">
-                  <span class="inline-block size-2 rounded-full bg-gray-300" />
-                  Offline
-                </template>
-                <template v-else>
-                  <span class="inline-block size-2 rounded-full bg-amber-400" />
-                  Server offline
-                </template>
+                <span class="inline-block size-2 rounded-full bg-gray-300" />
+                Offline
               </button>
 
               <!-- Dark mode toggle -->
@@ -519,14 +513,8 @@ async function handleSignOut() {
               title="Click to reconnect"
               @click="wsStore.reconnect()"
             >
-              <template v-if="!isOnline">
-                <span class="inline-block size-2 rounded-full bg-gray-300" />
-                Offline
-              </template>
-              <template v-else>
-                <span class="inline-block size-2 rounded-full bg-amber-400" />
-                Server offline
-              </template>
+              <span class="inline-block size-2 rounded-full bg-gray-300" />
+              Offline
             </button>
             <button
               type="button"
