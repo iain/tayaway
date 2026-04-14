@@ -42,6 +42,11 @@ class PoolSerializer
 
     contexts = serializer.policy_context_batch(items)
     hashes = serializer.serialize_batch(items, pool: self)
+    unless hashes.length == items.length
+      raise "#{serializer}#serialize_batch returned #{hashes.length} hashes for #{items.length} items " \
+            "(contract: same length with nil for skipped entries)"
+    end
+
     added = 0
 
     items.zip(hashes).each do |obj, hash|

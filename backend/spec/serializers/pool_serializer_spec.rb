@@ -44,6 +44,23 @@ RSpec.describe PoolSerializer do
 
       expect(pool.to_a.count { |o| o[:objectType] == "event" }).to eq(1)
     end
+
+    it "raises on an unknown object key" do
+      pool = described_class.new(workspace_id: workspace[:id])
+
+      expect { pool.add(:nope, []) }.to raise_error(ArgumentError, /Unknown object key/)
+    end
+
+    it "raises if a serializer returns fewer hashes than items" do
+      event1 = TestFactories.event(workspace: workspace, user: user)
+      event2 = TestFactories.event(workspace: workspace, user: user)
+      events = [Event.find(event1[:id]), Event.find(event2[:id])]
+      allow(EventSerializer).to receive(:serialize_batch).and_return([{ id: events.first.id.to_s, objectType: "event" }])
+
+      pool = described_class.new(workspace_id: workspace[:id])
+
+      expect { pool.add(:event, events) }.to raise_error(/returned 1 hashes for 2 items/)
+    end
   end
 
   describe "#add date_polls" do
