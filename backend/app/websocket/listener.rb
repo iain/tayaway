@@ -106,12 +106,17 @@ module Websocket
         when "update"
           object = find_object(object_type, object_id)
           if object
-            pool = PoolSerializer.new(workspace_id: workspace_id)
+            pool = PoolSerializer.new(workspace_id: workspace_id, collect_policy_contexts: true)
             pool.add(config.key, [object])
             message[:data] = { objects: pool.to_a }
+            # Pull raw_objects and per-object policy contexts from the pool so
+            # fan-out children (task_items under a task_list, chores under a
+            # chore_roster, participants under an expense) get permissions
+            # computed on the broadcast side instead of silently shipping
+            # without a permissions key.
             policy_context = Websocket::PolicyContext.new(
-              raw_objects: { config.key => object },
-              kwargs: config.serializer_class.policy_context(object)
+              raw_objects: pool.raw_objects,
+              policy_contexts: pool.policy_contexts
             )
           else
             # Object was deleted between notify and fetch

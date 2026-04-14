@@ -34,30 +34,40 @@ module PermissionAttacher
       hash.merge(permissions: policy.permissions)
     end
 
-    # Attaches permissions to every object in a broadcast message, using the
-    # supplied policy context. Non-mutating. Returns a new message hash.
+    # Attaches permissions to every object in a broadcast message for the
+    # given membership. Non-mutating. Returns a new message hash.
     #
-    # A crash computing permissions for one object is caught here so it does
-    # not take down the whole broadcast for every recipient. The affected
-    # object ships without a `permissions` key and the failure is logged with
-    # enough context (object id, membership id, backtrace) to diagnose.
+    # PolicyContext.raw_objects and .policy_contexts are keyed by
+    # "<registry_key>:<id>" so every object in the payload — including
+    # fan-out children pushed by parent serializers — can be looked up and
+    # permissioned. A crash computing permissions for one object is caught
+    # here so it does not take down the whole broadcast for every recipient:
+    # the affected object ships without a `permissions` key and the failure
+    # is logged with object id + membership id + backtrace.
     #
     # @param message [Hash] broadcast message shaped as
     #   { type:, workspaceId:, action:, data: { objects: [...] } }
     # @param membership [WorkspaceMembership, nil] the recipient's membership
-    # @param policy_context [Websocket::PolicyContext] raw_objects by key + kwargs
+    # @param policy_context [Websocket::PolicyContext] raw_objects and
+    #   per-object policy kwargs, both keyed by "<registry_key>:<id>".
     def attach_to_message(message, membership, policy_context)
       return message unless membership
 
       objects = message[:data][:objects].map do |obj|
-        entry = ObjectRegistry::BY_CLIENT_TYPE[obj[:objectType]]
-        next obj unless entry&.policy
-
-        raw_object = policy_context.raw_objects[entry.key]
-        next obj unless raw_object
-
         begin
-          call(obj, raw_object: raw_object, membership: membership, policy_context: policy_context.kwargs)
+          entry = ObjectRegistry::BY_CLIENT_TYPE[obj[:objectType]]
+          raise ArgumentError, "unknown objectType #{obj[:objectType].inspect}" unless entry&.policy
+
+          slot_key = "#{entry.key}:#{obj[:id]}"
+          raw_object = policy_context.raw_objects[slot_key]
+          raise ArgumentError, "no raw_object for #{slot_key} in PolicyContext" unless raw_object
+
+          call(
+            obj,
+            raw_object: raw_object,
+            membership: membership,
+            policy_context: policy_context.policy_contexts[slot_key] || {}
+          )
         rescue StandardError => e
           APP_LOGGER.error do
             "[PermissionAttacher] Broadcast permission failure for #{obj[:objectType]} " \

@@ -240,6 +240,84 @@ RSpec.describe Websocket::ConnectionManager do
       expect(ws.written).to include('{"type":"update","id":"123"}')
     end
 
+    it "attaches per-connection permissions when a policy_context is supplied" do
+      workspace_row = TestFactories.workspace
+      owner = TestFactories.user
+      TestFactories.workspace_membership(workspace: workspace_row, user: owner)
+      owner_membership = WorkspaceMembership.find_by_workspace_and_user(workspace_row[:id], owner[:id])
+      event_row = TestFactories.event(workspace: workspace_row, user: owner)
+      event_model = Event.find(event_row[:id])
+
+      ws = FakeWebsocket.new
+      workspace_id = workspace_row[:id].to_s
+      conn_id = manager.register(ws, owner[:id])
+      manager.set_workspaces(conn_id, [workspace_id])
+      manager.set_membership(conn_id, owner_membership)
+
+      event_hash = { id: event_model.id.to_s, objectType: "event", name: event_model.name }
+      message = {
+        type: "broadcast",
+        workspaceId: workspace_id,
+        action: "update",
+        data: { objects: [event_hash] }
+      }
+      policy_context = Websocket::PolicyContext.new(
+        raw_objects: { "event:#{event_model.id}" => event_model },
+        policy_contexts: { "event:#{event_model.id}" => { has_expenses: false } }
+      )
+
+      manager.broadcast_to_workspace(workspace_id, message, policy_context: policy_context)
+
+      delivered = JSON.parse(ws.written.first, symbolize_names: true)
+      permissions = delivered[:data][:objects].first[:permissions]
+      expect(permissions).to include(edit: { allowed: true })
+    end
+
+    it "attaches permissions to fan-out children carried in the PolicyContext" do
+      # Uses a real PoolSerializer with collect_policy_contexts to mirror the
+      # Listener path: the pool fans out chore_roster → chores, so the
+      # broadcast must thread raw_objects for BOTH the roster and each chore,
+      # and the connection manager must deliver payload objects with a
+      # permissions key on each.
+      workspace_row = TestFactories.workspace
+      owner = TestFactories.user
+      TestFactories.workspace_membership(workspace: workspace_row, user: owner)
+      owner_membership = WorkspaceMembership.find_by_workspace_and_user(workspace_row[:id], owner[:id])
+      event_row = TestFactories.event(workspace: workspace_row, user: owner)
+      roster_row = TestFactories.chore_roster(event: event_row, user: owner)
+      TestFactories.chore(chore_roster: roster_row)
+      roster = ChoreRoster.find(roster_row[:id])
+
+      pool = PoolSerializer.new(workspace_id: workspace_row[:id], collect_policy_contexts: true)
+      pool.add(:chore_roster, [roster])
+      message = {
+        type: "broadcast",
+        workspaceId: workspace_row[:id].to_s,
+        action: "update",
+        data: { objects: pool.to_a }
+      }
+      policy_context = Websocket::PolicyContext.new(
+        raw_objects: pool.raw_objects,
+        policy_contexts: pool.policy_contexts
+      )
+
+      ws = FakeWebsocket.new
+      conn_id = manager.register(ws, owner[:id])
+      manager.set_workspaces(conn_id, [workspace_row[:id].to_s])
+      manager.set_membership(conn_id, owner_membership)
+
+      manager.broadcast_to_workspace(
+        workspace_row[:id].to_s, message, policy_context: policy_context
+      )
+
+      delivered = JSON.parse(ws.written.first, symbolize_names: true)
+      types = delivered[:data][:objects].map { |o| o[:objectType] }
+      expect(types).to include("choreRoster", "chore")
+      delivered[:data][:objects].each do |obj|
+        expect(obj[:permissions]).to be_a(Hash), "missing permissions on #{obj[:objectType]} #{obj[:id]}"
+      end
+    end
+
     it "does nothing when no connections are subscribed to the workspace" do
       ws = FakeWebsocket.new
       manager.register(ws, SecureRandom.uuid)
