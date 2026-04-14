@@ -32,5 +32,28 @@ module PermissionAttacher
       end
       hash
     end
+
+    # Attaches permissions to every object in a broadcast message, using the
+    # supplied policy context. Non-mutating. Returns a new message hash.
+    #
+    # @param message [Hash] broadcast message shaped as
+    #   { type:, workspaceId:, action:, data: { objects: [...] } }
+    # @param membership [WorkspaceMembership, nil] the recipient's membership
+    # @param policy_context [Websocket::PolicyContext] raw_objects by key + kwargs
+    def attach_to_message(message, membership, policy_context)
+      return message unless membership
+
+      objects = message[:data][:objects].map do |obj|
+        entry = ObjectRegistry::BY_CLIENT_TYPE[obj[:objectType]]
+        next obj unless entry&.policy
+
+        raw_object = policy_context.raw_objects[entry.key]
+        next obj unless raw_object
+
+        call(obj, raw_object: raw_object, membership: membership, policy_context: policy_context.kwargs)
+      end
+
+      message.merge(data: message[:data].merge(objects: objects))
+    end
   end
 end

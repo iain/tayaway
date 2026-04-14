@@ -193,24 +193,7 @@ module Websocket
     private
 
     def attach_permissions(message, membership, policy_context)
-      return message unless membership
-
-      objects = message[:data][:objects].map do |obj|
-        entry = ObjectRegistry::BY_CLIENT_TYPE[obj[:objectType]]
-        next obj unless entry&.policy
-
-        raw_object = policy_context.raw_objects[entry.key]
-        next obj unless raw_object
-
-        policy_class = Object.const_get(entry.policy)
-        policy = policy_class.new(raw_object, membership: membership, **policy_context.kwargs)
-        obj.merge(permissions: policy.permissions)
-      rescue StandardError => e
-        APP_LOGGER.error { "[ConnectionManager] Failed to compute permissions for #{obj[:objectType]}: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
-        obj
-      end
-
-      message.merge(data: message[:data].merge(objects: objects))
+      PermissionAttacher.attach_to_message(message, membership, policy_context)
     end
 
     def send_to_connection(connection, connection_id, json_message, workspace_id)

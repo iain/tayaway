@@ -52,4 +52,55 @@ RSpec.describe PermissionAttacher do
       expect(APP_LOGGER).to have_received(:error)
     end
   end
+
+  describe ".attach_to_message" do
+    # Referencing ConnectionManager triggers Zeitwerk to load connection_manager.rb,
+    # which defines the Websocket::PolicyContext struct as a side effect.
+    before { Websocket::ConnectionManager }
+
+    let(:policy_context) do
+      Websocket::PolicyContext.new(
+        raw_objects: { "event" => event },
+        kwargs: { has_expenses: false }
+      )
+    end
+
+    let(:message) do
+      {
+        type: "broadcast",
+        workspaceId: workspace[:id].to_s,
+        action: "update",
+        data: { objects: [event_hash] }
+      }
+    end
+
+    it "attaches permissions to every object in the message data" do
+      result = described_class.attach_to_message(message, owner_membership, policy_context)
+
+      obj = result[:data][:objects].first
+      expect(obj[:permissions][:edit]).to eq({ allowed: true })
+    end
+
+    it "returns the message unchanged when membership is nil" do
+      result = described_class.attach_to_message(message, nil, policy_context)
+
+      expect(result).to eq(message)
+    end
+
+    it "does not mutate the original message" do
+      original_snapshot = Marshal.dump(message)
+      described_class.attach_to_message(message, owner_membership, policy_context)
+
+      expect(Marshal.dump(message)).to eq(original_snapshot)
+    end
+
+    it "skips objects whose type is not in the registry" do
+      unknown_msg = message.merge(
+        data: { objects: [{ id: "1", objectType: "notAType" }] }
+      )
+      result = described_class.attach_to_message(unknown_msg, owner_membership, policy_context)
+
+      expect(result[:data][:objects].first).not_to have_key(:permissions)
+    end
+  end
 end
