@@ -64,30 +64,11 @@ class PoolSerializer
   end
 
   def add_date_poll(date_poll)
-    key = "date_poll:#{date_poll.id}"
-    return if @objects.key?(key)
-
-    date_range_ids = DateRange.ids_for_date_poll(date_poll.id)
-    hash = date_poll.to_api_hash(date_range_ids: date_range_ids)
-    attach_permissions(hash, date_poll)
-    @objects[key] = hash
+    add_batch(ObjectRegistry::BY_KEY["date_poll"], [date_poll])
   end
 
-  # Batch-add date polls with a single DateRange ID query instead of N+1
   def add_date_polls_batch(polls)
-    new_polls = polls.reject { |p| @objects.key?("date_poll:#{p.id}") }
-    return if new_polls.empty?
-
-    poll_ids = new_polls.map { |p| p.id.to_s }
-    range_ids_by_poll = DateRange.ids_for_date_poll_ids(poll_ids)
-    events_by_id = Event.for_ids(new_polls.map { |p| p.event_id.to_s }.uniq).each_with_object({}) { |e, h| h[e.id.to_s] = e }
-
-    new_polls.each do |poll|
-      date_range_ids = range_ids_by_poll[poll.id.to_s] || []
-      hash = poll.to_api_hash(date_range_ids: date_range_ids)
-      attach_permissions(hash, poll, event: events_by_id[poll.event_id.to_s])
-      @objects["date_poll:#{poll.id}"] = hash
-    end
+    add_batch(ObjectRegistry::BY_KEY["date_poll"], polls)
   end
 
   def add_date_range(date_range)
