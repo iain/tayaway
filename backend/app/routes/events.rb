@@ -20,7 +20,7 @@ class App
         events.group_by(&:workspace_id).each do |ws_id, ws_events|
           membership = WorkspaceMembership.find_by_workspace_and_user(ws_id, user.id)
           pool = PoolSerializer.new(membership: membership)
-          pool.add_all(ws_events, type: :event)
+          pool.add(:event, ws_events)
           all_objects.concat(pool.to_a)
         end
 
@@ -82,7 +82,7 @@ class App
       r.is do
         r.get do
           pool = PoolSerializer.new(membership: current_membership)
-          pool.add_event(event)
+          pool.add(:event, [event])
 
           response.status = 200
           { objects: pool.to_a }
@@ -186,7 +186,7 @@ class App
           r.get do
             rsvps = Rsvp.for_event(event.id)
             pool = PoolSerializer.new(membership: current_membership)
-            pool.add_all(rsvps, type: :rsvp)
+            pool.add(:rsvp, rsvps)
 
             response.status = 200
             { objects: pool.to_a }
@@ -207,7 +207,7 @@ class App
               ->(value) {
                 rsvp = Rsvp.find(value[:rsvp_id])
                 pool = PoolSerializer.new(membership: current_membership)
-                pool.add_rsvp(rsvp)
+                pool.add(:rsvp, [rsvp])
 
                 response.status = value[:created] ? 201 : 200
                 { objects: pool.to_a }
@@ -238,7 +238,7 @@ class App
             date_range_ids = poll ? DateRange.ids_for_date_poll(poll.id) : []
             votes = Vote.for_date_range_ids(date_range_ids)
             pool = PoolSerializer.new(membership: current_membership)
-            pool.add_all(votes, type: :vote)
+            pool.add(:vote, votes)
 
             response.status = 200
             { objects: pool.to_a }
@@ -259,7 +259,7 @@ class App
               ->(value) {
                 vote = Vote.find(value[:vote_id])
                 pool = PoolSerializer.new(membership: current_membership)
-                pool.add_vote(vote)
+                pool.add(:vote, [vote])
 
                 response.status = value[:created] ? 201 : 200
                 { objects: pool.to_a }

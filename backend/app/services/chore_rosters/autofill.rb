@@ -152,7 +152,7 @@ module ChoreRosters
 
         # Serialize full roster state
         roster = ChoreRoster.find(roster.id)
-        pool.add_chore_roster(roster)
+        pool.add(:chore_roster, [roster])
 
         Success({ objects: pool.to_a, deleted: deleted })
       end

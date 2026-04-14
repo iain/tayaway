@@ -176,9 +176,7 @@ module Users
         memberships = WorkspaceMembership.for_user(user_id)
 
         pool = PoolSerializer.new
-        memberships.each do |m|
-          pool.add_member_from_membership(m)
-        end
+        pool.add(:member, memberships)
 
         Success({ objects: pool.to_a })
       end

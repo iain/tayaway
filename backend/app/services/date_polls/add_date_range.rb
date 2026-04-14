@@ -27,8 +27,8 @@ module DatePolls
           existing = DateRange.find(id)
           if existing
             pool = PoolSerializer.new(membership: membership)
-            pool.add_date_poll(DatePoll.find(poll.id))
-            pool.add_date_range(existing)
+            pool.add(:date_poll, [DatePoll.find(poll.id)])
+            pool.add(:date_range, [existing])
             return Success({ objects: pool.to_a })
           end
         end
@@ -54,8 +54,8 @@ module DatePolls
         end
 
         pool = PoolSerializer.new(membership: membership)
-        pool.add_date_poll(DatePoll.find(poll.id))
-        pool.add_date_range(DateRange.find(dr_id))
+        pool.add(:date_poll, [DatePoll.find(poll.id)])
+        pool.add(:date_range, [DateRange.find(dr_id)])
         Success({ objects: pool.to_a })
       end
     end

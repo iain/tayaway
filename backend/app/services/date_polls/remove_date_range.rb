@@ -38,7 +38,7 @@ module DatePolls
         end
 
         pool = PoolSerializer.new(membership: membership)
-        pool.add_date_poll(DatePoll.find(poll.id))
+        pool.add(:date_poll, [DatePoll.find(poll.id)])
 
         Success({ objects: pool.to_a, deleted: [{ objectType: "dateRange", id: date_range_id }] })
       end

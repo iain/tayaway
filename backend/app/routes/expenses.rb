@@ -26,7 +26,7 @@ class App
 
         expenses = Expense.for_event(event_id)
         pool = PoolSerializer.new(membership: current_membership)
-        pool.add_expenses_batch(expenses)
+        pool.add(:expense, expenses)
 
         response.status = 200
         { objects: pool.to_a }

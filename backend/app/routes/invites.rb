@@ -67,7 +67,7 @@ class App
 
         invites = WorkspaceInvite.all_non_accepted_for_workspace(workspace_id)
         pool = PoolSerializer.new(membership: current_membership)
-        pool.add_all(invites, type: :workspace_invite)
+        pool.add(:workspace_invite, invites)
         { objects: pool.to_a }
       end
 

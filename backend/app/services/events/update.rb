@@ -123,7 +123,7 @@ module Events
         APP_LOGGER.info { "[Events::Update] Event #{event_id} updated in workspace #{workspace_id}" }
 
         pool = PoolSerializer.new(membership: membership)
-        pool.add_event(Event.find(event_id))
+        pool.add(:event, [Event.find(event_id)])
         Success({ objects: pool.to_a })
       end
     end

@@ -14,7 +14,7 @@ RSpec.describe "PoolSerializer permissions" do
   it "includes permissions for event owner" do
     membership = WorkspaceMembership.find(owner_membership_row[:id])
     pool = PoolSerializer.new(membership: membership)
-    pool.add_event(event)
+    pool.add(:event, [event])
 
     event_obj = pool.to_a.find { |o| o[:objectType] == "event" }
     expect(event_obj[:permissions][:edit]).to eq({ allowed: true })
@@ -24,7 +24,7 @@ RSpec.describe "PoolSerializer permissions" do
   it "includes permissions for non-owner" do
     membership = WorkspaceMembership.find(other_membership_row[:id])
     pool = PoolSerializer.new(membership: membership)
-    pool.add_event(event)
+    pool.add(:event, [event])
 
     event_obj = pool.to_a.find { |o| o[:objectType] == "event" }
     expect(event_obj[:permissions][:edit]).to eq({ allowed: false, reason: "not_owner" })
@@ -32,7 +32,7 @@ RSpec.describe "PoolSerializer permissions" do
 
   it "omits permissions when no membership provided" do
     pool = PoolSerializer.new(workspace_id: workspace[:id])
-    pool.add_event(event)
+    pool.add(:event, [event])
 
     event_obj = pool.to_a.find { |o| o[:objectType] == "event" }
     expect(event_obj).not_to have_key(:permissions)
@@ -48,7 +48,7 @@ RSpec.describe "PoolSerializer permissions" do
     )
 
     pool = PoolSerializer.new(membership: membership)
-    pool.add_event(event)
+    pool.add(:event, [event])
 
     event_obj = pool.to_a.find { |o| o[:objectType] == "event" }
     expect(event_obj[:permissions][:delete]).to eq({ allowed: false, reason: "has_expenses" })
@@ -61,7 +61,7 @@ RSpec.describe "PoolSerializer permissions" do
     event2 = Event.find(event2_row[:id])
 
     pool = PoolSerializer.new(membership: membership)
-    pool.add_events_batch([event, event2])
+    pool.add(:event, [event, event2])
 
     objects = pool.to_a.select { |o| o[:objectType] == "event" }
     expect(objects.length).to eq(2)
@@ -85,7 +85,7 @@ RSpec.describe "PoolSerializer permissions" do
     expense = Expense.find(expense_id)
 
     pool = PoolSerializer.new(membership: membership)
-    pool.add_expense(expense)
+    pool.add(:expense, [expense])
 
     expense_obj = pool.to_a.find { |o| o[:objectType] == "expense" }
     expect(expense_obj[:permissions][:edit]).to eq({ allowed: true })

@@ -50,7 +50,7 @@ module ChoreRosters
           existing = ChoreRoster.find(id)
           if existing && existing.event_id.to_s == event.id.to_s
             pool = PoolSerializer.new(membership: membership)
-            pool.add_chore_roster(existing)
+            pool.add(:chore_roster, [existing])
             return Success({ objects: pool.to_a })
           end
         end
@@ -72,7 +72,7 @@ module ChoreRosters
 
         pool = PoolSerializer.new(membership: membership)
         roster = ChoreRoster.find(roster_id)
-        pool.add_chore_roster(roster)
+        pool.add(:chore_roster, [roster])
 
         Success({ objects: pool.to_a })
       end

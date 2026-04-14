@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
 # Collects and serializes objects for pool-based API responses.
-# Objects are deduplicated by type and id, and includes related objects.
+# Objects are deduplicated by type and id. Per-type serialization logic lives
+# in app/serializers/<type>_serializer.rb — this class is just the coordinator.
 #
 # @example
-#   pool = PoolSerializer.new(workspace_id: workspace_id)
-#   pool.add_event(event)
+#   pool = PoolSerializer.new(membership: membership)
+#   pool.add(:event, [event])
 #   { objects: pool.to_a }
 class PoolSerializer
   def initialize(workspace_id: nil, membership: nil)
@@ -18,121 +19,13 @@ class PoolSerializer
                     end
   end
 
-  # New unified entry point. Takes a registry key (symbol or string) and
-  # an array of items. Dispatches to the registered serializer_class.
+  # Dispatches to the serializer registered for `key` in ObjectRegistry.
+  # `items` may be a single object or an array.
   def add(key, items)
     entry = ObjectRegistry::BY_KEY[key.to_s]
     raise ArgumentError, "Unknown object key: #{key.inspect}" unless entry
 
     add_batch(entry, Array(items))
-  end
-
-  # Serializes a workspace membership as a member pool object.
-  def add_member_from_membership(membership)
-    add_batch(ObjectRegistry::BY_KEY["member"], [membership])
-  end
-
-  # Public alias.
-  def add_member(membership)
-    add_batch(ObjectRegistry::BY_KEY["member"], [membership])
-  end
-
-  def add_members_batch(memberships)
-    add_batch(ObjectRegistry::BY_KEY["member"], memberships)
-  end
-
-  def add_event(event)
-    add_batch(ObjectRegistry::BY_KEY["event"], [event])
-  end
-
-  def add_events_batch(events)
-    add_batch(ObjectRegistry::BY_KEY["event"], events)
-  end
-
-  def add_date_poll(date_poll)
-    add_batch(ObjectRegistry::BY_KEY["date_poll"], [date_poll])
-  end
-
-  def add_date_polls_batch(polls)
-    add_batch(ObjectRegistry::BY_KEY["date_poll"], polls)
-  end
-
-  def add_date_range(date_range)
-    add_batch(ObjectRegistry::BY_KEY["date_range"], [date_range])
-  end
-
-  def add_date_ranges_batch(ranges)
-    add_batch(ObjectRegistry::BY_KEY["date_range"], ranges)
-  end
-
-  def add_vote(vote)
-    add_batch(ObjectRegistry::BY_KEY["vote"], [vote])
-  end
-
-  def add_rsvp(rsvp)
-    add_batch(ObjectRegistry::BY_KEY["rsvp"], [rsvp])
-  end
-
-  def add_workspace(workspace)
-    add_batch(ObjectRegistry::BY_KEY["workspace"], [workspace])
-  end
-
-  def add_task_list(task_list)
-    add_batch(ObjectRegistry::BY_KEY["task_list"], [task_list])
-  end
-
-  def add_task_item(task_item)
-    add_batch(ObjectRegistry::BY_KEY["task_item"], [task_item])
-  end
-
-  def add_expense(expense, participants: nil)
-    add_batch(ObjectRegistry::BY_KEY["expense"], [expense])
-  end
-
-  def add_expenses_batch(expenses)
-    add_batch(ObjectRegistry::BY_KEY["expense"], expenses)
-  end
-
-  def add_expense_participant(participant)
-    add_batch(ObjectRegistry::BY_KEY["expense_participant"], [participant])
-  end
-
-  def add_settlement(settlement)
-    add_batch(ObjectRegistry::BY_KEY["settlement"], [settlement])
-  end
-
-  def add_settlements_batch(settlements)
-    add_batch(ObjectRegistry::BY_KEY["settlement"], settlements)
-  end
-
-  def add_settlement_transfer(transfer)
-    add_batch(ObjectRegistry::BY_KEY["settlement_transfer"], [transfer])
-  end
-
-  def add_chore_roster(roster)
-    add_batch(ObjectRegistry::BY_KEY["chore_roster"], [roster])
-  end
-
-  def add_chore(chore)
-    add_batch(ObjectRegistry::BY_KEY["chore"], [chore])
-  end
-
-  def add_chore_assignment(assignment)
-    add_batch(ObjectRegistry::BY_KEY["chore_assignment"], [assignment])
-  end
-
-  def add_workspace_invite(invite)
-    add_batch(ObjectRegistry::BY_KEY["workspace_invite"], [invite])
-  end
-
-  def add_all(items, type:)
-    entry = ObjectRegistry::BY_KEY[type.to_s]
-    unless entry
-      APP_LOGGER.warn { "[PoolSerializer] Unknown type in add_all: #{type}" }
-      return
-    end
-
-    items.each { |item| send(entry.pool_method, item) }
   end
 
   def to_a
@@ -141,20 +34,6 @@ class PoolSerializer
 
   private
 
-  def attach_permissions(hash, object, **policy_kwargs)
-    return unless @membership
-
-    entry = ObjectRegistry::BY_CLIENT_TYPE[hash[:objectType]]
-    return unless entry&.policy
-
-    policy_class = Object.const_get(entry.policy)
-    policy = policy_class.new(object, membership: @membership, **policy_kwargs)
-    hash[:permissions] = policy.permissions
-  end
-
-  # New unified path: dispatches to the registry's serializer_class. Returns
-  # the number of new objects added (for tests). Legacy add_X methods will
-  # delegate to this as each type migrates.
   def add_batch(entry, items)
     return 0 if items.empty?
 

@@ -31,7 +31,7 @@ module TaskLists
           existing = TaskList.find(id)
           if existing
             pool = PoolSerializer.new(membership: membership)
-            pool.add_task_list(existing)
+            pool.add(:task_list, [existing])
             return Success({ objects: pool.to_a })
           end
         end
@@ -57,7 +57,7 @@ module TaskLists
         end
 
         pool = PoolSerializer.new(membership: membership)
-        pool.add_task_list(task_list)
+        pool.add(:task_list, [task_list])
 
         Success({ objects: pool.to_a })
       end

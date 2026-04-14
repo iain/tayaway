@@ -70,7 +70,7 @@ module Events
           existing = Event.find(id)
           if existing
             pool = PoolSerializer.new(membership: membership)
-            pool.add_event(existing)
+            pool.add(:event, [existing])
             return Success({ objects: pool.to_a })
           end
         end
@@ -113,7 +113,7 @@ module Events
         APP_LOGGER.info { "[Events::Create] User #{membership.user_id} created event #{event.id} in workspace #{workspace_id}" }
 
         pool = PoolSerializer.new(membership: membership)
-        pool.add_event(event)
+        pool.add(:event, [event])
 
         Success({ objects: pool.to_a })
       end

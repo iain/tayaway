@@ -23,7 +23,7 @@ module Settlements
 
         updated = SettlementTransfer.find(transfer.id)
         pool = PoolSerializer.new(membership: membership)
-        pool.add_settlement_transfer(updated)
+        pool.add(:settlement_transfer, [updated])
 
         Success({ objects: pool.to_a })
       end

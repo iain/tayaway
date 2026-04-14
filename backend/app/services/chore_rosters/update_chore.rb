@@ -47,7 +47,7 @@ module ChoreRosters
 
         pool = PoolSerializer.new(membership: membership)
         updated_chore = Chore.find(chore.id)
-        pool.add_chore(updated_chore)
+        pool.add(:chore, [updated_chore])
 
         Success({ objects: pool.to_a })
       end

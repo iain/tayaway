@@ -90,7 +90,7 @@ module Expenses
 
         updated = Expense.find(expense.id)
         pool = PoolSerializer.new(membership: membership)
-        pool.add_expense(updated)
+        pool.add(:expense, [updated])
 
         Success({ objects: pool.to_a })
       end

@@ -60,8 +60,8 @@ module DatePolls
         end
 
         pool = PoolSerializer.new(membership: membership)
-        pool.add_event(Event.find(event.id))
-        pool.add_date_poll(DatePoll.find(poll_id))
+        pool.add(:event, [Event.find(event.id)])
+        pool.add(:date_poll, [DatePoll.find(poll_id)])
         Success({ objects: pool.to_a })
       end
     end

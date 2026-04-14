@@ -8,7 +8,7 @@ RSpec.describe PoolSerializer do
 
   before { TestFactories.workspace_membership(workspace: workspace, user: user) }
 
-  describe "#add_events_batch" do
+  describe "#add" do
     it "serializes multiple events without N+1 date poll queries" do
       event1 = TestFactories.event(workspace: workspace, user: user, name: "Event 1")
       event2 = TestFactories.event(workspace: workspace, user: user, name: "Event 2")
@@ -18,7 +18,7 @@ RSpec.describe PoolSerializer do
       pool = described_class.new(workspace_id: workspace[:id])
       events = Event.for_workspace(workspace[:id])
 
-      pool.add_events_batch(events)
+      pool.add(:event, events)
 
       objects = pool.to_a
       types = objects.map { |o| o[:objectType] }
@@ -39,14 +39,14 @@ RSpec.describe PoolSerializer do
       event_model = Event.find(event[:id])
 
       pool = described_class.new(workspace_id: workspace[:id])
-      pool.add_event(event_model)
-      pool.add_events_batch([event_model])
+      pool.add(:event, [event_model])
+      pool.add(:event, [event_model])
 
       expect(pool.to_a.count { |o| o[:objectType] == "event" }).to eq(1)
     end
   end
 
-  describe "#add_date_polls_batch" do
+  describe "#add date_polls" do
     it "serializes multiple date polls without N+1 date range queries" do
       event1 = TestFactories.event(workspace: workspace, user: user)
       event2 = TestFactories.event(workspace: workspace, user: user)
@@ -57,7 +57,7 @@ RSpec.describe PoolSerializer do
       pool = described_class.new(workspace_id: workspace[:id])
       polls = [DatePoll.find(poll1[:id]), DatePoll.find(poll2[:id])]
 
-      pool.add_date_polls_batch(polls)
+      pool.add(:date_poll, polls)
 
       objects = pool.to_a
       poll1_obj = objects.find { |o| o[:objectType] == "datePoll" && o[:id] == poll1[:id].to_s }
@@ -68,7 +68,7 @@ RSpec.describe PoolSerializer do
     end
   end
 
-  describe "#add_date_ranges_batch" do
+  describe "#add date_ranges" do
     it "serializes multiple date ranges in a single batch" do
       event = TestFactories.event(workspace: workspace, user: user)
       poll = TestFactories.date_poll(event: event)
@@ -78,7 +78,7 @@ RSpec.describe PoolSerializer do
       pool = described_class.new(workspace_id: workspace[:id])
       ranges = [DateRange.find(range1[:id]), DateRange.find(range2[:id])]
 
-      pool.add_date_ranges_batch(ranges)
+      pool.add(:date_range, ranges)
 
       objects = pool.to_a
       range1_obj = objects.find { |o| o[:objectType] == "dateRange" && o[:id] == range1[:id].to_s }
@@ -92,7 +92,7 @@ RSpec.describe PoolSerializer do
     end
   end
 
-  describe "#add_settlements_batch" do
+  describe "#add settlements" do
     it "serializes multiple settlements without N+1 transfer queries" do
       event = TestFactories.event(workspace: workspace, user: user)
       user2 = TestFactories.user
@@ -115,7 +115,7 @@ RSpec.describe PoolSerializer do
       pool = described_class.new(workspace_id: workspace[:id])
       settlements = [Settlement.find(settlement1_id), Settlement.find(settlement2_id)]
 
-      pool.add_settlements_batch(settlements)
+      pool.add(:settlement, settlements)
 
       objects = pool.to_a
       s1_obj = objects.find { |o| o[:objectType] == "settlement" && o[:id] == settlement1_id.to_s }

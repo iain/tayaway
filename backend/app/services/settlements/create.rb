@@ -101,9 +101,9 @@ module Settlements
 
         pool = PoolSerializer.new(membership: membership)
         settlement = Settlement.find(settlement_id)
-        pool.add_settlement(settlement)
-        SettlementTransfer.for_settlement(settlement_id).each { |t| pool.add_settlement_transfer(t) }
-        all_expenses.each { |e| pool.add_expense(e) }
+        pool.add(:settlement, [settlement])
+        pool.add(:settlement_transfer, SettlementTransfer.for_settlement(settlement_id))
+        pool.add(:expense, all_expenses)
 
         Success({ objects: pool.to_a })
       end
