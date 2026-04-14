@@ -4,7 +4,7 @@
 # Websocket::Listener, Sync::WorkspaceSync, and PoolSerializer.
 module ObjectRegistry
   class Entry
-    attr_reader :key, :model, :client_type, :pool_method, :tracks_user, :policy
+    attr_reader :key, :model, :client_type, :pool_method, :tracks_user, :policy, :serializer_class
 
     def initialize(
       key:,
@@ -12,7 +12,8 @@ module ObjectRegistry
       client_type:,
       pool_method:,
       tracks_user:,
-      policy: nil
+      policy: nil,
+      serializer_class: nil
     )
       @key = key
       @model = model
@@ -20,6 +21,7 @@ module ObjectRegistry
       @pool_method = pool_method
       @tracks_user = tracks_user
       @policy = policy
+      @serializer_class = serializer_class
     end
   end
 
