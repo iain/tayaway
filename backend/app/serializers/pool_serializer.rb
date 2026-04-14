@@ -236,12 +236,7 @@ class PoolSerializer
   end
 
   def add_chore_assignment(assignment)
-    key = "chore_assignment:#{assignment.id}"
-    return if @objects.key?(key)
-
-    hash = assignment.to_api_hash
-    attach_permissions(hash, assignment)
-    @objects[key] = hash
+    add_batch(ObjectRegistry::BY_KEY["chore_assignment"], [assignment])
   end
 
   def add_workspace_invite(invite)

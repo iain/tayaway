@@ -40,7 +40,7 @@ module ObjectRegistry
     Entry.new(key: "settlement_transfer", model: "SettlementTransfer", client_type: "settlementTransfer", pool_method: :add_settlement_transfer, tracks_user: false, policy: "SettlementTransferPolicy", serializer_class: SettlementTransferSerializer),
     Entry.new(key: "chore_roster",       model: "ChoreRoster",        client_type: "choreRoster",        pool_method: :add_chore_roster,        tracks_user: true,  policy: "ChoreRosterPolicy"),
     Entry.new(key: "chore",              model: "Chore",              client_type: "chore",              pool_method: :add_chore,               tracks_user: false, policy: "ChorePolicy"),
-    Entry.new(key: "chore_assignment",   model: "ChoreAssignment",    client_type: "choreAssignment",    pool_method: :add_chore_assignment,    tracks_user: true,  policy: "ChoreAssignmentPolicy"),
+    Entry.new(key: "chore_assignment",   model: "ChoreAssignment",    client_type: "choreAssignment",    pool_method: :add_chore_assignment,    tracks_user: true,  policy: "ChoreAssignmentPolicy", serializer_class: ChoreAssignmentSerializer),
     Entry.new(key: "workspace_invite", model: "WorkspaceInvite", client_type: "workspaceInvite", pool_method: :add_workspace_invite, tracks_user: false, policy: "WorkspaceInvitePolicy"),
     Entry.new(key: "expense_participant", model: "ExpenseParticipant", client_type: "expenseParticipant", pool_method: :add_expense_participant, tracks_user: true, policy: "ExpenseParticipantPolicy", serializer_class: ExpenseParticipantSerializer)
   ].freeze
