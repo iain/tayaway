@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { usePoolPersistence } from './usePoolPersistence'
 import * as poolDb from '@/api/poolDb'
-import { onPoolChange, useObjectPoolStore, type PoolChange } from '@/stores/objectPool'
+import {
+  onPoolChange,
+  useObjectPoolStore,
+  type PoolChange,
+} from '@/stores/objectPool'
 import { useWebSocketStore } from '@/stores/websocket'
 import type { PoolObject } from '@/types/pool'
 
@@ -70,7 +74,6 @@ vi.mock('@/stores/websocket', () => ({
   useWebSocketStore: vi.fn(() => ({
     hasSynced: false,
     hasCachedData: false,
-    setCacheStaleLevel: vi.fn(),
     restoreSyncTimestamp: vi.fn(),
     getSyncedAt: vi.fn(() => null),
   })),
@@ -80,6 +83,7 @@ vi.mock('@/stores/workspace', () => ({
   useWorkspaceStore: vi.fn(() => ({
     currentWorkspaceId: 'ws-1',
   })),
+  WORKSPACE_ID_STORAGE_KEY: 'current_workspace_id',
 }))
 
 // Dispatch a real visibilitychange event after setting visibilityState so the
@@ -322,7 +326,9 @@ describe('usePoolPersistence — progressive cache loading', () => {
       cacheVersion: 4,
     })
     vi.mocked(poolDb.loadObjectsByType).mockReset().mockResolvedValue([])
-    vi.mocked(poolDb.loadPendingUpdatesFromDb).mockReset().mockResolvedValue(new Map())
+    vi.mocked(poolDb.loadPendingUpdatesFromDb)
+      .mockReset()
+      .mockResolvedValue(new Map())
     vi.mocked(poolDb.clearAll).mockReset().mockResolvedValue(undefined)
 
     vi.mocked(useObjectPoolStore).mockReturnValue({
@@ -438,12 +444,33 @@ describe('usePoolPersistence — progressive cache loading', () => {
 
   it('loads pending updates after all objects are loaded', async () => {
     const pendingMap = new Map([
-      ['event:e-1', [{ id: 'p-1', objectType: 'event', objectId: 'e-1', changes: { name: 'New' }, timestamp: Date.now() }]],
+      [
+        'event:e-1',
+        [
+          {
+            id: 'p-1',
+            objectType: 'event',
+            objectId: 'e-1',
+            changes: { name: 'New' },
+            timestamp: Date.now(),
+          },
+        ],
+      ],
     ])
-    vi.mocked(poolDb.loadPendingUpdatesFromDb).mockResolvedValue(pendingMap as unknown as Awaited<ReturnType<typeof poolDb.loadPendingUpdatesFromDb>>)
+    vi.mocked(poolDb.loadPendingUpdatesFromDb).mockResolvedValue(
+      pendingMap as unknown as Awaited<
+        ReturnType<typeof poolDb.loadPendingUpdatesFromDb>
+      >
+    )
     vi.mocked(poolDb.loadObjectsByType).mockImplementation(async (type) => {
       if (type === 'member') {
-        return [{ id: 'm-1', objectType: 'member', updatedAt: '2026-01-01T00:00:00.000Z' } as PoolObject]
+        return [
+          {
+            id: 'm-1',
+            objectType: 'member',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          } as PoolObject,
+        ]
       }
       return []
     })

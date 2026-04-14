@@ -4,7 +4,7 @@ import {
   offPoolChange,
 } from '@/stores/objectPool'
 import { useWebSocketStore } from '@/stores/websocket'
-import { useWorkspaceStore } from '@/stores/workspace'
+import { useWorkspaceStore, WORKSPACE_ID_STORAGE_KEY } from '@/stores/workspace'
 import * as poolDb from '@/api/poolDb'
 import { CACHE_VERSION } from '@/api/poolDb'
 import { getStaleness } from '@/composables/useStaleness'
@@ -86,7 +86,7 @@ export function usePoolPersistence() {
   async function loadFromCache(): Promise<void> {
     // Read from localStorage directly — the workspace store won't be initialized
     // yet since that happens in the WS handleAuthenticated callback
-    const expectedWorkspaceId = localStorage.getItem('current_workspace_id')
+    const expectedWorkspaceId = localStorage.getItem(WORKSPACE_ID_STORAGE_KEY)
     if (!expectedWorkspaceId) return
 
     try {
@@ -105,19 +105,16 @@ export function usePoolPersistence() {
       const wsStore = useWebSocketStore()
       if (wsStore.hasSynced) return // Server already sent authoritative data
 
-      // Check cache age and apply staleness policy
-      if (syncedAt) {
-        const staleLevel = getStaleness(syncedAt)
-
-        if (staleLevel === 'expired') {
-          // Cache is older than 7 days — too stale to trust. Clear it and force
-          // a full sync without showing any cached data.
-          await poolDb.clearAll()
-          return
-        }
-
-        // Expose the staleness level so the UI can show appropriate indicators
-        wsStore.setCacheStaleLevel(staleLevel)
+      // Check cache age and apply staleness policy. The staleness tier itself
+      // is now derived reactively by AuthenticatedLayout from a ticking `now`
+      // + the persisted syncedAt — no need to push a static value into the
+      // store. We only need the one-shot 'expired' check here to decide
+      // whether to clear the cache at load time.
+      if (syncedAt && getStaleness(syncedAt) === 'expired') {
+        // Cache is older than 7 days — too stale to trust. Clear it and force
+        // a full sync without showing any cached data.
+        await poolDb.clearAll()
+        return
       }
 
       // Phase 2: Load priority types first (member, workspace, event) so the

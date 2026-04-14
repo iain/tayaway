@@ -16,6 +16,7 @@ vi.mock('@/stores/workspace', () => ({
     currentWorkspaceId: null,
     initialize: vi.fn(),
   }),
+  WORKSPACE_ID_STORAGE_KEY: 'current_workspace_id',
 }))
 
 vi.mock('@/stores/objectPool', () => ({

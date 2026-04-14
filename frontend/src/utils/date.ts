@@ -64,11 +64,19 @@ export function formatDateTime(isoString: string): string {
   })
 }
 
-/** "Just now", "5m ago", "2h ago", "3d ago", or fallback to short date */
-export function formatRelativeDate(isoString: string): string {
+/**
+ * "Just now", "5m ago", "2h ago", "3d ago", or fallback to short date.
+ *
+ * Accepts an optional `now` so consumers with a reactive clock (e.g. the
+ * layout's minute ticker) can pass it in and have the output update as
+ * time passes. Defaults to Date.now() for one-shot callers.
+ */
+export function formatRelativeDate(
+  isoString: string,
+  now: number = Date.now()
+): string {
   const date = new Date(isoString)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
+  const diffMs = now - date.getTime()
   const diffMinutes = Math.floor(diffMs / 60000)
   const diffHours = Math.floor(diffMs / 3600000)
   const diffDays = Math.floor(diffMs / 86400000)

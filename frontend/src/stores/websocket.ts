@@ -3,9 +3,8 @@ import { defineStore } from 'pinia'
 import { rawApi } from '@/api/client'
 import { checkForServiceWorkerUpdate } from '@/api/swUpdate'
 import { useObjectPoolStore } from './objectPool'
-import { useWorkspaceStore } from './workspace'
+import { useWorkspaceStore, WORKSPACE_ID_STORAGE_KEY } from './workspace'
 import type { PoolObject, ObjectType } from '@/types/pool'
-import type { StalenessLevel } from '@/composables/useStaleness'
 
 type ConnectionState =
   | 'disconnected'
@@ -60,9 +59,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
   const workspaceIds = ref<string[]>([])
   const hasSynced = ref(false)
   const hasCachedData = ref(false)
-  // Staleness level of cached data loaded from IndexedDB before the first sync.
-  // Cleared once a live sync completes (hasSynced becomes true).
-  const cacheStaleLevel = ref<StalenessLevel | null>(null)
   // Set to true when ticket fetch fails so the loading screen exits and the
   // connection badge becomes visible even before a first successful sync.
   const connectionFailed = ref(false)
@@ -89,10 +85,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
     syncTimestamps.set(workspaceId, syncedAt)
   }
 
-  function setCacheStaleLevel(level: StalenessLevel): void {
-    cacheStaleLevel.value = level
-  }
-
   async function getWebSocketUrl(): Promise<string> {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 5000)
@@ -115,7 +107,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     let url = `${protocol}//${host}/ws?ticket=${encodeURIComponent(data.ticket)}`
 
     // Include current workspace so the server can sync it immediately
-    const storedWorkspaceId = localStorage.getItem('current_workspace_id')
+    const storedWorkspaceId = localStorage.getItem(WORKSPACE_ID_STORAGE_KEY)
     if (storedWorkspaceId) {
       url += `&workspaceId=${encodeURIComponent(storedWorkspaceId)}`
       const since = getSyncedAt(storedWorkspaceId)
@@ -313,8 +305,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
     }
 
     hasSynced.value = true
-    // Once the server has sent authoritative data, staleness indicators are no longer relevant
-    cacheStaleLevel.value = null
   }
 
   function handleBroadcast(message: BroadcastMessage): void {
@@ -437,7 +427,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
   function $reset(): void {
     disconnect()
     syncTimestamps.clear()
-    cacheStaleLevel.value = null
   }
 
   return {
@@ -447,7 +436,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
     isReconnecting,
     hasSynced,
     hasCachedData,
-    cacheStaleLevel,
     connectionFailed,
     gitSha,
     connect,
@@ -456,7 +444,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
     sendSwitchWorkspace,
     getSyncedAt,
     restoreSyncTimestamp,
-    setCacheStaleLevel,
     $reset,
   }
 })

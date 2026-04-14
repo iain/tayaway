@@ -19,8 +19,11 @@ export type StalenessLevel = 'fresh' | 'stale' | 'warning' | 'expired'
  * - warning: 1 – 7 days old — show amber banner
  * - expired: > 7 days old — clear cache, do full sync, show welcome-back state
  */
-export function getStaleness(syncedAt: string): StalenessLevel {
-  const ageMs = Date.now() - new Date(syncedAt).getTime()
+export function getStaleness(
+  syncedAt: string,
+  now: number = Date.now()
+): StalenessLevel {
+  const ageMs = now - new Date(syncedAt).getTime()
 
   if (ageMs < STALENESS_THRESHOLDS.STALE_MS) return 'fresh'
   if (ageMs < STALENESS_THRESHOLDS.WARNING_MS) return 'stale'
@@ -31,8 +34,13 @@ export function getStaleness(syncedAt: string): StalenessLevel {
 /**
  * Return the number of full days since syncedAt (clamped to 0).
  * Used for the warning banner copy: "offline for X days".
+ *
+ * Accepts an optional `now` so callers that re-render on a ticking clock
+ * (e.g. the AuthenticatedLayout staleness banner) can pass their reactive
+ * value and make the result update as time passes. Defaults to Date.now()
+ * for one-shot callers like the load-time expired-cache check.
  */
-export function staleDays(syncedAt: string): number {
-  const ageMs = Date.now() - new Date(syncedAt).getTime()
+export function staleDays(syncedAt: string, now: number = Date.now()): number {
+  const ageMs = now - new Date(syncedAt).getTime()
   return Math.max(0, Math.floor(ageMs / 86400000))
 }

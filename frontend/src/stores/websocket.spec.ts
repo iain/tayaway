@@ -78,6 +78,7 @@ vi.mock('./workspace', () => ({
     currentWorkspaceId: 'ws-1',
     initialize: vi.fn(),
   })),
+  WORKSPACE_ID_STORAGE_KEY: 'current_workspace_id',
 }))
 
 vi.mock('./commandQueue', () => ({

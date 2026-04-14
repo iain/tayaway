@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watchEffect } from 'vue'
+import { computed, onUnmounted, ref, watchEffect } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter, useRoute } from 'vue-router'
 import {
@@ -28,7 +28,11 @@ import {
 } from '@/stores'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useDarkMode } from '@/composables/useDarkMode'
-import { staleDays } from '@/composables/useStaleness'
+import {
+  getStaleness,
+  staleDays,
+  type StalenessLevel,
+} from '@/composables/useStaleness'
 import { formatRelativeDate } from '@/utils/date'
 import { getInitials } from '@/utils/member'
 import AppAvatar from '@/components/common/AppAvatar.vue'
@@ -51,7 +55,6 @@ const {
   state: wsState,
   hasSynced,
   hasCachedData,
-  cacheStaleLevel,
   connectionFailed,
 } = storeToRefs(wsStore)
 const { pendingCount } = storeToRefs(commandQueueStore)
@@ -59,11 +62,29 @@ const { pendingCount } = storeToRefs(commandQueueStore)
 const showConnectionBadge = computed(() => wsState.value !== 'authenticated')
 const { currentWorkspace, otherWorkspaces } = storeToRefs(workspaceStore)
 
+// Ticks once a minute so the staleness indicators advance from "fresh" to
+// "stale" to "warning" without a page refresh. Stops on unmount.
+const now = ref(Date.now())
+const nowTicker = setInterval(() => {
+  now.value = Date.now()
+}, 60_000)
+onUnmounted(() => clearInterval(nowTicker))
+
+// Staleness tier derived locally from the persisted syncedAt + `now`, so it
+// advances in-place while the user is offline. Returns null once a live sync
+// has arrived (the UI collapses to the connected state then).
+const cacheStaleLevel = computed<StalenessLevel | null>(() => {
+  if (hasSynced.value) return null
+  const since = wsStore.getSyncedAt(workspaceStore.currentWorkspaceId ?? '')
+  if (!since) return null
+  return getStaleness(since, now.value)
+})
+
 // "Last synced X ago" text shown for the stale tier
 const lastSyncedText = computed(() => {
   const since = wsStore.getSyncedAt(workspaceStore.currentWorkspaceId ?? '')
   if (!since) return null
-  return `Last synced ${formatRelativeDate(since)}`
+  return `Last synced ${formatRelativeDate(since, now.value)}`
 })
 
 // Show "Last synced" only when we have stale cached data and are connected
@@ -88,7 +109,7 @@ const showWarningBanner = computed(
 const warningBannerDays = computed(() => {
   const since = wsStore.getSyncedAt(workspaceStore.currentWorkspaceId ?? '')
   if (!since) return 1
-  return staleDays(since)
+  return staleDays(since, now.value)
 })
 
 function handleSwitchWorkspace(workspaceId: string) {
