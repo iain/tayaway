@@ -109,4 +109,28 @@ RSpec.describe EventSerializer do
       expect(described_class.policy_context(event)).to eq(has_expenses: false)
     end
   end
+
+  describe "policy context threading" do
+    let(:event_row) { TestFactories.event(workspace: workspace, user: user) }
+    let(:event) { Event.find(event_row[:id]) }
+    let(:membership) do
+      row = TestFactories.workspace_membership(workspace: workspace, user: user)
+      WorkspaceMembership.find(row[:id])
+    end
+
+    it "feeds the policy the keys it reads so delete flips on has_expenses" do
+      ctx = described_class.policy_context(event)
+      expect(EventPolicy.new(event, membership: membership, **ctx).delete).to be_success
+
+      DB[:expenses].insert(
+        id: SecureRandom.uuid, event_id: event_row[:id], user_id: user[:id],
+        description: "x", amount: 1.0, start_date: Date.today, end_date: Date.today,
+        created_at: Time.now, updated_at: Time.now
+      )
+      ctx_with_expense = described_class.policy_context(event)
+      result = EventPolicy.new(event, membership: membership, **ctx_with_expense).delete
+      expect(result).to be_failure
+      expect(result.failure).to eq(:has_expenses)
+    end
+  end
 end

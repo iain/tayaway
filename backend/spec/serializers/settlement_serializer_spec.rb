@@ -58,4 +58,22 @@ RSpec.describe SettlementSerializer do
       expect(context[settlement.id.to_s][:event].id.to_s).to eq(event_row[:id].to_s)
     end
   end
+
+  describe "policy context threading" do
+    it "feeds SettlementPolicy the event kwarg it reads, avoiding the Event.find fallback" do
+      event_row = TestFactories.event(workspace: workspace, user: user)
+      now = Time.now
+      settlement_id = SecureRandom.uuid
+      DB[:settlements].insert(id: settlement_id, event_id: event_row[:id], user_id: user[:id], created_at: now, updated_at: now)
+      settlement = Settlement.find(settlement_id)
+      membership_row = TestFactories.workspace_membership(workspace: workspace, user: user)
+      membership = WorkspaceMembership.find(membership_row[:id])
+
+      ctx = described_class.policy_context(settlement)
+      allow(Event).to receive(:find).and_call_original
+
+      expect(SettlementPolicy.new(settlement, membership: membership, **ctx).delete).to be_success
+      expect(Event).not_to have_received(:find)
+    end
+  end
 end

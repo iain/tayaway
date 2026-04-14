@@ -50,4 +50,20 @@ RSpec.describe DatePollSerializer do
       expect(context[poll.id.to_s][:event].id.to_s).to eq(event_row[:id].to_s)
     end
   end
+
+  describe "policy context threading" do
+    it "feeds DatePollPolicy the event kwarg it reads, avoiding the Event.find fallback" do
+      event_row = TestFactories.event(workspace: workspace, user: user)
+      poll_row = TestFactories.date_poll(event: event_row)
+      poll = DatePoll.find(poll_row[:id])
+      membership_row = TestFactories.workspace_membership(workspace: workspace, user: user)
+      membership = WorkspaceMembership.find(membership_row[:id])
+
+      ctx = described_class.policy_context(poll)
+      allow(Event).to receive(:find).and_call_original
+
+      expect(DatePollPolicy.new(poll, membership: membership, **ctx).close).to be_success
+      expect(Event).not_to have_received(:find)
+    end
+  end
 end
