@@ -48,6 +48,12 @@ class Chore
       dataset.where(chore_roster_id: chore_roster_id).order(:position).all
     end
 
+    def for_rosters(chore_roster_ids)
+      return [] if chore_roster_ids.empty?
+
+      dataset.where(chore_roster_id: chore_roster_ids).order(:chore_roster_id, :position).all
+    end
+
     def ids_for_roster(chore_roster_id)
       DB[:chores].where(chore_roster_id: chore_roster_id).order(:position).select_map(:id)
     end

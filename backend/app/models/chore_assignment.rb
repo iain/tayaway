@@ -50,6 +50,12 @@ class ChoreAssignment
       dataset.where(Sequel[:chore_assignments][:chore_id] => chore_id).order(Sequel[:chore_assignments][:date]).all
     end
 
+    def for_chores(chore_ids)
+      return [] if chore_ids.empty?
+
+      dataset.where(chore_id: chore_ids).all
+    end
+
     def ids_for_chore(chore_id)
       DB[:chore_assignments].where(chore_id: chore_id).select_map(:id)
     end

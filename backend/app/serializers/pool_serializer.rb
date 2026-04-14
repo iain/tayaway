@@ -110,42 +110,11 @@ class PoolSerializer
   end
 
   def add_chore_roster(roster)
-    key = "chore_roster:#{roster.id}"
-    return if @objects.key?(key)
-
-    chores = Chore.for_roster(roster.id)
-    chore_ids = chores.map { |c| c.id.to_s }
-    hash = roster.to_api_hash(chore_ids: chore_ids)
-    attach_permissions(hash, roster)
-    @objects[key] = hash
-
-    # Batch-load all assignments for this roster in one query
-    all_assignments = ChoreAssignment.for_roster(roster.id)
-    assignments_by_chore = all_assignments.group_by { |a| a.chore_id.to_s }
-
-    chores.each do |chore|
-      chore_key = "chore:#{chore.id}"
-      next if @objects.key?(chore_key)
-
-      chore_assignments = assignments_by_chore[chore.id.to_s] || []
-      assignment_ids = chore_assignments.map { |a| a.id.to_s }
-      chore_hash = chore.to_api_hash(assignment_ids: assignment_ids)
-      attach_permissions(chore_hash, chore)
-      @objects[chore_key] = chore_hash
-      chore_assignments.each { |a| add_chore_assignment(a) }
-    end
+    add_batch(ObjectRegistry::BY_KEY["chore_roster"], [roster])
   end
 
   def add_chore(chore)
-    key = "chore:#{chore.id}"
-    return if @objects.key?(key)
-
-    assignments = ChoreAssignment.for_chore(chore.id)
-    assignment_ids = assignments.map { |a| a.id.to_s }
-    hash = chore.to_api_hash(assignment_ids: assignment_ids)
-    attach_permissions(hash, chore)
-    @objects[key] = hash
-    assignments.each { |a| add_chore_assignment(a) }
+    add_batch(ObjectRegistry::BY_KEY["chore"], [chore])
   end
 
   def add_chore_assignment(assignment)
