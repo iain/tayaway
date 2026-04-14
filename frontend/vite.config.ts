@@ -48,12 +48,22 @@ export default defineConfig({
         globPatterns: [
           '**/*.{js,css,html,ico,png,svg,webp,avif,woff,woff2,ttf,otf}',
         ],
+        // Source maps are emitted next to the bundles but should never be
+        // precached — they aren't useful offline and would just bloat the
+        // precache. The glob above doesn't match `.map` today but this is
+        // defensive against future glob changes.
+        globIgnores: ['**/*.map'],
         navigateFallback: '/index.html',
         clientsClaim: true,
       },
     }),
   ],
   build: {
+    // Emit source maps next to the bundles so production errors stay
+    // debuggable in browser devtools and stack traces map back to the
+    // original TS/Vue source. Maps are fetched by the browser only when
+    // devtools is open, so there's no user-facing bandwidth cost.
+    sourcemap: true,
     rollupOptions: {
       onwarn(warning, defaultHandler) {
         if (
