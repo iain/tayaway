@@ -40,9 +40,18 @@ RSpec.describe PermissionAttacher do
       expect(result).to eq(unknown_hash)
     end
 
-    it "swallows policy errors and logs them, returning the hash without permissions" do
+    it "propagates unexpected policy errors so sync requests fail loudly" do
+      allow(EventPolicy).to receive(:new).and_raise(NoMethodError, "boom")
+
+      expect {
+        described_class.call(event_hash, raw_object: event, membership: owner_membership)
+      }.to raise_error(NoMethodError, "boom")
+    end
+
+    it "rescues NameError from an unloaded policy class, logs, and returns the hash unchanged" do
       allow(APP_LOGGER).to receive(:error)
-      allow(EventPolicy).to receive(:new).and_raise(StandardError, "boom")
+      entry = ObjectRegistry::BY_CLIENT_TYPE["event"]
+      allow(entry).to receive(:policy).and_return("NotARealPolicy")
 
       result = described_class.call(event_hash, raw_object: event, membership: owner_membership)
 
@@ -99,6 +108,20 @@ RSpec.describe PermissionAttacher do
       result = described_class.attach_to_message(unknown_msg, owner_membership, policy_context)
 
       expect(result[:data][:objects].first).not_to have_key(:permissions)
+    end
+
+    it "isolates per-object policy failures so one bad object does not break the whole broadcast" do
+      allow(APP_LOGGER).to receive(:error)
+      allow(EventPolicy).to receive(:new).and_raise(NoMethodError, "boom")
+      other_hash = { id: SecureRandom.uuid, objectType: "unknown" }
+      msg = message.merge(data: { objects: [event_hash, other_hash] })
+
+      result = described_class.attach_to_message(msg, owner_membership, policy_context)
+
+      expect(result[:data][:objects].length).to eq(2)
+      expect(result[:data][:objects][0]).not_to have_key(:permissions)
+      expect(result[:data][:objects][1]).to eq(other_hash)
+      expect(APP_LOGGER).to have_received(:error).with(any_args)
     end
   end
 end
