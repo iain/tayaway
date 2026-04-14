@@ -5,10 +5,10 @@ require "spec_helper"
 RSpec.describe WorkspaceSerializer do
   describe ".serialize_batch" do
     context "when serializing a single object" do
+      subject { pool_object }
+
       let(:workspace_row) { TestFactories.workspace }
       let(:pool_object) { described_class.serialize_batch([Workspace.find(workspace_row[:id])], pool: nil).first }
-
-      subject { pool_object }
 
       it_behaves_like "a pool object with createdAt", "workspace"
     end

@@ -5,9 +5,7 @@ require "spec_helper"
 RSpec.describe PermissionAttacher do
   let(:workspace) { TestFactories.workspace }
   let(:owner) { TestFactories.user }
-  let(:other_user) { TestFactories.user }
   let(:owner_membership) { WorkspaceMembership.find(TestFactories.workspace_membership(workspace: workspace, user: owner)[:id]) }
-  let(:other_membership) { WorkspaceMembership.find(TestFactories.workspace_membership(workspace: workspace, user: other_user)[:id]) }
   let(:event_row) { TestFactories.event(workspace: workspace, user: owner) }
   let(:event) { Event.find(event_row[:id]) }
   let(:event_hash) { { id: event.id.to_s, objectType: "event", name: event.name } }

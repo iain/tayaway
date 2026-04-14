@@ -8,11 +8,11 @@ RSpec.describe TaskItemSerializer do
 
   describe ".serialize_batch" do
     context "when serializing a single object" do
+      subject { pool_object }
+
       let(:task_list_row) { TestFactories.task_list(workspace: workspace, user: user) }
       let(:task_item_row) { TestFactories.task_item(task_list: task_list_row, user: user) }
       let(:pool_object) { described_class.serialize_batch([TaskItem.find(task_item_row[:id])], pool: nil).first }
-
-      subject { pool_object }
 
       it_behaves_like "a pool object with createdAt", "taskItem"
     end

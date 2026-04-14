@@ -10,6 +10,8 @@ RSpec.describe ExpenseSerializer do
 
   describe ".serialize_batch" do
     context "when serializing a single object" do
+      subject { pool_object }
+
       let(:event_row) { TestFactories.event(workspace: workspace, user: user) }
       let(:pool_object) do
         now = Time.now
@@ -21,8 +23,6 @@ RSpec.describe ExpenseSerializer do
         )
         described_class.serialize_batch([Expense.find(expense_id)], pool: nil).first
       end
-
-      subject { pool_object }
 
       it_behaves_like "a pool object with createdAt", "expense"
     end

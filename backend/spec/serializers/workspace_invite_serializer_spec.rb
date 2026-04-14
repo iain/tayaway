@@ -8,10 +8,10 @@ RSpec.describe WorkspaceInviteSerializer do
 
   describe ".serialize_batch" do
     context "when serializing a single object" do
+      subject { pool_object }
+
       let(:invite_row) { TestFactories.workspace_invite(workspace: workspace, invited_by: inviter) }
       let(:pool_object) { described_class.serialize_batch([WorkspaceInvite.find(invite_row[:id])], pool: nil).first }
-
-      subject { pool_object }
 
       it_behaves_like "a pool object with createdAt", "workspaceInvite"
     end

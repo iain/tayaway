@@ -8,6 +8,8 @@ RSpec.describe SettlementSerializer do
 
   describe ".serialize_batch" do
     context "when serializing a single object" do
+      subject { pool_object }
+
       let(:pool_object) do
         event = TestFactories.event(workspace: workspace, user: user)
         now = Time.now
@@ -15,8 +17,6 @@ RSpec.describe SettlementSerializer do
         DB[:settlements].insert(id: settlement_id, event_id: event[:id], user_id: user[:id], created_at: now, updated_at: now)
         described_class.serialize_batch([Settlement.find(settlement_id)], pool: nil).first
       end
-
-      subject { pool_object }
 
       it_behaves_like "a pool object with createdAt", "settlement"
     end

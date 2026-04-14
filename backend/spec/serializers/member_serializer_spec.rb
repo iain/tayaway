@@ -8,10 +8,10 @@ RSpec.describe MemberSerializer do
 
   describe ".serialize_batch" do
     context "when serializing a single object" do
+      subject { pool_object }
+
       let(:membership_row) { TestFactories.workspace_membership(workspace: workspace, user: user) }
       let(:pool_object) { described_class.serialize_batch([WorkspaceMembership.find(membership_row[:id])], pool: nil).first }
-
-      subject { pool_object }
 
       it_behaves_like "a pool object with createdAt", "member"
     end

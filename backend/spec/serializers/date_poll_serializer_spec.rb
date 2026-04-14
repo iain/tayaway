@@ -8,11 +8,11 @@ RSpec.describe DatePollSerializer do
 
   describe ".serialize_batch" do
     context "when serializing a single object" do
+      subject { pool_object }
+
       let(:event_row) { TestFactories.event(workspace: workspace, user: user) }
       let(:poll_row) { TestFactories.date_poll(event: event_row) }
       let(:pool_object) { described_class.serialize_batch([DatePoll.find(poll_row[:id])], pool: nil).first }
-
-      subject { pool_object }
 
       it_behaves_like "a pool object with createdAt", "datePoll"
     end

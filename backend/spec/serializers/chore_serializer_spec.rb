@@ -8,12 +8,12 @@ RSpec.describe ChoreSerializer do
 
   describe ".serialize_batch" do
     context "when serializing a single object" do
+      subject { pool_object }
+
       let(:event_row) { TestFactories.event(workspace: workspace, user: user) }
       let(:roster_row) { TestFactories.chore_roster(event: event_row, user: user) }
       let(:chore_row) { TestFactories.chore(chore_roster: roster_row) }
       let(:pool_object) { described_class.serialize_batch([Chore.find(chore_row[:id])], pool: nil).first }
-
-      subject { pool_object }
 
       it_behaves_like "a pool object with createdAt", "chore"
     end
