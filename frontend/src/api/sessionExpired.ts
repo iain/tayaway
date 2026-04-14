@@ -14,9 +14,8 @@ export async function handleSessionExpired(): Promise<void> {
 
     authStore.$reset()
 
-    const { usePoolPersistence } = await import(
-      '@/composables/usePoolPersistence'
-    )
+    const { usePoolPersistence } =
+      await import('@/composables/usePoolPersistence')
     const { stopPersisting } = usePoolPersistence()
     stopPersisting()
 
@@ -36,12 +35,8 @@ export async function handleSessionExpired(): Promise<void> {
     useWorkspaceStore().$reset()
 
     localStorage.clear()
-    try {
-      const keys = await caches.keys()
-      await Promise.all(keys.map((k) => caches.delete(k)))
-    } catch {
-      // Caches API may be unavailable
-    }
+    const { clearUserCaches } = await import('@/api/clearUserCaches')
+    await clearUserCaches()
 
     const { default: router } = await import('@/router')
     await router.push({ name: 'login', query: { reason: 'session_revoked' } })

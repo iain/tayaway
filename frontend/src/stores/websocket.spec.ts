@@ -57,6 +57,10 @@ const notificationsMocks = vi.hoisted(() => ({
   showUpdate: vi.fn(),
 }))
 
+const registerSWMocks = vi.hoisted(() => ({
+  checkForServiceWorkerUpdate: vi.fn(),
+}))
+
 vi.mock('@/api/client', () => ({
   api: {
     post: vi
@@ -84,6 +88,10 @@ vi.mock('./notifications', () => ({
   useNotificationsStore: vi.fn(() => ({
     showUpdate: notificationsMocks.showUpdate,
   })),
+}))
+
+vi.mock('@/registerSW', () => ({
+  checkForServiceWorkerUpdate: registerSWMocks.checkForServiceWorkerUpdate,
 }))
 
 vi.mock('@/router', () => ({
@@ -600,32 +608,17 @@ describe('useWebSocketStore — connectionFailed', () => {
   })
 })
 
-// ---- gitSha cache-clear tests ----------------------------------------------
+// ---- gitSha update-trigger tests -------------------------------------------
 
-describe('useWebSocketStore — gitSha cache-clear on version change', () => {
-  let reloadMock: ReturnType<typeof vi.fn>
-  let cachesDeleteMock: ReturnType<typeof vi.fn>
-
+describe('useWebSocketStore — gitSha triggers SW update on version change', () => {
   beforeEach(() => {
     installWebSocketMock()
     setActivePinia(createPinia())
     vi.spyOn(console, 'info').mockImplementation(() => {})
     vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    // jsdom's window.location is not configurable, so we replace it entirely
-    reloadMock = vi.fn()
-    vi.stubGlobal('location', {
-      ...window.location,
-      reload: reloadMock,
-    })
-
-    cachesDeleteMock = vi.fn().mockResolvedValue(true)
-    vi.stubGlobal('caches', {
-      keys: vi.fn().mockResolvedValue(['cache-v1', 'cache-v2']),
-      delete: cachesDeleteMock,
-    })
-
     notificationsMocks.showUpdate.mockReset()
+    registerSWMocks.checkForServiceWorkerUpdate.mockReset()
   })
 
   afterEach(() => {
@@ -634,28 +627,28 @@ describe('useWebSocketStore — gitSha cache-clear on version change', () => {
     vi.resetModules()
   })
 
-  it('calls showUpdate when the gitSha changes between pongs', async () => {
+  it('triggers a service worker update check when the gitSha changes', async () => {
     const { useWebSocketStore } = await import('./websocket')
     const store = useWebSocketStore()
     await store.connect()
     lastSocket.onopen!(new Event('open'))
 
-    // First pong — sets the initial gitSha, no update shown yet
+    // First pong — sets the initial gitSha, no update triggered yet
     lastSocket.onmessage!({
       data: JSON.stringify({ type: 'pong', gitSha: 'abc123' }),
     } as MessageEvent)
     await new Promise((resolve) => setTimeout(resolve, 0))
-    expect(notificationsMocks.showUpdate).not.toHaveBeenCalled()
+    expect(registerSWMocks.checkForServiceWorkerUpdate).not.toHaveBeenCalled()
 
-    // Second pong with a different gitSha — triggers the update notification
+    // Second pong with a different gitSha — triggers the SW update check
     lastSocket.onmessage!({
       data: JSON.stringify({ type: 'pong', gitSha: 'def456' }),
     } as MessageEvent)
     await new Promise((resolve) => setTimeout(resolve, 0))
-    expect(notificationsMocks.showUpdate).toHaveBeenCalledOnce()
+    expect(registerSWMocks.checkForServiceWorkerUpdate).toHaveBeenCalledOnce()
   })
 
-  it('does not call showUpdate when the gitSha stays the same', async () => {
+  it('does not trigger an update when the gitSha stays the same', async () => {
     const { useWebSocketStore } = await import('./websocket')
     const store = useWebSocketStore()
     await store.connect()
@@ -671,24 +664,18 @@ describe('useWebSocketStore — gitSha cache-clear on version change', () => {
     } as MessageEvent)
     await new Promise((resolve) => setTimeout(resolve, 0))
 
-    expect(notificationsMocks.showUpdate).not.toHaveBeenCalled()
+    expect(registerSWMocks.checkForServiceWorkerUpdate).not.toHaveBeenCalled()
   })
 
-  it('cache-clear action awaits all deletions before calling reload', async () => {
-    // Capture the async action passed to showUpdate
-    let capturedAction: (() => void | Promise<void>) | undefined
-    notificationsMocks.showUpdate.mockImplementation(
-      (action: () => void | Promise<void>) => {
-        capturedAction = action
-      }
-    )
-
+  it('does not show its own update notification from handlePong', async () => {
+    // The standard onNeedRefresh flow in registerSW.ts is responsible for
+    // surfacing the update notification once Workbox detects the new SW.
+    // handlePong should not duplicate it.
     const { useWebSocketStore } = await import('./websocket')
     const store = useWebSocketStore()
     await store.connect()
     lastSocket.onopen!(new Event('open'))
 
-    // Trigger a gitSha change so showUpdate is called
     lastSocket.onmessage!({
       data: JSON.stringify({ type: 'pong', gitSha: 'abc123' }),
     } as MessageEvent)
@@ -698,15 +685,6 @@ describe('useWebSocketStore — gitSha cache-clear on version change', () => {
     } as MessageEvent)
     await new Promise((resolve) => setTimeout(resolve, 0))
 
-    expect(capturedAction).toBeDefined()
-
-    // Invoke the captured async action and await its completion
-    await capturedAction!()
-
-    // All cache keys deleted before reload is called
-    expect(cachesDeleteMock).toHaveBeenCalledWith('cache-v1')
-    expect(cachesDeleteMock).toHaveBeenCalledWith('cache-v2')
-    expect(cachesDeleteMock).toHaveBeenCalledTimes(2)
-    expect(reloadMock).toHaveBeenCalledOnce()
+    expect(notificationsMocks.showUpdate).not.toHaveBeenCalled()
   })
 })

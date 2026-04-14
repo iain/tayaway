@@ -43,6 +43,22 @@ export function registerServiceWorker(): void {
   })
 }
 
+// Trigger an immediate update check on the active service worker registration.
+// Useful when an out-of-band signal (e.g. a different git SHA reported by the
+// server over the WebSocket) tells us a deploy has happened and we don't want
+// to wait for the periodic poll. If a new SW is found, Workbox transitions it
+// to the "waiting" state and our onNeedRefresh callback surfaces the standard
+// update notification.
+export async function checkForServiceWorkerUpdate(): Promise<void> {
+  if (!('serviceWorker' in navigator)) return
+  try {
+    const registration = await navigator.serviceWorker.getRegistration()
+    if (registration) await registration.update()
+  } catch (err) {
+    console.warn('SW update check failed:', err)
+  }
+}
+
 // Ask the browser to keep our IndexedDB and Cache Storage from being evicted
 // under storage pressure or extended inactivity. Without this, iOS evicts PWA
 // storage after ~7 days of disuse, wiping the precache and pool cache. The

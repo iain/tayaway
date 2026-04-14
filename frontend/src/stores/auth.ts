@@ -8,6 +8,7 @@ import { useWorkspaceStore } from './workspace'
 import { useMutation } from '@/composables/useMutation'
 
 import * as poolDb from '@/api/poolDb'
+import { clearUserCaches } from '@/api/clearUserCaches'
 import { usePoolPersistence } from '@/composables/usePoolPersistence'
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
 import type {
@@ -269,12 +270,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       // Wipe all client-side storage
       localStorage.clear()
-      try {
-        const keys = await caches.keys()
-        await Promise.all(keys.map((k) => caches.delete(k)))
-      } catch {
-        // Caches API may be unavailable
-      }
+      await clearUserCaches()
     }
   }
 

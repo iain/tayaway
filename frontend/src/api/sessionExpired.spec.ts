@@ -67,9 +67,15 @@ describe('handleSessionExpired', () => {
     vi.clearAllMocks()
     localStorage.setItem('test_key', 'test_value')
 
-    // Stub caches API
+    // Stub caches API. Includes a workbox precache entry so we can assert it
+    // is preserved (clearing it would break offline cold-launch).
     vi.stubGlobal('caches', {
-      keys: vi.fn().mockResolvedValue(['cache-v1']),
+      keys: vi
+        .fn()
+        .mockResolvedValue([
+          'api-auth',
+          'workbox-precache-v2-https://tayaway.nl/',
+        ]),
       delete: vi.fn().mockResolvedValue(true),
     })
   })
@@ -120,10 +126,13 @@ describe('handleSessionExpired', () => {
     expect(localStorage.getItem('test_key')).toBeNull()
   })
 
-  it('clears browser caches', async () => {
+  it('clears user-data caches but preserves the workbox precache', async () => {
     await callHandler()
     expect(caches.keys).toHaveBeenCalledOnce()
-    expect(caches.delete).toHaveBeenCalledWith('cache-v1')
+    expect(caches.delete).toHaveBeenCalledWith('api-auth')
+    expect(caches.delete).not.toHaveBeenCalledWith(
+      'workbox-precache-v2-https://tayaway.nl/'
+    )
   })
 
   it('redirects to login with session_revoked reason', async () => {
@@ -145,7 +154,10 @@ describe('handleSessionExpired', () => {
     // Make router.push block so the first call stays in "handling" state
     let resolveRouter!: () => void
     mockRouterPush.mockImplementationOnce(
-      () => new Promise<void>((r) => { resolveRouter = r })
+      () =>
+        new Promise<void>((r) => {
+          resolveRouter = r
+        })
     )
 
     const mod = await import('./sessionExpired')

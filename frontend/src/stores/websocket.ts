@@ -230,14 +230,13 @@ export const useWebSocketStore = defineStore('websocket', () => {
     const previous = gitSha.value
     gitSha.value = message.gitSha
     if (previous !== null && previous !== message.gitSha) {
-      import('./notifications').then(({ useNotificationsStore }) => {
-        const notifications = useNotificationsStore()
-        notifications.showUpdate(async () => {
-          const keys = await caches.keys()
-          await Promise.all(keys.map((k) => caches.delete(k)))
-          window.location.reload()
-        })
-      })
+      // Server reports a different git SHA — there's a fresh deploy. Trigger
+      // an immediate service worker update check; the standard onNeedRefresh
+      // flow in registerSW.ts will surface the update notification once the
+      // new SW finishes installing.
+      void import('@/registerSW').then(({ checkForServiceWorkerUpdate }) =>
+        checkForServiceWorkerUpdate()
+      )
     }
   }
 
