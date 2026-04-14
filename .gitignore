@@ -49,6 +49,7 @@ backend/vendor/bundle/
 .claude/worktrees/
 .claude/settings.local.json
 .worktrees/
+doc/superpowers/
 
 # GeoIP database
 backend/data/
