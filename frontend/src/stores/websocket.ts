@@ -69,6 +69,11 @@ export const useWebSocketStore = defineStore('websocket', () => {
   let socket: WebSocket | null = null
   let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
   let pingInterval: ReturnType<typeof setInterval> | null = null
+  // Armed after each ping; cleared on the corresponding pong. If it fires,
+  // the connection is half-open (server dead, TCP RST lost, mobile tower
+  // handoff, etc.) and we force a reconnect.
+  let pongTimeout: ReturnType<typeof setTimeout> | null = null
+  const PONG_TIMEOUT_MS = 10000
   let reconnectAttempts = 0
   const gitSha = ref<string | null>(null)
 
@@ -219,6 +224,12 @@ export const useWebSocketStore = defineStore('websocket', () => {
   }
 
   function handlePong(message: { type: 'pong'; gitSha?: string }): void {
+    // Server is alive — clear any armed pong timeout before doing anything
+    // else, so a slow gitSha handler can't accidentally let the timeout fire.
+    if (pongTimeout !== null) {
+      clearTimeout(pongTimeout)
+      pongTimeout = null
+    }
     if (!message.gitSha) return
     const previous = gitSha.value
     gitSha.value = message.gitSha
@@ -258,9 +269,19 @@ export const useWebSocketStore = defineStore('websocket', () => {
       }
     }
 
-    // Start ping interval to keep connection alive
+    // Start ping interval to keep connection alive. Arm a pong timeout on
+    // each ping so we detect half-open connections where the server is dead
+    // but the browser still thinks the socket is OPEN.
     pingInterval = setInterval(() => {
       send({ type: 'ping' })
+      if (pongTimeout !== null) clearTimeout(pongTimeout)
+      pongTimeout = setTimeout(() => {
+        console.warn(
+          '[WebSocket] Pong timeout — connection looks half-open, reconnecting'
+        )
+        pongTimeout = null
+        reconnect()
+      }, PONG_TIMEOUT_MS)
     }, 30000)
 
     // Process any queued commands on reconnect
@@ -338,6 +359,10 @@ export const useWebSocketStore = defineStore('websocket', () => {
       clearInterval(pingInterval)
       pingInterval = null
     }
+    if (pongTimeout !== null) {
+      clearTimeout(pongTimeout)
+      pongTimeout = null
+    }
 
     socket = null
     state.value = 'disconnected'
@@ -371,10 +396,14 @@ export const useWebSocketStore = defineStore('websocket', () => {
       reconnectTimeout = null
     }
 
-    // Clean up ping interval
+    // Clean up ping interval and pong watchdog
     if (pingInterval) {
       clearInterval(pingInterval)
       pingInterval = null
+    }
+    if (pongTimeout !== null) {
+      clearTimeout(pongTimeout)
+      pongTimeout = null
     }
 
     // Close existing socket without triggering scheduleReconnect
@@ -409,6 +438,10 @@ export const useWebSocketStore = defineStore('websocket', () => {
     if (pingInterval) {
       clearInterval(pingInterval)
       pingInterval = null
+    }
+    if (pongTimeout !== null) {
+      clearTimeout(pongTimeout)
+      pongTimeout = null
     }
 
     if (socket) {

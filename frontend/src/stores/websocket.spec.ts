@@ -689,3 +689,78 @@ describe('useWebSocketStore — gitSha triggers SW update on version change', ()
     expect(notificationsMocks.showUpdate).not.toHaveBeenCalled()
   })
 })
+
+// ---- pong timeout / dead-connection detection -----------------------------
+
+describe('useWebSocketStore — pong timeout', () => {
+  beforeEach(() => {
+    installWebSocketMock()
+    setActivePinia(createPinia())
+    vi.spyOn(console, 'info').mockImplementation(() => {})
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+    vi.resetModules()
+  })
+
+  it('forces a reconnect when no pong arrives within the timeout', async () => {
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+    await store.connect()
+    lastSocket.onopen!(new Event('open'))
+    // Transition to authenticated so the ping interval is armed
+    lastSocket.onmessage!({
+      data: JSON.stringify({
+        type: 'authenticated',
+        userId: 'u1',
+        workspaceIds: ['ws-1'],
+      }),
+    } as MessageEvent)
+    await vi.advanceTimersByTimeAsync(0)
+
+    const firstSocket = lastSocket
+    const closeSpy = vi.spyOn(firstSocket, 'close')
+
+    // Advance 30s → ping fires and arms pong timeout
+    await vi.advanceTimersByTimeAsync(30_000)
+    // Advance 10s more → pong timeout fires, which calls reconnect()
+    // reconnect() closes the old socket and opens a new one
+    await vi.advanceTimersByTimeAsync(10_000)
+
+    expect(closeSpy).toHaveBeenCalled()
+  })
+
+  it('does not force a reconnect when a pong arrives before the timeout', async () => {
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+    await store.connect()
+    lastSocket.onopen!(new Event('open'))
+    lastSocket.onmessage!({
+      data: JSON.stringify({
+        type: 'authenticated',
+        userId: 'u1',
+        workspaceIds: ['ws-1'],
+      }),
+    } as MessageEvent)
+    await vi.advanceTimersByTimeAsync(0)
+
+    const firstSocket = lastSocket
+    const closeSpy = vi.spyOn(firstSocket, 'close')
+
+    // Advance 30s → ping fires and arms pong timeout
+    await vi.advanceTimersByTimeAsync(30_000)
+    // Server replies within the timeout window
+    lastSocket.onmessage!({
+      data: JSON.stringify({ type: 'pong' }),
+    } as MessageEvent)
+    // Advance past where the timeout would have fired
+    await vi.advanceTimersByTimeAsync(15_000)
+
+    expect(closeSpy).not.toHaveBeenCalled()
+  })
+})
