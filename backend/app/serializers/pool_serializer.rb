@@ -91,30 +91,11 @@ class PoolSerializer
   end
 
   def add_date_range(date_range)
-    key = "date_range:#{date_range.id}"
-    return if @objects.key?(key)
-
-    hash = date_range.to_api_hash
-    attach_permissions(hash, date_range)
-    @objects[key] = hash
+    add_batch(ObjectRegistry::BY_KEY["date_range"], [date_range])
   end
 
-  # Batch-add date ranges
   def add_date_ranges_batch(ranges)
-    new_ranges = ranges.reject { |r| @objects.key?("date_range:#{r.id}") }
-    return if new_ranges.empty?
-
-    poll_ids = new_ranges.map { |r| r.date_poll_id.to_s }.uniq
-    polls_by_id = DB[:date_polls].where(id: poll_ids).select_hash(:id, :event_id)
-    event_ids = polls_by_id.values.map(&:to_s).uniq
-    events_by_id = Event.for_ids(event_ids).each_with_object({}) { |e, h| h[e.id.to_s] = e }
-
-    new_ranges.each do |range|
-      event_id = polls_by_id[range.date_poll_id.to_s]&.to_s
-      hash = range.to_api_hash
-      attach_permissions(hash, range, event: events_by_id[event_id])
-      @objects["date_range:#{range.id}"] = hash
-    end
+    add_batch(ObjectRegistry::BY_KEY["date_range"], ranges)
   end
 
   def add_vote(vote)
