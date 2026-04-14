@@ -28,7 +28,7 @@ class App
         settlements = Settlement.for_event(event_id)
         pool = PoolSerializer.new(membership: current_membership)
         pool.add(:settlement, settlements)
-        transfers = settlements.flat_map { |s| SettlementTransfer.for_settlement(s.id) }
+        transfers = SettlementTransfer.for_settlement_ids(settlements.map(&:id))
         pool.add(:settlement_transfer, transfers)
 
         response.status = 200

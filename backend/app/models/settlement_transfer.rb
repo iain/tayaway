@@ -36,6 +36,12 @@ class SettlementTransfer
       dataset.where(settlement_id: settlement_id).order(:created_at).all
     end
 
+    def for_settlement_ids(settlement_ids)
+      return [] if settlement_ids.empty?
+
+      dataset.where(settlement_id: settlement_ids).order(:created_at).all
+    end
+
     def ids_for_settlement(settlement_id)
       DB[:settlement_transfers].where(settlement_id: settlement_id).order(:created_at).select_map(:id)
     end
