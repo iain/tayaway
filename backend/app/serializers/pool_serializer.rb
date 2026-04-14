@@ -56,37 +56,11 @@ class PoolSerializer
   end
 
   def add_event(event)
-    key = "event:#{event.id}"
-    return if @objects.key?(key)
-
-    date_poll = DatePoll.find_by_event(event.id)
-    hash = event.to_api_hash(date_poll_id: date_poll&.id&.to_s)
-    hash[:rsvpIds] = Rsvp.ids_for_event(event.id)
-    has_expenses = DB[:expenses].where(event_id: event.id).any? || DB[:settlements].where(event_id: event.id).any?
-    attach_permissions(hash, event, has_expenses: has_expenses)
-
-    @objects[key] = hash
+    add_batch(ObjectRegistry::BY_KEY["event"], [event])
   end
 
-  # Batch-add events with a single DatePoll query and a single Rsvp query instead of N+1
   def add_events_batch(events)
-    new_events = events.reject { |e| @objects.key?("event:#{e.id}") }
-    return if new_events.empty?
-
-    event_ids = new_events.map { |e| e.id.to_s }
-    polls_by_event = DatePoll.for_event_ids(event_ids)
-    rsvp_ids_by_event = Rsvp.ids_for_event_ids(event_ids)
-    events_with_expenses = DB[:expenses].where(event_id: event_ids).distinct.select_map(:event_id).to_set
-    events_with_settlements = DB[:settlements].where(event_id: event_ids).distinct.select_map(:event_id).to_set
-    events_with_financial_data = events_with_expenses | events_with_settlements
-
-    new_events.each do |event|
-      date_poll = polls_by_event[event.id.to_s]
-      hash = event.to_api_hash(date_poll_id: date_poll&.id&.to_s)
-      hash[:rsvpIds] = rsvp_ids_by_event[event.id.to_s] || []
-      attach_permissions(hash, event, has_expenses: events_with_financial_data.include?(event.id.to_s))
-      @objects["event:#{event.id}"] = hash
-    end
+    add_batch(ObjectRegistry::BY_KEY["event"], events)
   end
 
   def add_date_poll(date_poll)
