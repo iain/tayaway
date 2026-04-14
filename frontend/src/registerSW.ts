@@ -2,8 +2,6 @@ import { registerSW } from 'virtual:pwa-register'
 import { useNotificationsStore } from '@/stores/notifications'
 
 export function registerServiceWorker(): void {
-  void requestPersistentStorage()
-
   const updateSW = registerSW({
     immediate: true,
     onNeedRefresh() {
@@ -47,18 +45,3 @@ export function registerServiceWorker(): void {
 // working. The real definition lives in @/api/swUpdate so it can be imported
 // without dragging `virtual:pwa-register` into the module graph.
 export { checkForServiceWorkerUpdate } from '@/api/swUpdate'
-
-// Ask the browser to keep our IndexedDB and Cache Storage from being evicted
-// under storage pressure or extended inactivity. Without this, iOS evicts PWA
-// storage after ~7 days of disuse, wiping the precache and pool cache. We
-// check persisted() first so repeat page loads don't ask again once the
-// origin has already been granted persistent storage.
-async function requestPersistentStorage(): Promise<void> {
-  if (!navigator.storage?.persist) return
-  try {
-    if (await navigator.storage.persisted?.()) return
-    await navigator.storage.persist()
-  } catch {
-    // Non-critical
-  }
-}
