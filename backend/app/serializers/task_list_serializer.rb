@@ -4,12 +4,11 @@ class TaskListSerializer
   class << self
     def serialize_batch(task_lists, pool:)
       return [] if task_lists.empty?
+      raise ArgumentError, "TaskListSerializer requires a non-nil pool for child expansion" unless pool
 
-      if pool
-        list_ids = task_lists.map(&:id)
-        items = TaskItem.for_task_lists(list_ids)
-        pool.add(:task_item, items) if items.any?
-      end
+      list_ids = task_lists.map(&:id)
+      items = TaskItem.for_task_lists(list_ids)
+      pool.add(:task_item, items) if items.any?
 
       task_lists.map do |tl|
         {

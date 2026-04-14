@@ -4,14 +4,13 @@ class ExpenseSerializer
   class << self
     def serialize_batch(expenses, pool:)
       return [] if expenses.empty?
+      raise ArgumentError, "ExpenseSerializer requires a non-nil pool for child expansion" unless pool
 
       expense_ids = expenses.map { |e| e.id.to_s }
       participants_by_expense = ExpenseParticipant.for_expenses(expense_ids)
 
-      if pool
-        all_participants = participants_by_expense.values.flatten
-        pool.add(:expense_participant, all_participants) if all_participants.any?
-      end
+      all_participants = participants_by_expense.values.flatten
+      pool.add(:expense_participant, all_participants) if all_participants.any?
 
       expenses.map do |expense|
         participants = participants_by_expense[expense.id.to_s] || []

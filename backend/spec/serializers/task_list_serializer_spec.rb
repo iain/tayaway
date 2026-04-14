@@ -11,7 +11,10 @@ RSpec.describe TaskListSerializer do
       subject { pool_object }
 
       let(:task_list_row) { TestFactories.task_list(workspace: workspace, user: user) }
-      let(:pool_object) { described_class.serialize_batch([TaskList.find(task_list_row[:id])], pool: nil).first }
+      let(:pool_object) do
+        pool = PoolSerializer.new(workspace_id: workspace[:id])
+        described_class.serialize_batch([TaskList.find(task_list_row[:id])], pool: pool).first
+      end
 
       it_behaves_like "a pool object with createdAt", "taskList"
     end
@@ -19,8 +22,9 @@ RSpec.describe TaskListSerializer do
     it "serializes task list fields" do
       task_list_row = TestFactories.task_list(workspace: workspace, user: user, name: "Groceries")
       task_list = TaskList.find(task_list_row[:id])
+      pool = PoolSerializer.new(workspace_id: workspace[:id])
 
-      result = described_class.serialize_batch([task_list], pool: nil).first
+      result = described_class.serialize_batch([task_list], pool: pool).first
 
       expect(result[:id]).to eq(task_list.id.to_s)
       expect(result[:objectType]).to eq("taskList")
@@ -43,12 +47,12 @@ RSpec.describe TaskListSerializer do
       expect(items.map { |o| o[:id] }).to contain_exactly(item1[:id].to_s, item2[:id].to_s)
     end
 
-    it "does not add children when pool is nil" do
+    it "raises when pool is nil — child expansion would be silently skipped" do
       task_list_row = TestFactories.task_list(workspace: workspace, user: user)
-      TestFactories.task_item(task_list: task_list_row, user: user)
       task_list = TaskList.find(task_list_row[:id])
 
-      expect { described_class.serialize_batch([task_list], pool: nil) }.not_to raise_error
+      expect { described_class.serialize_batch([task_list], pool: nil) }
+        .to raise_error(ArgumentError, /requires a non-nil pool/)
     end
   end
 end

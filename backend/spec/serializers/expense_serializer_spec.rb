@@ -21,7 +21,8 @@ RSpec.describe ExpenseSerializer do
           description: "Test", amount: 1.0, start_date: Date.today, end_date: Date.today,
           created_at: now, updated_at: now
         )
-        described_class.serialize_batch([Expense.find(expense_id)], pool: nil).first
+        pool = PoolSerializer.new(workspace_id: workspace[:id])
+        described_class.serialize_batch([Expense.find(expense_id)], pool: pool).first
       end
 
       it_behaves_like "a pool object with createdAt", "expense"
@@ -42,8 +43,9 @@ RSpec.describe ExpenseSerializer do
         id: participant_id, expense_id: expense_id, user_id: user[:id], created_at: now
       )
       expense = Expense.find(expense_id)
+      pool = PoolSerializer.new(workspace_id: workspace[:id])
 
-      result = described_class.serialize_batch([expense], pool: nil).first
+      result = described_class.serialize_batch([expense], pool: pool).first
 
       expect(result[:id]).to eq(expense.id.to_s)
       expect(result[:objectType]).to eq("expense")
@@ -74,6 +76,21 @@ RSpec.describe ExpenseSerializer do
 
       participants = pool.to_a.select { |o| o[:objectType] == "expenseParticipant" }
       expect(participants.map { |o| o[:id] }).to include(participant_id.to_s)
+    end
+
+    it "raises when pool is nil — child expansion would be silently skipped" do
+      event = TestFactories.event(workspace: workspace, user: user)
+      now = Time.now
+      expense_id = SecureRandom.uuid
+      DB[:expenses].insert(
+        id: expense_id, event_id: event[:id], user_id: user[:id],
+        description: "x", amount: 1.0, start_date: Date.today, end_date: Date.today,
+        created_at: now, updated_at: now
+      )
+      expense = Expense.find(expense_id)
+
+      expect { described_class.serialize_batch([expense], pool: nil) }
+        .to raise_error(ArgumentError, /requires a non-nil pool/)
     end
   end
 end

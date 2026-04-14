@@ -4,12 +4,13 @@ class ChoreRosterSerializer
   class << self
     def serialize_batch(rosters, pool:)
       return [] if rosters.empty?
+      raise ArgumentError, "ChoreRosterSerializer requires a non-nil pool for child expansion" unless pool
 
       roster_ids = rosters.map { |r| r.id.to_s }
       chores = Chore.for_rosters(roster_ids)
       chores_by_roster = chores.group_by { |c| c.chore_roster_id.to_s }
 
-      pool.add(:chore, chores) if pool && chores.any?
+      pool.add(:chore, chores) if chores.any?
 
       rosters.map do |roster|
         roster_chores = chores_by_roster[roster.id.to_s] || []
