@@ -122,12 +122,7 @@ class PoolSerializer
   end
 
   def add_rsvp(rsvp)
-    key = "rsvp:#{rsvp.id}"
-    return if @objects.key?(key)
-
-    hash = rsvp.to_api_hash
-    attach_permissions(hash, rsvp)
-    @objects[key] = hash
+    add_batch(ObjectRegistry::BY_KEY["rsvp"], [rsvp])
   end
 
   def add_workspace(workspace)
