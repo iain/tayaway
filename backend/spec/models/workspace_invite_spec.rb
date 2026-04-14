@@ -143,17 +143,4 @@ RSpec.describe WorkspaceInvite do
       expect(emails).to contain_exactly("a@example.com", "b@example.com", "expired@example.com")
     end
   end
-
-  describe "#to_api_hash" do
-    it "serializes the invite" do
-      invite = create_invite
-      hash = invite.to_api_hash
-
-      expect(hash[:id]).to eq(invite.id.to_s)
-      expect(hash[:workspaceId]).to eq(workspace[:id])
-      expect(hash[:email]).to eq("invite@example.com")
-      expect(hash).to have_key(:expiresAt)
-      expect(hash).to have_key(:createdAt)
-    end
-  end
 end

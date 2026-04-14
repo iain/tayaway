@@ -30,25 +30,6 @@ class Event
     @updated_at = updated_at
   end
 
-  def to_api_hash(date_poll_id:)
-    {
-      id: id.to_s,
-      objectType: "event",
-      name: name,
-      description: description,
-      startDate: start_date&.iso8601,
-      endDate: end_date&.iso8601,
-      locationName: location_name,
-      latitude: location_coordinates&.[](1),
-      longitude: location_coordinates&.[](0),
-      workspaceId: workspace_id.to_s,
-      userId: user_id.to_s,
-      datePollId: date_poll_id,
-      createdAt: created_at.iso8601(3),
-      updatedAt: updated_at.iso8601(3)
-    }
-  end
-
   class << self
     include Dry::Monads[:result]
     include Findable

@@ -22,19 +22,6 @@ class TaskList
     @updated_at = updated_at
   end
 
-  def to_api_hash
-    {
-      id: id.to_s,
-      objectType: "taskList",
-      workspaceId: workspace_id.to_s,
-      userId: user_id&.to_s,
-      name: name,
-      position: position,
-      createdAt: created_at.iso8601(3),
-      updatedAt: updated_at.iso8601(3)
-    }
-  end
-
   class << self
     include Dry::Monads[:result]
     include Findable

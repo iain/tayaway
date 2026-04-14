@@ -24,20 +24,6 @@ class SettlementTransfer
     @updated_at = updated_at
   end
 
-  def to_api_hash
-    {
-      id: id.to_s,
-      objectType: "settlementTransfer",
-      settlementId: settlement_id.to_s,
-      fromUserId: from_user_id&.to_s,
-      toUserId: to_user_id&.to_s,
-      amount: amount,
-      paidAt: paid_at&.iso8601(3),
-      createdAt: created_at.iso8601(3),
-      updatedAt: updated_at.iso8601(3)
-    }
-  end
-
   class << self
     include Dry::Monads[:result]
     include Findable

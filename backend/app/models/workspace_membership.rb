@@ -20,17 +20,6 @@ class WorkspaceMembership
     @updated_at = updated_at
   end
 
-  def to_api_hash
-    {
-      id: id.to_s,
-      objectType: "member",
-      workspaceId: workspace_id.to_s,
-      userId: user_id.to_s,
-      role: role,
-      createdAt: created_at.iso8601(3)
-    }
-  end
-
   class << self
     def find(id)
       dataset.where(id: id).first

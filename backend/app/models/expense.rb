@@ -28,22 +28,6 @@ class Expense
     @updated_at = updated_at
   end
 
-  def to_api_hash
-    {
-      id: id.to_s,
-      objectType: "expense",
-      eventId: event_id.to_s,
-      userId: user_id&.to_s,
-      settlementId: settlement_id&.to_s,
-      amount: amount,
-      description: description,
-      startDate: start_date.iso8601,
-      endDate: end_date.iso8601,
-      createdAt: created_at.iso8601(3),
-      updatedAt: updated_at.iso8601(3)
-    }
-  end
-
   class << self
     include Dry::Monads[:result]
     include Findable

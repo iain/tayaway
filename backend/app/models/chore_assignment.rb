@@ -24,20 +24,6 @@ class ChoreAssignment
     @updated_at = updated_at
   end
 
-  def to_api_hash
-    {
-      id: id.to_s,
-      objectType: "choreAssignment",
-      choreId: chore_id.to_s,
-      userId: user_id.to_s,
-      date: date.iso8601,
-      pinned: pinned,
-      note: note,
-      createdAt: created_at.iso8601(3),
-      updatedAt: updated_at.iso8601(3)
-    }
-  end
-
   class << self
     include Dry::Monads[:result]
     include Findable

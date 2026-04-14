@@ -32,22 +32,6 @@ class WorkspaceInvite
     @updated_at = updated_at
   end
 
-  def to_api_hash
-    {
-      id: id.to_s,
-      objectType: "workspaceInvite",
-      workspaceId: workspace_id.to_s,
-      invitedBy: invited_by&.to_s,
-      email: email.to_s,
-      name: name,
-      expiresAt: expires_at.iso8601(3),
-      acceptedAt: accepted_at&.iso8601(3),
-      lastRemindedAt: last_reminded_at&.iso8601(3),
-      createdAt: created_at.iso8601(3),
-      updatedAt: updated_at.iso8601(3)
-    }
-  end
-
   class << self
     def find(id)
       dataset.where(id: id).first
