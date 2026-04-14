@@ -34,7 +34,7 @@ module ObjectRegistry
     Entry.new(key: "vote",        model: "Vote",                 client_type: "vote",       pool_method: :add_vote,        tracks_user: true,  policy: "VotePolicy", serializer_class: VoteSerializer),
     Entry.new(key: "rsvp",        model: "Rsvp",                 client_type: "rsvp",       pool_method: :add_rsvp,        tracks_user: true,  policy: "RsvpPolicy", serializer_class: RsvpSerializer),
     Entry.new(key: "task_list",   model: "TaskList",             client_type: "taskList",   pool_method: :add_task_list,   tracks_user: true,  policy: "TaskListPolicy"),
-    Entry.new(key: "task_item",   model: "TaskItem",             client_type: "taskItem",   pool_method: :add_task_item,   tracks_user: true,  policy: "TaskItemPolicy"),
+    Entry.new(key: "task_item",   model: "TaskItem",             client_type: "taskItem",   pool_method: :add_task_item,   tracks_user: true,  policy: "TaskItemPolicy", serializer_class: TaskItemSerializer),
     Entry.new(key: "expense",     model: "Expense",              client_type: "expense",    pool_method: :add_expense,     tracks_user: true,  policy: "ExpensePolicy"),
     Entry.new(key: "settlement",  model: "Settlement",           client_type: "settlement", pool_method: :add_settlement,  tracks_user: true,  policy: "SettlementPolicy"),
     Entry.new(key: "settlement_transfer", model: "SettlementTransfer", client_type: "settlementTransfer", pool_method: :add_settlement_transfer, tracks_user: false, policy: "SettlementTransferPolicy", serializer_class: SettlementTransferSerializer),

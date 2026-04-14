@@ -138,10 +138,11 @@ module TestFactories
       DB[:task_lists].where(id: id).first
     end
 
-    def task_item(task_list: nil, user: nil, content: nil, completed_at: nil, id: SecureRandom.uuid)
+    def task_item(task_list: nil, user: nil, content: nil, completed_at: nil, position: nil, id: SecureRandom.uuid)
       task_list ||= self.task_list
       user ||= self.user
       content ||= "Item #{next_sequence(:task_item)}"
+      position ||= (DB[:task_items].where(task_list_id: task_list[:id]).max(:position) || 0.0) + 1.0
       now = Time.now
       DB[:task_items].insert(
         id: id,
@@ -149,6 +150,7 @@ module TestFactories
         user_id: user[:id],
         content: content,
         completed_at: completed_at,
+        position: position,
         created_at: now,
         updated_at: now
       )

@@ -127,12 +127,7 @@ class PoolSerializer
   end
 
   def add_task_item(task_item)
-    key = "task_item:#{task_item.id}"
-    return if @objects.key?(key)
-
-    hash = task_item.to_api_hash
-    attach_permissions(hash, task_item)
-    @objects[key] = hash
+    add_batch(ObjectRegistry::BY_KEY["task_item"], [task_item])
   end
 
   def add_expense(expense, participants: nil)
