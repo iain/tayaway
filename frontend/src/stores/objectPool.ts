@@ -7,6 +7,7 @@ import {
   type PoolObject,
   type PendingUpdate,
 } from '@/types/pool'
+import type { PoolUpdate } from '@/types/poolUpdate'
 
 // Helper to compare ISO8601 timestamps
 // ISO 8601 strings with the same format are lexicographically sortable
@@ -817,6 +818,32 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     })
   }
 
+  /**
+   * Single entry point for "the server sent us a batch of changes, merge
+   * them into the pool." Takes a neutral `PoolUpdate` shape so callers
+   * (WebSocket sync/broadcast handlers, future bulk-import paths) don't
+   * need to know which low-level pool method to reach for. Dispatches to
+   * replaceObjects for full syncs and importObjects + cascadeRemove for
+   * incremental merges.
+   */
+  function applyUpdate(update: PoolUpdate): void {
+    if (update.kind === 'replace') {
+      // replaceObjects returns a Promise but its async work (chunked
+      // rebuild) is fire-and-forget at the WebSocket level today; preserve
+      // that behaviour here to avoid a surprise API change.
+      void replaceObjects(update.objects)
+      return
+    }
+    if (update.objects?.length) {
+      importObjects(update.objects)
+    }
+    if (update.deleted?.length) {
+      for (const ref of update.deleted) {
+        cascadeRemove(ref.objectType, ref.id)
+      }
+    }
+  }
+
   // Restore pending updates from cache (used on startup)
   function restorePendingUpdates(cached: Map<string, PendingUpdate[]>): void {
     if (cached.size === 0) return
@@ -865,6 +892,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     removeMany,
     cascadeRemove,
     replaceObjects,
+    applyUpdate,
     restorePendingUpdates,
     clearExcept,
     setReadTransform,

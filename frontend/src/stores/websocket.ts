@@ -4,18 +4,14 @@ import { rawApi } from '@/api/client'
 import { checkForServiceWorkerUpdate } from '@/api/swUpdate'
 import { useObjectPoolStore } from './objectPool'
 import { useWorkspaceStore, WORKSPACE_ID_STORAGE_KEY } from './workspace'
-import type { PoolObject, ObjectType } from '@/types/pool'
+import type { PoolObject } from '@/types/pool'
+import type { DeletedObject } from '@/types/poolUpdate'
 
 type ConnectionState =
   | 'disconnected'
   | 'connecting'
   | 'connected'
   | 'authenticated'
-
-interface DeletedObject {
-  objectType: ObjectType
-  id: string
-}
 
 interface BroadcastMessage {
   type: 'broadcast'
@@ -297,24 +293,18 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
     if (message.data?.syncType === 'full') {
       // Full sync: replace everything — server is authoritative
-      if (message.data.objects) {
-        pool.replaceObjects(message.data.objects)
-      }
-    } else if (message.data?.syncType === 'partial') {
-      // Partial sync: import changed objects, remove deleted ones
-      if (message.data.objects?.length) {
-        pool.importObjects(message.data.objects)
-      }
-      if (message.data.deleted?.length) {
-        for (const item of message.data.deleted) {
-          pool.cascadeRemove(item.objectType, item.id)
-        }
-      }
+      pool.applyUpdate({
+        kind: 'replace',
+        objects: message.data.objects ?? [],
+      })
     } else {
-      // No syncType (e.g. workspace summaries): import without clearing
-      if (message.data?.objects) {
-        pool.importObjects(message.data.objects)
-      }
+      // Partial sync, workspace summary, or any other incremental update —
+      // same merge semantics regardless of whether `syncType` is set.
+      pool.applyUpdate({
+        kind: 'merge',
+        objects: message.data?.objects,
+        deleted: message.data?.deleted,
+      })
     }
 
     // Store syncedAt for next partial sync
@@ -330,15 +320,11 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
   function handleBroadcast(message: BroadcastMessage): void {
     const pool = useObjectPoolStore()
-
-    if (message.action === 'delete' && message.data?.deleted) {
-      // Handle deletions from the deleted array
-      for (const item of message.data.deleted) {
-        pool.cascadeRemove(item.objectType, item.id)
-      }
-    } else if (message.action === 'update' && message.data?.objects) {
-      pool.importObjects(message.data.objects)
-    }
+    pool.applyUpdate({
+      kind: 'merge',
+      objects: message.action === 'update' ? message.data?.objects : undefined,
+      deleted: message.action === 'delete' ? message.data?.deleted : undefined,
+    })
   }
 
   function sendSwitchWorkspace(workspaceId: string): void {
