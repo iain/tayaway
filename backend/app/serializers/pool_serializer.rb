@@ -88,13 +88,7 @@ class PoolSerializer
   end
 
   def add_workspace(workspace)
-    key = "workspace:#{workspace.id}"
-    return if @objects.key?(key)
-
-    member_ids = WorkspaceMembership.ids_for_workspace(workspace.id)
-    hash = workspace.to_api_hash(member_ids: member_ids)
-    attach_permissions(hash, workspace)
-    @objects[key] = hash
+    add_batch(ObjectRegistry::BY_KEY["workspace"], [workspace])
   end
 
   def add_task_list(task_list)

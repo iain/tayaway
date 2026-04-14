@@ -27,7 +27,7 @@ module ObjectRegistry
 
   TYPES = [
     Entry.new(key: "event", model: "Event", client_type: "event", pool_method: :add_event, tracks_user: true, policy: "EventPolicy", serializer_class: EventSerializer),
-    Entry.new(key: "workspace",   model: "Workspace",            client_type: "workspace",  pool_method: :add_workspace,   tracks_user: false, policy: "WorkspacePolicy"),
+    Entry.new(key: "workspace",   model: "Workspace",            client_type: "workspace",  pool_method: :add_workspace,   tracks_user: false, policy: "WorkspacePolicy", serializer_class: WorkspaceSerializer),
     Entry.new(key: "member",      model: "WorkspaceMembership",  client_type: "member",     pool_method: :add_member,      tracks_user: false, policy: "MemberPolicy"),
     Entry.new(key: "date_poll",   model: "DatePoll",             client_type: "datePoll",   pool_method: :add_date_poll,   tracks_user: false, policy: "DatePollPolicy", serializer_class: DatePollSerializer),
     Entry.new(key: "date_range",  model: "DateRange",            client_type: "dateRange",  pool_method: :add_date_range,  tracks_user: false, policy: "DateRangePolicy", serializer_class: DateRangeSerializer),
