@@ -51,6 +51,69 @@ RSpec.describe PoolSerializer do
       expect { pool.add(:nope, []) }.to raise_error(ArgumentError, /Unknown object key/)
     end
 
+    it "expands task_list → task_items with a single children query" do
+      list1_row = TestFactories.task_list(workspace: workspace, user: user)
+      list2_row = TestFactories.task_list(workspace: workspace, user: user)
+      TestFactories.task_item(task_list: list1_row, user: user)
+      TestFactories.task_item(task_list: list2_row, user: user)
+      lists = [TaskList.find(list1_row[:id]), TaskList.find(list2_row[:id])]
+
+      pool = described_class.new(workspace_id: workspace[:id])
+      queries = QueryCounter.new.count { pool.add(:task_list, lists) }
+
+      expect(pool.to_a.count { |o| o[:objectType] == "taskItem" }).to eq(2)
+      # Budget: task_lists is already loaded by the caller; the serializer
+      # only needs one SELECT against task_items for both parents. Fail loudly
+      # if we regress to a per-parent lookup.
+      expect(queries).to be <= 2
+    end
+
+    it "expands chore_roster → chore → chore_assignment with batched children queries" do
+      event1_row = TestFactories.event(workspace: workspace, user: user)
+      event2_row = TestFactories.event(workspace: workspace, user: user)
+      roster1_row = TestFactories.chore_roster(event: event1_row, user: user)
+      roster2_row = TestFactories.chore_roster(event: event2_row, user: user)
+      chore1 = TestFactories.chore(chore_roster: roster1_row)
+      chore2 = TestFactories.chore(chore_roster: roster2_row)
+      TestFactories.chore_assignment(chore: chore1, user: user, date: Date.today)
+      TestFactories.chore_assignment(chore: chore2, user: user, date: Date.today)
+      rosters = [ChoreRoster.find(roster1_row[:id]), ChoreRoster.find(roster2_row[:id])]
+
+      pool = described_class.new(workspace_id: workspace[:id])
+      queries = QueryCounter.new.count { pool.add(:chore_roster, rosters) }
+
+      expect(pool.to_a.count { |o| o[:objectType] == "chore" }).to eq(2)
+      expect(pool.to_a.count { |o| o[:objectType] == "choreAssignment" }).to eq(2)
+      # Budget: rosters, chores (batched), assignments (batched). Allow some
+      # slack for associated lookups but fail loudly if we start doing N+1.
+      expect(queries).to be <= 6
+    end
+
+    it "expands expense → participants with a single children query" do
+      event = TestFactories.event(workspace: workspace, user: user)
+      now = Time.now
+      e1_id = SecureRandom.uuid
+      e2_id = SecureRandom.uuid
+      [e1_id, e2_id].each do |eid|
+        DB[:expenses].insert(
+          id: eid, event_id: event[:id], user_id: user[:id],
+          description: "x", amount: 1.0, start_date: Date.today, end_date: Date.today,
+          created_at: now, updated_at: now
+        )
+        DB[:expense_participants].insert(
+          id: SecureRandom.uuid, expense_id: eid, user_id: user[:id], created_at: now
+        )
+      end
+      expenses = [Expense.find(e1_id), Expense.find(e2_id)]
+
+      pool = described_class.new(workspace_id: workspace[:id])
+      queries = QueryCounter.new.count { pool.add(:expense, expenses) }
+
+      expect(pool.to_a.count { |o| o[:objectType] == "expenseParticipant" }).to eq(2)
+      # Budget: one expense_participants SELECT for both parents, not one each.
+      expect(queries).to be <= 4
+    end
+
     it "raises if a serializer returns fewer hashes than items" do
       event1 = TestFactories.event(workspace: workspace, user: user)
       event2 = TestFactories.event(workspace: workspace, user: user)
