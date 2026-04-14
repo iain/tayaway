@@ -118,12 +118,7 @@ class PoolSerializer
   end
 
   def add_vote(vote)
-    key = "vote:#{vote.id}"
-    return if @objects.key?(key)
-
-    hash = vote.to_api_hash
-    attach_permissions(hash, vote)
-    @objects[key] = hash
+    add_batch(ObjectRegistry::BY_KEY["vote"], [vote])
   end
 
   def add_rsvp(rsvp)
