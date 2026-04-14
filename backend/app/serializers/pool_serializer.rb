@@ -364,4 +364,39 @@ class PoolSerializer
       updatedAt: [user.updated_at, membership.updated_at].max.iso8601(3)
     }
   end
+
+  # New unified path: dispatches to the registry's serializer_class. Returns
+  # the number of new objects added (for tests). Legacy add_X methods will
+  # delegate to this as each type migrates.
+  def add_batch(entry, items)
+    return 0 if items.empty?
+
+    serializer = entry.serializer_class
+    raise ArgumentError, "No serializer_class for #{entry.key}" unless serializer
+
+    contexts = serializer.policy_context_batch(items)
+    hashes = serializer.serialize_batch(items, pool: self)
+    added = 0
+
+    items.zip(hashes).each do |obj, hash|
+      next unless hash
+
+      key = "#{entry.key}:#{obj.id}"
+      next if @objects.key?(key)
+
+      @objects[key] = if @membership
+                        PermissionAttacher.call(
+                          hash,
+                          raw_object: obj,
+                          membership: @membership,
+                          policy_context: contexts[obj.id.to_s] || {}
+                        )
+                      else
+                        hash
+                      end
+      added += 1
+    end
+
+    added
+  end
 end
