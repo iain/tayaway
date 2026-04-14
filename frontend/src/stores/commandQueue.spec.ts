@@ -44,14 +44,22 @@ vi.mock('@/api/coalesceCommands', () => ({
   ),
 }))
 
-// Mock api client
+// Mock api client — commandQueue uses rawApi (the pure client) directly
+// and calls processPoolResponse itself on success. The mock below satisfies
+// both import paths.
 vi.mock('@/api/client', () => ({
-  api: {
+  rawApi: {
     post: vi.fn(),
     put: vi.fn(),
     patch: vi.fn(),
     delete: vi.fn(),
   },
+}))
+
+// Mock processPoolResponse so commandQueue's pool-hydration call after a
+// successful mutation replay doesn't need a real object pool store.
+vi.mock('@/api/processPoolResponse', () => ({
+  processPoolResponse: vi.fn(),
 }))
 
 // Mock notifications store
@@ -80,7 +88,7 @@ vi.mock('@/router', () => ({
   },
 }))
 
-import { api } from '@/api/client'
+import { rawApi } from '@/api/client'
 import {
   addCommand,
   removeCommand,
@@ -89,7 +97,7 @@ import {
   clearAll,
 } from '@/api/commandDb'
 
-const mockedApi = api as unknown as {
+const mockedApi = rawApi as unknown as {
   post: ReturnType<typeof vi.fn>
   put: ReturnType<typeof vi.fn>
   patch: ReturnType<typeof vi.fn>

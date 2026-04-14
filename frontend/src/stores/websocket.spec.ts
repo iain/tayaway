@@ -62,7 +62,7 @@ const registerSWMocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/api/client', () => ({
-  api: {
+  rawApi: {
     post: vi
       .fn()
       .mockResolvedValue({ data: { ticket: 'test-ticket' }, status: 200 }),
@@ -459,12 +459,12 @@ describe('useWebSocketStore — state reset after ticket failure', () => {
   })
 
   it('resets state to disconnected when ticket fetch is aborted', async () => {
-    const { api } = await import('@/api/client')
+    const { rawApi } = await import('@/api/client')
     const abortError = new DOMException(
       'The operation was aborted.',
       'AbortError'
     )
-    vi.mocked(api.post).mockRejectedValueOnce(abortError)
+    vi.mocked(rawApi.post).mockRejectedValueOnce(abortError)
 
     const { useWebSocketStore } = await import('./websocket')
     const store = useWebSocketStore()
@@ -476,8 +476,8 @@ describe('useWebSocketStore — state reset after ticket failure', () => {
   })
 
   it('resets state to disconnected when ticket fetch throws a network error', async () => {
-    const { api } = await import('@/api/client')
-    vi.mocked(api.post).mockRejectedValueOnce(new Error('Network error'))
+    const { rawApi } = await import('@/api/client')
+    vi.mocked(rawApi.post).mockRejectedValueOnce(new Error('Network error'))
 
     const { useWebSocketStore } = await import('./websocket')
     const store = useWebSocketStore()
@@ -488,13 +488,13 @@ describe('useWebSocketStore — state reset after ticket failure', () => {
   })
 
   it('allows a subsequent connect() after ticket timeout clears state', async () => {
-    const { api } = await import('@/api/client')
+    const { rawApi } = await import('@/api/client')
     const abortError = new DOMException(
       'The operation was aborted.',
       'AbortError'
     )
     // First call times out, second succeeds
-    vi.mocked(api.post)
+    vi.mocked(rawApi.post)
       .mockRejectedValueOnce(abortError)
       .mockResolvedValueOnce({ data: { ticket: 'test-ticket' }, status: 200 })
 
@@ -506,9 +506,9 @@ describe('useWebSocketStore — state reset after ticket failure', () => {
 
     // A second connect() must not be blocked by the guard — verify the ticket
     // endpoint is called again (state was 'disconnected', so connect() ran)
-    vi.mocked(api.post).mockClear()
+    vi.mocked(rawApi.post).mockClear()
     await store.connect()
-    expect(vi.mocked(api.post)).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(rawApi.post)).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -529,8 +529,8 @@ describe('useWebSocketStore — connectionFailed', () => {
   })
 
   it('sets connectionFailed when ticket fetch throws a network error', async () => {
-    const { api } = await import('@/api/client')
-    vi.mocked(api.post).mockRejectedValueOnce(new Error('Network error'))
+    const { rawApi } = await import('@/api/client')
+    vi.mocked(rawApi.post).mockRejectedValueOnce(new Error('Network error'))
 
     const { useWebSocketStore } = await import('./websocket')
     const store = useWebSocketStore()
@@ -541,12 +541,12 @@ describe('useWebSocketStore — connectionFailed', () => {
   })
 
   it('sets connectionFailed when ticket fetch is aborted (timeout)', async () => {
-    const { api } = await import('@/api/client')
+    const { rawApi } = await import('@/api/client')
     const abortError = new DOMException(
       'The operation was aborted.',
       'AbortError'
     )
-    vi.mocked(api.post).mockRejectedValueOnce(abortError)
+    vi.mocked(rawApi.post).mockRejectedValueOnce(abortError)
 
     const { useWebSocketStore } = await import('./websocket')
     const store = useWebSocketStore()
@@ -557,8 +557,8 @@ describe('useWebSocketStore — connectionFailed', () => {
   })
 
   it('does not set connectionFailed on a 401 (session expired)', async () => {
-    const { api } = await import('@/api/client')
-    vi.mocked(api.post).mockRejectedValueOnce({
+    const { rawApi } = await import('@/api/client')
+    vi.mocked(rawApi.post).mockRejectedValueOnce({
       status: 401,
       message: 'Unauthorized',
     })
@@ -579,8 +579,8 @@ describe('useWebSocketStore — connectionFailed', () => {
   })
 
   it('resets connectionFailed on disconnect', async () => {
-    const { api } = await import('@/api/client')
-    vi.mocked(api.post).mockRejectedValueOnce(new Error('Network error'))
+    const { rawApi } = await import('@/api/client')
+    vi.mocked(rawApi.post).mockRejectedValueOnce(new Error('Network error'))
 
     const { useWebSocketStore } = await import('./websocket')
     const store = useWebSocketStore()
@@ -593,8 +593,8 @@ describe('useWebSocketStore — connectionFailed', () => {
   })
 
   it('resets connectionFailed when a subsequent connect succeeds', async () => {
-    const { api } = await import('@/api/client')
-    vi.mocked(api.post).mockRejectedValueOnce(new Error('Network error'))
+    const { rawApi } = await import('@/api/client')
+    vi.mocked(rawApi.post).mockRejectedValueOnce(new Error('Network error'))
 
     const { useWebSocketStore } = await import('./websocket')
     const store = useWebSocketStore()

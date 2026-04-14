@@ -1,5 +1,5 @@
-import { useNotificationsStore, useObjectPoolStore } from '@/stores'
-import type { PoolObject, ObjectType } from '@/types/pool'
+import { useNotificationsStore } from '@/stores'
+import { processPoolResponse } from '@/api/processPoolResponse'
 import { handleSessionExpired } from '@/api/sessionExpired'
 
 export interface ApiResponse<T> {
@@ -8,36 +8,6 @@ export interface ApiResponse<T> {
 }
 
 const DEFAULT_TIMEOUT_MS = 15_000
-
-interface DeletedObject {
-  objectType: ObjectType
-  id: string
-}
-
-// Process API response: import objects and remove deletions
-function processPoolResponse(data: unknown): void {
-  if (!data || typeof data !== 'object') return
-
-  const pool = useObjectPoolStore()
-
-  // Import new/updated objects
-  if (
-    'objects' in data &&
-    Array.isArray((data as { objects: unknown }).objects)
-  ) {
-    pool.importObjects((data as { objects: PoolObject[] }).objects)
-  }
-
-  // Remove deleted objects
-  if (
-    'deleted' in data &&
-    Array.isArray((data as { deleted: unknown }).deleted)
-  ) {
-    for (const item of (data as { deleted: DeletedObject[] }).deleted) {
-      pool.remove(item.objectType, item.id)
-    }
-  }
-}
 
 export interface ApiError {
   message: string
@@ -67,7 +37,20 @@ function getErrorMessage(status: number): string {
   }
 }
 
-class ApiClient {
+/**
+ * Low-level HTTP client. Pure: no side effects on application state.
+ *
+ * Prefer the pool-aware `api` export below for reads that expect the
+ * response to hydrate the object pool, and prefer `useMutation` (which
+ * goes through the offline command queue) for writes that produce pool
+ * changes. `rawApi` is for the handful of flows where neither applies:
+ *  - auth (login, verify, logout, passkeys, email change)
+ *  - session management
+ *  - WebSocket ticket fetch
+ *  - invite info/accept
+ *  - internal use by the command queue itself when replaying mutations
+ */
+class RawApiClient {
   private baseUrl: string
 
   constructor(baseUrl = '/api') {
@@ -186,9 +169,34 @@ class ApiClient {
       console.error(`API ${method} ${url} response parse failed:`, parseError)
       throw parseError
     }
-    processPoolResponse(data)
     return { data, status: response.status }
   }
 }
 
-export const api = new ApiClient()
+/**
+ * Raw HTTP client. Use only for endpoints that don't return pool objects
+ * or that need explicit control over pool hydration (see RawApiClient
+ * docstring above for the list).
+ */
+export const rawApi = new RawApiClient()
+
+/**
+ * Pool-aware HTTP client for GET requests that return pool objects. The
+ * response body is automatically passed through processPoolResponse so
+ * entities land in the local object pool.
+ *
+ * Mutations are intentionally NOT exposed here — they must flow through
+ * `useMutation` so they participate in the offline command queue and
+ * optimistic-update lifecycle. If you need to call a mutation endpoint
+ * without those guarantees (auth, session, invite, etc.), use `rawApi`.
+ */
+export const api = {
+  async get<T>(
+    path: string,
+    options?: { signal?: AbortSignal }
+  ): Promise<ApiResponse<T>> {
+    const response = await rawApi.get<T>(path, options)
+    processPoolResponse(response.data)
+    return response
+  },
+}

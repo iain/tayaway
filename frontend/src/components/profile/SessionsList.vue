@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { api } from '@/api/client'
+import { rawApi } from '@/api/client'
 import { formatRelativeDate } from '@/utils/date'
 import type { Session, SessionsResponse } from '@/types'
 import { useNotificationsStore } from '@/stores'
@@ -32,7 +32,7 @@ async function fetchSessions() {
   loading.value = true
   error.value = null
   try {
-    const { data } = await api.get<SessionsResponse>('/auth/sessions')
+    const { data } = await rawApi.get<SessionsResponse>('/auth/sessions')
     sessions.value = data.sessions
   } catch {
     error.value = 'Could not load sessions. Please try again.'
@@ -77,7 +77,7 @@ function undoRevoke(id: string) {
 async function executeRevoke(id: string) {
   pendingRevokes.value.delete(id)
   try {
-    await api.delete(`/auth/sessions/${id}`)
+    await rawApi.delete(`/auth/sessions/${id}`)
   } catch {
     // Error notification handled by api client
   }
@@ -90,7 +90,7 @@ async function endAllOtherSessions() {
 
   revokingAll.value = true
   try {
-    await api.delete('/auth/sessions')
+    await rawApi.delete('/auth/sessions')
     sessions.value = sessions.value.filter((s) => s.current)
     notifications.showInfo('All other sessions revoked')
   } catch {

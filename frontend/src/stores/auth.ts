@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import { api } from '@/api/client'
+import { rawApi } from '@/api/client'
 import { useCommandQueueStore } from './commandQueue'
 import { useObjectPoolStore } from './objectPool'
 import { useWebSocketStore } from './websocket'
@@ -214,14 +214,14 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function requestLoginLink(email: string): Promise<string> {
-    const response = await api.post<LoginLinkResponse>('/auth/login-link', {
+    const response = await rawApi.post<LoginLinkResponse>('/auth/login-link', {
       email,
     })
     return response.data.message
   }
 
   async function completeLogin(): Promise<AuthUser> {
-    const meResponse = await api.get<MeResponse>('/auth/me')
+    const meResponse = await rawApi.get<MeResponse>('/auth/me')
     const verifiedUser = mapMeResponseToAuthUser(meResponse.data)
     user.value = verifiedUser
     cacheUser(verifiedUser)
@@ -238,13 +238,13 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function verifyToken(token: string): Promise<AuthUser> {
-    await api.post<VerifyResponse>('/auth/verify', { token })
+    await rawApi.post<VerifyResponse>('/auth/verify', { token })
     return completeLogin()
   }
 
   async function logout(): Promise<void> {
     try {
-      await api.post<LogoutResponse>('/auth/logout')
+      await rawApi.post<LogoutResponse>('/auth/logout')
     } finally {
       user.value = null
       await teardownSession()
@@ -333,7 +333,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function requestEmailChange(email: string): Promise<string> {
-    const response = await api.post<EmailChangeRequestResponse>(
+    const response = await rawApi.post<EmailChangeRequestResponse>(
       '/users/email-change/request',
       { email }
     )
@@ -341,7 +341,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function verifyEmailChange(token: string): Promise<string> {
-    const response = await api.post<EmailChangeVerifyResponse>(
+    const response = await rawApi.post<EmailChangeVerifyResponse>(
       '/users/email-change/verify',
       { token }
     )
@@ -349,7 +349,7 @@ export const useAuthStore = defineStore('auth', () => {
     // If authenticated, refresh user info
     if (user.value) {
       try {
-        const meResponse = await api.get<MeResponse>('/auth/me')
+        const meResponse = await rawApi.get<MeResponse>('/auth/me')
         user.value = mapMeResponseToAuthUser(meResponse.data)
         cacheUser(user.value)
       } catch {
@@ -363,13 +363,13 @@ export const useAuthStore = defineStore('auth', () => {
   // --- Passkey methods ---
 
   async function listPasskeys(): Promise<Passkey[]> {
-    const { data } = await api.get<PasskeysListResponse>('/auth/passkeys')
+    const { data } = await rawApi.get<PasskeysListResponse>('/auth/passkeys')
     return data.passkeys
   }
 
   async function registerPasskey(name?: string): Promise<Passkey> {
     const { data: beginData } =
-      await api.post<PasskeyRegistrationBeginResponse>(
+      await rawApi.post<PasskeyRegistrationBeginResponse>(
         '/auth/passkeys/register/begin'
       )
 
@@ -377,7 +377,7 @@ export const useAuthStore = defineStore('auth', () => {
       optionsJSON: beginData.options,
     })
 
-    const { data } = await api.post<PasskeyRegistrationResponse>(
+    const { data } = await rawApi.post<PasskeyRegistrationResponse>(
       '/auth/passkeys/register/complete',
       {
         challengeToken: beginData.challengeToken,
@@ -394,7 +394,7 @@ export const useAuthStore = defineStore('auth', () => {
     signal?: AbortSignal
   }): Promise<AuthUser> {
     const { data: beginData } =
-      await api.post<PasskeyAuthenticationBeginResponse>(
+      await rawApi.post<PasskeyAuthenticationBeginResponse>(
         '/auth/passkeys/authenticate/begin',
         undefined,
         { silent: true, signal: options?.signal }
@@ -408,7 +408,7 @@ export const useAuthStore = defineStore('auth', () => {
     // If aborted between begin and complete, bail out
     options?.signal?.throwIfAborted()
 
-    await api.post(
+    await rawApi.post(
       '/auth/passkeys/authenticate/complete',
       {
         challengeToken: beginData.challengeToken,
@@ -422,7 +422,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function renamePasskey(id: string, name: string): Promise<Passkey> {
-    const { data } = await api.put<{ passkey: Passkey }>(
+    const { data } = await rawApi.put<{ passkey: Passkey }>(
       `/auth/passkeys/${id}`,
       { name }
     )
@@ -430,7 +430,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function deletePasskey(id: string): Promise<void> {
-    await api.delete<PasskeyDeleteResponse>(`/auth/passkeys/${id}`)
+    await rawApi.delete<PasskeyDeleteResponse>(`/auth/passkeys/${id}`)
   }
 
   function $reset() {

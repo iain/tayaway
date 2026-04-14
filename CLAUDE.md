@@ -51,7 +51,7 @@ cd frontend && pnpm exec vitest run src/path/to/file.spec.ts
 - **Central store** (`src/stores/objectPool.ts`): Normalized object pool — all entities merged here, timestamp-based conflict resolution (newer wins)
 - **WebSocket store** (`src/stores/websocket.ts`): Connection management, full/partial sync coordination, reconnection
 - **Command queue** (`src/stores/commandQueue.ts`): Offline mutation queue persisted to IndexedDB
-- **API client** (`src/api/client.ts`): Fetch-based, enqueues mutations when offline
+- **API client** (`src/api/client.ts`): Exports two entry points. `api.get` is pool-aware — responses automatically hydrate the object pool via `processPoolResponse`. `rawApi` is the pure, low-level client used only by auth/session/invite/ws-ticket flows and internally by the command queue; it does **not** hydrate the pool. **Mutations must flow through `useMutation` so they participate in the offline command queue** — `api` deliberately does not expose `post/put/patch/delete` to make this hard to bypass. If you truly need a non-queued mutation (e.g. auth), use `rawApi` explicitly
 - **Composables** (`src/composables/`): `useMutation` (create/update/destroy with optimistic updates), `useHydratedEvent`, `useCalendar`, etc.
 - **Persistence** (`src/api/poolDb.ts`): IndexedDB cache for instant startup before WebSocket connects
 

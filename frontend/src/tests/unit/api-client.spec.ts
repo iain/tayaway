@@ -13,7 +13,7 @@ vi.mock('@/stores', () => ({
 }))
 
 // Import after mocks are set up
-const { api } = await import('@/api/client')
+const { rawApi } = await import('@/api/client')
 
 /** Returns a Promise that rejects with AbortError when the given signal fires. */
 function hangingFetch(signal: AbortSignal | undefined): Promise<Response> {
@@ -43,7 +43,7 @@ describe('ApiClient default timeout', () => {
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response(JSON.stringify({}), { status: 200 }))
 
-    await api.get('/test')
+    await rawApi.get('/test')
 
     expect(fetchSpy).toHaveBeenCalledOnce()
     const [, init] = fetchSpy.mock.calls[0]
@@ -55,7 +55,7 @@ describe('ApiClient default timeout', () => {
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response(JSON.stringify({}), { status: 200 }))
 
-    await api.post('/test', { key: 'value' })
+    await rawApi.post('/test', { key: 'value' })
 
     const [, init] = fetchSpy.mock.calls[0]
     expect(init?.signal).toBeInstanceOf(AbortSignal)
@@ -66,7 +66,7 @@ describe('ApiClient default timeout', () => {
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response(JSON.stringify({}), { status: 200 }))
 
-    await api.put('/test', { key: 'value' })
+    await rawApi.put('/test', { key: 'value' })
 
     const [, init] = fetchSpy.mock.calls[0]
     expect(init?.signal).toBeInstanceOf(AbortSignal)
@@ -77,7 +77,7 @@ describe('ApiClient default timeout', () => {
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response(JSON.stringify({}), { status: 200 }))
 
-    await api.delete('/test')
+    await rawApi.delete('/test')
 
     const [, init] = fetchSpy.mock.calls[0]
     expect(init?.signal).toBeInstanceOf(AbortSignal)
@@ -92,7 +92,7 @@ describe('ApiClient default timeout', () => {
     )
 
     await expect(
-      api.get('/test', { signal: controller.signal })
+      rawApi.get('/test', { signal: controller.signal })
     ).rejects.toMatchObject({
       name: 'AbortError',
     })
@@ -104,7 +104,7 @@ describe('ApiClient default timeout', () => {
     )
 
     const controller = new AbortController()
-    const promise = api.get('/slow', { signal: controller.signal })
+    const promise = rawApi.get('/slow', { signal: controller.signal })
 
     // Abort via the caller controller after the fetch has started
     controller.abort()

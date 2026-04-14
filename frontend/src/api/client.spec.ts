@@ -14,8 +14,10 @@ vi.mock('@/stores', () => ({
   })),
 }))
 
-// Import after mocks are set up
-const { api } = await import('./client')
+// Import after mocks are set up. Tests exercise the raw client directly
+// because the request/401/error logic lives there — `api` is a thin
+// pool-aware wrapper around `rawApi.get` and doesn't have mutations.
+const { rawApi } = await import('./client')
 
 function mockFetchResponse(
   status: number,
@@ -42,7 +44,7 @@ describe('ApiClient console logging', () => {
   it('logs to console.error on HTTP error', async () => {
     mockFetchResponse(500, { error: 'Internal Server Error' }, false)
 
-    await expect(api.get('/events')).rejects.toMatchObject({ status: 500 })
+    await expect(rawApi.get('/events')).rejects.toMatchObject({ status: 500 })
 
     expect(console.error).toHaveBeenCalledOnce()
     const call = vi.mocked(console.error).mock.calls[0]!
@@ -54,7 +56,7 @@ describe('ApiClient console logging', () => {
   it('includes the server error message in the console.error call', async () => {
     mockFetchResponse(404, { error: 'Not found' }, false)
 
-    await expect(api.get('/events/missing')).rejects.toMatchObject({
+    await expect(rawApi.get('/events/missing')).rejects.toMatchObject({
       status: 404,
     })
 
@@ -71,7 +73,7 @@ describe('ApiClient console logging', () => {
     }
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response))
 
-    await expect(api.get('/events')).rejects.toBeInstanceOf(SyntaxError)
+    await expect(rawApi.get('/events')).rejects.toBeInstanceOf(SyntaxError)
 
     expect(console.error).toHaveBeenCalledOnce()
     const call = vi.mocked(console.error).mock.calls[0]!
@@ -83,7 +85,7 @@ describe('ApiClient console logging', () => {
   it('does not log on successful request', async () => {
     mockFetchResponse(200, { objects: [] })
 
-    await api.get('/events')
+    await rawApi.get('/events')
 
     expect(console.error).not.toHaveBeenCalled()
   })
@@ -104,7 +106,7 @@ describe('ApiClient 401 interceptor', () => {
   it('calls handleSessionExpired on 401 from regular endpoints', async () => {
     mockFetchResponse(401, { error: 'Unauthorized' }, false)
 
-    await expect(api.get('/events')).rejects.toMatchObject({ status: 401 })
+    await expect(rawApi.get('/events')).rejects.toMatchObject({ status: 401 })
     expect(mockHandleSessionExpired).toHaveBeenCalledOnce()
   })
 
@@ -113,7 +115,7 @@ describe('ApiClient 401 interceptor', () => {
     async (path) => {
       mockFetchResponse(401, { error: 'Unauthorized' }, false)
 
-      await expect(api.post(path, {})).rejects.toMatchObject({ status: 401 })
+      await expect(rawApi.post(path, {})).rejects.toMatchObject({ status: 401 })
       expect(mockHandleSessionExpired).not.toHaveBeenCalled()
     }
   )
@@ -121,7 +123,7 @@ describe('ApiClient 401 interceptor', () => {
   it('calls handleSessionExpired on 401 from /auth/ws-ticket', async () => {
     mockFetchResponse(401, { error: 'Unauthorized' }, false)
 
-    await expect(api.post('/auth/ws-ticket')).rejects.toMatchObject({
+    await expect(rawApi.post('/auth/ws-ticket')).rejects.toMatchObject({
       status: 401,
     })
     expect(mockHandleSessionExpired).toHaveBeenCalledOnce()
@@ -130,7 +132,7 @@ describe('ApiClient 401 interceptor', () => {
   it('does not call handleSessionExpired on non-401 errors', async () => {
     mockFetchResponse(403, { error: 'Forbidden' }, false)
 
-    await expect(api.get('/events')).rejects.toMatchObject({ status: 403 })
+    await expect(rawApi.get('/events')).rejects.toMatchObject({ status: 403 })
     expect(mockHandleSessionExpired).not.toHaveBeenCalled()
   })
 })

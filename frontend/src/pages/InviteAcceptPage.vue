@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { api } from '@/api/client'
+import { rawApi } from '@/api/client'
 import type { InviteInfoResponse } from '@/types'
 import AppButton from '@/components/common/AppButton.vue'
 import appIcon from '@/assets/app-icon.svg'
@@ -23,7 +23,7 @@ onMounted(async () => {
   }
 
   try {
-    const { data } = await api.get<InviteInfoResponse>(
+    const { data } = await rawApi.get<InviteInfoResponse>(
       `/invites/info?token=${encodeURIComponent(token)}`
     )
     workspaceName.value = data.workspaceName
@@ -42,7 +42,7 @@ async function handleAccept() {
   error.value = ''
 
   try {
-    await api.post('/invites/accept', { token }, { silent: true })
+    await rawApi.post('/invites/accept', { token }, { silent: true })
     accepted.value = true
   } catch {
     error.value =

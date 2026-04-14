@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import { api } from '@/api/client'
+import { rawApi } from '@/api/client'
 import { useObjectPoolStore } from './objectPool'
 import { useWorkspaceStore } from './workspace'
 import type { PoolObject, ObjectType } from '@/types/pool'
@@ -97,7 +97,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     const timeout = setTimeout(() => controller.abort(), 5000)
     let data: { ticket: string }
     try {
-      const result = await api.post<{ ticket: string }>(
+      const result = await rawApi.post<{ ticket: string }>(
         '/auth/ws-ticket',
         undefined,
         { silent: true, signal: controller.signal }

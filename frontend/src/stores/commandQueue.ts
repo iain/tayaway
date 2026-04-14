@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { api, type ApiResponse } from '@/api/client'
+import { rawApi, type ApiResponse } from '@/api/client'
+import { processPoolResponse } from '@/api/processPoolResponse'
 import {
   addCommand,
   removeCommand,
@@ -193,19 +194,22 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
   }
 })
 
-function executeRequest<T>(
+async function executeRequest<T>(
   method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
   body?: unknown
 ): Promise<ApiResponse<T>> {
-  switch (method) {
-    case 'POST':
-      return api.post<T>(path, body)
-    case 'PUT':
-      return api.put<T>(path, body)
-    case 'PATCH':
-      return api.patch<T>(path, body)
-    case 'DELETE':
-      return api.delete<T>(path)
-  }
+  const response =
+    method === 'POST'
+      ? await rawApi.post<T>(path, body)
+      : method === 'PUT'
+        ? await rawApi.put<T>(path, body)
+        : method === 'PATCH'
+          ? await rawApi.patch<T>(path, body)
+          : await rawApi.delete<T>(path)
+  // Successful mutations hydrate the pool explicitly here instead of as a
+  // hidden side effect inside the HTTP client, so rawApi stays pure and
+  // the coupling is visible at the only layer that actually needs it.
+  processPoolResponse(response.data)
+  return response
 }
