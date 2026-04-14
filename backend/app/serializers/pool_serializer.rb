@@ -142,30 +142,11 @@ class PoolSerializer
   end
 
   def add_settlement(settlement)
-    key = "settlement:#{settlement.id}"
-    return if @objects.key?(key)
-
-    transfer_ids = SettlementTransfer.ids_for_settlement(settlement.id)
-    hash = settlement.to_api_hash(transfer_ids: transfer_ids)
-    attach_permissions(hash, settlement)
-    @objects[key] = hash
+    add_batch(ObjectRegistry::BY_KEY["settlement"], [settlement])
   end
 
-  # Batch-add settlements with a single SettlementTransfer ID query instead of N+1
   def add_settlements_batch(settlements)
-    new_settlements = settlements.reject { |s| @objects.key?("settlement:#{s.id}") }
-    return if new_settlements.empty?
-
-    settlement_ids = new_settlements.map { |s| s.id.to_s }
-    transfer_ids_by_settlement = SettlementTransfer.ids_for_settlement_ids(settlement_ids)
-    events_by_id = Event.for_ids(new_settlements.map { |s| s.event_id.to_s }.uniq).each_with_object({}) { |e, h| h[e.id.to_s] = e }
-
-    new_settlements.each do |settlement|
-      transfer_ids = transfer_ids_by_settlement[settlement.id.to_s] || []
-      hash = settlement.to_api_hash(transfer_ids: transfer_ids)
-      attach_permissions(hash, settlement, event: events_by_id[settlement.event_id.to_s])
-      @objects["settlement:#{settlement.id}"] = hash
-    end
+    add_batch(ObjectRegistry::BY_KEY["settlement"], settlements)
   end
 
   def add_settlement_transfer(transfer)
