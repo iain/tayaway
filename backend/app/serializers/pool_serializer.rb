@@ -193,12 +193,7 @@ class PoolSerializer
   end
 
   def add_settlement_transfer(transfer)
-    key = "settlement_transfer:#{transfer.id}"
-    return if @objects.key?(key)
-
-    hash = transfer.to_api_hash
-    attach_permissions(hash, transfer)
-    @objects[key] = hash
+    add_batch(ObjectRegistry::BY_KEY["settlement_transfer"], [transfer])
   end
 
   def add_chore_roster(roster)
