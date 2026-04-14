@@ -162,12 +162,7 @@ class PoolSerializer
   end
 
   def add_expense_participant(participant)
-    key = "expense_participant:#{participant.id}"
-    return if @objects.key?(key)
-
-    hash = participant.to_api_hash
-    attach_permissions(hash, participant)
-    @objects[key] = hash
+    add_batch(ObjectRegistry::BY_KEY["expense_participant"], [participant])
   end
 
   def add_settlement(settlement)
