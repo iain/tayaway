@@ -109,10 +109,9 @@ module Websocket
             pool = PoolSerializer.new(workspace_id: workspace_id)
             pool.add(config.key, [object])
             message[:data] = { objects: pool.to_a }
-            kwargs = config.serializer_class ? config.serializer_class.policy_context(object) : {}
             policy_context = Websocket::PolicyContext.new(
               raw_objects: { config.key => object },
-              kwargs: kwargs
+              kwargs: config.serializer_class.policy_context(object)
             )
           else
             # Object was deleted between notify and fetch
