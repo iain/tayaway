@@ -7,6 +7,17 @@ RSpec.describe DateRangeSerializer do
   let(:user) { TestFactories.user }
 
   describe ".serialize_batch" do
+    context "when serializing a single object" do
+      let(:event_row) { TestFactories.event(workspace: workspace, user: user) }
+      let(:poll_row) { TestFactories.date_poll(event: event_row) }
+      let(:range_row) { TestFactories.date_range(date_poll: poll_row) }
+      let(:pool_object) { described_class.serialize_batch([DateRange.find(range_row[:id])], pool: nil).first }
+
+      subject { pool_object }
+
+      it_behaves_like "a pool object", "dateRange"
+    end
+
     it "serializes date range fields" do
       event = TestFactories.event(workspace: workspace, user: user)
       poll = TestFactories.date_poll(event: event)

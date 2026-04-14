@@ -12,6 +12,7 @@ require_relative "../config/environment"
 require "rack/test"
 require "database_cleaner/sequel"
 require_relative "support/test_factories"
+Dir[File.expand_path("support/**/*.rb", __dir__)].each { |f| require f }
 
 RSpec.configure do |config|
   config.include Rack::Test::Methods

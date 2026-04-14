@@ -7,6 +7,15 @@ RSpec.describe TaskListSerializer do
   let(:user) { TestFactories.user }
 
   describe ".serialize_batch" do
+    context "when serializing a single object" do
+      let(:task_list_row) { TestFactories.task_list(workspace: workspace, user: user) }
+      let(:pool_object) { described_class.serialize_batch([TaskList.find(task_list_row[:id])], pool: nil).first }
+
+      subject { pool_object }
+
+      it_behaves_like "a pool object with createdAt", "taskList"
+    end
+
     it "serializes task list fields" do
       task_list_row = TestFactories.task_list(workspace: workspace, user: user, name: "Groceries")
       task_list = TaskList.find(task_list_row[:id])

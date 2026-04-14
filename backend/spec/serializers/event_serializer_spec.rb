@@ -7,6 +7,15 @@ RSpec.describe EventSerializer do
   let(:user) { TestFactories.user }
 
   describe ".serialize_batch" do
+    context "when serializing a single object" do
+      let(:event_row) { TestFactories.event(workspace: workspace, user: user) }
+      let(:pool_object) { described_class.serialize_batch([Event.find(event_row[:id])], pool: nil).first }
+
+      subject { pool_object }
+
+      it_behaves_like "a pool object with createdAt", "event"
+    end
+
     it "returns an empty array for an empty input" do
       expect(described_class.serialize_batch([], pool: nil)).to eq([])
     end

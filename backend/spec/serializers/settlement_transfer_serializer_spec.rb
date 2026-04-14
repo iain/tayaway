@@ -8,6 +8,26 @@ RSpec.describe SettlementTransferSerializer do
   let(:other_user) { TestFactories.user }
 
   describe ".serialize_batch" do
+    context "when serializing a single object" do
+      let(:pool_object) do
+        event = TestFactories.event(workspace: workspace, user: user)
+        now = Time.now
+        settlement_id = SecureRandom.uuid
+        DB[:settlements].insert(id: settlement_id, event_id: event[:id], user_id: user[:id], created_at: now, updated_at: now)
+        transfer_id = SecureRandom.uuid
+        DB[:settlement_transfers].insert(
+          id: transfer_id, settlement_id: settlement_id,
+          from_user_id: other_user[:id], to_user_id: user[:id], amount: 1.0,
+          created_at: now, updated_at: now
+        )
+        described_class.serialize_batch([SettlementTransfer.find(transfer_id)], pool: nil).first
+      end
+
+      subject { pool_object }
+
+      it_behaves_like "a pool object with createdAt", "settlementTransfer"
+    end
+
     it "serializes transfer fields" do
       event = TestFactories.event(workspace: workspace, user: user)
       now = Time.now

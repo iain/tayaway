@@ -9,6 +9,18 @@ RSpec.describe VoteSerializer do
   before { TestFactories.workspace_membership(workspace: workspace, user: user) }
 
   describe ".serialize_batch" do
+    context "when serializing a single object" do
+      let(:event_row) { TestFactories.event(workspace: workspace, user: user) }
+      let(:poll_row) { TestFactories.date_poll(event: event_row) }
+      let(:range_row) { TestFactories.date_range(date_poll: poll_row) }
+      let(:vote_row) { TestFactories.vote(date_range: range_row, user: user) }
+      let(:pool_object) { described_class.serialize_batch([Vote.find(vote_row[:id])], pool: nil).first }
+
+      subject { pool_object }
+
+      it_behaves_like "a pool object with createdAt", "vote"
+    end
+
     it "returns an empty array for an empty input" do
       expect(described_class.serialize_batch([], pool: nil)).to eq([])
     end

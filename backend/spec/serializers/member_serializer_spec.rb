@@ -7,6 +7,15 @@ RSpec.describe MemberSerializer do
   let(:user) { TestFactories.user }
 
   describe ".serialize_batch" do
+    context "when serializing a single object" do
+      let(:membership_row) { TestFactories.workspace_membership(workspace: workspace, user: user) }
+      let(:pool_object) { described_class.serialize_batch([WorkspaceMembership.find(membership_row[:id])], pool: nil).first }
+
+      subject { pool_object }
+
+      it_behaves_like "a pool object with createdAt", "member"
+    end
+
     it "returns an empty array for empty input" do
       expect(described_class.serialize_batch([], pool: nil)).to eq([])
     end

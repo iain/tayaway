@@ -9,6 +9,24 @@ RSpec.describe ExpenseSerializer do
   before { TestFactories.workspace_membership(workspace: workspace, user: user) }
 
   describe ".serialize_batch" do
+    context "when serializing a single object" do
+      let(:event_row) { TestFactories.event(workspace: workspace, user: user) }
+      let(:pool_object) do
+        now = Time.now
+        expense_id = SecureRandom.uuid
+        DB[:expenses].insert(
+          id: expense_id, event_id: event_row[:id], user_id: user[:id],
+          description: "Test", amount: 1.0, start_date: Date.today, end_date: Date.today,
+          created_at: now, updated_at: now
+        )
+        described_class.serialize_batch([Expense.find(expense_id)], pool: nil).first
+      end
+
+      subject { pool_object }
+
+      it_behaves_like "a pool object with createdAt", "expense"
+    end
+
     it "serializes expense fields with batched participantIds" do
       event = TestFactories.event(workspace: workspace, user: user)
       now = Time.now

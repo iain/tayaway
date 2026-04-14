@@ -7,6 +7,16 @@ RSpec.describe DatePollSerializer do
   let(:user) { TestFactories.user }
 
   describe ".serialize_batch" do
+    context "when serializing a single object" do
+      let(:event_row) { TestFactories.event(workspace: workspace, user: user) }
+      let(:poll_row) { TestFactories.date_poll(event: event_row) }
+      let(:pool_object) { described_class.serialize_batch([DatePoll.find(poll_row[:id])], pool: nil).first }
+
+      subject { pool_object }
+
+      it_behaves_like "a pool object with createdAt", "datePoll"
+    end
+
     it "returns an empty array for empty input" do
       expect(described_class.serialize_batch([], pool: nil)).to eq([])
     end

@@ -7,6 +7,15 @@ RSpec.describe WorkspaceInviteSerializer do
   let(:inviter) { TestFactories.user }
 
   describe ".serialize_batch" do
+    context "when serializing a single object" do
+      let(:invite_row) { TestFactories.workspace_invite(workspace: workspace, invited_by: inviter) }
+      let(:pool_object) { described_class.serialize_batch([WorkspaceInvite.find(invite_row[:id])], pool: nil).first }
+
+      subject { pool_object }
+
+      it_behaves_like "a pool object with createdAt", "workspaceInvite"
+    end
+
     it "serializes invite fields" do
       invite_row = TestFactories.workspace_invite(
         workspace: workspace, invited_by: inviter, email: "new@example.com", name: "Newbie"

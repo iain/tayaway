@@ -9,6 +9,16 @@ RSpec.describe RsvpSerializer do
   before { TestFactories.workspace_membership(workspace: workspace, user: user) }
 
   describe ".serialize_batch" do
+    context "when serializing a single object" do
+      let(:event_row) { TestFactories.event(workspace: workspace, user: user) }
+      let(:rsvp_row) { TestFactories.rsvp(event: event_row, user: user) }
+      let(:pool_object) { described_class.serialize_batch([Rsvp.find(rsvp_row[:id])], pool: nil).first }
+
+      subject { pool_object }
+
+      it_behaves_like "a pool object with createdAt", "rsvp"
+    end
+
     it "serializes rsvp fields" do
       event_row = TestFactories.event(workspace: workspace, user: user)
       rsvp_row = TestFactories.rsvp(
