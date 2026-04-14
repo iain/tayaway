@@ -13,7 +13,13 @@ class MemberSerializer
 
       memberships.map do |membership|
         user = users_by_id[membership.user_id.to_s]
-        next nil unless user
+        unless user
+          APP_LOGGER.warn do
+            "[MemberSerializer] Skipping membership #{membership.id} — user #{membership.user_id} " \
+              "not found (deletion race or orphan row)"
+          end
+          next nil
+        end
 
         build_hash(user, membership)
       end
