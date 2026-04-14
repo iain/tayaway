@@ -5,7 +5,20 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath, URL } from 'node:url'
 
 const port = parseInt(process.env.FRONTEND_PORT || '5173', 10)
+const previewPort = parseInt(process.env.FRONTEND_PREVIEW_PORT || '5175', 10)
 const apiPort = process.env.API_PORT || '9292'
+
+const apiProxy = {
+  '/api': {
+    target: `http://localhost:${apiPort}`,
+    changeOrigin: true,
+  },
+  '/ws': {
+    target: `http://localhost:${apiPort}`,
+    changeOrigin: true,
+    ws: true,
+  },
+}
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -76,16 +89,10 @@ export default defineConfig({
   },
   server: {
     port,
-    proxy: {
-      '/api': {
-        target: `http://localhost:${apiPort}`,
-        changeOrigin: true,
-      },
-      '/ws': {
-        target: `http://localhost:${apiPort}`,
-        changeOrigin: true,
-        ws: true,
-      },
-    },
+    proxy: apiProxy,
+  },
+  preview: {
+    port: previewPort,
+    proxy: apiProxy,
   },
 })

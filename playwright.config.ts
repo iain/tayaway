@@ -43,5 +43,18 @@ export default defineConfig({
       stdout: 'ignore',
       stderr: 'ignore',
     },
+    // Production-built preview server used by tests that need a real service
+    // worker (e.g. offline cold-launch). vite preview serves dist/ statically
+    // and proxies /api and /ws to the e2e backend via the `preview.proxy`
+    // config in frontend/vite.config.ts.
+    {
+      command:
+        'cd frontend && FRONTEND_PREVIEW_PORT=5175 API_PORT=9293 pnpm run build && FRONTEND_PREVIEW_PORT=5175 API_PORT=9293 pnpm exec vite preview --strictPort',
+      url: 'http://localhost:5175',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120000,
+      stdout: 'ignore',
+      stderr: 'ignore',
+    },
   ],
 })
