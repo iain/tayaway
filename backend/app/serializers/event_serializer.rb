@@ -7,6 +7,8 @@
 # truth for event serialization — called by PoolSerializer at sync time and by
 # Websocket::ConnectionManager at broadcast time (via PermissionAttacher).
 class EventSerializer
+  extend PoolObjectSerializer
+
   class << self
     def serialize_batch(events, pool:)
       return [] if events.empty?
@@ -35,10 +37,6 @@ class EventSerializer
           updatedAt: event.updated_at.iso8601(3)
         }
       end
-    end
-
-    def policy_context(event)
-      policy_context_batch([event])[event.id.to_s] || {}
     end
 
     def policy_context_batch(events)

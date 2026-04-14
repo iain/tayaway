@@ -4,6 +4,8 @@
 # fields from the membership and its User. Returns nil in place for any
 # membership whose user row is missing (can happen during deletion races).
 class MemberSerializer
+  extend PoolObjectSerializer
+
   class << self
     def serialize_batch(memberships, pool:)
       return [] if memberships.empty?
@@ -24,9 +26,6 @@ class MemberSerializer
         build_hash(user, membership)
       end
     end
-
-    def policy_context(_membership) = {}
-    def policy_context_batch(_memberships) = {}
 
     private
 

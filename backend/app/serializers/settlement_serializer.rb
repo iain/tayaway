@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class SettlementSerializer
+  extend PoolObjectSerializer
+
   class << self
     def serialize_batch(settlements, pool:)
       return [] if settlements.empty?
@@ -19,10 +21,6 @@ class SettlementSerializer
           updatedAt: settlement.updated_at.iso8601(3)
         }
       end
-    end
-
-    def policy_context(settlement)
-      policy_context_batch([settlement])[settlement.id.to_s] || {}
     end
 
     def policy_context_batch(settlements)

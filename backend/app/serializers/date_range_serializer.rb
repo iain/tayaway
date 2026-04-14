@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class DateRangeSerializer
+  extend PoolObjectSerializer
+
   class << self
     def serialize_batch(ranges, pool:)
       ranges.map do |range|
@@ -13,10 +15,6 @@ class DateRangeSerializer
           updatedAt: range.updated_at.iso8601(3)
         }
       end
-    end
-
-    def policy_context(range)
-      policy_context_batch([range])[range.id.to_s] || {}
     end
 
     def policy_context_batch(ranges)

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class WorkspaceSerializer
+  extend PoolObjectSerializer
+
   class << self
     def serialize_batch(workspaces, pool:)
       return [] if workspaces.empty?
@@ -19,8 +21,5 @@ class WorkspaceSerializer
         }
       end
     end
-
-    def policy_context(_workspace) = {}
-    def policy_context_batch(_workspaces) = {}
   end
 end

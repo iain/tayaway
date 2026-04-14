@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class ChoreRosterSerializer
+  extend PoolObjectSerializer
+
   class << self
     def serialize_batch(rosters, pool:)
       return [] if rosters.empty?
@@ -25,8 +27,5 @@ class ChoreRosterSerializer
         }
       end
     end
-
-    def policy_context(_roster) = {}
-    def policy_context_batch(_rosters) = {}
   end
 end

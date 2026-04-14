@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class ExpenseParticipantSerializer
+  extend PoolObjectSerializer
+
   class << self
     def serialize_batch(participants, pool:)
       participants.map do |participant|
@@ -15,8 +17,5 @@ class ExpenseParticipantSerializer
         }
       end
     end
-
-    def policy_context(_participant) = {}
-    def policy_context_batch(_participants) = {}
   end
 end

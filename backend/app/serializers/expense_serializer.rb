@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class ExpenseSerializer
+  extend PoolObjectSerializer
+
   class << self
     def serialize_batch(expenses, pool:)
       return [] if expenses.empty?
@@ -30,8 +32,5 @@ class ExpenseSerializer
         }
       end
     end
-
-    def policy_context(_expense) = {}
-    def policy_context_batch(_expenses) = {}
   end
 end

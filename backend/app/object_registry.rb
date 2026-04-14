@@ -11,8 +11,8 @@ module ObjectRegistry
       model:,
       client_type:,
       tracks_user:,
-      policy: nil,
-      serializer_class: nil
+      policy:,
+      serializer_class:
     )
       @key = key
       @model = model

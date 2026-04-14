@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class DatePollSerializer
+  extend PoolObjectSerializer
+
   class << self
     def serialize_batch(polls, pool:)
       return [] if polls.empty?
@@ -22,10 +24,6 @@ class DatePollSerializer
           updatedAt: poll.updated_at.iso8601(3)
         }
       end
-    end
-
-    def policy_context(poll)
-      policy_context_batch([poll])[poll.id.to_s] || {}
     end
 
     def policy_context_batch(polls)
