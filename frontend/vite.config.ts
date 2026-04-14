@@ -31,6 +31,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         navigateFallback: '/index.html',
+        clientsClaim: true,
         runtimeCaching: [
           {
             urlPattern: ({ url, request }) =>
@@ -38,15 +39,6 @@ export default defineConfig({
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'api-auth',
-            },
-          },
-          {
-            urlPattern: ({ url, request }) =>
-              url.pathname.startsWith('/api/') && request.method === 'GET',
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-data',
-              networkTimeoutSeconds: 3,
             },
           },
         ],

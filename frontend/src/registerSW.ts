@@ -2,6 +2,8 @@ import { registerSW } from 'virtual:pwa-register'
 import { useNotificationsStore } from '@/stores/notifications'
 
 export function registerServiceWorker(): void {
+  void requestPersistentStorage()
+
   const updateSW = registerSW({
     immediate: true,
     onNeedRefresh() {
@@ -39,4 +41,18 @@ export function registerServiceWorker(): void {
       })
     },
   })
+}
+
+// Ask the browser to keep our IndexedDB and Cache Storage from being evicted
+// under storage pressure or extended inactivity. Without this, iOS evicts PWA
+// storage after ~7 days of disuse, wiping the precache and pool cache. The
+// promise resolves to whether the request was granted; we don't act on the
+// result (there is nothing useful to do if it is denied).
+async function requestPersistentStorage(): Promise<void> {
+  if (!navigator.storage?.persist) return
+  try {
+    await navigator.storage.persist()
+  } catch {
+    // Non-critical
+  }
 }
