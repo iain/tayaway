@@ -203,6 +203,27 @@ module TestFactories
       DB[:chore_assignments].where(id: id).first
     end
 
+    def workspace_invite(workspace: nil, invited_by: nil, email: nil, name: nil, token: SecureRandom.hex(32), expires_at: Time.now + (7 * 24 * 60 * 60), accepted_at: nil, last_reminded_at: nil, id: SecureRandom.uuid)
+      workspace ||= self.workspace
+      invited_by ||= self.user
+      email ||= "invite#{next_sequence(:workspace_invite)}@example.com"
+      now = Time.now
+      DB[:workspace_invites].insert(
+        id: id,
+        workspace_id: workspace[:id],
+        invited_by: invited_by[:id],
+        email: email,
+        name: name,
+        token: Auth::Token.digest(token),
+        expires_at: expires_at,
+        accepted_at: accepted_at,
+        last_reminded_at: last_reminded_at,
+        created_at: now,
+        updated_at: now
+      )
+      DB[:workspace_invites].where(id: id).first
+    end
+
     def session(user: nil, token: SecureRandom.hex(32), expires_at: Time.now + Session::EXPIRY_SECONDS, id: SecureRandom.uuid)
       user ||= self.user
       now = Time.now

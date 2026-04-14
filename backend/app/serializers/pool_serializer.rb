@@ -240,12 +240,7 @@ class PoolSerializer
   end
 
   def add_workspace_invite(invite)
-    key = "workspace_invite:#{invite.id}"
-    return if @objects.key?(key)
-
-    hash = invite.to_api_hash
-    attach_permissions(hash, invite)
-    @objects[key] = hash
+    add_batch(ObjectRegistry::BY_KEY["workspace_invite"], [invite])
   end
 
   def add_all(items, type:)
