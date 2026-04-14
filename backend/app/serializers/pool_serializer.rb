@@ -18,41 +18,18 @@ class PoolSerializer
                     end
   end
 
-  # Serializes a workspace membership as a member pool object by fetching the user.
-  # This is the canonical entry point used by add_workspace, listener, and sync.
+  # Serializes a workspace membership as a member pool object.
   def add_member_from_membership(membership)
-    key = "member:#{membership.id}"
-    return if @objects.key?(key)
-
-    user = User.find(membership.user_id)
-    return unless user
-
-    hash = build_member_hash(user, membership)
-    attach_permissions(hash, membership)
-    @objects[key] = hash
+    add_batch(ObjectRegistry::BY_KEY["member"], [membership])
   end
 
-  # Public alias for add_member_from_membership
+  # Public alias.
   def add_member(membership)
-    add_member_from_membership(membership)
+    add_batch(ObjectRegistry::BY_KEY["member"], [membership])
   end
 
-  # Batch-add members with a single User query instead of N+1
   def add_members_batch(memberships)
-    new_memberships = memberships.reject { |m| @objects.key?("member:#{m.id}") }
-    return if new_memberships.empty?
-
-    user_ids = new_memberships.map { |m| m.user_id.to_s }
-    users_by_id = User.for_ids(user_ids).each_with_object({}) { |u, h| h[u.id.to_s] = u }
-
-    new_memberships.each do |m|
-      user = users_by_id[m.user_id.to_s]
-      next unless user
-
-      hash = build_member_hash(user, m)
-      attach_permissions(hash, m)
-      @objects["member:#{m.id}"] = hash
-    end
+    add_batch(ObjectRegistry::BY_KEY["member"], memberships)
   end
 
   def add_event(event)
@@ -219,26 +196,6 @@ class PoolSerializer
     policy_class = Object.const_get(entry.policy)
     policy = policy_class.new(object, membership: @membership, **policy_kwargs)
     hash[:permissions] = policy.permissions
-  end
-
-  def build_member_hash(user, membership)
-    {
-      id: membership.id.to_s,
-      objectType: "member",
-      workspaceId: membership.workspace_id.to_s,
-      userId: user.id.to_s,
-      email: user.email.to_s,
-      name: user.name,
-      phoneNumber: user.phone_number,
-      birthday: user.birthday&.iso8601,
-      locationName: user.location_name,
-      latitude: user.location_coordinates&.[](1),
-      longitude: user.location_coordinates&.[](0),
-      hasIban: !user.iban.nil?,
-      role: membership.role,
-      createdAt: membership.created_at.iso8601(3),
-      updatedAt: [user.updated_at, membership.updated_at].max.iso8601(3)
-    }
   end
 
   # New unified path: dispatches to the registry's serializer_class. Returns
