@@ -2,12 +2,12 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
 const mockStopPersisting = vi.fn()
-vi.mock('@/composables/usePoolPersistence', () => ({
-  usePoolPersistence: vi.fn(() => ({
+vi.mock('@/api/poolPersistence', () => ({
+  poolPersistence: {
     loadFromCache: vi.fn(),
     startPersisting: vi.fn(),
     stopPersisting: mockStopPersisting,
-  })),
+  },
 }))
 
 vi.mock('./commandQueue', () => ({

@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import { useObjectPoolStore } from './objectPool'
 import type { PoolWorkspace } from '@/types/pool'
 
-// Exported so other modules (usePoolPersistence cold-start, websocket
+// Exported so other modules (poolPersistence cold-start, websocket
 // reconnect URL) can read the same key without hardcoding the string.
 export const WORKSPACE_ID_STORAGE_KEY = 'current_workspace_id'
 const STORAGE_KEY = WORKSPACE_ID_STORAGE_KEY

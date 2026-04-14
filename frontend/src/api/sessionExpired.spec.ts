@@ -21,10 +21,10 @@ vi.mock('@/stores/auth', () => ({
   }),
 }))
 
-vi.mock('@/composables/usePoolPersistence', () => ({
-  usePoolPersistence: () => ({
+vi.mock('@/api/poolPersistence', () => ({
+  poolPersistence: {
     stopPersisting: mockStopPersisting,
-  }),
+  },
 }))
 
 vi.mock('@/stores/websocket', () => ({

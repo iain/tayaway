@@ -2,12 +2,12 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
 const mockStopPersisting = vi.fn()
-vi.mock('@/composables/usePoolPersistence', () => ({
-  usePoolPersistence: vi.fn(() => ({
+vi.mock('@/api/poolPersistence', () => ({
+  poolPersistence: {
     loadFromCache: vi.fn(),
     startPersisting: vi.fn(),
     stopPersisting: mockStopPersisting,
-  })),
+  },
 }))
 
 // Stub out stores that auth.ts imports but are irrelevant to initialize()
@@ -329,7 +329,10 @@ describe('auth store – initialize() with cached user (background validation)',
       handleSessionExpired: async () => {
         const { useAuthStore } = await import('./auth')
         useAuthStore().$reset()
-        await mockRouterPush({ name: 'login', query: { reason: 'session_revoked' } })
+        await mockRouterPush({
+          name: 'login',
+          query: { reason: 'session_revoked' },
+        })
       },
     }))
   })
@@ -378,7 +381,10 @@ describe('auth store – initialize() with cached user (background validation)',
 
     expect(store.user).toBeNull()
     expect(localStorage.getItem(AUTH_USER_KEY)).toBeNull()
-    expect(mockRouterPush).toHaveBeenCalledWith({ name: 'login', query: { reason: 'session_revoked' } })
+    expect(mockRouterPush).toHaveBeenCalledWith({
+      name: 'login',
+      query: { reason: 'session_revoked' },
+    })
   })
 
   it('redirects to login when the background /me check returns 403', async () => {
@@ -398,7 +404,10 @@ describe('auth store – initialize() with cached user (background validation)',
     await new Promise((resolve) => setTimeout(resolve, 0))
 
     expect(store.user).toBeNull()
-    expect(mockRouterPush).toHaveBeenCalledWith({ name: 'login', query: { reason: 'session_revoked' } })
+    expect(mockRouterPush).toHaveBeenCalledWith({
+      name: 'login',
+      query: { reason: 'session_revoked' },
+    })
   })
 
   it('keeps cached user when background /me check fails with a network error', async () => {

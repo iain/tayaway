@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { usePoolPersistence } from './usePoolPersistence'
+import { poolPersistence } from './poolPersistence'
 import * as poolDb from '@/api/poolDb'
 import {
   onPoolChange,
@@ -96,7 +96,7 @@ function triggerVisibilityChange(state: 'hidden' | 'visible'): void {
   document.dispatchEvent(new Event('visibilitychange'))
 }
 
-describe('usePoolPersistence — visibilitychange flush', () => {
+describe('poolPersistence — visibilitychange flush', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.useFakeTimers()
@@ -114,7 +114,7 @@ describe('usePoolPersistence — visibilitychange flush', () => {
 
   afterEach(() => {
     // Reset module-level state so subsequent tests start clean
-    usePoolPersistence().stopPersisting()
+    poolPersistence.stopPersisting()
     vi.useRealTimers()
     Object.defineProperty(document, 'visibilityState', {
       value: 'visible',
@@ -124,7 +124,7 @@ describe('usePoolPersistence — visibilitychange flush', () => {
 
   it('registers a visibilitychange listener on startPersisting', () => {
     const addSpy = vi.spyOn(document, 'addEventListener')
-    const { startPersisting } = usePoolPersistence()
+    const { startPersisting } = poolPersistence
     startPersisting()
     expect(addSpy).toHaveBeenCalledWith(
       'visibilitychange',
@@ -134,7 +134,7 @@ describe('usePoolPersistence — visibilitychange flush', () => {
   })
 
   it('removes the visibilitychange listener on stopPersisting', () => {
-    const { startPersisting, stopPersisting } = usePoolPersistence()
+    const { startPersisting, stopPersisting } = poolPersistence
     startPersisting()
     const removeSpy = vi.spyOn(document, 'removeEventListener')
     stopPersisting()
@@ -152,7 +152,7 @@ describe('usePoolPersistence — visibilitychange flush', () => {
       capturedPoolChangeHandler = handler
     })
 
-    const { startPersisting } = usePoolPersistence()
+    const { startPersisting } = poolPersistence
     startPersisting()
 
     expect(capturedPoolChangeHandler).not.toBeNull()
@@ -193,7 +193,7 @@ describe('usePoolPersistence — visibilitychange flush', () => {
       capturedPoolChangeHandler = handler
     })
 
-    const { startPersisting } = usePoolPersistence()
+    const { startPersisting } = poolPersistence
     startPersisting()
 
     capturedPoolChangeHandler!({
@@ -221,7 +221,7 @@ describe('usePoolPersistence — visibilitychange flush', () => {
       capturedPoolChangeHandler = handler
     })
 
-    const { startPersisting } = usePoolPersistence()
+    const { startPersisting } = poolPersistence
     startPersisting()
 
     capturedPoolChangeHandler!({
@@ -256,7 +256,7 @@ describe('usePoolPersistence — visibilitychange flush', () => {
       capturedPoolChangeHandler = handler
     })
 
-    const { startPersisting } = usePoolPersistence()
+    const { startPersisting } = poolPersistence
     startPersisting()
 
     capturedPoolChangeHandler!({
@@ -290,7 +290,7 @@ describe('usePoolPersistence — visibilitychange flush', () => {
       capturedPoolChangeHandler = handler
     })
 
-    const { startPersisting, stopPersisting } = usePoolPersistence()
+    const { startPersisting, stopPersisting } = poolPersistence
     startPersisting()
 
     capturedPoolChangeHandler!({
@@ -313,7 +313,7 @@ describe('usePoolPersistence — visibilitychange flush', () => {
   })
 })
 
-describe('usePoolPersistence — progressive cache loading', () => {
+describe('poolPersistence — progressive cache loading', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.useFakeTimers()
@@ -340,7 +340,6 @@ describe('usePoolPersistence — progressive cache loading', () => {
     vi.mocked(useWebSocketStore).mockReturnValue({
       hasSynced: false,
       hasCachedData: false,
-      setCacheStaleLevel: vi.fn(),
       restoreSyncTimestamp: vi.fn(),
       getSyncedAt: vi.fn(() => null),
     } as unknown as ReturnType<typeof useWebSocketStore>)
@@ -348,7 +347,7 @@ describe('usePoolPersistence — progressive cache loading', () => {
 
   afterEach(() => {
     localStorage.removeItem('current_workspace_id')
-    usePoolPersistence().stopPersisting()
+    poolPersistence.stopPersisting()
     vi.useRealTimers()
   })
 
@@ -371,7 +370,7 @@ describe('usePoolPersistence — progressive cache loading', () => {
     })
 
     const pool = useObjectPoolStore()
-    const { loadFromCache } = usePoolPersistence()
+    const { loadFromCache } = poolPersistence
 
     // Run all timers and microtasks to complete progressive loading
     const loadPromise = loadFromCache()
@@ -393,7 +392,7 @@ describe('usePoolPersistence — progressive cache loading', () => {
     })
 
     const pool = useObjectPoolStore()
-    const { loadFromCache } = usePoolPersistence()
+    const { loadFromCache } = poolPersistence
     await loadFromCache()
 
     expect(poolDb.clearAll).toHaveBeenCalledTimes(1)
@@ -409,7 +408,7 @@ describe('usePoolPersistence — progressive cache loading', () => {
     })
 
     const pool = useObjectPoolStore()
-    const { loadFromCache } = usePoolPersistence()
+    const { loadFromCache } = poolPersistence
     await loadFromCache()
 
     expect(poolDb.clearAll).toHaveBeenCalledTimes(1)
@@ -432,7 +431,7 @@ describe('usePoolPersistence — progressive cache loading', () => {
     })
 
     const pool = useObjectPoolStore()
-    const { loadFromCache } = usePoolPersistence()
+    const { loadFromCache } = poolPersistence
     const loadPromise = loadFromCache()
     await vi.runAllTimersAsync()
     await loadPromise
@@ -476,7 +475,7 @@ describe('usePoolPersistence — progressive cache loading', () => {
     })
 
     const pool = useObjectPoolStore()
-    const { loadFromCache } = usePoolPersistence()
+    const { loadFromCache } = poolPersistence
     const loadPromise = loadFromCache()
     await vi.runAllTimersAsync()
     await loadPromise
@@ -490,7 +489,7 @@ describe('usePoolPersistence — progressive cache loading', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(wsStore as any).hasSynced = true
 
-    const { loadFromCache } = usePoolPersistence()
+    const { loadFromCache } = poolPersistence
     await loadFromCache()
 
     expect(poolDb.loadObjectsByType).not.toHaveBeenCalled()

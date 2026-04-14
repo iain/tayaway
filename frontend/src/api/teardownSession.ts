@@ -15,9 +15,8 @@
  * avoid bringing the full store graph into any file that needs teardown.
  */
 export async function teardownSession(): Promise<void> {
-  const { usePoolPersistence } =
-    await import('@/composables/usePoolPersistence')
-  usePoolPersistence().stopPersisting()
+  const { poolPersistence } = await import('@/api/poolPersistence')
+  poolPersistence.stopPersisting()
 
   const { useWebSocketStore } = await import('@/stores/websocket')
   useWebSocketStore().disconnect()
