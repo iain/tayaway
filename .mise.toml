@@ -34,8 +34,18 @@ dir = "{{config_root}}/frontend"
 run = "pnpm run dev"
 
 [tasks.check]
-description = "Pre-commit: lint, typecheck, test, audit (no e2e)"
-depends = ["lint:*", "typecheck:*", "test:*", "audit:*"]
+description = "Pre-commit: lint, typecheck, test, audit, cache-version (no e2e)"
+depends = [
+  "lint:*",
+  "typecheck:*",
+  "test:*",
+  "audit:*",
+  "check:cache-version",
+]
+
+[tasks."check:cache-version"]
+description = "Verify CACHE_VERSION is bumped when pool-cache schema changes"
+run = "./scripts/check-cache-version.sh"
 
 [tasks.ci]
 description = "Full CI: check + e2e"
