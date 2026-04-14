@@ -325,6 +325,30 @@ test.describe('Poll Lifecycle UI', () => {
     test('complete poll lifecycle: open → add dates → vote → close → reopen', async ({
       page,
     }) => {
+      // Pick dates dynamically in the month after today so the event is
+      // always in the future — otherwise closing the poll resolves to an
+      // already-started event and the "Reopen Poll" button is hidden.
+      //
+      // Day numbers must stay within 15..22: CalendarMonth renders a 6-week
+      // (42-cell) grid, so days 1..14 of a month also appear as overflow in
+      // the previous month's grid (ambiguous `calendar-day-YYYY-MM-DD`
+      // testids when both months are shown side-by-side), and the last ~6
+      // days of a month can appear as leading overflow in the next month's
+      // grid. The second-range preselection of first+7 also stays inside
+      // the same month as long as we're in this band.
+      const today = new Date()
+      const nextMonthDate = new Date(
+        today.getFullYear(),
+        today.getMonth() + 1,
+        1
+      )
+      const yy = nextMonthDate.getFullYear()
+      const mm = String(nextMonthDate.getMonth() + 1).padStart(2, '0')
+      const r1Start = `${yy}-${mm}-15`
+      const r1End = `${yy}-${mm}-17`
+      const r2Start = `${yy}-${mm}-20`
+      const r2End = `${yy}-${mm}-22`
+
       const eventId = await createBareEvent(apiContext, 'Full Lifecycle Event')
       await setupAuthenticatedPage(page, sessionToken)
 
@@ -342,24 +366,22 @@ test.describe('Poll Lifecycle UI', () => {
       await expect(page.getByRole('dialog')).not.toBeVisible()
       await expect(page).toHaveURL(`/events/${eventId}/planning/date-ranges`)
 
-      // 3. Add a date range via calendar — pick future dates so the event
-      //    won't have "already started" when we try to reopen the poll.
-      //    Calendar opens on current month (left) and next month (right).
+      // 3. Add a date range via calendar
       await page.getByRole('button', { name: 'Add Date Range' }).first().click()
       await expect(page.getByRole('dialog')).toBeVisible()
-      await page.getByTestId('calendar-day-2026-04-10').click()
-      await page.getByTestId('calendar-day-2026-04-15').click()
+      await page.getByTestId(`calendar-day-${r1Start}`).click()
+      await page.getByTestId(`calendar-day-${r1End}`).click()
       await expect(page.getByRole('dialog')).not.toBeVisible()
 
       // Verify date range appeared
       const dateRangeItems = page.getByTestId('date-range-item')
       await expect(dateRangeItems).toHaveCount(1)
 
-      // 4. Add a second date range (preselected 7 days after first: Apr 22-27)
+      // 4. Add a second date range
       await page.getByRole('button', { name: 'Add Date Range' }).click()
       await expect(page.getByRole('dialog')).toBeVisible()
-      await page.getByTestId('calendar-day-2026-04-20').click()
-      await page.getByTestId('calendar-day-2026-04-25').click()
+      await page.getByTestId(`calendar-day-${r2Start}`).click()
+      await page.getByTestId(`calendar-day-${r2End}`).click()
       await expect(page.getByRole('dialog')).not.toBeVisible()
       await expect(dateRangeItems).toHaveCount(2)
 
