@@ -90,7 +90,7 @@ vi.mock('./notifications', () => ({
   })),
 }))
 
-vi.mock('@/registerSW', () => ({
+vi.mock('@/api/swUpdate', () => ({
   checkForServiceWorkerUpdate: registerSWMocks.checkForServiceWorkerUpdate,
 }))
 

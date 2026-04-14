@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { rawApi } from '@/api/client'
+import { checkForServiceWorkerUpdate } from '@/api/swUpdate'
 import { useObjectPoolStore } from './objectPool'
 import { useWorkspaceStore } from './workspace'
 import type { PoolObject, ObjectType } from '@/types/pool'
@@ -234,9 +235,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
       // an immediate service worker update check; the standard onNeedRefresh
       // flow in registerSW.ts will surface the update notification once the
       // new SW finishes installing.
-      void import('@/registerSW').then(({ checkForServiceWorkerUpdate }) =>
-        checkForServiceWorkerUpdate()
-      )
+      void checkForServiceWorkerUpdate()
     }
   }
 
@@ -358,7 +357,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
     const baseDelay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000)
     const jitter = Math.random() * 1000
     const delay = baseDelay + jitter
-    reconnectAttempts++
+    // Cap the counter so it doesn't grow unbounded during long offline
+    // stretches. The delay itself is already saturated well before this.
+    reconnectAttempts = Math.min(reconnectAttempts + 1, 32)
     console.info(
       `[WebSocket] Reconnect attempt ${reconnectAttempts} scheduled in ${Math.round(delay)}ms`
     )

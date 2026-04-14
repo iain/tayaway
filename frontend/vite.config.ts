@@ -28,9 +28,12 @@ export default defineConfig({
     VitePWA({
       registerType: 'prompt',
       manifest: {
+        id: '/',
         name: 'Tayaway',
         short_name: 'Tayaway',
         description: 'Collaborative event planning',
+        start_url: '/',
+        scope: '/',
         theme_color: '#d97706',
         background_color: '#ffffff',
         display: 'standalone',
@@ -42,19 +45,11 @@ export default defineConfig({
       },
       injectRegister: false,
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        globPatterns: [
+          '**/*.{js,css,html,ico,png,svg,webp,avif,woff,woff2,ttf,otf}',
+        ],
         navigateFallback: '/index.html',
         clientsClaim: true,
-        runtimeCaching: [
-          {
-            urlPattern: ({ url, request }) =>
-              url.pathname === '/api/auth/me' && request.method === 'GET',
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'api-auth',
-            },
-          },
-        ],
       },
     }),
   ],

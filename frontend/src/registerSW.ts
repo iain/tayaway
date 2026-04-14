@@ -43,30 +43,20 @@ export function registerServiceWorker(): void {
   })
 }
 
-// Trigger an immediate update check on the active service worker registration.
-// Useful when an out-of-band signal (e.g. a different git SHA reported by the
-// server over the WebSocket) tells us a deploy has happened and we don't want
-// to wait for the periodic poll. If a new SW is found, Workbox transitions it
-// to the "waiting" state and our onNeedRefresh callback surfaces the standard
-// update notification.
-export async function checkForServiceWorkerUpdate(): Promise<void> {
-  if (!('serviceWorker' in navigator)) return
-  try {
-    const registration = await navigator.serviceWorker.getRegistration()
-    if (registration) await registration.update()
-  } catch (err) {
-    console.warn('SW update check failed:', err)
-  }
-}
+// Re-export so existing consumers (and docs pointing at registerSW.ts) keep
+// working. The real definition lives in @/api/swUpdate so it can be imported
+// without dragging `virtual:pwa-register` into the module graph.
+export { checkForServiceWorkerUpdate } from '@/api/swUpdate'
 
 // Ask the browser to keep our IndexedDB and Cache Storage from being evicted
 // under storage pressure or extended inactivity. Without this, iOS evicts PWA
-// storage after ~7 days of disuse, wiping the precache and pool cache. The
-// promise resolves to whether the request was granted; we don't act on the
-// result (there is nothing useful to do if it is denied).
+// storage after ~7 days of disuse, wiping the precache and pool cache. We
+// check persisted() first so repeat page loads don't ask again once the
+// origin has already been granted persistent storage.
 async function requestPersistentStorage(): Promise<void> {
   if (!navigator.storage?.persist) return
   try {
+    if (await navigator.storage.persisted?.()) return
     await navigator.storage.persist()
   } catch {
     // Non-critical
