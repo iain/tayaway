@@ -138,10 +138,11 @@ module TestFactories
       DB[:task_lists].where(id: id).first
     end
 
-    def task_item(task_list: nil, user: nil, content: nil, completed_at: nil, id: SecureRandom.uuid)
+    def task_item(task_list: nil, user: nil, content: nil, completed_at: nil, position: nil, id: SecureRandom.uuid)
       task_list ||= self.task_list
       user ||= self.user
       content ||= "Item #{next_sequence(:task_item)}"
+      position ||= (DB[:task_items].where(task_list_id: task_list[:id]).max(:position) || 0.0) + 1.0
       now = Time.now
       DB[:task_items].insert(
         id: id,
@@ -149,6 +150,7 @@ module TestFactories
         user_id: user[:id],
         content: content,
         completed_at: completed_at,
+        position: position,
         created_at: now,
         updated_at: now
       )
@@ -201,6 +203,27 @@ module TestFactories
         updated_at: now
       )
       DB[:chore_assignments].where(id: id).first
+    end
+
+    def workspace_invite(workspace: nil, invited_by: nil, email: nil, name: nil, token: SecureRandom.hex(32), expires_at: Time.now + (7 * 24 * 60 * 60), accepted_at: nil, last_reminded_at: nil, id: SecureRandom.uuid)
+      workspace ||= self.workspace
+      invited_by ||= self.user
+      email ||= "invite#{next_sequence(:workspace_invite)}@example.com"
+      now = Time.now
+      DB[:workspace_invites].insert(
+        id: id,
+        workspace_id: workspace[:id],
+        invited_by: invited_by[:id],
+        email: email,
+        name: name,
+        token: Auth::Token.digest(token),
+        expires_at: expires_at,
+        accepted_at: accepted_at,
+        last_reminded_at: last_reminded_at,
+        created_at: now,
+        updated_at: now
+      )
+      DB[:workspace_invites].where(id: id).first
     end
 
     def session(user: nil, token: SecureRandom.hex(32), expires_at: Time.now + Session::EXPIRY_SECONDS, id: SecureRandom.uuid)

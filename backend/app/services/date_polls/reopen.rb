@@ -74,8 +74,8 @@ module DatePolls
         APP_LOGGER.info { "[DatePolls::Reopen] Poll #{poll.id} reopened on event #{event.id}" }
 
         pool = PoolSerializer.new(membership: membership)
-        pool.add_event(Event.find(event.id))
-        pool.add_date_poll(DatePoll.find(poll.id))
+        pool.add(:event, [Event.find(event.id)])
+        pool.add(:date_poll, [DatePoll.find(poll.id)])
 
         deleted = deleted_rsvp_ids.map { |rid| { objectType: "rsvp", id: rid } }
         Success({ objects: pool.to_a, deleted: deleted })

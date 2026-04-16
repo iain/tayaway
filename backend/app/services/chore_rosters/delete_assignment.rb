@@ -36,7 +36,7 @@ module ChoreRosters
 
         pool = PoolSerializer.new(membership: membership)
         chore = Chore.find(chore_id)
-        pool.add_chore(chore)
+        pool.add(:chore, [chore])
 
         Success({ objects: pool.to_a, deleted: [{ objectType: "choreAssignment", id: assignment.id.to_s }] })
       end

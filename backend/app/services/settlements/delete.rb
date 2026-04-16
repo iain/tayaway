@@ -47,7 +47,7 @@ module Settlements
         end
 
         # Re-fetch updated expenses for the response
-        Expense.for_event(settlement.event_id).each { |e| pool.add_expense(e) }
+        pool.add(:expense, Expense.for_event(settlement.event_id))
 
         Success({ objects: pool.to_a, deleted: deleted })
       end

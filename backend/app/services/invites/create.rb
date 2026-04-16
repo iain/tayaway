@@ -88,7 +88,7 @@ module Invites
 
         invite = WorkspaceInvite.find(id)
         pool = PoolSerializer.new(membership: membership)
-        pool.add_workspace_invite(invite)
+        pool.add(:workspace_invite, [invite])
         Success({ objects: pool.to_a })
       end
     end

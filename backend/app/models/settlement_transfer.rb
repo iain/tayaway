@@ -24,20 +24,6 @@ class SettlementTransfer
     @updated_at = updated_at
   end
 
-  def to_api_hash
-    {
-      id: id.to_s,
-      objectType: "settlementTransfer",
-      settlementId: settlement_id.to_s,
-      fromUserId: from_user_id&.to_s,
-      toUserId: to_user_id&.to_s,
-      amount: amount,
-      paidAt: paid_at&.iso8601(3),
-      createdAt: created_at.iso8601(3),
-      updatedAt: updated_at.iso8601(3)
-    }
-  end
-
   class << self
     include Dry::Monads[:result]
     include Findable
@@ -48,6 +34,12 @@ class SettlementTransfer
 
     def for_settlement(settlement_id)
       dataset.where(settlement_id: settlement_id).order(:created_at).all
+    end
+
+    def for_settlement_ids(settlement_ids)
+      return [] if settlement_ids.empty?
+
+      dataset.where(settlement_id: settlement_ids).order(:created_at).all
     end
 
     def ids_for_settlement(settlement_id)

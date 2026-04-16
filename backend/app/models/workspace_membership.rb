@@ -20,17 +20,6 @@ class WorkspaceMembership
     @updated_at = updated_at
   end
 
-  def to_api_hash
-    {
-      id: id.to_s,
-      objectType: "member",
-      workspaceId: workspace_id.to_s,
-      userId: user_id.to_s,
-      role: role,
-      createdAt: created_at.iso8601(3)
-    }
-  end
-
   class << self
     def find(id)
       dataset.where(id: id).first
@@ -52,6 +41,17 @@ class WorkspaceMembership
       DB[:workspace_memberships]
         .where(workspace_id: workspace_id)
         .select_map(:id)
+    end
+
+    def ids_for_workspaces(workspace_ids)
+      return {} if workspace_ids.empty?
+
+      DB[:workspace_memberships]
+        .where(workspace_id: workspace_ids)
+        .select(:id, :workspace_id)
+        .all
+        .group_by { |r| r[:workspace_id].to_s }
+        .transform_values { |rows| rows.map { |r| r[:id].to_s } }
     end
 
     def find_by_workspace_and_user(workspace_id, user_id)

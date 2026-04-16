@@ -13,7 +13,7 @@ class App
       r.get do
         workspaces = Workspace.for_user(user.id)
         pool = PoolSerializer.new
-        pool.add_all(workspaces, type: :workspace)
+        pool.add(:workspace, workspaces)
 
         response.status = 200
         { objects: pool.to_a }
@@ -36,7 +36,7 @@ class App
       r.is do
         r.get do
           pool = PoolSerializer.new(membership: membership)
-          pool.add_workspace(workspace)
+          pool.add(:workspace, [workspace])
 
           response.status = 200
           { objects: pool.to_a }

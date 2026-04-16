@@ -37,7 +37,7 @@ module TaskLists
 
         updated = TaskList.find(task_list.id)
         pool = PoolSerializer.new(membership: membership)
-        pool.add_task_list(updated)
+        pool.add(:task_list, [updated])
 
         Success({ objects: pool.to_a })
       end

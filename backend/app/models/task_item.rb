@@ -24,20 +24,6 @@ class TaskItem
     @updated_at = updated_at
   end
 
-  def to_api_hash
-    {
-      id: id.to_s,
-      objectType: "taskItem",
-      taskListId: task_list_id.to_s,
-      userId: user_id&.to_s,
-      content: content,
-      completedAt: completed_at&.iso8601(3),
-      position: position,
-      createdAt: created_at.iso8601(3),
-      updatedAt: updated_at.iso8601(3)
-    }
-  end
-
   class << self
     include Dry::Monads[:result]
     include Findable
@@ -48,6 +34,12 @@ class TaskItem
 
     def for_task_list(task_list_id)
       dataset.where(task_list_id: task_list_id).order(:position).all
+    end
+
+    def for_task_lists(task_list_ids)
+      return [] if task_list_ids.empty?
+
+      dataset.where(task_list_id: task_list_ids).order(:task_list_id, :position).all
     end
 
     def changed_since(workspace_id, since)

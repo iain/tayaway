@@ -36,21 +36,6 @@ class DatePoll
     status == "open"
   end
 
-  def to_api_hash(date_range_ids:)
-    {
-      id: id.to_s,
-      objectType: "datePoll",
-      eventId: event_id.to_s,
-      deadline: deadline.iso8601(3),
-      selectedDateRangeId: selected_date_range_id&.to_s,
-      closedAt: closed_at&.iso8601(3),
-      status: status,
-      dateRangeIds: date_range_ids,
-      createdAt: created_at.iso8601(3),
-      updatedAt: updated_at.iso8601(3)
-    }
-  end
-
   class << self
     include Dry::Monads[:result]
 

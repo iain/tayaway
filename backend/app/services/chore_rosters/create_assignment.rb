@@ -71,7 +71,7 @@ module ChoreRosters
           existing = ChoreAssignment.find(id)
           if existing
             pool = PoolSerializer.new(membership: membership)
-            pool.add_chore_assignment(existing)
+            pool.add(:chore_assignment, [existing])
             return Success({ objects: pool.to_a })
           end
         end
@@ -97,9 +97,9 @@ module ChoreRosters
 
         pool = PoolSerializer.new(membership: membership)
         assignment = ChoreAssignment.find(assignment_id)
-        pool.add_chore_assignment(assignment)
+        pool.add(:chore_assignment, [assignment])
         chore = Chore.find(valid[:chore_id])
-        pool.add_chore(chore)
+        pool.add(:chore, [chore])
 
         Success({ objects: pool.to_a })
       end

@@ -20,17 +20,6 @@ class DateRange
     @updated_at = updated_at
   end
 
-  def to_api_hash
-    {
-      id: id.to_s,
-      objectType: "dateRange",
-      datePollId: date_poll_id.to_s,
-      startDate: start_date.iso8601,
-      endDate: end_date.iso8601,
-      updatedAt: updated_at.iso8601(3)
-    }
-  end
-
   class << self
     def find(id)
       dataset.where(id: id).first

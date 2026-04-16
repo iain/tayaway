@@ -97,7 +97,7 @@ module Expenses
           existing = Expense.find(id)
           if existing
             pool = PoolSerializer.new(membership: membership)
-            pool.add_expense(existing)
+            pool.add(:expense, [existing])
             return Success({ objects: pool.to_a })
           end
         end
@@ -130,7 +130,7 @@ module Expenses
         end
 
         pool = PoolSerializer.new(membership: membership)
-        pool.add_expense(expense)
+        pool.add(:expense, [expense])
 
         Success({ objects: pool.to_a })
       end

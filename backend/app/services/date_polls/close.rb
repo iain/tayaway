@@ -79,9 +79,9 @@ module DatePolls
         send_poll_closed_emails(event, poll, date_range, yes_voter_ids)
 
         pool = PoolSerializer.new(membership: membership)
-        pool.add_event(Event.find(event.id))
-        pool.add_date_poll(DatePoll.find(poll.id))
-        Rsvp.for_event(event.id).each { |r| pool.add_rsvp(r) }
+        pool.add(:event, [Event.find(event.id)])
+        pool.add(:date_poll, [DatePoll.find(poll.id)])
+        pool.add(:rsvp, Rsvp.for_event(event.id))
         Success({ objects: pool.to_a })
       end
 

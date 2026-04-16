@@ -78,4 +78,27 @@ RSpec.describe Sync::WorkspaceSync do
 
     expect(result[:syncType]).to eq("partial")
   end
+
+  # Behavioral guard for the registry-driven dispatch: every type in
+  # ObjectRegistry (aside from workspace / member, which are handled outside
+  # the iteration) must at minimum reach its model's changed_since. Catches
+  # a new type being added without WorkspaceSync picking it up, which would
+  # otherwise only surface at runtime on a full sync of that type.
+  it "iterates every registered type via ObjectRegistry::TYPES" do
+    called_keys = []
+    ObjectRegistry::TYPES.each do |entry|
+      next if %w[workspace member].include?(entry.key)
+
+      model = Object.const_get(entry.model)
+      allow(model).to receive(:changed_since).and_wrap_original do |orig, *args|
+        called_keys << entry.key
+        orig.call(*args)
+      end
+    end
+
+    described_class.call(workspace_id: workspace[:id])
+
+    missing = ObjectRegistry::TYPES.map(&:key) - called_keys - %w[workspace member]
+    expect(missing).to be_empty, "WorkspaceSync skipped registry entries: #{missing.inspect}"
+  end
 end

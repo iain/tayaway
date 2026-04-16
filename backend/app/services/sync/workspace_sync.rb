@@ -30,31 +30,19 @@ module Sync
 
         # Always include workspace so memberIds stays current on partial syncs
         # (adding a member doesn't update the workspace's updated_at)
-        pool.add_workspace(workspace)
-
-        batch_methods = {
-          "Event" => :add_events_batch,
-          "DatePoll" => :add_date_polls_batch,
-          "DateRange" => :add_date_ranges_batch,
-          "Settlement" => :add_settlements_batch,
-          "WorkspaceMembership" => :add_members_batch
-        }
+        pool.add(:workspace, [workspace])
 
         ObjectRegistry::TYPES.each do |entry|
+          next if entry.key == "workspace" # already added
+          next if entry.key == "member"    # added below with all memberships
+
           model = Object.const_get(entry.model)
           items = model.changed_since(workspace_id, effective_since)
-          next if items.empty?
-
-          batch_method = batch_methods[entry.model]
-          if batch_method
-            pool.send(batch_method, items)
-          else
-            items.each { |item| pool.send(entry.pool_method, item) }
-          end
+          pool.add(entry.key, items) if items.any?
         end
 
         # Include all members so the frontend can resolve userId references
-        pool.add_members_batch(WorkspaceMembership.for_workspace(workspace_id))
+        pool.add(:member, WorkspaceMembership.for_workspace(workspace_id))
 
         deleted = if full
                     []

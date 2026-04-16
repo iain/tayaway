@@ -24,20 +24,6 @@ class ChoreAssignment
     @updated_at = updated_at
   end
 
-  def to_api_hash
-    {
-      id: id.to_s,
-      objectType: "choreAssignment",
-      choreId: chore_id.to_s,
-      userId: user_id.to_s,
-      date: date.iso8601,
-      pinned: pinned,
-      note: note,
-      createdAt: created_at.iso8601(3),
-      updatedAt: updated_at.iso8601(3)
-    }
-  end
-
   class << self
     include Dry::Monads[:result]
     include Findable
@@ -48,6 +34,12 @@ class ChoreAssignment
 
     def for_chore(chore_id)
       dataset.where(Sequel[:chore_assignments][:chore_id] => chore_id).order(Sequel[:chore_assignments][:date]).all
+    end
+
+    def for_chores(chore_ids)
+      return [] if chore_ids.empty?
+
+      dataset.where(chore_id: chore_ids).all
     end
 
     def ids_for_chore(chore_id)

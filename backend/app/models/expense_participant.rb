@@ -16,17 +16,6 @@ class ExpenseParticipant
     @created_at = created_at
   end
 
-  def to_api_hash
-    {
-      id: id.to_s,
-      objectType: "expenseParticipant",
-      expenseId: expense_id.to_s,
-      userId: user_id.to_s,
-      createdAt: created_at.iso8601(3),
-      updatedAt: created_at.iso8601(3)
-    }
-  end
-
   class << self
     include Dry::Monads[:result]
     include Findable

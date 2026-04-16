@@ -8,7 +8,7 @@ RSpec.describe PoolSerializer do
 
   before { TestFactories.workspace_membership(workspace: workspace, user: user) }
 
-  describe "#add_events_batch" do
+  describe "#add" do
     it "serializes multiple events without N+1 date poll queries" do
       event1 = TestFactories.event(workspace: workspace, user: user, name: "Event 1")
       event2 = TestFactories.event(workspace: workspace, user: user, name: "Event 2")
@@ -18,7 +18,7 @@ RSpec.describe PoolSerializer do
       pool = described_class.new(workspace_id: workspace[:id])
       events = Event.for_workspace(workspace[:id])
 
-      pool.add_events_batch(events)
+      pool.add(:event, events)
 
       objects = pool.to_a
       types = objects.map { |o| o[:objectType] }
@@ -39,14 +39,94 @@ RSpec.describe PoolSerializer do
       event_model = Event.find(event[:id])
 
       pool = described_class.new(workspace_id: workspace[:id])
-      pool.add_event(event_model)
-      pool.add_events_batch([event_model])
+      pool.add(:event, [event_model])
+      pool.add(:event, [event_model])
 
       expect(pool.to_a.count { |o| o[:objectType] == "event" }).to eq(1)
     end
+
+    it "raises on an unknown object key" do
+      pool = described_class.new(workspace_id: workspace[:id])
+
+      expect { pool.add(:nope, []) }.to raise_error(ArgumentError, /Unknown object key/)
+    end
+
+    it "expands task_list → task_items with a single children query" do
+      list1_row = TestFactories.task_list(workspace: workspace, user: user)
+      list2_row = TestFactories.task_list(workspace: workspace, user: user)
+      TestFactories.task_item(task_list: list1_row, user: user)
+      TestFactories.task_item(task_list: list2_row, user: user)
+      lists = [TaskList.find(list1_row[:id]), TaskList.find(list2_row[:id])]
+
+      pool = described_class.new(workspace_id: workspace[:id])
+      queries = QueryCounter.new.count { pool.add(:task_list, lists) }
+
+      expect(pool.to_a.count { |o| o[:objectType] == "taskItem" }).to eq(2)
+      # Budget: task_lists is already loaded by the caller; the serializer
+      # only needs one SELECT against task_items for both parents. Fail loudly
+      # if we regress to a per-parent lookup.
+      expect(queries).to be <= 2
+    end
+
+    it "expands chore_roster → chore → chore_assignment with batched children queries" do
+      event1_row = TestFactories.event(workspace: workspace, user: user)
+      event2_row = TestFactories.event(workspace: workspace, user: user)
+      roster1_row = TestFactories.chore_roster(event: event1_row, user: user)
+      roster2_row = TestFactories.chore_roster(event: event2_row, user: user)
+      chore1 = TestFactories.chore(chore_roster: roster1_row)
+      chore2 = TestFactories.chore(chore_roster: roster2_row)
+      TestFactories.chore_assignment(chore: chore1, user: user, date: Date.today)
+      TestFactories.chore_assignment(chore: chore2, user: user, date: Date.today)
+      rosters = [ChoreRoster.find(roster1_row[:id]), ChoreRoster.find(roster2_row[:id])]
+
+      pool = described_class.new(workspace_id: workspace[:id])
+      queries = QueryCounter.new.count { pool.add(:chore_roster, rosters) }
+
+      expect(pool.to_a.count { |o| o[:objectType] == "chore" }).to eq(2)
+      expect(pool.to_a.count { |o| o[:objectType] == "choreAssignment" }).to eq(2)
+      # Budget: rosters, chores (batched), assignments (batched). Allow some
+      # slack for associated lookups but fail loudly if we start doing N+1.
+      expect(queries).to be <= 6
+    end
+
+    it "expands expense → participants with a single children query" do
+      event = TestFactories.event(workspace: workspace, user: user)
+      now = Time.now
+      e1_id = SecureRandom.uuid
+      e2_id = SecureRandom.uuid
+      [e1_id, e2_id].each do |eid|
+        DB[:expenses].insert(
+          id: eid, event_id: event[:id], user_id: user[:id],
+          description: "x", amount: 1.0, start_date: Date.today, end_date: Date.today,
+          created_at: now, updated_at: now
+        )
+        DB[:expense_participants].insert(
+          id: SecureRandom.uuid, expense_id: eid, user_id: user[:id], created_at: now
+        )
+      end
+      expenses = [Expense.find(e1_id), Expense.find(e2_id)]
+
+      pool = described_class.new(workspace_id: workspace[:id])
+      queries = QueryCounter.new.count { pool.add(:expense, expenses) }
+
+      expect(pool.to_a.count { |o| o[:objectType] == "expenseParticipant" }).to eq(2)
+      # Budget: one expense_participants SELECT for both parents, not one each.
+      expect(queries).to be <= 4
+    end
+
+    it "raises if a serializer returns fewer hashes than items" do
+      event1 = TestFactories.event(workspace: workspace, user: user)
+      event2 = TestFactories.event(workspace: workspace, user: user)
+      events = [Event.find(event1[:id]), Event.find(event2[:id])]
+      allow(EventSerializer).to receive(:serialize_batch).and_return([{ id: events.first.id.to_s, objectType: "event" }])
+
+      pool = described_class.new(workspace_id: workspace[:id])
+
+      expect { pool.add(:event, events) }.to raise_error(/returned 1 hashes for 2 items/)
+    end
   end
 
-  describe "#add_date_polls_batch" do
+  describe "#add date_polls" do
     it "serializes multiple date polls without N+1 date range queries" do
       event1 = TestFactories.event(workspace: workspace, user: user)
       event2 = TestFactories.event(workspace: workspace, user: user)
@@ -57,7 +137,7 @@ RSpec.describe PoolSerializer do
       pool = described_class.new(workspace_id: workspace[:id])
       polls = [DatePoll.find(poll1[:id]), DatePoll.find(poll2[:id])]
 
-      pool.add_date_polls_batch(polls)
+      pool.add(:date_poll, polls)
 
       objects = pool.to_a
       poll1_obj = objects.find { |o| o[:objectType] == "datePoll" && o[:id] == poll1[:id].to_s }
@@ -68,7 +148,7 @@ RSpec.describe PoolSerializer do
     end
   end
 
-  describe "#add_date_ranges_batch" do
+  describe "#add date_ranges" do
     it "serializes multiple date ranges in a single batch" do
       event = TestFactories.event(workspace: workspace, user: user)
       poll = TestFactories.date_poll(event: event)
@@ -78,7 +158,7 @@ RSpec.describe PoolSerializer do
       pool = described_class.new(workspace_id: workspace[:id])
       ranges = [DateRange.find(range1[:id]), DateRange.find(range2[:id])]
 
-      pool.add_date_ranges_batch(ranges)
+      pool.add(:date_range, ranges)
 
       objects = pool.to_a
       range1_obj = objects.find { |o| o[:objectType] == "dateRange" && o[:id] == range1[:id].to_s }
@@ -92,7 +172,7 @@ RSpec.describe PoolSerializer do
     end
   end
 
-  describe "#add_settlements_batch" do
+  describe "#add settlements" do
     it "serializes multiple settlements without N+1 transfer queries" do
       event = TestFactories.event(workspace: workspace, user: user)
       user2 = TestFactories.user
@@ -115,7 +195,7 @@ RSpec.describe PoolSerializer do
       pool = described_class.new(workspace_id: workspace[:id])
       settlements = [Settlement.find(settlement1_id), Settlement.find(settlement2_id)]
 
-      pool.add_settlements_batch(settlements)
+      pool.add(:settlement, settlements)
 
       objects = pool.to_a
       s1_obj = objects.find { |o| o[:objectType] == "settlement" && o[:id] == settlement1_id.to_s }

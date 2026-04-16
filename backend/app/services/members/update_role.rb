@@ -48,7 +48,7 @@ module Members
 
         updated = WorkspaceMembership.find(target.id)
         pool = PoolSerializer.new(membership: acting_membership)
-        pool.add_member(updated)
+        pool.add(:member, [updated])
 
         Success({ objects: pool.to_a })
       end
