@@ -15,22 +15,12 @@
     "frontend/src/**/*.{js,ts,vue}": "pnpm -C frontend exec eslint --fix",
     "*.{js,ts,vue,css,html,json,md}": "prettier --write"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ],
-    "overrides": {
-      "serialize-javascript": ">=7.0.4",
-      "picomatch@<2.3.2": ">=2.3.2",
-      "picomatch@>=4.0.0 <4.0.4": ">=4.0.4"
-    }
-  },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
-    "@types/node": "^25.5.2",
+    "@types/node": "^25.6.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
-    "prettier": "^3.8.1",
+    "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.7.2"
   }
 }
