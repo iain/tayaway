@@ -9,6 +9,7 @@ import type { PoolEvent, PoolRsvp, PoolMember, PoolExpense } from '@/types/pool'
 let mockRsvps: PoolRsvp[] = []
 let mockExpenses: PoolExpense[] = []
 let mockMembers: PoolMember[] = []
+let mockParticipants: Array<{ id: string; userId: string; factor: number }> = []
 
 vi.mock('@/stores/objectPool', () => ({
   useObjectPoolStore: () => ({
@@ -17,7 +18,11 @@ vi.mock('@/stores/objectPool', () => ({
       if (type === 'expense') return mockExpenses
       return []
     },
-    get: (_type: string, id: string) => mockMembers.find((m) => m.id === id),
+    get: (type: string, id: string) => {
+      if (type === 'expenseParticipant')
+        return mockParticipants.find((p) => p.id === id)
+      return mockMembers.find((m) => m.id === id)
+    },
     findBy: (_type: string, field: string, value: unknown) =>
       mockMembers.find(
         (m) => (m as unknown as Record<string, unknown>)[field] === value
@@ -115,6 +120,7 @@ describe('ExpenseSplit', () => {
     mockRsvps = []
     mockExpenses = []
     mockMembers = []
+    mockParticipants = []
   })
 
   describe('visibility', () => {
@@ -309,6 +315,47 @@ describe('ExpenseSplit', () => {
       mockExpenses = []
       const wrapper = mountSplit(mkEvent(), 0)
       expect(wrapper.text()).toContain('alice@example.com')
+    })
+  })
+
+  describe('specific-people', () => {
+    it('weights specific-people shares by participant factor', () => {
+      mockMembers = [
+        mkMember({ id: 'm-alice', userId: 'alice', name: 'Alice' }),
+        mkMember({ id: 'm-bob', userId: 'bob', name: 'Bob' }),
+      ]
+      mockRsvps = [
+        mkRsvp({ id: 'rsvp-a', userId: 'alice' }),
+        mkRsvp({ id: 'rsvp-b', userId: 'bob' }),
+      ]
+      mockParticipants = [
+        { id: 'p-alice', userId: 'alice', factor: 2 },
+        { id: 'p-bob', userId: 'bob', factor: 1 },
+      ]
+      const expense: PoolExpense = {
+        ...BASE,
+        id: 'e1',
+        objectType: 'expense',
+        eventId: 'event-1',
+        userId: 'alice',
+        settlementId: null,
+        description: 'Dinner',
+        amount: 30,
+        startDate: '2026-07-01',
+        endDate: '2026-07-01',
+        participantIds: ['p-alice', 'p-bob'],
+      }
+      mockExpenses = [expense]
+
+      const wrapper = mount(ExpenseSplit, {
+        props: { event: mkEvent(), total: 30 },
+      })
+      const text = wrapper.text()
+      expect(text).toContain('Alice')
+      expect(text).toContain('Bob')
+      // Alice factor 2, Bob factor 1 → Alice €20.00, Bob €10.00
+      expect(text).toContain('€20.00')
+      expect(text).toContain('€10.00')
     })
   })
 
