@@ -516,6 +516,77 @@ test.describe('Expenses Feature', () => {
       await expect(rowB.getByText('owes €50.00')).toBeVisible()
     })
 
+    test('weights the split by per-participant factors', async ({
+      page,
+      playwright,
+    }) => {
+      const apiContextA = await newApiContext(playwright)
+      const { token: tokenA, userId: userAId } = await getTestSession(
+        apiContextA,
+        SPLIT_USER_A_EMAIL,
+        SPLIT_USER_A_NAME
+      )
+      const { eventId } = await createResolvedEvent(apiContextA, 'Factor Split')
+
+      const apiContextB = await newApiContext(playwright)
+      const { userId: userBId } = await getTestSession(
+        apiContextB,
+        SPLIT_USER_B_EMAIL,
+        SPLIT_USER_B_NAME
+      )
+
+      const wsResp = await apiContextA.get(`${API_BASE}/api/workspaces`)
+      const wsBody = await wsResp.json()
+      const workspace = getObjectByType(wsBody.objects, 'workspace')!
+      await addMemberToWorkspace(apiContextA, workspace.id, SPLIT_USER_B_EMAIL)
+
+      await apiContextB.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
+        data: { attending: true },
+      })
+
+      // A pays €30. Split specifically among A (factor 1) and B (factor 2):
+      // total factor 3 → A owes €10.00, B owes €20.00.
+      await apiContextA.post(`${API_BASE}/api/expenses`, {
+        data: {
+          event_id: eventId,
+          description: 'Dinner',
+          amount: 30,
+          start_date: DEFAULT_START,
+          end_date: DEFAULT_END,
+          participants: [
+            { user_id: userAId, factor: 1 },
+            { user_id: userBId, factor: 2 },
+          ],
+        },
+      })
+
+      await apiContextA.dispose()
+      await apiContextB.dispose()
+
+      await setupAuthenticatedPage(page, tokenA)
+      await page.goto(`/events/${eventId}/expenses`)
+      await expect(
+        page.getByRole('heading', { name: 'Cost Split' })
+      ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
+
+      const splitTable = page.getByTestId('cost-split-table')
+      const rowA = splitTable
+        .getByRole('row')
+        .filter({ hasText: SPLIT_USER_A_NAME })
+      // A paid €30, fair share €10.00 → owed €20.00 back
+      await expect(rowA.getByText('€30.00', { exact: true })).toBeVisible()
+      await expect(rowA.getByText('€10.00', { exact: true })).toBeVisible()
+      await expect(rowA.getByText('owed €20.00')).toBeVisible()
+
+      const rowB = splitTable
+        .getByRole('row')
+        .filter({ hasText: SPLIT_USER_B_NAME })
+      // B paid nothing, fair share €20.00 → owes €20.00
+      await expect(rowB.getByText('€0.00', { exact: true })).toBeVisible()
+      await expect(rowB.getByText('€20.00', { exact: true })).toBeVisible()
+      await expect(rowB.getByText('owes €20.00')).toBeVisible()
+    })
+
     test('date-scoped expense only splits among overlapping attendees', async ({
       page,
       playwright,
