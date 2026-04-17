@@ -67,7 +67,6 @@ class User
 
     def decrypt_field(value, user_id:)
       return nil if value.nil?
-      return value unless Encryption.encrypted?(value)
 
       Encryption.decrypt(value, user_id: user_id)
     end
@@ -78,20 +77,15 @@ class User
 
     def from_row(row)
       user_id = row[:id]
-      phone = decrypt_field(row[:phone_number], user_id: user_id)
 
       raw_birthday = row[:birthday]
-      birthday = if raw_birthday.is_a?(String) && Encryption.encrypted?(raw_birthday)
-                   Date.parse(Encryption.decrypt(raw_birthday, user_id: user_id))
-                 elsif raw_birthday.is_a?(String)
-                   Date.parse(raw_birthday)
-                 end
+      birthday = raw_birthday ? Date.parse(decrypt_field(raw_birthday, user_id: user_id)) : nil
 
       User.new(
         id: UUID.new(user_id),
         email: EmailAddress.new(row[:email]),
         name: row[:name],
-        phone_number: phone,
+        phone_number: decrypt_field(row[:phone_number], user_id: user_id),
         birthday: birthday,
         location_name: row[:location_name],
         location_coordinates: PointParser.parse(row[:location_coordinates]),

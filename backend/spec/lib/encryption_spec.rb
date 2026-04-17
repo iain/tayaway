@@ -5,7 +5,7 @@ require "spec_helper"
 RSpec.describe Encryption do
   let(:user_id) { SecureRandom.uuid }
 
-  describe ".encrypt / .decrypt (v2 — AEAD)" do
+  describe ".encrypt / .decrypt" do
     it "round-trips a plaintext value" do
       iban = "NL91ABNA0417164300"
       encrypted = described_class.encrypt(iban, user_id: user_id)
@@ -33,46 +33,14 @@ RSpec.describe Encryption do
     end
   end
 
-  describe ".encrypt_v1 / .decrypt (v1 — SecretBox)" do
-    it "round-trips through encrypt_v1 and decrypt" do
-      encrypted = described_class.encrypt_v1("NL91ABNA0417164300")
-      expect(described_class.decrypt(encrypted, user_id: user_id)).to eq("NL91ABNA0417164300")
-    end
-
-    it "produces Base64-encoded output with v1 prefix" do
-      encrypted = described_class.encrypt_v1("GB29NWBK60161331926819")
-      raw = Base64.strict_decode64(encrypted)
-      expect(raw.getbyte(0)).to eq(0x01)
-    end
-  end
-
-  describe "legacy unversioned ciphertext" do
-    it "decrypts successfully" do
-      box = RbNaCl::SimpleBox.from_secret_key(described_class.send(:encryption_key))
-      legacy = Base64.strict_encode64(box.box("NL91ABNA0417164300"))
-      expect(described_class.decrypt(legacy, user_id: user_id)).to eq("NL91ABNA0417164300")
-    end
-  end
-
   describe ".encrypted?" do
     it "returns false for a plaintext IBAN" do
       expect(described_class.encrypted?("NL91ABNA0417164300")).to be(false)
     end
 
-    it "returns true for a v2 encrypted value" do
+    it "returns true for an encrypted value" do
       encrypted = described_class.encrypt("NL91ABNA0417164300", user_id: user_id)
       expect(described_class.encrypted?(encrypted)).to be(true)
-    end
-
-    it "returns true for a v1 encrypted value" do
-      encrypted = described_class.encrypt_v1("NL91ABNA0417164300")
-      expect(described_class.encrypted?(encrypted)).to be(true)
-    end
-
-    it "returns true for a legacy unversioned encrypted value" do
-      box = RbNaCl::SimpleBox.from_secret_key(described_class.send(:encryption_key))
-      legacy = Base64.strict_encode64(box.box("NL91ABNA0417164300"))
-      expect(described_class.encrypted?(legacy)).to be(true)
     end
 
     it "returns false for a short Base64 string (not enough bytes)" do
