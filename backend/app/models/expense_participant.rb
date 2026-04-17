@@ -2,20 +2,22 @@
 
 # Read-only ExpenseParticipant model.
 class ExpenseParticipant
-  attr_reader :id, :expense_id, :user_id, :factor, :created_at
+  attr_reader :id, :expense_id, :user_id, :factor, :created_at, :updated_at
 
   def initialize(
     id:,
     expense_id:,
     user_id:,
     factor:,
-    created_at:
+    created_at:,
+    updated_at:
   )
     @id = id
     @expense_id = expense_id
     @user_id = user_id
     @factor = factor
     @created_at = created_at
+    @updated_at = updated_at
   end
 
   class << self
@@ -45,7 +47,7 @@ class ExpenseParticipant
         .join(:expenses, id: :expense_id)
         .join(:events, id: Sequel[:expenses][:event_id])
         .where(Sequel[:events][:workspace_id] => workspace_id.to_s)
-        .where(Sequel.lit("expense_participants.created_at > ?", since))
+        .where(Sequel.lit("expense_participants.updated_at > ?", since))
         .select_all(:expense_participants)
         .all
     end
@@ -62,7 +64,8 @@ class ExpenseParticipant
         expense_id: UUID.new(row[:expense_id]),
         user_id: UUID.new(row[:user_id]),
         factor: row[:factor].to_f,
-        created_at: row[:created_at]
+        created_at: row[:created_at],
+        updated_at: row[:updated_at]
       )
     end
   end

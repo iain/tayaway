@@ -155,7 +155,7 @@ module Expenses
           if (existing_row = existing_by_user[user_id])
             effective_factor = factor.nil? ? existing_row.factor : factor
             if existing_row.factor != effective_factor
-              DB[:expense_participants].where(id: existing_row.id).update(factor: effective_factor)
+              DB[:expense_participants].where(id: existing_row.id).update(factor: effective_factor, updated_at: now)
               Broadcaster.object_changed("expense_participant", existing_row.id, workspace_id: workspace_id)
             end
           else
@@ -166,7 +166,8 @@ module Expenses
               expense_id: expense_id,
               user_id: user_id,
               factor: effective_factor,
-              created_at: now
+              created_at: now,
+              updated_at: now
             )
             Broadcaster.object_changed("expense_participant", pid, workspace_id: workspace_id)
           end

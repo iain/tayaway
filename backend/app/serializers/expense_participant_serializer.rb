@@ -12,9 +12,8 @@ class ExpenseParticipantSerializer
           expenseId: participant.expense_id.to_s,
           userId: participant.user_id.to_s,
           factor: participant.factor,
-          # Note: preserved from original to_api_hash — both fields use created_at.
           createdAt: participant.created_at.iso8601(3),
-          updatedAt: participant.created_at.iso8601(3)
+          updatedAt: participant.updated_at.iso8601(3)
         }
       end
     end

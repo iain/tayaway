@@ -184,7 +184,8 @@ module Expenses
             expense_id: expense_id,
             user_id: p[:user_id],
             factor: p[:factor],
-            created_at: now
+            created_at: now,
+            updated_at: now
           )
           Broadcaster.object_changed("expense_participant", participant_id, workspace_id: workspace_id)
         end
