@@ -5,29 +5,43 @@ require "openssl"
 require "base64"
 
 # libsodium (XSalsa20-Poly1305) encryption helper for sensitive fields.
-# RbNaCl::SimpleBox handles nonce generation automatically. The ciphertext is stored
-# as Base64-encoded "nonce + mac + ciphertext" so it can live in a TEXT column.
+#
+# Stored format (v1): Base64(0x01 ‖ nonce ‖ mac ‖ ciphertext)
+# Legacy unversioned:  Base64(nonce ‖ mac ‖ ciphertext)
+#
+# Reads accept both; writes always emit v1.
 module Encryption
-  # Nonce (24) + MAC (16) — minimum output length for any plaintext.
+  VERSION_1 = "\x01".b.freeze
+
+  # Nonce (24) + MAC (16) — minimum ciphertext payload for any plaintext.
   NONCE_BYTES = RbNaCl::SecretBox.nonce_bytes # 24
   MAC_BYTES   = 16 # Poly1305
   MIN_ENCRYPTED_BYTES = NONCE_BYTES + MAC_BYTES # 40
 
   class << self
     def encrypt(plaintext)
-      Base64.strict_encode64(box.box(plaintext))
+      raw = box.box(plaintext)
+      Base64.strict_encode64(VERSION_1 + raw)
     end
 
     def decrypt(encoded)
-      box.open(Base64.strict_decode64(encoded))
+      raw = Base64.strict_decode64(encoded)
+
+      if raw.start_with?(VERSION_1)
+        box.open(raw.byteslice(1..))
+      else
+        box.open(raw)
+      end
     end
 
-    # Detect whether a value looks like our encrypted format (Base64 with enough
-    # bytes for nonce + mac). Plaintext values are short strings, phone numbers,
-    # dates, etc. — they won't produce 40+ raw bytes when Base64-decoded.
     def encrypted?(value)
       raw = Base64.strict_decode64(value)
-      raw.bytesize >= MIN_ENCRYPTED_BYTES
+
+      if raw.start_with?(VERSION_1)
+        raw.bytesize >= 1 + MIN_ENCRYPTED_BYTES
+      else
+        raw.bytesize >= MIN_ENCRYPTED_BYTES
+      end
     rescue ArgumentError
       false
     end
