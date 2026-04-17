@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { countDays } from '@/utils/event'
+import { formatAmount } from '@/utils/format'
 import type { PoolEvent, PoolMember } from '@/types/pool'
 
 const props = defineProps<{
@@ -9,6 +10,7 @@ const props = defineProps<{
   startDate: string
   endDate: string
   everyone: boolean
+  amount: number
 }>()
 
 const emit = defineEmits<{
@@ -18,8 +20,15 @@ const emit = defineEmits<{
 const selectedUserIds = defineModel<string[]>('selectedUserIds', {
   required: true,
 })
+const factorByUserId = defineModel<Record<string, number>>('factorByUserId', {
+  required: true,
+})
 
 const pool = useObjectPoolStore()
+
+const FACTOR_MIN = 0.5
+const FACTOR_MAX = 9.5
+const FACTOR_STEP = 0.5
 
 interface SelectableMember {
   member: PoolMember
@@ -64,6 +73,7 @@ function toggleEveryone(): void {
   emit('update:everyone', !props.everyone)
   if (!props.everyone) {
     selectedUserIds.value = []
+    factorByUserId.value = {}
   }
 }
 
@@ -71,10 +81,52 @@ function toggleUser(userId: string): void {
   const current = selectedUserIds.value
   if (current.includes(userId)) {
     selectedUserIds.value = current.filter((id) => id !== userId)
+    const next = { ...factorByUserId.value }
+    delete next[userId]
+    factorByUserId.value = next
   } else {
     selectedUserIds.value = [...current, userId]
+    factorByUserId.value = { ...factorByUserId.value, [userId]: 1 }
   }
 }
+
+function factorFor(userId: string): number {
+  return factorByUserId.value[userId] ?? 1
+}
+
+function adjustFactor(userId: string, delta: number): void {
+  const current = factorFor(userId)
+  const next = Math.round((current + delta) / FACTOR_STEP) * FACTOR_STEP
+  if (next < FACTOR_MIN - 1e-9 || next > FACTOR_MAX + 1e-9) return
+  factorByUserId.value = { ...factorByUserId.value, [userId]: next }
+}
+
+function formatFactor(factor: number): string {
+  if (factor === Math.floor(factor)) return String(factor)
+  const whole = Math.floor(factor)
+  return whole === 0 ? '½' : `${whole}½`
+}
+
+const canDecrement = (userId: string) => factorFor(userId) > FACTOR_MIN + 1e-9
+const canIncrement = (userId: string) => factorFor(userId) < FACTOR_MAX - 1e-9
+
+const previewRows = computed(() => {
+  if (props.everyone) return []
+  const selected = selectedUserIds.value
+  if (selected.length === 0 || !(props.amount > 0)) return []
+
+  const totalFactor = selected.reduce((s, uid) => s + factorFor(uid), 0)
+  if (totalFactor <= 0) return []
+
+  return selected.map((uid) => {
+    const m = overlappingMembers.value.find((o) => o.userId === uid)
+    return {
+      userId: uid,
+      name: m?.name ?? 'Unknown',
+      share: (factorFor(uid) / totalFactor) * props.amount,
+    }
+  })
+})
 </script>
 
 <template>
@@ -158,9 +210,39 @@ function toggleUser(userId: string): void {
               :checked="selectedUserIds.includes(m.userId)"
               @change="toggleUser(m.userId)"
             />
-            <span class="text-sm text-gray-900 dark:text-white">
+            <span class="flex-1 text-sm text-gray-900 dark:text-white">
               {{ m.name }}
             </span>
+            <div
+              v-if="selectedUserIds.includes(m.userId)"
+              class="flex items-center gap-1"
+              :data-testid="`factor-${m.userId}`"
+            >
+              <button
+                type="button"
+                class="flex size-8 items-center justify-center rounded-md bg-gray-200 text-gray-700 enabled:hover:bg-gray-300 disabled:opacity-40 dark:bg-stone-700 dark:text-stone-200 dark:enabled:hover:bg-stone-600"
+                :disabled="!canDecrement(m.userId)"
+                :aria-label="`Decrease factor for ${m.name}`"
+                @click.prevent="adjustFactor(m.userId, -FACTOR_STEP)"
+              >
+                −
+              </button>
+              <span
+                class="min-w-[2.25rem] text-center font-mono text-sm text-gray-900 tabular-nums dark:text-white"
+                :data-testid="`factor-value-${m.userId}`"
+              >
+                {{ formatFactor(factorFor(m.userId)) }}
+              </span>
+              <button
+                type="button"
+                class="flex size-8 items-center justify-center rounded-md bg-gray-200 text-gray-700 enabled:hover:bg-gray-300 disabled:opacity-40 dark:bg-stone-700 dark:text-stone-200 dark:enabled:hover:bg-stone-600"
+                :disabled="!canIncrement(m.userId)"
+                :aria-label="`Increase factor for ${m.name}`"
+                @click.prevent="adjustFactor(m.userId, FACTOR_STEP)"
+              >
+                +
+              </button>
+            </div>
           </label>
         </div>
         <p
@@ -173,6 +255,19 @@ function toggleUser(userId: string): void {
         >
           {{ selectedUserIds.length }} of
           {{ overlappingMembers.length }} selected
+        </p>
+        <p
+          v-if="previewRows.length > 0"
+          data-testid="share-preview"
+          class="mt-1 text-xs text-gray-600 dark:text-stone-400"
+        >
+          <span v-for="(row, i) in previewRows" :key="row.userId"
+            >{{ i > 0 ? ' · ' : '' }}{{ row.name }}
+            {{ formatAmount(row.share) }}</span
+          >
+          <span class="text-gray-400 dark:text-stone-500">
+            (of {{ formatAmount(amount) }})
+          </span>
         </p>
       </div>
     </div>
