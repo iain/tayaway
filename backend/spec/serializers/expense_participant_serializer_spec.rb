@@ -54,5 +54,26 @@ RSpec.describe ExpenseParticipantSerializer do
       # Preserved for backwards compatibility; fixing is out of scope.
       expect(result[:createdAt]).to eq(result[:updatedAt])
     end
+
+    it "serializes the factor field" do
+      event = TestFactories.event(workspace: workspace, user: user)
+      now = Time.now
+      expense_id = SecureRandom.uuid
+      DB[:expenses].insert(
+        id: expense_id, event_id: event[:id], user_id: user[:id],
+        description: "x", amount: 10.0, start_date: Date.today, end_date: Date.today,
+        created_at: now, updated_at: now
+      )
+      participant_id = SecureRandom.uuid
+      DB[:expense_participants].insert(
+        id: participant_id, expense_id: expense_id, user_id: user[:id],
+        factor: 2.5, created_at: now
+      )
+      participant = ExpenseParticipant.find(participant_id)
+
+      result = described_class.serialize_batch([participant], pool: nil).first
+
+      expect(result[:factor]).to eq(2.5)
+    end
   end
 end
