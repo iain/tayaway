@@ -244,6 +244,86 @@ RSpec.describe Expenses::Create do
       expect(participants.length).to eq(1)
       expect(participants.first[:userId]).to eq(alice[:id])
     end
+
+    it "accepts participants with explicit factors" do
+      result = described_class.call(
+        **valid_params,
+        participants: [
+          { user_id: alice[:id], factor: 2.0 },
+          { user_id: bob[:id], factor: 0.5 }
+        ]
+      )
+
+      expect(result.success?).to be true
+      participants = result.value![:objects].select { |o| o[:objectType] == "expenseParticipant" }
+      expect(participants.length).to eq(2)
+      by_user = participants.to_h { |p| [p[:userId], p] }
+      expect(by_user[alice[:id]][:factor]).to eq(2.0)
+      expect(by_user[bob[:id]][:factor]).to eq(0.5)
+    end
+
+    it "defaults factor to 1 when participants omit it" do
+      result = described_class.call(
+        **valid_params,
+        participants: [{ user_id: alice[:id] }]
+      )
+
+      expect(result.success?).to be true
+      participant = result.value![:objects].find { |o| o[:objectType] == "expenseParticipant" }
+      expect(participant[:factor]).to eq(1.0)
+    end
+
+    it "legacy participant_ids payload defaults factors to 1" do
+      result = described_class.call(**valid_params, participant_ids: [alice[:id]])
+
+      expect(result.success?).to be true
+      participant = result.value![:objects].find { |o| o[:objectType] == "expenseParticipant" }
+      expect(participant[:factor]).to eq(1.0)
+    end
+
+    it "rejects a factor below 0.5" do
+      result = described_class.call(
+        **valid_params,
+        participants: [{ user_id: alice[:id], factor: 0.25 }]
+      )
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Participant factor must be a multiple of 0.5 between 0.5 and 9.5")
+    end
+
+    it "rejects a factor above 9.5" do
+      result = described_class.call(
+        **valid_params,
+        participants: [{ user_id: alice[:id], factor: 10.0 }]
+      )
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Participant factor must be a multiple of 0.5 between 0.5 and 9.5")
+    end
+
+    it "rejects a factor that is not a multiple of 0.5" do
+      result = described_class.call(
+        **valid_params,
+        participants: [{ user_id: alice[:id], factor: 1.37 }]
+      )
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Participant factor must be a multiple of 0.5 between 0.5 and 9.5")
+    end
+
+    it "prefers participants over participant_ids when both are given" do
+      result = described_class.call(
+        **valid_params,
+        participant_ids: [bob[:id]],
+        participants: [{ user_id: alice[:id], factor: 2.0 }]
+      )
+
+      expect(result.success?).to be true
+      participants = result.value![:objects].select { |o| o[:objectType] == "expenseParticipant" }
+      expect(participants.length).to eq(1)
+      expect(participants.first[:userId]).to eq(alice[:id])
+      expect(participants.first[:factor]).to eq(2.0)
+    end
   end
 
   it "handles TOCTOU race: returns existing expense when concurrent insert wins" do
