@@ -22,7 +22,7 @@ RSpec.describe MemberSerializer do
 
     it "combines user and membership fields into a member hash" do
       DB[:users].where(id: user[:id]).update(
-        phone_number: "+31612345678",
+        phone_number: Encryption.encrypt("+31612345678", user_id: user[:id]),
         location_name: "Amsterdam"
       )
       membership_row = TestFactories.workspace_membership(workspace: workspace, user: user, role: "admin")
@@ -42,7 +42,7 @@ RSpec.describe MemberSerializer do
     end
 
     it "sets hasIban: true when the user has an iban" do
-      DB[:users].where(id: user[:id]).update(iban: Encryption.encrypt("NL91ABNA0417164300"))
+      DB[:users].where(id: user[:id]).update(iban: Encryption.encrypt("NL91ABNA0417164300", user_id: user[:id]))
       membership_row = TestFactories.workspace_membership(workspace: workspace, user: user)
       membership = WorkspaceMembership.find(membership_row[:id])
 
@@ -52,7 +52,7 @@ RSpec.describe MemberSerializer do
     end
 
     it "never emits the raw iban" do
-      DB[:users].where(id: user[:id]).update(iban: Encryption.encrypt("NL91ABNA0417164300"))
+      DB[:users].where(id: user[:id]).update(iban: Encryption.encrypt("NL91ABNA0417164300", user_id: user[:id]))
       membership_row = TestFactories.workspace_membership(workspace: workspace, user: user)
       membership = WorkspaceMembership.find(membership_row[:id])
 

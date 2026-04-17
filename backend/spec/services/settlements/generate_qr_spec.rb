@@ -16,7 +16,7 @@ RSpec.describe Settlements::GenerateQr do
   before do
     sender_membership
     recipient_membership
-    DB[:users].where(id: recipient[:id]).update(iban: "NL91ABNA0417164300")
+    DB[:users].where(id: recipient[:id]).update(iban: Encryption.encrypt("NL91ABNA0417164300", user_id: recipient[:id]))
   end
 
   define_method(:create_transfer) do |from_user: sender, to_user: recipient|

@@ -4,30 +4,43 @@ require "rbnacl"
 require "openssl"
 require "base64"
 
-# libsodium (XSalsa20-Poly1305) encryption helper for sensitive fields.
+# libsodium encryption helper for sensitive fields stored on the users table.
 #
-# Stored format (v1): Base64(0x01 ‖ nonce ‖ mac ‖ ciphertext)
-# Legacy unversioned:  Base64(nonce ‖ mac ‖ ciphertext)
+# Format history:
+#   Legacy unversioned: Base64(nonce ‖ mac ‖ ct)          — XSalsa20-Poly1305, no AAD
+#   v1:                 Base64(0x01 ‖ nonce ‖ mac ‖ ct)   — same crypto, version-tagged
+#   v2:                 Base64(0x02 ‖ nonce ‖ ct+tag)     — XChaCha20-Poly1305 AEAD, user_id as AAD
 #
-# Reads accept both; writes always emit v1.
+# Writes always emit v2. Reads accept v1 and v2.
 module Encryption
   VERSION_1 = "\x01".b.freeze
+  VERSION_2 = "\x02".b.freeze
 
-  # Nonce (24) + MAC (16) — minimum ciphertext payload for any plaintext.
-  NONCE_BYTES = RbNaCl::SecretBox.nonce_bytes # 24
-  MAC_BYTES   = 16 # Poly1305
-  MIN_ENCRYPTED_BYTES = NONCE_BYTES + MAC_BYTES # 40
+  NONCE_BYTES = 24
+  TAG_BYTES   = 16
+  MIN_ENCRYPTED_BYTES = NONCE_BYTES + TAG_BYTES # 40
 
   class << self
-    def encrypt(plaintext)
+    def encrypt(plaintext, user_id:)
+      nonce = RbNaCl::Random.random_bytes(NONCE_BYTES)
+      ct = aead.encrypt(nonce, plaintext, aad_for(user_id))
+      Base64.strict_encode64(VERSION_2 + nonce + ct)
+    end
+
+    # v1 format for the backfill migration only — not for application use.
+    def encrypt_v1(plaintext)
       raw = box.box(plaintext)
       Base64.strict_encode64(VERSION_1 + raw)
     end
 
-    def decrypt(encoded)
+    def decrypt(encoded, user_id:)
       raw = Base64.strict_decode64(encoded)
 
-      if raw.start_with?(VERSION_1)
+      if raw.start_with?(VERSION_2)
+        nonce = raw.byteslice(1, NONCE_BYTES)
+        ct    = raw.byteslice((1 + NONCE_BYTES)..)
+        aead.decrypt(nonce, ct, aad_for(user_id))
+      elsif raw.start_with?(VERSION_1)
         box.open(raw.byteslice(1..))
       else
         box.open(raw)
@@ -37,7 +50,7 @@ module Encryption
     def encrypted?(value)
       raw = Base64.strict_decode64(value)
 
-      if raw.start_with?(VERSION_1)
+      if raw.start_with?(VERSION_2, VERSION_1)
         raw.bytesize >= 1 + MIN_ENCRYPTED_BYTES
       else
         raw.bytesize >= MIN_ENCRYPTED_BYTES
@@ -47,6 +60,14 @@ module Encryption
     end
 
     private
+
+    def aad_for(user_id)
+      "user:#{user_id}"
+    end
+
+    def aead
+      @_aead ||= RbNaCl::AEAD::XChaCha20Poly1305IETF.new(encryption_key)
+    end
 
     def box
       @_box ||= RbNaCl::SimpleBox.from_secret_key(encryption_key)

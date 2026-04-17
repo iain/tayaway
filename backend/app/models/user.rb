@@ -65,11 +65,11 @@ class User
 
     private
 
-    def decrypt_field(value)
+    def decrypt_field(value, user_id:)
       return nil if value.nil?
       return value unless Encryption.encrypted?(value)
 
-      Encryption.decrypt(value)
+      Encryption.decrypt(value, user_id: user_id)
     end
 
     def dataset
@@ -77,28 +77,25 @@ class User
     end
 
     def from_row(row)
-      phone = decrypt_field(row[:phone_number])
+      user_id = row[:id]
+      phone = decrypt_field(row[:phone_number], user_id: user_id)
 
-      # Birthday is stored as DATE (plaintext) or encrypted STRING.
-      # Decrypt if encrypted, then parse to Date.
       raw_birthday = row[:birthday]
-      birthday = if raw_birthday.is_a?(Date)
-                   raw_birthday
-                 elsif raw_birthday.is_a?(String) && Encryption.encrypted?(raw_birthday)
-                   Date.parse(Encryption.decrypt(raw_birthday))
+      birthday = if raw_birthday.is_a?(String) && Encryption.encrypted?(raw_birthday)
+                   Date.parse(Encryption.decrypt(raw_birthday, user_id: user_id))
                  elsif raw_birthday.is_a?(String)
                    Date.parse(raw_birthday)
                  end
 
       User.new(
-        id: UUID.new(row[:id]),
+        id: UUID.new(user_id),
         email: EmailAddress.new(row[:email]),
         name: row[:name],
         phone_number: phone,
         birthday: birthday,
         location_name: row[:location_name],
         location_coordinates: PointParser.parse(row[:location_coordinates]),
-        iban: decrypt_field(row[:iban]),
+        iban: decrypt_field(row[:iban], user_id: user_id),
         created_at: row[:created_at],
         updated_at: row[:updated_at]
       )

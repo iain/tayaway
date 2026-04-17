@@ -95,32 +95,39 @@ namespace :db do
     puts "Seeding complete"
   end
 
-  desc "Encrypt plaintext phone_number and birthday fields for all users"
-  task :encrypt_pii do
+  desc "Backfill plaintext/unversioned encrypted fields to v2 (AEAD)"
+  task :backfill_encryption_v2 do
     require_relative "config/environment"
 
+    encrypted_columns = %i[iban phone_number birthday]
     count = 0
-    DB[:users].each do |row|
+
+    DB[:users].select(:id, *encrypted_columns).each do |row|
       updates = {}
 
-      phone = row[:phone_number]
-      if phone && !Encryption.encrypted?(phone)
-        updates[:phone_number] = Encryption.encrypt(phone)
+      encrypted_columns.each do |col|
+        value = row[col]
+        next if value.nil?
+
+        raw = Base64.strict_decode64(value) rescue nil
+        next if raw&.start_with?(Encryption::VERSION_2)
+
+        plaintext = if raw&.start_with?(Encryption::VERSION_1) || (raw && raw.bytesize >= Encryption::MIN_ENCRYPTED_BYTES)
+                      Encryption.decrypt(value, user_id: row[:id])
+                    else
+                      value
+                    end
+
+        updates[col] = Encryption.encrypt(plaintext, user_id: row[:id])
       end
 
-      birthday = row[:birthday]
-      if birthday.is_a?(String) && !birthday.empty? && !Encryption.encrypted?(birthday)
-        updates[:birthday] = Encryption.encrypt(birthday)
-      end
+      next if updates.empty?
 
-      unless updates.empty?
-        updates[:updated_at] = Time.now
-        DB[:users].where(id: row[:id]).update(updates)
-        count += 1
-      end
+      DB[:users].where(id: row[:id]).update(updates)
+      count += 1
     end
 
-    puts "Encrypted PII for #{count} users"
+    puts "Backfilled #{count} users to encryption v2"
   end
 
   desc "Delete deleted_items rows older than DELETED_ITEMS_RETENTION_DAYS (default: 7)"

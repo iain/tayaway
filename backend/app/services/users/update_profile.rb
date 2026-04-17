@@ -136,19 +136,19 @@ module Users
           # Phone number: blank -> nil, otherwise encrypt
           unless phone_number.nil?
             stripped = phone_number.strip
-            update_data[:phone_number] = stripped.empty? ? nil : Encryption.encrypt(stripped)
+            update_data[:phone_number] = stripped.empty? ? nil : Encryption.encrypt(stripped, user_id: user_id)
           end
 
           # Birthday: blank -> nil, otherwise encrypt (stored as encrypted ISO 8601 string)
           unless birthday.nil?
             stripped = birthday.strip
-            update_data[:birthday] = stripped.empty? ? nil : Encryption.encrypt(stripped)
+            update_data[:birthday] = stripped.empty? ? nil : Encryption.encrypt(stripped, user_id: user_id)
           end
 
           # IBAN: blank -> nil, otherwise normalize and encrypt
           unless iban.nil?
             normalized = iban.strip.empty? ? nil : iban.gsub(/\s/, "").upcase
-            update_data[:iban] = normalized ? Encryption.encrypt(normalized) : nil
+            update_data[:iban] = normalized ? Encryption.encrypt(normalized, user_id: user_id) : nil
           end
 
           # Location: blank -> clear both, otherwise set both

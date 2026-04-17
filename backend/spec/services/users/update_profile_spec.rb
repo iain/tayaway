@@ -151,7 +151,7 @@ RSpec.describe Users::UpdateProfile do
     workspace = TestFactories.workspace
     user = TestFactories.user(name: "Test")
     TestFactories.workspace_membership(workspace: workspace, user: user)
-    DB[:users].where(id: user[:id]).update(phone_number: "+31612345678")
+    DB[:users].where(id: user[:id]).update(phone_number: Encryption.encrypt("+31612345678", user_id: user[:id]))
 
     result = described_class.call(
       user_id: user[:id],
@@ -196,8 +196,8 @@ RSpec.describe Users::UpdateProfile do
     user = TestFactories.user(name: "Test")
     TestFactories.workspace_membership(workspace: workspace, user: user)
     DB[:users].where(id: user[:id]).update(
-      phone_number: "+31612345678",
-      birthday: Date.new(1990, 6, 15),
+      phone_number: Encryption.encrypt("+31612345678", user_id: user[:id]),
+      birthday: Encryption.encrypt("1990-06-15", user_id: user[:id]),
       location_name: "Amsterdam",
       location_coordinates: Sequel.lit("point(4.9041, 52.3676)")
     )
@@ -223,7 +223,7 @@ RSpec.describe Users::UpdateProfile do
     workspace = TestFactories.workspace
     user = TestFactories.user(name: "Test")
     TestFactories.workspace_membership(workspace: workspace, user: user)
-    DB[:users].where(id: user[:id]).update(birthday: Date.new(1990, 6, 15))
+    DB[:users].where(id: user[:id]).update(birthday: Encryption.encrypt("1990-06-15", user_id: user[:id]))
 
     result = described_class.call(
       user_id: user[:id],
@@ -325,7 +325,7 @@ RSpec.describe Users::UpdateProfile do
     workspace = TestFactories.workspace
     user = TestFactories.user(name: "Test")
     TestFactories.workspace_membership(workspace: workspace, user: user)
-    DB[:users].where(id: user[:id]).update(iban: "NL91ABNA0417164300")
+    DB[:users].where(id: user[:id]).update(iban: Encryption.encrypt("NL91ABNA0417164300", user_id: user[:id]))
 
     result = described_class.call(
       user_id: user[:id],
@@ -371,7 +371,7 @@ RSpec.describe Users::UpdateProfile do
     workspace = TestFactories.workspace
     user = TestFactories.user(name: "Test")
     TestFactories.workspace_membership(workspace: workspace, user: user)
-    DB[:users].where(id: user[:id]).update(iban: "NL91ABNA0417164300")
+    DB[:users].where(id: user[:id]).update(iban: Encryption.encrypt("NL91ABNA0417164300", user_id: user[:id]))
 
     result = described_class.call(
       user_id: user[:id],
