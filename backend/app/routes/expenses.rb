@@ -53,6 +53,9 @@ class App
         participant_ids = r.params["participant_ids"]
         participant_ids = Array(participant_ids) if participant_ids
 
+        participants_param = r.params["participants"]
+        participants = participants_param.is_a?(Array) ? participants_param : nil
+
         result = Expenses::Create.call(
           event_id: event_id,
           membership: current_membership,
@@ -62,7 +65,8 @@ class App
           start_date: r.params["start_date"]&.strip,
           end_date: r.params["end_date"]&.strip,
           id: r.params["id"],
-          participant_ids: participant_ids
+          participant_ids: participant_ids,
+          participants: participants
         )
         handle_result(result, success_status: 201)
       end
@@ -92,6 +96,9 @@ class App
         participant_ids = r.params["participant_ids"]
         participant_ids = Array(participant_ids) if participant_ids
 
+        participants_param = r.params["participants"]
+        participants = participants_param.is_a?(Array) ? participants_param : nil
+
         result = Expenses::Update.call(
           expense_id: expense.id,
           membership: current_membership,
@@ -100,7 +107,8 @@ class App
           amount: amount,
           start_date: r.params["start_date"]&.strip,
           end_date: r.params["end_date"]&.strip,
-          participant_ids: participant_ids
+          participant_ids: participant_ids,
+          participants: participants
         )
         handle_result(result)
       end
