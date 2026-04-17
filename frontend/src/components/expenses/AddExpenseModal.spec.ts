@@ -33,12 +33,15 @@ vi.mock('@/stores/objectPool', () => ({
   }),
 }))
 
+const createExpenseSpy = vi
+  .fn()
+  .mockResolvedValue({ expenseId: 'new-id', queued: false })
+const updateExpenseSpy = vi.fn().mockResolvedValue(undefined)
+
 vi.mock('@/stores/expenses', () => ({
   useExpensesStore: () => ({
-    createExpense: vi
-      .fn()
-      .mockResolvedValue({ expenseId: 'new-id', queued: false }),
-    updateExpense: vi.fn().mockResolvedValue(undefined),
+    createExpense: createExpenseSpy,
+    updateExpense: updateExpenseSpy,
     loading: { value: false },
     error: { value: null },
   }),
@@ -110,12 +113,37 @@ function mountModal(event: PoolEvent = mkEvent(), expense?: PoolExpense) {
   })
 }
 
+// Triggers the `watch(() => props.open)` hook that initializes dates/participants.
+// The watcher isn't `immediate`, so mounting with `open: true` alone doesn't fire it.
+async function mountModalOpened(
+  event: PoolEvent = mkEvent(),
+  expense?: PoolExpense
+) {
+  const wrapper = mount(AddExpenseModal, {
+    props: { open: false, event, expense },
+    global: {
+      stubs: {
+        teleport: true,
+        BaseModal: {
+          template: '<div><slot /></div>',
+          props: ['open', 'title', 'size', 'preventClose'],
+        },
+      },
+    },
+  })
+  await wrapper.setProps({ open: true })
+  await wrapper.vm.$nextTick()
+  return wrapper
+}
+
 describe('AddExpenseModal wizard', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     mockRsvps = []
     mockMembers = []
     mockParticipants = []
+    createExpenseSpy.mockClear()
+    updateExpenseSpy.mockClear()
   })
 
   it('renders step indicator with 3 dots', () => {
@@ -348,5 +376,126 @@ describe('AddExpenseModal wizard', () => {
 
     // Date range button should now have the active style
     expect(rangeBtn!.classes()).toContain('bg-amber-100')
+  })
+
+  it('submits participants with factors set via the stepper', async () => {
+    mockRsvps = [
+      {
+        ...BASE,
+        id: 'rsvp-1',
+        objectType: 'rsvp',
+        eventId: 'event-1',
+        userId: 'alice',
+        attending: true,
+        startDate: null,
+        endDate: null,
+      },
+      {
+        ...BASE,
+        id: 'rsvp-2',
+        objectType: 'rsvp',
+        eventId: 'event-1',
+        userId: 'bob',
+        attending: true,
+        startDate: null,
+        endDate: null,
+      },
+    ]
+    mockMembers = [
+      mkMember({ id: 'm-alice', userId: 'alice', name: 'Alice' }),
+      mkMember({ id: 'm-bob', userId: 'bob', name: 'Bob' }),
+    ]
+
+    const wrapper = await mountModalOpened()
+
+    // Step 1 → 2
+    await wrapper
+      .find('[data-testid="expense-description-input"]')
+      .setValue('Dinner')
+    await wrapper.find('[data-testid="expense-amount-input"]').setValue('30')
+    await wrapper.find('form').trigger('submit')
+    await wrapper.vm.$nextTick()
+
+    // Step 2 → 3
+    await wrapper.find('form').trigger('submit')
+    await wrapper.vm.$nextTick()
+
+    // Switch to "Specific people" (second button in the toggle)
+    const toggleButtons = wrapper.findAll(
+      '[data-testid="toggle-people-mode"] button'
+    )
+    await toggleButtons[1]!.trigger('click')
+    await wrapper.vm.$nextTick()
+
+    // Select Alice, bump factor to 2 (two + clicks)
+    await wrapper.find('[data-testid="participant-alice"] input').setValue(true)
+    const alicePlus = wrapper.findAll('[data-testid="factor-alice"] button')[1]!
+    await alicePlus.trigger('click')
+    await alicePlus.trigger('click')
+
+    // Select Bob, drop factor to ½ (one - click)
+    await wrapper.find('[data-testid="participant-bob"] input').setValue(true)
+    const bobMinus = wrapper.findAll('[data-testid="factor-bob"] button')[0]!
+    await bobMinus.trigger('click')
+
+    await wrapper.find('form').trigger('submit')
+    await wrapper.vm.$nextTick()
+
+    expect(createExpenseSpy).toHaveBeenCalledTimes(1)
+    const call = createExpenseSpy.mock.calls[0]!
+    // Signature: (eventId, description, amount, startDate, endDate, participants?)
+    expect(call[5]).toEqual([
+      { userId: 'alice', factor: 2 },
+      { userId: 'bob', factor: 0.5 },
+    ])
+  })
+
+  it('disables the decrement button at ½ and the increment button at 9½', async () => {
+    mockRsvps = [
+      {
+        ...BASE,
+        id: 'rsvp-1',
+        objectType: 'rsvp',
+        eventId: 'event-1',
+        userId: 'alice',
+        attending: true,
+        startDate: null,
+        endDate: null,
+      },
+    ]
+    mockMembers = [mkMember({ id: 'm-alice', userId: 'alice', name: 'Alice' })]
+
+    const wrapper = await mountModalOpened()
+    await wrapper
+      .find('[data-testid="expense-description-input"]')
+      .setValue('Dinner')
+    await wrapper.find('[data-testid="expense-amount-input"]').setValue('10')
+    await wrapper.find('form').trigger('submit')
+    await wrapper.vm.$nextTick()
+    await wrapper.find('form').trigger('submit')
+    await wrapper.vm.$nextTick()
+
+    const toggleButtons = wrapper.findAll(
+      '[data-testid="toggle-people-mode"] button'
+    )
+    await toggleButtons[1]!.trigger('click')
+    await wrapper.vm.$nextTick()
+
+    await wrapper.find('[data-testid="participant-alice"] input').setValue(true)
+    await wrapper.vm.$nextTick()
+
+    const [minus, plus] = wrapper.findAll('[data-testid="factor-alice"] button')
+    // Decrement once → ½, then button disabled
+    await minus!.trigger('click')
+    expect(wrapper.find('[data-testid="factor-value-alice"]').text()).toBe('½')
+    expect((minus!.element as HTMLButtonElement).disabled).toBe(true)
+
+    // Bring it back up and max it out
+    await plus!.trigger('click') // ½ → 1
+    for (let i = 0; i < 20; i++) {
+      if ((plus!.element as HTMLButtonElement).disabled) break
+      await plus!.trigger('click')
+    }
+    expect(wrapper.find('[data-testid="factor-value-alice"]').text()).toBe('9½')
   })
 })
