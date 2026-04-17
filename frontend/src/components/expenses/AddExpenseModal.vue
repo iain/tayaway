@@ -57,6 +57,7 @@ const calendarMonth = ref(new Date().getMonth())
 // People state
 const everyone = ref(true)
 const selectedUserIds = ref<string[]>([])
+const factorByUserId = ref<Record<string, number>>({})
 
 const isEditing = computed(() => props.expense != null)
 
@@ -123,22 +124,28 @@ watch(
         endDate.value = props.expense.endDate
         singleDate.value = props.expense.startDate === props.expense.endDate
 
-        // Load existing participants
+        // Load existing participants with factors
         const participantIds = props.expense.participantIds ?? []
         if (participantIds.length > 0) {
           everyone.value = false
-          selectedUserIds.value = participantIds
-            .map((pid) => pool.get('expenseParticipant', pid)?.userId)
-            .filter((uid): uid is string => uid !== undefined)
+          const rows = participantIds
+            .map((pid) => pool.get('expenseParticipant', pid))
+            .filter((p): p is NonNullable<typeof p> => p !== undefined)
+          selectedUserIds.value = rows.map((p) => p.userId)
+          factorByUserId.value = Object.fromEntries(
+            rows.map((p) => [p.userId, p.factor ?? 1])
+          )
         } else {
           everyone.value = true
           selectedUserIds.value = []
+          factorByUserId.value = {}
         }
       } else {
         description.value = ''
         amount.value = ''
         everyone.value = true
         selectedUserIds.value = []
+        factorByUserId.value = {}
         singleDate.value = true
 
         if (eventHasDates.value) {
@@ -207,9 +214,12 @@ async function handleSubmit(): Promise<void> {
   if (!desc || isNaN(amt) || amt <= 0) return
   if (!startDate.value || !endDate.value) return
 
-  const participantIds =
+  const participants =
     !everyone.value && selectedUserIds.value.length > 0
-      ? selectedUserIds.value
+      ? selectedUserIds.value.map((userId) => ({
+          userId,
+          factor: factorByUserId.value[userId] ?? 1,
+        }))
       : undefined
 
   submitting.value = true
@@ -220,7 +230,7 @@ async function handleSubmit(): Promise<void> {
         amount: amt,
         startDate: startDate.value,
         endDate: endDate.value,
-        participantIds: participantIds ?? [],
+        participants: participants ?? [],
       })
     } else {
       await expensesStore.createExpense(
@@ -229,7 +239,7 @@ async function handleSubmit(): Promise<void> {
         amt,
         startDate.value,
         endDate.value,
-        participantIds
+        participants
       )
     }
     emit('close')
@@ -301,10 +311,12 @@ function handleClose(): void {
       <WizardStepPeople
         v-if="currentStepName === 'people'"
         v-model:selected-user-ids="selectedUserIds"
+        v-model:factor-by-user-id="factorByUserId"
         :event="event"
         :start-date="startDate"
         :end-date="endDate"
         :everyone="everyone"
+        :amount="Number.parseFloat(amount) || 0"
         @update:everyone="everyone = $event"
       />
 
