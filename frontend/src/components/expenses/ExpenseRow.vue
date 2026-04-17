@@ -56,14 +56,36 @@ const hasParticipants = computed(() => {
   return (props.expense.participantIds ?? []).length > 0
 })
 
+const hasUnequalFactors = computed(() => {
+  if (!hasParticipants.value) return false
+  const ids = props.expense.participantIds ?? []
+  return ids
+    .map((pid) => pool.get('expenseParticipant', pid))
+    .some((p) => p != null && p.factor !== 1)
+})
+
+const participantsHeading = computed(() =>
+  hasUnequalFactors.value ? 'Specific people' : 'Equal split'
+)
+
+function formatFactor(factor: number): string {
+  if (factor === Math.floor(factor)) return `×${factor}`
+  // Render half-steps with ½
+  const whole = Math.floor(factor)
+  const frac =
+    factor - whole === 0.5 ? '½' : `.${Math.round((factor - whole) * 10)}`
+  return whole === 0 ? `×${frac}` : `×${whole}${frac}`
+}
+
 interface ExpensePayer {
   name: string
   overlapDays: number
   share: number
+  factor?: number
 }
 
 const payers = computed((): ExpensePayer[] => {
-  // If expense has explicit participants, equal split
+  // If expense has explicit participants, factor-weighted split
   const participantIds = props.expense.participantIds ?? []
   if (participantIds.length > 0) {
     const participants = participantIds
@@ -72,13 +94,16 @@ const payers = computed((): ExpensePayer[] => {
 
     if (participants.length === 0) return []
 
-    const share = props.expense.amount / participants.length
+    const totalFactor = participants.reduce((s, p) => s + p.factor, 0)
     return participants.map((p) => {
       const m = pool.findBy('member', 'userId', p.userId)
+      const share =
+        totalFactor > 0 ? (p.factor / totalFactor) * props.expense.amount : 0
       return {
         name: m?.name ?? m?.email ?? 'Unknown',
         overlapDays: 0,
         share,
+        factor: p.factor,
       }
     })
   }
@@ -242,7 +267,7 @@ async function handleDelete(e: Event) {
           v-if="hasParticipants"
           class="mb-1.5 text-xs font-medium text-amber-700 dark:text-amber-400"
         >
-          Equal split
+          {{ participantsHeading }}
         </p>
         <table class="w-full text-xs">
           <thead>
@@ -263,6 +288,12 @@ async function handleDelete(e: Event) {
                 :title="payer.name"
               >
                 {{ payer.name }}
+                <span
+                  v-if="payer.factor != null && payer.factor !== 1"
+                  class="ml-1 text-gray-500 dark:text-stone-400"
+                >
+                  {{ formatFactor(payer.factor) }}
+                </span>
               </td>
               <td v-if="!hasParticipants" class="py-0.5 pr-2">
                 {{ payer.overlapDays }}
