@@ -130,6 +130,47 @@ namespace :db do
     puts "Backfilled #{count} users to encryption v2"
   end
 
+  desc "Report encryption format versions across all encrypted fields"
+  task :encryption_report do
+    require_relative "config/environment"
+
+    encrypted_columns = %i[iban phone_number birthday]
+    totals = Hash.new(0)
+
+    DB[:users].select(:id, *encrypted_columns).each do |row|
+      encrypted_columns.each do |col|
+        value = row[col]
+        if value.nil?
+          totals["#{col}:null"] += 1
+          next
+        end
+
+        raw = Base64.strict_decode64(value) rescue nil
+
+        version = if raw&.start_with?(Encryption::VERSION_2)
+                    "v2"
+                  elsif raw&.start_with?(Encryption::VERSION_1)
+                    "v1"
+                  elsif raw && raw.bytesize >= Encryption::MIN_ENCRYPTED_BYTES
+                    "unversioned"
+                  else
+                    "plaintext"
+                  end
+
+        totals["#{col}:#{version}"] += 1
+      end
+    end
+
+    versions = %w[v2 v1 unversioned plaintext null]
+    encrypted_columns.each do |col|
+      puts "#{col}:"
+      versions.each do |version|
+        count = totals["#{col}:#{version}"]
+        puts "  #{version}: #{count}" if count > 0
+      end
+    end
+  end
+
   desc "Delete deleted_items rows older than DELETED_ITEMS_RETENTION_DAYS (default: 7)"
   task :cleanup_deleted_items do
     require_relative "config/database"
