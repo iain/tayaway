@@ -194,6 +194,7 @@ export function makeExpenseParticipant(
     objectType: 'expenseParticipant',
     expenseId: 'exp-1',
     userId: 'user-1',
+    factor: 1,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,

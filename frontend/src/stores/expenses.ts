@@ -8,6 +8,11 @@ import type {
   PoolExpenseParticipant,
 } from '@/types/pool'
 
+export interface ExpenseParticipantInput {
+  userId: string
+  factor: number
+}
+
 export const useExpensesStore = defineStore('expenses', () => {
   const { loading, error, create, update, destroy } = useMutation()
 
@@ -17,7 +22,7 @@ export const useExpensesStore = defineStore('expenses', () => {
     amount: number,
     startDate: string,
     endDate: string,
-    participantIds?: string[]
+    participants?: ExpenseParticipantInput[]
   ) {
     const expenseId = crypto.randomUUID()
     const now = new Date().toISOString()
@@ -38,23 +43,22 @@ export const useExpensesStore = defineStore('expenses', () => {
       updatedAt: now,
     }
 
-    // Create temp participant objects for optimistic UI
-    const tempParticipants: PoolExpenseParticipant[] = (
-      participantIds ?? []
-    ).map((userId) => {
-      const id = crypto.randomUUID()
-      tempExpense.participantIds.push(id)
-      return {
-        id,
-        objectType: 'expenseParticipant' as const,
-        expenseId,
-        userId,
-        createdAt: now,
-        updatedAt: now,
+    const tempParticipants: PoolExpenseParticipant[] = (participants ?? []).map(
+      (p) => {
+        const id = crypto.randomUUID()
+        tempExpense.participantIds.push(id)
+        return {
+          id,
+          objectType: 'expenseParticipant' as const,
+          expenseId,
+          userId: p.userId,
+          factor: p.factor,
+          createdAt: now,
+          updatedAt: now,
+        }
       }
-    })
+    )
 
-    // Insert temp participants into pool before the create call
     if (tempParticipants.length > 0) {
       pool.importObjects(tempParticipants)
     }
@@ -67,8 +71,11 @@ export const useExpensesStore = defineStore('expenses', () => {
       end_date: endDate,
       id: expenseId,
     }
-    if (participantIds && participantIds.length > 0) {
-      apiBody.participant_ids = [...participantIds]
+    if (participants && participants.length > 0) {
+      apiBody.participants = participants.map((p) => ({
+        user_id: p.userId,
+        factor: p.factor,
+      }))
     }
 
     const result = await create(
@@ -78,8 +85,6 @@ export const useExpensesStore = defineStore('expenses', () => {
         commandQueue.enqueue<PoolApiResponse>('POST', '/expenses', apiBody)
     )
 
-    // On success, server response replaced the temp expense (with real participantIds).
-    // Remove orphaned temp participant objects that are no longer referenced.
     if (!result.queued) {
       for (const tp of tempParticipants) {
         pool.remove('expenseParticipant', tp.id)
@@ -96,7 +101,7 @@ export const useExpensesStore = defineStore('expenses', () => {
       amount?: number
       startDate?: string
       endDate?: string
-      participantIds?: string[]
+      participants?: ExpenseParticipantInput[]
     }
   ) {
     const apiChanges: Record<string, unknown> = {}
@@ -106,10 +111,12 @@ export const useExpensesStore = defineStore('expenses', () => {
     if (changes.startDate !== undefined)
       apiChanges.start_date = changes.startDate
     if (changes.endDate !== undefined) apiChanges.end_date = changes.endDate
-    if (changes.participantIds !== undefined)
-      apiChanges.participant_ids = [...changes.participantIds]
+    if (changes.participants !== undefined)
+      apiChanges.participants = changes.participants.map((p) => ({
+        user_id: p.userId,
+        factor: p.factor,
+      }))
 
-    // For optimistic update, don't pass participantIds to pool patch (handled via server response)
     const poolChanges: Partial<PoolExpense> = {}
     if (changes.description !== undefined)
       poolChanges.description = changes.description
