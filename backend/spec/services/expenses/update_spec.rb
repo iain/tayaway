@@ -337,4 +337,82 @@ RSpec.describe Expenses::Update do
       expect(result.failure.message).to eq("settled")
     end
   end
+
+  describe "participants with factors" do
+    let(:alice) { TestFactories.user(name: "Alice") }
+    let(:bob) { TestFactories.user(name: "Bob") }
+    let(:user_membership) { membership_for(user) }
+
+    let(:expense_id) do
+      TestFactories.rsvp(event: event, user: user, attending: true)
+      created = Expenses::Create.call(
+        event_id: event[:id],
+        membership: user_membership,
+        workspace_id: workspace[:id],
+        description: "Seed",
+        amount: 10.0,
+        start_date: "2026-07-01",
+        end_date: "2026-07-01",
+        participants: [
+          { user_id: alice[:id], factor: 1.0 },
+          { user_id: bob[:id], factor: 1.0 }
+        ]
+      )
+      created.value![:objects].find { |o| o[:objectType] == "expense" }[:id]
+    end
+
+    it "updates factors without deleting and re-adding rows" do
+      before_ids = ExpenseParticipant.for_expense(expense_id).map { |p| p.id.to_s }
+
+      result = described_class.call(
+        expense_id: expense_id,
+        membership: user_membership,
+        workspace_id: workspace[:id],
+        description: nil,
+        amount: nil,
+        participants: [
+          { user_id: alice[:id], factor: 2.0 },
+          { user_id: bob[:id], factor: 0.5 }
+        ]
+      )
+
+      expect(result.success?).to be true
+      after = ExpenseParticipant.for_expense(expense_id)
+      expect(after.map { |p| p.id.to_s }).to match_array(before_ids)
+      by_user = after.to_h { |p| [p.user_id.to_s, p] }
+      expect(by_user[alice[:id]].factor).to eq(2.0)
+      expect(by_user[bob[:id]].factor).to eq(0.5)
+    end
+
+    it "legacy participant_ids payload leaves factors at 1" do
+      result = described_class.call(
+        expense_id: expense_id,
+        membership: user_membership,
+        workspace_id: workspace[:id],
+        description: nil,
+        amount: nil,
+        participant_ids: [alice[:id]]
+      )
+
+      expect(result.success?).to be true
+      after = ExpenseParticipant.for_expense(expense_id)
+      expect(after.length).to eq(1)
+      expect(after.first.user_id.to_s).to eq(alice[:id])
+      expect(after.first.factor).to eq(1.0)
+    end
+
+    it "rejects an invalid factor" do
+      result = described_class.call(
+        expense_id: expense_id,
+        membership: user_membership,
+        workspace_id: workspace[:id],
+        description: nil,
+        amount: nil,
+        participants: [{ user_id: alice[:id], factor: 1.37 }]
+      )
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Participant factor must be a multiple of 0.5 between 0.5 and 9.5")
+    end
+  end
 end
