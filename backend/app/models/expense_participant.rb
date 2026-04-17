@@ -2,17 +2,19 @@
 
 # Read-only ExpenseParticipant model.
 class ExpenseParticipant
-  attr_reader :id, :expense_id, :user_id, :created_at
+  attr_reader :id, :expense_id, :user_id, :factor, :created_at
 
   def initialize(
     id:,
     expense_id:,
     user_id:,
+    factor:,
     created_at:
   )
     @id = id
     @expense_id = expense_id
     @user_id = user_id
+    @factor = factor
     @created_at = created_at
   end
 
@@ -59,6 +61,7 @@ class ExpenseParticipant
         id: UUID.new(row[:id]),
         expense_id: UUID.new(row[:expense_id]),
         user_id: UUID.new(row[:user_id]),
+        factor: row[:factor].to_f,
         created_at: row[:created_at]
       )
     end
