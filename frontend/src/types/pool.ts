@@ -174,6 +174,7 @@ export interface ObjectTypeMap {
   expenseParticipant: PoolObjectBase<'expenseParticipant'> & {
     expenseId: string
     userId: string
+    factor: number
     createdAt: string
   }
   workspaceInvite: PoolObjectBase<'workspaceInvite'> & {
