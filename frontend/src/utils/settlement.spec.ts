@@ -123,10 +123,10 @@ describe('computeBalances', () => {
 
   describe('with explicit participants', () => {
     const resolver = (pid: string) => {
-      const map: Record<string, string> = {
-        'p-alice': 'alice',
-        'p-bob': 'bob',
-        'p-carol': 'carol',
+      const map: Record<string, { userId: string; factor: number }> = {
+        'p-alice': { userId: 'alice', factor: 1 },
+        'p-bob': { userId: 'bob', factor: 1 },
+        'p-carol': { userId: 'carol', factor: 1 },
       }
       return map[pid]
     }
@@ -226,6 +226,42 @@ describe('computeBalances', () => {
       expect(balances.get('alice')).toBe(-10)
       expect(balances.has('bob')).toBe(false) // 0, filtered out
       expect(balances.get('carol')).toBe(10)
+    })
+
+    it('weights shares by participant factor', () => {
+      // Alice paid 30, participants Alice:1 + Bob:2 → Alice owes 10, Bob owes 20
+      const factorResolver = (pid: string) => {
+        const map: Record<string, { userId: string; factor: number }> = {
+          'p-alice': { userId: 'alice', factor: 1 },
+          'p-bob': { userId: 'bob', factor: 2 },
+        }
+        return map[pid]
+      }
+      const expenses = [
+        {
+          userId: 'alice',
+          startDate: eventStart,
+          endDate: eventEnd,
+          amount: 30,
+          participantIds: ['p-alice', 'p-bob'],
+        },
+      ]
+      const rsvps = [
+        { userId: 'alice', startDate: null, endDate: null },
+        { userId: 'bob', startDate: null, endDate: null },
+      ]
+
+      const balances = computeBalances(
+        expenses,
+        rsvps,
+        eventStart,
+        eventEnd,
+        factorResolver
+      )
+      // Alice share = 1/3 * 30 = 10; paid 30 → balance = -20 (owed 20)
+      // Bob share = 2/3 * 30 = 20; paid 0 → balance = 20 (owes 20)
+      expect(balances.get('alice')).toBe(-20)
+      expect(balances.get('bob')).toBe(20)
     })
 
     it('falls back to RSVP overlap when no resolver provided', () => {

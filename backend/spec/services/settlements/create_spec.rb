@@ -423,11 +423,12 @@ RSpec.describe Settlements::Create do
   end
 
   describe "compute_balances: explicit participants" do # -- test helper
-    define_method(:insert_participant) do |expense_id:, user:|
+    define_method(:insert_participant) do |expense_id:, user:, factor: 1|
       DB[:expense_participants].insert(
         id: SecureRandom.uuid,
         expense_id: expense_id,
         user_id: user[:id],
+        factor: factor,
         created_at: Time.now
       )
     end
@@ -554,6 +555,36 @@ RSpec.describe Settlements::Create do
       transfers = transfers_from(result)
       expect(transfers.length).to eq(1)
       expect(transfers.first[:amount]).to eq(50.0)
+    end
+
+    it "weights shares by participant factor" do
+      alice = TestFactories.user(name: "Alice")
+      bob = TestFactories.user(name: "Bob")
+      event = TestFactories.event(workspace: workspace, user: creator)
+      event = set_event_dates(event, Date.new(2026, 1, 1), Date.new(2026, 1, 3))
+
+      # Alice pays 30, participants Alice:factor=1 + Bob:factor=2
+      # Alice share = 1/3 * 30 = 10, paid 30 → balance = -20 (owed 20)
+      # Bob   share = 2/3 * 30 = 20, paid 0  → balance = +20 (owes 20)
+      expense_id = insert_expense(event: event, user: alice, amount: 30.00, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 3))
+      insert_participant(expense_id: expense_id, user: alice, factor: 1)
+      insert_participant(expense_id: expense_id, user: bob, factor: 2)
+
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      TestFactories.rsvp(event: event, user: bob, attending: true)
+
+      result = described_class.call(
+        event_id: event[:id],
+        membership: creator_membership,
+        workspace_id: workspace[:id]
+      )
+
+      expect(result.success?).to be true
+      transfers = transfers_from(result)
+      expect(transfers.length).to eq(1)
+      expect(transfers.first[:fromUserId].to_s).to eq(bob[:id].to_s)
+      expect(transfers.first[:toUserId].to_s).to eq(alice[:id].to_s)
+      expect(transfers.first[:amount]).to eq(20.0)
     end
   end
 

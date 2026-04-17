@@ -99,15 +99,17 @@ const previewTransfers = computed((): PreviewTransfer[] => {
 
   if (unsettledExpenses.length === 0 || attendingRsvps.length === 0) return []
 
-  const resolveParticipantUserId = (pid: string) =>
-    pool.get('expenseParticipant', pid)?.userId
+  const resolveParticipant = (pid: string) => {
+    const p = pool.get('expenseParticipant', pid)
+    return p ? { userId: p.userId, factor: p.factor } : undefined
+  }
 
   const balances = computeBalances(
     unsettledExpenses,
     attendingRsvps,
     props.event.startDate,
     props.event.endDate,
-    resolveParticipantUserId
+    resolveParticipant
   )
   return minimizeTransfers(balances)
 })

@@ -21,10 +21,12 @@ interface RsvpLike {
 }
 
 /**
- * Resolve participant user IDs for an expense. If the expense has explicit
- * participants, look them up via the provided resolver function.
+ * Resolve an explicit expense participant to the user it refers to and the
+ * factor (relative weight) it carries within the expense.
  */
-type ParticipantResolver = (participantId: string) => string | undefined
+type ParticipantResolver = (
+  participantId: string
+) => { userId: string; factor: number } | undefined
 
 /**
  * Compute net balance for each user: fair share - amount paid.
@@ -36,7 +38,7 @@ export function computeBalances(
   rsvps: RsvpLike[],
   eventStartDate: string,
   eventEndDate: string,
-  resolveParticipantUserId?: ParticipantResolver
+  resolveParticipant?: ParticipantResolver
 ): Map<string, number> {
   const shareByUser = new Map<string, number>()
   const paidByUser = new Map<string, number>()
@@ -57,16 +59,19 @@ export function computeBalances(
 
     // Check for explicit participants
     const participantIds = expense.participantIds ?? []
-    if (participantIds.length > 0 && resolveParticipantUserId) {
-      // Equal split among explicit participants
-      const userIds = participantIds
-        .map((pid) => resolveParticipantUserId(pid))
-        .filter((uid): uid is string => uid !== undefined)
+    if (participantIds.length > 0 && resolveParticipant) {
+      // Factor-weighted split among explicit participants
+      const participants = participantIds
+        .map((pid) => resolveParticipant(pid))
+        .filter((p): p is { userId: string; factor: number } => p !== undefined)
 
-      if (userIds.length > 0) {
-        const share = expense.amount / userIds.length
-        for (const userId of userIds) {
-          shareByUser.set(userId, (shareByUser.get(userId) ?? 0) + share)
+      if (participants.length > 0) {
+        const totalFactor = participants.reduce((s, p) => s + p.factor, 0)
+        if (totalFactor > 0) {
+          for (const p of participants) {
+            const share = (p.factor / totalFactor) * expense.amount
+            shareByUser.set(p.userId, (shareByUser.get(p.userId) ?? 0) + share)
+          }
         }
         continue
       }
