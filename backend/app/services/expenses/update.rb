@@ -79,6 +79,7 @@ module Expenses
           end
 
           normalized.each do |p|
+            next if p[:factor].nil?
             unless Expenses::Create.send(:valid_factor?, p[:factor])
               return Failure(ServiceError.validation(Expenses::Create::FACTOR_ERROR))
             end
@@ -100,12 +101,12 @@ module Expenses
 
         if participants && !participants.empty?
           participants.map do |p|
-            { user_id: p[:user_id] || p["user_id"], factor: (p[:factor] || p["factor"] || 1.0).to_f }
+            { user_id: (p[:user_id] || p["user_id"]).to_s, factor: (p[:factor] || p["factor"] || 1.0).to_f }
           end
         elsif participants
           []
         else
-          participant_ids.map { |uid| { user_id: uid, factor: 1.0 } }
+          participant_ids.map { |uid| { user_id: uid.to_s, factor: nil } }
         end
       end
 
@@ -152,17 +153,19 @@ module Expenses
         now = Time.now
         desired_by_user.each do |user_id, factor|
           if (existing_row = existing_by_user[user_id])
-            if existing_row.factor != factor
-              DB[:expense_participants].where(id: existing_row.id).update(factor: factor)
+            effective_factor = factor.nil? ? existing_row.factor : factor
+            if existing_row.factor != effective_factor
+              DB[:expense_participants].where(id: existing_row.id).update(factor: effective_factor)
               Broadcaster.object_changed("expense_participant", existing_row.id, workspace_id: workspace_id)
             end
           else
+            effective_factor = factor.nil? ? 1.0 : factor
             pid = SecureRandom.uuid
             DB[:expense_participants].insert(
               id: pid,
               expense_id: expense_id,
               user_id: user_id,
-              factor: factor,
+              factor: effective_factor,
               created_at: now
             )
             Broadcaster.object_changed("expense_participant", pid, workspace_id: workspace_id)

@@ -112,10 +112,10 @@ module Expenses
 
         source = if participants && !participants.empty?
                    participants.map do |p|
-                     { user_id: p[:user_id] || p["user_id"], factor: (p[:factor] || p["factor"] || 1.0).to_f }
+                     { user_id: (p[:user_id] || p["user_id"]).to_s, factor: (p[:factor] || p["factor"] || 1.0).to_f }
                    end
                  else
-                   participant_ids.map { |uid| { user_id: uid, factor: 1.0 } }
+                   participant_ids.map { |uid| { user_id: uid.to_s, factor: 1.0 } }
                  end
 
         source

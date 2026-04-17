@@ -384,7 +384,10 @@ RSpec.describe Expenses::Update do
       expect(by_user[bob[:id]].factor).to eq(0.5)
     end
 
-    it "legacy participant_ids payload leaves factors at 1" do
+    it "legacy participant_ids payload preserves existing factors" do
+      # Seed alice's participant row with a non-default factor
+      DB[:expense_participants].where(expense_id: expense_id, user_id: alice[:id]).update(factor: 2.0)
+
       result = described_class.call(
         expense_id: expense_id,
         membership: user_membership,
@@ -398,7 +401,25 @@ RSpec.describe Expenses::Update do
       after = ExpenseParticipant.for_expense(expense_id)
       expect(after.length).to eq(1)
       expect(after.first.user_id.to_s).to eq(alice[:id])
-      expect(after.first.factor).to eq(1.0)
+      expect(after.first.factor).to eq(2.0)
+    end
+
+    it "legacy participant_ids payload defaults factor to 1.0 for new participants" do
+      new_user = TestFactories.user(name: "Carol")
+
+      result = described_class.call(
+        expense_id: expense_id,
+        membership: user_membership,
+        workspace_id: workspace[:id],
+        description: nil,
+        amount: nil,
+        participant_ids: [alice[:id], new_user[:id]]
+      )
+
+      expect(result.success?).to be true
+      after = ExpenseParticipant.for_expense(expense_id)
+      by_user = after.to_h { |p| [p.user_id.to_s, p] }
+      expect(by_user[new_user[:id]].factor).to eq(1.0)
     end
 
     it "rejects an invalid factor" do
