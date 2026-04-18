@@ -17,6 +17,7 @@ import {
   computeBalances,
   minimizeTransfers,
   annotateTransfers,
+  deriveBalancesFromTransfers,
   type PreviewTransfer,
   type AnnotatedTransfer,
 } from '@/utils/settlement'
@@ -127,6 +128,33 @@ const previewAnnotatedTransfers = computed((): AnnotatedTransfer[] => {
     (userId) => getMemberName(userId, pool)
   )
 })
+
+const openMathSettlementIds = ref(new Set<string>())
+
+function toggleSettlementMath(id: string) {
+  const next = new Set(openMathSettlementIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  openMathSettlementIds.value = next
+}
+
+function isSettlementMathOpen(id: string): boolean {
+  return openMathSettlementIds.value.has(id)
+}
+
+function balancesForSettlement(settlementId: string): Map<string, number> {
+  return deriveBalancesFromTransfers(transfersForSettlement(settlementId))
+}
+
+function annotatedTransfersForSettlement(
+  settlementId: string
+): AnnotatedTransfer[] {
+  return annotateTransfers(
+    transfersForSettlement(settlementId),
+    balancesForSettlement(settlementId),
+    (uid) => getMemberName(uid, pool)
+  )
+}
 
 function openPreview() {
   showPreviewModal.value = true
@@ -315,6 +343,42 @@ async function handlePaidClick(
           >
             <TrashIcon class="size-4" />
           </IconButton>
+        </div>
+
+        <div
+          v-if="transfersForSettlement(settlement.id).length > 0"
+          class="border-b border-gray-100 px-3 py-1.5 dark:border-stone-700/50"
+        >
+          <button
+            type="button"
+            class="flex w-full items-center justify-between rounded-md px-1.5 py-1 text-xs text-gray-600 hover:bg-gray-100 dark:text-stone-400 dark:hover:bg-stone-700/50"
+            :data-testid="`settlement-math-toggle-${settlement.id}`"
+            :aria-expanded="isSettlementMathOpen(settlement.id)"
+            :aria-controls="`settlement-math-panel-${settlement.id}`"
+            @click="toggleSettlementMath(settlement.id)"
+          >
+            <span>
+              {{
+                isSettlementMathOpen(settlement.id) ? 'Hide math' : 'Show math'
+              }}
+            </span>
+            <ChevronDownIcon
+              class="size-4 transition-transform"
+              :class="{ 'rotate-180': isSettlementMathOpen(settlement.id) }"
+              aria-hidden="true"
+            />
+          </button>
+          <div
+            v-if="isSettlementMathOpen(settlement.id)"
+            :id="`settlement-math-panel-${settlement.id}`"
+            class="mt-2"
+          >
+            <SettlementMath
+              :balances="balancesForSettlement(settlement.id)"
+              :transfers="annotatedTransfersForSettlement(settlement.id)"
+              :name-for="(uid) => getMemberName(uid, pool)"
+            />
+          </div>
         </div>
 
         <div class="divide-y divide-gray-100 dark:divide-stone-700/50">
