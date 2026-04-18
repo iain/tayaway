@@ -24,6 +24,7 @@ import AppButton from '@/components/common/AppButton.vue'
 import AppBadge from '@/components/common/AppBadge.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
+import SectionHeading from '@/components/common/SectionHeading.vue'
 import EpcQrModal from '@/components/expenses/EpcQrModal.vue'
 import type {
   PoolEvent,
@@ -180,11 +181,8 @@ async function handlePaidClick(
 </script>
 
 <template>
-  <div v-if="event.startDate && event.endDate" class="mt-8">
-    <div class="mb-4 flex items-center justify-between">
-      <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-        Settlements
-      </h2>
+  <div v-if="event.startDate && event.endDate" class="mt-10">
+    <SectionHeading :icon="BanknotesIcon" title="Settlements">
       <AppButton
         v-if="unsettledExpenseCount > 0"
         data-testid="start-settlement-button"
@@ -194,7 +192,7 @@ async function handlePaidClick(
         Start settlement
         <span class="text-rose-200">({{ unsettledExpenseCount }})</span>
       </AppButton>
-    </div>
+    </SectionHeading>
 
     <div
       v-if="settlements.length === 0"

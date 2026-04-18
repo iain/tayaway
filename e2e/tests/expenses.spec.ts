@@ -446,8 +446,10 @@ test.describe('Expenses Feature', () => {
         page.getByRole('heading', { name: 'Cost Split' })
       ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
 
-      // Single attendee is settled (they paid exactly their share)
-      await expect(page.getByText('settled')).toBeVisible()
+      // Single attendee is even (they paid exactly their share)
+      await expect(
+        page.getByTestId('cost-split-table').getByText('even', { exact: true })
+      ).toBeVisible()
     })
 
     test('shows correct per-person balances with two attendees', async ({
@@ -498,14 +500,14 @@ test.describe('Expenses Feature', () => {
         page.getByRole('heading', { name: 'Cost Split' })
       ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
 
-      // User A: paid €100, fair share €50.00 → owed €50.00 back
+      // User A: paid €100, fair share €50.00 → is owed €50.00 back
       const splitTable = page.getByTestId('cost-split-table')
       const rowA = splitTable
         .getByRole('row')
         .filter({ hasText: SPLIT_USER_A_NAME })
       await expect(rowA.getByText('€100.00', { exact: true })).toBeVisible()
       await expect(rowA.getByText('€50.00', { exact: true })).toBeVisible()
-      await expect(rowA.getByText('owed €50.00')).toBeVisible()
+      await expect(rowA.getByText('is owed €50.00')).toBeVisible()
 
       // User B: paid €0.00, fair share €50.00 → owes €50.00
       const rowB = splitTable
@@ -573,10 +575,10 @@ test.describe('Expenses Feature', () => {
       const rowA = splitTable
         .getByRole('row')
         .filter({ hasText: SPLIT_USER_A_NAME })
-      // A paid €30, fair share €10.00 → owed €20.00 back
+      // A paid €30, fair share €10.00 → is owed €20.00 back
       await expect(rowA.getByText('€30.00', { exact: true })).toBeVisible()
       await expect(rowA.getByText('€10.00', { exact: true })).toBeVisible()
-      await expect(rowA.getByText('owed €20.00')).toBeVisible()
+      await expect(rowA.getByText('is owed €20.00')).toBeVisible()
 
       const rowB = splitTable
         .getByRole('row')
@@ -644,18 +646,18 @@ test.describe('Expenses Feature', () => {
         page.getByRole('heading', { name: 'Cost Split' })
       ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
 
-      // User A paid €60, fair share is €60 (100%) → settled
+      // User A paid €60, fair share is €60 (100%) → even
       const splitTable = page.getByTestId('cost-split-table')
       const rowA = splitTable
         .getByRole('row')
         .filter({ hasText: SPLIT_USER_A_NAME })
-      await expect(rowA.getByText('settled')).toBeVisible()
+      await expect(rowA.getByText('even')).toBeVisible()
 
-      // User B: fair share €0.00, paid €0.00 → settled
+      // User B: fair share €0.00, paid €0.00 → even
       const rowB = splitTable
         .getByRole('row')
         .filter({ hasText: SPLIT_USER_B_NAME })
-      await expect(rowB.getByText('settled')).toBeVisible()
+      await expect(rowB.getByText('even')).toBeVisible()
     })
 
     test('expense row expansion shows payer breakdown', async ({

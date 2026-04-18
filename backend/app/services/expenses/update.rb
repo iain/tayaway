@@ -65,6 +65,12 @@ module Expenses
           end
         end
 
+        if has_any_participants
+          if (err = Expenses::Create.send(:participants_shape_error, participants, participant_ids))
+            return Failure(ServiceError.validation(err))
+          end
+        end
+
         normalized = normalize_participants(participants, participant_ids)
 
         if normalized && !normalized.empty?

@@ -180,12 +180,12 @@ describe('ExpenseSplit', () => {
   })
 
   describe('share and balance calculations', () => {
-    it('single attendee who paid gets settled balance', () => {
+    it('single attendee who paid gets even balance', () => {
       mockRsvps = [mkRsvp()]
       mockMembers = [mkMember()]
       mockExpenses = [mkExpense({ amount: 60 })]
       const wrapper = mountSplit(mkEvent(), 60)
-      expect(wrapper.text()).toContain('settled')
+      expect(wrapper.text()).toContain('even')
     })
 
     it('payer is owed, non-payer owes', () => {
@@ -208,7 +208,7 @@ describe('ExpenseSplit', () => {
         }),
       ]
       const wrapper = mountSplit(ev, 100)
-      expect(wrapper.text()).toContain('owed €50.00')
+      expect(wrapper.text()).toContain('is owed €50.00')
       expect(wrapper.text()).toContain('owes €50.00')
     })
 
@@ -216,7 +216,7 @@ describe('ExpenseSplit', () => {
       // Event Jul 1–4 = 4 days. Alice: full (4). Bob: partial Jul 1–2 (2 days).
       // Expense covers full event. Alice overlap: 4, Bob overlap: 2, total: 6.
       // Alice: 4/6 * 60 = €40 share, Bob: 2/6 * 60 = €20 share.
-      // Alice pays €60 → owed €20. Bob pays €0 → owes €20.
+      // Alice pays €60 → is owed €20. Bob pays €0 → owes €20.
       const ev = mkEvent({ startDate: '2026-07-01', endDate: '2026-07-04' })
       mockRsvps = [
         mkRsvp({ id: 'rsvp-1', userId: 'member-1' }),
@@ -240,7 +240,7 @@ describe('ExpenseSplit', () => {
         }),
       ]
       const wrapper = mountSplit(ev, 60)
-      expect(wrapper.text()).toContain('owed €20.00')
+      expect(wrapper.text()).toContain('is owed €20.00')
       expect(wrapper.text()).toContain('owes €20.00')
     })
 
@@ -271,7 +271,7 @@ describe('ExpenseSplit', () => {
         }),
       ]
       const wrapper = mountSplit(ev, 40)
-      expect(wrapper.text()).toContain('owed €20.00')
+      expect(wrapper.text()).toContain('is owed €20.00')
       expect(wrapper.text()).toContain('owes €20.00')
     })
 
@@ -303,10 +303,10 @@ describe('ExpenseSplit', () => {
         }),
       ]
       const wrapper = mountSplit(ev, 60)
-      // Alice: share €60, paid €60 → settled
-      // Bob: share €0, paid €0 → settled
+      // Alice: share €60, paid €60 → even
+      // Bob: share €0, paid €0 → even
       const text = wrapper.text()
-      expect(text.match(/settled/g)?.length).toBe(2)
+      expect(text.match(/even/g)?.length).toBe(2)
     })
 
     it('falls back to email when member name is null', () => {

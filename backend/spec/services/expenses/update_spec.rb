@@ -435,5 +435,48 @@ RSpec.describe Expenses::Update do
       expect(result.failure?).to be true
       expect(result.failure.message).to eq("Participant factor must be a multiple of 0.5 between 0.5 and 9.5")
     end
+
+    it "rejects non-hash entries in participants array" do
+      result = described_class.call(
+        expense_id: expense_id,
+        membership: user_membership,
+        workspace_id: workspace[:id],
+        description: nil,
+        amount: nil,
+        participants: [{ user_id: alice[:id], factor: 1.0 }, nil]
+      )
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Each participant must be an object with user_id")
+    end
+
+    it "rejects participant entries with blank user_id" do
+      result = described_class.call(
+        expense_id: expense_id,
+        membership: user_membership,
+        workspace_id: workspace[:id],
+        description: nil,
+        amount: nil,
+        participants: [{ user_id: "", factor: 1.0 }]
+      )
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Each participant must have a user_id")
+    end
+
+    it "caps participants at the configured maximum" do
+      too_many = Array.new(ValidationLimits::PARTICIPANT_MAX + 1) { { user_id: SecureRandom.uuid, factor: 1.0 } }
+      result = described_class.call(
+        expense_id: expense_id,
+        membership: user_membership,
+        workspace_id: workspace[:id],
+        description: nil,
+        amount: nil,
+        participants: too_many
+      )
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Too many participants (maximum #{ValidationLimits::PARTICIPANT_MAX})")
+    end
   end
 end

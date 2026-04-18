@@ -80,6 +80,10 @@ module Expenses
       end
 
       def validate_participants(valid, participants, participant_ids)
+        if (err = participants_shape_error(participants, participant_ids))
+          return Failure(ServiceError.validation(err))
+        end
+
         normalized = normalize_participants(participants, participant_ids)
 
         if normalized.nil? || normalized.empty?
@@ -119,6 +123,31 @@ module Expenses
                  end
 
         source
+      end
+
+      # Guards against malformed API payloads before we touch the DB: each
+      # `participants` entry must be an object with a non-empty user_id, and
+      # the array must be bounded.
+      def participants_shape_error(participants, participant_ids)
+        max = ValidationLimits::PARTICIPANT_MAX
+
+        if participants.is_a?(Array)
+          return "Too many participants (maximum #{max})" if participants.length > max
+
+          participants.each do |p|
+            return "Each participant must be an object with user_id" unless p.is_a?(Hash)
+
+            uid = (p[:user_id] || p["user_id"]).to_s
+            return "Each participant must have a user_id" if uid.empty?
+          end
+        end
+
+        if participant_ids.is_a?(Array)
+          return "Too many participants (maximum #{max})" if participant_ids.length > max
+          return "Each participant must have a user_id" if participant_ids.any? { |uid| uid.to_s.empty? }
+        end
+
+        nil
       end
 
       def valid_factor?(factor)

@@ -311,6 +311,41 @@ RSpec.describe Expenses::Create do
       expect(result.failure.message).to eq("Participant factor must be a multiple of 0.5 between 0.5 and 9.5")
     end
 
+    it "rejects non-hash entries in participants array" do
+      result = described_class.call(
+        **valid_params,
+        participants: [{ user_id: alice[:id], factor: 1.0 }, "bob"]
+      )
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Each participant must be an object with user_id")
+    end
+
+    it "rejects participant entries with blank user_id" do
+      result = described_class.call(
+        **valid_params,
+        participants: [{ user_id: "", factor: 1.0 }]
+      )
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Each participant must have a user_id")
+    end
+
+    it "rejects participant_ids with blank entries" do
+      result = described_class.call(**valid_params, participant_ids: [""])
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Each participant must have a user_id")
+    end
+
+    it "caps participants at the configured maximum" do
+      too_many = Array.new(ValidationLimits::PARTICIPANT_MAX + 1) { { user_id: SecureRandom.uuid, factor: 1.0 } }
+      result = described_class.call(**valid_params, participants: too_many)
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Too many participants (maximum #{ValidationLimits::PARTICIPANT_MAX})")
+    end
+
     it "prefers participants over participant_ids when both are given" do
       result = described_class.call(
         **valid_params,

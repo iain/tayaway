@@ -65,7 +65,7 @@ const hasUnequalFactors = computed(() => {
 })
 
 const participantsHeading = computed(() =>
-  hasUnequalFactors.value ? 'Specific people' : 'Equal split'
+  hasUnequalFactors.value ? 'Custom split' : 'Equal split'
 )
 
 function formatFactor(factor: number): string {
@@ -186,20 +186,20 @@ async function handleDelete(e: Event) {
   >
     <div class="flex items-center px-4 py-3">
       <div class="min-w-0 flex-1">
-        <p class="truncate text-sm text-gray-900 dark:text-white">
+        <p class="truncate text-base text-gray-900 dark:text-white">
           {{ expense.description }}
         </p>
-        <p class="text-xs text-gray-500 dark:text-stone-400">
+        <p class="mt-0.5 truncate text-xs text-gray-500 dark:text-stone-400">
           {{ displayName }}
-        </p>
-        <p
-          v-if="event.startDate && event.endDate"
-          class="text-xs text-gray-400 dark:text-stone-500"
-        >
-          <DateRangeDisplay
-            :start-date="expense.startDate"
-            :end-date="expense.endDate"
-          />
+          <template v-if="event.startDate && event.endDate">
+            <span aria-hidden="true" class="text-gray-300 dark:text-stone-600">
+              ·
+            </span>
+            <DateRangeDisplay
+              :start-date="expense.startDate"
+              :end-date="expense.endDate"
+            />
+          </template>
         </p>
       </div>
       <div class="flex items-center gap-3">
@@ -260,7 +260,7 @@ async function handleDelete(e: Event) {
         v-if="payers.length === 0"
         class="text-xs text-gray-500 dark:text-stone-400"
       >
-        No overlapping attendees for this expense.
+        No one was attending on these dates.
       </p>
       <template v-else>
         <p

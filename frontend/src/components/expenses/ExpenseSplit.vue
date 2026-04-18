@@ -121,8 +121,8 @@ function formatDays(days: number): string {
 
 function formatBalance(balance: number): string {
   if (balance > 0.005) return `owes €${balance.toFixed(2)}`
-  if (balance < -0.005) return `owed €${Math.abs(balance).toFixed(2)}`
-  return 'settled'
+  if (balance < -0.005) return `is owed €${Math.abs(balance).toFixed(2)}`
+  return 'even'
 }
 </script>
 
