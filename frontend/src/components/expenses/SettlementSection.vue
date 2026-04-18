@@ -483,7 +483,7 @@ async function handlePaidClick(
       </div>
 
       <div
-        v-if="previewTransfers.length > 0"
+        v-if="previewTransfers.length > 0 && !previewMathOpen"
         class="overflow-hidden rounded-lg border border-dashed border-gray-300 dark:border-stone-600"
       >
         <div class="divide-y divide-gray-100 dark:divide-stone-700/50">
@@ -510,7 +510,10 @@ async function handlePaidClick(
         </div>
       </div>
 
-      <p v-else class="text-sm text-gray-500 dark:text-stone-400">
+      <p
+        v-else-if="previewTransfers.length === 0"
+        class="text-sm text-gray-500 dark:text-stone-400"
+      >
         All balances are settled &mdash; no transfers needed.
       </p>
 
