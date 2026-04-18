@@ -199,3 +199,72 @@ export function deriveBalancesFromTransfers(
 
   return balances
 }
+
+export interface AnnotatedTransfer {
+  fromUserId: string | null
+  toUserId: string | null
+  amount: number
+  annotation: string
+}
+
+/**
+ * For each transfer, produce a human-readable "what this transfer did" string,
+ * walking a simulated running balance so annotations reflect the effect of
+ * prior transfers in the list.
+ *
+ * `nameFor` resolves a userId to a display name. Callers should pass a
+ * fallback (e.g. "Unknown") for null/missing users.
+ */
+export function annotateTransfers(
+  transfers: Array<{
+    fromUserId: string | null
+    toUserId: string | null
+    amount: number
+  }>,
+  initialBalances: Map<string, number>,
+  nameFor: (userId: string) => string
+): AnnotatedTransfer[] {
+  const running = new Map(initialBalances)
+  const result: AnnotatedTransfer[] = []
+
+  const EPS = 0.005
+
+  for (const t of transfers) {
+    const fromBalance = t.fromUserId ? (running.get(t.fromUserId) ?? 0) : 0
+    const toBalance = t.toUserId ? (running.get(t.toUserId) ?? 0) : 0
+
+    const fromName = t.fromUserId ? nameFor(t.fromUserId) : 'Unknown'
+    const toName = t.toUserId ? nameFor(t.toUserId) : 'Unknown'
+
+    const fromPhrase =
+      Math.abs(fromBalance - t.amount) < EPS
+        ? `Clears ${fromName}'s balance`
+        : `Settles €${t.amount.toFixed(2)} of ${fromName}'s €${fromBalance.toFixed(2)}`
+
+    const owedBefore = -toBalance
+    const owedAfter = owedBefore - t.amount
+    const toPhrase =
+      Math.abs(owedAfter) < EPS
+        ? `${toName} now even`
+        : `${toName} still owed €${owedAfter.toFixed(2)}`
+
+    result.push({
+      fromUserId: t.fromUserId,
+      toUserId: t.toUserId,
+      amount: t.amount,
+      annotation: `${fromPhrase} · ${toPhrase}`,
+    })
+
+    if (t.fromUserId) {
+      running.set(
+        t.fromUserId,
+        Math.round((fromBalance - t.amount) * 100) / 100
+      )
+    }
+    if (t.toUserId) {
+      running.set(t.toUserId, Math.round((toBalance + t.amount) * 100) / 100)
+    }
+  }
+
+  return result
+}
