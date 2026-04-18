@@ -4,6 +4,7 @@ import {
   BanknotesIcon,
   CalculatorIcon,
   CheckCircleIcon,
+  ChevronDownIcon,
   CurrencyEuroIcon,
   LockClosedIcon,
   ScaleIcon,
@@ -15,7 +16,9 @@ import { useSettlementsStore } from '@/stores/settlements'
 import {
   computeBalances,
   minimizeTransfers,
+  annotateTransfers,
   type PreviewTransfer,
+  type AnnotatedTransfer,
 } from '@/utils/settlement'
 import { formatDateTime } from '@/utils/date'
 import { formatAmount } from '@/utils/format'
@@ -26,6 +29,7 @@ import IconButton from '@/components/common/IconButton.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import EpcQrModal from '@/components/expenses/EpcQrModal.vue'
+import SettlementMath from '@/components/expenses/SettlementMath.vue'
 import type {
   PoolEvent,
   PoolSettlement,
@@ -86,33 +90,42 @@ function formatDate(iso: string): string {
 
 const showPreviewModal = ref(false)
 const settling = ref(false)
+const previewMathOpen = ref(false)
 
-const previewTransfers = computed((): PreviewTransfer[] => {
-  if (!props.event.startDate || !props.event.endDate) return []
-
+const previewBalances = computed((): Map<string, number> => {
+  if (!props.event.startDate || !props.event.endDate) return new Map()
   const unsettledExpenses = pool
     .getAll('expense')
     .filter((e) => e.eventId === props.event.id && !e.settlementId)
-
   const attendingRsvps = pool
     .getAll('rsvp')
     .filter((r) => r.eventId === props.event.id && r.attending)
-
-  if (unsettledExpenses.length === 0 || attendingRsvps.length === 0) return []
-
+  if (unsettledExpenses.length === 0 || attendingRsvps.length === 0) {
+    return new Map()
+  }
   const resolveParticipant = (pid: string) => {
     const p = pool.get('expenseParticipant', pid)
     return p ? { userId: p.userId, factor: p.factor } : undefined
   }
-
-  const balances = computeBalances(
+  return computeBalances(
     unsettledExpenses,
     attendingRsvps,
     props.event.startDate,
     props.event.endDate,
     resolveParticipant
   )
-  return minimizeTransfers(balances)
+})
+
+const previewTransfers = computed((): PreviewTransfer[] => {
+  return minimizeTransfers(previewBalances.value)
+})
+
+const previewAnnotatedTransfers = computed((): AnnotatedTransfer[] => {
+  return annotateTransfers(
+    previewTransfers.value,
+    previewBalances.value,
+    (userId) => getMemberName(userId, pool)
+  )
 })
 
 function openPreview() {
@@ -379,6 +392,31 @@ async function handlePaidClick(
         expense{{ unsettledExpenseCount === 1 ? '' : 's' }} will be locked to
         this settlement.
       </p>
+
+      <div v-if="previewTransfers.length > 0" class="mb-3">
+        <button
+          type="button"
+          class="flex w-full items-center justify-between rounded-md px-2 py-1 text-sm text-gray-600 hover:bg-gray-100 dark:text-stone-400 dark:hover:bg-stone-700/50"
+          data-testid="preview-math-toggle"
+          :aria-expanded="previewMathOpen"
+          aria-controls="preview-math-panel"
+          @click="previewMathOpen = !previewMathOpen"
+        >
+          <span>{{ previewMathOpen ? 'Hide math' : 'Show math' }}</span>
+          <ChevronDownIcon
+            class="size-4 transition-transform"
+            :class="{ 'rotate-180': previewMathOpen }"
+            aria-hidden="true"
+          />
+        </button>
+        <div v-if="previewMathOpen" id="preview-math-panel" class="mt-2">
+          <SettlementMath
+            :balances="previewBalances"
+            :transfers="previewAnnotatedTransfers"
+            :name-for="(uid) => getMemberName(uid, pool)"
+          />
+        </div>
+      </div>
 
       <div
         v-if="previewTransfers.length > 0"
