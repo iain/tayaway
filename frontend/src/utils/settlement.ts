@@ -163,3 +163,39 @@ export function minimizeTransfers(
 
   return transfers
 }
+
+/**
+ * Derive net balances from a list of transfers.
+ * For each user: balance = Σ(sent) − Σ(received).
+ * Positive balance means user owes money; negative means user is owed.
+ * Matches the sign convention used by computeBalances.
+ */
+export function deriveBalancesFromTransfers(
+  transfers: Array<{
+    fromUserId: string | null
+    toUserId: string | null
+    amount: number
+  }>
+): Map<string, number> {
+  const balances = new Map<string, number>()
+
+  for (const t of transfers) {
+    if (t.fromUserId) {
+      balances.set(t.fromUserId, (balances.get(t.fromUserId) ?? 0) + t.amount)
+    }
+    if (t.toUserId) {
+      balances.set(t.toUserId, (balances.get(t.toUserId) ?? 0) - t.amount)
+    }
+  }
+
+  for (const [userId, amount] of balances) {
+    const rounded = Math.round(amount * 100) / 100
+    if (Math.abs(rounded) < 0.005) {
+      balances.delete(userId)
+    } else {
+      balances.set(userId, rounded)
+    }
+  }
+
+  return balances
+}

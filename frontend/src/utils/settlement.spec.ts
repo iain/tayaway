@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { computeBalances, minimizeTransfers } from './settlement'
+import {
+  computeBalances,
+  deriveBalancesFromTransfers,
+  minimizeTransfers,
+} from './settlement'
 
 describe('computeBalances', () => {
   const eventStart = '2026-07-01'
@@ -364,5 +368,70 @@ describe('minimizeTransfers', () => {
 
     const transfers = minimizeTransfers(balances)
     expect(transfers[0]!.amount).toBe(33.33)
+  })
+})
+
+describe('deriveBalancesFromTransfers', () => {
+  it('returns empty map for empty transfer list', () => {
+    expect(deriveBalancesFromTransfers([])).toEqual(new Map())
+  })
+
+  it('produces equal and opposite balances for a single transfer', () => {
+    const balances = deriveBalancesFromTransfers([
+      { fromUserId: 'bob', toUserId: 'alice', amount: 50 },
+    ])
+    expect(balances.get('bob')).toBe(50)
+    expect(balances.get('alice')).toBe(-50)
+  })
+
+  it('sums balances across multiple transfers', () => {
+    const balances = deriveBalancesFromTransfers([
+      { fromUserId: 'bob', toUserId: 'dave', amount: 40 },
+      { fromUserId: 'carol', toUserId: 'alice', amount: 30 },
+    ])
+    expect(balances.get('alice')).toBe(-30)
+    expect(balances.get('bob')).toBe(40)
+    expect(balances.get('carol')).toBe(30)
+    expect(balances.get('dave')).toBe(-40)
+  })
+
+  it('accumulates when the same user appears in several transfers', () => {
+    const balances = deriveBalancesFromTransfers([
+      { fromUserId: 'charlie', toUserId: 'alice', amount: 30 },
+      { fromUserId: 'charlie', toUserId: 'bob', amount: 20 },
+    ])
+    expect(balances.get('charlie')).toBe(50)
+    expect(balances.get('alice')).toBe(-30)
+    expect(balances.get('bob')).toBe(-20)
+  })
+
+  it('round-trips with computeBalances + minimizeTransfers', () => {
+    const start = '2026-07-01'
+    const end = '2026-07-07'
+    const expenses = [
+      { userId: 'alice', startDate: start, endDate: end, amount: 60 },
+      { userId: 'bob', startDate: start, endDate: end, amount: 60 },
+    ]
+    const rsvps = [
+      { userId: 'alice', startDate: null, endDate: null },
+      { userId: 'bob', startDate: null, endDate: null },
+      { userId: 'carol', startDate: null, endDate: null },
+    ]
+    const original = computeBalances(expenses, rsvps, start, end)
+    const transfers = minimizeTransfers(original)
+    const derived = deriveBalancesFromTransfers(transfers)
+
+    for (const [userId, amount] of original) {
+      expect(derived.get(userId) ?? 0).toBeCloseTo(amount, 2)
+    }
+  })
+
+  it('handles null fromUserId or toUserId by skipping that side', () => {
+    const balances = deriveBalancesFromTransfers([
+      { fromUserId: null, toUserId: 'alice', amount: 10 },
+      { fromUserId: 'bob', toUserId: null, amount: 5 },
+    ])
+    expect(balances.get('alice')).toBe(-10)
+    expect(balances.get('bob')).toBe(5)
   })
 })
