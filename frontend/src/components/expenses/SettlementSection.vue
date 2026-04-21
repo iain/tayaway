@@ -236,7 +236,7 @@ async function handlePaidClick(
     </SectionHeading>
 
     <div
-      v-if="settlements.length === 0"
+      v-if="settlements.length === 0 && !hasExpenses"
       class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-stone-700 dark:bg-stone-800/50"
     >
       <p class="mb-3 text-sm font-medium text-gray-700 dark:text-stone-300">
@@ -359,7 +359,9 @@ async function handlePaidClick(
           >
             <span>
               {{
-                isSettlementMathOpen(settlement.id) ? 'Hide math' : 'Show math'
+                isSettlementMathOpen(settlement.id)
+                  ? 'Hide breakdown'
+                  : 'Show breakdown'
               }}
             </span>
             <ChevronDownIcon
@@ -466,7 +468,9 @@ async function handlePaidClick(
           aria-controls="preview-math-panel"
           @click="previewMathOpen = !previewMathOpen"
         >
-          <span>{{ previewMathOpen ? 'Hide math' : 'Show math' }}</span>
+          <span>{{
+            previewMathOpen ? 'Hide breakdown' : 'Show breakdown'
+          }}</span>
           <ChevronDownIcon
             class="size-4 transition-transform"
             :class="{ 'rotate-180': previewMathOpen }"

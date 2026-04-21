@@ -146,10 +146,7 @@ function formatBalance(balance: number): string {
             <th class="pt-3 pr-4 pb-2 pl-4">Name</th>
             <th class="hidden pt-3 pr-4 pb-2 sm:table-cell">Days</th>
             <th class="pt-3 pr-4 pb-2 text-right whitespace-nowrap">Paid</th>
-            <th class="pt-3 pr-4 pb-2 text-right">
-              <span class="sm:hidden">Share</span>
-              <span class="hidden sm:inline">Fair share</span>
-            </th>
+            <th class="pt-3 pr-4 pb-2 text-right">Fair share</th>
             <th class="pt-3 pr-4 pb-2 text-right whitespace-nowrap">Balance</th>
           </tr>
         </thead>
