@@ -33,11 +33,11 @@ module Expenses
           return Failure(ServiceError.validation("Description is too long (maximum 255 characters)"))
         end
 
-        if amount.nil? || amount <= 0
-          return Failure(ServiceError.validation("Amount must be greater than zero"))
+        if amount.nil? || amount == 0
+          return Failure(ServiceError.validation("Amount must be non-zero"))
         end
 
-        if amount > ValidationLimits::EXPENSE_AMOUNT_MAX
+        if amount.abs > ValidationLimits::EXPENSE_AMOUNT_MAX
           return Failure(ServiceError.validation("Amount cannot exceed 1,000,000"))
         end
 

@@ -16,6 +16,7 @@ class SettlementSerializer
           objectType: "settlement",
           eventId: settlement.event_id.to_s,
           userId: settlement.user_id&.to_s,
+          previousSettlementId: settlement.previous_settlement_id&.to_s,
           transferIds: transfer_ids_by_settlement[settlement.id.to_s] || [],
           createdAt: settlement.created_at.iso8601(3),
           updatedAt: settlement.updated_at.iso8601(3)

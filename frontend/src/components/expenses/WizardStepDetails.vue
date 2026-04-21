@@ -18,12 +18,12 @@ function formatAmount(): void {
   if (!raw) return
 
   const num = parseFloat(raw)
-  if (isNaN(num) || num < 0) {
+  if (isNaN(num)) {
     amountError.value = 'Enter a valid amount'
     return
   }
   if (num === 0) {
-    amountError.value = 'Amount must be greater than zero'
+    amountError.value = 'Amount cannot be zero'
     return
   }
 

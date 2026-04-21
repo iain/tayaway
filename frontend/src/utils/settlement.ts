@@ -200,6 +200,40 @@ export function deriveBalancesFromTransfers(
   return balances
 }
 
+/**
+ * Given the fair-share balances across all expenses in an event (using current
+ * RSVPs) and the transfers already recorded by prior settlements in the chain,
+ * return the residual per-user drift.
+ *
+ * drift[u] = currentBalance[u] − Σ(u sent) + Σ(u received) across prior transfers
+ *
+ * Positive drift means the user still owes; negative means they're still owed.
+ * Values below the rounding threshold are dropped.
+ */
+export function computeDriftBalances(
+  currentBalances: Map<string, number>,
+  priorTransfers: Array<{
+    fromUserId: string | null
+    toUserId: string | null
+    amount: number
+  }>
+): Map<string, number> {
+  const alreadyMoved = deriveBalancesFromTransfers(priorTransfers)
+  const drift = new Map(currentBalances)
+
+  for (const [userId, amount] of alreadyMoved) {
+    drift.set(userId, (drift.get(userId) ?? 0) - amount)
+  }
+
+  for (const [userId, amount] of [...drift.entries()]) {
+    const rounded = Math.round(amount * 100) / 100
+    if (Math.abs(rounded) < 0.005) drift.delete(userId)
+    else drift.set(userId, rounded)
+  }
+
+  return drift
+}
+
 export interface AnnotatedTransfer {
   fromUserId: string | null
   toUserId: string | null

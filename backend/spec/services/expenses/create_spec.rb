@@ -52,7 +52,7 @@ RSpec.describe Expenses::Create do
       result = described_class.call(**valid_params, amount: nil)
 
       expect(result.failure?).to be true
-      expect(result.failure.message).to eq("Amount must be greater than zero")
+      expect(result.failure.message).to eq("Amount must be non-zero")
       expect(result.failure.http_status).to eq(400)
     end
 
@@ -60,24 +60,30 @@ RSpec.describe Expenses::Create do
       result = described_class.call(**valid_params, amount: 0.0)
 
       expect(result.failure?).to be true
-      expect(result.failure.message).to eq("Amount must be greater than zero")
+      expect(result.failure.message).to eq("Amount must be non-zero")
       expect(result.failure.http_status).to eq(400)
     end
 
-    it "fails when amount is negative" do
+    it "allows negative amounts for corrections" do
+      TestFactories.rsvp(event: event, user: user, attending: true)
       result = described_class.call(**valid_params, amount: -5.0)
 
-      expect(result.failure?).to be true
-      expect(result.failure.message).to eq("Amount must be greater than zero")
-      expect(result.failure.http_status).to eq(400)
+      expect(result.success?).to be true
     end
 
-    it "fails when amount exceeds 1,000,000" do
+    it "fails when amount exceeds 1,000,000 in magnitude" do
       result = described_class.call(**valid_params, amount: 1_000_001.0)
 
       expect(result.failure?).to be true
       expect(result.failure.message).to eq("Amount cannot exceed 1,000,000")
       expect(result.failure.http_status).to eq(400)
+    end
+
+    it "fails when amount is more negative than -1,000,000" do
+      result = described_class.call(**valid_params, amount: -1_000_001.0)
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("Amount cannot exceed 1,000,000")
     end
 
     it "fails when start_date is nil" do

@@ -33,11 +33,11 @@ module Expenses
           return Failure(ServiceError.validation("Description is too long (maximum 255 characters)"))
         end
 
-        if has_amount && amount <= 0
-          return Failure(ServiceError.validation("Amount must be greater than zero"))
+        if has_amount && amount == 0
+          return Failure(ServiceError.validation("Amount must be non-zero"))
         end
 
-        if has_amount && amount > ValidationLimits::EXPENSE_AMOUNT_MAX
+        if has_amount && amount.abs > ValidationLimits::EXPENSE_AMOUNT_MAX
           return Failure(ServiceError.validation("Amount cannot exceed 1,000,000"))
         end
 

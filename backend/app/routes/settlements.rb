@@ -58,6 +58,28 @@ class App
       end
     end
 
+    # GET /api/settlements/drift?event_id=xxx - Preview proposed top-up transfers
+    # without persisting. Used by the UI to show drift since the tip settlement.
+    r.on "drift" do
+      r.get do
+        event_id = r.params["event_id"]
+
+        unless event_id
+          response.status = 400
+          next { error: "event_id is required" }
+        end
+
+        event = Event.find(event_id)
+        unless event && member_of_workspace?(event.workspace_id)
+          response.status = 403
+          next { error: "Access denied" }
+        end
+
+        result = Settlements::PreviewDrift.call(event_id: event_id)
+        handle_result(result)
+      end
+    end
+
     # /api/settlements/transfers/:id - Toggle paid on a transfer, or get QR code
     r.on "transfers" do
       r.on String do |transfer_id|

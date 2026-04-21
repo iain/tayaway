@@ -10,10 +10,21 @@ module Settlements
       def call(settlement_id:, membership:, workspace_id:)
         Settlement.find_result(settlement_id)
                   .bind { |settlement| SettlementPolicy.enforce(:delete, settlement, membership: membership) }
+                  .bind { |settlement| check_tip(settlement) }
                   .bind { |settlement| delete_settlement(settlement, workspace_id, membership) }
       end
 
       private
+
+      # Only the tip of the chain can be deleted. Deleting a mid-chain settlement
+      # would invalidate the snapshot that its successor diffed against.
+      def check_tip(settlement)
+        if Settlement.successor?(settlement.id)
+          Failure(ServiceError.validation("Delete the most recent settlement first"))
+        else
+          Success(settlement)
+        end
+      end
 
       def delete_settlement(settlement, workspace_id, membership)
         pool = PoolSerializer.new(membership: membership)

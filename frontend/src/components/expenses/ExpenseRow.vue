@@ -5,6 +5,7 @@ import {
   ChevronDownIcon,
   PencilIcon,
   LockClosedIcon,
+  ArrowUturnLeftIcon,
 } from '@heroicons/vue/24/outline'
 import IconButton from '@/components/common/IconButton.vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
@@ -26,6 +27,7 @@ const expensesStore = useExpensesStore()
 
 const emit = defineEmits<{
   edit: [expense: PoolExpense]
+  correct: [expense: PoolExpense]
 }>()
 
 const expanded = ref(false)
@@ -162,6 +164,11 @@ function handleEdit(e: Event) {
   emit('edit', props.expense)
 }
 
+function handleCorrect(e: Event) {
+  e.stopPropagation()
+  emit('correct', props.expense)
+}
+
 const deleting = ref(false)
 
 async function handleDelete(e: Event) {
@@ -214,6 +221,15 @@ async function handleDelete(e: Event) {
             class="size-4 text-gray-400 dark:text-stone-500"
             title="Part of a settlement"
           />
+          <IconButton
+            v-if="isSettled"
+            label="Add correction"
+            data-testid="correct-expense"
+            title="Add a correction expense to offset this one in the next top-up"
+            @click="handleCorrect"
+          >
+            <ArrowUturnLeftIcon class="size-4" />
+          </IconButton>
           <span
             v-if="editUx.behavior !== 'hidden'"
             :title="editUx.behavior === 'disabled' ? editUx.tooltip : undefined"

@@ -3,27 +3,26 @@
 module Settlements
   # Service to create a settlement for an event. Computes balances from expenses
   # and attending RSVPs, then minimizes transfers using a greedy algorithm.
+  #
+  # Settlements form an immutable chain. When a prior settlement exists for the
+  # event, a new call becomes a "top-up" that links to the prior tip via
+  # previous_settlement_id and only captures the delta since then: the share
+  # change for already-settled expenses (because RSVPs moved) plus the full
+  # balance for any new unsettled expenses. Each settlement snapshots the
+  # attending RSVPs that its math assumed, so a later top-up can diff against
+  # the prior assumption rather than recomputing history.
   module Create
-    # Minimum absolute balance (in euros) treated as zero. Balances and transfer
-    # amounts below this threshold are ignored to avoid spurious micro-transfers
-    # from floating-point rounding after two decimal places of precision.
-    BALANCE_EPSILON = 0.005
-
     class << self
       include Dry::Monads[:result]
 
       def call(event_id:, membership:, workspace_id:)
-        find_event(event_id)
-          .bind { |event| EventPolicy.enforce(:create_settlement, event, membership: membership) }
-          .bind { |event| check_event_dates(event) }
-          .bind { |event| settle(event, membership, workspace_id) }
+        Event.find_result(event_id)
+             .bind { |event| EventPolicy.enforce(:create_settlement, event, membership: membership) }
+             .bind { |event| check_event_dates(event) }
+             .bind { |event| settle(event, membership, workspace_id) }
       end
 
       private
-
-      def find_event(event_id)
-        Event.find_result(event_id)
-      end
 
       def check_event_dates(event)
         if event.start_date && event.end_date
@@ -34,40 +33,72 @@ module Settlements
       end
 
       # Run the entire settlement inside a single transaction with row-level locking.
-      # This prevents concurrent expense mutations from causing stale-data settlements.
+      # This prevents concurrent mutations from causing stale-data settlements and
+      # prevents two clients from both chaining a top-up onto the same tip.
       def settle(event, membership, workspace_id)
         settlement_id = SecureRandom.uuid
         now = Time.now
 
         DB.transaction do
-          # Lock unsettled expenses for this event — prevents concurrent create/update/delete
-          # from changing them while we compute balances.
-          expenses = DB[:expenses]
-                     .where(event_id: event.id, settlement_id: nil)
-                     .for_update
-                     .order(:created_at)
-                     .all
+          tip = Settlement.tip_for_event(event.id)
+          if tip
+            DB[:settlements].where(id: tip.id).for_update.first
+            if Settlement.successor?(tip.id)
+              return Failure(ServiceError.validation("These expenses were just settled by another member"))
+            end
+          end
 
-          if expenses.empty?
+          unsettled = DB[:expenses]
+                      .where(event_id: event.id, settlement_id: nil)
+                      .for_update
+                      .order(:created_at)
+                      .all
+          settled = DB[:expenses]
+                    .where(event_id: event.id)
+                    .exclude(settlement_id: nil)
+                    .order(:created_at)
+                    .all
+
+          if unsettled.empty? && settled.empty?
             error_message = concurrent_settlement_exists?(event.id) ?
               "These expenses were just settled by another member" :
               "No unsettled expenses to settle"
             return Failure(ServiceError.validation(error_message))
           end
 
-          rsvps = Rsvp.for_event(event.id).select(&:attending)
-
-          if rsvps.empty?
+          current_rsvps = Rsvp.for_event(event.id).select(&:attending)
+          if current_rsvps.empty? && tip.nil?
             return Failure(ServiceError.validation("No attending RSVPs found for this event"))
           end
 
-          balances = compute_balances(event, expenses, rsvps)
-          transfers = minimize_transfers(balances)
+          current_snapshot = BalanceMath.snapshot_rsvps(current_rsvps, event)
+          prior_snapshot = tip&.rsvp_snapshot&.dig("rsvps")
+
+          expense_ids = (unsettled + settled).map { |e| e[:id].to_s }
+          participants_by_expense = ExpenseParticipant.for_expenses(expense_ids)
+
+          balances = BalanceMath.compute_balances(
+            unsettled_expenses: unsettled,
+            settled_expenses: settled,
+            current_snapshot: current_snapshot,
+            prior_snapshot: prior_snapshot,
+            participants_by_expense: participants_by_expense
+          )
+          transfers = BalanceMath.minimize_transfers(balances)
+
+          if unsettled.empty? && transfers.empty?
+            error_message = concurrent_settlement_exists?(event.id) ?
+              "These expenses were just settled by another member" :
+              "Nothing to settle — the split is already up to date"
+            return Failure(ServiceError.validation(error_message))
+          end
 
           DB[:settlements].insert(
             id: settlement_id,
             event_id: event.id,
             user_id: membership.user_id,
+            previous_settlement_id: tip&.id,
+            rsvp_snapshot: Sequel.pg_jsonb({ "rsvps" => current_snapshot }),
             created_at: now,
             updated_at: now
           )
@@ -86,14 +117,15 @@ module Settlements
             Broadcaster.object_changed("settlement_transfer", transfer_id, workspace_id: workspace_id)
           end
 
-          DB[:expenses]
-            .where(event_id: event.id, settlement_id: nil)
-            .update(settlement_id: settlement_id, updated_at: now)
+          unless unsettled.empty?
+            DB[:expenses]
+              .where(event_id: event.id, settlement_id: nil)
+              .update(settlement_id: settlement_id, updated_at: now)
+          end
 
           Broadcaster.object_changed("settlement", settlement_id, workspace_id: workspace_id)
         end
 
-        # Load expenses once after the transaction for both broadcasting and serialization
         all_expenses = Expense.for_event(event.id)
         all_expenses.select { |e| e.settlement_id&.to_s == settlement_id }.each do |expense|
           Broadcaster.object_changed("expense", expense.id, workspace_id: workspace_id)
@@ -115,122 +147,6 @@ module Settlements
           .where(event_id: event_id)
           .where(Sequel.expr(:created_at) >= Time.now - 5)
           .any?
-      end
-
-      # Compute net balance for each user: share - paid
-      # Positive balance means user owes money; negative means user is owed money
-      def compute_balances(event, expenses, rsvps)
-        share_by_user = Hash.new(0.0)
-        paid_by_user = Hash.new(0.0)
-
-        event_start = event.start_date
-        event_end = event.end_date
-
-        # Pre-compute RSVP effective dates
-        rsvp_dates = rsvps.map do |rsvp|
-          {
-            user_id: rsvp.user_id.to_s,
-            start_date: rsvp.start_date || event_start,
-            end_date: rsvp.end_date || event_end
-          }
-        end
-
-        # Batch-load participants for all expenses
-        expense_ids = expenses.map { |e| e[:id].to_s }
-        participants_by_expense = ExpenseParticipant.for_expenses(expense_ids)
-
-        expenses.each do |expense|
-          expense_id = expense[:id].to_s
-          expense_amount = expense[:amount].to_f
-
-          # Track who paid
-          if expense[:user_id]
-            paid_by_user[expense[:user_id].to_s] += expense_amount
-          end
-
-          participants = participants_by_expense[expense_id] || []
-
-          if participants.any?
-            # Factor-weighted split among explicit participants
-            total_factor = participants.sum(&:factor).to_f
-            if total_factor > 0
-              participants.each do |p|
-                share = (p.factor / total_factor) * expense_amount
-                share_by_user[p.user_id.to_s] += share
-              end
-            end
-          else
-            # RSVP overlap logic (unchanged)
-            expense_start = expense[:start_date]
-            expense_end = expense[:end_date]
-
-            overlaps = []
-            rsvp_dates.each do |rd|
-              overlap_start = [expense_start, rd[:start_date]].max
-              overlap_end = [expense_end, rd[:end_date]].min
-
-              next if overlap_start > overlap_end
-
-              overlap_days = (overlap_end - overlap_start).to_i + 1
-              next if overlap_days <= 0
-
-              overlaps << { user_id: rd[:user_id], days: overlap_days }
-            end
-
-            total_overlap_days = overlaps.sum { |o| o[:days] }
-            next if total_overlap_days == 0
-
-            overlaps.each do |o|
-              overlap_share = (o[:days].to_f / total_overlap_days) * expense_amount
-              share_by_user[o[:user_id]] += overlap_share
-            end
-          end
-        end
-
-        # Net balance: positive = owes money, negative = owed money
-        all_user_ids = (share_by_user.keys + paid_by_user.keys).uniq
-        balances = {}
-        all_user_ids.each do |uid|
-          balance = (share_by_user[uid] - paid_by_user[uid]).round(2).to_f
-          balances[uid] = balance unless balance.abs < BALANCE_EPSILON
-        end
-
-        balances
-      end
-
-      # Greedy algorithm to minimize transfers
-      def minimize_transfers(balances)
-        debtors = balances.select { |_, v| v > 0 }.sort_by { |_, v| -v }.map { |k, v| [k, v] }
-        creditors = balances.select { |_, v| v < 0 }.sort_by { |_, v| v }.map { |k, v| [k, -v] }
-
-        transfers = []
-        d_idx = 0
-        c_idx = 0
-
-        while d_idx < debtors.length && c_idx < creditors.length
-          debtor_id, debt = debtors[d_idx]
-          creditor_id, credit = creditors[c_idx]
-
-          amount = [debt, credit].min.round(2).to_f
-
-          if amount > BALANCE_EPSILON
-            transfers << {
-              from_user_id: debtor_id,
-              to_user_id: creditor_id,
-              amount: amount
-            }
-          end
-
-          remaining_debt = (debt - amount).round(2).to_f
-          remaining_credit = (credit - amount).round(2).to_f
-          debtors[d_idx] = [debtor_id, remaining_debt]
-          creditors[c_idx] = [creditor_id, remaining_credit]
-
-          d_idx += 1 if remaining_debt < BALANCE_EPSILON
-          c_idx += 1 if remaining_credit < BALANCE_EPSILON
-        end
-
-        transfers
       end
     end
   end

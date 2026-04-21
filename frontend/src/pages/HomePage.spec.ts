@@ -49,6 +49,7 @@ function makeSettlement(
     objectType: 'settlement',
     eventId: 'evt-1',
     userId: 'user-1',
+    previousSettlementId: null,
     transferIds: [],
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',

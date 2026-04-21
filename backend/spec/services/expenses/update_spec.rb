@@ -114,7 +114,7 @@ RSpec.describe Expenses::Update do
     expect(result.failure.message).to eq("Description is too long (maximum 255 characters)")
   end
 
-  it "returns failure when amount is zero or negative" do
+  it "returns failure when amount is zero" do
     expense_id = create_expense
 
     result = described_class.call(
@@ -126,7 +126,7 @@ RSpec.describe Expenses::Update do
     )
 
     expect(result.failure?).to be true
-    expect(result.failure.message).to eq("Amount must be greater than zero")
+    expect(result.failure.message).to eq("Amount must be non-zero")
   end
 
   it "returns failure when amount exceeds maximum" do

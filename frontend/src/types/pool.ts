@@ -138,6 +138,7 @@ export interface ObjectTypeMap {
   settlement: PoolObjectBase<'settlement'> & {
     eventId: string
     userId: string | null
+    previousSettlementId: string | null
     transferIds: string[]
     createdAt: string
   }
