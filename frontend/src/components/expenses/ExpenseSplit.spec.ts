@@ -9,6 +9,7 @@ import type { PoolEvent, PoolRsvp, PoolMember, PoolExpense } from '@/types/pool'
 let mockRsvps: PoolRsvp[] = []
 let mockExpenses: PoolExpense[] = []
 let mockMembers: PoolMember[] = []
+let mockParticipants: Array<{ id: string; userId: string; factor: number }> = []
 
 vi.mock('@/stores/objectPool', () => ({
   useObjectPoolStore: () => ({
@@ -17,7 +18,11 @@ vi.mock('@/stores/objectPool', () => ({
       if (type === 'expense') return mockExpenses
       return []
     },
-    get: (_type: string, id: string) => mockMembers.find((m) => m.id === id),
+    get: (type: string, id: string) => {
+      if (type === 'expenseParticipant')
+        return mockParticipants.find((p) => p.id === id)
+      return mockMembers.find((m) => m.id === id)
+    },
     findBy: (_type: string, field: string, value: unknown) =>
       mockMembers.find(
         (m) => (m as unknown as Record<string, unknown>)[field] === value
@@ -115,6 +120,7 @@ describe('ExpenseSplit', () => {
     mockRsvps = []
     mockExpenses = []
     mockMembers = []
+    mockParticipants = []
   })
 
   describe('visibility', () => {
@@ -174,12 +180,12 @@ describe('ExpenseSplit', () => {
   })
 
   describe('share and balance calculations', () => {
-    it('single attendee who paid gets settled balance', () => {
+    it('single attendee who paid gets even balance', () => {
       mockRsvps = [mkRsvp()]
       mockMembers = [mkMember()]
       mockExpenses = [mkExpense({ amount: 60 })]
       const wrapper = mountSplit(mkEvent(), 60)
-      expect(wrapper.text()).toContain('settled')
+      expect(wrapper.text()).toContain('even')
     })
 
     it('payer is owed, non-payer owes', () => {
@@ -202,7 +208,7 @@ describe('ExpenseSplit', () => {
         }),
       ]
       const wrapper = mountSplit(ev, 100)
-      expect(wrapper.text()).toContain('owed €50.00')
+      expect(wrapper.text()).toContain('is owed €50.00')
       expect(wrapper.text()).toContain('owes €50.00')
     })
 
@@ -210,7 +216,7 @@ describe('ExpenseSplit', () => {
       // Event Jul 1–4 = 4 days. Alice: full (4). Bob: partial Jul 1–2 (2 days).
       // Expense covers full event. Alice overlap: 4, Bob overlap: 2, total: 6.
       // Alice: 4/6 * 60 = €40 share, Bob: 2/6 * 60 = €20 share.
-      // Alice pays €60 → owed €20. Bob pays €0 → owes €20.
+      // Alice pays €60 → is owed €20. Bob pays €0 → owes €20.
       const ev = mkEvent({ startDate: '2026-07-01', endDate: '2026-07-04' })
       mockRsvps = [
         mkRsvp({ id: 'rsvp-1', userId: 'member-1' }),
@@ -234,7 +240,7 @@ describe('ExpenseSplit', () => {
         }),
       ]
       const wrapper = mountSplit(ev, 60)
-      expect(wrapper.text()).toContain('owed €20.00')
+      expect(wrapper.text()).toContain('is owed €20.00')
       expect(wrapper.text()).toContain('owes €20.00')
     })
 
@@ -265,7 +271,7 @@ describe('ExpenseSplit', () => {
         }),
       ]
       const wrapper = mountSplit(ev, 40)
-      expect(wrapper.text()).toContain('owed €20.00')
+      expect(wrapper.text()).toContain('is owed €20.00')
       expect(wrapper.text()).toContain('owes €20.00')
     })
 
@@ -297,10 +303,10 @@ describe('ExpenseSplit', () => {
         }),
       ]
       const wrapper = mountSplit(ev, 60)
-      // Alice: share €60, paid €60 → settled
-      // Bob: share €0, paid €0 → settled
+      // Alice: share €60, paid €60 → even
+      // Bob: share €0, paid €0 → even
       const text = wrapper.text()
-      expect(text.match(/settled/g)?.length).toBe(2)
+      expect(text.match(/even/g)?.length).toBe(2)
     })
 
     it('falls back to email when member name is null', () => {
@@ -309,6 +315,47 @@ describe('ExpenseSplit', () => {
       mockExpenses = []
       const wrapper = mountSplit(mkEvent(), 0)
       expect(wrapper.text()).toContain('alice@example.com')
+    })
+  })
+
+  describe('specific-people', () => {
+    it('weights specific-people shares by participant factor', () => {
+      mockMembers = [
+        mkMember({ id: 'm-alice', userId: 'alice', name: 'Alice' }),
+        mkMember({ id: 'm-bob', userId: 'bob', name: 'Bob' }),
+      ]
+      mockRsvps = [
+        mkRsvp({ id: 'rsvp-a', userId: 'alice' }),
+        mkRsvp({ id: 'rsvp-b', userId: 'bob' }),
+      ]
+      mockParticipants = [
+        { id: 'p-alice', userId: 'alice', factor: 2 },
+        { id: 'p-bob', userId: 'bob', factor: 1 },
+      ]
+      const expense: PoolExpense = {
+        ...BASE,
+        id: 'e1',
+        objectType: 'expense',
+        eventId: 'event-1',
+        userId: 'alice',
+        settlementId: null,
+        description: 'Dinner',
+        amount: 30,
+        startDate: '2026-07-01',
+        endDate: '2026-07-01',
+        participantIds: ['p-alice', 'p-bob'],
+      }
+      mockExpenses = [expense]
+
+      const wrapper = mount(ExpenseSplit, {
+        props: { event: mkEvent(), total: 30 },
+      })
+      const text = wrapper.text()
+      expect(text).toContain('Alice')
+      expect(text).toContain('Bob')
+      // Alice factor 2, Bob factor 1 → Alice €20.00, Bob €10.00
+      expect(text).toContain('€20.00')
+      expect(text).toContain('€10.00')
     })
   })
 

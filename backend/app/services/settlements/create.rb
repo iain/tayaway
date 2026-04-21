@@ -151,10 +151,13 @@ module Settlements
           participants = participants_by_expense[expense_id] || []
 
           if participants.any?
-            # Equal split among explicit participants
-            share = expense_amount / participants.length
-            participants.each do |p|
-              share_by_user[p.user_id.to_s] += share
+            # Factor-weighted split among explicit participants
+            total_factor = participants.sum(&:factor).to_f
+            if total_factor > 0
+              participants.each do |p|
+                share = (p.factor / total_factor) * expense_amount
+                share_by_user[p.user_id.to_s] += share
+              end
             end
           else
             # RSVP overlap logic (unchanged)

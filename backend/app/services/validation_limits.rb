@@ -20,6 +20,10 @@ module ValidationLimits
   # Maximum expense amount in euros.
   EXPENSE_AMOUNT_MAX = 1_000_000
 
+  # Maximum number of explicit participants on a single expense. Bounded because
+  # each entry becomes a row insert and a broadcast notification.
+  PARTICIPANT_MAX = 100
+
   # Hard limit on list query results to prevent unbounded queries.
   QUERY_LIMIT = 500
 

@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { computeBalances, minimizeTransfers } from './settlement'
+import {
+  annotateTransfers,
+  computeBalances,
+  deriveBalancesFromTransfers,
+  minimizeTransfers,
+} from './settlement'
 
 describe('computeBalances', () => {
   const eventStart = '2026-07-01'
@@ -123,10 +128,10 @@ describe('computeBalances', () => {
 
   describe('with explicit participants', () => {
     const resolver = (pid: string) => {
-      const map: Record<string, string> = {
-        'p-alice': 'alice',
-        'p-bob': 'bob',
-        'p-carol': 'carol',
+      const map: Record<string, { userId: string; factor: number }> = {
+        'p-alice': { userId: 'alice', factor: 1 },
+        'p-bob': { userId: 'bob', factor: 1 },
+        'p-carol': { userId: 'carol', factor: 1 },
       }
       return map[pid]
     }
@@ -226,6 +231,42 @@ describe('computeBalances', () => {
       expect(balances.get('alice')).toBe(-10)
       expect(balances.has('bob')).toBe(false) // 0, filtered out
       expect(balances.get('carol')).toBe(10)
+    })
+
+    it('weights shares by participant factor', () => {
+      // Alice paid 30, participants Alice:1 + Bob:2 → Alice owes 10, Bob owes 20
+      const factorResolver = (pid: string) => {
+        const map: Record<string, { userId: string; factor: number }> = {
+          'p-alice': { userId: 'alice', factor: 1 },
+          'p-bob': { userId: 'bob', factor: 2 },
+        }
+        return map[pid]
+      }
+      const expenses = [
+        {
+          userId: 'alice',
+          startDate: eventStart,
+          endDate: eventEnd,
+          amount: 30,
+          participantIds: ['p-alice', 'p-bob'],
+        },
+      ]
+      const rsvps = [
+        { userId: 'alice', startDate: null, endDate: null },
+        { userId: 'bob', startDate: null, endDate: null },
+      ]
+
+      const balances = computeBalances(
+        expenses,
+        rsvps,
+        eventStart,
+        eventEnd,
+        factorResolver
+      )
+      // Alice share = 1/3 * 30 = 10; paid 30 → balance = -20 (owed 20)
+      // Bob share = 2/3 * 30 = 20; paid 0 → balance = 20 (owes 20)
+      expect(balances.get('alice')).toBe(-20)
+      expect(balances.get('bob')).toBe(20)
     })
 
     it('falls back to RSVP overlap when no resolver provided', () => {
@@ -328,5 +369,191 @@ describe('minimizeTransfers', () => {
 
     const transfers = minimizeTransfers(balances)
     expect(transfers[0]!.amount).toBe(33.33)
+  })
+})
+
+describe('deriveBalancesFromTransfers', () => {
+  it('returns empty map for empty transfer list', () => {
+    expect(deriveBalancesFromTransfers([])).toEqual(new Map())
+  })
+
+  it('produces equal and opposite balances for a single transfer', () => {
+    const balances = deriveBalancesFromTransfers([
+      { fromUserId: 'bob', toUserId: 'alice', amount: 50 },
+    ])
+    expect(balances.get('bob')).toBe(50)
+    expect(balances.get('alice')).toBe(-50)
+  })
+
+  it('sums balances across multiple transfers', () => {
+    const balances = deriveBalancesFromTransfers([
+      { fromUserId: 'bob', toUserId: 'dave', amount: 40 },
+      { fromUserId: 'carol', toUserId: 'alice', amount: 30 },
+    ])
+    expect(balances.get('alice')).toBe(-30)
+    expect(balances.get('bob')).toBe(40)
+    expect(balances.get('carol')).toBe(30)
+    expect(balances.get('dave')).toBe(-40)
+  })
+
+  it('accumulates when the same user appears in several transfers', () => {
+    const balances = deriveBalancesFromTransfers([
+      { fromUserId: 'charlie', toUserId: 'alice', amount: 30 },
+      { fromUserId: 'charlie', toUserId: 'bob', amount: 20 },
+    ])
+    expect(balances.get('charlie')).toBe(50)
+    expect(balances.get('alice')).toBe(-30)
+    expect(balances.get('bob')).toBe(-20)
+  })
+
+  it('round-trips with computeBalances + minimizeTransfers', () => {
+    const start = '2026-07-01'
+    const end = '2026-07-07'
+    const expenses = [
+      { userId: 'alice', startDate: start, endDate: end, amount: 60 },
+      { userId: 'bob', startDate: start, endDate: end, amount: 60 },
+    ]
+    const rsvps = [
+      { userId: 'alice', startDate: null, endDate: null },
+      { userId: 'bob', startDate: null, endDate: null },
+      { userId: 'carol', startDate: null, endDate: null },
+    ]
+    const original = computeBalances(expenses, rsvps, start, end)
+    const transfers = minimizeTransfers(original)
+    const derived = deriveBalancesFromTransfers(transfers)
+
+    for (const [userId, amount] of original) {
+      expect(derived.get(userId) ?? 0).toBeCloseTo(amount, 2)
+    }
+  })
+
+  it('handles null fromUserId or toUserId by skipping that side', () => {
+    const balances = deriveBalancesFromTransfers([
+      { fromUserId: null, toUserId: 'alice', amount: 10 },
+      { fromUserId: 'bob', toUserId: null, amount: 5 },
+    ])
+    expect(balances.get('alice')).toBe(-10)
+    expect(balances.get('bob')).toBe(5)
+  })
+})
+
+describe('annotateTransfers', () => {
+  const nameFor = (uid: string) =>
+    ({ alice: 'Alice', bob: 'Bob', carol: 'Carol', dave: 'Dave' })[uid] ??
+    'Unknown'
+
+  it('returns empty list for empty input', () => {
+    expect(annotateTransfers([], new Map(), nameFor)).toEqual([])
+  })
+
+  it('annotates a symmetric clear: "Clears X... · Y now even"', () => {
+    const initial = new Map([
+      ['bob', 40],
+      ['dave', -40],
+    ])
+    const result = annotateTransfers(
+      [{ fromUserId: 'bob', toUserId: 'dave', amount: 40 }],
+      initial,
+      nameFor
+    )
+    expect(result).toHaveLength(1)
+    expect(result[0]!.annotation).toBe("Clears Bob's balance · Dave now even")
+  })
+
+  it('annotates partial from side: "Settles €A of X\'s €B · Y now even"', () => {
+    const initial = new Map([
+      ['bob', 50],
+      ['dave', -40],
+    ])
+    const result = annotateTransfers(
+      [{ fromUserId: 'bob', toUserId: 'dave', amount: 40 }],
+      initial,
+      nameFor
+    )
+    expect(result[0]!.annotation).toBe(
+      "Settles €40.00 of Bob's €50.00 · Dave now even"
+    )
+  })
+
+  it('annotates partial to side: "Clears X... · Y still owed €C"', () => {
+    const initial = new Map([
+      ['bob', 40],
+      ['dave', -70],
+    ])
+    const result = annotateTransfers(
+      [{ fromUserId: 'bob', toUserId: 'dave', amount: 40 }],
+      initial,
+      nameFor
+    )
+    expect(result[0]!.annotation).toBe(
+      "Clears Bob's balance · Dave still owed €30.00"
+    )
+  })
+
+  it('annotates partial both sides', () => {
+    const initial = new Map([
+      ['bob', 60],
+      ['dave', -70],
+    ])
+    const result = annotateTransfers(
+      [{ fromUserId: 'bob', toUserId: 'dave', amount: 50 }],
+      initial,
+      nameFor
+    )
+    expect(result[0]!.annotation).toBe(
+      "Settles €50.00 of Bob's €60.00 · Dave still owed €20.00"
+    )
+  })
+
+  it('walks running balances so later annotations reflect earlier transfers', () => {
+    // Bob owes 70 split across two creditors. The second annotation must
+    // reflect that bob's balance has already been reduced by the first transfer.
+    const initial = new Map([
+      ['bob', 70],
+      ['alice', -40],
+      ['carol', -30],
+    ])
+    const result = annotateTransfers(
+      [
+        { fromUserId: 'bob', toUserId: 'alice', amount: 40 },
+        { fromUserId: 'bob', toUserId: 'carol', amount: 30 },
+      ],
+      initial,
+      nameFor
+    )
+    // First transfer reduces Bob from 70 to 30.
+    expect(result[0]!.annotation).toBe(
+      "Settles €40.00 of Bob's €70.00 · Alice now even"
+    )
+    // Second transfer must see Bob at 30, not 70 — proving the running-balance
+    // update happened between iterations.
+    expect(result[1]!.annotation).toBe("Clears Bob's balance · Carol now even")
+  })
+
+  it('handles null userIds by labelling them Unknown via nameFor fallback', () => {
+    const initial = new Map<string, number>([['alice', -10]])
+    const result = annotateTransfers(
+      [{ fromUserId: null, toUserId: 'alice', amount: 10 }],
+      initial,
+      nameFor
+    )
+    expect(result[0]!.annotation).toContain('Alice now even')
+  })
+
+  it('preserves the original transfer fields alongside the annotation', () => {
+    const initial = new Map([
+      ['bob', 40],
+      ['alice', -40],
+    ])
+    const result = annotateTransfers(
+      [{ fromUserId: 'bob', toUserId: 'alice', amount: 40 }],
+      initial,
+      nameFor
+    )
+    expect(result[0]).toMatchObject({
+      fromUserId: 'bob',
+      toUserId: 'alice',
+      amount: 40,
+    })
   })
 })

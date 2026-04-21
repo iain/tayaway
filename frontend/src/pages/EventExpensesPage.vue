@@ -96,8 +96,10 @@ onMounted(async () => {
     </div>
 
     <div v-else>
-      <div class="mb-6 flex items-center justify-between">
-        <div class="flex items-baseline gap-4">
+      <div
+        class="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2"
+      >
+        <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
           <h1
             class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white"
           >

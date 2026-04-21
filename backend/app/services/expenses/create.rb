@@ -3,16 +3,22 @@
 module Expenses
   # Service to create a new expense on an event.
   module Create
+    FACTOR_MIN = 0.5
+    FACTOR_MAX = 9.5
+    FACTOR_STEP = 0.5
+    FACTOR_ERROR = "Participant factor must be a multiple of 0.5 between 0.5 and 9.5"
+
     class << self
       include Dry::Monads[:result]
 
-      def call(event_id:, membership:, workspace_id:, description:, amount:, start_date:, end_date:, id: nil, participant_ids: nil)
+      def call(event_id:, membership:, workspace_id:, description:, amount:, start_date:, end_date:,
+               id: nil, participant_ids: nil, participants: nil)
         Event.find_result(event_id)
              .bind { |event| EventPolicy.enforce(:create_expense, event, membership: membership) }
              .bind { validate(description, amount, start_date, end_date) }
              .bind { |valid| validate_date_range(valid, event_id) }
              .bind { |valid| validate_rsvp(valid, event_id, membership.user_id) }
-             .bind { |valid| validate_participants(valid, participant_ids) }
+             .bind { |valid| validate_participants(valid, participants, participant_ids) }
              .bind { |valid| create_expense(event_id, membership, workspace_id, valid, id) }
       end
 
@@ -73,22 +79,83 @@ module Expenses
         Success(valid)
       end
 
-      def validate_participants(valid, participant_ids)
-        if participant_ids.nil? || participant_ids.empty?
-          valid[:participant_ids] = nil
+      def validate_participants(valid, participants, participant_ids)
+        if (err = participants_shape_error(participants, participant_ids))
+          return Failure(ServiceError.validation(err))
+        end
+
+        normalized = normalize_participants(participants, participant_ids)
+
+        if normalized.nil? || normalized.empty?
+          valid[:participants] = []
           return Success(valid)
         end
 
-        deduped = participant_ids.uniq
+        user_ids = normalized.map { |p| p[:user_id] }
+        if user_ids.uniq.length != user_ids.length
+          return Failure(ServiceError.validation("Participants must be unique"))
+        end
 
-        # Verify all participant user_ids exist
-        existing_count = DB[:users].where(id: deduped).count
-        if existing_count != deduped.length
+        existing_count = DB[:users].where(id: user_ids).count
+        if existing_count != user_ids.length
           return Failure(ServiceError.validation("One or more participant user IDs are invalid"))
         end
 
-        valid[:participant_ids] = deduped
+        normalized.each do |p|
+          unless valid_factor?(p[:factor])
+            return Failure(ServiceError.validation(FACTOR_ERROR))
+          end
+        end
+
+        valid[:participants] = normalized
         Success(valid)
+      end
+
+      def normalize_participants(participants, participant_ids)
+        return nil if (participants.nil? || participants.empty?) && (participant_ids.nil? || participant_ids.empty?)
+
+        source = if participants && !participants.empty?
+                   participants.map do |p|
+                     { user_id: (p[:user_id] || p["user_id"]).to_s, factor: (p[:factor] || p["factor"] || 1.0).to_f }
+                   end
+                 else
+                   participant_ids.map { |uid| { user_id: uid.to_s, factor: 1.0 } }
+                 end
+
+        source
+      end
+
+      # Guards against malformed API payloads before we touch the DB: each
+      # `participants` entry must be an object with a non-empty user_id, and
+      # the array must be bounded.
+      def participants_shape_error(participants, participant_ids)
+        max = ValidationLimits::PARTICIPANT_MAX
+
+        if participants.is_a?(Array)
+          return "Too many participants (maximum #{max})" if participants.length > max
+
+          participants.each do |p|
+            return "Each participant must be an object with user_id" unless p.is_a?(Hash)
+
+            uid = (p[:user_id] || p["user_id"]).to_s
+            return "Each participant must have a user_id" if uid.empty?
+          end
+        end
+
+        if participant_ids.is_a?(Array)
+          return "Too many participants (maximum #{max})" if participant_ids.length > max
+          return "Each participant must have a user_id" if participant_ids.any? { |uid| uid.to_s.empty? }
+        end
+
+        nil
+      end
+
+      def valid_factor?(factor)
+        return false unless factor.is_a?(Numeric)
+        return false if factor < FACTOR_MIN - 1e-9 || factor > FACTOR_MAX + 1e-9
+
+        steps = factor / FACTOR_STEP
+        (steps - steps.round).abs < 1e-6
       end
 
       def create_expense(event_id, membership, workspace_id, valid, id)
@@ -119,7 +186,7 @@ module Expenses
               updated_at: now
             )
 
-            insert_participants(expense_id, valid[:participant_ids], workspace_id)
+            insert_participants(expense_id, valid[:participants], workspace_id)
 
             Broadcaster.object_changed("expense", expense_id, workspace_id: workspace_id)
 
@@ -135,17 +202,19 @@ module Expenses
         Success({ objects: pool.to_a })
       end
 
-      def insert_participants(expense_id, participant_ids, workspace_id)
-        return if participant_ids.nil? || participant_ids.empty?
+      def insert_participants(expense_id, participants, workspace_id)
+        return if participants.nil? || participants.empty?
 
         now = Time.now
-        participant_ids.each do |pid|
+        participants.each do |p|
           participant_id = SecureRandom.uuid
           DB[:expense_participants].insert(
             id: participant_id,
             expense_id: expense_id,
-            user_id: pid,
-            created_at: now
+            user_id: p[:user_id],
+            factor: p[:factor],
+            created_at: now,
+            updated_at: now
           )
           Broadcaster.object_changed("expense_participant", participant_id, workspace_id: workspace_id)
         end

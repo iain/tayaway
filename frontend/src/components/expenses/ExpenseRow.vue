@@ -56,14 +56,36 @@ const hasParticipants = computed(() => {
   return (props.expense.participantIds ?? []).length > 0
 })
 
+const hasUnequalFactors = computed(() => {
+  if (!hasParticipants.value) return false
+  const ids = props.expense.participantIds ?? []
+  return ids
+    .map((pid) => pool.get('expenseParticipant', pid))
+    .some((p) => p != null && p.factor !== 1)
+})
+
+const participantsHeading = computed(() =>
+  hasUnequalFactors.value ? 'Custom split' : 'Equal split'
+)
+
+function formatFactor(factor: number): string {
+  if (factor === Math.floor(factor)) return `×${factor}`
+  // Render half-steps with ½
+  const whole = Math.floor(factor)
+  const frac =
+    factor - whole === 0.5 ? '½' : `.${Math.round((factor - whole) * 10)}`
+  return whole === 0 ? `×${frac}` : `×${whole}${frac}`
+}
+
 interface ExpensePayer {
   name: string
   overlapDays: number
   share: number
+  factor?: number
 }
 
 const payers = computed((): ExpensePayer[] => {
-  // If expense has explicit participants, equal split
+  // If expense has explicit participants, factor-weighted split
   const participantIds = props.expense.participantIds ?? []
   if (participantIds.length > 0) {
     const participants = participantIds
@@ -72,13 +94,16 @@ const payers = computed((): ExpensePayer[] => {
 
     if (participants.length === 0) return []
 
-    const share = props.expense.amount / participants.length
+    const totalFactor = participants.reduce((s, p) => s + p.factor, 0)
     return participants.map((p) => {
       const m = pool.findBy('member', 'userId', p.userId)
+      const share =
+        totalFactor > 0 ? (p.factor / totalFactor) * props.expense.amount : 0
       return {
         name: m?.name ?? m?.email ?? 'Unknown',
         overlapDays: 0,
         share,
+        factor: p.factor,
       }
     })
   }
@@ -161,20 +186,20 @@ async function handleDelete(e: Event) {
   >
     <div class="flex items-center px-4 py-3">
       <div class="min-w-0 flex-1">
-        <p class="truncate text-sm text-gray-900 dark:text-white">
+        <p class="truncate text-base text-gray-900 dark:text-white">
           {{ expense.description }}
         </p>
-        <p class="text-xs text-gray-500 dark:text-stone-400">
+        <p class="mt-0.5 truncate text-xs text-gray-500 dark:text-stone-400">
           {{ displayName }}
-        </p>
-        <p
-          v-if="event.startDate && event.endDate"
-          class="text-xs text-gray-400 dark:text-stone-500"
-        >
-          <DateRangeDisplay
-            :start-date="expense.startDate"
-            :end-date="expense.endDate"
-          />
+          <template v-if="event.startDate && event.endDate">
+            <span aria-hidden="true" class="text-gray-300 dark:text-stone-600">
+              ·
+            </span>
+            <DateRangeDisplay
+              :start-date="expense.startDate"
+              :end-date="expense.endDate"
+            />
+          </template>
         </p>
       </div>
       <div class="flex items-center gap-3">
@@ -235,14 +260,14 @@ async function handleDelete(e: Event) {
         v-if="payers.length === 0"
         class="text-xs text-gray-500 dark:text-stone-400"
       >
-        No overlapping attendees for this expense.
+        No one was attending on these dates.
       </p>
       <template v-else>
         <p
           v-if="hasParticipants"
           class="mb-1.5 text-xs font-medium text-amber-700 dark:text-amber-400"
         >
-          Equal split
+          {{ participantsHeading }}
         </p>
         <table class="w-full text-xs">
           <thead>
@@ -263,6 +288,12 @@ async function handleDelete(e: Event) {
                 :title="payer.name"
               >
                 {{ payer.name }}
+                <span
+                  v-if="payer.factor != null && payer.factor !== 1"
+                  class="ml-1 text-gray-500 dark:text-stone-400"
+                >
+                  {{ formatFactor(payer.factor) }}
+                </span>
               </td>
               <td v-if="!hasParticipants" class="py-0.5 pr-2">
                 {{ payer.overlapDays }}

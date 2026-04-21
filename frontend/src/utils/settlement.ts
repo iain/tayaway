@@ -21,10 +21,12 @@ interface RsvpLike {
 }
 
 /**
- * Resolve participant user IDs for an expense. If the expense has explicit
- * participants, look them up via the provided resolver function.
+ * Resolve an explicit expense participant to the user it refers to and the
+ * factor (relative weight) it carries within the expense.
  */
-type ParticipantResolver = (participantId: string) => string | undefined
+type ParticipantResolver = (
+  participantId: string
+) => { userId: string; factor: number } | undefined
 
 /**
  * Compute net balance for each user: fair share - amount paid.
@@ -36,7 +38,7 @@ export function computeBalances(
   rsvps: RsvpLike[],
   eventStartDate: string,
   eventEndDate: string,
-  resolveParticipantUserId?: ParticipantResolver
+  resolveParticipant?: ParticipantResolver
 ): Map<string, number> {
   const shareByUser = new Map<string, number>()
   const paidByUser = new Map<string, number>()
@@ -57,16 +59,19 @@ export function computeBalances(
 
     // Check for explicit participants
     const participantIds = expense.participantIds ?? []
-    if (participantIds.length > 0 && resolveParticipantUserId) {
-      // Equal split among explicit participants
-      const userIds = participantIds
-        .map((pid) => resolveParticipantUserId(pid))
-        .filter((uid): uid is string => uid !== undefined)
+    if (participantIds.length > 0 && resolveParticipant) {
+      // Factor-weighted split among explicit participants
+      const participants = participantIds
+        .map((pid) => resolveParticipant(pid))
+        .filter((p): p is { userId: string; factor: number } => p !== undefined)
 
-      if (userIds.length > 0) {
-        const share = expense.amount / userIds.length
-        for (const userId of userIds) {
-          shareByUser.set(userId, (shareByUser.get(userId) ?? 0) + share)
+      if (participants.length > 0) {
+        const totalFactor = participants.reduce((s, p) => s + p.factor, 0)
+        if (totalFactor > 0) {
+          for (const p of participants) {
+            const share = (p.factor / totalFactor) * expense.amount
+            shareByUser.set(p.userId, (shareByUser.get(p.userId) ?? 0) + share)
+          }
         }
         continue
       }
@@ -157,4 +162,109 @@ export function minimizeTransfers(
   }
 
   return transfers
+}
+
+/**
+ * Derive net balances from a list of transfers.
+ * For each user: balance = Σ(sent) − Σ(received).
+ * Positive balance means user owes money; negative means user is owed.
+ * Matches the sign convention used by computeBalances.
+ */
+export function deriveBalancesFromTransfers(
+  transfers: Array<{
+    fromUserId: string | null
+    toUserId: string | null
+    amount: number
+  }>
+): Map<string, number> {
+  const balances = new Map<string, number>()
+
+  for (const t of transfers) {
+    if (t.fromUserId) {
+      balances.set(t.fromUserId, (balances.get(t.fromUserId) ?? 0) + t.amount)
+    }
+    if (t.toUserId) {
+      balances.set(t.toUserId, (balances.get(t.toUserId) ?? 0) - t.amount)
+    }
+  }
+
+  for (const [userId, amount] of balances) {
+    const rounded = Math.round(amount * 100) / 100
+    if (Math.abs(rounded) < 0.005) {
+      balances.delete(userId)
+    } else {
+      balances.set(userId, rounded)
+    }
+  }
+
+  return balances
+}
+
+export interface AnnotatedTransfer {
+  fromUserId: string | null
+  toUserId: string | null
+  amount: number
+  annotation: string
+}
+
+/**
+ * For each transfer, produce a human-readable "what this transfer did" string,
+ * walking a simulated running balance so annotations reflect the effect of
+ * prior transfers in the list.
+ *
+ * `nameFor` resolves a userId to a display name. Callers should pass a
+ * fallback (e.g. "Unknown") for null/missing users.
+ */
+export function annotateTransfers(
+  transfers: Array<{
+    fromUserId: string | null
+    toUserId: string | null
+    amount: number
+  }>,
+  initialBalances: Map<string, number>,
+  nameFor: (userId: string) => string
+): AnnotatedTransfer[] {
+  const running = new Map(initialBalances)
+  const result: AnnotatedTransfer[] = []
+
+  const EPS = 0.005
+
+  for (const t of transfers) {
+    const fromBalance = t.fromUserId ? (running.get(t.fromUserId) ?? 0) : 0
+    const toBalance = t.toUserId ? (running.get(t.toUserId) ?? 0) : 0
+
+    const fromName = t.fromUserId ? nameFor(t.fromUserId) : 'Unknown'
+    const toName = t.toUserId ? nameFor(t.toUserId) : 'Unknown'
+
+    const fromPhrase =
+      Math.abs(fromBalance - t.amount) < EPS
+        ? `Clears ${fromName}'s balance`
+        : `Settles €${t.amount.toFixed(2)} of ${fromName}'s €${fromBalance.toFixed(2)}`
+
+    const owedBefore = -toBalance
+    const owedAfter = owedBefore - t.amount
+    const toPhrase =
+      Math.abs(owedAfter) < EPS
+        ? `${toName} now even`
+        : `${toName} still owed €${owedAfter.toFixed(2)}`
+
+    result.push({
+      fromUserId: t.fromUserId,
+      toUserId: t.toUserId,
+      amount: t.amount,
+      annotation: `${fromPhrase} · ${toPhrase}`,
+    })
+
+    if (t.fromUserId) {
+      running.set(
+        t.fromUserId,
+        Math.round((fromBalance - t.amount) * 100) / 100
+      )
+    }
+    if (t.toUserId) {
+      running.set(t.toUserId, Math.round((toBalance + t.amount) * 100) / 100)
+    }
+  }
+
+  return result
 }

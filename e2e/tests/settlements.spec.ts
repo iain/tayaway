@@ -300,6 +300,74 @@ test.describe('Settlements Feature', () => {
       // Start settlement button should reappear (expenses are unsettled again)
       await expect(page.getByTestId('start-settlement-button')).toBeVisible()
     })
+
+    test('show math expander reveals balances and annotations pre and post settlement', async ({
+      page,
+      playwright,
+    }) => {
+      const { eventId } = await createResolvedEvent(
+        apiContext,
+        'Math Expander UI'
+      )
+
+      // Add a second attending user so the split has two parties and produces
+      // at least one transfer. Pattern mirrors 'Mixed Expense Settlement'.
+      const workspaceId = await getWorkspaceId(apiContext)
+      const bobContext = await newApiContext(playwright)
+      const bobEmail = `e2e-math-bob-${Date.now()}@example.com`
+      await getTestSession(bobContext, bobEmail, 'Math Bob')
+      await addMemberToWorkspace(apiContext, workspaceId, bobEmail)
+      await bobContext.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
+        data: {
+          attending: true,
+          start_date: DEFAULT_START,
+          end_date: DEFAULT_END,
+        },
+      })
+
+      // Alice pays €50 groceries for the whole trip → Bob will owe €25.
+      await apiContext.post(`${API_BASE}/api/expenses`, {
+        data: {
+          event_id: eventId,
+          description: 'Groceries',
+          amount: 50,
+          start_date: DEFAULT_START,
+          end_date: DEFAULT_END,
+        },
+      })
+
+      await setupAuthenticatedPage(page, sessionToken)
+      await page.goto(`/events/${eventId}/expenses`)
+
+      await expect(
+        page.getByRole('heading', { name: 'Settlements' })
+      ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
+
+      // Open preview, expand math.
+      await page.getByTestId('start-settlement-button').click()
+      await expect(page.getByText('This is a preview')).toBeVisible()
+      await page.getByTestId('preview-math-toggle').click()
+      await expect(page.getByText('Net balances')).toBeVisible()
+      await expect(
+        page.locator('[data-testid="math-transfer-annotation"]').first()
+      ).toContainText(/Clears .+'s balance · .+ now even/)
+
+      // Confirm settlement.
+      await page.getByRole('button', { name: /Confirm/ }).click()
+      await expect(page.getByText(/Settled by/)).toBeVisible()
+
+      // Expand the locked-card math; same derivation style.
+      const lockedToggle = page
+        .locator('[data-testid^="settlement-math-toggle-"]')
+        .first()
+      await lockedToggle.click()
+      await expect(page.getByText('Net balances')).toBeVisible()
+      await expect(
+        page.locator('[data-testid="math-transfer-annotation"]').first()
+      ).toContainText(/Clears .+'s balance · .+ now even/)
+
+      await bobContext.dispose()
+    })
   })
 
   // -------------------------------------------------------------------

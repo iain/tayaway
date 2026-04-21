@@ -4,6 +4,7 @@ import {
   BanknotesIcon,
   CalculatorIcon,
   CheckCircleIcon,
+  ChevronDownIcon,
   CurrencyEuroIcon,
   LockClosedIcon,
   ScaleIcon,
@@ -15,7 +16,10 @@ import { useSettlementsStore } from '@/stores/settlements'
 import {
   computeBalances,
   minimizeTransfers,
+  annotateTransfers,
+  deriveBalancesFromTransfers,
   type PreviewTransfer,
+  type AnnotatedTransfer,
 } from '@/utils/settlement'
 import { formatDateTime } from '@/utils/date'
 import { formatAmount } from '@/utils/format'
@@ -24,7 +28,9 @@ import AppButton from '@/components/common/AppButton.vue'
 import AppBadge from '@/components/common/AppBadge.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
+import SectionHeading from '@/components/common/SectionHeading.vue'
 import EpcQrModal from '@/components/expenses/EpcQrModal.vue'
+import SettlementMath from '@/components/expenses/SettlementMath.vue'
 import type {
   PoolEvent,
   PoolSettlement,
@@ -85,32 +91,70 @@ function formatDate(iso: string): string {
 
 const showPreviewModal = ref(false)
 const settling = ref(false)
+const previewMathOpen = ref(false)
 
-const previewTransfers = computed((): PreviewTransfer[] => {
-  if (!props.event.startDate || !props.event.endDate) return []
-
+const previewBalances = computed((): Map<string, number> => {
+  if (!props.event.startDate || !props.event.endDate) return new Map()
   const unsettledExpenses = pool
     .getAll('expense')
     .filter((e) => e.eventId === props.event.id && !e.settlementId)
-
   const attendingRsvps = pool
     .getAll('rsvp')
     .filter((r) => r.eventId === props.event.id && r.attending)
-
-  if (unsettledExpenses.length === 0 || attendingRsvps.length === 0) return []
-
-  const resolveParticipantUserId = (pid: string) =>
-    pool.get('expenseParticipant', pid)?.userId
-
-  const balances = computeBalances(
+  if (unsettledExpenses.length === 0 || attendingRsvps.length === 0) {
+    return new Map()
+  }
+  const resolveParticipant = (pid: string) => {
+    const p = pool.get('expenseParticipant', pid)
+    return p ? { userId: p.userId, factor: p.factor } : undefined
+  }
+  return computeBalances(
     unsettledExpenses,
     attendingRsvps,
     props.event.startDate,
     props.event.endDate,
-    resolveParticipantUserId
+    resolveParticipant
   )
-  return minimizeTransfers(balances)
 })
+
+const previewTransfers = computed((): PreviewTransfer[] => {
+  return minimizeTransfers(previewBalances.value)
+})
+
+const previewAnnotatedTransfers = computed((): AnnotatedTransfer[] => {
+  return annotateTransfers(
+    previewTransfers.value,
+    previewBalances.value,
+    (userId) => getMemberName(userId, pool)
+  )
+})
+
+const openMathSettlementIds = ref(new Set<string>())
+
+function toggleSettlementMath(id: string) {
+  const next = new Set(openMathSettlementIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  openMathSettlementIds.value = next
+}
+
+function isSettlementMathOpen(id: string): boolean {
+  return openMathSettlementIds.value.has(id)
+}
+
+function balancesForSettlement(settlementId: string): Map<string, number> {
+  return deriveBalancesFromTransfers(transfersForSettlement(settlementId))
+}
+
+function annotatedTransfersForSettlement(
+  settlementId: string
+): AnnotatedTransfer[] {
+  return annotateTransfers(
+    transfersForSettlement(settlementId),
+    balancesForSettlement(settlementId),
+    (uid) => getMemberName(uid, pool)
+  )
+}
 
 function openPreview() {
   showPreviewModal.value = true
@@ -178,11 +222,8 @@ async function handlePaidClick(
 </script>
 
 <template>
-  <div v-if="event.startDate && event.endDate" class="mt-8">
-    <div class="mb-4 flex items-center justify-between">
-      <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-        Settlements
-      </h2>
+  <div v-if="event.startDate && event.endDate" class="mt-10">
+    <SectionHeading :icon="BanknotesIcon" title="Settlements">
       <AppButton
         v-if="unsettledExpenseCount > 0"
         data-testid="start-settlement-button"
@@ -192,10 +233,10 @@ async function handlePaidClick(
         Start settlement
         <span class="text-rose-200">({{ unsettledExpenseCount }})</span>
       </AppButton>
-    </div>
+    </SectionHeading>
 
     <div
-      v-if="settlements.length === 0"
+      v-if="settlements.length === 0 && !hasExpenses"
       class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-stone-700 dark:bg-stone-800/50"
     >
       <p class="mb-3 text-sm font-medium text-gray-700 dark:text-stone-300">
@@ -304,6 +345,44 @@ async function handlePaidClick(
           </IconButton>
         </div>
 
+        <div
+          v-if="transfersForSettlement(settlement.id).length > 0"
+          class="border-b border-gray-100 px-3 py-1.5 dark:border-stone-700/50"
+        >
+          <button
+            type="button"
+            class="flex w-full items-center justify-between rounded-md px-1.5 py-1 text-xs text-gray-600 hover:bg-gray-100 dark:text-stone-400 dark:hover:bg-stone-700/50"
+            :data-testid="`settlement-math-toggle-${settlement.id}`"
+            :aria-expanded="isSettlementMathOpen(settlement.id)"
+            :aria-controls="`settlement-math-panel-${settlement.id}`"
+            @click="toggleSettlementMath(settlement.id)"
+          >
+            <span>
+              {{
+                isSettlementMathOpen(settlement.id)
+                  ? 'Hide breakdown'
+                  : 'Show breakdown'
+              }}
+            </span>
+            <ChevronDownIcon
+              class="size-4 transition-transform"
+              :class="{ 'rotate-180': isSettlementMathOpen(settlement.id) }"
+              aria-hidden="true"
+            />
+          </button>
+          <div
+            v-if="isSettlementMathOpen(settlement.id)"
+            :id="`settlement-math-panel-${settlement.id}`"
+            class="mt-2"
+          >
+            <SettlementMath
+              :balances="balancesForSettlement(settlement.id)"
+              :transfers="annotatedTransfersForSettlement(settlement.id)"
+              :name-for="(uid) => getMemberName(uid, pool)"
+            />
+          </div>
+        </div>
+
         <div class="divide-y divide-gray-100 dark:divide-stone-700/50">
           <div
             v-for="transfer in transfersForSettlement(settlement.id)"
@@ -380,8 +459,35 @@ async function handlePaidClick(
         this settlement.
       </p>
 
+      <div v-if="previewTransfers.length > 0" class="mb-3">
+        <button
+          type="button"
+          class="flex w-full items-center justify-between rounded-md px-2 py-1 text-sm text-gray-600 hover:bg-gray-100 dark:text-stone-400 dark:hover:bg-stone-700/50"
+          data-testid="preview-math-toggle"
+          :aria-expanded="previewMathOpen"
+          aria-controls="preview-math-panel"
+          @click="previewMathOpen = !previewMathOpen"
+        >
+          <span>{{
+            previewMathOpen ? 'Hide breakdown' : 'Show breakdown'
+          }}</span>
+          <ChevronDownIcon
+            class="size-4 transition-transform"
+            :class="{ 'rotate-180': previewMathOpen }"
+            aria-hidden="true"
+          />
+        </button>
+        <div v-if="previewMathOpen" id="preview-math-panel" class="mt-2">
+          <SettlementMath
+            :balances="previewBalances"
+            :transfers="previewAnnotatedTransfers"
+            :name-for="(uid) => getMemberName(uid, pool)"
+          />
+        </div>
+      </div>
+
       <div
-        v-if="previewTransfers.length > 0"
+        v-if="previewTransfers.length > 0 && !previewMathOpen"
         class="overflow-hidden rounded-lg border border-dashed border-gray-300 dark:border-stone-600"
       >
         <div class="divide-y divide-gray-100 dark:divide-stone-700/50">
@@ -408,7 +514,10 @@ async function handlePaidClick(
         </div>
       </div>
 
-      <p v-else class="text-sm text-gray-500 dark:text-stone-400">
+      <p
+        v-else-if="previewTransfers.length === 0"
+        class="text-sm text-gray-500 dark:text-stone-400"
+      >
         All balances are settled &mdash; no transfers needed.
       </p>
 

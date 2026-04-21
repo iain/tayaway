@@ -55,16 +55,17 @@ const rows = computed((): SplitRow[] => {
 
   // For each expense, compute overlap and distribute cost
   for (const expense of expenses) {
-    // If expense has explicit participants, equal split
+    // If expense has explicit participants, factor-weighted split
     const participantIds = expense.participantIds ?? []
     if (participantIds.length > 0) {
       const participants = participantIds
         .map((pid) => pool.get('expenseParticipant', pid))
         .filter((p) => p != null)
 
-      if (participants.length > 0) {
-        const share = expense.amount / participants.length
+      const totalFactor = participants.reduce((s, p) => s + p.factor, 0)
+      if (participants.length > 0 && totalFactor > 0) {
         for (const p of participants) {
+          const share = (p.factor / totalFactor) * expense.amount
           shareByUser.set(p.userId, (shareByUser.get(p.userId) ?? 0) + share)
         }
       }
@@ -120,8 +121,8 @@ function formatDays(days: number): string {
 
 function formatBalance(balance: number): string {
   if (balance > 0.005) return `owes €${balance.toFixed(2)}`
-  if (balance < -0.005) return `owed €${Math.abs(balance).toFixed(2)}`
-  return 'settled'
+  if (balance < -0.005) return `is owed €${Math.abs(balance).toFixed(2)}`
+  return 'even'
 }
 </script>
 
@@ -145,10 +146,7 @@ function formatBalance(balance: number): string {
             <th class="pt-3 pr-4 pb-2 pl-4">Name</th>
             <th class="hidden pt-3 pr-4 pb-2 sm:table-cell">Days</th>
             <th class="pt-3 pr-4 pb-2 text-right whitespace-nowrap">Paid</th>
-            <th class="pt-3 pr-4 pb-2 text-right">
-              <span class="sm:hidden">Share</span>
-              <span class="hidden sm:inline">Fair share</span>
-            </th>
+            <th class="pt-3 pr-4 pb-2 text-right">Fair share</th>
             <th class="pt-3 pr-4 pb-2 text-right whitespace-nowrap">Balance</th>
           </tr>
         </thead>
