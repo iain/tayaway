@@ -26,8 +26,7 @@ module Settlements
       end
     end
 
-    # Compute net balance per user: share - paid.
-    # Positive = owes, negative = owed.
+    # Positive balance = owes, negative = owed.
     #
     # For unsettled expenses: full share and paid contribute.
     # For already-settled expenses: only the share *delta* between current and
@@ -60,9 +59,6 @@ module Settlements
       balances
     end
 
-    # Add each user's share of an expense (optionally weighted) into share_by_user.
-    # Uses explicit factor-weighted participants when present, otherwise pro-rates
-    # by overlap in days with the given RSVP snapshot.
     def accumulate_shares(share_by_user, expense, participants_by_expense, rsvp_snapshot, weight)
       expense_id = expense[:id].to_s
       amount = expense[:amount].to_f
@@ -107,16 +103,17 @@ module Settlements
       end
     end
 
+    # Snapshots are written by snapshot_rsvps in a known YYYY-MM-DD format, so
+    # a parse failure here means the persisted snapshot was tampered with or a
+    # schema assumption changed. Don't paper over it — let the caller surface
+    # the error rather than silently dropping the RSVP from the overlap math.
     def date_from(value)
       return value if value.is_a?(Date)
       return nil if value.nil? || value.to_s.empty?
 
       Date.strptime(value.to_s, "%Y-%m-%d")
-    rescue Date::Error
-      nil
     end
 
-    # Greedy algorithm to minimize transfers.
     def minimize_transfers(balances)
       debtors = balances.select { |_, v| v > 0 }.sort_by { |_, v| -v }.map { |k, v| [k, v] }
       creditors = balances.select { |_, v| v < 0 }.sort_by { |_, v| v }.map { |k, v| [k, -v] }

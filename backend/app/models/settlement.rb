@@ -34,8 +34,20 @@ class Settlement
       dataset.where(event_id: event_id).order(:created_at).all
     end
 
+    # The tip is the unique settlement for the event that no other settlement
+    # references via previous_settlement_id. "Most recently created" is only a
+    # proxy; this definition is the structural one, enforced by the unique
+    # partial index on previous_settlement_id.
     def tip_for_event(event_id)
-      dataset.where(event_id: event_id).order(Sequel.desc(:created_at)).first
+      dataset
+        .where(event_id: event_id)
+        .exclude(
+          id: DB[:settlements]
+              .where(event_id: event_id)
+              .exclude(previous_settlement_id: nil)
+              .select(:previous_settlement_id)
+        )
+        .first
     end
 
     def chain_for(settlement_id)
@@ -81,9 +93,11 @@ class Settlement
 
     def parse_snapshot(value)
       return nil if value.nil?
-      return value if value.respond_to?(:to_h) && !value.is_a?(String)
+      return value.to_h if value.is_a?(Sequel::Postgres::JSONBObject)
+      return value if value.is_a?(Hash)
+      return JSON.parse(value) if value.is_a?(String)
 
-      JSON.parse(value)
+      raise TypeError, "Unexpected rsvp_snapshot type: #{value.class}"
     end
   end
 end

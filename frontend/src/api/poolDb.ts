@@ -37,7 +37,7 @@ interface PoolCacheDB {
 }
 
 // Bump this when the sync protocol changes to invalidate stale caches
-const CACHE_VERSION = 5
+const CACHE_VERSION = 6
 
 let dbPromise: Promise<IDBPDatabase<PoolCacheDB>> | null = null
 

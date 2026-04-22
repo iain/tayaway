@@ -67,8 +67,12 @@ module Settlements
           end
 
           current_rsvps = Rsvp.for_event(event.id).select(&:attending)
-          if current_rsvps.empty? && tip.nil?
-            return Failure(ServiceError.validation("No attending RSVPs found for this event"))
+          if current_rsvps.empty?
+            if tip.nil?
+              return Failure(ServiceError.validation("No attending RSVPs found for this event"))
+            elsif !unsettled.empty?
+              return Failure(ServiceError.validation("No one is currently attending — can't split the new expenses"))
+            end
           end
 
           current_snapshot = BalanceMath.snapshot_rsvps(current_rsvps, event)

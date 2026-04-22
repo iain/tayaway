@@ -3,20 +3,9 @@
 module Settlements
   # Read-only: computes what a top-up settlement *would* produce right now for
   # the tip of an event's settlement chain, without persisting anything.
-  #
-  # Used by the UI to render a drift warning and power the "settle the
-  # difference" affordance. Shape of the success payload:
-  #
-  #   {
-  #     hasTip: true,
-  #     settlementId: "...",          # tip id, or nil if no chain yet
-  #     hasUnsettledExpenses: true,
-  #     balances: [{ userId, amount }],
-  #     transfers: [{ fromUserId, toUserId, amount }]
-  #   }
-  #
-  # `balances` and `transfers` come from the same math as Create: balances are
-  # positive = owes, negative = owed, in euros.
+  # Provides a server-authoritative parity check; the UI currently derives an
+  # equivalent preview client-side. Callers must authorize workspace access
+  # before invoking — the service itself does not.
   module PreviewDrift
     class << self
       include Dry::Monads[:result]

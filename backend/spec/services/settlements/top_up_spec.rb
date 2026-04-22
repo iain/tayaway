@@ -267,15 +267,14 @@ RSpec.describe "Settlement chain" do
   end
 
   describe "concurrency" do
-    it "refuses a second top-up racing onto the same tip" do
+    it "picks up a newly-inserted tip rather than branching off a stale one" do
       insert_expense(user: alice, amount: 20)
       TestFactories.rsvp(event: event, user: alice, attending: true)
       TestFactories.rsvp(event: event, user: bob, attending: true)
       first = create_call
       tip_id = settlements_from(first).first[:id]
 
-      # Simulate a racing top-up by inserting a competing successor row
-      # directly, then attempting to create another top-up.
+      # Simulate a competing top-up that already committed.
       TestFactories.rsvp(event: event, user: carol, attending: true)
       DB[:settlements].insert(
         id: SecureRandom.uuid,
@@ -287,16 +286,160 @@ RSpec.describe "Settlement chain" do
         updated_at: Time.now
       )
 
-      # A third attempt should detect that the tip we'd expect to extend
-      # (the pre-existing first settlement) is no longer the tip — the new
-      # tip is the one we just inserted, and there may still be drift. The
-      # service will actually chain onto the new tip, which succeeds — the
-      # race-fail path is for the narrower case of two chaining onto the
-      # same predecessor. Assert that the service correctly picks the
-      # current tip rather than branching.
+      # With tip defined structurally ("no successor") the next create chains
+      # onto the newly-inserted tip rather than branching off the stale one.
       insert_expense(user: bob, amount: 5)
-      second = create_call
-      expect(second.success?).to be true
+      expect(create_call.success?).to be true
+    end
+
+    it "surfaces the race failure when successor? flips mid-transaction" do
+      insert_expense(user: alice, amount: 20)
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      TestFactories.rsvp(event: event, user: bob, attending: true)
+      create_call
+
+      TestFactories.rsvp(event: event, user: carol, attending: true)
+
+      allow(Settlement).to receive(:successor?).and_return(true)
+
+      result = create_call
+      expect(result.failure?).to be true
+      expect(result.failure.message).to include("just settled by another member")
+    end
+
+    it "blocks a direct insert that would fork the chain via the unique index" do
+      insert_expense(user: alice, amount: 20)
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      TestFactories.rsvp(event: event, user: bob, attending: true)
+      first = create_call
+      tip_id = settlements_from(first).first[:id]
+
+      DB[:settlements].insert(
+        id: SecureRandom.uuid,
+        event_id: event[:id],
+        user_id: creator[:id],
+        previous_settlement_id: tip_id,
+        rsvp_snapshot: Sequel.pg_jsonb({ "rsvps" => [] }),
+        created_at: Time.now,
+        updated_at: Time.now
+      )
+
+      expect do
+        DB[:settlements].insert(
+          id: SecureRandom.uuid,
+          event_id: event[:id],
+          user_id: creator[:id],
+          previous_settlement_id: tip_id,
+          rsvp_snapshot: Sequel.pg_jsonb({ "rsvps" => [] }),
+          created_at: Time.now,
+          updated_at: Time.now
+        )
+      end.to raise_error(Sequel::UniqueConstraintViolation)
+    end
+  end
+
+  describe "correction expenses flowing through a top-up" do
+    # After a settlement locks in "Alice paid 90, Bob owes 45", a refund of 60
+    # against that expense means the real outlay was only 30. Bob should have
+    # paid 15, not 45 — so the top-up must transfer 30 back from Alice to Bob,
+    # flipping the direction of the original settlement.
+    it "flips creditor/debtor when a correction cancels most of the original" do
+      insert_expense(user: alice, amount: 90)
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      TestFactories.rsvp(event: event, user: bob, attending: true)
+      create_call
+
+      insert_expense(user: alice, amount: -60)
+      top_up = create_call
+      expect(top_up.success?).to be true
+      transfers = transfers_from(top_up)
+      expect(transfers.length).to eq(1)
+      expect(transfers.first[:fromUserId].to_s).to eq(alice[:id].to_s)
+      expect(transfers.first[:toUserId].to_s).to eq(bob[:id].to_s)
+      expect(transfers.first[:amount]).to eq(30.0)
+    end
+
+    it "handles successive corrections without double-counting" do
+      insert_expense(user: alice, amount: 100)
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      TestFactories.rsvp(event: event, user: bob, attending: true)
+      create_call
+
+      insert_expense(user: alice, amount: -40)
+      create_call # first top-up absorbs the -40
+
+      insert_expense(user: alice, amount: -20)
+      second_top_up = create_call
+      expect(second_top_up.success?).to be true
+      transfers = transfers_from(second_top_up)
+      # Second correction: 20 refund means Bob's share drops by 10.
+      expect(transfers.length).to eq(1)
+      expect(transfers.first[:fromUserId].to_s).to eq(alice[:id].to_s)
+      expect(transfers.first[:toUserId].to_s).to eq(bob[:id].to_s)
+      expect(transfers.first[:amount]).to eq(10.0)
+    end
+  end
+
+  describe "un-RSVP between settlements" do
+    # Bob settles, then stops attending. The pre-settlement math charged Bob
+    # for half the trip; with Bob no longer attending, Alice now carries the
+    # full 90 herself — Bob should get a refund equal to what he paid in.
+    it "refunds a user who un-RSVPs after settling" do
+      insert_expense(user: alice, amount: 90)
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      bob_rsvp = TestFactories.rsvp(event: event, user: bob, attending: true)
+      create_call
+
+      DB[:rsvps].where(id: bob_rsvp[:id]).update(attending: false)
+
+      top_up = create_call
+      expect(top_up.success?).to be true
+      transfers = transfers_from(top_up)
+      expect(transfers.length).to eq(1)
+      expect(transfers.first[:fromUserId].to_s).to eq(alice[:id].to_s)
+      expect(transfers.first[:toUserId].to_s).to eq(bob[:id].to_s)
+      expect(transfers.first[:amount]).to eq(45.0)
+    end
+  end
+
+  describe "empty attending RSVPs on top-up with new expenses" do
+    it "fails with an explicit message rather than the generic 'up to date'" do
+      insert_expense(user: alice, amount: 60)
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      bob_rsvp = TestFactories.rsvp(event: event, user: bob, attending: true)
+      create_call
+
+      # Both leave.
+      DB[:rsvps].where(event_id: event[:id]).update(attending: false)
+      DB[:rsvps].where(id: bob_rsvp[:id]).update(attending: false)
+
+      insert_expense(user: alice, amount: 30)
+      result = create_call
+      expect(result.failure?).to be true
+      expect(result.failure.message).to include("No one is currently attending")
+    end
+  end
+
+  describe "mid-chain delete on a longer chain" do
+    it "refuses to delete the middle settlement of a length-3 chain" do
+      insert_expense(user: alice, amount: 90)
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      TestFactories.rsvp(event: event, user: bob, attending: true)
+      first_id = settlements_from(create_call).first[:id]
+
+      TestFactories.rsvp(event: event, user: carol, attending: true)
+      middle_id = settlements_from(create_call).first[:id]
+
+      dave = TestFactories.user(name: "Dave")
+      TestFactories.rsvp(event: event, user: dave, attending: true)
+      create_call
+
+      expect(
+        Settlements::Delete.call(settlement_id: first_id, membership: creator_membership, workspace_id: workspace[:id]).failure?
+      ).to be true
+      expect(
+        Settlements::Delete.call(settlement_id: middle_id, membership: creator_membership, workspace_id: workspace[:id]).failure?
+      ).to be true
     end
   end
 end
