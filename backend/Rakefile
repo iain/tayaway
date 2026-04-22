@@ -119,6 +119,66 @@ namespace :db do
     end
   end
 
+  desc "Backfill rsvp_snapshot on settlements that predate the chain feature"
+  task :backfill_settlement_snapshots do
+    require_relative "config/environment"
+
+    dry_run = ENV["APPLY"] != "1"
+    only_id = ENV["SETTLEMENT_ID"]
+    puts dry_run ? "DRY RUN (set APPLY=1 to write)" : "APPLYING changes"
+
+    scope = DB[:settlements].where(rsvp_snapshot: nil)
+    scope = scope.where(id: only_id) if only_id
+    candidates = scope.order(:created_at).all
+
+    if candidates.empty?
+      puts "No settlements need backfill."
+      next
+    end
+
+    candidates.each do |row|
+      settlement_id = row[:id]
+      event = Event.find(row[:event_id])
+      unless event&.start_date && event&.end_date
+        warn "  SKIP #{settlement_id}: event missing dates"
+        next
+      end
+
+      # Heuristic: include RSVPs that existed at settlement time and are
+      # currently attending. Misses the edge case of someone who was
+      # attending then and has since flipped to not-attending. Warnings
+      # below flag anything the heuristic couldn't classify with confidence.
+      rsvps = Rsvp.for_event(event.id)
+      included = rsvps.select { |r| r.attending && r.created_at <= row[:created_at] }
+      edited_after = rsvps.select { |r| r.updated_at > row[:created_at] && r.created_at <= row[:created_at] }
+      newer_than_settlement = rsvps.reject { |r| r.created_at <= row[:created_at] }
+
+      puts "\nSettlement #{settlement_id} (event #{event.id}, created #{row[:created_at]}):"
+      puts "  include  (#{included.length}): #{included.map { |r| r.user_id.to_s }.join(", ")}"
+      unless newer_than_settlement.empty?
+        puts "  skipped — created after settlement (#{newer_than_settlement.length}): #{newer_than_settlement.map { |r| "#{r.user_id} attending=#{r.attending}" }.join(", ")}"
+      end
+      unless edited_after.empty?
+        puts "  WARN — updated after settlement, current attending may differ from historical: #{edited_after.map { |r| "#{r.user_id} attending=#{r.attending}" }.join(", ")}"
+      end
+
+      if included.empty?
+        warn "  SKIP #{settlement_id}: heuristic produced no attending RSVPs — verify manually"
+        next
+      end
+
+      snapshot = Settlements::BalanceMath.snapshot_rsvps(included, event)
+      if dry_run
+        puts "  would write: #{snapshot.inspect}"
+      else
+        DB[:settlements].where(id: settlement_id).update(
+          rsvp_snapshot: Sequel.pg_jsonb({ "rsvps" => snapshot })
+        )
+        puts "  wrote snapshot"
+      end
+    end
+  end
+
   desc "Delete deleted_items rows older than DELETED_ITEMS_RETENTION_DAYS (default: 7)"
   task :cleanup_deleted_items do
     require_relative "config/database"
