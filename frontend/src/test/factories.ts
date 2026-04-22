@@ -175,6 +175,7 @@ export function makeExpense(
     eventId: 'evt-1',
     userId: 'user-1',
     settlementId: null,
+    revertsExpenseId: null,
     description: 'Hotel',
     amount: 100,
     startDate: '2026-03-01',

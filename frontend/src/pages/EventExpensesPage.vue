@@ -25,7 +25,6 @@ const { currentUserId } = storeToRefs(authStore)
 
 const isModalOpen = ref(false)
 const editingExpense = ref<PoolExpense | undefined>(undefined)
-const correctionSource = ref<PoolExpense | undefined>(undefined)
 const showRsvpDialog = ref(false)
 
 watch(pendingAdd, (val) => {
@@ -46,24 +45,12 @@ function openAdd() {
 
 function openEdit(expense: PoolExpense) {
   editingExpense.value = expense
-  correctionSource.value = undefined
-  isModalOpen.value = true
-}
-
-function openCorrect(expense: PoolExpense) {
-  if (!userIsAttending.value) {
-    showRsvpDialog.value = true
-    return
-  }
-  editingExpense.value = undefined
-  correctionSource.value = expense
   isModalOpen.value = true
 }
 
 function closeModal() {
   isModalOpen.value = false
   editingExpense.value = undefined
-  correctionSource.value = undefined
 }
 
 const eventId = computed(() => route.params.id as string)
@@ -138,7 +125,6 @@ onMounted(async () => {
           :event="event"
           :current-user-id="currentUserId"
           @edit="openEdit"
-          @correct="openCorrect"
         />
       </div>
 
@@ -155,7 +141,6 @@ onMounted(async () => {
         :open="isModalOpen"
         :event="event"
         :expense="editingExpense"
-        :correction-from="correctionSource"
         @close="closeModal"
       />
 

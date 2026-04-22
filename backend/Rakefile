@@ -139,7 +139,7 @@ namespace :db do
     candidates.each do |row|
       settlement_id = row[:id]
       event = Event.find(row[:event_id])
-      unless event&.start_date && event&.end_date
+      unless event&.start_date && event.end_date
         warn "  SKIP #{settlement_id}: event missing dates"
         next
       end

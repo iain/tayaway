@@ -128,6 +128,7 @@ export interface ObjectTypeMap {
     eventId: string
     userId: string | null
     settlementId: string | null
+    revertsExpenseId: string | null
     description: string
     amount: number
     startDate: string

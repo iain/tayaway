@@ -30,6 +30,7 @@ function makeExpense(
     eventId: 'evt-1',
     userId: 'user-1',
     settlementId: null,
+    revertsExpenseId: null,
     description: 'Test expense',
     amount: 10,
     startDate: '2026-01-01',

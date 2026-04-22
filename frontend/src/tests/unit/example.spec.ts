@@ -43,6 +43,7 @@ function makeExpense(
     eventId: 'evt-1',
     userId: 'user-1',
     settlementId: null,
+    revertsExpenseId: null,
     description: 'Dinner',
     amount: 50,
     startDate: '2026-01-01',

@@ -338,45 +338,27 @@ RSpec.describe "Settlement chain" do
     end
   end
 
-  describe "correction expenses flowing through a top-up" do
-    # After a settlement locks in "Alice paid 90, Bob owes 45", a refund of 60
-    # against that expense means the real outlay was only 30. Bob should have
-    # paid 15, not 45 — so the top-up must transfer 30 back from Alice to Bob,
-    # flipping the direction of the original settlement.
-    it "flips creditor/debtor when a correction cancels most of the original" do
-      insert_expense(user: alice, amount: 90)
+  describe "reverts flowing through a top-up" do
+    # Alice paid 90 split with Bob, Bob transferred 45 in the first settlement.
+    # Reverting the original means the real outlay was zero — Bob should get
+    # his 45 back, so the top-up transfer runs from Alice to Bob.
+    it "refunds the debtor when the original is reverted after settlement" do
+      alice_membership = TestFactories.workspace_membership(workspace: workspace, user: alice)
+      alice_membership = WorkspaceMembership.find(alice_membership[:id])
       TestFactories.rsvp(event: event, user: alice, attending: true)
       TestFactories.rsvp(event: event, user: bob, attending: true)
+      expense_id = insert_expense(user: alice, amount: 90)
       create_call
 
-      insert_expense(user: alice, amount: -60)
+      Expenses::Revert.call(expense_id: expense_id, membership: alice_membership, workspace_id: workspace[:id])
+
       top_up = create_call
       expect(top_up.success?).to be true
       transfers = transfers_from(top_up)
       expect(transfers.length).to eq(1)
       expect(transfers.first[:fromUserId].to_s).to eq(alice[:id].to_s)
       expect(transfers.first[:toUserId].to_s).to eq(bob[:id].to_s)
-      expect(transfers.first[:amount]).to eq(30.0)
-    end
-
-    it "handles successive corrections without double-counting" do
-      insert_expense(user: alice, amount: 100)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
-      create_call
-
-      insert_expense(user: alice, amount: -40)
-      create_call # first top-up absorbs the -40
-
-      insert_expense(user: alice, amount: -20)
-      second_top_up = create_call
-      expect(second_top_up.success?).to be true
-      transfers = transfers_from(second_top_up)
-      # Second correction: 20 refund means Bob's share drops by 10.
-      expect(transfers.length).to eq(1)
-      expect(transfers.first[:fromUserId].to_s).to eq(alice[:id].to_s)
-      expect(transfers.first[:toUserId].to_s).to eq(bob[:id].to_s)
-      expect(transfers.first[:amount]).to eq(10.0)
+      expect(transfers.first[:amount]).to eq(45.0)
     end
   end
 

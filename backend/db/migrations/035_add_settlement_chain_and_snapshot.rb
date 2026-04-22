@@ -13,5 +13,14 @@ Sequel.migration do
                 where: Sequel.lit("previous_settlement_id IS NOT NULL")
       add_column :rsvp_snapshot, :jsonb, null: true
     end
+
+    alter_table(:expenses) do
+      # Nullable self-reference so the UI can show "reverts expense X" and
+      # mark the original as reverted. on_delete: :set_null so an original
+      # being hard-deleted out of band doesn't orphan the revert's ledger
+      # contribution.
+      add_foreign_key :reverts_expense_id, :expenses, type: :uuid, null: true, on_delete: :set_null
+      add_index :reverts_expense_id # rubocop:disable Sequel/ConcurrentIndex
+    end
   end
 end

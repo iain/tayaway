@@ -14,11 +14,6 @@ const props = defineProps<{
   open: boolean
   event: PoolEvent
   expense?: PoolExpense
-  // When set, the modal is in "create" mode but preseeds all fields from the
-  // given expense (with a negated amount and a "Correction:" description).
-  // Used to offset an already-settled expense; the new expense is unsettled
-  // and will flow into the next top-up.
-  correctionFrom?: PoolExpense
 }>()
 
 const emit = defineEmits<{
@@ -65,24 +60,19 @@ const selectedUserIds = ref<string[]>([])
 const factorByUserId = ref<Record<string, number>>({})
 
 const isEditing = computed(() => props.expense != null)
-const isCorrecting = computed(() => props.correctionFrom != null)
 
-const modalTitle = computed(() => {
-  if (isEditing.value) return 'Edit Expense'
-  if (isCorrecting.value) return 'Add Correction'
-  return 'Add Expense'
-})
+const modalTitle = computed(() =>
+  isEditing.value ? 'Edit Expense' : 'Add Expense'
+)
 
 const eventHasDates = computed(
   () => props.event.startDate != null && props.event.endDate != null
 )
 
-// Step validation — negative amounts are allowed as correction expenses, which
-// offset an earlier settled expense in the next top-up.
 const detailsValid = computed(() => {
   const desc = description.value.trim()
   const amt = parseFloat(amount.value)
-  return desc.length > 0 && !isNaN(amt) && amt !== 0
+  return desc.length > 0 && !isNaN(amt) && amt > 0
 })
 
 const dateValid = computed(() => {
@@ -126,20 +116,15 @@ watch(
     if (isOpen) {
       step.value = 1
 
-      const source = props.expense ?? props.correctionFrom
-      if (source) {
-        description.value = isCorrecting.value
-          ? `Correction: ${source.description}`
-          : source.description
-        amount.value = isCorrecting.value
-          ? (-source.amount).toFixed(2)
-          : source.amount.toString()
-        startDate.value = source.startDate
-        endDate.value = source.endDate
-        singleDate.value = source.startDate === source.endDate
+      if (props.expense) {
+        description.value = props.expense.description
+        amount.value = props.expense.amount.toString()
+        startDate.value = props.expense.startDate
+        endDate.value = props.expense.endDate
+        singleDate.value = props.expense.startDate === props.expense.endDate
 
         // Load existing participants with factors
-        const participantIds = source.participantIds ?? []
+        const participantIds = props.expense.participantIds ?? []
         if (participantIds.length > 0) {
           everyone.value = false
           const rows = participantIds
@@ -225,7 +210,7 @@ async function handleSubmit(): Promise<void> {
 
   const desc = description.value.trim()
   const amt = parseFloat(amount.value)
-  if (!desc || isNaN(amt) || amt === 0) return
+  if (!desc || isNaN(amt) || amt <= 0) return
   if (!startDate.value || !endDate.value) return
 
   const participants =

@@ -22,6 +22,7 @@ class ExpenseSerializer
           eventId: expense.event_id.to_s,
           userId: expense.user_id&.to_s,
           settlementId: expense.settlement_id&.to_s,
+          revertsExpenseId: expense.reverts_expense_id&.to_s,
           amount: expense.amount,
           description: expense.description,
           startDate: expense.start_date.iso8601,
