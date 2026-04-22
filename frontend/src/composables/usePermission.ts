@@ -37,6 +37,8 @@ const HIDE_REASONS = new Set([
   'not_sender',
   'cannot_change_own_role',
   'cannot_change_owner',
+  'not_settled',
+  'revert_of_revert',
 ])
 
 // Reasons that should show a disabled element with a tooltip — the user is

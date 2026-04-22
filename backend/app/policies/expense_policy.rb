@@ -16,15 +16,18 @@ class ExpensePolicy
 
   def delete = require_unsettled_creator
 
-  # Revert is the only operation permitted on settled expenses: the creator
-  # can file a mirror-image entry (negated amount, same participants/factors)
-  # that offsets the original on the next settlement. Cheaper and safer than
-  # editing in place, and the back-reference lets the UI dim the reverted row.
-  # A revert of a revert is disallowed — the ledger shows both entries; if
-  # someone changes their mind they can add a fresh expense.
+  # Revert is the escape hatch for expenses that have been locked into a
+  # settlement: the creator can file a mirror-image entry (negated amount,
+  # same participants/factors) that offsets the original on the next
+  # settlement. Unsettled expenses can still be edited or deleted directly,
+  # so revert isn't needed — and isn't offered — there. A revert of a
+  # revert is disallowed; the ledger shows both entries and a fresh expense
+  # is the right way to change your mind.
   def revert
     if @already_reverted
       Failure(:revert_of_revert)
+    elsif !@settled
+      Failure(:not_settled)
     elsif @creator
       Success()
     else
