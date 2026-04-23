@@ -17,6 +17,7 @@ module Expenses
         Expense.find_result(expense_id)
                .bind { |expense| ExpensePolicy.enforce(:revert, expense, membership: membership) }
                .bind { |expense| check_not_already_reverted(expense) }
+               .bind { |expense| check_event_ready(expense) }
                .bind { |expense| insert_revert(expense, membership, workspace_id) }
       end
 
@@ -25,6 +26,18 @@ module Expenses
       def check_not_already_reverted(expense)
         if DB[:expenses].where(reverts_expense_id: expense.id).any?
           Failure(ServiceError.validation("This expense has already been reverted"))
+        else
+          Success(expense)
+        end
+      end
+
+      # The revert copies the original's dates verbatim. If the event has
+      # since lost its date range (rare, but possible via edit), the math
+      # downstream starts making unsafe assumptions. Refuse up-front.
+      def check_event_ready(expense)
+        event = Event.find(expense.event_id)
+        if event.nil? || event.start_date.nil? || event.end_date.nil?
+          Failure(ServiceError.validation("Event is missing dates — cannot revert"))
         else
           Success(expense)
         end

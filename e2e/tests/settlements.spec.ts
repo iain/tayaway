@@ -545,6 +545,172 @@ test.describe('Settlements Feature', () => {
       await aliceContext.dispose()
     })
   })
+
+  test.describe('Chain: settle, revert, new expense, top-up', () => {
+    test('net transfers across the chain reconcile with the real fair share', async ({
+      playwright,
+    }) => {
+      const aliceContext = await newApiContext(playwright)
+      const { userId: aliceId } = await getTestSession(
+        aliceContext,
+        'e2e-chain-alice@example.com',
+        'Chain Alice'
+      )
+      const { eventId } = await createResolvedEvent(
+        aliceContext,
+        'Chain Settlement Flow'
+      )
+      const workspaceId = await getWorkspaceId(aliceContext)
+
+      const bobContext = await newApiContext(playwright)
+      const { userId: bobId } = await getTestSession(
+        bobContext,
+        'e2e-chain-bob@example.com',
+        'Chain Bob'
+      )
+      await addMemberToWorkspace(
+        aliceContext,
+        workspaceId,
+        'e2e-chain-bob@example.com'
+      )
+      await bobContext.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
+        data: { attending: true },
+      })
+
+      const carolContext = await newApiContext(playwright)
+      const { userId: carolId } = await getTestSession(
+        carolContext,
+        'e2e-chain-carol@example.com',
+        'Chain Carol'
+      )
+      await addMemberToWorkspace(
+        aliceContext,
+        workspaceId,
+        'e2e-chain-carol@example.com'
+      )
+      await carolContext.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
+        data: { attending: true },
+      })
+
+      // Alice pays 90; RSVP-overlap split between A/B/C = 30 each.
+      const firstResp = await aliceContext.post(`${API_BASE}/api/expenses`, {
+        data: {
+          event_id: eventId,
+          description: 'Groceries',
+          amount: 90,
+          start_date: DEFAULT_START,
+          end_date: DEFAULT_END,
+        },
+      })
+      const firstExpenseId = getObjectByType(
+        (await firstResp.json()).objects,
+        'expense'
+      )!.id
+
+      // Settlement 1: B→A 30, C→A 30.
+      const settle1 = await aliceContext.post(`${API_BASE}/api/settlements`, {
+        data: { event_id: eventId },
+      })
+      expect(settle1.status()).toBe(201)
+      const transfers1 = getObjectsByType(
+        (await settle1.json()).objects,
+        'settlementTransfer'
+      ) as Array<{
+        fromUserId: string
+        toUserId: string
+        amount: number
+      }>
+      expect(transfers1.length).toBe(2)
+      for (const t of transfers1) expect(t.toUserId).toBe(aliceId)
+      const bobToAlice = transfers1.find((t) => t.fromUserId === bobId)!
+      const carolToAlice = transfers1.find((t) => t.fromUserId === carolId)!
+      expect(bobToAlice.amount).toBeCloseTo(30, 2)
+      expect(carolToAlice.amount).toBeCloseTo(30, 2)
+
+      // Alice reverts her groceries expense — the real-world purchase turned
+      // out not to be a shared one.
+      const revertResp = await aliceContext.post(
+        `${API_BASE}/api/expenses/${firstExpenseId}/revert`
+      )
+      expect(revertResp.status()).toBe(201)
+
+      // Bob pays 60 for a new shared expense afterwards; split 20 each.
+      await bobContext.post(`${API_BASE}/api/expenses`, {
+        data: {
+          event_id: eventId,
+          description: 'Dinner',
+          amount: 60,
+          start_date: DEFAULT_START,
+          end_date: DEFAULT_END,
+        },
+      })
+
+      // Top-up: carries the revert delta plus the new expense.
+      const settle2 = await aliceContext.post(`${API_BASE}/api/settlements`, {
+        data: { event_id: eventId },
+      })
+      expect(settle2.status()).toBe(201)
+      const settle2Body = await settle2.json()
+      const topUp = getObjectByType(settle2Body.objects, 'settlement') as {
+        previousSettlementId: string | null
+      }
+      expect(topUp.previousSettlementId).not.toBeNull()
+
+      const transfers2 = getObjectsByType(
+        settle2Body.objects,
+        'settlementTransfer'
+      ) as Array<{
+        fromUserId: string
+        toUserId: string
+        amount: number
+      }>
+
+      // Now check per-user net movement across BOTH settlements. What each
+      // user ends up paying or receiving should match the real fair share:
+      // only the €60 dinner survives on the ledger (Alice's 90 was reverted),
+      // split 20 each. Alice paid 0 net, Bob paid 60, Carol paid 0 →
+      // A owes 20, B is owed 40, C owes 20.
+      const net: Record<string, number> = {
+        [aliceId]: 0,
+        [bobId]: 0,
+        [carolId]: 0,
+      }
+      for (const t of [...transfers1, ...transfers2]) {
+        net[t.fromUserId] = (net[t.fromUserId] ?? 0) + t.amount
+        net[t.toUserId] = (net[t.toUserId] ?? 0) - t.amount
+      }
+
+      expect(net[aliceId]).toBeCloseTo(20, 2)
+      expect(net[bobId]).toBeCloseTo(-40, 2)
+      expect(net[carolId]).toBeCloseTo(20, 2)
+
+      // Sum of signed net movements must be zero — money conserves.
+      const sum = Object.values(net).reduce((a, b) => a + b, 0)
+      expect(Math.abs(sum)).toBeLessThan(0.01)
+
+      // Sanity: the revert expense is linked to the original.
+      const allExpensesResp = await aliceContext.get(
+        `${API_BASE}/api/expenses?event_id=${eventId}`
+      )
+      const allExpenses = getObjectsByType(
+        (await allExpensesResp.json()).objects,
+        'expense'
+      ) as Array<{
+        id: string
+        amount: number
+        revertsExpenseId: string | null
+      }>
+      const revertRow = allExpenses.find(
+        (e) => e.revertsExpenseId === firstExpenseId
+      )
+      expect(revertRow).toBeDefined()
+      expect(revertRow!.amount).toBeCloseTo(-90, 2)
+
+      await bobContext.dispose()
+      await carolContext.dispose()
+      await aliceContext.dispose()
+    })
+  })
 })
 
 async function getCurrentUserId(

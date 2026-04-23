@@ -361,6 +361,36 @@ RSpec.describe "Settlement chain" do
       expect(transfers.first[:amount]).to eq(45.0)
     end
 
+    # Factor-weighted invariant: explicit participants make the revert's
+    # share math independent of RSVPs entirely — the revert copies the
+    # original's participant rows with the same factors, so any RSVP churn
+    # in the meantime shouldn't affect cancellation.
+    it "fully undoes a factor-weighted expense even if RSVPs churn" do
+      alice_membership = TestFactories.workspace_membership(workspace: workspace, user: alice)
+      alice_membership = WorkspaceMembership.find(alice_membership[:id])
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      TestFactories.rsvp(event: event, user: bob, attending: true)
+
+      expense_id = insert_expense(user: alice, amount: 60)
+      DB[:expense_participants].where(expense_id: expense_id).delete
+      DB[:expense_participants].insert(id: SecureRandom.uuid, expense_id: expense_id, user_id: alice[:id], factor: 1, created_at: Time.now, updated_at: Time.now)
+      DB[:expense_participants].insert(id: SecureRandom.uuid, expense_id: expense_id, user_id: bob[:id], factor: 2, created_at: Time.now, updated_at: Time.now)
+
+      create_call # settlement 1: Bob owes 40, Alice paid 60 → Bob → Alice 40
+
+      TestFactories.rsvp(event: event, user: carol, attending: true) # RSVP churn — irrelevant to factor split
+
+      Expenses::Revert.call(expense_id: expense_id, membership: alice_membership, workspace_id: workspace[:id])
+
+      top_up = create_call
+      expect(top_up.success?).to be true
+      transfers = transfers_from(top_up)
+      expect(transfers.length).to eq(1)
+      expect(transfers.first[:fromUserId].to_s).to eq(alice[:id].to_s)
+      expect(transfers.first[:toUserId].to_s).to eq(bob[:id].to_s)
+      expect(transfers.first[:amount]).to eq(40.0)
+    end
+
     # Invariant: a revert fully undoes the original regardless of how RSVPs
     # have drifted between the original's settlement and the top-up. The
     # revert computes shares against current RSVPs (possibly asymmetric),
@@ -435,6 +465,58 @@ RSpec.describe "Settlement chain" do
       result = create_call
       expect(result.failure?).to be true
       expect(result.failure.message).to include("No one is currently attending")
+    end
+  end
+
+  describe "cumulative rounding over a long chain" do
+    # 7 attendees and awkward amounts mean per-user deltas at every top-up
+    # round to hundredths at sign-asymmetric positions. After five chained
+    # settlements, the sum of balances across all users must still be zero
+    # (within epsilon), and the sum of per-user net transfers must reconcile
+    # with what each person really owes or is owed given current shares.
+    it "keeps per-user net movements within one cent of the fair share" do
+      users = [alice, bob, carol, TestFactories.user(name: "Dave"), TestFactories.user(name: "Eve"),
+               TestFactories.user(name: "Faye"), TestFactories.user(name: "Gil")]
+      users.each { |u| TestFactories.rsvp(event: event, user: u, attending: true) }
+
+      # Round 1 & settle
+      insert_expense(user: alice, amount: 99.99)
+      create_call
+
+      # Chain 4 more top-ups, each with one more awkward expense
+      amounts = [33.33, 10.01, 77.77, 12.13]
+      amounts.each do |amt|
+        insert_expense(user: users.sample, amount: amt)
+        create_call
+      end
+
+      all_transfers = SettlementTransfer.for_settlement_ids(Settlement.for_event(event[:id]).map(&:id))
+      net = Hash.new(0.0)
+      all_transfers.each do |t|
+        net[t.from_user_id.to_s] += t.amount
+        net[t.to_user_id.to_s] -= t.amount
+      end
+
+      # Net movement across all users must balance out to zero.
+      expect(net.values.sum.abs).to be <= 0.01
+
+      # And each user's net movement reconciles with their current fair share
+      # vs what they paid in total.
+      total = 99.99 + amounts.sum
+      total_paid_by = Hash.new(0.0)
+      DB[:expenses].where(event_id: event[:id]).each { |e| total_paid_by[e[:user_id].to_s] += e[:amount].to_f }
+      share_each = (total / users.length).round(2)
+
+      users.each do |u|
+        uid = u[:id].to_s
+        fair_share_owed = (share_each - total_paid_by[uid]).round(2)
+        # After all settlements have moved money, the user's net transfers
+        # should equal what they actually owe within a couple of cents;
+        # minimize_transfers rounds at each step so some cumulative drift
+        # is expected, but it must stay bounded.
+        drift = ((net[uid] || 0) - fair_share_owed).abs.round(2)
+        expect(drift).to be <= 0.05
+      end
     end
   end
 

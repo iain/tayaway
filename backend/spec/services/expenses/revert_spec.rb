@@ -118,4 +118,26 @@ RSpec.describe Expenses::Revert do
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("This expense has already been reverted")
   end
+
+  it "refuses to revert when the event has no dates" do
+    expense_id = create_and_settle_expense(amount: 30)
+    DB[:events].where(id: event[:id]).update(start_date: nil, end_date: nil)
+
+    result = described_class.call(expense_id: expense_id, membership: membership, workspace_id: workspace[:id])
+    expect(result.failure?).to be true
+    expect(result.failure.message).to include("missing dates")
+  end
+
+  it "re-broadcasts the original so clients refresh its permissions" do
+    expense_id = create_and_settle_expense(amount: 30)
+
+    broadcast_ids = []
+    allow(Broadcaster).to receive(:object_changed) do |_type, id, **_kw|
+      broadcast_ids << id.to_s
+    end
+
+    described_class.call(expense_id: expense_id, membership: membership, workspace_id: workspace[:id])
+
+    expect(broadcast_ids).to include(expense_id.to_s)
+  end
 end

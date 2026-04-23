@@ -66,7 +66,16 @@ module Settlements
 
       if participants.any?
         total_factor = participants.sum(&:factor).to_f
-        return if total_factor <= 0
+        if total_factor <= 0
+          # Data-integrity warning: factor validation on expense create/update
+          # prevents this, so seeing it here means participant rows were
+          # mutated out of band. The payer was credited with paying but
+          # nobody will be charged a share, so transfers will be wrong.
+          APP_LOGGER.warn(
+            "[BalanceMath] expense #{expense_id} has participants with total_factor=#{total_factor}; skipping share distribution"
+          )
+          return
+        end
 
         participants.each do |p|
           share = (p.factor / total_factor) * amount
