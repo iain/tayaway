@@ -179,7 +179,7 @@ RSpec.describe PoolSerializer do
       settlement1_id = SecureRandom.uuid
       DB[:settlements].insert(id: settlement1_id, event_id: event[:id], user_id: user[:id], created_at: Time.now, updated_at: Time.now)
       settlement2_id = SecureRandom.uuid
-      DB[:settlements].insert(id: settlement2_id, event_id: event[:id], user_id: user2[:id], created_at: Time.now, updated_at: Time.now)
+      DB[:settlements].insert(id: settlement2_id, event_id: event[:id], user_id: user2[:id], previous_settlement_id: settlement1_id, created_at: Time.now, updated_at: Time.now)
 
       transfer_id = SecureRandom.uuid
       DB[:settlement_transfers].insert(

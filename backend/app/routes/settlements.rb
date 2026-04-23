@@ -58,8 +58,6 @@ class App
       end
     end
 
-    # GET /api/settlements/drift?event_id=xxx - Preview proposed top-up transfers
-    # without persisting. Used by the UI to show drift since the tip settlement.
     r.on "drift" do
       r.get do
         event_id = r.params["event_id"]

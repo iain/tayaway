@@ -186,15 +186,26 @@ function handleRevertClick(e: Event) {
   showRevertConfirm.value = true
 }
 
+const revertError = ref<string | null>(null)
+
 async function confirmRevert() {
   if (reverting.value) return
   reverting.value = true
+  revertError.value = null
   try {
     await expensesStore.revertExpense(props.expense.id)
     showRevertConfirm.value = false
+  } catch (err) {
+    revertError.value =
+      err instanceof Error ? err.message : 'Failed to revert expense'
   } finally {
     reverting.value = false
   }
+}
+
+function closeRevertModal() {
+  showRevertConfirm.value = false
+  revertError.value = null
 }
 
 const deleting = ref(false)
@@ -377,7 +388,7 @@ async function handleDelete(e: Event) {
     :open="showRevertConfirm"
     title="Revert this expense?"
     size="sm"
-    @close="showRevertConfirm = false"
+    @close="closeRevertModal"
   >
     <p class="text-sm text-gray-600 dark:text-stone-400">
       This adds a mirror-image entry of €{{ expense.amount.toFixed(2) }} that
@@ -385,12 +396,19 @@ async function handleDelete(e: Event) {
       you want to re-enter it with different details, add a new expense
       afterwards.
     </p>
+    <p
+      v-if="revertError"
+      role="alert"
+      class="mt-3 text-sm text-red-600 dark:text-red-400"
+    >
+      {{ revertError }}
+    </p>
     <div class="mt-6 flex justify-end gap-3">
       <AppButton
         variant="secondary"
         size="sm"
         :disabled="reverting"
-        @click="showRevertConfirm = false"
+        @click="closeRevertModal"
       >
         Cancel
       </AppButton>

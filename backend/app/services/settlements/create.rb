@@ -1,16 +1,6 @@
 # frozen_string_literal: true
 
 module Settlements
-  # Service to create a settlement for an event. Computes balances from expenses
-  # and attending RSVPs, then minimizes transfers using a greedy algorithm.
-  #
-  # Settlements form an immutable chain. When a prior settlement exists for the
-  # event, a new call becomes a "top-up" that links to the prior tip via
-  # previous_settlement_id and only captures the delta since then: the share
-  # change for already-settled expenses (because RSVPs moved) plus the full
-  # balance for any new unsettled expenses. Each settlement snapshots the
-  # attending RSVPs that its math assumed, so a later top-up can diff against
-  # the prior assumption rather than recomputing history.
   module Create
     class << self
       include Dry::Monads[:result]
@@ -32,19 +22,29 @@ module Settlements
         end
       end
 
-      # Run the entire settlement inside a single transaction with row-level locking.
-      # This prevents concurrent mutations from causing stale-data settlements and
-      # prevents two clients from both chaining a top-up onto the same tip.
       def settle(event, membership, workspace_id)
         settlement_id = SecureRandom.uuid
         now = Time.now
+        failure = nil
 
         DB.transaction do
+          # Event-level lock serializes concurrent settlement attempts for the
+          # same event. Without it, two callers who both observe an empty chain
+          # could each insert a root settlement and fork the chain.
+          DB[:events].where(id: event.id).for_update.first
+
           tip = Settlement.tip_for_event(event.id)
           if tip
-            DB[:settlements].where(id: tip.id).for_update.first
             if Settlement.successor?(tip.id)
-              return Failure(ServiceError.validation("These expenses were just settled by another member"))
+              failure = Failure(ServiceError.validation("These expenses were just settled by another member"))
+              raise Sequel::Rollback
+            end
+            if tip.rsvp_snapshot.nil?
+              failure = Failure(ServiceError.validation(
+                                  "This event's prior settlement is missing its RSVP snapshot — run the backfill before settling again"
+                                )
+                               )
+              raise Sequel::Rollback
             end
           end
 
@@ -60,18 +60,23 @@ module Settlements
                     .all
 
           if unsettled.empty? && settled.empty?
-            error_message = concurrent_settlement_exists?(event.id) ?
-              "These expenses were just settled by another member" :
-              "No unsettled expenses to settle"
-            return Failure(ServiceError.validation(error_message))
+            failure = Failure(ServiceError.validation(
+                                concurrent_settlement_exists?(event.id) ?
+                                  "These expenses were just settled by another member" :
+                                  "No unsettled expenses to settle"
+                              )
+                             )
+            raise Sequel::Rollback
           end
 
           current_rsvps = Rsvp.for_event(event.id).select(&:attending)
           if current_rsvps.empty?
             if tip.nil?
-              return Failure(ServiceError.validation("No attending RSVPs found for this event"))
+              failure = Failure(ServiceError.validation("No attending RSVPs found for this event"))
+              raise Sequel::Rollback
             elsif !unsettled.empty?
-              return Failure(ServiceError.validation("No one is currently attending — can't split the new expenses"))
+              failure = Failure(ServiceError.validation("No one is currently attending — can't split the new expenses"))
+              raise Sequel::Rollback
             end
           end
 
@@ -81,20 +86,28 @@ module Settlements
           expense_ids = (unsettled + settled).map { |e| e[:id].to_s }
           participants_by_expense = ExpenseParticipant.for_expenses(expense_ids)
 
-          balances = BalanceMath.compute_balances(
-            unsettled_expenses: unsettled,
-            settled_expenses: settled,
-            current_snapshot: current_snapshot,
-            prior_snapshot: prior_snapshot,
-            participants_by_expense: participants_by_expense
-          )
+          begin
+            balances = BalanceMath.compute_balances(
+              unsettled_expenses: unsettled,
+              settled_expenses: settled,
+              current_snapshot: current_snapshot,
+              prior_snapshot: prior_snapshot,
+              participants_by_expense: participants_by_expense
+            )
+          rescue BalanceMath::InputError => e
+            failure = Failure(ServiceError.conflict(e.message))
+            raise Sequel::Rollback
+          end
           transfers = BalanceMath.minimize_transfers(balances)
 
           if unsettled.empty? && transfers.empty?
-            error_message = concurrent_settlement_exists?(event.id) ?
-              "These expenses were just settled by another member" :
-              "Nothing to settle — the split is already up to date"
-            return Failure(ServiceError.validation(error_message))
+            failure = Failure(ServiceError.validation(
+                                concurrent_settlement_exists?(event.id) ?
+                                  "These expenses were just settled by another member" :
+                                  "Nothing to settle — the split is already up to date"
+                              )
+                             )
+            raise Sequel::Rollback
           end
 
           DB[:settlements].insert(
@@ -121,14 +134,19 @@ module Settlements
             Broadcaster.object_changed("settlement_transfer", transfer_id, workspace_id: workspace_id)
           end
 
-          unless unsettled.empty?
+          if unsettled.any?
             DB[:expenses]
               .where(event_id: event.id, settlement_id: nil)
               .update(settlement_id: settlement_id, updated_at: now)
           end
 
           Broadcaster.object_changed("settlement", settlement_id, workspace_id: workspace_id)
+          # Re-broadcast the prior tip so clients recompute "can delete" — it
+          # flips once a successor exists.
+          Broadcaster.object_changed("settlement", tip.id, workspace_id: workspace_id) if tip
         end
+
+        return failure if failure
 
         all_expenses = Expense.for_event(event.id)
         all_expenses.select { |e| e.settlement_id&.to_s == settlement_id }.each do |expense|
@@ -144,8 +162,6 @@ module Settlements
         Success({ objects: pool.to_a })
       end
 
-      # Returns true if a settlement for this event was created within the last 5 seconds,
-      # indicating a concurrent settlement request just completed ahead of this one.
       def concurrent_settlement_exists?(event_id)
         DB[:settlements]
           .where(event_id: event_id)

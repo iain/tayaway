@@ -35,9 +35,8 @@ class Settlement
     end
 
     # The tip is the unique settlement for the event that no other settlement
-    # references via previous_settlement_id. "Most recently created" is only a
-    # proxy; this definition is the structural one, enforced by the unique
-    # partial index on previous_settlement_id.
+    # references via previous_settlement_id. Uniqueness is enforced at the DB
+    # layer by the partial indexes on previous_settlement_id and event_id.
     def tip_for_event(event_id)
       dataset
         .where(event_id: event_id)
@@ -47,6 +46,7 @@ class Settlement
               .exclude(previous_settlement_id: nil)
               .select(:previous_settlement_id)
         )
+        .order(Sequel.desc(:created_at))
         .first
     end
 
@@ -93,11 +93,27 @@ class Settlement
 
     def parse_snapshot(value)
       return nil if value.nil?
-      return value.to_h if value.is_a?(Sequel::Postgres::JSONBObject)
-      return value if value.is_a?(Hash)
-      return JSON.parse(value) if value.is_a?(String)
 
-      raise TypeError, "Unexpected rsvp_snapshot type: #{value.class}"
+      parsed =
+        if value.is_a?(Sequel::Postgres::JSONBObject)
+          value.to_h
+        elsif value.is_a?(Hash)
+          value
+        elsif value.is_a?(String)
+          JSON.parse(value)
+        else
+          raise "Unexpected rsvp_snapshot type: #{value.class}"
+        end
+
+      rsvps = parsed["rsvps"]
+      raise "rsvp_snapshot missing 'rsvps' array" unless rsvps.is_a?(Array)
+      rsvps.each do |entry|
+        if !entry.is_a?(Hash) || entry["user_id"].nil? || entry["start_date"].nil? || entry["end_date"].nil?
+          raise "rsvp_snapshot entry is malformed: #{entry.inspect}"
+        end
+      end
+
+      parsed
     end
   end
 end

@@ -1,14 +1,9 @@
 # frozen_string_literal: true
 
 module Expenses
-  # Create a mirror-image expense that offsets an existing one. Copies the
-  # original's payer, dates, description, and participant factors; negates
-  # the amount; links back via reverts_expense_id.
-  #
-  # The reverted expense remains in the ledger — the revert is a new,
-  # unsettled row that participates in the next settlement/top-up. Callers
-  # pass only the target expense id; no other parameters are accepted, by
-  # design, so the operation has one deterministic outcome.
+  # Create a mirror-image expense that offsets an existing one. The reverted
+  # expense remains in the ledger; the revert is a new unsettled row that
+  # flows into the next settlement.
   module Revert
     class << self
       include Dry::Monads[:result]
@@ -16,24 +11,14 @@ module Expenses
       def call(expense_id:, membership:, workspace_id:)
         Expense.find_result(expense_id)
                .bind { |expense| ExpensePolicy.enforce(:revert, expense, membership: membership) }
-               .bind { |expense| check_not_already_reverted(expense) }
                .bind { |expense| check_event_ready(expense) }
                .bind { |expense| insert_revert(expense, membership, workspace_id) }
       end
 
       private
 
-      def check_not_already_reverted(expense)
-        if DB[:expenses].where(reverts_expense_id: expense.id).any?
-          Failure(ServiceError.validation("This expense has already been reverted"))
-        else
-          Success(expense)
-        end
-      end
-
       # The revert copies the original's dates verbatim. If the event has
-      # since lost its date range (rare, but possible via edit), the math
-      # downstream starts making unsafe assumptions. Refuse up-front.
+      # since lost its date range the downstream math becomes unsafe.
       def check_event_ready(expense)
         event = Event.find(expense.event_id)
         if event.nil? || event.start_date.nil? || event.end_date.nil?
@@ -46,8 +31,18 @@ module Expenses
       def insert_revert(original, membership, workspace_id)
         revert_id = SecureRandom.uuid
         now = Time.now
+        failure = nil
 
         DB.transaction do
+          # Lock the original so two concurrent revert attempts serialize; the
+          # loser sees the newly-inserted sibling and exits cleanly.
+          DB[:expenses].where(id: original.id).for_update.first
+
+          if DB[:expenses].where(reverts_expense_id: original.id).any?
+            failure = Failure(ServiceError.validation("This expense has already been reverted"))
+            raise Sequel::Rollback
+          end
+
           DB[:expenses].insert(
             id: revert_id,
             event_id: original.event_id,
@@ -78,10 +73,19 @@ module Expenses
           Broadcaster.object_changed("expense", original.id, workspace_id: workspace_id)
         end
 
+        return failure if failure
+
         pool = PoolSerializer.new(membership: membership)
         revert = Expense.find(revert_id)
-        pool.add(:expense, [revert, Expense.find(original.id)].compact)
+        return Failure(ServiceError.conflict("Revert was not persisted; retry")) if revert.nil?
+
+        refreshed_original = Expense.find(original.id)
+        pool.add(:expense, [revert, refreshed_original].compact)
         Success({ objects: pool.to_a })
+      rescue Sequel::UniqueConstraintViolation
+        Failure(ServiceError.validation("This expense has already been reverted"))
+      rescue Sequel::ForeignKeyConstraintViolation
+        Failure(ServiceError.validation("This expense was just deleted"))
       end
     end
   end

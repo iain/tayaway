@@ -27,7 +27,7 @@ RSpec.describe SettlementSerializer do
       s1_id = SecureRandom.uuid
       DB[:settlements].insert(id: s1_id, event_id: event[:id], user_id: user[:id], created_at: now, updated_at: now)
       s2_id = SecureRandom.uuid
-      DB[:settlements].insert(id: s2_id, event_id: event[:id], user_id: user[:id], created_at: now, updated_at: now)
+      DB[:settlements].insert(id: s2_id, event_id: event[:id], user_id: user[:id], previous_settlement_id: s1_id, created_at: now, updated_at: now)
       t_id = SecureRandom.uuid
       DB[:settlement_transfers].insert(
         id: t_id, settlement_id: s1_id, from_user_id: user[:id], to_user_id: user[:id],

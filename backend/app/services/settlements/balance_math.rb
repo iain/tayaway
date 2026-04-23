@@ -2,11 +2,13 @@
 
 module Settlements
   # Pure-function balance and transfer math shared by Create and Preview.
-  # Takes snapshots and expense rows as plain data; does not touch the DB.
   module BalanceMath
-    # Minimum absolute balance (in euros) treated as zero. Balances and transfer
-    # amounts below this threshold are ignored to avoid spurious micro-transfers
-    # from floating-point rounding after two decimal places of precision.
+    # Raised when balance inputs are inconsistent (e.g. zero total factor on
+    # an expense with participants, malformed snapshot dates). Callers should
+    # catch and surface as a ServiceError so the user sees a real message
+    # instead of a 500.
+    class InputError < StandardError; end
+
     BALANCE_EPSILON = 0.005
 
     module_function
@@ -26,12 +28,9 @@ module Settlements
       end
     end
 
-    # Positive balance = owes, negative = owed.
-    #
-    # For unsettled expenses: full share and paid contribute.
-    # For already-settled expenses: only the share *delta* between current and
-    # prior snapshot contributes — payments were already credited by prior
-    # settlements in the chain.
+    # Positive balance = owes, negative = owed. For already-settled expenses
+    # only the share *delta* between current and prior snapshot contributes —
+    # payments were already credited by prior settlements in the chain.
     def compute_balances(unsettled_expenses:, settled_expenses:, current_snapshot:, prior_snapshot:, participants_by_expense:)
       share_by_user = Hash.new(0.0)
       paid_by_user = Hash.new(0.0)
@@ -53,7 +52,7 @@ module Settlements
       balances = {}
       (share_by_user.keys + paid_by_user.keys).uniq.each do |uid|
         balance = (share_by_user[uid] - paid_by_user[uid]).round(2).to_f
-        balances[uid] = balance unless balance.abs < BALANCE_EPSILON
+        balances[uid] = balance if balance.abs >= BALANCE_EPSILON
       end
 
       balances
@@ -67,14 +66,8 @@ module Settlements
       if participants.any?
         total_factor = participants.sum(&:factor).to_f
         if total_factor <= 0
-          # Data-integrity warning: factor validation on expense create/update
-          # prevents this, so seeing it here means participant rows were
-          # mutated out of band. The payer was credited with paying but
-          # nobody will be charged a share, so transfers will be wrong.
-          APP_LOGGER.warn(
-            "[BalanceMath] expense #{expense_id} has participants with total_factor=#{total_factor}; skipping share distribution"
-          )
-          return
+          raise InputError,
+                "Expense #{expense_id} has participants with total_factor=#{total_factor}; cannot distribute shares"
         end
 
         participants.each do |p|
@@ -91,7 +84,6 @@ module Settlements
       rsvp_snapshot.each do |rd|
         rd_start = date_from(rd["start_date"])
         rd_end = date_from(rd["end_date"])
-        next unless rd_start && rd_end
 
         overlap_start = [expense_start, rd_start].max
         overlap_end = [expense_end, rd_end].min
@@ -112,15 +104,13 @@ module Settlements
       end
     end
 
-    # Snapshots are written by snapshot_rsvps in a known YYYY-MM-DD format, so
-    # a parse failure here means the persisted snapshot was tampered with or a
-    # schema assumption changed. Don't paper over it — let the caller surface
-    # the error rather than silently dropping the RSVP from the overlap math.
     def date_from(value)
       return value if value.is_a?(Date)
-      return nil if value.nil? || value.to_s.empty?
+      raise InputError, "Snapshot date is missing or malformed: #{value.inspect}" if value.nil? || value.to_s.empty?
 
       Date.strptime(value.to_s, "%Y-%m-%d")
+    rescue Date::Error => e
+      raise InputError, "Snapshot date #{value.inspect} is not YYYY-MM-DD: #{e.message}"
     end
 
     def minimize_transfers(balances)

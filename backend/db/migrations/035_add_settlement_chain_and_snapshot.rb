@@ -11,6 +11,12 @@ Sequel.migration do
       add_index :previous_settlement_id, # rubocop:disable Sequel/ConcurrentIndex
                 unique: true,
                 where: Sequel.lit("previous_settlement_id IS NOT NULL")
+      # At most one root per event. Combined with the lock in Settlements::Create,
+      # this makes a forked chain impossible even under a concurrent race.
+      add_index :event_id, # rubocop:disable Sequel/ConcurrentIndex
+                unique: true,
+                name: :settlements_root_per_event_unique,
+                where: Sequel.lit("previous_settlement_id IS NULL")
       add_column :rsvp_snapshot, :jsonb, null: true
     end
 
@@ -20,7 +26,11 @@ Sequel.migration do
       # being hard-deleted out of band doesn't orphan the revert's ledger
       # contribution.
       add_foreign_key :reverts_expense_id, :expenses, type: :uuid, null: true, on_delete: :set_null
-      add_index :reverts_expense_id # rubocop:disable Sequel/ConcurrentIndex
+      # Unique partial index prevents two concurrent revert attempts from both
+      # landing a mirror-image expense on the same original.
+      add_index :reverts_expense_id, # rubocop:disable Sequel/ConcurrentIndex
+                unique: true,
+                where: Sequel.lit("reverts_expense_id IS NOT NULL")
     end
   end
 end

@@ -1,11 +1,8 @@
 # frozen_string_literal: true
 
 module Settlements
-  # Read-only: computes what a top-up settlement *would* produce right now for
-  # the tip of an event's settlement chain, without persisting anything.
-  # Provides a server-authoritative parity check; the UI currently derives an
-  # equivalent preview client-side. Callers must authorize workspace access
-  # before invoking — the service itself does not.
+  # Read-only preview of the next top-up. Callers must authorize workspace
+  # access; this service does not.
   module PreviewDrift
     class << self
       include Dry::Monads[:result]
@@ -51,6 +48,8 @@ module Settlements
             { fromUserId: t[:from_user_id], toUserId: t[:to_user_id], amount: t[:amount] }
           }
         )
+      rescue BalanceMath::InputError => e
+        Failure(ServiceError.conflict(e.message))
       end
 
       def empty_preview(tip)
