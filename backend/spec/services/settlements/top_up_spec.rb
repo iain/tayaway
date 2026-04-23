@@ -360,6 +360,42 @@ RSpec.describe "Settlement chain" do
       expect(transfers.first[:toUserId].to_s).to eq(bob[:id].to_s)
       expect(transfers.first[:amount]).to eq(45.0)
     end
+
+    # Invariant: a revert fully undoes the original regardless of how RSVPs
+    # have drifted between the original's settlement and the top-up. The
+    # revert computes shares against current RSVPs (possibly asymmetric),
+    # the settled-expense snapshot-diff picks up the equal-and-opposite
+    # correction, and the two always sum to -(original's prior share).
+    #
+    # Concrete walk: Alice pays 90 over Jan 1-3 split equally with Bob
+    # (both attending full range). Settlement 1 records Bob→Alice 45.
+    # Bob then shortens his RSVP to Jan 1-2 (two days instead of three).
+    # Alice reverts the original. The top-up should transfer exactly 45
+    # back from Alice to Bob, so the two settlements net to zero movement.
+    it "fully undoes the original even when an RSVP range has shifted" do
+      alice_membership = TestFactories.workspace_membership(workspace: workspace, user: alice)
+      alice_membership = WorkspaceMembership.find(alice_membership[:id])
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      bob_rsvp = TestFactories.rsvp(event: event, user: bob, attending: true)
+      expense_id = insert_expense(user: alice, amount: 90)
+
+      create_call # settlement 1: Bob → Alice 45
+
+      DB[:rsvps].where(id: bob_rsvp[:id]).update(
+        start_date: Date.new(2026, 1, 1),
+        end_date: Date.new(2026, 1, 2)
+      )
+
+      Expenses::Revert.call(expense_id: expense_id, membership: alice_membership, workspace_id: workspace[:id])
+
+      top_up = create_call
+      expect(top_up.success?).to be true
+      transfers = transfers_from(top_up)
+      expect(transfers.length).to eq(1)
+      expect(transfers.first[:fromUserId].to_s).to eq(alice[:id].to_s)
+      expect(transfers.first[:toUserId].to_s).to eq(bob[:id].to_s)
+      expect(transfers.first[:amount]).to eq(45.0)
+    end
   end
 
   describe "un-RSVP between settlements" do
