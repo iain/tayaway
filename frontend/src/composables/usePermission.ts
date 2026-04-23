@@ -26,8 +26,10 @@ export type PermissionUx =
   | { behavior: 'disabled'; tooltip: string }
   | { behavior: 'modal'; message: string }
 
-// Reasons that should hide the element entirely — the user has no path to
-// making this action succeed (wrong role, not the creator/owner).
+// Reasons that should hide the element entirely. If the user has no path to
+// making the action succeed here-and-now, we don't want a disabled affordance
+// whispering about it — either another affordance (like Revert) is the right
+// path, or the action simply isn't theirs to take.
 const HIDE_REASONS = new Set([
   'not_owner',
   'not_creator',
@@ -40,13 +42,12 @@ const HIDE_REASONS = new Set([
   'not_settled',
   'revert_of_revert',
   'is_revert',
+  'settled',
 ])
 
 // Reasons that should show a disabled element with a tooltip — the user is
 // the right person but a temporary/fixable condition blocks them.
-const DISABLE_REASONS: Record<string, string> = {
-  settled: 'Part of a settlement — delete the settlement to edit',
-}
+const DISABLE_REASONS: Record<string, string> = {}
 
 // Reasons that should show an explanation modal — the user needs context
 // about what to do next.
