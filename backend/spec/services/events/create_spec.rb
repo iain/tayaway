@@ -227,27 +227,23 @@ RSpec.describe Events::Create do
     expect(result.failure.message).to eq("Longitude must be between -180 and 180")
   end
 
-  it "handles TOCTOU race: returns existing event when concurrent insert wins" do
+  it "returns the existing event when the client-provided id already exists" do
     user = TestFactories.user
     workspace = TestFactories.workspace
     membership = membership_for(user, workspace)
     client_id = SecureRandom.uuid
 
-    # Pre-insert an event with this ID (simulates concurrent request that won the race)
-    TestFactories.event(id: client_id, user: user, workspace: workspace, name: "Test")
-    existing_event = Event.find(client_id)
-
-    # Simulate the TOCTOU race: the early idempotency check sees nil (the race window),
-    # so the service proceeds to insert and hits UniqueConstraintViolation.
-    allow(Event).to receive(:find).with(client_id).and_return(nil, existing_event)
+    TestFactories.event(id: client_id, user: user, workspace: workspace, name: "Original")
 
     result = described_class.call(
-      workspace_id: workspace[:id], membership: membership, name: "Test", description: nil, id: client_id
+      workspace_id: workspace[:id], membership: membership, name: "Replayed", description: nil, id: client_id
     )
 
     expect(result.success?).to be true
     event = result.value![:objects].find { |o| o[:objectType] == "event" }
     expect(event[:id]).to eq(client_id)
+    # Conflict is a no-op: the original name is preserved.
+    expect(DB[:events].where(id: client_id).get(:name)).to eq("Original")
     expect(DB[:events].where(id: client_id).count).to eq(1)
   end
 end

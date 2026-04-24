@@ -361,34 +361,30 @@ RSpec.describe Expenses::Create do
     end
   end
 
-  it "handles TOCTOU race: returns existing expense when concurrent insert wins" do
+  it "returns the existing expense when the client-provided id already exists" do
     TestFactories.rsvp(event: event, user: user, attending: true)
     client_id = SecureRandom.uuid
     now = Time.now
 
-    # Pre-insert an expense with this ID (simulates concurrent request that won the race)
     DB[:expenses].insert(
       id: client_id,
       event_id: event[:id],
       user_id: user[:id],
       amount: 42.50,
-      description: "Dinner",
+      description: "Original",
       start_date: Date.parse("2026-01-01"),
       end_date: Date.parse("2026-01-01"),
       created_at: now,
       updated_at: now
     )
-    existing_expense = Expense.find(client_id)
-
-    # Simulate the TOCTOU race: the early idempotency check sees nil (the race window),
-    # so the service proceeds to insert and hits UniqueConstraintViolation.
-    allow(Expense).to receive(:find).with(client_id).and_return(nil, existing_expense)
 
     result = described_class.call(**valid_params, id: client_id)
 
     expect(result.success?).to be true
     expense = result.value![:objects].find { |o| o[:objectType] == "expense" }
     expect(expense[:id]).to eq(client_id)
+    # Conflict is a no-op: original description is preserved.
+    expect(DB[:expenses].where(id: client_id).get(:description)).to eq("Original")
     expect(DB[:expenses].where(id: client_id).count).to eq(1)
   end
 end

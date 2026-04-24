@@ -31,30 +31,32 @@ module Expenses
       def insert_revert(original, membership, workspace_id)
         revert_id = SecureRandom.uuid
         now = Time.now
-        failure = nil
 
+        inserted = nil
         DB.transaction do
-          # Lock the original so two concurrent revert attempts serialize; the
-          # loser sees the newly-inserted sibling and exits cleanly.
-          DB[:expenses].where(id: original.id).for_update.first
+          # ON CONFLICT on the partial unique index means concurrent revert
+          # attempts serialize at the DB; the loser gets back nil and we bail.
+          inserted = DB[:expenses]
+                     .returning(:id)
+                     .insert_conflict(
+                       target: :reverts_expense_id,
+                       conflict_where: Sequel.lit("reverts_expense_id IS NOT NULL")
+                     )
+                     .insert(
+                       id: revert_id,
+                       event_id: original.event_id,
+                       user_id: original.user_id,
+                       reverts_expense_id: original.id,
+                       amount: -original.amount,
+                       description: "Reverts: #{original.description}",
+                       start_date: original.start_date,
+                       end_date: original.end_date,
+                       created_at: now,
+                       updated_at: now
+                     )
+                     .first
 
-          if DB[:expenses].where(reverts_expense_id: original.id).any?
-            failure = Failure(ServiceError.validation("This expense has already been reverted"))
-            raise Sequel::Rollback
-          end
-
-          DB[:expenses].insert(
-            id: revert_id,
-            event_id: original.event_id,
-            user_id: original.user_id,
-            reverts_expense_id: original.id,
-            amount: -original.amount,
-            description: "Reverts: #{original.description}",
-            start_date: original.start_date,
-            end_date: original.end_date,
-            created_at: now,
-            updated_at: now
-          )
+          next unless inserted
 
           ExpenseParticipant.for_expense(original.id).each do |participant|
             DB[:expense_participants].insert(
@@ -73,7 +75,7 @@ module Expenses
           Broadcaster.object_changed("expense", original.id, workspace_id: workspace_id)
         end
 
-        return failure if failure
+        return Failure(ServiceError.validation("This expense has already been reverted")) unless inserted
 
         pool = PoolSerializer.new(membership: membership)
         revert = Expense.find(revert_id)
@@ -82,8 +84,6 @@ module Expenses
         refreshed_original = Expense.find(original.id)
         pool.add(:expense, [revert, refreshed_original].compact)
         Success({ objects: pool.to_a })
-      rescue Sequel::UniqueConstraintViolation
-        Failure(ServiceError.validation("This expense has already been reverted"))
       rescue Sequel::ForeignKeyConstraintViolation
         Failure(ServiceError.validation("This expense was just deleted"))
       end

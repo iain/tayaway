@@ -159,45 +159,34 @@ module Expenses
       end
 
       def create_expense(event_id, membership, workspace_id, valid, id)
-        # Idempotent replay: if client provided an ID and it already exists, return it
-        if id
-          existing = Expense.find(id)
-          if existing
-            pool = PoolSerializer.new(membership: membership)
-            pool.add(:expense, [existing])
-            return Success({ objects: pool.to_a })
-          end
-        end
+        now = Time.now
+        expense_id = id || SecureRandom.uuid
 
-        expense = begin
-          DB.transaction do
-            now = Time.now
-            expense_id = id || SecureRandom.uuid
+        DB.transaction do
+          inserted = DB[:expenses]
+                     .returning(:id)
+                     .insert_conflict
+                     .insert(
+                       id: expense_id,
+                       event_id: event_id,
+                       user_id: membership.user_id,
+                       amount: valid[:amount],
+                       description: valid[:description],
+                       start_date: valid[:start_date],
+                       end_date: valid[:end_date],
+                       created_at: now,
+                       updated_at: now
+                     )
+                     .first
 
-            DB[:expenses].insert(
-              id: expense_id,
-              event_id: event_id,
-              user_id: membership.user_id,
-              amount: valid[:amount],
-              description: valid[:description],
-              start_date: valid[:start_date],
-              end_date: valid[:end_date],
-              created_at: now,
-              updated_at: now
-            )
-
+          if inserted
             insert_participants(expense_id, valid[:participants], workspace_id)
-
             Broadcaster.object_changed("expense", expense_id, workspace_id: workspace_id)
-
-            Expense.find(expense_id)
           end
-        rescue Sequel::UniqueConstraintViolation
-          Expense.find(id)
         end
 
         pool = PoolSerializer.new(membership: membership)
-        pool.add(:expense, [expense])
+        pool.add(:expense, [Expense.find(expense_id)])
 
         Success({ objects: pool.to_a })
       end

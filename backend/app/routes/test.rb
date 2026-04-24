@@ -39,32 +39,29 @@ class App
           next { error: "User not found" }
         end
 
-        existing = WorkspaceMembership.find_by_workspace_and_user(workspace_id, user.id)
-        if existing
-          response.status = 200
-          next { member_id: existing.id.to_s }
-        end
-
         now = Time.now
         membership_id = SecureRandom.uuid
-        begin
-          DB[:workspace_memberships].insert(
-            id: membership_id,
-            workspace_id: workspace_id,
-            user_id: user.id.to_s,
-            role: "member",
-            created_at: now
-          )
-        rescue Sequel::UniqueConstraintViolation
-          # Race condition: another request inserted between our check and insert
-          existing = WorkspaceMembership.find_by_workspace_and_user(workspace_id, user.id)
-          response.status = 200
-          next { member_id: existing.id.to_s }
-        end
-        Broadcaster.object_changed("member", membership_id, workspace_id: workspace_id)
+        inserted = DB[:workspace_memberships]
+                   .returning(:id)
+                   .insert_conflict(target: %i[workspace_id user_id])
+                   .insert(
+                     id: membership_id,
+                     workspace_id: workspace_id,
+                     user_id: user.id.to_s,
+                     role: "member",
+                     created_at: now
+                   )
+                   .first
 
-        response.status = 201
-        { member_id: membership_id }
+        if inserted
+          Broadcaster.object_changed("member", membership_id, workspace_id: workspace_id)
+          response.status = 201
+          next { member_id: membership_id }
+        end
+
+        existing = WorkspaceMembership.find_by_workspace_and_user(workspace_id, user.id)
+        response.status = 200
+        { member_id: existing.id.to_s }
       end
     end
 
