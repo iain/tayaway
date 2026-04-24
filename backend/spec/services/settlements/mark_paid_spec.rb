@@ -95,4 +95,20 @@ RSpec.describe Settlements::MarkPaid do
     expect(result.failure.http_status).to eq(403)
     expect(result.failure.message).to eq("not_recipient")
   end
+
+  it "refuses to mark a superseded transfer as paid" do
+    transfer_id = create_transfer
+    DB[:settlement_transfers].where(id: transfer_id).update(superseded_at: Time.now)
+
+    result = described_class.call(
+      transfer_id: transfer_id,
+      paid: true,
+      membership: membership_for(recipient),
+      workspace_id: workspace[:id]
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.http_status).to eq(403)
+    expect(result.failure.message).to eq("superseded")
+  end
 end

@@ -29,6 +29,7 @@ module Settlements
       def delete_settlement(settlement, workspace_id, membership)
         pool = PoolSerializer.new(membership: membership)
         deleted = []
+        restored_ids = []
 
         DB.transaction do
           # Clear settlement_id on tagged expenses and broadcast each
@@ -48,6 +49,21 @@ module Settlements
             deleted << { objectType: "settlementTransfer", id: tid.to_s }
           end
 
+          # Un-supersede the predecessor's transfers — this tip is what
+          # superseded them, so deleting it must bring them back as active
+          # obligations.
+          if settlement.previous_settlement_id
+            restored_ids = DB[:settlement_transfers]
+                           .where(settlement_id: settlement.previous_settlement_id)
+                           .exclude(superseded_at: nil)
+                           .select_map(:id)
+            if restored_ids.any?
+              DB[:settlement_transfers]
+                .where(id: restored_ids)
+                .update(superseded_at: nil, updated_at: Time.now)
+            end
+          end
+
           # Record settlement deletion
           DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "settlement", object_id: settlement.id)
           Broadcaster.object_deleted("settlement", settlement.id, workspace_id: workspace_id)
@@ -55,10 +71,17 @@ module Settlements
 
           # Delete settlement (cascades to transfers)
           DB[:settlements].where(id: settlement.id).delete
+
+          restored_ids.each do |tid|
+            Broadcaster.object_changed("settlement_transfer", tid, workspace_id: workspace_id)
+          end
         end
 
         # Re-fetch updated expenses for the response
         pool.add(:expense, Expense.for_event(settlement.event_id))
+        if restored_ids.any?
+          pool.add(:settlement_transfer, restored_ids.filter_map { |tid| SettlementTransfer.find(tid) })
+        end
 
         Success({ objects: pool.to_a, deleted: deleted })
       end

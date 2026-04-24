@@ -23,29 +23,40 @@ module Settlements
           return Success(empty_preview(tip))
         end
 
-        # Mirror Create's guards so the preview never disagrees with what a
-        # subsequent Create call would produce.
-        if tip && tip.rsvp_snapshot.nil?
-          return Success(empty_preview(tip))
-        end
-
         current_rsvps = Rsvp.for_event(event.id).select(&:attending)
         if current_rsvps.empty?
           return Success(empty_preview(tip))
         end
 
         current_snapshot = BalanceMath.snapshot_rsvps(current_rsvps, event)
-        prior_snapshot = tip&.rsvp_snapshot&.dig("rsvps")
 
-        expense_ids = (unsettled + settled).map { |e| e[:id].to_s }
+        all_expenses = unsettled + settled
+        expense_ids = all_expenses.map { |e| e[:id].to_s }
         participants_by_expense = ExpenseParticipant.for_expenses(expense_ids)
 
-        balances = BalanceMath.compute_balances(
-          unsettled_expenses: unsettled,
-          settled_expenses: settled,
+        active_transfers = DB[:settlement_transfers]
+                           .join(:settlements, id: :settlement_id)
+                           .where(Sequel[:settlements][:event_id] => event.id)
+                           .where(Sequel[:settlement_transfers][:superseded_at] => nil)
+                           .select_all(:settlement_transfers)
+                           .all
+        paid_transfers = active_transfers.reject { |t| t[:paid_at].nil? }
+
+        residual = BalanceMath.compute_balances(
+          expenses: all_expenses,
           current_snapshot: current_snapshot,
-          prior_snapshot: prior_snapshot,
-          participants_by_expense: participants_by_expense
+          participants_by_expense: participants_by_expense,
+          paid_transfers: active_transfers
+        )
+        if unsettled.empty? && residual.empty?
+          return Success(empty_preview(tip))
+        end
+
+        balances = BalanceMath.compute_balances(
+          expenses: all_expenses,
+          current_snapshot: current_snapshot,
+          participants_by_expense: participants_by_expense,
+          paid_transfers: paid_transfers
         )
         transfers = BalanceMath.minimize_transfers(balances)
 

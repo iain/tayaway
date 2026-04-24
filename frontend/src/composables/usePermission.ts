@@ -43,6 +43,7 @@ const HIDE_REASONS = new Set([
   'revert_of_revert',
   'is_revert',
   'settled',
+  'superseded',
 ])
 
 // Reasons that should show a disabled element with a tooltip — the user is

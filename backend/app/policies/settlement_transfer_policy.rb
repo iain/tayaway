@@ -9,10 +9,13 @@ class SettlementTransferPolicy
     @transfer = transfer
     @recipient = transfer.to_user_id == membership.user_id
     @sender = transfer.from_user_id == membership.user_id
+    @superseded = !transfer.superseded_at.nil?
   end
 
   def mark_paid
-    if @recipient
+    if @superseded
+      Failure(:superseded)
+    elsif @recipient
       Success()
     else
       Failure(:not_recipient)
@@ -20,7 +23,9 @@ class SettlementTransferPolicy
   end
 
   def generate_qr
-    if @sender
+    if @superseded
+      Failure(:superseded)
+    elsif @sender
       Success()
     else
       Failure(:not_sender)

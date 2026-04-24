@@ -149,6 +149,7 @@ export interface ObjectTypeMap {
     toUserId: string | null
     amount: number
     paidAt: string | null
+    supersededAt: string | null
     createdAt: string
   }
   choreRoster: PoolObjectBase<'choreRoster'> & {

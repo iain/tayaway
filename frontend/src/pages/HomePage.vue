@@ -45,7 +45,10 @@ const myUnpaidTransfers = computed(() => {
   return pool
     .getAll('settlementTransfer')
     .filter(
-      (t) => t.paidAt === null && (t.fromUserId === uid || t.toUserId === uid)
+      (t) =>
+        t.paidAt === null &&
+        !t.supersededAt &&
+        (t.fromUserId === uid || t.toUserId === uid)
     )
 })
 
@@ -88,7 +91,7 @@ const unpaidTransferCountByEvent = computed<Map<string, number>>(() => {
   }
   const counts = new Map<string, number>()
   for (const t of pool.getAll('settlementTransfer')) {
-    if (!t.paidAt) {
+    if (!t.paidAt && !t.supersededAt) {
       const eventId = eventBySettlement.get(t.settlementId)
       if (eventId) {
         counts.set(eventId, (counts.get(eventId) ?? 0) + 1)

@@ -14,6 +14,7 @@ class SettlementTransferSerializer
           toUserId: transfer.to_user_id&.to_s,
           amount: transfer.amount,
           paidAt: transfer.paid_at&.iso8601(3),
+          supersededAt: transfer.superseded_at&.iso8601(3),
           createdAt: transfer.created_at.iso8601(3),
           updatedAt: transfer.updated_at.iso8601(3)
         }
