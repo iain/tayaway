@@ -37,6 +37,26 @@ RSpec.describe Expenses::Revert do
     expense_id
   end
 
+  it "reverts after a 3-attendee settlement (regression for e2e chain flow)" do
+    third = TestFactories.user
+    TestFactories.workspace_membership(workspace: workspace, user: third)
+    TestFactories.rsvp(event: event, user: creator, attending: true)
+    TestFactories.rsvp(event: event, user: other, attending: true)
+    TestFactories.rsvp(event: event, user: third, attending: true)
+    expense_id = Expenses::Create.call(
+      event_id: event[:id],
+      membership: membership,
+      workspace_id: workspace[:id],
+      description: "Groceries",
+      amount: 90,
+      start_date: "2026-01-01",
+      end_date: "2026-01-03"
+    ).value![:objects].find { |o| o[:objectType] == "expense" }[:id]
+
+    expect(Settlements::Create.call(event_id: event[:id], membership: membership, workspace_id: workspace[:id]).success?).to be true
+    expect(described_class.call(expense_id: expense_id, membership: membership, workspace_id: workspace[:id]).success?).to be true
+  end
+
   it "creates a mirror-image expense linked to the original" do
     expense_id = create_and_settle_expense(amount: 30)
 
