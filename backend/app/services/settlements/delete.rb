@@ -10,29 +10,33 @@ module Settlements
       def call(settlement_id:, membership:, workspace_id:)
         Settlement.find_result(settlement_id)
                   .bind { |settlement| SettlementPolicy.enforce(:delete, settlement, membership: membership) }
-                  .bind { |settlement| check_tip(settlement) }
                   .bind { |settlement| delete_settlement(settlement, workspace_id, membership) }
       end
 
       private
 
-      # Only the tip of the chain can be deleted. Mid-chain delete would
-      # orphan the superseded transfers that only the successor's deletion
-      # is allowed to restore.
-      def check_tip(settlement)
-        if Settlement.successor?(settlement.id)
-          Failure(ServiceError.validation("Delete the most recent settlement first"))
-        else
-          Success(settlement)
-        end
-      end
-
       def delete_settlement(settlement, workspace_id, membership)
         pool = PoolSerializer.new(membership: membership)
         deleted = []
         restored_ids = []
+        failure = nil
 
         DB.transaction do
+          # Event-level lock serializes delete against concurrent Create and
+          # MarkPaid calls on the same event. Without it, a successor could
+          # land between the tip check and the actual delete (the DB FK
+          # would catch it, but the user would see a raw constraint error
+          # instead of a clean race message).
+          DB[:events].where(id: settlement.event_id).for_update.first
+
+          # Only the tip of the chain can be deleted. Mid-chain delete would
+          # orphan the superseded transfers that only the successor's
+          # deletion is allowed to restore.
+          if Settlement.successor?(settlement.id)
+            failure = Failure(ServiceError.validation("Delete the most recent settlement first"))
+            raise Sequel::Rollback
+          end
+
           # Clear settlement_id on tagged expenses and broadcast each
           expense_ids = DB[:expenses].where(settlement_id: settlement.id).select_map(:id)
           if expense_ids.any?
@@ -84,6 +88,8 @@ module Settlements
             Broadcaster.object_changed("settlement", settlement.previous_settlement_id, workspace_id: workspace_id)
           end
         end
+
+        return failure if failure
 
         # Re-fetch updated expenses for the response
         pool.add(:expense, Expense.for_event(settlement.event_id))
