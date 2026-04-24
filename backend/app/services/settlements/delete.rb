@@ -16,8 +16,9 @@ module Settlements
 
       private
 
-      # Only the tip of the chain can be deleted. Deleting a mid-chain settlement
-      # would invalidate the snapshot that its successor diffed against.
+      # Only the tip of the chain can be deleted. Mid-chain delete would
+      # orphan the superseded transfers that only the successor's deletion
+      # is allowed to restore.
       def check_tip(settlement)
         if Settlement.successor?(settlement.id)
           Failure(ServiceError.validation("Delete the most recent settlement first"))
@@ -75,12 +76,23 @@ module Settlements
           restored_ids.each do |tid|
             Broadcaster.object_changed("settlement_transfer", tid, workspace_id: workspace_id)
           end
+
+          # The predecessor's permissions.delete flipped from false to true
+          # now that its successor is gone — clients need the fresh payload
+          # to surface the delete affordance again.
+          if settlement.previous_settlement_id
+            Broadcaster.object_changed("settlement", settlement.previous_settlement_id, workspace_id: workspace_id)
+          end
         end
 
         # Re-fetch updated expenses for the response
         pool.add(:expense, Expense.for_event(settlement.event_id))
         if restored_ids.any?
           pool.add(:settlement_transfer, restored_ids.filter_map { |tid| SettlementTransfer.find(tid) })
+        end
+        if settlement.previous_settlement_id
+          predecessor = Settlement.find(settlement.previous_settlement_id)
+          pool.add(:settlement, [predecessor]) if predecessor
         end
 
         Success({ objects: pool.to_a, deleted: deleted })

@@ -46,7 +46,7 @@ module Settlements
           expenses: all_expenses,
           current_snapshot: current_snapshot,
           participants_by_expense: participants_by_expense,
-          paid_transfers: active_transfers
+          credited_transfers: active_transfers
         )
         if unsettled.empty? && residual.empty?
           return Success(empty_preview(tip))
@@ -56,7 +56,7 @@ module Settlements
           expenses: all_expenses,
           current_snapshot: current_snapshot,
           participants_by_expense: participants_by_expense,
-          paid_transfers: paid_transfers
+          credited_transfers: paid_transfers
         )
         transfers = BalanceMath.minimize_transfers(balances)
 

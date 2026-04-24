@@ -219,7 +219,7 @@ describe('unpaidTransferCountByEvent aggregation', () => {
     }
     const counts = new Map<string, number>()
     for (const t of pool.getAll('settlementTransfer')) {
-      if (!t.paidAt) {
+      if (!t.paidAt && !t.supersededAt) {
         const eventId = eventBySettlement.get(t.settlementId)
         if (eventId) counts.set(eventId, (counts.get(eventId) ?? 0) + 1)
       }
@@ -246,7 +246,7 @@ describe('unpaidTransferCountByEvent aggregation', () => {
     }
     const counts = new Map<string, number>()
     for (const t of pool.getAll('settlementTransfer')) {
-      if (!t.paidAt) {
+      if (!t.paidAt && !t.supersededAt) {
         const eventId = eventBySettlement.get(t.settlementId)
         if (eventId) counts.set(eventId, (counts.get(eventId) ?? 0) + 1)
       }

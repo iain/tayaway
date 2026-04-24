@@ -18,7 +18,17 @@ module Settlements
       def update_paid(transfer, paid, workspace_id, membership)
         paid_at = paid ? Time.now : nil
 
-        DB[:settlement_transfers].where(id: transfer.id).update(paid_at: paid_at)
+        # A concurrent top-up may have superseded this transfer between the
+        # policy check and the update. Filtering on superseded_at prevents
+        # the toggle from silently landing on a stale row; we surface a
+        # conflict so the client can refresh.
+        rows_affected = DB[:settlement_transfers]
+                        .where(id: transfer.id, superseded_at: nil)
+                        .update(paid_at: paid_at)
+        if rows_affected.zero?
+          return Failure(ServiceError.conflict("This transfer was superseded by a newer settlement"))
+        end
+
         Broadcaster.object_changed("settlement_transfer", transfer.id, workspace_id: workspace_id)
 
         updated = SettlementTransfer.find(transfer.id)

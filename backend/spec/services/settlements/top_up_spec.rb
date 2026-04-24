@@ -228,6 +228,62 @@ RSpec.describe "Settlement chain" do
 
       expect(SettlementTransfer.find(prior_transfer_id).superseded_at).to be_nil
     end
+
+    # Deleting the tip must only restore transfers that *this* tip
+    # superseded — transfers superseded by an earlier settlement must stay
+    # superseded. In a 3-chain, settlement 2's superseded transfers (from
+    # settlement 1) must remain superseded even when settlement 3 is deleted.
+    it "leaves earlier-chain supersessions intact when only the tip is deleted" do
+      insert_expense(user: alice, amount: 60)
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      TestFactories.rsvp(event: event, user: bob, attending: true)
+      first = create_call
+      settlement1_transfer = transfers_from(first).first[:id]
+
+      TestFactories.rsvp(event: event, user: carol, attending: true)
+      second = create_call
+      settlement2_transfer_ids = transfers_from(second).map { |t| t[:id] }
+
+      dave = TestFactories.user(name: "Dave")
+      TestFactories.rsvp(event: event, user: dave, attending: true)
+      third = create_call
+      third_id = settlements_from(third).first[:id]
+
+      expect(SettlementTransfer.find(settlement1_transfer).superseded_at).not_to be_nil
+      settlement2_transfer_ids.each do |tid|
+        expect(SettlementTransfer.find(tid).superseded_at).not_to be_nil
+      end
+
+      Settlements::Delete.call(settlement_id: third_id, membership: creator_membership, workspace_id: workspace[:id])
+
+      # Settlement 2's transfers are restored (they were superseded by the tip).
+      settlement2_transfer_ids.each do |tid|
+        expect(SettlementTransfer.find(tid).superseded_at).to be_nil
+      end
+      # Settlement 1's transfer stays superseded — that was settlement 2's doing.
+      expect(SettlementTransfer.find(settlement1_transfer).superseded_at).not_to be_nil
+    end
+
+    it "re-broadcasts the predecessor settlement so its delete permission refreshes" do
+      insert_expense(user: alice, amount: 60)
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      TestFactories.rsvp(event: event, user: bob, attending: true)
+      first = create_call
+      first_id = settlements_from(first).first[:id]
+
+      TestFactories.rsvp(event: event, user: carol, attending: true)
+      second = create_call
+      second_id = settlements_from(second).first[:id]
+
+      broadcast_ids = []
+      allow(Broadcaster).to receive(:object_changed) do |type, id, **_kw|
+        broadcast_ids << [type, id.to_s]
+      end
+
+      Settlements::Delete.call(settlement_id: second_id, membership: creator_membership, workspace_id: workspace[:id])
+
+      expect(broadcast_ids).to include(["settlement", first_id.to_s])
+    end
   end
 
   describe "PreviewDrift" do
@@ -597,11 +653,11 @@ RSpec.describe "Settlement chain" do
   end
 
   describe "late-joining attendee with an unpaid prior settlement" do
-    # The bug this flow was designed to fix: Alice paid 100, Bob was charged
-    # 50 but hadn't paid. Charlie then joins. The wrong answer is "Charlie
-    # owes Bob and Alice each 16.67" — Bob never paid anything and getting
-    # money from Charlie makes no sense. The right answer is "Bob and Charlie
-    # each owe Alice 33.33", which is what the supersede flow produces.
+    # Invariant: only paid transfers represent money that actually moved, so
+    # a debtor whose obligation was never executed must not receive
+    # counter-transfers from a newly-arrived attendee. Every late joiner (and
+    # every previously-charged but unpaid debtor) still owes the payer their
+    # fresh fair share.
     it "issues fair-share transfers into Alice and nobody pays Bob" do
       insert_expense(user: alice, amount: 100)
       TestFactories.rsvp(event: event, user: alice, attending: true)
@@ -644,6 +700,104 @@ RSpec.describe "Settlement chain" do
         [t[:fromUserId].to_s, t[:toUserId].to_s, t[:amount].round(2)]
       }.sort
       expect(preview_set).to eq(actual_set)
+    end
+
+    it "agrees with Create when the prior chain mixes paid and unpaid transfers" do
+      insert_expense(user: alice, amount: 120)
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.rsvp(event: event, user: carol, attending: true)
+      first = create_call
+      first_transfers = transfers_from(first)
+      # Mark one paid, leave the other unpaid.
+      DB[:settlement_transfers].where(id: first_transfers.first[:id]).update(paid_at: Time.now)
+
+      dave = TestFactories.user(name: "Dave")
+      TestFactories.rsvp(event: event, user: dave, attending: true)
+
+      preview = Settlements::PreviewDrift.call(event_id: event[:id]).value!
+      actual = transfers_from(create_call)
+
+      preview_set = preview[:transfers].map { |t|
+        [t[:fromUserId].to_s, t[:toUserId].to_s, t[:amount].round(2)]
+      }.sort
+      actual_set = actual.map { |t|
+        [t[:fromUserId].to_s, t[:toUserId].to_s, t[:amount].round(2)]
+      }.sort
+      expect(preview_set).to eq(actual_set)
+    end
+  end
+
+  describe "mixed paid/unpaid within a single prior settlement" do
+    # A paid transfer is sunk money that must participate in the math; an
+    # unpaid transfer in the same settlement is a stale promise and gets
+    # superseded. Both outcomes have to hold simultaneously.
+    it "supersedes the unpaid transfer and keeps the paid one active" do
+      insert_expense(user: alice, amount: 120)
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.rsvp(event: event, user: carol, attending: true)
+      first = create_call
+      transfers = transfers_from(first)
+      paid_id = transfers.first[:id]
+      unpaid_id = transfers.last[:id]
+      DB[:settlement_transfers].where(id: paid_id).update(paid_at: Time.now)
+
+      dave = TestFactories.user(name: "Dave")
+      TestFactories.rsvp(event: event, user: dave, attending: true)
+
+      top_up = create_call
+      expect(top_up.success?).to be true
+      expect(SettlementTransfer.find(paid_id).superseded_at).to be_nil
+      expect(SettlementTransfer.find(unpaid_id).superseded_at).not_to be_nil
+    end
+  end
+
+  describe "multi-hop chain with mixed paid/unpaid across settlements" do
+    # The supersede query spans the whole event — it must touch unpaid
+    # transfers in any predecessor that hasn't been superseded yet, while
+    # leaving earlier paid transfers immutable. A regression narrowing the
+    # scope to just the tip would silently break accounting.
+    it "keeps paid earlier transfers active and supersedes unpaid ones in the current tip" do
+      insert_expense(user: alice, amount: 60)
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      TestFactories.rsvp(event: event, user: bob, attending: true)
+      first = create_call
+      paid_early = transfers_from(first).first[:id]
+      DB[:settlement_transfers].where(id: paid_early).update(paid_at: Time.now)
+
+      TestFactories.rsvp(event: event, user: carol, attending: true)
+      second = create_call
+      unpaid_later = transfers_from(second).map { |t| t[:id] }
+
+      dave = TestFactories.user(name: "Dave")
+      TestFactories.rsvp(event: event, user: dave, attending: true)
+      third = create_call
+      expect(third.success?).to be true
+
+      expect(SettlementTransfer.find(paid_early).superseded_at).to be_nil
+      unpaid_later.each do |tid|
+        expect(SettlementTransfer.find(tid).superseded_at).not_to be_nil
+      end
+    end
+  end
+
+  describe "residual gate" do
+    # The bail condition is `unsettled.empty? && residual.empty?`. With new
+    # unsettled expenses present, we must proceed even when the residual
+    # happens to net to zero — the expenses still need to be locked in.
+    it "proceeds when residual is zero but unsettled expenses remain" do
+      insert_expense(user: alice, amount: 50)
+      insert_expense(user: bob, amount: 50)
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      TestFactories.rsvp(event: event, user: bob, attending: true)
+
+      result = create_call
+      expect(result.success?).to be true
+      # Expenses got locked into the new settlement even though no transfer
+      # was needed (each paid their own share already).
+      settled = DB[:expenses].where(event_id: event[:id]).exclude(settlement_id: nil).count
+      expect(settled).to eq(2)
     end
   end
 

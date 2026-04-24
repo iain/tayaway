@@ -33,13 +33,14 @@ module Settlements
     #
     # balance[u] = share[u] − paid_oop[u] − sent[u] + received[u]
     #
-    # Positive = u still owes, negative = u is still owed. The caller decides
-    # which transfers count as "already happened": for computing the fresh
-    # transfer set, only paid/non-superseded transfers qualify (unpaid
-    # obligations will be superseded and reissued); for checking whether
-    # anything new is needed, all non-superseded transfers qualify (existing
-    # obligations are assumed adequate if they already cover the balance).
-    def compute_balances(expenses:, current_snapshot:, participants_by_expense:, paid_transfers: [])
+    # Positive = u still owes, negative = u is still owed. `credited_transfers`
+    # are the transfers treated as already resolving balance; the caller
+    # picks the subset depending on intent. For computing the fresh transfer
+    # set, pass paid/non-superseded transfers only (unpaid obligations will
+    # be superseded and reissued). For gating on "anything left to do",
+    # pass all non-superseded transfers (existing obligations are adequate
+    # if they already cover the balance).
+    def compute_balances(expenses:, current_snapshot:, participants_by_expense:, credited_transfers: [])
       share_by_user = Hash.new(0.0)
       paid_by_user = Hash.new(0.0)
 
@@ -51,7 +52,7 @@ module Settlements
       end
 
       transfer_net = Hash.new(0.0)
-      paid_transfers.each do |t|
+      credited_transfers.each do |t|
         sender = t[:from_user_id]&.to_s
         recipient = t[:to_user_id]&.to_s
         amount = t[:amount].to_f

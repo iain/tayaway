@@ -81,10 +81,6 @@ module Settlements
           expense_ids = all_expenses.map { |e| e[:id].to_s }
           participants_by_expense = ExpenseParticipant.for_expenses(expense_ids)
 
-          # All non-superseded transfers — both paid (sunk money) and unpaid
-          # (active obligations). If balances computed against this set are
-          # zero, nothing new is needed; the books already reflect the fair
-          # split.
           active_transfers = DB[:settlement_transfers]
                              .join(:settlements, id: :settlement_id)
                              .where(Sequel[:settlements][:event_id] => event.id)
@@ -94,11 +90,14 @@ module Settlements
           paid_transfers = active_transfers.reject { |t| t[:paid_at].nil? }
 
           begin
+            # Residual credits both paid and unpaid transfers: if it's zero
+            # AND no new expenses have been added, the books already reflect
+            # the fair split and there's nothing to issue.
             residual_balance = BalanceMath.compute_balances(
               expenses: all_expenses,
               current_snapshot: current_snapshot,
               participants_by_expense: participants_by_expense,
-              paid_transfers: active_transfers
+              credited_transfers: active_transfers
             )
           rescue BalanceMath::InputError => e
             failure = Failure(ServiceError.conflict(e.message))
@@ -115,15 +114,14 @@ module Settlements
             raise Sequel::Rollback
           end
 
-          # Unpaid prior transfers will be superseded below. The new
-          # settlement's transfer set is computed from the balance against
-          # paid transfers only, so the fresh obligations replace the stale
-          # ones rather than stacking on top of them.
+          # Fresh balance credits paid transfers only. Unpaid priors are
+          # superseded below, so the new transfer set replaces them wholesale
+          # instead of stacking counter-transfers on top.
           balances = BalanceMath.compute_balances(
             expenses: all_expenses,
             current_snapshot: current_snapshot,
             participants_by_expense: participants_by_expense,
-            paid_transfers: paid_transfers
+            credited_transfers: paid_transfers
           )
           transfers = BalanceMath.minimize_transfers(balances)
 
