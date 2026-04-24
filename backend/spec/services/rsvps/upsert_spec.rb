@@ -185,6 +185,26 @@ RSpec.describe Rsvps::Upsert do
     expect(rsvp[:attending]).to be false
   end
 
+  it "updates existing RSVP when called with the existing rsvp_id and changed values" do
+    membership = membership_for(user)
+    DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
+    client_id = SecureRandom.uuid
+
+    described_class.call(
+      event_id: event[:id], membership: membership, attending: true, rsvp_id: client_id
+    )
+    result = described_class.call(
+      event_id: event[:id], membership: membership, attending: false, rsvp_id: client_id
+    )
+
+    expect(result.success?).to be true
+    expect(result.value![:created]).to be false
+    expect(result.value![:rsvp_id].to_s).to eq(client_id)
+    rsvp = DB[:rsvps].where(id: client_id).first
+    expect(rsvp[:attending]).to be false
+    expect(DB[:rsvps].count).to eq(1)
+  end
+
   it "returns existing RSVP on idempotent replay with same rsvp_id" do
     membership = membership_for(user)
     DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
@@ -204,29 +224,22 @@ RSpec.describe Rsvps::Upsert do
     expect(DB[:rsvps].where(id: client_id).count).to eq(1)
   end
 
-  it "handles TOCTOU race: returns existing RSVP when concurrent insert wins" do
+  it "returns existing RSVP when a row already exists for this event+user under a different id" do
     membership = membership_for(user)
     DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
-    client_id = SecureRandom.uuid
+    existing_id = SecureRandom.uuid
+    TestFactories.rsvp(id: existing_id, event: event, user: user, attending: true)
 
-    # Pre-insert an RSVP with this ID (simulates concurrent request that won the race)
-    TestFactories.rsvp(id: client_id, event: event, user: user, attending: true)
-
-    existing_rsvp = Rsvp.find(client_id)
-
-    # Simulate the TOCTOU race: the early idempotency check sees nil (the race window).
-    # find_by_event_and_user also returns nil so the service attempts an insert, hits
-    # UniqueConstraintViolation, and rescues by re-fetching the winner.
-    allow(Rsvp).to receive(:find).with(client_id).and_return(nil)
-    allow(Rsvp).to receive(:find_by_event_and_user).and_return(nil, existing_rsvp)
-
+    # Client sends a new id but event+user already has an RSVP — ON CONFLICT updates
+    # the existing row and returns its id.
     result = described_class.call(
-      event_id: event[:id], membership: membership, attending: true, rsvp_id: client_id
+      event_id: event[:id], membership: membership, attending: false, rsvp_id: SecureRandom.uuid
     )
 
     expect(result.success?).to be true
-    expect(result.value![:rsvp_id].to_s).to eq(client_id)
+    expect(result.value![:rsvp_id].to_s).to eq(existing_id)
     expect(result.value![:created]).to be false
+    expect(DB[:rsvps].where(id: existing_id).get(:attending)).to be false
     expect(DB[:rsvps].count).to eq(1)
   end
 end

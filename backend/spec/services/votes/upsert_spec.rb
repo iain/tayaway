@@ -149,6 +149,38 @@ RSpec.describe Votes::Upsert do
     expect(DB[:votes].count).to eq(1)
   end
 
+  it "updates existing vote when called with the existing vote_id and changed values" do
+    membership = membership_for(user)
+    date_poll = TestFactories.date_poll(event: event)
+    date_range = TestFactories.date_range(date_poll: date_poll)
+    client_id = SecureRandom.uuid
+
+    described_class.call(
+      event_id: event[:id],
+      membership: membership,
+      date_range_id: date_range[:id],
+      vote_response: "yes",
+      comment: nil,
+      vote_id: client_id
+    )
+    result = described_class.call(
+      event_id: event[:id],
+      membership: membership,
+      date_range_id: date_range[:id],
+      vote_response: "no",
+      comment: "Changed my mind",
+      vote_id: client_id
+    )
+
+    expect(result.success?).to be true
+    expect(result.value![:created]).to be false
+    expect(result.value![:vote_id].to_s).to eq(client_id)
+    vote = DB[:votes].where(id: client_id).first
+    expect(vote[:response]).to eq("no")
+    expect(vote[:comment]).to eq("Changed my mind")
+    expect(DB[:votes].count).to eq(1)
+  end
+
   it "returns existing vote on idempotent replay with same vote_id" do
     membership = membership_for(user)
     date_poll = TestFactories.date_poll(event: event)
@@ -179,34 +211,27 @@ RSpec.describe Votes::Upsert do
     expect(DB[:votes].where(id: client_id).count).to eq(1)
   end
 
-  it "handles TOCTOU race: returns existing vote when concurrent insert wins" do
+  it "returns existing vote when a row already exists for this date_range+user under a different id" do
     membership = membership_for(user)
     date_poll = TestFactories.date_poll(event: event)
     date_range = TestFactories.date_range(date_poll: date_poll)
-    client_id = SecureRandom.uuid
+    existing_id = SecureRandom.uuid
+    TestFactories.vote(id: existing_id, user: user, date_range: date_range, response: "yes")
 
-    # Pre-insert a vote with this ID (simulates concurrent request that won the race)
-    TestFactories.vote(id: client_id, user: user, date_range: date_range, response: "yes")
-
-    existing_vote = Vote.find(client_id)
-
-    # Simulate the TOCTOU race: the early idempotency check sees nil (the race window).
-    # The existing vote also causes find_by_date_range_and_user to appear empty so the
-    # service attempts an insert, hits UniqueConstraintViolation, and rescues.
-    allow(Vote).to receive(:find).with(client_id).and_return(nil)
-    allow(Vote).to receive(:find_by_date_range_and_user).and_return(nil, existing_vote)
-
+    # Client sends a new id but date_range+user already has a vote — ON CONFLICT updates
+    # the existing row and returns its id.
     result = described_class.call(
       event_id: event[:id],
       membership: membership,
       date_range_id: date_range[:id],
-      vote_response: "yes",
+      vote_response: "no",
       comment: nil,
-      vote_id: client_id
+      vote_id: SecureRandom.uuid
     )
 
     expect(result.success?).to be true
-    expect(result.value![:vote_id].to_s).to eq(client_id)
+    expect(result.value![:vote_id].to_s).to eq(existing_id)
+    expect(DB[:votes].where(id: existing_id).get(:response)).to eq("no")
     expect(DB[:votes].count).to eq(1)
   end
 end

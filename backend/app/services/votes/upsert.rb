@@ -21,14 +21,6 @@ module Votes
       def call(event_id:, membership:, date_range_id:, vote_response:, comment:, vote_id:)
         user_id = membership.user_id
 
-        # Idempotent replay: if client provided an ID that already exists, return it
-        if vote_id
-          existing = Vote.find(vote_id)
-          if existing
-            return Success({ vote_id: existing.id, created: false })
-          end
-        end
-
         # Generate a server-side ID if the client did not provide one (backwards
         # compatibility with commands queued before client-ID enforcement).
         resolved_vote_id = vote_id.nil? || vote_id.empty? ? SecureRandom.uuid : vote_id
@@ -87,53 +79,41 @@ module Votes
           return Failure(ServiceError.validation("Comment is too long (maximum 1000 characters)"))
         end
 
-        existing_vote = Vote.find_by_date_range_and_user(date_range.id, user_id)
         clean_comment = comment&.empty? ? nil : comment
-        result_vote_id = nil
-        created = false
 
         # Get workspace_id by traversing: date_range -> date_poll -> event -> workspace_id
         poll = DatePoll.find(date_range.date_poll_id)
         event = Event.find(poll.event_id)
         workspace_id = event.workspace_id
 
-        begin
-          DB.transaction do
-            now = Time.now
+        row = nil
+        DB.transaction do
+          now = Time.now
+          row = DB[:votes]
+                .returning(:id, Sequel.lit("(xmax = 0) AS created"))
+                .insert_conflict(
+                  target: %i[date_range_id user_id],
+                  update: {
+                    response: Sequel[:excluded][:response],
+                    comment: Sequel[:excluded][:comment],
+                    updated_at: Sequel[:excluded][:updated_at]
+                  }
+                )
+                .insert(
+                  id: vote_id,
+                  date_range_id: date_range.id,
+                  user_id: user_id,
+                  response: vote_response,
+                  comment: clean_comment,
+                  created_at: now,
+                  updated_at: now
+                )
+                .first
 
-            if existing_vote
-              DB[:votes].where(id: existing_vote.id).update(
-                response: vote_response,
-                comment: clean_comment,
-                updated_at: now
-              )
-              result_vote_id = existing_vote.id
-              created = false
-            else
-              result_vote_id = vote_id
-
-              DB[:votes].insert(
-                id: result_vote_id,
-                date_range_id: date_range.id,
-                user_id: user_id,
-                response: vote_response,
-                comment: clean_comment,
-                created_at: now,
-                updated_at: now
-              )
-              created = true
-            end
-
-            Broadcaster.object_changed("vote", result_vote_id, workspace_id: workspace_id)
-          end
-        rescue Sequel::UniqueConstraintViolation
-          existing = Vote.find_by_date_range_and_user(date_range.id, user_id)
-          result_vote_id = existing.id
-          created = false
-          Broadcaster.object_changed("vote", result_vote_id, workspace_id: workspace_id)
+          Broadcaster.object_changed("vote", row[:id], workspace_id: workspace_id)
         end
 
-        Success({ vote_id: result_vote_id, created: created })
+        Success({ vote_id: row[:id], created: row[:created] })
       end
     end
   end

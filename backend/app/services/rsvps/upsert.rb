@@ -19,14 +19,6 @@ module Rsvps
       def call(event_id:, membership:, attending:, rsvp_id:, start_date: nil, end_date: nil)
         user_id = membership.user_id
 
-        # Idempotent replay: if client provided an ID that already exists, return it
-        if rsvp_id
-          existing = Rsvp.find(rsvp_id)
-          if existing
-            return Success({ rsvp_id: existing.id, created: false })
-          end
-        end
-
         # Generate a server-side ID if the client did not provide one (backwards
         # compatibility with commands queued before client-ID enforcement).
         resolved_rsvp_id = rsvp_id.nil? || rsvp_id.empty? ? SecureRandom.uuid : rsvp_id
@@ -108,55 +100,41 @@ module Rsvps
       end
 
       def upsert_rsvp(event, user_id, attending, start_date, end_date, rsvp_id)
-        existing_rsvp = Rsvp.find_by_event_and_user(event.id, user_id)
-        result_rsvp_id = nil
-        created = false
-
-        # Clear partial dates if not attending
         unless attending
           start_date = nil
           end_date = nil
         end
 
-        begin
-          DB.transaction do
-            now = Time.now
+        row = nil
+        DB.transaction do
+          now = Time.now
+          row = DB[:rsvps]
+                .returning(:id, Sequel.lit("(xmax = 0) AS created"))
+                .insert_conflict(
+                  target: %i[event_id user_id],
+                  update: {
+                    attending: Sequel[:excluded][:attending],
+                    start_date: Sequel[:excluded][:start_date],
+                    end_date: Sequel[:excluded][:end_date],
+                    updated_at: Sequel[:excluded][:updated_at]
+                  }
+                )
+                .insert(
+                  id: rsvp_id,
+                  event_id: event.id,
+                  user_id: user_id,
+                  attending: attending,
+                  start_date: start_date,
+                  end_date: end_date,
+                  created_at: now,
+                  updated_at: now
+                )
+                .first
 
-            if existing_rsvp
-              DB[:rsvps].where(id: existing_rsvp.id).update(
-                attending: attending,
-                start_date: start_date,
-                end_date: end_date,
-                updated_at: now
-              )
-              result_rsvp_id = existing_rsvp.id
-              created = false
-            else
-              result_rsvp_id = rsvp_id
-
-              DB[:rsvps].insert(
-                id: result_rsvp_id,
-                event_id: event.id,
-                user_id: user_id,
-                attending: attending,
-                start_date: start_date,
-                end_date: end_date,
-                created_at: now,
-                updated_at: now
-              )
-              created = true
-            end
-
-            Broadcaster.object_changed("rsvp", result_rsvp_id, workspace_id: event.workspace_id)
-          end
-        rescue Sequel::UniqueConstraintViolation
-          existing = Rsvp.find_by_event_and_user(event.id, user_id)
-          result_rsvp_id = existing.id
-          created = false
-          Broadcaster.object_changed("rsvp", result_rsvp_id, workspace_id: event.workspace_id)
+          Broadcaster.object_changed("rsvp", row[:id], workspace_id: event.workspace_id)
         end
 
-        Success({ rsvp_id: result_rsvp_id, created: created })
+        Success({ rsvp_id: row[:id], created: row[:created] })
       end
     end
   end
