@@ -20,7 +20,6 @@ RSpec.describe Expenses::Revert do
     DB[:events].where(id: e[:id]).first
   end
 
-  # Create an expense, then settle it so it's eligible for revert.
   def create_and_settle_expense(amount: 30)
     TestFactories.rsvp(event: event, user: creator, attending: true) unless Rsvp.find_by_event_and_user(event[:id], creator[:id])
     TestFactories.rsvp(event: event, user: other, attending: true) unless Rsvp.find_by_event_and_user(event[:id], other[:id])
@@ -108,6 +107,17 @@ RSpec.describe Expenses::Revert do
 
     result = described_class.call(expense_id: revert_id, membership: membership, workspace_id: workspace[:id])
     expect(result.failure?).to be true
+  end
+
+  it "still refuses when the revert itself has been settled (no infinite ledger oscillation)" do
+    expense_id = create_and_settle_expense(amount: 30)
+    described_class.call(expense_id: expense_id, membership: membership, workspace_id: workspace[:id])
+    revert_id = DB[:expenses].where(reverts_expense_id: expense_id).get(:id)
+    Settlements::Create.call(event_id: event[:id], membership: membership, workspace_id: workspace[:id])
+
+    result = described_class.call(expense_id: revert_id, membership: membership, workspace_id: workspace[:id])
+    expect(result.failure?).to be true
+    expect(result.failure.http_status).to eq(403)
   end
 
   it "refuses to revert the same expense twice" do

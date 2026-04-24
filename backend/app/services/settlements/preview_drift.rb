@@ -23,7 +23,17 @@ module Settlements
           return Success(empty_preview(tip))
         end
 
+        # Mirror Create's guards so the preview never disagrees with what a
+        # subsequent Create call would produce.
+        if tip && tip.rsvp_snapshot.nil?
+          return Success(empty_preview(tip))
+        end
+
         current_rsvps = Rsvp.for_event(event.id).select(&:attending)
+        if current_rsvps.empty?
+          return Success(empty_preview(tip))
+        end
+
         current_snapshot = BalanceMath.snapshot_rsvps(current_rsvps, event)
         prior_snapshot = tip&.rsvp_snapshot&.dig("rsvps")
 

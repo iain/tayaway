@@ -71,13 +71,19 @@ module Settlements
 
           current_rsvps = Rsvp.for_event(event.id).select(&:attending)
           if current_rsvps.empty?
-            if tip.nil?
-              failure = Failure(ServiceError.validation("No attending RSVPs found for this event"))
-              raise Sequel::Rollback
-            elsif !unsettled.empty?
-              failure = Failure(ServiceError.validation("No one is currently attending — can't split the new expenses"))
-              raise Sequel::Rollback
-            end
+            message =
+              if tip.nil?
+                "No attending RSVPs found for this event"
+              elsif !unsettled.empty?
+                "No one is currently attending — can't split the new expenses"
+              else
+                # Prior tip + settled expenses + nobody attending: diffing the
+                # frozen snapshot against an empty one would emit phantom
+                # reversal transfers. Refuse instead.
+                "No one is currently attending — can't settle the drift"
+              end
+            failure = Failure(ServiceError.validation(message))
+            raise Sequel::Rollback
           end
 
           current_snapshot = BalanceMath.snapshot_rsvps(current_rsvps, event)
@@ -135,8 +141,13 @@ module Settlements
           end
 
           if unsettled.any?
+            # Target rows by the locked ids rather than re-evaluating
+            # `settlement_id IS NULL` — a concurrent insert between the locked
+            # SELECT above and this UPDATE would otherwise get swept in
+            # without appearing in the balance math.
+            unsettled_ids = unsettled.map { |e| e[:id] }
             DB[:expenses]
-              .where(event_id: event.id, settlement_id: nil)
+              .where(id: unsettled_ids)
               .update(settlement_id: settlement_id, updated_at: now)
           end
 

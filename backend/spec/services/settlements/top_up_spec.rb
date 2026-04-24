@@ -72,7 +72,6 @@ RSpec.describe "Settlement chain" do
       first_settlement = settlements_from(first).first
       expect(first_settlement[:previousSettlementId]).to be_nil
 
-      # Late arrival
       TestFactories.rsvp(event: event, user: carol, attending: true)
 
       top_up = create_call
@@ -82,32 +81,27 @@ RSpec.describe "Settlement chain" do
       expect(top_up_settlement[:previousSettlementId]).to eq(first_settlement[:id])
 
       transfers = transfers_from(top_up)
-      # Post-Carol fair shares: 30 each. Bob was charged 45 (15 too much);
-      # Carol was charged 0 (30 too little). Net delta transfers:
-      #   Carol → Alice 15, Carol → Bob 15 (Alice ends up even, Bob gets 15 back)
-      # The greedy minimizer settles against Alice first (largest owed):
-      # Alice is now owed -15 (previously received 45 from Bob, should have received 60 total).
-      # Simpler to assert the net outcome: sum per user.
+      # Post-Carol fair shares: 30 each. The net per-user outcome is what
+      # matters; transfer shape is an implementation detail of the minimizer.
       totals = Hash.new(0.0)
       transfers.each do |t|
         totals[t[:fromUserId].to_s] += t[:amount]
         totals[t[:toUserId].to_s] -= t[:amount]
       end
-      expect(totals[carol[:id].to_s].round(2)).to eq(30.0)   # carol owes 30 net
-      expect(totals[bob[:id].to_s].round(2)).to eq(-15.0)    # bob gets 15 back
-      expect(totals[alice[:id].to_s].round(2)).to eq(-15.0)  # alice gets 15 more
+      expect(totals[carol[:id].to_s].round(2)).to eq(30.0)
+      expect(totals[bob[:id].to_s].round(2)).to eq(-15.0)
+      expect(totals[alice[:id].to_s].round(2)).to eq(-15.0)
     end
   end
 
   describe "top-up math with a later expense" do
     it "settles new unsettled expenses and drift in one chained settlement" do
-      insert_expense(user: alice, amount: 60) # first batch
+      insert_expense(user: alice, amount: 60)
       TestFactories.rsvp(event: event, user: alice, attending: true)
       TestFactories.rsvp(event: event, user: bob, attending: true)
 
       expect(create_call.success?).to be true
 
-      # Bob pays 40 afterward; no RSVP change
       insert_expense(user: bob, amount: 40)
 
       top_up = create_call
@@ -149,10 +143,10 @@ RSpec.describe "Settlement chain" do
       TestFactories.rsvp(event: event, user: alice, attending: true)
       TestFactories.rsvp(event: event, user: bob, attending: true)
 
-      create_call # settlement 1
+      create_call
 
       TestFactories.rsvp(event: event, user: carol, attending: true)
-      create_call # settlement 2
+      create_call
 
       dave = TestFactories.user(name: "Dave")
       TestFactories.rsvp(event: event, user: dave, attending: true)
@@ -187,7 +181,7 @@ RSpec.describe "Settlement chain" do
       first_id = settlements_from(first).first[:id]
 
       TestFactories.rsvp(event: event, user: carol, attending: true)
-      create_call # second settlement referencing the first
+      create_call
 
       result = Settlements::Delete.call(
         settlement_id: first_id,
@@ -457,7 +451,6 @@ RSpec.describe "Settlement chain" do
       bob_rsvp = TestFactories.rsvp(event: event, user: bob, attending: true)
       create_call
 
-      # Both leave.
       DB[:rsvps].where(event_id: event[:id]).update(attending: false)
       DB[:rsvps].where(id: bob_rsvp[:id]).update(attending: false)
 
@@ -479,11 +472,9 @@ RSpec.describe "Settlement chain" do
                TestFactories.user(name: "Faye"), TestFactories.user(name: "Gil")]
       users.each { |u| TestFactories.rsvp(event: event, user: u, attending: true) }
 
-      # Round 1 & settle
       insert_expense(user: alice, amount: 99.99)
       create_call
 
-      # Chain 4 more top-ups, each with one more awkward expense
       amounts = [33.33, 10.01, 77.77, 12.13]
       amounts.each do |amt|
         insert_expense(user: users.sample, amount: amt)
@@ -517,6 +508,80 @@ RSpec.describe "Settlement chain" do
         drift = ((net[uid] || 0) - fair_share_owed).abs.round(2)
         expect(drift).to be <= 0.05
       end
+    end
+  end
+
+  describe "pure drift top-up with no attending RSVPs" do
+    # If everyone un-RSVPs between settlements and no new expenses have been
+    # filed, diffing the frozen prior snapshot against an empty current
+    # snapshot would emit phantom reversal transfers. Refuse instead.
+    it "refuses rather than emitting phantom reversal transfers" do
+      insert_expense(user: alice, amount: 60)
+      alice_rsvp = TestFactories.rsvp(event: event, user: alice, attending: true)
+      bob_rsvp = TestFactories.rsvp(event: event, user: bob, attending: true)
+      create_call
+
+      DB[:rsvps].where(id: [alice_rsvp[:id], bob_rsvp[:id]]).update(attending: false)
+
+      result = create_call
+      expect(result.failure?).to be true
+      expect(result.failure.message).to include("No one is currently attending")
+    end
+  end
+
+  describe "prior snapshot missing (legacy settlement needing backfill)" do
+    it "refuses to settle and tells the caller to run the backfill" do
+      insert_expense(user: alice, amount: 60)
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      TestFactories.rsvp(event: event, user: bob, attending: true)
+      create_call
+
+      DB[:settlements].where(event_id: event[:id]).update(rsvp_snapshot: nil)
+      insert_expense(user: alice, amount: 30)
+
+      result = create_call
+      expect(result.failure?).to be true
+      expect(result.failure.message).to include("backfill")
+    end
+
+    it "makes PreviewDrift return an empty preview rather than bogus numbers" do
+      insert_expense(user: alice, amount: 60)
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      TestFactories.rsvp(event: event, user: bob, attending: true)
+      create_call
+
+      DB[:settlements].where(event_id: event[:id]).update(rsvp_snapshot: nil)
+      insert_expense(user: alice, amount: 30)
+
+      preview = Settlements::PreviewDrift.call(event_id: event[:id])
+      expect(preview.success?).to be true
+      expect(preview.value![:transfers]).to eq([])
+      expect(preview.value![:balances]).to eq([])
+    end
+  end
+
+  describe "PreviewDrift vs Create equivalence" do
+    # The preview is what the UI shows; Create is what actually happens. They
+    # must agree, or users act on stale numbers.
+    it "emits the same transfer set that a subsequent Create would produce" do
+      insert_expense(user: alice, amount: 90)
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      TestFactories.rsvp(event: event, user: bob, attending: true)
+      create_call
+
+      TestFactories.rsvp(event: event, user: carol, attending: true)
+      insert_expense(user: bob, amount: 30)
+
+      preview = Settlements::PreviewDrift.call(event_id: event[:id]).value!
+      actual = transfers_from(create_call)
+
+      preview_set = preview[:transfers].map { |t|
+        [t[:fromUserId].to_s, t[:toUserId].to_s, t[:amount].round(2)]
+      }.sort
+      actual_set = actual.map { |t|
+        [t[:fromUserId].to_s, t[:toUserId].to_s, t[:amount].round(2)]
+      }.sort
+      expect(preview_set).to eq(actual_set)
     end
   end
 
