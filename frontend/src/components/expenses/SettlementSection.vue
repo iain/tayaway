@@ -15,6 +15,7 @@ import { useObjectPoolStore } from '@/stores/objectPool'
 import { useSettlementsStore } from '@/stores/settlements'
 import {
   computeBalances,
+  computeDriftBalances,
   minimizeTransfers,
   annotateTransfers,
   deriveBalancesFromTransfers,
@@ -93,21 +94,47 @@ const showPreviewModal = ref(false)
 const settling = ref(false)
 const previewMathOpen = ref(false)
 
+const hasTip = computed(() => settlements.value.length > 0)
+
+const allTransfersInChain = computed(() =>
+  settlements.value.flatMap((s) => transfersForSettlement(s.id))
+)
+
+const resolveParticipant = (pid: string) => {
+  const p = pool.get('expenseParticipant', pid)
+  return p ? { userId: p.userId, factor: p.factor } : undefined
+}
+
+// Top-up-aware preview: when a tip exists, balances reflect the drift between
+// what has already been settled (sum of prior transfers) and what fair shares
+// would be right now for every expense in the event. When there's no tip,
+// this is just the first-settlement balance over unsettled expenses.
 const previewBalances = computed((): Map<string, number> => {
   if (!props.event.startDate || !props.event.endDate) return new Map()
-  const unsettledExpenses = pool
-    .getAll('expense')
-    .filter((e) => e.eventId === props.event.id && !e.settlementId)
   const attendingRsvps = pool
     .getAll('rsvp')
     .filter((r) => r.eventId === props.event.id && r.attending)
-  if (unsettledExpenses.length === 0 || attendingRsvps.length === 0) {
-    return new Map()
+  if (attendingRsvps.length === 0) return new Map()
+
+  if (hasTip.value) {
+    const allExpenses = pool
+      .getAll('expense')
+      .filter((e) => e.eventId === props.event.id)
+    if (allExpenses.length === 0) return new Map()
+    const currentBalances = computeBalances(
+      allExpenses,
+      attendingRsvps,
+      props.event.startDate,
+      props.event.endDate,
+      resolveParticipant
+    )
+    return computeDriftBalances(currentBalances, allTransfersInChain.value)
   }
-  const resolveParticipant = (pid: string) => {
-    const p = pool.get('expenseParticipant', pid)
-    return p ? { userId: p.userId, factor: p.factor } : undefined
-  }
+
+  const unsettledExpenses = pool
+    .getAll('expense')
+    .filter((e) => e.eventId === props.event.id && !e.settlementId)
+  if (unsettledExpenses.length === 0) return new Map()
   return computeBalances(
     unsettledExpenses,
     attendingRsvps,
@@ -119,6 +146,20 @@ const previewBalances = computed((): Map<string, number> => {
 
 const previewTransfers = computed((): PreviewTransfer[] => {
   return minimizeTransfers(previewBalances.value)
+})
+
+const hasDrift = computed(
+  () => hasTip.value && previewTransfers.value.length > 0
+)
+
+const showCta = computed(
+  () => unsettledExpenseCount.value > 0 || hasDrift.value
+)
+
+const ctaLabel = computed(() => {
+  if (!hasTip.value) return 'Start settlement'
+  if (unsettledExpenseCount.value > 0) return 'Top up settlement'
+  return 'Settle the difference'
 })
 
 const previewAnnotatedTransfers = computed((): AnnotatedTransfer[] => {
@@ -225,15 +266,31 @@ async function handlePaidClick(
   <div v-if="event.startDate && event.endDate" class="mt-10">
     <SectionHeading :icon="BanknotesIcon" title="Settlements">
       <AppButton
-        v-if="unsettledExpenseCount > 0"
+        v-if="showCta"
         data-testid="start-settlement-button"
         @click="openPreview"
       >
         <ScaleIcon class="size-4" />
-        Start settlement
-        <span class="text-rose-200">({{ unsettledExpenseCount }})</span>
+        {{ ctaLabel }}
+        <span v-if="unsettledExpenseCount > 0" class="text-rose-200">
+          ({{ unsettledExpenseCount }})
+        </span>
       </AppButton>
     </SectionHeading>
+
+    <div
+      v-if="hasDrift && unsettledExpenseCount === 0"
+      data-testid="settlement-drift-banner"
+      class="mb-4 rounded-md border-2 border-dashed border-amber-400 bg-amber-50 px-3 py-2 dark:border-amber-600 dark:bg-amber-950/30"
+    >
+      <p class="text-sm font-medium text-amber-800 dark:text-amber-300">
+        The split no longer matches the latest settlement.
+      </p>
+      <p class="mt-1 text-xs text-amber-700 dark:text-amber-400">
+        RSVPs or expenses have changed since it was locked in. Settle the
+        difference to bring everyone back to even.
+      </p>
+    </div>
 
     <div
       v-if="settlements.length === 0 && !hasExpenses"
@@ -326,7 +383,9 @@ async function handlePaidClick(
         >
           <div class="flex min-w-0 items-center gap-2">
             <span class="text-xs text-gray-500 dark:text-stone-400">
-              Settled by {{ getMemberName(settlement.userId, pool) }} on
+              <span v-if="settlement.previousSettlementId">Top-up</span>
+              <span v-else>Settled</span>
+              by {{ getMemberName(settlement.userId, pool) }} on
               {{ formatDate(settlement.createdAt) }}
             </span>
             <AppBadge v-if="allTransfersPaid(settlement.id)" variant="green">
@@ -441,7 +500,7 @@ async function handlePaidClick(
     <BaseModal
       v-if="showPreviewModal"
       :open="showPreviewModal"
-      title="Settlement Preview"
+      :title="hasTip ? 'Top-up Preview' : 'Settlement Preview'"
       size="md"
       @close="showPreviewModal = false"
     >
@@ -453,10 +512,20 @@ async function handlePaidClick(
         </p>
       </div>
 
-      <p class="mb-3 text-sm text-gray-600 dark:text-stone-400">
+      <p
+        v-if="unsettledExpenseCount > 0"
+        class="mb-3 text-sm text-gray-600 dark:text-stone-400"
+      >
         {{ unsettledExpenseCount }}
         expense{{ unsettledExpenseCount === 1 ? '' : 's' }} will be locked to
         this settlement.
+      </p>
+      <p
+        v-else-if="hasTip"
+        class="mb-3 text-sm text-gray-600 dark:text-stone-400"
+      >
+        This top-up covers the drift since the last settlement — no new expenses
+        are being locked.
       </p>
 
       <div v-if="previewTransfers.length > 0" class="mb-3">

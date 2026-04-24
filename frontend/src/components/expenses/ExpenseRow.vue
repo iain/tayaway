@@ -5,6 +5,7 @@ import {
   ChevronDownIcon,
   PencilIcon,
   LockClosedIcon,
+  ArrowUturnLeftIcon,
 } from '@heroicons/vue/24/outline'
 import IconButton from '@/components/common/IconButton.vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
@@ -13,6 +14,8 @@ import { countDays } from '@/utils/event'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import type { PoolExpense, PoolEvent } from '@/types/pool'
 import BaseCard from '@/components/common/BaseCard.vue'
+import BaseModal from '@/components/common/BaseModal.vue'
+import AppButton from '@/components/common/AppButton.vue'
 import { permissionUx } from '@/composables/usePermission'
 
 const props = defineProps<{
@@ -47,10 +50,23 @@ const editUx = computed(() => permissionUx(props.expense.permissions, 'edit'))
 const deleteUx = computed(() =>
   permissionUx(props.expense.permissions, 'delete')
 )
+const revertUx = computed(() =>
+  permissionUx(props.expense.permissions, 'revert')
+)
 
 const isSettled = computed(() => {
   return !!props.expense.settlementId
 })
+
+const isRevert = computed(() => !!props.expense.revertsExpenseId)
+
+const hasBeenReverted = computed(() =>
+  pool.getAll('expense').some((e) => e.revertsExpenseId === props.expense.id)
+)
+
+const revertedOriginal = computed(() =>
+  isRevert.value ? pool.get('expense', props.expense.revertsExpenseId!) : null
+)
 
 const hasParticipants = computed(() => {
   return (props.expense.participantIds ?? []).length > 0
@@ -162,6 +178,36 @@ function handleEdit(e: Event) {
   emit('edit', props.expense)
 }
 
+const showRevertConfirm = ref(false)
+const reverting = ref(false)
+
+function handleRevertClick(e: Event) {
+  e.stopPropagation()
+  showRevertConfirm.value = true
+}
+
+const revertError = ref<string | null>(null)
+
+async function confirmRevert() {
+  if (reverting.value) return
+  reverting.value = true
+  revertError.value = null
+  try {
+    await expensesStore.revertExpense(props.expense.id)
+    showRevertConfirm.value = false
+  } catch (err) {
+    revertError.value =
+      err instanceof Error ? err.message : 'Failed to revert expense'
+  } finally {
+    reverting.value = false
+  }
+}
+
+function closeRevertModal() {
+  showRevertConfirm.value = false
+  revertError.value = null
+}
+
 const deleting = ref(false)
 
 async function handleDelete(e: Event) {
@@ -180,16 +226,37 @@ async function handleDelete(e: Event) {
   <BaseCard
     data-testid="expense-row"
     interactive
-    class="select-none"
+    :class="['select-none', hasBeenReverted ? 'opacity-60' : '']"
     :aria-expanded="expanded"
     @click="toggleExpand"
   >
     <div class="flex items-center px-4 py-3">
       <div class="min-w-0 flex-1">
-        <p class="truncate text-base text-gray-900 dark:text-white">
+        <p
+          :class="[
+            'truncate text-base text-gray-900 dark:text-white',
+            hasBeenReverted ? 'line-through' : '',
+          ]"
+        >
           {{ expense.description }}
         </p>
         <p class="mt-0.5 truncate text-xs text-gray-500 dark:text-stone-400">
+          <span
+            v-if="isRevert"
+            class="mr-1 font-medium text-amber-700 dark:text-amber-400"
+          >
+            Reverts
+            <template v-if="revertedOriginal">
+              “{{ revertedOriginal.description }}”
+            </template>
+            ·
+          </span>
+          <span
+            v-else-if="hasBeenReverted"
+            class="mr-1 font-medium text-amber-700 dark:text-amber-400"
+          >
+            Reverted ·
+          </span>
           {{ displayName }}
           <template v-if="event.startDate && event.endDate">
             <span aria-hidden="true" class="text-gray-300 dark:text-stone-600">
@@ -214,6 +281,15 @@ async function handleDelete(e: Event) {
             class="size-4 text-gray-400 dark:text-stone-500"
             title="Part of a settlement"
           />
+          <IconButton
+            v-if="revertUx.behavior === 'enabled' && !hasBeenReverted"
+            label="Revert expense"
+            data-testid="revert-expense"
+            title="Reverse this expense with a mirror-image entry"
+            @click="handleRevertClick"
+          >
+            <ArrowUturnLeftIcon class="size-4" />
+          </IconButton>
           <span
             v-if="editUx.behavior !== 'hidden'"
             :title="editUx.behavior === 'disabled' ? editUx.tooltip : undefined"
@@ -307,4 +383,44 @@ async function handleDelete(e: Event) {
       </template>
     </div>
   </BaseCard>
+
+  <BaseModal
+    :open="showRevertConfirm"
+    title="Revert this expense?"
+    size="sm"
+    @close="closeRevertModal"
+  >
+    <p class="text-sm text-gray-600 dark:text-stone-400">
+      This adds a mirror-image entry of €{{ expense.amount.toFixed(2) }} that
+      offsets the original. The reverted expense stays visible for history. If
+      you want to re-enter it with different details, add a new expense
+      afterwards.
+    </p>
+    <p
+      v-if="revertError"
+      role="alert"
+      class="mt-3 text-sm text-red-600 dark:text-red-400"
+    >
+      {{ revertError }}
+    </p>
+    <div class="mt-6 flex justify-end gap-3">
+      <AppButton
+        variant="secondary"
+        size="sm"
+        :disabled="reverting"
+        @click="closeRevertModal"
+      >
+        Cancel
+      </AppButton>
+      <AppButton
+        size="sm"
+        :loading="reverting"
+        loading-label="Reverting…"
+        data-testid="confirm-revert-expense"
+        @click="confirmRevert"
+      >
+        Revert
+      </AppButton>
+    </div>
+  </BaseModal>
 </template>

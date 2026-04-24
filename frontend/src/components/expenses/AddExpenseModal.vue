@@ -69,7 +69,6 @@ const eventHasDates = computed(
   () => props.event.startDate != null && props.event.endDate != null
 )
 
-// Step validation
 const detailsValid = computed(() => {
   const desc = description.value.trim()
   const amt = parseFloat(amount.value)

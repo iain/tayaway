@@ -2,18 +2,22 @@
 
 # Read-only Settlement model.
 class Settlement
-  attr_reader :id, :event_id, :user_id, :created_at, :updated_at
+  attr_reader :id, :event_id, :user_id, :previous_settlement_id, :rsvp_snapshot, :created_at, :updated_at
 
   def initialize(
     id:,
     event_id:,
     user_id:,
     created_at:,
-    updated_at:
+    updated_at:,
+    previous_settlement_id: nil,
+    rsvp_snapshot: nil
   )
     @id = id
     @event_id = event_id
     @user_id = user_id
+    @previous_settlement_id = previous_settlement_id
+    @rsvp_snapshot = rsvp_snapshot
     @created_at = created_at
     @updated_at = updated_at
   end
@@ -28,6 +32,36 @@ class Settlement
 
     def for_event(event_id)
       dataset.where(event_id: event_id).order(:created_at).all
+    end
+
+    # The tip is the unique settlement for the event that no other settlement
+    # references via previous_settlement_id. Uniqueness is enforced at the DB
+    # layer by the partial indexes on previous_settlement_id and event_id.
+    def tip_for_event(event_id)
+      dataset
+        .where(event_id: event_id)
+        .exclude(
+          id: DB[:settlements]
+              .where(event_id: event_id)
+              .exclude(previous_settlement_id: nil)
+              .select(:previous_settlement_id)
+        )
+        .order(Sequel.desc(:created_at))
+        .first
+    end
+
+    def chain_for(settlement_id)
+      result = []
+      current = find(settlement_id)
+      while current
+        result.unshift(current)
+        current = current.previous_settlement_id ? find(current.previous_settlement_id) : nil
+      end
+      result
+    end
+
+    def successor?(settlement_id)
+      DB[:settlements].where(previous_settlement_id: settlement_id).any?
     end
 
     def changed_since(workspace_id, since)
@@ -50,9 +84,36 @@ class Settlement
         id: UUID.new(row[:id]),
         event_id: UUID.new(row[:event_id]),
         user_id: row[:user_id] ? UUID.new(row[:user_id]) : nil,
+        previous_settlement_id: row[:previous_settlement_id] ? UUID.new(row[:previous_settlement_id]) : nil,
+        rsvp_snapshot: parse_snapshot(row[:rsvp_snapshot]),
         created_at: row[:created_at],
         updated_at: row[:updated_at]
       )
+    end
+
+    def parse_snapshot(value)
+      return nil if value.nil?
+
+      parsed =
+        if value.is_a?(Sequel::Postgres::JSONBObject)
+          value.to_h
+        elsif value.is_a?(Hash)
+          value
+        elsif value.is_a?(String)
+          JSON.parse(value)
+        else
+          raise "Unexpected rsvp_snapshot type: #{value.class}"
+        end
+
+      rsvps = parsed["rsvps"]
+      raise "rsvp_snapshot missing 'rsvps' array" unless rsvps.is_a?(Array)
+      rsvps.each do |entry|
+        if !entry.is_a?(Hash) || entry["user_id"].nil? || entry["start_date"].nil? || entry["end_date"].nil?
+          raise "rsvp_snapshot entry is malformed: #{entry.inspect}"
+        end
+      end
+
+      parsed
     end
   end
 end

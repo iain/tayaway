@@ -122,6 +122,17 @@ class App
         )
         handle_result(result)
       end
+
+      r.on "revert" do
+        r.post do
+          result = Expenses::Revert.call(
+            expense_id: expense.id,
+            membership: current_membership,
+            workspace_id: event.workspace_id
+          )
+          handle_result(result, success_status: 201)
+        end
+      end
     end
   end
 end

@@ -2,7 +2,8 @@
 
 # Read-only Expense model.
 class Expense
-  attr_reader :id, :event_id, :user_id, :settlement_id, :amount, :description, :start_date, :end_date, :created_at, :updated_at
+  attr_reader :id, :event_id, :user_id, :settlement_id, :reverts_expense_id,
+              :amount, :description, :start_date, :end_date, :created_at, :updated_at
 
   def initialize(
     id:,
@@ -14,12 +15,14 @@ class Expense
     start_date:,
     end_date:,
     created_at:,
-    updated_at:
+    updated_at:,
+    reverts_expense_id: nil
   )
     @id = id
     @event_id = event_id
     @user_id = user_id
     @settlement_id = settlement_id
+    @reverts_expense_id = reverts_expense_id
     @amount = amount
     @description = description
     @start_date = start_date
@@ -61,6 +64,7 @@ class Expense
         event_id: UUID.new(row[:event_id]),
         user_id: row[:user_id] ? UUID.new(row[:user_id]) : nil,
         settlement_id: row[:settlement_id] ? UUID.new(row[:settlement_id]) : nil,
+        reverts_expense_id: row[:reverts_expense_id] ? UUID.new(row[:reverts_expense_id]) : nil,
         amount: row[:amount].to_f,
         description: row[:description],
         start_date: row[:start_date],

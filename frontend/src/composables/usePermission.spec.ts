@@ -72,13 +72,22 @@ describe('usePermission', () => {
       })
     })
 
-    it('returns disabled with tooltip for settled', () => {
+    it('returns hidden for settled — revert is the path, not edit', () => {
       const permissions: Record<string, Permission> = {
         edit: { allowed: false, reason: 'settled' },
       }
-      const result = permissionUx(permissions, 'edit')
-      expect(result.behavior).toBe('disabled')
-      expect('tooltip' in result && result.tooltip).toContain('settlement')
+      expect(permissionUx(permissions, 'edit')).toEqual({
+        behavior: 'hidden',
+      })
+    })
+
+    it('returns hidden for is_revert — reverts are immutable', () => {
+      const permissions: Record<string, Permission> = {
+        edit: { allowed: false, reason: 'is_revert' },
+      }
+      expect(permissionUx(permissions, 'edit')).toEqual({
+        behavior: 'hidden',
+      })
     })
 
     it('returns modal for has_expenses', () => {

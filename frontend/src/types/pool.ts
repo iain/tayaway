@@ -128,6 +128,7 @@ export interface ObjectTypeMap {
     eventId: string
     userId: string | null
     settlementId: string | null
+    revertsExpenseId: string | null
     description: string
     amount: number
     startDate: string
@@ -138,6 +139,7 @@ export interface ObjectTypeMap {
   settlement: PoolObjectBase<'settlement'> & {
     eventId: string
     userId: string | null
+    previousSettlementId: string | null
     transferIds: string[]
     createdAt: string
   }

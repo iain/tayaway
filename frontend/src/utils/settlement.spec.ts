@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   annotateTransfers,
   computeBalances,
+  computeDriftBalances,
   deriveBalancesFromTransfers,
   minimizeTransfers,
 } from './settlement'
@@ -555,5 +556,48 @@ describe('annotateTransfers', () => {
       toUserId: 'alice',
       amount: 40,
     })
+  })
+})
+
+describe('computeDriftBalances', () => {
+  it('returns an empty map when current balances match prior transfers', () => {
+    // Alice paid 100, Bob owed 50 → Bob paid Alice 50 in a prior settlement.
+    // Nothing has changed since, so drift is zero.
+    const current = new Map([
+      ['alice', -50],
+      ['bob', 50],
+    ])
+    const priorTransfers = [
+      { fromUserId: 'bob', toUserId: 'alice', amount: 50 },
+    ]
+
+    expect(computeDriftBalances(current, priorTransfers).size).toBe(0)
+  })
+
+  it('surfaces a late attendee as residual owing', () => {
+    // After settlement 1 (Alice paid 90, Bob owed 45, transfer happened),
+    // Carol arrives. New fair share = 30 each. Alice should now be owed 60,
+    // Bob only owes 30 (not 45), Carol owes 30.
+    const currentBalances = new Map([
+      ['alice', -60],
+      ['bob', 30],
+      ['carol', 30],
+    ])
+    const priorTransfers = [
+      { fromUserId: 'bob', toUserId: 'alice', amount: 45 },
+    ]
+
+    const drift = computeDriftBalances(currentBalances, priorTransfers)
+    // Alice currently owed 60 but already received 45, so drift is still 15 owed.
+    // Bob currently owes 30 but paid 45, so drift is 15 he should get back.
+    // Carol currently owes 30 and has paid nothing, so drift is 30 owed.
+    expect(drift.get('alice')).toBe(-15)
+    expect(drift.get('bob')).toBe(-15)
+    expect(drift.get('carol')).toBe(30)
+  })
+
+  it('drops users whose drift rounds to zero', () => {
+    const currentBalances = new Map([['alice', 0.003]])
+    expect(computeDriftBalances(currentBalances, []).size).toBe(0)
   })
 })
