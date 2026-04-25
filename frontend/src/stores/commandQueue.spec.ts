@@ -124,9 +124,11 @@ describe('commandQueue store', () => {
       })
 
       expect(result).toEqual({ data: { id: 'new-1' }, status: 200 })
-      expect(mockedApi.post).toHaveBeenCalledWith('/api/events', {
-        name: 'Test',
-      })
+      expect(mockedApi.post).toHaveBeenCalledWith(
+        '/api/events',
+        { name: 'Test' },
+        { idempotencyKey: expect.any(String) }
+      )
     })
 
     it('persists command to db before executing', async () => {
@@ -240,13 +242,17 @@ describe('commandQueue store', () => {
 
       mockedApi.delete.mockResolvedValueOnce(okResponse(null))
       await store.enqueue('DELETE', '/api/events/1')
-      expect(mockedApi.delete).toHaveBeenCalledWith('/api/events/1')
+      expect(mockedApi.delete).toHaveBeenCalledWith('/api/events/1', {
+        idempotencyKey: expect.any(String),
+      })
 
       mockedApi.patch.mockResolvedValueOnce(okResponse(null))
       await store.enqueue('PATCH', '/api/events/1', { name: 'x' })
-      expect(mockedApi.patch).toHaveBeenCalledWith('/api/events/1', {
-        name: 'x',
-      })
+      expect(mockedApi.patch).toHaveBeenCalledWith(
+        '/api/events/1',
+        { name: 'x' },
+        { idempotencyKey: expect.any(String) }
+      )
     })
   })
 
@@ -277,8 +283,16 @@ describe('commandQueue store', () => {
 
       await store.processQueue()
 
-      expect(mockedApi.post).toHaveBeenCalledWith('/api/events', { name: 'A' })
-      expect(mockedApi.put).toHaveBeenCalledWith('/api/events/1', { name: 'B' })
+      expect(mockedApi.post).toHaveBeenCalledWith(
+        '/api/events',
+        { name: 'A' },
+        { idempotencyKey: expect.any(String) }
+      )
+      expect(mockedApi.put).toHaveBeenCalledWith(
+        '/api/events/1',
+        { name: 'B' },
+        { idempotencyKey: expect.any(String) }
+      )
       expect(store.pendingCount).toBe(0)
     })
 
