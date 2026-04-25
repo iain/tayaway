@@ -59,14 +59,16 @@ module Expenses
           next unless inserted
 
           ExpenseParticipant.for_expense(original.id).each do |participant|
+            participant_id = SecureRandom.uuid
             DB[:expense_participants].insert(
-              id: SecureRandom.uuid,
+              id: participant_id,
               expense_id: revert_id,
               user_id: participant.user_id,
               factor: participant.factor,
               created_at: now,
               updated_at: now
             )
+            Broadcaster.object_changed("expense_participant", participant_id, workspace_id: workspace_id)
           end
 
           Broadcaster.object_changed("expense", revert_id, workspace_id: workspace_id)

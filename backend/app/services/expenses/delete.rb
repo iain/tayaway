@@ -18,9 +18,12 @@ module Expenses
         expense_id = expense.id
 
         DB.transaction do
-          # Track participant deletions before CASCADE removes them
+          # Track participant deletions before CASCADE removes them. Broadcast
+          # each so live clients on permission paths that don't cascade still
+          # see the participants disappear.
           ExpenseParticipant.for_expense(expense_id).each do |p|
             DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "expense_participant", object_id: p.id)
+            Broadcaster.object_deleted("expense_participant", p.id, workspace_id: workspace_id)
           end
 
           DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "expense", object_id: expense_id)
