@@ -130,6 +130,34 @@ RSpec.describe Auditable do
     end
   end
 
+  describe "raised service" do
+    it "does not record an audit row when the underlying call raises" do
+      raising_service = Module.new do
+        extend Auditable
+
+        audit subject_type: "event"
+
+        class << self
+          include Dry::Monads[:result]
+
+          def name = "TestRaise::Boom"
+
+          def call(**)
+            raise "kaboom"
+          end
+        end
+      end
+      stub_const("TestRaise", Module.new)
+      stub_const("TestRaise::Boom", raising_service)
+
+      expect { raising_service.call }.to raise_error("kaboom")
+      expect(DB[:audit_log_entries].where(service: "TestRaise::Boom").count).to eq(0)
+      # Cascade flag is left in a clean state: a follow-up audited call still records.
+      Events::Create.call(workspace_id: workspace[:id], membership: membership, name: "After", description: nil)
+      expect(DB[:audit_log_entries].where(service: "Events::Create").count).to eq(1)
+    end
+  end
+
   describe "rescue behaviour" do
     it "swallows audit insert failures without breaking the service result" do
       allow(AuditLogEntry).to receive(:create).and_raise("audit explosion")

@@ -31,7 +31,7 @@
 #     or, by default, from the kwargs key matching the configured subject_type
 #     (e.g. `event_id` when subject_type is "event"),
 #   * collapses cascaded inner service calls into the outermost row via a
-#     thread-local guard,
+#     fiber-local guard,
 #   * never raises from the audit path itself: a failure to record an audit
 #     row logs a warning but does not corrupt the underlying service result.
 module Auditable
