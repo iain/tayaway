@@ -14,6 +14,15 @@ export interface ApiError {
   status: number
 }
 
+export interface MutationOptions {
+  silent?: boolean
+  signal?: AbortSignal
+  // Sent as the `Idempotency-Key` header. Only the offline command queue
+  // sets this today; the server uses it to dedupe retries of the same
+  // logical mutation.
+  idempotencyKey?: string
+}
+
 function getErrorMessage(status: number): string {
   switch (status) {
     case 400:
@@ -67,7 +76,7 @@ class RawApiClient {
   async post<T>(
     path: string,
     body?: unknown,
-    options?: { silent?: boolean; signal?: AbortSignal }
+    options?: MutationOptions
   ): Promise<ApiResponse<T>> {
     return this.request<T>('POST', path, body, options)
   }
@@ -75,7 +84,7 @@ class RawApiClient {
   async put<T>(
     path: string,
     body?: unknown,
-    options?: { signal?: AbortSignal }
+    options?: MutationOptions
   ): Promise<ApiResponse<T>> {
     return this.request<T>('PUT', path, body, options)
   }
@@ -83,14 +92,14 @@ class RawApiClient {
   async patch<T>(
     path: string,
     body?: unknown,
-    options?: { signal?: AbortSignal }
+    options?: MutationOptions
   ): Promise<ApiResponse<T>> {
     return this.request<T>('PATCH', path, body, options)
   }
 
   async delete<T>(
     path: string,
-    options?: { signal?: AbortSignal }
+    options?: MutationOptions
   ): Promise<ApiResponse<T>> {
     return this.request<T>('DELETE', path, undefined, options)
   }
@@ -99,12 +108,15 @@ class RawApiClient {
     method: string,
     path: string,
     body?: unknown,
-    options?: { silent?: boolean; signal?: AbortSignal }
+    options?: MutationOptions
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${path}`
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'X-CSRF-Protection': '1',
+    }
+    if (options?.idempotencyKey) {
+      headers['Idempotency-Key'] = options.idempotencyKey
     }
 
     const timeoutSignal = AbortSignal.timeout(DEFAULT_TIMEOUT_MS)

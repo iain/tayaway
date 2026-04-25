@@ -12,7 +12,15 @@ class App
       end
     end
 
-    # Dispatch to nested branches (events, etc.)
-    r.hash_branches("api")
+    # Wrap dispatch so every mutating route is covered by Idempotency without
+    # per-route opt-in. See Idempotency for the contract.
+    begin
+      Idempotency.wrap(request: r, user: current_user) do
+        r.hash_branches("api")
+      end
+    rescue Idempotency::ConflictError
+      response.status = 409
+      { error: "Request with this idempotency key is still in flight" }
+    end
   end
 end

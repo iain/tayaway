@@ -69,7 +69,12 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
     pendingCount.value++
 
     try {
-      const response = await executeRequest<T>(method, path, body)
+      const response = await executeRequest<T>(
+        method,
+        path,
+        body,
+        idempotencyKeyFor([commandId])
+      )
       await removeCommand(commandId)
       pendingCount.value--
       return response
@@ -128,7 +133,12 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
           // frames and handle user input during a long offline replay.
           await new Promise<void>((r) => setTimeout(r, 0))
           try {
-            await executeRequest(command.method, command.path, command.body)
+            await executeRequest(
+              command.method,
+              command.path,
+              command.body,
+              idempotencyKeyFor(command.originalIds)
+            )
             for (const id of command.originalIds) {
               await removeCommand(id)
               await new Promise<void>((r) => setTimeout(r, 0))
@@ -194,19 +204,33 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
   }
 })
 
+// Exported for tests. The key for a coalesced command is the sorted set of
+// its source command ids joined with a comma. Each source id is a UUID
+// generated at enqueue time and persisted in IndexedDB, so the derived key
+// is stable across retries of the same logical operation. A retry that
+// follows a *different* coalescing pass (new commands queued during the
+// offline window) produces a different key and is treated as a fresh
+// request — acceptable because the routes the queue retries are themselves
+// idempotent at the row level.
+export function idempotencyKeyFor(originalIds: string[]): string {
+  return [...originalIds].sort().join(',')
+}
+
 async function executeRequest<T>(
   method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
-  body?: unknown
+  body?: unknown,
+  idempotencyKey?: string
 ): Promise<ApiResponse<T>> {
+  const opts = idempotencyKey ? { idempotencyKey } : undefined
   const response =
     method === 'POST'
-      ? await rawApi.post<T>(path, body)
+      ? await rawApi.post<T>(path, body, opts)
       : method === 'PUT'
-        ? await rawApi.put<T>(path, body)
+        ? await rawApi.put<T>(path, body, opts)
         : method === 'PATCH'
-          ? await rawApi.patch<T>(path, body)
-          : await rawApi.delete<T>(path)
+          ? await rawApi.patch<T>(path, body, opts)
+          : await rawApi.delete<T>(path, opts)
   // Successful mutations hydrate the pool explicitly here instead of as a
   // hidden side effect inside the HTTP client, so rawApi stays pure and
   // the coupling is visible at the only layer that actually needs it.

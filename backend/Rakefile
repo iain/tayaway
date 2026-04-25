@@ -128,4 +128,14 @@ namespace :db do
     count = DB[:deleted_items].where { deleted_at < cutoff }.delete
     puts "Deleted #{count} deleted_items rows older than #{retention_days} days"
   end
+
+  desc "Delete idempotency_keys rows older than IDEMPOTENCY_KEY_TTL_HOURS (default: 24)"
+  task :cleanup_idempotency_keys do
+    require_relative "config/database"
+
+    ttl_hours = Integer(ENV.fetch("IDEMPOTENCY_KEY_TTL_HOURS", "24"))
+    cutoff = Time.now - (ttl_hours * 60 * 60)
+    count = DB[:idempotency_keys].where { created_at < cutoff }.delete
+    puts "Deleted #{count} idempotency_keys rows older than #{ttl_hours} hours"
+  end
 end
