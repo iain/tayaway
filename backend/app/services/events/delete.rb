@@ -8,6 +8,10 @@ module Events
   #   result.success?  # => true
   #   result.value!    # => { message: "Event deleted successfully" }
   module Delete
+    extend Auditable
+
+    audit subject_type: "event"
+
     class << self
       include Dry::Monads[:result]
 

@@ -13,9 +13,17 @@ module Events
   #   result.success?  # => true
   #   result.value!    # => { objects: [...] }
   module Update
+    extend Auditable
+
+    audit subject_type: "event"
+
     class << self
       include Dry::Monads[:result]
       include Events::Validators
+
+      def audit_context(name:, **)
+        { name: name }
+      end
 
       def call(event_id:, membership:, name:, description:, start_date: nil, end_date: nil,
                location_name: nil, latitude: nil, longitude: nil)
