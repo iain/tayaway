@@ -7,3 +7,8 @@ overrides:
   picomatch@<2.3.2: ">=2.3.2"
   picomatch@>=4.0.0 <4.0.4: ">=4.0.4"
   serialize-javascript: ">=7.0.4"
+updateConfig:
+  ignoreDependencies:
+    # vite-plugin-pwa 1.2.0 only supports vite up to 7. Hold vite at 7
+    # until the plugin gains vite 8 support.
+    - vite
