@@ -2,7 +2,7 @@
 
 # Read-only SettlementTransfer model.
 class SettlementTransfer
-  attr_reader :id, :settlement_id, :from_user_id, :to_user_id, :amount, :paid_at, :created_at, :updated_at
+  attr_reader :id, :settlement_id, :from_user_id, :to_user_id, :amount, :paid_at, :superseded_at, :created_at, :updated_at
 
   def initialize(
     id:,
@@ -11,6 +11,7 @@ class SettlementTransfer
     to_user_id:,
     amount:,
     paid_at:,
+    superseded_at:,
     created_at:,
     updated_at:
   )
@@ -20,6 +21,7 @@ class SettlementTransfer
     @to_user_id = to_user_id
     @amount = amount
     @paid_at = paid_at
+    @superseded_at = superseded_at
     @created_at = created_at
     @updated_at = updated_at
   end
@@ -80,6 +82,7 @@ class SettlementTransfer
         to_user_id: row[:to_user_id] ? UUID.new(row[:to_user_id]) : nil,
         amount: row[:amount].to_f,
         paid_at: row[:paid_at],
+        superseded_at: row[:superseded_at],
         created_at: row[:created_at],
         updated_at: row[:updated_at]
       )

@@ -95,4 +95,88 @@ RSpec.describe Settlements::MarkPaid do
     expect(result.failure.http_status).to eq(403)
     expect(result.failure.message).to eq("not_recipient")
   end
+
+  it "refuses to mark a superseded transfer as paid" do
+    transfer_id = create_transfer
+    DB[:settlement_transfers].where(id: transfer_id).update(superseded_at: Time.now)
+
+    result = described_class.call(
+      transfer_id: transfer_id,
+      paid: true,
+      membership: membership_for(recipient),
+      workspace_id: workspace[:id]
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.http_status).to eq(403)
+    expect(result.failure.message).to eq("superseded")
+  end
+
+  it "refuses to unmark a paid transfer once a follow-up settlement exists" do
+    transfer_id = create_transfer(paid_at: Time.now)
+    settlement_id = DB[:settlement_transfers].where(id: transfer_id).get(:settlement_id)
+    DB[:settlements].insert(
+      id: SecureRandom.uuid,
+      event_id: event[:id],
+      user_id: user[:id],
+      previous_settlement_id: settlement_id,
+      created_at: Time.now,
+      updated_at: Time.now
+    )
+
+    result = described_class.call(
+      transfer_id: transfer_id,
+      paid: false,
+      membership: membership_for(recipient),
+      workspace_id: workspace[:id]
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.http_status).to eq(403)
+    expect(result.failure.message).to eq("locked_in_followup")
+    expect(DB[:settlement_transfers].where(id: transfer_id).get(:paid_at)).not_to be_nil
+  end
+
+  it "blocks both directions of the toggle once a follow-up settlement exists" do
+    # The policy is direction-blind: a follow-up settlement makes the chain
+    # math depend on this transfer being paid, so even an idempotent
+    # paid=true click is rejected — the UI should show the locked-in modal
+    # instead of routing through to the service.
+    transfer_id = create_transfer(paid_at: Time.now)
+    settlement_id = DB[:settlement_transfers].where(id: transfer_id).get(:settlement_id)
+    DB[:settlements].insert(
+      id: SecureRandom.uuid,
+      event_id: event[:id],
+      user_id: user[:id],
+      previous_settlement_id: settlement_id,
+      created_at: Time.now,
+      updated_at: Time.now
+    )
+
+    result = described_class.call(
+      transfer_id: transfer_id,
+      paid: true,
+      membership: membership_for(recipient),
+      workspace_id: workspace[:id]
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("locked_in_followup")
+  end
+
+  it "reports a deleted-settlement conflict distinctly from supersede" do
+    transfer_id = create_transfer
+    transfer = SettlementTransfer.find(transfer_id)
+    settlement_id = transfer.settlement_id
+    # Simulate the row being yanked between policy check and the locked
+    # update — same observable outcome the deleted-settlement cascade
+    # produces.
+    DB[:settlement_transfers].where(id: transfer_id).delete
+    DB[:settlements].where(id: settlement_id).delete
+
+    result = described_class.send(:update_paid, transfer, true, workspace[:id], membership_for(recipient))
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to include("no longer exists")
+  end
 end

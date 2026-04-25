@@ -616,9 +616,11 @@ test.describe('Settlements Feature', () => {
         (await settle1.json()).objects,
         'settlementTransfer'
       ) as Array<{
+        id: string
         fromUserId: string
         toUserId: string
         amount: number
+        supersededAt: string | null
       }>
       expect(transfers1.length).toBe(2)
       for (const t of transfers1) expect(t.toUserId).toBe(aliceId)
@@ -656,26 +658,34 @@ test.describe('Settlements Feature', () => {
       }
       expect(topUp.previousSettlementId).not.toBeNull()
 
-      const transfers2 = getObjectsByType(
-        settle2Body.objects,
-        'settlementTransfer'
-      ) as Array<{
-        fromUserId: string
-        toUserId: string
-        amount: number
-      }>
+      // Re-fetch both settlements' transfers so superseded_at reflects the
+      // state *after* the top-up. The settle1 response captured transfers1
+      // before they were superseded, so the cached supersededAt on those is
+      // null — not useful for the filter below.
+      const settlementsResp = await aliceContext.get(
+        `${API_BASE}/api/settlements?event_id=${eventId}`
+      )
+      const activeTransfers = (
+        getObjectsByType(
+          (await settlementsResp.json()).objects,
+          'settlementTransfer'
+        ) as Array<{
+          fromUserId: string
+          toUserId: string
+          amount: number
+          supersededAt: string | null
+        }>
+      ).filter((t) => !t.supersededAt)
 
-      // Now check per-user net movement across BOTH settlements. What each
-      // user ends up paying or receiving should match the real fair share:
-      // only the €60 dinner survives on the ledger (Alice's 90 was reverted),
-      // split 20 each. Alice paid 0 net, Bob paid 60, Carol paid 0 →
-      // A owes 20, B is owed 40, C owes 20.
+      // Per-user net movement across the active (non-superseded) transfers.
+      // Only the €60 dinner survives on the ledger (Alice's 90 was reverted),
+      // split 20 each: Alice owes 20, Bob is owed 40, Carol owes 20.
       const net: Record<string, number> = {
         [aliceId]: 0,
         [bobId]: 0,
         [carolId]: 0,
       }
-      for (const t of [...transfers1, ...transfers2]) {
+      for (const t of activeTransfers) {
         net[t.fromUserId] = (net[t.fromUserId] ?? 0) + t.amount
         net[t.toUserId] = (net[t.toUserId] ?? 0) - t.amount
       }

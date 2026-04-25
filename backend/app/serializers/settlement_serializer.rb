@@ -30,8 +30,18 @@ class SettlementSerializer
       event_ids = settlements.map { |s| s.event_id.to_s }.uniq
       events_by_id = Event.for_ids(event_ids).each_with_object({}) { |e, h| h[e.id.to_s] = e }
 
+      ids = settlements.map { |s| s.id.to_s }
+      ids_with_successor = DB[:settlements]
+                           .where(previous_settlement_id: ids)
+                           .select_map(:previous_settlement_id)
+                           .map(&:to_s)
+                           .to_set
+
       settlements.each_with_object({}) do |settlement, h|
-        h[settlement.id.to_s] = { event: events_by_id[settlement.event_id.to_s] }
+        h[settlement.id.to_s] = {
+          event: events_by_id[settlement.event_id.to_s],
+          has_successor: ids_with_successor.include?(settlement.id.to_s)
+        }
       end
     end
   end

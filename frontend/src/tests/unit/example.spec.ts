@@ -82,6 +82,7 @@ function makeTransfer(
     toUserId: 'user-1',
     amount: 25,
     paidAt: null,
+    supersededAt: null,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,
@@ -218,7 +219,7 @@ describe('unpaidTransferCountByEvent aggregation', () => {
     }
     const counts = new Map<string, number>()
     for (const t of pool.getAll('settlementTransfer')) {
-      if (!t.paidAt) {
+      if (!t.paidAt && !t.supersededAt) {
         const eventId = eventBySettlement.get(t.settlementId)
         if (eventId) counts.set(eventId, (counts.get(eventId) ?? 0) + 1)
       }
@@ -245,7 +246,7 @@ describe('unpaidTransferCountByEvent aggregation', () => {
     }
     const counts = new Map<string, number>()
     for (const t of pool.getAll('settlementTransfer')) {
-      if (!t.paidAt) {
+      if (!t.paidAt && !t.supersededAt) {
         const eventId = eventBySettlement.get(t.settlementId)
         if (eventId) counts.set(eventId, (counts.get(eventId) ?? 0) + 1)
       }

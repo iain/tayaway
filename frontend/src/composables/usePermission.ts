@@ -43,6 +43,9 @@ const HIDE_REASONS = new Set([
   'revert_of_revert',
   'is_revert',
   'settled',
+  'superseded',
+  'already_paid',
+  'not_tip',
 ])
 
 // Reasons that should show a disabled element with a tooltip — the user is
@@ -56,6 +59,8 @@ const MODAL_REASONS: Record<string, string> = {
     'This event has expenses or settlements. Settle up and delete expenses before deleting the event.',
   not_recipient:
     'Only the person receiving the money can mark a transfer as paid.',
+  locked_in_followup:
+    'A follow-up settlement was issued treating this transfer as paid. Delete the follow-up first if you really need to undo it.',
 }
 
 export function permissionUx(

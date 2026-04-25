@@ -69,6 +69,7 @@ function makeTransfer(
     toUserId: 'user-1',
     amount: 5,
     paidAt: null,
+    supersededAt: null,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,
@@ -136,7 +137,7 @@ describe('HomePage computed maps', () => {
   })
 
   describe('unpaidTransferCountByEvent', () => {
-    it('counts unpaid transfers per event via settlement join', () => {
+    it('counts unpaid, non-superseded transfers per event via settlement join', () => {
       const pool = useObjectPoolStore()
       pool.importObjects([
         makeSettlement({ id: 's1', eventId: 'evt-1' }),
@@ -156,6 +157,12 @@ describe('HomePage computed maps', () => {
           settlementId: 's2',
           paidAt: null,
         }),
+        makeTransfer({
+          id: 't4',
+          settlementId: 's2',
+          paidAt: null,
+          supersededAt: '2026-01-03T00:00:00.000Z',
+        }),
       ])
 
       const eventBySettlement = new Map<string, string>()
@@ -164,7 +171,7 @@ describe('HomePage computed maps', () => {
       }
       const counts = new Map<string, number>()
       for (const t of pool.getAll('settlementTransfer')) {
-        if (!t.paidAt) {
+        if (!t.paidAt && !t.supersededAt) {
           const eventId = eventBySettlement.get(t.settlementId)
           if (eventId) {
             counts.set(eventId, (counts.get(eventId) ?? 0) + 1)
@@ -189,7 +196,7 @@ describe('HomePage computed maps', () => {
       }
       const counts = new Map<string, number>()
       for (const t of pool.getAll('settlementTransfer')) {
-        if (!t.paidAt) {
+        if (!t.paidAt && !t.supersededAt) {
           const eventId = eventBySettlement.get(t.settlementId)
           if (eventId) {
             counts.set(eventId, (counts.get(eventId) ?? 0) + 1)

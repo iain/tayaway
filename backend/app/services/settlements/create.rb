@@ -26,6 +26,7 @@ module Settlements
         settlement_id = SecureRandom.uuid
         now = Time.now
         failure = nil
+        superseded_ids = []
 
         DB.transaction do
           # Event-level lock serializes concurrent settlement attempts for the
@@ -34,18 +35,9 @@ module Settlements
           DB[:events].where(id: event.id).for_update.first
 
           tip = Settlement.tip_for_event(event.id)
-          if tip
-            if Settlement.successor?(tip.id)
-              failure = Failure(ServiceError.validation("These expenses were just settled by another member"))
-              raise Sequel::Rollback
-            end
-            if tip.rsvp_snapshot.nil?
-              failure = Failure(ServiceError.validation(
-                                  "This event's prior settlement is missing its RSVP snapshot — run the backfill before settling again"
-                                )
-                               )
-              raise Sequel::Rollback
-            end
+          if tip && Settlement.successor?(tip.id)
+            failure = Failure(ServiceError.validation("These expenses were just settled by another member"))
+            raise Sequel::Rollback
           end
 
           unsettled = DB[:expenses]
@@ -77,9 +69,6 @@ module Settlements
               elsif !unsettled.empty?
                 "No one is currently attending — can't split the new expenses"
               else
-                # Prior tip + settled expenses + nobody attending: diffing the
-                # frozen snapshot against an empty one would emit phantom
-                # reversal transfers. Refuse instead.
                 "No one is currently attending — can't settle the drift"
               end
             failure = Failure(ServiceError.validation(message))
@@ -87,26 +76,35 @@ module Settlements
           end
 
           current_snapshot = BalanceMath.snapshot_rsvps(current_rsvps, event)
-          prior_snapshot = tip&.rsvp_snapshot&.dig("rsvps")
 
-          expense_ids = (unsettled + settled).map { |e| e[:id].to_s }
+          all_expenses = unsettled + settled
+          expense_ids = all_expenses.map { |e| e[:id].to_s }
           participants_by_expense = ExpenseParticipant.for_expenses(expense_ids)
 
+          active_transfers = DB[:settlement_transfers]
+                             .join(:settlements, id: :settlement_id)
+                             .where(Sequel[:settlements][:event_id] => event.id)
+                             .where(Sequel[:settlement_transfers][:superseded_at] => nil)
+                             .select_all(:settlement_transfers)
+                             .all
+          paid_transfers = active_transfers.reject { |t| t[:paid_at].nil? }
+
           begin
-            balances = BalanceMath.compute_balances(
-              unsettled_expenses: unsettled,
-              settled_expenses: settled,
+            # Residual credits both paid and unpaid transfers: if it's zero
+            # AND no new expenses have been added, the books already reflect
+            # the fair split and there's nothing to issue.
+            residual_balance = BalanceMath.compute_balances(
+              expenses: all_expenses,
               current_snapshot: current_snapshot,
-              prior_snapshot: prior_snapshot,
-              participants_by_expense: participants_by_expense
+              participants_by_expense: participants_by_expense,
+              credited_transfers: active_transfers
             )
           rescue BalanceMath::InputError => e
             failure = Failure(ServiceError.conflict(e.message))
             raise Sequel::Rollback
           end
-          transfers = BalanceMath.minimize_transfers(balances)
 
-          if unsettled.empty? && transfers.empty?
+          if unsettled.empty? && residual_balance.empty?
             failure = Failure(ServiceError.validation(
                                 concurrent_settlement_exists?(event.id) ?
                                   "These expenses were just settled by another member" :
@@ -115,6 +113,17 @@ module Settlements
                              )
             raise Sequel::Rollback
           end
+
+          # Fresh balance credits paid transfers only. Unpaid priors are
+          # superseded below, so the new transfer set replaces them wholesale
+          # instead of stacking counter-transfers on top.
+          balances = BalanceMath.compute_balances(
+            expenses: all_expenses,
+            current_snapshot: current_snapshot,
+            participants_by_expense: participants_by_expense,
+            credited_transfers: paid_transfers
+          )
+          transfers = BalanceMath.minimize_transfers(balances)
 
           DB[:settlements].insert(
             id: settlement_id,
@@ -125,6 +134,20 @@ module Settlements
             created_at: now,
             updated_at: now
           )
+
+          if tip
+            superseded_ids = DB[:settlement_transfers]
+                             .join(:settlements, id: :settlement_id)
+                             .where(Sequel[:settlements][:event_id] => event.id)
+                             .where(Sequel[:settlement_transfers][:paid_at] => nil)
+                             .where(Sequel[:settlement_transfers][:superseded_at] => nil)
+                             .select_map(Sequel[:settlement_transfers][:id])
+            if superseded_ids.any?
+              DB[:settlement_transfers]
+                .where(id: superseded_ids)
+                .update(superseded_at: now, updated_at: now)
+            end
+          end
 
           transfers.each do |transfer|
             transfer_id = SecureRandom.uuid
@@ -151,6 +174,10 @@ module Settlements
               .update(settlement_id: settlement_id, updated_at: now)
           end
 
+          superseded_ids.each do |tid|
+            Broadcaster.object_changed("settlement_transfer", tid, workspace_id: workspace_id)
+          end
+
           Broadcaster.object_changed("settlement", settlement_id, workspace_id: workspace_id)
           # Re-broadcast the prior tip so clients recompute "can delete" — it
           # flips once a successor exists.
@@ -168,6 +195,9 @@ module Settlements
         settlement = Settlement.find(settlement_id)
         pool.add(:settlement, [settlement])
         pool.add(:settlement_transfer, SettlementTransfer.for_settlement(settlement_id))
+        if superseded_ids.any?
+          pool.add(:settlement_transfer, superseded_ids.filter_map { |tid| SettlementTransfer.find(tid) })
+        end
         pool.add(:expense, all_expenses)
 
         Success({ objects: pool.to_a })

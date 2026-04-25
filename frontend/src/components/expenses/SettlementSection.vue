@@ -81,8 +81,12 @@ function transfersForSettlement(settlementId: string) {
     .filter((t) => t.settlementId === settlementId)
 }
 
+function activeTransfersForSettlement(settlementId: string) {
+  return transfersForSettlement(settlementId).filter((t) => !t.supersededAt)
+}
+
 function allTransfersPaid(settlementId: string): boolean {
-  const transfers = transfersForSettlement(settlementId)
+  const transfers = activeTransfersForSettlement(settlementId)
   return transfers.length > 0 && transfers.every((t) => t.paidAt !== null)
 }
 
@@ -96,8 +100,10 @@ const previewMathOpen = ref(false)
 
 const hasTip = computed(() => settlements.value.length > 0)
 
-const allTransfersInChain = computed(() =>
-  settlements.value.flatMap((s) => transfersForSettlement(s.id))
+const paidTransfersInChain = computed(() =>
+  settlements.value
+    .flatMap((s) => transfersForSettlement(s.id))
+    .filter((t) => t.paidAt !== null && !t.supersededAt)
 )
 
 const resolveParticipant = (pid: string) => {
@@ -128,7 +134,7 @@ const previewBalances = computed((): Map<string, number> => {
       props.event.endDate,
       resolveParticipant
     )
-    return computeDriftBalances(currentBalances, allTransfersInChain.value)
+    return computeDriftBalances(currentBalances, paidTransfersInChain.value)
   }
 
   const unsettledExpenses = pool
@@ -447,24 +453,37 @@ async function handlePaidClick(
             v-for="transfer in transfersForSettlement(settlement.id)"
             :key="transfer.id"
             class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3"
+            :class="{
+              'opacity-60': transfer.supersededAt,
+            }"
           >
             <div class="flex min-w-0 items-center gap-2">
-              <span class="truncate text-sm text-gray-800 dark:text-stone-200">
+              <span
+                class="truncate text-sm text-gray-800 dark:text-stone-200"
+                :class="{ 'line-through': transfer.supersededAt }"
+              >
                 {{ getMemberName(transfer.fromUserId, pool) }}
               </span>
               <span class="shrink-0 text-xs text-gray-400 dark:text-stone-500">
                 &rarr;
               </span>
-              <span class="truncate text-sm text-gray-800 dark:text-stone-200">
+              <span
+                class="truncate text-sm text-gray-800 dark:text-stone-200"
+                :class="{ 'line-through': transfer.supersededAt }"
+              >
                 {{ getMemberName(transfer.toUserId, pool) }}
               </span>
               <span
                 class="shrink-0 font-mono text-sm font-semibold text-gray-900 dark:text-white"
+                :class="{ 'line-through': transfer.supersededAt }"
               >
                 {{ formatAmount(transfer.amount) }}
               </span>
+              <AppBadge v-if="transfer.supersededAt" variant="gray">
+                Superseded
+              </AppBadge>
             </div>
-            <div class="flex items-center gap-2">
+            <div v-if="!transfer.supersededAt" class="flex items-center gap-2">
               <button
                 v-if="
                   !transfer.paidAt &&

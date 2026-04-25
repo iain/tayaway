@@ -13,9 +13,10 @@ module Settlements
 
     module_function
 
-    # Resolve each RSVP to concrete effective dates at snapshot time so that
-    # a later top-up can diff against this snapshot even if the event's dates
-    # or the RSVP rows themselves change afterward.
+    # Resolve each RSVP to concrete effective dates. The settlement stores this
+    # as an audit snapshot of who was attending when the settlement locked in;
+    # the math itself always uses the *current* snapshot so that drift since the
+    # last settlement is absorbed into the next top-up naturally.
     def snapshot_rsvps(rsvps, event)
       rsvps.map do |rsvp|
         start_date = (rsvp.start_date || event.start_date).to_s
@@ -28,37 +29,49 @@ module Settlements
       end
     end
 
-    # Positive balance = owes, negative = owed. For already-settled expenses
-    # only the share *delta* between current and prior snapshot contributes —
-    # payments were already credited by prior settlements in the chain.
-    def compute_balances(unsettled_expenses:, settled_expenses:, current_snapshot:, prior_snapshot:, participants_by_expense:)
+    # Compute per-user balance for the *entire* event from current state.
+    #
+    # balance[u] = share[u] − paid_oop[u] − sent[u] + received[u]
+    #
+    # Positive = u still owes, negative = u is still owed. `credited_transfers`
+    # are the transfers treated as already resolving balance; the caller
+    # picks the subset depending on intent. For computing the fresh transfer
+    # set, pass paid/non-superseded transfers only (unpaid obligations will
+    # be superseded and reissued). For gating on "anything left to do",
+    # pass all non-superseded transfers (existing obligations are adequate
+    # if they already cover the balance).
+    def compute_balances(expenses:, current_snapshot:, participants_by_expense:, credited_transfers: [])
       share_by_user = Hash.new(0.0)
       paid_by_user = Hash.new(0.0)
 
-      unsettled_expenses.each do |expense|
+      expenses.each do |expense|
         if expense[:user_id]
           paid_by_user[expense[:user_id].to_s] += expense[:amount].to_f
         end
-        accumulate_shares(share_by_user, expense, participants_by_expense, current_snapshot, 1.0)
+        accumulate_shares(share_by_user, expense, participants_by_expense, current_snapshot)
       end
 
-      if prior_snapshot && !settled_expenses.empty?
-        settled_expenses.each do |expense|
-          accumulate_shares(share_by_user, expense, participants_by_expense, current_snapshot, 1.0)
-          accumulate_shares(share_by_user, expense, participants_by_expense, prior_snapshot, -1.0)
-        end
+      transfer_net = Hash.new(0.0)
+      credited_transfers.each do |t|
+        sender = t[:from_user_id]&.to_s
+        recipient = t[:to_user_id]&.to_s
+        amount = t[:amount].to_f
+        transfer_net[sender] -= amount if sender
+        transfer_net[recipient] += amount if recipient
       end
 
       balances = {}
-      (share_by_user.keys + paid_by_user.keys).uniq.each do |uid|
-        balance = (share_by_user[uid] - paid_by_user[uid]).round(2).to_f
+      all_users = (share_by_user.keys + paid_by_user.keys + transfer_net.keys).uniq
+      all_users.each do |uid|
+        raw = share_by_user[uid] - paid_by_user[uid] + transfer_net[uid]
+        balance = raw.round(2).to_f
         balances[uid] = balance if balance.abs >= BALANCE_EPSILON
       end
 
       balances
     end
 
-    def accumulate_shares(share_by_user, expense, participants_by_expense, rsvp_snapshot, weight)
+    def accumulate_shares(share_by_user, expense, participants_by_expense, rsvp_snapshot)
       expense_id = expense[:id].to_s
       amount = expense[:amount].to_f
       participants = participants_by_expense[expense_id] || []
@@ -72,7 +85,7 @@ module Settlements
 
         participants.each do |p|
           share = (p.factor / total_factor) * amount
-          share_by_user[p.user_id.to_s] += share * weight
+          share_by_user[p.user_id.to_s] += share
         end
         return
       end
@@ -100,7 +113,7 @@ module Settlements
 
       overlaps.each do |o|
         share = (o[:days].to_f / total) * amount
-        share_by_user[o[:user_id]] += share * weight
+        share_by_user[o[:user_id]] += share
       end
     end
 
