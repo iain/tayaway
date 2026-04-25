@@ -21,13 +21,13 @@ RSpec.describe "rake db:cleanup_idempotency_keys" do
   def insert_key(age_hours:, key: SecureRandom.uuid)
     DB[:idempotency_keys].insert(
       user_id: user[:id],
-      idempotency_key: key,
+      idempotency_key_hash: Idempotency.digest(key),
       request_fingerprint: "fp",
       response_status: 200,
       response_body: "{}",
       created_at: Time.now - (age_hours * 60 * 60)
     )
-    key
+    Idempotency.digest(key)
   end
 
   it "deletes rows older than the TTL and keeps fresh ones" do
@@ -36,7 +36,7 @@ RSpec.describe "rake db:cleanup_idempotency_keys" do
 
     rake["db:cleanup_idempotency_keys"].invoke
 
-    remaining = DB[:idempotency_keys].select_map(:idempotency_key)
+    remaining = DB[:idempotency_keys].select_map(:idempotency_key_hash)
     expect(remaining).to include(fresh)
     expect(remaining).not_to include(stale)
   end
@@ -49,7 +49,7 @@ RSpec.describe "rake db:cleanup_idempotency_keys" do
 
     rake["db:cleanup_idempotency_keys"].invoke
 
-    remaining = DB[:idempotency_keys].select_map(:idempotency_key)
+    remaining = DB[:idempotency_keys].select_map(:idempotency_key_hash)
     expect(remaining).to include(inside_window)
     expect(remaining).not_to include(outside_window)
   end

@@ -82,7 +82,7 @@ RSpec.describe Idempotency do
       end
 
       expect(DB[:rate_limits].where(key: probe).count).to eq(1)
-      cached = DB[:idempotency_keys].where(user_id: user.id, idempotency_key: key).first
+      cached = DB[:idempotency_keys].where(user_id: user.id, idempotency_key_hash: described_class.digest(key)).first
       expect(cached[:response_status]).to eq(201)
       expect(cached[:response_body]).to eq('{"ok":true}')
     end
@@ -183,7 +183,7 @@ RSpec.describe Idempotency do
       winning_body = '{"winner":true}'
       DB[:idempotency_keys].insert(
         user_id: user.id,
-        idempotency_key: key,
+        idempotency_key_hash: described_class.digest(key),
         request_fingerprint: described_class.fingerprint_for(request),
         response_status: 201,
         response_body: winning_body,
@@ -192,8 +192,9 @@ RSpec.describe Idempotency do
 
       # Force the lookup-before-transaction to miss so we exercise the
       # ON CONFLICT branch rather than the early replay branch.
+      winning_row = DB[:idempotency_keys].where(user_id: user.id, idempotency_key_hash: described_class.digest(key)).first
       allow(described_class).to receive(:lookup).and_call_original
-      allow(described_class).to receive(:lookup).with(user.id, key).and_return(nil, DB[:idempotency_keys].where(user_id: user.id, idempotency_key: key).first)
+      allow(described_class).to receive(:lookup).with(user.id, key).and_return(nil, winning_row)
 
       probe = "probe-#{SecureRandom.hex(4)}"
       replayed = catch(:halt) do

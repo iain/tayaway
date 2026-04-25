@@ -96,7 +96,7 @@ RSpec.describe "Idempotency-Key handling" do
     expect(DB[:expenses].count).to eq(1)
 
     DB[:idempotency_keys]
-      .where(user_id: user[:id], idempotency_key: idempotency_key)
+      .where(user_id: user[:id], idempotency_key_hash: Idempotency.digest(idempotency_key))
       .delete
 
     expect { post_expense(key: idempotency_key) }

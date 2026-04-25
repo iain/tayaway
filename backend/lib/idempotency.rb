@@ -74,7 +74,7 @@ module Idempotency
       # the row that the winning concurrent request committed.
       inserted = DB[:idempotency_keys].insert_conflict.insert(
         user_id: user.id,
-        idempotency_key: key,
+        idempotency_key_hash: digest(key),
         request_fingerprint: fingerprint,
         response_status: status,
         response_body: body_str,
@@ -91,14 +91,14 @@ module Idempotency
     if lost_race
       cached = lookup(user.id, key)
       unless cached
-        APP_LOGGER.warn { "[Idempotency] In-flight conflict for user=#{user.id} key=#{key}" }
+        APP_LOGGER.warn { "[Idempotency] In-flight conflict for user=#{user.id} hash=#{digest(key)}" }
         raise ConflictError, "Idempotency key in flight"
       end
       if cached[:request_fingerprint] != fingerprint
         # The race is itself surprising; combined with a body mismatch it
         # almost certainly means a buggy client is reusing the same key for
         # different requests in parallel. Worth a log so the 422 isn't silent.
-        APP_LOGGER.warn { "[Idempotency] Lost-race fingerprint mismatch for user=#{user.id} key=#{key}" }
+        APP_LOGGER.warn { "[Idempotency] Lost-race fingerprint mismatch for user=#{user.id} hash=#{digest(key)}" }
       end
       return replay(cached, fingerprint)
     end
@@ -115,7 +115,7 @@ module Idempotency
   end
 
   def lookup(user_id, key)
-    DB[:idempotency_keys].where(user_id: user_id, idempotency_key: key).first
+    DB[:idempotency_keys].where(user_id: user_id, idempotency_key_hash: digest(key)).first
   end
 
   def replay(cached, fingerprint)
@@ -135,6 +135,13 @@ module Idempotency
   def fingerprint_for(request)
     payload = "#{request.request_method}|#{request.path_info}|#{JSON.dump(canonical(request.params))}"
     Digest::SHA256.hexdigest(payload)
+  end
+
+  # SHA-256 hex of the raw client-supplied key. Stored instead of the key
+  # itself so the column stays small regardless of key length and so the
+  # client's chosen key text never lands in logs or backups.
+  def digest(key)
+    Digest::SHA256.hexdigest(key)
   end
 
   def canonical(value)
