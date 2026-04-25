@@ -105,6 +105,16 @@ RSpec.describe "Idempotency-Key handling" do
     expect(last_response.status).to eq(201)
   end
 
+  it "returns 409 with a JSON error when the wrapper signals an in-flight conflict" do
+    allow(Idempotency).to receive(:wrap).and_raise(Idempotency::ConflictError, "in flight")
+
+    post_expense(key: idempotency_key)
+
+    expect(last_response.status).to eq(409)
+    body = JSON.parse(last_response.body)
+    expect(body["error"]).to match(/in flight/i)
+  end
+
   it "skips idempotency handling when no header is sent" do
     post "/api/expenses",
          { event_id: event[:id], description: "Groceries", amount: 75.50,

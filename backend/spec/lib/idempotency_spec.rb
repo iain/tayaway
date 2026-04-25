@@ -6,7 +6,6 @@ RSpec.describe Idempotency do
   let(:user) { TestFactories.user.then { |u| Struct.new(:id).new(u[:id]) } }
   let(:key) { SecureRandom.uuid }
   let(:request) { fake_request(method: "POST", path: "/api/things", params: { "a" => 1 }, key: key) }
-  let(:response) { Rack::Response.new }
 
   def fake_request(method:, path:, params:, key:)
     env = {
@@ -22,7 +21,7 @@ RSpec.describe Idempotency do
   describe ".wrap (bypass cases)" do
     it "skips when no user is authenticated" do
       called = false
-      result = described_class.wrap(request: request, response: response, user: nil) do
+      result = described_class.wrap(request: request, user: nil) do
         called = true
         :passthrough
       end
@@ -35,7 +34,7 @@ RSpec.describe Idempotency do
     it "skips for non-mutating methods" do
       get_request = fake_request(method: "GET", path: "/api/things", params: {}, key: key)
 
-      described_class.wrap(request: get_request, response: response, user: user) { :ok }
+      described_class.wrap(request: get_request, user: user) { :ok }
 
       expect(DB[:idempotency_keys].count).to eq(0)
     end
@@ -44,7 +43,7 @@ RSpec.describe Idempotency do
       no_header = fake_request(method: "POST", path: "/api/things", params: {}, key: nil)
       no_header.env.delete("HTTP_IDEMPOTENCY_KEY")
 
-      described_class.wrap(request: no_header, response: response, user: user) { :ok }
+      described_class.wrap(request: no_header, user: user) { :ok }
 
       expect(DB[:idempotency_keys].count).to eq(0)
     end
@@ -52,7 +51,7 @@ RSpec.describe Idempotency do
     it "skips when the key is whitespace-only" do
       blank = fake_request(method: "POST", path: "/api/things", params: {}, key: "   ")
 
-      described_class.wrap(request: blank, response: response, user: user) { :ok }
+      described_class.wrap(request: blank, user: user) { :ok }
 
       expect(DB[:idempotency_keys].count).to eq(0)
     end
@@ -60,7 +59,7 @@ RSpec.describe Idempotency do
     it "skips when the key exceeds MAX_KEY_LENGTH" do
       oversize = fake_request(method: "POST", path: "/api/things", params: {}, key: "x" * 256)
 
-      described_class.wrap(request: oversize, response: response, user: user) { :ok }
+      described_class.wrap(request: oversize, user: user) { :ok }
 
       expect(DB[:idempotency_keys].count).to eq(0)
     end
@@ -71,7 +70,7 @@ RSpec.describe Idempotency do
       initial = DB[:rate_limits].count
 
       expect {
-        described_class.wrap(request: request, response: response, user: user) do
+        described_class.wrap(request: request, user: user) do
           DB[:rate_limits].insert(key: "probe", count: 1, expires_at: Time.now + 60)
           raise "boom"
         end
@@ -84,7 +83,7 @@ RSpec.describe Idempotency do
     it "commits both the route's DB writes and the cache row when the route halts" do
       probe = "probe-#{SecureRandom.hex(4)}"
       catch(:halt) do
-        described_class.wrap(request: request, response: response, user: user) do
+        described_class.wrap(request: request, user: user) do
           DB[:rate_limits].insert(key: probe, count: 1, expires_at: Time.now + 60)
           throw :halt, [201, { "Content-Type" => "application/json" }, ['{"ok":true}']]
         end
@@ -100,14 +99,14 @@ RSpec.describe Idempotency do
   describe ".wrap (replay)" do
     it "returns the cached response without invoking the block on a second call" do
       catch(:halt) do
-        described_class.wrap(request: request, response: response, user: user) do
+        described_class.wrap(request: request, user: user) do
           throw :halt, [201, { "Content-Type" => "application/json" }, ['{"id":1}']]
         end
       end
 
       block_calls = 0
       replayed = catch(:halt) do
-        described_class.wrap(request: request, response: response, user: user) do
+        described_class.wrap(request: request, user: user) do
           block_calls += 1
           throw :halt, [201, {}, ['{"id":1}']]
         end
@@ -123,7 +122,7 @@ RSpec.describe Idempotency do
       catch(:halt) do
         described_class.wrap(
           request: fake_request(method: "POST", path: "/api/things", params: { "a" => 1, "b" => 2 }, key: key),
-          response: response, user: user
+          user: user
         ) { throw :halt, [201, {}, ['{"ok":1}']] }
       end
 
@@ -131,7 +130,7 @@ RSpec.describe Idempotency do
       replay = catch(:halt) do
         described_class.wrap(
           request: fake_request(method: "POST", path: "/api/things", params: { "b" => 2, "a" => 1 }, key: key),
-          response: response, user: user
+          user: user
         ) do
           block_calls += 1
           throw :halt, [201, {}, ['{"ok":1}']]
@@ -146,18 +145,43 @@ RSpec.describe Idempotency do
       catch(:halt) do
         described_class.wrap(
           request: fake_request(method: "POST", path: "/api/things", params: { "a" => 1 }, key: key),
-          response: response, user: user
+          user: user
         ) { throw :halt, [201, {}, ['{"ok":1}']] }
       end
 
       conflict = catch(:halt) do
         described_class.wrap(
           request: fake_request(method: "POST", path: "/api/things", params: { "a" => 2 }, key: key),
-          response: response, user: user
+          user: user
         ) { throw :halt, [201, {}, ['{"ok":2}']] }
       end
 
       expect(conflict[0]).to eq(422)
+    end
+  end
+
+  describe ".wrap (in-flight conflict)" do
+    it "raises ConflictError when the cache insert conflicts but the winning row is still invisible" do
+      # Force the insert to fall into the lost-race branch without actually
+      # pre-seeding a row, so the post-rollback lookup also misses.
+      # `insert_conflict` is a Postgres-adapter method and not on the generic
+      # Sequel::Dataset class, so an instance_double can't verify it — use a
+      # plain double here.
+      conflicting_dataset = double("idempotency_keys dataset") # rubocop:disable RSpec/VerifiedDoubles
+      allow(DB).to receive(:[]).and_call_original
+      allow(DB).to receive(:[]).with(:idempotency_keys).and_return(conflicting_dataset)
+      allow(conflicting_dataset).to receive_messages(
+        insert_conflict: conflicting_dataset,
+        insert: nil,
+        where: conflicting_dataset,
+        first: nil
+      )
+
+      expect {
+        described_class.wrap(request: request, user: user) do
+          throw :halt, [201, {}, ['{"ok":1}']]
+        end
+      }.to raise_error(described_class::ConflictError)
     end
   end
 
@@ -181,7 +205,7 @@ RSpec.describe Idempotency do
 
       probe = "probe-#{SecureRandom.hex(4)}"
       replayed = catch(:halt) do
-        described_class.wrap(request: request, response: response, user: user) do
+        described_class.wrap(request: request, user: user) do
           DB[:rate_limits].insert(key: probe, count: 1, expires_at: Time.now + 60)
           throw :halt, [201, {}, ['{"loser":true}']]
         end

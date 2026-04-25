@@ -45,7 +45,7 @@ module Idempotency
   # rack response, write the cache row in the same transaction, and re-throw
   # `:halt` once the transaction commits. A raised exception inside the block
   # rolls back both the mutation and the cache write.
-  def wrap(request:, response:, user:, &block)
+  def wrap(request:, user:, &block)
     return yield unless applies?(request, user)
 
     key = request.env[HEADER].to_s.strip
@@ -95,6 +95,12 @@ module Idempotency
         APP_LOGGER.warn { "[Idempotency] In-flight conflict for user=#{user.id} key=#{key}" }
         raise ConflictError, "Idempotency key in flight"
       end
+      if cached[:request_fingerprint] != fingerprint
+        # The race is itself surprising; combined with a body mismatch it
+        # almost certainly means a buggy client is reusing the same key for
+        # different requests in parallel. Worth a log so the 422 isn't silent.
+        APP_LOGGER.warn { "[Idempotency] Lost-race fingerprint mismatch for user=#{user.id} key=#{key}" }
+      end
       return replay(cached, fingerprint)
     end
 
@@ -140,10 +146,18 @@ module Idempotency
     end
   end
 
+  # Rack bodies are an Enumerable of strings (often an Array, sometimes a
+  # BodyProxy or a streamed body). Reading via `each` works for all of them
+  # and lets us call `close` afterwards so any cleanup callbacks the body
+  # registered (e.g. connection release) actually fire. Non-Enumerable bodies
+  # would silently coerce to a useless `inspect` string via `to_s`, so we
+  # reject them explicitly.
   def serialise_body(body_parts)
-    return body_parts.join if body_parts.is_a?(Array)
-    return body_parts.to_s if body_parts.respond_to?(:to_s)
+    raise ArgumentError, "Unsupported rack body shape: #{body_parts.class}" unless body_parts.respond_to?(:each)
 
-    raise ArgumentError, "Unsupported rack body shape: #{body_parts.class}"
+    parts = []
+    body_parts.each { |chunk| parts << chunk }
+    body_parts.close if body_parts.respond_to?(:close)
+    parts.join
   end
 end

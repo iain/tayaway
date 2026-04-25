@@ -15,7 +15,7 @@ class App
     # Wrap dispatch so every mutating route is covered by Idempotency without
     # per-route opt-in. See Idempotency for the contract.
     begin
-      Idempotency.wrap(request: r, response: response, user: current_user) do
+      Idempotency.wrap(request: r, user: current_user) do
         r.hash_branches("api")
       end
     rescue Idempotency::ConflictError
