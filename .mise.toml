@@ -160,6 +160,11 @@ description = "Seed the development database"
 dir = "{{config_root}}/backend"
 run = "bundle exec rake db:seed"
 
+[tasks."db:seed-dev"]
+description = "Populate the development database with rich sample data"
+dir = "{{config_root}}/backend"
+run = "RACK_ENV=development bundle exec ruby db/seed_dev.rb"
+
 [tasks."db:setup-e2e"]
 description = "Create and migrate the e2e database"
 dir = "{{config_root}}/backend"
