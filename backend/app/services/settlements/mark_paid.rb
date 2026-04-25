@@ -28,14 +28,32 @@ module Settlements
           event_id = DB[:settlements].where(id: transfer.settlement_id).get(:event_id)
           DB[:events].where(id: event_id).for_update.first if event_id
 
-          rows_affected = DB[:settlement_transfers]
-                          .where(id: transfer.id, superseded_at: nil)
-                          .update(paid_at: paid_at)
-          if rows_affected.zero?
+          # Re-read under the lock so we can distinguish between "row went
+          # away because the settlement was deleted" and "row was superseded
+          # by a top-up", and so the successor check below sees a consistent
+          # view of the chain.
+          current = SettlementTransfer.find(transfer.id)
+          if current.nil?
+            failure = Failure(ServiceError.conflict("This transfer no longer exists — its settlement was deleted"))
+            raise Sequel::Rollback
+          end
+          if current.superseded_at
             failure = Failure(ServiceError.conflict("This transfer was superseded by a newer settlement"))
             raise Sequel::Rollback
           end
+          # Once a follow-up settlement has been issued, its balance math
+          # was computed treating this transfer as paid. Flipping it back
+          # to unpaid would silently desync the chain — block it and tell
+          # the user to delete the follow-up first if they really meant it.
+          if !paid && Settlement.successor?(transfer.settlement_id)
+            failure = Failure(ServiceError.conflict(
+                                "This payment is locked in by a follow-up settlement — delete the follow-up first to unmark it"
+                              )
+                             )
+            raise Sequel::Rollback
+          end
 
+          DB[:settlement_transfers].where(id: transfer.id).update(paid_at: paid_at)
           Broadcaster.object_changed("settlement_transfer", transfer.id, workspace_id: workspace_id)
           updated = SettlementTransfer.find(transfer.id)
         end

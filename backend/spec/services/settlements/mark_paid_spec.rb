@@ -111,4 +111,67 @@ RSpec.describe Settlements::MarkPaid do
     expect(result.failure.http_status).to eq(403)
     expect(result.failure.message).to eq("superseded")
   end
+
+  it "refuses to unmark a paid transfer once a follow-up settlement exists" do
+    transfer_id = create_transfer(paid_at: Time.now)
+    settlement_id = DB[:settlement_transfers].where(id: transfer_id).get(:settlement_id)
+    DB[:settlements].insert(
+      id: SecureRandom.uuid,
+      event_id: event[:id],
+      user_id: user[:id],
+      previous_settlement_id: settlement_id,
+      created_at: Time.now,
+      updated_at: Time.now
+    )
+
+    result = described_class.call(
+      transfer_id: transfer_id,
+      paid: false,
+      membership: membership_for(recipient),
+      workspace_id: workspace[:id]
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.http_status).to eq(409)
+    expect(result.failure.message).to include("locked in by a follow-up settlement")
+    expect(DB[:settlement_transfers].where(id: transfer_id).get(:paid_at)).not_to be_nil
+  end
+
+  it "still allows re-confirming paid (no-op) when a follow-up settlement exists" do
+    transfer_id = create_transfer(paid_at: Time.now)
+    settlement_id = DB[:settlement_transfers].where(id: transfer_id).get(:settlement_id)
+    DB[:settlements].insert(
+      id: SecureRandom.uuid,
+      event_id: event[:id],
+      user_id: user[:id],
+      previous_settlement_id: settlement_id,
+      created_at: Time.now,
+      updated_at: Time.now
+    )
+
+    result = described_class.call(
+      transfer_id: transfer_id,
+      paid: true,
+      membership: membership_for(recipient),
+      workspace_id: workspace[:id]
+    )
+
+    expect(result.success?).to be true
+  end
+
+  it "reports a deleted-settlement conflict distinctly from supersede" do
+    transfer_id = create_transfer
+    transfer = SettlementTransfer.find(transfer_id)
+    settlement_id = transfer.settlement_id
+    # Simulate the row being yanked between policy check and the locked
+    # update — same observable outcome the deleted-settlement cascade
+    # produces.
+    DB[:settlement_transfers].where(id: transfer_id).delete
+    DB[:settlements].where(id: settlement_id).delete
+
+    result = described_class.send(:update_paid, transfer, true, workspace[:id], membership_for(recipient))
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to include("no longer exists")
+  end
 end
