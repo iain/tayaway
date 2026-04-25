@@ -9,7 +9,13 @@ module Settlements
 
       def call(settlement_id:, membership:, workspace_id:)
         Settlement.find_result(settlement_id)
-                  .bind { |settlement| SettlementPolicy.enforce(:delete, settlement, membership: membership) }
+                  .bind do |settlement|
+                    has_successor = Settlement.successor?(settlement.id)
+                    SettlementPolicy.enforce(
+                      :delete, settlement,
+                      membership: membership, has_successor: has_successor
+                    )
+                  end
                   .bind { |settlement| delete_settlement(settlement, workspace_id, membership) }
       end
 
@@ -29,11 +35,16 @@ module Settlements
           # instead of a clean race message).
           DB[:events].where(id: settlement.event_id).for_update.first
 
-          # Only the tip of the chain can be deleted. Mid-chain delete would
-          # orphan the superseded transfers that only the successor's
-          # deletion is allowed to restore.
-          if Settlement.successor?(settlement.id)
-            failure = Failure(ServiceError.validation("Delete the most recent settlement first"))
+          # Re-enforce the policy with chain state read inside the lock so
+          # a race-window successor (created between the call-site enforce
+          # and now) is caught with the same `:not_tip` denial.
+          has_successor = Settlement.successor?(settlement.id)
+          re_enforce = SettlementPolicy.enforce(
+            :delete, settlement,
+            membership: membership, has_successor: has_successor
+          )
+          if re_enforce.failure?
+            failure = re_enforce
             raise Sequel::Rollback
           end
 

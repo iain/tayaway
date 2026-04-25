@@ -20,5 +20,22 @@ class SettlementTransferSerializer
         }
       end
     end
+
+    def policy_context_batch(transfers)
+      return {} if transfers.empty?
+
+      settlement_ids = transfers.map { |t| t.settlement_id.to_s }.uniq
+      settlement_ids_with_successor = DB[:settlements]
+                                      .where(previous_settlement_id: settlement_ids)
+                                      .select_map(:previous_settlement_id)
+                                      .map(&:to_s)
+                                      .to_set
+
+      transfers.each_with_object({}) do |transfer, h|
+        h[transfer.id.to_s] = {
+          has_successor: settlement_ids_with_successor.include?(transfer.settlement_id.to_s)
+        }
+      end
+    end
   end
 end

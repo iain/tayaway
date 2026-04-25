@@ -9,7 +9,13 @@ module Settlements
 
       def call(transfer_id:, paid:, membership:, workspace_id:)
         SettlementTransfer.find_result(transfer_id)
-                          .bind { |transfer| SettlementTransferPolicy.enforce(:mark_paid, transfer, membership: membership) }
+                          .bind do |transfer|
+                            has_successor = Settlement.successor?(transfer.settlement_id)
+                            SettlementTransferPolicy.enforce(
+                              :mark_paid, transfer,
+                              membership: membership, has_successor: has_successor
+                            )
+                          end
                           .bind { |transfer| update_paid(transfer, paid, workspace_id, membership) }
       end
 
@@ -22,34 +28,30 @@ module Settlements
 
         DB.transaction do
           # Take the same event-level lock Settlements::Create holds so a
-          # concurrent top-up can't commit a supersede between our
-          # superseded_at check and our paid_at write (nor compute its
-          # balance math against a paid_at value that we're about to change).
+          # concurrent top-up can't commit a supersede or wedge a follow-up
+          # between our policy checks and the paid_at write.
           event_id = DB[:settlements].where(id: transfer.settlement_id).get(:event_id)
           DB[:events].where(id: event_id).for_update.first if event_id
 
-          # Re-read under the lock so we can distinguish between "row went
-          # away because the settlement was deleted" and "row was superseded
-          # by a top-up", and so the successor check below sees a consistent
-          # view of the chain.
+          # Re-read under the lock so we can distinguish "row went away
+          # because the settlement was deleted" from the policy-handled
+          # state-precondition denials below.
           current = SettlementTransfer.find(transfer.id)
           if current.nil?
             failure = Failure(ServiceError.conflict("This transfer no longer exists — its settlement was deleted"))
             raise Sequel::Rollback
           end
-          if current.superseded_at
-            failure = Failure(ServiceError.conflict("This transfer was superseded by a newer settlement"))
-            raise Sequel::Rollback
-          end
-          # Once a follow-up settlement has been issued, its balance math
-          # was computed treating this transfer as paid. Flipping it back
-          # to unpaid would silently desync the chain — block it and tell
-          # the user to delete the follow-up first if they really meant it.
-          if !paid && Settlement.successor?(transfer.settlement_id)
-            failure = Failure(ServiceError.conflict(
-                                "This payment is locked in by a follow-up settlement — delete the follow-up first to unmark it"
-                              )
-                             )
+
+          # Re-enforce the policy with chain state read inside the lock,
+          # closing the race between the call-site enforce and us. Same
+          # rules apply (superseded, locked_in_followup, recipient).
+          has_successor = Settlement.successor?(current.settlement_id)
+          re_enforce = SettlementTransferPolicy.enforce(
+            :mark_paid, current,
+            membership: membership, has_successor: has_successor
+          )
+          if re_enforce.failure?
+            failure = re_enforce
             raise Sequel::Rollback
           end
 

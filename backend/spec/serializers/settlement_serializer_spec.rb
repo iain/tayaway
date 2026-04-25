@@ -57,6 +57,21 @@ RSpec.describe SettlementSerializer do
       expect(context[settlement.id.to_s][:event]).to be_a(Event)
       expect(context[settlement.id.to_s][:event].id.to_s).to eq(event_row[:id].to_s)
     end
+
+    it "flags settlements that have a successor in the chain" do
+      event_row = TestFactories.event(workspace: workspace, user: user)
+      now = Time.now
+      s1_id = SecureRandom.uuid
+      s2_id = SecureRandom.uuid
+      DB[:settlements].insert(id: s1_id, event_id: event_row[:id], user_id: user[:id], created_at: now, updated_at: now)
+      DB[:settlements].insert(id: s2_id, event_id: event_row[:id], user_id: user[:id], previous_settlement_id: s1_id, created_at: now, updated_at: now)
+      settlements = [Settlement.find(s1_id), Settlement.find(s2_id)]
+
+      context = described_class.policy_context_batch(settlements)
+
+      expect(context[s1_id.to_s][:has_successor]).to be true
+      expect(context[s2_id.to_s][:has_successor]).to be false
+    end
   end
 
   describe "policy context threading" do

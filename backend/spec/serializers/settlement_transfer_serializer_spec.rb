@@ -55,4 +55,36 @@ RSpec.describe SettlementTransferSerializer do
       expect(result[:paidAt]).to be_nil
     end
   end
+
+  describe ".policy_context_batch" do
+    it "flags transfers whose settlement has a successor in the chain" do
+      event = TestFactories.event(workspace: workspace, user: user)
+      now = Time.now
+      s1_id = SecureRandom.uuid
+      s2_id = SecureRandom.uuid
+      DB[:settlements].insert(id: s1_id, event_id: event[:id], user_id: user[:id], created_at: now, updated_at: now)
+      DB[:settlements].insert(
+        id: s2_id, event_id: event[:id], user_id: user[:id],
+        previous_settlement_id: s1_id, created_at: now, updated_at: now
+      )
+      t1_id = SecureRandom.uuid
+      t2_id = SecureRandom.uuid
+      DB[:settlement_transfers].insert(
+        id: t1_id, settlement_id: s1_id,
+        from_user_id: other_user[:id], to_user_id: user[:id], amount: 1.0,
+        created_at: now, updated_at: now
+      )
+      DB[:settlement_transfers].insert(
+        id: t2_id, settlement_id: s2_id,
+        from_user_id: other_user[:id], to_user_id: user[:id], amount: 1.0,
+        created_at: now, updated_at: now
+      )
+      transfers = [SettlementTransfer.find(t1_id), SettlementTransfer.find(t2_id)]
+
+      context = described_class.policy_context_batch(transfers)
+
+      expect(context[t1_id.to_s][:has_successor]).to be true
+      expect(context[t2_id.to_s][:has_successor]).to be false
+    end
+  end
 end

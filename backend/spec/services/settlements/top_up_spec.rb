@@ -187,7 +187,8 @@ RSpec.describe "Settlement chain" do
       )
 
       expect(result.failure?).to be true
-      expect(result.failure.message).to include("most recent")
+      expect(result.failure.message).to eq("not_tip")
+      expect(result.failure.http_status).to eq(403)
     end
 
     it "lets the tip of the chain be deleted" do

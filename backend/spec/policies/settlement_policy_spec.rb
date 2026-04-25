@@ -45,5 +45,17 @@ RSpec.describe SettlementPolicy do
       policy = described_class.new(settlement, membership: WorkspaceMembership.find(creator_membership[:id]))
       expect(policy.delete).to be_success
     end
+
+    it "rejects mid-chain deletes even from the creator" do
+      settlement = create_settlement(user: settlement_creator)
+      policy = described_class.new(
+        settlement,
+        membership: WorkspaceMembership.find(creator_membership[:id]),
+        event: event,
+        has_successor: true
+      )
+      expect(policy.delete).to be_failure
+      expect(policy.delete.failure).to eq(:not_tip)
+    end
   end
 end

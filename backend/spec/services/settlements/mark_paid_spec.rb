@@ -132,12 +132,16 @@ RSpec.describe Settlements::MarkPaid do
     )
 
     expect(result.failure?).to be true
-    expect(result.failure.http_status).to eq(409)
-    expect(result.failure.message).to include("locked in by a follow-up settlement")
+    expect(result.failure.http_status).to eq(403)
+    expect(result.failure.message).to eq("locked_in_followup")
     expect(DB[:settlement_transfers].where(id: transfer_id).get(:paid_at)).not_to be_nil
   end
 
-  it "still allows re-confirming paid (no-op) when a follow-up settlement exists" do
+  it "blocks both directions of the toggle once a follow-up settlement exists" do
+    # The policy is direction-blind: a follow-up settlement makes the chain
+    # math depend on this transfer being paid, so even an idempotent
+    # paid=true click is rejected — the UI should show the locked-in modal
+    # instead of routing through to the service.
     transfer_id = create_transfer(paid_at: Time.now)
     settlement_id = DB[:settlement_transfers].where(id: transfer_id).get(:settlement_id)
     DB[:settlements].insert(
@@ -156,7 +160,8 @@ RSpec.describe Settlements::MarkPaid do
       workspace_id: workspace[:id]
     )
 
-    expect(result.success?).to be true
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("locked_in_followup")
   end
 
   it "reports a deleted-settlement conflict distinctly from supersede" do
