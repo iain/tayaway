@@ -98,7 +98,7 @@ The object pool is cached in IndexedDB (`tayaway-pool-cache`) with three stores:
 
 ### Cache invalidation
 
-`CACHE_VERSION` (currently 4) is bumped when the sync protocol changes. Mismatch clears the cache and forces a full sync.
+`CACHE_VERSION` (currently 8) is bumped when the sync protocol changes. Mismatch clears the cache and forces a full sync.
 
 ## WebSocket Reconnection
 
@@ -122,13 +122,19 @@ On WebSocket authentication, `commandQueue.processQueue()` is called to flush an
 
 ## Cascade Deletes
 
-When the server sends a delete, the WebSocket store recursively removes dependents using `CASCADE_RELATIONS`:
+When the pool removes an object — whether from a WebSocket delete, a partial-sync `deleted` entry, or an optimistic `destroy` — `cascadeRemove` (in `stores/objectPool.ts`) recursively removes dependents using `CASCADE_RULES`:
 
 ```
-event → datePoll → dateRange → vote
+event ─┬─ datePoll ── dateRange ── vote
+       ├─ rsvp
+       ├─ expense ── expenseParticipant
+       ├─ settlement ── settlementTransfer
+       └─ choreRoster ── chore ── choreAssignment
+
+taskList ── taskItem
 ```
 
-This keeps the local pool consistent without the server enumerating every deleted child.
+The cascade is for client resilience: it keeps the local pool consistent even if a backend service forgets to enumerate children. Backend services are still required to broadcast each deleted child individually and record each one in `deleted_items` so a client returning via partial sync sees the same removals — see `doc/backend-sync.md`.
 
 ## Service Worker
 
