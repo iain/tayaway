@@ -1,4 +1,4 @@
-# Permission System
+# Authorization
 
 Policy classes are the single source of truth for all permissions. The backend
 enforces them, serializes them onto every pool object, and the frontend reads

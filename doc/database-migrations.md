@@ -26,23 +26,25 @@ These are safe to run while old code is serving traffic:
 
 These break old code if done in a single deploy:
 
-| Operation | Why it breaks |
-| --- | --- |
-| `drop_column` | Old code still tries to read/write the column |
-| `set_column_not_null` on existing rows | Old code may insert rows without the column |
-| `rename_column` / `rename_table` | Old code references the old name |
-| `drop_table` | Old code still queries the table |
-| Adding a NOT NULL column without a default | INSERT from old code will fail |
+| Operation                                  | Why it breaks                                 |
+| ------------------------------------------ | --------------------------------------------- |
+| `drop_column`                              | Old code still tries to read/write the column |
+| `set_column_not_null` on existing rows     | Old code may insert rows without the column   |
+| `rename_column` / `rename_table`           | Old code references the old name              |
+| `drop_table`                               | Old code still queries the table              |
+| Adding a NOT NULL column without a default | INSERT from old code will fail                |
 
 ## Two-Deploy Pattern for Destructive Changes
 
 When you need to remove or constrain something, split it across two deploys.
 
 **Deploy 1 — Remove from code, keep in DB:**
+
 - Stop reading/writing the column in application code
 - Do not write a migration yet
 
 **Deploy 2 — Remove from DB:**
+
 - Write a migration to drop the column/table
 - Old code no longer references it, so the migration is safe
 
