@@ -12,10 +12,8 @@ class App
       end
     end
 
-    # Dispatch to nested branches (events, etc.). Wrap the dispatch so any
-    # mutating request carrying an Idempotency-Key header for an authenticated
-    # user is deduplicated — first request runs the work and caches the
-    # response in the same transaction; retries replay the cached response.
+    # Wrap dispatch so every mutating route is covered by Idempotency without
+    # per-route opt-in. See Idempotency for the contract.
     begin
       Idempotency.wrap(request: r, response: response, user: current_user) do
         r.hash_branches("api")

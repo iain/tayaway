@@ -132,7 +132,7 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
               command.method,
               command.path,
               command.body,
-              idempotencyKeyFor(command.originalIds)
+              await idempotencyKeyFor(command.originalIds)
             )
             for (const id of command.originalIds) {
               await removeCommand(id)
@@ -199,17 +199,27 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
   }
 })
 
-// The idempotency key for a coalesced command is derived from the sorted set
-// of its source command ids. Each source command's id is a UUID generated at
-// enqueue time and persisted in IndexedDB, so the derived key is stable across
-// retries of the same logical operation. A retry that follows a different
-// coalescing pass (because new commands were queued in between) gets a
-// different key — and is treated as a fresh request, which is correct.
-function idempotencyKeyFor(originalIds: string[]): string {
+// The key for a coalesced command is derived from the sorted set of its
+// source command ids — each is a UUID generated at enqueue time and persisted
+// in IndexedDB, so the derived key is stable across retries of the same
+// logical operation. A retry that follows a *different* coalescing pass (e.g.
+// new commands were queued during the offline window) produces a different
+// key and is treated as a fresh request — acceptable because the only routes
+// the queue retries are themselves idempotent at the row level.
+//
+// Multi-id keys are SHA-256 hashed so the wire-level key length stays bounded
+// (the backend rejects keys >255 chars by skipping idempotency entirely,
+// which would silently disable dedup for large coalesced bundles).
+async function idempotencyKeyFor(originalIds: string[]): Promise<string> {
   if (originalIds.length === 1) {
     return originalIds[0]
   }
-  return [...originalIds].sort().join(',')
+  const sorted = [...originalIds].sort().join(',')
+  const bytes = new TextEncoder().encode(sorted)
+  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
 }
 
 async function executeRequest<T>(

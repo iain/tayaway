@@ -14,14 +14,12 @@ export interface ApiError {
   status: number
 }
 
-/**
- * Options for mutating requests. `idempotencyKey` is sent as the
- * `Idempotency-Key` header so the server can deduplicate retries of the same
- * logical mutation (used by the offline command queue).
- */
 export interface MutationOptions {
   silent?: boolean
   signal?: AbortSignal
+  // Sent as the `Idempotency-Key` header. Only the offline command queue
+  // sets this today; the server uses it to dedupe retries of the same
+  // logical mutation.
   idempotencyKey?: string
 }
 

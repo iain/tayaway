@@ -4,7 +4,7 @@ require "spec_helper"
 require "rake"
 
 RSpec.describe "rake db:cleanup_idempotency_keys" do
-  let(:fake_dataset) { instance_double(Sequel::Dataset) }
+  let(:user) { TestFactories.user }
 
   let(:rake) do
     app = Rake::Application.new
@@ -13,36 +13,44 @@ RSpec.describe "rake db:cleanup_idempotency_keys" do
     app
   end
 
-  before do
-    allow(DB).to receive(:[]).with(:idempotency_keys).and_return(fake_dataset)
-    allow(fake_dataset).to receive_messages(where: fake_dataset, delete: 0)
-  end
-
   after do
     Rake.application = Rake::Application.new
     ENV.delete("IDEMPOTENCY_KEY_TTL_HOURS")
   end
 
-  it "deletes rows filtered by created_at" do
+  def insert_key(age_hours:, key: SecureRandom.uuid)
+    DB[:idempotency_keys].insert(
+      user_id: user[:id],
+      idempotency_key: key,
+      request_fingerprint: "fp",
+      response_status: 200,
+      response_body: "{}",
+      created_at: Time.now - (age_hours * 60 * 60)
+    )
+    key
+  end
+
+  it "deletes rows older than the TTL and keeps fresh ones" do
+    fresh = insert_key(age_hours: 1)
+    stale = insert_key(age_hours: 48)
+
     rake["db:cleanup_idempotency_keys"].invoke
 
-    expect(fake_dataset).to have_received(:where)
-    expect(fake_dataset).to have_received(:delete)
-  end
-
-  it "prints a summary with the number of deleted rows" do
-    allow(fake_dataset).to receive(:delete).and_return(7)
-
-    expect { rake["db:cleanup_idempotency_keys"].invoke }.to output(/Deleted 7 idempotency_keys rows older than 24 hours/).to_stdout
-  end
-
-  it "uses the default TTL of 24 hours when env var is not set" do
-    expect { rake["db:cleanup_idempotency_keys"].invoke }.to output(/older than 24 hours/).to_stdout
+    remaining = DB[:idempotency_keys].select_map(:idempotency_key)
+    expect(remaining).to include(fresh)
+    expect(remaining).not_to include(stale)
   end
 
   it "respects the IDEMPOTENCY_KEY_TTL_HOURS env var" do
-    ENV["IDEMPOTENCY_KEY_TTL_HOURS"] = "48"
+    ENV["IDEMPOTENCY_KEY_TTL_HOURS"] = "72"
 
-    expect { rake["db:cleanup_idempotency_keys"].invoke }.to output(/older than 48 hours/).to_stdout
+    inside_window = insert_key(age_hours: 48)
+    outside_window = insert_key(age_hours: 96)
+
+    rake["db:cleanup_idempotency_keys"].invoke
+
+    remaining = DB[:idempotency_keys].select_map(:idempotency_key)
+    expect(remaining).to include(inside_window)
+    expect(remaining).not_to include(outside_window)
   end
 end

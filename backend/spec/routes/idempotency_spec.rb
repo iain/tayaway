@@ -39,12 +39,20 @@ RSpec.describe "Idempotency-Key handling" do
   end
 
   it "replays the cached response on a duplicate request without re-running the service" do
+    allow(Expenses::Create).to receive(:call).and_call_original
+
     post_expense(key: idempotency_key)
     first_status = last_response.status
     first_body = last_response.body
 
     expect { post_expense(key: idempotency_key) }
       .not_to(change { DB[:expenses].count })
+
+    # The whole point of replay: the service must run exactly once even
+    # though the client made the same call twice. Counting `expenses` rows
+    # alone would miss any service-level side effect (broadcast, mailer,
+    # third-party call) that doesn't happen to write to that table.
+    expect(Expenses::Create).to have_received(:call).once
 
     expect(last_response.status).to eq(first_status)
     expect(last_response.body).to eq(first_body)

@@ -10,26 +10,41 @@
 # Replays are scoped to (user_id, key) so different users can't collide.
 # A retry that arrives with a different request body for the same key is a
 # client bug and is rejected with 422 rather than silently replayed.
+#
+# The replay path serves the cached body verbatim with `Content-Type:
+# application/json`; response headers other than the status code are not
+# preserved. None of the current mutating routes rely on extra headers (e.g.
+# `Location:` on 201 Created), so this is fine — but a future route that does
+# would need to either store its headers in the cache row or opt out.
+#
+# Side effects performed by the route block (emails, third-party calls) are
+# *not* part of the DB transaction, so a concurrent retry that loses the
+# insert race will have already fired those side effects before its mutation
+# rolls back. For routes whose only side effect is the DB write itself this
+# is correct; routes with external side effects need their own dedupe.
 module Idempotency
   HEADER = "HTTP_IDEMPOTENCY_KEY"
   MAX_KEY_LENGTH = 255
   MUTATING_METHODS = %w[POST PUT PATCH DELETE].freeze
   JSON_HEADERS = { "Content-Type" => "application/json" }.freeze
 
+  # Raised when a concurrent retry won the cache-insert race but its row is
+  # not (yet) visible to us. Caller should map to 409.
   ConflictError = Class.new(StandardError)
 
   module_function
 
-  # Wrap a Roda route block. For an authenticated mutating request that carries
-  # a valid Idempotency-Key header, route execution and the cache write happen
-  # in a single DB transaction; for any other request the block runs untouched.
+  # Wrap a Roda route block with idempotency handling. For an authenticated
+  # mutating request that carries a valid Idempotency-Key header, route
+  # execution and the cache-row insert run inside one DB transaction so the
+  # mutation and its cached response always commit or roll back together.
+  # For any other request the block runs untouched.
   #
-  # The block is expected to halt the request (Roda's normal behaviour for
-  # matched routes), so we catch `:halt` to capture the rack response, write
-  # the cache row inside the same transaction, and re-throw `:halt` once the
-  # transaction commits. A halt that escapes commits the cache row; a raised
-  # exception rolls it back along with the mutation — the response and the
-  # cache always agree.
+  # The block is expected to halt the request via Roda's `:halt` throw (the
+  # normal behaviour for a matched route). We catch that throw to capture the
+  # rack response, write the cache row in the same transaction, and re-throw
+  # `:halt` once the transaction commits. A raised exception inside the block
+  # rolls back both the mutation and the cache write.
   def wrap(request:, response:, user:, &block)
     return yield unless applies?(request, user)
 
@@ -37,35 +52,50 @@ module Idempotency
     fingerprint = fingerprint_for(request)
 
     if (cached = lookup(user.id, key))
-      replay(cached, fingerprint)
+      return replay(cached, fingerprint)
     end
 
     captured = nil
-    begin
-      DB.transaction do
-        captured = catch(:halt) do
-          yield
-          nil
-        end
-        next unless captured
+    lost_race = false
 
-        status, _headers, body_parts = captured
-        body_str = body_parts.is_a?(Array) ? body_parts.join : body_parts.to_s
-        DB[:idempotency_keys].insert(
-          user_id: user.id,
-          idempotency_key: key,
-          request_fingerprint: fingerprint,
-          response_status: status,
-          response_body: body_str,
-          created_at: Time.now
-        )
+    DB.transaction do
+      captured = catch(:halt) do
+        yield
+        nil
       end
-    rescue Sequel::UniqueConstraintViolation
-      # A concurrent retry inserted the row first; replay its cached response.
-      cached = lookup(user.id, key)
-      raise ConflictError, "Idempotency key in flight" unless cached
+      next unless captured
 
-      replay(cached, fingerprint)
+      status, _headers, body_parts = captured
+      body_str = serialise_body(body_parts)
+
+      # ON CONFLICT DO NOTHING avoids raising inside the transaction (a
+      # raised UniqueConstraintViolation would poison the open transaction
+      # and force us to rescue across the txn boundary). On a conflict the
+      # insert returns nil — we then roll back our own mutation and replay
+      # the row that the winning concurrent request committed.
+      inserted = DB[:idempotency_keys].insert_conflict.insert(
+        user_id: user.id,
+        idempotency_key: key,
+        request_fingerprint: fingerprint,
+        response_status: status,
+        response_body: body_str,
+        created_at: Time.now
+      )
+
+      if inserted.nil?
+        lost_race = true
+        captured = nil
+        raise Sequel::Rollback
+      end
+    end
+
+    if lost_race
+      cached = lookup(user.id, key)
+      unless cached
+        APP_LOGGER.warn { "[Idempotency] In-flight conflict for user=#{user.id} key=#{key}" }
+        raise ConflictError, "Idempotency key in flight"
+      end
+      return replay(cached, fingerprint)
     end
 
     throw :halt, captured if captured
@@ -92,9 +122,11 @@ module Idempotency
   end
 
   # Fingerprint = SHA256(method | path | canonicalised params).
-  # We hash the parsed params (not the raw body) because Roda's json_parser
-  # has already consumed the input; sorting keys keeps the hash stable across
-  # different JSON serialisations of the same payload.
+  # We hash parsed params (not the raw body) because Roda's json_parser has
+  # already consumed the input. Sorting hash keys keeps the digest stable
+  # across different JSON serialisations of the same payload. Query-string
+  # params are included intentionally — they are part of the request and
+  # several mutating routes use them (e.g. POST /api/expenses?event_id=…).
   def fingerprint_for(request)
     payload = "#{request.request_method}|#{request.path_info}|#{JSON.dump(canonical(request.params))}"
     Digest::SHA256.hexdigest(payload)
@@ -106,5 +138,12 @@ module Idempotency
     when Array then value.map { |v| canonical(v) }
     else value
     end
+  end
+
+  def serialise_body(body_parts)
+    return body_parts.join if body_parts.is_a?(Array)
+    return body_parts.to_s if body_parts.respond_to?(:to_s)
+
+    raise ArgumentError, "Unsupported rack body shape: #{body_parts.class}"
   end
 end
