@@ -69,7 +69,7 @@ Playwright tests run against separate servers (backend :9293, frontend :5174) wi
 
 ## Migration Safety
 
-Migrations run **before** the app restarts during deploy — old code is still serving traffic. All migrations must be **additive**. Destructive changes (drop column/table, rename, add NOT NULL) require a two-deploy pattern. See `doc/MIGRATIONS.md` for details.
+Migrations run **before** the app restarts during deploy — old code is still serving traffic. All migrations must be **additive**. Destructive changes (drop column/table, rename, add NOT NULL) require a two-deploy pattern. See `doc/database-migrations.md` for details.
 
 ## Commits and PRs
 
