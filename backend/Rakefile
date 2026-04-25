@@ -138,4 +138,14 @@ namespace :db do
     count = DB[:idempotency_keys].where { created_at < cutoff }.delete
     puts "Deleted #{count} idempotency_keys rows older than #{ttl_hours} hours"
   end
+
+  desc "Delete audit_log_entries rows older than AUDIT_LOG_RETENTION_DAYS (default: 365)"
+  task :cleanup_audit_log_entries do
+    require_relative "config/database"
+
+    retention_days = Integer(ENV.fetch("AUDIT_LOG_RETENTION_DAYS", "365"))
+    cutoff = Time.now - (retention_days * 24 * 60 * 60)
+    count = DB[:audit_log_entries].where { created_at < cutoff }.delete
+    puts "Deleted #{count} audit_log_entries rows older than #{retention_days} days"
+  end
 end

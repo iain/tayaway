@@ -3,44 +3,12 @@
 # Append-only record of a service-level mutation attempt. Successful calls,
 # policy denials, and validation failures are all logged so we can answer
 # "who did what and was it allowed". See Auditable for how rows get written.
+#
+# This class is a namespace + insert helper rather than an instance-bearing
+# model: the read API returns plain Sequel rows, which is enough for the
+# console-driven dispute resolution we need today.
 class AuditLogEntry
   OUTCOMES = %w[success denied error].freeze
-
-  attr_reader :id, :actor_kind, :actor_user_id, :workspace_id, :service,
-              :subject_type, :subject_id, :outcome, :error_code, :error_message,
-              :action_params, :idempotency_key_hash, :request_id, :created_at
-
-  def initialize(
-    id:,
-    actor_kind:,
-    service:,
-    outcome:,
-    action_params:,
-    created_at:,
-    actor_user_id: nil,
-    workspace_id: nil,
-    subject_type: nil,
-    subject_id: nil,
-    error_code: nil,
-    error_message: nil,
-    idempotency_key_hash: nil,
-    request_id: nil
-  )
-    @id = id
-    @actor_kind = actor_kind
-    @actor_user_id = actor_user_id
-    @workspace_id = workspace_id
-    @service = service
-    @subject_type = subject_type
-    @subject_id = subject_id
-    @outcome = outcome
-    @error_code = error_code
-    @error_message = error_message
-    @action_params = action_params
-    @idempotency_key_hash = idempotency_key_hash
-    @request_id = request_id
-    @created_at = created_at
-  end
 
   # Maximum serialised size for action_params. A runaway audit_context could
   # otherwise bloat the table fast — we'd rather drop the payload and log a

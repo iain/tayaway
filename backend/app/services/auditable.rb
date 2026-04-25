@@ -35,6 +35,10 @@
 #   * never raises from the audit path itself: a failure to record an audit
 #     row logs a warning but does not corrupt the underlying service result.
 module Auditable
+  # Falcon runs this app on fibers, so per-request state must live in fiber
+  # storage — Thread.current would let two fibers on the same thread see and
+  # clobber each other's flags, suppressing audit rows or attributing them
+  # to the wrong actor under load.
   CASCADE_KEY = :auditable_in_progress
 
   # Configure how this service is audited. Called once at module load time.
@@ -81,18 +85,24 @@ module Auditable
   end
 
   # Prepended into the singleton class so `super` calls the original `.call`.
+  # A service that raises (rather than returning a Failure) is *not*
+  # audited — the exception propagates past us and we never reach the
+  # record step. That's deliberate: a raised mutation is a bug, not a
+  # user-attributable action, and wrapping every service in a transaction
+  # to make audit-on-raise possible would require restructuring every
+  # existing service. Failures returned via Result are audited normally.
   module Hook
-    def call(**kwargs)
-      if Thread.current[CASCADE_KEY]
+    def call(*args, **kwargs)
+      if Fiber[CASCADE_KEY]
         # Inner cascade: the outermost frame already owns the audit row.
         return super
       end
 
-      Thread.current[CASCADE_KEY] = true
+      Fiber[CASCADE_KEY] = true
       begin
         result = super
       ensure
-        Thread.current[CASCADE_KEY] = false
+        Fiber[CASCADE_KEY] = false
       end
 
       Auditable.record(service: self, kwargs: kwargs, result: result)
@@ -108,15 +118,15 @@ module Auditable
     REQUEST_CONTEXT_KEY = :auditable_request_context
 
     def with_request_context(context)
-      previous = Thread.current[REQUEST_CONTEXT_KEY]
-      Thread.current[REQUEST_CONTEXT_KEY] = context
+      previous = Fiber[REQUEST_CONTEXT_KEY]
+      Fiber[REQUEST_CONTEXT_KEY] = context
       yield
     ensure
-      Thread.current[REQUEST_CONTEXT_KEY] = previous
+      Fiber[REQUEST_CONTEXT_KEY] = previous
     end
 
     def request_context
-      Thread.current[REQUEST_CONTEXT_KEY] || {}
+      Fiber[REQUEST_CONTEXT_KEY] || {}
     end
 
     def record(service:, kwargs:, result:)

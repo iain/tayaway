@@ -28,11 +28,17 @@ Sequel.migration do
 
       # Cross-feature linkage to the idempotency layer and per-request tracing.
       # Both nullable: not every audited call comes from an HTTP request and
-      # not every request carries an Idempotency-Key.
-      column :idempotency_key_hash, :text, null: true
+      # not every request carries an Idempotency-Key. Schema matches
+      # idempotency_keys.idempotency_key_hash so they can join cleanly.
+      String :idempotency_key_hash, null: true, fixed: true, size: 64
       String :request_id, null: true
 
       DateTime :created_at, null: false
+
+      # Bare created_at index supports the retention DELETE without forcing
+      # a seq scan — none of the partial indexes above cover rows that have
+      # NULL workspace/actor/subject (e.g. system-actor calls).
+      index :created_at
     end
 
     # Hot read paths: "what did this user do", "what happened in this workspace",

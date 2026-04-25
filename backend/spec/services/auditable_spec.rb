@@ -102,6 +102,34 @@ RSpec.describe Auditable do
     end
   end
 
+  describe "system actor" do
+    it "records actor_kind=system when no membership is passed" do
+      headless_service = Module.new do
+        extend Auditable
+
+        audit subject_type: "event"
+
+        class << self
+          include Dry::Monads[:result]
+
+          def name = "TestSystem::Tick"
+
+          def call(**)
+            Success({ objects: [] })
+          end
+        end
+      end
+      stub_const("TestSystem", Module.new)
+      stub_const("TestSystem::Tick", headless_service)
+
+      headless_service.call
+
+      row = DB[:audit_log_entries].where(service: "TestSystem::Tick").first
+      expect(row[:actor_kind]).to eq("system")
+      expect(row[:actor_user_id]).to be_nil
+    end
+  end
+
   describe "rescue behaviour" do
     it "swallows audit insert failures without breaking the service result" do
       allow(AuditLogEntry).to receive(:create).and_raise("audit explosion")
