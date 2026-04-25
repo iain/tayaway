@@ -8,7 +8,7 @@
 # These endpoints should NOT be enabled in production.
 class App
   hash_branch("api", "test") do |r|
-    unless %w[test development e2e].include?(ENV["RACK_ENV"])
+    unless %w[test e2e].include?(ENV["RACK_ENV"])
       response.status = 404
       next { error: "Not found" }
     end
