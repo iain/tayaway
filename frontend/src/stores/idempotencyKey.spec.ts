@@ -3,33 +3,20 @@ import { idempotencyKeyFor } from './commandQueue'
 
 describe('idempotencyKeyFor', () => {
   it('produces the same key for the same set of source ids', () => {
-    const a = idempotencyKeyFor(['cmd-1'])
-    const b = idempotencyKeyFor(['cmd-1'])
-
-    expect(a).toBe(b)
+    expect(idempotencyKeyFor(['cmd-1'])).toBe(idempotencyKeyFor(['cmd-1']))
   })
 
   it('produces different keys for different source id sets', () => {
-    const a = idempotencyKeyFor(['cmd-1'])
-    const b = idempotencyKeyFor(['cmd-2'])
-
-    expect(a).not.toBe(b)
+    expect(idempotencyKeyFor(['cmd-1'])).not.toBe(idempotencyKeyFor(['cmd-2']))
   })
 
   it('is order-independent for multi-id bundles', () => {
-    const a = idempotencyKeyFor(['cmd-1', 'cmd-2', 'cmd-3'])
-    const b = idempotencyKeyFor(['cmd-3', 'cmd-1', 'cmd-2'])
-
-    expect(a).toBe(b)
+    expect(idempotencyKeyFor(['cmd-1', 'cmd-2', 'cmd-3'])).toBe(
+      idempotencyKeyFor(['cmd-3', 'cmd-1', 'cmd-2'])
+    )
   })
 
-  it('returns a fixed-length 64-char hex string regardless of input size', () => {
-    const single = idempotencyKeyFor(['cmd-1'])
-    const big = idempotencyKeyFor(
-      Array.from({ length: 50 }, (_, i) => `cmd-${i}`)
-    )
-
-    expect(single).toMatch(/^[0-9a-f]{16}$/)
-    expect(big).toMatch(/^[0-9a-f]{16}$/)
+  it('passes a single id through unchanged', () => {
+    expect(idempotencyKeyFor(['cmd-1'])).toBe('cmd-1')
   })
 })

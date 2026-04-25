@@ -55,14 +55,6 @@ RSpec.describe Idempotency do
 
       expect(DB[:idempotency_keys].count).to eq(0)
     end
-
-    it "skips when the key exceeds MAX_KEY_LENGTH" do
-      oversize = fake_request(method: "POST", path: "/api/things", params: {}, key: "x" * 256)
-
-      described_class.wrap(request: oversize, user: user) { :ok }
-
-      expect(DB[:idempotency_keys].count).to eq(0)
-    end
   end
 
   describe ".wrap (transactional invariant)" do

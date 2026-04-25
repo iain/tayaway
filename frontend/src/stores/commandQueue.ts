@@ -204,32 +204,16 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
   }
 })
 
-// Exported for tests. The key for a coalesced command is a deterministic
-// hash of the sorted set of its source command ids — each id is a UUID
+// Exported for tests. The key for a coalesced command is the sorted set of
+// its source command ids joined with a comma. Each source id is a UUID
 // generated at enqueue time and persisted in IndexedDB, so the derived key
 // is stable across retries of the same logical operation. A retry that
 // follows a *different* coalescing pass (new commands queued during the
 // offline window) produces a different key and is treated as a fresh
 // request — acceptable because the routes the queue retries are themselves
 // idempotent at the row level.
-//
-// The hash isn't cryptographic — collision risk only matters within a
-// single user's keys, where it's negligible — but it keeps the wire-level
-// key short and fixed-length so the backend's 255-char cap can't silently
-// reject large coalesced bundles. SubtleCrypto would force this function
-// async, which doesn't compose well with the queue's setTimeout-yield loop.
 export function idempotencyKeyFor(originalIds: string[]): string {
-  const sorted = [...originalIds].sort().join(',')
-  // 128-bit cyrb64-style mix, two 32-bit lanes seeded with different primes.
-  let h1 = 0x12345678
-  let h2 = 0x9abcdef0
-  for (let i = 0; i < sorted.length; i++) {
-    const c = sorted.charCodeAt(i)
-    h1 = Math.imul(h1 ^ c, 2654435761) | 0
-    h2 = Math.imul(h2 ^ c, 1597334677) | 0
-  }
-  const lane = (n: number) => (n >>> 0).toString(16).padStart(8, '0')
-  return lane(h1) + lane(h2)
+  return [...originalIds].sort().join(',')
 }
 
 async function executeRequest<T>(

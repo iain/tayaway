@@ -3,7 +3,7 @@
 Sequel.migration do
   up do
     create_table(:idempotency_keys) do
-      String :idempotency_key, null: false
+      String :idempotency_key, null: false, text: true
       foreign_key :user_id, :users, type: :uuid, null: false, on_delete: :cascade
       String :request_fingerprint, null: false
       Integer :response_status, null: false

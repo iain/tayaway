@@ -24,7 +24,6 @@
 # is correct; routes with external side effects need their own dedupe.
 module Idempotency
   HEADER = "HTTP_IDEMPOTENCY_KEY"
-  MAX_KEY_LENGTH = 255
   MUTATING_METHODS = %w[POST PUT PATCH DELETE].freeze
   JSON_HEADERS = { "Content-Type" => "application/json" }.freeze
 
@@ -112,7 +111,7 @@ module Idempotency
     return false unless MUTATING_METHODS.include?(request.request_method)
 
     raw = request.env[HEADER]
-    !raw.nil? && !raw.to_s.strip.empty? && raw.to_s.length <= MAX_KEY_LENGTH
+    !raw.nil? && !raw.to_s.strip.empty?
   end
 
   def lookup(user_id, key)
