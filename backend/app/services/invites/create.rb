@@ -9,12 +9,15 @@ module Invites
       def call(email:, workspace_id:, membership:, name: nil)
         sanitized_name = name&.strip&.then { |n| n.empty? ? nil : n }
 
+        # Email is intentionally not in the audit context: the invitee's
+        # address lives on the workspace_invite row, which the subject_id
+        # links to. If the invite is deleted the email goes with it (the
+        # right GDPR behaviour) instead of leaking through the audit log.
         Auditable.around(
           service: "Invites::Create",
           actor: membership,
           subject_type: "workspace_invite",
-          workspace_id: workspace_id,
-          context: { email: email }
+          workspace_id: workspace_id
         ) do
           Success()
             .bind { Workspace.find_result(workspace_id) }

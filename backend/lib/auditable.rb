@@ -51,6 +51,17 @@ module Auditable
     # profile edits, email change verification — pass `actor: nil` together
     # with an explicit `actor_user_id:` so the row still attributes the
     # action correctly.
+    #
+    # `context` is the curated dict that lands in `action_params`. The
+    # subject row carries the canonical content (name, email, amount, …),
+    # so the context only needs values that wouldn't be recoverable from
+    # the subject after a future deletion. Email addresses, phone numbers,
+    # and other directly-identifying personal data should not live here:
+    # the audit table outlives the entities it points at, and putting that
+    # data on the row makes it harder to honour deletion requests.
+    # Identifiers (uuids), enum-like values (roles, response types, paid
+    # flags), and short user-visible labels that double as moderation
+    # signals (event names, chore names) are fine.
     def around(service:, actor:, actor_user_id: nil, subject_type: nil, subject_id: nil, workspace_id: nil, context: {})
       if Fiber[CASCADE_KEY]
         # Inner cascade: the outermost frame already owns the audit row.

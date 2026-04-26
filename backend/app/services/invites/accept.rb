@@ -8,19 +8,13 @@ module Invites
       include Dry::Monads[:result]
 
       def call(token_jwt:)
-        # No actor: the accepting user doesn't have a membership yet. The
-        # audit row records the action with actor_kind=system and the
-        # workspace_invite as the subject.
-        Auditable.around(
-          service: "Invites::Accept",
-          actor: nil,
-          subject_type: "workspace_invite"
-        ) do
-          Success()
-            .bind { decode_token(token_jwt) }
-            .bind { |decoded| find_invite(decoded) }
-            .bind { |invite| accept_invite(invite) }
-        end
+        # Not audited: the actor isn't known until the JWT decodes, and this
+        # is really an authentication concern. Picked up when auth gets its
+        # own audit pass.
+        Success()
+          .bind { decode_token(token_jwt) }
+          .bind { |decoded| find_invite(decoded) }
+          .bind { |invite| accept_invite(invite) }
       end
 
       private
