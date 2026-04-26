@@ -38,17 +38,6 @@ RSpec.describe MemberSerializer do
       expect(result[:phoneNumber]).to eq("+31612345678")
       expect(result[:locationName]).to eq("Amsterdam")
       expect(result[:role]).to eq("admin")
-      expect(result[:hasIban]).to be false
-    end
-
-    it "sets hasIban: true when the user has an iban" do
-      DB[:users].where(id: user[:id]).update(iban: Encryption.encrypt("NL91ABNA0417164300", user_id: user[:id]))
-      membership_row = TestFactories.workspace_membership(workspace: workspace, user: user)
-      membership = WorkspaceMembership.find(membership_row[:id])
-
-      result = described_class.serialize_batch([membership], pool: nil).first
-
-      expect(result[:hasIban]).to be true
     end
 
     it "never emits the raw iban" do

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "spec_helper"
+require "base64"
 
 RSpec.describe Settlements::PaymentDetails do
   let(:workspace) { TestFactories.workspace }
@@ -19,12 +20,12 @@ RSpec.describe Settlements::PaymentDetails do
     DB[:users].where(id: recipient[:id]).update(iban: Encryption.encrypt("NL91ABNA0417164300", user_id: recipient[:id]))
   end
 
-  define_method(:create_transfer) do |from_user: sender, to_user: recipient|
+  define_method(:create_transfer) do |from_user: sender, to_user: recipient, event_row: event|
     settlement_id = SecureRandom.uuid
     now = Time.now
     DB[:settlements].insert(
       id: settlement_id,
-      event_id: event[:id],
+      event_id: event_row[:id],
       user_id: sender[:id],
       created_at: now,
       updated_at: now
@@ -42,18 +43,49 @@ RSpec.describe Settlements::PaymentDetails do
     transfer_id
   end
 
-  it "returns recipient name, formatted IBAN, amount, and reference for the sender" do
+  it "returns recipient name, formatted IBAN, amount, reference, and a base64 PNG for the sender" do
     transfer_id = create_transfer
 
     result = described_class.call(transfer_id: transfer_id, membership: sender_membership)
 
     expect(result.success?).to be true
-    expect(result.value!).to eq(
-      recipientName: "Recipient",
-      iban: "NL91 ABNA 0417 1643 00",
-      amount: 25.50,
-      reference: "Trip"
-    )
+    value = result.value!
+    expect(value[:recipientName]).to eq("Recipient")
+    expect(value[:iban]).to eq("NL91 ABNA 0417 1643 00")
+    expect(value[:amount]).to eq(25.50)
+    expect(value[:reference]).to eq("Trip")
+
+    decoded = Base64.strict_decode64(value[:qrPng])
+    expect(decoded.bytes[0..7]).to eq([137, 80, 78, 71, 13, 10, 26, 10])
+  end
+
+  it "returns name/amount/reference but null iban and qrPng when the recipient has no IBAN" do
+    DB[:users].where(id: recipient[:id]).update(iban: nil)
+    transfer_id = create_transfer
+
+    result = described_class.call(transfer_id: transfer_id, membership: sender_membership)
+
+    expect(result.success?).to be true
+    value = result.value!
+    expect(value[:recipientName]).to eq("Recipient")
+    expect(value[:amount]).to eq(25.50)
+    expect(value[:reference]).to eq("Trip")
+    expect(value[:iban]).to be_nil
+    expect(value[:qrPng]).to be_nil
+  end
+
+  it "returns the IBAN but no QR when the EPC payload exceeds the 331-byte limit" do
+    # The description gets truncated to 140 chars, but each emoji here is
+    # 4 bytes — 140 chars × 4 = 560 bytes, well past the 331-byte cap.
+    long_event = TestFactories.event(workspace: workspace, user: sender, name: "🎉" * 200)
+    transfer_id = create_transfer(event_row: long_event)
+
+    result = described_class.call(transfer_id: transfer_id, membership: sender_membership)
+
+    expect(result.success?).to be true
+    value = result.value!
+    expect(value[:iban]).to eq("NL91 ABNA 0417 1643 00")
+    expect(value[:qrPng]).to be_nil
   end
 
   it "denies access to the recipient" do
@@ -77,14 +109,24 @@ RSpec.describe Settlements::PaymentDetails do
     expect(result.failure.http_status).to eq(403)
   end
 
-  it "fails when recipient has no IBAN" do
-    DB[:users].where(id: recipient[:id]).update(iban: nil)
+  it "denies access once the transfer is marked paid" do
     transfer_id = create_transfer
+    DB[:settlement_transfers].where(id: transfer_id).update(paid_at: Time.now)
 
     result = described_class.call(transfer_id: transfer_id, membership: sender_membership)
 
     expect(result.failure?).to be true
-    expect(result.failure.message).to eq("Recipient has no IBAN configured")
+    expect(result.failure.http_status).to eq(403)
+  end
+
+  it "returns 404 for a missing transfer" do
+    result = described_class.call(
+      transfer_id: "00000000-0000-0000-0000-000000000000",
+      membership: sender_membership
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.http_status).to eq(404)
   end
 
   describe "IBAN formatting" do
@@ -112,15 +154,5 @@ RSpec.describe Settlements::PaymentDetails do
         expect(result.value!.fetch(:iban)).to eq(formatted)
       end
     end
-  end
-
-  it "denies access once the transfer is marked paid" do
-    transfer_id = create_transfer
-    DB[:settlement_transfers].where(id: transfer_id).update(paid_at: Time.now)
-
-    result = described_class.call(transfer_id: transfer_id, membership: sender_membership)
-
-    expect(result.failure?).to be true
-    expect(result.failure.http_status).to eq(403)
   end
 end

@@ -46,7 +46,6 @@ export function makeMember(
     locationName: null,
     latitude: null,
     longitude: null,
-    hasIban: false,
     role: 'member',
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',

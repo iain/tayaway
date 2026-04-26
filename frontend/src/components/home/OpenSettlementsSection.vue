@@ -37,7 +37,6 @@ const showQrModal = ref(false)
 const qrTransferId = ref<string | null>(null)
 const qrRecipientName = ref<string | null>(null)
 const qrAmount = ref<number | null>(null)
-const qrRecipientHasIban = ref(false)
 
 function openQrModal(transfer: PoolSettlementTransfer) {
   if (!transfer.toUserId) return
@@ -45,7 +44,6 @@ function openQrModal(transfer: PoolSettlementTransfer) {
   qrTransferId.value = transfer.id
   qrRecipientName.value = member?.name ?? member?.email ?? null
   qrAmount.value = transfer.amount
-  qrRecipientHasIban.value = member?.hasIban ?? false
   showQrModal.value = true
 }
 
@@ -185,7 +183,6 @@ function getEventIdForTransfer(
       :transfer-id="qrTransferId"
       :recipient-name="qrRecipientName"
       :amount="qrAmount"
-      :recipient-has-iban="qrRecipientHasIban"
       @close="showQrModal = false"
     />
   </section>

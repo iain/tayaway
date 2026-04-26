@@ -296,8 +296,6 @@ export const useAuthStore = defineStore('auth', () => {
       if (fields.latitude !== undefined) poolChanges.latitude = fields.latitude
       if (fields.longitude !== undefined)
         poolChanges.longitude = fields.longitude
-      if (fields.iban !== undefined) poolChanges.hasIban = !!fields.iban
-
       const result = member
         ? await update(
             'Failed to update profile',
@@ -317,7 +315,6 @@ export const useAuthStore = defineStore('auth', () => {
           user.value.locationName = poolMember.locationName
           user.value.latitude = poolMember.latitude
           user.value.longitude = poolMember.longitude
-          user.value.iban = poolMember.hasIban ? user.value.iban : null
         }
       }
       if (user.value) cacheUser(user.value)
