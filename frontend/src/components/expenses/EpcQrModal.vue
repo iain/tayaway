@@ -24,7 +24,6 @@ interface PaymentDetails {
   reference: string
   iban: string | null
   qrPng: string | null
-  qrUnavailableReason: string | null
 }
 
 const details = ref<PaymentDetails | null>(null)

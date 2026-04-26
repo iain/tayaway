@@ -38,20 +38,14 @@ module Settlements
           amount: transfer.amount,
           reference: event.name,
           iban: nil,
-          qrPng: nil,
-          qrUnavailableReason: nil
+          qrPng: nil
         }
 
         return base unless recipient.iban
 
         base[:iban] = format_iban(recipient.iban)
-
-        png_result = build_qr_png(recipient: recipient, event: event, transfer: transfer)
-        if png_result.success?
-          base[:qrPng] = Base64.strict_encode64(png_result.value!)
-        else
-          base[:qrUnavailableReason] = png_result.failure
-        end
+        png = build_qr_png(recipient: recipient, event: event, transfer: transfer)
+        base[:qrPng] = Base64.strict_encode64(png) if png
 
         base
       end
@@ -68,11 +62,10 @@ module Settlements
           description: event.name.slice(0, 140)
         )
 
-        return Failure(:payload_too_long) if payload.bytesize > EPC_PAYLOAD_LIMIT_BYTES
+        return nil if payload.bytesize > EPC_PAYLOAD_LIMIT_BYTES
 
         qr = RQRCode::QRCode.new(payload, level: :m)
-        png = qr.as_png(size: 256, border_modules: 2)
-        Success(png.to_blob)
+        qr.as_png(size: 256, border_modules: 2).to_blob
       end
 
       def build_epc_payload(recipient_name:, iban:, amount:, description:)

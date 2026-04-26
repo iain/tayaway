@@ -54,7 +54,6 @@ RSpec.describe Settlements::PaymentDetails do
     expect(value[:iban]).to eq("NL91 ABNA 0417 1643 00")
     expect(value[:amount]).to eq(25.50)
     expect(value[:reference]).to eq("Trip")
-    expect(value[:qrUnavailableReason]).to be_nil
 
     decoded = Base64.strict_decode64(value[:qrPng])
     expect(decoded.bytes[0..7]).to eq([137, 80, 78, 71, 13, 10, 26, 10])
@@ -73,7 +72,6 @@ RSpec.describe Settlements::PaymentDetails do
     expect(value[:reference]).to eq("Trip")
     expect(value[:iban]).to be_nil
     expect(value[:qrPng]).to be_nil
-    expect(value[:qrUnavailableReason]).to be_nil
   end
 
   it "returns the IBAN but no QR when the EPC payload exceeds the 331-byte limit" do
@@ -88,7 +86,6 @@ RSpec.describe Settlements::PaymentDetails do
     value = result.value!
     expect(value[:iban]).to eq("NL91 ABNA 0417 1643 00")
     expect(value[:qrPng]).to be_nil
-    expect(value[:qrUnavailableReason]).to eq(:payload_too_long)
   end
 
   it "denies access to the recipient" do
