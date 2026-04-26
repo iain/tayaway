@@ -11,8 +11,9 @@ module Settlements
       include Dry::Monads[:result]
 
       def call(transfer_id:, membership:)
-        LoadPaymentContext.call(transfer_id: transfer_id, membership: membership)
-                          .fmap { |ctx| build(ctx) }
+        Success()
+          .bind { LoadPaymentContext.call(transfer_id: transfer_id, membership: membership) }
+          .fmap { |ctx| build(ctx) }
       end
 
       private

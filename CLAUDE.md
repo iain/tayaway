@@ -38,7 +38,7 @@ cd frontend && pnpm exec vitest run src/path/to/file.spec.ts
 - **Framework**: Roda 3 with `hash_routes` plugin, served by Falcon (fiber-based)
 - **ORM**: Sequel 5 with PostgreSQL
 - **Models** (`app/models/`): Immutable plain Ruby classes with keyword `initialize`, factory class methods for queries, and `to_api_hash` for serialization
-- **Services** (`app/services/`): Return `Result[Success, ServiceError]` monad. Entry point is `.call()`. Chain with `.bind()`
+- **Services** (`app/services/`): Return `Result[Success, ServiceError]` monad. Entry point is `.call()`. Chain with `.bind()`. Prefer starting chains with `Success().bind { … }.bind { … }` so every step (including the first lookup) reads as a uniform link in the chain — easier to reorder, insert steps, or skim. Module singletons use `class << self` (not `module_function`)
 - **Routes** (`app/routes/`): Roda hash_routes organized by domain. Auth via session cookies, CSRF via `X-CSRF-Protection: 1` header
 - **Serializers** (`app/serializers/`): `PoolSerializer` normalizes all objects into a flat pool format `{ objects: [{ id, objectType, ...fields }] }`
 - **WebSocket** (`app/websocket/`): PostgreSQL NOTIFY → Listener thread → broadcasts serialized objects to connected clients

@@ -2,6 +2,9 @@
 import { ref, watch } from 'vue'
 import { CheckIcon, ClipboardIcon } from '@heroicons/vue/24/outline'
 import BaseModal from '@/components/common/BaseModal.vue'
+// Bypasses the pool: payment details are sender-authorised, per-transfer,
+// and short-lived. They must not be cached in the shared object pool where
+// other clients (or a later session) could pick them up.
 import { rawApi } from '@/api/client'
 
 const props = defineProps<{
@@ -27,6 +30,7 @@ const imgError = ref(false)
 const details = ref<PaymentDetails | null>(null)
 const detailsError = ref(false)
 const copied = ref(false)
+const copyError = ref(false)
 let copiedTimer: ReturnType<typeof setTimeout> | null = null
 
 watch(
@@ -42,6 +46,7 @@ watch(
     detailsError.value = false
     details.value = null
     copied.value = false
+    copyError.value = false
     imgSrc.value = `/api/settlements/transfers/${props.transferId}/qr`
     const transferId = props.transferId
     try {
@@ -60,8 +65,16 @@ watch(
 async function copyIban() {
   if (!details.value) return
   const plainIban = details.value.iban.replace(/\s/g, '')
-  await navigator.clipboard.writeText(plainIban)
-  copied.value = true
+  try {
+    await navigator.clipboard.writeText(plainIban)
+    copied.value = true
+    copyError.value = false
+  } catch {
+    // Insecure-context, denied permission, or no clipboard API (rare).
+    copyError.value = true
+    copied.value = false
+    return
+  }
   if (copiedTimer) clearTimeout(copiedTimer)
   copiedTimer = setTimeout(() => {
     copied.value = false
@@ -148,6 +161,9 @@ function handleImgError() {
             {{ copied ? 'Copied' : 'Copy' }}
           </button>
         </div>
+        <p v-if="copyError" class="text-xs text-red-600 dark:text-red-400">
+          Couldn&rsquo;t copy &mdash; select the IBAN and copy it manually.
+        </p>
       </div>
 
       <p

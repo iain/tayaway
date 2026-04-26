@@ -47,7 +47,7 @@ DB.transaction do
   user_id_for = ->(key) { user_id.fetch(key) }
 
   # IBANs so the QR / copy-IBAN flow on settlements has something to show.
-  # Test IBANs from the SEPA test ranges; not real accounts.
+  # Public example IBANs (Wikipedia / ECB documentation); not real accounts.
   ibans = {
     test: "NL18RABO0123459876",
     alice: "NL91ABNA0417164300",

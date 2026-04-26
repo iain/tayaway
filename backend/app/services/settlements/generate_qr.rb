@@ -12,8 +12,9 @@ module Settlements
       include Dry::Monads[:result]
 
       def call(transfer_id:, membership:)
-        LoadPaymentContext.call(transfer_id: transfer_id, membership: membership)
-                          .bind { |ctx| generate_png(ctx) }
+        Success()
+          .bind { LoadPaymentContext.call(transfer_id: transfer_id, membership: membership) }
+          .bind { |ctx| generate_png(ctx) }
       end
 
       private

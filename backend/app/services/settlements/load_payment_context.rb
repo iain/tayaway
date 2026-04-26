@@ -11,9 +11,10 @@ module Settlements
       include Dry::Monads[:result]
 
       def call(transfer_id:, membership:)
-        SettlementTransfer.find_result(transfer_id)
-                          .bind { |transfer| SettlementTransferPolicy.enforce(:generate_qr, transfer, membership: membership) }
-                          .bind { |transfer| load(transfer) }
+        Success()
+          .bind { SettlementTransfer.find_result(transfer_id) }
+          .bind { |transfer| SettlementTransferPolicy.enforce(:generate_qr, transfer, membership: membership) }
+          .bind { |transfer| load(transfer) }
       end
 
       private

@@ -87,6 +87,33 @@ RSpec.describe Settlements::PaymentDetails do
     expect(result.failure.message).to eq("Recipient has no IBAN configured")
   end
 
+  describe "IBAN formatting" do
+    [
+      # NL: 18 chars → four groups of 4 + a 2-char tail
+      ["NL91ABNA0417164300", "NL91 ABNA 0417 1643 00"],
+      # DE: 22 chars → divisible by 4 + 2 → five groups of 4 + a 2-char tail
+      ["DE89370400440532013000", "DE89 3704 0044 0532 0130 00"],
+      # FR: 27 chars → six groups of 4 + a 3-char tail, includes a letter
+      ["FR1420041010050500013M02606", "FR14 2004 1010 0505 0001 3M02 606"],
+      # BE: 16 chars → exactly four groups of 4
+      ["BE71096123456769", "BE71 0961 2345 6769"],
+      # Lower-cased input gets upcased
+      ["nl91abna0417164300", "NL91 ABNA 0417 1643 00"],
+      # Existing whitespace gets stripped before re-grouping
+      ["NL91 ABNA 0417 1643 00", "NL91 ABNA 0417 1643 00"]
+    ].each do |raw, formatted|
+      it "formats #{raw.inspect} as #{formatted.inspect}" do
+        DB[:users].where(id: recipient[:id]).update(iban: Encryption.encrypt(raw, user_id: recipient[:id]))
+        transfer_id = create_transfer
+
+        result = described_class.call(transfer_id: transfer_id, membership: sender_membership)
+
+        expect(result.success?).to be true
+        expect(result.value!.fetch(:iban)).to eq(formatted)
+      end
+    end
+  end
+
   it "denies access once the transfer is marked paid" do
     transfer_id = create_transfer
     DB[:settlement_transfers].where(id: transfer_id).update(paid_at: Time.now)
