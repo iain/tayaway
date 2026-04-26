@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
 import { CheckIcon, ClipboardIcon } from '@heroicons/vue/24/outline'
 import BaseModal from '@/components/common/BaseModal.vue'
 // Bypasses the pool: payment details are sender-authorised, per-transfer,
@@ -33,10 +33,21 @@ const detailsError = ref(false)
 const copied = ref(false)
 const copyError = ref(false)
 let copiedTimer: ReturnType<typeof setTimeout> | null = null
+// Per-open token: every open bumps it. A response or timeout that resolves
+// after a subsequent open (even for the same transferId) is then ignored.
+let fetchToken = 0
+
+function clearCopiedTimer() {
+  if (copiedTimer) {
+    clearTimeout(copiedTimer)
+    copiedTimer = null
+  }
+}
 
 watch(
   () => props.open,
   async (isOpen) => {
+    clearCopiedTimer()
     if (!isOpen || !props.transferId) {
       details.value = null
       imgSrc.value = null
@@ -48,26 +59,31 @@ watch(
     details.value = null
     copied.value = false
     copyError.value = false
+    const token = ++fetchToken
     if (!props.recipientHasIban) {
-      // Skip the fetches — both the QR and payment-details endpoints would
-      // 422 on a missing IBAN. The template renders the explanatory state.
+      // Skip the fetches — both the QR and payment-details endpoints fail
+      // when the recipient has no IBAN. The template renders the explanatory
+      // state instead.
       imgSrc.value = null
       return
     }
     imgSrc.value = `/api/settlements/transfers/${props.transferId}/qr`
-    const transferId = props.transferId
     try {
       const response = await rawApi.get<PaymentDetails>(
-        `/settlements/transfers/${transferId}/payment-details`
+        `/settlements/transfers/${props.transferId}/payment-details`
       )
-      if (props.transferId === transferId) {
+      if (token === fetchToken) {
         details.value = response.data
       }
     } catch {
-      detailsError.value = true
+      if (token === fetchToken) {
+        detailsError.value = true
+      }
     }
   }
 )
+
+onBeforeUnmount(clearCopiedTimer)
 
 async function copyIban() {
   if (!details.value) return
@@ -82,9 +98,10 @@ async function copyIban() {
     copied.value = false
     return
   }
-  if (copiedTimer) clearTimeout(copiedTimer)
+  clearCopiedTimer()
   copiedTimer = setTimeout(() => {
     copied.value = false
+    copiedTimer = null
   }, 2000)
 }
 

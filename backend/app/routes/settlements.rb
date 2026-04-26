@@ -108,6 +108,9 @@ class App
               transfer_id: transfer_id,
               membership: current_membership
             )
+            # The IBAN is encrypted-at-rest user PII. Don't let any cache
+            # (browser bfcache, forward proxy) retain the response body.
+            response["Cache-Control"] = "private, no-store"
             handle_result(result)
           end
         end
