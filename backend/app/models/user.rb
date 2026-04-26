@@ -30,8 +30,8 @@ class User
 
   # Serializes the user for API responses. IBAN is deliberately excluded —
   # it must only appear (masked) in the authenticated /api/auth/me response.
-  # All other consumers (PoolSerializer, broadcasts) build their own hashes
-  # and expose only `hasIban: true/false`.
+  # The sender of an unpaid transfer can fetch the recipient's full IBAN via
+  # the per-transfer payment-details endpoint; no other surface exposes it.
   def to_api_hash
     {
       id: id.to_s,

@@ -300,8 +300,7 @@ RSpec.describe Users::UpdateProfile do
     )
 
     expect(result.success?).to be true
-    updated_member = result.value![:objects].find { |o| o[:objectType] == "member" }
-    expect(updated_member[:hasIban]).to be true
+    expect(User.find(user[:id]).iban).to eq("NL91ABNA0417164300")
   end
 
   it "normalizes IBAN by stripping spaces and uppercasing" do
@@ -317,8 +316,7 @@ RSpec.describe Users::UpdateProfile do
     )
 
     expect(result.success?).to be true
-    updated_member = result.value![:objects].find { |o| o[:objectType] == "member" }
-    expect(updated_member[:hasIban]).to be true
+    expect(User.find(user[:id]).iban).to eq("NL91ABNA0417164300")
   end
 
   it "clears IBAN when blank" do
@@ -335,8 +333,7 @@ RSpec.describe Users::UpdateProfile do
     )
 
     expect(result.success?).to be true
-    updated_member = result.value![:objects].find { |o| o[:objectType] == "member" }
-    expect(updated_member[:hasIban]).to be false
+    expect(User.find(user[:id]).iban).to be_nil
   end
 
   it "returns failure for invalid IBAN format" do
@@ -380,8 +377,7 @@ RSpec.describe Users::UpdateProfile do
     )
 
     expect(result.success?).to be true
-    updated_member = result.value![:objects].find { |o| o[:objectType] == "member" }
-    expect(updated_member[:hasIban]).to be true
+    expect(User.find(user[:id]).iban).to eq("NL91ABNA0417164300")
   end
 
   it "clears location when blank" do

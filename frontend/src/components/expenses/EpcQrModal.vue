@@ -12,7 +12,6 @@ const props = defineProps<{
   transferId: string | null
   recipientName: string | null
   amount: number | null
-  recipientHasIban: boolean
 }>()
 
 defineEmits<{
@@ -21,15 +20,16 @@ defineEmits<{
 
 interface PaymentDetails {
   recipientName: string
-  iban: string
   amount: number
   reference: string
+  iban: string | null
+  qrPng: string | null
+  qrUnavailableReason: string | null
 }
 
-const imgSrc = ref<string | null>(null)
-const imgError = ref(false)
 const details = ref<PaymentDetails | null>(null)
 const detailsError = ref(false)
+const loading = ref(false)
 const copied = ref(false)
 const copyError = ref(false)
 let copiedTimer: ReturnType<typeof setTimeout> | null = null
@@ -53,23 +53,16 @@ watch(
     const token = ++fetchToken
     if (!isOpen || !props.transferId) {
       details.value = null
-      imgSrc.value = null
+      detailsError.value = false
+      loading.value = false
       copied.value = false
       return
     }
-    imgError.value = false
     detailsError.value = false
     details.value = null
     copied.value = false
     copyError.value = false
-    if (!props.recipientHasIban) {
-      // Skip the fetches — both the QR and payment-details endpoints fail
-      // when the recipient has no IBAN. The template renders the explanatory
-      // state instead.
-      imgSrc.value = null
-      return
-    }
-    imgSrc.value = `/api/settlements/transfers/${props.transferId}/qr`
+    loading.value = true
     try {
       const response = await rawApi.get<PaymentDetails>(
         `/settlements/transfers/${props.transferId}/payment-details`
@@ -81,6 +74,10 @@ watch(
       if (token === fetchToken) {
         detailsError.value = true
       }
+    } finally {
+      if (token === fetchToken) {
+        loading.value = false
+      }
     }
   }
 )
@@ -88,7 +85,7 @@ watch(
 onBeforeUnmount(clearCopiedTimer)
 
 async function copyIban() {
-  if (!details.value) return
+  if (!details.value?.iban) return
   const plainIban = details.value.iban.replace(/\s/g, '')
   try {
     await navigator.clipboard.writeText(plainIban)
@@ -105,11 +102,6 @@ async function copyIban() {
     copied.value = false
     copiedTimer = null
   }, 2000)
-}
-
-function handleImgError() {
-  imgError.value = true
-  imgSrc.value = null
 }
 </script>
 
@@ -137,83 +129,101 @@ function handleImgError() {
       </dl>
 
       <div
-        v-if="!recipientHasIban"
-        data-testid="recipient-no-iban"
-        class="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+        v-if="loading"
+        class="flex justify-center py-8"
+        role="status"
+        aria-live="polite"
       >
-        <p class="font-medium">No IBAN on file for {{ recipientName }}.</p>
-        <p class="mt-1 text-amber-700 dark:text-amber-400">
-          Ask them to add it on their profile page so the QR code and copy-paste
-          IBAN can show up here. In the meantime, settle up with a payment
-          request &mdash; a Tikkie, a PayPal link, or whatever the two of you
-          usually use.
-        </p>
-      </div>
-
-      <template v-else>
-        <div
-          v-if="imgSrc && !imgError"
-          class="flex flex-col items-center gap-2 rounded-lg bg-white p-4"
-        >
-          <img
-            :src="imgSrc"
-            alt="EPC QR code for bank transfer"
-            class="size-48"
-            @error="handleImgError"
-          />
-        </div>
-
-        <p
-          v-if="imgError"
-          class="text-center text-sm text-red-600 dark:text-red-400"
-        >
-          Could not generate QR code.
-        </p>
-
-        <p class="text-center text-xs text-gray-500 dark:text-stone-400">
-          Scan with your banking app to pre-fill the transfer, or copy the IBAN
-          below to pay manually.
-        </p>
-      </template>
-
-      <div v-if="details" class="space-y-1">
-        <label
-          for="payment-iban"
-          class="block text-xs text-gray-500 dark:text-stone-400"
-        >
-          IBAN
-        </label>
-        <div class="flex items-stretch gap-2">
-          <input
-            id="payment-iban"
-            data-testid="payment-iban"
-            :value="details.iban"
-            readonly
-            class="min-w-0 flex-1 rounded-md border border-gray-300 bg-gray-50 px-2.5 py-1.5 font-mono text-sm text-gray-900 select-all focus:outline-none dark:border-stone-600 dark:bg-stone-800 dark:text-white"
-            @focus="($event.target as HTMLInputElement).select()"
-          />
-          <button
-            type="button"
-            class="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md bg-cyan-600 px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-cyan-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 dark:bg-cyan-700 dark:hover:bg-cyan-600"
-            :aria-label="copied ? 'IBAN copied' : 'Copy IBAN'"
-            @click="copyIban"
-          >
-            <CheckIcon v-if="copied" class="size-4" aria-hidden="true" />
-            <ClipboardIcon v-else class="size-4" aria-hidden="true" />
-            {{ copied ? 'Copied' : 'Copy' }}
-          </button>
-        </div>
-        <p v-if="copyError" class="text-xs text-red-600 dark:text-red-400">
-          Couldn&rsquo;t copy &mdash; select the IBAN and copy it manually.
-        </p>
+        <span
+          class="inline-block size-8 animate-spin rounded-full border-2 border-gray-300 border-t-cyan-600 dark:border-stone-600 dark:border-t-cyan-400"
+          aria-hidden="true"
+        />
+        <span class="sr-only">Loading payment details</span>
       </div>
 
       <p
         v-else-if="detailsError"
         class="text-center text-sm text-red-600 dark:text-red-400"
       >
-        Could not load IBAN.
+        Could not load payment details.
       </p>
+
+      <template v-else-if="details">
+        <div
+          v-if="!details.iban"
+          data-testid="recipient-no-iban"
+          class="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+        >
+          <p class="font-medium">No IBAN on file for {{ recipientName }}.</p>
+          <p class="mt-1 text-amber-700 dark:text-amber-400">
+            Ask them to add it on their profile page so the QR code and
+            copy-paste IBAN can show up here. In the meantime, settle up with a
+            payment request &mdash; a Tikkie, a PayPal link, or whatever the two
+            of you usually use.
+          </p>
+        </div>
+
+        <template v-else>
+          <div
+            v-if="details.qrPng"
+            class="flex flex-col items-center gap-2 rounded-lg bg-white p-4"
+          >
+            <img
+              :src="`data:image/png;base64,${details.qrPng}`"
+              alt="EPC QR code for bank transfer"
+              class="size-48"
+            />
+          </div>
+
+          <p
+            v-else
+            class="text-center text-sm text-gray-500 dark:text-stone-400"
+          >
+            QR code unavailable for this transfer &mdash; copy the IBAN below to
+            pay manually.
+          </p>
+
+          <p
+            v-if="details.qrPng"
+            class="text-center text-xs text-gray-500 dark:text-stone-400"
+          >
+            Scan with your banking app to pre-fill the transfer, or copy the
+            IBAN below to pay manually.
+          </p>
+
+          <div class="space-y-1">
+            <label
+              for="payment-iban"
+              class="block text-xs text-gray-500 dark:text-stone-400"
+            >
+              IBAN
+            </label>
+            <div class="flex items-stretch gap-2">
+              <input
+                id="payment-iban"
+                data-testid="payment-iban"
+                :value="details.iban"
+                readonly
+                class="min-w-0 flex-1 rounded-md border border-gray-300 bg-gray-50 px-2.5 py-1.5 font-mono text-sm text-gray-900 select-all focus:outline-none dark:border-stone-600 dark:bg-stone-800 dark:text-white"
+                @focus="($event.target as HTMLInputElement).select()"
+              />
+              <button
+                type="button"
+                class="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md bg-cyan-600 px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-cyan-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 dark:bg-cyan-700 dark:hover:bg-cyan-600"
+                :aria-label="copied ? 'IBAN copied' : 'Copy IBAN'"
+                @click="copyIban"
+              >
+                <CheckIcon v-if="copied" class="size-4" aria-hidden="true" />
+                <ClipboardIcon v-else class="size-4" aria-hidden="true" />
+                {{ copied ? 'Copied' : 'Copy' }}
+              </button>
+            </div>
+            <p v-if="copyError" class="text-xs text-red-600 dark:text-red-400">
+              Couldn&rsquo;t copy &mdash; select the IBAN and copy it manually.
+            </p>
+          </div>
+        </template>
+      </template>
     </div>
   </BaseModal>
 </template>

@@ -128,9 +128,6 @@ test.describe('Profile Feature', () => {
         }
       )
       expect(setResponse.ok()).toBeTruthy()
-      const setBody = await setResponse.json()
-      const setMember = getObjectByType(setBody.objects, 'member')
-      expect(setMember!.hasIban).toBe(true)
 
       // Verify in /me
       const meResponse = await apiContext.get(`${API_BASE}/api/auth/me`)
@@ -146,9 +143,10 @@ test.describe('Profile Feature', () => {
         }
       )
       expect(clearResponse.ok()).toBeTruthy()
-      const clearBody = await clearResponse.json()
-      const clearMember = getObjectByType(clearBody.objects, 'member')
-      expect(clearMember!.hasIban).toBe(false)
+      const clearMeResponse = await apiContext.get(`${API_BASE}/api/auth/me`)
+      expect(clearMeResponse.ok()).toBeTruthy()
+      const clearMeBody = await clearMeResponse.json()
+      expect(clearMeBody.iban).toBeNull()
 
       // Reject invalid IBAN
       const invalidResponse = await apiContext.put(

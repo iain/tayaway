@@ -101,38 +101,18 @@ class App
           next { error: "Access denied" }
         end
 
-        # GET /api/settlements/transfers/:id/payment-details - Recipient IBAN + reference
+        # GET /api/settlements/transfers/:id/payment-details - Recipient IBAN, reference, and EPC QR
         r.on "payment-details" do
           r.get do
             result = Settlements::PaymentDetails.call(
               transfer_id: transfer_id,
               membership: current_membership
             )
-            # The IBAN is encrypted-at-rest user PII. Don't let any cache
-            # (browser bfcache, forward proxy) retain the response body.
+            # The response can carry the recipient's IBAN (encrypted-at-rest
+            # PII) and a base64 QR that embeds it. Don't let any cache —
+            # browser bfcache, forward proxy — retain it.
             response["Cache-Control"] = "private, no-store"
             handle_result(result)
-          end
-        end
-
-        # GET /api/settlements/transfers/:id/qr - Generate EPC QR code PNG
-        r.on "qr" do
-          r.get do
-            result = Settlements::GenerateQr.call(
-              transfer_id: transfer_id,
-              membership: current_membership
-            )
-
-            if result.success?
-              png = result.value!
-              # The PNG encodes the recipient's IBAN. Treat it the same as the
-              # JSON payment-details response: no caching anywhere.
-              r.halt [200, { "Content-Type" => "image/png", "Cache-Control" => "private, no-store" }, [png]]
-            else
-              error = result.failure
-              response.status = error.http_status
-              next error.to_api_hash
-            end
           end
         end
 

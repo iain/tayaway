@@ -42,7 +42,6 @@ class MemberSerializer
         locationName: user.location_name,
         latitude: user.location_coordinates&.[](1),
         longitude: user.location_coordinates&.[](0),
-        hasIban: !user.iban.nil?,
         role: membership.role,
         createdAt: membership.created_at.iso8601(3),
         updatedAt: [user.updated_at, membership.updated_at].max.iso8601(3)

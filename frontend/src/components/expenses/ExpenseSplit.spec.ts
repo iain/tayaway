@@ -85,7 +85,6 @@ function mkMember(overrides: Partial<PoolMember> = {}): PoolMember {
     locationName: null,
     latitude: null,
     longitude: null,
-    hasIban: false,
     role: 'member',
     ...overrides,
   }

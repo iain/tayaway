@@ -16,7 +16,6 @@ function makeMember(overrides: Partial<PoolMember> = {}): PoolMember {
     locationName: null,
     latitude: null,
     longitude: null,
-    hasIban: false,
     updatedAt: '2024-01-01T00:00:00Z',
     ...overrides,
   } as PoolMember
