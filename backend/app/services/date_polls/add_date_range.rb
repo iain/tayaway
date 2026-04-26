@@ -7,12 +7,20 @@ module DatePolls
       include Dry::Monads[:result]
 
       def call(event_id:, membership:, start_date:, end_date:, id: nil)
-        Event.find_result(event_id)
-             .bind { |event| DatePoll.find_by_event_result(event.id).fmap { |poll| [event, poll] } }
-             .bind { |(event, poll)| DatePollPolicy.enforce(:create_date_range, poll, membership: membership, event: event).fmap { |_| [event, poll] } }
-             .bind { |(event, poll)| DatePoll.validate_open(poll).fmap { |_| [event, poll] } }
-             .bind { |(event, poll)| parse_dates(start_date, end_date, event, poll) }
-             .bind { |(event, poll, date_input)| insert_date_range(event, poll, date_input, id, membership) }
+        Auditable.around(
+          service: "DatePolls::AddDateRange",
+          actor: membership,
+          subject_type: "date_range",
+          subject_id: id
+        ) do
+          Success()
+            .bind { Event.find_result(event_id) }
+            .bind { |event| DatePoll.find_by_event_result(event.id).fmap { |poll| [event, poll] } }
+            .bind { |(event, poll)| DatePollPolicy.enforce(:create_date_range, poll, membership: membership, event: event).fmap { |_| [event, poll] } }
+            .bind { |(event, poll)| DatePoll.validate_open(poll).fmap { |_| [event, poll] } }
+            .bind { |(event, poll)| parse_dates(start_date, end_date, event, poll) }
+            .bind { |(event, poll, date_input)| insert_date_range(event, poll, date_input, id, membership) }
+        end
       end
 
       private

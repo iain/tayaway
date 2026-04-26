@@ -7,9 +7,18 @@ module Expenses
       include Dry::Monads[:result]
 
       def call(expense_id:, membership:, workspace_id:)
-        Expense.find_result(expense_id)
-               .bind { |expense| ExpensePolicy.enforce(:delete, expense, membership: membership) }
-               .bind { |expense| delete_expense(expense, workspace_id) }
+        Auditable.around(
+          service: "Expenses::Delete",
+          actor: membership,
+          subject_type: "expense",
+          subject_id: expense_id,
+          workspace_id: workspace_id
+        ) do
+          Success()
+            .bind { Expense.find_result(expense_id) }
+            .bind { |expense| ExpensePolicy.enforce(:delete, expense, membership: membership) }
+            .bind { |expense| delete_expense(expense, workspace_id) }
+        end
       end
 
       private

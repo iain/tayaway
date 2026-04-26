@@ -8,15 +8,24 @@ module Settlements
       include Dry::Monads[:result]
 
       def call(settlement_id:, membership:, workspace_id:)
-        Settlement.find_result(settlement_id)
-                  .bind do |settlement|
-                    has_successor = Settlement.successor?(settlement.id)
-                    SettlementPolicy.enforce(
-                      :delete, settlement,
-                      membership: membership, has_successor: has_successor
-                    )
-                  end
-                  .bind { |settlement| delete_settlement(settlement, workspace_id, membership) }
+        Auditable.around(
+          service: "Settlements::Delete",
+          actor: membership,
+          subject_type: "settlement",
+          subject_id: settlement_id,
+          workspace_id: workspace_id
+        ) do
+          Success()
+            .bind { Settlement.find_result(settlement_id) }
+            .bind do |settlement|
+              has_successor = Settlement.successor?(settlement.id)
+              SettlementPolicy.enforce(
+                :delete, settlement,
+                membership: membership, has_successor: has_successor
+              )
+            end
+            .bind { |settlement| delete_settlement(settlement, workspace_id, membership) }
+        end
       end
 
       private

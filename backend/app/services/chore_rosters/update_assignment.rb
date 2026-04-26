@@ -7,10 +7,18 @@ module ChoreRosters
       include Dry::Monads[:result]
 
       def call(assignment_id:, roster_id:, workspace_id:, membership:, note: nil, user_id: nil, pinned: nil)
-        ChoreAssignment.find_result(assignment_id)
-                       .bind { |assignment| validate_belongs_to_roster(assignment, roster_id) }
-                       .bind { |assignment| ChoreAssignmentPolicy.enforce(:edit, assignment, membership: membership) }
-                       .bind { |assignment| update(assignment, workspace_id, note, user_id, pinned, membership) }
+        Auditable.around(
+          service: "ChoreRosters::UpdateAssignment",
+          actor: membership,
+          subject_type: "chore_assignment",
+          subject_id: assignment_id
+        ) do
+          Success()
+            .bind { ChoreAssignment.find_result(assignment_id) }
+            .bind { |assignment| validate_belongs_to_roster(assignment, roster_id) }
+            .bind { |assignment| ChoreAssignmentPolicy.enforce(:edit, assignment, membership: membership) }
+            .bind { |assignment| update(assignment, workspace_id, note, user_id, pinned, membership) }
+        end
       end
 
       def validate_belongs_to_roster(assignment, roster_id)

@@ -8,15 +8,26 @@ module Invites
 
       def call(email:, workspace_id:, membership:, name: nil)
         sanitized_name = name&.strip&.then { |n| n.empty? ? nil : n }
-        workspace = Workspace.find(workspace_id)
-        return Failure(ServiceError.not_found("Workspace not found")) unless workspace
 
-        WorkspacePolicy.enforce(:invite, workspace, membership: membership)
-                       .bind { validate_email(email) }
-                       .bind { |valid_email| validate_name_length(sanitized_name).fmap { valid_email } }
-                       .bind { |valid_email| check_not_already_member(valid_email, workspace_id) }
-                       .bind { |valid_email| check_no_pending_invite(valid_email, workspace_id) }
-                       .bind { |valid_email| create_invite(valid_email, workspace_id, membership, sanitized_name) }
+        # Email is intentionally not in the audit context: the invitee's
+        # address lives on the workspace_invite row, which the subject_id
+        # links to. If the invite is deleted the email goes with it (the
+        # right GDPR behaviour) instead of leaking through the audit log.
+        Auditable.around(
+          service: "Invites::Create",
+          actor: membership,
+          subject_type: "workspace_invite",
+          workspace_id: workspace_id
+        ) do
+          Success()
+            .bind { Workspace.find_result(workspace_id) }
+            .bind { |workspace| WorkspacePolicy.enforce(:invite, workspace, membership: membership) }
+            .bind { validate_email(email) }
+            .bind { |valid_email| validate_name_length(sanitized_name).fmap { valid_email } }
+            .bind { |valid_email| check_not_already_member(valid_email, workspace_id) }
+            .bind { |valid_email| check_no_pending_invite(valid_email, workspace_id) }
+            .bind { |valid_email| create_invite(valid_email, workspace_id, membership, sanitized_name) }
+        end
       end
 
       private

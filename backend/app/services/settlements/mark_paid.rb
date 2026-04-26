@@ -8,15 +8,25 @@ module Settlements
       include Dry::Monads[:result]
 
       def call(transfer_id:, paid:, membership:, workspace_id:)
-        SettlementTransfer.find_result(transfer_id)
-                          .bind do |transfer|
-                            has_successor = Settlement.successor?(transfer.settlement_id)
-                            SettlementTransferPolicy.enforce(
-                              :mark_paid, transfer,
-                              membership: membership, has_successor: has_successor
-                            )
-                          end
-                          .bind { |transfer| update_paid(transfer, paid, workspace_id, membership) }
+        Auditable.around(
+          service: "Settlements::MarkPaid",
+          actor: membership,
+          subject_type: "settlement_transfer",
+          subject_id: transfer_id,
+          workspace_id: workspace_id,
+          context: { paid: paid }
+        ) do
+          Success()
+            .bind { SettlementTransfer.find_result(transfer_id) }
+            .bind do |transfer|
+              has_successor = Settlement.successor?(transfer.settlement_id)
+              SettlementTransferPolicy.enforce(
+                :mark_paid, transfer,
+                membership: membership, has_successor: has_successor
+              )
+            end
+            .bind { |transfer| update_paid(transfer, paid, workspace_id, membership) }
+        end
       end
 
       private

@@ -7,7 +7,10 @@ module Users
       include Dry::Monads[:result]
 
       def call(token:)
-        decode_jwt(token)
+        # Not audited: this is really an authentication concern (token-driven
+        # email change), picked up when auth gets its own audit pass.
+        Success()
+          .bind { decode_jwt(token) }
           .bind { |params| find_token(params[:token], params[:email]) }
           .bind { |email_token| validate_not_taken(email_token) }
           .bind { |email_token| validate_email_unchanged(email_token) }

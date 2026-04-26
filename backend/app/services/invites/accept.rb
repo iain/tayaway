@@ -8,7 +8,11 @@ module Invites
       include Dry::Monads[:result]
 
       def call(token_jwt:)
-        decode_token(token_jwt)
+        # Not audited: the actor isn't known until the JWT decodes, and this
+        # is really an authentication concern. Picked up when auth gets its
+        # own audit pass.
+        Success()
+          .bind { decode_token(token_jwt) }
           .bind { |decoded| find_invite(decoded) }
           .bind { |invite| accept_invite(invite) }
       end

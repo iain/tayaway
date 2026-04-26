@@ -13,13 +13,23 @@ module Expenses
 
       def call(event_id:, membership:, workspace_id:, description:, amount:, start_date:, end_date:,
                id: nil, participant_ids: nil, participants: nil)
-        Event.find_result(event_id)
-             .bind { |event| EventPolicy.enforce(:create_expense, event, membership: membership) }
-             .bind { validate(description, amount, start_date, end_date) }
-             .bind { |valid| validate_date_range(valid, event_id) }
-             .bind { |valid| validate_rsvp(valid, event_id, membership.user_id) }
-             .bind { |valid| validate_participants(valid, participants, participant_ids) }
-             .bind { |valid| create_expense(event_id, membership, workspace_id, valid, id) }
+        Auditable.around(
+          service: "Expenses::Create",
+          actor: membership,
+          subject_type: "expense",
+          subject_id: id,
+          workspace_id: workspace_id,
+          context: { amount: amount }
+        ) do
+          Success()
+            .bind { Event.find_result(event_id) }
+            .bind { |event| EventPolicy.enforce(:create_expense, event, membership: membership) }
+            .bind { validate(description, amount, start_date, end_date) }
+            .bind { |valid| validate_date_range(valid, event_id) }
+            .bind { |valid| validate_rsvp(valid, event_id, membership.user_id) }
+            .bind { |valid| validate_participants(valid, participants, participant_ids) }
+            .bind { |valid| create_expense(event_id, membership, workspace_id, valid, id) }
+        end
       end
 
       private

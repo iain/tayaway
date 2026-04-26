@@ -7,9 +7,18 @@ module Invites
       include Dry::Monads[:result]
 
       def call(invite_id:, workspace_id:, membership:)
-        find_invite(invite_id, workspace_id)
-          .bind { |invite| WorkspaceInvitePolicy.enforce(:delete, invite, membership: membership) }
-          .bind { |invite| delete_invite(invite) }
+        Auditable.around(
+          service: "Invites::Cancel",
+          actor: membership,
+          subject_type: "workspace_invite",
+          subject_id: invite_id,
+          workspace_id: workspace_id
+        ) do
+          Success()
+            .bind { find_invite(invite_id, workspace_id) }
+            .bind { |invite| WorkspaceInvitePolicy.enforce(:delete, invite, membership: membership) }
+            .bind { |invite| delete_invite(invite) }
+        end
       end
 
       private

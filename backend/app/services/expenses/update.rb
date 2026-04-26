@@ -9,10 +9,20 @@ module Expenses
       def call(expense_id:, membership:, workspace_id:, description:, amount:,
                start_date: nil, end_date: nil,
                participant_ids: nil, participants: nil)
-        Expense.find_result(expense_id)
-               .bind { |expense| ExpensePolicy.enforce(:edit, expense, membership: membership) }
-               .bind { |expense| validate_update(expense, description, amount, start_date, end_date, participants, participant_ids) }
-               .bind { |valid| update_expense(valid, workspace_id, membership) }
+        Auditable.around(
+          service: "Expenses::Update",
+          actor: membership,
+          subject_type: "expense",
+          subject_id: expense_id,
+          workspace_id: workspace_id,
+          context: { amount: amount }
+        ) do
+          Success()
+            .bind { Expense.find_result(expense_id) }
+            .bind { |expense| ExpensePolicy.enforce(:edit, expense, membership: membership) }
+            .bind { |expense| validate_update(expense, description, amount, start_date, end_date, participants, participant_ids) }
+            .bind { |valid| update_expense(valid, workspace_id, membership) }
+        end
       end
 
       private

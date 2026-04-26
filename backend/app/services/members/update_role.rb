@@ -13,10 +13,19 @@ module Members
       VALID_ROLES = ["owner", "admin", "member"]
 
       def call(acting_membership:, membership_id:, new_role:)
-        validate_role(new_role)
-          .bind { |role| find_target(membership_id).fmap { |target| [target, role] } }
-          .bind { |(target, role)| MemberPolicy.enforce(:change_role, target, membership: acting_membership).fmap { |_| [target, role] } }
-          .bind { |(target, role)| perform(acting_membership, target, role) }
+        Auditable.around(
+          service: "Members::UpdateRole",
+          actor: acting_membership,
+          subject_type: "workspace_membership",
+          subject_id: membership_id,
+          context: { new_role: new_role }
+        ) do
+          Success()
+            .bind { validate_role(new_role) }
+            .bind { |role| find_target(membership_id).fmap { |target| [target, role] } }
+            .bind { |(target, role)| MemberPolicy.enforce(:change_role, target, membership: acting_membership).fmap { |_| [target, role] } }
+            .bind { |(target, role)| perform(acting_membership, target, role) }
+        end
       end
 
       private

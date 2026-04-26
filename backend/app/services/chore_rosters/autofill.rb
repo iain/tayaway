@@ -8,10 +8,18 @@ module ChoreRosters
       include Dry::Monads[:result]
 
       def call(roster_id:, workspace_id:, membership:)
-        ChoreRoster.find_result(roster_id)
-                   .bind { |roster| ChoreRosterPolicy.enforce(:edit, roster, membership: membership) }
-                   .bind { |roster| find_event(roster) }
-                   .bind { |roster, event| run_autofill(roster, event, workspace_id, membership) }
+        Auditable.around(
+          service: "ChoreRosters::Autofill",
+          actor: membership,
+          subject_type: "chore_roster",
+          subject_id: roster_id
+        ) do
+          Success()
+            .bind { ChoreRoster.find_result(roster_id) }
+            .bind { |roster| ChoreRosterPolicy.enforce(:edit, roster, membership: membership) }
+            .bind { |roster| find_event(roster) }
+            .bind { |roster, event| run_autofill(roster, event, workspace_id, membership) }
+        end
       end
 
       private

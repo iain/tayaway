@@ -7,10 +7,20 @@ module TaskLists
       include Dry::Monads[:result]
 
       def call(workspace_id:, membership:, name:, id: nil)
-        workspace = Workspace.find(workspace_id)
-        WorkspacePolicy.enforce(:create_task_list, workspace, membership: membership)
-                       .bind { validate_name(name) }
-                       .bind { |valid_name| create_task_list(workspace_id, membership, valid_name, id) }
+        Auditable.around(
+          service: "TaskLists::Create",
+          actor: membership,
+          subject_type: "task_list",
+          subject_id: id,
+          workspace_id: workspace_id,
+          context: { name: name }
+        ) do
+          Success()
+            .bind { Workspace.find_result(workspace_id) }
+            .bind { |workspace| WorkspacePolicy.enforce(:create_task_list, workspace, membership: membership) }
+            .bind { validate_name(name) }
+            .bind { |valid_name| create_task_list(workspace_id, membership, valid_name, id) }
+        end
       end
 
       private

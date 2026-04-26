@@ -7,11 +7,20 @@ module Users
       include Dry::Monads[:result]
 
       def call(user_id:, new_email:)
-        find_user(user_id)
-          .bind { |user| parse_email(new_email, user) }
-          .bind { |user, parsed_email| check_not_same(user, parsed_email) }
-          .bind { |user, parsed_email| check_not_taken(user, parsed_email) }
-          .bind { |user, parsed_email| create_and_send(user, parsed_email) }
+        Auditable.around(
+          service: "Users::RequestEmailChange",
+          actor: nil,
+          actor_user_id: user_id,
+          subject_type: "user",
+          subject_id: user_id
+        ) do
+          Success()
+            .bind { find_user(user_id) }
+            .bind { |user| parse_email(new_email, user) }
+            .bind { |user, parsed_email| check_not_same(user, parsed_email) }
+            .bind { |user, parsed_email| check_not_taken(user, parsed_email) }
+            .bind { |user, parsed_email| create_and_send(user, parsed_email) }
+        end
       end
 
       private

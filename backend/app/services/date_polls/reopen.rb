@@ -7,12 +7,19 @@ module DatePolls
       include Dry::Monads[:result]
 
       def call(event_id:, membership:, deadline:)
-        Event.find_result(event_id)
-             .bind { |event| DatePoll.find_by_event_result(event.id).fmap { |poll| [event, poll] } }
-             .bind { |(event, poll)| DatePollPolicy.enforce(:reopen, poll, membership: membership, event: event).fmap { |_| [event, poll] } }
-             .bind { |(event, poll)| validate_resolved(event, poll) }
-             .bind { |(event, poll)| validate_deadline(deadline, event, poll) }
-             .bind { |(event, poll, parsed_deadline)| reopen_poll(event, poll, parsed_deadline, membership) }
+        Auditable.around(
+          service: "DatePolls::Reopen",
+          actor: membership,
+          subject_type: "date_poll"
+        ) do
+          Success()
+            .bind { Event.find_result(event_id) }
+            .bind { |event| DatePoll.find_by_event_result(event.id).fmap { |poll| [event, poll] } }
+            .bind { |(event, poll)| DatePollPolicy.enforce(:reopen, poll, membership: membership, event: event).fmap { |_| [event, poll] } }
+            .bind { |(event, poll)| validate_resolved(event, poll) }
+            .bind { |(event, poll)| validate_deadline(deadline, event, poll) }
+            .bind { |(event, poll, parsed_deadline)| reopen_poll(event, poll, parsed_deadline, membership) }
+        end
       end
 
       private

@@ -8,11 +8,19 @@ module TaskLists
       include TaskLists::Validators
 
       def call(task_list_id:, task_item_id:, membership:)
-        TaskList.find_result(task_list_id)
-                .bind { |task_list| TaskItem.find_result(task_item_id).fmap { |item| [task_list, item] } }
-                .bind { |(task_list, item)| validate_belongs_to_list(item, task_list).fmap { [task_list, item] } }
-                .bind { |(task_list, item)| TaskItemPolicy.enforce(:delete, item, membership: membership).fmap { [task_list, item] } }
-                .bind { |(task_list, item)| delete_item(task_list, item) }
+        Auditable.around(
+          service: "TaskLists::DeleteItem",
+          actor: membership,
+          subject_type: "task_item",
+          subject_id: task_item_id
+        ) do
+          Success()
+            .bind { TaskList.find_result(task_list_id) }
+            .bind { |task_list| TaskItem.find_result(task_item_id).fmap { |item| [task_list, item] } }
+            .bind { |(task_list, item)| validate_belongs_to_list(item, task_list).fmap { [task_list, item] } }
+            .bind { |(task_list, item)| TaskItemPolicy.enforce(:delete, item, membership: membership).fmap { [task_list, item] } }
+            .bind { |(task_list, item)| delete_item(task_list, item) }
+        end
       end
 
       private

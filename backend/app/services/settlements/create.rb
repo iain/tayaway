@@ -6,10 +6,18 @@ module Settlements
       include Dry::Monads[:result]
 
       def call(event_id:, membership:, workspace_id:)
-        Event.find_result(event_id)
-             .bind { |event| EventPolicy.enforce(:create_settlement, event, membership: membership) }
-             .bind { |event| check_event_dates(event) }
-             .bind { |event| settle(event, membership, workspace_id) }
+        Auditable.around(
+          service: "Settlements::Create",
+          actor: membership,
+          subject_type: "settlement",
+          workspace_id: workspace_id
+        ) do
+          Success()
+            .bind { Event.find_result(event_id) }
+            .bind { |event| EventPolicy.enforce(:create_settlement, event, membership: membership) }
+            .bind { |event| check_event_dates(event) }
+            .bind { |event| settle(event, membership, workspace_id) }
+        end
       end
 
       private

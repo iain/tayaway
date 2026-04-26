@@ -46,7 +46,23 @@ module Auditable
   private_constant :CASCADE_KEY
 
   class << self
-    def around(service:, actor:, subject_type: nil, subject_id: nil, workspace_id: nil, context: {})
+    # `actor` is typically a WorkspaceMembership (responds to `user_id` and
+    # `workspace_id`). Services operating outside a workspace context — user
+    # profile edits, email change verification — pass `actor: nil` together
+    # with an explicit `actor_user_id:` so the row still attributes the
+    # action correctly.
+    #
+    # `context` is the curated dict that lands in `action_params`. The
+    # subject row carries the canonical content (name, email, amount, …),
+    # so the context only needs values that wouldn't be recoverable from
+    # the subject after a future deletion. Email addresses, phone numbers,
+    # and other directly-identifying personal data should not live here:
+    # the audit table outlives the entities it points at, and putting that
+    # data on the row makes it harder to honour deletion requests.
+    # Identifiers (uuids), enum-like values (roles, response types, paid
+    # flags), and short user-visible labels that double as moderation
+    # signals (event names, chore names) are fine.
+    def around(service:, actor:, actor_user_id: nil, subject_type: nil, subject_id: nil, workspace_id: nil, context: {})
       if Fiber[CASCADE_KEY]
         # Inner cascade: the outermost frame already owns the audit row.
         return yield
@@ -62,7 +78,7 @@ module Auditable
       record(
         service: service,
         result: result,
-        actor: actor,
+        actor_user_id: actor_user_id || actor&.user_id,
         subject_type: subject_type,
         subject_id: subject_id || subject_id_from_result(result, subject_type),
         workspace_id: workspace_id || actor&.workspace_id,
@@ -74,14 +90,14 @@ module Auditable
 
     private
 
-    def record(service:, result:, actor:, subject_type:, subject_id:, workspace_id:, context:)
+    def record(service:, result:, actor_user_id:, subject_type:, subject_id:, workspace_id:, context:)
       outcome, error_code, error_message = classify(result)
 
       AuditLogEntry.create(
         service: service,
         outcome: outcome,
-        actor_kind: actor ? "user" : "system",
-        actor_user_id: actor&.user_id,
+        actor_kind: actor_user_id ? "user" : "system",
+        actor_user_id: actor_user_id,
         workspace_id: workspace_id,
         subject_type: subject_type,
         subject_id: subject_id,

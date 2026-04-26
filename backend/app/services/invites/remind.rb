@@ -10,11 +10,20 @@ module Invites
       include Dry::Monads[:result]
 
       def call(invite_id:, workspace_id:, membership:)
-        find_invite(invite_id, workspace_id)
-          .bind { |invite| WorkspaceInvitePolicy.enforce(:remind, invite, membership: membership) }
-          .bind { |invite| check_not_accepted(invite) }
-          .bind { |invite| check_rate_limit(invite) }
-          .bind { |invite| resend(invite, membership) }
+        Auditable.around(
+          service: "Invites::Remind",
+          actor: membership,
+          subject_type: "workspace_invite",
+          subject_id: invite_id,
+          workspace_id: workspace_id
+        ) do
+          Success()
+            .bind { find_invite(invite_id, workspace_id) }
+            .bind { |invite| WorkspaceInvitePolicy.enforce(:remind, invite, membership: membership) }
+            .bind { |invite| check_not_accepted(invite) }
+            .bind { |invite| check_rate_limit(invite) }
+            .bind { |invite| resend(invite, membership) }
+        end
       end
 
       private

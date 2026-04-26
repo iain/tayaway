@@ -8,12 +8,20 @@ module TaskLists
       include TaskLists::Validators
 
       def call(task_list_id:, task_item_id:, membership:, content: nil, completed: nil, position: nil, new_task_list_id: nil)
-        TaskList.find_result(task_list_id)
-                .bind { |task_list| TaskItem.find_result(task_item_id).fmap { |item| [task_list, item] } }
-                .bind { |(task_list, item)| validate_belongs_to_list(item, task_list).fmap { [task_list, item] } }
-                .bind { |(task_list, item)| TaskItemPolicy.enforce(:edit, item, membership: membership).fmap { [task_list, item] } }
-                .bind { |(task_list, item)| resolve_target_list(task_list, new_task_list_id).fmap { |target| [task_list, item, target] } }
-                .bind { |(task_list, item, target)| update_item(task_list, item, target, content, completed, position, membership) }
+        Auditable.around(
+          service: "TaskLists::UpdateItem",
+          actor: membership,
+          subject_type: "task_item",
+          subject_id: task_item_id
+        ) do
+          Success()
+            .bind { TaskList.find_result(task_list_id) }
+            .bind { |task_list| TaskItem.find_result(task_item_id).fmap { |item| [task_list, item] } }
+            .bind { |(task_list, item)| validate_belongs_to_list(item, task_list).fmap { [task_list, item] } }
+            .bind { |(task_list, item)| TaskItemPolicy.enforce(:edit, item, membership: membership).fmap { [task_list, item] } }
+            .bind { |(task_list, item)| resolve_target_list(task_list, new_task_list_id).fmap { |target| [task_list, item, target] } }
+            .bind { |(task_list, item, target)| update_item(task_list, item, target, content, completed, position, membership) }
+        end
       end
 
       private
