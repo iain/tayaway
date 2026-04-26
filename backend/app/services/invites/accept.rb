@@ -8,9 +8,19 @@ module Invites
       include Dry::Monads[:result]
 
       def call(token_jwt:)
-        decode_token(token_jwt)
-          .bind { |decoded| find_invite(decoded) }
-          .bind { |invite| accept_invite(invite) }
+        # No actor: the accepting user doesn't have a membership yet. The
+        # audit row records the action with actor_kind=system and the
+        # workspace_invite as the subject.
+        Auditable.around(
+          service: "Invites::Accept",
+          actor: nil,
+          subject_type: "workspace_invite"
+        ) do
+          Success()
+            .bind { decode_token(token_jwt) }
+            .bind { |decoded| find_invite(decoded) }
+            .bind { |invite| accept_invite(invite) }
+        end
       end
 
       private
