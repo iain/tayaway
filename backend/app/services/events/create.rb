@@ -25,19 +25,19 @@ module Events
           workspace_id: workspace_id,
           context: { name: name }
         ) do
-          workspace = Workspace.find(workspace_id)
-          WorkspacePolicy.enforce(:create_event, workspace, membership: membership)
-                         .bind { validate_name(name) }
-                         .bind { |valid_name| validate_text_lengths(description, location_name).fmap { valid_name } }
-                         .bind { |valid_name| validate_coordinates(latitude, longitude).fmap { valid_name } }
-                         .bind { |valid_name| validate_dates(start_date, end_date).fmap { |dates| [valid_name, dates] } }
-                         .bind do |(valid_name, dates)|
-                           create_event(
-                             workspace_id: workspace_id, membership: membership, name: valid_name,
-                             description: description, id: id, dates: dates,
-                             location_name: location_name, latitude: latitude, longitude: longitude
-                           )
-                         end
+          Success()
+            .bind { WorkspacePolicy.enforce(:create_event, Workspace.find(workspace_id), membership: membership) }
+            .bind { validate_name(name) }
+            .bind { |valid_name| validate_text_lengths(description, location_name).fmap { valid_name } }
+            .bind { |valid_name| validate_coordinates(latitude, longitude).fmap { valid_name } }
+            .bind { |valid_name| validate_dates(start_date, end_date).fmap { |dates| [valid_name, dates] } }
+            .bind do |(valid_name, dates)|
+              create_event(
+                workspace_id: workspace_id, membership: membership, name: valid_name,
+                description: description, id: id, dates: dates,
+                location_name: location_name, latitude: latitude, longitude: longitude
+              )
+            end
         end
       end
 

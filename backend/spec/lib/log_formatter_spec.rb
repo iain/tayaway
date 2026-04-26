@@ -5,8 +5,8 @@ require "spec_helper"
 RSpec.describe LogFormatter do
   after { RequestContext.reset! }
 
-  describe ".production" do
-    let(:formatter) { described_class.production }
+  describe ".json" do
+    let(:formatter) { described_class.json }
     let(:time) { Time.utc(2026, 4, 26, 12, 0, 0) }
 
     it "emits a JSON line without request_id when none is set" do
@@ -23,8 +23,8 @@ RSpec.describe LogFormatter do
     end
   end
 
-  describe ".human_readable" do
-    let(:formatter) { described_class.human_readable }
+  describe ".tagged" do
+    let(:formatter) { described_class.tagged }
 
     it "tags the line with a [req=…] prefix when a request_id is set" do
       RequestContext.with(request_id: "req-abc") do

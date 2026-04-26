@@ -18,9 +18,10 @@ module Events
           subject_type: "event",
           subject_id: event_id
         ) do
-          Event.find_result(event_id)
-               .bind { |event| EventPolicy.enforce(:delete, event, membership: membership, has_expenses: event_has_expenses?(event)) }
-               .bind { |event| delete_event(event) }
+          Success()
+            .bind { Event.find_result(event_id) }
+            .bind { |event| EventPolicy.enforce(:delete, event, membership: membership, has_expenses: event_has_expenses?(event)) }
+            .bind { |event| delete_event(event) }
         end
       end
 

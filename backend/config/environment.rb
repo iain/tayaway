@@ -31,7 +31,7 @@ APP_LOGGER.level = case APP_ENV
                    end
 require_relative "../lib/request_context"
 require_relative "../lib/log_formatter"
-APP_LOGGER.formatter = APP_ENV == "production" ? LogFormatter.production : LogFormatter.human_readable
+APP_LOGGER.formatter = APP_ENV == "production" ? LogFormatter.json : LogFormatter.tagged
 
 require_relative "database"
 

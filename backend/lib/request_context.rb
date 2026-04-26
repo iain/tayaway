@@ -21,24 +21,26 @@ module RequestContext
   STORAGE_KEY = :request_context
   private_constant :STORAGE_KEY
 
-  KEYS.each do |key|
-    define_singleton_method(key) { Fiber[STORAGE_KEY]&.[](key) }
-  end
+  class << self
+    KEYS.each do |key|
+      define_method(key) { Fiber[STORAGE_KEY]&.[](key) }
+    end
 
-  def self.with(**values)
-    unknown = values.keys - KEYS
-    raise ArgumentError, "Unknown RequestContext keys: #{unknown.join(", ")}" if unknown.any?
+    def with(**values)
+      unknown = values.keys - KEYS
+      raise ArgumentError, "Unknown RequestContext keys: #{unknown.join(", ")}" if unknown.any?
 
-    previous = Fiber[STORAGE_KEY]
-    Fiber[STORAGE_KEY] = (previous || {}).merge(values)
-    yield
-  ensure
-    Fiber[STORAGE_KEY] = previous
-  end
+      previous = Fiber[STORAGE_KEY]
+      Fiber[STORAGE_KEY] = (previous || {}).merge(values)
+      yield
+    ensure
+      Fiber[STORAGE_KEY] = previous
+    end
 
-  # For tests only: clear the current fiber's context. Production code
-  # should always go through `with` so the scope is delimited.
-  def self.reset!
-    Fiber[STORAGE_KEY] = nil
+    # For tests only: clear the current fiber's context. Production code
+    # should always go through `with` so the scope is delimited.
+    def reset!
+      Fiber[STORAGE_KEY] = nil
+    end
   end
 end

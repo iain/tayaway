@@ -45,83 +45,82 @@ module Auditable
   CASCADE_KEY = :auditable_in_progress
   private_constant :CASCADE_KEY
 
-  module_function
+  class << self
+    def around(service:, actor:, subject_type: nil, subject_id: nil, workspace_id: nil, context: {})
+      if Fiber[CASCADE_KEY]
+        # Inner cascade: the outermost frame already owns the audit row.
+        return yield
+      end
 
-  def around(service:, actor:, subject_type: nil, subject_id: nil, workspace_id: nil, context: {})
-    if Fiber[CASCADE_KEY]
-      # Inner cascade: the outermost frame already owns the audit row.
-      return yield
+      Fiber[CASCADE_KEY] = true
+      begin
+        result = yield
+      ensure
+        Fiber[CASCADE_KEY] = false
+      end
+
+      record(
+        service: service,
+        result: result,
+        actor: actor,
+        subject_type: subject_type,
+        subject_id: subject_id || subject_id_from_result(result, subject_type),
+        workspace_id: workspace_id || actor&.workspace_id,
+        context: context
+      )
+
+      result
     end
 
-    Fiber[CASCADE_KEY] = true
-    begin
-      result = yield
-    ensure
-      Fiber[CASCADE_KEY] = false
+    private
+
+    def record(service:, result:, actor:, subject_type:, subject_id:, workspace_id:, context:)
+      outcome, error_code, error_message = classify(result)
+
+      AuditLogEntry.create(
+        service: service,
+        outcome: outcome,
+        actor_kind: actor ? "user" : "system",
+        actor_user_id: actor&.user_id,
+        workspace_id: workspace_id,
+        subject_type: subject_type,
+        subject_id: subject_id,
+        error_code: error_code,
+        error_message: error_message,
+        action_params: context,
+        idempotency_key_hash: RequestContext.idempotency_key_hash,
+        request_id: RequestContext.request_id
+      )
+    rescue StandardError => e
+      # Audit must never break the underlying request. We log loudly so
+      # missing rows don't go unnoticed in dev/CI, then swallow.
+      APP_LOGGER.error do
+        "[Auditable] Failed to record audit row for #{service}: #{e.class}: #{e.message}"
+      end
     end
 
-    record(
-      service: service,
-      result: result,
-      actor: actor,
-      subject_type: subject_type,
-      subject_id: subject_id || subject_id_from_result(result, subject_type),
-      workspace_id: workspace_id || actor&.workspace_id,
-      context: context
-    )
+    def classify(result)
+      return ["success", nil, nil] if result.success?
 
-    result
-  end
+      error = result.failure
+      return ["error", nil, error.to_s] unless error.respond_to?(:code)
 
-  def record(service:, result:, actor:, subject_type:, subject_id:, workspace_id:, context:)
-    outcome, error_code, error_message = classify(result)
+      outcome = error.code == :forbidden ? "denied" : "error"
+      [outcome, error.code.to_s, error.message]
+    end
 
-    AuditLogEntry.create(
-      service: service,
-      outcome: outcome,
-      actor_kind: actor ? "user" : "system",
-      actor_user_id: actor&.user_id,
-      workspace_id: workspace_id,
-      subject_type: subject_type,
-      subject_id: subject_id,
-      error_code: error_code,
-      error_message: error_message,
-      action_params: context,
-      idempotency_key_hash: RequestContext.idempotency_key_hash,
-      request_id: RequestContext.request_id
-    )
-  rescue StandardError => e
-    # Audit must never break the underlying request. We log loudly so
-    # missing rows don't go unnoticed in dev/CI, then swallow.
-    APP_LOGGER.error do
-      "[Auditable] Failed to record audit row for #{service}: #{e.class}: #{e.message}"
+    # Pull the first object of the configured subject_type out of a
+    # pool-shaped success value, if present. Lets create services whose
+    # id is generated inside the block produce the right subject_id
+    # without callers having to thread it back out.
+    def subject_id_from_result(result, subject_type)
+      return nil unless subject_type
+      return nil unless result.respond_to?(:success?) && result.success?
+
+      value = result.value!
+      return nil unless value.is_a?(Hash) && value[:objects].is_a?(Array)
+
+      value[:objects].find { |o| o[:objectType] == subject_type }&.dig(:id)
     end
   end
-  private_class_method :record
-
-  def classify(result)
-    return ["success", nil, nil] if result.success?
-
-    error = result.failure
-    return ["error", nil, error.to_s] unless error.respond_to?(:code)
-
-    outcome = error.code == :forbidden ? "denied" : "error"
-    [outcome, error.code.to_s, error.message]
-  end
-  private_class_method :classify
-
-  # Pull the first object of the configured subject_type out of a
-  # pool-shaped success value, if present. Lets create services whose
-  # id is generated inside the block produce the right subject_id
-  # without callers having to thread it back out.
-  def subject_id_from_result(result, subject_type)
-    return nil unless subject_type
-    return nil unless result.respond_to?(:success?) && result.success?
-
-    value = result.value!
-    return nil unless value.is_a?(Hash) && value[:objects].is_a?(Array)
-
-    value[:objects].find { |o| o[:objectType] == subject_type }&.dig(:id)
-  end
-  private_class_method :subject_id_from_result
 end
