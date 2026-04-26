@@ -48,62 +48,67 @@ module Idempotency
     return yield unless applies?(request, user)
 
     key = request.env[HEADER].to_s.strip
+    key_hash = digest(key)
     fingerprint = fingerprint_for(request)
 
-    if (cached = lookup(user.id, key))
-      return replay(cached, fingerprint)
+    # Surface the key hash to anything downstream that joins on it —
+    # audit_log_entries.idempotency_key_hash, structured logs, etc.
+    RequestContext.with(idempotency_key_hash: key_hash) do
+      if (cached = lookup(user.id, key))
+        return replay(cached, fingerprint)
+      end
+
+      captured = nil
+      lost_race = false
+
+      DB.transaction do
+        captured = catch(:halt) do
+          yield
+          nil
+        end
+        next unless captured
+
+        status, _headers, body_parts = captured
+        body_str = serialise_body(body_parts)
+
+        # ON CONFLICT DO NOTHING avoids raising inside the transaction (a
+        # raised UniqueConstraintViolation would poison the open transaction
+        # and force us to rescue across the txn boundary). On a conflict the
+        # insert returns nil — we then roll back our own mutation and replay
+        # the row that the winning concurrent request committed.
+        inserted = DB[:idempotency_keys].insert_conflict.insert(
+          user_id: user.id,
+          idempotency_key_hash: key_hash,
+          request_fingerprint: fingerprint,
+          response_status: status,
+          response_body: body_str,
+          created_at: Time.now
+        )
+
+        if inserted.nil?
+          lost_race = true
+          captured = nil
+          raise Sequel::Rollback
+        end
+      end
+
+      if lost_race
+        cached = lookup(user.id, key)
+        unless cached
+          APP_LOGGER.warn { "[Idempotency] In-flight conflict for user=#{user.id} hash=#{key_hash}" }
+          raise ConflictError, "Idempotency key in flight"
+        end
+        if cached[:request_fingerprint] != fingerprint
+          # The race is itself surprising; combined with a body mismatch it
+          # almost certainly means a buggy client is reusing the same key for
+          # different requests in parallel. Worth a log so the 422 isn't silent.
+          APP_LOGGER.warn { "[Idempotency] Lost-race fingerprint mismatch for user=#{user.id} hash=#{key_hash}" }
+        end
+        return replay(cached, fingerprint)
+      end
+
+      throw :halt, captured if captured
     end
-
-    captured = nil
-    lost_race = false
-
-    DB.transaction do
-      captured = catch(:halt) do
-        yield
-        nil
-      end
-      next unless captured
-
-      status, _headers, body_parts = captured
-      body_str = serialise_body(body_parts)
-
-      # ON CONFLICT DO NOTHING avoids raising inside the transaction (a
-      # raised UniqueConstraintViolation would poison the open transaction
-      # and force us to rescue across the txn boundary). On a conflict the
-      # insert returns nil — we then roll back our own mutation and replay
-      # the row that the winning concurrent request committed.
-      inserted = DB[:idempotency_keys].insert_conflict.insert(
-        user_id: user.id,
-        idempotency_key_hash: digest(key),
-        request_fingerprint: fingerprint,
-        response_status: status,
-        response_body: body_str,
-        created_at: Time.now
-      )
-
-      if inserted.nil?
-        lost_race = true
-        captured = nil
-        raise Sequel::Rollback
-      end
-    end
-
-    if lost_race
-      cached = lookup(user.id, key)
-      unless cached
-        APP_LOGGER.warn { "[Idempotency] In-flight conflict for user=#{user.id} hash=#{digest(key)}" }
-        raise ConflictError, "Idempotency key in flight"
-      end
-      if cached[:request_fingerprint] != fingerprint
-        # The race is itself surprising; combined with a body mismatch it
-        # almost certainly means a buggy client is reusing the same key for
-        # different requests in parallel. Worth a log so the 422 isn't silent.
-        APP_LOGGER.warn { "[Idempotency] Lost-race fingerprint mismatch for user=#{user.id} hash=#{digest(key)}" }
-      end
-      return replay(cached, fingerprint)
-    end
-
-    throw :halt, captured if captured
   end
 
   def applies?(request, user)

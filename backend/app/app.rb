@@ -86,6 +86,21 @@ class App < Roda
   CSRF_HEADER = "HTTP_X_CSRF_PROTECTION"
   CSRF_MUTATING_METHODS = %w[POST PUT PATCH DELETE].freeze
 
+  REQUEST_ID_HEADER = "HTTP_X_REQUEST_ID"
+  # Cap and character class are deliberately tight: the request id ends up
+  # in log lines, audit rows, and (potentially) external systems, so we
+  # don't want clients smuggling control characters or absurdly long
+  # values into any of them. Anything that doesn't match gets replaced
+  # with a generated UUID — we never reject the request over a header.
+  REQUEST_ID_PATTERN = /\A[A-Za-z0-9_-]{1,128}\z/
+
+  def self.resolve_request_id(env)
+    raw = env[REQUEST_ID_HEADER]
+    return raw if raw.is_a?(String) && raw.match?(REQUEST_ID_PATTERN)
+
+    SecureRandom.uuid
+  end
+
   def verify_csrf_header!
     return unless CSRF_MUTATING_METHODS.include?(request.request_method)
     return if request.env[CSRF_HEADER] == "1"
@@ -138,16 +153,18 @@ class App < Roda
   end
 
   route do |r|
-    r.hash_routes
+    RequestContext.with(request_id: App.resolve_request_id(r.env)) do
+      r.hash_routes
 
-    if STATIC_DIR.directory?
-      r.public
+      if STATIC_DIR.directory?
+        r.public
 
-      # SPA fallback: serve index.html for non-API/WS paths so Vue Router handles them
-      unless r.path_info.start_with?("/api", "/ws")
-        index_path = STATIC_DIR.join("index.html")
-        if index_path.file?
-          r.halt [200, { "Content-Type" => "text/html", "Cache-Control" => "no-cache, no-store, must-revalidate" }, [index_path.read]]
+        # SPA fallback: serve index.html for non-API/WS paths so Vue Router handles them
+        unless r.path_info.start_with?("/api", "/ws")
+          index_path = STATIC_DIR.join("index.html")
+          if index_path.file?
+            r.halt [200, { "Content-Type" => "text/html", "Cache-Control" => "no-cache, no-store, must-revalidate" }, [index_path.read]]
+          end
         end
       end
     end
