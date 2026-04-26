@@ -23,13 +23,22 @@ module Rsvps
         # compatibility with commands queued before client-ID enforcement).
         resolved_rsvp_id = rsvp_id.nil? || rsvp_id.empty? ? SecureRandom.uuid : rsvp_id
 
-        validate_params(attending)
-          .bind { find_event(event_id) }
-          .bind { |event| EventPolicy.enforce(:create_rsvp, event, membership: membership) }
-          .bind { |event| validate_event_has_dates(event) }
-          .bind { |event| validate_no_expenses_when_declining(event, user_id, attending) }
-          .bind { |event| validate_partial_dates(event, attending, start_date, end_date) }
-          .bind { |event, parsed_start, parsed_end| upsert_rsvp(event, user_id, attending, parsed_start, parsed_end, resolved_rsvp_id) }
+        Auditable.around(
+          service: "Rsvps::Upsert",
+          actor: membership,
+          subject_type: "rsvp",
+          subject_id: resolved_rsvp_id,
+          context: { attending: attending }
+        ) do
+          Success()
+            .bind { validate_params(attending) }
+            .bind { find_event(event_id) }
+            .bind { |event| EventPolicy.enforce(:create_rsvp, event, membership: membership) }
+            .bind { |event| validate_event_has_dates(event) }
+            .bind { |event| validate_no_expenses_when_declining(event, user_id, attending) }
+            .bind { |event| validate_partial_dates(event, attending, start_date, end_date) }
+            .bind { |event, parsed_start, parsed_end| upsert_rsvp(event, user_id, attending, parsed_start, parsed_end, resolved_rsvp_id) }
+        end
       end
 
       private

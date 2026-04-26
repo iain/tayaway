@@ -7,12 +7,20 @@ module DatePolls
       include Dry::Monads[:result]
 
       def call(event_id:, membership:, date_range_id:)
-        Event.find_result(event_id)
-             .bind { |event| DatePoll.find_by_event_result(event.id).fmap { |poll| [event, poll] } }
-             .bind { |(event, poll)| DatePoll.validate_open(poll).fmap { |_| [event, poll] } }
-             .bind { |(event, poll)| validate_date_range(event, poll, date_range_id) }
-             .bind { |(event, poll, date_range)| DateRangePolicy.enforce(:delete, date_range, membership: membership, event: event).fmap { |_| [event, poll, date_range.id] } }
-             .bind { |(event, poll, dr_id)| delete_date_range(event, poll, dr_id, membership) }
+        Auditable.around(
+          service: "DatePolls::RemoveDateRange",
+          actor: membership,
+          subject_type: "date_range",
+          subject_id: date_range_id
+        ) do
+          Success()
+            .bind { Event.find_result(event_id) }
+            .bind { |event| DatePoll.find_by_event_result(event.id).fmap { |poll| [event, poll] } }
+            .bind { |(event, poll)| DatePoll.validate_open(poll).fmap { |_| [event, poll] } }
+            .bind { |(event, poll)| validate_date_range(event, poll, date_range_id) }
+            .bind { |(event, poll, date_range)| DateRangePolicy.enforce(:delete, date_range, membership: membership, event: event).fmap { |_| [event, poll, date_range.id] } }
+            .bind { |(event, poll, dr_id)| delete_date_range(event, poll, dr_id, membership) }
+        end
       end
 
       private

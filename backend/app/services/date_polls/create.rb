@@ -7,11 +7,18 @@ module DatePolls
       include Dry::Monads[:result]
 
       def call(event_id:, membership:, deadline:)
-        Event.find_result(event_id)
-             .bind { |event| EventPolicy.enforce(:create_poll, event, membership: membership) }
-             .bind { |event| validate_no_existing_poll(event) }
-             .bind { |event| validate_deadline(deadline, event) }
-             .bind { |(event, parsed_deadline)| create_poll(event, parsed_deadline, membership) }
+        Auditable.around(
+          service: "DatePolls::Create",
+          actor: membership,
+          subject_type: "date_poll"
+        ) do
+          Success()
+            .bind { Event.find_result(event_id) }
+            .bind { |event| EventPolicy.enforce(:create_poll, event, membership: membership) }
+            .bind { |event| validate_no_existing_poll(event) }
+            .bind { |event| validate_deadline(deadline, event) }
+            .bind { |(event, parsed_deadline)| create_poll(event, parsed_deadline, membership) }
+        end
       end
 
       private

@@ -7,12 +7,20 @@ module DatePolls
       include Dry::Monads[:result]
 
       def call(event_id:, membership:, selected_date_range_id:)
-        Event.find_result(event_id)
-             .bind { |event| DatePoll.find_by_event_result(event.id).fmap { |poll| [event, poll] } }
-             .bind { |(event, poll)| DatePollPolicy.enforce(:close, poll, membership: membership, event: event).fmap { |_| [event, poll] } }
-             .bind { |(event, poll)| validate_not_resolved(event, poll) }
-             .bind { |(event, poll)| validate_date_range(event, poll, selected_date_range_id) }
-             .bind { |(event, poll, dr_id)| close_poll(event, poll, dr_id, membership) }
+        Auditable.around(
+          service: "DatePolls::Close",
+          actor: membership,
+          subject_type: "date_poll",
+          context: { selected_date_range_id: selected_date_range_id }
+        ) do
+          Success()
+            .bind { Event.find_result(event_id) }
+            .bind { |event| DatePoll.find_by_event_result(event.id).fmap { |poll| [event, poll] } }
+            .bind { |(event, poll)| DatePollPolicy.enforce(:close, poll, membership: membership, event: event).fmap { |_| [event, poll] } }
+            .bind { |(event, poll)| validate_not_resolved(event, poll) }
+            .bind { |(event, poll)| validate_date_range(event, poll, selected_date_range_id) }
+            .bind { |(event, poll, dr_id)| close_poll(event, poll, dr_id, membership) }
+        end
       end
 
       private

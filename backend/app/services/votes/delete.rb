@@ -12,11 +12,19 @@ module Votes
       include Dry::Monads[:result]
 
       def call(event_id:, vote_id:, membership:)
-        find_vote(vote_id)
-          .bind { |vote| VotePolicy.enforce(:delete, vote, membership: membership) }
-          .bind { |vote| validate_vote_belongs_to_event(vote, event_id) }
-          .bind { |vote| validate_poll_open(vote) }
-          .bind { |vote| delete_vote(vote, event_id) }
+        Auditable.around(
+          service: "Votes::Delete",
+          actor: membership,
+          subject_type: "vote",
+          subject_id: vote_id
+        ) do
+          Success()
+            .bind { find_vote(vote_id) }
+            .bind { |vote| VotePolicy.enforce(:delete, vote, membership: membership) }
+            .bind { |vote| validate_vote_belongs_to_event(vote, event_id) }
+            .bind { |vote| validate_poll_open(vote) }
+            .bind { |vote| delete_vote(vote, event_id) }
+        end
       end
 
       private

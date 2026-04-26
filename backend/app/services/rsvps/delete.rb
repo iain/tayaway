@@ -10,10 +10,18 @@ module Rsvps
       include Dry::Monads[:result]
 
       def call(event_id:, rsvp_id:, membership:)
-        find_rsvp(rsvp_id)
-          .bind { |rsvp| RsvpPolicy.enforce(:delete, rsvp, membership: membership) }
-          .bind { |rsvp| validate_rsvp_belongs_to_event(rsvp, event_id) }
-          .bind { |rsvp| delete_rsvp(rsvp, event_id) }
+        Auditable.around(
+          service: "Rsvps::Delete",
+          actor: membership,
+          subject_type: "rsvp",
+          subject_id: rsvp_id
+        ) do
+          Success()
+            .bind { find_rsvp(rsvp_id) }
+            .bind { |rsvp| RsvpPolicy.enforce(:delete, rsvp, membership: membership) }
+            .bind { |rsvp| validate_rsvp_belongs_to_event(rsvp, event_id) }
+            .bind { |rsvp| delete_rsvp(rsvp, event_id) }
+        end
       end
 
       private

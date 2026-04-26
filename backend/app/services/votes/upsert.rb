@@ -25,12 +25,21 @@ module Votes
         # compatibility with commands queued before client-ID enforcement).
         resolved_vote_id = vote_id.nil? || vote_id.empty? ? SecureRandom.uuid : vote_id
 
-        validate_params(date_range_id, vote_response)
-          .bind { |params| find_date_range(params[:date_range_id]) }
-          .bind { |date_range| validate_date_range_belongs_to_event(date_range, event_id) }
-          .bind { |date_range| DateRangePolicy.enforce(:create_vote, date_range, membership: membership) }
-          .bind { |date_range| validate_poll_open(date_range) }
-          .bind { |date_range| upsert_vote(date_range, user_id, vote_response, comment, resolved_vote_id) }
+        Auditable.around(
+          service: "Votes::Upsert",
+          actor: membership,
+          subject_type: "vote",
+          subject_id: resolved_vote_id,
+          context: { response: vote_response }
+        ) do
+          Success()
+            .bind { validate_params(date_range_id, vote_response) }
+            .bind { |params| find_date_range(params[:date_range_id]) }
+            .bind { |date_range| validate_date_range_belongs_to_event(date_range, event_id) }
+            .bind { |date_range| DateRangePolicy.enforce(:create_vote, date_range, membership: membership) }
+            .bind { |date_range| validate_poll_open(date_range) }
+            .bind { |date_range| upsert_vote(date_range, user_id, vote_response, comment, resolved_vote_id) }
+        end
       end
 
       private
