@@ -22,14 +22,24 @@ module Users
 
       def call(user_id:, current_user_id:, name:, phone_number: nil, birthday: nil,
                location_name: nil, latitude: nil, longitude: nil, iban: nil)
-        find_user(user_id)
-          .bind { |user| authorize(user, current_user_id) }
-          .bind { |user| validate_name(name, user) }
-          .bind { |user| validate_birthday(birthday, user) }
-          .bind { |user| validate_coordinates(latitude, longitude, user) }
-          .bind { |user| validate_iban(iban, user) }
-          .bind { |user| validate_text_lengths(phone_number, location_name, user) }
-          .bind { |user| update_profile(user, name, phone_number, birthday, location_name, latitude, longitude, iban) }
+        Auditable.around(
+          service: "Users::UpdateProfile",
+          actor: nil,
+          actor_user_id: current_user_id,
+          subject_type: "user",
+          subject_id: user_id,
+          context: { name: name }
+        ) do
+          Success()
+            .bind { find_user(user_id) }
+            .bind { |user| authorize(user, current_user_id) }
+            .bind { |user| validate_name(name, user) }
+            .bind { |user| validate_birthday(birthday, user) }
+            .bind { |user| validate_coordinates(latitude, longitude, user) }
+            .bind { |user| validate_iban(iban, user) }
+            .bind { |user| validate_text_lengths(phone_number, location_name, user) }
+            .bind { |user| update_profile(user, name, phone_number, birthday, location_name, latitude, longitude, iban) }
+        end
       end
 
       private
