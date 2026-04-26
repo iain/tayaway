@@ -99,6 +99,16 @@ RSpec.describe Auditable do
       expect(row[:actor_user_id]).to be_nil
     end
 
+    it "honours an explicit actor_user_id when no membership is available" do
+      described_class.around(service: "Test::UserScoped", actor: nil, actor_user_id: user[:id]) do
+        Success({ objects: [] })
+      end
+
+      row = DB[:audit_log_entries].where(service: "Test::UserScoped").first
+      expect(row[:actor_kind]).to eq("user")
+      expect(row[:actor_user_id]).to eq(user[:id])
+    end
+
     it "does not record a row when the block raises" do
       expect {
         described_class.around(service: "Test::Boom", actor: membership) do
