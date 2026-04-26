@@ -7,9 +7,18 @@ module ChoreRosters
       include Dry::Monads[:result]
 
       def call(chore_id:, workspace_id:, membership:, name: nil, people_per_day: nil, position: nil)
-        Chore.find_result(chore_id)
-             .bind { |chore| ChorePolicy.enforce(:edit, chore, membership: membership) }
-             .bind { |chore| validate_and_update(chore, workspace_id, name, people_per_day, position, membership) }
+        Auditable.around(
+          service: "ChoreRosters::UpdateChore",
+          actor: membership,
+          subject_type: "chore",
+          subject_id: chore_id,
+          context: { name: name }
+        ) do
+          Success()
+            .bind { Chore.find_result(chore_id) }
+            .bind { |chore| ChorePolicy.enforce(:edit, chore, membership: membership) }
+            .bind { |chore| validate_and_update(chore, workspace_id, name, people_per_day, position, membership) }
+        end
       end
 
       private

@@ -7,9 +7,17 @@ module ChoreRosters
       include Dry::Monads[:result]
 
       def call(roster_id:, membership:, workspace_id:)
-        ChoreRoster.find_result(roster_id)
-                   .bind { |roster| ChoreRosterPolicy.enforce(:delete, roster, membership: membership) }
-                   .bind { |roster| delete(roster, workspace_id) }
+        Auditable.around(
+          service: "ChoreRosters::DeleteRoster",
+          actor: membership,
+          subject_type: "chore_roster",
+          subject_id: roster_id
+        ) do
+          Success()
+            .bind { ChoreRoster.find_result(roster_id) }
+            .bind { |roster| ChoreRosterPolicy.enforce(:delete, roster, membership: membership) }
+            .bind { |roster| delete(roster, workspace_id) }
+        end
       end
 
       private

@@ -7,10 +7,18 @@ module TaskLists
       include Dry::Monads[:result]
 
       def call(task_list_id:, membership:, content:, id: nil)
-        TaskList.find_result(task_list_id)
-                .bind { |task_list| TaskListPolicy.enforce(:create_task_item, task_list, membership: membership) }
-                .bind { |task_list| validate_content(content).fmap { |valid_content| [task_list, valid_content] } }
-                .bind { |(task_list, valid_content)| add_item(task_list, membership, valid_content, id) }
+        Auditable.around(
+          service: "TaskLists::AddItem",
+          actor: membership,
+          subject_type: "task_item",
+          subject_id: id
+        ) do
+          Success()
+            .bind { TaskList.find_result(task_list_id) }
+            .bind { |task_list| TaskListPolicy.enforce(:create_task_item, task_list, membership: membership) }
+            .bind { |task_list| validate_content(content).fmap { |valid_content| [task_list, valid_content] } }
+            .bind { |(task_list, valid_content)| add_item(task_list, membership, valid_content, id) }
+        end
       end
 
       private

@@ -7,9 +7,17 @@ module ChoreRosters
       include Dry::Monads[:result]
 
       def call(roster_id:, workspace_id:, membership:)
-        ChoreRoster.find_result(roster_id)
-                   .bind { |roster| ChoreRosterPolicy.enforce(:edit, roster, membership: membership) }
-                   .bind { |roster| clear_unpinned(roster, workspace_id) }
+        Auditable.around(
+          service: "ChoreRosters::ClearUnpinned",
+          actor: membership,
+          subject_type: "chore_roster",
+          subject_id: roster_id
+        ) do
+          Success()
+            .bind { ChoreRoster.find_result(roster_id) }
+            .bind { |roster| ChoreRosterPolicy.enforce(:edit, roster, membership: membership) }
+            .bind { |roster| clear_unpinned(roster, workspace_id) }
+        end
       end
 
       private

@@ -7,9 +7,17 @@ module TaskLists
       include Dry::Monads[:result]
 
       def call(task_list_id:, membership:)
-        TaskList.find_result(task_list_id)
-                .bind { |task_list| TaskListPolicy.enforce(:edit, task_list, membership: membership) }
-                .bind { |task_list| clear_completed(task_list) }
+        Auditable.around(
+          service: "TaskLists::ClearCompleted",
+          actor: membership,
+          subject_type: "task_list",
+          subject_id: task_list_id
+        ) do
+          Success()
+            .bind { TaskList.find_result(task_list_id) }
+            .bind { |task_list| TaskListPolicy.enforce(:edit, task_list, membership: membership) }
+            .bind { |task_list| clear_completed(task_list) }
+        end
       end
 
       private
