@@ -26,7 +26,8 @@ module Events
           context: { name: name }
         ) do
           Success()
-            .bind { WorkspacePolicy.enforce(:create_event, Workspace.find(workspace_id), membership: membership) }
+            .bind { Workspace.find_result(workspace_id) }
+            .bind { |workspace| WorkspacePolicy.enforce(:create_event, workspace, membership: membership) }
             .bind { validate_name(name) }
             .bind { |valid_name| validate_text_lengths(description, location_name).fmap { valid_name } }
             .bind { |valid_name| validate_coordinates(latitude, longitude).fmap { valid_name } }
