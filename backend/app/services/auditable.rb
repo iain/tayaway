@@ -111,45 +111,6 @@ module Auditable
     end
   end
 
-  # Per-request context — values that the *route* layer knows but the
-  # service layer doesn't, and which we want stamped onto every audit row
-  # without threading them through service signatures. Modelled after
-  # ActiveSupport::CurrentAttributes: a fixed set of named accessors rather
-  # than a generic hash, so call sites can't typo a key into nothingness.
-  #
-  # Storage uses Fiber[] (not Thread.current[]) so that any child fibers
-  # spawned via Async {} during request handling inherit the same context
-  # — the request_id stays consistent across logs even if work fans out.
-  # Each `with` call writes a new hash rather than mutating the stored one,
-  # so a child fiber that inherits the snapshot can't reach back and edit
-  # its parent's state.
-  module Current
-    KEYS = %i[idempotency_key_hash request_id].freeze
-    STORAGE_KEY = :auditable_current
-    private_constant :STORAGE_KEY
-
-    KEYS.each do |key|
-      define_singleton_method(key) { (Fiber[STORAGE_KEY] || {})[key] }
-    end
-
-    def self.with(**values)
-      unknown = values.keys - KEYS
-      raise ArgumentError, "Unknown Auditable::Current keys: #{unknown.inspect}" if unknown.any?
-
-      previous = Fiber[STORAGE_KEY]
-      Fiber[STORAGE_KEY] = (previous || {}).merge(values)
-      yield
-    ensure
-      Fiber[STORAGE_KEY] = previous
-    end
-
-    # For tests only: clear the current fiber's context. Production code
-    # should always go through `with` so the scope is delimited.
-    def self.reset!
-      Fiber[STORAGE_KEY] = nil
-    end
-  end
-
   class << self
     def record(service:, kwargs:, result:)
       service_name = service.name
@@ -169,8 +130,8 @@ module Auditable
         error_code: error_code,
         error_message: error_message,
         action_params: action_params,
-        idempotency_key_hash: Current.idempotency_key_hash,
-        request_id: Current.request_id
+        idempotency_key_hash: RequestContext.idempotency_key_hash,
+        request_id: RequestContext.request_id
       )
     rescue StandardError => e
       # Audit must never break the underlying request. We log loudly so

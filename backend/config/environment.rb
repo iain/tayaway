@@ -29,16 +29,9 @@ APP_LOGGER.level = case APP_ENV
                    when "e2e" then Logger::WARN
                    else Logger::DEBUG
                    end
-APP_LOGGER.formatter = if APP_ENV == "production"
-                         proc { |severity, time, _progname, msg|
-                           JSON.generate({ timestamp: time.utc.iso8601(3), level: severity, message: msg.to_s }) + "\n"
-                         }
-                       else
-                         proc { |severity, _time, _progname, msg|
-                           label = severity == "DEBUG" ? "" : "[#{severity}] "
-                           "#{label}#{msg}\n"
-                         }
-                       end
+require_relative "../lib/request_context"
+require_relative "../lib/log_formatter"
+APP_LOGGER.formatter = APP_ENV == "production" ? LogFormatter.production : LogFormatter.human_readable
 
 require_relative "database"
 

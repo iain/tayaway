@@ -170,37 +170,12 @@ RSpec.describe Auditable do
     end
   end
 
-  describe Auditable::Current do
-    after { described_class.reset! }
+  describe "RequestContext stamping" do
+    after { RequestContext.reset! }
 
-    it "exposes named accessors and nests scopes" do
-      expect(described_class.request_id).to be_nil
-
-      described_class.with(request_id: "outer") do
-        expect(described_class.request_id).to eq("outer")
-
-        described_class.with(idempotency_key_hash: "h") do
-          expect(described_class.request_id).to eq("outer")
-          expect(described_class.idempotency_key_hash).to eq("h")
-        end
-
-        # Inner scope's keys are gone, outer keys preserved.
-        expect(described_class.request_id).to eq("outer")
-        expect(described_class.idempotency_key_hash).to be_nil
-      end
-
-      expect(described_class.request_id).to be_nil
-    end
-
-    it "rejects unknown keys at call time so typos fail loud" do
-      expect {
-        described_class.with(request_idd: "typo") { :unused }
-      }.to raise_error(ArgumentError, /Unknown.*request_idd/)
-    end
-
-    it "stamps the audit row with whatever Current holds when the service runs" do
+    it "stamps the audit row with the request_id and idempotency_key_hash from the surrounding context" do
       hash = Digest::SHA256.hexdigest("client-key")
-      described_class.with(request_id: "req-123", idempotency_key_hash: hash) do
+      RequestContext.with(request_id: "req-123", idempotency_key_hash: hash) do
         Events::Create.call(
           workspace_id: workspace[:id], membership: membership, name: "Stamped", description: nil
         )
@@ -209,16 +184,6 @@ RSpec.describe Auditable do
       row = DB[:audit_log_entries].where(service: "Events::Create").first
       expect(row[:request_id]).to eq("req-123")
       expect(row[:idempotency_key_hash]).to eq(hash)
-    end
-
-    it "doesn't leak between scopes that re-enter from a clean state" do
-      described_class.with(request_id: "first") { :noop }
-      expect(described_class.request_id).to be_nil
-
-      described_class.with(request_id: "second") do
-        expect(described_class.request_id).to eq("second")
-      end
-      expect(described_class.request_id).to be_nil
     end
   end
 
