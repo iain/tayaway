@@ -19,19 +19,28 @@ module Events
 
       def call(event_id:, membership:, name:, description:, start_date: nil, end_date: nil,
                location_name: nil, latitude: nil, longitude: nil)
-        Event.find_result(event_id)
-             .bind { |event| EventPolicy.enforce(:edit, event, membership: membership) }
-             .bind { |event| validate_name_with_event(name, event) }
-             .bind { |event| validate_text_lengths(description, location_name).fmap { event } }
-             .bind { |event| validate_coordinates(latitude, longitude).fmap { event } }
-             .bind { |event| validate_dates(start_date, end_date).fmap { |dates| [event, dates] } }
-             .bind { |(event, dates)| check_no_resolved_poll_when_clearing(event, dates).fmap { [event, dates] } }
-             .bind do |(event, dates)|
-               update_event(
-                 event: event, membership: membership, name: name, description: description, dates: dates,
-                 location_name: location_name, latitude: latitude, longitude: longitude
-               )
-             end
+        Auditable.around(
+          service: "Events::Update",
+          actor: membership,
+          subject_type: "event",
+          subject_id: event_id,
+          context: { name: name }
+        ) do
+          Success()
+            .bind { Event.find_result(event_id) }
+            .bind { |event| EventPolicy.enforce(:edit, event, membership: membership) }
+            .bind { |event| validate_name_with_event(name, event) }
+            .bind { |event| validate_text_lengths(description, location_name).fmap { event } }
+            .bind { |event| validate_coordinates(latitude, longitude).fmap { event } }
+            .bind { |event| validate_dates(start_date, end_date).fmap { |dates| [event, dates] } }
+            .bind { |(event, dates)| check_no_resolved_poll_when_clearing(event, dates).fmap { [event, dates] } }
+            .bind do |(event, dates)|
+              update_event(
+                event: event, membership: membership, name: name, description: description, dates: dates,
+                location_name: location_name, latitude: latitude, longitude: longitude
+              )
+            end
+        end
       end
 
       private

@@ -17,6 +17,9 @@ class Workspace
   end
 
   class << self
+    include Dry::Monads[:result]
+    include Findable
+
     def find(id)
       dataset.where(id: id).first
     end
