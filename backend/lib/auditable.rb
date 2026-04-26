@@ -100,18 +100,13 @@ module Auditable
   private_class_method :record
 
   def classify(result)
-    if result.success?
-      ["success", nil, nil]
-    else
-      error = result.failure
-      if error.respond_to?(:code) && error.code == :forbidden
-        ["denied", "forbidden", error.message]
-      elsif error.respond_to?(:code)
-        ["error", error.code.to_s, error.message]
-      else
-        ["error", nil, error.to_s]
-      end
-    end
+    return ["success", nil, nil] if result.success?
+
+    error = result.failure
+    return ["error", nil, error.to_s] unless error.respond_to?(:code)
+
+    outcome = error.code == :forbidden ? "denied" : "error"
+    [outcome, error.code.to_s, error.message]
   end
   private_class_method :classify
 

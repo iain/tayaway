@@ -3,6 +3,8 @@
 require "spec_helper"
 
 RSpec.describe Auditable do
+  include Dry::Monads[:result]
+
   let(:user) { TestFactories.user }
   let(:workspace) { TestFactories.workspace }
   let(:membership) do
@@ -89,7 +91,7 @@ RSpec.describe Auditable do
 
     it "records actor_kind=system when no actor is given" do
       described_class.around(service: "Test::Cron", actor: nil) do
-        Dry::Monads::Success({ objects: [] })
+        Success({ objects: [] })
       end
 
       row = DB[:audit_log_entries].where(service: "Test::Cron").first
@@ -124,7 +126,7 @@ RSpec.describe Auditable do
     it "extracts subject_id from a pool-shaped success when not given explicitly" do
       generated_id = SecureRandom.uuid
       described_class.around(service: "Test::Created", actor: membership, subject_type: "event") do
-        Dry::Monads::Success({ objects: [{ id: generated_id, objectType: "event" }] })
+        Success({ objects: [{ id: generated_id, objectType: "event" }] })
       end
 
       row = DB[:audit_log_entries].where(service: "Test::Created").first
