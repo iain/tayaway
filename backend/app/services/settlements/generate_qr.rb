@@ -12,42 +12,11 @@ module Settlements
       include Dry::Monads[:result]
 
       def call(transfer_id:, membership:)
-        SettlementTransfer.find_result(transfer_id)
-                          .bind { |transfer| SettlementTransferPolicy.enforce(:generate_qr, transfer, membership: membership) }
-                          .bind { |transfer| load_context(transfer) }
+        LoadPaymentContext.call(transfer_id: transfer_id, membership: membership)
                           .bind { |ctx| generate_png(ctx) }
       end
 
       private
-
-      def load_context(transfer)
-        settlement = Settlement.find(transfer.settlement_id)
-        unless settlement
-          return Failure(ServiceError.not_found("Settlement not found"))
-        end
-
-        event = Event.find(settlement.event_id)
-        unless event
-          return Failure(ServiceError.not_found("Event not found"))
-        end
-
-        recipient = User.find(transfer.to_user_id)
-        unless recipient
-          return Failure(ServiceError.not_found("Recipient not found"))
-        end
-
-        unless recipient.iban
-          return Failure(ServiceError.validation("Recipient has no IBAN configured"))
-        end
-
-        Success(
-          {
-            transfer: transfer,
-            event: event,
-            recipient: recipient
-          }
-        )
-      end
 
       def generate_png(ctx)
         transfer = ctx[:transfer]

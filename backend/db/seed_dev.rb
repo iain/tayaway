@@ -46,6 +46,20 @@ DB.transaction do
   user_id = users.transform_values { |a| DB[:users].where(email: a[:email]).get(:id) }
   user_id_for = ->(key) { user_id.fetch(key) }
 
+  # IBANs so the QR / copy-IBAN flow on settlements has something to show.
+  # Test IBANs from the SEPA test ranges; not real accounts.
+  ibans = {
+    test: "NL18RABO0123459876",
+    alice: "NL91ABNA0417164300",
+    bob: "BE71096123456769",
+    charlie: "DE89370400440532013000",
+    diana: "FR1420041010050500013M02606"
+  }
+  ibans.each do |key, iban|
+    uid = user_id_for[key]
+    DB[:users].where(id: uid).update(iban: Encryption.encrypt(iban, user_id: uid), updated_at: now)
+  end
+
   # ── Workspace + memberships ───────────────────────────────────────────────
   DB[:workspaces].insert_conflict(
     target: :id,

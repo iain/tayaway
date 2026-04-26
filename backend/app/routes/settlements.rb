@@ -101,6 +101,17 @@ class App
           next { error: "Access denied" }
         end
 
+        # GET /api/settlements/transfers/:id/payment-details - Recipient IBAN + reference
+        r.on "payment-details" do
+          r.get do
+            result = Settlements::PaymentDetails.call(
+              transfer_id: transfer_id,
+              membership: current_membership
+            )
+            handle_result(result)
+          end
+        end
+
         # GET /api/settlements/transfers/:id/qr - Generate EPC QR code PNG
         r.on "qr" do
           r.get do
