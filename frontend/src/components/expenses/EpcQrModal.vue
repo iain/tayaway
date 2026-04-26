@@ -48,6 +48,9 @@ watch(
   () => props.open,
   async (isOpen) => {
     clearCopiedTimer()
+    // Bump on every transition so any in-flight request from the previous
+    // open is invalidated — including when the modal closes.
+    const token = ++fetchToken
     if (!isOpen || !props.transferId) {
       details.value = null
       imgSrc.value = null
@@ -59,7 +62,6 @@ watch(
     details.value = null
     copied.value = false
     copyError.value = false
-    const token = ++fetchToken
     if (!props.recipientHasIban) {
       // Skip the fetches — both the QR and payment-details endpoints fail
       // when the recipient has no IBAN. The template renders the explanatory

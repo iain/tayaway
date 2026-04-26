@@ -125,10 +125,9 @@ class App
 
             if result.success?
               png = result.value!
-              response.status = 200
-              response["Content-Type"] = "image/png"
-              response["Cache-Control"] = "private, max-age=300"
-              r.halt [200, { "Content-Type" => "image/png", "Cache-Control" => "private, max-age=300" }, [png]]
+              # The PNG encodes the recipient's IBAN. Treat it the same as the
+              # JSON payment-details response: no caching anywhere.
+              r.halt [200, { "Content-Type" => "image/png", "Cache-Control" => "private, no-store" }, [png]]
             else
               error = result.failure
               response.status = error.http_status
