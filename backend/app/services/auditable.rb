@@ -1,179 +1,132 @@
 # frozen_string_literal: true
 
-# Service-layer audit logging. Opted-in services get every `.call` recorded
-# to `audit_log_entries`, including denied attempts and validation failures,
-# so we can answer "who did what and was it allowed" after the fact.
+# Service-layer audit logging via an explicit block wrapper:
 #
-# Usage in a service module:
-#
-#   module Events
-#     module Update
-#       extend Auditable
-#       audit subject_type: "event"
-#
-#       class << self
-#         def call(event_id:, membership:, **) ... end
-#
-#         def audit_context(event_id:, **)
-#           { event_id: event_id }
-#         end
-#       end
+#   def call(event_id:, membership:, name:, **)
+#     Auditable.around(
+#       service: "Events::Update",
+#       actor: membership,
+#       subject_type: "event",
+#       subject_id: event_id,
+#       context: { name: name }
+#     ) do
+#       Event.find_result(event_id)
+#            .bind { |event| EventPolicy.enforce(:edit, event, membership: membership) }
+#            .bind { ... }
 #     end
 #   end
 #
 # The wrapper:
-#   * runs the underlying `.call`,
-#   * extracts the actor from `membership:` (or treats it as a system call if
-#     no membership was passed),
-#   * asks the service for `audit_context(**kwargs)` — a curated dict to
-#     persist as `action_params` (optional; defaults to `{}`),
-#   * detects the subject id either from `audit_subject_id(**kwargs, result:)`
-#     or, by default, from the kwargs key matching the configured subject_type
-#     (e.g. `event_id` when subject_type is "event"),
-#   * collapses cascaded inner service calls into the outermost row via a
-#     fiber-local guard,
-#   * never raises from the audit path itself: a failure to record an audit
-#     row logs a warning but does not corrupt the underlying service result.
+#   * runs the block,
+#   * inspects the returned Result and writes one row with outcome
+#     `success` / `denied` / `error` plus the error code and message,
+#   * extracts the actor from the `actor:` argument (a WorkspaceMembership,
+#     or nil for system-initiated calls),
+#   * uses `subject_id` directly when given, or falls back to extracting
+#     it from a pool-shaped success value (useful for create services
+#     whose id is generated inside the block),
+#   * suppresses inner cascaded calls so a service-of-services produces
+#     one row at the outermost frame, via a fiber-local guard,
+#   * never raises from the audit path itself: a failure to record an
+#     audit row logs an error but does not corrupt the underlying
+#     service result.
+#
+# A service that *raises* rather than returning a Failure is deliberately
+# not audited — a raised mutation is a bug, not a user-attributable
+# action, and wrapping every service in a transaction to record the
+# raise would require restructuring all of them. Failures returned via
+# the Result monad are audited normally.
 module Auditable
   # Fiber storage (rather than Thread.current[], which is also fiber-local
-  # but does *not* inherit into child fibers). The propagating semantics
+  # but does not inherit into child fibers). The propagating semantics
   # matter under Falcon: if a service ever spawns work via Async {} the
   # child fiber should see the cascade flag and stay suppressed, otherwise
   # we'd record duplicate rows for the inner call.
   CASCADE_KEY = :auditable_in_progress
+  private_constant :CASCADE_KEY
 
-  # Configure how this service is audited. Called once at module load time.
-  #
-  # @param subject_type [String, nil] the subject_type column value, e.g. "event"
-  def audit(subject_type: nil)
-    @audit_subject_type = subject_type
-    singleton_class.prepend(Hook) unless singleton_class.include?(Hook)
+  module_function
+
+  def around(service:, actor:, subject_type: nil, subject_id: nil, workspace_id: nil, context: {})
+    if Fiber[CASCADE_KEY]
+      # Inner cascade: the outermost frame already owns the audit row.
+      return yield
+    end
+
+    Fiber[CASCADE_KEY] = true
+    begin
+      result = yield
+    ensure
+      Fiber[CASCADE_KEY] = false
+    end
+
+    record(
+      service: service,
+      result: result,
+      actor: actor,
+      subject_type: subject_type,
+      subject_id: subject_id || subject_id_from_result(result, subject_type),
+      workspace_id: workspace_id || actor&.workspace_id,
+      context: context
+    )
+
+    result
   end
 
-  def audit_subject_type
-    @audit_subject_type
+  def record(service:, result:, actor:, subject_type:, subject_id:, workspace_id:, context:)
+    outcome, error_code, error_message = classify(result)
+
+    AuditLogEntry.create(
+      service: service,
+      outcome: outcome,
+      actor_kind: actor ? "user" : "system",
+      actor_user_id: actor&.user_id,
+      workspace_id: workspace_id,
+      subject_type: subject_type,
+      subject_id: subject_id,
+      error_code: error_code,
+      error_message: error_message,
+      action_params: context,
+      idempotency_key_hash: RequestContext.idempotency_key_hash,
+      request_id: RequestContext.request_id
+    )
+  rescue StandardError => e
+    # Audit must never break the underlying request. We log loudly so
+    # missing rows don't go unnoticed in dev/CI, then swallow.
+    APP_LOGGER.error do
+      "[Auditable] Failed to record audit row for #{service}: #{e.class}: #{e.message}"
+    end
   end
+  private_class_method :record
 
-  # Default action_params if the service doesn't override it. Empty so we
-  # never accidentally serialise raw kwargs (which can contain PII).
-  def audit_context(**)
-    {}
+  def classify(result)
+    if result.success?
+      ["success", nil, nil]
+    else
+      error = result.failure
+      if error.respond_to?(:code) && error.code == :forbidden
+        ["denied", "forbidden", error.message]
+      elsif error.respond_to?(:code)
+        ["error", error.code.to_s, error.message]
+      else
+        ["error", nil, error.to_s]
+      end
+    end
   end
+  private_class_method :classify
 
-  # Default subject id resolution: look for `<subject_type>_id` in the
-  # kwargs, then fall back to `id`. Services can override for richer logic
-  # (e.g. resolving the subject from the result on creates).
-  def audit_subject_id(result:, **kwargs)
-    return nil unless audit_subject_type
-
-    key = :"#{audit_subject_type}_id"
-    kwargs[key] || kwargs[:id] || subject_id_from_result(result)
-  end
-
-  private
-
-  # Pull the first object of the configured subject_type out of a pool-style
-  # success value, if present. Lets create services that return a fresh row
-  # produce the right subject_id without bespoke overrides.
-  def subject_id_from_result(result)
+  # Pull the first object of the configured subject_type out of a
+  # pool-shaped success value, if present. Lets create services whose
+  # id is generated inside the block produce the right subject_id
+  # without callers having to thread it back out.
+  def subject_id_from_result(result, subject_type)
+    return nil unless subject_type
     return nil unless result.respond_to?(:success?) && result.success?
 
     value = result.value!
     return nil unless value.is_a?(Hash) && value[:objects].is_a?(Array)
 
-    type = audit_subject_type
-    value[:objects].find { |o| o[:objectType] == type }&.dig(:id)
+    value[:objects].find { |o| o[:objectType] == subject_type }&.dig(:id)
   end
-
-  # Prepended into the singleton class so `super` calls the original `.call`.
-  # A service that raises (rather than returning a Failure) is *not*
-  # audited — the exception propagates past us and we never reach the
-  # record step. That's deliberate: a raised mutation is a bug, not a
-  # user-attributable action, and wrapping every service in a transaction
-  # to make audit-on-raise possible would require restructuring every
-  # existing service. Failures returned via Result are audited normally.
-  module Hook
-    def call(*args, **kwargs)
-      if Fiber[CASCADE_KEY]
-        # Inner cascade: the outermost frame already owns the audit row.
-        return super
-      end
-
-      Fiber[CASCADE_KEY] = true
-      begin
-        result = super
-      ensure
-        Fiber[CASCADE_KEY] = false
-      end
-
-      Auditable.record(service: self, kwargs: kwargs, result: result)
-      result
-    end
-  end
-
-  class << self
-    def record(service:, kwargs:, result:)
-      service_name = service.name
-      outcome, error_code, error_message = classify(result)
-      membership = kwargs[:membership]
-      action_params = safe_audit_context(service, kwargs)
-      subject_id = safe_subject_id(service, kwargs, result)
-
-      AuditLogEntry.create(
-        service: service_name,
-        outcome: outcome,
-        actor_kind: membership ? "user" : "system",
-        actor_user_id: membership&.user_id,
-        workspace_id: workspace_id_for(membership, kwargs),
-        subject_type: service.audit_subject_type,
-        subject_id: subject_id,
-        error_code: error_code,
-        error_message: error_message,
-        action_params: action_params,
-        idempotency_key_hash: RequestContext.idempotency_key_hash,
-        request_id: RequestContext.request_id
-      )
-    rescue StandardError => e
-      # Audit must never break the underlying request. We log loudly so
-      # missing rows don't go unnoticed in dev/CI, then swallow.
-      APP_LOGGER.error do
-        "[Auditable] Failed to record audit row for #{service.name}: #{e.class}: #{e.message}"
-      end
-    end
-
-    private
-
-    def classify(result)
-      if result.success?
-        ["success", nil, nil]
-      else
-        error = result.failure
-        if error.respond_to?(:code) && error.code == :forbidden
-          ["denied", error.code.to_s, error.message]
-        elsif error.respond_to?(:code)
-          ["error", error.code.to_s, error.message]
-        else
-          ["error", nil, error.to_s]
-        end
-      end
-    end
-
-    def safe_audit_context(service, kwargs)
-      service.audit_context(**kwargs)
-    rescue StandardError => e
-      APP_LOGGER.warn { "[Auditable] audit_context raised for #{service.name}: #{e.class}: #{e.message}" }
-      {}
-    end
-
-    def safe_subject_id(service, kwargs, result)
-      service.audit_subject_id(result: result, **kwargs)
-    rescue StandardError => e
-      APP_LOGGER.warn { "[Auditable] audit_subject_id raised for #{service.name}: #{e.class}: #{e.message}" }
-      nil
-    end
-
-    def workspace_id_for(membership, kwargs)
-      kwargs[:workspace_id] || membership&.workspace_id
-    end
-  end
+  private_class_method :subject_id_from_result
 end

@@ -72,93 +72,45 @@ RSpec.describe Auditable do
     end
   end
 
-  describe "cascade suppression" do
-    it "does not record a second row when an audited service is invoked from inside another audited service" do
-      cascading_service = Module.new do
-        extend Auditable
-
-        audit subject_type: "event"
-
-        class << self
-          include Dry::Monads[:result]
-
-          def name = "TestCascade::Outer"
-
-          def call(workspace_id:, membership:, name:, description:)
-            Events::Create.call(workspace_id: workspace_id, membership: membership, name: name, description: description)
-          end
-        end
+  describe ".around" do
+    it "suppresses cascaded inner calls so a service-of-services records one row at the outer frame" do
+      outer_result = nil
+      described_class.around(service: "Test::Outer", actor: membership, subject_type: "event") do
+        outer_result = Events::Create.call(
+          workspace_id: workspace[:id], membership: membership, name: "Inner", description: nil
+        )
+        outer_result
       end
-      stub_const("TestCascade", Module.new)
-      stub_const("TestCascade::Outer", cascading_service)
 
-      result = cascading_service.call(
-        workspace_id: workspace[:id], membership: membership, name: "Once", description: nil
-      )
-      expect(result.success?).to be true
-
+      expect(outer_result.success?).to be true
       services = DB[:audit_log_entries].select_map(:service)
-      expect(services).to eq(["TestCascade::Outer"])
+      expect(services).to eq(["Test::Outer"])
     end
-  end
 
-  describe "system actor" do
-    it "records actor_kind=system when no membership is passed" do
-      headless_service = Module.new do
-        extend Auditable
-
-        audit subject_type: "event"
-
-        class << self
-          include Dry::Monads[:result]
-
-          def name = "TestSystem::Tick"
-
-          def call(**)
-            Success({ objects: [] })
-          end
-        end
+    it "records actor_kind=system when no actor is given" do
+      described_class.around(service: "Test::Cron", actor: nil) do
+        Dry::Monads::Success({ objects: [] })
       end
-      stub_const("TestSystem", Module.new)
-      stub_const("TestSystem::Tick", headless_service)
 
-      headless_service.call
-
-      row = DB[:audit_log_entries].where(service: "TestSystem::Tick").first
+      row = DB[:audit_log_entries].where(service: "Test::Cron").first
       expect(row[:actor_kind]).to eq("system")
       expect(row[:actor_user_id]).to be_nil
     end
-  end
 
-  describe "raised service" do
-    it "does not record an audit row when the underlying call raises" do
-      raising_service = Module.new do
-        extend Auditable
-
-        audit subject_type: "event"
-
-        class << self
-          include Dry::Monads[:result]
-
-          def name = "TestRaise::Boom"
-
-          def call(**)
-            raise "kaboom"
-          end
+    it "does not record a row when the block raises" do
+      expect {
+        described_class.around(service: "Test::Boom", actor: membership) do
+          raise "kaboom"
         end
-      end
-      stub_const("TestRaise", Module.new)
-      stub_const("TestRaise::Boom", raising_service)
+      }.to raise_error("kaboom")
 
-      expect { raising_service.call }.to raise_error("kaboom")
-      expect(DB[:audit_log_entries].where(service: "TestRaise::Boom").count).to eq(0)
-      # Cascade flag is left in a clean state: a follow-up audited call still records.
+      expect(DB[:audit_log_entries].where(service: "Test::Boom").count).to eq(0)
+
+      # Cascade flag is left clean — a follow-up audited call still records.
       Events::Create.call(workspace_id: workspace[:id], membership: membership, name: "After", description: nil)
       expect(DB[:audit_log_entries].where(service: "Events::Create").count).to eq(1)
     end
-  end
 
-  describe "rescue behaviour" do
     it "swallows audit insert failures without breaking the service result" do
       allow(AuditLogEntry).to receive(:create).and_raise("audit explosion")
 
@@ -167,6 +119,16 @@ RSpec.describe Auditable do
       )
       expect(result.success?).to be true
       expect(DB[:events].where(name: "Resilient").count).to eq(1)
+    end
+
+    it "extracts subject_id from a pool-shaped success when not given explicitly" do
+      generated_id = SecureRandom.uuid
+      described_class.around(service: "Test::Created", actor: membership, subject_type: "event") do
+        Dry::Monads::Success({ objects: [{ id: generated_id, objectType: "event" }] })
+      end
+
+      row = DB[:audit_log_entries].where(service: "Test::Created").first
+      expect(row[:subject_id]).to eq(generated_id)
     end
   end
 

@@ -8,17 +8,20 @@ module Events
   #   result.success?  # => true
   #   result.value!    # => { message: "Event deleted successfully" }
   module Delete
-    extend Auditable
-
-    audit subject_type: "event"
-
     class << self
       include Dry::Monads[:result]
 
       def call(event_id:, membership:)
-        Event.find_result(event_id)
-             .bind { |event| EventPolicy.enforce(:delete, event, membership: membership, has_expenses: event_has_expenses?(event)) }
-             .bind { |event| delete_event(event) }
+        Auditable.around(
+          service: "Events::Delete",
+          actor: membership,
+          subject_type: "event",
+          subject_id: event_id
+        ) do
+          Event.find_result(event_id)
+               .bind { |event| EventPolicy.enforce(:delete, event, membership: membership, has_expenses: event_has_expenses?(event)) }
+               .bind { |event| delete_event(event) }
+        end
       end
 
       private
