@@ -31,6 +31,8 @@ RSpec.describe "Request context wiring" do
   end
 
   describe "end-to-end stamping through a real request" do
+    after { RequestContext.reset! }
+
     let(:user) { TestFactories.user }
     let(:session) { TestFactories.session(user: user) }
     let(:workspace) { TestFactories.workspace }
@@ -50,7 +52,7 @@ RSpec.describe "Request context wiring" do
            { workspace_id: workspace[:id], name: "Stamped" }.to_json,
            auth_env("HTTP_X_REQUEST_ID" => "trace-abcdef", "HTTP_IDEMPOTENCY_KEY" => "client-key-123")
 
-      expect(last_response.status).to be_between(200, 299)
+      expect(last_response.status).to eq(201)
 
       row = DB[:audit_log_entries].where(service: "Events::Create").first
       expect(row).not_to be_nil
@@ -67,6 +69,56 @@ RSpec.describe "Request context wiring" do
       expect(row).not_to be_nil
       expect(row[:request_id]).to match(/\A[0-9a-f-]{36}\z/)
       expect(row[:idempotency_key_hash]).to be_nil
+    end
+
+    it "echoes the resolved request id back in the response header" do
+      post "/api/events",
+           { workspace_id: workspace[:id], name: "Echoed" }.to_json,
+           auth_env("HTTP_X_REQUEST_ID" => "trace-xyz")
+
+      expect(last_response.headers["X-Request-ID"]).to eq("trace-xyz")
+    end
+
+    it "echoes a generated request id when the client didn't send one" do
+      post "/api/events",
+           { workspace_id: workspace[:id], name: "GeneratedEcho" }.to_json,
+           auth_env
+
+      expect(last_response.headers["X-Request-ID"]).to match(/\A[0-9a-f-]{36}\z/)
+    end
+  end
+
+  describe "Idempotency.wrap context unwinds cleanly" do
+    after { RequestContext.reset! }
+
+    let(:user) { TestFactories.user }
+    let(:request) do
+      env = {
+        "REQUEST_METHOD" => "POST",
+        "PATH_INFO" => "/api/things",
+        "HTTP_IDEMPOTENCY_KEY" => "client-key-abc"
+      }
+      instance_double(Rack::Request).tap do |r|
+        allow(r).to receive_messages(
+          env: env,
+          request_method: "POST",
+          path_info: "/api/things",
+          params: {}
+        )
+      end
+    end
+
+    it "exposes the key hash inside the block but not after it returns" do
+      seen_inside = nil
+      catch(:halt) do
+        Idempotency.wrap(request: request, user: Struct.new(:id).new(user[:id])) do
+          seen_inside = RequestContext.idempotency_key_hash
+          throw :halt, [201, { "Content-Type" => "application/json" }, ['{"ok":true}']]
+        end
+      end
+
+      expect(seen_inside).to eq(Digest::SHA256.hexdigest("client-key-abc"))
+      expect(RequestContext.idempotency_key_hash).to be_nil
     end
   end
 end

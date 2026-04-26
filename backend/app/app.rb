@@ -93,6 +93,7 @@ class App < Roda
   # values into any of them. Anything that doesn't match gets replaced
   # with a generated UUID — we never reject the request over a header.
   REQUEST_ID_PATTERN = /\A[A-Za-z0-9_-]{1,128}\z/
+  private_constant :REQUEST_ID_PATTERN
 
   def self.resolve_request_id(env)
     raw = env[REQUEST_ID_HEADER]
@@ -153,7 +154,12 @@ class App < Roda
   end
 
   route do |r|
-    RequestContext.with(request_id: App.resolve_request_id(r.env)) do
+    request_id = App.resolve_request_id(r.env)
+    # Echo the resolved id back so clients and on-call can pull it out of
+    # a failed response and find the matching server-side logs.
+    response.headers["X-Request-ID"] = request_id
+
+    RequestContext.with(request_id: request_id) do
       r.hash_routes
 
       if STATIC_DIR.directory?
