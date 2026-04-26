@@ -35,10 +35,11 @@
 #   * never raises from the audit path itself: a failure to record an audit
 #     row logs a warning but does not corrupt the underlying service result.
 module Auditable
-  # Falcon runs this app on fibers, so per-request state must live in fiber
-  # storage — Thread.current would let two fibers on the same thread see and
-  # clobber each other's flags, suppressing audit rows or attributing them
-  # to the wrong actor under load.
+  # Fiber storage (rather than Thread.current[], which is also fiber-local
+  # but does *not* inherit into child fibers). The propagating semantics
+  # matter under Falcon: if a service ever spawns work via Async {} the
+  # child fiber should see the cascade flag and stay suppressed, otherwise
+  # we'd record duplicate rows for the inner call.
   CASCADE_KEY = :auditable_in_progress
 
   # Configure how this service is audited. Called once at module load time.
@@ -110,46 +111,66 @@ module Auditable
     end
   end
 
-  class << self
-    # Per-request context (actor metadata, idempotency key, request id) set
-    # by the route layer for the duration of a request. The wrapper merges
-    # this into the audit row so service code doesn't have to thread it
-    # through.
-    REQUEST_CONTEXT_KEY = :auditable_request_context
+  # Per-request context — values that the *route* layer knows but the
+  # service layer doesn't, and which we want stamped onto every audit row
+  # without threading them through service signatures. Modelled after
+  # ActiveSupport::CurrentAttributes: a fixed set of named accessors rather
+  # than a generic hash, so call sites can't typo a key into nothingness.
+  #
+  # Storage uses Fiber[] (not Thread.current[]) so that any child fibers
+  # spawned via Async {} during request handling inherit the same context
+  # — the request_id stays consistent across logs even if work fans out.
+  # Each `with` call writes a new hash rather than mutating the stored one,
+  # so a child fiber that inherits the snapshot can't reach back and edit
+  # its parent's state.
+  module Current
+    KEYS = %i[idempotency_key_hash request_id].freeze
+    STORAGE_KEY = :auditable_current
+    private_constant :STORAGE_KEY
 
-    def with_request_context(context)
-      previous = Fiber[REQUEST_CONTEXT_KEY]
-      Fiber[REQUEST_CONTEXT_KEY] = context
+    KEYS.each do |key|
+      define_singleton_method(key) { (Fiber[STORAGE_KEY] || {})[key] }
+    end
+
+    def self.with(**values)
+      unknown = values.keys - KEYS
+      raise ArgumentError, "Unknown Auditable::Current keys: #{unknown.inspect}" if unknown.any?
+
+      previous = Fiber[STORAGE_KEY]
+      Fiber[STORAGE_KEY] = (previous || {}).merge(values)
       yield
     ensure
-      Fiber[REQUEST_CONTEXT_KEY] = previous
+      Fiber[STORAGE_KEY] = previous
     end
 
-    def request_context
-      Fiber[REQUEST_CONTEXT_KEY] || {}
+    # For tests only: clear the current fiber's context. Production code
+    # should always go through `with` so the scope is delimited.
+    def self.reset!
+      Fiber[STORAGE_KEY] = nil
     end
+  end
 
+  class << self
     def record(service:, kwargs:, result:)
       service_name = service.name
       outcome, error_code, error_message = classify(result)
       membership = kwargs[:membership]
       action_params = safe_audit_context(service, kwargs)
       subject_id = safe_subject_id(service, kwargs, result)
-      ctx = request_context
 
       AuditLogEntry.create(
         service: service_name,
         outcome: outcome,
-        actor_kind: ctx[:actor_kind] || (membership ? "user" : "system"),
-        actor_user_id: ctx[:actor_user_id] || membership&.user_id,
-        workspace_id: ctx[:workspace_id] || workspace_id_for(membership, kwargs),
+        actor_kind: membership ? "user" : "system",
+        actor_user_id: membership&.user_id,
+        workspace_id: workspace_id_for(membership, kwargs),
         subject_type: service.audit_subject_type,
         subject_id: subject_id,
         error_code: error_code,
         error_message: error_message,
         action_params: action_params,
-        idempotency_key_hash: ctx[:idempotency_key_hash],
-        request_id: ctx[:request_id]
+        idempotency_key_hash: Current.idempotency_key_hash,
+        request_id: Current.request_id
       )
     rescue StandardError => e
       # Audit must never break the underlying request. We log loudly so
