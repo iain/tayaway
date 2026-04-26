@@ -9,10 +9,19 @@ module Expenses
       include Dry::Monads[:result]
 
       def call(expense_id:, membership:, workspace_id:)
-        Expense.find_result(expense_id)
-               .bind { |expense| ExpensePolicy.enforce(:revert, expense, membership: membership) }
-               .bind { |expense| check_event_ready(expense) }
-               .bind { |expense| insert_revert(expense, membership, workspace_id) }
+        Auditable.around(
+          service: "Expenses::Revert",
+          actor: membership,
+          subject_type: "expense",
+          subject_id: expense_id,
+          workspace_id: workspace_id
+        ) do
+          Success()
+            .bind { Expense.find_result(expense_id) }
+            .bind { |expense| ExpensePolicy.enforce(:revert, expense, membership: membership) }
+            .bind { |expense| check_event_ready(expense) }
+            .bind { |expense| insert_revert(expense, membership, workspace_id) }
+        end
       end
 
       private
