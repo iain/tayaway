@@ -12,6 +12,7 @@ const props = defineProps<{
   transferId: string | null
   recipientName: string | null
   amount: number | null
+  recipientHasIban: boolean
 }>()
 
 defineEmits<{
@@ -47,6 +48,12 @@ watch(
     details.value = null
     copied.value = false
     copyError.value = false
+    if (!props.recipientHasIban) {
+      // Skip the fetches — both the QR and payment-details endpoints would
+      // 422 on a missing IBAN. The template renders the explanatory state.
+      imgSrc.value = null
+      return
+    }
     imgSrc.value = `/api/settlements/transfers/${props.transferId}/qr`
     const transferId = props.transferId
     try {
@@ -111,28 +118,44 @@ function handleImgError() {
       </dl>
 
       <div
-        v-if="imgSrc && !imgError"
-        class="flex flex-col items-center gap-2 rounded-lg bg-white p-4"
+        v-if="!recipientHasIban"
+        data-testid="recipient-no-iban"
+        class="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
       >
-        <img
-          :src="imgSrc"
-          alt="EPC QR code for bank transfer"
-          class="size-48"
-          @error="handleImgError"
-        />
+        <p class="font-medium">No IBAN on file for {{ recipientName }}.</p>
+        <p class="mt-1 text-amber-700 dark:text-amber-400">
+          Ask them to add it on their profile page so the QR code and copy-paste
+          IBAN can show up here. In the meantime, settle up with a payment
+          request &mdash; a Tikkie, a PayPal link, or whatever the two of you
+          usually use.
+        </p>
       </div>
 
-      <p
-        v-if="imgError"
-        class="text-center text-sm text-red-600 dark:text-red-400"
-      >
-        Could not generate QR code.
-      </p>
+      <template v-else>
+        <div
+          v-if="imgSrc && !imgError"
+          class="flex flex-col items-center gap-2 rounded-lg bg-white p-4"
+        >
+          <img
+            :src="imgSrc"
+            alt="EPC QR code for bank transfer"
+            class="size-48"
+            @error="handleImgError"
+          />
+        </div>
 
-      <p class="text-center text-xs text-gray-500 dark:text-stone-400">
-        Scan with your banking app to pre-fill the transfer, or copy the IBAN
-        below to pay manually.
-      </p>
+        <p
+          v-if="imgError"
+          class="text-center text-sm text-red-600 dark:text-red-400"
+        >
+          Could not generate QR code.
+        </p>
+
+        <p class="text-center text-xs text-gray-500 dark:text-stone-400">
+          Scan with your banking app to pre-fill the transfer, or copy the IBAN
+          below to pay manually.
+        </p>
+      </template>
 
       <div v-if="details" class="space-y-1">
         <label
