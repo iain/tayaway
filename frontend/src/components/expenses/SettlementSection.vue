@@ -227,11 +227,7 @@ const showQrModal = ref(false)
 const qrTransferId = ref<string | null>(null)
 const qrRecipientName = ref<string | null>(null)
 const qrAmount = ref<number | null>(null)
-
-function memberHasIban(userId: string | null): boolean {
-  if (!userId) return false
-  return pool.findBy('member', 'userId', userId)?.hasIban ?? false
-}
+const qrRecipientHasIban = ref(false)
 
 function openQrModal(transfer: {
   id: string
@@ -240,10 +236,10 @@ function openQrModal(transfer: {
 }) {
   if (!transfer.toUserId) return
   const member = pool.findBy('member', 'userId', transfer.toUserId)
-  if (!member?.hasIban) return
   qrTransferId.value = transfer.id
-  qrRecipientName.value = member.name ?? member.email
+  qrRecipientName.value = member?.name ?? member?.email ?? null
   qrAmount.value = transfer.amount
+  qrRecipientHasIban.value = member?.hasIban ?? false
   showQrModal.value = true
 }
 
@@ -486,9 +482,7 @@ async function handlePaidClick(
             <div v-if="!transfer.supersededAt" class="flex items-center gap-2">
               <button
                 v-if="
-                  !transfer.paidAt &&
-                  can(transfer.permissions, 'generate_qr') &&
-                  memberHasIban(transfer.toUserId)
+                  !transfer.paidAt && can(transfer.permissions, 'generate_qr')
                 "
                 type="button"
                 class="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-amber-600 px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 dark:bg-amber-600 dark:hover:bg-amber-500"
@@ -508,7 +502,7 @@ async function handlePaidClick(
                 "
                 @click="handlePaidClick(transfer, !!transfer.paidAt)"
               >
-                {{ transfer.paidAt ? 'Paid' : 'Mark paid' }}
+                {{ transfer.paidAt ? 'Paid' : 'Mark as paid' }}
               </button>
             </div>
           </div>
@@ -654,6 +648,7 @@ async function handlePaidClick(
       :transfer-id="qrTransferId"
       :recipient-name="qrRecipientName"
       :amount="qrAmount"
+      :recipient-has-iban="qrRecipientHasIban"
       @close="showQrModal = false"
     />
   </div>

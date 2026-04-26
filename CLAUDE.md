@@ -38,7 +38,7 @@ cd frontend && pnpm exec vitest run src/path/to/file.spec.ts
 - **Framework**: Roda 3 with `hash_routes` plugin, served by Falcon (fiber-based)
 - **ORM**: Sequel 5 with PostgreSQL
 - **Models** (`app/models/`): Immutable plain Ruby classes with keyword `initialize`, factory class methods for queries, and `to_api_hash` for serialization
-- **Services** (`app/services/`): Return `Result[Success, ServiceError]` monad. Entry point is `.call()`. Chain with `.bind()`
+- **Services** (`app/services/`): Return `Result[Success, ServiceError]` monad. Entry point is `.call()`. Chain with `.bind()` (see "Backend code conventions" below for chain shape)
 - **Routes** (`app/routes/`): Roda hash_routes organized by domain. Auth via session cookies, CSRF via `X-CSRF-Protection: 1` header
 - **Serializers** (`app/serializers/`): `PoolSerializer` normalizes all objects into a flat pool format `{ objects: [{ id, objectType, ...fields }] }`
 - **WebSocket** (`app/websocket/`): PostgreSQL NOTIFY → Listener thread → broadcasts serialized objects to connected clients
@@ -66,6 +66,18 @@ cd frontend && pnpm exec vitest run src/path/to/file.spec.ts
 ### E2E Tests (`e2e/`)
 
 Playwright tests run against separate servers (backend :9293, frontend :5174) with a dedicated `tayaway_e2e` database.
+
+## Backend code conventions
+
+- **Module singletons**: Define singleton methods inside `class << self`. Don't use `module_function` — it duplicates each method as both a module-level and a private instance method, which obscures intent and breaks cleanly with `private` for helpers.
+- **`Result` chains**: Start chains with a bare `Success()` and put every step (including the first lookup) inside a `.bind { … }` block. Every step then reads as a uniform link in the chain — easier to reorder, insert steps, or skim — instead of having one bare leading call followed by `.bind`s.
+
+  ```ruby
+  Success()
+    .bind { Foo.find_result(id) }
+    .bind { |foo| FooPolicy.enforce(:do_thing, foo, membership: membership) }
+    .bind { |foo| do_thing(foo) }
+  ```
 
 ## Migration Safety
 
