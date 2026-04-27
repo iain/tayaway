@@ -323,7 +323,28 @@ test.describe('Expenses Feature', () => {
         'Auth Test Event'
       ))
 
-      // Create an expense as owner
+      // Create a second user and add them to the same workspace
+      otherContext = await newApiContext(playwright)
+      await getTestSession(
+        otherContext,
+        'e2e-expenses-other@example.com',
+        'Other E2E User'
+      )
+
+      const wsResp = await ownerContext.get(`${API_BASE}/api/workspaces`)
+      const wsBody = await wsResp.json()
+      const workspace = getObjectByType(wsBody.objects, 'workspace')!
+
+      await addMemberToWorkspace(
+        ownerContext,
+        workspace.id,
+        'e2e-expenses-other@example.com'
+      )
+    })
+
+    // Each test gets its own fresh expense so update/delete tests don't
+    // step on each other regardless of execution order.
+    test.beforeEach(async () => {
       const resp = await ownerContext.post(`${API_BASE}/api/expenses`, {
         data: {
           event_id: eventId,
@@ -335,26 +356,6 @@ test.describe('Expenses Feature', () => {
       })
       const body = await resp.json()
       expenseId = getObjectByType(body.objects, 'expense')!.id
-
-      // Create a second user and add them to the same workspace
-      otherContext = await newApiContext(playwright)
-      await getTestSession(
-        otherContext,
-        'e2e-expenses-other@example.com',
-        'Other E2E User'
-      )
-
-      // Get the owner's workspace id
-      const wsResp = await ownerContext.get(`${API_BASE}/api/workspaces`)
-      const wsBody = await wsResp.json()
-      const workspace = getObjectByType(wsBody.objects, 'workspace')!
-
-      // Add other user as member
-      await addMemberToWorkspace(
-        ownerContext,
-        workspace.id,
-        'e2e-expenses-other@example.com'
-      )
     })
 
     test.afterAll(async () => {
@@ -378,21 +379,8 @@ test.describe('Expenses Feature', () => {
     })
 
     test('creator can update their own expense', async () => {
-      // Recreate the expense since the previous test may have deleted it.
-      const recreate = await ownerContext.post(`${API_BASE}/api/expenses`, {
-        data: {
-          event_id: eventId,
-          description: 'Taxi',
-          amount: 30,
-          start_date: DEFAULT_START,
-          end_date: DEFAULT_END,
-        },
-      })
-      const recreateBody = await recreate.json()
-      const recreatedId = getObjectByType(recreateBody.objects, 'expense')!.id
-
       const response = await ownerContext.put(
-        `${API_BASE}/api/expenses/${recreatedId}`,
+        `${API_BASE}/api/expenses/${expenseId}`,
         { data: { description: 'Updated Taxi' } }
       )
       expect(response.ok()).toBeTruthy()
