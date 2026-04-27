@@ -23,13 +23,6 @@ set :deploy_to, "/var/www/tayaway"
 set :branch, "main"
 set :keep_releases, 5
 
-# Restricted system user that owns the deploy tree, runs Falcon under
-# systemd, and runs scheduled jobs. The Postgres role with the same name
-# can read/write/migrate but is not the database owner and not a superuser,
-# so it cannot drop the database. See doc/deploy-user.md for server setup.
-set :deploy_user, "tayaway"
-deploy_home = "/home/#{fetch(:deploy_user)}"
-
 # Files and dirs shared across releases
 set :linked_files, %w[backend/.env.production]
 set :linked_dirs, %w[backend/vendor/bundle backend/log backend/.bundle backend/data]
@@ -41,8 +34,10 @@ set :bundle_without, "development:test"
 set :bundle_flags, "--quiet"
 set :bundle_version, 4
 
-# mise integration — prefix commands so they run through mise exec
-mise = "#{deploy_home}/.local/bin/mise exec --"
+# mise integration — prefix commands so they run through mise exec.
+# Production runs as the restricted `tayaway` system user (see
+# doc/deploy-user.md); mise lives in that user's home dir.
+mise = "/home/tayaway/.local/bin/mise exec --"
 SSHKit.config.command_map[:bundle] = "#{mise} bundle"
 SSHKit.config.command_map[:ruby]   = "#{mise} ruby"
 SSHKit.config.command_map[:rake]   = "#{mise} rake"
@@ -51,6 +46,6 @@ SSHKit.config.command_map[:pnpm]   = "#{mise} pnpm"
 
 # Ensure mise is on PATH and trusts the deploy directory
 set :default_env, {
-  path: "#{deploy_home}/.local/bin:$PATH",
+  path: "/home/tayaway/.local/bin:$PATH",
   mise_trusted_config_paths: "/var/www/tayaway"
 }

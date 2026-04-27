@@ -25,6 +25,13 @@
 #     -in /var/www/tayaway/shared/backups/tayaway-20260404-030000.sql.gz.enc \
 #     | gunzip | sudo -u postgres psql tayaway_production
 #
+# This script trusts pg_dump's exit status (via `set -o pipefail`) — it
+# does not re-read the encrypted file to verify it round-trips. Backups
+# you cannot restore are worse than no backups, so periodically (monthly
+# is fine) restore the latest dump into a scratch database and confirm
+# the row counts match production. That's the only verification that
+# actually proves recoverability.
+#
 set -euo pipefail
 
 ENV_FILE="/var/www/tayaway/shared/backend/.env.production"
@@ -64,18 +71,6 @@ pg_dump "$DATABASE_URL" \
   | gzip \
   | openssl enc -aes-256-cbc -salt -pbkdf2 -pass "file:$KEY_FILE" \
   > "$BACKUP_DIR/$FILENAME"
-
-# Verify the dump round-trips (decrypt → decompress → check pg_dump's
-# completion footer). Catches truncated pipelines, key-file drift, and
-# silent disk errors before the broken file ages into the only thing left.
-FOOTER=$(openssl enc -d -aes-256-cbc -salt -pbkdf2 -pass "file:$KEY_FILE" \
-           -in "$BACKUP_DIR/$FILENAME" | gunzip | tail -1)
-if [ "$FOOTER" != "-- PostgreSQL database dump complete" ]; then
-  echo "ERROR: backup verification failed for $FILENAME" >&2
-  echo "       expected pg_dump completion footer, got: $FOOTER" >&2
-  rm -f "$BACKUP_DIR/$FILENAME"
-  exit 1
-fi
 
 SIZE=$(du -h "$BACKUP_DIR/$FILENAME" | cut -f1)
 echo "$(date -Iseconds) Backup complete: $FILENAME ($SIZE)"

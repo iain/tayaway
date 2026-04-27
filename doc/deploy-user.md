@@ -149,17 +149,6 @@ Anything else means stop and re-check the previous steps before continuing
 to the cutover — do **not** issue a real `DROP DATABASE` to "verify" the
 restriction.
 
-For completeness, the same view as raw catalog rows (useful as a rollback
-reference; superuser/createdb/createrole/replication should all be `f`,
-and the database owner should not be `tayaway`):
-
-```sql
-SELECT rolname, rolsuper, rolcreatedb, rolcreaterole, rolreplication
-FROM pg_roles WHERE rolname = 'tayaway';
-SELECT datname, pg_get_userbyid(datdba) AS owner
-FROM pg_database WHERE datname = 'tayaway_production';
-```
-
 Finally, confirm `pg_hba.conf` accepts the role over TCP — the backup
 script connects via `DATABASE_URL` (TCP localhost) rather than peer auth,
 so this auth path has to work end-to-end. As `tayaway`:

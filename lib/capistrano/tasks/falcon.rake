@@ -7,16 +7,13 @@ namespace :falcon do
   desc "Render and install the systemd unit file from the ERB template"
   task :install_unit do
     on roles(:app) do
-      deploy_user = fetch(:deploy_user)
-      deploy_home = "/home/#{deploy_user}"
-
       # Read the Ruby version from the remote server via mise.
       # RUBY_VERSION (e.g. "4.0.2") is used for the mise bin path.
       # RbConfig::CONFIG['ruby_version'] (e.g. "4.0.0") is the API/ABI version
       # used by RubyGems and Bundler for gem directory names — it stays on the
       # major.minor.0 series even as patch releases are installed.
       # Uses `cd` in the command so mise can find .mise.toml and resolve Ruby.
-      mise = "#{deploy_home}/.local/bin/mise"
+      mise = "/home/tayaway/.local/bin/mise"
       rp = release_path
       ruby_version = capture("cd #{rp} && #{mise} exec -- ruby -e 'print RUBY_VERSION'").strip
       ruby_gem_version = capture("cd #{rp} && #{mise} exec -- ruby -e 'print RbConfig::CONFIG[\"ruby_version\"]'").strip

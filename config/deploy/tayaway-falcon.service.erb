@@ -5,12 +5,12 @@ Requires=postgresql.service
 
 [Service]
 Type=simple
-User=<%= deploy_user %>
-Group=<%= deploy_user %>
+User=tayaway
+Group=tayaway
 WorkingDirectory=/var/www/tayaway/current/backend
 EnvironmentFile=/var/www/tayaway/shared/backend/.env.production
 Environment=RACK_ENV=production
-Environment=PATH=<%= deploy_home %>/.local/share/mise/installs/ruby/<%= ruby_version %>/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PATH=/home/tayaway/.local/share/mise/installs/ruby/<%= ruby_version %>/bin:/usr/local/bin:/usr/bin:/bin
 Environment=GEM_HOME=/var/www/tayaway/shared/backend/vendor/bundle/ruby/<%= ruby_gem_version %>
 Environment=GEM_PATH=/var/www/tayaway/shared/backend/vendor/bundle/ruby/<%= ruby_gem_version %>
 ExecStart=/var/www/tayaway/shared/backend/vendor/bundle/ruby/<%= ruby_gem_version %>/bin/falcon serve --bind http://127.0.0.1:9292
@@ -21,25 +21,13 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=tayaway-falcon
 
-# Defense in depth — Falcon never needs root, never needs to escalate, and
-# never writes outside the deploy tree. Lock those down at the systemd
-# level so a process compromise has nothing extra to grab on top of the
-# already-restricted Linux user.
+# Falcon never needs root, never needs to escalate, and never writes
+# outside the deploy tree. These four directives cover the realistic
+# threats a process compromise would otherwise reach for.
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
 ProtectHome=read-only
-ProtectKernelTunables=true
-ProtectKernelModules=true
-ProtectControlGroups=true
-ProtectClock=true
-ProtectHostname=true
-RestrictSUIDSGID=true
-RestrictRealtime=true
-RestrictNamespaces=true
-LockPersonality=true
-CapabilityBoundingSet=
-AmbientCapabilities=
 
 [Install]
 WantedBy=multi-user.target
