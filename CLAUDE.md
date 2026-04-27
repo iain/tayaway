@@ -31,6 +31,8 @@ cd backend && bundle exec rspec spec/path/to/spec.rb
 cd frontend && pnpm exec vitest run src/path/to/file.spec.ts
 ```
 
+**Typecheck note:** use `mise run typecheck` (or `pnpm exec vue-tsc -b`). `vue-tsc --noEmit` is **not** equivalent — it can pass while project-references mode finds real errors, particularly in `*.spec.ts` files with their own factories.
+
 ## Architecture
 
 ### Backend (`backend/`)

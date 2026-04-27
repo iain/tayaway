@@ -59,7 +59,7 @@ function mkExpense(overrides: Partial<PoolExpense> = {}): PoolExpense {
     objectType: 'expense',
     eventId: 'event-1',
     userId: 'user-1',
-    createdByUserId: 'user-1',
+    createdByUserId: null,
     settlementId: null,
     revertsExpenseId: null,
     description: 'Hotel',
