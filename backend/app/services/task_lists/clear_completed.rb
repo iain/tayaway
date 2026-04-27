@@ -4,8 +4,6 @@ module TaskLists
   # Service to bulk-delete all completed items from a task list.
   module ClearCompleted
     class << self
-      include Dry::Monads[:result]
-
       def call(task_list_id:, membership:)
         Auditable.around(
           service: "TaskLists::ClearCompleted",

@@ -1,31 +1,8 @@
 # frozen_string_literal: true
 
 # Read-only ChoreAssignment model.
-class ChoreAssignment
-  attr_reader :id, :chore_id, :user_id, :date, :pinned, :note, :created_at, :updated_at
-
-  def initialize(
-    id:,
-    chore_id:,
-    user_id:,
-    date:,
-    pinned:,
-    note:,
-    created_at:,
-    updated_at:
-  )
-    @id = id
-    @chore_id = chore_id
-    @user_id = user_id
-    @date = date
-    @pinned = pinned
-    @note = note
-    @created_at = created_at
-    @updated_at = updated_at
-  end
-
+class ChoreAssignment < Data.define(:id, :chore_id, :user_id, :date, :pinned, :note, :created_at, :updated_at)
   class << self
-    include Dry::Monads[:result]
     include Findable
 
     def find(id)
@@ -72,7 +49,7 @@ class ChoreAssignment
     end
 
     def from_row(row)
-      ChoreAssignment.new(
+      new(
         id: UUID.new(row[:id]),
         chore_id: UUID.new(row[:chore_id]),
         user_id: UUID.new(row[:user_id]),

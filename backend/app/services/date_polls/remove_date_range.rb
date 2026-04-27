@@ -4,8 +4,6 @@ module DatePolls
   # Service to remove a date range from a date poll.
   module RemoveDateRange
     class << self
-      include Dry::Monads[:result]
-
       def call(event_id:, membership:, date_range_id:)
         Auditable.around(
           service: "DatePolls::RemoveDateRange",

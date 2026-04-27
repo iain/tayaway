@@ -4,8 +4,6 @@ module DatePolls
   # Service to add a date range to a date poll.
   module AddDateRange
     class << self
-      include Dry::Monads[:result]
-
       def call(event_id:, membership:, start_date:, end_date:, id: nil)
         Auditable.around(
           service: "DatePolls::AddDateRange",

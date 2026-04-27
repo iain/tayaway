@@ -1,40 +1,8 @@
 # frozen_string_literal: true
 
 # Read-only Expense model.
-class Expense
-  attr_reader :id, :event_id, :user_id, :created_by_user_id, :settlement_id, :reverts_expense_id,
-              :amount, :description, :start_date, :end_date, :created_at, :updated_at
-
-  def initialize(
-    id:,
-    event_id:,
-    user_id:,
-    settlement_id:,
-    amount:,
-    description:,
-    start_date:,
-    end_date:,
-    created_at:,
-    updated_at:,
-    reverts_expense_id: nil,
-    created_by_user_id: nil
-  )
-    @id = id
-    @event_id = event_id
-    @user_id = user_id
-    @created_by_user_id = created_by_user_id
-    @settlement_id = settlement_id
-    @reverts_expense_id = reverts_expense_id
-    @amount = amount
-    @description = description
-    @start_date = start_date
-    @end_date = end_date
-    @created_at = created_at
-    @updated_at = updated_at
-  end
-
+class Expense < Data.define(:id, :event_id, :user_id, :created_by_user_id, :settlement_id, :reverts_expense_id, :amount, :description, :start_date, :end_date, :created_at, :updated_at)
   class << self
-    include Dry::Monads[:result]
     include Findable
 
     def find(id)
@@ -61,7 +29,7 @@ class Expense
     end
 
     def from_row(row)
-      Expense.new(
+      new(
         id: UUID.new(row[:id]),
         event_id: UUID.new(row[:event_id]),
         user_id: row[:user_id] ? UUID.new(row[:user_id]) : nil,

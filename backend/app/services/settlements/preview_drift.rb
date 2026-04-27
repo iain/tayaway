@@ -5,8 +5,6 @@ module Settlements
   # access; this service does not.
   module PreviewDrift
     class << self
-      include Dry::Monads[:result]
-
       def call(event_id:)
         Event.find_result(event_id)
              .bind { |event| preview(event) }

@@ -4,8 +4,6 @@ module ChoreRosters
   # Service to pin an assignment (always pinned=true).
   module CreateAssignment
     class << self
-      include Dry::Monads[:result]
-
       def call(roster_id:, workspace_id:, membership:, chore_id:, user_id:, date:, note: nil, id: nil)
         Auditable.around(
           service: "ChoreRosters::CreateAssignment",

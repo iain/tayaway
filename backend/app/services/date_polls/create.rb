@@ -4,8 +4,6 @@ module DatePolls
   # Service to create a date poll for an event.
   module Create
     class << self
-      include Dry::Monads[:result]
-
       def call(event_id:, membership:, deadline:)
         Auditable.around(
           service: "DatePolls::Create",

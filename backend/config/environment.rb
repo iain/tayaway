@@ -10,6 +10,10 @@ APP_DIR = Pathname(File.expand_path("..", __dir__))
 require "bundler/setup"
 Bundler.require(:default, APP_ENV)
 
+# Make the Result monad constructors (Success, Failure) available everywhere
+# without each model/service/policy having to repeat `include Dry::Monads[:result]`.
+Object.include Dry::Monads[:result]
+
 GIT_SHA = (
     ENV["GIT_SHA"] ||
     (File.read("#{APP_DIR}/REVISION").strip[0, 7] if File.exist?("#{APP_DIR}/REVISION")) ||

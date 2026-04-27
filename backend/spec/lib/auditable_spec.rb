@@ -3,8 +3,6 @@
 require "spec_helper"
 
 RSpec.describe Auditable do
-  include Dry::Monads[:result]
-
   let(:user) { TestFactories.user }
   let(:workspace) { TestFactories.workspace }
   let(:membership) do

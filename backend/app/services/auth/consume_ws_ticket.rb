@@ -12,8 +12,6 @@ module Auth
   #   result.value!    # => { user_id: UUID("..."), session_id: "..." }
   module ConsumeWsTicket
     class << self
-      include Dry::Monads[:result]
-
       def call(ticket_jwt:)
         decode_jwt(ticket_jwt)
           .bind { |raw_token| claim_ticket(raw_token) }

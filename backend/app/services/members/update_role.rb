@@ -8,8 +8,6 @@ module Members
   #   - member: cannot change any roles
   module UpdateRole
     class << self
-      include Dry::Monads[:result]
-
       VALID_ROLES = ["owner", "admin", "member"]
 
       def call(acting_membership:, membership_id:, new_role:)

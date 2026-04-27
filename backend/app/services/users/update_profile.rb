@@ -18,8 +18,6 @@ module Users
   #   result.value!    # => { objects: [...] }
   module UpdateProfile
     class << self
-      include Dry::Monads[:result]
-
       def call(user_id:, current_user_id:, name:, phone_number: nil, birthday: nil,
                location_name: nil, latitude: nil, longitude: nil, iban: nil)
         Auditable.around(

@@ -7,8 +7,6 @@ module Rsvps
   #   result = Rsvps::Delete.call(event_id: "event-uuid", rsvp_id: "uuid", membership: membership)
   module Delete
     class << self
-      include Dry::Monads[:result]
-
       def call(event_id:, rsvp_id:, membership:)
         Auditable.around(
           service: "Rsvps::Delete",

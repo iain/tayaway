@@ -4,8 +4,6 @@ module ChoreRosters
   # Service to update a chore assignment (note, user_id).
   module UpdateAssignment
     class << self
-      include Dry::Monads[:result]
-
       def call(assignment_id:, roster_id:, workspace_id:, membership:, note: nil, user_id: nil, pinned: nil)
         Auditable.around(
           service: "ChoreRosters::UpdateAssignment",

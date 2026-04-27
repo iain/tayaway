@@ -9,8 +9,6 @@ module Auth
   #   result.value!    # => { session_token: "...", user_id: "uuid" }
   module VerifyToken
     class << self
-      include Dry::Monads[:result]
-
       def call(token:, ip: nil, user_agent: nil)
         decode_jwt(token)
           .bind { |params| claim_magic_token(params[:token], params[:email]) }

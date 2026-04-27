@@ -40,8 +40,6 @@ class UUID
   end
 
   class << self
-    include Dry::Monads[:result]
-
     def parse(value)
       if value.nil? || value.empty?
         return Failure(ServiceError.validation("ID is required"))

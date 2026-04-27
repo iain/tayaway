@@ -46,8 +46,6 @@ module Auditable
   private_constant :CASCADE_KEY
 
   class << self
-    include Dry::Monads[:result]
-
     # `actor` is typically a WorkspaceMembership (responds to `user_id` and
     # `workspace_id`). Services operating outside a workspace context — user
     # profile edits, email change verification — pass `actor: nil` together

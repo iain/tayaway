@@ -4,8 +4,6 @@ module DatePolls
   # Service to close a date poll by selecting a winning date range.
   module Close
     class << self
-      include Dry::Monads[:result]
-
       def call(event_id:, membership:, selected_date_range_id:)
         Auditable.around(
           service: "DatePolls::Close",

@@ -4,8 +4,6 @@ module ChoreRosters
   # Deletes all non-pinned assignments for a roster.
   module ClearUnpinned
     class << self
-      include Dry::Monads[:result]
-
       def call(roster_id:, workspace_id:, membership:)
         Auditable.around(
           service: "ChoreRosters::ClearUnpinned",

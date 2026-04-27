@@ -30,8 +30,6 @@ class DateRangeInput
   end
 
   class << self
-    include Dry::Monads[:result]
-
     def parse(start_date, end_date)
       if start_date.nil?
         return Failure(ServiceError.validation("Start date is required"))

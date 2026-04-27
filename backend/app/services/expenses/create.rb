@@ -9,8 +9,6 @@ module Expenses
     FACTOR_ERROR = "Participant factor must be a multiple of 0.5 between 0.5 and 9.5"
 
     class << self
-      include Dry::Monads[:result]
-
       def call(event_id:, membership:, user_id:, workspace_id:, description:, amount:, start_date:, end_date:,
                id: nil, participant_ids: nil, participants: nil)
         Auditable.around(

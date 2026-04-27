@@ -1,25 +1,7 @@
 # frozen_string_literal: true
 
 # Read-only workspace membership model (join table for users <-> workspaces).
-class WorkspaceMembership
-  attr_reader :id, :workspace_id, :user_id, :role, :created_at, :updated_at
-
-  def initialize(
-    id:,
-    workspace_id:,
-    user_id:,
-    role:,
-    created_at:,
-    updated_at:
-  )
-    @id = id
-    @workspace_id = workspace_id
-    @user_id = user_id
-    @role = role
-    @created_at = created_at
-    @updated_at = updated_at
-  end
-
+class WorkspaceMembership < Data.define(:id, :workspace_id, :user_id, :role, :created_at, :updated_at)
   class << self
     def find(id)
       dataset.where(id: id).first
@@ -65,7 +47,7 @@ class WorkspaceMembership
     end
 
     def from_row(row)
-      WorkspaceMembership.new(
+      new(
         id: UUID.new(row[:id]),
         workspace_id: UUID.new(row[:workspace_id]),
         user_id: UUID.new(row[:user_id]),

@@ -1,39 +1,11 @@
 # frozen_string_literal: true
 
 # Read-only session model.
-class Session
+class Session < Data.define(:id, :user_id, :token, :expires_at, :last_active_at, :created_at, :ip_address, :city, :country, :browser_name, :os_name)
   EXPIRY_DAYS = 30
   EXPIRY_SECONDS = EXPIRY_DAYS * 24 * 60 * 60
   INACTIVITY_SECONDS = 7 * 24 * 60 * 60 # 7 days
   ACTIVITY_THROTTLE_SECONDS = 5 * 60 # 5 minutes
-
-  attr_reader :id, :user_id, :token, :expires_at, :last_active_at, :created_at, :ip_address, :city, :country, :browser_name, :os_name
-
-  def initialize(
-    id:,
-    user_id:,
-    token:,
-    expires_at:,
-    last_active_at:,
-    created_at:,
-    ip_address:,
-    city:,
-    country:,
-    browser_name:,
-    os_name:
-  )
-    @id = id
-    @user_id = user_id
-    @token = token
-    @expires_at = expires_at
-    @last_active_at = last_active_at
-    @created_at = created_at
-    @ip_address = ip_address
-    @city = city
-    @country = country
-    @browser_name = browser_name
-    @os_name = os_name
-  end
 
   def to_api_hash
     {
@@ -116,7 +88,7 @@ class Session
     end
 
     def from_row(row)
-      Session.new(
+      new(
         id: UUID.new(row[:id]),
         user_id: UUID.new(row[:user_id]),
         token: row[:token],

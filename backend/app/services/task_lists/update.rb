@@ -4,8 +4,6 @@ module TaskLists
   # Service to update a task list (rename and/or reposition).
   module Update
     class << self
-      include Dry::Monads[:result]
-
       def call(task_list_id:, name:, position: nil, membership:)
         Auditable.around(
           service: "TaskLists::Update",

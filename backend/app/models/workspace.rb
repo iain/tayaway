@@ -1,23 +1,8 @@
 # frozen_string_literal: true
 
 # Read-only workspace model.
-class Workspace
-  attr_reader :id, :name, :created_at, :updated_at
-
-  def initialize(
-    id:,
-    name:,
-    created_at:,
-    updated_at:
-  )
-    @id = id
-    @name = name
-    @created_at = created_at
-    @updated_at = updated_at
-  end
-
+class Workspace < Data.define(:id, :name, :created_at, :updated_at)
   class << self
-    include Dry::Monads[:result]
     include Findable
 
     def find(id)
@@ -42,7 +27,7 @@ class Workspace
     end
 
     def from_row(row)
-      Workspace.new(
+      new(
         id: UUID.new(row[:id]),
         name: row[:name],
         created_at: row[:created_at],

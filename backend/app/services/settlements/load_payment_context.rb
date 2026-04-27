@@ -9,8 +9,6 @@ module Settlements
   # callers decide which fields they can populate from what's available.
   module LoadPaymentContext
     class << self
-      include Dry::Monads[:result]
-
       def call(transfer_id:, membership:)
         Success()
           .bind { SettlementTransfer.find_result(transfer_id) }

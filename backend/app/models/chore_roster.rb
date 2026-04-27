@@ -1,25 +1,8 @@
 # frozen_string_literal: true
 
 # Read-only ChoreRoster model.
-class ChoreRoster
-  attr_reader :id, :event_id, :user_id, :created_at, :updated_at
-
-  def initialize(
-    id:,
-    event_id:,
-    user_id:,
-    created_at:,
-    updated_at:
-  )
-    @id = id
-    @event_id = event_id
-    @user_id = user_id
-    @created_at = created_at
-    @updated_at = updated_at
-  end
-
+class ChoreRoster < Data.define(:id, :event_id, :user_id, :created_at, :updated_at)
   class << self
-    include Dry::Monads[:result]
     include Findable
 
     def find(id)
@@ -46,7 +29,7 @@ class ChoreRoster
     end
 
     def from_row(row)
-      ChoreRoster.new(
+      new(
         id: UUID.new(row[:id]),
         event_id: UUID.new(row[:event_id]),
         user_id: row[:user_id] ? UUID.new(row[:user_id]) : nil,

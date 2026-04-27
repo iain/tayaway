@@ -1,29 +1,8 @@
 # frozen_string_literal: true
 
 # Read-only TaskList model.
-class TaskList
-  attr_reader :id, :workspace_id, :user_id, :name, :position, :created_at, :updated_at
-
-  def initialize(
-    id:,
-    workspace_id:,
-    user_id:,
-    name:,
-    position:,
-    created_at:,
-    updated_at:
-  )
-    @id = id
-    @workspace_id = workspace_id
-    @user_id = user_id
-    @name = name
-    @position = position
-    @created_at = created_at
-    @updated_at = updated_at
-  end
-
+class TaskList < Data.define(:id, :workspace_id, :user_id, :name, :position, :created_at, :updated_at)
   class << self
-    include Dry::Monads[:result]
     include Findable
 
     def find(id)
@@ -52,7 +31,7 @@ class TaskList
     end
 
     def from_row(row)
-      TaskList.new(
+      new(
         id: UUID.new(row[:id]),
         workspace_id: UUID.new(row[:workspace_id]),
         user_id: row[:user_id] ? UUID.new(row[:user_id]) : nil,

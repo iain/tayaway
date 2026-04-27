@@ -4,8 +4,6 @@ module Auth
   module Passkeys
     module BeginAuthentication
       class << self
-        include Dry::Monads[:result]
-
         def call
           generate_options
         end

@@ -4,8 +4,6 @@ module ChoreRosters
   # Service to delete a chore assignment.
   module DeleteAssignment
     class << self
-      include Dry::Monads[:result]
-
       def call(assignment_id:, roster_id:, workspace_id:, membership:)
         Auditable.around(
           service: "ChoreRosters::DeleteAssignment",

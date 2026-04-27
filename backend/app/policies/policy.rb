@@ -16,8 +16,6 @@
 #   EventPolicy.new(event, membership: m).permissions
 #   # => { edit: { allowed: true }, delete: { allowed: false, reason: "not_owner" } }
 module Policy
-  include Dry::Monads[:result]
-
   def self.included(base)
     base.extend(ClassMethods)
   end
@@ -30,8 +28,8 @@ module Policy
 
       new(subject, **kwargs)
         .public_send(action)
-        .bind { Dry::Monads::Success(subject) }
-        .or { |reason| Dry::Monads::Failure(ServiceError.forbidden(reason.to_s)) }
+        .bind { Success(subject) }
+        .or { |reason| Failure(ServiceError.forbidden(reason.to_s)) }
     end
   end
 

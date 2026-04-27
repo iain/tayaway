@@ -1,21 +1,8 @@
 # frozen_string_literal: true
 
 # Read-only email change token model.
-class EmailChangeToken
+class EmailChangeToken < Data.define(:id, :user_id, :token, :email, :new_email, :expires_at, :used_at, :created_at)
   EXPIRY_MINUTES = 15
-
-  attr_reader :id, :user_id, :token, :email, :new_email, :expires_at, :used_at, :created_at
-
-  def initialize(id:, user_id:, token:, email:, new_email:, expires_at:, used_at:, created_at:)
-    @id = id
-    @user_id = user_id
-    @token = token
-    @email = email
-    @new_email = new_email
-    @expires_at = expires_at
-    @used_at = used_at
-    @created_at = created_at
-  end
 
   class << self
     def find(id)

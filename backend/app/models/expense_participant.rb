@@ -1,27 +1,8 @@
 # frozen_string_literal: true
 
 # Read-only ExpenseParticipant model.
-class ExpenseParticipant
-  attr_reader :id, :expense_id, :user_id, :factor, :created_at, :updated_at
-
-  def initialize(
-    id:,
-    expense_id:,
-    user_id:,
-    factor:,
-    created_at:,
-    updated_at:
-  )
-    @id = id
-    @expense_id = expense_id
-    @user_id = user_id
-    @factor = factor
-    @created_at = created_at
-    @updated_at = updated_at
-  end
-
+class ExpenseParticipant < Data.define(:id, :expense_id, :user_id, :factor, :created_at, :updated_at)
   class << self
-    include Dry::Monads[:result]
     include Findable
 
     def find(id)
@@ -59,7 +40,7 @@ class ExpenseParticipant
     end
 
     def from_row(row)
-      ExpenseParticipant.new(
+      new(
         id: UUID.new(row[:id]),
         expense_id: UUID.new(row[:expense_id]),
         user_id: UUID.new(row[:user_id]),

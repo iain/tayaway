@@ -5,8 +5,6 @@ module Settlements
   # Only the settlement creator or event owner can delete.
   module Delete
     class << self
-      include Dry::Monads[:result]
-
       def call(settlement_id:, membership:, workspace_id:)
         Auditable.around(
           service: "Settlements::Delete",

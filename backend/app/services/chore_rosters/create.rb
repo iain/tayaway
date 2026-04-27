@@ -4,8 +4,6 @@ module ChoreRosters
   # Service to create a chore roster for an event.
   module Create
     class << self
-      include Dry::Monads[:result]
-
       def call(event_id:, membership:, workspace_id:, id: nil)
         Auditable.around(
           service: "ChoreRosters::Create",

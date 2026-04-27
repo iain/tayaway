@@ -4,8 +4,6 @@ module TaskLists
   # Service to add an item to a task list.
   module AddItem
     class << self
-      include Dry::Monads[:result]
-
       def call(task_list_id:, membership:, content:, id: nil)
         Auditable.around(
           service: "TaskLists::AddItem",

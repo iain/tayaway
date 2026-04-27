@@ -4,8 +4,6 @@ module TaskLists
   # Service to create a new task list.
   module Create
     class << self
-      include Dry::Monads[:result]
-
       def call(workspace_id:, membership:, name:, id: nil)
         Auditable.around(
           service: "TaskLists::Create",

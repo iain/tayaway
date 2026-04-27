@@ -16,8 +16,6 @@ module Votes
   #   result.value!    # => { vote_id: "uuid", created: true }
   module Upsert
     class << self
-      include Dry::Monads[:result]
-
       def call(event_id:, membership:, date_range_id:, vote_response:, comment:, vote_id:)
         user_id = membership.user_id
 

@@ -1,25 +1,7 @@
 # frozen_string_literal: true
 
 # Read-only date range model.
-class DateRange
-  attr_reader :id, :date_poll_id, :start_date, :end_date, :created_at, :updated_at
-
-  def initialize(
-    id:,
-    date_poll_id:,
-    start_date:,
-    end_date:,
-    created_at:,
-    updated_at:
-  )
-    @id = id
-    @date_poll_id = date_poll_id
-    @start_date = start_date
-    @end_date = end_date
-    @created_at = created_at
-    @updated_at = updated_at
-  end
-
+class DateRange < Data.define(:id, :date_poll_id, :start_date, :end_date, :created_at, :updated_at)
   class << self
     def find(id)
       dataset.where(id: id).first
@@ -60,7 +42,7 @@ class DateRange
     end
 
     def from_row(row)
-      DateRange.new(
+      new(
         id: UUID.new(row[:id]),
         date_poll_id: UUID.new(row[:date_poll_id]),
         start_date: row[:start_date],

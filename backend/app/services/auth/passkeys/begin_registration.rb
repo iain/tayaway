@@ -4,8 +4,6 @@ module Auth
   module Passkeys
     module BeginRegistration
       class << self
-        include Dry::Monads[:result]
-
         MAX_PASSKEYS_PER_USER = 20
 
         def call(user_id:)

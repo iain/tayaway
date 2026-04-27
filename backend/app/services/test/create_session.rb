@@ -10,8 +10,6 @@ module Test
   #   result.value!    # => { session_token: "...", user_id: "uuid" }
   module CreateSession
     class << self
-      include Dry::Monads[:result]
-
       def call(email:, name:)
         validate_email(email).bind { |valid_email| find_or_create_user_and_session(valid_email, name) }
       end

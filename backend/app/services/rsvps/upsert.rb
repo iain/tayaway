@@ -19,8 +19,6 @@ module Rsvps
   # member is filling in or correcting another member's RSVP.
   module Upsert
     class << self
-      include Dry::Monads[:result]
-
       def call(event_id:, membership:, user_id:, attending:, rsvp_id:, start_date: nil, end_date: nil)
         # Generate a server-side ID if the client did not provide one (backwards
         # compatibility with commands queued before client-ID enforcement).

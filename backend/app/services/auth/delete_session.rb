@@ -9,8 +9,6 @@ module Auth
   #   result.value!    # => { message: "Session ended successfully" }
   module DeleteSession
     class << self
-      include Dry::Monads[:result]
-
       def call(session_id:, user_id:)
         find_session(session_id).bind { |session| validate_ownership(session, user_id) }.bind { |session| destroy(session) }
       end

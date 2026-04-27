@@ -1,36 +1,8 @@
 # frozen_string_literal: true
 
 # Read-only workspace invite model.
-class WorkspaceInvite
+class WorkspaceInvite < Data.define(:id, :workspace_id, :invited_by, :email, :name, :token, :expires_at, :accepted_at, :last_reminded_at, :created_at, :updated_at)
   EXPIRY_HOURS = 24
-
-  attr_reader :id, :workspace_id, :invited_by, :email, :name, :token, :expires_at, :accepted_at, :last_reminded_at, :created_at, :updated_at
-
-  def initialize(
-    id:,
-    workspace_id:,
-    invited_by:,
-    email:,
-    name:,
-    token:,
-    expires_at:,
-    accepted_at:,
-    last_reminded_at:,
-    created_at:,
-    updated_at:
-  )
-    @id = id
-    @workspace_id = workspace_id
-    @invited_by = invited_by
-    @email = email
-    @name = name
-    @token = token
-    @expires_at = expires_at
-    @accepted_at = accepted_at
-    @last_reminded_at = last_reminded_at
-    @created_at = created_at
-    @updated_at = updated_at
-  end
 
   class << self
     def find(id)

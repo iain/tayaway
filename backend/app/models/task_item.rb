@@ -1,31 +1,8 @@
 # frozen_string_literal: true
 
 # Read-only TaskItem model.
-class TaskItem
-  attr_reader :id, :task_list_id, :user_id, :content, :completed_at, :position, :created_at, :updated_at
-
-  def initialize(
-    id:,
-    task_list_id:,
-    user_id:,
-    content:,
-    completed_at:,
-    position:,
-    created_at:,
-    updated_at:
-  )
-    @id = id
-    @task_list_id = task_list_id
-    @user_id = user_id
-    @content = content
-    @completed_at = completed_at
-    @position = position
-    @created_at = created_at
-    @updated_at = updated_at
-  end
-
+class TaskItem < Data.define(:id, :task_list_id, :user_id, :content, :completed_at, :position, :created_at, :updated_at)
   class << self
-    include Dry::Monads[:result]
     include Findable
 
     def find(id)
@@ -62,7 +39,7 @@ class TaskItem
     end
 
     def from_row(row)
-      TaskItem.new(
+      new(
         id: UUID.new(row[:id]),
         task_list_id: UUID.new(row[:task_list_id]),
         user_id: row[:user_id] ? UUID.new(row[:user_id]) : nil,

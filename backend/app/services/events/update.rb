@@ -14,7 +14,6 @@ module Events
   #   result.value!    # => { objects: [...] }
   module Update
     class << self
-      include Dry::Monads[:result]
       include Events::Validators
 
       def call(event_id:, membership:, name:, description:, start_date: nil, end_date: nil,

@@ -14,13 +14,10 @@
 # @example
 #   class Event
 #     class << self
-#       include Dry::Monads[:result]
 #       include Findable
 #     end
 #   end
 module Findable
-  include Dry::Monads[:result]
-
   def find_result(id)
     item = self.find(id)
     if item

@@ -8,8 +8,6 @@
 # Centralised here so the rule cannot drift between domains.
 module Subjects
   class << self
-    include Dry::Monads[:result]
-
     # @return [Success(event), Failure(ServiceError)]
     def validate(event:, user_id:)
       if WorkspaceMembership.find_by_workspace_and_user(event.workspace_id, user_id)

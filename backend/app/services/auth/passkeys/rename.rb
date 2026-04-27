@@ -4,8 +4,6 @@ module Auth
   module Passkeys
     module Rename
       class << self
-        include Dry::Monads[:result]
-
         def call(user_id:, passkey_id:, name:)
           validate_name(name)
             .bind { |valid_name| find_passkey(user_id, passkey_id, valid_name) }

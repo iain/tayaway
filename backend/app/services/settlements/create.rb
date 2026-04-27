@@ -3,8 +3,6 @@
 module Settlements
   module Create
     class << self
-      include Dry::Monads[:result]
-
       def call(event_id:, membership:, workspace_id:)
         Auditable.around(
           service: "Settlements::Create",

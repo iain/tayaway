@@ -4,7 +4,6 @@ module TaskLists
   # Service to update a task item (content, completion, position, and/or list).
   module UpdateItem
     class << self
-      include Dry::Monads[:result]
       include TaskLists::Validators
 
       def call(task_list_id:, task_item_id:, membership:, content: nil, completed: nil, position: nil, new_task_list_id: nil)

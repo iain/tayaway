@@ -1,27 +1,7 @@
 # frozen_string_literal: true
 
 # Read-only date poll model.
-class DatePoll
-  attr_reader :id, :event_id, :deadline, :selected_date_range_id, :closed_at, :created_at, :updated_at
-
-  def initialize(
-    id:,
-    event_id:,
-    deadline:,
-    selected_date_range_id:,
-    closed_at:,
-    created_at:,
-    updated_at:
-  )
-    @id = id
-    @event_id = event_id
-    @deadline = deadline
-    @selected_date_range_id = selected_date_range_id
-    @closed_at = closed_at
-    @created_at = created_at
-    @updated_at = updated_at
-  end
-
+class DatePoll < Data.define(:id, :event_id, :deadline, :selected_date_range_id, :closed_at, :created_at, :updated_at)
   def status
     if closed_at
       "resolved"
@@ -37,8 +17,6 @@ class DatePoll
   end
 
   class << self
-    include Dry::Monads[:result]
-
     def find(id)
       dataset.where(id: id).first
     end
@@ -86,7 +64,7 @@ class DatePoll
     end
 
     def from_row(row)
-      DatePoll.new(
+      new(
         id: UUID.new(row[:id]),
         event_id: UUID.new(row[:event_id]),
         deadline: row[:deadline],

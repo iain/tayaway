@@ -6,8 +6,6 @@ module Expenses
   # flows into the next settlement.
   module Revert
     class << self
-      include Dry::Monads[:result]
-
       def call(expense_id:, membership:, workspace_id:)
         # Mutated inside the chain once the expense is loaded so the audit
         # row carries who the action was about, not just who did it.

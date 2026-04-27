@@ -7,8 +7,6 @@ module Invites
     COOLDOWN_HOURS = 24
 
     class << self
-      include Dry::Monads[:result]
-
       def call(invite_id:, workspace_id:, membership:)
         Auditable.around(
           service: "Invites::Remind",

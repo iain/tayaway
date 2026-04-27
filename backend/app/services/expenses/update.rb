@@ -4,8 +4,6 @@ module Expenses
   # Service to update an expense (description and/or amount). Creator-only.
   module Update
     class << self
-      include Dry::Monads[:result]
-
       def call(expense_id:, membership:, workspace_id:, description:, amount:,
                start_date: nil, end_date: nil,
                participant_ids: nil, participants: nil)

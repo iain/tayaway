@@ -1,33 +1,8 @@
 # frozen_string_literal: true
 
 # Read-only SettlementTransfer model.
-class SettlementTransfer
-  attr_reader :id, :settlement_id, :from_user_id, :to_user_id, :amount, :paid_at, :superseded_at, :created_at, :updated_at
-
-  def initialize(
-    id:,
-    settlement_id:,
-    from_user_id:,
-    to_user_id:,
-    amount:,
-    paid_at:,
-    superseded_at:,
-    created_at:,
-    updated_at:
-  )
-    @id = id
-    @settlement_id = settlement_id
-    @from_user_id = from_user_id
-    @to_user_id = to_user_id
-    @amount = amount
-    @paid_at = paid_at
-    @superseded_at = superseded_at
-    @created_at = created_at
-    @updated_at = updated_at
-  end
-
+class SettlementTransfer < Data.define(:id, :settlement_id, :from_user_id, :to_user_id, :amount, :paid_at, :superseded_at, :created_at, :updated_at)
   class << self
-    include Dry::Monads[:result]
     include Findable
 
     def find(id)
@@ -75,7 +50,7 @@ class SettlementTransfer
     end
 
     def from_row(row)
-      SettlementTransfer.new(
+      new(
         id: UUID.new(row[:id]),
         settlement_id: UUID.new(row[:settlement_id]),
         from_user_id: row[:from_user_id] ? UUID.new(row[:from_user_id]) : nil,

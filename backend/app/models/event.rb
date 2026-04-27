@@ -1,37 +1,8 @@
 # frozen_string_literal: true
 
 # Read-only event model.
-class Event
-  attr_reader :id, :workspace_id, :user_id, :name, :description, :start_date, :end_date, :location_name, :location_coordinates, :created_at, :updated_at
-
-  def initialize(
-    id:,
-    workspace_id:,
-    user_id:,
-    name:,
-    description:,
-    start_date:,
-    end_date:,
-    location_name:,
-    location_coordinates:,
-    created_at:,
-    updated_at:
-  )
-    @id = id
-    @workspace_id = workspace_id
-    @user_id = user_id
-    @name = name
-    @description = description
-    @start_date = start_date
-    @end_date = end_date
-    @location_name = location_name
-    @location_coordinates = location_coordinates
-    @created_at = created_at
-    @updated_at = updated_at
-  end
-
+class Event < Data.define(:id, :workspace_id, :user_id, :name, :description, :start_date, :end_date, :location_name, :location_coordinates, :created_at, :updated_at)
   class << self
-    include Dry::Monads[:result]
     include Findable
 
     def find(id)
@@ -65,7 +36,7 @@ class Event
     end
 
     def from_row(row)
-      Event.new(
+      new(
         id: UUID.new(row[:id]),
         workspace_id: UUID.new(row[:workspace_id]),
         user_id: UUID.new(row[:user_id]),

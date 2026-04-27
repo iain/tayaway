@@ -4,8 +4,6 @@ module Auth
   module Passkeys
     module Delete
       class << self
-        include Dry::Monads[:result]
-
         def call(user_id:, passkey_id:)
           find_passkey(user_id, passkey_id)
             .bind { |passkey| delete_passkey(passkey) }

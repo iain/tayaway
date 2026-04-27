@@ -1,31 +1,7 @@
 # frozen_string_literal: true
 
 # Read-only RSVP model.
-class Rsvp
-  attr_reader :id, :event_id, :user_id, :created_by_user_id, :attending, :start_date, :end_date, :created_at, :updated_at
-
-  def initialize(
-    id:,
-    event_id:,
-    user_id:,
-    attending:,
-    start_date:,
-    end_date:,
-    created_at:,
-    updated_at:,
-    created_by_user_id: nil
-  )
-    @id = id
-    @event_id = event_id
-    @user_id = user_id
-    @created_by_user_id = created_by_user_id
-    @attending = attending
-    @start_date = start_date
-    @end_date = end_date
-    @created_at = created_at
-    @updated_at = updated_at
-  end
-
+class Rsvp < Data.define(:id, :event_id, :user_id, :created_by_user_id, :attending, :start_date, :end_date, :created_at, :updated_at)
   class << self
     def find(id)
       dataset.where(id: id).first
@@ -68,7 +44,7 @@ class Rsvp
     end
 
     def from_row(row)
-      Rsvp.new(
+      new(
         id: UUID.new(row[:id]),
         event_id: UUID.new(row[:event_id]),
         user_id: UUID.new(row[:user_id]),

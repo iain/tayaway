@@ -1,29 +1,8 @@
 # frozen_string_literal: true
 
 # Read-only Chore model.
-class Chore
-  attr_reader :id, :chore_roster_id, :name, :people_per_day, :position, :created_at, :updated_at
-
-  def initialize(
-    id:,
-    chore_roster_id:,
-    name:,
-    people_per_day:,
-    position:,
-    created_at:,
-    updated_at:
-  )
-    @id = id
-    @chore_roster_id = chore_roster_id
-    @name = name
-    @people_per_day = people_per_day
-    @position = position
-    @created_at = created_at
-    @updated_at = updated_at
-  end
-
+class Chore < Data.define(:id, :chore_roster_id, :name, :people_per_day, :position, :created_at, :updated_at)
   class << self
-    include Dry::Monads[:result]
     include Findable
 
     def find(id)
@@ -65,7 +44,7 @@ class Chore
     end
 
     def from_row(row)
-      Chore.new(
+      new(
         id: UUID.new(row[:id]),
         chore_roster_id: UUID.new(row[:chore_roster_id]),
         name: row[:name],

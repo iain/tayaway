@@ -9,8 +9,6 @@ module Events
   #   result.value!    # => { message: "Event deleted successfully" }
   module Delete
     class << self
-      include Dry::Monads[:result]
-
       def call(event_id:, membership:)
         Auditable.around(
           service: "Events::Delete",

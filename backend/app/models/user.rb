@@ -1,33 +1,7 @@
 # frozen_string_literal: true
 
 # Read-only user model.
-class User
-  attr_reader :id, :email, :name, :phone_number, :birthday, :location_name, :location_coordinates, :iban, :created_at, :updated_at
-
-  def initialize(
-    id:,
-    email:,
-    name:,
-    phone_number:,
-    birthday:,
-    location_name:,
-    location_coordinates:,
-    iban:,
-    created_at:,
-    updated_at:
-  )
-    @id = id
-    @email = email
-    @name = name
-    @phone_number = phone_number
-    @birthday = birthday
-    @location_name = location_name
-    @location_coordinates = location_coordinates
-    @iban = iban
-    @created_at = created_at
-    @updated_at = updated_at
-  end
-
+class User < Data.define(:id, :email, :name, :phone_number, :birthday, :location_name, :location_coordinates, :iban, :created_at, :updated_at)
   # Serializes the user for API responses. IBAN is deliberately excluded —
   # it must only appear (masked) in the authenticated /api/auth/me response.
   # The sender of an unpaid transfer can fetch the recipient's full IBAN via
@@ -81,7 +55,7 @@ class User
       raw_birthday = row[:birthday]
       birthday = raw_birthday ? Date.parse(decrypt_field(raw_birthday, user_id: user_id)) : nil
 
-      User.new(
+      new(
         id: UUID.new(user_id),
         email: EmailAddress.new(row[:email]),
         name: row[:name],

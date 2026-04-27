@@ -5,8 +5,6 @@ module Invites
   # Creates user if needed, creates membership, marks invite accepted, sends login link.
   module Accept
     class << self
-      include Dry::Monads[:result]
-
       def call(token_jwt:)
         # Not audited: the actor isn't known until the JWT decodes, and this
         # is really an authentication concern. Picked up when auth gets its

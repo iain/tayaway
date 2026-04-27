@@ -1,19 +1,8 @@
 # frozen_string_literal: true
 
 # Read-only WebSocket ticket model.
-class WsTicket
+class WsTicket < Data.define(:id, :session_id, :token, :expires_at, :used_at, :created_at)
   EXPIRY_SECONDS = 30
-
-  attr_reader :id, :session_id, :token, :expires_at, :used_at, :created_at
-
-  def initialize(id:, session_id:, token:, expires_at:, used_at:, created_at:)
-    @id = id
-    @session_id = session_id
-    @token = token
-    @expires_at = expires_at
-    @used_at = used_at
-    @created_at = created_at
-  end
 
   class << self
     def find_valid(hashed_token)

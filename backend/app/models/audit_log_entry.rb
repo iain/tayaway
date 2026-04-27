@@ -3,11 +3,11 @@
 # Append-only record of a service-level mutation attempt. Successful calls,
 # policy denials, and validation failures are all logged so we can answer
 # "who did what and was it allowed". See Auditable for how rows get written.
-#
-# This class is a namespace + insert helper rather than an instance-bearing
-# model: the read API returns plain Sequel rows, which is enough for the
-# console-driven dispute resolution we need today.
-class AuditLogEntry
+class AuditLogEntry < Data.define(
+  :id, :actor_kind, :actor_user_id, :workspace_id, :service,
+  :subject_type, :subject_id, :outcome, :error_code, :error_message,
+  :action_params, :idempotency_key_hash, :request_id, :created_at
+)
   OUTCOMES = %w[success denied error].freeze
 
   # Maximum serialised size for action_params. A runaway audit_context could
@@ -58,14 +58,14 @@ class AuditLogEntry
     end
 
     def for_subject(subject_type, subject_id)
-      DB[:audit_log_entries]
+      dataset
         .where(subject_type: subject_type.to_s, subject_id: subject_id.to_s)
         .order(Sequel.desc(:created_at))
         .all
     end
 
     def for_actor(actor_user_id)
-      DB[:audit_log_entries]
+      dataset
         .where(actor_user_id: actor_user_id.to_s)
         .order(Sequel.desc(:created_at))
         .all
@@ -85,6 +85,29 @@ class AuditLogEntry
         "[AuditLogEntry] action_params exceeded #{MAX_ACTION_PARAMS_BYTES} bytes for #{service} (#{json.bytesize} bytes); dropped"
       end
       { _truncated: true, _original_bytes: json.bytesize }
+    end
+
+    def dataset
+      DB[:audit_log_entries].with_row_proc(method(:from_row))
+    end
+
+    def from_row(row)
+      new(
+        id: UUID.new(row[:id]),
+        actor_kind: row[:actor_kind],
+        actor_user_id: row[:actor_user_id] ? UUID.new(row[:actor_user_id]) : nil,
+        workspace_id: row[:workspace_id] ? UUID.new(row[:workspace_id]) : nil,
+        service: row[:service],
+        subject_type: row[:subject_type],
+        subject_id: row[:subject_id] ? UUID.new(row[:subject_id]) : nil,
+        outcome: row[:outcome],
+        error_code: row[:error_code],
+        error_message: row[:error_message],
+        action_params: row[:action_params],
+        idempotency_key_hash: row[:idempotency_key_hash],
+        request_id: row[:request_id],
+        created_at: row[:created_at]
+      )
     end
   end
 end

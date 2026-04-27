@@ -1,27 +1,7 @@
 # frozen_string_literal: true
 
 # Read-only vote model.
-class Vote
-  attr_reader :id, :date_range_id, :user_id, :response, :comment, :created_at, :updated_at
-
-  def initialize(
-    id:,
-    date_range_id:,
-    user_id:,
-    response:,
-    comment:,
-    created_at:,
-    updated_at:
-  )
-    @id = id
-    @date_range_id = date_range_id
-    @user_id = user_id
-    @response = response
-    @comment = comment
-    @created_at = created_at
-    @updated_at = updated_at
-  end
-
+class Vote < Data.define(:id, :date_range_id, :user_id, :response, :comment, :created_at, :updated_at)
   class << self
     def find(id)
       dataset.where(id: id).first
@@ -59,7 +39,7 @@ class Vote
     end
 
     def from_row(row)
-      Vote.new(
+      new(
         id: UUID.new(row[:id]),
         date_range_id: UUID.new(row[:date_range_id]),
         user_id: UUID.new(row[:user_id]),

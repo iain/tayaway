@@ -4,8 +4,6 @@ module DatePolls
   # Service to reopen a resolved date poll with a new deadline.
   module Reopen
     class << self
-      include Dry::Monads[:result]
-
       def call(event_id:, membership:, deadline:)
         Auditable.around(
           service: "DatePolls::Reopen",

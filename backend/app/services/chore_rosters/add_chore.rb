@@ -4,8 +4,6 @@ module ChoreRosters
   # Service to add a chore to a roster.
   module AddChore
     class << self
-      include Dry::Monads[:result]
-
       def call(roster_id:, workspace_id:, membership:, name:, people_per_day:, id: nil)
         Auditable.around(
           service: "ChoreRosters::AddChore",

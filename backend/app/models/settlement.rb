@@ -1,29 +1,8 @@
 # frozen_string_literal: true
 
 # Read-only Settlement model.
-class Settlement
-  attr_reader :id, :event_id, :user_id, :previous_settlement_id, :rsvp_snapshot, :created_at, :updated_at
-
-  def initialize(
-    id:,
-    event_id:,
-    user_id:,
-    created_at:,
-    updated_at:,
-    previous_settlement_id: nil,
-    rsvp_snapshot: nil
-  )
-    @id = id
-    @event_id = event_id
-    @user_id = user_id
-    @previous_settlement_id = previous_settlement_id
-    @rsvp_snapshot = rsvp_snapshot
-    @created_at = created_at
-    @updated_at = updated_at
-  end
-
+class Settlement < Data.define(:id, :event_id, :user_id, :previous_settlement_id, :rsvp_snapshot, :created_at, :updated_at)
   class << self
-    include Dry::Monads[:result]
     include Findable
 
     def find(id)
@@ -80,7 +59,7 @@ class Settlement
     end
 
     def from_row(row)
-      Settlement.new(
+      new(
         id: UUID.new(row[:id]),
         event_id: UUID.new(row[:event_id]),
         user_id: row[:user_id] ? UUID.new(row[:user_id]) : nil,

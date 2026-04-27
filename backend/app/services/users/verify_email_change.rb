@@ -4,8 +4,6 @@ module Users
   # Service to verify an email change token and update the user's email.
   module VerifyEmailChange
     class << self
-      include Dry::Monads[:result]
-
       def call(token:)
         # Not audited: this is really an authentication concern (token-driven
         # email change), picked up when auth gets its own audit pass.

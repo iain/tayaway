@@ -1,28 +1,6 @@
 # frozen_string_literal: true
 
-class PasskeyCredential
-  attr_reader :id, :user_id, :external_id, :public_key, :sign_count, :aaguid, :name, :created_at
-
-  def initialize(
-    id:,
-    user_id:,
-    external_id:,
-    public_key:,
-    sign_count:,
-    aaguid:,
-    name:,
-    created_at:
-  )
-    @id = id
-    @user_id = user_id
-    @external_id = external_id
-    @public_key = public_key
-    @sign_count = sign_count
-    @aaguid = aaguid
-    @name = name
-    @created_at = created_at
-  end
-
+class PasskeyCredential < Data.define(:id, :user_id, :external_id, :public_key, :sign_count, :aaguid, :name, :created_at)
   def to_api_hash
     {
       id: id.to_s,
@@ -56,7 +34,7 @@ class PasskeyCredential
     end
 
     def from_row(row)
-      PasskeyCredential.new(
+      new(
         id: UUID.new(row[:id]),
         user_id: UUID.new(row[:user_id]),
         external_id: row[:external_id],

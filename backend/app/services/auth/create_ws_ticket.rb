@@ -13,8 +13,6 @@ module Auth
   #   result.value!    # => { ticket: "<jwt>" }
   module CreateWsTicket
     class << self
-      include Dry::Monads[:result]
-
       def call(session_id:)
         generate_ticket(session_id)
       end
