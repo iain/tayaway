@@ -67,8 +67,13 @@ cd frontend && pnpm exec vitest run src/path/to/file.spec.ts
 
 Playwright tests run against separate servers (backend :9293, frontend :5174) with a dedicated `tayaway_e2e` database.
 
+## Code conventions
+
+- **`if/elsif/else` over guard clauses**: Express branching with regular `if/elsif/else` blocks. Reserve early-return guard clauses for actual input-invariant guards at the top of a method (e.g. a nil-check on a required argument). Don't reach for guard clauses just to flatten a method — explicit branches read better and keep all outcomes visible together.
+
 ## Backend code conventions
 
+- **Authorization**: see `doc/authorization.md` before changing any policy, adding policy actions, or touching `usePermission.ts`.
 - **Module singletons**: Define singleton methods inside `class << self`. Don't use `module_function` — it duplicates each method as both a module-level and a private instance method, which obscures intent and breaks cleanly with `private` for helpers.
 - **`Result` chains**: Start chains with a bare `Success()` and put every step (including the first lookup) inside a `.bind { … }` block. Every step then reads as a uniform link in the chain — easier to reorder, insert steps, or skim — instead of having one bare leading call followed by `.bind`s.
 
