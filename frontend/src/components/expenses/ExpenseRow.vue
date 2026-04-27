@@ -42,6 +42,17 @@ const displayName = computed(() => {
   return member.value?.name || member.value?.email || 'Unknown'
 })
 
+const filedOnBehalf = computed(() => {
+  const filer = props.expense.createdByUserId
+  return filer != null && filer !== props.expense.userId
+})
+
+const filedByName = computed(() => {
+  if (!filedOnBehalf.value) return null
+  const m = pool.findBy('member', 'userId', props.expense.createdByUserId)
+  return m?.name || m?.email || 'Unknown'
+})
+
 const formattedAmount = computed(() => {
   return `€${props.expense.amount.toFixed(2)}`
 })
@@ -276,6 +287,13 @@ async function handleDelete(e: Event) {
             Reverted ·
           </span>
           {{ displayName }}
+          <span
+            v-if="filedOnBehalf"
+            class="ml-1 text-gray-400 dark:text-stone-500"
+            data-testid="filed-by"
+          >
+            (filed by {{ filedByName }})
+          </span>
           <template v-if="event.startDate && event.endDate">
             <span aria-hidden="true" class="text-gray-300 dark:text-stone-600">
               ·
