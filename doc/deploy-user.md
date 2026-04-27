@@ -24,7 +24,14 @@ sudo chown tayaway:tayaway /home/tayaway/.ssh/authorized_keys
 sudo chmod 600 /home/tayaway/.ssh/authorized_keys
 ```
 
-Verify you can log in: `ssh -p 50022 tayaway@tayaway.nl`.
+Verify you can log in, and that SSH agent forwarding still reaches GitHub
+(Capistrano needs this for `git fetch` during the deploy):
+
+```sh
+ssh -p 50022 tayaway@tayaway.nl
+ssh -p 50022 -A tayaway@tayaway.nl 'ssh -T git@github.com'
+# expected: Hi iain! You've successfully authenticated, but GitHub does not provide shell access.
+```
 
 ## 2. Sudoers
 
@@ -50,16 +57,24 @@ Then `sudo chmod 0440 /etc/sudoers.d/tayaway` and confirm with
 
 ## 3. mise toolchain for tayaway
 
+Install mise itself, then provision the Ruby/Node/pnpm versions from the
+repo's `.mise.toml`. This step compiles Ruby from source (5–10 minutes) —
+do it now, outside the cutover window, so any compile failure surfaces
+here instead of mid-deploy:
+
 ```sh
 sudo -iu tayaway
 curl https://mise.run | sh
 echo 'eval "$(/home/tayaway/.local/bin/mise activate bash)"' >> ~/.bashrc
 mise trust /var/www/tayaway      # silences the trust prompt for deploys
+
+# Provision Ruby/Node/pnpm against the live release. The systemd unit's
+# PATH points at /home/tayaway/.local/share/mise/installs/ruby/<ver>/bin
+# — that directory has to exist before the cutover restart.
+cd /var/www/tayaway/current && mise install --yes
+mise exec -- ruby -v && mise exec -- node -v && mise exec -- pnpm -v
 exit
 ```
-
-The first deploy will run `mise install` inside the release directory and
-fetch the Ruby/Node/pnpm versions from `.mise.toml`.
 
 ## 4. Postgres role
 
@@ -145,6 +160,16 @@ SELECT datname, pg_get_userbyid(datdba) AS owner
 FROM pg_database WHERE datname = 'tayaway_production';
 ```
 
+Finally, confirm `pg_hba.conf` accepts the role over TCP — the backup
+script connects via `DATABASE_URL` (TCP localhost) rather than peer auth,
+so this auth path has to work end-to-end. As `tayaway`:
+
+```sh
+psql "$(grep -E '^DATABASE_URL=' /var/www/tayaway/shared/backend/.env.production \
+        | cut -d= -f2- | tr -d '"'"'")" -c 'SELECT 1;'
+# expected: a single-row result, no auth errors
+```
+
 ## 5. File ownership
 
 Hand the deploy tree over while the old `ubuntu`-owned Falcon is still
@@ -166,31 +191,40 @@ sudo chmod 600 /var/www/tayaway/shared/backend/.env.production
 
 ## 6. Cutover (downtime window)
 
-Order matters: re-render the systemd unit with `User=tayaway` before
-restarting Falcon, otherwise systemd would relaunch the process as
-`ubuntu` against tayaway-owned files and fail to read them.
+The cutover is a normal full deploy — the first one running as `tayaway`.
+That exercises every Capistrano task under the new user (`mise install`,
+`bundle install`, frontend build, migrations, unit render, restart) and
+catches any remaining permission gap inside the deploy flow rather than
+afterwards. A `falcon:install_unit`-only swap would skip Bundler bin-stub
+regeneration and is only safe if §3 was completed exactly.
 
-From your laptop:
+Dry-run first to validate paths and SSH:
 
 ```sh
-bundle exec cap production falcon:install_unit
+bundle exec cap production deploy:check
 ```
 
-This uploads a new unit file (`User=tayaway`, `Group=tayaway`,
-`Environment=PATH=/home/tayaway/.local/share/mise/...`) and runs
-`systemctl daemon-reload`. The service is still running with the old
-unit at this point — no traffic interruption yet.
-
-Then on the server, do the actual swap:
+Then the real cutover from your laptop:
 
 ```sh
-sudo systemctl restart tayaway-falcon
-sudo systemctl status tayaway-falcon       # active (running), Main PID owned by tayaway
+bundle exec cap production deploy
+```
+
+Capistrano connects as `tayaway`, runs migrations against the restricted
+Postgres role (which now has table-level DDL but no DROP DATABASE),
+re-renders the systemd unit with `User=tayaway`, and restarts Falcon.
+The downtime window is the `systemctl restart` itself — a few seconds.
+
+Verify on the server:
+
+```sh
+sudo systemctl status tayaway-falcon       # active (running)
 ps -o user= -p "$(systemctl show -p MainPID --value tayaway-falcon)"   # → tayaway
-curl -sS http://127.0.0.1:9292/api/health  # or whatever lightweight endpoint exists
+curl -sS http://127.0.0.1:9292/api/health  # → {"status":"healthy"}
+sudo journalctl -u tayaway-falcon -n 100 --no-pager
 ```
 
-If anything looks wrong, see the rollback section.
+If any of these don't look right, see the rollback section.
 
 ## 7. Cron
 
@@ -218,28 +252,37 @@ ls -l /var/www/tayaway/shared/backups/
 
 ## 8. Subsequent deploys
 
-`bundle exec cap production deploy` from the dev machine. Capistrano now
-connects as `tayaway`, runs migrations as the restricted Postgres role,
-re-renders the systemd unit, and restarts Falcon — all without touching
-`ubuntu`.
+Plain `bundle exec cap production deploy`, same as before — only the SSH
+user has changed. No further special handling.
 
 You can leave the `ubuntu` account in place; nothing references it any
 more. Removing it is a separate cleanup.
 
 ## Rollback
 
-If the cutover misbehaves, the old configuration is one revert and one
-restart away:
+Failure modes split by where the cutover broke:
+
+**During `cap production deploy`, before `falcon:restart`** — the old
+ubuntu-owned Falcon is still running and serving traffic. Investigate
+the failed task, fix, and re-run. No traffic impact.
+
+**`falcon:restart` ran but the new tayaway-owned Falcon won't stay up**
+(see `journalctl -u tayaway-falcon`). Roll the systemd side back without
+touching the Postgres role:
 
 ```sh
-# Revert the code change (locally) and re-render the unit with User=ubuntu
-git revert <commit>
-bundle exec cap production falcon:install_unit
+# On the server: hand files back to ubuntu and edit the unit in place.
+sudo chown -R ubuntu:ubuntu /var/www/tayaway
+sudo sed -i 's/^User=tayaway$/User=ubuntu/; s/^Group=tayaway$/Group=ubuntu/; s|/home/tayaway/|/home/ubuntu/|g' /etc/systemd/system/tayaway-falcon.service
+sudo systemctl daemon-reload
 sudo systemctl restart tayaway-falcon
 ```
 
-The Postgres role change is reversible too — `ALTER DATABASE
-tayaway_production OWNER TO tayaway;` puts ownership back, and
-`ALTER ROLE tayaway SUPERUSER;` (if that's what it was before) restores
-the previous attributes. File ownership goes back with another
-`chown -R ubuntu:ubuntu /var/www/tayaway`.
+Then locally `git revert <commit>` so the next deploy doesn't reapply the
+change.
+
+**The Postgres role change needs reverting** (rare — none of the changes
+in §4 affect a running app's connections). `ALTER DATABASE
+tayaway_production OWNER TO tayaway;` puts ownership back, and `ALTER
+ROLE tayaway SUPERUSER;` (if that's what it was before) restores the
+previous attributes.
