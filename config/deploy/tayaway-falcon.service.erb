@@ -5,12 +5,12 @@ Requires=postgresql.service
 
 [Service]
 Type=simple
-User=ubuntu
-Group=ubuntu
+User=<%= deploy_user %>
+Group=<%= deploy_user %>
 WorkingDirectory=/var/www/tayaway/current/backend
 EnvironmentFile=/var/www/tayaway/shared/backend/.env.production
 Environment=RACK_ENV=production
-Environment=PATH=/home/ubuntu/.local/share/mise/installs/ruby/<%= ruby_version %>/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PATH=<%= deploy_home %>/.local/share/mise/installs/ruby/<%= ruby_version %>/bin:/usr/local/bin:/usr/bin:/bin
 Environment=GEM_HOME=/var/www/tayaway/shared/backend/vendor/bundle/ruby/<%= ruby_gem_version %>
 Environment=GEM_PATH=/var/www/tayaway/shared/backend/vendor/bundle/ruby/<%= ruby_gem_version %>
 ExecStart=/var/www/tayaway/shared/backend/vendor/bundle/ruby/<%= ruby_gem_version %>/bin/falcon serve --bind http://127.0.0.1:9292
