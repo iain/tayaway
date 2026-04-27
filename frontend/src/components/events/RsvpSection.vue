@@ -33,6 +33,16 @@ const rsvpsStore = useRsvpsStore()
 const pool = useObjectPoolStore()
 const { formatDateDisplay } = useCalendar()
 
+function filedByLabel(rsvp: {
+  userId: string
+  createdByUserId: string | null
+}) {
+  const filer = rsvp.createdByUserId
+  if (filer == null || filer === rsvp.userId) return null
+  const m = pool.findBy('member', 'userId', filer)
+  return m?.name || m?.email || 'Unknown'
+}
+
 const showPartialPicker = ref(false)
 const showExpensesDialog = ref(false)
 const partialStartDate = ref<string | null>(null)
@@ -336,6 +346,13 @@ async function handleClearPartialDates(): Promise<void> {
                 >
                   (you)
                 </span>
+                <span
+                  v-if="filedByLabel(rsvp)"
+                  class="text-sm text-gray-500 dark:text-stone-400"
+                  data-testid="rsvp-filed-by"
+                >
+                  (RSVP'd by {{ filedByLabel(rsvp) }})
+                </span>
               </span>
               <p
                 v-if="rsvp.startDate && rsvp.endDate"
@@ -374,6 +391,13 @@ async function handleClearPartialDates(): Promise<void> {
                 class="text-sm text-red-600 dark:text-red-400"
               >
                 (you)
+              </span>
+              <span
+                v-if="filedByLabel(rsvp)"
+                class="text-sm text-gray-500 dark:text-stone-400"
+                data-testid="rsvp-filed-by"
+              >
+                (RSVP'd by {{ filedByLabel(rsvp) }})
               </span>
             </span>
           </li>

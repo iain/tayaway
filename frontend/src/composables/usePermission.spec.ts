@@ -72,22 +72,22 @@ describe('usePermission', () => {
       })
     })
 
-    it('returns hidden for settled — revert is the path, not edit', () => {
+    it('returns modal for settled — points the user at Revert', () => {
       const permissions: Record<string, Permission> = {
         edit: { allowed: false, reason: 'settled' },
       }
-      expect(permissionUx(permissions, 'edit')).toEqual({
-        behavior: 'hidden',
-      })
+      const result = permissionUx(permissions, 'edit')
+      expect(result.behavior).toBe('modal')
+      expect('message' in result && result.message).toContain('Revert')
     })
 
-    it('returns hidden for is_revert — reverts are immutable', () => {
+    it('returns modal for is_revert — points the user at filing a fresh expense', () => {
       const permissions: Record<string, Permission> = {
         edit: { allowed: false, reason: 'is_revert' },
       }
-      expect(permissionUx(permissions, 'edit')).toEqual({
-        behavior: 'hidden',
-      })
+      const result = permissionUx(permissions, 'edit')
+      expect(result.behavior).toBe('modal')
+      expect('message' in result && result.message).toContain('fresh expense')
     })
 
     it('returns modal for has_expenses', () => {
@@ -106,6 +106,24 @@ describe('usePermission', () => {
       const result = permissionUx(permissions, 'mark_paid')
       expect(result.behavior).toBe('modal')
       expect('message' in result && result.message).toContain('receiving')
+    })
+
+    it('returns modal for not_tip — tells the user only the most recent settlement is deletable', () => {
+      const permissions: Record<string, Permission> = {
+        delete: { allowed: false, reason: 'not_tip' },
+      }
+      const result = permissionUx(permissions, 'delete')
+      expect(result.behavior).toBe('modal')
+      expect('message' in result && result.message).toContain('most recent')
+    })
+
+    it('returns modal for superseded — tells the user the transfer was rolled into a follow-up', () => {
+      const permissions: Record<string, Permission> = {
+        mark_paid: { allowed: false, reason: 'superseded' },
+      }
+      const result = permissionUx(permissions, 'mark_paid')
+      expect(result.behavior).toBe('modal')
+      expect('message' in result && result.message).toContain('follow-up')
     })
 
     it('returns hidden when permissions undefined', () => {

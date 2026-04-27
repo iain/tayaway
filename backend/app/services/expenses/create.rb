@@ -11,7 +11,7 @@ module Expenses
     class << self
       include Dry::Monads[:result]
 
-      def call(event_id:, membership:, workspace_id:, description:, amount:, start_date:, end_date:,
+      def call(event_id:, membership:, user_id:, workspace_id:, description:, amount:, start_date:, end_date:,
                id: nil, participant_ids: nil, participants: nil)
         Auditable.around(
           service: "Expenses::Create",
@@ -19,16 +19,17 @@ module Expenses
           subject_type: "expense",
           subject_id: id,
           workspace_id: workspace_id,
-          context: { amount: amount }
+          context: { amount: amount, subject_user_id: user_id }
         ) do
           Success()
             .bind { Event.find_result(event_id) }
             .bind { |event| EventPolicy.enforce(:create_expense, event, membership: membership) }
+            .bind { |event| Subjects.validate(event: event, user_id: user_id) }
             .bind { validate(description, amount, start_date, end_date) }
             .bind { |valid| validate_date_range(valid, event_id) }
-            .bind { |valid| validate_rsvp(valid, event_id, membership.user_id) }
+            .bind { |valid| validate_rsvp(valid, event_id, user_id) }
             .bind { |valid| validate_participants(valid, participants, participant_ids) }
-            .bind { |valid| create_expense(event_id, membership, workspace_id, valid, id) }
+            .bind { |valid| create_expense(event_id, membership, user_id, workspace_id, valid, id) }
         end
       end
 
@@ -79,11 +80,11 @@ module Expenses
         Success(valid)
       end
 
-      def validate_rsvp(valid, event_id, user_id)
-        rsvp = Rsvp.find_by_event_and_user(event_id, user_id)
+      def validate_rsvp(valid, event_id, subject_user_id)
+        rsvp = Rsvp.find_by_event_and_user(event_id, subject_user_id)
 
         if rsvp.nil? || !rsvp.attending
-          return Failure(ServiceError.forbidden("You must RSVP to this event before adding expenses"))
+          return Failure(ServiceError.forbidden("User must RSVP as attending before expenses can be added"))
         end
 
         Success(valid)
@@ -168,7 +169,7 @@ module Expenses
         (steps - steps.round).abs < 1e-6
       end
 
-      def create_expense(event_id, membership, workspace_id, valid, id)
+      def create_expense(event_id, membership, user_id, workspace_id, valid, id)
         now = Time.now
         expense_id = id || SecureRandom.uuid
 
@@ -179,7 +180,8 @@ module Expenses
                      .insert(
                        id: expense_id,
                        event_id: event_id,
-                       user_id: membership.user_id,
+                       user_id: user_id,
+                       created_by_user_id: membership.user_id,
                        amount: valid[:amount],
                        description: valid[:description],
                        start_date: valid[:start_date],

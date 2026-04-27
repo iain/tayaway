@@ -68,7 +68,7 @@ RSpec.describe Expenses::Update do
     expect(result.failure.message).to eq("settled")
   end
 
-  it "returns 403 when user is not the creator" do
+  it "lets another workspace member update an expense on the owner's behalf" do
     expense_id = create_expense
 
     result = described_class.call(
@@ -79,9 +79,9 @@ RSpec.describe Expenses::Update do
       amount: nil
     )
 
-    expect(result.failure?).to be true
-    expect(result.failure.http_status).to eq(403)
-    expect(result.failure.message).to eq("not_creator")
+    expect(result.success?).to be true
+    obj = result.value![:objects].find { |o| o[:objectType] == "expense" }
+    expect(obj[:description]).to eq("New")
   end
 
   it "returns failure when no fields provided" do
@@ -348,6 +348,7 @@ RSpec.describe Expenses::Update do
       created = Expenses::Create.call(
         event_id: event[:id],
         membership: user_membership,
+        user_id: user[:id],
         workspace_id: workspace[:id],
         description: "Seed",
         amount: 10.0,

@@ -115,6 +115,9 @@ export function makeVote(
   }
 }
 
+// `createdByUserId` defaults to `null` (legacy / unknown actor) so tests
+// don't accidentally render the "filed by X" badge. Tests that exercise
+// on-behalf-of behaviour pass an explicit value via overrides.
 export function makeRsvp(
   overrides: Partial<ObjectTypeMap['rsvp']> = {}
 ): ObjectTypeMap['rsvp'] {
@@ -123,6 +126,7 @@ export function makeRsvp(
     objectType: 'rsvp',
     eventId: 'evt-1',
     userId: 'user-1',
+    createdByUserId: null,
     attending: true,
     startDate: null,
     endDate: null,
@@ -173,6 +177,7 @@ export function makeExpense(
     objectType: 'expense',
     eventId: 'evt-1',
     userId: 'user-1',
+    createdByUserId: null,
     settlementId: null,
     revertsExpenseId: null,
     description: 'Hotel',

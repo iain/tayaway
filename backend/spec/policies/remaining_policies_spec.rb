@@ -76,15 +76,14 @@ RSpec.describe "Remaining policies" do
     let(:rsvp_row) { TestFactories.rsvp(event: event_row, user: user_a) }
     let(:rsvp) { Rsvp.find(rsvp_row[:id]) }
 
-    it "allows rsvp creator to delete" do
+    it "allows the rsvp owner to delete" do
       policy = described_class.new(rsvp, membership: membership_a)
       expect(policy.delete).to be_success
     end
 
-    it "rejects non-creators" do
+    it "allows any workspace member to delete on behalf of the owner" do
       policy = described_class.new(rsvp, membership: membership_b)
-      expect(policy.delete).to be_failure
-      expect(policy.delete.failure).to eq(:not_creator)
+      expect(policy.delete).to be_success
     end
   end
 

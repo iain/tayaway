@@ -55,6 +55,33 @@ Policies take the subject as the first positional arg and `membership:` as a
 keyword. Extra context (e.g., `event:`, `has_expenses:`) can be passed as
 keywords — the `**` splat in initializers accepts them.
 
+## Two kinds of policy failure
+
+Failures fall on one of two axes:
+
+- **Invariants** — facts about the resource: `:settled`, `:revert_of_revert`, `:has_expenses`. Caller-independent.
+- **Actor authorization** — facts about the caller's role or ownership: `:not_owner`, `:not_admin_or_owner`, `:not_event_owner`.
+
+If a policy's `initialize` doesn't take `membership:`, it has only invariants (`ExpensePolicy`). Mixed policies are common (`EventPolicy.delete`, `SettlementPolicy`, `SettlementTransferPolicy`); group the two kinds visibly when both are present.
+
+### UX mapping is path-forward, not axis
+
+`usePermission.ts` doesn't sort reasons by axis. It asks "does the user have a path to making this succeed?":
+
+- HIDE: no path. Most actor failures, plus invariants the user can't fix (`:revert_of_revert`, `:superseded`).
+- MODAL: path worth explaining. Invariants the user can resolve (`:has_expenses` → settle and delete first); a few actor failures with educational value (`:not_recipient`).
+- DISABLE: transient or automatic-fix states. Currently unused.
+
+So the actor/invariant axis is the right lens for thinking about a _policy_; path-forward is the right lens for placing a _reason_ in `usePermission.ts`.
+
+### Keep invariants in policies, not on models
+
+A model predicate (`expense.settled?`) runs once per object inside PoolSerializer and WebSocket broadcasts. Most invariants eventually need related data (`event.has_expenses?` queries `expenses`), so a model predicate N+1's the sync path. Context passing (below) exists to batch those queries — invariants stay in policies so they can use it.
+
+### Change-risk asymmetry
+
+Actor rules can be relaxed or tightened freely. Invariants are usually load-bearing — `:settled` exists for accounting integrity, not ergonomics — and should move only with a clear reason. Identify which axis a change touches before making it.
+
 ## Context passing for performance
 
 Some policies need data that would cause N+1 queries if fetched per-object

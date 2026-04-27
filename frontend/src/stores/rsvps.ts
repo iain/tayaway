@@ -11,15 +11,17 @@ export const useRsvpsStore = defineStore('rsvps', () => {
     eventId: string,
     attending: boolean,
     startDate?: string | null,
-    endDate?: string | null
+    endDate?: string | null,
+    onBehalfOfUserId?: string
   ) {
     const pool = useObjectPoolStore()
-    const userId = useAuthStore().currentUserId!
-    const body: Record<string, unknown> = { attending }
+    const actorUserId = useAuthStore().currentUserId!
+    const userId = onBehalfOfUserId ?? actorUserId
+    const body: Record<string, unknown> = { attending, user_id: userId }
     if (startDate !== undefined) body.start_date = startDate
     if (endDate !== undefined) body.end_date = endDate
 
-    // Check for existing RSVP by this user on this event
+    // Check for existing RSVP by the subject user on this event
     const existingRsvp = pool
       .getAll('rsvp')
       .find((r) => r.eventId === eventId && r.userId === userId)
@@ -46,6 +48,7 @@ export const useRsvpsStore = defineStore('rsvps', () => {
         objectType: 'rsvp',
         eventId,
         userId,
+        createdByUserId: actorUserId,
         attending,
         startDate: startDate ?? null,
         endDate: endDate ?? null,

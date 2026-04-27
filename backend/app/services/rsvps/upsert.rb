@@ -7,18 +7,21 @@ module Rsvps
   #   result = Rsvps::Upsert.call(
   #     event_id: "event-uuid",
   #     membership: membership,
+  #     user_id: "subject-user-uuid",
   #     attending: true,
   #     rsvp_id: "client-generated-uuid",
   #     start_date: "2026-03-10",
   #     end_date: "2026-03-12"
   #   )
+  #
+  # `membership` is the actor (the user performing the action). `user_id` is
+  # the subject (the user whose RSVP this is). They differ when one workspace
+  # member is filling in or correcting another member's RSVP.
   module Upsert
     class << self
       include Dry::Monads[:result]
 
-      def call(event_id:, membership:, attending:, rsvp_id:, start_date: nil, end_date: nil)
-        user_id = membership.user_id
-
+      def call(event_id:, membership:, user_id:, attending:, rsvp_id:, start_date: nil, end_date: nil)
         # Generate a server-side ID if the client did not provide one (backwards
         # compatibility with commands queued before client-ID enforcement).
         resolved_rsvp_id = rsvp_id.nil? || rsvp_id.empty? ? SecureRandom.uuid : rsvp_id
@@ -28,24 +31,27 @@ module Rsvps
           actor: membership,
           subject_type: "rsvp",
           subject_id: resolved_rsvp_id,
-          context: { attending: attending }
+          context: { attending: attending, subject_user_id: user_id }
         ) do
           Success()
-            .bind { validate_params(attending) }
+            .bind { validate_params(attending, user_id) }
             .bind { find_event(event_id) }
             .bind { |event| EventPolicy.enforce(:create_rsvp, event, membership: membership) }
+            .bind { |event| Subjects.validate(event: event, user_id: user_id) }
             .bind { |event| validate_event_has_dates(event) }
             .bind { |event| validate_no_expenses_when_declining(event, user_id, attending) }
             .bind { |event| validate_partial_dates(event, attending, start_date, end_date) }
-            .bind { |event, parsed_start, parsed_end| upsert_rsvp(event, user_id, attending, parsed_start, parsed_end, resolved_rsvp_id) }
+            .bind { |event, parsed_start, parsed_end| upsert_rsvp(event, user_id, attending, parsed_start, parsed_end, resolved_rsvp_id, membership.user_id) }
         end
       end
 
       private
 
-      def validate_params(attending)
+      def validate_params(attending, user_id)
         if attending.nil?
           Failure(ServiceError.validation("attending is required"))
+        elsif user_id.nil? || user_id.to_s.empty?
+          Failure(ServiceError.validation("user_id is required"))
         else
           Success(attending)
         end
@@ -108,7 +114,7 @@ module Rsvps
         Success([event, parsed_start, parsed_end])
       end
 
-      def upsert_rsvp(event, user_id, attending, start_date, end_date, rsvp_id)
+      def upsert_rsvp(event, user_id, attending, start_date, end_date, rsvp_id, actor_user_id)
         unless attending
           start_date = nil
           end_date = nil
@@ -117,6 +123,8 @@ module Rsvps
         row = nil
         DB.transaction do
           now = Time.now
+          # `created_by_user_id` is intentionally absent from the conflict update
+          # so the original filer sticks even if a different actor later edits.
           row = DB[:rsvps]
                 .returning(:id, Sequel.lit("(xmax = 0) AS created"))
                 .insert_conflict(
@@ -132,6 +140,7 @@ module Rsvps
                   id: rsvp_id,
                   event_id: event.id,
                   user_id: user_id,
+                  created_by_user_id: actor_user_id,
                   attending: attending,
                   start_date: start_date,
                   end_date: end_date,

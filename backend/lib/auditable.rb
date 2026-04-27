@@ -46,6 +46,8 @@ module Auditable
   private_constant :CASCADE_KEY
 
   class << self
+    include Dry::Monads[:result]
+
     # `actor` is typically a WorkspaceMembership (responds to `user_id` and
     # `workspace_id`). Services operating outside a workspace context — user
     # profile edits, email change verification — pass `actor: nil` together
@@ -86,6 +88,18 @@ module Auditable
       )
 
       result
+    end
+
+    # Drop-in `.bind` step for services that load the subject inside the
+    # chain and want the audit row to record whose record was acted on.
+    # Mutates the shared `context` hash so the row reflects the lookup
+    # without callers having to re-thread the subject out to where the
+    # audit context was constructed.
+    #
+    #   .bind { |expense| Auditable.record_subject_user_id(audit_context, expense) }
+    def record_subject_user_id(context, subject)
+      context[:subject_user_id] = subject.user_id&.to_s
+      Success(subject)
     end
 
     private

@@ -7,15 +7,21 @@ module Expenses
       include Dry::Monads[:result]
 
       def call(expense_id:, membership:, workspace_id:)
+        # Mutated inside the chain once the expense is loaded so the audit
+        # row carries who the action was about, not just who did it.
+        audit_context = {}
+
         Auditable.around(
           service: "Expenses::Delete",
           actor: membership,
           subject_type: "expense",
           subject_id: expense_id,
-          workspace_id: workspace_id
+          workspace_id: workspace_id,
+          context: audit_context
         ) do
           Success()
             .bind { Expense.find_result(expense_id) }
+            .bind { |expense| Auditable.record_subject_user_id(audit_context, expense) }
             .bind { |expense| ExpensePolicy.enforce(:delete, expense, membership: membership) }
             .bind { |expense| delete_expense(expense, workspace_id) }
         end

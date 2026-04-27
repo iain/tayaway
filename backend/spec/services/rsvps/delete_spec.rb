@@ -21,7 +21,7 @@ RSpec.describe Rsvps::Delete do
     expect(result.failure.http_status).to eq(404)
   end
 
-  it "returns failure when user is not the RSVP owner" do
+  it "lets another workspace member delete an RSVP on the owner's behalf" do
     owner = TestFactories.user
     other_user = TestFactories.user
     event = TestFactories.event(workspace: workspace, user: owner)
@@ -30,9 +30,8 @@ RSpec.describe Rsvps::Delete do
 
     result = described_class.call(event_id: event[:id], rsvp_id: rsvp[:id], membership: membership_for(other_user))
 
-    expect(result.failure?).to be true
-    expect(result.failure.message).to eq("not_creator")
-    expect(result.failure.http_status).to eq(403)
+    expect(result.success?).to be true
+    expect(DB[:rsvps].where(id: rsvp[:id]).count).to eq(0)
   end
 
   it "returns failure when RSVP belongs to different event" do

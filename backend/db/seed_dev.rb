@@ -193,22 +193,27 @@ DB.transaction do
   end
 
   # RSVPs: four attending (one with custom dates), one declines.
+  # Diana never replied — test marked her as not attending so the headcount
+  # reflects reality. That row demonstrates the on-behalf-of capability:
+  # the subject is :diana but the filer (created_by) is :test.
   rsvp_plan = [
     { user: :test, attending: true },
     { user: :alice, attending: true },
     { user: :bob, attending: true, start: cabin_start + 1, finish: cabin_end },
     { user: :charlie, attending: true },
-    { user: :diana, attending: false }
+    { user: :diana, attending: false, filed_by: :test }
   ]
   rsvp_plan.each do |r|
     DB[:rsvps].insert_conflict(
       target: %i[event_id user_id],
       update: { attending: r[:attending], start_date: r[:start], end_date: r[:finish],
+                created_by_user_id: Sequel[:excluded][:created_by_user_id],
                 updated_at: now }
     ).insert(
       id: det_uuid("rsvp:cabin:#{r[:user]}"),
       event_id: cabin_id,
       user_id: user_id_for[r[:user]],
+      created_by_user_id: user_id_for[r[:filed_by] || r[:user]],
       attending: r[:attending],
       start_date: r[:start],
       end_date: r[:finish],
@@ -277,6 +282,8 @@ DB.transaction do
   end
 
   # Expenses: a few entries split across attendees, with non-default factors.
+  # `filed_by` shows the on-behalf-of capability: charlie paid for the
+  # tasting menu but never logged it; alice filed the expense for him.
   expense_plan = [
     { key: "cabin-rental", desc: "Cabin rental (4 nights)", amount: 480, payer: :test,
       participants: { test: 1, alice: 1, bob: 1, charlie: 1 } },
@@ -284,7 +291,7 @@ DB.transaction do
       participants: { test: 1, alice: 1, bob: 1, charlie: 1 } },
     { key: "firewood", desc: "Firewood + kindling", amount: 35, payer: :bob,
       participants: { test: 1, alice: 1, bob: 1, charlie: 1 } },
-    { key: "fancy-dinner", desc: "Saturday tasting menu", amount: 220, payer: :charlie,
+    { key: "fancy-dinner", desc: "Saturday tasting menu", amount: 220, payer: :charlie, filed_by: :alice,
       participants: { test: 1, alice: 1, charlie: 1.5 } } # bob skipped, charlie ordered the wine pairing
   ]
   expense_ids = {}
@@ -293,11 +300,14 @@ DB.transaction do
     expense_ids[e[:key]] = eid
     DB[:expenses].insert_conflict(
       target: :id,
-      update: { amount: e[:amount], description: e[:desc], updated_at: now }
+      update: { amount: e[:amount], description: e[:desc],
+                created_by_user_id: Sequel[:excluded][:created_by_user_id],
+                updated_at: now }
     ).insert(
       id: eid,
       event_id: cabin_id,
       user_id: user_id_for[e[:payer]],
+      created_by_user_id: user_id_for[e[:filed_by] || e[:payer]],
       amount: e[:amount],
       description: e[:desc],
       start_date: cabin_start,

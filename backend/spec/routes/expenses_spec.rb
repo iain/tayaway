@@ -155,20 +155,21 @@ RSpec.describe "Expenses endpoints" do
       expect(updated["amount"]).to eq(60.0)
     end
 
-    it "returns 403 when user is not the creator" do
+    it "lets another workspace member update an expense on the owner's behalf" do
       other_user = TestFactories.user
       TestFactories.workspace_membership(workspace: workspace, user: other_user)
       other_session = TestFactories.session(user: other_user)
       other_auth = { "HTTP_COOKIE" => "session_token=#{other_session[:token]}" }.merge(csrf_header)
 
-      expense = create_expense(event: event, user: user, description: "Mine")
+      expense = create_expense(event: event, user: user, description: "Original")
 
       put "/api/expenses/#{expense[:id]}",
-          { description: "Stolen", amount: 100.0,
+          { description: "Corrected", amount: 100.0,
             start_date: Date.today.iso8601, end_date: Date.today.iso8601 }.to_json,
           other_auth.merge("CONTENT_TYPE" => "application/json")
 
-      expect(last_response.status).to eq(403)
+      expect(last_response.status).to eq(200)
+      expect(DB[:expenses].where(id: expense[:id]).get(:description)).to eq("Corrected")
     end
   end
 
@@ -196,7 +197,7 @@ RSpec.describe "Expenses endpoints" do
       expect(DB[:expenses].where(id: expense[:id]).count).to eq(0)
     end
 
-    it "returns 403 when user is not the creator" do
+    it "lets another workspace member delete an expense on the owner's behalf" do
       other_user = TestFactories.user
       TestFactories.workspace_membership(workspace: workspace, user: other_user)
       other_session = TestFactories.session(user: other_user)
@@ -206,7 +207,8 @@ RSpec.describe "Expenses endpoints" do
 
       delete "/api/expenses/#{expense[:id]}", {}, other_auth
 
-      expect(last_response.status).to eq(403)
+      expect(last_response.status).to eq(200)
+      expect(DB[:expenses].where(id: expense[:id]).count).to eq(0)
     end
   end
 end

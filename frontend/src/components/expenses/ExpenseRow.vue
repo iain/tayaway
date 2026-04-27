@@ -42,6 +42,17 @@ const displayName = computed(() => {
   return member.value?.name || member.value?.email || 'Unknown'
 })
 
+const filedOnBehalf = computed(() => {
+  const filer = props.expense.createdByUserId
+  return filer != null && filer !== props.expense.userId
+})
+
+const filedByName = computed(() => {
+  if (!filedOnBehalf.value) return null
+  const m = pool.findBy('member', 'userId', props.expense.createdByUserId)
+  return m?.name || m?.email || 'Unknown'
+})
+
 const formattedAmount = computed(() => {
   return `€${props.expense.amount.toFixed(2)}`
 })
@@ -173,8 +184,21 @@ function toggleExpand() {
   expanded.value = !expanded.value
 }
 
+const blockedActionMessage = ref('')
+const showBlockedActionModal = ref(false)
+
+function explainBlocked(message: string) {
+  blockedActionMessage.value = message
+  showBlockedActionModal.value = true
+}
+
 function handleEdit(e: Event) {
   e.stopPropagation()
+  if (editUx.value.behavior === 'modal') {
+    explainBlocked(editUx.value.message)
+    return
+  }
+  if (editUx.value.behavior !== 'enabled') return
   emit('edit', props.expense)
 }
 
@@ -212,6 +236,11 @@ const deleting = ref(false)
 
 async function handleDelete(e: Event) {
   e.stopPropagation()
+  if (deleteUx.value.behavior === 'modal') {
+    explainBlocked(deleteUx.value.message)
+    return
+  }
+  if (deleteUx.value.behavior !== 'enabled') return
   if (deleting.value) return
   deleting.value = true
   try {
@@ -258,6 +287,13 @@ async function handleDelete(e: Event) {
             Reverted ·
           </span>
           {{ displayName }}
+          <span
+            v-if="filedOnBehalf"
+            class="ml-1 text-gray-400 dark:text-stone-500"
+            data-testid="filed-by"
+          >
+            (filed by {{ filedByName }})
+          </span>
           <template v-if="event.startDate && event.endDate">
             <span aria-hidden="true" class="text-gray-300 dark:text-stone-600">
               ·
@@ -420,6 +456,27 @@ async function handleDelete(e: Event) {
         @click="confirmRevert"
       >
         Revert
+      </AppButton>
+    </div>
+  </BaseModal>
+
+  <BaseModal
+    :open="showBlockedActionModal"
+    title="Can't change this expense"
+    size="sm"
+    data-testid="expense-blocked-modal"
+    @close="showBlockedActionModal = false"
+  >
+    <p class="text-sm text-gray-600 dark:text-stone-400">
+      {{ blockedActionMessage }}
+    </p>
+    <div class="mt-6 flex justify-end">
+      <AppButton
+        variant="secondary"
+        size="sm"
+        @click="showBlockedActionModal = false"
+      >
+        OK
       </AppButton>
     </div>
   </BaseModal>

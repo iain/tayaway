@@ -26,6 +26,7 @@ RSpec.describe Expenses::Revert do
     expense_id = Expenses::Create.call(
       event_id: event[:id],
       membership: membership,
+      user_id: creator[:id],
       workspace_id: workspace[:id],
       description: "Dinner",
       amount: amount,
@@ -46,6 +47,7 @@ RSpec.describe Expenses::Revert do
     expense_id = Expenses::Create.call(
       event_id: event[:id],
       membership: membership,
+      user_id: creator[:id],
       workspace_id: workspace[:id],
       description: "Groceries",
       amount: 90,
@@ -90,7 +92,7 @@ RSpec.describe Expenses::Revert do
     )
   end
 
-  it "refuses when the caller isn't the creator" do
+  it "refuses when the caller is a workspace member but not the actor, subject, event owner, or admin" do
     expense_id = create_and_settle_expense(amount: 30)
 
     result = described_class.call(
@@ -101,6 +103,49 @@ RSpec.describe Expenses::Revert do
 
     expect(result.failure?).to be true
     expect(result.failure.http_status).to eq(403)
+    expect(result.failure.message).to eq("not_revert_authority")
+  end
+
+  it "allows a workspace admin to revert" do
+    admin = TestFactories.user
+    admin_membership = WorkspaceMembership.find(
+      TestFactories.workspace_membership(workspace: workspace, user: admin, role: "admin")[:id]
+    )
+    expense_id = create_and_settle_expense(amount: 30)
+
+    result = described_class.call(
+      expense_id: expense_id,
+      membership: admin_membership,
+      workspace_id: workspace[:id]
+    )
+
+    expect(result.success?).to be true
+  end
+
+  it "allows the actor who originally filed the expense to revert it" do
+    # `other` files an expense for `creator` — `other` is the actor (creator
+    # of the row), `creator` is the subject (whose expense it is).
+    membership # ensure creator's workspace membership exists
+    TestFactories.rsvp(event: event, user: creator, attending: true)
+    expense_id = Expenses::Create.call(
+      event_id: event[:id],
+      membership: other_membership,
+      user_id: creator[:id],
+      workspace_id: workspace[:id],
+      description: "Filed on someone else's behalf",
+      amount: 20,
+      start_date: "2026-01-01",
+      end_date: "2026-01-01"
+    ).value![:objects].find { |o| o[:objectType] == "expense" }[:id]
+    Settlements::Create.call(event_id: event[:id], membership: membership, workspace_id: workspace[:id])
+
+    result = described_class.call(
+      expense_id: expense_id,
+      membership: other_membership,
+      workspace_id: workspace[:id]
+    )
+
+    expect(result.success?).to be true
   end
 
   it "refuses to revert an unsettled expense — edit or delete it instead" do
@@ -108,6 +153,7 @@ RSpec.describe Expenses::Revert do
     unsettled_id = Expenses::Create.call(
       event_id: event[:id],
       membership: membership,
+      user_id: creator[:id],
       workspace_id: workspace[:id],
       description: "Lunch",
       amount: 10,

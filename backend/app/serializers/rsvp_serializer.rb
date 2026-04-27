@@ -11,6 +11,7 @@ class RsvpSerializer
           objectType: "rsvp",
           eventId: rsvp.event_id.to_s,
           userId: rsvp.user_id.to_s,
+          createdByUserId: rsvp.created_by_user_id&.to_s,
           attending: rsvp.attending,
           startDate: rsvp.start_date&.iso8601,
           endDate: rsvp.end_date&.iso8601,
