@@ -181,6 +181,7 @@ module Expenses
                        id: expense_id,
                        event_id: event_id,
                        user_id: user_id,
+                       created_by_user_id: membership.user_id,
                        amount: valid[:amount],
                        description: valid[:description],
                        start_date: valid[:start_date],

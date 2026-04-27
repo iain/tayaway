@@ -2,7 +2,7 @@
 
 # Read-only RSVP model.
 class Rsvp
-  attr_reader :id, :event_id, :user_id, :attending, :start_date, :end_date, :created_at, :updated_at
+  attr_reader :id, :event_id, :user_id, :created_by_user_id, :attending, :start_date, :end_date, :created_at, :updated_at
 
   def initialize(
     id:,
@@ -12,11 +12,13 @@ class Rsvp
     start_date:,
     end_date:,
     created_at:,
-    updated_at:
+    updated_at:,
+    created_by_user_id: nil
   )
     @id = id
     @event_id = event_id
     @user_id = user_id
+    @created_by_user_id = created_by_user_id
     @attending = attending
     @start_date = start_date
     @end_date = end_date
@@ -70,6 +72,7 @@ class Rsvp
         id: UUID.new(row[:id]),
         event_id: UUID.new(row[:event_id]),
         user_id: UUID.new(row[:user_id]),
+        created_by_user_id: row[:created_by_user_id] ? UUID.new(row[:created_by_user_id]) : nil,
         attending: row[:attending],
         start_date: row[:start_date],
         end_date: row[:end_date],

@@ -98,6 +98,7 @@ export interface ObjectTypeMap {
   rsvp: PoolObjectBase<'rsvp'> & {
     eventId: string
     userId: string
+    createdByUserId: string | null
     attending: boolean
     startDate: string | null
     endDate: string | null
@@ -126,6 +127,7 @@ export interface ObjectTypeMap {
   expense: PoolObjectBase<'expense'> & {
     eventId: string
     userId: string | null
+    createdByUserId: string | null
     settlementId: string | null
     revertsExpenseId: string | null
     description: string

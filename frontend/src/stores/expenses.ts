@@ -28,14 +28,15 @@ export const useExpensesStore = defineStore('expenses', () => {
     const expenseId = crypto.randomUUID()
     const now = new Date().toISOString()
     const pool = useObjectPoolStore()
-    const subjectUserId =
-      onBehalfOfUserId ?? useAuthStore().currentUserId ?? null
+    const actorUserId = useAuthStore().currentUserId ?? null
+    const subjectUserId = onBehalfOfUserId ?? actorUserId
 
     const tempExpense: PoolExpense = {
       id: expenseId,
       objectType: 'expense',
       eventId,
       userId: subjectUserId,
+      createdByUserId: actorUserId,
       settlementId: null,
       revertsExpenseId: null,
       description,

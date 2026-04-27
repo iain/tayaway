@@ -15,7 +15,8 @@ export const useRsvpsStore = defineStore('rsvps', () => {
     onBehalfOfUserId?: string
   ) {
     const pool = useObjectPoolStore()
-    const userId = onBehalfOfUserId ?? useAuthStore().currentUserId!
+    const actorUserId = useAuthStore().currentUserId!
+    const userId = onBehalfOfUserId ?? actorUserId
     const body: Record<string, unknown> = { attending, user_id: userId }
     if (startDate !== undefined) body.start_date = startDate
     if (endDate !== undefined) body.end_date = endDate
@@ -47,6 +48,7 @@ export const useRsvpsStore = defineStore('rsvps', () => {
         objectType: 'rsvp',
         eventId,
         userId,
+        createdByUserId: actorUserId,
         attending,
         startDate: startDate ?? null,
         endDate: endDate ?? null,

@@ -21,6 +21,7 @@ class ExpenseSerializer
           objectType: "expense",
           eventId: expense.event_id.to_s,
           userId: expense.user_id&.to_s,
+          createdByUserId: expense.created_by_user_id&.to_s,
           settlementId: expense.settlement_id&.to_s,
           revertsExpenseId: expense.reverts_expense_id&.to_s,
           amount: expense.amount,
@@ -31,6 +32,17 @@ class ExpenseSerializer
           createdAt: expense.created_at.iso8601(3),
           updatedAt: expense.updated_at.iso8601(3)
         }
+      end
+    end
+
+    def policy_context_batch(expenses)
+      return {} if expenses.empty?
+
+      event_ids = expenses.map { |e| e.event_id.to_s }.uniq
+      events_by_id = Event.for_ids(event_ids).each_with_object({}) { |e, h| h[e.id.to_s] = e }
+
+      expenses.each_with_object({}) do |expense, h|
+        h[expense.id.to_s] = { event: events_by_id[expense.event_id.to_s] }
       end
     end
   end

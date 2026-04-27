@@ -41,7 +41,7 @@ module Rsvps
             .bind { |event| validate_event_has_dates(event) }
             .bind { |event| validate_no_expenses_when_declining(event, user_id, attending) }
             .bind { |event| validate_partial_dates(event, attending, start_date, end_date) }
-            .bind { |event, parsed_start, parsed_end| upsert_rsvp(event, user_id, attending, parsed_start, parsed_end, resolved_rsvp_id) }
+            .bind { |event, parsed_start, parsed_end| upsert_rsvp(event, user_id, attending, parsed_start, parsed_end, resolved_rsvp_id, membership.user_id) }
         end
       end
 
@@ -114,7 +114,7 @@ module Rsvps
         Success([event, parsed_start, parsed_end])
       end
 
-      def upsert_rsvp(event, user_id, attending, start_date, end_date, rsvp_id)
+      def upsert_rsvp(event, user_id, attending, start_date, end_date, rsvp_id, actor_user_id)
         unless attending
           start_date = nil
           end_date = nil
@@ -123,6 +123,8 @@ module Rsvps
         row = nil
         DB.transaction do
           now = Time.now
+          # `created_by_user_id` is intentionally absent from the conflict update
+          # so the original filer sticks even if a different actor later edits.
           row = DB[:rsvps]
                 .returning(:id, Sequel.lit("(xmax = 0) AS created"))
                 .insert_conflict(
@@ -138,6 +140,7 @@ module Rsvps
                   id: rsvp_id,
                   event_id: event.id,
                   user_id: user_id,
+                  created_by_user_id: actor_user_id,
                   attending: attending,
                   start_date: start_date,
                   end_date: end_date,
