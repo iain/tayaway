@@ -112,25 +112,38 @@ GRANT USAGE, CREATE ON SCHEMA public TO tayaway;
 REASSIGN OWNED BY postgres TO tayaway;
 ```
 
-Verify (the role should now show `f f f f` and the database should belong
-to `postgres`):
+Verify the constraint with a read-only catalog assertion. Postgres allows
+`DROP DATABASE` only for the database owner or a superuser, so confirming
+that `tayaway` is neither is logically equivalent to confirming it cannot
+drop the database — without ever issuing the destructive statement:
+
+```sql
+SELECT
+  CASE
+    WHEN (SELECT rolsuper FROM pg_roles WHERE rolname = 'tayaway')
+      THEN 'FAIL: tayaway is a superuser'
+    WHEN (SELECT pg_get_userbyid(datdba) FROM pg_database
+          WHERE datname = 'tayaway_production') = 'tayaway'
+      THEN 'FAIL: tayaway owns tayaway_production'
+    ELSE 'OK: tayaway cannot drop tayaway_production'
+  END AS dropdb_check;
+```
+
+`OK: tayaway cannot drop tayaway_production` is the success condition.
+Anything else means stop and re-check the previous steps before continuing
+to the cutover — do **not** issue a real `DROP DATABASE` to "verify" the
+restriction.
+
+For completeness, the same view as raw catalog rows (useful as a rollback
+reference; superuser/createdb/createrole/replication should all be `f`,
+and the database owner should not be `tayaway`):
 
 ```sql
 SELECT rolname, rolsuper, rolcreatedb, rolcreaterole, rolreplication
 FROM pg_roles WHERE rolname = 'tayaway';
-SELECT datname, pg_get_userbyid(datdba) FROM pg_database
-WHERE datname = 'tayaway_production';
+SELECT datname, pg_get_userbyid(datdba) AS owner
+FROM pg_database WHERE datname = 'tayaway_production';
 ```
-
-Smoke-test the constraint as `tayaway`:
-
-```sh
-PGPASSWORD='<password>' psql -h localhost -U tayaway -d postgres \
-  -c 'DROP DATABASE tayaway_production;'
-# expected: ERROR:  must be owner of database tayaway_production
-```
-
-That error is the success condition.
 
 ## 5. File ownership
 
