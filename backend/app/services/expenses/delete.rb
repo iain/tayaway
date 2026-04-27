@@ -21,18 +21,13 @@ module Expenses
         ) do
           Success()
             .bind { Expense.find_result(expense_id) }
-            .bind { |expense| record_subject(audit_context, expense) }
+            .bind { |expense| Auditable.record_subject_user_id(audit_context, expense) }
             .bind { |expense| ExpensePolicy.enforce(:delete, expense, membership: membership) }
             .bind { |expense| delete_expense(expense, workspace_id) }
         end
       end
 
       private
-
-      def record_subject(audit_context, expense)
-        audit_context[:subject_user_id] = expense.user_id&.to_s
-        Success(expense)
-      end
 
       def delete_expense(expense, workspace_id)
         expense_id = expense.id

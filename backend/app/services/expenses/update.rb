@@ -23,7 +23,7 @@ module Expenses
         ) do
           Success()
             .bind { Expense.find_result(expense_id) }
-            .bind { |expense| record_subject(audit_context, expense) }
+            .bind { |expense| Auditable.record_subject_user_id(audit_context, expense) }
             .bind { |expense| ExpensePolicy.enforce(:edit, expense, membership: membership) }
             .bind { |expense| validate_update(expense, description, amount, start_date, end_date, participants, participant_ids) }
             .bind { |valid| update_expense(valid, workspace_id, membership) }
@@ -31,11 +31,6 @@ module Expenses
       end
 
       private
-
-      def record_subject(audit_context, expense)
-        audit_context[:subject_user_id] = expense.user_id&.to_s
-        Success(expense)
-      end
 
       def validate_update(expense, description, amount, start_date, end_date, participants, participant_ids)
         has_description = description && !description.empty?

@@ -23,7 +23,7 @@ module Expenses
         ) do
           Success()
             .bind { Expense.find_result(expense_id) }
-            .bind { |expense| record_subject(audit_context, expense) }
+            .bind { |expense| Auditable.record_subject_user_id(audit_context, expense) }
             .bind { |expense| load_event(expense) }
             .bind { |expense, event| ExpensePolicy.enforce(:revert, expense, membership: membership, event: event).fmap { [expense, event] } }
             .bind { |expense, event| check_event_ready(expense, event) }
@@ -32,11 +32,6 @@ module Expenses
       end
 
       private
-
-      def record_subject(audit_context, expense)
-        audit_context[:subject_user_id] = expense.user_id&.to_s
-        Success(expense)
-      end
 
       def load_event(expense)
         event = Event.find(expense.event_id)
