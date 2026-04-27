@@ -108,6 +108,24 @@ describe('usePermission', () => {
       expect('message' in result && result.message).toContain('receiving')
     })
 
+    it('returns modal for not_tip — tells the user only the most recent settlement is deletable', () => {
+      const permissions: Record<string, Permission> = {
+        delete: { allowed: false, reason: 'not_tip' },
+      }
+      const result = permissionUx(permissions, 'delete')
+      expect(result.behavior).toBe('modal')
+      expect('message' in result && result.message).toContain('most recent')
+    })
+
+    it('returns modal for superseded — tells the user the transfer was rolled into a follow-up', () => {
+      const permissions: Record<string, Permission> = {
+        mark_paid: { allowed: false, reason: 'superseded' },
+      }
+      const result = permissionUx(permissions, 'mark_paid')
+      expect(result.behavior).toBe('modal')
+      expect('message' in result && result.message).toContain('follow-up')
+    })
+
     it('returns hidden when permissions undefined', () => {
       expect(permissionUx(undefined, 'edit')).toEqual({ behavior: 'hidden' })
     })
