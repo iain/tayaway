@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import FormInput from '@/components/form/FormInput.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
 
 defineProps<{
   disabled: boolean
+  payerOptions?: { value: string; label: string }[]
 }>()
 
 const description = defineModel<string>('description', { required: true })
 const amount = defineModel<string>('amount', { required: true })
+const payerUserId = defineModel<string>('payerUserId')
 
 const amountError = ref('')
 
@@ -59,5 +62,18 @@ function formatAmount(): void {
         {{ amountError }}
       </p>
     </div>
+
+    <FormSelect
+      v-if="
+        payerOptions && payerOptions.length > 1 && payerUserId !== undefined
+      "
+      id="expense-payer"
+      :model-value="payerUserId"
+      label="Paid by"
+      :options="payerOptions"
+      :disabled="disabled"
+      data-testid="expense-payer-select"
+      @update:model-value="payerUserId = $event"
+    />
   </div>
 </template>

@@ -6,6 +6,8 @@ import {
   createEventWithPoll,
   createResolvedEvent,
   getObjectsByType,
+  getWorkspaceId,
+  addMemberToWorkspace,
   PAGE_LOAD_TIMEOUT,
   newApiContext,
 } from '../helpers'
@@ -170,6 +172,77 @@ test.describe('RSVP Feature', () => {
         'aria-pressed',
         'true'
       )
+    })
+  })
+
+  test.describe('On-behalf-of RSVP actions', () => {
+    const OTHER_EMAIL = 'e2e-rsvp-other@example.com'
+    const OTHER_NAME = 'E2E RSVP Other'
+
+    let otherUserId: string
+    let eventId: string
+
+    test.beforeAll(async ({ playwright }) => {
+      const workspaceId = await getWorkspaceId(apiContext)
+
+      const otherContext = await newApiContext(playwright)
+      ;({ userId: otherUserId } = await getTestSession(
+        otherContext,
+        OTHER_EMAIL,
+        OTHER_NAME
+      ))
+      await otherContext.dispose()
+
+      await addMemberToWorkspace(apiContext, workspaceId, OTHER_EMAIL)
+      ;({ eventId } = await createResolvedEvent(apiContext, 'On-behalf RSVP'))
+    })
+
+    test('a member can file an RSVP for another member from the kebab menu', async ({
+      page,
+    }) => {
+      await setupAuthenticatedPage(page, sessionToken)
+      await page.goto(`/events/${eventId}/rsvp`)
+      await expect(page.getByTestId('rsvp-section')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+
+      const otherRow = page.locator('li').filter({ hasText: OTHER_NAME })
+      await expect(otherRow).toBeVisible()
+
+      await otherRow.getByTestId('rsvp-other-menu').click()
+
+      const [postResponse] = await Promise.all([
+        page.waitForResponse(
+          (resp) =>
+            resp.url().includes(`/api/events/${eventId}/rsvps`) &&
+            resp.request().method() === 'POST'
+        ),
+        page.getByRole('menuitem', { name: 'Mark as attending' }).click(),
+      ])
+      expect(postResponse.ok()).toBeTruthy()
+
+      // Expect the row to move into the Attending list
+      await expect(
+        page
+          .getByRole('heading', { name: /^Attending/ })
+          .locator('xpath=following-sibling::ul[1]')
+          .filter({ hasText: OTHER_NAME })
+      ).toBeVisible()
+
+      // Verify backend recorded the actor as filer and the subject as the other user
+      const rsvpsResp = await apiContext.get(
+        `${API_BASE}/api/events/${eventId}/rsvps`
+      )
+      const rsvpsBody = await rsvpsResp.json()
+      const rsvps = getObjectsByType(rsvpsBody.objects, 'rsvp') as Array<{
+        userId: string
+        attending: boolean
+        createdByUserId: string | null
+      }>
+      const onBehalf = rsvps.find((r) => r.userId === otherUserId)
+      expect(onBehalf).toBeDefined()
+      expect(onBehalf!.attending).toBe(true)
+      expect(onBehalf!.createdByUserId).not.toBe(otherUserId)
     })
   })
 

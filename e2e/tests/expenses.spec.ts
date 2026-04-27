@@ -1015,6 +1015,70 @@ test.describe('Expenses Feature', () => {
       await secondContext.dispose()
     })
 
+    test('can file an expense on behalf of another attending member', async ({
+      page,
+    }) => {
+      await setupAuthenticatedPage(page, sessionToken)
+      await page.goto(`/events/${eventId}/expenses`)
+
+      await expect(
+        page.getByRole('button', { name: 'Add expense' })
+      ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
+      await page.getByRole('button', { name: 'Add expense' }).click()
+
+      await expect(page.getByTestId('expense-description-input')).toBeVisible()
+      await page
+        .getByTestId('expense-description-input')
+        .fill('Lunch (filed for Bob)')
+      await page.getByTestId('expense-amount-input').fill('17.50')
+
+      // Pick the second user as payer
+      await page
+        .getByTestId('expense-payer-select')
+        .locator('select')
+        .selectOption({ label: SECOND_NAME })
+
+      await page.getByTestId('submit-button').click()
+      await expect(page.getByTestId('toggle-date-mode')).toBeVisible()
+      await page.getByTestId('submit-button').click()
+      await expect(page.getByTestId('toggle-people-mode')).toBeVisible()
+
+      const [createResponse] = await Promise.all([
+        page.waitForResponse(
+          (resp) =>
+            resp.url().includes('/api/expenses') &&
+            resp.request().method() === 'POST'
+        ),
+        page.getByTestId('submit-button').click(),
+      ])
+      expect(createResponse.status()).toBe(201)
+
+      // Server-side: subject is the second user, filer is the actor
+      const expensesResp = await apiContext.get(
+        `${API_BASE}/api/expenses?event_id=${eventId}`
+      )
+      const expensesBody = await expensesResp.json()
+      const expense = expensesBody.objects.find(
+        (o: {
+          objectType: string
+          description: string
+          userId: string
+          createdByUserId: string | null
+        }) =>
+          o.objectType === 'expense' &&
+          o.description === 'Lunch (filed for Bob)'
+      )
+      expect(expense).toBeDefined()
+      expect(expense.userId).toBe(secondUserId)
+      expect(expense.createdByUserId).not.toBe(secondUserId)
+
+      // UI: row should show "filed by" attribution
+      const row = page
+        .getByTestId('expense-row')
+        .filter({ hasText: 'Lunch (filed for Bob)' })
+      await expect(row.getByTestId('filed-by')).toBeVisible()
+    })
+
     test('can create an expense with specific participants via the wizard', async ({
       page,
     }) => {

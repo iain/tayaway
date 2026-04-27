@@ -12,6 +12,7 @@ import {
   ChevronRightIcon,
 } from '@heroicons/vue/24/outline'
 import { useRsvpsStore } from '@/stores/rsvps'
+import RsvpActionsMenu from '@/components/events/RsvpActionsMenu.vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import type { HydratedEvent } from '@/composables/useHydratedEvent'
 import { useCalendar } from '@/composables/useCalendar'
@@ -43,11 +44,22 @@ function filedByLabel(rsvp: {
   return m?.name || m?.email || 'Unknown'
 }
 
+function memberName(userId: string): string {
+  const m = pool.findBy('member', 'userId', userId)
+  return m?.name || m?.email || 'Unknown'
+}
+
 const showPartialPicker = ref(false)
-const showExpensesDialog = ref(false)
 const partialStartDate = ref<string | null>(null)
 const partialEndDate = ref<string | null>(null)
 const hoverDate = ref<string | null>(null)
+// Subject of the partial-date picker. `null` means current user (the
+// existing self-RSVP flow); set to another user id when an admin is filing
+// partial dates on someone else's behalf.
+const partialPickerUserId = ref<string | null>(null)
+// Whose decline got blocked by existing expenses, if anyone. `null` means
+// current user; a string is another member's name.
+const declineBlockedName = ref<string | null | undefined>(undefined)
 
 // Calendar navigation — start on the month of the event start date
 const calYear = ref(new Date().getFullYear())
@@ -64,15 +76,6 @@ const notAttending = computed(() =>
   props.event.rsvps.filter((r) => !r.attending)
 )
 
-const userHasExpenses = computed(() => {
-  if (!props.currentUserId) return false
-  return pool
-    .getAll('expense')
-    .some(
-      (e) => e.eventId === props.event.id && e.userId === props.currentUserId
-    )
-})
-
 const noResponse = computed(() => {
   if (!props.event.workspace) return []
   const rsvpUserIds = new Set(props.event.rsvps.map((r) => r.userId))
@@ -87,20 +90,74 @@ async function handleAttend(): Promise<void> {
   }
 }
 
+function userHasExpensesFor(userId: string): boolean {
+  return pool
+    .getAll('expense')
+    .some((e) => e.eventId === props.event.id && e.userId === userId)
+}
+
 async function handleDecline(): Promise<void> {
-  if (userHasExpenses.value) {
-    showExpensesDialog.value = true
+  await setRsvpFor(props.currentUserId!, false)
+}
+
+async function setRsvpFor(userId: string, attending: boolean): Promise<void> {
+  if (!attending && userHasExpensesFor(userId)) {
+    declineBlockedName.value =
+      userId === props.currentUserId ? null : memberName(userId)
     return
   }
   try {
-    await rsvpsStore.submitRsvp(props.event.id, false)
+    await rsvpsStore.submitRsvp(
+      props.event.id,
+      attending,
+      null,
+      null,
+      userId === props.currentUserId ? undefined : userId
+    )
   } catch {
     // Error handled by store
   }
 }
 
-function openPartialPicker(): void {
-  const rsvp = currentUserRsvp.value
+function findRsvpFor(userId: string) {
+  return props.event.rsvps.find((r) => r.userId === userId)
+}
+
+interface RsvpAction {
+  label: string
+  danger?: boolean
+}
+
+function actionsFor(
+  rsvp: { attending: boolean; startDate: string | null } | null
+): RsvpAction[] {
+  if (rsvp == null) {
+    return [
+      { label: 'Mark as attending' },
+      { label: 'Mark as not attending', danger: true },
+    ]
+  }
+  if (rsvp.attending) {
+    return [
+      { label: rsvp.startDate ? 'Change dates' : 'Set partial dates' },
+      { label: 'Mark as not attending', danger: true },
+    ]
+  }
+  return [{ label: 'Mark as attending' }]
+}
+
+function handlePick(userId: string, label: string): void {
+  if (label === 'Mark as attending') setRsvpFor(userId, true)
+  else if (label === 'Mark as not attending') setRsvpFor(userId, false)
+  else if (label === 'Set partial dates' || label === 'Change dates')
+    openPartialPicker(userId)
+}
+
+function openPartialPicker(forUserId?: string): void {
+  const targetUserId = forUserId ?? props.currentUserId ?? null
+  partialPickerUserId.value =
+    targetUserId === props.currentUserId ? null : targetUserId
+  const rsvp = targetUserId == null ? undefined : findRsvpFor(targetUserId)
   partialStartDate.value = rsvp?.startDate ?? null
   partialEndDate.value = rsvp?.endDate ?? null
   hoverDate.value = null
@@ -165,6 +222,12 @@ const canSavePartial = computed(
   () => !!partialStartDate.value && !!partialEndDate.value
 )
 
+const partialPickerTitle = computed(() =>
+  partialPickerUserId.value == null
+    ? 'Your attendance dates'
+    : `Attendance dates for ${memberName(partialPickerUserId.value)}`
+)
+
 async function handleSavePartialDates(): Promise<void> {
   if (!partialStartDate.value || !partialEndDate.value) return
   try {
@@ -172,7 +235,8 @@ async function handleSavePartialDates(): Promise<void> {
       props.event.id,
       true,
       partialStartDate.value,
-      partialEndDate.value
+      partialEndDate.value,
+      partialPickerUserId.value ?? undefined
     )
     showPartialPicker.value = false
   } catch {
@@ -182,12 +246,23 @@ async function handleSavePartialDates(): Promise<void> {
 
 async function handleClearPartialDates(): Promise<void> {
   try {
-    await rsvpsStore.submitRsvp(props.event.id, true)
+    await rsvpsStore.submitRsvp(
+      props.event.id,
+      true,
+      null,
+      null,
+      partialPickerUserId.value ?? undefined
+    )
     showPartialPicker.value = false
   } catch {
     // Error handled by store
   }
 }
+
+const partialPickerRsvp = computed(() => {
+  if (partialPickerUserId.value == null) return currentUserRsvp.value
+  return findRsvpFor(partialPickerUserId.value)
+})
 </script>
 
 <template>
@@ -255,67 +330,64 @@ async function handleClearPartialDates(): Promise<void> {
         >
           {{ currentUserRsvp.startDate ? 'Change dates' : 'Set partial dates' }}
         </TextButton>
-
-        <!-- Partial date picker modal -->
-        <BaseModal
-          :open="showPartialPicker"
-          title="Your attendance dates"
-          size="sm"
-          @close="showPartialPicker = false"
-        >
-          <div class="mb-4 text-sm text-gray-500 dark:text-stone-400">
-            {{ partialSelectionText }}
-          </div>
-
-          <div class="mb-4 flex items-center justify-between">
-            <IconButton label="Previous month" @click="navigatePrev">
-              <ChevronLeftIcon class="size-5" />
-            </IconButton>
-            <IconButton label="Next month" @click="navigateNext">
-              <ChevronRightIcon class="size-5" />
-            </IconButton>
-          </div>
-
-          <CalendarMonth
-            :year="calYear"
-            :month="calMonth"
-            :selected-start="partialStartDate"
-            :selected-end="partialEndDate"
-            :hover-date="hoverDate"
-            :min-date="event.startDate ?? undefined"
-            :max-date="event.endDate ?? undefined"
-            @select="handleCalendarSelect"
-            @hover="hoverDate = $event"
-          />
-
-          <div class="mt-6 flex items-center justify-between">
-            <div>
-              <TextButton
-                v-if="currentUserRsvp?.startDate"
-                variant="secondary"
-                @click="handleClearPartialDates"
-              >
-                Attend full event
-              </TextButton>
-            </div>
-            <div class="flex items-center gap-3">
-              <TextButton
-                variant="secondary"
-                @click="showPartialPicker = false"
-              >
-                Cancel
-              </TextButton>
-              <AppButton
-                :disabled="!canSavePartial"
-                @click="handleSavePartialDates"
-              >
-                Save
-              </AppButton>
-            </div>
-          </div>
-        </BaseModal>
       </div>
     </div>
+
+    <!-- Partial date picker modal — shared by self-RSVP and on-behalf flows -->
+    <BaseModal
+      :open="showPartialPicker"
+      :title="partialPickerTitle"
+      size="sm"
+      @close="showPartialPicker = false"
+    >
+      <div class="mb-4 text-sm text-gray-500 dark:text-stone-400">
+        {{ partialSelectionText }}
+      </div>
+
+      <div class="mb-4 flex items-center justify-between">
+        <IconButton label="Previous month" @click="navigatePrev">
+          <ChevronLeftIcon class="size-5" />
+        </IconButton>
+        <IconButton label="Next month" @click="navigateNext">
+          <ChevronRightIcon class="size-5" />
+        </IconButton>
+      </div>
+
+      <CalendarMonth
+        :year="calYear"
+        :month="calMonth"
+        :selected-start="partialStartDate"
+        :selected-end="partialEndDate"
+        :hover-date="hoverDate"
+        :min-date="event.startDate ?? undefined"
+        :max-date="event.endDate ?? undefined"
+        @select="handleCalendarSelect"
+        @hover="hoverDate = $event"
+      />
+
+      <div class="mt-6 flex items-center justify-between">
+        <div>
+          <TextButton
+            v-if="partialPickerRsvp?.startDate"
+            variant="secondary"
+            @click="handleClearPartialDates"
+          >
+            Attend full event
+          </TextButton>
+        </div>
+        <div class="flex items-center gap-3">
+          <TextButton variant="secondary" @click="showPartialPicker = false">
+            Cancel
+          </TextButton>
+          <AppButton
+            :disabled="!canSavePartial"
+            @click="handleSavePartialDates"
+          >
+            Save
+          </AppButton>
+        </div>
+      </div>
+    </BaseModal>
 
     <!-- Attendee lists -->
     <div class="space-y-4">
@@ -337,7 +409,7 @@ async function handleClearPartialDates(): Promise<void> {
                 class="size-4 text-green-600 dark:text-green-400"
               />
             </div>
-            <div>
+            <div class="min-w-0 flex-1">
               <span class="text-gray-900 dark:text-white">
                 {{ rsvp.member?.name || rsvp.member?.email || 'Unknown' }}
                 <span
@@ -364,6 +436,12 @@ async function handleClearPartialDates(): Promise<void> {
                 />
               </p>
             </div>
+            <RsvpActionsMenu
+              v-if="rsvp.userId !== currentUserId"
+              :menu-label="`Manage RSVP for ${rsvp.member?.name ?? 'member'}`"
+              :actions="actionsFor(rsvp)"
+              @pick="handlePick(rsvp.userId, $event)"
+            />
           </li>
         </ul>
       </div>
@@ -384,7 +462,7 @@ async function handleClearPartialDates(): Promise<void> {
             >
               <XCircleIcon class="size-4 text-red-600 dark:text-red-400" />
             </div>
-            <span class="text-gray-900 dark:text-white">
+            <span class="min-w-0 flex-1 text-gray-900 dark:text-white">
               {{ rsvp.member?.name || rsvp.member?.email || 'Unknown' }}
               <span
                 v-if="rsvp.userId === currentUserId"
@@ -400,6 +478,12 @@ async function handleClearPartialDates(): Promise<void> {
                 (RSVP'd by {{ filedByLabel(rsvp) }})
               </span>
             </span>
+            <RsvpActionsMenu
+              v-if="rsvp.userId !== currentUserId"
+              :menu-label="`Manage RSVP for ${rsvp.member?.name ?? 'member'}`"
+              :actions="actionsFor(rsvp)"
+              @pick="handlePick(rsvp.userId, $event)"
+            />
           </li>
         </ul>
       </div>
@@ -420,7 +504,7 @@ async function handleClearPartialDates(): Promise<void> {
             >
               <UserIcon class="size-4 text-gray-500 dark:text-stone-400" />
             </div>
-            <span class="text-gray-900 dark:text-white">
+            <span class="min-w-0 flex-1 text-gray-900 dark:text-white">
               {{ member.name || member.email || 'Unknown' }}
               <span
                 v-if="member.userId === currentUserId"
@@ -429,6 +513,12 @@ async function handleClearPartialDates(): Promise<void> {
                 (you)
               </span>
             </span>
+            <RsvpActionsMenu
+              v-if="member.userId !== currentUserId"
+              :menu-label="`Manage RSVP for ${member.name ?? 'member'}`"
+              :actions="actionsFor(null)"
+              @pick="handlePick(member.userId, $event)"
+            />
           </li>
         </ul>
       </div>
@@ -444,23 +534,29 @@ async function handleClearPartialDates(): Promise<void> {
     </div>
 
     <BaseModal
-      :open="showExpensesDialog"
+      :open="declineBlockedName !== undefined"
       title="Cannot decline"
       size="sm"
-      @close="showExpensesDialog = false"
+      @close="declineBlockedName = undefined"
     >
       <p class="text-sm text-gray-600 dark:text-stone-400">
-        You have expenses on this event. Delete your expenses before changing
-        your RSVP to not attending.
+        <template v-if="declineBlockedName === null">
+          You have expenses on this event. Delete your expenses before changing
+          your RSVP to not attending.
+        </template>
+        <template v-else>
+          {{ declineBlockedName }} has expenses on this event. Delete those
+          expenses before marking them as not attending.
+        </template>
       </p>
       <div class="mt-6 flex justify-end gap-3">
-        <TextButton variant="secondary" @click="showExpensesDialog = false">
+        <TextButton variant="secondary" @click="declineBlockedName = undefined">
           Cancel
         </TextButton>
         <AppButton
           :to="`/events/${event.id}/expenses`"
           autofocus
-          @click="showExpensesDialog = false"
+          @click="declineBlockedName = undefined"
         >
           Go to Expenses
         </AppButton>
