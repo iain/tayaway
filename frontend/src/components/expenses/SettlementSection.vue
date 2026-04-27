@@ -71,7 +71,7 @@ const hasExpenses = computed(
     0
 )
 
-function canDeleteSettlement(settlement: PoolSettlement): boolean {
+function showDeleteSettlement(settlement: PoolSettlement): boolean {
   // Render the button for anything that isn't outright hidden — `modal`
   // surfaces an explanation when the user clicks (e.g. older settlements
   // with `:not_tip`).
@@ -404,7 +404,7 @@ async function handlePaidClick(
             </AppBadge>
           </div>
           <IconButton
-            v-if="canDeleteSettlement(settlement)"
+            v-if="showDeleteSettlement(settlement)"
             variant="danger"
             label="Delete settlement"
             data-testid="delete-settlement-button"
