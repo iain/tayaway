@@ -130,85 +130,80 @@ respectively — install whichever apt complained was missing, then
 
 ## 4. Postgres role
 
-The intent: `tayaway` keeps full read/write/DDL access on the contents of
-`tayaway_production` (so migrations work) but loses any privilege that
-would let it drop the database itself.
+The app authenticates to Postgres via Unix-socket peer auth — the
+`DATABASE_URL` in `.env.production` looks like
+`postgres://%2Fvar%2Frun%2Fpostgresql/tayaway_production`, with no user
+or password component. So whichever OS user runs Falcon, that's the
+Postgres role it connects as. Today that's `ubuntu`; after the cutover
+it's `tayaway`. The role rename is what makes the swap atomic.
 
 Connect as the postgres superuser: `sudo -u postgres psql`.
 
+First, confirm the current state — what role owns the database, and
+what relevant roles already exist:
+
 ```sql
--- Inspect current state — keep this output, it's your rollback reference.
-SELECT rolname, rolsuper, rolcreatedb, rolcreaterole, rolreplication
-FROM pg_roles WHERE rolname = 'tayaway';
-SELECT datname, pg_get_userbyid(datdba) AS owner
-FROM pg_database WHERE datname = 'tayaway_production';
+SELECT 'database' AS kind, datname AS name, pg_get_userbyid(datdba) AS owner
+FROM pg_database WHERE datname = 'tayaway_production'
+UNION ALL
+SELECT 'role', rolname, NULL FROM pg_roles
+WHERE rolname IN ('ubuntu', 'tayaway', 'postgres');
 ```
 
-If the role doesn't exist yet, create it (use the password already in
-`/var/www/tayaway/shared/backend/.env.production`):
+The expected state — what the rest of this section assumes — is that
+the database is owned by `ubuntu`, role `ubuntu` exists, role `tayaway`
+does not. If that's not what you see, stop and reason through it before
+continuing.
+
+Now lock in the safety property **without renaming**, while the running
+ubuntu falcon keeps serving traffic. None of these statements affect
+existing connections — connection-level metadata isn't re-checked, and
+ownership of objects the role still effectively controls is unchanged:
 
 ```sql
-CREATE ROLE tayaway WITH LOGIN PASSWORD '<password from .env.production>'
-  NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION INHERIT;
-```
+-- Strip dangerous attributes from the role.
+ALTER ROLE ubuntu NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION;
 
-If it exists, strip any dangerous attributes:
-
-```sql
-ALTER ROLE tayaway NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION;
-```
-
-Move database ownership off `tayaway` if it currently sits there. **This
-is the line that takes away DROP DATABASE** — without owner status and
-without superuser, `DROP DATABASE` is rejected:
-
-```sql
+-- Move database ownership off the role the app connects as. After this,
+-- DROP DATABASE requires either superuser or being the database owner —
+-- and we've just removed both.
 ALTER DATABASE tayaway_production OWNER TO postgres;
-GRANT CONNECT ON DATABASE tayaway_production TO tayaway;
 ```
 
-Inside the database, make sure `tayaway` can still create and alter
-objects (this is what migrations need):
-
-```sql
-\c tayaway_production
-GRANT USAGE, CREATE ON SCHEMA public TO tayaway;
-
--- If any existing tables/sequences are owned by postgres or another role,
--- hand them to tayaway so future migrations can ALTER/DROP them.
-REASSIGN OWNED BY postgres TO tayaway;
-```
-
-Verify the constraint with a read-only catalog assertion. Postgres allows
-`DROP DATABASE` only for the database owner or a superuser, so confirming
-that `tayaway` is neither is logically equivalent to confirming it cannot
-drop the database — without ever issuing the destructive statement:
+Verify the constraint with a read-only catalog assertion. Postgres
+allows `DROP DATABASE` only for the database owner or a superuser, so
+confirming the app's role is neither is logically equivalent to
+confirming it cannot drop the database — without ever issuing the
+destructive statement:
 
 ```sql
 SELECT
   CASE
-    WHEN (SELECT rolsuper FROM pg_roles WHERE rolname = 'tayaway')
-      THEN 'FAIL: tayaway is a superuser'
+    WHEN (SELECT rolsuper FROM pg_roles WHERE rolname = 'ubuntu')
+      THEN 'FAIL: ubuntu is a superuser'
     WHEN (SELECT pg_get_userbyid(datdba) FROM pg_database
-          WHERE datname = 'tayaway_production') = 'tayaway'
-      THEN 'FAIL: tayaway owns tayaway_production'
-    ELSE 'OK: tayaway cannot drop tayaway_production'
+          WHERE datname = 'tayaway_production') = 'ubuntu'
+      THEN 'FAIL: ubuntu owns tayaway_production'
+    ELSE 'OK: ubuntu cannot drop tayaway_production'
   END AS dropdb_check;
 ```
 
-`OK: tayaway cannot drop tayaway_production` is the success condition.
-Anything else means stop and re-check the previous steps before continuing
-to the cutover — do **not** issue a real `DROP DATABASE` to "verify" the
-restriction.
+`OK: ubuntu cannot drop tayaway_production` is the success condition.
+Anything else means stop and re-check the previous steps before
+continuing — do **not** issue a real `DROP DATABASE` to "verify" the
+restriction. The same property survives the rename in §6.
 
-Finally, confirm `pg_hba.conf` accepts the role over TCP — the backup
-script connects via `DATABASE_URL` (TCP localhost) rather than peer auth,
-so this auth path has to work end-to-end. As `tayaway`:
+Finally, sanity-check that peer auth and the socket URL work end-to-end
+as the new OS user. The role doesn't exist under that name yet, so
+expect a peer-auth failure here — that's the diagnostic, not a problem:
 
 ```sh
-psql "$(grep -E '^DATABASE_URL=' /var/www/tayaway/shared/backend/.env.production \
-        | cut -d= -f2- | tr -d '"'"'")" -c 'SELECT 1;'
-# expected: a single-row result, no auth errors
+sudo -u tayaway psql "$(grep -E '^DATABASE_URL=' \
+  /var/www/tayaway/shared/backend/.env.production | cut -d= -f2-)" \
+  -c 'SELECT 1;' || true
+# expected: FATAL: role "tayaway" does not exist
+# anything else (e.g. socket missing, connection refused) means
+# pg_hba.conf or the socket directory needs attention before §6.
 ```
 
 ## 5. File ownership
@@ -241,29 +236,41 @@ ls -lh /var/www/tayaway/shared/backups/ | tail -3
 
 ## 6. Cutover (downtime window)
 
-The cutover is a normal full deploy — the first one running as `tayaway`.
-That exercises every Capistrano task under the new user (`mise install`,
-`bundle install`, frontend build, migrations, unit render, restart) and
-catches any remaining permission gap inside the deploy flow rather than
-afterwards. A `falcon:install_unit`-only swap would skip Bundler bin-stub
-regeneration and is only safe if §3 was completed exactly.
+The cutover has three moves that have to happen in order: stop the
+ubuntu falcon, rename the Postgres role atomically, then deploy as the
+new user. Renaming with falcon running would break its peer-auth
+mid-flight (new connections would fail with "role 'ubuntu' does not
+exist"); renaming after the deploy would mean tayaway-falcon comes up
+unable to connect. So: stop, rename, deploy.
 
-Dry-run first to validate paths and SSH:
+Dry-run from your laptop first to validate paths and SSH:
 
 ```sh
 bundle exec cap production deploy:check
 ```
 
-Then the real cutover from your laptop:
+Then on the server, stop ubuntu's falcon and rename the role:
+
+```sh
+sudo systemctl stop tayaway-falcon
+sudo -u postgres psql -c 'ALTER ROLE ubuntu RENAME TO tayaway;'
+```
+
+The rename is instant and atomic — every grant and every ownership
+relation goes with it (Postgres tracks them by OID, not by name). The
+previous catalog-assertion in §4 still holds, just with the role under
+its new name. From the laptop, deploy:
 
 ```sh
 bundle exec cap production deploy
 ```
 
-Capistrano connects as `tayaway`, runs migrations against the restricted
-Postgres role (which now has table-level DDL but no DROP DATABASE),
-re-renders the systemd unit with `User=tayaway`, and restarts Falcon.
-The downtime window is the `systemctl restart` itself — a few seconds.
+Capistrano connects as `tayaway`, peer-authenticates to the renamed
+Postgres role, runs migrations (the role still owns the tables), runs
+`mise install` / `bundle install` / frontend build, re-renders the
+systemd unit with `User=tayaway`, and starts Falcon. The downtime
+window is from the `systemctl stop` above through the deploy's final
+`falcon:restart` — a couple of minutes.
 
 Verify on the server:
 
@@ -272,6 +279,16 @@ sudo systemctl status tayaway-falcon       # active (running)
 ps -o user= -p "$(systemctl show -p MainPID --value tayaway-falcon)"   # → tayaway
 curl -sS http://127.0.0.1:9292/api/health  # → {"status":"healthy"}
 sudo journalctl -u tayaway-falcon -n 100 --no-pager
+sudo -u postgres psql -c "
+  SELECT
+    CASE
+      WHEN (SELECT rolsuper FROM pg_roles WHERE rolname = 'tayaway')
+        THEN 'FAIL: tayaway is a superuser'
+      WHEN (SELECT pg_get_userbyid(datdba) FROM pg_database
+            WHERE datname = 'tayaway_production') = 'tayaway'
+        THEN 'FAIL: tayaway owns tayaway_production'
+      ELSE 'OK: tayaway cannot drop tayaway_production'
+    END;"
 ```
 
 If any of these don't look right, see the rollback section.
@@ -312,27 +329,28 @@ more. Removing it is a separate cleanup.
 
 Failure modes split by where the cutover broke:
 
-**During `cap production deploy`, before `falcon:restart`** — the old
-ubuntu-owned Falcon is still running and serving traffic. Investigate
-the failed task, fix, and re-run. No traffic impact.
+**Before §6's `systemctl stop`** — nothing has been swung yet. The §4
+changes (role attributes, database owner) don't affect the running
+app's connections, so just back them out at leisure:
+`ALTER DATABASE tayaway_production OWNER TO ubuntu;` and `ALTER ROLE
+ubuntu SUPERUSER;` (if that's what it was — keep §4's "current state"
+output as the reference).
 
-**`falcon:restart` ran but the new tayaway-owned Falcon won't stay up**
-(see `journalctl -u tayaway-falcon`). Roll the systemd side back without
-touching the Postgres role:
+**§6's role rename succeeded but the deploy fails** — the ubuntu OS
+user can no longer peer-auth to Postgres, so its falcon can't come back
+up as it was. Reverse the rename and bring ubuntu's falcon back:
 
 ```sh
-# On the server: hand files back to ubuntu and edit the unit in place.
+sudo -u postgres psql -c 'ALTER ROLE tayaway RENAME TO ubuntu;'
 sudo chown -R ubuntu:ubuntu /var/www/tayaway
 sudo sed -i 's/^User=tayaway$/User=ubuntu/; s/^Group=tayaway$/Group=ubuntu/; s|/home/tayaway/|/home/ubuntu/|g' /etc/systemd/system/tayaway-falcon.service
 sudo systemctl daemon-reload
-sudo systemctl restart tayaway-falcon
+sudo systemctl start tayaway-falcon
 ```
 
-Then locally `git revert <commit>` so the next deploy doesn't reapply the
-change.
+Then locally `git revert <commit>` so the next deploy doesn't reapply
+the change.
 
-**The Postgres role change needs reverting** (rare — none of the changes
-in §4 affect a running app's connections). `ALTER DATABASE
-tayaway_production OWNER TO tayaway;` puts ownership back, and `ALTER
-ROLE tayaway SUPERUSER;` (if that's what it was before) restores the
-previous attributes.
+**Tayaway falcon started but is misbehaving at runtime** — same recovery
+as above (rename role back, chown back, edit unit, restart). Investigate
+the misbehaviour out of band before re-attempting the cutover.

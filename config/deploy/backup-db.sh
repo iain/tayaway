@@ -2,9 +2,10 @@
 # Daily encrypted PostgreSQL backup for Tayaway.
 #
 # Runs as the `tayaway` system user (see doc/deploy-user.md). pg_dump
-# connects via DATABASE_URL from the app's .env.production, so the same
-# restricted Postgres role used at runtime drives the backup — no peer-auth
-# dependency on a privileged Linux user.
+# connects via the DATABASE_URL in the app's .env.production — a
+# Unix-socket peer-auth URL — so the OS user invoking this script
+# (tayaway, via cron) is the Postgres role it dumps as. Same connection
+# the running app uses, no separate credentials to manage.
 #
 # Setup (one-time, on the server, as the tayaway user):
 #   1. Generate a backup encryption key:
