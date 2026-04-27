@@ -14,6 +14,7 @@ function makeRsvp(
     objectType: 'rsvp',
     eventId: 'evt-1',
     userId: 'user-1',
+    createdByUserId: null,
     attending: true,
     startDate: null,
     endDate: null,

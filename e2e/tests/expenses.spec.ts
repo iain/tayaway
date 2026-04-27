@@ -309,7 +309,7 @@ test.describe('Expenses Feature', () => {
     })
   })
 
-  test.describe('Expenses - Creator-only enforcement', () => {
+  test.describe('Expenses - on-behalf-of enforcement', () => {
     let ownerContext: APIRequestContext
     let otherContext: APIRequestContext
     let eventId: string
@@ -362,24 +362,37 @@ test.describe('Expenses Feature', () => {
       await otherContext.dispose()
     })
 
-    test('non-creator cannot update another user expense', async () => {
+    test('another workspace member can update an expense on the owner behalf', async () => {
       const response = await otherContext.put(
         `${API_BASE}/api/expenses/${expenseId}`,
-        { data: { description: 'Hacked' } }
+        { data: { description: 'Corrected by other' } }
       )
-      expect(response.status()).toBe(403)
+      expect(response.ok()).toBeTruthy()
     })
 
-    test('non-creator cannot delete another user expense', async () => {
+    test('another workspace member can delete an expense on the owner behalf', async () => {
       const response = await otherContext.delete(
         `${API_BASE}/api/expenses/${expenseId}`
       )
-      expect(response.status()).toBe(403)
+      expect(response.ok()).toBeTruthy()
     })
 
     test('creator can update their own expense', async () => {
+      // Recreate the expense since the previous test may have deleted it.
+      const recreate = await ownerContext.post(`${API_BASE}/api/expenses`, {
+        data: {
+          event_id: eventId,
+          description: 'Taxi',
+          amount: 30,
+          start_date: DEFAULT_START,
+          end_date: DEFAULT_END,
+        },
+      })
+      const recreateBody = await recreate.json()
+      const recreatedId = getObjectByType(recreateBody.objects, 'expense')!.id
+
       const response = await ownerContext.put(
-        `${API_BASE}/api/expenses/${expenseId}`,
+        `${API_BASE}/api/expenses/${recreatedId}`,
         { data: { description: 'Updated Taxi' } }
       )
       expect(response.ok()).toBeTruthy()
