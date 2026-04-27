@@ -72,22 +72,22 @@ describe('usePermission', () => {
       })
     })
 
-    it('returns hidden for settled — revert is the path, not edit', () => {
+    it('returns modal for settled — points the user at Revert', () => {
       const permissions: Record<string, Permission> = {
         edit: { allowed: false, reason: 'settled' },
       }
-      expect(permissionUx(permissions, 'edit')).toEqual({
-        behavior: 'hidden',
-      })
+      const result = permissionUx(permissions, 'edit')
+      expect(result.behavior).toBe('modal')
+      expect('message' in result && result.message).toContain('Revert')
     })
 
-    it('returns hidden for is_revert — reverts are immutable', () => {
+    it('returns modal for is_revert — points the user at filing a fresh expense', () => {
       const permissions: Record<string, Permission> = {
         edit: { allowed: false, reason: 'is_revert' },
       }
-      expect(permissionUx(permissions, 'edit')).toEqual({
-        behavior: 'hidden',
-      })
+      const result = permissionUx(permissions, 'edit')
+      expect(result.behavior).toBe('modal')
+      expect('message' in result && result.message).toContain('fresh expense')
     })
 
     it('returns modal for has_expenses', () => {

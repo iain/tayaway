@@ -41,11 +41,7 @@ const HIDE_REASONS = new Set([
   'cannot_change_owner',
   'not_settled',
   'revert_of_revert',
-  'is_revert',
-  'settled',
-  'superseded',
   'already_paid',
-  'not_tip',
 ])
 
 // Reasons that should show a disabled element with a tooltip — the user is
@@ -61,6 +57,12 @@ const MODAL_REASONS: Record<string, string> = {
     'Only the person receiving the money can mark a transfer as paid.',
   locked_in_followup:
     'A follow-up settlement was issued treating this transfer as paid. Delete the follow-up first if you really need to undo it.',
+  settled:
+    'This expense is locked into a settlement. Use Revert to offset it on the next settlement.',
+  is_revert:
+    'This is a revert entry. To change your mind, file a fresh expense instead.',
+  not_tip: 'Only the most recent settlement can be deleted.',
+  superseded: 'This transfer was rolled into a follow-up settlement.',
 }
 
 export function permissionUx(
