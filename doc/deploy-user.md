@@ -189,6 +189,15 @@ ls -l /var/www/tayaway/shared/backend/.env.production
 sudo chmod 600 /var/www/tayaway/shared/backend/.env.production
 ```
 
+Then take a fresh encrypted backup right before the cutover. The nightly
+cron only runs at 03:00, so without this step the freshest dump may be up
+to 24 h old — and the next 24 h is exactly when something might go wrong:
+
+```sh
+sudo -u tayaway /var/www/tayaway/current/config/deploy/backup-db.sh
+ls -lh /var/www/tayaway/shared/backups/ | tail -3
+```
+
 ## 6. Cutover (downtime window)
 
 The cutover is a normal full deploy — the first one running as `tayaway`.

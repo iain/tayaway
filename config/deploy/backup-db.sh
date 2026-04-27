@@ -65,6 +65,18 @@ pg_dump "$DATABASE_URL" \
   | openssl enc -aes-256-cbc -salt -pbkdf2 -pass "file:$KEY_FILE" \
   > "$BACKUP_DIR/$FILENAME"
 
+# Verify the dump round-trips (decrypt → decompress → check pg_dump's
+# completion footer). Catches truncated pipelines, key-file drift, and
+# silent disk errors before the broken file ages into the only thing left.
+FOOTER=$(openssl enc -d -aes-256-cbc -salt -pbkdf2 -pass "file:$KEY_FILE" \
+           -in "$BACKUP_DIR/$FILENAME" | gunzip | tail -1)
+if [ "$FOOTER" != "-- PostgreSQL database dump complete" ]; then
+  echo "ERROR: backup verification failed for $FILENAME" >&2
+  echo "       expected pg_dump completion footer, got: $FOOTER" >&2
+  rm -f "$BACKUP_DIR/$FILENAME"
+  exit 1
+fi
+
 SIZE=$(du -h "$BACKUP_DIR/$FILENAME" | cut -f1)
 echo "$(date -Iseconds) Backup complete: $FILENAME ($SIZE)"
 

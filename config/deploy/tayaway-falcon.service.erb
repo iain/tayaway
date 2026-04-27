@@ -21,5 +21,25 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=tayaway-falcon
 
+# Defense in depth — Falcon never needs root, never needs to escalate, and
+# never writes outside the deploy tree. Lock those down at the systemd
+# level so a process compromise has nothing extra to grab on top of the
+# already-restricted Linux user.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+
 [Install]
 WantedBy=multi-user.target
