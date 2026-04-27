@@ -9,10 +9,11 @@ import type {
 import type { PoolMember } from '@/types/pool'
 
 let mockMembers: PoolMember[] = []
+let mockExpenses: Array<{ eventId: string; userId: string }> = []
 
 vi.mock('@/stores/objectPool', () => ({
   useObjectPoolStore: () => ({
-    getAll: () => [],
+    getAll: (type: string) => (type === 'expense' ? mockExpenses : []),
     findBy: (_type: string, field: string, value: unknown) =>
       mockMembers.find(
         (m) => (m as unknown as Record<string, unknown>)[field] === value
@@ -126,6 +127,7 @@ describe('RsvpSection filed-by badge', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     submitRsvpSpy.mockReset()
+    mockExpenses = []
     mockMembers = [
       mkMember({ id: 'member-alice', userId: 'user-alice', name: 'Alice' }),
       mkMember({ id: 'member-bob', userId: 'user-bob', name: 'Bob' }),
@@ -161,6 +163,7 @@ describe('RsvpSection on-behalf actions', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     submitRsvpSpy.mockReset()
+    mockExpenses = []
     mockMembers = [
       mkMember({ id: 'member-alice', userId: 'user-alice', name: 'Alice' }),
       mkMember({ id: 'member-bob', userId: 'user-bob', name: 'Bob' }),
@@ -231,5 +234,21 @@ describe('RsvpSection on-behalf actions', () => {
       null,
       'user-bob'
     )
+  })
+
+  it('blocks declining another member who has expenses and names them in the dialog', async () => {
+    const rsvp = mkRsvp({
+      id: 'rsvp-bob',
+      userId: 'user-bob',
+      createdByUserId: 'user-bob',
+      member: mkMember({ id: 'member-bob', userId: 'user-bob', name: 'Bob' }),
+    })
+    mockExpenses = [{ eventId: 'event-1', userId: 'user-bob' }]
+
+    const wrapper = mountSection([rsvp])
+    await openMenuAndClick(wrapper, 'Mark as not attending')
+
+    expect(submitRsvpSpy).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Bob has expenses on this event')
   })
 })

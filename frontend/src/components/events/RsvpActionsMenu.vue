@@ -2,7 +2,10 @@
 import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue'
 import { EllipsisVerticalIcon } from '@heroicons/vue/24/outline'
 
+type RsvpActionKind = 'attend' | 'decline' | 'set-dates' | 'change-dates'
+
 interface RsvpAction {
+  kind: RsvpActionKind
   label: string
   danger?: boolean
 }
@@ -13,7 +16,7 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
-  pick: [label: string]
+  pick: [kind: RsvpActionKind]
 }>()
 </script>
 
@@ -31,7 +34,7 @@ const emit = defineEmits<{
     >
       <MenuItem
         v-for="action in actions"
-        :key="action.label"
+        :key="action.kind"
         v-slot="{ active }"
       >
         <button
@@ -43,7 +46,7 @@ const emit = defineEmits<{
               : 'text-gray-700 dark:text-stone-300',
             'block w-full px-4 py-2 text-left text-sm',
           ]"
-          @click="emit('pick', action.label)"
+          @click="emit('pick', action.kind)"
         >
           {{ action.label }}
         </button>

@@ -57,9 +57,11 @@ const hoverDate = ref<string | null>(null)
 // existing self-RSVP flow); set to another user id when an admin is filing
 // partial dates on someone else's behalf.
 const partialPickerUserId = ref<string | null>(null)
-// Whose decline got blocked by existing expenses, if anyone. `null` means
-// current user; a string is another member's name.
-const declineBlockedName = ref<string | null | undefined>(undefined)
+// Whose decline got blocked by existing expenses. `null` when nobody is
+// blocked (modal closed). The discriminated union prevents a member named
+// "self" from colliding with the self-decline sentinel.
+type DeclineBlocked = { type: 'self' } | { type: 'other'; name: string }
+const declineBlocked = ref<DeclineBlocked | null>(null)
 
 // Calendar navigation — start on the month of the event start date
 const calYear = ref(new Date().getFullYear())
@@ -97,13 +99,16 @@ function userHasExpensesFor(userId: string): boolean {
 }
 
 async function handleDecline(): Promise<void> {
-  await setRsvpFor(props.currentUserId!, false)
+  if (props.currentUserId == null) return
+  await setRsvpFor(props.currentUserId, false)
 }
 
 async function setRsvpFor(userId: string, attending: boolean): Promise<void> {
   if (!attending && userHasExpensesFor(userId)) {
-    declineBlockedName.value =
-      userId === props.currentUserId ? null : memberName(userId)
+    declineBlocked.value =
+      userId === props.currentUserId
+        ? { type: 'self' }
+        : { type: 'other', name: memberName(userId) }
     return
   }
   try {
@@ -123,7 +128,10 @@ function findRsvpFor(userId: string) {
   return props.event.rsvps.find((r) => r.userId === userId)
 }
 
+type RsvpActionKind = 'attend' | 'decline' | 'set-dates' | 'change-dates'
+
 interface RsvpAction {
+  kind: RsvpActionKind
   label: string
   danger?: boolean
 }
@@ -133,24 +141,25 @@ function actionsFor(
 ): RsvpAction[] {
   if (rsvp == null) {
     return [
-      { label: 'Mark as attending' },
-      { label: 'Mark as not attending', danger: true },
+      { kind: 'attend', label: 'Mark as attending' },
+      { kind: 'decline', label: 'Mark as not attending', danger: true },
     ]
   }
   if (rsvp.attending) {
     return [
-      { label: rsvp.startDate ? 'Change dates' : 'Set partial dates' },
-      { label: 'Mark as not attending', danger: true },
+      rsvp.startDate
+        ? { kind: 'change-dates', label: 'Change dates' }
+        : { kind: 'set-dates', label: 'Set partial dates' },
+      { kind: 'decline', label: 'Mark as not attending', danger: true },
     ]
   }
-  return [{ label: 'Mark as attending' }]
+  return [{ kind: 'attend', label: 'Mark as attending' }]
 }
 
-function handlePick(userId: string, label: string): void {
-  if (label === 'Mark as attending') setRsvpFor(userId, true)
-  else if (label === 'Mark as not attending') setRsvpFor(userId, false)
-  else if (label === 'Set partial dates' || label === 'Change dates')
-    openPartialPicker(userId)
+function handlePick(userId: string, kind: RsvpActionKind): void {
+  if (kind === 'attend') setRsvpFor(userId, true)
+  else if (kind === 'decline') setRsvpFor(userId, false)
+  else openPartialPicker(userId)
 }
 
 function openPartialPicker(forUserId?: string): void {
@@ -534,29 +543,29 @@ const partialPickerRsvp = computed(() => {
     </div>
 
     <BaseModal
-      :open="declineBlockedName !== undefined"
+      :open="declineBlocked !== null"
       title="Cannot decline"
       size="sm"
-      @close="declineBlockedName = undefined"
+      @close="declineBlocked = null"
     >
       <p class="text-sm text-gray-600 dark:text-stone-400">
-        <template v-if="declineBlockedName === null">
+        <template v-if="declineBlocked?.type === 'self'">
           You have expenses on this event. Delete your expenses before changing
           your RSVP to not attending.
         </template>
-        <template v-else>
-          {{ declineBlockedName }} has expenses on this event. Delete those
+        <template v-else-if="declineBlocked?.type === 'other'">
+          {{ declineBlocked.name }} has expenses on this event. Delete those
           expenses before marking them as not attending.
         </template>
       </p>
       <div class="mt-6 flex justify-end gap-3">
-        <TextButton variant="secondary" @click="declineBlockedName = undefined">
+        <TextButton variant="secondary" @click="declineBlocked = null">
           Cancel
         </TextButton>
         <AppButton
           :to="`/events/${event.id}/expenses`"
           autofocus
-          @click="declineBlockedName = undefined"
+          @click="declineBlocked = null"
         >
           Go to Expenses
         </AppButton>
