@@ -15,6 +15,7 @@ RSpec.describe Expenses::Create do
     {
       event_id: event[:id],
       membership: membership,
+      user_id: user[:id],
       workspace_id: workspace[:id],
       description: "Dinner",
       amount: 42.50,
@@ -139,7 +140,7 @@ RSpec.describe Expenses::Create do
     result = described_class.call(**valid_params)
 
     expect(result.failure?).to be true
-    expect(result.failure.message).to eq("You must RSVP to this event before adding expenses")
+    expect(result.failure.message).to eq("User must RSVP as attending before expenses can be added")
     expect(result.failure.http_status).to eq(403)
   end
 
@@ -149,7 +150,7 @@ RSpec.describe Expenses::Create do
     result = described_class.call(**valid_params)
 
     expect(result.failure?).to be true
-    expect(result.failure.message).to eq("You must RSVP to this event before adding expenses")
+    expect(result.failure.message).to eq("User must RSVP as attending before expenses can be added")
   end
 
   it "succeeds when user has RSVP with attending: true" do
@@ -358,6 +359,45 @@ RSpec.describe Expenses::Create do
       expect(participants.length).to eq(1)
       expect(participants.first[:userId]).to eq(alice[:id])
       expect(participants.first[:factor]).to eq(2.0)
+    end
+  end
+
+  describe "acting on behalf of another member" do
+    let(:other_user) { TestFactories.user(name: "Bob") }
+    let(:other_membership) do
+      row = TestFactories.workspace_membership(workspace: workspace, user: other_user)
+      WorkspaceMembership.find(row[:id])
+    end
+
+    it "lets a workspace member file an expense on behalf of another member" do
+      TestFactories.rsvp(event: event, user: other_user, attending: true)
+      other_membership # ensure created
+
+      result = described_class.call(**valid_params, user_id: other_user[:id])
+
+      expect(result.success?).to be true
+      expense = result.value![:objects].find { |o| o[:objectType] == "expense" }
+      expect(expense[:userId]).to eq(other_user[:id])
+    end
+
+    it "rejects when the subject is not a workspace member" do
+      stranger = TestFactories.user
+      TestFactories.rsvp(event: event, user: user, attending: true)
+
+      result = described_class.call(**valid_params, user_id: stranger[:id])
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("User is not a member of this workspace")
+    end
+
+    it "checks the subject's RSVP, not the actor's" do
+      TestFactories.rsvp(event: event, user: user, attending: true) # actor is attending
+      other_membership # subject is a workspace member but has not RSVP'd
+
+      result = described_class.call(**valid_params, user_id: other_user[:id])
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("User must RSVP as attending before expenses can be added")
     end
   end
 

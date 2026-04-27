@@ -64,7 +64,7 @@ RSpec.describe Expenses::Delete do
     expect(result.failure.message).to eq("settled")
   end
 
-  it "returns 403 when user is not the creator" do
+  it "lets another workspace member delete an expense on the owner's behalf" do
     expense_id = create_expense
 
     result = described_class.call(
@@ -73,9 +73,8 @@ RSpec.describe Expenses::Delete do
       workspace_id: workspace[:id]
     )
 
-    expect(result.failure?).to be true
-    expect(result.failure.http_status).to eq(403)
-    expect(result.failure.message).to eq("not_creator")
+    expect(result.success?).to be true
+    expect(DB[:expenses].where(id: expense_id).count).to eq(0)
   end
 
   it "deletes the expense and returns deleted payload" do

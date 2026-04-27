@@ -59,6 +59,7 @@ class App
         result = Expenses::Create.call(
           event_id: event_id,
           membership: current_membership,
+          user_id: r.params["user_id"] || current_membership.user_id,
           workspace_id: event.workspace_id,
           description: r.params["description"]&.strip,
           amount: amount,

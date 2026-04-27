@@ -26,6 +26,7 @@ RSpec.describe Expenses::Revert do
     expense_id = Expenses::Create.call(
       event_id: event[:id],
       membership: membership,
+      user_id: creator[:id],
       workspace_id: workspace[:id],
       description: "Dinner",
       amount: amount,
@@ -46,6 +47,7 @@ RSpec.describe Expenses::Revert do
     expense_id = Expenses::Create.call(
       event_id: event[:id],
       membership: membership,
+      user_id: creator[:id],
       workspace_id: workspace[:id],
       description: "Groceries",
       amount: 90,
@@ -90,7 +92,7 @@ RSpec.describe Expenses::Revert do
     )
   end
 
-  it "refuses when the caller isn't the creator" do
+  it "lets another workspace member revert on the owner's behalf" do
     expense_id = create_and_settle_expense(amount: 30)
 
     result = described_class.call(
@@ -99,8 +101,12 @@ RSpec.describe Expenses::Revert do
       workspace_id: workspace[:id]
     )
 
-    expect(result.failure?).to be true
-    expect(result.failure.http_status).to eq(403)
+    expect(result.success?).to be true
+    revert_row = DB[:expenses].where(reverts_expense_id: expense_id).first
+    expect(revert_row).not_to be_nil
+    # Ownership of the revert mirrors the original — acting on behalf doesn't
+    # transfer who the entry is "for".
+    expect(revert_row[:user_id]).to eq(creator[:id])
   end
 
   it "refuses to revert an unsettled expense — edit or delete it instead" do
@@ -108,6 +114,7 @@ RSpec.describe Expenses::Revert do
     unsettled_id = Expenses::Create.call(
       event_id: event[:id],
       membership: membership,
+      user_id: creator[:id],
       workspace_id: workspace[:id],
       description: "Lunch",
       amount: 10,

@@ -32,17 +32,16 @@ RSpec.describe ExpensePolicy do
   end
 
   describe "#edit" do
-    it "allows the expense creator" do
+    it "allows the expense owner" do
       expense = create_expense(user: owner)
       policy = described_class.new(expense, membership: WorkspaceMembership.find(owner_membership[:id]))
       expect(policy.edit).to be_success
     end
 
-    it "rejects non-creators" do
+    it "allows another workspace member to edit on the owner's behalf" do
       expense = create_expense(user: owner)
       policy = described_class.new(expense, membership: WorkspaceMembership.find(other_membership[:id]))
-      expect(policy.edit).to be_failure
-      expect(policy.edit.failure).to eq(:not_creator)
+      expect(policy.edit).to be_success
     end
 
     it "rejects when expense is settled" do
@@ -54,13 +53,19 @@ RSpec.describe ExpensePolicy do
   end
 
   describe "#delete" do
-    it "allows the expense creator" do
+    it "allows the expense owner" do
       expense = create_expense(user: owner)
       policy = described_class.new(expense, membership: WorkspaceMembership.find(owner_membership[:id]))
       expect(policy.delete).to be_success
     end
 
-    it "rejects when settled even for creator" do
+    it "allows another workspace member to delete on the owner's behalf" do
+      expense = create_expense(user: owner)
+      policy = described_class.new(expense, membership: WorkspaceMembership.find(other_membership[:id]))
+      expect(policy.delete).to be_success
+    end
+
+    it "rejects when settled" do
       expense = create_expense(user: owner, settled: true)
       policy = described_class.new(expense, membership: WorkspaceMembership.find(owner_membership[:id]))
       expect(policy.delete).to be_failure
