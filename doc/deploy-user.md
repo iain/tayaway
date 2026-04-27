@@ -32,13 +32,27 @@ sudo chown tayaway:tayaway /home/tayaway/.ssh/known_hosts
 sudo chmod 600 /home/tayaway/.ssh/known_hosts
 ```
 
-Verify you can log in, and that SSH agent forwarding still reaches GitHub
-(Capistrano needs this for `git fetch` during the deploy):
+The Capistrano deploy reaches GitHub from the server via a deploy key in
+ubuntu's `~/.ssh/`, not via agent forwarding from your laptop. tayaway
+needs its own key registered as a separate deploy key on the repo — that
+way revoking ubuntu's access later is a single GitHub UI click and
+doesn't touch tayaway:
 
 ```sh
-ssh -p 50022 tayaway@tayaway.nl
-ssh -p 50022 -A tayaway@tayaway.nl 'ssh -T git@github.com'
-# expected: Hi iain! You've successfully authenticated, but GitHub does not provide shell access.
+sudo -u tayaway ssh-keygen -t ed25519 -N '' \
+  -f /home/tayaway/.ssh/id_ed25519 \
+  -C 'tayaway@tayaway.nl deploy'
+sudo cat /home/tayaway/.ssh/id_ed25519.pub
+```
+
+Add the printed public key to https://github.com/iain/tayaway/settings/keys
+as a new deploy key. Read-only is sufficient — Capistrano only fetches.
+
+Verify the SSH chain end-to-end:
+
+```sh
+ssh -p 50022 tayaway@tayaway.nl 'ssh -T git@github.com'
+# expected: Hi iain/tayaway! You've successfully authenticated, but GitHub does not provide shell access.
 ```
 
 ## 2. Sudoers
