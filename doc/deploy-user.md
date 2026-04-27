@@ -22,6 +22,14 @@ sudo -u tayaway chmod 700 /home/tayaway/.ssh
 sudo cp /home/ubuntu/.ssh/authorized_keys /home/tayaway/.ssh/authorized_keys
 sudo chown tayaway:tayaway /home/tayaway/.ssh/authorized_keys
 sudo chmod 600 /home/tayaway/.ssh/authorized_keys
+
+# Inherit ubuntu's known_hosts so outbound SSH (notably git@github.com
+# during deploys) doesn't trip on host-key verification. ubuntu has
+# accumulated these entries over real prior deploys, so copying is at
+# least as trustworthy as a fresh ssh-keyscan.
+sudo cp /home/ubuntu/.ssh/known_hosts /home/tayaway/.ssh/known_hosts
+sudo chown tayaway:tayaway /home/tayaway/.ssh/known_hosts
+sudo chmod 600 /home/tayaway/.ssh/known_hosts
 ```
 
 Verify you can log in, and that SSH agent forwarding still reaches GitHub
