@@ -5,9 +5,16 @@ class ExpensePolicy
 
   ACTIONS = %i[edit delete revert].freeze
 
-  def initialize(expense, **)
+  # `event` and `membership` are only consulted by `revert`. `edit` and
+  # `delete` are pure invariant checks; the actor's workspace membership is
+  # already established at the route layer.
+  def initialize(expense, membership: nil, event: nil, **)
     @settled = !expense.settlement_id.nil?
     @is_revert = !expense.reverts_expense_id.nil?
+    @subject = expense.user_id
+    @creator = expense.created_by_user_id
+    @membership = membership
+    @event = event
   end
 
   # Any workspace member can edit/delete an expense on the owner's behalf.
@@ -40,13 +47,31 @@ class ExpensePolicy
   # isn't offered — there. A revert of a revert is disallowed; the ledger
   # shows both entries and a fresh expense is the right way to change your
   # mind.
+  #
+  # Authority is narrower than edit/delete because reverts have lasting
+  # ledger effects: the expense's owner, whoever filed it, the event owner,
+  # or a workspace admin/owner.
   def revert
     if @is_revert
       Failure(:revert_of_revert)
     elsif !@settled
       Failure(:not_settled)
-    else
+    elsif authorized_to_revert?
       Success()
+    else
+      Failure(:not_revert_authority)
     end
+  end
+
+  private
+
+  def authorized_to_revert?
+    return false unless @membership
+
+    actor_id = @membership.user_id
+    actor_id == @subject ||
+      actor_id == @creator ||
+      (@event && @event.user_id == actor_id) ||
+      %w[admin owner].include?(@membership.role)
   end
 end
