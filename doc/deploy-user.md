@@ -57,10 +57,14 @@ ssh -p 50022 tayaway@tayaway.nl 'ssh -T git@github.com'
 
 ## 2. Sudoers
 
-Capistrano's Falcon tasks need a narrow set of root commands. Drop a
-fragment in `/etc/sudoers.d/tayaway` (`sudo visudo -f /etc/sudoers.d/tayaway`):
+Capistrano's Falcon tasks need a narrow set of root commands. Use a
+validate-then-install workflow rather than `visudo -f` directly —
+`visudo -f` runs a lockout heuristic that false-positives on files that
+only grant rules to other users (like this one), and you'd have to
+override its scary "lock me out and Save" prompt every time:
 
-```
+```sh
+cat > /tmp/tayaway-sudoers <<'EOF'
 Cmnd_Alias TAYAWAY_FALCON = \
   /usr/bin/mv /tmp/tayaway-falcon.service /etc/systemd/system/tayaway-falcon.service, \
   /usr/bin/systemctl daemon-reload, \
@@ -72,10 +76,18 @@ Cmnd_Alias TAYAWAY_FALCON = \
   /usr/bin/systemctl is-active --quiet tayaway-falcon
 
 tayaway ALL=(root) NOPASSWD: TAYAWAY_FALCON
+EOF
+
+sudo visudo -c -f /tmp/tayaway-sudoers     # syntax check in isolation
+sudo install -m 0440 -o root -g root /tmp/tayaway-sudoers /etc/sudoers.d/tayaway
+rm /tmp/tayaway-sudoers
+sudo visudo -c                              # parses the whole chain
 ```
 
-Then `sudo chmod 0440 /etc/sudoers.d/tayaway` and confirm with
-`sudo visudo -c`. Nothing else — no general sudo, no shell escapes.
+`visudo -c` at the end reports `parsed OK` if the main sudoers plus
+every `/etc/sudoers.d/*` file load without error — that's the real
+"you didn't break anything" confirmation. Nothing else for tayaway —
+no general sudo, no shell escapes.
 
 ## 3. mise toolchain for tayaway
 
