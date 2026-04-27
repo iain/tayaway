@@ -50,8 +50,13 @@ class ExpensePolicy
   #
   # Authority is narrower than edit/delete because reverts have lasting
   # ledger effects: the expense's owner, whoever filed it, the event owner,
-  # or a workspace admin/owner.
+  # or a workspace admin/owner. We deliberately raise rather than silently
+  # closing the event-owner path when the caller forgets to pass `event:` —
+  # missing context here is a programming error, not "not authorised".
   def revert
+    raise ArgumentError, "ExpensePolicy#revert needs membership: context" if @membership.nil?
+    raise ArgumentError, "ExpensePolicy#revert needs event: context" if @event.nil?
+
     if @is_revert
       Failure(:revert_of_revert)
     elsif !@settled
@@ -66,12 +71,10 @@ class ExpensePolicy
   private
 
   def authorized_to_revert?
-    return false unless @membership
-
     actor_id = @membership.user_id
     actor_id == @subject ||
       actor_id == @creator ||
-      (@event && @event.user_id == actor_id) ||
+      @event.user_id == actor_id ||
       %w[admin owner].include?(@membership.role)
   end
 end

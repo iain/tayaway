@@ -72,4 +72,20 @@ RSpec.describe ExpensePolicy do
       expect(policy.delete.failure).to eq(:settled)
     end
   end
+
+  describe "#revert" do
+    let(:event) { Event.find(event_row[:id]) }
+
+    it "raises when called without membership context" do
+      expense = create_expense(user: owner, settled: true)
+      policy = described_class.new(expense, event: event)
+      expect { policy.revert }.to raise_error(ArgumentError, /membership/)
+    end
+
+    it "raises when called without event context" do
+      expense = create_expense(user: owner, settled: true)
+      policy = described_class.new(expense, membership: WorkspaceMembership.find(owner_membership[:id]))
+      expect { policy.revert }.to raise_error(ArgumentError, /event/)
+    end
+  end
 end
