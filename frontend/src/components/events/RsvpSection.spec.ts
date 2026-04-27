@@ -9,10 +9,11 @@ import type {
 import type { PoolMember } from '@/types/pool'
 
 let mockMembers: PoolMember[] = []
+let mockExpenses: Array<{ eventId: string; userId: string }> = []
 
 vi.mock('@/stores/objectPool', () => ({
   useObjectPoolStore: () => ({
-    getAll: () => [],
+    getAll: (type: string) => (type === 'expense' ? mockExpenses : []),
     findBy: (_type: string, field: string, value: unknown) =>
       mockMembers.find(
         (m) => (m as unknown as Record<string, unknown>)[field] === value
@@ -20,9 +21,10 @@ vi.mock('@/stores/objectPool', () => ({
   }),
 }))
 
+const submitRsvpSpy = vi.fn()
 vi.mock('@/stores/rsvps', () => ({
   useRsvpsStore: () => ({
-    submitRsvp: vi.fn(),
+    submitRsvp: submitRsvpSpy,
   }),
 }))
 
@@ -93,9 +95,15 @@ function mkEvent(rsvps: HydratedRsvp[]): HydratedEvent {
   }
 }
 
-function mountSection(rsvps: HydratedRsvp[]) {
+function mountSection(
+  rsvps: HydratedRsvp[],
+  workspace?: HydratedEvent['workspace']
+) {
+  const event = mkEvent(rsvps)
+  if (workspace !== undefined) event.workspace = workspace
   return mount(RsvpSection, {
-    props: { event: mkEvent(rsvps), currentUserId: 'user-alice' },
+    attachTo: document.body,
+    props: { event, currentUserId: 'user-alice' },
     global: {
       stubs: {
         teleport: true,
@@ -118,6 +126,8 @@ function mountSection(rsvps: HydratedRsvp[]) {
 describe('RsvpSection filed-by badge', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    submitRsvpSpy.mockReset()
+    mockExpenses = []
     mockMembers = [
       mkMember({ id: 'member-alice', userId: 'user-alice', name: 'Alice' }),
       mkMember({ id: 'member-bob', userId: 'user-bob', name: 'Bob' }),
@@ -146,5 +156,99 @@ describe('RsvpSection filed-by badge', () => {
     const wrapper = mountSection([rsvp])
 
     expect(wrapper.find('[data-testid="rsvp-filed-by"]').exists()).toBe(false)
+  })
+})
+
+describe('RsvpSection on-behalf actions', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    submitRsvpSpy.mockReset()
+    mockExpenses = []
+    mockMembers = [
+      mkMember({ id: 'member-alice', userId: 'user-alice', name: 'Alice' }),
+      mkMember({ id: 'member-bob', userId: 'user-bob', name: 'Bob' }),
+    ]
+  })
+
+  async function openMenuAndClick(
+    wrapper: ReturnType<typeof mountSection>,
+    label: string
+  ) {
+    await wrapper.find('[data-testid="rsvp-other-menu"]').trigger('click')
+    await wrapper.vm.$nextTick()
+    const item = wrapper
+      .findAll('[role="menuitem"]')
+      .find((b) => b.text() === label)
+    expect(item, `menu item "${label}" should exist`).toBeDefined()
+    await item!.trigger('click')
+  }
+
+  it('files an RSVP for another member from the no-response list', async () => {
+    const workspace = {
+      ...BASE,
+      id: 'ws-1',
+      objectType: 'workspace' as const,
+      name: 'Test',
+      ownerUserId: 'user-alice',
+      memberIds: ['member-bob'],
+      members: [
+        {
+          ...BASE,
+          id: 'member-bob',
+          objectType: 'member' as const,
+          userId: 'user-bob',
+          email: 'bob@example.com',
+          name: 'Bob',
+          role: 'member' as const,
+        },
+      ],
+    }
+
+    const wrapper = mountSection([], workspace)
+    await openMenuAndClick(wrapper, 'Mark as attending')
+
+    expect(submitRsvpSpy).toHaveBeenCalledWith(
+      'event-1',
+      true,
+      null,
+      null,
+      'user-bob'
+    )
+  })
+
+  it("flips another member's RSVP from attending to declined", async () => {
+    const rsvp = mkRsvp({
+      id: 'rsvp-bob',
+      userId: 'user-bob',
+      createdByUserId: 'user-bob',
+      member: mkMember({ id: 'member-bob', userId: 'user-bob', name: 'Bob' }),
+    })
+
+    const wrapper = mountSection([rsvp])
+    await openMenuAndClick(wrapper, 'Mark as not attending')
+
+    expect(submitRsvpSpy).toHaveBeenCalledWith(
+      'event-1',
+      false,
+      null,
+      null,
+      'user-bob'
+    )
+  })
+
+  it('blocks declining another member who has expenses and names them in the dialog', async () => {
+    const rsvp = mkRsvp({
+      id: 'rsvp-bob',
+      userId: 'user-bob',
+      createdByUserId: 'user-bob',
+      member: mkMember({ id: 'member-bob', userId: 'user-bob', name: 'Bob' }),
+    })
+    mockExpenses = [{ eventId: 'event-1', userId: 'user-bob' }]
+
+    const wrapper = mountSection([rsvp])
+    await openMenuAndClick(wrapper, 'Mark as not attending')
+
+    expect(submitRsvpSpy).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Bob has expenses on this event')
   })
 })

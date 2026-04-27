@@ -49,6 +49,23 @@ const startDate = ref('')
 const endDate = ref('')
 const singleDate = ref(true)
 const submitting = ref(false)
+const payerUserId = ref('')
+
+// Workspace members with an attending RSVP — the only valid payers for an
+// expense (the backend rejects non-attending subjects).
+const payerOptions = computed(() => {
+  return pool
+    .getAll('rsvp')
+    .filter((r) => r.eventId === props.event.id && r.attending)
+    .map((r) => {
+      const m = pool.findBy('member', 'userId', r.userId)
+      return {
+        value: r.userId,
+        label: m?.name || m?.email || 'Unknown',
+      }
+    })
+    .sort((a, b) => a.label.localeCompare(b.label))
+})
 
 // Calendar navigation state
 const calendarYear = ref(new Date().getFullYear())
@@ -122,6 +139,8 @@ watch(
         startDate.value = props.expense.startDate
         endDate.value = props.expense.endDate
         singleDate.value = props.expense.startDate === props.expense.endDate
+        // Payer is fixed once an expense exists.
+        payerUserId.value = props.expense.userId ?? ''
 
         // Load existing participants with factors
         const participantIds = props.expense.participantIds ?? []
@@ -146,6 +165,16 @@ watch(
         selectedUserIds.value = []
         factorByUserId.value = {}
         singleDate.value = true
+        // Default payer to the current user when they're attending; otherwise
+        // pick the first attending member (or empty when nobody is attending,
+        // in which case the page-level guard prevents getting here).
+        const actor = authStore.currentUserId
+        const actorIsAttending = payerOptions.value.some(
+          (o) => o.value === actor
+        )
+        payerUserId.value = actorIsAttending
+          ? actor!
+          : (payerOptions.value[0]?.value ?? '')
 
         if (eventHasDates.value) {
           const userId = authStore.currentUserId
@@ -232,13 +261,18 @@ async function handleSubmit(): Promise<void> {
         participants: participants ?? [],
       })
     } else {
+      const onBehalfOf =
+        payerUserId.value && payerUserId.value !== authStore.currentUserId
+          ? payerUserId.value
+          : undefined
       await expensesStore.createExpense(
         props.event.id,
         desc,
         amt,
         startDate.value,
         endDate.value,
-        participants
+        participants,
+        onBehalfOf
       )
     }
     emit('close')
@@ -289,6 +323,8 @@ function handleClose(): void {
         v-if="currentStepName === 'details'"
         v-model:description="description"
         v-model:amount="amount"
+        v-model:payer-user-id="payerUserId"
+        :payer-options="isEditing ? undefined : payerOptions"
         :disabled="submitting"
       />
 

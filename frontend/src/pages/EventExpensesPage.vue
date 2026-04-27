@@ -35,7 +35,11 @@ watch(pendingAdd, (val) => {
 })
 
 function openAdd() {
-  if (!userIsAttending.value) {
+  // Any workspace member can file an expense, but the *subject* must be
+  // attending. Block opening the modal only when nobody is attending — the
+  // RSVP-required dialog still makes sense in that case (filer or someone
+  // else has to attend first).
+  if (!hasAttendees.value) {
     showRsvpDialog.value = true
     return
   }
@@ -70,15 +74,9 @@ const total = computed(() =>
 
 const formattedTotal = computed(() => `€${total.value.toFixed(2)}`)
 
-const userIsAttending = computed(() => {
-  if (!currentUserId.value) return false
-  const rsvp = pool
-    .getAll('rsvp')
-    .find(
-      (r) => r.eventId === eventId.value && r.userId === currentUserId.value
-    )
-  return rsvp?.attending === true
-})
+const hasAttendees = computed(() =>
+  pool.getAll('rsvp').some((r) => r.eventId === eventId.value && r.attending)
+)
 
 onMounted(async () => {
   await Promise.all([
@@ -154,8 +152,8 @@ onMounted(async () => {
           data-testid="rsvp-required-dialog"
           class="text-sm text-gray-600 dark:text-stone-400"
         >
-          You need to RSVP as attending before you can add expenses. This
-          ensures costs are split among attendees only.
+          Nobody has RSVP'd as attending yet. Costs are split among attendees
+          only, so at least one person needs to RSVP first.
         </p>
         <div class="mt-6 flex justify-end gap-3">
           <TextButton variant="secondary" @click="showRsvpDialog = false">
