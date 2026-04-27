@@ -72,7 +72,10 @@ const hasExpenses = computed(
 )
 
 function canDeleteSettlement(settlement: PoolSettlement): boolean {
-  return permissionUx(settlement.permissions, 'delete').behavior === 'enabled'
+  // Render the button for anything that isn't outright hidden — `modal`
+  // surfaces an explanation when the user clicks (e.g. older settlements
+  // with `:not_tip`).
+  return permissionUx(settlement.permissions, 'delete').behavior !== 'hidden'
 }
 
 function transfersForSettlement(settlementId: string) {
@@ -217,11 +220,18 @@ async function confirmSettle() {
   }
 }
 
-async function deleteSettlement(id: string) {
-  await settlementsStore.deleteSettlement(id)
+async function handleDeleteSettlement(settlement: PoolSettlement) {
+  const ux = permissionUx(settlement.permissions, 'delete')
+  if (ux.behavior === 'modal') {
+    blockedActionMessage.value = ux.message
+    showBlockedActionModal.value = true
+    return
+  }
+  if (ux.behavior !== 'enabled') return
+  await settlementsStore.deleteSettlement(settlement.id)
 }
 
-const showRecipientOnlyModal = ref(false)
+const showBlockedActionModal = ref(false)
 
 const showQrModal = ref(false)
 const qrTransferId = ref<string | null>(null)
@@ -241,7 +251,7 @@ function openQrModal(transfer: {
   showQrModal.value = true
 }
 
-const recipientOnlyMessage = ref('')
+const blockedActionMessage = ref('')
 
 function markPaidUx(transfer: PoolSettlementTransfer): PermissionUx {
   return permissionUx(transfer.permissions, 'mark_paid')
@@ -253,8 +263,8 @@ async function handlePaidClick(
 ) {
   const ux = markPaidUx(transfer)
   if (ux.behavior === 'modal') {
-    recipientOnlyMessage.value = ux.message
-    showRecipientOnlyModal.value = true
+    blockedActionMessage.value = ux.message
+    showBlockedActionModal.value = true
     return
   }
   if (ux.behavior !== 'enabled') return
@@ -398,7 +408,7 @@ async function handlePaidClick(
             variant="danger"
             label="Delete settlement"
             data-testid="delete-settlement-button"
-            @click="deleteSettlement(settlement.id)"
+            @click="handleDeleteSettlement(settlement)"
           >
             <TrashIcon class="size-4" />
           </IconButton>
@@ -622,19 +632,19 @@ async function handlePaidClick(
     </BaseModal>
 
     <BaseModal
-      :open="showRecipientOnlyModal"
-      title="Can't mark as paid"
+      :open="showBlockedActionModal"
+      title="Can't do that right now"
       size="sm"
-      @close="showRecipientOnlyModal = false"
+      @close="showBlockedActionModal = false"
     >
       <p class="text-sm text-gray-600 dark:text-stone-400">
-        {{ recipientOnlyMessage }}
+        {{ blockedActionMessage }}
       </p>
       <div class="mt-6 flex justify-end">
         <AppButton
           variant="secondary"
           size="sm"
-          @click="showRecipientOnlyModal = false"
+          @click="showBlockedActionModal = false"
         >
           OK
         </AppButton>

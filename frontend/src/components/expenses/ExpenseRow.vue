@@ -173,8 +173,21 @@ function toggleExpand() {
   expanded.value = !expanded.value
 }
 
+const blockedActionMessage = ref('')
+const showBlockedActionModal = ref(false)
+
+function explainBlocked(message: string) {
+  blockedActionMessage.value = message
+  showBlockedActionModal.value = true
+}
+
 function handleEdit(e: Event) {
   e.stopPropagation()
+  if (editUx.value.behavior === 'modal') {
+    explainBlocked(editUx.value.message)
+    return
+  }
+  if (editUx.value.behavior !== 'enabled') return
   emit('edit', props.expense)
 }
 
@@ -212,6 +225,11 @@ const deleting = ref(false)
 
 async function handleDelete(e: Event) {
   e.stopPropagation()
+  if (deleteUx.value.behavior === 'modal') {
+    explainBlocked(deleteUx.value.message)
+    return
+  }
+  if (deleteUx.value.behavior !== 'enabled') return
   if (deleting.value) return
   deleting.value = true
   try {
@@ -420,6 +438,27 @@ async function handleDelete(e: Event) {
         @click="confirmRevert"
       >
         Revert
+      </AppButton>
+    </div>
+  </BaseModal>
+
+  <BaseModal
+    :open="showBlockedActionModal"
+    title="Can't change this expense"
+    size="sm"
+    data-testid="expense-blocked-modal"
+    @close="showBlockedActionModal = false"
+  >
+    <p class="text-sm text-gray-600 dark:text-stone-400">
+      {{ blockedActionMessage }}
+    </p>
+    <div class="mt-6 flex justify-end">
+      <AppButton
+        variant="secondary"
+        size="sm"
+        @click="showBlockedActionModal = false"
+      >
+        OK
       </AppButton>
     </div>
   </BaseModal>
