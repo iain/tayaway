@@ -5,15 +5,13 @@ class RsvpPolicy
 
   ACTIONS = %i[delete].freeze
 
-  def initialize(rsvp, membership:, **)
-    @creator = rsvp.user_id == membership.user_id
+  def initialize(_rsvp, **)
   end
 
+  # Any workspace member can delete any RSVP in their workspace — the actor's
+  # workspace membership is established at the route layer, and an RSVP only
+  # exists for an event the actor can already see.
   def delete
-    if @creator
-      Success()
-    else
-      Failure(:not_creator)
-    end
+    Success()
   end
 end

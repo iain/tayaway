@@ -18,7 +18,6 @@ module Rsvps
         ) do
           Success()
             .bind { find_rsvp(rsvp_id) }
-            .bind { |rsvp| RsvpPolicy.enforce(:delete, rsvp, membership: membership) }
             .bind { |rsvp| validate_rsvp_belongs_to_event(rsvp, event_id) }
             .bind { |rsvp| delete_rsvp(rsvp, event_id) }
         end

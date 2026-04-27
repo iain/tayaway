@@ -197,6 +197,7 @@ class App
             result = Rsvps::Upsert.call(
               event_id: event.id,
               membership: current_membership,
+              user_id: r.params["user_id"] || current_membership.user_id,
               attending: r.params["attending"],
               start_date: r.params["start_date"]&.strip,
               end_date: r.params["end_date"]&.strip,
