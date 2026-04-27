@@ -91,10 +91,23 @@ no general sudo, no shell escapes.
 
 ## 3. mise toolchain for tayaway
 
-Install mise itself, then provision the Ruby/Node/pnpm versions from the
-repo's `.mise.toml`. This step compiles Ruby from source (5–10 minutes) —
-do it now, outside the cutover window, so any compile failure surfaces
-here instead of mid-deploy:
+mise compiles Ruby from source via `ruby-build`, which needs a fairly
+specific set of -dev packages. Don't assume they're present even if
+ubuntu deploys today — pre-existing Ruby installs may be system-packaged
+or cached. Install the canonical ruby-build dependency set first
+(harmless to re-run if some are already there):
+
+```sh
+sudo apt-get install -y \
+  autoconf patch build-essential rustc \
+  libssl-dev libyaml-dev libreadline-dev zlib1g-dev \
+  libgmp-dev libncurses-dev libffi-dev libgdbm-dev libdb-dev uuid-dev
+```
+
+Then install mise itself and provision the Ruby/Node/pnpm versions from
+the repo's `.mise.toml`. The Ruby compile takes 5–10 minutes; doing it
+now (outside the cutover window) means any failure surfaces here
+instead of mid-deploy:
 
 ```sh
 sudo -iu tayaway
@@ -109,6 +122,11 @@ cd /var/www/tayaway/current && mise install --yes
 mise exec -- ruby -v && mise exec -- node -v && mise exec -- pnpm -v
 exit
 ```
+
+If `mise install` fails partway with "Could not be configured" for
+psych or fiddle, the missing package is `libyaml-dev` or `libffi-dev`
+respectively — install whichever apt complained was missing, then
+`rm -rf ~/.local/share/mise/installs/ruby/<version>` and retry.
 
 ## 4. Postgres role
 
