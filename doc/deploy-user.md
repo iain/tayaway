@@ -150,24 +150,40 @@ SELECT 'role', rolname, NULL FROM pg_roles
 WHERE rolname IN ('ubuntu', 'tayaway', 'postgres');
 ```
 
-The expected state — what the rest of this section assumes — is that
-the database is owned by `ubuntu`, role `ubuntu` exists, role `tayaway`
-does not. If that's not what you see, stop and reason through it before
-continuing.
+Two cases follow from the inspection — the rest of this section
+branches on which one matches.
 
-Now lock in the safety property **without renaming**, while the running
-ubuntu falcon keeps serving traffic. None of these statements affect
-existing connections — connection-level metadata isn't re-checked, and
-ownership of objects the role still effectively controls is unchanged:
+**Case A — only `ubuntu` exists.** Cleanest path: lock in the safety
+property pre-cutover, then atomically `ALTER ROLE ubuntu RENAME TO
+tayaway` at §6. Every grant and ownership relation moves with the role
+because Postgres tracks them by OID, not by name.
+
+**Case B — both `ubuntu` and `tayaway` already exist.** Use
+`REASSIGN OWNED BY` at §6 instead of a rename. The pre-cutover work is
+the same shape but tightens both roles and ensures `tayaway` is set up
+to receive ownership.
+
+Both cases share the same pre-cutover statements; the only difference is
+that Case B tightens `tayaway` too and grants it connect/schema access
+in advance. None of this affects existing connections — connection-level
+metadata isn't re-checked, and ownership of objects the role still
+effectively controls is unchanged:
 
 ```sql
--- Strip dangerous attributes from the role.
-ALTER ROLE ubuntu NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION;
+-- Strip dangerous attributes. Run the second line only in Case B.
+ALTER ROLE ubuntu  NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION;
+ALTER ROLE tayaway NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION;  -- Case B
 
 -- Move database ownership off the role the app connects as. After this,
 -- DROP DATABASE requires either superuser or being the database owner —
 -- and we've just removed both.
 ALTER DATABASE tayaway_production OWNER TO postgres;
+
+-- Case B only: tayaway needs to be able to connect and create objects
+-- before §6's REASSIGN hands it the table ownership.
+GRANT CONNECT ON DATABASE tayaway_production TO tayaway;            -- Case B
+\c tayaway_production
+GRANT USAGE, CREATE ON SCHEMA public TO tayaway;                    -- Case B
 ```
 
 Verify the constraint with a read-only catalog assertion. Postgres
@@ -249,17 +265,24 @@ Dry-run from your laptop first to validate paths and SSH:
 bundle exec cap production deploy:check
 ```
 
-Then on the server, stop ubuntu's falcon and rename the role:
+Then on the server, stop ubuntu's falcon and move ownership over —
+which statement to run depends on which §4 case matched:
 
 ```sh
 sudo systemctl stop tayaway-falcon
+
+# Case A (rename, only ubuntu existed):
 sudo -u postgres psql -c 'ALTER ROLE ubuntu RENAME TO tayaway;'
+
+# Case B (REASSIGN, both roles existed):
+sudo -u postgres psql -d tayaway_production \
+  -c 'REASSIGN OWNED BY ubuntu TO tayaway;'
 ```
 
-The rename is instant and atomic — every grant and every ownership
-relation goes with it (Postgres tracks them by OID, not by name). The
-previous catalog-assertion in §4 still holds, just with the role under
-its new name. From the laptop, deploy:
+Both moves are atomic and instant — the rename takes every grant and
+ownership relation with it; REASSIGN hands every ubuntu-owned table,
+sequence, and function to tayaway in one statement. From the laptop,
+deploy:
 
 ```sh
 bundle exec cap production deploy
@@ -336,12 +359,18 @@ app's connections, so just back them out at leisure:
 ubuntu SUPERUSER;` (if that's what it was — keep §4's "current state"
 output as the reference).
 
-**§6's role rename succeeded but the deploy fails** — the ubuntu OS
-user can no longer peer-auth to Postgres, so its falcon can't come back
-up as it was. Reverse the rename and bring ubuntu's falcon back:
+**§6's role move succeeded but the deploy fails** — ubuntu's falcon
+can't come back up cleanly until ownership is back on ubuntu. Reverse
+whichever move you made and bring ubuntu's falcon back:
 
 ```sh
+# If §6 was Case A (rename), reverse the rename:
 sudo -u postgres psql -c 'ALTER ROLE tayaway RENAME TO ubuntu;'
+
+# If §6 was Case B (REASSIGN), reverse the ownership transfer:
+sudo -u postgres psql -d tayaway_production \
+  -c 'REASSIGN OWNED BY tayaway TO ubuntu;'
+
 sudo chown -R ubuntu:ubuntu /var/www/tayaway
 sudo sed -i 's/^User=tayaway$/User=ubuntu/; s/^Group=tayaway$/Group=ubuntu/; s|/home/tayaway/|/home/ubuntu/|g' /etc/systemd/system/tayaway-falcon.service
 sudo systemctl daemon-reload
