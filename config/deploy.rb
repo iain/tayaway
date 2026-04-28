@@ -35,8 +35,8 @@ set :bundle_flags, "--quiet"
 set :bundle_version, 4
 
 # mise integration — prefix commands so they run through mise exec.
-# Production runs as the restricted `tayaway` system user (see
-# doc/deploy-user.md); mise lives in that user's home dir.
+# Production runs as the restricted `tayaway` system user; mise lives
+# in that user's home dir.
 mise = "/home/tayaway/.local/bin/mise exec --"
 SSHKit.config.command_map[:bundle] = "#{mise} bundle"
 SSHKit.config.command_map[:ruby]   = "#{mise} ruby"
