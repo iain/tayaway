@@ -10,23 +10,19 @@ Group=tayaway
 WorkingDirectory=/var/www/tayaway/current/backend
 EnvironmentFile=/var/www/tayaway/shared/backend/.env.production
 Environment=RACK_ENV=production
-Environment=MISE_TRUSTED_CONFIG_PATHS=/var/www/tayaway
 Environment=PATH=/home/tayaway/.local/share/mise/installs/ruby/<%= ruby_version %>/bin:/usr/local/bin:/usr/bin:/bin
 Environment=GEM_HOME=/var/www/tayaway/shared/backend/vendor/bundle/ruby/<%= ruby_gem_version %>
 Environment=GEM_PATH=/var/www/tayaway/shared/backend/vendor/bundle/ruby/<%= ruby_gem_version %>
-# Two non-obvious flags here:
-#  * `bundle exec`: invoking the bare `bin/falcon` shim activates the
-#    falcon gem manually via `Gem.activate_and_load_bin_path` without
-#    running `Bundler.setup`. With our config.ru's `Bundler.require` then
-#    re-entering Bundler later, that bootstraps a *second* default-config
-#    `Falcon::Command::Serve` inside the same process, which races the
-#    first for port 9292 and crashes the unit. Going through `bundle exec`
-#    sets Bundler up cleanly up front and the second invocation
-#    disappears.
-#  * `--threaded`: the default forked-container model also fails worker
-#    readiness handshakes on this kernel/glibc combination under the
-#    tayaway user. Threaded mode runs in one process and works reliably.
-ExecStart=/home/tayaway/.local/bin/mise exec -- bundle exec falcon serve --threaded --bind http://127.0.0.1:9292
+# Goes through the Bundler binstub (committed at backend/bin/falcon)
+# rather than the gem's bare bin shim. The binstub does
+# `require "bundler/setup"` before activating falcon, which is required
+# here — without it, the gem-activation chain combined with config.ru's
+# `Bundler.require` triggers a second default-config falcon serve in
+# the same process, races for port 9292, and crashes the unit.
+# `--threaded` also matters: the default forked-container model fails
+# worker readiness handshakes on this kernel under the tayaway user;
+# threaded mode runs everything in one process and works reliably.
+ExecStart=/var/www/tayaway/current/backend/bin/falcon serve --threaded --bind http://127.0.0.1:9292
 ExecReload=/bin/kill -USR1 $MAINPID
 Restart=on-failure
 RestartSec=5
