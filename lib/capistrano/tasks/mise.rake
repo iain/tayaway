@@ -5,7 +5,7 @@ namespace :mise do
   task :install do
     on roles(:app) do
       within release_path do
-        execute "/home/ubuntu/.local/bin/mise", "install", "--yes"
+        execute "/home/tayaway/.local/bin/mise", "install", "--yes"
       end
     end
   end

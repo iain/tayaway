@@ -20,7 +20,7 @@ SSHKit::Backend::Netssh.prepend(BashCommandWrapper)
 set :application, "tayaway"
 set :repo_url, "git@github.com:iain/tayaway.git"
 set :deploy_to, "/var/www/tayaway"
-set :branch, "main"
+set :branch, ENV.fetch("BRANCH", "main")
 set :keep_releases, 5
 
 # Files and dirs shared across releases
@@ -34,8 +34,10 @@ set :bundle_without, "development:test"
 set :bundle_flags, "--quiet"
 set :bundle_version, 4
 
-# mise integration — prefix commands so they run through mise exec
-mise = "/home/ubuntu/.local/bin/mise exec --"
+# mise integration — prefix commands so they run through mise exec.
+# Production runs as the restricted `tayaway` system user; mise lives
+# in that user's home dir.
+mise = "/home/tayaway/.local/bin/mise exec --"
 SSHKit.config.command_map[:bundle] = "#{mise} bundle"
 SSHKit.config.command_map[:ruby]   = "#{mise} ruby"
 SSHKit.config.command_map[:rake]   = "#{mise} rake"
@@ -44,6 +46,6 @@ SSHKit.config.command_map[:pnpm]   = "#{mise} pnpm"
 
 # Ensure mise is on PATH and trusts the deploy directory
 set :default_env, {
-  path: "/home/ubuntu/.local/bin:$PATH",
+  path: "/home/tayaway/.local/bin:$PATH",
   mise_trusted_config_paths: "/var/www/tayaway"
 }
