@@ -13,7 +13,13 @@ Environment=RACK_ENV=production
 Environment=PATH=/home/tayaway/.local/share/mise/installs/ruby/<%= ruby_version %>/bin:/usr/local/bin:/usr/bin:/bin
 Environment=GEM_HOME=/var/www/tayaway/shared/backend/vendor/bundle/ruby/<%= ruby_gem_version %>
 Environment=GEM_PATH=/var/www/tayaway/shared/backend/vendor/bundle/ruby/<%= ruby_gem_version %>
-ExecStart=/var/www/tayaway/shared/backend/vendor/bundle/ruby/<%= ruby_gem_version %>/bin/falcon serve --bind http://127.0.0.1:9292
+# `--threaded` instead of the default `--forked`: under the tayaway user,
+# the forked container model causes worker processes to fail their
+# readiness handshake on this VPS (cause not yet understood — possibly
+# related to fork's interaction with the io-event notify pipe in this
+# kernel/glibc combination). Threaded mode keeps everything in one
+# process and works reliably. See doc/deploy-user.md for the open issue.
+ExecStart=/var/www/tayaway/shared/backend/vendor/bundle/ruby/<%= ruby_gem_version %>/bin/falcon serve --threaded --bind http://127.0.0.1:9292
 ExecReload=/bin/kill -USR1 $MAINPID
 Restart=on-failure
 RestartSec=5
