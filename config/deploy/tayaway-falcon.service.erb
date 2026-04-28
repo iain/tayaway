@@ -10,16 +10,23 @@ Group=tayaway
 WorkingDirectory=/var/www/tayaway/current/backend
 EnvironmentFile=/var/www/tayaway/shared/backend/.env.production
 Environment=RACK_ENV=production
+Environment=MISE_TRUSTED_CONFIG_PATHS=/var/www/tayaway
 Environment=PATH=/home/tayaway/.local/share/mise/installs/ruby/<%= ruby_version %>/bin:/usr/local/bin:/usr/bin:/bin
 Environment=GEM_HOME=/var/www/tayaway/shared/backend/vendor/bundle/ruby/<%= ruby_gem_version %>
 Environment=GEM_PATH=/var/www/tayaway/shared/backend/vendor/bundle/ruby/<%= ruby_gem_version %>
-# `--threaded` instead of the default `--forked`: under the tayaway user,
-# the forked container model causes worker processes to fail their
-# readiness handshake on this VPS (cause not yet understood — possibly
-# related to fork's interaction with the io-event notify pipe in this
-# kernel/glibc combination). Threaded mode keeps everything in one
-# process and works reliably. See doc/deploy-user.md for the open issue.
-ExecStart=/var/www/tayaway/shared/backend/vendor/bundle/ruby/<%= ruby_gem_version %>/bin/falcon serve --threaded --bind http://127.0.0.1:9292
+# Two non-obvious flags here:
+#  * `bundle exec`: invoking the bare `bin/falcon` shim activates the
+#    falcon gem manually via `Gem.activate_and_load_bin_path` without
+#    running `Bundler.setup`. With our config.ru's `Bundler.require` then
+#    re-entering Bundler later, that bootstraps a *second* default-config
+#    `Falcon::Command::Serve` inside the same process, which races the
+#    first for port 9292 and crashes the unit. Going through `bundle exec`
+#    sets Bundler up cleanly up front and the second invocation
+#    disappears.
+#  * `--threaded`: the default forked-container model also fails worker
+#    readiness handshakes on this kernel/glibc combination under the
+#    tayaway user. Threaded mode runs in one process and works reliably.
+ExecStart=/home/tayaway/.local/bin/mise exec -- bundle exec falcon serve --threaded --bind http://127.0.0.1:9292
 ExecReload=/bin/kill -USR1 $MAINPID
 Restart=on-failure
 RestartSec=5
