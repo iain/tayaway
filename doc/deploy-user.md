@@ -241,14 +241,9 @@ ls -l /var/www/tayaway/shared/backend/.env.production
 sudo chmod 600 /var/www/tayaway/shared/backend/.env.production
 ```
 
-Then take a fresh encrypted backup right before the cutover. The nightly
-cron only runs at 03:00, so without this step the freshest dump may be up
-to 24 h old — and the next 24 h is exactly when something might go wrong:
-
-```sh
-sudo -u tayaway /var/www/tayaway/current/config/deploy/backup-db.sh
-ls -lh /var/www/tayaway/shared/backups/ | tail -3
-```
+A fresh pre-cutover backup is part of §6 below — it has to wait until
+after the role rename (Case A) or REASSIGN (Case B) so the same
+peer-auth path the script uses at runtime is exercised end to end.
 
 ## 6. Cutover (downtime window)
 
@@ -281,8 +276,24 @@ sudo -u postgres psql -d tayaway_production \
 
 Both moves are atomic and instant — the rename takes every grant and
 ownership relation with it; REASSIGN hands every ubuntu-owned table,
-sequence, and function to tayaway in one statement. From the laptop,
-deploy:
+sequence, and function to tayaway in one statement.
+
+Now take the pre-cutover backup. The nightly cron only runs at 03:00,
+so without this step the freshest dump may be up to 24 h old — and the
+next few minutes are exactly when something might go wrong. The
+ownership transfer above means tayaway can now read every table, so
+the same peer-auth code path cron uses works here:
+
+```sh
+sudo -u tayaway /var/www/tayaway/current/config/deploy/backup-db.sh
+ls -lh /var/www/tayaway/shared/backups/ | tail -3
+```
+
+If this fails, **stop and reverse the ownership transfer** before
+continuing — see the rollback section. Don't deploy without a recent
+backup.
+
+From the laptop, deploy:
 
 ```sh
 bundle exec cap production deploy
