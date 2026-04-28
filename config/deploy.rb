@@ -20,7 +20,7 @@ SSHKit::Backend::Netssh.prepend(BashCommandWrapper)
 set :application, "tayaway"
 set :repo_url, "git@github.com:iain/tayaway.git"
 set :deploy_to, "/var/www/tayaway"
-set :branch, "main"
+set :branch, ENV.fetch("BRANCH", "main")
 set :keep_releases, 5
 
 # Files and dirs shared across releases
