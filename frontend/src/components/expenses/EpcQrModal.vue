@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { CheckIcon, ClipboardIcon } from '@heroicons/vue/24/outline'
+import { CheckCircleIcon } from '@heroicons/vue/24/solid'
 import BaseModal from '@/components/common/BaseModal.vue'
 // Bypasses the pool: payment details are sender-authorised, per-transfer,
 // and short-lived. They must not be cached in the shared object pool where
 // other clients (or a later session) could pick them up.
 import { rawApi, type ApiError } from '@/api/client'
+import { useSettlementsStore } from '@/stores/settlements'
 
 // The modal works in two modes:
 //   - transferId: per-event payment for a single SettlementTransfer
@@ -15,6 +17,10 @@ interface NetRequest {
   workspaceId: string
   counterpartyUserId: string
   expectedAmount: number
+  // Snapshot of contributing transfer ids at modal-open time. Used for
+  // optimistic UI updates when the sender attests; server is still
+  // authoritative on which rows actually get paid_at.
+  underlyingTransferIds: string[]
 }
 
 const props = defineProps<{
@@ -43,6 +49,9 @@ const driftError = ref(false)
 const loading = ref(false)
 const copied = ref(false)
 const copyError = ref(false)
+const attestState = ref<'idle' | 'submitting' | 'success' | 'error'>('idle')
+const attestErrorMessage = ref<string | null>(null)
+const settlementsStore = useSettlementsStore()
 let copiedTimer: ReturnType<typeof setTimeout> | null = null
 // Per-open token: every open bumps it. A response or timeout that resolves
 // after a subsequent open (even for the same transferId) is then ignored.
@@ -102,6 +111,8 @@ watch(
       driftError.value = false
       loading.value = false
       copied.value = false
+      attestState.value = 'idle'
+      attestErrorMessage.value = null
       return
     }
     detailsError.value = false
@@ -109,6 +120,8 @@ watch(
     details.value = null
     copied.value = false
     copyError.value = false
+    attestState.value = 'idle'
+    attestErrorMessage.value = null
     loading.value = true
     try {
       const response = await rawApi.get<PaymentDetails>(path)
@@ -134,6 +147,35 @@ watch(
 )
 
 onBeforeUnmount(clearCopiedTimer)
+
+async function attestPaid() {
+  if (attestState.value === 'submitting') return
+  attestState.value = 'submitting'
+  attestErrorMessage.value = null
+  try {
+    if (props.transferId) {
+      await settlementsStore.markTransferPaid(props.transferId, true)
+    } else if (props.netRequest) {
+      await settlementsStore.markNetPaid({
+        workspaceId: props.netRequest.workspaceId,
+        counterpartyUserId: props.netRequest.counterpartyUserId,
+        expectedAmount: props.netRequest.expectedAmount,
+        underlyingTransferIds: props.netRequest.underlyingTransferIds,
+      })
+    }
+    attestState.value = 'success'
+  } catch (e) {
+    attestState.value = 'error'
+    if (isApiError(e) && e.status === 409) {
+      attestErrorMessage.value =
+        'Balance changed since this dialog opened. Close and refresh before marking paid.'
+    } else if (isApiError(e)) {
+      attestErrorMessage.value = e.message
+    } else {
+      attestErrorMessage.value = 'Could not mark as paid. Please try again.'
+    }
+  }
+}
 
 async function copyIban() {
   if (!details.value?.iban) return
@@ -213,6 +255,30 @@ async function copyIban() {
         Could not load payment details.
       </p>
 
+      <div
+        v-else-if="attestState === 'success'"
+        data-testid="attest-success"
+        class="flex flex-col items-center gap-3 py-6 text-center"
+      >
+        <CheckCircleIcon
+          class="size-12 text-emerald-500 dark:text-emerald-400"
+          aria-hidden="true"
+        />
+        <p class="text-base font-medium text-gray-900 dark:text-white">
+          Marked as paid.
+        </p>
+        <p class="text-sm text-gray-500 dark:text-stone-400">
+          {{ recipientName }} will see this update next time they open Tayaway.
+        </p>
+        <button
+          type="button"
+          class="mt-2 cursor-pointer rounded-md bg-cyan-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-cyan-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 dark:bg-cyan-700 dark:hover:bg-cyan-600"
+          @click="$emit('close')"
+        >
+          Done
+        </button>
+      </div>
+
       <template v-else-if="details">
         <div
           v-if="!details.iban"
@@ -288,6 +354,34 @@ async function copyIban() {
             </p>
           </div>
         </template>
+
+        <div class="border-t border-gray-200 pt-4 dark:border-stone-700">
+          <button
+            type="button"
+            data-testid="attest-paid"
+            :disabled="attestState === 'submitting'"
+            class="inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-700 dark:hover:bg-emerald-600"
+            @click="attestPaid"
+          >
+            <CheckIcon class="size-4" aria-hidden="true" />
+            {{
+              attestState === 'submitting'
+                ? 'Marking…'
+                : "I've paid — mark as paid"
+            }}
+          </button>
+          <p class="mt-2 text-center text-xs text-gray-500 dark:text-stone-400">
+            Click after you've completed the bank transfer. {{ recipientName }}
+            can flip this back if it didn't actually arrive.
+          </p>
+          <p
+            v-if="attestState === 'error' && attestErrorMessage"
+            data-testid="attest-error"
+            class="mt-2 text-center text-xs text-red-600 dark:text-red-400"
+          >
+            {{ attestErrorMessage }}
+          </p>
+        </div>
       </template>
     </div>
   </BaseModal>

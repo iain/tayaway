@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Read-only SettlementTransfer model.
-class SettlementTransfer < Data.define(:id, :settlement_id, :from_user_id, :to_user_id, :amount, :paid_at, :superseded_at, :created_at, :updated_at)
+class SettlementTransfer < Data.define(:id, :settlement_id, :from_user_id, :to_user_id, :amount, :paid_at, :paid_by_user_id, :superseded_at, :created_at, :updated_at)
   class << self
     include Findable
 
@@ -57,6 +57,7 @@ class SettlementTransfer < Data.define(:id, :settlement_id, :from_user_id, :to_u
         to_user_id: row[:to_user_id] ? UUID.new(row[:to_user_id]) : nil,
         amount: row[:amount].to_f,
         paid_at: row[:paid_at],
+        paid_by_user_id: row[:paid_by_user_id] ? UUID.new(row[:paid_by_user_id]) : nil,
         superseded_at: row[:superseded_at],
         created_at: row[:created_at],
         updated_at: row[:updated_at]

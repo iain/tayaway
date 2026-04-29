@@ -81,7 +81,7 @@ RSpec.describe Settlements::MarkPaid do
     expect(DB[:settlement_transfers].where(id: transfer_id).first[:paid_at]).to be_nil
   end
 
-  it "returns 403 when user is not the recipient" do
+  it "lets the sender mark a transfer as paid (sender attestation)" do
     transfer_id = create_transfer
 
     result = described_class.call(
@@ -91,9 +91,58 @@ RSpec.describe Settlements::MarkPaid do
       workspace_id: workspace[:id]
     )
 
+    expect(result.success?).to be true
+    row = DB[:settlement_transfers].where(id: transfer_id).first
+    expect(row[:paid_at]).not_to be_nil
+    expect(row[:paid_by_user_id]).to eq(user[:id])
+  end
+
+  it "records the recipient on paid_by_user_id when they mark paid" do
+    transfer_id = create_transfer
+
+    result = described_class.call(
+      transfer_id: transfer_id,
+      paid: true,
+      membership: membership_for(recipient),
+      workspace_id: workspace[:id]
+    )
+
+    expect(result.success?).to be true
+    expect(DB[:settlement_transfers].where(id: transfer_id).get(:paid_by_user_id)).to eq(recipient[:id])
+  end
+
+  it "clears paid_by_user_id when unmarked" do
+    transfer_id = create_transfer(paid_at: Time.now)
+    DB[:settlement_transfers].where(id: transfer_id).update(paid_by_user_id: recipient[:id])
+
+    result = described_class.call(
+      transfer_id: transfer_id,
+      paid: false,
+      membership: membership_for(recipient),
+      workspace_id: workspace[:id]
+    )
+
+    expect(result.success?).to be true
+    expect(DB[:settlement_transfers].where(id: transfer_id).get(:paid_by_user_id)).to be_nil
+  end
+
+  it "returns 403 when user is neither sender nor recipient" do
+    transfer_id = create_transfer
+    bystander = TestFactories.user(name: "Bystander")
+    bystander_membership = WorkspaceMembership.find(
+      TestFactories.workspace_membership(workspace: workspace, user: bystander)[:id]
+    )
+
+    result = described_class.call(
+      transfer_id: transfer_id,
+      paid: true,
+      membership: bystander_membership,
+      workspace_id: workspace[:id]
+    )
+
     expect(result.failure?).to be true
     expect(result.failure.http_status).to eq(403)
-    expect(result.failure.message).to eq("not_recipient")
+    expect(result.failure.message).to eq("not_pair_member")
   end
 
   it "refuses to mark a superseded transfer as paid" do

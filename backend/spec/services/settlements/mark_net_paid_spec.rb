@@ -58,11 +58,11 @@ RSpec.describe Settlements::MarkNetPaid do
     expect(objects.map { |o| o[:id] }).to contain_exactly(t1, t2)
   end
 
-  it "rejects when the caller isn't the net recipient" do
+  it "lets the net sender mark paid (sender attestation)" do
     event = TestFactories.event(workspace: workspace, user: alice)
     create_transfer(event: event, from: alice, to: bob, amount: 50.0)
 
-    # Net is alice→bob 50. Alice tries to mark it paid; only Bob may.
+    # Net is alice→bob 50. Alice attests after she's paid Bob.
     result = described_class.call(
       workspace_id: workspace[:id],
       counterparty_user_id: bob[:id],
@@ -70,9 +70,45 @@ RSpec.describe Settlements::MarkNetPaid do
       membership: membership_for(alice)
     )
 
+    expect(result.success?).to be true
+    row = DB[:settlement_transfers].first
+    expect(row[:paid_at]).not_to be_nil
+    expect(row[:paid_by_user_id]).to eq(alice[:id])
+  end
+
+  it "records paid_by_user_id when the recipient marks paid" do
+    event = TestFactories.event(workspace: workspace, user: alice)
+    t = create_transfer(event: event, from: alice, to: bob, amount: 50.0)
+
+    described_class.call(
+      workspace_id: workspace[:id],
+      counterparty_user_id: alice[:id],
+      expected_amount: 50.0,
+      membership: membership_for(bob)
+    )
+
+    expect(DB[:settlement_transfers].where(id: t).get(:paid_by_user_id)).to eq(bob[:id])
+  end
+
+  it "treats a bystander as having no balance with the named counterparty" do
+    # Bystanders aren't a separate auth code path — by construction the
+    # composable computes the (caller, counterparty) pair, which for a
+    # third party has no active transfers. They get the same "nothing to
+    # settle" 409 anyone hitting an empty pair would.
+    event = TestFactories.event(workspace: workspace, user: alice)
+    create_transfer(event: event, from: alice, to: bob, amount: 50.0)
+    bystander = TestFactories.user(name: "Bystander")
+
+    result = described_class.call(
+      workspace_id: workspace[:id],
+      counterparty_user_id: alice[:id],
+      expected_amount: 50.0,
+      membership: membership_for(bystander)
+    )
+
     expect(result.failure?).to be true
-    expect(result.failure.http_status).to eq(403)
-    expect(result.failure.message).to eq("not_recipient")
+    expect(result.failure.http_status).to eq(409)
+    expect(result.failure.message).to include("Nothing to settle")
   end
 
   it "rejects when the expected amount no longer matches the live net" do

@@ -22,10 +22,15 @@ class SettlementTransferPolicy
       # transfer as paid. No toggle is meaningful here — unmarking would
       # silently desync the chain, marking again is a no-op.
       Failure(:locked_in_followup)
-    elsif @recipient
+    elsif @recipient || @sender
+      # Either party may mark a transfer paid. The sender attests after they
+      # transfer; the recipient confirms when the money lands. The acting
+      # user is recorded on the row so notifications and the UI can show
+      # who closed the loop. Either party can also unmark to reverse a
+      # premature attestation.
       Success()
     else
-      Failure(:not_recipient)
+      Failure(:not_pair_member)
     end
   end
 

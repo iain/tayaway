@@ -94,8 +94,14 @@ module Settlements
             raise Sequel::Rollback
           end
 
-          if net[:to_user_id] != membership.user_id.to_s
-            failure = Failure(ServiceError.forbidden("not_recipient"))
+          # Either party of the pair may attest. The dominant direction
+          # determines who's owed what, but both sides can close the loop —
+          # the sender after paying, the recipient after receiving. The
+          # acting user goes onto each row so notifications and the UI can
+          # show who marked paid.
+          caller_in_pair = [net[:from_user_id], net[:to_user_id]].include?(membership.user_id.to_s)
+          unless caller_in_pair
+            failure = Failure(ServiceError.forbidden("not_pair_member"))
             raise Sequel::Rollback
           end
 
@@ -109,7 +115,7 @@ module Settlements
 
           DB[:settlement_transfers]
             .where(id: net[:underlying_transfer_ids])
-            .update(paid_at: now, updated_at: now)
+            .update(paid_at: now, paid_by_user_id: membership.user_id, updated_at: now)
           updated_ids = net[:underlying_transfer_ids]
         end
 

@@ -34,7 +34,35 @@ export interface NetSettlement {
   eventCount: number
 }
 
+export interface RecentSettlementBreakdown {
+  transfer: PoolSettlementTransfer
+  event: PoolEvent | undefined
+  // Whether this transfer's direction matches the dominant net direction
+  // for the pair across the recency window.
+  isDominantDirection: boolean
+}
+
+export interface RecentSettlement {
+  // Stable per-pair key so a pair settled in mixed directions across the
+  // window still collapses into one card.
+  id: string
+  counterpartyUserId: string
+  direction: 'paid' | 'received'
+  amount: number
+  // Most recent paidAt across the contributing transfers — used for the
+  // "settled X ago" timestamp.
+  latestPaidAt: string
+  // The actor that closed the most recent transfer in the bucket. Read off
+  // the row so the UI can show "marked by Alice" without an extra query.
+  paidByUserId: string | null
+  underlyingTransferIds: string[]
+  breakdown: RecentSettlementBreakdown[]
+  transferCount: number
+  eventCount: number
+}
+
 const EPSILON = 0.005
+const RECENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 
 /**
  * Nets active (non-superseded, unpaid) per-event transfers across the
@@ -44,6 +72,7 @@ const EPSILON = 0.005
  */
 export function useWorkspaceNet(): {
   netSettlements: ComputedRef<NetSettlement[]>
+  recentSettlements: ComputedRef<RecentSettlement[]>
 } {
   const pool = useObjectPoolStore()
   const auth = useAuthStore()
@@ -145,5 +174,122 @@ export function useWorkspaceNet(): {
     return results
   })
 
-  return { netSettlements }
+  // Recently-settled pairs the viewer was part of. Bucketed by counterparty
+  // and direction (paid vs received) — same direction across multiple events
+  // collapses into one card; direction flips create separate cards. Cutoff
+  // is a fixed window so the section doesn't grow unbounded.
+  const recentSettlements = computed<RecentSettlement[]>(() => {
+    const viewerId = auth.currentUserId
+    const workspaceId = workspace.currentWorkspaceId
+    if (!viewerId || !workspaceId) return []
+
+    const settlements = pool.getAll('settlement') as PoolSettlement[]
+    const eventBySettlement = new Map<string, string>()
+    for (const s of settlements) eventBySettlement.set(s.id, s.eventId)
+
+    const eventIdsInWorkspace = new Set(
+      pool
+        .getAll('event')
+        .filter((e) => e.workspaceId === workspaceId)
+        .map((e) => e.id)
+    )
+
+    const cutoff = Date.now() - RECENT_WINDOW_MS
+
+    type Bucket = {
+      counterpartyUserId: string
+      // Net amount in viewer's perspective: positive = viewer paid net,
+      // negative = viewer received net. We aggregate both directions under
+      // one bucket per pair so a single Mark-as-paid click that touched
+      // transfers in opposite directions shows up as one card.
+      signedTotal: number
+      latestPaidAt: string
+      paidByUserId: string | null
+      transfers: { transfer: PoolSettlementTransfer; eventId: string }[]
+    }
+    const buckets = new Map<string, Bucket>()
+
+    for (const t of pool.getAll(
+      'settlementTransfer'
+    ) as PoolSettlementTransfer[]) {
+      if (!t.paidAt) continue
+      if (!t.fromUserId || !t.toUserId) continue
+      if (t.fromUserId !== viewerId && t.toUserId !== viewerId) continue
+      if (new Date(t.paidAt).getTime() < cutoff) continue
+
+      const eventId = eventBySettlement.get(t.settlementId)
+      if (!eventId || !eventIdsInWorkspace.has(eventId)) continue
+
+      const counterpartyUserId =
+        t.fromUserId === viewerId ? t.toUserId : t.fromUserId
+      const signed = t.fromUserId === viewerId ? t.amount : -t.amount
+
+      let bucket = buckets.get(counterpartyUserId)
+      if (!bucket) {
+        bucket = {
+          counterpartyUserId,
+          signedTotal: 0,
+          latestPaidAt: t.paidAt,
+          paidByUserId: t.paidByUserId,
+          transfers: [],
+        }
+        buckets.set(counterpartyUserId, bucket)
+      }
+      bucket.signedTotal += signed
+      if (
+        new Date(t.paidAt).getTime() > new Date(bucket.latestPaidAt).getTime()
+      ) {
+        bucket.latestPaidAt = t.paidAt
+        bucket.paidByUserId = t.paidByUserId
+      }
+      bucket.transfers.push({ transfer: t, eventId })
+    }
+
+    const results: RecentSettlement[] = []
+    for (const bucket of buckets.values()) {
+      const amount = Math.round(Math.abs(bucket.signedTotal) * 100) / 100
+      // Pairs with mixed directions that net to zero across the window are
+      // genuinely "even" — showing them in recent would be noise.
+      if (amount < EPSILON) continue
+
+      const direction: 'paid' | 'received' =
+        bucket.signedTotal > 0 ? 'paid' : 'received'
+
+      const breakdown: RecentSettlementBreakdown[] = bucket.transfers.map(
+        ({ transfer, eventId }) => ({
+          transfer,
+          event: pool.get('event', eventId),
+          isDominantDirection:
+            direction === 'paid'
+              ? transfer.fromUserId === viewerId
+              : transfer.toUserId === viewerId,
+        })
+      )
+
+      const eventIds = new Set<string | undefined>()
+      for (const b of breakdown) eventIds.add(b.event?.id)
+
+      results.push({
+        id: [viewerId, bucket.counterpartyUserId].sort().join(':') + ':recent',
+        counterpartyUserId: bucket.counterpartyUserId,
+        direction,
+        amount,
+        latestPaidAt: bucket.latestPaidAt,
+        paidByUserId: bucket.paidByUserId,
+        underlyingTransferIds: bucket.transfers.map((t) => t.transfer.id),
+        breakdown,
+        transferCount: breakdown.length,
+        eventCount: eventIds.size,
+      })
+    }
+
+    // Most recent first — what the user just did is most relevant.
+    results.sort(
+      (a, b) =>
+        new Date(b.latestPaidAt).getTime() - new Date(a.latestPaidAt).getTime()
+    )
+    return results
+  })
+
+  return { netSettlements, recentSettlements }
 }

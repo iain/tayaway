@@ -286,6 +286,187 @@ describe('useWorkspaceNet', () => {
     ])
   })
 
+  describe('recentSettlements', () => {
+    it('returns empty when no transfers have paidAt within the window', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([
+        makeEvent({ id: 'evt-1', workspaceId: 'ws-1' }),
+        makeSettlement({ id: 'set-1', eventId: 'evt-1' }),
+        makeSettlementTransfer({
+          id: 't-1',
+          settlementId: 'set-1',
+          fromUserId: 'user-viewer',
+          toUserId: 'user-other',
+          amount: 25,
+          paidAt: null,
+        }),
+      ])
+
+      const { recentSettlements } = useWorkspaceNet()
+      expect(recentSettlements.value).toEqual([])
+    })
+
+    it('groups recently-paid transfers between the same pair and direction', () => {
+      const recent = new Date(Date.now() - 60_000).toISOString()
+      const pool = useObjectPoolStore()
+      pool.importObjects([
+        makeEvent({ id: 'evt-1', workspaceId: 'ws-1', name: 'Cabin' }),
+        makeEvent({ id: 'evt-2', workspaceId: 'ws-1', name: 'Bowling' }),
+        makeSettlement({ id: 'set-1', eventId: 'evt-1' }),
+        makeSettlement({ id: 'set-2', eventId: 'evt-2' }),
+        makeSettlementTransfer({
+          id: 't-1',
+          settlementId: 'set-1',
+          fromUserId: 'user-viewer',
+          toUserId: 'user-other',
+          amount: 30,
+          paidAt: recent,
+          paidByUserId: 'user-viewer',
+        }),
+        makeSettlementTransfer({
+          id: 't-2',
+          settlementId: 'set-2',
+          fromUserId: 'user-viewer',
+          toUserId: 'user-other',
+          amount: 10,
+          paidAt: recent,
+          paidByUserId: 'user-viewer',
+        }),
+      ])
+
+      const { recentSettlements } = useWorkspaceNet()
+      expect(recentSettlements.value).toHaveLength(1)
+      const r = recentSettlements.value[0]!
+      expect(r.direction).toBe('paid')
+      expect(r.amount).toBe(40)
+      expect(r.transferCount).toBe(2)
+      expect(r.eventCount).toBe(2)
+      expect(r.paidByUserId).toBe('user-viewer')
+    })
+
+    it('nets mixed-direction transfers within the window into one card', () => {
+      const recent = new Date(Date.now() - 60_000).toISOString()
+      const pool = useObjectPoolStore()
+      pool.importObjects([
+        makeEvent({ id: 'evt-1', workspaceId: 'ws-1' }),
+        makeEvent({ id: 'evt-2', workspaceId: 'ws-1' }),
+        makeSettlement({ id: 'set-1', eventId: 'evt-1' }),
+        makeSettlement({ id: 'set-2', eventId: 'evt-2' }),
+        makeSettlementTransfer({
+          id: 't-dominant',
+          settlementId: 'set-1',
+          fromUserId: 'user-other',
+          toUserId: 'user-viewer',
+          amount: 40,
+          paidAt: recent,
+        }),
+        makeSettlementTransfer({
+          id: 't-counter',
+          settlementId: 'set-2',
+          fromUserId: 'user-viewer',
+          toUserId: 'user-other',
+          amount: 15,
+          paidAt: recent,
+        }),
+      ])
+
+      const { recentSettlements } = useWorkspaceNet()
+      expect(recentSettlements.value).toHaveLength(1)
+      const r = recentSettlements.value[0]!
+      expect(r.direction).toBe('received')
+      expect(r.amount).toBe(25)
+      expect(r.breakdown).toHaveLength(2)
+      expect(
+        r.breakdown.find((b) => b.transfer.id === 't-dominant')!
+          .isDominantDirection
+      ).toBe(true)
+      expect(
+        r.breakdown.find((b) => b.transfer.id === 't-counter')!
+          .isDominantDirection
+      ).toBe(false)
+    })
+
+    it('drops pairs where mixed directions cancel exactly', () => {
+      const recent = new Date(Date.now() - 60_000).toISOString()
+      const pool = useObjectPoolStore()
+      pool.importObjects([
+        makeEvent({ id: 'evt-1', workspaceId: 'ws-1' }),
+        makeSettlement({ id: 'set-1', eventId: 'evt-1' }),
+        makeSettlementTransfer({
+          id: 't-a',
+          settlementId: 'set-1',
+          fromUserId: 'user-viewer',
+          toUserId: 'user-other',
+          amount: 20,
+          paidAt: recent,
+        }),
+        makeSettlementTransfer({
+          id: 't-b',
+          settlementId: 'set-1',
+          fromUserId: 'user-other',
+          toUserId: 'user-viewer',
+          amount: 20,
+          paidAt: recent,
+        }),
+      ])
+
+      const { recentSettlements } = useWorkspaceNet()
+      expect(recentSettlements.value).toEqual([])
+    })
+
+    it('drops transfers paid before the recency window', () => {
+      const old = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      const pool = useObjectPoolStore()
+      pool.importObjects([
+        makeEvent({ id: 'evt-1', workspaceId: 'ws-1' }),
+        makeSettlement({ id: 'set-1', eventId: 'evt-1' }),
+        makeSettlementTransfer({
+          id: 't-old',
+          settlementId: 'set-1',
+          fromUserId: 'user-viewer',
+          toUserId: 'user-other',
+          amount: 50,
+          paidAt: old,
+        }),
+      ])
+
+      const { recentSettlements } = useWorkspaceNet()
+      expect(recentSettlements.value).toEqual([])
+    })
+
+    it('orders by latestPaidAt descending', () => {
+      const newer = new Date(Date.now() - 60_000).toISOString()
+      const older = new Date(Date.now() - 60 * 60_000).toISOString()
+      const pool = useObjectPoolStore()
+      pool.importObjects([
+        makeEvent({ id: 'evt-1', workspaceId: 'ws-1' }),
+        makeSettlement({ id: 'set-1', eventId: 'evt-1' }),
+        makeSettlementTransfer({
+          id: 't-old-pair',
+          settlementId: 'set-1',
+          fromUserId: 'user-viewer',
+          toUserId: 'user-a',
+          amount: 10,
+          paidAt: older,
+        }),
+        makeSettlementTransfer({
+          id: 't-new-pair',
+          settlementId: 'set-1',
+          fromUserId: 'user-viewer',
+          toUserId: 'user-b',
+          amount: 10,
+          paidAt: newer,
+        }),
+      ])
+
+      const { recentSettlements } = useWorkspaceNet()
+      expect(recentSettlements.value.map((r) => r.counterpartyUserId)).toEqual([
+        'user-b',
+        'user-a',
+      ])
+    })
+  })
+
   it('produces a stable id regardless of viewer/counterparty ordering', () => {
     const pool = useObjectPoolStore()
     pool.importObjects([

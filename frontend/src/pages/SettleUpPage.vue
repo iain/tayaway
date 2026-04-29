@@ -15,9 +15,11 @@ import {
 import {
   useWorkspaceNet,
   type NetSettlement,
+  type RecentSettlement,
 } from '@/composables/useWorkspaceNet'
 import { getMemberName } from '@/utils/member'
 import { formatAmount } from '@/utils/format'
+import { formatRelativeDate } from '@/utils/date'
 import PageHeader from '@/components/common/PageHeader.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import AlertBox from '@/components/common/AlertBox.vue'
@@ -30,7 +32,7 @@ const workspace = useWorkspaceStore()
 const settlementsStore = useSettlementsStore()
 const { user } = storeToRefs(auth)
 
-const { netSettlements } = useWorkspaceNet()
+const { netSettlements, recentSettlements } = useWorkspaceNet()
 
 const owedToYou = computed(() =>
   netSettlements.value.filter((s) => s.direction === 'owed')
@@ -74,6 +76,7 @@ const qrNetRequest = ref<{
   workspaceId: string
   counterpartyUserId: string
   expectedAmount: number
+  underlyingTransferIds: string[]
 } | null>(null)
 const qrRecipientName = ref<string | null>(null)
 const qrAmount = ref<number | null>(null)
@@ -85,6 +88,7 @@ function openQr(net: NetSettlement) {
     workspaceId,
     counterpartyUserId: net.counterpartyUserId,
     expectedAmount: net.amount,
+    underlyingTransferIds: net.underlyingTransferIds,
   }
   qrRecipientName.value = getMemberName(net.counterpartyUserId, pool)
   qrAmount.value = net.amount
@@ -94,6 +98,13 @@ function openQr(net: NetSettlement) {
 function eventNameFor(eventId: string | undefined): string {
   if (!eventId) return 'Unknown event'
   return pool.get('event', eventId)?.name ?? 'Unknown event'
+}
+
+function settledByLabel(net: RecentSettlement): string {
+  const viewerId = auth.currentUserId
+  if (!net.paidByUserId) return ''
+  if (net.paidByUserId === viewerId) return 'Marked by you'
+  return `Marked by ${getMemberName(net.paidByUserId, pool)}`
 }
 </script>
 
@@ -123,7 +134,7 @@ function eventNameFor(eventId: string | undefined): string {
     </AlertBox>
 
     <div
-      v-if="netSettlements.length === 0"
+      v-if="netSettlements.length === 0 && recentSettlements.length === 0"
       class="py-16 text-center"
       data-testid="settle-up-empty"
     >
@@ -321,6 +332,111 @@ function eventNameFor(eventId: string | undefined): string {
                       b.isDominantDirection
                         ? 'text-amber-700 dark:text-amber-400'
                         : 'text-cyan-700 dark:text-cyan-300'
+                    "
+                  >
+                    {{ b.isDominantDirection ? '+' : '−'
+                    }}{{ formatAmount(b.transfer.amount) }}
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </BaseCard>
+        </ul>
+      </section>
+
+      <section v-if="recentSettlements.length > 0" data-testid="recent-settled">
+        <h2 class="mb-3 text-lg font-semibold text-gray-900 dark:text-white">
+          Recently settled
+        </h2>
+        <ul class="space-y-3">
+          <BaseCard
+            v-for="net in recentSettlements"
+            :key="net.id"
+            as="li"
+            class="overflow-hidden opacity-90"
+          >
+            <div
+              class="flex flex-wrap items-center justify-between gap-y-2 px-4 py-3 sm:px-6"
+            >
+              <div class="min-w-0 flex-1">
+                <p class="text-sm text-gray-700 dark:text-stone-300">
+                  <template v-if="net.direction === 'paid'">
+                    You paid
+                    <span class="font-semibold text-gray-900 dark:text-white">{{
+                      getMemberName(net.counterpartyUserId, pool)
+                    }}</span>
+                    <span
+                      class="font-mono font-semibold text-gray-900 dark:text-white"
+                      >{{ formatAmount(net.amount) }}</span
+                    >
+                  </template>
+                  <template v-else>
+                    <span class="font-semibold text-gray-900 dark:text-white">{{
+                      getMemberName(net.counterpartyUserId, pool)
+                    }}</span>
+                    paid you
+                    <span
+                      class="font-mono font-semibold text-gray-900 dark:text-white"
+                      >{{ formatAmount(net.amount) }}</span
+                    >
+                  </template>
+                </p>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
+                  {{ formatRelativeDate(net.latestPaidAt) }}
+                  <template v-if="settledByLabel(net)">
+                    · {{ settledByLabel(net) }}
+                  </template>
+                </p>
+                <button
+                  type="button"
+                  class="mt-0.5 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-rose-600 dark:text-stone-400 dark:hover:text-rose-400"
+                  :aria-expanded="expandedIds.has(net.id)"
+                  @click="toggleExpanded(net.id)"
+                >
+                  <span>
+                    {{ net.transferCount }}
+                    {{ net.transferCount === 1 ? 'transfer' : 'transfers' }}
+                    across
+                    {{ net.eventCount }}
+                    {{ net.eventCount === 1 ? 'event' : 'events' }}
+                  </span>
+                  <ChevronDownIcon
+                    class="size-3 transition-transform"
+                    :class="{ 'rotate-180': expandedIds.has(net.id) }"
+                    aria-hidden="true"
+                  />
+                </button>
+              </div>
+            </div>
+            <div
+              v-if="expandedIds.has(net.id)"
+              class="border-t border-gray-100 bg-gray-50 px-4 py-3 sm:px-6 dark:border-stone-700 dark:bg-stone-900/50"
+            >
+              <ul class="space-y-1 text-xs">
+                <li
+                  v-for="b in net.breakdown"
+                  :key="b.transfer.id"
+                  class="flex items-center justify-between gap-3"
+                >
+                  <router-link
+                    v-if="b.event?.id"
+                    :to="`/events/${b.event.id}/expenses`"
+                    class="truncate text-gray-700 hover:text-rose-600 hover:underline dark:text-stone-300 dark:hover:text-rose-400"
+                  >
+                    {{ eventNameFor(b.event?.id) }}
+                  </router-link>
+                  <span
+                    v-else
+                    class="truncate text-gray-700 dark:text-stone-300"
+                  >
+                    {{ eventNameFor(b.event?.id) }}
+                  </span>
+                  <span
+                    class="shrink-0 font-mono"
+                    :class="
+                      b.isDominantDirection
+                        ? 'text-gray-700 dark:text-stone-300'
+                        : 'text-gray-400 dark:text-stone-500'
                     "
                   >
                     {{ b.isDominantDirection ? '+' : '−'

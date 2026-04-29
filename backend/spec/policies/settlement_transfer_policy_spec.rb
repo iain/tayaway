@@ -35,17 +35,17 @@ RSpec.describe SettlementTransferPolicy do
       expect(policy.mark_paid).to be_success
     end
 
-    it "rejects the sender" do
+    it "allows the sender (sender attestation)" do
       transfer = create_transfer(from_user: sender, to_user: recipient)
       policy = described_class.new(transfer, membership: WorkspaceMembership.find(sender_membership[:id]))
-      expect(policy.mark_paid).to be_failure
-      expect(policy.mark_paid.failure).to eq(:not_recipient)
+      expect(policy.mark_paid).to be_success
     end
 
-    it "rejects other users" do
+    it "rejects users who are neither sender nor recipient" do
       transfer = create_transfer(from_user: sender, to_user: recipient)
       policy = described_class.new(transfer, membership: WorkspaceMembership.find(other_membership[:id]))
       expect(policy.mark_paid).to be_failure
+      expect(policy.mark_paid.failure).to eq(:not_pair_member)
     end
 
     it "rejects even the recipient when the transfer is superseded" do

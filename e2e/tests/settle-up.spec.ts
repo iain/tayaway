@@ -108,10 +108,17 @@ test.describe('Workspace Settle Up — multi-event netting', () => {
       timeout: PAGE_LOAD_TIMEOUT,
     })
 
-    // Owed-to-you section should show one card for €25 from Bob.
-    const owedSection = page.getByRole('heading', { name: 'Owed to you' })
+    // Owed-to-you section should show one card for €25 from Bob. Scope by
+    // section heading so the post-mark "Recently settled" card doesn't get
+    // matched here when its locator gains the same counterparty name.
+    const owedSection = page
+      .locator('section')
+      .filter({ has: page.getByRole('heading', { name: 'Owed to you' }) })
     await expect(owedSection).toBeVisible()
-    const card = page.locator('li').filter({ hasText: 'Net Bob' }).first()
+    const card = owedSection
+      .locator('li')
+      .filter({ hasText: 'Net Bob' })
+      .first()
     await expect(card).toBeVisible()
     await expect(card).toContainText('€25.00')
 
@@ -134,9 +141,16 @@ test.describe('Workspace Settle Up — multi-event netting', () => {
     ])
     expect(markResp.ok()).toBeTruthy()
 
-    // Card disappears from the page once both underlying transfers are paid.
-    await expect(card).not.toBeVisible()
-    await expect(page.getByTestId('settle-up-empty')).toBeVisible()
+    // Card leaves the active section once both underlying transfers are paid…
+    await expect(owedSection).not.toBeVisible()
+
+    // …and reappears in the Recently settled section as a single net card,
+    // so the page doesn't feel like the action made the obligation vanish.
+    const recent = page.getByTestId('recent-settled')
+    await expect(recent).toBeVisible()
+    await expect(recent).toContainText('Net Bob')
+    await expect(recent).toContainText('€25.00')
+    await expect(recent).toContainText('Marked by you')
 
     // Verify both per-event transfers are marked paid via the API.
     for (const tid of allTransferIds) {
@@ -210,9 +224,12 @@ test.describe('Workspace Settle Up — multi-event netting', () => {
     await aliceContext.dispose()
   })
 
-  test('rejects mark-paid when the caller is the net sender, not the recipient', async ({
+  test('rejects mark-paid when the caller is not part of the pair', async ({
     playwright,
   }) => {
+    // Either party of a pair may attest now (sender after paying, recipient
+    // after receiving). The auth boundary is "must be one of the two
+    // counterparties" — this test exercises a third user who isn't.
     const aliceContext = await newApiContext(playwright)
     const { userId: aliceId } = await getTestSession(
       aliceContext,
@@ -225,6 +242,11 @@ test.describe('Workspace Settle Up — multi-event netting', () => {
     const bobContext = await newApiContext(playwright)
     await getTestSession(bobContext, bobEmail, 'Auth Bob')
 
+    const carolEmail = `e2e-net-auth-carol-${Date.now()}@example.com`
+    const carolContext = await newApiContext(playwright)
+    await getTestSession(carolContext, carolEmail, 'Auth Carol')
+    await addMemberToWorkspace(aliceContext, workspaceId, carolEmail)
+
     await settleSingleExpenseEvent({
       alice: aliceContext,
       bob: bobContext,
@@ -235,15 +257,17 @@ test.describe('Workspace Settle Up — multi-event netting', () => {
       payer: 'alice',
     })
 
-    // Bob is the net sender (he owes Alice €40). Marking paid from his side
-    // should be rejected — only the recipient may do that.
-    const resp = await bobContext.put(
+    // Carol isn't part of the Alice/Bob pair, so the (Carol, Alice) pair
+    // computes to no active transfers — she gets the empty-balance 409,
+    // not a separate auth error.
+    const resp = await carolContext.put(
       `${API_BASE}/api/settlements/net-transfers/mark-paid?workspace_id=${workspaceId}`,
       { data: { counterparty: aliceId, expected_amount: 40 } }
     )
-    expect(resp.status()).toBe(403)
-    expect((await resp.json()).error).toBe('not_recipient')
+    expect(resp.status()).toBe(409)
+    expect((await resp.json()).error).toMatch(/Nothing to settle/i)
 
+    await carolContext.dispose()
     await bobContext.dispose()
     await aliceContext.dispose()
   })
