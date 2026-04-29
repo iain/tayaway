@@ -273,14 +273,15 @@ describe('SettlementSection drift detection', () => {
     ).toBe(false)
   })
 
-  it('does not flag drift on sub-cent rounding crumbs that cannot fund a transfer', () => {
+  it('does not flag drift on rounding crumbs that cannot fund a transfer', () => {
     // Mirrors a real situation: the latest top-up's transfers add up to the
-    // right thing modulo cent rounding, leaving one user with a +0.006
+    // right thing modulo cent rounding, leaving one user with a one-cent
     // residual that has no matching creditor. That's not real drift.
     //
     // Setup: weighted split where Charlie's factor (1.5) yields a non-round
-    // share. With the active transfers in place, three users land at
-    // sub-half-cent residuals (dropped) and Charlie keeps a 0.006 leftover.
+    // share (94.2857…). After cents-rounding the balance and subtracting
+    // the active transfers, three users net to zero and Charlie keeps a
+    // +0.01 leftover with no creditor — minimizeTransfers returns nothing.
     mockMembers = [
       mkMember(),
       mkMember({
