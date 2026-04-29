@@ -78,6 +78,43 @@ export const useSettlementsStore = defineStore('settlements', () => {
     }
   }
 
+  /**
+   * Reverses a workspace-level mark-paid for a counterparty pair, clearing
+   * paid_at on every transfer the caller passes (server filters strictly to
+   * matching workspace + pair so over-broad lists are safe). Optimistic
+   * pending updates flip paid_at to null on each row; the import on success
+   * cleans them up via the same updated_at-ordering rule importObjects uses.
+   */
+  async function markNetUnpaid(args: {
+    workspaceId: string
+    counterpartyUserId: string
+    underlyingTransferIds: string[]
+  }) {
+    const pool = useObjectPoolStore()
+    const pendingIds = args.underlyingTransferIds.map((id) =>
+      pool.addPending('settlementTransfer', id, {
+        paidAt: null,
+        paidByUserId: null,
+      })
+    )
+
+    try {
+      await mutate('Failed to unmark settlement', (commandQueue) =>
+        commandQueue.enqueue<PoolApiResponse>(
+          'PUT',
+          `/settlements/net-transfers/mark-unpaid?workspace_id=${encodeURIComponent(args.workspaceId)}`,
+          {
+            counterparty: args.counterpartyUserId,
+            transfer_ids: args.underlyingTransferIds,
+          }
+        )
+      )
+    } catch (e) {
+      for (const id of pendingIds) pool.removePending(id)
+      throw e
+    }
+  }
+
   function $reset() {
     loading.value = false
     error.value = null
@@ -90,6 +127,7 @@ export const useSettlementsStore = defineStore('settlements', () => {
     deleteSettlement,
     markTransferPaid,
     markNetPaid,
+    markNetUnpaid,
     $reset,
   }
 })

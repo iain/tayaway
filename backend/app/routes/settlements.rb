@@ -168,6 +168,18 @@ class App
           handle_result(result)
         end
       end
+
+      r.on "mark-unpaid" do
+        r.put do
+          result = Settlements::MarkNetUnpaid.call(
+            workspace_id: workspace_id,
+            counterparty_user_id: r.params["counterparty"],
+            transfer_ids: Array(r.params["transfer_ids"]),
+            membership: current_membership(workspace_id)
+          )
+          handle_result(result)
+        end
+      end
     end
 
     # /api/settlements/:id - Delete a settlement

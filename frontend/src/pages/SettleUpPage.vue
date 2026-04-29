@@ -106,6 +106,24 @@ function settledByLabel(net: RecentSettlement): string {
   if (net.paidByUserId === viewerId) return 'Marked by you'
   return `Marked by ${getMemberName(net.paidByUserId, pool)}`
 }
+
+const unmarkingIds = ref<Set<string>>(new Set())
+async function handleUnmark(net: RecentSettlement) {
+  const workspaceId = workspace.currentWorkspaceId
+  if (!workspaceId || unmarkingIds.value.has(net.id)) return
+  unmarkingIds.value.add(net.id)
+  unmarkingIds.value = new Set(unmarkingIds.value)
+  try {
+    await settlementsStore.markNetUnpaid({
+      workspaceId,
+      counterpartyUserId: net.counterpartyUserId,
+      underlyingTransferIds: net.underlyingTransferIds,
+    })
+  } finally {
+    unmarkingIds.value.delete(net.id)
+    unmarkingIds.value = new Set(unmarkingIds.value)
+  }
+}
 </script>
 
 <template>
@@ -365,21 +383,18 @@ function settledByLabel(net: RecentSettlement): string {
                     <span class="font-semibold text-gray-900 dark:text-white">{{
                       getMemberName(net.counterpartyUserId, pool)
                     }}</span>
-                    <span
-                      class="font-mono font-semibold text-gray-900 dark:text-white"
-                      >{{ formatAmount(net.amount) }}</span
-                    >
                   </template>
                   <template v-else>
                     <span class="font-semibold text-gray-900 dark:text-white">{{
                       getMemberName(net.counterpartyUserId, pool)
                     }}</span>
                     paid you
-                    <span
-                      class="font-mono font-semibold text-gray-900 dark:text-white"
-                      >{{ formatAmount(net.amount) }}</span
-                    >
                   </template>
+                </p>
+                <p
+                  class="mt-0.5 font-mono text-lg font-semibold text-gray-700 dark:text-stone-300"
+                >
+                  {{ formatAmount(net.amount) }}
                 </p>
                 <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
                   {{ formatRelativeDate(net.latestPaidAt) }}
@@ -407,6 +422,14 @@ function settledByLabel(net: RecentSettlement): string {
                   />
                 </button>
               </div>
+              <button
+                type="button"
+                :disabled="unmarkingIds.has(net.id)"
+                class="cursor-pointer rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-200 dark:hover:bg-stone-700"
+                @click="handleUnmark(net)"
+              >
+                {{ unmarkingIds.has(net.id) ? 'Unmarking…' : 'Unmark' }}
+              </button>
             </div>
             <div
               v-if="expandedIds.has(net.id)"
