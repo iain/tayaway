@@ -674,6 +674,107 @@ DB.transaction do
     )
   end
 
+  # ── Event 5: dinner — gives test an unconditional debt for the QR modal ──
+  # Diana fronted a two-person tasting menu for herself and test. The single
+  # test→diana transfer is independent of the cabin/bowling chain, so even
+  # if those have been further-settled in the dev DB, this one keeps test
+  # in the role of net sender — useful for exercising the Pay via QR flow.
+  dinner_date = today - 3
+  dinner_id = build_event.call(
+    :dinner,
+    name: "Tasting menu at Bouchon",
+    description: "Diana put it on her card; test owes her half.",
+    owner: :diana,
+    start_date: dinner_date,
+    end_date: dinner_date,
+    location: "Restaurant Bouchon, Brussels"
+  )
+
+  dinner_attending = %i[test diana]
+  (dinner_attending + %i[alice bob charlie]).each do |u|
+    attending = dinner_attending.include?(u)
+    DB[:rsvps].insert_conflict(
+      target: %i[event_id user_id],
+      update: { attending: attending, updated_at: now }
+    ).insert(
+      id: det_uuid("rsvp:dinner:#{u}"),
+      event_id: dinner_id,
+      user_id: user_id_for[u],
+      created_by_user_id: user_id_for[u],
+      attending: attending,
+      start_date: nil, end_date: nil,
+      created_at: now - (60 * 60 * 24 * 5),
+      updated_at: now
+    )
+  end
+
+  dinner_expense_id = det_uuid("expense:dinner:tasting-menu")
+  DB[:expenses].insert_conflict(
+    target: :id,
+    update: { amount: 120.00, description: "Tasting menu for two",
+              created_by_user_id: Sequel[:excluded][:created_by_user_id],
+              updated_at: now }
+  ).insert(
+    id: dinner_expense_id,
+    event_id: dinner_id,
+    user_id: user_id_for[:diana],
+    created_by_user_id: user_id_for[:diana],
+    amount: 120.00,
+    description: "Tasting menu for two",
+    start_date: dinner_date,
+    end_date: dinner_date,
+    created_at: now - (60 * 60 * 24 * 3),
+    updated_at: now
+  )
+  dinner_attending.each do |u|
+    DB[:expense_participants].insert_conflict(
+      target: %i[expense_id user_id],
+      update: { factor: 1, updated_at: now }
+    ).insert(
+      id: det_uuid("expense_participant:dinner:#{u}"),
+      expense_id: dinner_expense_id,
+      user_id: user_id_for[u],
+      factor: 1,
+      created_at: now - (60 * 60 * 24 * 3),
+      updated_at: now
+    )
+  end
+
+  dinner_settlement_id = det_uuid("settlement:dinner:root")
+  dinner_rsvp_snapshot = Sequel.pg_json(
+    rsvps: dinner_attending.map do |u|
+      { user_id: user_id_for[u], start_date: dinner_date.iso8601, end_date: dinner_date.iso8601 }
+    end
+  )
+  DB[:settlements].insert_conflict(
+    target: :id,
+    update: { rsvp_snapshot: dinner_rsvp_snapshot, updated_at: now }
+  ).insert(
+    id: dinner_settlement_id,
+    event_id: dinner_id,
+    user_id: user_id_for[:diana],
+    previous_settlement_id: nil,
+    rsvp_snapshot: dinner_rsvp_snapshot,
+    created_at: now - (60 * 60 * 24 * 2),
+    updated_at: now - (60 * 60 * 24 * 2)
+  )
+  DB[:expenses].where(id: dinner_expense_id).update(settlement_id: dinner_settlement_id)
+
+  DB[:settlement_transfers].insert_conflict(
+    target: :id,
+    update: { amount: 60.00, paid_at: nil, superseded_at: nil, updated_at: now }
+  ).insert(
+    id: det_uuid("transfer:dinner:test_to_diana"),
+    settlement_id: dinner_settlement_id,
+    from_user_id: user_id_for[:test],
+    to_user_id: user_id_for[:diana],
+    amount: 60.00,
+    paid_at: nil,
+    superseded_at: nil,
+    created_at: now - (60 * 60 * 24 * 2),
+    updated_at: now - (60 * 60 * 24 * 2)
+  )
+
   # Suppress unused-variable warning while keeping the assignment for clarity.
   _ = conf_id
 end
@@ -681,6 +782,6 @@ end
 puts "Seeded development data:"
 puts "  Workspace: Friends & Family (#{workspace_id})"
 puts "  Users: #{users.values.map { |u| u[:email] }.join(", ")}"
-puts "  Events: cabin trip (settled with chores), team offsite (open poll), birthday drinks, Friday bowling night (multi-event netting)"
+puts "  Events: cabin trip (settled with chores), team offsite (open poll), birthday drinks, Friday bowling night (multi-event netting), tasting-menu dinner (test owes diana — QR demo)"
 puts ""
 puts "Log in as #{users[:test][:email]} via the magic-link flow."
