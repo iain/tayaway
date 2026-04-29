@@ -4,7 +4,7 @@ experimental = true
 [tools]
 node = "24"
 ruby = "4"
-"npm:pnpm" = "11.0.0-rc.5"
+"npm:pnpm" = "11.0.0"
 
 [env]
 
