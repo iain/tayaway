@@ -406,7 +406,7 @@ async function handlePaidClick(
           </span>
           <span class="text-sm text-gray-600 dark:text-stone-400">
             <span class="font-medium text-gray-800 dark:text-stone-200"
-              >Mark paid</span
+              >Mark as paid</span
             >
             &mdash; once the money arrives, the recipient marks the transfer as
             paid so everyone can see what&rsquo;s left.
