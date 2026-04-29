@@ -223,12 +223,12 @@ async function copyIban() {
 
       <Transition
         mode="out-in"
-        enter-active-class="transition-opacity duration-150 ease-out"
-        leave-active-class="transition-opacity duration-100 ease-in"
-        enter-from-class="opacity-0"
-        enter-to-class="opacity-100"
-        leave-from-class="opacity-100"
-        leave-to-class="opacity-0"
+        enter-active-class="transition duration-200 ease-out"
+        leave-active-class="transition duration-150 ease-in"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
       >
         <div
           v-if="loading"
