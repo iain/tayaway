@@ -118,12 +118,6 @@ const totalDays = computed(() => rows.value.reduce((sum, r) => sum + r.days, 0))
 function formatDays(days: number): string {
   return `${days} day${days === 1 ? '' : 's'}`
 }
-
-function formatBalance(balance: number): string {
-  if (balance > 0.005) return `owes €${balance.toFixed(2)}`
-  if (balance < -0.005) return `is owed €${Math.abs(balance).toFixed(2)}`
-  return 'even'
-}
 </script>
 
 <template>
@@ -146,7 +140,9 @@ function formatBalance(balance: number): string {
             <th class="pt-3 pr-4 pb-2 pl-4">Name</th>
             <th class="hidden pt-3 pr-4 pb-2 sm:table-cell">Days</th>
             <th class="pt-3 pr-4 pb-2 text-right whitespace-nowrap">Paid</th>
-            <th class="pt-3 pr-4 pb-2 text-right">Fair share</th>
+            <th class="hidden pt-3 pr-4 pb-2 text-right sm:table-cell">
+              Fair share
+            </th>
             <th class="pt-3 pr-4 pb-2 text-right whitespace-nowrap">Balance</th>
           </tr>
         </thead>
@@ -172,11 +168,13 @@ function formatBalance(balance: number): string {
             >
               {{ formatAmount(row.paid) }}
             </td>
-            <td class="py-2 pr-4 text-right font-mono whitespace-nowrap">
+            <td
+              class="hidden py-2 pr-4 text-right font-mono whitespace-nowrap sm:table-cell"
+            >
               {{ formatAmount(row.share) }}
             </td>
             <td
-              class="py-2 pr-4 text-right font-mono font-semibold"
+              class="py-2 pr-4 text-right font-mono font-semibold whitespace-nowrap"
               :class="{
                 'text-red-600 dark:text-red-400': row.balance > 0.005,
                 'text-green-600 dark:text-green-400': row.balance < -0.005,
@@ -184,7 +182,15 @@ function formatBalance(balance: number): string {
                   Math.abs(row.balance) <= 0.005,
               }"
             >
-              {{ formatBalance(row.balance) }}
+              <template v-if="row.balance > 0.005"
+                ><span class="sr-only sm:not-sr-only sm:inline">owes </span
+                >{{ formatAmount(row.balance) }}</template
+              >
+              <template v-else-if="row.balance < -0.005"
+                ><span class="sr-only sm:not-sr-only sm:inline">is owed </span
+                >{{ formatAmount(Math.abs(row.balance)) }}</template
+              >
+              <template v-else>even</template>
             </td>
           </tr>
         </tbody>
@@ -203,7 +209,9 @@ function formatBalance(balance: number): string {
             >
               {{ formatAmount(total) }}
             </td>
-            <td class="pt-2 pr-4 pb-3 text-right font-mono">
+            <td
+              class="hidden pt-2 pr-4 pb-3 text-right font-mono sm:table-cell"
+            >
               {{ formatAmount(total) }}
             </td>
             <td class="pt-2 pr-4 pb-3"></td>
