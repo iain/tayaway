@@ -123,6 +123,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', routeName: 'home' },
   { name: 'Events', href: '/events', routeName: 'events' },
   { name: 'Tasks', href: '/tasks', routeName: 'tasks' },
+  { name: 'Settle up', href: '/settle-up', routeName: 'settle-up' },
   { name: 'Members', href: '/members', routeName: 'members' },
 ]
 

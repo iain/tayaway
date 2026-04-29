@@ -130,6 +130,46 @@ class App
       end
     end
 
+    # /api/settlements/net-transfers - Workspace-level netted settlements.
+    # Reads stay client-side (the pool already has every transfer); these
+    # endpoints exist so writes can lock and re-verify the live net before
+    # committing.
+    r.on "net-transfers" do
+      workspace_id = r.params["workspace_id"]
+      unless workspace_id && member_of_workspace?(workspace_id)
+        response.status = 403
+        next { error: "Access denied" }
+      end
+
+      r.on "payment-details" do
+        r.get do
+          counterparty = r.params["counterparty"]
+          expected = r.params["expected_amount"]
+          result = Settlements::NetPaymentDetails.call(
+            workspace_id: workspace_id,
+            counterparty_user_id: counterparty,
+            expected_amount: expected&.to_f,
+            membership: current_membership(workspace_id)
+          )
+          # Same PII/QR rationale as per-transfer payment-details.
+          response["Cache-Control"] = "private, no-store"
+          handle_result(result)
+        end
+      end
+
+      r.on "mark-paid" do
+        r.put do
+          result = Settlements::MarkNetPaid.call(
+            workspace_id: workspace_id,
+            counterparty_user_id: r.params["counterparty"],
+            expected_amount: r.params["expected_amount"]&.to_f,
+            membership: current_membership(workspace_id)
+          )
+          handle_result(result)
+        end
+      end
+    end
+
     # /api/settlements/:id - Delete a settlement
     r.on String do |id|
       find_result = Settlement.find_result(id)

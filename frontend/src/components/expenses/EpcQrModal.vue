@@ -7,9 +7,20 @@ import BaseModal from '@/components/common/BaseModal.vue'
 // other clients (or a later session) could pick them up.
 import { rawApi } from '@/api/client'
 
+// The modal works in two modes:
+//   - transferId: per-event payment for a single SettlementTransfer
+//   - netRequest: workspace-level net payment across multiple transfers
+// Exactly one should be non-null when open.
+interface NetRequest {
+  workspaceId: string
+  counterpartyUserId: string
+  expectedAmount: number
+}
+
 const props = defineProps<{
   open: boolean
-  transferId: string | null
+  transferId?: string | null
+  netRequest?: NetRequest | null
   recipientName: string | null
   amount: number | null
 }>()
@@ -43,6 +54,22 @@ function clearCopiedTimer() {
   }
 }
 
+function buildPaymentDetailsPath(): string | null {
+  if (props.transferId) {
+    return `/settlements/transfers/${props.transferId}/payment-details`
+  }
+  if (props.netRequest) {
+    const { workspaceId, counterpartyUserId, expectedAmount } = props.netRequest
+    const params = new URLSearchParams({
+      workspace_id: workspaceId,
+      counterparty: counterpartyUserId,
+      expected_amount: String(expectedAmount),
+    })
+    return `/settlements/net-transfers/payment-details?${params.toString()}`
+  }
+  return null
+}
+
 watch(
   () => props.open,
   async (isOpen) => {
@@ -50,7 +77,8 @@ watch(
     // Bump on every transition so any in-flight request from the previous
     // open is invalidated — including when the modal closes.
     const token = ++fetchToken
-    if (!isOpen || !props.transferId) {
+    const path = buildPaymentDetailsPath()
+    if (!isOpen || !path) {
       details.value = null
       detailsError.value = false
       loading.value = false
@@ -63,9 +91,7 @@ watch(
     copyError.value = false
     loading.value = true
     try {
-      const response = await rawApi.get<PaymentDetails>(
-        `/settlements/transfers/${props.transferId}/payment-details`
-      )
+      const response = await rawApi.get<PaymentDetails>(path)
       if (token === fetchToken) {
         details.value = response.data
       }
@@ -111,7 +137,7 @@ async function copyIban() {
     size="sm"
     @close="$emit('close')"
   >
-    <div v-if="transferId" class="space-y-4">
+    <div v-if="transferId || netRequest" class="space-y-4">
       <dl class="space-y-2 text-sm">
         <div class="flex justify-between">
           <dt class="text-gray-500 dark:text-stone-400">To</dt>
