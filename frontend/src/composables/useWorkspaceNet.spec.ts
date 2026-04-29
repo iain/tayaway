@@ -14,21 +14,23 @@ import {
 // Wires up the three stores `useWorkspaceNet` reads from. The composable
 // derives everything from the pool, so each test seeds whichever objects it
 // needs and relies on these helpers for the viewer/workspace identity.
-function setViewer(userId: string): void {
-  const auth = useAuthStore()
-  // Bypass auth's full /me hydration — the composable only reads currentUserId.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(auth as any).user = {
-    id: userId,
-    email: 'viewer@example.com',
-    name: 'Viewer',
-    iban: null,
-  }
+function setViewer(userId: string | null): void {
+  // $patch is the supported Pinia way to set state without going through an
+  // action — keeps the spec sturdy if the auth store ever gains a setter.
+  useAuthStore().$patch({
+    user: userId
+      ? {
+          id: userId,
+          email: 'viewer@example.com',
+          name: 'Viewer',
+          iban: null,
+        }
+      : null,
+  })
 }
 
 function setWorkspace(workspaceId: string): void {
-  const workspace = useWorkspaceStore()
-  workspace.currentWorkspaceId = workspaceId
+  useWorkspaceStore().currentWorkspaceId = workspaceId
 }
 
 describe('useWorkspaceNet', () => {
@@ -46,9 +48,7 @@ describe('useWorkspaceNet', () => {
   })
 
   it('returns no suggestions when the viewer or workspace is unset', () => {
-    const auth = useAuthStore()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(auth as any).user = null
+    setViewer(null)
 
     const { netSettlements } = useWorkspaceNet()
     expect(netSettlements.value).toEqual([])

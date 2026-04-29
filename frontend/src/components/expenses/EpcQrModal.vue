@@ -5,7 +5,7 @@ import BaseModal from '@/components/common/BaseModal.vue'
 // Bypasses the pool: payment details are sender-authorised, per-transfer,
 // and short-lived. They must not be cached in the shared object pool where
 // other clients (or a later session) could pick them up.
-import { rawApi } from '@/api/client'
+import { rawApi, type ApiError } from '@/api/client'
 
 // The modal works in two modes:
 //   - transferId: per-event payment for a single SettlementTransfer
@@ -39,6 +39,7 @@ interface PaymentDetails {
 
 const details = ref<PaymentDetails | null>(null)
 const detailsError = ref(false)
+const driftError = ref(false)
 const loading = ref(false)
 const copied = ref(false)
 const copyError = ref(false)
@@ -46,6 +47,15 @@ let copiedTimer: ReturnType<typeof setTimeout> | null = null
 // Per-open token: every open bumps it. A response or timeout that resolves
 // after a subsequent open (even for the same transferId) is then ignored.
 let fetchToken = 0
+
+function isApiError(e: unknown): e is ApiError {
+  return (
+    typeof e === 'object' &&
+    e !== null &&
+    'status' in e &&
+    typeof (e as { status: unknown }).status === 'number'
+  )
+}
 
 function clearCopiedTimer() {
   if (copiedTimer) {
@@ -55,6 +65,14 @@ function clearCopiedTimer() {
 }
 
 function buildPaymentDetailsPath(): string | null {
+  // Both modes set is a caller bug — callers should pick one. Fail loud in
+  // dev so it's caught before shipping a wrong-amount QR; in prod we still
+  // pick `transferId` (more specific) over `netRequest` deterministically.
+  if (props.transferId && props.netRequest && import.meta.env.DEV) {
+    console.warn(
+      '[EpcQrModal] both transferId and netRequest provided; using transferId'
+    )
+  }
   if (props.transferId) {
     return `/settlements/transfers/${props.transferId}/payment-details`
   }
@@ -81,11 +99,13 @@ watch(
     if (!isOpen || !path) {
       details.value = null
       detailsError.value = false
+      driftError.value = false
       loading.value = false
       copied.value = false
       return
     }
     detailsError.value = false
+    driftError.value = false
     details.value = null
     copied.value = false
     copyError.value = false
@@ -95,8 +115,14 @@ watch(
       if (token === fetchToken) {
         details.value = response.data
       }
-    } catch {
-      if (token === fetchToken) {
+    } catch (e) {
+      if (token !== fetchToken) return
+      // 409 on the net-payment endpoint is the drift signal — the live net
+      // no longer matches what the caller saw. Surface it specifically so
+      // the user knows to refresh, instead of the generic "couldn't load".
+      if (isApiError(e) && e.status === 409) {
+        driftError.value = true
+      } else {
         detailsError.value = true
       }
     } finally {
@@ -164,6 +190,20 @@ async function copyIban() {
           aria-hidden="true"
         />
         <span class="sr-only">Loading payment details</span>
+      </div>
+
+      <div
+        v-else-if="driftError"
+        data-testid="payment-drift"
+        class="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+      >
+        <p class="font-medium">
+          The balance has changed since this page loaded.
+        </p>
+        <p class="mt-1 text-amber-700 dark:text-amber-400">
+          Close this dialog and refresh the page to see the up-to-date amount
+          before paying.
+        </p>
       </div>
 
       <p

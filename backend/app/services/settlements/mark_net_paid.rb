@@ -50,9 +50,19 @@ module Settlements
         now = Time.now
 
         DB.transaction do
-          # Lock every event that contributes a transfer to this pair. Same
-          # lock Settlements::Create takes, so a concurrent top-up can't
-          # supersede our rows between the read and the write.
+          # Workspace-scoped advisory lock — serialises any concurrent
+          # MarkNetPaid run in this workspace, eliminating the lock-and-list
+          # race where two callers each compute their own event set and lock
+          # only what they observed. Concurrency with Settlements::Create on
+          # an event we haven't seen yet is still possible; that case is
+          # caught by the expected_amount drift check below, since
+          # WorkspaceNet.compute_pair re-queries under this lock and any new
+          # transfer shifts the live amount away from what the caller saw.
+          DB.get(Sequel.function(:pg_advisory_xact_lock,
+                                 Sequel.function(:hashtext, "mark_net_paid:#{workspace_id}")
+                                )
+                )
+
           involved_event_ids = DB[:settlement_transfers]
                                .join(:settlements, id: :settlement_id)
                                .join(:events, id: Sequel[:settlements][:event_id])
@@ -68,6 +78,9 @@ module Settlements
             raise Sequel::Rollback
           end
 
+          # Hold the same per-event lock Settlements::Create takes, so an
+          # in-flight top-up on one of these events doesn't supersede our
+          # rows between the recompute and the UPDATE.
           DB[:events].where(id: involved_event_ids).for_update.all
 
           net = WorkspaceNet.compute_pair(

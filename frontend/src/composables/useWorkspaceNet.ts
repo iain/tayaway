@@ -28,6 +28,10 @@ export interface NetSettlement {
   amount: number
   underlyingTransferIds: string[]
   breakdown: NetSettlementBreakdown[]
+  // Counts derived from breakdown, precomputed so templates don't rebuild
+  // a Set on every reactive read.
+  transferCount: number
+  eventCount: number
 }
 
 const EPSILON = 0.005
@@ -121,6 +125,9 @@ export function useWorkspaceNet(): {
       // (e.g. after a top-up) doesn't reset list animations or focus.
       const id = [viewerId, bucket.counterpartyUserId].sort().join(':')
 
+      const eventIds = new Set<string | undefined>()
+      for (const b of breakdown) eventIds.add(b.event?.id)
+
       results.push({
         id,
         counterpartyUserId: bucket.counterpartyUserId,
@@ -128,6 +135,8 @@ export function useWorkspaceNet(): {
         amount,
         underlyingTransferIds: bucket.breakdown.map((b) => b.transfer.id),
         breakdown,
+        transferCount: breakdown.length,
+        eventCount: eventIds.size,
       })
     }
 

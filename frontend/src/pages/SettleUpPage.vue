@@ -172,15 +172,11 @@ function eventNameFor(eventId: string | undefined): string {
                   @click="toggleExpanded(net.id)"
                 >
                   <span>
-                    {{ net.breakdown.length }}
-                    {{ net.breakdown.length === 1 ? 'transfer' : 'transfers' }}
+                    {{ net.transferCount }}
+                    {{ net.transferCount === 1 ? 'transfer' : 'transfers' }}
                     across
-                    {{ new Set(net.breakdown.map((b) => b.event?.id)).size }}
-                    {{
-                      new Set(net.breakdown.map((b) => b.event?.id)).size === 1
-                        ? 'event'
-                        : 'events'
-                    }}
+                    {{ net.eventCount }}
+                    {{ net.eventCount === 1 ? 'event' : 'events' }}
                   </span>
                   <ChevronDownIcon
                     class="size-3 transition-transform"
@@ -273,15 +269,11 @@ function eventNameFor(eventId: string | undefined): string {
                   @click="toggleExpanded(net.id)"
                 >
                   <span>
-                    {{ net.breakdown.length }}
-                    {{ net.breakdown.length === 1 ? 'transfer' : 'transfers' }}
+                    {{ net.transferCount }}
+                    {{ net.transferCount === 1 ? 'transfer' : 'transfers' }}
                     across
-                    {{ new Set(net.breakdown.map((b) => b.event?.id)).size }}
-                    {{
-                      new Set(net.breakdown.map((b) => b.event?.id)).size === 1
-                        ? 'event'
-                        : 'events'
-                    }}
+                    {{ net.eventCount }}
+                    {{ net.eventCount === 1 ? 'event' : 'events' }}
                   </span>
                   <ChevronDownIcon
                     class="size-3 transition-transform"
