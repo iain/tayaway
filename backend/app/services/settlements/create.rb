@@ -96,9 +96,13 @@ module Settlements
           paid_transfers = active_transfers.reject { |t| t[:paid_at].nil? }
 
           begin
-            # Residual credits both paid and unpaid transfers: if it's zero
-            # AND no new expenses have been added, the books already reflect
-            # the fair split and there's nothing to issue.
+            # Residual credits both paid and unpaid transfers: if minimizing
+            # it produces no transfer AND no new expenses have been added,
+            # the books already reflect the fair split. We check via
+            # `minimize_transfers` rather than `residual.empty?` because
+            # per-user residuals up to half a cent can survive as rounding
+            # crumbs from the prior top-up — those can't fund any transfer
+            # and shouldn't trigger a fresh issue.
             residual_balance = BalanceMath.compute_balances(
               expenses: all_expenses,
               current_snapshot: current_snapshot,
@@ -110,7 +114,7 @@ module Settlements
             raise Sequel::Rollback
           end
 
-          if unsettled.empty? && residual_balance.empty?
+          if unsettled.empty? && BalanceMath.minimize_transfers(residual_balance).empty?
             failure = Failure(ServiceError.validation(
                                 concurrent_settlement_exists?(event.id) ?
                                   "These expenses were just settled by another member" :

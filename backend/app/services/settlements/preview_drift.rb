@@ -46,7 +46,10 @@ module Settlements
           participants_by_expense: participants_by_expense,
           credited_transfers: active_transfers
         )
-        if unsettled.empty? && residual.empty?
+        # Sub-half-cent residuals can survive rounding without being able to
+        # fund any transfer. Match Create's gate so we don't tell the user
+        # there's drift when the books are already up to date.
+        if unsettled.empty? && BalanceMath.minimize_transfers(residual).empty?
           return Success(empty_preview(tip))
         end
 

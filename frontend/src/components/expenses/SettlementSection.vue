@@ -103,10 +103,14 @@ const previewMathOpen = ref(false)
 
 const hasTip = computed(() => settlements.value.length > 0)
 
-const paidTransfersInChain = computed(() =>
+const activeTransfersInChain = computed(() =>
   settlements.value
     .flatMap((s) => transfersForSettlement(s.id))
-    .filter((t) => t.paidAt !== null && !t.supersededAt)
+    .filter((t) => !t.supersededAt)
+)
+
+const paidTransfersInChain = computed(() =>
+  activeTransfersInChain.value.filter((t) => t.paidAt !== null)
 )
 
 const resolveParticipant = (pid: string) => {
@@ -157,9 +161,36 @@ const previewTransfers = computed((): PreviewTransfer[] => {
   return minimizeTransfers(previewBalances.value)
 })
 
-const hasDrift = computed(
-  () => hasTip.value && previewTransfers.value.length > 0
-)
+// Drift is about whether the underlying split has changed since the latest
+// settlement was locked in — not whether its transfers happen to be unpaid.
+// Subtract every active transfer (paid or not) from the current fair share
+// and see whether anything is left that could fund a transfer. Per-user
+// residuals can survive the half-cent epsilon as rounding crumbs from the
+// last top-up; only a residual that produces a real transfer counts.
+const hasDrift = computed(() => {
+  if (!hasTip.value) return false
+  if (!props.event.startDate || !props.event.endDate) return false
+  const attendingRsvps = pool
+    .getAll('rsvp')
+    .filter((r) => r.eventId === props.event.id && r.attending)
+  if (attendingRsvps.length === 0) return false
+  const allExpenses = pool
+    .getAll('expense')
+    .filter((e) => e.eventId === props.event.id)
+  if (allExpenses.length === 0) return false
+  const currentBalances = computeBalances(
+    allExpenses,
+    attendingRsvps,
+    props.event.startDate,
+    props.event.endDate,
+    resolveParticipant
+  )
+  const residual = computeDriftBalances(
+    currentBalances,
+    activeTransfersInChain.value
+  )
+  return minimizeTransfers(residual).length > 0
+})
 
 const showCta = computed(
   () => unsettledExpenseCount.value > 0 || hasDrift.value

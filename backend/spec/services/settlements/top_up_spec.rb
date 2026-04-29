@@ -136,6 +136,33 @@ RSpec.describe "Settlement chain" do
       expect(result.failure?).to be true
       expect(result.failure.message).to include("already up to date")
     end
+
+    # When transfer amounts get rounded to whole cents, a per-user residual
+    # below half a cent can remain. That residual can't fund any transfer —
+    # there's literally no creditor to pay — but a naive `residual.empty?`
+    # check treats it as drift and re-issues an identical settlement on every
+    # click. Reproduces the rounding-crumb scenario with a 220 expense split
+    # 1 / 1.5 / 1 across three participants.
+    it "refuses even when factor-weighted rounding leaves sub-cent residuals" do
+      TestFactories.rsvp(event: event, user: alice, attending: true)
+      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.rsvp(event: event, user: carol, attending: true)
+
+      expense_id = insert_expense(user: carol, amount: 220)
+      DB[:expense_participants].where(expense_id: expense_id).delete
+      now = Time.now
+      DB[:expense_participants].insert(id: SecureRandom.uuid, expense_id: expense_id, user_id: alice[:id], factor: 1, created_at: now, updated_at: now)
+      DB[:expense_participants].insert(id: SecureRandom.uuid, expense_id: expense_id, user_id: carol[:id], factor: 1.5, created_at: now, updated_at: now)
+      DB[:expense_participants].insert(id: SecureRandom.uuid, expense_id: expense_id, user_id: bob[:id], factor: 1, created_at: now, updated_at: now)
+
+      expect(create_call.success?).to be true
+
+      allow(Time).to receive(:now).and_return(Time.now + 10)
+
+      result = create_call
+      expect(result.failure?).to be true
+      expect(result.failure.message).to include("already up to date")
+    end
   end
 
   describe "chain of three" do
