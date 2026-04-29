@@ -10,6 +10,7 @@ import {
   useAuthStore,
   useObjectPoolStore,
   useSettlementsStore,
+  useWebSocketStore,
   useWorkspaceStore,
 } from '@/stores'
 import {
@@ -29,8 +30,10 @@ import { CheckCircleIcon } from '@heroicons/vue/24/solid'
 const pool = useObjectPoolStore()
 const auth = useAuthStore()
 const workspace = useWorkspaceStore()
+const ws = useWebSocketStore()
 const settlementsStore = useSettlementsStore()
 const { user } = storeToRefs(auth)
+const { hasSynced } = storeToRefs(ws)
 
 const { netSettlements, recentSettlements } = useWorkspaceNet()
 
@@ -41,15 +44,15 @@ const youOwe = computed(() =>
   netSettlements.value.filter((s) => s.direction === 'owe')
 )
 
-const expandedIds = ref<Set<string>>(new Set())
+// Single-expand: opening one card collapses any other. Cuts the cognitive
+// load of comparing two breakdowns at once and avoids the Set-mutation
+// reactivity dance.
+const expandedId = ref<string | null>(null)
+function isExpanded(id: string): boolean {
+  return expandedId.value === id
+}
 function toggleExpanded(id: string) {
-  if (expandedIds.value.has(id)) {
-    expandedIds.value.delete(id)
-  } else {
-    expandedIds.value.add(id)
-  }
-  // Force reactivity on Set mutations.
-  expandedIds.value = new Set(expandedIds.value)
+  expandedId.value = expandedId.value === id ? null : id
 }
 
 const markingIds = ref<Set<string>>(new Set())
@@ -100,6 +103,13 @@ function eventNameFor(eventId: string | undefined): string {
   return pool.get('event', eventId)?.name ?? 'Unknown event'
 }
 
+function breakdownAria(amount: number, dominant: boolean): string {
+  // Mirrors the +/− glyph for screen readers — they get the meaning
+  // ("adds" vs "offsets") without having to interpret a sign.
+  const verb = dominant ? 'adds' : 'offsets'
+  return `${verb} ${formatAmount(amount)}`
+}
+
 function settledByLabel(net: RecentSettlement): string {
   const viewerId = auth.currentUserId
   if (!net.paidByUserId) return ''
@@ -128,11 +138,12 @@ async function handleUnmark(net: RecentSettlement) {
 
 <template>
   <div>
-    <PageHeader title="Settle up" data-testid="page-title" />
-    <p class="-mt-4 mb-6 text-sm text-gray-500 dark:text-stone-400">
-      Net balances across every event in this workspace, so you only transfer
-      what's actually owed.
-    </p>
+    <PageHeader title="Settle up" data-testid="page-title">
+      <template #subtitle>
+        Net balances across every event in this workspace, so you only transfer
+        what's actually owed.
+      </template>
+    </PageHeader>
 
     <AlertBox
       v-if="owedToYou.length > 0 && !user?.iban"
@@ -152,7 +163,26 @@ async function handleUnmark(net: RecentSettlement) {
     </AlertBox>
 
     <div
-      v-if="netSettlements.length === 0 && recentSettlements.length === 0"
+      v-if="
+        !hasSynced &&
+        netSettlements.length === 0 &&
+        recentSettlements.length === 0
+      "
+      class="space-y-3"
+      data-testid="settle-up-loading"
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <span class="sr-only">Loading your balances</span>
+      <div
+        v-for="i in 2"
+        :key="i"
+        class="h-20 animate-pulse rounded-lg bg-gray-100 dark:bg-stone-800"
+      />
+    </div>
+
+    <div
+      v-else-if="netSettlements.length === 0 && recentSettlements.length === 0"
       class="py-16 text-center"
       data-testid="settle-up-empty"
     >
@@ -161,14 +191,17 @@ async function handleUnmark(net: RecentSettlement) {
         aria-hidden="true"
       />
       <h2 class="mt-4 text-xl font-semibold text-gray-900 dark:text-white">
-        Nothing to settle.
+        You're all square.
       </h2>
       <p class="mt-2 text-sm text-gray-500 dark:text-stone-400">
-        Every balance you're involved in is square.
+        Nothing to settle right now — come back after the next event.
       </p>
     </div>
 
-    <div v-else class="flex flex-col gap-8">
+    <div
+      v-else-if="netSettlements.length > 0 || recentSettlements.length > 0"
+      class="flex flex-col gap-8"
+    >
       <section v-if="owedToYou.length > 0">
         <h2 class="mb-3 text-lg font-semibold text-gray-900 dark:text-white">
           Owed to you
@@ -197,7 +230,7 @@ async function handleUnmark(net: RecentSettlement) {
                 <button
                   type="button"
                   class="mt-0.5 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-rose-600 dark:text-stone-400 dark:hover:text-rose-400"
-                  :aria-expanded="expandedIds.has(net.id)"
+                  :aria-expanded="isExpanded(net.id)"
                   @click="toggleExpanded(net.id)"
                 >
                   <span>
@@ -209,7 +242,7 @@ async function handleUnmark(net: RecentSettlement) {
                   </span>
                   <ChevronDownIcon
                     class="size-3 transition-transform"
-                    :class="{ 'rotate-180': expandedIds.has(net.id) }"
+                    :class="{ 'rotate-180': isExpanded(net.id) }"
                     aria-hidden="true"
                   />
                 </button>
@@ -224,7 +257,7 @@ async function handleUnmark(net: RecentSettlement) {
               </button>
             </div>
             <div
-              v-if="expandedIds.has(net.id)"
+              v-if="isExpanded(net.id)"
               class="border-t border-gray-100 bg-gray-50 px-4 py-3 sm:px-6 dark:border-stone-700 dark:bg-stone-900/50"
             >
               <ul class="space-y-1 text-xs">
@@ -254,11 +287,24 @@ async function handleUnmark(net: RecentSettlement) {
                         : 'text-amber-700 dark:text-amber-400'
                     "
                   >
-                    {{ b.isDominantDirection ? '+' : '−'
-                    }}{{ formatAmount(b.transfer.amount) }}
+                    <span aria-hidden="true">
+                      {{ b.isDominantDirection ? '+' : '−'
+                      }}{{ formatAmount(b.transfer.amount) }}
+                    </span>
+                    <span class="sr-only">
+                      {{
+                        breakdownAria(b.transfer.amount, b.isDominantDirection)
+                      }}
+                    </span>
                   </span>
                 </li>
               </ul>
+              <p
+                class="mt-2 text-[11px] tracking-wide text-gray-400 dark:text-stone-500"
+                aria-hidden="true"
+              >
+                + adds to the net · − offsets it
+              </p>
             </div>
           </BaseCard>
         </ul>
@@ -294,7 +340,7 @@ async function handleUnmark(net: RecentSettlement) {
                 <button
                   type="button"
                   class="mt-0.5 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-rose-600 dark:text-stone-400 dark:hover:text-rose-400"
-                  :aria-expanded="expandedIds.has(net.id)"
+                  :aria-expanded="isExpanded(net.id)"
                   @click="toggleExpanded(net.id)"
                 >
                   <span>
@@ -306,7 +352,7 @@ async function handleUnmark(net: RecentSettlement) {
                   </span>
                   <ChevronDownIcon
                     class="size-3 transition-transform"
-                    :class="{ 'rotate-180': expandedIds.has(net.id) }"
+                    :class="{ 'rotate-180': isExpanded(net.id) }"
                     aria-hidden="true"
                   />
                 </button>
@@ -322,8 +368,8 @@ async function handleUnmark(net: RecentSettlement) {
               </button>
             </div>
             <div
-              v-if="expandedIds.has(net.id)"
-              class="border-t border-amber-200/60 bg-amber-50/40 px-4 py-3 sm:px-6 dark:border-amber-800/40 dark:bg-amber-950/10"
+              v-if="isExpanded(net.id)"
+              class="border-t border-amber-200/60 bg-amber-50/40 px-4 py-3 sm:px-6 dark:border-amber-800/40 dark:bg-amber-950/20"
             >
               <ul class="space-y-1 text-xs">
                 <li
@@ -352,11 +398,24 @@ async function handleUnmark(net: RecentSettlement) {
                         : 'text-cyan-700 dark:text-cyan-300'
                     "
                   >
-                    {{ b.isDominantDirection ? '+' : '−'
-                    }}{{ formatAmount(b.transfer.amount) }}
+                    <span aria-hidden="true">
+                      {{ b.isDominantDirection ? '+' : '−'
+                      }}{{ formatAmount(b.transfer.amount) }}
+                    </span>
+                    <span class="sr-only">
+                      {{
+                        breakdownAria(b.transfer.amount, b.isDominantDirection)
+                      }}
+                    </span>
                   </span>
                 </li>
               </ul>
+              <p
+                class="mt-2 text-[11px] tracking-wide text-gray-400 dark:text-stone-500"
+                aria-hidden="true"
+              >
+                + adds to the net · − offsets it
+              </p>
             </div>
           </BaseCard>
         </ul>
@@ -405,7 +464,7 @@ async function handleUnmark(net: RecentSettlement) {
                 <button
                   type="button"
                   class="mt-0.5 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-rose-600 dark:text-stone-400 dark:hover:text-rose-400"
-                  :aria-expanded="expandedIds.has(net.id)"
+                  :aria-expanded="isExpanded(net.id)"
                   @click="toggleExpanded(net.id)"
                 >
                   <span>
@@ -417,7 +476,7 @@ async function handleUnmark(net: RecentSettlement) {
                   </span>
                   <ChevronDownIcon
                     class="size-3 transition-transform"
-                    :class="{ 'rotate-180': expandedIds.has(net.id) }"
+                    :class="{ 'rotate-180': isExpanded(net.id) }"
                     aria-hidden="true"
                   />
                 </button>
@@ -432,7 +491,7 @@ async function handleUnmark(net: RecentSettlement) {
               </button>
             </div>
             <div
-              v-if="expandedIds.has(net.id)"
+              v-if="isExpanded(net.id)"
               class="border-t border-gray-100 bg-gray-50 px-4 py-3 sm:px-6 dark:border-stone-700 dark:bg-stone-900/50"
             >
               <ul class="space-y-1 text-xs">
@@ -462,11 +521,24 @@ async function handleUnmark(net: RecentSettlement) {
                         : 'text-gray-400 dark:text-stone-500'
                     "
                   >
-                    {{ b.isDominantDirection ? '+' : '−'
-                    }}{{ formatAmount(b.transfer.amount) }}
+                    <span aria-hidden="true">
+                      {{ b.isDominantDirection ? '+' : '−'
+                      }}{{ formatAmount(b.transfer.amount) }}
+                    </span>
+                    <span class="sr-only">
+                      {{
+                        breakdownAria(b.transfer.amount, b.isDominantDirection)
+                      }}
+                    </span>
                   </span>
                 </li>
               </ul>
+              <p
+                class="mt-2 text-[11px] tracking-wide text-gray-400 dark:text-stone-500"
+                aria-hidden="true"
+              >
+                + adds to the net · − offsets it
+              </p>
             </div>
           </BaseCard>
         </ul>
