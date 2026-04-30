@@ -18,13 +18,19 @@ vi.mock('@/stores/objectPool', () => ({
   }),
 }))
 
-const deleteExpenseSpy = vi.fn().mockResolvedValue(undefined)
 const revertExpenseSpy = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('@/stores/expenses', () => ({
   useExpensesStore: () => ({
-    deleteExpense: deleteExpenseSpy,
     revertExpense: revertExpenseSpy,
+  }),
+}))
+
+const undoableDeleteSpy = vi.fn()
+
+vi.mock('@/composables/useUndoDelete', () => ({
+  useUndoDelete: () => ({
+    undoableDelete: undoableDeleteSpy,
   }),
 }))
 
@@ -112,7 +118,7 @@ function mountRow(expense: PoolExpense) {
 describe('ExpenseRow', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    deleteExpenseSpy.mockClear()
+    undoableDeleteSpy.mockClear()
     revertExpenseSpy.mockClear()
     mockMembers = [mkMember()]
   })
@@ -148,7 +154,7 @@ describe('ExpenseRow', () => {
   })
 
   describe('Delete click routing', () => {
-    it('calls deleteExpense when the action is allowed', async () => {
+    it('triggers an undoable delete when the action is allowed', async () => {
       const expense = mkExpense({
         permissions: { delete: { allowed: true } },
       })
@@ -156,7 +162,12 @@ describe('ExpenseRow', () => {
 
       await wrapper.get('[data-testid="delete-expense"]').trigger('click')
 
-      expect(deleteExpenseSpy).toHaveBeenCalledWith('exp-1')
+      expect(undoableDeleteSpy).toHaveBeenCalledWith({
+        objectType: 'expense',
+        objectId: 'exp-1',
+        message: 'Expense deleted',
+        apiPath: '/expenses/exp-1',
+      })
     })
 
     it('opens the explanation modal instead of deleting when behavior is modal', async () => {
@@ -167,7 +178,7 @@ describe('ExpenseRow', () => {
 
       await wrapper.get('[data-testid="delete-expense"]').trigger('click')
 
-      expect(deleteExpenseSpy).not.toHaveBeenCalled()
+      expect(undoableDeleteSpy).not.toHaveBeenCalled()
       const modal = wrapper.find('[data-testid="expense-blocked-modal"]')
       expect(modal.exists()).toBe(true)
       expect(modal.text()).toContain('Revert')
