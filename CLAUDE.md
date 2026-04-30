@@ -24,15 +24,6 @@ All commands use `mise run`. Key ones:
 | Console     | `mise run console`                              |
 | Build       | `mise run build`                                |
 
-**Single test:**
-
-```
-cd backend && bundle exec rspec spec/path/to/spec.rb
-cd frontend && pnpm exec vitest run src/path/to/file.spec.ts
-```
-
-**Typecheck note:** use `mise run typecheck` (or `pnpm exec vue-tsc -b`). `vue-tsc --noEmit` is **not** equivalent — it can pass while project-references mode finds real errors, particularly in `*.spec.ts` files with their own factories.
-
 ## Architecture
 
 ### Backend (`backend/`)
@@ -40,7 +31,7 @@ cd frontend && pnpm exec vitest run src/path/to/file.spec.ts
 - **Framework**: Roda 3 with `hash_routes` plugin, served by Falcon (fiber-based)
 - **ORM**: Sequel 5 with PostgreSQL
 - **Models** (`app/models/`): Immutable plain Ruby classes with keyword `initialize`, factory class methods for queries, and `to_api_hash` for serialization
-- **Services** (`app/services/`): Return `Result[Success, ServiceError]` monad. Entry point is `.call()`. Chain with `.bind()` (see "Backend code conventions" below for chain shape)
+- **Services** (`app/services/`): Return `Result[Success, ServiceError]` monad. Entry point is `.call()`. Chain with `.bind()` (see "Code conventions" below for chain shape)
 - **Routes** (`app/routes/`): Roda hash_routes organized by domain. Auth via session cookies, CSRF via `X-CSRF-Protection: 1` header
 - **Serializers** (`app/serializers/`): `PoolSerializer` normalizes all objects into a flat pool format `{ objects: [{ id, objectType, ...fields }] }`
 - **WebSocket** (`app/websocket/`): PostgreSQL NOTIFY → Listener thread → broadcasts serialized objects to connected clients
@@ -65,11 +56,22 @@ cd frontend && pnpm exec vitest run src/path/to/file.spec.ts
 4. Clients merge into local object pool (strictly newer `updatedAt` wins)
 5. Optimistic updates are tracked as pending until server confirms
 
-### E2E Tests (`e2e/`)
+## Testing
 
-Playwright tests run against separate servers (backend :9293, frontend :5174) with a dedicated `tayaway_e2e` database.
+### Running tests
 
-## Test-driven development
+```
+cd backend && bundle exec rspec spec/path/to/spec.rb
+cd frontend && pnpm exec vitest run src/path/to/file.spec.ts
+```
+
+**Typecheck note:** use `mise run typecheck` (or `pnpm exec vue-tsc -b`). `vue-tsc --noEmit` is **not** equivalent — it can pass while project-references mode finds real errors, particularly in `*.spec.ts` files with their own factories.
+
+### E2E setup
+
+Playwright tests live in `e2e/` and run against separate servers (backend :9293, frontend :5174) with a dedicated `tayaway_e2e` database.
+
+### Test-driven development
 
 Default to TDD for any non-trivial change — new behavior, bug fixes, refactors that change observable behavior. The discipline: write the test first, watch it fail for the right reason, then make it pass. Do not write implementation and tests together, and do not write the implementation first and backfill tests.
 
@@ -96,7 +98,7 @@ A few rules that keep the loop honest:
 
 - **`if/elsif/else` over guard clauses**: Express branching with regular `if/elsif/else` blocks. Reserve early-return guard clauses for actual input-invariant guards at the top of a method (e.g. a nil-check on a required argument). Don't reach for guard clauses just to flatten a method — explicit branches read better and keep all outcomes visible together.
 
-## Backend code conventions
+### Backend
 
 - **Authorization**: see `doc/authorization.md` before changing any policy, adding policy actions, or touching `usePermission.ts`.
 - **Module singletons**: Define singleton methods inside `class << self`. Don't use `module_function` — it duplicates each method as both a module-level and a private instance method, which obscures intent and breaks cleanly with `private` for helpers.
