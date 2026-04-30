@@ -53,8 +53,8 @@ const DISABLE_REASONS: Record<string, string> = {}
 const MODAL_REASONS: Record<string, string> = {
   has_expenses:
     'This event has expenses or settlements. Settle up and delete expenses before deleting the event.',
-  not_recipient:
-    'Only the person receiving the money can mark a transfer as paid.',
+  not_pair_member:
+    'Only the sender or the recipient of a transfer can mark it as paid.',
   locked_in_followup:
     'A follow-up settlement was issued treating this transfer as paid. Delete the follow-up first if you really need to undo it.',
   settled:

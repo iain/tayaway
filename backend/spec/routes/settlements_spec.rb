@@ -221,7 +221,7 @@ RSpec.describe "Settlements endpoints" do
       expect(transfer[:paid_at]).not_to be_nil
     end
 
-    it "returns 403 when user is not the recipient" do
+    it "returns 403 when caller is neither sender nor recipient" do
       event = TestFactories.event(workspace: workspace, user: user)
       DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
       now = Time.now
@@ -230,14 +230,19 @@ RSpec.describe "Settlements endpoints" do
                               created_at: now, updated_at: now
       )
 
-      other_user = TestFactories.user
+      # Two users on the workspace who are the actual pair; the logged-in
+      # `user` (the request actor) is neither.
+      sender = TestFactories.user
+      recipient = TestFactories.user
+      TestFactories.workspace_membership(workspace: workspace, user: sender)
+      TestFactories.workspace_membership(workspace: workspace, user: recipient)
+
       transfer_id = SecureRandom.uuid
-      # user is the sender, not recipient
       DB[:settlement_transfers].insert(
         id: transfer_id,
         settlement_id: settlement_id,
-        from_user_id: user[:id],
-        to_user_id: other_user[:id],
+        from_user_id: sender[:id],
+        to_user_id: recipient[:id],
         amount: 50.0,
         created_at: now,
         updated_at: now

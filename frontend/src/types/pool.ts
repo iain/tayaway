@@ -150,6 +150,7 @@ export interface ObjectTypeMap {
     toUserId: string | null
     amount: number
     paidAt: string | null
+    paidByUserId: string | null
     supersededAt: string | null
     createdAt: string
   }

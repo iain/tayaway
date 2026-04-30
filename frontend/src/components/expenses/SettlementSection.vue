@@ -406,7 +406,7 @@ async function handlePaidClick(
           </span>
           <span class="text-sm text-gray-600 dark:text-stone-400">
             <span class="font-medium text-gray-800 dark:text-stone-200"
-              >Mark paid</span
+              >Mark as paid</span
             >
             &mdash; once the money arrives, the recipient marks the transfer as
             paid so everyone can see what&rsquo;s left.
@@ -524,7 +524,7 @@ async function handlePaidClick(
                   !transfer.paidAt && can(transfer.permissions, 'generate_qr')
                 "
                 type="button"
-                class="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-amber-600 px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 dark:bg-amber-600 dark:hover:bg-amber-500"
+                class="inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-1.5 rounded-md bg-amber-600 px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 sm:min-h-0 dark:bg-amber-600 dark:hover:bg-amber-500"
                 title="Show QR code for bank transfer"
                 @click="openQrModal(transfer)"
               >
@@ -533,7 +533,7 @@ async function handlePaidClick(
               </button>
               <button
                 type="button"
-                class="cursor-pointer rounded-md px-3 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+                class="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 sm:min-h-0"
                 :class="
                   transfer.paidAt
                     ? 'bg-green-100 text-green-700 hover:bg-green-200 focus-visible:outline-green-500 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'

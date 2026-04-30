@@ -566,6 +566,215 @@ DB.transaction do
     )
   end
 
+  # ── Event 4: bowling night — shows multi-event netting on Settle Up ──────
+  # Test fronted the lanes; charlie + alice each owe ~€20. That charlie→test
+  # transfer offsets the cabin's test→charlie 73.33 in the workspace-level
+  # Settle Up view, so the netted obligation between test and charlie shrinks
+  # (and the per-event breakdown shows one row in each direction).
+  bowl_date = today - 7
+  bowl_id = build_event.call(
+    :bowling,
+    name: "Friday bowling night",
+    description: "Lanes were on test — we'll settle up with the cabin trip in one go.",
+    owner: :alice,
+    start_date: bowl_date,
+    end_date: bowl_date,
+    location: "Bowling alley downtown"
+  )
+
+  bowl_attending = %i[test alice charlie]
+  (bowl_attending + %i[bob diana]).each do |u|
+    attending = bowl_attending.include?(u)
+    DB[:rsvps].insert_conflict(
+      target: %i[event_id user_id],
+      update: { attending: attending, updated_at: now }
+    ).insert(
+      id: det_uuid("rsvp:bowling:#{u}"),
+      event_id: bowl_id,
+      user_id: user_id_for[u],
+      created_by_user_id: user_id_for[u],
+      attending: attending,
+      start_date: nil, end_date: nil,
+      created_at: now - (60 * 60 * 24 * 8),
+      updated_at: now
+    )
+  end
+
+  bowl_expense_id = det_uuid("expense:bowling:lanes")
+  DB[:expenses].insert_conflict(
+    target: :id,
+    update: { amount: 60.00, description: "Lane rental and shoes",
+              created_by_user_id: Sequel[:excluded][:created_by_user_id],
+              updated_at: now }
+  ).insert(
+    id: bowl_expense_id,
+    event_id: bowl_id,
+    user_id: user_id_for[:test],
+    created_by_user_id: user_id_for[:test],
+    amount: 60.00,
+    description: "Lane rental and shoes",
+    start_date: bowl_date,
+    end_date: bowl_date,
+    created_at: now - (60 * 60 * 24 * 7),
+    updated_at: now
+  )
+  bowl_attending.each do |u|
+    DB[:expense_participants].insert_conflict(
+      target: %i[expense_id user_id],
+      update: { factor: 1, updated_at: now }
+    ).insert(
+      id: det_uuid("expense_participant:bowling:#{u}"),
+      expense_id: bowl_expense_id,
+      user_id: user_id_for[u],
+      factor: 1,
+      created_at: now - (60 * 60 * 24 * 7),
+      updated_at: now
+    )
+  end
+
+  bowl_settlement_id = det_uuid("settlement:bowling:root")
+  bowl_rsvp_snapshot = Sequel.pg_json(
+    rsvps: bowl_attending.map do |u|
+      { user_id: user_id_for[u], start_date: bowl_date.iso8601, end_date: bowl_date.iso8601 }
+    end
+  )
+  DB[:settlements].insert_conflict(
+    target: :id,
+    update: { rsvp_snapshot: bowl_rsvp_snapshot, updated_at: now }
+  ).insert(
+    id: bowl_settlement_id,
+    event_id: bowl_id,
+    user_id: user_id_for[:test],
+    previous_settlement_id: nil,
+    rsvp_snapshot: bowl_rsvp_snapshot,
+    created_at: now - (60 * 60 * 24 * 6),
+    updated_at: now - (60 * 60 * 24 * 6)
+  )
+  DB[:expenses].where(id: bowl_expense_id).update(settlement_id: bowl_settlement_id)
+
+  # Both unpaid so they show up live on the Settle Up page. The charlie→test
+  # one is the punchline: it nets against cabin's test→charlie 73.33.
+  [
+    { key: "alice_to_test", from: :alice, to: :test, amount: 20.00 },
+    { key: "charlie_to_test", from: :charlie, to: :test, amount: 20.00 }
+  ].each do |t|
+    DB[:settlement_transfers].insert_conflict(
+      target: :id,
+      update: { amount: t[:amount], paid_at: nil, superseded_at: nil, updated_at: now }
+    ).insert(
+      id: det_uuid("transfer:bowling:#{t[:key]}"),
+      settlement_id: bowl_settlement_id,
+      from_user_id: user_id_for[t[:from]],
+      to_user_id: user_id_for[t[:to]],
+      amount: t[:amount],
+      paid_at: nil,
+      superseded_at: nil,
+      created_at: now - (60 * 60 * 24 * 6),
+      updated_at: now - (60 * 60 * 24 * 6)
+    )
+  end
+
+  # ── Event 5: dinner — gives test an unconditional debt for the QR modal ──
+  # Diana fronted a two-person tasting menu for herself and test. The single
+  # test→diana transfer is independent of the cabin/bowling chain, so even
+  # if those have been further-settled in the dev DB, this one keeps test
+  # in the role of net sender — useful for exercising the Pay via QR flow.
+  dinner_date = today - 3
+  dinner_id = build_event.call(
+    :dinner,
+    name: "Tasting menu at Bouchon",
+    description: "Diana put it on her card; test owes her half.",
+    owner: :diana,
+    start_date: dinner_date,
+    end_date: dinner_date,
+    location: "Restaurant Bouchon, Brussels"
+  )
+
+  dinner_attending = %i[test diana]
+  (dinner_attending + %i[alice bob charlie]).each do |u|
+    attending = dinner_attending.include?(u)
+    DB[:rsvps].insert_conflict(
+      target: %i[event_id user_id],
+      update: { attending: attending, updated_at: now }
+    ).insert(
+      id: det_uuid("rsvp:dinner:#{u}"),
+      event_id: dinner_id,
+      user_id: user_id_for[u],
+      created_by_user_id: user_id_for[u],
+      attending: attending,
+      start_date: nil, end_date: nil,
+      created_at: now - (60 * 60 * 24 * 5),
+      updated_at: now
+    )
+  end
+
+  dinner_expense_id = det_uuid("expense:dinner:tasting-menu")
+  DB[:expenses].insert_conflict(
+    target: :id,
+    update: { amount: 120.00, description: "Tasting menu for two",
+              created_by_user_id: Sequel[:excluded][:created_by_user_id],
+              updated_at: now }
+  ).insert(
+    id: dinner_expense_id,
+    event_id: dinner_id,
+    user_id: user_id_for[:diana],
+    created_by_user_id: user_id_for[:diana],
+    amount: 120.00,
+    description: "Tasting menu for two",
+    start_date: dinner_date,
+    end_date: dinner_date,
+    created_at: now - (60 * 60 * 24 * 3),
+    updated_at: now
+  )
+  dinner_attending.each do |u|
+    DB[:expense_participants].insert_conflict(
+      target: %i[expense_id user_id],
+      update: { factor: 1, updated_at: now }
+    ).insert(
+      id: det_uuid("expense_participant:dinner:#{u}"),
+      expense_id: dinner_expense_id,
+      user_id: user_id_for[u],
+      factor: 1,
+      created_at: now - (60 * 60 * 24 * 3),
+      updated_at: now
+    )
+  end
+
+  dinner_settlement_id = det_uuid("settlement:dinner:root")
+  dinner_rsvp_snapshot = Sequel.pg_json(
+    rsvps: dinner_attending.map do |u|
+      { user_id: user_id_for[u], start_date: dinner_date.iso8601, end_date: dinner_date.iso8601 }
+    end
+  )
+  DB[:settlements].insert_conflict(
+    target: :id,
+    update: { rsvp_snapshot: dinner_rsvp_snapshot, updated_at: now }
+  ).insert(
+    id: dinner_settlement_id,
+    event_id: dinner_id,
+    user_id: user_id_for[:diana],
+    previous_settlement_id: nil,
+    rsvp_snapshot: dinner_rsvp_snapshot,
+    created_at: now - (60 * 60 * 24 * 2),
+    updated_at: now - (60 * 60 * 24 * 2)
+  )
+  DB[:expenses].where(id: dinner_expense_id).update(settlement_id: dinner_settlement_id)
+
+  DB[:settlement_transfers].insert_conflict(
+    target: :id,
+    update: { amount: 60.00, paid_at: nil, superseded_at: nil, updated_at: now }
+  ).insert(
+    id: det_uuid("transfer:dinner:test_to_diana"),
+    settlement_id: dinner_settlement_id,
+    from_user_id: user_id_for[:test],
+    to_user_id: user_id_for[:diana],
+    amount: 60.00,
+    paid_at: nil,
+    superseded_at: nil,
+    created_at: now - (60 * 60 * 24 * 2),
+    updated_at: now - (60 * 60 * 24 * 2)
+  )
+
   # Suppress unused-variable warning while keeping the assignment for clarity.
   _ = conf_id
 end
@@ -573,6 +782,6 @@ end
 puts "Seeded development data:"
 puts "  Workspace: Friends & Family (#{workspace_id})"
 puts "  Users: #{users.values.map { |u| u[:email] }.join(", ")}"
-puts "  Events: cabin trip (settled with chores), team offsite (open poll), birthday drinks"
+puts "  Events: cabin trip (settled with chores), team offsite (open poll), birthday drinks, Friday bowling night (multi-event netting), tasting-menu dinner (test owes diana — QR demo)"
 puts ""
 puts "Log in as #{users[:test][:email]} via the magic-link flow."

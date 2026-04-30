@@ -157,6 +157,7 @@ function mkTransfer(
     toUserId: 'user-test',
     amount: 50,
     paidAt: null,
+    paidByUserId: null,
     supersededAt: null,
     ...overrides,
   }

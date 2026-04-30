@@ -17,6 +17,7 @@ const MembersPage = () => import('@/pages/MembersPage.vue')
 const TasksPage = () => import('@/pages/TasksPage.vue')
 const EventExpensesPage = () => import('@/pages/EventExpensesPage.vue')
 const EventChoresPage = () => import('@/pages/EventChoresPage.vue')
+const SettleUpPage = () => import('@/pages/SettleUpPage.vue')
 const LoginPage = () => import('@/pages/LoginPage.vue')
 const AuthVerifyPage = () => import('@/pages/AuthVerifyPage.vue')
 const InviteAcceptPage = () => import('@/pages/InviteAcceptPage.vue')
@@ -94,6 +95,11 @@ const router = createRouter({
           path: 'tasks',
           name: 'tasks',
           component: TasksPage,
+        },
+        {
+          path: 'settle-up',
+          name: 'settle-up',
+          component: SettleUpPage,
         },
         {
           path: 'members',
