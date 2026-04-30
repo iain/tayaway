@@ -248,7 +248,9 @@ test.describe('Settlements Feature', () => {
       await page.getByTestId('start-settlement-button').click()
 
       // Preview modal should appear
-      await expect(page.getByText('This is a preview')).toBeVisible()
+      await expect(
+        page.getByText('Nothing has been settled yet.')
+      ).toBeVisible()
 
       // Confirm the settlement
       await page.getByRole('button', { name: /Confirm/ }).click()
@@ -286,14 +288,15 @@ test.describe('Settlements Feature', () => {
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
-      // Delete it
+      // Delete it (confirm dialog before the DELETE fires)
+      await page.getByTestId('delete-settlement-button').click()
       const [deleteResp] = await Promise.all([
         page.waitForResponse(
           (resp) =>
             resp.url().includes('/api/settlements/') &&
             resp.request().method() === 'DELETE'
         ),
-        page.getByTestId('delete-settlement-button').click(),
+        page.getByTestId('confirm-delete-settlement').click(),
       ])
       expect(deleteResp.ok()).toBeTruthy()
 
@@ -345,7 +348,9 @@ test.describe('Settlements Feature', () => {
 
       // Open preview, expand math.
       await page.getByTestId('start-settlement-button').click()
-      await expect(page.getByText('This is a preview')).toBeVisible()
+      await expect(
+        page.getByText('Nothing has been settled yet.')
+      ).toBeVisible()
       await page.getByTestId('preview-math-toggle').click()
       await expect(page.getByText('Net balances')).toBeVisible()
       await expect(
