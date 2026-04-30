@@ -270,6 +270,10 @@ export function useWorkspaceNet(): {
       for (const b of breakdown) eventIds.add(b.event?.id)
 
       results.push({
+        // The same pair can appear in both `netSettlements` (outstanding) and
+        // here (recently settled) when only some transfers in the pair are
+        // paid. Suffix the recent variant so the two cards have distinct
+        // v-for keys instead of colliding.
         id: [viewerId, bucket.counterpartyUserId].sort().join(':') + ':recent',
         counterpartyUserId: bucket.counterpartyUserId,
         direction,

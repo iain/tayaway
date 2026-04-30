@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { useMutation } from '@/composables/useMutation'
 import { useObjectPoolStore } from './objectPool'
+import { useAuthStore } from './auth'
 import type { PoolApiResponse } from '@/types/pool'
 
 export const useSettlementsStore = defineStore('settlements', () => {
@@ -53,9 +54,16 @@ export const useSettlementsStore = defineStore('settlements', () => {
     underlyingTransferIds: string[]
   }) {
     const pool = useObjectPoolStore()
+    const auth = useAuthStore()
     const optimisticPaidAt = new Date().toISOString()
+    // Stamp paidByUserId optimistically so the row jumps straight into
+    // "Recently settled" with the right "Marked by you" attribution; the
+    // server is still authoritative once the response lands.
     const pendingIds = args.underlyingTransferIds.map((id) =>
-      pool.addPending('settlementTransfer', id, { paidAt: optimisticPaidAt })
+      pool.addPending('settlementTransfer', id, {
+        paidAt: optimisticPaidAt,
+        paidByUserId: auth.currentUserId,
+      })
     )
 
     try {

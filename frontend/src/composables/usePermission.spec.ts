@@ -99,13 +99,13 @@ describe('usePermission', () => {
       expect('message' in result && result.message).toContain('expenses')
     })
 
-    it('returns modal for not_recipient', () => {
+    it('returns modal for not_pair_member', () => {
       const permissions: Record<string, Permission> = {
-        mark_paid: { allowed: false, reason: 'not_recipient' },
+        mark_paid: { allowed: false, reason: 'not_pair_member' },
       }
       const result = permissionUx(permissions, 'mark_paid')
       expect(result.behavior).toBe('modal')
-      expect('message' in result && result.message).toContain('receiving')
+      expect('message' in result && result.message).toContain('sender')
     })
 
     it('returns modal for not_tip — tells the user only the most recent settlement is deletable', () => {

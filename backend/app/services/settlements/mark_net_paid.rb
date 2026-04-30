@@ -94,16 +94,12 @@ module Settlements
             raise Sequel::Rollback
           end
 
-          # Either party of the pair may attest. The dominant direction
-          # determines who's owed what, but both sides can close the loop —
-          # the sender after paying, the recipient after receiving. The
-          # acting user goes onto each row so notifications and the UI can
-          # show who marked paid.
-          caller_in_pair = [net[:from_user_id], net[:to_user_id]].include?(membership.user_id.to_s)
-          unless caller_in_pair
-            failure = Failure(ServiceError.forbidden("not_pair_member"))
-            raise Sequel::Rollback
-          end
+          # Authorisation here is implicit: compute_pair is queried with
+          # `user_a: membership.user_id`, so every row it returns has the
+          # caller on one side. A non-pair user calling in falls into the
+          # empty-net branch above. Either party may attest — sender after
+          # paying, recipient after receiving — and `paid_by_user_id`
+          # records who closed the loop.
 
           if (net[:amount] - expected_amount.to_f).abs >= WorkspaceNet::BALANCE_EPSILON
             failure = Failure(ServiceError.conflict(
