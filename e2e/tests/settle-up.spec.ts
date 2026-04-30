@@ -130,14 +130,14 @@ test.describe('Workspace Settle Up — multi-event netting', () => {
     await expect(card).toContainText('+€40.00')
     await expect(card).toContainText('−€15.00')
 
-    // Click Mark as paid; backend will mark both underlying transfers paid.
+    // Click Mark as received; backend will mark both underlying transfers paid.
     const [markResp] = await Promise.all([
       page.waitForResponse(
         (resp) =>
           resp.url().includes('/api/settlements/net-transfers/mark-paid') &&
           resp.request().method() === 'PUT'
       ),
-      card.getByRole('button', { name: 'Mark as paid' }).click(),
+      card.getByRole('button', { name: 'Mark as received' }).click(),
     ])
     expect(markResp.ok()).toBeTruthy()
 

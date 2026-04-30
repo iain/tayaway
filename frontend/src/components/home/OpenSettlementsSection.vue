@@ -129,7 +129,9 @@ function getEventIdForTransfer(
             @click="handleMarkPaid(transfer.id)"
           >
             {{
-              markingPaidIds.has(transfer.id) ? 'Marking...' : 'Mark as paid'
+              markingPaidIds.has(transfer.id)
+                ? 'Marking...'
+                : 'Mark as received'
             }}
           </button>
         </div>

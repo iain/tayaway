@@ -253,7 +253,7 @@ async function handleUnmark(net: RecentSettlement) {
                 class="cursor-pointer rounded-md bg-cyan-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-cyan-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-cyan-700 dark:hover:bg-cyan-600"
                 @click="handleMarkPaid(net)"
               >
-                {{ markingIds.has(net.id) ? 'Marking...' : 'Mark as paid' }}
+                {{ markingIds.has(net.id) ? 'Marking...' : 'Mark as received' }}
               </button>
             </div>
             <div
