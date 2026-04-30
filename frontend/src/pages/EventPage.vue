@@ -635,7 +635,7 @@ function handleDownloadIcs(): void {
         period.
       </p>
       <div class="mt-6 flex justify-end">
-        <AppButton variant="cyan" @click="datesBlockedOpen = false">
+        <AppButton variant="secondary" @click="datesBlockedOpen = false">
           Got it
         </AppButton>
       </div>
@@ -675,7 +675,7 @@ function handleDownloadIcs(): void {
           before deleting the event.
         </p>
         <div class="mt-6 flex justify-end">
-          <AppButton variant="cyan" @click="showDeleteConfirm = false">
+          <AppButton variant="secondary" @click="showDeleteConfirm = false">
             Got it
           </AppButton>
         </div>

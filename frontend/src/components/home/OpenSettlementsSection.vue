@@ -6,6 +6,7 @@ import { useObjectPoolStore } from '@/stores'
 import { useSettlementsStore } from '@/stores/settlements'
 import { getMemberName } from '@/utils/member'
 import { formatAmount } from '@/utils/format'
+import AppButton from '@/components/common/AppButton.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import AlertBox from '@/components/common/AlertBox.vue'
 import EpcQrModal from '@/components/expenses/EpcQrModal.vue'
@@ -122,19 +123,16 @@ function getEventIdForTransfer(
               <span v-else>{{ getEventNameForTransfer(transfer) }}</span>
             </p>
           </div>
-          <button
-            type="button"
-            :disabled="markingPaidIds.has(transfer.id)"
-            :aria-busy="markingPaidIds.has(transfer.id)"
-            class="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md bg-cyan-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-cyan-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-0 dark:bg-cyan-700 dark:hover:bg-cyan-600"
+          <AppButton
+            variant="cyan-soft"
+            size="sm"
+            class="min-h-[44px] sm:min-h-0"
+            :loading="markingPaidIds.has(transfer.id)"
+            loading-label="Marking..."
             @click="handleMarkPaid(transfer.id)"
           >
-            {{
-              markingPaidIds.has(transfer.id)
-                ? 'Marking...'
-                : 'Mark as received'
-            }}
-          </button>
+            Mark as received
+          </AppButton>
         </div>
       </BaseCard>
       <BaseCard
@@ -170,15 +168,16 @@ function getEventIdForTransfer(
               <span v-else>{{ getEventNameForTransfer(transfer) }}</span>
             </p>
           </div>
-          <button
-            type="button"
-            class="inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 sm:min-h-0 dark:bg-amber-600 dark:hover:bg-amber-500"
+          <AppButton
+            variant="amber-soft"
+            size="sm"
+            class="min-h-[44px] sm:min-h-0"
             title="Show QR code for bank transfer"
             @click="openQrModal(transfer)"
           >
             <QrCodeIcon class="size-4" aria-hidden="true" />
             Pay via QR
-          </button>
+          </AppButton>
         </div>
       </BaseCard>
     </ul>

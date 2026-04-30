@@ -59,7 +59,7 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
       </p>
       <p>The date poll is closed and no longer accepting votes.</p>
       <div v-if="canManagePoll && isPollResolved(event.datePoll)" class="mt-4">
-        <AppButton variant="amber" @click="showReopenModal = true">
+        <AppButton @click="showReopenModal = true">
           <ArrowPathIcon class="size-4" />
           Reopen Poll
         </AppButton>
