@@ -81,13 +81,15 @@ The loop, one small step at a time:
 4. **Review and clean up.** With the test green, look at both the implementation and the test. Is naming clear? Is there duplication to pull out? Does the code match surrounding conventions? Refactor with the safety net of the green test.
 5. **Decide the next test.** What's the next slice of behavior, edge case, or error path? Go back to step 1. Stop when the tests cover the behavior you set out to add — including the failure modes a reviewer would ask about.
 
+For big new features, wrap this loop in an outer one: start with a failing end-to-end test that captures the user-visible flow, then iterate the inner loop above on each unit needed to drive it green. The e2e test stays red the whole time the feature is under construction; the inner unit tests bring it home one slice at a time.
+
 When TDD doesn't fit, say so explicitly and proceed without it. Genuine cases: pure exploration to learn an unfamiliar API, throwaway scripts, UI tweaks where a test would assert on snapshot-like detail, or migrations whose only "test" is running them. Reaching for these exemptions on a normal feature is the smell — when in doubt, write the test first.
 
 A few rules that keep the loop honest:
 
 - One failing test at a time. Don't write three tests and then implement against all of them — you lose the per-step feedback that catches design problems early.
 - Don't change the test to match what the code happens to do. If a passing implementation surprises you, the test was wrong or the behavior is wrong; figure out which before moving on.
-- Tests describe behavior, not implementation. Assert on outcomes (return values, persisted state, emitted events), not on which private method got called.
+- Tests describe behavior, not implementation. Assert on outcomes (return values, persisted state, emitted events), not on which private method got called. Behavioral tests are what makes step 4's refactor safe — they stay green when internals move, so the green you saw in step 3 still holds after cleanup.
 - If a bug slipped through, the first step of the fix is a test that reproduces it and fails. Then fix the code.
 
 ## Code conventions
