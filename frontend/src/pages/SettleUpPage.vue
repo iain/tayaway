@@ -255,7 +255,7 @@ async function handleUnmark(net: RecentSettlement) {
                 </button>
               </div>
               <AppButton
-                variant="cyan"
+                variant="cyan-soft"
                 size="sm"
                 :loading="markingIds.has(net.id)"
                 loading-label="Marking…"
@@ -354,7 +354,7 @@ async function handleUnmark(net: RecentSettlement) {
                   />
                 </button>
               </div>
-              <AppButton variant="amber" size="sm" @click="openQr(net)">
+              <AppButton variant="amber-soft" size="sm" @click="openQr(net)">
                 <QrCodeIcon class="size-4" aria-hidden="true" />
                 Pay via QR
               </AppButton>

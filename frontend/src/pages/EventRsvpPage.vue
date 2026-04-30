@@ -209,7 +209,7 @@ function handleDownloadIcs(): void {
           the expenses first, then you can change the event dates.
         </p>
         <div class="mt-6 flex justify-end">
-          <AppButton variant="cyan" @click="datesBlockedOpen = false">
+          <AppButton variant="secondary" @click="datesBlockedOpen = false">
             Got it
           </AppButton>
         </div>

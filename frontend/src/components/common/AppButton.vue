@@ -4,7 +4,13 @@ import type { RouteLocationRaw } from 'vue-router'
 
 const props = withDefaults(
   defineProps<{
-    variant?: 'primary' | 'secondary' | 'cyan' | 'amber' | 'danger'
+    variant?:
+      | 'primary'
+      | 'secondary'
+      | 'amber'
+      | 'cyan-soft'
+      | 'amber-soft'
+      | 'danger'
     size?: 'sm' | 'md' | 'lg'
     disabled?: boolean
     loading?: boolean
@@ -31,9 +37,12 @@ const variantClasses: Record<string, string> = {
     'bg-rose-600 text-white hover:bg-rose-500 focus-visible:outline-rose-500',
   secondary:
     'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600',
-  cyan: 'bg-cyan-600 text-white hover:bg-cyan-700 dark:bg-cyan-700 dark:hover:bg-cyan-600',
   amber:
     'bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600',
+  'cyan-soft':
+    'bg-cyan-100 text-cyan-700 hover:bg-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:hover:bg-cyan-900/50',
+  'amber-soft':
+    'bg-amber-200 text-amber-900 hover:bg-amber-300 dark:bg-amber-900/50 dark:text-amber-200 dark:hover:bg-amber-900/70',
   danger:
     'bg-red-600 text-white hover:bg-red-500 focus-visible:outline-rose-500',
 }

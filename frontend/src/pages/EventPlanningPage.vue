@@ -113,7 +113,6 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
         </p>
         <AppButton
           v-if="canOpenOrReopenPoll"
-          variant="amber"
           class="mt-6"
           @click="handleReopenPoll"
         >
