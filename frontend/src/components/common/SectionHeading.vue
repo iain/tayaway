@@ -12,7 +12,7 @@ defineProps<{
     <h2
       class="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white"
     >
-      <component :is="icon" class="size-5 text-gray-400 dark:text-stone-500" />
+      <component :is="icon" class="size-5 text-amber-600 dark:text-amber-400" />
       {{ title }}
     </h2>
     <slot />
