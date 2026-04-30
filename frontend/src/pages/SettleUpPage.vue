@@ -24,6 +24,8 @@ import { formatRelativeDate } from '@/utils/date'
 import PageHeader from '@/components/common/PageHeader.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import AlertBox from '@/components/common/AlertBox.vue'
+import AppButton from '@/components/common/AppButton.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import EpcQrModal from '@/components/expenses/EpcQrModal.vue'
 import BreakdownLegend from '@/components/expenses/BreakdownLegend.vue'
 import { CheckCircleIcon } from '@heroicons/vue/24/solid'
@@ -111,6 +113,10 @@ function breakdownAria(amount: number, dominant: boolean): string {
   return `${verb} ${formatAmount(amount)}`
 }
 
+function transferCountLabel(count: number): string {
+  return count === 1 ? '1 transfer' : `${count} transfers`
+}
+
 function settledByLabel(net: RecentSettlement): string {
   const viewerId = auth.currentUserId
   if (!net.paidByUserId) return ''
@@ -157,9 +163,9 @@ async function handleUnmark(net: RecentSettlement) {
       </p>
       <router-link
         to="/profile"
-        class="mt-1 inline-block text-sm font-medium text-amber-700 underline hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-200"
+        class="mt-1 inline-flex items-center gap-1 text-sm font-medium text-amber-700 underline hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-200"
       >
-        Add IBAN in profile
+        Add IBAN in profile <span aria-hidden="true">→</span>
       </router-link>
     </AlertBox>
 
@@ -175,29 +181,35 @@ async function handleUnmark(net: RecentSettlement) {
       aria-live="polite"
     >
       <span class="sr-only">Loading your balances</span>
+      <!-- Skeletons echo the actual card shape — title line + metadata line +
+           action affordance — so the page doesn't visually thrash on first paint. -->
       <div
         v-for="i in 2"
         :key="i"
-        class="h-20 animate-pulse rounded-lg bg-gray-100 dark:bg-stone-800"
-      />
+        class="flex items-center justify-between gap-4 rounded-lg bg-white px-4 py-3 shadow ring-1 ring-black/5 sm:px-6 dark:bg-stone-800 dark:ring-white/[0.06]"
+      >
+        <div class="flex-1 space-y-2">
+          <div
+            class="h-4 w-2/3 animate-pulse rounded bg-gray-100 dark:bg-stone-700"
+          />
+          <div
+            class="h-3 w-1/3 animate-pulse rounded bg-gray-100 dark:bg-stone-700"
+          />
+        </div>
+        <div
+          class="h-9 w-28 animate-pulse rounded-md bg-gray-100 dark:bg-stone-700"
+        />
+      </div>
     </div>
 
-    <div
+    <EmptyState
       v-else-if="netSettlements.length === 0 && recentSettlements.length === 0"
-      class="py-16 text-center"
+      :icon="CheckCircleIcon"
+      heading="You're all square."
+      description="Nothing to settle right now — come back after the next event."
+      icon-class="text-emerald-500 dark:text-emerald-400"
       data-testid="settle-up-empty"
-    >
-      <CheckCircleIcon
-        class="mx-auto size-16 text-amber-500 dark:text-amber-400"
-        aria-hidden="true"
-      />
-      <h2 class="mt-4 text-xl font-semibold text-gray-900 dark:text-white">
-        You're all square.
-      </h2>
-      <p class="mt-2 text-sm text-gray-500 dark:text-stone-400">
-        Nothing to settle right now — come back after the next event.
-      </p>
-    </div>
+    />
 
     <div
       v-else-if="netSettlements.length > 0 || recentSettlements.length > 0"
@@ -234,13 +246,7 @@ async function handleUnmark(net: RecentSettlement) {
                   :aria-expanded="isExpanded(net.id)"
                   @click="toggleExpanded(net.id)"
                 >
-                  <span>
-                    {{ net.transferCount }}
-                    {{ net.transferCount === 1 ? 'transfer' : 'transfers' }}
-                    across
-                    {{ net.eventCount }}
-                    {{ net.eventCount === 1 ? 'event' : 'events' }}
-                  </span>
+                  <span>{{ transferCountLabel(net.transferCount) }}</span>
                   <ChevronDownIcon
                     class="size-3 transition-transform"
                     :class="{ 'rotate-180': isExpanded(net.id) }"
@@ -248,15 +254,15 @@ async function handleUnmark(net: RecentSettlement) {
                   />
                 </button>
               </div>
-              <button
-                type="button"
-                :disabled="markingIds.has(net.id)"
-                :aria-busy="markingIds.has(net.id)"
-                class="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md bg-cyan-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-cyan-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-0 dark:bg-cyan-700 dark:hover:bg-cyan-600"
+              <AppButton
+                variant="cyan"
+                size="sm"
+                :loading="markingIds.has(net.id)"
+                loading-label="Marking…"
                 @click="handleMarkPaid(net)"
               >
-                {{ markingIds.has(net.id) ? 'Marking...' : 'Mark as received' }}
-              </button>
+                Mark as received
+              </AppButton>
             </div>
             <div
               v-if="isExpanded(net.id)"
@@ -340,13 +346,7 @@ async function handleUnmark(net: RecentSettlement) {
                   :aria-expanded="isExpanded(net.id)"
                   @click="toggleExpanded(net.id)"
                 >
-                  <span>
-                    {{ net.transferCount }}
-                    {{ net.transferCount === 1 ? 'transfer' : 'transfers' }}
-                    across
-                    {{ net.eventCount }}
-                    {{ net.eventCount === 1 ? 'event' : 'events' }}
-                  </span>
+                  <span>{{ transferCountLabel(net.transferCount) }}</span>
                   <ChevronDownIcon
                     class="size-3 transition-transform"
                     :class="{ 'rotate-180': isExpanded(net.id) }"
@@ -354,15 +354,10 @@ async function handleUnmark(net: RecentSettlement) {
                   />
                 </button>
               </div>
-              <button
-                type="button"
-                class="inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 sm:min-h-0 dark:bg-amber-600 dark:hover:bg-amber-500"
-                title="Show QR code for bank transfer"
-                @click="openQr(net)"
-              >
+              <AppButton variant="amber" size="sm" @click="openQr(net)">
                 <QrCodeIcon class="size-4" aria-hidden="true" />
                 Pay via QR
-              </button>
+              </AppButton>
             </div>
             <div
               v-if="isExpanded(net.id)"
@@ -418,11 +413,14 @@ async function handleUnmark(net: RecentSettlement) {
           Recently settled
         </h2>
         <ul class="space-y-3">
+          <!-- Recently-settled cards override BaseCard's default surface with a
+               muted treatment — no shadow, no ring, soft tint. Reads as "at
+               rest" rather than "disabled" the way blanket opacity would. -->
           <BaseCard
             v-for="net in recentSettlements"
             :key="net.id"
             as="li"
-            class="overflow-hidden opacity-90"
+            class="overflow-hidden bg-gray-50 shadow-none ring-0 dark:bg-stone-900/60"
           >
             <div
               class="flex flex-wrap items-center justify-between gap-y-2 px-4 py-3 sm:px-6"
@@ -459,13 +457,7 @@ async function handleUnmark(net: RecentSettlement) {
                   :aria-expanded="isExpanded(net.id)"
                   @click="toggleExpanded(net.id)"
                 >
-                  <span>
-                    {{ net.transferCount }}
-                    {{ net.transferCount === 1 ? 'transfer' : 'transfers' }}
-                    across
-                    {{ net.eventCount }}
-                    {{ net.eventCount === 1 ? 'event' : 'events' }}
-                  </span>
+                  <span>{{ transferCountLabel(net.transferCount) }}</span>
                   <ChevronDownIcon
                     class="size-3 transition-transform"
                     :class="{ 'rotate-180': isExpanded(net.id) }"
@@ -473,20 +465,19 @@ async function handleUnmark(net: RecentSettlement) {
                   />
                 </button>
               </div>
-              <button
-                type="button"
-                :disabled="unmarkingIds.has(net.id)"
-                :aria-busy="unmarkingIds.has(net.id)"
-                title="Reverses the mark — these transfers will return to outstanding."
-                class="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-0 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-200 dark:hover:bg-stone-700"
+              <AppButton
+                variant="secondary"
+                size="sm"
+                :loading="unmarkingIds.has(net.id)"
+                loading-label="Undoing…"
                 @click="handleUnmark(net)"
               >
-                {{ unmarkingIds.has(net.id) ? 'Unmarking…' : 'Unmark' }}
-              </button>
+                Undo
+              </AppButton>
             </div>
             <div
               v-if="isExpanded(net.id)"
-              class="border-t border-gray-100 bg-gray-50 px-4 py-3 sm:px-6 dark:border-stone-700 dark:bg-stone-900/50"
+              class="border-t border-gray-200/70 bg-white/60 px-4 py-3 sm:px-6 dark:border-stone-700/70 dark:bg-stone-900/40"
             >
               <ul class="space-y-1 text-xs">
                 <li
