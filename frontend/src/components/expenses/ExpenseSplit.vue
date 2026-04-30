@@ -122,7 +122,7 @@ function formatDays(days: number): string {
 
 <template>
   <div v-if="event.startDate && event.endDate" class="mt-8">
-    <SectionHeading :icon="CalculatorIcon" title="Cost Split" />
+    <SectionHeading :icon="CalculatorIcon" title="Fair shares" />
 
     <p
       v-if="rows.length === 0"
@@ -146,12 +146,11 @@ function formatDays(days: number): string {
             <th class="pt-3 pr-4 pb-2 text-right whitespace-nowrap">Balance</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody class="divide-y divide-gray-100 dark:divide-stone-700/50">
           <tr
-            v-for="(row, i) in rows"
+            v-for="row in rows"
             :key="row.userId"
             class="text-gray-800 dark:text-stone-200"
-            :class="i % 2 === 0 ? 'bg-gray-50 dark:bg-white/[0.04]' : ''"
           >
             <td
               class="max-w-[8rem] truncate py-2 pr-4 pl-4 font-medium sm:max-w-none"

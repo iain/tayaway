@@ -22,11 +22,12 @@ import {
   type PreviewTransfer,
   type AnnotatedTransfer,
 } from '@/utils/settlement'
-import { formatDateTime } from '@/utils/date'
+import { formatDateTime, formatRelativeDate } from '@/utils/date'
 import { formatAmount } from '@/utils/format'
 import { getMemberName } from '@/utils/member'
 import AppButton from '@/components/common/AppButton.vue'
 import AppBadge from '@/components/common/AppBadge.vue'
+import BaseCard from '@/components/common/BaseCard.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
@@ -251,7 +252,10 @@ async function confirmSettle() {
   }
 }
 
-async function handleDeleteSettlement(settlement: PoolSettlement) {
+const settlementToDelete = ref<PoolSettlement | null>(null)
+const deletingSettlement = ref(false)
+
+function handleDeleteSettlement(settlement: PoolSettlement) {
   const ux = permissionUx(settlement.permissions, 'delete')
   if (ux.behavior === 'modal') {
     blockedActionMessage.value = ux.message
@@ -259,7 +263,18 @@ async function handleDeleteSettlement(settlement: PoolSettlement) {
     return
   }
   if (ux.behavior !== 'enabled') return
-  await settlementsStore.deleteSettlement(settlement.id)
+  settlementToDelete.value = settlement
+}
+
+async function confirmDeleteSettlement() {
+  if (!settlementToDelete.value || deletingSettlement.value) return
+  deletingSettlement.value = true
+  try {
+    await settlementsStore.deleteSettlement(settlementToDelete.value.id)
+    settlementToDelete.value = null
+  } finally {
+    deletingSettlement.value = false
+  }
 }
 
 const showBlockedActionModal = ref(false)
@@ -343,12 +358,7 @@ async function handlePaidClick(
       <ol class="space-y-3">
         <li class="flex items-start gap-3">
           <span
-            class="flex size-6 shrink-0 items-center justify-center rounded-full text-white"
-            :class="
-              hasExpenses
-                ? 'bg-green-500 dark:bg-green-600'
-                : 'bg-gray-300 dark:bg-stone-600'
-            "
+            class="flex size-6 shrink-0 items-center justify-center rounded-full bg-gray-300 text-white dark:bg-stone-600"
           >
             <CurrencyEuroIcon class="size-3.5" />
           </span>
@@ -363,10 +373,6 @@ async function handlePaidClick(
         <li class="flex items-start gap-3">
           <span
             class="flex size-6 shrink-0 items-center justify-center rounded-full bg-gray-300 dark:bg-stone-600"
-            :class="{
-              'bg-green-500 dark:bg-green-600':
-                hasExpenses && unsettledExpenseCount > 0,
-            }"
           >
             <CalculatorIcon class="size-3.5 text-white" />
           </span>
@@ -415,139 +421,141 @@ async function handlePaidClick(
       </ol>
     </div>
 
-    <div v-for="settlement in settlements" :key="settlement.id" class="mb-4">
+    <BaseCard
+      v-for="settlement in settlements"
+      :key="settlement.id"
+      class="mb-4 overflow-hidden"
+    >
       <div
-        class="overflow-hidden rounded-lg border border-gray-200 dark:border-stone-700"
+        class="flex flex-wrap items-center justify-between gap-y-1 border-b border-gray-100 px-3 py-2 dark:border-stone-700/50"
       >
+        <div class="flex min-w-0 items-center gap-2">
+          <span class="text-xs text-gray-500 dark:text-stone-400">
+            <span v-if="settlement.previousSettlementId">Top-up</span>
+            <span v-else>Settled</span>
+            by {{ getMemberName(settlement.userId, pool) }}
+            <span :title="formatDate(settlement.createdAt)">
+              {{ formatRelativeDate(settlement.createdAt) }}
+            </span>
+          </span>
+          <AppBadge v-if="allTransfersPaid(settlement.id)" variant="green">
+            <CheckCircleIcon class="size-3" />
+            All paid
+          </AppBadge>
+        </div>
+        <IconButton
+          v-if="showDeleteSettlement(settlement)"
+          variant="danger"
+          label="Delete settlement"
+          data-testid="delete-settlement-button"
+          @click="handleDeleteSettlement(settlement)"
+        >
+          <TrashIcon class="size-4" />
+        </IconButton>
+      </div>
+
+      <div
+        v-if="transfersForSettlement(settlement.id).length > 0"
+        class="border-b border-gray-100 px-3 py-1.5 dark:border-stone-700/50"
+      >
+        <button
+          type="button"
+          class="flex w-full items-center justify-between rounded-md px-1.5 py-1 text-xs text-gray-600 hover:bg-gray-100 dark:text-stone-400 dark:hover:bg-stone-700/50"
+          :data-testid="`settlement-math-toggle-${settlement.id}`"
+          :aria-expanded="isSettlementMathOpen(settlement.id)"
+          :aria-controls="`settlement-math-panel-${settlement.id}`"
+          @click="toggleSettlementMath(settlement.id)"
+        >
+          <span>
+            {{
+              isSettlementMathOpen(settlement.id)
+                ? 'Hide breakdown'
+                : 'Show breakdown'
+            }}
+          </span>
+          <ChevronDownIcon
+            class="size-4 transition-transform"
+            :class="{ 'rotate-180': isSettlementMathOpen(settlement.id) }"
+            aria-hidden="true"
+          />
+        </button>
         <div
-          class="flex flex-wrap items-center justify-between gap-y-1 border-b border-gray-200 bg-gray-50 px-3 py-2 dark:border-stone-700 dark:bg-stone-800/50"
+          v-if="isSettlementMathOpen(settlement.id)"
+          :id="`settlement-math-panel-${settlement.id}`"
+          class="mt-2"
+        >
+          <SettlementMath
+            :balances="balancesForSettlement(settlement.id)"
+            :transfers="annotatedTransfersForSettlement(settlement.id)"
+            :name-for="(uid) => getMemberName(uid, pool)"
+          />
+        </div>
+      </div>
+
+      <div class="divide-y divide-gray-100 dark:divide-stone-700/50">
+        <div
+          v-for="transfer in transfersForSettlement(settlement.id)"
+          :key="transfer.id"
+          class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3"
+          :class="{
+            'opacity-60': transfer.supersededAt,
+          }"
         >
           <div class="flex min-w-0 items-center gap-2">
-            <span class="text-xs text-gray-500 dark:text-stone-400">
-              <span v-if="settlement.previousSettlementId">Top-up</span>
-              <span v-else>Settled</span>
-              by {{ getMemberName(settlement.userId, pool) }} on
-              {{ formatDate(settlement.createdAt) }}
+            <span
+              class="truncate text-sm text-gray-800 dark:text-stone-200"
+              :class="{ 'line-through': transfer.supersededAt }"
+            >
+              {{ getMemberName(transfer.fromUserId, pool) }}
             </span>
-            <AppBadge v-if="allTransfersPaid(settlement.id)" variant="green">
-              <CheckCircleIcon class="size-3" />
-              All paid
+            <span class="shrink-0 text-xs text-gray-400 dark:text-stone-500">
+              &rarr;
+            </span>
+            <span
+              class="truncate text-sm text-gray-800 dark:text-stone-200"
+              :class="{ 'line-through': transfer.supersededAt }"
+            >
+              {{ getMemberName(transfer.toUserId, pool) }}
+            </span>
+            <span
+              class="shrink-0 font-mono text-sm font-semibold text-gray-900 dark:text-white"
+              :class="{ 'line-through': transfer.supersededAt }"
+            >
+              {{ formatAmount(transfer.amount) }}
+            </span>
+            <AppBadge v-if="transfer.supersededAt" variant="gray">
+              Superseded
             </AppBadge>
           </div>
-          <IconButton
-            v-if="showDeleteSettlement(settlement)"
-            variant="danger"
-            label="Delete settlement"
-            data-testid="delete-settlement-button"
-            @click="handleDeleteSettlement(settlement)"
-          >
-            <TrashIcon class="size-4" />
-          </IconButton>
-        </div>
-
-        <div
-          v-if="transfersForSettlement(settlement.id).length > 0"
-          class="border-b border-gray-100 px-3 py-1.5 dark:border-stone-700/50"
-        >
-          <button
-            type="button"
-            class="flex w-full items-center justify-between rounded-md px-1.5 py-1 text-xs text-gray-600 hover:bg-gray-100 dark:text-stone-400 dark:hover:bg-stone-700/50"
-            :data-testid="`settlement-math-toggle-${settlement.id}`"
-            :aria-expanded="isSettlementMathOpen(settlement.id)"
-            :aria-controls="`settlement-math-panel-${settlement.id}`"
-            @click="toggleSettlementMath(settlement.id)"
-          >
-            <span>
-              {{
-                isSettlementMathOpen(settlement.id)
-                  ? 'Hide breakdown'
-                  : 'Show breakdown'
-              }}
-            </span>
-            <ChevronDownIcon
-              class="size-4 transition-transform"
-              :class="{ 'rotate-180': isSettlementMathOpen(settlement.id) }"
-              aria-hidden="true"
-            />
-          </button>
-          <div
-            v-if="isSettlementMathOpen(settlement.id)"
-            :id="`settlement-math-panel-${settlement.id}`"
-            class="mt-2"
-          >
-            <SettlementMath
-              :balances="balancesForSettlement(settlement.id)"
-              :transfers="annotatedTransfersForSettlement(settlement.id)"
-              :name-for="(uid) => getMemberName(uid, pool)"
-            />
-          </div>
-        </div>
-
-        <div class="divide-y divide-gray-100 dark:divide-stone-700/50">
-          <div
-            v-for="transfer in transfersForSettlement(settlement.id)"
-            :key="transfer.id"
-            class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3"
-            :class="{
-              'opacity-60': transfer.supersededAt,
-            }"
-          >
-            <div class="flex min-w-0 items-center gap-2">
-              <span
-                class="truncate text-sm text-gray-800 dark:text-stone-200"
-                :class="{ 'line-through': transfer.supersededAt }"
-              >
-                {{ getMemberName(transfer.fromUserId, pool) }}
-              </span>
-              <span class="shrink-0 text-xs text-gray-400 dark:text-stone-500">
-                &rarr;
-              </span>
-              <span
-                class="truncate text-sm text-gray-800 dark:text-stone-200"
-                :class="{ 'line-through': transfer.supersededAt }"
-              >
-                {{ getMemberName(transfer.toUserId, pool) }}
-              </span>
-              <span
-                class="shrink-0 font-mono text-sm font-semibold text-gray-900 dark:text-white"
-                :class="{ 'line-through': transfer.supersededAt }"
-              >
-                {{ formatAmount(transfer.amount) }}
-              </span>
-              <AppBadge v-if="transfer.supersededAt" variant="gray">
-                Superseded
-              </AppBadge>
-            </div>
-            <div v-if="!transfer.supersededAt" class="flex items-center gap-2">
-              <button
-                v-if="
-                  !transfer.paidAt && can(transfer.permissions, 'generate_qr')
-                "
-                type="button"
-                class="inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-1.5 rounded-md bg-amber-600 px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 sm:min-h-0 dark:bg-amber-600 dark:hover:bg-amber-500"
-                title="Show QR code for bank transfer"
-                @click="openQrModal(transfer)"
-              >
-                <QrCodeIcon class="size-4" aria-hidden="true" />
-                Pay via QR
-              </button>
-              <button
-                type="button"
-                class="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 sm:min-h-0"
-                :class="
-                  transfer.paidAt
-                    ? 'bg-green-100 text-green-700 hover:bg-green-200 focus-visible:outline-green-500 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
-                    : 'bg-cyan-600 text-white shadow-sm hover:bg-cyan-700 focus-visible:outline-cyan-600 dark:bg-cyan-700 dark:hover:bg-cyan-600'
-                "
-                @click="handlePaidClick(transfer, !!transfer.paidAt)"
-              >
-                {{ transfer.paidAt ? 'Paid' : 'Mark as paid' }}
-              </button>
-            </div>
+          <div v-if="!transfer.supersededAt" class="flex items-center gap-2">
+            <button
+              v-if="
+                !transfer.paidAt && can(transfer.permissions, 'generate_qr')
+              "
+              type="button"
+              class="inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 sm:min-h-0 dark:border-stone-600 dark:bg-stone-700 dark:text-stone-200 dark:hover:bg-stone-600"
+              title="Show QR code for bank transfer"
+              @click="openQrModal(transfer)"
+            >
+              <QrCodeIcon class="size-4" aria-hidden="true" />
+              Pay via QR
+            </button>
+            <button
+              type="button"
+              class="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 sm:min-h-0"
+              :class="
+                transfer.paidAt
+                  ? 'bg-green-100 text-green-700 hover:bg-green-200 focus-visible:outline-green-500 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
+                  : 'bg-rose-600 text-white shadow-sm hover:bg-rose-700 focus-visible:outline-rose-600 dark:bg-rose-700 dark:hover:bg-rose-600'
+              "
+              @click="handlePaidClick(transfer, !!transfer.paidAt)"
+            >
+              {{ transfer.paidAt ? 'Paid' : 'Mark as paid' }}
+            </button>
           </div>
         </div>
       </div>
-    </div>
+    </BaseCard>
 
     <BaseModal
       v-if="showPreviewModal"
@@ -556,13 +564,12 @@ async function handlePaidClick(
       size="md"
       @close="showPreviewModal = false"
     >
-      <div
-        class="mb-4 rounded-md border-2 border-dashed border-amber-400 bg-amber-50 px-3 py-2 dark:border-amber-600 dark:bg-amber-950/30"
+      <p
+        class="mb-4 flex items-center gap-2 text-sm text-gray-600 dark:text-stone-400"
       >
-        <p class="text-sm font-medium text-amber-800 dark:text-amber-300">
-          This is a preview &mdash; nothing has been settled yet.
-        </p>
-      </div>
+        <AppBadge variant="gray">Preview</AppBadge>
+        Nothing has been settled yet.
+      </p>
 
       <p
         v-if="unsettledExpenseCount > 0"
@@ -678,6 +685,39 @@ async function handlePaidClick(
           @click="showBlockedActionModal = false"
         >
           OK
+        </AppButton>
+      </div>
+    </BaseModal>
+
+    <BaseModal
+      :open="settlementToDelete !== null"
+      title="Delete this settlement?"
+      size="sm"
+      data-testid="delete-settlement-confirm"
+      @close="settlementToDelete = null"
+    >
+      <p class="text-sm text-gray-600 dark:text-stone-400">
+        Its transfers will disappear and the expenses it covered will become
+        editable again. Anything paid against it will need to be re-recorded.
+      </p>
+      <div class="mt-6 flex justify-end gap-3">
+        <AppButton
+          variant="secondary"
+          size="sm"
+          :disabled="deletingSettlement"
+          @click="settlementToDelete = null"
+        >
+          Cancel
+        </AppButton>
+        <AppButton
+          variant="danger"
+          size="sm"
+          :loading="deletingSettlement"
+          loading-label="Deleting…"
+          data-testid="confirm-delete-settlement"
+          @click="confirmDeleteSettlement"
+        >
+          Delete
         </AppButton>
       </div>
     </BaseModal>

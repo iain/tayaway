@@ -14,7 +14,7 @@ export interface ExpenseParticipantInput {
 }
 
 export const useExpensesStore = defineStore('expenses', () => {
-  const { loading, error, create, update, destroy, mutate } = useMutation()
+  const { loading, error, create, update, mutate } = useMutation()
 
   async function createExpense(
     eventId: string,
@@ -145,12 +145,6 @@ export const useExpensesStore = defineStore('expenses', () => {
     )
   }
 
-  async function deleteExpense(id: string) {
-    await destroy('Failed to delete expense', 'expense', id, (commandQueue) =>
-      commandQueue.enqueue('DELETE', `/expenses/${id}`)
-    )
-  }
-
   async function revertExpense(id: string) {
     return await mutate('Failed to revert expense', (commandQueue) =>
       commandQueue.enqueue<PoolApiResponse>('POST', `/expenses/${id}/revert`)
@@ -167,7 +161,6 @@ export const useExpensesStore = defineStore('expenses', () => {
     error,
     createExpense,
     updateExpense,
-    deleteExpense,
     revertExpense,
     $reset,
   }

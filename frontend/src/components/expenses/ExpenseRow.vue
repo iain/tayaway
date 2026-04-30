@@ -17,6 +17,7 @@ import BaseCard from '@/components/common/BaseCard.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import { permissionUx } from '@/composables/usePermission'
+import { useUndoDelete } from '@/composables/useUndoDelete'
 
 const props = defineProps<{
   expense: PoolExpense
@@ -26,6 +27,7 @@ const props = defineProps<{
 
 const pool = useObjectPoolStore()
 const expensesStore = useExpensesStore()
+const { undoableDelete } = useUndoDelete()
 
 const emit = defineEmits<{
   edit: [expense: PoolExpense]
@@ -232,22 +234,19 @@ function closeRevertModal() {
   revertError.value = null
 }
 
-const deleting = ref(false)
-
-async function handleDelete(e: Event) {
+function handleDelete(e: Event) {
   e.stopPropagation()
   if (deleteUx.value.behavior === 'modal') {
     explainBlocked(deleteUx.value.message)
     return
   }
   if (deleteUx.value.behavior !== 'enabled') return
-  if (deleting.value) return
-  deleting.value = true
-  try {
-    await expensesStore.deleteExpense(props.expense.id)
-  } finally {
-    deleting.value = false
-  }
+  undoableDelete({
+    objectType: 'expense',
+    objectId: props.expense.id,
+    message: 'Expense deleted',
+    apiPath: `/expenses/${props.expense.id}`,
+  })
 }
 </script>
 
@@ -348,7 +347,7 @@ async function handleDelete(e: Event) {
             <IconButton
               variant="danger"
               label="Delete expense"
-              :disabled="deleteUx.behavior === 'disabled' || deleting"
+              :disabled="deleteUx.behavior === 'disabled'"
               data-testid="delete-expense"
               @click="handleDelete"
             >
@@ -377,7 +376,7 @@ async function handleDelete(e: Event) {
       <template v-else>
         <p
           v-if="hasParticipants"
-          class="mb-1.5 text-xs font-medium text-amber-700 dark:text-amber-400"
+          class="mb-1.5 text-xs font-medium text-gray-500 dark:text-stone-400"
         >
           {{ participantsHeading }}
         </p>

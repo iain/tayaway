@@ -413,7 +413,7 @@ test.describe('Expenses Feature', () => {
         page.getByRole('heading', { name: 'Expenses', exact: true })
       ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
       await expect(
-        page.getByRole('heading', { name: 'Cost Split' })
+        page.getByRole('heading', { name: 'Fair shares' })
       ).not.toBeVisible()
     })
 
@@ -444,7 +444,7 @@ test.describe('Expenses Feature', () => {
       await page.goto(`/events/${eventId}/expenses`)
 
       await expect(
-        page.getByRole('heading', { name: 'Cost Split' })
+        page.getByRole('heading', { name: 'Fair shares' })
       ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
 
       // Single attendee is even (they paid exactly their share)
@@ -498,7 +498,7 @@ test.describe('Expenses Feature', () => {
       await page.goto(`/events/${eventId}/expenses`)
 
       await expect(
-        page.getByRole('heading', { name: 'Cost Split' })
+        page.getByRole('heading', { name: 'Fair shares' })
       ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
 
       // User A: paid €100, fair share €50.00 → is owed €50.00 back
@@ -569,7 +569,7 @@ test.describe('Expenses Feature', () => {
       await setupAuthenticatedPage(page, tokenA)
       await page.goto(`/events/${eventId}/expenses`)
       await expect(
-        page.getByRole('heading', { name: 'Cost Split' })
+        page.getByRole('heading', { name: 'Fair shares' })
       ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
 
       const splitTable = page.getByTestId('cost-split-table')
@@ -644,7 +644,7 @@ test.describe('Expenses Feature', () => {
       await page.goto(`/events/${eventId}/expenses`)
 
       await expect(
-        page.getByRole('heading', { name: 'Cost Split' })
+        page.getByRole('heading', { name: 'Fair shares' })
       ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
 
       // User A paid €60, fair share is €60 (100%) → even
