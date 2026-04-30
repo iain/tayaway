@@ -41,7 +41,7 @@ module Mailers
       end
 
       def from_address
-        ENV.fetch("SMTP_FROM_EMAIL", "noreply@tayaway.com")
+        ENV.fetch("SMTP_FROM_EMAIL", "noreply@tayaway.nl")
       end
 
       def from_name
@@ -96,7 +96,7 @@ module Mailers
         smtp_port = ENV.fetch("SMTP_PORT", "587").to_i
         smtp_username = ENV.fetch("SMTP_USERNAME")
         smtp_password = ENV.fetch("SMTP_PASSWORD")
-        smtp_domain = ENV.fetch("SMTP_DOMAIN", "tayaway.com")
+        smtp_domain = ENV.fetch("SMTP_DOMAIN", "tayaway.nl")
 
         # Port 465 uses implicit SSL; port 587 uses STARTTLS
         tls_options = if smtp_port == 465

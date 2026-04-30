@@ -11,7 +11,7 @@ RSpec.describe Mailers::PollClosed do
       user_name: "Alice",
       event_name: "Summer Trip",
       date_label: "March 10-12, 2026",
-      event_url: "https://tayaway.com/events/abc123",
+      event_url: "https://tayaway.nl/events/abc123",
       ics_content: "BEGIN:VCALENDAR\r\nEND:VCALENDAR",
       ics_filename: "summer-trip.ics",
       auto_rsvped: false
@@ -55,14 +55,14 @@ RSpec.describe Mailers::PollClosed do
       described_class.send_email(**base_params)
       text_body = Mail::TestMailer.deliveries.first.text_part.body.to_s
 
-      expect(text_body).to include("https://tayaway.com/events/abc123")
+      expect(text_body).to include("https://tayaway.nl/events/abc123")
     end
 
     it "includes the event URL as a link in the HTML body" do
       described_class.send_email(**base_params)
       html_body = Mail::TestMailer.deliveries.first.html_part.body.to_s
 
-      expect(html_body).to include('href="https://tayaway.com/events/abc123"')
+      expect(html_body).to include('href="https://tayaway.nl/events/abc123"')
     end
 
     it "attaches the ICS file" do
@@ -121,7 +121,7 @@ RSpec.describe Mailers::PollClosed do
     it "sets a display-name From" do
       described_class.send_email(**base_params)
 
-      expect(Mail::TestMailer.deliveries.first[:from].formatted).to eq(["Tayaway <noreply@tayaway.com>"])
+      expect(Mail::TestMailer.deliveries.first[:from].formatted).to eq(["Tayaway <noreply@tayaway.nl>"])
     end
 
     it "does not set List-Unsubscribe when no unsubscribe address is configured" do

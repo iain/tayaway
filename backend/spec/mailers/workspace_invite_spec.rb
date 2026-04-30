@@ -38,7 +38,7 @@ RSpec.describe Mailers::WorkspaceInvite do
     it "sets a display-name From" do
       described_class.send_email(**params)
 
-      expect(Mail::TestMailer.deliveries.first[:from].formatted).to eq(["Tayaway <noreply@tayaway.com>"])
+      expect(Mail::TestMailer.deliveries.first[:from].formatted).to eq(["Tayaway <noreply@tayaway.nl>"])
     end
 
     context "when an unsubscribe address is configured" do

@@ -7,7 +7,7 @@ RSpec.describe Mailers::LoginLink do
 
   describe ".send_email" do
     let(:email) { "user@example.com" }
-    let(:login_link) { "https://tayaway.com/auth/verify?token=abc123" }
+    let(:login_link) { "https://tayaway.nl/auth/verify?token=abc123" }
 
     context "with default workspace name" do
       before { described_class.send_email(email: email, login_link: login_link) }
@@ -21,7 +21,7 @@ RSpec.describe Mailers::LoginLink do
       end
 
       it "sends from the configured address" do
-        expect(Mail::TestMailer.deliveries.first.from).to eq(["noreply@tayaway.com"])
+        expect(Mail::TestMailer.deliveries.first.from).to eq(["noreply@tayaway.nl"])
       end
 
       it "has the default subject" do
@@ -50,7 +50,7 @@ RSpec.describe Mailers::LoginLink do
       end
 
       it "sets a display-name From" do
-        expect(Mail::TestMailer.deliveries.first[:from].formatted).to eq(["Tayaway <noreply@tayaway.com>"])
+        expect(Mail::TestMailer.deliveries.first[:from].formatted).to eq(["Tayaway <noreply@tayaway.nl>"])
       end
 
       it "does not set a List-Unsubscribe header" do

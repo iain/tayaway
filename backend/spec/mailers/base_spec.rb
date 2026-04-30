@@ -5,7 +5,7 @@ require "spec_helper"
 RSpec.describe Mailers::Base do
   describe ".deliver" do
     it "delivers the message" do
-      message = Mail.new(to: "test@example.com", from: "noreply@tayaway.com", subject: "Test")
+      message = Mail.new(to: "test@example.com", from: "noreply@tayaway.nl", subject: "Test")
       described_class.deliver(message)
 
       expect(Mail::TestMailer.deliveries.length).to eq(1)
@@ -13,7 +13,7 @@ RSpec.describe Mailers::Base do
     end
 
     it "raises errors so callers can handle delivery failures" do
-      message = Mail.new(to: "test@example.com", from: "noreply@tayaway.com", subject: "Test")
+      message = Mail.new(to: "test@example.com", from: "noreply@tayaway.nl", subject: "Test")
       allow(message).to receive(:deliver).and_raise(StandardError, "SMTP connection failed")
 
       expect { described_class.deliver(message) }.to raise_error(StandardError, "SMTP connection failed")
@@ -25,7 +25,7 @@ RSpec.describe Mailers::Base do
 
     context "when not in production" do
       it "delivers the message synchronously" do
-        message = Mail.new(to: "test@example.com", from: "noreply@tayaway.com", subject: "Test")
+        message = Mail.new(to: "test@example.com", from: "noreply@tayaway.nl", subject: "Test")
         described_class.deliver_later(message)
 
         expect(Mail::TestMailer.deliveries.length).to eq(1)
@@ -33,7 +33,7 @@ RSpec.describe Mailers::Base do
       end
 
       it "raises errors so callers can detect delivery failures" do
-        message = Mail.new(to: "test@example.com", from: "noreply@tayaway.com", subject: "Test")
+        message = Mail.new(to: "test@example.com", from: "noreply@tayaway.nl", subject: "Test")
         allow(message).to receive(:deliver).and_raise(StandardError, "SMTP connection failed")
 
         expect { described_class.deliver_later(message) }.to raise_error(StandardError, "SMTP connection failed")
@@ -47,7 +47,7 @@ RSpec.describe Mailers::Base do
       end
 
       it "delivers the message in a background thread" do
-        message = Mail.new(to: "test@example.com", from: "noreply@tayaway.com", subject: "Test")
+        message = Mail.new(to: "test@example.com", from: "noreply@tayaway.nl", subject: "Test")
         described_class.deliver_later(message)
 
         sleep 0.1
@@ -55,7 +55,7 @@ RSpec.describe Mailers::Base do
       end
 
       it "logs delivery failures without re-raising" do
-        message = Mail.new(to: "fail@example.com", from: "noreply@tayaway.com", subject: "Test")
+        message = Mail.new(to: "fail@example.com", from: "noreply@tayaway.nl", subject: "Test")
         allow(message).to receive(:deliver).and_raise(StandardError, "SMTP unreachable")
 
         logged_errors = []
@@ -96,18 +96,18 @@ RSpec.describe Mailers::Base do
 
   describe ".from_address" do
     it "returns the configured SMTP_FROM_EMAIL" do
-      expect(described_class.from_address).to eq("noreply@tayaway.com")
+      expect(described_class.from_address).to eq("noreply@tayaway.nl")
     end
   end
 
   describe ".from_header" do
     it "wraps the from address with the default display name" do
-      expect(described_class.from_header).to eq("Tayaway <noreply@tayaway.com>")
+      expect(described_class.from_header).to eq("Tayaway <noreply@tayaway.nl>")
     end
 
     it "honours SMTP_FROM_NAME when set" do
       ENV["SMTP_FROM_NAME"] = "Tayaway Events"
-      expect(described_class.from_header).to eq("Tayaway Events <noreply@tayaway.com>")
+      expect(described_class.from_header).to eq("Tayaway Events <noreply@tayaway.nl>")
     ensure
       ENV.delete("SMTP_FROM_NAME")
     end
@@ -146,7 +146,7 @@ RSpec.describe Mailers::Base do
 
     it "sets From with the display name" do
       described_class.apply_sender_headers(message)
-      expect(message[:from].formatted).to eq(["Tayaway <noreply@tayaway.com>"])
+      expect(message[:from].formatted).to eq(["Tayaway <noreply@tayaway.nl>"])
     end
 
     it "sets Reply-To when SMTP_REPLY_TO_EMAIL is configured" do
