@@ -61,10 +61,6 @@ RSpec.describe PermissionAttacher do
   end
 
   describe ".attach_to_message" do
-    # Referencing ConnectionManager triggers Zeitwerk to load connection_manager.rb,
-    # which defines the Websocket::PolicyContext struct as a side effect.
-    before { Websocket::ConnectionManager }
-
     let(:policy_context) do
       Websocket::PolicyContext.new(
         raw_objects: { "event:#{event.id}" => event },
