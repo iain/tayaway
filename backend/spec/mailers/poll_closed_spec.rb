@@ -117,5 +117,29 @@ RSpec.describe Mailers::PollClosed do
         expect(text_body).to include("Head to the event page to RSVP")
       end
     end
+
+    it "sets a display-name From" do
+      described_class.send_email(**base_params)
+
+      expect(Mail::TestMailer.deliveries.first[:from].formatted).to eq(["Tayaway <noreply@tayaway.com>"])
+    end
+
+    it "does not set List-Unsubscribe when no unsubscribe address is configured" do
+      described_class.send_email(**base_params)
+
+      expect(Mail::TestMailer.deliveries.first["List-Unsubscribe"]).to be_nil
+    end
+
+    context "when an unsubscribe address is configured" do
+      before { ENV["SMTP_UNSUBSCRIBE_EMAIL"] = "unsubscribe@tayaway.nl" }
+      after { ENV.delete("SMTP_UNSUBSCRIBE_EMAIL") }
+
+      it "sets a mailto List-Unsubscribe header" do
+        described_class.send_email(**base_params)
+
+        expect(Mail::TestMailer.deliveries.first["List-Unsubscribe"].to_s)
+          .to eq("<mailto:unsubscribe@tayaway.nl?subject=unsubscribe>")
+      end
+    end
   end
 end

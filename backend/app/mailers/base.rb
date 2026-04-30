@@ -44,6 +44,36 @@ module Mailers
         ENV.fetch("SMTP_FROM_EMAIL", "noreply@tayaway.com")
       end
 
+      def from_name
+        ENV.fetch("SMTP_FROM_NAME", "Tayaway")
+      end
+
+      def from_header
+        "#{from_name} <#{from_address}>"
+      end
+
+      def reply_to_address
+        value = ENV["SMTP_REPLY_TO_EMAIL"]
+        value && !value.empty? ? value : nil
+      end
+
+      def unsubscribe_mailto
+        address = ENV["SMTP_UNSUBSCRIBE_EMAIL"]
+        return nil if address.nil? || address.empty?
+
+        "<mailto:#{address}?subject=unsubscribe>"
+      end
+
+      # `unsubscribable` is true for mail a recipient might reasonably want to
+      # opt out of (invitations, notifications) and false for mail they directly
+      # asked for (login link, email-change verification). Only the former
+      # gets a List-Unsubscribe header.
+      def apply_sender_headers(message, unsubscribable: false)
+        message.from from_header
+        message.reply_to reply_to_address if reply_to_address
+        message["List-Unsubscribe"] = unsubscribe_mailto if unsubscribable && unsubscribe_mailto
+      end
+
       private
 
       # Masks email addresses for logging: "iain@example.com" -> "i***@example.com"

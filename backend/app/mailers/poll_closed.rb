@@ -30,8 +30,8 @@ module Mailers
 
         message = Mail.new
         message.to      email
-        message.from    Mailers::Base.from_address
         message.subject "Dates confirmed for #{event_name}"
+        Mailers::Base.apply_sender_headers(message, unsubscribable: true)
 
         message.attachments[ics_filename] = {
           mime_type: "text/calendar; charset=UTF-8; method=PUBLISH",

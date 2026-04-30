@@ -99,4 +99,90 @@ RSpec.describe Mailers::Base do
       expect(described_class.from_address).to eq("noreply@tayaway.com")
     end
   end
+
+  describe ".from_header" do
+    it "wraps the from address with the default display name" do
+      expect(described_class.from_header).to eq("Tayaway <noreply@tayaway.com>")
+    end
+
+    it "honours SMTP_FROM_NAME when set" do
+      ENV["SMTP_FROM_NAME"] = "Tayaway Events"
+      expect(described_class.from_header).to eq("Tayaway Events <noreply@tayaway.com>")
+    ensure
+      ENV.delete("SMTP_FROM_NAME")
+    end
+  end
+
+  describe ".reply_to_address" do
+    it "is nil when SMTP_REPLY_TO_EMAIL is unset" do
+      ENV.delete("SMTP_REPLY_TO_EMAIL")
+      expect(described_class.reply_to_address).to be_nil
+    end
+
+    it "returns the configured SMTP_REPLY_TO_EMAIL" do
+      ENV["SMTP_REPLY_TO_EMAIL"] = "support@tayaway.nl"
+      expect(described_class.reply_to_address).to eq("support@tayaway.nl")
+    ensure
+      ENV.delete("SMTP_REPLY_TO_EMAIL")
+    end
+  end
+
+  describe ".unsubscribe_mailto" do
+    it "is nil when SMTP_UNSUBSCRIBE_EMAIL is unset" do
+      ENV.delete("SMTP_UNSUBSCRIBE_EMAIL")
+      expect(described_class.unsubscribe_mailto).to be_nil
+    end
+
+    it "wraps the address in angle brackets with an unsubscribe subject" do
+      ENV["SMTP_UNSUBSCRIBE_EMAIL"] = "unsubscribe@tayaway.nl"
+      expect(described_class.unsubscribe_mailto).to eq("<mailto:unsubscribe@tayaway.nl?subject=unsubscribe>")
+    ensure
+      ENV.delete("SMTP_UNSUBSCRIBE_EMAIL")
+    end
+  end
+
+  describe ".apply_sender_headers" do
+    let(:message) { Mail.new(to: "user@example.com", subject: "Test") }
+
+    it "sets From with the display name" do
+      described_class.apply_sender_headers(message)
+      expect(message[:from].formatted).to eq(["Tayaway <noreply@tayaway.com>"])
+    end
+
+    it "sets Reply-To when SMTP_REPLY_TO_EMAIL is configured" do
+      ENV["SMTP_REPLY_TO_EMAIL"] = "support@tayaway.nl"
+      described_class.apply_sender_headers(message)
+      expect(message.reply_to).to eq(["support@tayaway.nl"])
+    ensure
+      ENV.delete("SMTP_REPLY_TO_EMAIL")
+    end
+
+    it "omits Reply-To when SMTP_REPLY_TO_EMAIL is unset" do
+      ENV.delete("SMTP_REPLY_TO_EMAIL")
+      described_class.apply_sender_headers(message)
+      expect(message.reply_to).to be_nil
+    end
+
+    it "sets List-Unsubscribe when unsubscribable and SMTP_UNSUBSCRIBE_EMAIL is configured" do
+      ENV["SMTP_UNSUBSCRIBE_EMAIL"] = "unsubscribe@tayaway.nl"
+      described_class.apply_sender_headers(message, unsubscribable: true)
+      expect(message["List-Unsubscribe"].to_s).to eq("<mailto:unsubscribe@tayaway.nl?subject=unsubscribe>")
+    ensure
+      ENV.delete("SMTP_UNSUBSCRIBE_EMAIL")
+    end
+
+    it "does not set List-Unsubscribe when not unsubscribable, even if configured" do
+      ENV["SMTP_UNSUBSCRIBE_EMAIL"] = "unsubscribe@tayaway.nl"
+      described_class.apply_sender_headers(message, unsubscribable: false)
+      expect(message["List-Unsubscribe"]).to be_nil
+    ensure
+      ENV.delete("SMTP_UNSUBSCRIBE_EMAIL")
+    end
+
+    it "does not set List-Unsubscribe when unsubscribable but SMTP_UNSUBSCRIBE_EMAIL is unset" do
+      ENV.delete("SMTP_UNSUBSCRIBE_EMAIL")
+      described_class.apply_sender_headers(message, unsubscribable: true)
+      expect(message["List-Unsubscribe"]).to be_nil
+    end
+  end
 end

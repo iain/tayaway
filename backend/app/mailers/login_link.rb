@@ -17,8 +17,8 @@ module Mailers
       def build_message(email:, login_link:, workspace_name:)
         message = Mail.new
         message.to      email
-        message.from    Mailers::Base.from_address
         message.subject "Log in to #{workspace_name}"
+        Mailers::Base.apply_sender_headers(message)
 
         text = Mail::Part.new
         text.body = <<~TEXT

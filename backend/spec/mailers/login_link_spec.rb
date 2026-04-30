@@ -48,6 +48,27 @@ RSpec.describe Mailers::LoginLink do
         expect(message.text_part).not_to be_nil
         expect(message.html_part).not_to be_nil
       end
+
+      it "sets a display-name From" do
+        expect(Mail::TestMailer.deliveries.first[:from].formatted).to eq(["Tayaway <noreply@tayaway.com>"])
+      end
+
+      it "does not set a List-Unsubscribe header" do
+        expect(Mail::TestMailer.deliveries.first["List-Unsubscribe"]).to be_nil
+      end
+    end
+
+    context "when an unsubscribe address is configured" do
+      before do
+        ENV["SMTP_UNSUBSCRIBE_EMAIL"] = "unsubscribe@tayaway.nl"
+        described_class.send_email(email: email, login_link: login_link)
+      end
+
+      after { ENV.delete("SMTP_UNSUBSCRIBE_EMAIL") }
+
+      it "still does not set a List-Unsubscribe header (login is user-requested)" do
+        expect(Mail::TestMailer.deliveries.first["List-Unsubscribe"]).to be_nil
+      end
     end
 
     context "with custom workspace name" do
