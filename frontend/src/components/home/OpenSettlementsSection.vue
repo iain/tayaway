@@ -125,7 +125,8 @@ function getEventIdForTransfer(
           <button
             type="button"
             :disabled="markingPaidIds.has(transfer.id)"
-            class="cursor-pointer rounded-md bg-cyan-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-cyan-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-cyan-700 dark:hover:bg-cyan-600"
+            :aria-busy="markingPaidIds.has(transfer.id)"
+            class="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md bg-cyan-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-cyan-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-0 dark:bg-cyan-700 dark:hover:bg-cyan-600"
             @click="handleMarkPaid(transfer.id)"
           >
             {{
@@ -171,7 +172,7 @@ function getEventIdForTransfer(
           </div>
           <button
             type="button"
-            class="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 dark:bg-amber-600 dark:hover:bg-amber-500"
+            class="inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 sm:min-h-0 dark:bg-amber-600 dark:hover:bg-amber-500"
             title="Show QR code for bank transfer"
             @click="openQrModal(transfer)"
           >

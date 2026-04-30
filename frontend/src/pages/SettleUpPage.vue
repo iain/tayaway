@@ -25,6 +25,7 @@ import PageHeader from '@/components/common/PageHeader.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import AlertBox from '@/components/common/AlertBox.vue'
 import EpcQrModal from '@/components/expenses/EpcQrModal.vue'
+import BreakdownLegend from '@/components/expenses/BreakdownLegend.vue'
 import { CheckCircleIcon } from '@heroicons/vue/24/solid'
 
 const pool = useObjectPoolStore()
@@ -229,7 +230,7 @@ async function handleUnmark(net: RecentSettlement) {
                 </p>
                 <button
                   type="button"
-                  class="mt-0.5 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-rose-600 dark:text-stone-400 dark:hover:text-rose-400"
+                  class="-mx-1 mt-0.5 inline-flex min-h-[44px] items-center gap-1 rounded-sm px-1 text-xs text-gray-500 hover:text-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 sm:min-h-0 dark:text-stone-400 dark:hover:text-rose-400"
                   :aria-expanded="isExpanded(net.id)"
                   @click="toggleExpanded(net.id)"
                 >
@@ -250,7 +251,8 @@ async function handleUnmark(net: RecentSettlement) {
               <button
                 type="button"
                 :disabled="markingIds.has(net.id)"
-                class="cursor-pointer rounded-md bg-cyan-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-cyan-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-cyan-700 dark:hover:bg-cyan-600"
+                :aria-busy="markingIds.has(net.id)"
+                class="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md bg-cyan-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-cyan-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-0 dark:bg-cyan-700 dark:hover:bg-cyan-600"
                 @click="handleMarkPaid(net)"
               >
                 {{ markingIds.has(net.id) ? 'Marking...' : 'Mark as received' }}
@@ -269,7 +271,7 @@ async function handleUnmark(net: RecentSettlement) {
                   <router-link
                     v-if="b.event?.id"
                     :to="`/events/${b.event.id}/expenses`"
-                    class="truncate text-gray-700 hover:text-rose-600 hover:underline dark:text-stone-300 dark:hover:text-rose-400"
+                    class="-mx-1 truncate rounded-sm px-1 text-gray-700 hover:text-rose-600 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-stone-300 dark:hover:text-rose-400"
                   >
                     {{ eventNameFor(b.event?.id) }}
                   </router-link>
@@ -299,12 +301,7 @@ async function handleUnmark(net: RecentSettlement) {
                   </span>
                 </li>
               </ul>
-              <p
-                class="mt-2 text-[11px] tracking-wide text-gray-400 dark:text-stone-500"
-                aria-hidden="true"
-              >
-                + adds to the net · − offsets it
-              </p>
+              <BreakdownLegend />
             </div>
           </BaseCard>
         </ul>
@@ -339,7 +336,7 @@ async function handleUnmark(net: RecentSettlement) {
                 </p>
                 <button
                   type="button"
-                  class="mt-0.5 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-rose-600 dark:text-stone-400 dark:hover:text-rose-400"
+                  class="-mx-1 mt-0.5 inline-flex min-h-[44px] items-center gap-1 rounded-sm px-1 text-xs text-gray-500 hover:text-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 sm:min-h-0 dark:text-stone-400 dark:hover:text-rose-400"
                   :aria-expanded="isExpanded(net.id)"
                   @click="toggleExpanded(net.id)"
                 >
@@ -359,7 +356,7 @@ async function handleUnmark(net: RecentSettlement) {
               </div>
               <button
                 type="button"
-                class="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 dark:bg-amber-600 dark:hover:bg-amber-500"
+                class="inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 sm:min-h-0 dark:bg-amber-600 dark:hover:bg-amber-500"
                 title="Show QR code for bank transfer"
                 @click="openQr(net)"
               >
@@ -380,7 +377,7 @@ async function handleUnmark(net: RecentSettlement) {
                   <router-link
                     v-if="b.event?.id"
                     :to="`/events/${b.event.id}/expenses`"
-                    class="truncate text-gray-700 hover:text-rose-600 hover:underline dark:text-stone-300 dark:hover:text-rose-400"
+                    class="-mx-1 truncate rounded-sm px-1 text-gray-700 hover:text-rose-600 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-stone-300 dark:hover:text-rose-400"
                   >
                     {{ eventNameFor(b.event?.id) }}
                   </router-link>
@@ -410,12 +407,7 @@ async function handleUnmark(net: RecentSettlement) {
                   </span>
                 </li>
               </ul>
-              <p
-                class="mt-2 text-[11px] tracking-wide text-gray-400 dark:text-stone-500"
-                aria-hidden="true"
-              >
-                + adds to the net · − offsets it
-              </p>
+              <BreakdownLegend />
             </div>
           </BaseCard>
         </ul>
@@ -463,7 +455,7 @@ async function handleUnmark(net: RecentSettlement) {
                 </p>
                 <button
                   type="button"
-                  class="mt-0.5 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-rose-600 dark:text-stone-400 dark:hover:text-rose-400"
+                  class="-mx-1 mt-0.5 inline-flex min-h-[44px] items-center gap-1 rounded-sm px-1 text-xs text-gray-500 hover:text-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 sm:min-h-0 dark:text-stone-400 dark:hover:text-rose-400"
                   :aria-expanded="isExpanded(net.id)"
                   @click="toggleExpanded(net.id)"
                 >
@@ -484,7 +476,9 @@ async function handleUnmark(net: RecentSettlement) {
               <button
                 type="button"
                 :disabled="unmarkingIds.has(net.id)"
-                class="cursor-pointer rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-200 dark:hover:bg-stone-700"
+                :aria-busy="unmarkingIds.has(net.id)"
+                title="Reverses the mark — these transfers will return to outstanding."
+                class="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-0 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-200 dark:hover:bg-stone-700"
                 @click="handleUnmark(net)"
               >
                 {{ unmarkingIds.has(net.id) ? 'Unmarking…' : 'Unmark' }}
@@ -503,7 +497,7 @@ async function handleUnmark(net: RecentSettlement) {
                   <router-link
                     v-if="b.event?.id"
                     :to="`/events/${b.event.id}/expenses`"
-                    class="truncate text-gray-700 hover:text-rose-600 hover:underline dark:text-stone-300 dark:hover:text-rose-400"
+                    class="-mx-1 truncate rounded-sm px-1 text-gray-700 hover:text-rose-600 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-stone-300 dark:hover:text-rose-400"
                   >
                     {{ eventNameFor(b.event?.id) }}
                   </router-link>
@@ -518,7 +512,7 @@ async function handleUnmark(net: RecentSettlement) {
                     :class="
                       b.isDominantDirection
                         ? 'text-gray-700 dark:text-stone-300'
-                        : 'text-gray-400 dark:text-stone-500'
+                        : 'text-gray-500 dark:text-stone-400'
                     "
                   >
                     <span aria-hidden="true">
@@ -533,12 +527,7 @@ async function handleUnmark(net: RecentSettlement) {
                   </span>
                 </li>
               </ul>
-              <p
-                class="mt-2 text-[11px] tracking-wide text-gray-400 dark:text-stone-500"
-                aria-hidden="true"
-              >
-                + adds to the net · − offsets it
-              </p>
+              <BreakdownLegend />
             </div>
           </BaseCard>
         </ul>
