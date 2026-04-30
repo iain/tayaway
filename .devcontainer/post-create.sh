@@ -50,8 +50,8 @@ SMTP_HOST=localhost
 SMTP_PORT=587
 SMTP_USERNAME=
 SMTP_PASSWORD=
-SMTP_FROM_EMAIL=noreply@tayaway.com
-SMTP_DOMAIN=tayaway.com
+SMTP_FROM_EMAIL=noreply@tayaway.nl
+SMTP_DOMAIN=tayaway.nl
 ENVFILE
 done
 

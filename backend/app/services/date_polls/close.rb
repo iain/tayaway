@@ -108,7 +108,7 @@ module DatePolls
         )
 
         date_label = format_date_label(date_range.start_date, date_range.end_date)
-        event_url = "#{ENV.fetch("FRONTEND_URL", "https://tayaway.com")}/events/#{event.id}"
+        event_url = "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/events/#{event.id}"
         ics_filename = "#{event.name.downcase.gsub(/[^a-z0-9]+/, "-").gsub(/\A-|-\z/, "")}.ics"
 
         users.each do |user|

@@ -14,8 +14,8 @@ module Mailers
       def build_message(email:, verification_link:)
         message = Mail.new
         message.to      email
-        message.from    Mailers::Base.from_address
         message.subject "Confirm your new email address"
+        Mailers::Base.apply_sender_headers(message)
 
         text = Mail::Part.new
         text.body = <<~TEXT

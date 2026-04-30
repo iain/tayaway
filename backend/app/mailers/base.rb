@@ -41,7 +41,37 @@ module Mailers
       end
 
       def from_address
-        ENV.fetch("SMTP_FROM_EMAIL", "noreply@tayaway.com")
+        ENV.fetch("SMTP_FROM_EMAIL", "noreply@tayaway.nl")
+      end
+
+      def from_name
+        ENV.fetch("SMTP_FROM_NAME", "Tayaway")
+      end
+
+      def from_header
+        "#{from_name} <#{from_address}>"
+      end
+
+      def reply_to_address
+        value = ENV["SMTP_REPLY_TO_EMAIL"]
+        value && !value.empty? ? value : nil
+      end
+
+      def unsubscribe_mailto
+        address = ENV["SMTP_UNSUBSCRIBE_EMAIL"]
+        return nil if address.nil? || address.empty?
+
+        "<mailto:#{address}?subject=unsubscribe>"
+      end
+
+      # `unsubscribable` is true for mail a recipient might reasonably want to
+      # opt out of (invitations, notifications) and false for mail they directly
+      # asked for (login link, email-change verification). Only the former
+      # gets a List-Unsubscribe header.
+      def apply_sender_headers(message, unsubscribable: false)
+        message.from from_header
+        message.reply_to reply_to_address if reply_to_address
+        message["List-Unsubscribe"] = unsubscribe_mailto if unsubscribable && unsubscribe_mailto
       end
 
       private
@@ -66,7 +96,7 @@ module Mailers
         smtp_port = ENV.fetch("SMTP_PORT", "587").to_i
         smtp_username = ENV.fetch("SMTP_USERNAME")
         smtp_password = ENV.fetch("SMTP_PASSWORD")
-        smtp_domain = ENV.fetch("SMTP_DOMAIN", "tayaway.com")
+        smtp_domain = ENV.fetch("SMTP_DOMAIN", "tayaway.nl")
 
         # Port 465 uses implicit SSL; port 587 uses STARTTLS
         tls_options = if smtp_port == 465

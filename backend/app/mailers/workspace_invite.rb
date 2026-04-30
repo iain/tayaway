@@ -14,8 +14,8 @@ module Mailers
       def build_message(email:, invite_link:, workspace_name:, name: nil)
         message = Mail.new
         message.to      email
-        message.from    Mailers::Base.from_address
         message.subject "Join #{workspace_name} on Tayaway"
+        Mailers::Base.apply_sender_headers(message, unsubscribable: true)
 
         greeting = name ? "Hi #{name},\n\n" : ""
 
