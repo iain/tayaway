@@ -52,7 +52,7 @@ LOADER.ignore(File.expand_path("../app/routes", __dir__))
 LOADER.ignore(File.expand_path("../lib/reloading.rb", __dir__))
 LOADER.enable_reloading if APP_ENV == "development"
 LOADER.setup
-LOADER.eager_load if APP_ENV == "production"
+LOADER.eager_load if %w[production e2e].include?(APP_ENV)
 
 FRONTEND_URL = ENV.fetch("FRONTEND_URL", "http://localhost:5173").freeze
 
