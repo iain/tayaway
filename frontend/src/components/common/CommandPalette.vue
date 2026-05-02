@@ -119,10 +119,10 @@ const quickActions = computed<NavAction[]>(() => [
   },
   {
     type: 'action',
-    id: 'profile',
-    name: 'Your Profile',
+    id: 'settings',
+    name: 'Settings',
     icon: UserCircleIcon,
-    href: '/profile',
+    href: '/settings',
   },
   {
     type: 'action',

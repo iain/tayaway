@@ -141,7 +141,7 @@ test.describe('Passkeys', () => {
       const { token } = await getTestSession(request, email, 'Passkey Empty')
 
       await setupAuthenticatedPage(page, token)
-      await page.goto('/account')
+      await page.goto('/settings/security')
 
       await expect(page.getByRole('heading', { name: 'Passkeys' })).toBeVisible(
         { timeout: PAGE_LOAD_TIMEOUT }
@@ -161,7 +161,7 @@ test.describe('Passkeys', () => {
       const { token } = await getTestSession(request, email, 'Passkey Register')
 
       await setupAuthenticatedPage(page, token)
-      await page.goto('/account')
+      await page.goto('/settings/security')
 
       await expect(page.getByRole('heading', { name: 'Passkeys' })).toBeVisible(
         { timeout: PAGE_LOAD_TIMEOUT }
@@ -195,7 +195,7 @@ test.describe('Passkeys', () => {
       const { token } = await getTestSession(request, email, 'Passkey Rename')
 
       await setupAuthenticatedPage(page, token)
-      await page.goto('/account')
+      await page.goto('/settings/security')
 
       await expect(page.getByRole('heading', { name: 'Passkeys' })).toBeVisible(
         { timeout: PAGE_LOAD_TIMEOUT }
@@ -232,7 +232,7 @@ test.describe('Passkeys', () => {
       const { token } = await getTestSession(request, email, 'Passkey Delete')
 
       await setupAuthenticatedPage(page, token)
-      await page.goto('/account')
+      await page.goto('/settings/security')
 
       await expect(page.getByRole('heading', { name: 'Passkeys' })).toBeVisible(
         { timeout: PAGE_LOAD_TIMEOUT }
@@ -279,7 +279,7 @@ test.describe('Passkeys', () => {
 
       // Step 1: Register a passkey on the account page
       await setupAuthenticatedPage(page, token)
-      await page.goto('/account')
+      await page.goto('/settings/security')
 
       await expect(page.getByRole('heading', { name: 'Passkeys' })).toBeVisible(
         { timeout: PAGE_LOAD_TIMEOUT }

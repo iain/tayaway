@@ -269,13 +269,18 @@ export const useAuthStore = defineStore('auth', () => {
     const member = pool.findBy('member', 'userId', userId)
     const { mutate, update } = useMutation()
 
-    // Optimistically update the auth ref
+    // Optimistically update the auth ref. The API treats "" as "clear this
+    // field" (and null/undefined as "no change"), but the local state should
+    // surface a cleared field as null so display fallbacks like "Not set" fire.
+    const blankToNull = (v: string | null | undefined) =>
+      v === '' ? null : (v ?? null)
     if (fields.name !== undefined) user.value.name = fields.name
     if (fields.phoneNumber !== undefined)
-      user.value.phoneNumber = fields.phoneNumber
-    if (fields.birthday !== undefined) user.value.birthday = fields.birthday
+      user.value.phoneNumber = blankToNull(fields.phoneNumber)
+    if (fields.birthday !== undefined)
+      user.value.birthday = blankToNull(fields.birthday)
     if (fields.locationName !== undefined)
-      user.value.locationName = fields.locationName
+      user.value.locationName = blankToNull(fields.locationName)
     if (fields.latitude !== undefined) user.value.latitude = fields.latitude
     if (fields.longitude !== undefined) user.value.longitude = fields.longitude
     if (fields.iban !== undefined)
@@ -285,14 +290,16 @@ export const useAuthStore = defineStore('auth', () => {
       const apiCall = (commandQueue: ReturnType<typeof useCommandQueueStore>) =>
         commandQueue.enqueue<PoolApiResponse>('PUT', `/users/${userId}`, fields)
 
-      // Build optimistic pool changes from provided fields
+      // Build optimistic pool changes from provided fields. Same blank → null
+      // normalization as above so the pool-driven UI matches the cleared state.
       const poolChanges: Record<string, unknown> = {}
       if (fields.name !== undefined) poolChanges.name = fields.name
       if (fields.phoneNumber !== undefined)
-        poolChanges.phoneNumber = fields.phoneNumber
-      if (fields.birthday !== undefined) poolChanges.birthday = fields.birthday
+        poolChanges.phoneNumber = blankToNull(fields.phoneNumber)
+      if (fields.birthday !== undefined)
+        poolChanges.birthday = blankToNull(fields.birthday)
       if (fields.locationName !== undefined)
-        poolChanges.locationName = fields.locationName
+        poolChanges.locationName = blankToNull(fields.locationName)
       if (fields.latitude !== undefined) poolChanges.latitude = fields.latitude
       if (fields.longitude !== undefined)
         poolChanges.longitude = fields.longitude

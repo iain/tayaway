@@ -79,43 +79,43 @@ test.describe('Email Change Feature', () => {
   })
 
   test.describe('Email Change UI', () => {
-    test('Edit button opens change email modal with correct content', async ({
+    test('Edit button opens inline email editor with helper copy', async ({
       page,
       request,
     }) => {
       const email = `e2e-ec-modal-${crypto.randomUUID()}@example.com`
       const { token } = await getTestSession(request, email, TEST_NAME)
       await setupAuthenticatedPage(page, token)
-      await page.goto('/account')
+      await page.goto('/settings/account')
 
       const editButton = page.getByTestId('edit-email-button')
       await expect(editButton).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
 
       await editButton.click()
 
-      await expect(page.getByRole('dialog')).toBeVisible()
+      await expect(page.getByLabel('New email address')).toBeVisible()
       await expect(
-        page.getByRole('dialog').getByRole('heading', { name: 'Change Email' })
+        page.getByText("We'll send a verification link")
       ).toBeVisible()
       await expect(
-        page.getByRole('dialog').getByText('Enter your new email address')
+        page.getByRole('button', { name: 'Send link' })
       ).toBeVisible()
     })
 
-    test('submitting email change request closes modal and shows success', async ({
+    test('submitting email change request hides editor and shows success', async ({
       page,
       request,
     }) => {
       const email = `e2e-ec-submit-${crypto.randomUUID()}@example.com`
       const { token } = await getTestSession(request, email, TEST_NAME)
       await setupAuthenticatedPage(page, token)
-      await page.goto('/account')
+      await page.goto('/settings/account')
 
       await expect(page.getByTestId('edit-email-button')).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
       await page.getByTestId('edit-email-button').click()
-      await expect(page.getByRole('dialog')).toBeVisible()
+      await expect(page.getByLabel('New email address')).toBeVisible()
 
       await page
         .getByLabel('New email address')
@@ -128,10 +128,10 @@ test.describe('Email Change Feature', () => {
             resp.request().method() === 'POST' &&
             resp.ok()
         ),
-        page.getByRole('dialog').getByTestId('submit-button').click(),
+        page.getByRole('button', { name: 'Send link' }).click(),
       ])
 
-      await expect(page.getByRole('dialog')).toBeHidden()
+      await expect(page.getByLabel('New email address')).toBeHidden()
       await expect(page.getByTestId('email-change-success')).toBeVisible()
     })
 

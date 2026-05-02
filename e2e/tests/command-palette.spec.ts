@@ -84,12 +84,12 @@ test.describe('Command Palette', () => {
       })
 
       await openPalette(page)
-      await page.getByPlaceholder('Search...').fill('profile')
+      await page.getByPlaceholder('Search...').fill('settings')
 
       const dialog = page.getByRole('dialog')
 
       // Filtered result shows matching item
-      await expect(dialog.getByText('Your Profile')).toBeVisible()
+      await expect(dialog.getByText('Settings')).toBeVisible()
 
       // Non-matching items are hidden
       await expect(dialog.getByText('Dashboard')).not.toBeVisible()
@@ -104,11 +104,11 @@ test.describe('Command Palette', () => {
       })
 
       await openPalette(page)
-      await page.getByPlaceholder('Search...').fill('profile')
+      await page.getByPlaceholder('Search...').fill('settings')
 
-      await page.getByRole('dialog').getByText('Your Profile').click()
+      await page.getByRole('dialog').getByText('Settings').click()
       await expect(page.getByPlaceholder('Search...')).not.toBeVisible()
-      await expect(page).toHaveURL('/profile')
+      await expect(page).toHaveURL('/settings/profile')
     })
   })
 

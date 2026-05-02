@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onBeforeUnmount } from 'vue'
+import { ref, watch, onBeforeUnmount, useTemplateRef } from 'vue'
 import { XMarkIcon, MapPinIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps<{
@@ -151,6 +151,12 @@ function handleBlur(): void {
 onBeforeUnmount(() => {
   if (debounceTimer) clearTimeout(debounceTimer)
   if (abortController) abortController.abort()
+})
+
+const inputEl = useTemplateRef<HTMLInputElement>('inputEl')
+
+defineExpose({
+  focus: () => inputEl.value?.focus(),
 })
 </script>
 
