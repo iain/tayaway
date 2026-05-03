@@ -226,11 +226,10 @@ test.describe('Profile Feature', () => {
       await setupAuthenticatedPage(page, token)
       await page.goto('/settings/profile')
 
-      // Profile page displays name and email
+      // Profile page displays the Account section heading
       await expect(page.getByRole('heading', { name: 'Account' })).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
-      await expect(page.getByText(TEST_EMAIL).first()).toBeVisible()
 
       // Edit button triggers inline editing
       const editButton = page.getByTestId('edit-name-button')

@@ -89,7 +89,7 @@ watch(() => route.name, redirectIfDesktopIndex)
       Settings
     </RouterLink>
 
-    <PageHeader :title="currentSection ? currentSection.label : 'Settings'" />
+    <PageHeader title="Settings" />
 
     <div class="lg:grid lg:grid-cols-[16rem_1fr] lg:gap-10">
       <!-- Sidebar: always visible at lg+; on mobile, only when no section selected -->
