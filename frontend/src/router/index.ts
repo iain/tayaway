@@ -5,8 +5,7 @@ import AuthenticatedLayout from '@/layouts/AuthenticatedLayout.vue'
 const HomePage = () => import('@/pages/HomePage.vue')
 const SettingsLayout = () => import('@/layouts/SettingsLayout.vue')
 const SettingsProfilePage = () => import('@/pages/SettingsProfilePage.vue')
-const SettingsAccountPage = () => import('@/pages/SettingsAccountPage.vue')
-const SettingsSecurityPage = () => import('@/pages/SettingsSecurityPage.vue')
+const SettingsLoginPage = () => import('@/pages/SettingsLoginPage.vue')
 const SettingsPaymentPage = () => import('@/pages/SettingsPaymentPage.vue')
 const EventsPage = () => import('@/pages/EventsPage.vue')
 const EventCreatePage = () => import('@/pages/EventCreatePage.vue')
@@ -40,7 +39,7 @@ const router = createRouter({
           component: HomePage,
         },
         { path: 'profile', redirect: '/settings/profile' },
-        { path: 'account', redirect: '/settings/account' },
+        { path: 'account', redirect: '/settings/login' },
         {
           path: 'settings',
           name: 'settings',
@@ -52,15 +51,12 @@ const router = createRouter({
               component: SettingsProfilePage,
             },
             {
-              path: 'account',
-              name: 'settings-account',
-              component: SettingsAccountPage,
+              path: 'login',
+              name: 'settings-login',
+              component: SettingsLoginPage,
             },
-            {
-              path: 'security',
-              name: 'settings-security',
-              component: SettingsSecurityPage,
-            },
+            { path: 'account', redirect: '/settings/login' },
+            { path: 'security', redirect: '/settings/login' },
             {
               path: 'payment',
               name: 'settings-payment',

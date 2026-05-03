@@ -3,8 +3,7 @@ import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   UserIcon,
-  EnvelopeIcon,
-  ShieldCheckIcon,
+  KeyIcon,
   BanknotesIcon,
   ChevronRightIcon,
   ChevronLeftIcon,
@@ -27,16 +26,10 @@ const sections: SettingsSection[] = [
     icon: UserIcon,
   },
   {
-    name: 'settings-account',
-    label: 'Account',
-    to: '/settings/account',
-    icon: EnvelopeIcon,
-  },
-  {
-    name: 'settings-security',
-    label: 'Security',
-    to: '/settings/security',
-    icon: ShieldCheckIcon,
+    name: 'settings-login',
+    label: 'Login',
+    to: '/settings/login',
+    icon: KeyIcon,
   },
   {
     name: 'settings-payment',

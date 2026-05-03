@@ -383,7 +383,7 @@ test.describe('Profile Feature', () => {
 
       // Authenticate as the current session and visit security page
       await setupAuthenticatedPage(page, currentToken)
-      await page.goto('/settings/security')
+      await page.goto('/settings/login')
 
       // Should see the Active Sessions section with current badge
       await expect(
