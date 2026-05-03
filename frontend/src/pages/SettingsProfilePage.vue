@@ -25,8 +25,11 @@ interface ProfileFieldValues {
 const authStore = useAuthStore()
 const { user } = storeToRefs(authStore)
 
-const editField = ref<ProfileField | null>(null)
-const saving = ref(false)
+// Per-field edit state. Multiple editors can be open at once — opening a new
+// one never silently discards another. The user got each form there by an
+// explicit click, so they own the visual density that follows.
+const editingFields = ref(new Set<ProfileField>())
+const savingFields = ref(new Set<ProfileField>())
 
 const editName = ref('')
 const editPhone = ref('')
@@ -35,11 +38,13 @@ const editLocationName = ref('')
 const editLatitude = ref<number | null>(null)
 const editLongitude = ref<number | null>(null)
 
-const editInputRef = useTemplateRef<HTMLInputElement>('editInputRef')
-const editLocationRef = useTemplateRef<{ focus: () => void }>('editLocationRef')
+const nameInputRef = useTemplateRef<HTMLInputElement>('nameInputRef')
+const phoneInputRef = useTemplateRef<HTMLInputElement>('phoneInputRef')
+const birthdayInputRef = useTemplateRef<HTMLInputElement>('birthdayInputRef')
+const locationRef = useTemplateRef<{ focus: () => void }>('locationRef')
 
 async function openField(field: ProfileField): Promise<void> {
-  editField.value = field
+  if (editingFields.value.has(field)) return
   switch (field) {
     case 'name':
       editName.value = user.value?.name ?? ''
@@ -56,43 +61,55 @@ async function openField(field: ProfileField): Promise<void> {
       editLongitude.value = user.value?.longitude ?? null
       break
   }
+  editingFields.value.add(field)
   await nextTick()
-  if (field === 'address') {
-    editLocationRef.value?.focus()
-  } else {
-    editInputRef.value?.focus()
+  switch (field) {
+    case 'name':
+      nameInputRef.value?.focus()
+      break
+    case 'phone':
+      phoneInputRef.value?.focus()
+      break
+    case 'birthday':
+      birthdayInputRef.value?.focus()
+      break
+    case 'address':
+      locationRef.value?.focus()
+      break
   }
 }
 
-function cancelEdit(): void {
-  editField.value = null
+function cancelEdit(field: ProfileField): void {
+  editingFields.value.delete(field)
 }
 
-async function persist(fields: ProfileFieldValues): Promise<void> {
-  saving.value = true
+async function persist(
+  field: ProfileField,
+  payload: ProfileFieldValues
+): Promise<void> {
+  if (savingFields.value.has(field)) return
+  savingFields.value.add(field)
   try {
-    await authStore.updateProfile(fields)
-    editField.value = null
+    await authStore.updateProfile(payload)
+    editingFields.value.delete(field)
   } catch {
     // Error handled by mutation/toast
   } finally {
-    saving.value = false
+    savingFields.value.delete(field)
   }
 }
 
-async function saveField(): Promise<void> {
-  if (saving.value) return
-
-  switch (editField.value) {
+async function saveField(field: ProfileField): Promise<void> {
+  switch (field) {
     case 'name':
       if (!editName.value.trim()) return
-      return persist({ name: editName.value.trim() })
+      return persist(field, { name: editName.value.trim() })
     case 'phone':
-      return persist({ phoneNumber: editPhone.value.trim() })
+      return persist(field, { phoneNumber: editPhone.value.trim() })
     case 'birthday':
-      return persist({ birthday: editBirthday.value })
+      return persist(field, { birthday: editBirthday.value })
     case 'address':
-      return persist({
+      return persist(field, {
         locationName: editLocationName.value.trim(),
         latitude: editLocationName.value.trim() ? editLatitude.value : null,
         longitude: editLocationName.value.trim() ? editLongitude.value : null,
@@ -101,15 +118,19 @@ async function saveField(): Promise<void> {
 }
 
 async function clearPhone(): Promise<void> {
-  return persist({ phoneNumber: '' })
+  return persist('phone', { phoneNumber: '' })
 }
 
 async function clearBirthday(): Promise<void> {
-  return persist({ birthday: '' })
+  return persist('birthday', { birthday: '' })
 }
 
 async function clearAddress(): Promise<void> {
-  return persist({ locationName: '', latitude: null, longitude: null })
+  return persist('address', {
+    locationName: '',
+    latitude: null,
+    longitude: null,
+  })
 }
 </script>
 
@@ -123,36 +144,39 @@ async function clearAddress(): Promise<void> {
           label="Name"
           edit-label="Edit name"
           edit-testid="edit-name-button"
-          :editing="editField === 'name'"
+          :editing="editingFields.has('name')"
           @edit="openField('name')"
         >
           {{ user?.name ?? 'Not set' }}
           <template #editor>
-            <form class="flex items-center gap-2" @submit.prevent="saveField">
+            <form
+              class="flex items-center gap-2"
+              @submit.prevent="saveField('name')"
+            >
               <input
-                ref="editInputRef"
+                ref="nameInputRef"
                 v-model="editName"
                 type="text"
                 aria-label="Name"
                 autocomplete="name"
                 placeholder="Your name"
                 :maxlength="255"
-                :disabled="saving"
+                :disabled="savingFields.has('name')"
                 class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
-                @keyup.escape="cancelEdit"
+                @keyup.escape="cancelEdit('name')"
               />
               <AppButton
                 type="submit"
                 size="sm"
                 :disabled="!editName.trim()"
-                :loading="saving"
+                :loading="savingFields.has('name')"
               >
                 Save
               </AppButton>
               <TextButton
                 variant="secondary"
-                :disabled="saving"
-                @click="cancelEdit"
+                :disabled="savingFields.has('name')"
+                @click="cancelEdit('name')"
               >
                 Cancel
               </TextButton>
@@ -171,31 +195,38 @@ async function clearAddress(): Promise<void> {
           value-class="truncate"
           edit-label="Edit phone"
           edit-testid="edit-contact-button"
-          :editing="editField === 'phone'"
+          :editing="editingFields.has('phone')"
           @edit="openField('phone')"
         >
           {{ user?.phoneNumber || 'Not set' }}
           <template #editor>
             <div>
-              <form class="flex items-center gap-2" @submit.prevent="saveField">
+              <form
+                class="flex items-center gap-2"
+                @submit.prevent="saveField('phone')"
+              >
                 <input
-                  ref="editInputRef"
+                  ref="phoneInputRef"
                   v-model="editPhone"
                   type="tel"
                   aria-label="Phone"
                   autocomplete="tel"
                   placeholder="Phone number"
-                  :disabled="saving"
+                  :disabled="savingFields.has('phone')"
                   class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
-                  @keyup.escape="cancelEdit"
+                  @keyup.escape="cancelEdit('phone')"
                 />
-                <AppButton type="submit" size="sm" :loading="saving">
+                <AppButton
+                  type="submit"
+                  size="sm"
+                  :loading="savingFields.has('phone')"
+                >
                   Save
                 </AppButton>
                 <TextButton
                   variant="secondary"
-                  :disabled="saving"
-                  @click="cancelEdit"
+                  :disabled="savingFields.has('phone')"
+                  @click="cancelEdit('phone')"
                 >
                   Cancel
                 </TextButton>
@@ -204,7 +235,7 @@ async function clearAddress(): Promise<void> {
                 v-if="user?.phoneNumber"
                 variant="danger"
                 class="mt-2"
-                :disabled="saving"
+                :disabled="savingFields.has('phone')"
                 @click="clearPhone"
               >
                 Remove phone
@@ -217,29 +248,36 @@ async function clearAddress(): Promise<void> {
           label="Birthday"
           edit-label="Edit birthday"
           edit-testid="edit-birthday-button"
-          :editing="editField === 'birthday'"
+          :editing="editingFields.has('birthday')"
           @edit="openField('birthday')"
         >
           {{ user?.birthday ? formatBirthday(user.birthday) : 'Not set' }}
           <template #editor>
             <div>
-              <form class="flex items-center gap-2" @submit.prevent="saveField">
+              <form
+                class="flex items-center gap-2"
+                @submit.prevent="saveField('birthday')"
+              >
                 <input
-                  ref="editInputRef"
+                  ref="birthdayInputRef"
                   v-model="editBirthday"
                   aria-label="Birthday"
                   type="date"
-                  :disabled="saving"
+                  :disabled="savingFields.has('birthday')"
                   class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:[color-scheme:dark] dark:outline-white/10"
-                  @keyup.escape="cancelEdit"
+                  @keyup.escape="cancelEdit('birthday')"
                 />
-                <AppButton type="submit" size="sm" :loading="saving">
+                <AppButton
+                  type="submit"
+                  size="sm"
+                  :loading="savingFields.has('birthday')"
+                >
                   Save
                 </AppButton>
                 <TextButton
                   variant="secondary"
-                  :disabled="saving"
-                  @click="cancelEdit"
+                  :disabled="savingFields.has('birthday')"
+                  @click="cancelEdit('birthday')"
                 >
                   Cancel
                 </TextButton>
@@ -248,7 +286,7 @@ async function clearAddress(): Promise<void> {
                 v-if="user?.birthday"
                 variant="danger"
                 class="mt-2"
-                :disabled="saving"
+                :disabled="savingFields.has('birthday')"
                 @click="clearBirthday"
               >
                 Remove birthday
@@ -262,30 +300,34 @@ async function clearAddress(): Promise<void> {
           value-class="truncate"
           edit-label="Edit address"
           edit-testid="edit-address-button"
-          :editing="editField === 'address'"
+          :editing="editingFields.has('address')"
           @edit="openField('address')"
         >
           {{ user?.locationName || 'Not set' }}
           <template #editor>
             <div>
               <LocationInput
-                ref="editLocationRef"
+                ref="locationRef"
                 v-model="editLocationName"
                 aria-label="Address"
                 :latitude="editLatitude"
                 :longitude="editLongitude"
-                :disabled="saving"
+                :disabled="savingFields.has('address')"
                 @update:latitude="editLatitude = $event"
                 @update:longitude="editLongitude = $event"
               />
               <div class="mt-2 flex items-center gap-2">
-                <AppButton size="sm" :loading="saving" @click="saveField">
+                <AppButton
+                  size="sm"
+                  :loading="savingFields.has('address')"
+                  @click="saveField('address')"
+                >
                   Save
                 </AppButton>
                 <TextButton
                   variant="secondary"
-                  :disabled="saving"
-                  @click="cancelEdit"
+                  :disabled="savingFields.has('address')"
+                  @click="cancelEdit('address')"
                 >
                   Cancel
                 </TextButton>
@@ -294,7 +336,7 @@ async function clearAddress(): Promise<void> {
                 v-if="user?.locationName"
                 variant="danger"
                 class="mt-2"
-                :disabled="saving"
+                :disabled="savingFields.has('address')"
                 @click="clearAddress"
               >
                 Remove address
