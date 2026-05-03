@@ -45,7 +45,8 @@ class App
             location_name: r.params["locationName"],
             latitude: ValidationLimits.parse_coordinate(r.params["latitude"]),
             longitude: ValidationLimits.parse_coordinate(r.params["longitude"]),
-            iban: r.params["iban"]
+            iban: r.params["iban"],
+            iban_holder_name: r.params["ibanHolderName"]
           )
           handle_result(result)
         end

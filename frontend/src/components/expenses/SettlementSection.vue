@@ -397,9 +397,9 @@ async function handlePaidClick(
             &mdash; transfer money via your banking app. When someone you owe
             has added their IBAN in
             <router-link
-              to="/profile"
+              to="/settings/payment"
               class="font-medium text-rose-600 hover:text-rose-500 dark:text-rose-400 dark:hover:text-rose-300"
-              >their profile</router-link
+              >their settings</router-link
             >, a QR code appears that pre-fills the amount, recipient, and
             reference &mdash; no copy-pasting account numbers.
           </span>

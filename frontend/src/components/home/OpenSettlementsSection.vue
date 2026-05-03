@@ -85,9 +85,9 @@ function getEventIdForTransfer(
       <button
         type="button"
         class="mt-1 text-sm font-medium text-amber-700 underline hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-200"
-        @click="router.push('/profile')"
+        @click="router.push('/settings/payment')"
       >
-        Add IBAN in profile
+        Add IBAN in settings
       </button>
     </AlertBox>
 

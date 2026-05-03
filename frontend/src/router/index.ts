@@ -3,8 +3,10 @@ import { useAuthStore } from '@/stores'
 import AuthenticatedLayout from '@/layouts/AuthenticatedLayout.vue'
 
 const HomePage = () => import('@/pages/HomePage.vue')
-const ProfilePage = () => import('@/pages/ProfilePage.vue')
-const AccountPage = () => import('@/pages/AccountPage.vue')
+const SettingsLayout = () => import('@/layouts/SettingsLayout.vue')
+const SettingsProfilePage = () => import('@/pages/SettingsProfilePage.vue')
+const SettingsLoginPage = () => import('@/pages/SettingsLoginPage.vue')
+const SettingsPaymentPage = () => import('@/pages/SettingsPaymentPage.vue')
 const EventsPage = () => import('@/pages/EventsPage.vue')
 const EventCreatePage = () => import('@/pages/EventCreatePage.vue')
 const EventPage = () => import('@/pages/EventPage.vue')
@@ -36,15 +38,31 @@ const router = createRouter({
           name: 'home',
           component: HomePage,
         },
+        { path: 'profile', redirect: '/settings/profile' },
+        { path: 'account', redirect: '/settings/login' },
         {
-          path: 'profile',
-          name: 'profile',
-          component: ProfilePage,
-        },
-        {
-          path: 'account',
-          name: 'account',
-          component: AccountPage,
+          path: 'settings',
+          name: 'settings',
+          component: SettingsLayout,
+          children: [
+            {
+              path: 'profile',
+              name: 'settings-profile',
+              component: SettingsProfilePage,
+            },
+            {
+              path: 'login',
+              name: 'settings-login',
+              component: SettingsLoginPage,
+            },
+            { path: 'account', redirect: '/settings/login' },
+            { path: 'security', redirect: '/settings/login' },
+            {
+              path: 'payment',
+              name: 'settings-payment',
+              component: SettingsPaymentPage,
+            },
+          ],
         },
         {
           path: 'events',

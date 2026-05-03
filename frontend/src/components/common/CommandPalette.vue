@@ -5,17 +5,20 @@ import { MagnifyingGlassIcon } from '@heroicons/vue/20/solid'
 import {
   ArrowPathIcon,
   ArrowRightOnRectangleIcon,
+  BanknotesIcon,
   CalendarDaysIcon,
   CheckCircleIcon,
   ClipboardDocumentListIcon,
   ClipboardIcon,
   HomeIcon,
+  KeyIcon,
   MoonIcon,
   PlusIcon,
   SignalIcon,
   SunIcon,
   UserCircleIcon,
   UserGroupIcon,
+  UserIcon,
 } from '@heroicons/vue/24/outline'
 import * as poolDb from '@/api/poolDb'
 import {
@@ -119,10 +122,31 @@ const quickActions = computed<NavAction[]>(() => [
   },
   {
     type: 'action',
-    id: 'profile',
-    name: 'Your Profile',
+    id: 'settings',
+    name: 'Settings',
     icon: UserCircleIcon,
-    href: '/profile',
+    href: '/settings',
+  },
+  {
+    type: 'action',
+    id: 'settings-profile',
+    name: 'Profile',
+    icon: UserIcon,
+    href: '/settings/profile',
+  },
+  {
+    type: 'action',
+    id: 'settings-login',
+    name: 'Login',
+    icon: KeyIcon,
+    href: '/settings/login',
+  },
+  {
+    type: 'action',
+    id: 'settings-payment',
+    name: 'Payment',
+    icon: BanknotesIcon,
+    href: '/settings/payment',
   },
   {
     type: 'action',

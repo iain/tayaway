@@ -36,7 +36,8 @@ const AUTH_USER_KEY = 'tayaway_auth_user'
 const AUTH_USER_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 
 function cacheUser(u: AuthUser): void {
-  // Omit iban before caching — sensitive data should not persist in localStorage
+  // Omit iban + iban_holder_name before caching — sensitive payment data
+  // should not persist in localStorage.
   const entry = {
     user: {
       id: u.id,
@@ -87,6 +88,7 @@ function mapMeResponseToAuthUser(data: MeResponse): AuthUser {
     latitude: data.latitude ?? null,
     longitude: data.longitude ?? null,
     iban: data.iban ?? null,
+    ibanHolderName: data.ibanHolderName ?? null,
   }
 }
 
@@ -259,6 +261,7 @@ export const useAuthStore = defineStore('auth', () => {
     latitude?: number | null
     longitude?: number | null
     iban?: string | null
+    ibanHolderName?: string | null
   }
 
   async function updateProfile(fields: ProfileFields): Promise<void> {
@@ -269,30 +272,39 @@ export const useAuthStore = defineStore('auth', () => {
     const member = pool.findBy('member', 'userId', userId)
     const { mutate, update } = useMutation()
 
-    // Optimistically update the auth ref
+    // Optimistically update the auth ref. The API treats "" as "clear this
+    // field" (and null/undefined as "no change"), but the local state should
+    // surface a cleared field as null so display fallbacks like "Not set" fire.
+    const blankToNull = (v: string | null | undefined) =>
+      v === '' ? null : (v ?? null)
     if (fields.name !== undefined) user.value.name = fields.name
     if (fields.phoneNumber !== undefined)
-      user.value.phoneNumber = fields.phoneNumber
-    if (fields.birthday !== undefined) user.value.birthday = fields.birthday
+      user.value.phoneNumber = blankToNull(fields.phoneNumber)
+    if (fields.birthday !== undefined)
+      user.value.birthday = blankToNull(fields.birthday)
     if (fields.locationName !== undefined)
-      user.value.locationName = fields.locationName
+      user.value.locationName = blankToNull(fields.locationName)
     if (fields.latitude !== undefined) user.value.latitude = fields.latitude
     if (fields.longitude !== undefined) user.value.longitude = fields.longitude
     if (fields.iban !== undefined)
       user.value.iban = fields.iban ? maskIban(fields.iban) : null
+    if (fields.ibanHolderName !== undefined)
+      user.value.ibanHolderName = blankToNull(fields.ibanHolderName)
 
     try {
       const apiCall = (commandQueue: ReturnType<typeof useCommandQueueStore>) =>
         commandQueue.enqueue<PoolApiResponse>('PUT', `/users/${userId}`, fields)
 
-      // Build optimistic pool changes from provided fields
+      // Build optimistic pool changes from provided fields. Same blank → null
+      // normalization as above so the pool-driven UI matches the cleared state.
       const poolChanges: Record<string, unknown> = {}
       if (fields.name !== undefined) poolChanges.name = fields.name
       if (fields.phoneNumber !== undefined)
-        poolChanges.phoneNumber = fields.phoneNumber
-      if (fields.birthday !== undefined) poolChanges.birthday = fields.birthday
+        poolChanges.phoneNumber = blankToNull(fields.phoneNumber)
+      if (fields.birthday !== undefined)
+        poolChanges.birthday = blankToNull(fields.birthday)
       if (fields.locationName !== undefined)
-        poolChanges.locationName = fields.locationName
+        poolChanges.locationName = blankToNull(fields.locationName)
       if (fields.latitude !== undefined) poolChanges.latitude = fields.latitude
       if (fields.longitude !== undefined)
         poolChanges.longitude = fields.longitude

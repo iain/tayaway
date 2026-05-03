@@ -19,7 +19,7 @@ module Users
   module UpdateProfile
     class << self
       def call(user_id:, current_user_id:, name:, phone_number: nil, birthday: nil,
-               location_name: nil, latitude: nil, longitude: nil, iban: nil)
+               location_name: nil, latitude: nil, longitude: nil, iban: nil, iban_holder_name: nil)
         Auditable.around(
           service: "Users::UpdateProfile",
           actor: nil,
@@ -35,8 +35,8 @@ module Users
             .bind { |user| validate_birthday(birthday, user) }
             .bind { |user| validate_coordinates(latitude, longitude, user) }
             .bind { |user| validate_iban(iban, user) }
-            .bind { |user| validate_text_lengths(phone_number, location_name, user) }
-            .bind { |user| update_profile(user, name, phone_number, birthday, location_name, latitude, longitude, iban) }
+            .bind { |user| validate_text_lengths(phone_number, location_name, iban_holder_name, user) }
+            .bind { |user| update_profile(user, name, phone_number, birthday, location_name, latitude, longitude, iban, iban_holder_name) }
         end
       end
 
@@ -118,7 +118,7 @@ module Users
         Success(user)
       end
 
-      def validate_text_lengths(phone_number, location_name, user)
+      def validate_text_lengths(phone_number, location_name, iban_holder_name, user)
         if phone_number && phone_number.length > ValidationLimits::PHONE_NUMBER
           return Failure(ServiceError.validation("Phone number is too long (maximum #{ValidationLimits::PHONE_NUMBER} characters)"))
         end
@@ -127,10 +127,16 @@ module Users
           return Failure(ServiceError.validation("Location name is too long (maximum #{ValidationLimits::SHORT_STRING} characters)"))
         end
 
+        # 70 chars matches the EPC QR specification's recipient-name cap, so a
+        # name we accept here also fits in the QR payload without truncation.
+        if iban_holder_name && iban_holder_name.length > 70
+          return Failure(ServiceError.validation("Name on bank account is too long (maximum 70 characters)"))
+        end
+
         Success(user)
       end
 
-      def update_profile(user, name, phone_number, birthday, location_name, latitude, longitude, iban)
+      def update_profile(user, name, phone_number, birthday, location_name, latitude, longitude, iban, iban_holder_name)
         user_id = user.id
 
         DB.transaction do
@@ -157,6 +163,12 @@ module Users
           unless iban.nil?
             normalized = iban.strip.empty? ? nil : iban.gsub(/\s/, "").upcase
             update_data[:iban] = normalized ? Encryption.encrypt(normalized, user_id: user_id) : nil
+          end
+
+          # IBAN holder name: blank -> nil, otherwise encrypt
+          unless iban_holder_name.nil?
+            stripped = iban_holder_name.strip
+            update_data[:iban_holder_name] = stripped.empty? ? nil : Encryption.encrypt(stripped, user_id: user_id)
           end
 
           # Location: blank -> clear both, otherwise set both

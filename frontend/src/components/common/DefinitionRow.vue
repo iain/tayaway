@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { PencilIcon } from '@heroicons/vue/24/outline'
-import IconButton from '@/components/common/IconButton.vue'
 
 defineProps<{
   label: string
@@ -26,24 +25,33 @@ defineEmits<{
       <slot name="editor" />
     </dd>
 
-    <!-- View mode -->
-    <dd v-else class="group mt-0.5 flex items-center gap-1.5">
-      <span
-        class="min-w-0 text-sm text-gray-900 dark:text-white"
-        :class="valueClass"
-      >
-        <slot />
-      </span>
-      <IconButton
-        v-if="editLabel"
-        hover-reveal
-        :label="editLabel"
+    <!-- View mode (editable: whole value row is the click target) -->
+    <dd v-else-if="editLabel" class="mt-0.5">
+      <button
+        type="button"
+        :aria-label="editLabel"
         :data-testid="editTestid"
-        class="shrink-0"
+        class="-mx-2 flex w-[calc(100%+1rem)] cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-left transition-colors hover:bg-gray-100 focus-visible:bg-gray-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rose-500 dark:hover:bg-white/[0.04] dark:focus-visible:bg-white/[0.04]"
         @click="$emit('edit')"
       >
-        <PencilIcon class="size-3.5" />
-      </IconButton>
+        <span
+          class="min-w-0 flex-1 text-sm text-gray-900 dark:text-white"
+          :class="valueClass"
+        >
+          <slot />
+        </span>
+        <PencilIcon
+          class="size-3.5 shrink-0 text-gray-400 dark:text-stone-500"
+          aria-hidden="true"
+        />
+      </button>
+    </dd>
+
+    <!-- View mode (read-only) -->
+    <dd v-else class="mt-0.5">
+      <span class="text-sm text-gray-900 dark:text-white" :class="valueClass">
+        <slot />
+      </span>
     </dd>
   </div>
 </template>

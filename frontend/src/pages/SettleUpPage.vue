@@ -162,10 +162,10 @@ async function handleUnmark(net: RecentSettlement) {
         Add your IBAN so others can pay you with a single QR code scan.
       </p>
       <router-link
-        to="/profile"
+        to="/settings/payment"
         class="mt-1 inline-flex items-center gap-1 text-sm font-medium text-amber-700 underline hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-200"
       >
-        Add IBAN in profile <span aria-hidden="true">→</span>
+        Add IBAN in settings <span aria-hidden="true">→</span>
       </router-link>
     </AlertBox>
 

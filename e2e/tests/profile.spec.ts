@@ -224,13 +224,14 @@ test.describe('Profile Feature', () => {
       page,
     }) => {
       await setupAuthenticatedPage(page, token)
-      await page.goto('/profile')
+      await page.goto('/settings/profile')
 
-      // Profile page displays name and email
-      await expect(page.getByRole('heading', { name: 'Account' })).toBeVisible({
+      // Profile page displays the About you section heading
+      await expect(
+        page.getByRole('heading', { name: 'About you' })
+      ).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
-      await expect(page.getByText(TEST_EMAIL).first()).toBeVisible()
 
       // Edit button triggers inline editing
       const editButton = page.getByTestId('edit-name-button')
@@ -275,10 +276,12 @@ test.describe('Profile Feature', () => {
       })
 
       await setupAuthenticatedPage(page, contactToken)
-      await page.goto('/profile')
+      await page.goto('/settings/profile')
 
       // Wait for the page to load
-      await expect(page.getByRole('heading', { name: 'Account' })).toBeVisible({
+      await expect(
+        page.getByRole('heading', { name: 'About you' })
+      ).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
@@ -318,7 +321,7 @@ test.describe('Profile Feature', () => {
       )
 
       await setupAuthenticatedPage(page, ibanToken)
-      await page.goto('/profile')
+      await page.goto('/settings/payment')
 
       // Wait for the page to load
       await expect(page.getByRole('heading', { name: 'Payment' })).toBeVisible({
@@ -382,9 +385,9 @@ test.describe('Profile Feature', () => {
       )
       await getTestSession(request, sessionEmail, TEST_NAME)
 
-      // Authenticate as the current session and visit account page
+      // Authenticate as the current session and visit security page
       await setupAuthenticatedPage(page, currentToken)
-      await page.goto('/account')
+      await page.goto('/settings/login')
 
       // Should see the Active Sessions section with current badge
       await expect(
