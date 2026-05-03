@@ -94,7 +94,7 @@ async function persist(
     // The toast covers this for sighted users; the inline message is here so
     // users who dismissed the toast (or never saw it) still get a clear signal
     // that the save didn't land.
-    saveErrors.value.set(field, "Couldn't save — try again.")
+    saveErrors.value.set(field, "Couldn't save. Try again.")
   } finally {
     savingFields.value.delete(field)
   }
@@ -159,7 +159,7 @@ function removeHolderName(): Promise<void> {
                   :maxlength="42"
                   :disabled="savingFields.has('iban')"
                   :aria-invalid="ibanError !== null"
-                  class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 font-mono text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:font-mono placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
+                  class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 font-mono text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:font-mono placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
                   @input="onIbanInput"
                   @keyup.escape="cancelEdit('iban')"
                 />
@@ -238,7 +238,7 @@ function removeHolderName(): Promise<void> {
                   placeholder="Exactly as on your bank account"
                   :maxlength="70"
                   :disabled="savingFields.has('holderName')"
-                  class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
+                  class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
                   @keyup.escape="cancelEdit('holderName')"
                 />
                 <AppButton
