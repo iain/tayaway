@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, nextTick, useTemplateRef } from 'vue'
+import { computed, ref, nextTick, useTemplateRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { UserIcon, XCircleIcon } from '@heroicons/vue/24/outline'
@@ -39,6 +39,10 @@ const editBirthday = ref('')
 const editLocationName = ref('')
 const editLatitude = ref<number | null>(null)
 const editLongitude = ref<number | null>(null)
+
+// The native picker honours `max` and disables future dates; the backend
+// enforces the same in update_profile so the keyboard-typed path is covered too.
+const todayIso = computed(() => new Date().toISOString().slice(0, 10))
 
 const nameInputRef = useTemplateRef<HTMLInputElement>('nameInputRef')
 const phoneInputRef = useTemplateRef<HTMLInputElement>('phoneInputRef')
@@ -285,6 +289,7 @@ async function clearAddress(): Promise<void> {
                   v-model="editBirthday"
                   aria-label="Birthday"
                   type="date"
+                  :max="todayIso"
                   :disabled="savingFields.has('birthday')"
                   class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:[color-scheme:dark] dark:outline-white/10"
                   @keyup.escape="cancelEdit('birthday')"
