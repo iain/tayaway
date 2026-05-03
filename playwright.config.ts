@@ -30,7 +30,7 @@ export default defineConfig({
       command:
         'cd backend && RACK_ENV=e2e bundle exec falcon serve --bind http://localhost:9293 --threaded',
       url: 'http://localhost:9293/health',
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 120000,
       stdout: 'ignore',
       stderr: 'ignore',
@@ -38,7 +38,7 @@ export default defineConfig({
     {
       command: 'cd frontend && FRONTEND_PORT=5174 API_PORT=9293 pnpm run dev',
       url: 'http://localhost:5174',
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 120000,
       stdout: 'ignore',
       stderr: 'ignore',
@@ -51,7 +51,7 @@ export default defineConfig({
       command:
         'cd frontend && FRONTEND_PREVIEW_PORT=5175 API_PORT=9293 pnpm run build && FRONTEND_PREVIEW_PORT=5175 API_PORT=9293 pnpm exec vite preview --strictPort',
       url: 'http://localhost:5175',
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 120000,
       stdout: 'ignore',
       stderr: 'ignore',
