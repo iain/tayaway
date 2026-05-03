@@ -180,6 +180,7 @@ function removeHolderName(): Promise<void> {
                 </TextButton>
                 <IconButton
                   v-if="user?.iban"
+                  size="compact"
                   variant="danger"
                   label="Remove IBAN"
                   :disabled="savingFields.has('iban')"
@@ -258,6 +259,7 @@ function removeHolderName(): Promise<void> {
                 </TextButton>
                 <IconButton
                   v-if="user?.ibanHolderName"
+                  size="compact"
                   variant="danger"
                   label="Remove name on bank account"
                   :disabled="savingFields.has('holderName')"

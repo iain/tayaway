@@ -245,6 +245,7 @@ async function clearAddress(): Promise<void> {
                 </TextButton>
                 <IconButton
                   v-if="user?.phoneNumber"
+                  size="compact"
                   variant="danger"
                   label="Remove phone"
                   :disabled="savingFields.has('phone')"
@@ -304,6 +305,7 @@ async function clearAddress(): Promise<void> {
                 </TextButton>
                 <IconButton
                   v-if="user?.birthday"
+                  size="compact"
                   variant="danger"
                   label="Remove birthday"
                   :disabled="savingFields.has('birthday')"
@@ -361,6 +363,7 @@ async function clearAddress(): Promise<void> {
                 </TextButton>
                 <IconButton
                   v-if="user?.locationName"
+                  size="compact"
                   variant="danger"
                   label="Remove address"
                   :disabled="savingFields.has('address')"

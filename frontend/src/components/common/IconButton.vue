@@ -7,14 +7,24 @@ const props = withDefaults(
     label: string
     hoverReveal?: boolean
     disabled?: boolean
+    // `default` enforces the 44pt HIG tap target on touch viewports for
+    // standalone uses. `compact` drops it for use inside form rows where the
+    // surrounding controls (small AppButton, TextButton) share a smaller row
+    // height — matching their size keeps the row visually balanced and the
+    // icon reads as part of the same action group.
+    size?: 'default' | 'compact'
   }>(),
   {
     variant: 'default',
+    size: 'default',
   }
 )
 
 const classes = computed(() => [
-  'cursor-pointer rounded p-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 min-h-[44px] min-w-[44px] inline-flex items-center justify-center sm:min-h-0 sm:min-w-0 sm:p-1',
+  'cursor-pointer rounded transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 inline-flex items-center justify-center',
+  props.size === 'compact'
+    ? 'p-1'
+    : 'p-2 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 sm:p-1',
   props.variant === 'danger'
     ? 'text-gray-400 hover:text-red-500 dark:text-stone-500 dark:hover:text-red-400'
     : 'text-gray-400 hover:text-gray-600 dark:text-stone-500 dark:hover:text-stone-300',
