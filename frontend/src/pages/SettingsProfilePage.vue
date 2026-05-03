@@ -2,12 +2,13 @@
 import { ref, nextTick, useTemplateRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
-import { UserIcon } from '@heroicons/vue/24/outline'
+import { UserIcon, XCircleIcon } from '@heroicons/vue/24/outline'
 import { formatBirthday } from '@/utils/date'
 import BaseCard from '@/components/common/BaseCard.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import DefinitionRow from '@/components/common/DefinitionRow.vue'
 import AppButton from '@/components/common/AppButton.vue'
+import IconButton from '@/components/common/IconButton.vue'
 import TextButton from '@/components/common/TextButton.vue'
 import LocationInput from '@/components/form/LocationInput.vue'
 
@@ -193,47 +194,45 @@ async function clearAddress(): Promise<void> {
         >
           {{ user?.phoneNumber || 'Not set' }}
           <template #editor>
-            <div>
-              <form
-                class="flex items-center gap-2"
-                @submit.prevent="saveField('phone')"
+            <form
+              class="flex items-center gap-2"
+              @submit.prevent="saveField('phone')"
+            >
+              <input
+                ref="phoneInputRef"
+                v-model="editPhone"
+                type="tel"
+                aria-label="Phone"
+                autocomplete="tel"
+                placeholder="Phone number"
+                :disabled="savingFields.has('phone')"
+                class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
+                @keyup.escape="cancelEdit('phone')"
+              />
+              <AppButton
+                type="submit"
+                size="sm"
+                :loading="savingFields.has('phone')"
               >
-                <input
-                  ref="phoneInputRef"
-                  v-model="editPhone"
-                  type="tel"
-                  aria-label="Phone"
-                  autocomplete="tel"
-                  placeholder="Phone number"
-                  :disabled="savingFields.has('phone')"
-                  class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
-                  @keyup.escape="cancelEdit('phone')"
-                />
-                <AppButton
-                  type="submit"
-                  size="sm"
-                  :loading="savingFields.has('phone')"
-                >
-                  Save
-                </AppButton>
-                <TextButton
-                  variant="secondary"
-                  :disabled="savingFields.has('phone')"
-                  @click="cancelEdit('phone')"
-                >
-                  Cancel
-                </TextButton>
-              </form>
+                Save
+              </AppButton>
               <TextButton
+                variant="secondary"
+                :disabled="savingFields.has('phone')"
+                @click="cancelEdit('phone')"
+              >
+                Cancel
+              </TextButton>
+              <IconButton
                 v-if="user?.phoneNumber"
                 variant="danger"
-                class="mt-2"
+                label="Remove phone"
                 :disabled="savingFields.has('phone')"
                 @click="clearPhone"
               >
-                Remove phone
-              </TextButton>
-            </div>
+                <XCircleIcon class="size-5" />
+              </IconButton>
+            </form>
           </template>
         </DefinitionRow>
 
@@ -246,45 +245,43 @@ async function clearAddress(): Promise<void> {
         >
           {{ user?.birthday ? formatBirthday(user.birthday) : 'Not set' }}
           <template #editor>
-            <div>
-              <form
-                class="flex items-center gap-2"
-                @submit.prevent="saveField('birthday')"
+            <form
+              class="flex items-center gap-2"
+              @submit.prevent="saveField('birthday')"
+            >
+              <input
+                ref="birthdayInputRef"
+                v-model="editBirthday"
+                aria-label="Birthday"
+                type="date"
+                :disabled="savingFields.has('birthday')"
+                class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:[color-scheme:dark] dark:outline-white/10"
+                @keyup.escape="cancelEdit('birthday')"
+              />
+              <AppButton
+                type="submit"
+                size="sm"
+                :loading="savingFields.has('birthday')"
               >
-                <input
-                  ref="birthdayInputRef"
-                  v-model="editBirthday"
-                  aria-label="Birthday"
-                  type="date"
-                  :disabled="savingFields.has('birthday')"
-                  class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:[color-scheme:dark] dark:outline-white/10"
-                  @keyup.escape="cancelEdit('birthday')"
-                />
-                <AppButton
-                  type="submit"
-                  size="sm"
-                  :loading="savingFields.has('birthday')"
-                >
-                  Save
-                </AppButton>
-                <TextButton
-                  variant="secondary"
-                  :disabled="savingFields.has('birthday')"
-                  @click="cancelEdit('birthday')"
-                >
-                  Cancel
-                </TextButton>
-              </form>
+                Save
+              </AppButton>
               <TextButton
+                variant="secondary"
+                :disabled="savingFields.has('birthday')"
+                @click="cancelEdit('birthday')"
+              >
+                Cancel
+              </TextButton>
+              <IconButton
                 v-if="user?.birthday"
                 variant="danger"
-                class="mt-2"
+                label="Remove birthday"
                 :disabled="savingFields.has('birthday')"
                 @click="clearBirthday"
               >
-                Remove birthday
-              </TextButton>
-            </div>
+                <XCircleIcon class="size-5" />
+              </IconButton>
+            </form>
           </template>
         </DefinitionRow>
 
@@ -324,16 +321,16 @@ async function clearAddress(): Promise<void> {
                 >
                   Cancel
                 </TextButton>
+                <IconButton
+                  v-if="user?.locationName"
+                  variant="danger"
+                  label="Remove address"
+                  :disabled="savingFields.has('address')"
+                  @click="clearAddress"
+                >
+                  <XCircleIcon class="size-5" />
+                </IconButton>
               </div>
-              <TextButton
-                v-if="user?.locationName"
-                variant="danger"
-                class="mt-2"
-                :disabled="savingFields.has('address')"
-                @click="clearAddress"
-              >
-                Remove address
-              </TextButton>
             </div>
           </template>
         </DefinitionRow>
