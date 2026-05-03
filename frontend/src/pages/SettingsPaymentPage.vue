@@ -18,6 +18,7 @@ const { user } = storeToRefs(authStore)
 
 const editingFields = ref(new Set<PaymentField>())
 const savingFields = ref(new Set<PaymentField>())
+const saveErrors = ref(new Map<PaymentField, string>())
 
 const editIban = ref('')
 const editHolderName = ref('')
@@ -35,6 +36,7 @@ const canSaveHolderName = computed(() => editHolderName.value.trim().length > 0)
 async function openIbanEditor(): Promise<void> {
   if (editingFields.value.has('iban')) return
   editIban.value = ''
+  saveErrors.value.delete('iban')
   editingFields.value.add('iban')
   await nextTick()
   ibanInputRef.value?.focus()
@@ -43,6 +45,7 @@ async function openIbanEditor(): Promise<void> {
 async function openHolderNameEditor(): Promise<void> {
   if (editingFields.value.has('holderName')) return
   editHolderName.value = user.value?.ibanHolderName ?? ''
+  saveErrors.value.delete('holderName')
   editingFields.value.add('holderName')
   await nextTick()
   holderNameInputRef.value?.focus()
@@ -50,6 +53,7 @@ async function openHolderNameEditor(): Promise<void> {
 
 function cancelEdit(field: PaymentField): void {
   editingFields.value.delete(field)
+  saveErrors.value.delete(field)
 }
 
 // Reformat in-place as the user types — uppercases, groups into fours — and
@@ -82,11 +86,15 @@ async function persist(
 ): Promise<void> {
   if (savingFields.value.has(field)) return
   savingFields.value.add(field)
+  saveErrors.value.delete(field)
   try {
     await authStore.updateProfile(payload)
     editingFields.value.delete(field)
   } catch {
-    // Error handled by mutation/toast
+    // The toast covers this for sighted users; the inline message is here so
+    // users who dismissed the toast (or never saw it) still get a clear signal
+    // that the save didn't land.
+    saveErrors.value.set(field, "Couldn't save — try again.")
   } finally {
     savingFields.value.delete(field)
   }
@@ -119,8 +127,8 @@ function removeHolderName(): Promise<void> {
       <p class="mb-2 text-sm text-gray-500 dark:text-stone-400">
         Adding your IBAN lets others pay you with a single QR code scan when
         settling shared expenses. Your IBAN is stored securely and never shared
-        with other members &mdash; it is only used server-side to generate
-        payment QR codes.
+        with other members, and is only used server-side to generate payment QR
+        codes.
       </p>
 
       <dl class="divide-y divide-gray-200 dark:divide-stone-700">
@@ -135,7 +143,11 @@ function removeHolderName(): Promise<void> {
           {{ user?.iban ?? 'Not set' }}
           <template #editor>
             <div>
-              <form class="flex items-center gap-2" @submit.prevent="saveIban">
+              <form
+                class="flex flex-wrap items-center gap-2"
+                :aria-busy="savingFields.has('iban')"
+                @submit.prevent="saveIban"
+              >
                 <input
                   ref="ibanInputRef"
                   :value="editIban"
@@ -178,9 +190,17 @@ function removeHolderName(): Promise<void> {
               </form>
               <p
                 v-if="ibanError"
+                aria-live="polite"
                 class="mt-1 text-sm text-red-600 dark:text-red-400"
               >
                 {{ ibanError }}
+              </p>
+              <p
+                v-if="saveErrors.get('iban')"
+                role="alert"
+                class="mt-1 text-sm text-red-600 dark:text-red-400"
+              >
+                {{ saveErrors.get('iban') }}
               </p>
             </div>
           </template>
@@ -203,47 +223,57 @@ function removeHolderName(): Promise<void> {
             </span>
           </template>
           <template #editor>
-            <form
-              class="flex items-center gap-2"
-              @submit.prevent="saveHolderName"
-            >
-              <input
-                ref="holderNameInputRef"
-                v-model="editHolderName"
-                type="text"
-                aria-label="Name on bank account"
-                autocomplete="cc-name"
-                placeholder="Exactly as on your bank account"
-                :maxlength="70"
-                :disabled="savingFields.has('holderName')"
-                class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
-                @keyup.escape="cancelEdit('holderName')"
-              />
-              <AppButton
-                type="submit"
-                size="sm"
-                :disabled="!canSaveHolderName"
-                :loading="savingFields.has('holderName')"
+            <div>
+              <form
+                class="flex flex-wrap items-center gap-2"
+                :aria-busy="savingFields.has('holderName')"
+                @submit.prevent="saveHolderName"
               >
-                Save
-              </AppButton>
-              <TextButton
-                variant="secondary"
-                :disabled="savingFields.has('holderName')"
-                @click="cancelEdit('holderName')"
+                <input
+                  ref="holderNameInputRef"
+                  v-model="editHolderName"
+                  type="text"
+                  aria-label="Name on bank account"
+                  autocomplete="cc-name"
+                  placeholder="Exactly as on your bank account"
+                  :maxlength="70"
+                  :disabled="savingFields.has('holderName')"
+                  class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
+                  @keyup.escape="cancelEdit('holderName')"
+                />
+                <AppButton
+                  type="submit"
+                  size="sm"
+                  :disabled="!canSaveHolderName"
+                  :loading="savingFields.has('holderName')"
+                >
+                  Save
+                </AppButton>
+                <TextButton
+                  variant="secondary"
+                  :disabled="savingFields.has('holderName')"
+                  @click="cancelEdit('holderName')"
+                >
+                  Cancel
+                </TextButton>
+                <IconButton
+                  v-if="user?.ibanHolderName"
+                  variant="danger"
+                  label="Remove name on bank account"
+                  :disabled="savingFields.has('holderName')"
+                  @click="removeHolderName"
+                >
+                  <XCircleIcon class="size-5" />
+                </IconButton>
+              </form>
+              <p
+                v-if="saveErrors.get('holderName')"
+                role="alert"
+                class="mt-1 text-sm text-red-600 dark:text-red-400"
               >
-                Cancel
-              </TextButton>
-              <IconButton
-                v-if="user?.ibanHolderName"
-                variant="danger"
-                label="Remove name on bank account"
-                :disabled="savingFields.has('holderName')"
-                @click="removeHolderName"
-              >
-                <XCircleIcon class="size-5" />
-              </IconButton>
-            </form>
+                {{ saveErrors.get('holderName') }}
+              </p>
+            </div>
           </template>
         </DefinitionRow>
       </dl>

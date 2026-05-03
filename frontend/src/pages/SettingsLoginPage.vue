@@ -79,7 +79,8 @@ const sessionsRef = ref<InstanceType<typeof SessionsList> | null>(null)
                 We'll send a verification link to confirm the new address.
               </p>
               <form
-                class="flex items-center gap-2"
+                class="flex flex-wrap items-center gap-2"
+                :aria-busy="sending"
                 @submit.prevent="sendVerification"
               >
                 <input
@@ -113,6 +114,7 @@ const sessionsRef = ref<InstanceType<typeof SessionsList> | null>(null)
               </form>
               <p
                 v-if="error"
+                role="alert"
                 class="mt-2 text-sm text-red-600 dark:text-red-400"
               >
                 {{ error }}
@@ -153,8 +155,8 @@ const sessionsRef = ref<InstanceType<typeof SessionsList> | null>(null)
         >
           {{
             sessionsRef?.revokingAll
-              ? 'Revoking…'
-              : 'Sign out all other sessions'
+              ? 'Logging out…'
+              : 'Log out all other sessions'
           }}
         </TextButton>
       </SectionHeading>

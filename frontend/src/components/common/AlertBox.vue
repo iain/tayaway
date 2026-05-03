@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { Component } from 'vue'
+import { computed, type Component } from 'vue'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     variant?: 'error' | 'warning' | 'success'
     icon?: Component
@@ -26,10 +26,20 @@ const iconClasses: Record<string, string> = {
   warning: 'text-amber-600 dark:text-amber-400',
   success: 'text-green-600 dark:text-green-400',
 }
+
+// Errors interrupt with `role="alert"`; success and warning queue politely
+// behind whatever the screen reader is currently saying via `role="status"`.
+const semanticRole = computed(() =>
+  props.variant === 'error' ? 'alert' : 'status'
+)
 </script>
 
 <template>
-  <div class="rounded-md p-4" :class="variantClasses[variant]">
+  <div
+    class="rounded-md p-4"
+    :class="variantClasses[variant]"
+    :role="semanticRole"
+  >
     <div v-if="icon" class="flex items-start gap-3">
       <component
         :is="icon"

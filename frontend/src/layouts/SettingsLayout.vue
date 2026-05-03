@@ -94,6 +94,7 @@ watch(() => route.name, redirectIfDesktopIndex)
             v-for="section in sections"
             :key="section.name"
             :to="section.to"
+            :aria-current="route.name === section.name ? 'page' : undefined"
             class="group flex items-center gap-3 rounded-md px-3 py-3 text-base font-medium transition-colors lg:py-2 lg:text-sm"
             active-class="bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"
             :class="

@@ -31,6 +31,7 @@ const { user } = storeToRefs(authStore)
 // explicit click, so they own the visual density that follows.
 const editingFields = ref(new Set<ProfileField>())
 const savingFields = ref(new Set<ProfileField>())
+const saveErrors = ref(new Map<ProfileField, string>())
 
 const editName = ref('')
 const editPhone = ref('')
@@ -46,6 +47,7 @@ const locationRef = useTemplateRef<{ focus: () => void }>('locationRef')
 
 async function openField(field: ProfileField): Promise<void> {
   if (editingFields.value.has(field)) return
+  saveErrors.value.delete(field)
   switch (field) {
     case 'name':
       editName.value = user.value?.name ?? ''
@@ -82,6 +84,7 @@ async function openField(field: ProfileField): Promise<void> {
 
 function cancelEdit(field: ProfileField): void {
   editingFields.value.delete(field)
+  saveErrors.value.delete(field)
 }
 
 async function persist(
@@ -90,11 +93,15 @@ async function persist(
 ): Promise<void> {
   if (savingFields.value.has(field)) return
   savingFields.value.add(field)
+  saveErrors.value.delete(field)
   try {
     await authStore.updateProfile(payload)
     editingFields.value.delete(field)
   } catch {
-    // Error handled by mutation/toast
+    // The toast covers this for sighted users; the inline message is here so
+    // users who dismissed the toast (or never saw it) still get a clear signal
+    // that the save didn't land.
+    saveErrors.value.set(field, "Couldn't save — try again.")
   } finally {
     savingFields.value.delete(field)
   }
@@ -150,38 +157,48 @@ async function clearAddress(): Promise<void> {
         >
           {{ user?.name ?? 'Not set' }}
           <template #editor>
-            <form
-              class="flex items-center gap-2"
-              @submit.prevent="saveField('name')"
-            >
-              <input
-                ref="nameInputRef"
-                v-model="editName"
-                type="text"
-                aria-label="Name"
-                autocomplete="name"
-                placeholder="Your name"
-                :maxlength="255"
-                :disabled="savingFields.has('name')"
-                class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
-                @keyup.escape="cancelEdit('name')"
-              />
-              <AppButton
-                type="submit"
-                size="sm"
-                :disabled="!editName.trim()"
-                :loading="savingFields.has('name')"
+            <div>
+              <form
+                class="flex flex-wrap items-center gap-2"
+                :aria-busy="savingFields.has('name')"
+                @submit.prevent="saveField('name')"
               >
-                Save
-              </AppButton>
-              <TextButton
-                variant="secondary"
-                :disabled="savingFields.has('name')"
-                @click="cancelEdit('name')"
+                <input
+                  ref="nameInputRef"
+                  v-model="editName"
+                  type="text"
+                  aria-label="Name"
+                  autocomplete="name"
+                  placeholder="Your name"
+                  :maxlength="255"
+                  :disabled="savingFields.has('name')"
+                  class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
+                  @keyup.escape="cancelEdit('name')"
+                />
+                <AppButton
+                  type="submit"
+                  size="sm"
+                  :disabled="!editName.trim()"
+                  :loading="savingFields.has('name')"
+                >
+                  Save
+                </AppButton>
+                <TextButton
+                  variant="secondary"
+                  :disabled="savingFields.has('name')"
+                  @click="cancelEdit('name')"
+                >
+                  Cancel
+                </TextButton>
+              </form>
+              <p
+                v-if="saveErrors.get('name')"
+                role="alert"
+                class="mt-1 text-sm text-red-600 dark:text-red-400"
               >
-                Cancel
-              </TextButton>
-            </form>
+                {{ saveErrors.get('name') }}
+              </p>
+            </div>
           </template>
         </DefinitionRow>
         <DefinitionRow
@@ -194,45 +211,55 @@ async function clearAddress(): Promise<void> {
         >
           {{ user?.phoneNumber || 'Not set' }}
           <template #editor>
-            <form
-              class="flex items-center gap-2"
-              @submit.prevent="saveField('phone')"
-            >
-              <input
-                ref="phoneInputRef"
-                v-model="editPhone"
-                type="tel"
-                aria-label="Phone"
-                autocomplete="tel"
-                placeholder="Phone number"
-                :disabled="savingFields.has('phone')"
-                class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
-                @keyup.escape="cancelEdit('phone')"
-              />
-              <AppButton
-                type="submit"
-                size="sm"
-                :loading="savingFields.has('phone')"
+            <div>
+              <form
+                class="flex flex-wrap items-center gap-2"
+                :aria-busy="savingFields.has('phone')"
+                @submit.prevent="saveField('phone')"
               >
-                Save
-              </AppButton>
-              <TextButton
-                variant="secondary"
-                :disabled="savingFields.has('phone')"
-                @click="cancelEdit('phone')"
+                <input
+                  ref="phoneInputRef"
+                  v-model="editPhone"
+                  type="tel"
+                  aria-label="Phone"
+                  autocomplete="tel"
+                  placeholder="Phone number"
+                  :disabled="savingFields.has('phone')"
+                  class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
+                  @keyup.escape="cancelEdit('phone')"
+                />
+                <AppButton
+                  type="submit"
+                  size="sm"
+                  :loading="savingFields.has('phone')"
+                >
+                  Save
+                </AppButton>
+                <TextButton
+                  variant="secondary"
+                  :disabled="savingFields.has('phone')"
+                  @click="cancelEdit('phone')"
+                >
+                  Cancel
+                </TextButton>
+                <IconButton
+                  v-if="user?.phoneNumber"
+                  variant="danger"
+                  label="Remove phone"
+                  :disabled="savingFields.has('phone')"
+                  @click="clearPhone"
+                >
+                  <XCircleIcon class="size-5" />
+                </IconButton>
+              </form>
+              <p
+                v-if="saveErrors.get('phone')"
+                role="alert"
+                class="mt-1 text-sm text-red-600 dark:text-red-400"
               >
-                Cancel
-              </TextButton>
-              <IconButton
-                v-if="user?.phoneNumber"
-                variant="danger"
-                label="Remove phone"
-                :disabled="savingFields.has('phone')"
-                @click="clearPhone"
-              >
-                <XCircleIcon class="size-5" />
-              </IconButton>
-            </form>
+                {{ saveErrors.get('phone') }}
+              </p>
+            </div>
           </template>
         </DefinitionRow>
 
@@ -245,43 +272,53 @@ async function clearAddress(): Promise<void> {
         >
           {{ user?.birthday ? formatBirthday(user.birthday) : 'Not set' }}
           <template #editor>
-            <form
-              class="flex items-center gap-2"
-              @submit.prevent="saveField('birthday')"
-            >
-              <input
-                ref="birthdayInputRef"
-                v-model="editBirthday"
-                aria-label="Birthday"
-                type="date"
-                :disabled="savingFields.has('birthday')"
-                class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:[color-scheme:dark] dark:outline-white/10"
-                @keyup.escape="cancelEdit('birthday')"
-              />
-              <AppButton
-                type="submit"
-                size="sm"
-                :loading="savingFields.has('birthday')"
+            <div>
+              <form
+                class="flex flex-wrap items-center gap-2"
+                :aria-busy="savingFields.has('birthday')"
+                @submit.prevent="saveField('birthday')"
               >
-                Save
-              </AppButton>
-              <TextButton
-                variant="secondary"
-                :disabled="savingFields.has('birthday')"
-                @click="cancelEdit('birthday')"
+                <input
+                  ref="birthdayInputRef"
+                  v-model="editBirthday"
+                  aria-label="Birthday"
+                  type="date"
+                  :disabled="savingFields.has('birthday')"
+                  class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:[color-scheme:dark] dark:outline-white/10"
+                  @keyup.escape="cancelEdit('birthday')"
+                />
+                <AppButton
+                  type="submit"
+                  size="sm"
+                  :loading="savingFields.has('birthday')"
+                >
+                  Save
+                </AppButton>
+                <TextButton
+                  variant="secondary"
+                  :disabled="savingFields.has('birthday')"
+                  @click="cancelEdit('birthday')"
+                >
+                  Cancel
+                </TextButton>
+                <IconButton
+                  v-if="user?.birthday"
+                  variant="danger"
+                  label="Remove birthday"
+                  :disabled="savingFields.has('birthday')"
+                  @click="clearBirthday"
+                >
+                  <XCircleIcon class="size-5" />
+                </IconButton>
+              </form>
+              <p
+                v-if="saveErrors.get('birthday')"
+                role="alert"
+                class="mt-1 text-sm text-red-600 dark:text-red-400"
               >
-                Cancel
-              </TextButton>
-              <IconButton
-                v-if="user?.birthday"
-                variant="danger"
-                label="Remove birthday"
-                :disabled="savingFields.has('birthday')"
-                @click="clearBirthday"
-              >
-                <XCircleIcon class="size-5" />
-              </IconButton>
-            </form>
+                {{ saveErrors.get('birthday') }}
+              </p>
+            </div>
           </template>
         </DefinitionRow>
 
@@ -295,7 +332,7 @@ async function clearAddress(): Promise<void> {
         >
           {{ user?.locationName || 'Not set' }}
           <template #editor>
-            <div>
+            <div :aria-busy="savingFields.has('address')">
               <LocationInput
                 ref="locationRef"
                 v-model="editLocationName"
@@ -306,7 +343,7 @@ async function clearAddress(): Promise<void> {
                 @update:latitude="editLatitude = $event"
                 @update:longitude="editLongitude = $event"
               />
-              <div class="mt-2 flex items-center gap-2">
+              <div class="mt-2 flex flex-wrap items-center gap-2">
                 <AppButton
                   size="sm"
                   :loading="savingFields.has('address')"
@@ -331,6 +368,13 @@ async function clearAddress(): Promise<void> {
                   <XCircleIcon class="size-5" />
                 </IconButton>
               </div>
+              <p
+                v-if="saveErrors.get('address')"
+                role="alert"
+                class="mt-1 text-sm text-red-600 dark:text-red-400"
+              >
+                {{ saveErrors.get('address') }}
+              </p>
             </div>
           </template>
         </DefinitionRow>
