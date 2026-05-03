@@ -226,8 +226,10 @@ test.describe('Profile Feature', () => {
       await setupAuthenticatedPage(page, token)
       await page.goto('/settings/profile')
 
-      // Profile page displays the Account section heading
-      await expect(page.getByRole('heading', { name: 'Account' })).toBeVisible({
+      // Profile page displays the About you section heading
+      await expect(
+        page.getByRole('heading', { name: 'About you' })
+      ).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
@@ -277,7 +279,9 @@ test.describe('Profile Feature', () => {
       await page.goto('/settings/profile')
 
       // Wait for the page to load
-      await expect(page.getByRole('heading', { name: 'Account' })).toBeVisible({
+      await expect(
+        page.getByRole('heading', { name: 'About you' })
+      ).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
 

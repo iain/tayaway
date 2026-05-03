@@ -36,7 +36,8 @@ const AUTH_USER_KEY = 'tayaway_auth_user'
 const AUTH_USER_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 
 function cacheUser(u: AuthUser): void {
-  // Omit iban before caching — sensitive data should not persist in localStorage
+  // Omit iban + iban_holder_name before caching — sensitive payment data
+  // should not persist in localStorage.
   const entry = {
     user: {
       id: u.id,
@@ -87,6 +88,7 @@ function mapMeResponseToAuthUser(data: MeResponse): AuthUser {
     latitude: data.latitude ?? null,
     longitude: data.longitude ?? null,
     iban: data.iban ?? null,
+    ibanHolderName: data.ibanHolderName ?? null,
   }
 }
 
@@ -259,6 +261,7 @@ export const useAuthStore = defineStore('auth', () => {
     latitude?: number | null
     longitude?: number | null
     iban?: string | null
+    ibanHolderName?: string | null
   }
 
   async function updateProfile(fields: ProfileFields): Promise<void> {
@@ -285,6 +288,8 @@ export const useAuthStore = defineStore('auth', () => {
     if (fields.longitude !== undefined) user.value.longitude = fields.longitude
     if (fields.iban !== undefined)
       user.value.iban = fields.iban ? maskIban(fields.iban) : null
+    if (fields.ibanHolderName !== undefined)
+      user.value.ibanHolderName = blankToNull(fields.ibanHolderName)
 
     try {
       const apiCall = (commandQueue: ReturnType<typeof useCommandQueueStore>) =>

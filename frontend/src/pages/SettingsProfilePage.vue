@@ -2,7 +2,7 @@
 import { ref, nextTick, useTemplateRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
-import { UserIcon, PhoneIcon } from '@heroicons/vue/24/outline'
+import { UserIcon } from '@heroicons/vue/24/outline'
 import { formatBirthday } from '@/utils/date'
 import BaseCard from '@/components/common/BaseCard.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
@@ -135,9 +135,9 @@ async function clearAddress(): Promise<void> {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div>
     <BaseCard padded>
-      <SectionHeading :icon="UserIcon" title="Account" />
+      <SectionHeading :icon="UserIcon" title="About you" />
 
       <dl class="divide-y divide-gray-200 dark:divide-stone-700">
         <DefinitionRow
@@ -183,13 +183,6 @@ async function clearAddress(): Promise<void> {
             </form>
           </template>
         </DefinitionRow>
-      </dl>
-    </BaseCard>
-
-    <BaseCard padded>
-      <SectionHeading :icon="PhoneIcon" title="Contact Information" />
-
-      <dl class="divide-y divide-gray-200 dark:divide-stone-700">
         <DefinitionRow
           label="Phone"
           value-class="truncate"

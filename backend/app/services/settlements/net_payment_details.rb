@@ -69,7 +69,7 @@ module Settlements
 
         base[:iban] = EpcQr.format_iban(recipient.iban)
         base[:qrPng] = EpcQr.build_png_base64(
-          recipient_name: recipient.name || recipient.email.to_s,
+          recipient_name: recipient.iban_holder_name || recipient.name || recipient.email.to_s,
           iban: recipient.iban,
           amount: net[:amount],
           description: reference
