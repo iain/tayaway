@@ -4,7 +4,13 @@ require "json"
 
 module Websocket
   # Singleton that tracks WebSocket connections and their workspace associations.
-  # Thread-safe through mutex-protected operations.
+  #
+  # All access happens from fibers running on the same Falcon reactor — request
+  # handlers register/unregister, the Listener task broadcasts, the Keepalive
+  # task pings — so no OS-level locking is needed. Methods that perform I/O
+  # (writing to a websocket yields to the reactor) take a snapshot of the
+  # connection set first so concurrent register/unregister doesn't surprise
+  # the iteration.
   #
   # @example
   #   conn_id = ConnectionManager.instance.register(connection, user_id)
@@ -15,7 +21,6 @@ module Websocket
     include Singleton
 
     def initialize
-      @mutex = Mutex.new
       @connections = {}
       @workspace_connections = {}
     end
@@ -23,81 +28,61 @@ module Websocket
     def register(websocket, user_id, session_id = nil)
       connection_id = SecureRandom.uuid
       uid = user_id.to_s
-      total = 0
-      @mutex.synchronize do
-        @connections[connection_id] = Connection.new(
-          id: connection_id,
-          websocket: websocket,
-          user_id: uid,
-          session_id: session_id
-        )
-        total = @connections.size
-      end
-      APP_LOGGER.info { "[ConnectionManager] User #{uid} connected (conn: #{connection_id}, total: #{total})" }
+      @connections[connection_id] = Connection.new(
+        id: connection_id,
+        websocket: websocket,
+        user_id: uid,
+        session_id: session_id
+      )
+      APP_LOGGER.info { "[ConnectionManager] User #{uid} connected (conn: #{connection_id}, total: #{@connections.size})" }
       connection_id
     end
 
     def unregister(connection_id)
-      user_id = nil
-      total = nil
-      @mutex.synchronize do
-        connection = @connections.delete(connection_id)
-        return unless connection
+      connection = @connections.delete(connection_id)
+      return unless connection
 
-        user_id = connection.user_id
+      # Clean up workspace associations
+      connection.workspace_ids.each do |workspace_id|
+        ws_conns = @workspace_connections[workspace_id]
+        next unless ws_conns
 
-        # Clean up workspace associations
-        connection.workspace_ids.each do |workspace_id|
-          ws_conns = @workspace_connections[workspace_id]
-          next unless ws_conns
-
-          ws_conns.delete(connection_id)
-          @workspace_connections.delete(workspace_id) if ws_conns.empty?
-        end
-        total = @connections.size
+        ws_conns.delete(connection_id)
+        @workspace_connections.delete(workspace_id) if ws_conns.empty?
       end
-      APP_LOGGER.info { "[ConnectionManager] User #{user_id} disconnected (conn: #{connection_id}, total: #{total})" }
+      APP_LOGGER.info { "[ConnectionManager] User #{connection.user_id} disconnected (conn: #{connection_id}, total: #{@connections.size})" }
     end
 
     def set_workspaces(connection_id, workspace_ids)
-      user_id = nil
-      @mutex.synchronize do
-        connection = @connections[connection_id]
-        return unless connection
+      connection = @connections[connection_id]
+      return unless connection
 
-        user_id = connection.user_id
+      # Clear old workspace associations
+      connection.workspace_ids.each do |old_ws_id|
+        ws_conns = @workspace_connections[old_ws_id]
+        next unless ws_conns
 
-        # Clear old workspace associations
-        connection.workspace_ids.each do |old_ws_id|
-          ws_conns = @workspace_connections[old_ws_id]
-          next unless ws_conns
-
-          ws_conns.delete(connection_id)
-          @workspace_connections.delete(old_ws_id) if ws_conns.empty?
-        end
-
-        # Set new workspace associations
-        connection.workspace_ids = workspace_ids.to_set
-        workspace_ids.each do |ws_id|
-          @workspace_connections[ws_id] ||= Set.new
-          @workspace_connections[ws_id].add(connection_id)
-        end
+        ws_conns.delete(connection_id)
+        @workspace_connections.delete(old_ws_id) if ws_conns.empty?
       end
-      APP_LOGGER.info { "[ConnectionManager] User #{user_id} switched workspaces (conn: #{connection_id}, workspaces: #{workspace_ids.join(', ')})" }
+
+      # Set new workspace associations
+      connection.workspace_ids = workspace_ids.to_set
+      workspace_ids.each do |ws_id|
+        @workspace_connections[ws_id] ||= Set.new
+        @workspace_connections[ws_id].add(connection_id)
+      end
+      APP_LOGGER.info { "[ConnectionManager] User #{connection.user_id} switched workspaces (conn: #{connection_id}, workspaces: #{workspace_ids.join(', ')})" }
     end
 
     def set_membership(connection_id, membership)
-      @mutex.synchronize do
-        connection = @connections[connection_id]
-        connection&.membership = membership
-      end
+      connection = @connections[connection_id]
+      connection&.membership = membership
     end
 
     def update_last_pong(connection_id)
-      @mutex.synchronize do
-        connection = @connections[connection_id]
-        connection&.last_pong_at = Time.now
-      end
+      connection = @connections[connection_id]
+      connection&.last_pong_at = Time.now
     end
 
     # Ping all connections and unregister those that have not responded within
@@ -106,9 +91,9 @@ module Websocket
       deadline = Time.now - idle_timeout
       stale_ids = []
 
-      connection_snapshot = @mutex.synchronize { @connections.dup }
-
-      connection_snapshot.each do |connection_id, connection|
+      # Snapshot so register/unregister from concurrent fibers (or recursion
+      # via unregister) cannot mutate the hash mid-iteration.
+      @connections.dup.each do |connection_id, connection|
         if connection.last_pong_at < deadline
           stale_ids << connection_id
         else
@@ -131,11 +116,11 @@ module Websocket
     end
 
     def broadcast_to_workspace(workspace_id, message, policy_context: nil)
-      connection_ids = @mutex.synchronize { (@workspace_connections[workspace_id] || Set.new).to_a }
+      connection_ids = (@workspace_connections[workspace_id] || Set.new).to_a
 
       if policy_context
         connection_ids.each do |connection_id|
-          connection = @mutex.synchronize { @connections[connection_id] }
+          connection = @connections[connection_id]
           next unless connection
 
           personalized = attach_permissions(message, connection.membership, policy_context)
@@ -144,7 +129,7 @@ module Websocket
       else
         json_message = message.to_json
         connection_ids.each do |connection_id|
-          connection = @mutex.synchronize { @connections[connection_id] }
+          connection = @connections[connection_id]
           next unless connection
 
           send_to_connection(connection, connection_id, json_message, workspace_id)
@@ -153,9 +138,7 @@ module Websocket
     end
 
     def connections_for_user(user_id)
-      @mutex.synchronize do
-        @connections.values.select { |c| c.user_id == user_id }.map(&:id)
-      end
+      @connections.values.select { |c| c.user_id == user_id }.map(&:id)
     end
 
     # Send a session_revoked message and close all connections tied to the given session IDs.
@@ -163,9 +146,7 @@ module Websocket
       return if session_ids.empty?
 
       id_set = session_ids.to_set
-      targets = @mutex.synchronize do
-        @connections.values.select { |c| c.session_id && id_set.include?(c.session_id) }
-      end
+      targets = @connections.values.select { |c| c.session_id && id_set.include?(c.session_id) }
 
       message = { type: "session_revoked" }.to_json
       targets.each do |connection|
@@ -182,7 +163,7 @@ module Websocket
     end
 
     def connection_count
-      @mutex.synchronize { @connections.size }
+      @connections.size
     end
 
     private

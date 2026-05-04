@@ -1,45 +1,51 @@
 # frozen_string_literal: true
 
+require "async"
 require "json"
-require "concurrent"
 
 module Websocket
   # Background task that listens for PostgreSQL NOTIFY events, fetches the
   # full data, and dispatches to ConnectionManager for WebSocket broadcasting.
   #
-  # Uses a dedicated DB connection to avoid blocking the connection pool.
+  # Runs as an Async task on the same reactor as request handlers, so it
+  # cooperates with the rest of the worker via the fiber scheduler instead
+  # of a separate OS thread. A dedicated DB connection avoids tying up the
+  # main connection pool while LISTEN is parked waiting for notifies.
   #
   # @example
-  #   Listener.start  # Starts background thread
-  #   Listener.stop   # Stops the listener
+  #   Listener.start  # must be called from inside an Async reactor
+  #   Listener.stop
   class Listener
     CHANNEL = "tayaway_objects"
     RETRY_DELAY = 5 # seconds
 
     class << self
       def start
-        return if running_flag.true?
+        return if @task
 
-        running_flag.make_true
-        @listen_db = nil
-        @thread = Thread.new { run_loop }
-        @thread.abort_on_exception = true
+        parent = Async::Task.current?
+        raise "Websocket::Listener.start must be called inside an Async reactor" unless parent
+
+        @task = parent.async do |task|
+          task.annotate("Websocket::Listener")
+          run_loop(task)
+        end
         APP_LOGGER.info { "[Listener] Started PostgreSQL LISTEN on #{CHANNEL}" }
       end
 
       def stop
-        return unless running_flag.true?
+        return unless @task
 
-        running_flag.make_false
-        # Disconnect the listen connection to unblock the listen loop
+        # Disconnecting wakes the parked LISTEN call so the task can exit
+        # promptly instead of waiting for the next notify.
         @listen_db&.disconnect
-        @thread&.join(RETRY_DELAY + 1)
-        @thread = nil
+        @task.stop
+        @task = nil
         APP_LOGGER.info { "[Listener] Stopped" }
       end
 
       def running?
-        running_flag.true?
+        !@task.nil? && !@task.finished?
       end
 
       def type_config(object_type)
@@ -56,30 +62,21 @@ module Websocket
 
       private
 
-      def running_flag
-        @_running_flag ||= Concurrent::AtomicBoolean.new(false)
+      def run_loop(task)
+        listen_with_retry(task) until task.stopped?
       end
 
-      def run_loop
-        while running_flag.true?
-          listen_with_retry
-        end
-      end
-
-      def listen_with_retry
-        # Create a dedicated connection for listening (stored for graceful shutdown)
+      def listen_with_retry(task)
         @listen_db = Sequel.connect(ENV.fetch("DATABASE_URL"))
         @listen_db.listen(CHANNEL, loop: true) do |_channel, _pid, payload|
-          break unless running_flag.true?
-
           handle_notification(payload)
         end
       rescue StandardError => e
-        if running_flag.true?
-          APP_LOGGER.error { "[Listener] Error in listen loop: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
-          APP_LOGGER.info { "[Listener] Retrying in #{RETRY_DELAY} seconds..." }
-          sleep RETRY_DELAY if running_flag.true?
-        end
+        return if task.stopped?
+
+        APP_LOGGER.error { "[Listener] Error in listen loop: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
+        APP_LOGGER.info { "[Listener] Retrying in #{RETRY_DELAY} seconds..." }
+        task.sleep(RETRY_DELAY)
       ensure
         @listen_db&.disconnect
         @listen_db = nil

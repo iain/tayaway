@@ -4,6 +4,7 @@
 # r.post, etc.) cannot be statically typed by Sorbet. This is an intentional
 # exception to the project-wide `# typed: true` convention. See CLAUDE.md.
 
+require "async"
 require "json"
 
 class App
@@ -27,15 +28,21 @@ class App
     r.websocket do |connection|
       connection_id = Websocket::ConnectionManager.instance.register(connection, user_id, session_id)
 
-      # Load workspaces for user
-      workspaces = Workspace.for_user(user_id)
+      # When the client requests an initial workspace, fetch its membership
+      # speculatively in parallel with the workspace list. The list is needed
+      # to validate the request, but we don't have to wait for it before
+      # starting the membership lookup — if validation fails we discard the
+      # result, and on the happy path we've saved a round-trip.
+      workspaces_task = Async { Workspace.for_user(user_id) }
+      membership_task = if initial_workspace_id
+                          Async { WorkspaceMembership.find_by_workspace_and_user(initial_workspace_id, user_id) }
+                        end
+
+      workspaces = workspaces_task.wait
       workspace_ids = workspaces.map { |w| w.id.to_s }
 
-      # If client requested an initial workspace, validate membership and prepare sync
       synced_workspace_id = nil
-      if initial_workspace_id && workspace_ids.include?(initial_workspace_id)
-        synced_workspace_id = initial_workspace_id
-      end
+      synced_workspace_id = initial_workspace_id if initial_workspace_id && workspace_ids.include?(initial_workspace_id)
 
       # Send authenticated message with workspace IDs
       auth_message = {
@@ -54,12 +61,16 @@ class App
 
       # If we have a valid initial workspace, subscribe and sync immediately
       if synced_workspace_id
-        membership = WorkspaceMembership.find_by_workspace_and_user(synced_workspace_id, user_id)
+        membership = membership_task.wait
         Websocket::ConnectionManager.instance.set_workspaces(connection_id, [synced_workspace_id])
         Websocket::ConnectionManager.instance.set_membership(connection_id, membership)
         since_time = Websocket::MessageHandler.safe_parse_time(initial_since)
         sync_result = Sync::WorkspaceSync.call(workspace_id: synced_workspace_id, since: since_time, membership: membership)
         connection.write({ type: "sync", data: sync_result }.to_json)
+      elsif membership_task
+        # Validation rejected the request — drop the speculative result so the
+        # task doesn't linger as an unreaped child of the request fiber.
+        membership_task.wait
       end
 
       begin

@@ -46,11 +46,21 @@ RSpec.describe Mailers::Base do
         allow(described_class).to receive(:apply_smtp_settings)
       end
 
-      it "delivers the message in a background thread" do
+      it "delivers the message via an Async task on the current reactor" do
         message = Mail.new(to: "test@example.com", from: "noreply@tayaway.nl", subject: "Test")
+
+        Sync do
+          described_class.deliver_later(message)
+        end
+
+        expect(Mail::TestMailer.deliveries.length).to eq(1)
+      end
+
+      it "delivers inline when called outside an Async reactor" do
+        message = Mail.new(to: "test@example.com", from: "noreply@tayaway.nl", subject: "Test")
+
         described_class.deliver_later(message)
 
-        sleep 0.1
         expect(Mail::TestMailer.deliveries.length).to eq(1)
       end
 
@@ -63,9 +73,10 @@ RSpec.describe Mailers::Base do
           logged_errors << block.call
         end
 
-        expect { described_class.deliver_later(message) }.not_to raise_error
+        Sync do
+          expect { described_class.deliver_later(message) }.not_to raise_error
+        end
 
-        sleep 0.1
         expect(Mail::TestMailer.deliveries).to be_empty
         expect(logged_errors).to include(a_string_matching(/SMTP unreachable/))
       end

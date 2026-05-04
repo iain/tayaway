@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
 require "spec_helper"
+require "async"
 
 RSpec.describe Websocket::Listener do
   # Reset class-level state between examples so tests are isolated.
   after do
-    described_class.instance_variable_set(:@_running_flag, nil)
+    described_class.instance_variable_set(:@task, nil)
     described_class.instance_variable_set(:@listen_db, nil)
-    described_class.instance_variable_set(:@thread, nil)
   end
 
   describe ".running?" do
@@ -15,26 +15,41 @@ RSpec.describe Websocket::Listener do
       expect(described_class.running?).to be(false)
     end
 
-    it "returns true after start is called" do
-      allow(Thread).to receive(:new).and_return(double(abort_on_exception: true, "abort_on_exception=": true))
-      allow(APP_LOGGER).to receive(:info)
-
-      described_class.start
+    it "returns true while a non-finished task is registered" do
+      task_double = instance_double(Async::Task, finished?: false)
+      described_class.instance_variable_set(:@task, task_double)
 
       expect(described_class.running?).to be(true)
+    end
+
+    it "returns false once the task has finished" do
+      task_double = instance_double(Async::Task, finished?: true)
+      described_class.instance_variable_set(:@task, task_double)
+
+      expect(described_class.running?).to be(false)
     end
   end
 
   describe ".start" do
-    it "is idempotent — calling twice does not spawn a second thread" do
-      thread_double = double(abort_on_exception: true, "abort_on_exception=": true)
-      allow(Thread).to receive(:new).once.and_return(thread_double)
+    it "raises when called outside an Async reactor" do
+      expect { described_class.start }.to raise_error(/Async reactor/)
+    end
+
+    it "spawns a task on the current reactor and is idempotent" do
       allow(APP_LOGGER).to receive(:info)
+      # Stub the run loop so the spawned task exits immediately and doesn't
+      # hold the reactor open by polling Sequel.
+      allow(described_class).to receive(:run_loop)
 
-      described_class.start
-      described_class.start
+      Sync do
+        described_class.start
+        first = described_class.instance_variable_get(:@task)
+        described_class.start
+        second = described_class.instance_variable_get(:@task)
 
-      expect(Thread).to have_received(:new).once
+        expect(first).to be_a(Async::Task)
+        expect(second).to equal(first)
+      end
     end
   end
 
@@ -46,16 +61,30 @@ RSpec.describe Websocket::Listener do
       expect(described_class.running?).to be(false)
     end
 
-    it "sets running? to false after stopping" do
-      thread_double = double("abort_on_exception=": true)
-      allow(thread_double).to receive(:join)
-      allow(Thread).to receive(:new).and_return(thread_double)
+    it "stops the task and clears state" do
       allow(APP_LOGGER).to receive(:info)
+      allow(described_class).to receive(:run_loop)
 
-      described_class.start
+      Sync do
+        described_class.start
+        described_class.stop
+
+        expect(described_class.running?).to be(false)
+        expect(described_class.instance_variable_get(:@task)).to be_nil
+      end
+    end
+
+    it "disconnects the listen DB so the parked listen call wakes up" do
+      allow(APP_LOGGER).to receive(:info)
+      fake_db = instance_double(Sequel::Database, disconnect: nil)
+      described_class.instance_variable_set(:@listen_db, fake_db)
+      task_double = instance_double(Async::Task, stop: nil)
+      described_class.instance_variable_set(:@task, task_double)
+
       described_class.stop
 
-      expect(described_class.running?).to be(false)
+      expect(fake_db).to have_received(:disconnect)
+      expect(task_double).to have_received(:stop)
     end
   end
 
@@ -140,29 +169,6 @@ RSpec.describe Websocket::Listener do
 
       expect(APP_LOGGER).to have_received(:warn)
       expect(manager).not_to have_received(:broadcast_to_workspace)
-    end
-  end
-
-  describe "thread-safety of the running flag" do
-    it "uses a Concurrent::AtomicBoolean for the running flag" do
-      flag = described_class.send(:running_flag)
-
-      expect(flag).to be_a(Concurrent::AtomicBoolean)
-    end
-
-    it "reflects make_true atomically" do
-      flag = described_class.send(:running_flag)
-      flag.make_true
-
-      expect(described_class.running?).to be(true)
-    end
-
-    it "reflects make_false atomically" do
-      flag = described_class.send(:running_flag)
-      flag.make_true
-      flag.make_false
-
-      expect(described_class.running?).to be(false)
     end
   end
 end

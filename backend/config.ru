@@ -8,16 +8,9 @@ require_relative "config/environment"
 use Rack::Attack
 use RequestLogger
 
-# Start WebSocket listener for PostgreSQL NOTIFY (skip in test environment)
-unless APP_ENV == "test"
-  Websocket::Listener.start
-  Websocket::Keepalive.start
-
-  at_exit do
-    Websocket::Listener.stop
-    Websocket::Keepalive.stop
-  end
-end
+# Boot the WebSocket Listener and Keepalive tasks on the first request, when
+# we're guaranteed to be inside Falcon's reactor. Skip in test environment.
+use BackgroundTasks unless APP_ENV == "test"
 
 if APP_ENV == "development"
   require_relative "lib/reloading"
