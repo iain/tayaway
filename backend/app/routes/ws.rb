@@ -5,6 +5,7 @@
 # exception to the project-wide `# typed: true` convention. See CLAUDE.md.
 
 require "async"
+require "async/barrier"
 require "json"
 
 class App
@@ -31,12 +32,23 @@ class App
       # When the client requests an initial workspace, fetch its membership
       # speculatively in parallel with the workspace list. The list is needed
       # to validate the request, but we don't have to wait for it before
-      # starting the membership lookup — if validation fails we discard the
-      # result, and on the happy path we've saved a round-trip.
-      workspaces_task = Async { Workspace.for_user(user_id) }
+      # starting the membership lookup — on the happy path we save a
+      # round-trip; on the rejected path we waste a query. The barrier joins
+      # both tasks at one point so a failure in either propagates cleanly and
+      # neither task is orphaned if validation rejects the request.
+      barrier = Async::Barrier.new
+      workspaces_task = barrier.async do |task|
+        task.annotate("Workspace.for_user")
+        Workspace.for_user(user_id)
+      end
       membership_task = if initial_workspace_id
-                          Async { WorkspaceMembership.find_by_workspace_and_user(initial_workspace_id, user_id) }
+                          barrier.async do |task|
+                            task.annotate("WorkspaceMembership.find_by_workspace_and_user")
+                            WorkspaceMembership.find_by_workspace_and_user(initial_workspace_id, user_id)
+                          end
                         end
+
+      barrier.wait
 
       workspaces = workspaces_task.wait
       workspace_ids = workspaces.map { |w| w.id.to_s }
@@ -67,10 +79,6 @@ class App
         since_time = Websocket::MessageHandler.safe_parse_time(initial_since)
         sync_result = Sync::WorkspaceSync.call(workspace_id: synced_workspace_id, since: since_time, membership: membership)
         connection.write({ type: "sync", data: sync_result }.to_json)
-      elsif membership_task
-        # Validation rejected the request — drop the speculative result so the
-        # task doesn't linger as an unreaped child of the request fiber.
-        membership_task.wait
       end
 
       begin

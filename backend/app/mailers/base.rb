@@ -32,13 +32,15 @@ module Mailers
       def deliver_later(message)
         return deliver(message) unless APP_ENV == "production"
 
-        # Spawn an Async task on the current reactor so the request fiber
-        # returns immediately while SMTP delivery happens in the background.
-        # If we're somehow outside a reactor (script, console), fall back to
-        # inline delivery rather than silently swallowing the send.
+        # Spawn on the reactor (not on the request fiber) so SMTP delivery is
+        # explicitly tied to the worker's lifetime — the request returns
+        # immediately and the send carries on independently. Outside a reactor
+        # (script, console) fall back to inline delivery rather than silently
+        # swallowing the send.
         parent = Async::Task.current?
         if parent
-          parent.async do
+          parent.reactor.async do |task|
+            task.annotate("Mailer delivery to #{mask_recipients(message.to)}")
             deliver(message)
           rescue StandardError => e
             APP_LOGGER.error { "[Mailer] Failed to deliver email to #{mask_recipients(message.to)}: #{e.class} - #{e.message}" }

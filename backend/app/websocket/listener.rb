@@ -26,7 +26,10 @@ module Websocket
         parent = Async::Task.current?
         raise "Websocket::Listener.start must be called inside an Async reactor" unless parent
 
-        @task = parent.async do |task|
+        # Spawning on the reactor (not on the parent task) makes the lifetime
+        # explicit: this task lives for the worker, not for whichever fiber
+        # happened to call start.
+        @task = parent.reactor.async do |task|
           task.annotate("Websocket::Listener")
           run_loop(task)
         end
@@ -36,9 +39,9 @@ module Websocket
       def stop
         return unless @task
 
-        # Disconnecting wakes the parked LISTEN call so the task can exit
-        # promptly instead of waiting for the next notify.
-        @listen_db&.disconnect
+        # Stopping the task raises Async::Stop in its fiber, which unwinds
+        # through the parked db.listen call and runs the ensure block that
+        # disconnects the dedicated PG connection.
         @task.stop
         @task = nil
         APP_LOGGER.info { "[Listener] Stopped" }
@@ -67,8 +70,8 @@ module Websocket
       end
 
       def listen_with_retry(task)
-        @listen_db = Sequel.connect(ENV.fetch("DATABASE_URL"))
-        @listen_db.listen(CHANNEL, loop: true) do |_channel, _pid, payload|
+        db = Sequel.connect(ENV.fetch("DATABASE_URL"))
+        db.listen(CHANNEL, loop: true) do |_channel, _pid, payload|
           handle_notification(payload)
         end
       rescue StandardError => e
@@ -78,8 +81,7 @@ module Websocket
         APP_LOGGER.info { "[Listener] Retrying in #{RETRY_DELAY} seconds..." }
         task.sleep(RETRY_DELAY)
       ensure
-        @listen_db&.disconnect
-        @listen_db = nil
+        db&.disconnect
       end
 
       def handle_notification(payload)

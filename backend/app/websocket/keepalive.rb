@@ -26,7 +26,9 @@ module Websocket
         parent = Async::Task.current?
         raise "Websocket::Keepalive.start must be called inside an Async reactor" unless parent
 
-        @task = parent.async do |task|
+        # Spawning on the reactor pins the lifetime to the worker, not to
+        # whichever fiber happened to call start.
+        @task = parent.reactor.async do |task|
           task.annotate("Websocket::Keepalive")
           run_loop(task)
         end

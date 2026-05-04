@@ -7,7 +7,6 @@ RSpec.describe Websocket::Listener do
   # Reset class-level state between examples so tests are isolated.
   after do
     described_class.instance_variable_set(:@task, nil)
-    described_class.instance_variable_set(:@listen_db, nil)
   end
 
   describe ".running?" do
@@ -74,17 +73,15 @@ RSpec.describe Websocket::Listener do
       end
     end
 
-    it "disconnects the listen DB so the parked listen call wakes up" do
+    it "stops the spawned task so Async::Stop unwinds through the parked listen call" do
       allow(APP_LOGGER).to receive(:info)
-      fake_db = instance_double(Sequel::Database, disconnect: nil)
-      described_class.instance_variable_set(:@listen_db, fake_db)
       task_double = instance_double(Async::Task, stop: nil)
       described_class.instance_variable_set(:@task, task_double)
 
       described_class.stop
 
-      expect(fake_db).to have_received(:disconnect)
       expect(task_double).to have_received(:stop)
+      expect(described_class.instance_variable_get(:@task)).to be_nil
     end
   end
 
