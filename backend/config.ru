@@ -18,7 +18,6 @@ unless APP_ENV == "test"
   parent = Async::Task.current
   parent.async(annotation: "websocket.listener")  { Websocket::Listener.run }
   parent.async(annotation: "websocket.keepalive") { Websocket::Keepalive.run }
-  parent.async(annotation: "jobs.worker")         { Jobs::Worker.run }
 end
 
 if APP_ENV == "development"
