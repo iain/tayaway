@@ -37,6 +37,18 @@ description = "Start frontend dev server"
 dir = "{{config_root}}/frontend"
 run = "pnpm run dev"
 
+[tasks."dev:reset"]
+description = "Kill any falcon-host / fsevent_watch processes left holding the dev backend port"
+run = """
+pids=$(lsof -ti :9292 2>/dev/null || true)
+if [ -n "$pids" ]; then
+  echo "Killing $(echo $pids | wc -w | tr -d ' ') process(es) on :9292"
+  kill -KILL $pids 2>/dev/null || true
+fi
+pkill -KILL -f fsevent_watch 2>/dev/null && echo "Killed orphaned fsevent_watch" || true
+echo "Dev backend port is free."
+"""
+
 [tasks.check]
 description = "Pre-commit: lint, typecheck, test, audit, cache-version (no e2e)"
 depends = [
