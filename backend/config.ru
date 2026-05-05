@@ -9,15 +9,19 @@ use Rack::Attack
 use RequestLogger
 
 # Spawn the WebSocket Listener and Keepalive on the worker's reactor.
-# config.ru is loaded inside an Async task during Falcon's worker startup,
-# so Async::Task.current is non-nil here and these fibers run alongside
-# request-handling fibers for the lifetime of the worker. They get
-# cancelled — and their LISTEN/UNLISTEN dance unwinds — when Falcon stops
-# the worker.
+# Under falcon-host, config.ru is loaded inside an Async task during
+# worker startup, so Task.current? is non-nil and these fibers run for
+# the lifetime of the worker. Outside a reactor (e.g. `rackup` directly,
+# or a tool that loads config.ru just to introspect routes) we skip the
+# spawn rather than crash.
 unless APP_ENV == "test"
-  parent = Async::Task.current
-  parent.async(annotation: "websocket.listener")  { Websocket::Listener.run }
-  parent.async(annotation: "websocket.keepalive") { Websocket::Keepalive.run }
+  parent = Async::Task.current?
+  if parent
+    parent.async(annotation: "websocket.listener")  { Websocket::Listener.run }
+    parent.async(annotation: "websocket.keepalive") { Websocket::Keepalive.run }
+  else
+    APP_LOGGER.warn { "[config.ru] No active reactor; Listener/Keepalive not started" }
+  end
 end
 
 # Code reload in development is a graceful restart of the whole

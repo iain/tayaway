@@ -11,8 +11,8 @@ module Jobs
   #      end up holding the same row.
   #   2. Run it. On success, delete the row.
   #   3. On failure, bump `attempts`, schedule a retry with exponential
-  #      backoff, or — past the retry budget — leave the row pinned with
-  #      `last_error` for human follow-up.
+  #      backoff, or — past the retry budget — set `dead_at` and leave
+  #      the row in place with `last_error` for human follow-up.
   #
   # Between claims, park on `LISTEN tayaway_jobs` with a poll timeout so a
   # job whose `scheduled_at` is in the future (a delayed retry) gets picked
@@ -20,6 +20,7 @@ module Jobs
   module Worker
     MAX_ATTEMPTS = 5
     POLL_INTERVAL = 30 # seconds — bound on how late a delayed job can run
+    RETRY_DELAY = 5    # seconds to wait after a transient loop-level error
 
     class << self
       def run
@@ -27,6 +28,15 @@ module Jobs
         loop do
           drain
           wait_for_signal
+        rescue StandardError => e
+          # Transient errors at the loop level — typically a dropped DB
+          # connection during claim_next or wait_for_signal. Sleep and
+          # retry instead of letting the fiber die and waiting for the
+          # container to restart us.
+          APP_LOGGER.error do
+            "[Jobs::Worker] Loop error: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}"
+          end
+          Async::Task.current.sleep(RETRY_DELAY)
         end
       end
 
@@ -48,7 +58,7 @@ module Jobs
           # examples wrapped by database_cleaner) is older than the
           # scheduled_at of rows inserted inside that same transaction.
           row = DB[Queue::TABLE]
-                .where(locked_at: nil)
+                .where(locked_at: nil, dead_at: nil)
                 .where { scheduled_at <= Sequel.function(:clock_timestamp) }
                 .order(:scheduled_at)
                 .for_update
@@ -63,6 +73,14 @@ module Jobs
 
       def execute(row)
         klass = Object.const_get(row[:job_class])
+        # Defense in depth: the queue is internal, but if anything ever
+        # writes a non-Jobs class name into the table the claim → run
+        # path would otherwise call `.run` on whatever class it resolves
+        # to. Restrict to known job subclasses.
+        unless klass.is_a?(Class) && klass < Jobs::Base
+          raise "Refusing to run #{row[:job_class]} — not a Jobs::Base subclass"
+        end
+
         klass.run(row[:args])
         DB[Queue::TABLE].where(id: row[:id]).delete
       rescue StandardError => e
@@ -77,14 +95,11 @@ module Jobs
         end
 
         if attempts >= MAX_ATTEMPTS
-          # Park the row in the dead-letter state: locked_at unset so the
-          # claim query skips it (scheduled_at far in the future), and the
-          # error record preserved for inspection.
           DB[Queue::TABLE].where(id: row[:id]).update(
             attempts: attempts,
             last_error: message,
             locked_at: nil,
-            scheduled_at: Time.now + (365 * 24 * 60 * 60 * 100) # ~100 years
+            dead_at: Sequel.function(:clock_timestamp)
           )
         else
           DB[Queue::TABLE].where(id: row[:id]).update(
@@ -101,7 +116,14 @@ module Jobs
           raw.query("LISTEN #{Queue::CHANNEL}")
           raw.wait_for_notify(POLL_INTERVAL)
         ensure
-          raw.query("UNLISTEN *")
+          # On a dropped connection the LISTEN itself fails, then this
+          # UNLISTEN fails too and would mask the original error. The
+          # outer rescue in `run` only needs to see the first cause.
+          begin
+            raw.query("UNLISTEN *")
+          rescue StandardError
+            # connection is already dead; nothing useful to clean up
+          end
         end
       end
     end

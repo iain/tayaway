@@ -103,7 +103,14 @@ module Websocket
               end
             end
           ensure
-            raw.query("UNLISTEN *")
+            # On a dropped connection wait_for_notify raises, then this
+            # UNLISTEN raises too and would mask the original cause.
+            # The outer rescue only needs to see the first one.
+            begin
+              raw.query("UNLISTEN *")
+            rescue StandardError
+              # connection is already dead; nothing useful to clean up
+            end
           end
         end
       end

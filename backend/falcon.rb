@@ -18,6 +18,11 @@ require "async/service/managed/environment"
 # made libpq state safe.
 class JobsServiceContainer < Async::Service::Managed::Service
   def run(_instance, _evaluator)
+    # The jobs worker only needs a couple of pooled connections (one for
+    # claim/delete, one parked on LISTEN). Default the pool small so a
+    # web pool of 16 + a jobs pool of 4 + LISTEN connections fits
+    # comfortably under PG's default max_connections=100.
+    ENV["DATABASE_POOL_SIZE"] ||= "4"
     require_relative "config/environment"
     Async do
       Jobs::Worker.run
@@ -50,7 +55,13 @@ class ReloaderServiceContainer < Async::Service::Managed::Service
       Process.kill("HUP", Process.ppid)
     end
     listener.start
-    Async { Async::Task.current.sleep }
+    Async do
+      Async::Task.current.sleep
+    ensure
+      # On graceful container stop the run task is cancelled; tear down
+      # Listen's OS threads explicitly rather than rely on process exit.
+      listener.stop
+    end
   end
 end
 

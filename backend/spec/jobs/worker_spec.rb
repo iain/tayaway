@@ -84,11 +84,26 @@ RSpec.describe Jobs::Worker do
       row = DB[Jobs::Queue::TABLE].first
       expect(row[:attempts]).to eq(1)
       expect(row[:locked_at]).to be_nil
+      expect(row[:dead_at]).to be_nil
       expect(row[:last_error]).to include("boom")
       expect(row[:scheduled_at]).to be > Time.now
     end
 
-    it "parks rows past the retry budget into the dead-letter horizon" do
+    it "applies a 2**attempts backoff so each retry waits longer than the last" do
+      WorkerSpecRecorder.behaviour = ->(_) { raise "boom" }
+      allow(APP_LOGGER).to receive(:error)
+      insert_job(args: { label: "fail" }, attempts: 2)
+
+      before = Time.now
+      described_class.drain
+      after = Time.now
+
+      row = DB[Jobs::Queue::TABLE].first
+      # attempts becomes 3, so backoff is 2**3 = 8 seconds
+      expect(row[:scheduled_at]).to be_between(before + 8, after + 8 + 1)
+    end
+
+    it "marks rows past the retry budget as dead and stops claiming them" do
       WorkerSpecRecorder.behaviour = ->(_) { raise "boom" }
       allow(APP_LOGGER).to receive(:error)
       insert_job(args: { label: "dead" }, attempts: described_class::MAX_ATTEMPTS - 1)
@@ -97,7 +112,31 @@ RSpec.describe Jobs::Worker do
 
       row = DB[Jobs::Queue::TABLE].first
       expect(row[:attempts]).to eq(described_class::MAX_ATTEMPTS)
-      expect(row[:scheduled_at]).to be > Time.now + (50 * 365 * 24 * 60 * 60)
+      expect(row[:dead_at]).not_to be_nil
+
+      # Even though scheduled_at is in the past, the dead row stays out
+      # of the runnable set on the next cycle.
+      WorkerSpecRecorder.results.clear
+      described_class.drain
+      expect(WorkerSpecRecorder.results).to be_empty
+    end
+
+    it "refuses to run a class that isn't a Jobs::Base subclass" do
+      stub_const("WorkerSpecImposter", Class.new do
+        def self.run(_); end
+      end
+      )
+      allow(APP_LOGGER).to receive(:error)
+      DB[Jobs::Queue::TABLE].insert(
+        job_class: "WorkerSpecImposter",
+        args: Sequel.pg_jsonb({}),
+        scheduled_at: Time.now
+      )
+
+      described_class.drain
+
+      row = DB[Jobs::Queue::TABLE].first
+      expect(row[:last_error]).to match(/Refusing to run/)
     end
   end
 end
