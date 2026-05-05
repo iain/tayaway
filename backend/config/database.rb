@@ -9,7 +9,15 @@ require "sequel"
 Sequel.extension :fiber_concurrency unless ENV["RACK_ENV"] == "test"
 
 # Lazy database connection - defers connection until first use
-# This is required for Falcon which forks after loading config.ru
+# This is required for Falcon which forks after loading config.ru.
+#
+# Connection budget per worker: every long-running fiber that parks on
+# `LISTEN` (Websocket::Listener in web workers, Jobs::Worker#wait_for_signal
+# in jobs workers) holds one pool connection for the lifetime of the
+# process. Effective request-pool size is therefore `max_connections - 1`.
+# Keep that headroom in mind if the default ever drops or `count` rises:
+# pods × DATABASE_POOL_SIZE (with one slot reserved per worker) must stay
+# under PG's max_connections.
 DB = Sequel.connect(
   ENV.fetch("DATABASE_URL"),
   preconnect: false,

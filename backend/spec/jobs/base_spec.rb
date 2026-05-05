@@ -8,8 +8,7 @@ RSpec.describe Jobs::Base do
       stub_const("APP_ENV", "test")
       allow(Jobs::Queue).to receive(:enqueue)
       stub_const("Jobs::FakeJob", Class.new(described_class) do
-        define_method(:initialize) { |x:| @x = x }
-        define_method(:call) { @x }
+        define_method(:call) { |x:| x }
       end
       )
 
@@ -20,10 +19,9 @@ RSpec.describe Jobs::Base do
   end
 
   describe ".run" do
-    it "instantiates the subclass with symbolised kwargs and invokes call" do
+    it "calls the subclass's `call` with symbolised kwargs from the JSONB payload" do
       stub_const("Jobs::FakeRun", Class.new(described_class) do
-        define_method(:initialize) { |x:, y:| @x, @y = x, y }
-        define_method(:call) { @x + @y }
+        define_method(:call) { |x:, y:| x + y }
       end
       )
 

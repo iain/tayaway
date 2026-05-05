@@ -11,7 +11,9 @@ module Mailers
         )
       end
 
-      def deliver_now(email:, verification_link:)
+      # Synchronous delivery. Only `Jobs::DeliverEmailChange#call` should
+      # invoke this — request-path callers must go through `send_email`.
+      def perform_delivery(email:, verification_link:)
         message = build_message(email: email.to_s, verification_link: verification_link)
         Mailers::Base.deliver(message)
       end

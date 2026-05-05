@@ -2,14 +2,8 @@
 
 module Jobs
   class DeliverEmailChange < Base
-    def initialize(email:, verification_link:)
-      super()
-      @email = email
-      @verification_link = verification_link
-    end
-
-    def call
-      Mailers::EmailChange.deliver_now(email: @email, verification_link: @verification_link)
+    def call(email:, verification_link:)
+      Mailers::EmailChange.perform_delivery(email: email, verification_link: verification_link)
     end
   end
 end

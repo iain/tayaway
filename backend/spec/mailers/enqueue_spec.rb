@@ -5,7 +5,7 @@ require "spec_helper"
 # Each mailer's `send_email` is meant to enqueue a Jobs::Deliver* job
 # rather than build and send the message synchronously. The actual
 # delivery side is covered transitively by service-layer specs (which
-# inspect Mail::TestMailer.deliveries) and by deliver_now in the
+# inspect Mail::TestMailer.deliveries) and by perform_delivery in the
 # individual mailer specs; this file just pins the enqueue contract so
 # someone can't accidentally swap the call back to inline delivery.
 RSpec.describe "mailer enqueue contracts" do

@@ -19,13 +19,8 @@ end
 WorkerSpecRecorder.reset!
 
 class WorkerSpecJob < Jobs::Base
-  def initialize(label:)
-    super()
-    @label = label
-  end
-
-  def call
-    WorkerSpecRecorder.behaviour.call(@label)
+  def call(label:)
+    WorkerSpecRecorder.behaviour.call(label)
   end
 end
 
@@ -137,6 +132,54 @@ RSpec.describe Jobs::Worker do
 
       row = DB[Jobs::Queue::TABLE].first
       expect(row[:last_error]).to match(/Refusing to run/)
+    end
+  end
+
+  describe ".run" do
+    # The loop is infinite by design; each example stubs drain/wait_for_signal
+    # so a few iterations happen and then the loop is broken out of via
+    # `throw`. `Async::Task.current` is stubbed out because no reactor is
+    # running in the spec.
+    it "logs and recovers from a transient error instead of letting the fiber die" do
+      iterations = 0
+      allow(described_class).to receive(:drain) do
+        iterations += 1
+        raise "transient" if iterations == 1
+      end
+      allow(described_class).to receive(:wait_for_signal) do
+        throw :stop_test_loop if iterations >= 2
+      end
+      allow(Async::Task).to receive(:current).and_return(instance_double(Async::Task, sleep: nil))
+      allow(APP_LOGGER).to receive(:info)
+      logged = []
+      allow(APP_LOGGER).to receive(:error) { |&block| logged << block.call }
+
+      catch(:stop_test_loop) { described_class.run }
+
+      expect(iterations).to be >= 2
+      expect(logged).to include(a_string_matching(/Loop error.*transient/))
+    end
+
+    it "sleeps RETRY_DELAY before retrying so a hot failure can't busy-loop" do
+      slept = []
+      task = instance_double(Async::Task)
+      allow(task).to receive(:sleep) { |seconds| slept << seconds }
+      allow(Async::Task).to receive(:current).and_return(task)
+      allow(APP_LOGGER).to receive(:info)
+      allow(APP_LOGGER).to receive(:error)
+
+      iterations = 0
+      allow(described_class).to receive(:drain) do
+        iterations += 1
+        raise "still broken" if iterations == 1
+      end
+      allow(described_class).to receive(:wait_for_signal) do
+        throw :stop_test_loop if iterations >= 2
+      end
+
+      catch(:stop_test_loop) { described_class.run }
+
+      expect(slept).to eq([described_class::RETRY_DELAY])
     end
   end
 end

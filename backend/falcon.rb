@@ -23,10 +23,13 @@ require "async/service/managed/environment"
 # made libpq state safe.
 class JobsServiceContainer < Async::Service::Managed::Service
   def run(_instance, _evaluator)
-    # The jobs worker only needs a couple of pooled connections (one for
-    # claim/delete, one parked on LISTEN). Default the pool small so a
-    # web pool of 16 + a jobs pool of 4 + LISTEN connections fits
-    # comfortably under PG's default max_connections=100.
+    # The jobs worker only needs a couple of pooled connections: one for
+    # claim/execute/delete and one permanently parked on LISTEN inside
+    # `wait_for_signal`. A pool of 4 leaves headroom for a transient
+    # second query during retry-bookkeeping. Web workers stay on the
+    # database.rb default (16) — see the connection-budget note there
+    # for how the LISTEN hold interacts with `count` and PG's
+    # `max_connections`.
     ENV["DATABASE_POOL_SIZE"] ||= "4"
     require_relative "config/environment"
     Async do
@@ -87,4 +90,3 @@ service "jobs" do
   # subclasses BasicObject and so can't see Kernel#Integer.
   count ENV.fetch("JOB_CONCURRENCY", "1").to_i
 end
-

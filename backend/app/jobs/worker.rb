@@ -64,10 +64,10 @@ module Jobs
                 .for_update
                 .skip_locked
                 .first
-          return nil unless row
-
-          DB[Queue::TABLE].where(id: row[:id]).update(locked_at: Sequel.function(:clock_timestamp))
-          row
+          if row
+            DB[Queue::TABLE].where(id: row[:id]).update(locked_at: Sequel.function(:clock_timestamp))
+            row
+          end
         end
       end
 
@@ -102,11 +102,17 @@ module Jobs
             dead_at: Sequel.function(:clock_timestamp)
           )
         else
+          # Anchor the next-run time to the DB clock so scheduled_at uses
+          # the same source as claim_next's `scheduled_at <= clock_timestamp()`
+          # comparison; mixing Time.now in here would drift on any clock skew
+          # between app server and DB.
+          backoff_seconds = 2**attempts # 2s, 4s, 8s, 16s
           DB[Queue::TABLE].where(id: row[:id]).update(
             attempts: attempts,
             last_error: message,
             locked_at: nil,
-            scheduled_at: Time.now + (2**attempts) # 2s, 4s, 8s, 16s
+            scheduled_at: Sequel.function(:clock_timestamp) +
+              Sequel.cast("#{backoff_seconds} seconds", :interval)
           )
         end
       end

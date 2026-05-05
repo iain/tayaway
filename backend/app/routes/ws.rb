@@ -36,6 +36,11 @@ class App
       # round-trip; on the rejected path we waste a query. The barrier joins
       # both tasks at one point so a failure in either propagates cleanly and
       # neither task is orphaned if validation rejects the request.
+      #
+      # Note: because barrier.wait re-raises any child error, a DB failure in
+      # the speculative membership lookup will fail the whole WS init even
+      # when validation would have rejected the workspace anyway. That's the
+      # tradeoff for the round-trip; a DB error here is loud by design.
       barrier = Async::Barrier.new
       workspaces_task = barrier.async do |task|
         task.annotate("Workspace.for_user")

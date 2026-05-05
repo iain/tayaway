@@ -15,7 +15,11 @@ module Mailers
         )
       end
 
-      def deliver_now(email:, login_link:, workspace_name: "Tayaway")
+      # Synchronous delivery. Only `Jobs::DeliverLoginLink#call` should
+      # invoke this — request-path callers must go through `send_email`
+      # so the SMTP round-trip happens on the jobs reactor, not the
+      # request fiber.
+      def perform_delivery(email:, login_link:, workspace_name: "Tayaway")
         message = build_message(email: email.to_s, login_link: login_link, workspace_name: workspace_name)
         Mailers::Base.deliver(message)
       end

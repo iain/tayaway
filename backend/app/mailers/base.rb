@@ -7,7 +7,9 @@ module Mailers
   # Uses :smtp in production, :test everywhere else. Out-of-band sending
   # is the responsibility of the Jobs::Deliver* job classes — each
   # mailer's `send_email` enqueues one of those, and the worker fiber
-  # invokes that mailer's `deliver_now` to build and send the message.
+  # invokes that mailer's `perform_delivery` to build and send the message.
+  # Request-path callers must use `send_email`; `perform_delivery` is the
+  # synchronous SMTP entry point and only the matching job should call it.
   module Base
     class << self
       def configure!
