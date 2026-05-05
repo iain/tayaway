@@ -86,6 +86,12 @@ service "web" do
   count 1
 
   url ENV.fetch("FALCON_URL", "http://localhost:9292")
+
+  # Falcon::Environment::Rack defaults to a Unix-socket proxy endpoint
+  # because falcon-host's canonical layout is many services behind a
+  # TLS-terminating proxy service. We have nginx in front in prod and
+  # Vite in front in dev, so bind directly to the TCP url instead.
+  endpoint { Async::HTTP::Endpoint.parse(url) }
 end
 
 service "jobs" do
