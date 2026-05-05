@@ -5,8 +5,15 @@ module Mailers
   module EmailChange
     class << self
       def send_email(email:, verification_link:)
+        Jobs::DeliverEmailChange.perform_later(
+          email: email.to_s,
+          verification_link: verification_link
+        )
+      end
+
+      def deliver_now(email:, verification_link:)
         message = build_message(email: email.to_s, verification_link: verification_link)
-        Mailers::Base.deliver_later(message)
+        Mailers::Base.deliver(message)
       end
 
       private

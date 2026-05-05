@@ -1,15 +1,13 @@
 # frozen_string_literal: true
 
-require "async"
 require "mail"
 
 module Mailers
   # Shared mail configuration and delivery helper.
-  # Uses :smtp in production, :test everywhere else.
-  #
-  # @example
-  #   Mailers::Base.configure!
-  #   Mailers::Base.deliver(message)
+  # Uses :smtp in production, :test everywhere else. Out-of-band sending
+  # is the responsibility of the Jobs::Deliver* job classes — each
+  # mailer's `send_email` enqueues one of those, and the worker fiber
+  # invokes that mailer's `deliver_now` to build and send the message.
   module Base
     class << self
       def configure!
@@ -27,27 +25,6 @@ module Mailers
         APP_LOGGER.info { "[Mailer] Sending email to #{masked} (subject: #{message.subject})" }
         message.deliver
         APP_LOGGER.info { "[Mailer] Email delivered to #{masked}" }
-      end
-
-      def deliver_later(message)
-        return deliver(message) unless APP_ENV == "production"
-
-        # Spawn on the reactor (not on the request fiber) so SMTP delivery is
-        # explicitly tied to the worker's lifetime — the request returns
-        # immediately and the send carries on independently. Outside a reactor
-        # (script, console) fall back to inline delivery rather than silently
-        # swallowing the send.
-        parent = Async::Task.current?
-        if parent
-          parent.reactor.async do |task|
-            task.annotate("Mailer delivery to #{mask_recipients(message.to)}")
-            deliver(message)
-          rescue StandardError => e
-            APP_LOGGER.error { "[Mailer] Failed to deliver email to #{mask_recipients(message.to)}: #{e.class} - #{e.message}" }
-          end
-        else
-          deliver(message)
-        end
       end
 
       def from_address

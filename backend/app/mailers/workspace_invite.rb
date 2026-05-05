@@ -5,8 +5,17 @@ module Mailers
   module WorkspaceInvite
     class << self
       def send_email(email:, invite_link:, workspace_name:, name: nil)
+        Jobs::DeliverWorkspaceInvite.perform_later(
+          email: email.to_s,
+          invite_link: invite_link,
+          workspace_name: workspace_name,
+          name: name
+        )
+      end
+
+      def deliver_now(email:, invite_link:, workspace_name:, name: nil)
         message = build_message(email: email.to_s, invite_link: invite_link, workspace_name: workspace_name, name: name)
-        Mailers::Base.deliver_later(message)
+        Mailers::Base.deliver(message)
       end
 
       private

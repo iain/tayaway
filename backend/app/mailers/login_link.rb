@@ -8,8 +8,16 @@ module Mailers
   module LoginLink
     class << self
       def send_email(email:, login_link:, workspace_name: "Tayaway")
+        Jobs::DeliverLoginLink.perform_later(
+          email: email.to_s,
+          login_link: login_link,
+          workspace_name: workspace_name
+        )
+      end
+
+      def deliver_now(email:, login_link:, workspace_name: "Tayaway")
         message = build_message(email: email.to_s, login_link: login_link, workspace_name: workspace_name)
-        Mailers::Base.deliver_later(message)
+        Mailers::Base.deliver(message)
       end
 
       private

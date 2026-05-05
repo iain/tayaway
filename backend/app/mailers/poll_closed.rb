@@ -5,6 +5,19 @@ module Mailers
   module PollClosed
     class << self
       def send_email(email:, user_name:, event_name:, date_label:, event_url:, ics_content:, ics_filename:, auto_rsvped:)
+        Jobs::DeliverPollClosed.perform_later(
+          email: email.to_s,
+          user_name: user_name,
+          event_name: event_name,
+          date_label: date_label,
+          event_url: event_url,
+          ics_content: ics_content,
+          ics_filename: ics_filename,
+          auto_rsvped: auto_rsvped
+        )
+      end
+
+      def deliver_now(email:, user_name:, event_name:, date_label:, event_url:, ics_content:, ics_filename:, auto_rsvped:)
         message = build_message(
           email: email.to_s,
           user_name: user_name,
@@ -15,7 +28,7 @@ module Mailers
           ics_filename: ics_filename,
           auto_rsvped: auto_rsvped
         )
-        Mailers::Base.deliver_later(message)
+        Mailers::Base.deliver(message)
       end
 
       private
