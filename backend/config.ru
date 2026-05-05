@@ -20,18 +20,8 @@ unless APP_ENV == "test"
   parent.async(annotation: "websocket.keepalive") { Websocket::Keepalive.run }
 end
 
-if APP_ENV == "development"
-  require_relative "lib/reloading"
-  lock = Reloading.new_lock
-  route_dir = APP_DIR.join("app/routes")
-  Reloading.start_listener(lock:, loader: LOADER, code_dirs: [APP_DIR.join("app"), APP_DIR.join("lib")]) do
-    Dir[route_dir.join("**/*.rb")].each { |f| load f }
-    # Re-include ResultHandler so App#handle_result uses the freshly-loaded module
-    # with up-to-date Sorbet sig references (avoids stale-class type errors after reload).
-    App.include ResultHandler
-  end
-  use Reloading::Middleware, lock
-  run ->(env) { App.app.call(env) }
-else
-  run App.freeze.app
-end
+# Code reload in development is a graceful restart of the whole
+# falcon-host container, driven by the dev-only `reloader` service in
+# falcon.rb that watches app/ and lib/ and sends SIGHUP. Same model as
+# production, fewer moving parts than an in-process Zeitwerk reload.
+run App.freeze.app

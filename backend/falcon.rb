@@ -37,6 +37,35 @@ module JobsServiceEnvironment
   end
 end
 
+# Dev-only file-watcher service. On change in app/ or lib/, sends SIGHUP
+# to the falcon-host process, which Async::Container::Controller turns
+# into a fresh-fork-then-drain restart of every service. That's how we
+# pick up code changes — no in-process Zeitwerk reload, no middleware
+# read/write lock, no manual route reload.
+class ReloaderServiceContainer < Async::Service::Managed::Service
+  def run(_instance, _evaluator)
+    require "listen"
+    backend_dir = File.expand_path(__dir__)
+    listener = Listen.to(File.join(backend_dir, "app"), File.join(backend_dir, "lib")) do
+      Process.kill("HUP", Process.ppid)
+    end
+    listener.start
+    Async { Async::Task.current.sleep }
+  end
+end
+
+module ReloaderServiceEnvironment
+  include Async::Service::Managed::Environment
+
+  def name
+    "reloader"
+  end
+
+  def service_class
+    ReloaderServiceContainer
+  end
+end
+
 service "web" do
   include Falcon::Environment::Rack
 
@@ -54,4 +83,11 @@ service "jobs" do
   # is evaluated inside an Async::Service::Environment::Builder, which
   # subclasses BasicObject and so can't see Kernel#Integer.
   count ENV.fetch("JOB_CONCURRENCY", "1").to_i
+end
+
+if ENV.fetch("RACK_ENV", "development") == "development"
+  service "reloader" do
+    include ReloaderServiceEnvironment
+    count 1
+  end
 end
