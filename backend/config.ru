@@ -8,15 +8,16 @@ require_relative "config/environment"
 use Rack::Attack
 use RequestLogger
 
-# Start WebSocket listener for PostgreSQL NOTIFY (skip in test environment)
+# Spawn the WebSocket Listener and Keepalive on the worker's reactor.
+# config.ru is loaded inside an Async task during Falcon's worker startup,
+# so Async::Task.current is non-nil here and these fibers run alongside
+# request-handling fibers for the lifetime of the worker. They get
+# cancelled — and their LISTEN/UNLISTEN dance unwinds — when Falcon stops
+# the worker.
 unless APP_ENV == "test"
-  Websocket::Listener.start
-  Websocket::Keepalive.start
-
-  at_exit do
-    Websocket::Listener.stop
-    Websocket::Keepalive.stop
-  end
+  parent = Async::Task.current
+  parent.async(annotation: "websocket.listener")  { Websocket::Listener.run }
+  parent.async(annotation: "websocket.keepalive") { Websocket::Keepalive.run }
 end
 
 if APP_ENV == "development"

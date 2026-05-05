@@ -4,20 +4,13 @@ require "json"
 
 module Websocket
   # Singleton that tracks WebSocket connections and their workspace associations.
-  # Thread-safe through mutex-protected operations.
   #
-  # Production runs `falcon serve --threaded`, so multiple worker threads in
-  # one process access this singleton concurrently. The Listener and
-  # Keepalive threads do too. The mutex is what makes the connection /
-  # workspace hashes safe to share. Even under a single-threaded
-  # (forked) container the cost is essentially zero (uncontended futex),
-  # so we keep the lock unconditionally.
-  #
-  # @example
-  #   conn_id = ConnectionManager.instance.register(connection, user_id)
-  #   ConnectionManager.instance.set_workspaces(conn_id, ["workspace-uuid"])
-  #   ConnectionManager.instance.broadcast_to_workspace("workspace-uuid", { type: "update", data: {...} })
-  #   ConnectionManager.instance.unregister(conn_id)
+  # Each falcon-host worker is a forked process with one reactor and one
+  # thread, so this singleton is only ever touched by fibers cooperatively
+  # scheduled on that single thread — fiber boundaries already serialise
+  # access. The mutex is kept as a cheap defensive guard (uncontended
+  # futex, near-zero cost) in case anything ever sneaks a real OS thread
+  # in here.
   class ConnectionManager
     include Singleton
 
