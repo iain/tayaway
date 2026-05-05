@@ -3,6 +3,7 @@
 module Jobs
   class DeliverLoginLink < Base
     def initialize(email:, login_link:, workspace_name: "Tayaway")
+      super()
       @email = email
       @login_link = login_link
       @workspace_name = workspace_name

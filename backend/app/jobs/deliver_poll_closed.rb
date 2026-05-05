@@ -3,6 +3,7 @@
 module Jobs
   class DeliverPollClosed < Base
     def initialize(email:, user_name:, event_name:, date_label:, event_url:, ics_content:, ics_filename:, auto_rsvped:)
+      super()
       @email = email
       @user_name = user_name
       @event_name = event_name

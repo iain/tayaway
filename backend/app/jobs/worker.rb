@@ -48,12 +48,12 @@ module Jobs
           # examples wrapped by database_cleaner) is older than the
           # scheduled_at of rows inserted inside that same transaction.
           row = DB[Queue::TABLE]
-            .where(locked_at: nil)
-            .where { scheduled_at <= Sequel.function(:clock_timestamp) }
-            .order(:scheduled_at)
-            .for_update
-            .skip_locked
-            .first
+                .where(locked_at: nil)
+                .where { scheduled_at <= Sequel.function(:clock_timestamp) }
+                .order(:scheduled_at)
+                .for_update
+                .skip_locked
+                .first
           return nil unless row
 
           DB[Queue::TABLE].where(id: row[:id]).update(locked_at: Sequel.function(:clock_timestamp))

@@ -10,7 +10,8 @@ RSpec.describe Jobs::Queue do
       stub_const("Jobs::FakeNoop", Class.new(Jobs::Base) do
         define_method(:initialize) { |label:| @label = label }
         define_method(:call) { called_with = @label }
-      end)
+      end
+      )
 
       described_class.enqueue(job_class: "Jobs::FakeNoop", args: { label: "ran" })
 
@@ -22,7 +23,8 @@ RSpec.describe Jobs::Queue do
       stub_const("Jobs::FakeKeyCheck", Class.new(Jobs::Base) do
         define_method(:initialize) { |label:| @label = label }
         define_method(:call) { @label }
-      end)
+      end
+      )
 
       expect do
         described_class.enqueue(job_class: "Jobs::FakeKeyCheck", args: { label: "ok" })

@@ -10,7 +10,8 @@ RSpec.describe Jobs::Base do
       stub_const("Jobs::FakeJob", Class.new(described_class) do
         define_method(:initialize) { |x:| @x = x }
         define_method(:call) { @x }
-      end)
+      end
+      )
 
       Jobs::FakeJob.perform_later(x: 1)
 
@@ -23,7 +24,8 @@ RSpec.describe Jobs::Base do
       stub_const("Jobs::FakeRun", Class.new(described_class) do
         define_method(:initialize) { |x:, y:| @x, @y = x, y }
         define_method(:call) { @x + @y }
-      end)
+      end
+      )
 
       expect(Jobs::FakeRun.run({ "x" => 2, "y" => 3 })).to eq(5)
     end

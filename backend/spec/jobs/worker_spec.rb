@@ -20,6 +20,7 @@ WorkerSpecRecorder.reset!
 
 class WorkerSpecJob < Jobs::Base
   def initialize(label:)
+    super()
     @label = label
   end
 

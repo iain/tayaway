@@ -79,6 +79,7 @@ end
 
 service "jobs" do
   include JobsServiceEnvironment
+
   # ENV.fetch.to_i instead of Integer(...) — the falcon-host service block
   # is evaluated inside an Async::Service::Environment::Builder, which
   # subclasses BasicObject and so can't see Kernel#Integer.
@@ -88,6 +89,7 @@ end
 if ENV.fetch("RACK_ENV", "development") == "development"
   service "reloader" do
     include ReloaderServiceEnvironment
+
     count 1
   end
 end

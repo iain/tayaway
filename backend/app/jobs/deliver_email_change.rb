@@ -3,6 +3,7 @@
 module Jobs
   class DeliverEmailChange < Base
     def initialize(email:, verification_link:)
+      super()
       @email = email
       @verification_link = verification_link
     end
