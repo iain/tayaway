@@ -13,17 +13,15 @@ Environment=RACK_ENV=production
 Environment=PATH=/home/tayaway/.local/share/mise/installs/ruby/<%= ruby_version %>/bin:/usr/local/bin:/usr/bin:/bin
 Environment=GEM_HOME=/var/www/tayaway/shared/backend/vendor/bundle/ruby/<%= ruby_gem_version %>
 Environment=GEM_PATH=/var/www/tayaway/shared/backend/vendor/bundle/ruby/<%= ruby_gem_version %>
-# Goes through the Bundler binstub (committed at backend/bin/falcon)
+Environment=FALCON_URL=http://127.0.0.1:9292
+# Goes through the Bundler binstub (committed at backend/bin/falcon-host)
 # rather than the gem's bare bin shim. The binstub does
 # `require "bundler/setup"` before activating falcon, which is required
 # here — without it, the gem-activation chain combined with config.ru's
 # `Bundler.require` triggers a second default-config falcon serve in
 # the same process, races for port 9292, and crashes the unit.
-# `--threaded` also matters: the default forked-container model fails
-# worker readiness handshakes on this kernel under the tayaway user;
-# threaded mode runs everything in one process and works reliably.
-ExecStart=/var/www/tayaway/current/backend/bin/falcon serve --threaded --bind http://127.0.0.1:9292
-ExecReload=/bin/kill -USR1 $MAINPID
+ExecStart=/var/www/tayaway/current/backend/bin/falcon-host falcon.rb
+ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
