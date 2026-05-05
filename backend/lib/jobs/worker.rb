@@ -6,37 +6,48 @@ module Jobs
   # Dequeue side of the job system. Runs as a fiber on the worker's reactor
   # next to the WebSocket Listener. Each tick:
   #
-  #   1. Claim the next runnable job inside a transaction with
+  #   1. Sweep stuck claims — rows whose previous worker died (SIGKILL,
+  #      OOM, ungraceful container restart) holding `locked_at`. SKIP
+  #      LOCKED + the RECLAIM_AFTER threshold ensures we never steal a
+  #      row from a still-running peer.
+  #   2. Claim the next runnable job inside a transaction with
   #      `FOR UPDATE SKIP LOCKED`. Two workers (or future replicas) never
   #      end up holding the same row.
-  #   2. Run it. On success, delete the row.
-  #   3. On failure, bump `attempts`, schedule a retry with exponential
+  #   3. Run it. On success, delete the row.
+  #   4. On failure, bump `attempts`, schedule a retry with exponential
   #      backoff, or — past the retry budget — set `dead_at` and leave
   #      the row in place with `last_error` for human follow-up.
   #
-  # Between claims, park on `LISTEN tayaway_jobs` with a poll timeout so a
-  # job whose `scheduled_at` is in the future (a delayed retry) gets picked
-  # up even if no NOTIFY arrives between now and then.
+  # The whole loop runs inside one `LISTEN tayaway_jobs` parked on a
+  # single pooled connection. Holding the LISTEN across drains (rather
+  # than re-subscribing each cycle) closes the gap where a NOTIFY could
+  # land between `UNLISTEN` and the next subscribe and be dropped.
   module Worker
     MAX_ATTEMPTS = 5
     POLL_INTERVAL = 30 # seconds — bound on how late a delayed job can run
     RETRY_DELAY = 5    # seconds to wait after a transient loop-level error
+    # Comfortably above database.rb's 30s statement_timeout, so an
+    # actually-running job is never mistaken for an orphaned one.
+    RECLAIM_AFTER = 300
 
     class << self
       def run
         APP_LOGGER.info { "[Jobs::Worker] Started" }
-        loop do
-          drain
-          wait_for_signal
-        rescue StandardError => e
-          # Transient errors at the loop level — typically a dropped DB
-          # connection during claim_next or wait_for_signal. Sleep and
-          # retry instead of letting the fiber die and waiting for the
-          # container to restart us.
-          APP_LOGGER.error do
-            "[Jobs::Worker] Loop error: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}"
+        Postgres::Listen.subscribe(Queue::CHANNEL) do |raw|
+          loop do
+            reclaim_stale
+            drain
+            raw.wait_for_notify(POLL_INTERVAL)
+          rescue StandardError => e
+            # Transient errors at the loop level — typically a dropped DB
+            # connection during claim_next or wait_for_notify. Sleep and
+            # retry instead of letting the fiber die and waiting for the
+            # container to restart us.
+            APP_LOGGER.error do
+              "[Jobs::Worker] Loop error: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}"
+            end
+            Async::Task.current.sleep(RETRY_DELAY)
           end
-          Async::Task.current.sleep(RETRY_DELAY)
         end
       end
 
@@ -45,6 +56,33 @@ module Jobs
       def drain
         while (row = claim_next)
           execute(row)
+        end
+      end
+
+      # Recover jobs whose previous worker died holding `locked_at` (SIGKILL,
+      # OOM, ungraceful container restart). Routed through `handle_failure`
+      # so a job that consistently kills its worker still hits the retry
+      # budget and ends up dead instead of cycling forever. The whole row
+      # selection + bookkeeping happens inside one transaction so the
+      # FOR UPDATE lock prevents a peer worker from picking up the row
+      # between us seeing it and us clearing `locked_at`.
+      def reclaim_stale
+        loop do
+          handled = DB.transaction do
+            row = DB[Queue::TABLE]
+                  .where(dead_at: nil)
+                  .exclude(locked_at: nil)
+                  .where { locked_at <= Sequel.function(:clock_timestamp) - Sequel.cast("#{RECLAIM_AFTER} seconds", :interval) }
+                  .order(:locked_at)
+                  .for_update
+                  .skip_locked
+                  .first
+            next false unless row
+
+            handle_failure(row, RuntimeError.new("Worker died holding lock for >#{RECLAIM_AFTER}s"))
+            true
+          end
+          break unless handled
         end
       end
 
@@ -114,12 +152,6 @@ module Jobs
             scheduled_at: Sequel.function(:clock_timestamp) +
               Sequel.cast("#{backoff_seconds} seconds", :interval)
           )
-        end
-      end
-
-      def wait_for_signal
-        Postgres::Listen.subscribe(Queue::CHANNEL) do |raw|
-          raw.wait_for_notify(POLL_INTERVAL)
         end
       end
     end

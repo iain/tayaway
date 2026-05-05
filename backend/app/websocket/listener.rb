@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "async"
+require "async/semaphore"
 require "json"
 
 module Websocket
@@ -14,9 +15,19 @@ module Websocket
   # main pool via DB.synchronize, which keeps lifecycle (and graceful
   # cancellation) tied to the Sequel pool instead of a side-channel
   # Sequel.connect.
+  #
+  # Each notification is handled in a child fiber under a semaphore: the
+  # listener returns to `wait_for_notify` as soon as the dispatch is
+  # scheduled, so a slow `connection.write` to one client cannot stall
+  # the next workspace's broadcast. The semaphore caps concurrency so a
+  # NOTIFY storm doesn't exhaust the Sequel pool or accumulate fibers.
   module Listener
     CHANNEL = "tayaway_objects"
     RETRY_DELAY = 5
+    # Sized below the web pool's free slots (database.rb pool minus the
+    # listener's own held connection minus headroom for request fibers)
+    # so a broadcast burst can't pool-timeout request handlers.
+    BROADCAST_CONCURRENCY = 8
 
     class << self
       def run(connections: ConnectionManager.instance)
@@ -92,12 +103,18 @@ module Websocket
 
       private
 
+      def semaphore
+        @_semaphore ||= Async::Semaphore.new(BROADCAST_CONCURRENCY)
+      end
+
       def listen_once(connections)
         Postgres::Listen.subscribe(CHANNEL) do |raw|
           APP_LOGGER.info { "[Listener] Listening on #{CHANNEL}" }
           loop do
             raw.wait_for_notify do |_channel, _pid, payload|
-              handle_notification(payload, connections)
+              semaphore.async do
+                handle_notification(payload, connections)
+              end
             end
           end
         end

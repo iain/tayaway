@@ -119,6 +119,12 @@ the `ensure` clears the registration before Sequel returns the connection to
 the pool (otherwise a later borrower of that connection would see stray
 notifications).
 
+Each NOTIFY is dispatched to a child fiber under an `Async::Semaphore` so
+the listener fiber returns to `wait_for_notify` immediately. A slow
+WebSocket write to one client cannot stall the next workspace's broadcast,
+and the semaphore caps in-flight broadcasts so a NOTIFY storm doesn't
+exhaust the Sequel pool or accumulate fibers without bound.
+
 Caveat: the pg/scheduler integration has rough edges — `config/database.rb`
 already carries a workaround for `server_version` returning a String instead
 of an Integer under the scheduler. Expect to find similar paper-cuts as
@@ -188,6 +194,20 @@ Processor by env:
 
 Retries, scheduling, dead-lettering, and observability are built as middleware
 in the `Builder` chain rather than reinvented per call site.
+
+**Stuck-claim recovery.** Claims are durable: `claim_next` writes
+`locked_at` inside its `FOR UPDATE SKIP LOCKED` transaction, so two
+workers never run the same job. The flip side is that a worker killed
+hard (SIGKILL, OOM, host crash, container eviction) leaves its row with
+`locked_at` set and no follow-up — the runnable index excludes locked
+rows, so without intervention the job would never run again. Each
+worker tick therefore starts with a `reclaim_stale` sweep: rows whose
+`locked_at` is older than `RECLAIM_AFTER` (5 min, comfortably above
+the 30s `statement_timeout`) are routed through the same retry/backoff
+path a normal failure takes, so a job that consistently kills its
+worker still hits `MAX_ATTEMPTS` and ends up dead instead of cycling
+forever. SKIP LOCKED in the sweep query ensures we never steal a row
+from a still-running peer.
 
 ## Scheduled work
 
@@ -333,7 +353,9 @@ the note on step 1.
    `--threaded`, which is also where the original readiness-handshake bug
    lives.) Verify the readiness handshake under `falcon-host` first; if it
    reproduces, keep `count 1` on the `web` service until step 2 retires the
-   threads.
+   threads. The web service reads its container count from
+   `WEB_CONCURRENCY` (default 1), so once verified, scaling out is a
+   deployment-time env change, not a code change.
 2. Move `Listener` and `Keepalive` into per-worker Async tasks. At this point
    `--threaded` and the dedicated `Sequel.connect` go away together.
 3. Introduce `async-job` with the inline processor and migrate mailers.

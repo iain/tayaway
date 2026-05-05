@@ -68,10 +68,15 @@ end
 service "web" do
   include Falcon::Environment::Rack
 
-  # Pinned to one container until the production readiness handshake
-  # is verified under falcon-host's forked-container model. See
-  # doc/falcon-architecture.md migration step 1.
-  count 1
+  # Defaults to one container until the production readiness handshake
+  # is verified under falcon-host's forked-container model — see
+  # doc/falcon-architecture.md migration step 1 — but exposed as
+  # WEB_CONCURRENCY (matching JOB_CONCURRENCY below) so the cap can be
+  # lifted from deployment without a code change. `.to_i` (rather than
+  # Integer(...)) because the service block runs inside an
+  # Async::Service::Environment::Builder (BasicObject) which can't see
+  # Kernel#Integer.
+  count ENV.fetch("WEB_CONCURRENCY", "1").to_i
 
   url ENV.fetch("FALCON_URL", "http://localhost:9292")
 
