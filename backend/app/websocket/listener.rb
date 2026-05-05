@@ -93,23 +93,11 @@ module Websocket
       private
 
       def listen_once(connections)
-        DB.synchronize do |raw|
-          raw.query("LISTEN #{CHANNEL}")
+        Postgres::Listen.subscribe(CHANNEL) do |raw|
           APP_LOGGER.info { "[Listener] Listening on #{CHANNEL}" }
-          begin
-            loop do
-              raw.wait_for_notify do |_channel, _pid, payload|
-                handle_notification(payload, connections)
-              end
-            end
-          ensure
-            # On a dropped connection wait_for_notify raises, then this
-            # UNLISTEN raises too and would mask the original cause.
-            # The outer rescue only needs to see the first one.
-            begin
-              raw.query("UNLISTEN *")
-            rescue StandardError
-              # connection is already dead; nothing useful to clean up
+          loop do
+            raw.wait_for_notify do |_channel, _pid, payload|
+              handle_notification(payload, connections)
             end
           end
         end

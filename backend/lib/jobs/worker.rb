@@ -118,18 +118,8 @@ module Jobs
       end
 
       def wait_for_signal
-        DB.synchronize do |raw|
-          raw.query("LISTEN #{Queue::CHANNEL}")
+        Postgres::Listen.subscribe(Queue::CHANNEL) do |raw|
           raw.wait_for_notify(POLL_INTERVAL)
-        ensure
-          # On a dropped connection the LISTEN itself fails, then this
-          # UNLISTEN fails too and would mask the original error. The
-          # outer rescue in `run` only needs to see the first cause.
-          begin
-            raw.query("UNLISTEN *")
-          rescue StandardError
-            # connection is already dead; nothing useful to clean up
-          end
         end
       end
     end

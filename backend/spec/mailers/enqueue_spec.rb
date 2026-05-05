@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-# Each mailer's `send_email` is meant to enqueue a Jobs::Deliver* job
+# Each mailer's `send_email` is meant to enqueue its inner DeliveryJob
 # rather than build and send the message synchronously. The actual
 # delivery side is covered transitively by service-layer specs (which
 # inspect Mail::TestMailer.deliveries) and by perform_delivery in the
@@ -11,25 +11,25 @@ require "spec_helper"
 RSpec.describe "mailer enqueue contracts" do
   before { allow(Jobs::Queue).to receive(:enqueue) }
 
-  it "Mailers::LoginLink.send_email enqueues a DeliverLoginLink job" do
+  it "Mailers::LoginLink.send_email enqueues a LoginLink::DeliveryJob" do
     Mailers::LoginLink.send_email(email: "u@example.com", login_link: "https://x", workspace_name: "WS")
 
     expect(Jobs::Queue).to have_received(:enqueue).with(
-      job_class: "Jobs::DeliverLoginLink",
+      job_class: "Mailers::LoginLink::DeliveryJob",
       args: { email: "u@example.com", login_link: "https://x", workspace_name: "WS" }
     )
   end
 
-  it "Mailers::EmailChange.send_email enqueues a DeliverEmailChange job" do
+  it "Mailers::EmailChange.send_email enqueues an EmailChange::DeliveryJob" do
     Mailers::EmailChange.send_email(email: "u@example.com", verification_link: "https://v")
 
     expect(Jobs::Queue).to have_received(:enqueue).with(
-      job_class: "Jobs::DeliverEmailChange",
+      job_class: "Mailers::EmailChange::DeliveryJob",
       args: { email: "u@example.com", verification_link: "https://v" }
     )
   end
 
-  it "Mailers::WorkspaceInvite.send_email enqueues a DeliverWorkspaceInvite job" do
+  it "Mailers::WorkspaceInvite.send_email enqueues a WorkspaceInvite::DeliveryJob" do
     Mailers::WorkspaceInvite.send_email(
       email: "u@example.com",
       invite_link: "https://i",
@@ -38,12 +38,12 @@ RSpec.describe "mailer enqueue contracts" do
     )
 
     expect(Jobs::Queue).to have_received(:enqueue).with(
-      job_class: "Jobs::DeliverWorkspaceInvite",
+      job_class: "Mailers::WorkspaceInvite::DeliveryJob",
       args: { email: "u@example.com", invite_link: "https://i", workspace_name: "WS", name: "Iain" }
     )
   end
 
-  it "Mailers::PollClosed.send_email enqueues a DeliverPollClosed job" do
+  it "Mailers::PollClosed.send_email enqueues a PollClosed::DeliveryJob" do
     Mailers::PollClosed.send_email(
       email: "u@example.com",
       user_name: "Iain",
@@ -56,7 +56,7 @@ RSpec.describe "mailer enqueue contracts" do
     )
 
     expect(Jobs::Queue).to have_received(:enqueue).with(
-      job_class: "Jobs::DeliverPollClosed",
+      job_class: "Mailers::PollClosed::DeliveryJob",
       args: hash_including(
         email: "u@example.com",
         event_name: "Trip",

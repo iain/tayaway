@@ -5,7 +5,7 @@ module Mailers
   module EmailChange
     class << self
       def send_email(email:, verification_link:)
-        Jobs::DeliverEmailChange.perform_later(
+        DeliveryJob.perform_later(
           email: email.to_s,
           verification_link: verification_link
         )
@@ -73,6 +73,13 @@ module Mailers
         message.html_part = html
 
         message
+      end
+    end
+
+    # See Mailers::LoginLink::DeliveryJob for the rationale on inlining.
+    class DeliveryJob < Jobs::Base
+      def call(email:, verification_link:)
+        Mailers::EmailChange.perform_delivery(email: email, verification_link: verification_link)
       end
     end
   end

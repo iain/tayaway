@@ -8,7 +8,7 @@ module Mailers
   module LoginLink
     class << self
       def send_email(email:, login_link:, workspace_name: "Tayaway")
-        Jobs::DeliverLoginLink.perform_later(
+        DeliveryJob.perform_later(
           email: email.to_s,
           login_link: login_link,
           workspace_name: workspace_name
@@ -79,6 +79,21 @@ module Mailers
         message.html_part = html
 
         message
+      end
+    end
+
+    # Inner job class that drives the out-of-band delivery — `send_email`
+    # enqueues one of these and the worker calls back into
+    # `Mailers::LoginLink.perform_delivery`. Lives here so the mailer is
+    # self-contained: the build/deliver code and the queue glue ship in
+    # one file.
+    class DeliveryJob < Jobs::Base
+      def call(email:, login_link:, workspace_name: "Tayaway")
+        Mailers::LoginLink.perform_delivery(
+          email: email,
+          login_link: login_link,
+          workspace_name: workspace_name
+        )
       end
     end
   end
