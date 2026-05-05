@@ -8,6 +8,11 @@
 # but is unsafe with libpq: any DB connect in the host poisons libpq
 # state for forked children and segfaults their first Sequel.connect.
 
+# falcon-host's notify pipe and Ruby's resolv.rb both poke at the
+# experimental IO::Buffer API, which warns on every load. We don't have
+# a way to upgrade those callers; silence the noise here.
+Warning[:experimental] = false
+
 require "falcon/environment/rack"
 require "async/service/managed/service"
 require "async/service/managed/environment"
@@ -42,39 +47,19 @@ module JobsServiceEnvironment
   end
 end
 
-# Dev-only file-watcher service. On change in app/ or lib/, sends SIGHUP
-# to the falcon-host process, which Async::Container::Controller turns
-# into a fresh-fork-then-drain restart of every service. That's how we
-# pick up code changes — no in-process Zeitwerk reload, no middleware
-# read/write lock, no manual route reload.
-class ReloaderServiceContainer < Async::Service::Managed::Service
-  def run(_instance, _evaluator)
-    require "listen"
-    backend_dir = File.expand_path(__dir__)
-    listener = Listen.to(File.join(backend_dir, "app"), File.join(backend_dir, "lib")) do
-      Process.kill("HUP", Process.ppid)
-    end
-    listener.start
-    Async do
-      Async::Task.current.sleep
-    ensure
-      # On graceful container stop the run task is cancelled; tear down
-      # Listen's OS threads explicitly rather than rely on process exit.
-      listener.stop
-    end
+# Dev-only code reload: watch app/ and lib/ in the host process and
+# SIGHUP ourselves on change. Async::Container::Controller turns the
+# SIGHUP into a fresh-fork-then-drain restart of every worker. Running
+# the watcher in the host (rather than a forked service) keeps the
+# Listen gem's fsevent_w / inotify subprocess as a direct child of the
+# host, so it terminates cleanly when the host exits — no orphaned
+# subprocesses holding the listen socket between dev-server runs.
+if ENV.fetch("RACK_ENV", "development") == "development"
+  require "listen"
+  reloader = Listen.to(File.expand_path("app", __dir__), File.expand_path("lib", __dir__)) do
+    Process.kill("HUP", Process.pid)
   end
-end
-
-module ReloaderServiceEnvironment
-  include Async::Service::Managed::Environment
-
-  def name
-    "reloader"
-  end
-
-  def service_class
-    ReloaderServiceContainer
-  end
+  reloader.start
 end
 
 service "web" do
@@ -103,10 +88,3 @@ service "jobs" do
   count ENV.fetch("JOB_CONCURRENCY", "1").to_i
 end
 
-if ENV.fetch("RACK_ENV", "development") == "development"
-  service "reloader" do
-    include ReloaderServiceEnvironment
-
-    count 1
-  end
-end
