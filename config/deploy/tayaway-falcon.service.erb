@@ -2,9 +2,21 @@
 Description=Tayaway Falcon Application Server
 After=network.target postgresql.service
 Requires=postgresql.service
+# Stop trying to recover after three failures in a minute. Without this,
+# a deploy that ships a process that crashes immediately on boot will
+# loop quietly under Restart=on-failure forever; with it, systemd marks
+# the unit failed and stops restarting, which is what should page someone.
+StartLimitIntervalSec=60
+StartLimitBurst=3
 
 [Service]
-Type=simple
+# `notify` (rather than `simple`) gates "active" on falcon-host telling
+# systemd it is ready to serve, instead of on fork() returning. Required
+# for systemctl restart to wait for the new process to actually be
+# accepting connections — without it, deploy completion races ahead of
+# the new workers being ready. async-container speaks the sd_notify
+# protocol via NOTIFY_SOCKET (Notify::Socket) when systemd sets it.
+Type=notify
 User=tayaway
 Group=tayaway
 WorkingDirectory=/var/www/tayaway/current/backend
@@ -22,6 +34,16 @@ Environment=FALCON_URL=http://127.0.0.1:9292
 # the same process, races for port 9292, and crashes the unit.
 ExecStart=/var/www/tayaway/current/backend/bin/falcon-host falcon.rb
 ExecReload=/bin/kill -HUP $MAINPID
+# Cap the graceful-stop window. async-container's container.stop sends
+# SIGINT and waits up to its 10 s graceful timeout before SIGKILL, so
+# 15 s leaves a small buffer for the host process itself to finish
+# tearing down — shorter than systemd's 90 s default, so a stuck
+# shutdown shows up promptly instead of holding up a deploy.
+TimeoutStopSec=15
+# WebSocket connections plus the Sequel pool plus per-fiber sockets add
+# up well past the 1024-fd soft default on most distros. 65536 leaves
+# headroom that we will not realistically grow into.
+LimitNOFILE=65536
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
