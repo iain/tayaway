@@ -1,62 +1,32 @@
 # frozen_string_literal: true
 
+require "async"
+
 module Websocket
-  # Background thread that sends server-initiated pings to all WebSocket
-  # connections and prunes any that have not responded within the idle timeout.
+  # Background fiber that pings every connected WebSocket on a fixed interval
+  # and prunes any that have not responded within the idle timeout.
   #
-  # Ping interval: every 30 seconds.
-  # Idle timeout:  90 seconds (3 missed pings before pruning).
-  #
-  # @example
-  #   Keepalive.start  # Starts background thread
-  #   Keepalive.stop   # Stops the thread
-  class Keepalive
+  # Runs as an Async task on the worker's reactor — one keepalive fiber per
+  # forked worker process — so the cooperative sleep yields cleanly to
+  # request-handling fibers between ticks.
+  module Keepalive
     PING_INTERVAL = 30 # seconds between pings
     IDLE_TIMEOUT  = 90 # seconds before a connection is pruned
 
     class << self
-      def start
-        return if @running
-
-        @running = true
-        @thread = Thread.new { run_loop }
-        @thread.abort_on_exception = true
+      def run(connections: ConnectionManager.instance)
         APP_LOGGER.info { "[Keepalive] Started (interval=#{PING_INTERVAL}s, idle_timeout=#{IDLE_TIMEOUT}s)" }
-      end
-
-      def stop
-        return unless @running
-
-        @running = false
-        @thread&.join(PING_INTERVAL + 1)
-        @thread = nil
-        APP_LOGGER.info { "[Keepalive] Stopped" }
-      end
-
-      def running?
-        !!@running
-      end
-
-      private
-
-      def run_loop
-        while @running
-          # Sleep in small increments so stop wakes up quickly
-          PING_INTERVAL.times do
-            break unless @running
-
-            sleep 1
-          end
-
-          next unless @running
-
-          begin
-            pruned = Websocket::ConnectionManager.instance.ping_all(idle_timeout: IDLE_TIMEOUT)
-            APP_LOGGER.debug { "[Keepalive] Pruned #{pruned} stale connections" } if pruned > 0
-          rescue StandardError => e
-            APP_LOGGER.error { "[Keepalive] Error during ping: #{e.message}" }
-          end
+        loop do
+          Async::Task.current.sleep(PING_INTERVAL)
+          tick(connections)
         end
+      end
+
+      def tick(connections = ConnectionManager.instance)
+        pruned = connections.ping_all(idle_timeout: IDLE_TIMEOUT)
+        APP_LOGGER.debug { "[Keepalive] Pruned #{pruned} stale connections" } if pruned > 0
+      rescue StandardError => e
+        APP_LOGGER.error { "[Keepalive] Error during ping: #{e.message}" }
       end
     end
   end

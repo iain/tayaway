@@ -5,6 +5,21 @@ module Mailers
   module PollClosed
     class << self
       def send_email(email:, user_name:, event_name:, date_label:, event_url:, ics_content:, ics_filename:, auto_rsvped:)
+        DeliveryJob.perform_later(
+          email: email.to_s,
+          user_name: user_name,
+          event_name: event_name,
+          date_label: date_label,
+          event_url: event_url,
+          ics_content: ics_content,
+          ics_filename: ics_filename,
+          auto_rsvped: auto_rsvped
+        )
+      end
+
+      # Synchronous delivery. Only `Jobs::DeliverPollClosed#call` should
+      # invoke this — request-path callers must go through `send_email`.
+      def perform_delivery(email:, user_name:, event_name:, date_label:, event_url:, ics_content:, ics_filename:, auto_rsvped:)
         message = build_message(
           email: email.to_s,
           user_name: user_name,
@@ -15,7 +30,7 @@ module Mailers
           ics_filename: ics_filename,
           auto_rsvped: auto_rsvped
         )
-        Mailers::Base.deliver_later(message)
+        Mailers::Base.deliver(message)
       end
 
       private
@@ -87,6 +102,22 @@ module Mailers
         message.html_part = html
 
         message
+      end
+    end
+
+    # See Mailers::LoginLink::DeliveryJob for the rationale on inlining.
+    class DeliveryJob < Jobs::Base
+      def call(email:, user_name:, event_name:, date_label:, event_url:, ics_content:, ics_filename:, auto_rsvped:)
+        Mailers::PollClosed.perform_delivery(
+          email: email,
+          user_name: user_name,
+          event_name: event_name,
+          date_label: date_label,
+          event_url: event_url,
+          ics_content: ics_content,
+          ics_filename: ics_filename,
+          auto_rsvped: auto_rsvped
+        )
       end
     end
   end

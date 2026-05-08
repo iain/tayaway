@@ -1,45 +1,46 @@
 # frozen_string_literal: true
 
+require "async"
+require "async/semaphore"
 require "json"
-require "concurrent"
 
 module Websocket
-  # Background task that listens for PostgreSQL NOTIFY events, fetches the
+  # Background fiber that listens for PostgreSQL NOTIFY events, fetches the
   # full data, and dispatches to ConnectionManager for WebSocket broadcasting.
   #
-  # Uses a dedicated DB connection to avoid blocking the connection pool.
+  # Runs as an Async task on the worker's reactor — one listener fiber per
+  # forked worker process. PG NOTIFY fans out to every backend listening on
+  # the channel, so each worker subscribes independently and broadcasts only
+  # to the WebSockets it owns. `DB.listen` borrows a connection from the
+  # main pool, so lifecycle (and graceful cancellation) stays tied to the
+  # Sequel pool instead of a side-channel `Sequel.connect`.
   #
-  # @example
-  #   Listener.start  # Starts background thread
-  #   Listener.stop   # Stops the listener
-  class Listener
+  # Each notification is handled in a child fiber under a semaphore: the
+  # listener returns to `wait_for_notify` as soon as the dispatch is
+  # scheduled, so a slow `connection.write` to one client cannot stall
+  # the next workspace's broadcast. The semaphore caps concurrency so a
+  # NOTIFY storm doesn't exhaust the Sequel pool or accumulate fibers.
+  module Listener
     CHANNEL = "tayaway_objects"
-    RETRY_DELAY = 5 # seconds
+    # NOTIFYs that arrive between the connection failing and the
+    # re-LISTEN are lost. Clients catch up via the next partial sync,
+    # so the only cost of a longer delay is broadcast latency for
+    # currently-connected clients — keep it short.
+    RETRY_DELAY = 1
+    # Sized below the web pool's free slots (database.rb pool minus the
+    # listener's own held connection minus headroom for request fibers)
+    # so a broadcast burst can't pool-timeout request handlers.
+    BROADCAST_CONCURRENCY = 8
 
     class << self
-      def start
-        return if running_flag.true?
-
-        running_flag.make_true
-        @listen_db = nil
-        @thread = Thread.new { run_loop }
-        @thread.abort_on_exception = true
-        APP_LOGGER.info { "[Listener] Started PostgreSQL LISTEN on #{CHANNEL}" }
-      end
-
-      def stop
-        return unless running_flag.true?
-
-        running_flag.make_false
-        # Disconnect the listen connection to unblock the listen loop
-        @listen_db&.disconnect
-        @thread&.join(RETRY_DELAY + 1)
-        @thread = nil
-        APP_LOGGER.info { "[Listener] Stopped" }
-      end
-
-      def running?
-        running_flag.true?
+      def run(connections: ConnectionManager.instance)
+        loop do
+          listen_once(connections)
+        rescue StandardError => e
+          APP_LOGGER.error { "[Listener] Error: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
+          APP_LOGGER.info { "[Listener] Retrying in #{RETRY_DELAY}s" }
+          Async::Task.current.sleep(RETRY_DELAY)
+        end
       end
 
       def type_config(object_type)
@@ -54,38 +55,7 @@ module Websocket
         model_class.find(object_id)
       end
 
-      private
-
-      def running_flag
-        @_running_flag ||= Concurrent::AtomicBoolean.new(false)
-      end
-
-      def run_loop
-        while running_flag.true?
-          listen_with_retry
-        end
-      end
-
-      def listen_with_retry
-        # Create a dedicated connection for listening (stored for graceful shutdown)
-        @listen_db = Sequel.connect(ENV.fetch("DATABASE_URL"))
-        @listen_db.listen(CHANNEL, loop: true) do |_channel, _pid, payload|
-          break unless running_flag.true?
-
-          handle_notification(payload)
-        end
-      rescue StandardError => e
-        if running_flag.true?
-          APP_LOGGER.error { "[Listener] Error in listen loop: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
-          APP_LOGGER.info { "[Listener] Retrying in #{RETRY_DELAY} seconds..." }
-          sleep RETRY_DELAY if running_flag.true?
-        end
-      ensure
-        @listen_db&.disconnect
-        @listen_db = nil
-      end
-
-      def handle_notification(payload)
+      def handle_notification(payload, connections = ConnectionManager.instance)
         data = JSON.parse(payload, symbolize_names: true)
         workspace_id = data[:workspaceId]
         object_type = data[:objectType]
@@ -127,13 +97,26 @@ module Websocket
           message[:data] = { deleted: [{ objectType: config.client_type, id: object_id }] }
         end
 
-        Websocket::ConnectionManager.instance.broadcast_to_workspace(
-          workspace_id, message, policy_context: policy_context
-        )
+        connections.broadcast_to_workspace(workspace_id, message, policy_context: policy_context)
       rescue JSON::ParserError => e
         APP_LOGGER.error { "[Listener] Invalid JSON payload: #{e.message}" }
       rescue StandardError => e
         APP_LOGGER.error { "[Listener] Error handling notification: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
+      end
+
+      private
+
+      def semaphore
+        @_semaphore ||= Async::Semaphore.new(BROADCAST_CONCURRENCY)
+      end
+
+      def listen_once(connections)
+        APP_LOGGER.info { "[Listener] Listening on #{CHANNEL}" }
+        DB.listen(CHANNEL, loop: true) do |_channel, _pid, payload|
+          semaphore.async do
+            handle_notification(payload, connections)
+          end
+        end
       end
     end
   end

@@ -49,8 +49,6 @@ LOADER.push_dir(File.expand_path("../app/services", __dir__))
 LOADER.push_dir(File.expand_path("../app/policies", __dir__))
 LOADER.ignore(File.expand_path("../app/app.rb", __dir__))
 LOADER.ignore(File.expand_path("../app/routes", __dir__))
-LOADER.ignore(File.expand_path("../lib/reloading.rb", __dir__))
-LOADER.enable_reloading if APP_ENV == "development"
 LOADER.setup
 LOADER.eager_load if APP_ENV == "production"
 

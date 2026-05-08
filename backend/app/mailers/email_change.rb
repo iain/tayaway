@@ -5,8 +5,17 @@ module Mailers
   module EmailChange
     class << self
       def send_email(email:, verification_link:)
+        DeliveryJob.perform_later(
+          email: email.to_s,
+          verification_link: verification_link
+        )
+      end
+
+      # Synchronous delivery. Only `Jobs::DeliverEmailChange#call` should
+      # invoke this — request-path callers must go through `send_email`.
+      def perform_delivery(email:, verification_link:)
         message = build_message(email: email.to_s, verification_link: verification_link)
-        Mailers::Base.deliver_later(message)
+        Mailers::Base.deliver(message)
       end
 
       private
@@ -64,6 +73,13 @@ module Mailers
         message.html_part = html
 
         message
+      end
+    end
+
+    # See Mailers::LoginLink::DeliveryJob for the rationale on inlining.
+    class DeliveryJob < Jobs::Base
+      def call(email:, verification_link:)
+        Mailers::EmailChange.perform_delivery(email: email, verification_link: verification_link)
       end
     end
   end

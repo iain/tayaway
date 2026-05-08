@@ -4,6 +4,8 @@
 # r.post, etc.) cannot be statically typed by Sorbet. This is an intentional
 # exception to the project-wide `# typed: true` convention. See CLAUDE.md.
 
+require "async"
+require "async/barrier"
 require "json"
 
 class App
@@ -27,15 +29,37 @@ class App
     r.websocket do |connection|
       connection_id = Websocket::ConnectionManager.instance.register(connection, user_id, session_id)
 
-      # Load workspaces for user
-      workspaces = Workspace.for_user(user_id)
+      # When the client requests an initial workspace, fetch its membership
+      # speculatively in parallel with the workspace list. The list is needed
+      # to validate the request, but we don't have to wait for it before
+      # starting the membership lookup — on the happy path we save a
+      # round-trip; on the rejected path we waste a query. The barrier joins
+      # both tasks at one point so a failure in either propagates cleanly and
+      # neither task is orphaned if validation rejects the request.
+      #
+      # Note: because barrier.wait re-raises any child error, a DB failure in
+      # the speculative membership lookup will fail the whole WS init even
+      # when validation would have rejected the workspace anyway. That's the
+      # tradeoff for the round-trip; a DB error here is loud by design.
+      barrier = Async::Barrier.new
+      workspaces_task = barrier.async do |task|
+        task.annotate("Workspace.for_user")
+        Workspace.for_user(user_id)
+      end
+      membership_task = if initial_workspace_id
+                          barrier.async do |task|
+                            task.annotate("WorkspaceMembership.find_by_workspace_and_user")
+                            WorkspaceMembership.find_by_workspace_and_user(initial_workspace_id, user_id)
+                          end
+                        end
+
+      barrier.wait
+
+      workspaces = workspaces_task.wait
       workspace_ids = workspaces.map { |w| w.id.to_s }
 
-      # If client requested an initial workspace, validate membership and prepare sync
       synced_workspace_id = nil
-      if initial_workspace_id && workspace_ids.include?(initial_workspace_id)
-        synced_workspace_id = initial_workspace_id
-      end
+      synced_workspace_id = initial_workspace_id if initial_workspace_id && workspace_ids.include?(initial_workspace_id)
 
       # Send authenticated message with workspace IDs
       auth_message = {
@@ -54,7 +78,7 @@ class App
 
       # If we have a valid initial workspace, subscribe and sync immediately
       if synced_workspace_id
-        membership = WorkspaceMembership.find_by_workspace_and_user(synced_workspace_id, user_id)
+        membership = membership_task.wait
         Websocket::ConnectionManager.instance.set_workspaces(connection_id, [synced_workspace_id])
         Websocket::ConnectionManager.instance.set_membership(connection_id, membership)
         since_time = Websocket::MessageHandler.safe_parse_time(initial_since)

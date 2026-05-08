@@ -31,6 +31,25 @@ class BrokenWebsocket
   def flush; end
 end
 
+# A FakeWebsocket whose `write` parks until the supplied notification is
+# signalled. Lets specs assert that a slow client's write does not delay
+# delivery to other clients.
+class BlockingWebsocket
+  attr_reader :write_count
+
+  def initialize(release)
+    @release = release
+    @write_count = 0
+  end
+
+  def write(_msg)
+    @release.wait
+    @write_count += 1
+  end
+
+  def flush; end
+end
+
 RSpec.describe Websocket::ConnectionManager do
   subject(:manager) { described_class.instance }
 
@@ -226,6 +245,26 @@ RSpec.describe Websocket::ConnectionManager do
       expect(pruned).to eq(0)
       expect(manager.connection_count).to eq(1)
     end
+
+    it "pings other connections without waiting for a slow client's write" do
+      release = Async::Notification.new
+      slow = BlockingWebsocket.new(release)
+      fast = FakeWebsocket.new
+      manager.register(slow, "user-1")
+      manager.register(fast, "user-2")
+
+      Sync do |task|
+        ping = task.async { manager.ping_all(idle_timeout: 90) }
+
+        task.sleep(0.01)
+        expect(fast.written).not_to be_empty
+        expect(slow.write_count).to eq(0)
+
+        release.signal
+        ping.wait
+        expect(slow.write_count).to eq(1)
+      end
+    end
   end
 
   describe "#broadcast_to_workspace" do
@@ -382,6 +421,34 @@ RSpec.describe Websocket::ConnectionManager do
         manager.broadcast_to_workspace(workspace_id, { type: "ping" })
 
         expect(healthy_ws.written).to include(include("ping"))
+      end
+    end
+
+    it "delivers to fast clients without waiting for a slow client's write" do
+      release = Async::Notification.new
+      slow = BlockingWebsocket.new(release)
+      fast = FakeWebsocket.new
+      workspace_id = SecureRandom.uuid
+
+      slow_conn = manager.register(slow, SecureRandom.uuid)
+      fast_conn = manager.register(fast, SecureRandom.uuid)
+      manager.set_workspaces(slow_conn, [workspace_id])
+      manager.set_workspaces(fast_conn, [workspace_id])
+
+      Sync do |task|
+        broadcast = task.async do
+          manager.broadcast_to_workspace(workspace_id, { type: "ping" })
+        end
+
+        # Yield long enough for both child fibers to run up to their first
+        # await. Fast finishes; slow parks on the notification.
+        task.sleep(0.01)
+        expect(fast.written).not_to be_empty
+        expect(slow.write_count).to eq(0)
+
+        release.signal
+        broadcast.wait
+        expect(slow.write_count).to eq(1)
       end
     end
   end

@@ -5,8 +5,19 @@ module Mailers
   module WorkspaceInvite
     class << self
       def send_email(email:, invite_link:, workspace_name:, name: nil)
+        DeliveryJob.perform_later(
+          email: email.to_s,
+          invite_link: invite_link,
+          workspace_name: workspace_name,
+          name: name
+        )
+      end
+
+      # Synchronous delivery. Only `Jobs::DeliverWorkspaceInvite#call` should
+      # invoke this — request-path callers must go through `send_email`.
+      def perform_delivery(email:, invite_link:, workspace_name:, name: nil)
         message = build_message(email: email.to_s, invite_link: invite_link, workspace_name: workspace_name, name: name)
-        Mailers::Base.deliver_later(message)
+        Mailers::Base.deliver(message)
       end
 
       private
@@ -67,6 +78,18 @@ module Mailers
         message.html_part = html
 
         message
+      end
+    end
+
+    # See Mailers::LoginLink::DeliveryJob for the rationale on inlining.
+    class DeliveryJob < Jobs::Base
+      def call(email:, invite_link:, workspace_name:, name: nil)
+        Mailers::WorkspaceInvite.perform_delivery(
+          email: email,
+          invite_link: invite_link,
+          workspace_name: workspace_name,
+          name: name
+        )
       end
     end
   end

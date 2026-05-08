@@ -4,11 +4,12 @@ require "mail"
 
 module Mailers
   # Shared mail configuration and delivery helper.
-  # Uses :smtp in production, :test everywhere else.
-  #
-  # @example
-  #   Mailers::Base.configure!
-  #   Mailers::Base.deliver(message)
+  # Uses :smtp in production, :test everywhere else. Out-of-band sending
+  # is the responsibility of the Jobs::Deliver* job classes — each
+  # mailer's `send_email` enqueues one of those, and the worker fiber
+  # invokes that mailer's `perform_delivery` to build and send the message.
+  # Request-path callers must use `send_email`; `perform_delivery` is the
+  # synchronous SMTP entry point and only the matching job should call it.
   module Base
     class << self
       def configure!
@@ -26,18 +27,6 @@ module Mailers
         APP_LOGGER.info { "[Mailer] Sending email to #{masked} (subject: #{message.subject})" }
         message.deliver
         APP_LOGGER.info { "[Mailer] Email delivered to #{masked}" }
-      end
-
-      def deliver_later(message)
-        if APP_ENV == "production"
-          Thread.new do
-            deliver(message)
-          rescue StandardError => e
-            APP_LOGGER.error { "[Mailer] Failed to deliver email to #{mask_recipients(message.to)}: #{e.class} - #{e.message}" }
-          end
-        else
-          deliver(message)
-        end
       end
 
       def from_address

@@ -7,6 +7,11 @@ ruby = "4"
 "npm:pnpm" = "11.0.0"
 
 [env]
+# Required for any forked-worker setup on macOS (falcon-host, falcon serve,
+# rspec parallelisation): without it, libpq triggers Foundation's fork-safety
+# guard and the child process aborts on its first DB connect. Linux ignores
+# the variable, so it's safe to set unconditionally for everything mise runs.
+OBJC_DISABLE_INITIALIZE_FORK_SAFETY = "YES"
 
 # ── Workflows ────────────────────────────────────────────────────────────────
 #
@@ -25,13 +30,24 @@ run = "echo 'Dev servers started'"
 description = "Start backend dev server"
 depends = ["db:seed"]
 dir = "{{config_root}}/backend"
-env = { OBJC_DISABLE_INITIALIZE_FORK_SAFETY = "YES" }
-run = "bundle exec falcon serve --bind http://localhost:9292"
+run = "bundle exec falcon-host falcon.rb"
 
 [tasks."dev:frontend"]
 description = "Start frontend dev server"
 dir = "{{config_root}}/frontend"
 run = "pnpm run dev"
+
+[tasks."dev:reset"]
+description = "Kill any falcon-host / fsevent_watch processes left holding the dev backend port"
+run = """
+pids=$(lsof -ti :9292 2>/dev/null || true)
+if [ -n "$pids" ]; then
+  echo "Killing $(echo $pids | wc -w | tr -d ' ') process(es) on :9292"
+  kill -KILL $pids 2>/dev/null || true
+fi
+pkill -KILL -f fsevent_watch 2>/dev/null && echo "Killed orphaned fsevent_watch" || true
+echo "Dev backend port is free."
+"""
 
 [tasks.check]
 description = "Pre-commit: lint, typecheck, test, audit, cache-version (no e2e)"
