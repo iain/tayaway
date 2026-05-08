@@ -25,7 +25,11 @@ module Jobs
   module Worker
     MAX_ATTEMPTS = 5
     POLL_INTERVAL = 30 # seconds — bound on how late a delayed job can run
-    RETRY_DELAY = 5    # seconds to wait after a transient loop-level error
+    # On a transient loop-level error we lose at most this many seconds of
+    # NOTIFY signal — claim_next still finds runnable jobs on the next
+    # iteration regardless, so this only affects how soon we retry the
+    # connection itself.
+    RETRY_DELAY = 1
     # Comfortably above database.rb's 30s statement_timeout, so an
     # actually-running job is never mistaken for an orphaned one.
     RECLAIM_AFTER = 300

@@ -34,7 +34,7 @@ All commands use `mise run`. Key ones:
 - **Services** (`app/services/`): Return `Result[Success, ServiceError]` monad. Entry point is `.call()`. Chain with `.bind()` (see "Code conventions" below for chain shape)
 - **Routes** (`app/routes/`): Roda hash_routes organized by domain. Auth via session cookies, CSRF via `X-CSRF-Protection: 1` header
 - **Serializers** (`app/serializers/`): `PoolSerializer` normalizes all objects into a flat pool format `{ objects: [{ id, objectType, ...fields }] }`
-- **WebSocket** (`app/websocket/`): PostgreSQL NOTIFY → Listener thread → broadcasts serialized objects to connected clients
+- **WebSocket** (`app/websocket/`): PostgreSQL NOTIFY → per-worker Listener fiber → broadcasts serialized objects to connected clients
 - **Object Registry** (`app/object_registry.rb`): Central registry mapping object types to their models/serializers
 
 ### Frontend (`frontend/`)
@@ -51,7 +51,7 @@ All commands use `mise run`. Key ones:
 ### Real-Time Sync Flow
 
 1. Service mutates DB → calls `Broadcaster.object_changed`
-2. PostgreSQL NOTIFY triggers backend Listener thread
+2. PostgreSQL NOTIFY wakes the per-worker Listener fiber
 3. Listener fetches full object, serializes via PoolSerializer, broadcasts to WebSocket clients
 4. Clients merge into local object pool (strictly newer `updatedAt` wins)
 5. Optimistic updates are tracked as pending until server confirms

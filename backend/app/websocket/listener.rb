@@ -23,7 +23,11 @@ module Websocket
   # NOTIFY storm doesn't exhaust the Sequel pool or accumulate fibers.
   module Listener
     CHANNEL = "tayaway_objects"
-    RETRY_DELAY = 5
+    # NOTIFYs that arrive between the connection failing and the
+    # re-LISTEN are lost. Clients catch up via the next partial sync,
+    # so the only cost of a longer delay is broadcast latency for
+    # currently-connected clients — keep it short.
+    RETRY_DELAY = 1
     # Sized below the web pool's free slots (database.rb pool minus the
     # listener's own held connection minus headroom for request fibers)
     # so a broadcast burst can't pool-timeout request handlers.

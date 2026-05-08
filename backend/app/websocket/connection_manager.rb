@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require "async"
+require "async/barrier"
+require "async/semaphore"
 require "json"
 
 module Websocket
@@ -13,6 +16,13 @@ module Websocket
   # in here.
   class ConnectionManager
     include Singleton
+
+    # Cap on per-broadcast / per-keepalive-tick fan-out fibers. Each child
+    # does one `write` + `flush`, so a slow TCP receiver only stalls its
+    # own fiber — other clients in the same workspace deliver in parallel.
+    # Sized well above realistic per-workspace connection counts but well
+    # below the Sequel pool so writes never crowd request connections.
+    WRITE_CONCURRENCY = 32
 
     def initialize
       @mutex = Mutex.new
@@ -105,21 +115,22 @@ module Websocket
     def ping_all(idle_timeout:)
       deadline = Time.now - idle_timeout
       stale_ids = []
+      fresh = []
 
-      connection_snapshot = @mutex.synchronize { @connections.dup }
-
-      connection_snapshot.each do |connection_id, connection|
+      @mutex.synchronize { @connections.dup }.each do |connection_id, connection|
         if connection.last_pong_at < deadline
           stale_ids << connection_id
         else
-          begin
-            connection.websocket.write({ type: "ping" }.to_json)
-            connection.websocket.flush
-          rescue StandardError => e
-            APP_LOGGER.error { "[ConnectionManager] Error pinging conn #{connection_id}: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
-            stale_ids << connection_id
-          end
+          fresh << [connection_id, connection]
         end
+      end
+
+      fan_out(fresh) do |connection_id, connection|
+        connection.websocket.write({ type: "ping" }.to_json)
+        connection.websocket.flush
+      rescue StandardError => e
+        APP_LOGGER.error { "[ConnectionManager] Error pinging conn #{connection_id}: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
+        stale_ids << connection_id
       end
 
       stale_ids.each do |connection_id|
@@ -132,21 +143,18 @@ module Websocket
 
     def broadcast_to_workspace(workspace_id, message, policy_context: nil)
       connection_ids = @mutex.synchronize { (@workspace_connections[workspace_id] || Set.new).to_a }
+      return if connection_ids.empty?
 
-      if policy_context
-        connection_ids.each do |connection_id|
-          connection = @mutex.synchronize { @connections[connection_id] }
-          next unless connection
+      json_message = message.to_json unless policy_context
 
-          personalized = attach_permissions(message, connection.membership, policy_context)
-          send_to_connection(connection, connection_id, personalized.to_json, workspace_id)
-        end
-      else
-        json_message = message.to_json
-        connection_ids.each do |connection_id|
-          connection = @mutex.synchronize { @connections[connection_id] }
-          next unless connection
+      fan_out(connection_ids) do |connection_id|
+        connection = @mutex.synchronize { @connections[connection_id] }
+        next unless connection
 
+        if policy_context
+          personalized = attach_permissions(message, connection.membership, policy_context).to_json
+          send_to_connection(connection, connection_id, personalized, workspace_id)
+        else
           send_to_connection(connection, connection_id, json_message, workspace_id)
         end
       end
@@ -186,6 +194,23 @@ module Websocket
     end
 
     private
+
+    # Run `block` against each item in `items` on its own fiber under a
+    # bounded semaphore, awaiting all of them before returning. `Sync`
+    # runs inline if a reactor is already current (the listener and
+    # keepalive fibers) and spins one up otherwise (specs, ad-hoc calls).
+    def fan_out(items)
+      return if items.empty?
+
+      Sync do
+        barrier = Async::Barrier.new
+        semaphore = Async::Semaphore.new(WRITE_CONCURRENCY, parent: barrier)
+        items.each do |item|
+          semaphore.async { yield(*item) }
+        end
+        barrier.wait
+      end
+    end
 
     def attach_permissions(message, membership, policy_context)
       PermissionAttacher.attach_to_message(message, membership, policy_context)
