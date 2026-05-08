@@ -51,58 +51,76 @@ module JobsServiceEnvironment
 end
 
 # Dev-only code reload: watch app/ and lib/ in the host process and
-# SIGHUP ourselves on change. Async::Container::Controller turns the
-# SIGHUP into a fresh-fork-then-drain restart of every worker. Running
-# the watcher in the host (rather than a forked service) keeps the
-# Listen gem's fsevent_w / inotify subprocess as a direct child of the
-# host, so it terminates cleanly when the host exits — no orphaned
-# subprocesses holding the listen socket between dev-server runs.
+# trigger a controller restart on change. Async::Container::Controller
+# treats a SIGHUP as the restart signal, but it has a sharp edge —
+# a second SIGHUP arriving while the previous restart is still
+# draining workers re-raises Async::Container::Restart through the
+# in-progress IO.select, escapes the controller's rescue, and tears
+# the host down. Saves bunched together (rebases, search-and-replace
+# across files, fast-paced editing) hit it routinely.
 #
-# Two-stage debounce:
-#   1. Listen's `wait_for_delay` collapses the fsevent burst macOS
-#      produces for a single save into one callback.
-#   2. A dedicated worker thread serialises those callbacks behind a
-#      cooldown sleep — async-container can't safely receive a second
-#      Async::Container::Restart while it's still draining workers
-#      from the first. The Thread#raise into a mid-restart IO.select
-#      escapes the controller's rescue and tears the host down.
-#
-# The cooldown has to outlast the longest graceful-shutdown a worker
-# can take. Falcon waits for in-flight WebSockets to close before
-# exiting, so a connected dev browser pushes us into async-container's
-# ~10s SIGKILL fallback. 15s leaves headroom for that plus the
-# fork+startup of the new workers. Saves arriving inside the cooldown
-# flip `reload_pending` back on; the next iteration of the loop picks
-# them up and fires one follow-up HUP — no save is lost.
+# So we serialise saves around the actual restart cycle: a save while
+# a restart is running flips a `pending` bit, and a `prepend` on the
+# controller fires the queued HUP from the `ensure` of `restart` once
+# it has actually returned. No time-based cooldown — the gate opens
+# on the real completion event. No reactor either; the controller
+# runs on plain IO.select before any reactor exists in the host, and
+# Listen's callback runs on its own thread, so a Mutex is the
+# correct primitive to synchronise the two.
 if ENV.fetch("RACK_ENV", "development") == "development"
   require "listen"
-  reload_cooldown = 15
-  reload_mutex = Mutex.new
-  reload_signal = ConditionVariable.new
-  reload_pending = false
+  require "async/container/controller"
+
+  module DevReloader
+    @mutex = Mutex.new
+    @restart_in_progress = false
+    @save_pending = false
+
+    class << self
+      def on_save
+        fire = @mutex.synchronize do
+          if @restart_in_progress
+            @save_pending = true
+            false
+          else
+            @restart_in_progress = true
+            true
+          end
+        end
+        Process.kill("HUP", Process.pid) if fire
+      end
+
+      def on_restart_completed
+        fire = @mutex.synchronize do
+          @restart_in_progress = false
+          if @save_pending
+            @save_pending = false
+            @restart_in_progress = true
+            true
+          else
+            false
+          end
+        end
+        Process.kill("HUP", Process.pid) if fire
+      end
+    end
+  end
+
+  module DevReloaderRestartHook
+    def restart(...)
+      super
+    ensure
+      DevReloader.on_restart_completed
+    end
+  end
+  Async::Container::Controller.prepend(DevReloaderRestartHook)
 
   reloader = Listen.to(
     File.expand_path("app", __dir__),
     File.expand_path("lib", __dir__),
     wait_for_delay: 0.5
-  ) do
-    reload_mutex.synchronize do
-      reload_pending = true
-      reload_signal.signal
-    end
-  end
+  ) { DevReloader.on_save }
   reloader.start
-
-  Thread.new do
-    loop do
-      reload_mutex.synchronize do
-        reload_signal.wait(reload_mutex) until reload_pending
-        reload_pending = false
-      end
-      Process.kill("HUP", Process.pid)
-      sleep reload_cooldown
-    end
-  end
 end
 
 service "web" do
