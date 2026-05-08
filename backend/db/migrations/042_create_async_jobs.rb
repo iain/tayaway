@@ -19,12 +19,12 @@ Sequel.migration do
       uuid :id, primary_key: true, default: Sequel.function(:gen_random_uuid)
       String :job_class, null: false, text: true
       jsonb :args, null: false, default: "{}"
-      DateTime :scheduled_at, null: false, default: Sequel::CURRENT_TIMESTAMP
+      column :scheduled_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
       Integer :attempts, null: false, default: 0
-      DateTime :locked_at
-      DateTime :dead_at
+      column :locked_at, :timestamptz
+      column :dead_at, :timestamptz
       String :last_error, text: true
-      DateTime :created_at, null: false, default: Sequel::CURRENT_TIMESTAMP
+      column :created_at, :timestamptz, null: false, default: Sequel::CURRENT_TIMESTAMP
     end
 
     # Partial index over the runnable subset only — locked, future-scheduled,
