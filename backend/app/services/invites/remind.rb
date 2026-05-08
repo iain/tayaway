@@ -87,6 +87,7 @@ module Invites
         Notifications::Dispatch.call(
           kind: :workspace_invite,
           user_id: User.find_by_email(invite.email)&.id&.to_s,
+          workspace_id: invite.workspace_id.to_s,
           data: {
             email: invite.email.to_s,
             invite_link: invite_link,

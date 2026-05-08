@@ -8,9 +8,17 @@ module Notifications
     module PollClosed
       class << self
         def key = :poll_closed
-        def default_channels = [:email]
-        def supported_channels = [:email]
+        def default_channels = %i[email in_app]
+        def supported_channels = %i[email in_app]
         def email_delivery_job = EmailDeliveryJob
+
+        def in_app_payload(event_name:, date_label:, event_url:, **)
+          {
+            title: "Dates confirmed: #{event_name}",
+            body: date_label,
+            href: event_url
+          }
+        end
 
         def build_email(email:, user_name:, event_name:, date_label:, event_url:, ics_content:, ics_filename:, auto_rsvped:)
           greeting = user_name && !user_name.empty? ? "Hi #{user_name}," : "Hi,"

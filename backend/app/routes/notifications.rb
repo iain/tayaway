@@ -28,5 +28,34 @@ class App
         end
       end
     end
+
+    r.on "read-all" do
+      # PUT /api/notifications/read-all - mark every unread notification read
+      r.put do
+        Notification.mark_all_read(user.id)
+        { ok: true }
+      end
+    end
+
+    r.on String do |id|
+      r.on "read" do
+        # PUT /api/notifications/:id/read - mark one notification read
+        r.put do
+          Notification.mark_read(id, user_id: user.id)
+          { ok: true }
+        end
+      end
+    end
+
+    r.is do
+      # GET /api/notifications - the current user's recent notifications
+      r.get do
+        notifications = Notification.for_user(user.id)
+        {
+          notifications: notifications.map(&:to_api_hash),
+          unreadCount: Notification.unread_count_for_user(user.id)
+        }
+      end
+    end
   end
 end

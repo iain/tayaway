@@ -9,9 +9,17 @@ module Notifications
     module WorkspaceInvite
       class << self
         def key = :workspace_invite
-        def default_channels = [:email]
-        def supported_channels = [:email]
+        def default_channels = %i[email in_app]
+        def supported_channels = %i[email in_app]
         def email_delivery_job = EmailDeliveryJob
+
+        def in_app_payload(invite_link:, workspace_name:, **)
+          {
+            title: "Invitation to #{workspace_name}",
+            body: "Tap to accept and join.",
+            href: invite_link
+          }
+        end
 
         def build_email(email:, invite_link:, workspace_name:, name: nil)
           greeting = name ? "Hi #{name}," : nil

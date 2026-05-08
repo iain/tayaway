@@ -37,6 +37,7 @@ import { formatRelativeDate } from '@/utils/date'
 import { getInitials } from '@/utils/member'
 import AppAvatar from '@/components/common/AppAvatar.vue'
 import CommandPalette from '@/components/common/CommandPalette.vue'
+import NotificationBell from '@/components/common/NotificationBell.vue'
 import EventSubheader from '@/components/events/EventSubheader.vue'
 import { useCommandPalette } from '@/composables/useCommandPalette'
 import { useEventContextCommands } from '@/composables/useEventContextCommands'
@@ -360,6 +361,9 @@ async function handleSignOut() {
                 <SunIcon v-if="isDark" class="size-6" aria-hidden="true" />
                 <MoonIcon v-else class="size-6" aria-hidden="true" />
               </button>
+
+              <!-- Notifications inbox -->
+              <NotificationBell class="ml-2" />
 
               <!-- Profile dropdown -->
               <Menu as="div" class="relative ml-3">

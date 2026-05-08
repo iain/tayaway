@@ -116,6 +116,7 @@ module DatePolls
           Notifications::Dispatch.call(
             kind: :poll_closed,
             user_id: user.id.to_s,
+            workspace_id: event.workspace_id.to_s,
             data: {
               email: user.email.to_s,
               user_name: user.name,
