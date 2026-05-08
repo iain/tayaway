@@ -254,7 +254,7 @@ RSpec.describe DatePolls::Close do
 
       TestFactories.vote(user: voter, date_range: date_range, response: "yes")
 
-      allow(Mailers::PollClosed).to receive(:send_email).and_raise(StandardError, "SMTP down")
+      allow(Notifications::Dispatch).to receive(:call).and_raise(StandardError, "SMTP down")
 
       result = described_class.call(
         event_id: event[:id],

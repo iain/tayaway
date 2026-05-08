@@ -91,7 +91,11 @@ module Invites
 
         APP_LOGGER.info { "[Invites::Create] Invite #{id} sent to #{email} in workspace #{workspace_id} by #{membership.user_id}" }
         APP_LOGGER.info { "INVITE LINK FOR #{email}: #{invite_link}" } if APP_ENV == "development"
-        Mailers::WorkspaceInvite.send_email(email: email, invite_link: invite_link, workspace_name: workspace_name, name: name)
+        Notifications::Dispatch.call(
+          kind: :workspace_invite,
+          user_id: User.find_by_email(email)&.id&.to_s,
+          data: { email: email, invite_link: invite_link, workspace_name: workspace_name, name: name }
+        )
 
         Broadcaster.object_changed("workspace_invite", id, workspace_id: workspace_id.to_s)
 

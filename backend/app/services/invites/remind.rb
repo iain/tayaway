@@ -84,11 +84,15 @@ module Invites
 
         APP_LOGGER.info { "[Invites::Remind] Reminder sent for invite #{invite.id} to #{invite.email} in workspace #{invite.workspace_id}" }
         APP_LOGGER.info { "REMINDER INVITE LINK FOR #{invite.email}: #{invite_link}" } if APP_ENV == "development"
-        Mailers::WorkspaceInvite.send_email(
-          email: invite.email,
-          invite_link: invite_link,
-          workspace_name: workspace_name,
-          name: invite.name
+        Notifications::Dispatch.call(
+          kind: :workspace_invite,
+          user_id: User.find_by_email(invite.email)&.id&.to_s,
+          data: {
+            email: invite.email.to_s,
+            invite_link: invite_link,
+            workspace_name: workspace_name,
+            name: invite.name
+          }
         )
 
         Broadcaster.object_changed("workspace_invite", invite.id, workspace_id: invite.workspace_id.to_s)

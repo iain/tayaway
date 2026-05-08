@@ -113,15 +113,19 @@ module DatePolls
 
         users.each do |user|
           auto_rsvped = yes_voter_ids.include?(user.id.to_s)
-          Mailers::PollClosed.send_email(
-            email: user.email,
-            user_name: user.name,
-            event_name: event.name,
-            date_label: date_label,
-            event_url: event_url,
-            ics_content: ics_content,
-            ics_filename: ics_filename,
-            auto_rsvped: auto_rsvped
+          Notifications::Dispatch.call(
+            kind: :poll_closed,
+            user_id: user.id.to_s,
+            data: {
+              email: user.email.to_s,
+              user_name: user.name,
+              event_name: event.name,
+              date_label: date_label,
+              event_url: event_url,
+              ics_content: ics_content,
+              ics_filename: ics_filename,
+              auto_rsvped: auto_rsvped
+            }
           )
         end
       rescue StandardError => e
