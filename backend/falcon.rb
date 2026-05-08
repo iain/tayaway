@@ -58,32 +58,51 @@ end
 # host, so it terminates cleanly when the host exits — no orphaned
 # subprocesses holding the listen socket between dev-server runs.
 #
-# `wait_for_delay` collapses the fsevent burst macOS produces for a
-# single save into one callback. The cooldown then drops any further
-# HUPs while a restart is still draining workers — async-container
-# can't safely receive a second `Async::Container::Restart` while it's
-# already handling one (Thread#raise into a mid-restart `IO.select`
-# escapes the controller's rescue and tears down the host). The
-# cooldown is sized well above a normal restart to avoid that race.
+# Two-stage debounce:
+#   1. Listen's `wait_for_delay` collapses the fsevent burst macOS
+#      produces for a single save into one callback.
+#   2. A dedicated worker thread serialises those callbacks behind a
+#      cooldown sleep — async-container can't safely receive a second
+#      Async::Container::Restart while it's still draining workers
+#      from the first. The Thread#raise into a mid-restart IO.select
+#      escapes the controller's rescue and tears the host down.
+#
+# The cooldown has to outlast the longest graceful-shutdown a worker
+# can take. Falcon waits for in-flight WebSockets to close before
+# exiting, so a connected dev browser pushes us into async-container's
+# ~10s SIGKILL fallback. 15s leaves headroom for that plus the
+# fork+startup of the new workers. Saves arriving inside the cooldown
+# flip `reload_pending` back on; the next iteration of the loop picks
+# them up and fires one follow-up HUP — no save is lost.
 if ENV.fetch("RACK_ENV", "development") == "development"
   require "listen"
-  reload_cooldown = 5
+  reload_cooldown = 15
   reload_mutex = Mutex.new
-  last_reload_at = Time.at(0)
+  reload_signal = ConditionVariable.new
+  reload_pending = false
+
   reloader = Listen.to(
     File.expand_path("app", __dir__),
     File.expand_path("lib", __dir__),
     wait_for_delay: 0.5
   ) do
     reload_mutex.synchronize do
-      now = Time.now
-      next if now - last_reload_at < reload_cooldown
-
-      last_reload_at = now
-      Process.kill("HUP", Process.pid)
+      reload_pending = true
+      reload_signal.signal
     end
   end
   reloader.start
+
+  Thread.new do
+    loop do
+      reload_mutex.synchronize do
+        reload_signal.wait(reload_mutex) until reload_pending
+        reload_pending = false
+      end
+      Process.kill("HUP", Process.pid)
+      sleep reload_cooldown
+    end
+  end
 end
 
 service "web" do
