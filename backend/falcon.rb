@@ -57,10 +57,31 @@ end
 # Listen gem's fsevent_w / inotify subprocess as a direct child of the
 # host, so it terminates cleanly when the host exits — no orphaned
 # subprocesses holding the listen socket between dev-server runs.
+#
+# `wait_for_delay` collapses the fsevent burst macOS produces for a
+# single save into one callback. The cooldown then drops any further
+# HUPs while a restart is still draining workers — async-container
+# can't safely receive a second `Async::Container::Restart` while it's
+# already handling one (Thread#raise into a mid-restart `IO.select`
+# escapes the controller's rescue and tears down the host). The
+# cooldown is sized well above a normal restart to avoid that race.
 if ENV.fetch("RACK_ENV", "development") == "development"
   require "listen"
-  reloader = Listen.to(File.expand_path("app", __dir__), File.expand_path("lib", __dir__)) do
-    Process.kill("HUP", Process.pid)
+  reload_cooldown = 5
+  reload_mutex = Mutex.new
+  last_reload_at = Time.at(0)
+  reloader = Listen.to(
+    File.expand_path("app", __dir__),
+    File.expand_path("lib", __dir__),
+    wait_for_delay: 0.5
+  ) do
+    reload_mutex.synchronize do
+      now = Time.now
+      next if now - last_reload_at < reload_cooldown
+
+      last_reload_at = now
+      Process.kill("HUP", Process.pid)
+    end
   end
   reloader.start
 end
