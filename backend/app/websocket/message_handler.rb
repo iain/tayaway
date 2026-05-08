@@ -21,9 +21,15 @@ module Websocket
 
         case type
         when "ping"
-          connection.write({ type: "pong", gitSha: GIT_SHA }.to_json)
-        when "pong"
+          # The browser-side keepalive only sends `ping` and reads the
+          # `pong` reply; it never sends a `pong` of its own. So the
+          # inbound ping is the liveness signal we use to keep this
+          # connection out of the keepalive sweep — without bumping
+          # last_pong_at here the server prunes every connection roughly
+          # 90 s after it opens, which silently breaks broadcast routing
+          # while the WebSocket itself stays open.
           Websocket::ConnectionManager.instance.update_last_pong(connection_id)
+          connection.write({ type: "pong", gitSha: GIT_SHA }.to_json)
         when "switch_workspace"
           switch_workspace(connection, connection_id, user_id, data[:workspaceId], data[:since])
         else
