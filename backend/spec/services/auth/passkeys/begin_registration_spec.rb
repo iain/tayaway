@@ -43,4 +43,11 @@ RSpec.describe Auth::Passkeys::BeginRegistration do
     expect(result.failure?).to be true
     expect(result.failure.message).to eq("User not found")
   end
+
+  it "requests indirect attestation so the authenticator AAGUID is preserved" do
+    result = described_class.call(user_id: user[:id])
+
+    expect(result.success?).to be true
+    expect(result.value![:options][:attestation]).to eq("indirect")
+  end
 end

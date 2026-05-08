@@ -60,6 +60,11 @@ WebAuthn.configure do |config|
   config.allowed_origins = [FRONTEND_URL, *WEBAUTHN_EXTRA_ORIGINS]
   config.rp_name = "Tayaway"
   config.rp_id = URI.parse(FRONTEND_URL).host
+  # We request indirect attestation only to preserve the AAGUID for friendly-name
+  # lookup via FIDO MDS. We don't restrict to specific authenticators, so verifying
+  # the attestation chain adds no security and would reject any roaming key whose
+  # batch cert root we don't ship.
+  config.verify_attestation_statement = false
 end
 
 # FIDO Metadata Service cache — used to look up authenticator device names by AAGUID.

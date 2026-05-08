@@ -42,7 +42,8 @@ module Auth
             authenticator_selection: {
               resident_key: "preferred",
               user_verification: "preferred"
-            }
+            },
+            attestation: "indirect"
           )
 
           challenge_token = Auth::Token.encode_webauthn_challenge(challenge: options.challenge, user_id: user.id.to_s)
