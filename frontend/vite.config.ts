@@ -80,9 +80,14 @@ export default defineConfig({
         defaultHandler(warning)
       },
       output: {
-        manualChunks: {
-          leaflet: ['leaflet'],
-          'vue-draggable': ['vue-draggable-plus'],
+        advancedChunks: {
+          groups: [
+            { name: 'leaflet', test: /node_modules\/leaflet\// },
+            {
+              name: 'vue-draggable',
+              test: /node_modules\/vue-draggable-plus\//,
+            },
+          ],
         },
       },
     },
@@ -95,6 +100,7 @@ export default defineConfig({
   server: {
     port,
     proxy: apiProxy,
+    forwardConsole: true,
   },
   preview: {
     port: previewPort,
