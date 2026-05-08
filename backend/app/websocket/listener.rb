@@ -11,10 +11,9 @@ module Websocket
   # Runs as an Async task on the worker's reactor — one listener fiber per
   # forked worker process. PG NOTIFY fans out to every backend listening on
   # the channel, so each worker subscribes independently and broadcasts only
-  # to the WebSockets it owns. The connection it parks on comes from the
-  # main pool via DB.synchronize, which keeps lifecycle (and graceful
-  # cancellation) tied to the Sequel pool instead of a side-channel
-  # Sequel.connect.
+  # to the WebSockets it owns. `DB.listen` borrows a connection from the
+  # main pool, so lifecycle (and graceful cancellation) stays tied to the
+  # Sequel pool instead of a side-channel `Sequel.connect`.
   #
   # Each notification is handled in a child fiber under a semaphore: the
   # listener returns to `wait_for_notify` as soon as the dispatch is
@@ -112,14 +111,10 @@ module Websocket
       end
 
       def listen_once(connections)
-        Postgres::Listen.subscribe(CHANNEL) do |raw|
-          APP_LOGGER.info { "[Listener] Listening on #{CHANNEL}" }
-          loop do
-            raw.wait_for_notify do |_channel, _pid, payload|
-              semaphore.async do
-                handle_notification(payload, connections)
-              end
-            end
+        APP_LOGGER.info { "[Listener] Listening on #{CHANNEL}" }
+        DB.listen(CHANNEL, loop: true) do |_channel, _pid, payload|
+          semaphore.async do
+            handle_notification(payload, connections)
           end
         end
       end

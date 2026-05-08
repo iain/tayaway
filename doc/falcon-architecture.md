@@ -79,11 +79,11 @@ only to the WebSockets it owns. There is no Redis bridge and no
 cross-worker IPC — Postgres' fan-out across listening backends is the
 fan-out.
 
-The listener fiber parks on a single pooled connection inside
-`Postgres::Listen.subscribe`, which handles `LISTEN` registration and
-unconditional `UNLISTEN *` on exit. Concurrency is bounded at two
-layers, both via `Async::Semaphore`: each incoming notification is
-dispatched on its own child fiber so the listener returns to
+The listener fiber parks on a single pooled connection via Sequel's
+`DB.listen(channel, loop: true)`, which handles `LISTEN`/`UNLISTEN`
+and properly escapes the channel identifier. Concurrency is bounded
+at two layers, both via `Async::Semaphore`: each incoming notification
+is dispatched on its own child fiber so the listener returns to
 `wait_for_notify` immediately, and inside `broadcast_to_workspace` the
 per-recipient writes fan out under a second semaphore. A slow TCP
 receiver can only stall its own write fiber — clients in other

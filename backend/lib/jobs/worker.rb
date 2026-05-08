@@ -18,10 +18,12 @@ module Jobs
   #      backoff, or — past the retry budget — set `dead_at` and leave
   #      the row in place with `last_error` for human follow-up.
   #
-  # The whole loop runs inside one `LISTEN tayaway_jobs` parked on a
-  # single pooled connection. Holding the LISTEN across drains (rather
-  # than re-subscribing each cycle) closes the gap where a NOTIFY could
-  # land between `UNLISTEN` and the next subscribe and be dropped.
+  # The LISTEN is held across drains within a single subscription so a
+  # NOTIFY can't slip through an `UNLISTEN`/`LISTEN` gap. Errors escape
+  # the subscribe block (the rescue is at the outer `run` loop) so a
+  # dead connection is dropped back to the pool and the next iteration
+  # borrows a fresh one — without that, a `wait_for_notify` failure
+  # would loop on the same broken socket until the container restarted.
   module Worker
     MAX_ATTEMPTS = 5
     POLL_INTERVAL = 30 # seconds — bound on how late a delayed job can run
@@ -37,21 +39,19 @@ module Jobs
     class << self
       def run
         APP_LOGGER.info { "[Jobs::Worker] Started" }
-        Postgres::Listen.subscribe(Queue::CHANNEL) do |raw|
-          loop do
-            reclaim_stale
-            drain
-            raw.wait_for_notify(POLL_INTERVAL)
-          rescue StandardError => e
-            # Transient errors at the loop level — typically a dropped DB
-            # connection during claim_next or wait_for_notify. Sleep and
-            # retry instead of letting the fiber die and waiting for the
-            # container to restart us.
-            APP_LOGGER.error do
-              "[Jobs::Worker] Loop error: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}"
-            end
-            Async::Task.current.sleep(RETRY_DELAY)
+        loop do
+          listen_once
+        rescue StandardError => e
+          # Typically a dropped DB connection during claim_next or
+          # wait_for_notify. Letting the error escape `listen_once`
+          # exits the inner DB.listen so the (likely dead) connection
+          # is released back to the pool — Sequel will discard it on
+          # next checkout. The next iteration of `loop` calls
+          # listen_once again and gets a fresh one.
+          APP_LOGGER.error do
+            "[Jobs::Worker] Loop error: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}"
           end
+          Async::Task.current.sleep(RETRY_DELAY)
         end
       end
 
@@ -91,6 +91,24 @@ module Jobs
       end
 
       private
+
+      def listen_once
+        # `after_listen` runs `tick` once after the channel is registered
+        # so rows enqueued before this worker started come through on the
+        # first pass. `loop:` is a callable, which makes Sequel re-call
+        # `tick` after every `wait_for_notify` return (NOTIFY-driven or
+        # POLL_INTERVAL timeout) until an exception escapes — matching
+        # the original "drain → wait → drain" cadence. The block is a
+        # no-op because `drain` reads the row from the queue itself; the
+        # NOTIFY payload is just a wake signal.
+        tick = ->(_conn) { reclaim_stale; drain }
+        DB.listen(
+          Queue::CHANNEL,
+          timeout: POLL_INTERVAL,
+          after_listen: tick,
+          loop: tick
+        ) { |_, _, _| }
+      end
 
       def claim_next
         DB.transaction do

@@ -226,26 +226,19 @@ RSpec.describe Jobs::Worker do
   end
 
   describe ".run" do
-    # The loop is infinite by design; each example stubs the parts that
-    # touch the reactor (`Postgres::Listen.subscribe` and the raw
-    # connection's `wait_for_notify`) so a few iterations happen and then
-    # the loop is broken out of via `throw`. `Async::Task.current` is
-    # stubbed out because no reactor is running in the spec.
-    def stub_subscribe_yielding(raw)
-      allow(Postgres::Listen).to receive(:subscribe).with(Jobs::Queue::CHANNEL).and_yield(raw)
-    end
+    # `.run`'s outer loop is infinite by design. Each example stubs
+    # `listen_once` so a few iterations fire and the loop is broken out
+    # of via `throw`. `Async::Task.current` is stubbed because no reactor
+    # is running in the spec.
 
     it "logs and recovers from a transient error instead of letting the fiber die" do
       iterations = 0
-      allow(described_class).to receive(:drain) do
+      allow(described_class).to receive(:listen_once) do
         iterations += 1
-        raise "transient" if iterations == 1
-      end
-      raw = instance_double(PG::Connection)
-      allow(raw).to receive(:wait_for_notify) do
         throw :stop_test_loop if iterations >= 2
+
+        raise "transient"
       end
-      stub_subscribe_yielding(raw)
       allow(Async::Task).to receive(:current).and_return(instance_double(Async::Task, sleep: nil))
       allow(APP_LOGGER).to receive(:info)
       logged = []
@@ -266,19 +259,62 @@ RSpec.describe Jobs::Worker do
       allow(APP_LOGGER).to receive(:error)
 
       iterations = 0
-      allow(described_class).to receive(:drain) do
+      allow(described_class).to receive(:listen_once) do
         iterations += 1
-        raise "still broken" if iterations == 1
-      end
-      raw = instance_double(PG::Connection)
-      allow(raw).to receive(:wait_for_notify) do
         throw :stop_test_loop if iterations >= 2
+
+        raise "still broken"
       end
-      stub_subscribe_yielding(raw)
 
       catch(:stop_test_loop) { described_class.run }
 
       expect(slept).to eq([described_class::RETRY_DELAY])
+    end
+
+    it "re-enters listen_once after an error so a dead LISTEN connection is replaced" do
+      # If the parked connection dies (PG::ConnectionBad from
+      # wait_for_notify), the rescue must let the error escape
+      # `listen_once` so its DB.listen returns the (likely dead)
+      # connection to the pool — Sequel discards it on next checkout —
+      # and the next iteration calls listen_once again with a fresh
+      # one. Without that, the worker would keep polling on a dead
+      # socket until the container restarted.
+      calls = 0
+      allow(described_class).to receive(:listen_once) do
+        calls += 1
+        throw :stop_test_loop if calls >= 2
+
+        raise PG::ConnectionBad, "server closed the connection"
+      end
+      allow(Async::Task).to receive(:current).and_return(instance_double(Async::Task, sleep: nil))
+      allow(APP_LOGGER).to receive(:info)
+      allow(APP_LOGGER).to receive(:error)
+
+      catch(:stop_test_loop) { described_class.run }
+
+      expect(calls).to be >= 2
+    end
+  end
+
+  describe ".listen_once" do
+    it "drives drain via DB.listen's after_listen + loop callbacks instead of polling raw conn" do
+      tick_calls = 0
+      allow(described_class).to receive(:reclaim_stale) { tick_calls += 1 }
+      allow(described_class).to receive(:drain)
+      received_opts = nil
+      allow(DB).to receive(:listen) do |channel, opts, &_block|
+        received_opts = opts.merge(channel: channel)
+        # Simulate Sequel: run after_listen, then run loop callback once
+        # to mirror a single wake/timeout cycle, then return.
+        opts[:after_listen].call(:fake_conn)
+        opts[:loop].call(:fake_conn)
+      end
+
+      described_class.send(:listen_once)
+
+      expect(received_opts[:channel]).to eq(Jobs::Queue::CHANNEL)
+      expect(received_opts[:timeout]).to eq(described_class::POLL_INTERVAL)
+      expect(tick_calls).to eq(2)
     end
   end
 end
