@@ -10,6 +10,7 @@ module Notifications
       class << self
         def key = :workspace_invite
         def default_channels = [:email]
+        def supported_channels = [:email]
         def email_delivery_job = EmailDeliveryJob
 
         def build_email(email:, invite_link:, workspace_name:, name: nil)
