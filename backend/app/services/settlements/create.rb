@@ -33,6 +33,7 @@ module Settlements
         now = Time.now
         failure = nil
         superseded_ids = []
+        committed_transfers = []
 
         DB.transaction do
           # Event-level lock serializes concurrent settlement attempts for the
@@ -172,6 +173,7 @@ module Settlements
             )
             Broadcaster.object_changed("settlement_transfer", transfer_id, workspace_id: workspace_id)
           end
+          committed_transfers = transfers
 
           if unsettled.any?
             # Target rows by the locked ids rather than re-evaluating
@@ -201,6 +203,8 @@ module Settlements
           Broadcaster.object_changed("expense", expense.id, workspace_id: workspace_id)
         end
 
+        notify_transfers(committed_transfers, event, workspace_id)
+
         pool = PoolSerializer.new(membership: membership)
         settlement = Settlement.find(settlement_id)
         pool.add(:settlement, [settlement])
@@ -211,6 +215,50 @@ module Settlements
         pool.add(:expense, all_expenses)
 
         Success({ objects: pool.to_a })
+      end
+
+      def notify_transfers(transfers, event, workspace_id)
+        return if transfers.empty?
+
+        user_ids = transfers.flat_map { |t| [t[:from_user_id], t[:to_user_id]] }.uniq
+        users_by_id = User.for_ids(user_ids).each_with_object({}) { |u, h| h[u.id.to_s] = u }
+        event_url = "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/events/#{event.id}"
+
+        transfers.each do |transfer|
+          debtor = users_by_id[transfer[:from_user_id].to_s]
+          creditor = users_by_id[transfer[:to_user_id].to_s]
+          next unless debtor && creditor
+
+          Notifications::Dispatch.call(
+            kind: :settlement_owed,
+            user_id: debtor.id.to_s,
+            workspace_id: workspace_id,
+            data: {
+              email: debtor.email.to_s,
+              recipient_name: debtor.name,
+              creditor_name: creditor.name || creditor.email.to_s,
+              amount: transfer[:amount].to_f,
+              event_name: event.name,
+              event_url: event_url
+            }
+          )
+
+          Notifications::Dispatch.call(
+            kind: :settlement_owes_you,
+            user_id: creditor.id.to_s,
+            workspace_id: workspace_id,
+            data: {
+              email: creditor.email.to_s,
+              recipient_name: creditor.name,
+              debtor_name: debtor.name || debtor.email.to_s,
+              amount: transfer[:amount].to_f,
+              event_name: event.name,
+              event_url: event_url
+            }
+          )
+        end
+      rescue StandardError => e
+        APP_LOGGER.error { "[Settlements::Create] Failed to dispatch settlement notifications: #{e.class} - #{e.message}" }
       end
 
       def concurrent_settlement_exists?(event_id)

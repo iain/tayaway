@@ -92,6 +92,7 @@ module Events
       def update_event(event:, membership:, name:, description:, dates:, location_name:, latitude:, longitude:)
         event_id = event.id
         workspace_id = event.workspace_id
+        before = event
 
         DB.transaction do
           update_data = {
@@ -130,9 +131,57 @@ module Events
 
         APP_LOGGER.info { "[Events::Update] Event #{event_id} updated in workspace #{workspace_id}" }
 
+        after = Event.find(event_id)
+        notify_attendees_of_changes(before, after, membership, workspace_id) if after
+
         pool = PoolSerializer.new(membership: membership)
-        pool.add(:event, [Event.find(event_id)])
+        pool.add(:event, [after]) if after
         Success({ objects: pool.to_a })
+      end
+
+      def notify_attendees_of_changes(before, after, membership, workspace_id)
+        change_summary = summarize_changes(before, after)
+        return unless change_summary
+
+        attending_rsvps = Rsvp.for_event(after.id).select(&:attending)
+        recipient_ids = attending_rsvps.map { |r| r.user_id.to_s } - [membership.user_id.to_s]
+        return if recipient_ids.empty?
+
+        event_url = "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/events/#{after.id}"
+        users = User.for_ids(recipient_ids)
+
+        users.each do |user|
+          Notifications::Dispatch.call(
+            kind: :event_details_changed,
+            user_id: user.id.to_s,
+            workspace_id: workspace_id,
+            data: {
+              email: user.email.to_s,
+              recipient_name: user.name,
+              event_name: after.name,
+              change_summary: change_summary,
+              event_url: event_url
+            }
+          )
+        end
+      rescue StandardError => e
+        APP_LOGGER.error { "[Events::Update] Failed to dispatch event-changed notifications: #{e.class} - #{e.message}" }
+      end
+
+      # Returns a human-readable summary of the changes that warrant a
+      # notification, or nil if nothing notification-worthy moved. Only
+      # date and location changes are notifiable today; renames and
+      # description tweaks aren't surfaced.
+      def summarize_changes(before, after)
+        parts = []
+        parts << "new dates" if before.start_date != after.start_date || before.end_date != after.end_date
+        parts << "new location" if before.location_name != after.location_name
+        return nil if parts.empty?
+
+        case parts.length
+        when 1 then parts.first.capitalize
+        else parts.join(" and ").capitalize
+        end
       end
     end
   end

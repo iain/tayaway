@@ -23,9 +23,10 @@ RSpec.describe "Notification preferences endpoints" do
       expect(last_response.status).to eq(200)
       body = JSON.parse(last_response.body)
       keys = body["kinds"].map { |k| k["key"] }
-      expect(keys).to contain_exactly("workspace_invite", "poll_closed")
-      expect(body["kinds"].first["channels"].first)
-        .to include("channel" => "email", "enabled" => true)
+      expect(keys).to include("workspace_invite", "poll_closed", "settlement_owed")
+      poll_closed = body["kinds"].find { |k| k["key"] == "poll_closed" }
+      email = poll_closed["channels"].find { |c| c["channel"] == "email" }
+      expect(email).to include("enabled" => true)
     end
 
     it "reflects the user's stored override" do

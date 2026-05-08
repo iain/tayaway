@@ -24,10 +24,9 @@ interface KindCopy {
   description: string
 }
 
-// Display copy for each notification kind. Kept in the page (rather than
-// a constant module) because this is the only place that renders them;
-// when we add a notification center in slice 3 it can read its own copy
-// from the same backend response shape.
+// Display copy for each notification kind. Kept in the page because this
+// is the only place that renders the labels — the bell shows server-rendered
+// titles directly out of `data` instead of looking copy up by kind.
 const KIND_COPY: Record<string, KindCopy> = {
   workspace_invite: {
     label: 'Workspace invitations',
@@ -38,10 +37,28 @@ const KIND_COPY: Record<string, KindCopy> = {
     description:
       'When a date poll you voted on resolves with the chosen dates.',
   },
+  settlement_owed: {
+    label: 'You owe money',
+    description: 'When a settlement is created and you owe someone.',
+  },
+  settlement_owes_you: {
+    label: "You're owed money",
+    description: 'When a settlement is created and someone owes you.',
+  },
+  expense_added: {
+    label: 'Expense added',
+    description:
+      "When someone logs a new expense on an event you're attending.",
+  },
+  event_details_changed: {
+    label: 'Event details changed',
+    description: "When dates or location change on an event you're attending.",
+  },
 }
 
 const CHANNEL_LABELS: Record<string, string> = {
   email: 'Email',
+  in_app: 'In-app',
 }
 
 const kinds = ref<KindState[]>([])

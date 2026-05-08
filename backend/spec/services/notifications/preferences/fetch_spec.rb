@@ -12,8 +12,9 @@ RSpec.describe Notifications::Preferences::Fetch do
       expect(result.success?).to be true
       kinds = result.value![:kinds]
       keys = kinds.map { |k| k[:key] }
-      expect(keys).to contain_exactly("workspace_invite", "poll_closed")
-      expect(kinds.first[:channels].first).to include(channel: "email", enabled: true)
+      expect(keys).to include("workspace_invite", "poll_closed", "settlement_owed")
+      poll_closed = kinds.find { |k| k[:key] == "poll_closed" }
+      expect(poll_closed[:channels].find { |c| c[:channel] == "email" }).to include(enabled: true)
     end
 
     it "applies a stored override on top of the defaults" do

@@ -12,7 +12,11 @@ module Notifications
   module Registry
     KINDS = {
       workspace_invite: Kinds::WorkspaceInvite,
-      poll_closed: Kinds::PollClosed
+      poll_closed: Kinds::PollClosed,
+      settlement_owed: Kinds::SettlementOwed,
+      settlement_owes_you: Kinds::SettlementOwesYou,
+      expense_added: Kinds::ExpenseAdded,
+      event_details_changed: Kinds::EventDetailsChanged
     }.freeze
 
     class << self
