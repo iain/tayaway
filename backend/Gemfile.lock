@@ -108,7 +108,7 @@ GEM
       prism (>= 1.3.0)
       rdoc (>= 4.0.0)
       reline (>= 0.4.2)
-    json (2.19.4)
+    json (2.19.5)
     jwt (3.1.2)
       base64
     language_server-protocol (3.17.0.5)
@@ -253,7 +253,7 @@ GEM
     samovar (2.4.1)
       console (~> 1.0)
       mapping (~> 1.0)
-    sequel (5.103.0)
+    sequel (5.104.0)
       bigdecimal
     sequel_pg (1.19.0)
       pg (>= 0.18.0, != 1.2.0)
@@ -374,7 +374,7 @@ CHECKSUMS
   io-event (1.15.1) sha256=c644cdcf48254015d63f558bf4492f35471f5bb204a42180ea49752be59b30cc
   io-stream (0.11.1) sha256=fa5f551fcff99581c1757b9d1cee2c37b124f07d2ca4f40b756a05ab9bd21b87
   irb (1.18.0) sha256=de9454a0703a54704b9811a5ef31a60c86949fbf4013fcf244fabc7c775248e3
-  json (2.19.4) sha256=670a7d333fb3b18ca5b29cb255eb7bef099e40d88c02c80bd42a3f30fe5239ac
+  json (2.19.5) sha256=218a18553e4801d579ca7e0f5bc72bafd776d7397238a1fb4e74db5b0a812c59
   jwt (3.1.2) sha256=af6991f19a6bb4060d618d9add7a66f0eeb005ac0bc017cd01f63b42e122d535
   language_server-protocol (3.17.0.5) sha256=fd1e39a51a28bf3eec959379985a72e296e9f9acfce46f6a79d31ca8760803cc
   lint_roller (1.1.0) sha256=2c0c845b632a7d172cb849cc90c1bce937a28c5c8ccccb50dfd46a485003cc87
@@ -443,7 +443,7 @@ CHECKSUMS
   ruby-progressbar (1.13.0) sha256=80fc9c47a9b640d6834e0dc7b3c94c9df37f08cb072b7761e4a71e22cff29b33
   safety_net_attestation (0.5.0) sha256=c8cd01dd550dbe8553862918af6355a04672db11d218ec96104ce3955293f2aa
   samovar (2.4.1) sha256=c3b91dd0580771e3bc600621c1111f29542529dcffafaac3b6bf068b3f309e80
-  sequel (5.103.0) sha256=51bf23374cc585724fc51a2ae8b95283422c97ca4585ce28f3db27a26ce55a69
+  sequel (5.104.0) sha256=1521819b9204aa7f5c25b29fbb2a609ba3f6a82d2271f34f718e1169d31bf03e
   sequel_pg (1.19.0) sha256=cf384d09c6ea2c0ab31d1f95dcf12b0801b34829fe496ac102e43394498a82f3
   string-format (0.2.0) sha256=bc981c14116b061f12134549f32fa2d61a17b5a35dd6fd36596c21722a789af6
   stringio (3.2.0) sha256=c37cb2e58b4ffbd33fe5cd948c05934af997b36e0b6ca6fdf43afa234cf222e1
