@@ -81,7 +81,10 @@ run = "pnpm exec eslint src --fix"
 [tasks."lint:backend"]
 description = "RuboCop with autofix"
 dir = "{{config_root}}/backend"
-run = "bundle exec rubocop -A -f q"
+# `--no-server` avoids RuboCop's long-lived daemon, which can wedge
+# itself onto the wrong working directory and report a clean run on
+# files CI then catches. Costs ~0.5 s per invocation; cheap insurance.
+run = "bundle exec rubocop -A -f q --no-server"
 
 # ── Typecheck ────────────────────────────────────────────────────────────────
 
