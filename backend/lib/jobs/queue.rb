@@ -16,8 +16,14 @@ module Jobs
       def enqueue(job_class:, args:, scheduled_at: nil)
         if APP_ENV == "test"
           # Run synchronously so specs can assert on side-effects without
-          # spinning up a worker. Mirrors the previous behaviour of
-          # Mailers::Base.deliver_later in non-production environments.
+          # spinning up a worker. The inline path can't honour
+          # `scheduled_at`, so refuse it loudly rather than diverging
+          # from production semantics — exercise delayed jobs by
+          # inserting directly and calling Worker.drain.
+          if scheduled_at
+            raise ArgumentError, "Jobs::Queue.enqueue with `scheduled_at` is not supported in test mode"
+          end
+
           Object.const_get(job_class).run(args.transform_keys(&:to_s))
           return
         end

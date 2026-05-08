@@ -36,6 +36,26 @@ RSpec.describe Jobs::Queue do
       expect(Jobs::FakeKeyCheck).to have_received(:run).with({ "label" => "ok" })
     end
 
+    it "refuses to run inline when scheduled_at is set in test mode" do
+      # In test mode the inline path ignores scheduled_at, which would
+      # silently diverge from production semantics if a caller asked for
+      # a delayed run. Refuse loudly instead — exercise delayed jobs by
+      # inserting directly and calling Worker.drain.
+      stub_const("APP_ENV", "test")
+      stub_const("Jobs::FakeDelayed", Class.new(Jobs::Base) do
+        define_method(:call) { |x:| x }
+      end
+      )
+
+      expect do
+        described_class.enqueue(
+          job_class: "Jobs::FakeDelayed",
+          args: { x: 1 },
+          scheduled_at: Time.now + 60
+        )
+      end.to raise_error(ArgumentError, /scheduled_at/)
+    end
+
     it "inserts a runnable row outside test mode and the worker can pick it up" do
       stub_const("APP_ENV", "development")
       stub_const("QueueSpecBuffer", [])
