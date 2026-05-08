@@ -10,7 +10,7 @@ module Notifications
       class << self
         def key = :event_details_changed
         def default_channels = [:in_app]
-        def supported_channels = %i[email in_app]
+        def supported_channels = %i[email in_app push]
         def email_delivery_job = EmailDeliveryJob
 
         def in_app_payload(event_name:, change_summary:, event_url:, **)

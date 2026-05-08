@@ -58,6 +58,8 @@ module Notifications
             workspace_id: workspace_id,
             data: data
           )
+        when :push
+          Channels::Push.deliver_later(kind_class: kind_class, user_id: user_id, data: data)
         else
           raise ArgumentError, "Unknown notification channel: #{channel.inspect}"
         end

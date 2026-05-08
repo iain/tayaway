@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { rawApi } from '@/api/client'
 import { useNotificationsStore } from '@/stores/notifications'
+import { usePushSubscription } from '@/composables/usePushSubscription'
 import BaseCard from '@/components/common/BaseCard.vue'
 import FormToggle from '@/components/form/FormToggle.vue'
 
@@ -59,6 +60,27 @@ const KIND_COPY: Record<string, KindCopy> = {
 const CHANNEL_LABELS: Record<string, string> = {
   email: 'Email',
   in_app: 'In-app',
+  push: 'Push',
+}
+
+const push = usePushSubscription()
+const pushSubscribed = ref(false)
+
+async function refreshPushState(): Promise<void> {
+  pushSubscribed.value = await push.isSubscribed()
+}
+
+async function enablePush(): Promise<void> {
+  const ok = await push.subscribe()
+  pushSubscribed.value = ok
+  if (!ok && push.error.value) {
+    useNotificationsStore().showError(push.error.value)
+  }
+}
+
+async function disablePush(): Promise<void> {
+  await push.unsubscribe()
+  pushSubscribed.value = false
 }
 
 const kinds = ref<KindState[]>([])
@@ -108,7 +130,10 @@ function toggleId(kindKey: string, channelKey: string): string {
   return `notif-${kindKey}-${channelKey}`
 }
 
-onMounted(load)
+onMounted(() => {
+  void load()
+  void refreshPushState()
+})
 </script>
 
 <template>
@@ -116,6 +141,52 @@ onMounted(load)
     <p class="text-sm text-gray-600 dark:text-stone-400">
       Choose how Tayaway reaches you for each kind of notification.
     </p>
+
+    <BaseCard
+      v-if="push.supported.value"
+      padded
+      class="bg-white dark:bg-stone-900"
+    >
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <h3 class="text-base font-semibold text-gray-900 dark:text-white">
+            Push notifications
+          </h3>
+          <p class="mt-1 text-sm text-gray-600 dark:text-stone-400">
+            <template v-if="pushSubscribed">
+              Push is enabled on this device. Per-kind preferences below control
+              which alerts come through.
+            </template>
+            <template v-else-if="push.permission.value === 'denied'">
+              Notifications are blocked in your browser. Allow them in your site
+              settings to enable push.
+            </template>
+            <template v-else>
+              Get alerts on this device when something time-sensitive happens.
+            </template>
+          </p>
+        </div>
+        <button
+          v-if="pushSubscribed"
+          type="button"
+          class="shrink-0 rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-200 dark:hover:bg-stone-600"
+          @click="disablePush"
+        >
+          Disable
+        </button>
+        <button
+          v-else
+          type="button"
+          :disabled="
+            push.subscribing.value || push.permission.value === 'denied'
+          "
+          class="shrink-0 rounded-md bg-rose-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
+          @click="enablePush"
+        >
+          {{ push.subscribing.value ? 'Enabling…' : 'Enable' }}
+        </button>
+      </div>
+    </BaseCard>
 
     <p v-if="loading" class="text-sm text-gray-500 dark:text-stone-400">
       Loading…

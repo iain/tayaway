@@ -11,7 +11,7 @@ module Notifications
       class << self
         def key = :settlement_owed
         def default_channels = %i[email in_app]
-        def supported_channels = %i[email in_app]
+        def supported_channels = %i[email in_app push]
         def email_delivery_job = EmailDeliveryJob
 
         def in_app_payload(amount:, creditor_name:, event_name:, event_url:, **)

@@ -9,7 +9,7 @@ module Notifications
       class << self
         def key = :expense_added
         def default_channels = [:in_app]
-        def supported_channels = %i[email in_app]
+        def supported_channels = %i[email in_app push]
         def email_delivery_job = EmailDeliveryJob
 
         def in_app_payload(actor_name:, description:, amount:, event_name:, event_url:, **)

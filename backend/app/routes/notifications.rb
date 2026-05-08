@@ -47,6 +47,43 @@ class App
       end
     end
 
+    r.on "push-subscriptions" do
+      r.is do
+        # POST /api/notifications/push-subscriptions - register a browser push subscription
+        r.post do
+          endpoint = r.params["endpoint"].to_s
+          if endpoint.empty?
+            response.status = 400
+            { error: "endpoint is required" }
+          else
+            PushSubscription.upsert(
+              user_id: user.id,
+              endpoint: endpoint,
+              p256dh_key: r.params["p256dhKey"].to_s,
+              auth_key: r.params["authKey"].to_s,
+              user_agent: r.env["HTTP_USER_AGENT"]
+            )
+            { ok: true, vapidPublicKey: ENV.fetch("VAPID_PUBLIC_KEY", "") }
+          end
+        end
+
+        # DELETE /api/notifications/push-subscriptions - unregister
+        r.delete do
+          PushSubscription.delete_by_endpoint(user_id: user.id, endpoint: r.params["endpoint"].to_s)
+          { ok: true }
+        end
+      end
+    end
+
+    r.on "push-config" do
+      r.is do
+        # GET /api/notifications/push-config - VAPID public key for the browser
+        r.get do
+          { vapidPublicKey: ENV["VAPID_PUBLIC_KEY"].to_s }
+        end
+      end
+    end
+
     r.is do
       # GET /api/notifications - the current user's recent notifications
       r.get do

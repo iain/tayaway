@@ -55,6 +55,10 @@ export default defineConfig({
         globIgnores: ['**/*.map'],
         navigateFallback: '/index.html',
         clientsClaim: true,
+        // Imported into the generated SW so `push` and `notificationclick`
+        // handlers ship alongside the workbox precache. Lives in `public/`
+        // so it's served at the same origin as the SW.
+        importScripts: ['/push-sw.js'],
       },
     }),
   ],
