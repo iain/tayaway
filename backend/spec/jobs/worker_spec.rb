@@ -126,6 +126,22 @@ RSpec.describe Jobs::Worker do
       expect(row[:locked_at]).not_to be_nil
     end
 
+    it "releases the claim if the running fiber is cancelled mid-job" do
+      # On a graceful shutdown the reactor cancels in-flight tasks with
+      # Async::Stop (an Exception, not StandardError). The job row was
+      # locked when execute started, so without explicit cleanup it
+      # would sit there until RECLAIM_AFTER let a peer reclaim it —
+      # one minute of needless email-delivery latency on every deploy.
+      insert_job(args: { label: "interrupted" })
+      WorkerSpecRecorder.behaviour = ->(_) { raise Async::Stop }
+
+      expect { described_class.drain }.to raise_error(Async::Stop)
+
+      row = DB[Jobs::Queue::TABLE].first
+      expect(row[:locked_at]).to be_nil
+      expect(row[:attempts]).to eq(0)
+    end
+
     it "refuses to run a class that isn't a Jobs::Base subclass" do
       stub_const("WorkerSpecImposter", Class.new do
         def self.run(_); end

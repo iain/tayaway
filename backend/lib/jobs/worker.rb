@@ -32,9 +32,14 @@ module Jobs
     # iteration regardless, so this only affects how soon we retry the
     # connection itself.
     RETRY_DELAY = 1
-    # Comfortably above database.rb's 30s statement_timeout, so an
-    # actually-running job is never mistaken for an orphaned one.
-    RECLAIM_AFTER = 300
+    # Floor for distinguishing "alive" from "dead." Graceful shutdowns
+    # release their claim explicitly via `release_claim`, so this only
+    # matters when a worker dies hard — SIGKILL after the graceful
+    # window expires, OOM, ungraceful container eviction. 60 s sits
+    # comfortably above database.rb's 30 s statement_timeout (so a
+    # legitimately-running job can never be reclaimed under it) while
+    # keeping recovery from a hard kill bounded to about a minute.
+    RECLAIM_AFTER = 60
 
     class << self
       def run
@@ -145,6 +150,21 @@ module Jobs
         DB[Queue::TABLE].where(id: row[:id]).delete
       rescue StandardError => e
         handle_failure(row, e)
+      rescue Exception
+        # Non-StandardError unwinding — Async::Stop on a graceful
+        # reactor shutdown, or a SignalException leaking through.
+        # The claim is still ours; release it so a peer can pick the
+        # row up immediately instead of waiting RECLAIM_AFTER. Best
+        # effort: if the DB itself is gone, RECLAIM_AFTER is the
+        # fallback.
+        release_claim(row)
+        raise
+      end
+
+      def release_claim(row)
+        DB[Queue::TABLE].where(id: row[:id]).update(locked_at: nil)
+      rescue StandardError
+        nil
       end
 
       def handle_failure(row, error)
