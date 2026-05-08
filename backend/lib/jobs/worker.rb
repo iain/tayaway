@@ -103,16 +103,16 @@ module Jobs
         # first pass. `loop:` is a callable, which makes Sequel re-call
         # `tick` after every `wait_for_notify` return (NOTIFY-driven or
         # POLL_INTERVAL timeout) until an exception escapes — matching
-        # the original "drain → wait → drain" cadence. The block is a
-        # no-op because `drain` reads the row from the queue itself; the
-        # NOTIFY payload is just a wake signal.
+        # the original "drain → wait → drain" cadence. The notify block
+        # does nothing because `drain` reads the row from the queue
+        # itself; the NOTIFY payload is just a wake signal.
         tick = ->(_conn) { reclaim_stale; drain }
         DB.listen(
           Queue::CHANNEL,
           timeout: POLL_INTERVAL,
           after_listen: tick,
           loop: tick
-        ) { |_, _, _| }
+        ) { |_channel, _pid, _payload| nil }
       end
 
       def claim_next
@@ -150,13 +150,12 @@ module Jobs
         DB[Queue::TABLE].where(id: row[:id]).delete
       rescue StandardError => e
         handle_failure(row, e)
-      rescue Exception
-        # Non-StandardError unwinding — Async::Stop on a graceful
-        # reactor shutdown, or a SignalException leaking through.
-        # The claim is still ours; release it so a peer can pick the
-        # row up immediately instead of waiting RECLAIM_AFTER. Best
-        # effort: if the DB itself is gone, RECLAIM_AFTER is the
-        # fallback.
+      rescue Async::Stop, SignalException
+        # Reactor cancellation on a graceful shutdown, or a signal
+        # leaking through. The claim is still ours; release it so a
+        # peer can pick the row up immediately instead of waiting
+        # RECLAIM_AFTER. Best effort: if the DB itself is gone,
+        # RECLAIM_AFTER is the fallback.
         release_claim(row)
         raise
       end
