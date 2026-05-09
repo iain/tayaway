@@ -5,6 +5,7 @@ import {
   BanknotesIcon,
   BellIcon,
   CalendarDaysIcon,
+  ShieldCheckIcon,
   UserGroupIcon,
 } from '@heroicons/vue/24/outline'
 import { rawApi } from '@/api/client'
@@ -46,38 +47,97 @@ interface KindGroup {
 // stores preferences keyed by (kind, channel) regardless.
 const GROUPS: KindGroup[] = [
   {
+    key: 'security',
+    title: 'Account & security',
+    icon: ShieldCheckIcon,
+    kinds: [
+      'new_session',
+      'passkey_added',
+      'passkey_removed',
+      'email_change_completed',
+    ],
+  },
+  {
     key: 'workspaces',
     title: 'Workspaces',
     icon: UserGroupIcon,
-    kinds: ['workspace_invite'],
+    kinds: [
+      'workspace_invite',
+      'workspace_invite_accepted',
+      'member_role_changed',
+    ],
   },
   {
     key: 'events',
     title: 'Events',
     icon: CalendarDaysIcon,
-    kinds: ['poll_closed', 'event_details_changed'],
+    kinds: [
+      'event_created',
+      'event_canceled',
+      'event_details_changed',
+      'poll_closed',
+    ],
   },
   {
     key: 'money',
     title: 'Money',
     icon: BanknotesIcon,
-    kinds: ['settlement_created', 'transfer_paid', 'expense_added'],
+    kinds: [
+      'settlement_created',
+      'transfer_paid',
+      'payment_marked_unpaid',
+      'expense_added',
+    ],
   },
 ]
 
 const KIND_COPY: Record<string, KindCopy> = {
+  new_session: {
+    label: 'New sign-in to your account',
+    description:
+      'When your account is signed in to from a new browser or country.',
+  },
+  passkey_added: {
+    label: 'Passkey added',
+    description: 'When a new passkey is registered on your account.',
+  },
+  passkey_removed: {
+    label: 'Passkey removed',
+    description: 'When a passkey is removed from your account.',
+  },
+  email_change_completed: {
+    label: 'Email address changed',
+    description:
+      "When your account's email is changed (sent to the previous address).",
+  },
   workspace_invite: {
     label: 'Workspace invitations',
     description: "When someone invites you to a workspace you're not in yet.",
+  },
+  workspace_invite_accepted: {
+    label: 'Invitation accepted',
+    description: 'When someone you invited accepts and joins the workspace.',
+  },
+  member_role_changed: {
+    label: 'Your role changed',
+    description: 'When your role in a workspace is promoted or demoted.',
+  },
+  event_created: {
+    label: 'Event added',
+    description: 'When someone creates a new event in a workspace you’re in.',
+  },
+  event_canceled: {
+    label: 'Event canceled',
+    description: "When an event you're attending is deleted.",
+  },
+  event_details_changed: {
+    label: 'Event details changed',
+    description: "When dates or location change on an event you're attending.",
   },
   poll_closed: {
     label: 'Event date confirmed',
     description:
       'When a date poll you voted on resolves with the chosen dates.',
-  },
-  event_details_changed: {
-    label: 'Event details changed',
-    description: "When dates or location change on an event you're attending.",
   },
   settlement_created: {
     label: 'Settlement created',
@@ -87,6 +147,10 @@ const KIND_COPY: Record<string, KindCopy> = {
   transfer_paid: {
     label: 'Payment marked as paid',
     description: 'When the other person marks a balance between you as paid.',
+  },
+  payment_marked_unpaid: {
+    label: 'Payment marked unpaid',
+    description: 'When a previously paid balance is reversed.',
   },
   expense_added: {
     label: 'Expense added',

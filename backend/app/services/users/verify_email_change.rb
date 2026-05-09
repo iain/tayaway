@@ -56,11 +56,14 @@ module Users
       end
 
       def update_email(email_token)
+        old_email = email_token.email.to_s
+        new_email = email_token.new_email.to_s
+
         DB.transaction do
           DB[:email_change_tokens].where(id: email_token.id.to_s).update(used_at: Time.now)
 
           DB[:users].where(id: email_token.user_id.to_s).update(
-            email: email_token.new_email.to_s,
+            email: new_email,
             updated_at: Time.now
           )
 
@@ -75,8 +78,30 @@ module Users
           end
         end
 
-        APP_LOGGER.info { "[Users::VerifyEmailChange] User #{email_token.user_id} changed email from #{email_token.email} to #{email_token.new_email}" }
+        APP_LOGGER.info { "[Users::VerifyEmailChange] User #{email_token.user_id} changed email from #{old_email} to #{new_email}" }
+        notify_email_changed(email_token.user_id, old_email, new_email)
         Success({ message: "Your email has been updated successfully." })
+      end
+
+      # Sends to the OLD email address — that's the security-critical
+      # surface, because if an attacker drove this flow the old inbox is
+      # the one the legitimate owner still controls. The in-app/push side
+      # of the dispatch reaches the user under the new email regardless.
+      def notify_email_changed(user_id, old_email, new_email)
+        user = User.find(user_id)
+        Notifications::Dispatch.call(
+          kind: :email_change_completed,
+          user_id: user_id.to_s,
+          data: {
+            email: old_email,
+            recipient_name: user&.name,
+            old_email: old_email,
+            new_email: new_email,
+            session_url: "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/settings/login"
+          }
+        )
+      rescue StandardError => e
+        APP_LOGGER.error { "[Users::VerifyEmailChange] Failed to dispatch email_change_completed: #{e.class} - #{e.message}" }
       end
     end
   end

@@ -111,12 +111,44 @@ module Events
 
         if inserted
           APP_LOGGER.info { "[Events::Create] User #{membership.user_id} created event #{event.id} in workspace #{workspace_id}" }
+          notify_workspace_members(event, membership, workspace_id)
         end
 
         pool = PoolSerializer.new(membership: membership)
         pool.add(:event, [event])
 
         Success({ objects: pool.to_a })
+      end
+
+      def notify_workspace_members(event, membership, workspace_id)
+        actor = User.find(membership.user_id)
+        workspace = Workspace.find(workspace_id)
+        return unless actor && workspace
+
+        actor_name = actor.name || actor.email.to_s
+        member_user_ids = WorkspaceMembership.for_workspace(workspace_id).map { |m| m.user_id.to_s } - [membership.user_id.to_s]
+        return if member_user_ids.empty?
+
+        users = User.for_ids(member_user_ids)
+        event_url = "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/events/#{event.id}"
+
+        users.each do |user|
+          Notifications::Dispatch.call(
+            kind: :event_created,
+            user_id: user.id.to_s,
+            workspace_id: workspace_id.to_s,
+            data: {
+              email: user.email.to_s,
+              recipient_name: user.name,
+              actor_name: actor_name,
+              event_name: event.name,
+              workspace_name: workspace.name,
+              event_url: event_url
+            }
+          )
+        end
+      rescue StandardError => e
+        APP_LOGGER.error { "[Events::Create] Failed to dispatch event_created: #{e.class} - #{e.message}" }
       end
     end
   end

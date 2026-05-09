@@ -46,18 +46,43 @@ module Members
       end
 
       def perform(acting_membership, target, new_role)
-        APP_LOGGER.info { "[Members::UpdateRole] User #{acting_membership.user_id} changed member #{target.id} role from #{target.role} to #{new_role} in workspace #{target.workspace_id}" }
+        old_role = target.role
+        APP_LOGGER.info { "[Members::UpdateRole] User #{acting_membership.user_id} changed member #{target.id} role from #{old_role} to #{new_role} in workspace #{target.workspace_id}" }
         DB[:workspace_memberships]
           .where(id: target.id.to_s)
           .update(role: new_role, updated_at: Time.now)
 
         Broadcaster.object_changed("member", target.id.to_s, workspace_id: target.workspace_id.to_s)
 
+        notify_target(target, old_role, new_role) if old_role != new_role && acting_membership.user_id.to_s != target.user_id.to_s
+
         updated = WorkspaceMembership.find(target.id)
         pool = PoolSerializer.new(membership: acting_membership)
         pool.add(:member, [updated])
 
         Success({ objects: pool.to_a })
+      end
+
+      def notify_target(target, old_role, new_role)
+        user = User.find(target.user_id)
+        workspace = Workspace.find(target.workspace_id)
+        return unless user && workspace
+
+        Notifications::Dispatch.call(
+          kind: :member_role_changed,
+          user_id: target.user_id.to_s,
+          workspace_id: target.workspace_id.to_s,
+          data: {
+            email: user.email.to_s,
+            recipient_name: user.name,
+            workspace_name: workspace.name,
+            old_role: old_role,
+            new_role: new_role,
+            workspace_url: ENV.fetch("FRONTEND_URL", "https://tayaway.nl").to_s
+          }
+        )
+      rescue StandardError => e
+        APP_LOGGER.error { "[Members::UpdateRole] Failed to dispatch member_role_changed: #{e.class} - #{e.message}" }
       end
     end
   end

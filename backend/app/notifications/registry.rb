@@ -11,12 +11,21 @@ module Notifications
   # the notification system.
   module Registry
     KINDS = {
+      new_session: Kinds::NewSession,
+      passkey_added: Kinds::PasskeyAdded,
+      passkey_removed: Kinds::PasskeyRemoved,
+      email_change_completed: Kinds::EmailChangeCompleted,
       workspace_invite: Kinds::WorkspaceInvite,
+      workspace_invite_accepted: Kinds::WorkspaceInviteAccepted,
+      member_role_changed: Kinds::MemberRoleChanged,
       poll_closed: Kinds::PollClosed,
+      event_created: Kinds::EventCreated,
+      event_canceled: Kinds::EventCanceled,
+      event_details_changed: Kinds::EventDetailsChanged,
       settlement_created: Kinds::SettlementCreated,
       transfer_paid: Kinds::TransferPaid,
-      expense_added: Kinds::ExpenseAdded,
-      event_details_changed: Kinds::EventDetailsChanged
+      payment_marked_unpaid: Kinds::PaymentMarkedUnpaid,
+      expense_added: Kinds::ExpenseAdded
     }.freeze
 
     class << self

@@ -91,10 +91,37 @@ module Invites
         # Broadcast new member
         Broadcaster.object_changed("member", membership_id, workspace_id: invite.workspace_id.to_s)
 
+        notify_inviter(invite, user)
+
         # Send login link so the user can log in
         Auth::CreateLoginLink.send_login_link(user)
 
         Success({ message: "Invitation accepted. Check your email for a login link." })
+      end
+
+      def notify_inviter(invite, invitee)
+        return unless invite.invited_by
+
+        inviter = User.find(invite.invited_by)
+        workspace = Workspace.find(invite.workspace_id)
+        return unless inviter && workspace
+
+        invitee_display = invitee.name || invitee.email.to_s
+
+        Notifications::Dispatch.call(
+          kind: :workspace_invite_accepted,
+          user_id: inviter.id.to_s,
+          workspace_id: invite.workspace_id.to_s,
+          data: {
+            email: inviter.email.to_s,
+            recipient_name: inviter.name,
+            invitee_name: invitee_display,
+            workspace_name: workspace.name,
+            workspace_url: ENV.fetch("FRONTEND_URL", "https://tayaway.nl").to_s
+          }
+        )
+      rescue StandardError => e
+        APP_LOGGER.error { "[Invites::Accept] Failed to dispatch workspace_invite_accepted: #{e.class} - #{e.message}" }
       end
     end
   end

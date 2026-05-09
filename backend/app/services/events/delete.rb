@@ -33,6 +33,10 @@ module Events
         event_id = event.id
         workspace_id = event.workspace_id
 
+        # Capture the recipient set before the row is gone — RSVPs are
+        # cascade-deleted, and we'd lose the lookup target if we waited.
+        attending_user_ids = Rsvp.for_event(event_id).select(&:attending).map { |r| r.user_id.to_s }
+
         DB.transaction do
           DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "event", object_id: event_id)
           DB[:events].where(id: event_id).delete
@@ -40,7 +44,39 @@ module Events
         end
 
         APP_LOGGER.info { "[Events::Delete] Event #{event_id} deleted from workspace #{workspace_id}" }
+        notify_attendees_of_cancellation(event, attending_user_ids)
         Success({ deleted: [{ objectType: "event", id: event_id.to_s }] })
+      end
+
+      def notify_attendees_of_cancellation(event, attending_user_ids)
+        recipient_ids = attending_user_ids - [event.user_id.to_s]
+        return if recipient_ids.empty?
+
+        actor = User.find(event.user_id)
+        workspace = Workspace.find(event.workspace_id)
+        return unless actor && workspace
+
+        actor_name = actor.name || actor.email.to_s
+        users = User.for_ids(recipient_ids)
+        workspace_url = ENV.fetch("FRONTEND_URL", "https://tayaway.nl").to_s
+
+        users.each do |user|
+          Notifications::Dispatch.call(
+            kind: :event_canceled,
+            user_id: user.id.to_s,
+            workspace_id: event.workspace_id.to_s,
+            data: {
+              email: user.email.to_s,
+              recipient_name: user.name,
+              actor_name: actor_name,
+              event_name: event.name,
+              workspace_name: workspace.name,
+              workspace_url: workspace_url
+            }
+          )
+        end
+      rescue StandardError => e
+        APP_LOGGER.error { "[Events::Delete] Failed to dispatch event_canceled: #{e.class} - #{e.message}" }
       end
     end
   end
