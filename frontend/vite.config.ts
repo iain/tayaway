@@ -100,7 +100,6 @@ export default defineConfig({
   server: {
     port,
     proxy: apiProxy,
-    forwardConsole: true,
   },
   preview: {
     port: previewPort,
