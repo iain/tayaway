@@ -37,16 +37,6 @@ class App
       end
     end
 
-    r.on String do |id|
-      r.on "read" do
-        # PUT /api/notifications/:id/read - mark one notification read
-        r.put do
-          Notification.mark_read(id, user_id: user.id)
-          { ok: true }
-        end
-      end
-    end
-
     r.on "push-subscriptions" do
       r.is do
         # POST /api/notifications/push-subscriptions - register a browser push subscription
@@ -92,6 +82,20 @@ class App
           notifications: notifications.map(&:to_api_hash),
           unreadCount: Notification.unread_count_for_user(user.id)
         }
+      end
+    end
+
+    # Notification id matcher — kept last so literal-segment routes
+    # above always win. `r.on String` matches any single segment, so
+    # putting it earlier would swallow `push-subscriptions`,
+    # `push-config`, etc. and 404 from the inner block.
+    r.on String do |id|
+      r.on "read" do
+        # PUT /api/notifications/:id/read - mark one notification read
+        r.put do
+          Notification.mark_read(id, user_id: user.id)
+          { ok: true }
+        end
       end
     end
   end

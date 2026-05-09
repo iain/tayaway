@@ -83,6 +83,57 @@ RSpec.describe "Notifications inbox endpoints" do
     end
   end
 
+  describe "GET /api/notifications/push-config" do
+    it "returns the configured VAPID public key" do
+      ENV["VAPID_PUBLIC_KEY"] = "test-public-key"
+
+      get "/api/notifications/push-config", {}, auth_cookie
+
+      expect(last_response.status).to eq(200)
+      body = JSON.parse(last_response.body)
+      expect(body["vapidPublicKey"]).to eq("test-public-key")
+    ensure
+      ENV.delete("VAPID_PUBLIC_KEY")
+    end
+
+    it "returns an empty key when VAPID isn't configured" do
+      ENV.delete("VAPID_PUBLIC_KEY")
+
+      get "/api/notifications/push-config", {}, auth_cookie
+
+      expect(last_response.status).to eq(200)
+      expect(JSON.parse(last_response.body)["vapidPublicKey"]).to eq("")
+    end
+  end
+
+  describe "POST /api/notifications/push-subscriptions" do
+    let(:subscription_body) do
+      {
+        endpoint: "https://push.example.com/abc",
+        p256dhKey: "p256dh-test",
+        authKey: "auth-test"
+      }.to_json
+    end
+
+    it "stores a subscription" do
+      post "/api/notifications/push-subscriptions",
+           subscription_body,
+           auth_headers.merge("CONTENT_TYPE" => "application/json")
+
+      expect(last_response.status).to eq(200)
+      row = DB[:push_subscriptions].where(user_id: user[:id]).first
+      expect(row[:endpoint]).to eq("https://push.example.com/abc")
+    end
+
+    it "rejects an empty endpoint" do
+      post "/api/notifications/push-subscriptions",
+           { endpoint: "" }.to_json,
+           auth_headers.merge("CONTENT_TYPE" => "application/json")
+
+      expect(last_response.status).to eq(400)
+    end
+  end
+
   describe "PUT /api/notifications/read-all" do
     it "marks every unread notification read" do
       insert_notification
