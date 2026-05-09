@@ -22,8 +22,7 @@ module Notifications
       event_canceled: Kinds::EventCanceled,
       event_details_changed: Kinds::EventDetailsChanged,
       settlement_created: Kinds::SettlementCreated,
-      transfer_paid: Kinds::TransferPaid,
-      payment_marked_unpaid: Kinds::PaymentMarkedUnpaid,
+      payment_status_changed: Kinds::PaymentStatusChanged,
       expense_added: Kinds::ExpenseAdded
     }.freeze
 

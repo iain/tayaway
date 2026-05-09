@@ -78,12 +78,7 @@ const GROUPS: KindGroup[] = [
     key: 'money',
     title: 'Money',
     icon: BanknotesIcon,
-    kinds: [
-      'settlement_created',
-      'transfer_paid',
-      'payment_marked_unpaid',
-      'expense_added',
-    ],
+    kinds: ['settlement_created', 'payment_status_changed', 'expense_added'],
   },
 ]
 
@@ -137,13 +132,10 @@ const KIND_COPY: Record<string, KindCopy> = {
     description:
       'When event expenses are settled and you owe someone or are owed.',
   },
-  transfer_paid: {
-    label: 'Payment marked as paid',
-    description: 'When the other person marks a balance between you as paid.',
-  },
-  payment_marked_unpaid: {
-    label: 'Payment marked unpaid',
-    description: 'When a previously paid balance is reversed.',
+  payment_status_changed: {
+    label: 'Payment marked or reversed',
+    description:
+      'When a balance between you is marked as paid or that mark is reversed.',
   },
   expense_added: {
     label: 'Expense added',

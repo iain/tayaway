@@ -139,12 +139,13 @@ module Settlements
 
         settle_up_url = "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/settle-up"
         Notifications::Dispatch.call(
-          kind: :transfer_paid,
+          kind: :payment_status_changed,
           user_id: counterparty.id.to_s,
           workspace_id: workspace_id.to_s,
           data: {
             email: counterparty.email.to_s,
             recipient_name: counterparty.name,
+            action: "paid",
             actor_name: actor.name || actor.email.to_s,
             amount: amount.to_f,
             actor_role: actor_role,
@@ -152,7 +153,7 @@ module Settlements
           }
         )
       rescue StandardError => e
-        APP_LOGGER.error { "[Settlements::MarkNetPaid] Failed to dispatch transfer_paid notification: #{e.class} - #{e.message}" }
+        APP_LOGGER.error { "[Settlements::MarkNetPaid] Failed to dispatch payment_status_changed (paid): #{e.class} - #{e.message}" }
       end
 
       def pair_filter(user_a, user_b)

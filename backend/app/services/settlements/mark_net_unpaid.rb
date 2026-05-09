@@ -133,12 +133,13 @@ module Settlements
 
         settle_up_url = "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/settle-up"
         Notifications::Dispatch.call(
-          kind: :payment_marked_unpaid,
+          kind: :payment_status_changed,
           user_id: counterparty.id.to_s,
           workspace_id: workspace_id.to_s,
           data: {
             email: counterparty.email.to_s,
             recipient_name: counterparty.name,
+            action: "unpaid",
             actor_name: actor.name || actor.email.to_s,
             amount: payload[:amount],
             actor_role: payload[:actor_role],
@@ -146,7 +147,7 @@ module Settlements
           }
         )
       rescue StandardError => e
-        APP_LOGGER.error { "[Settlements::MarkNetUnpaid] Failed to dispatch payment_marked_unpaid: #{e.class} - #{e.message}" }
+        APP_LOGGER.error { "[Settlements::MarkNetUnpaid] Failed to dispatch payment_status_changed (unpaid): #{e.class} - #{e.message}" }
       end
 
       def pair_filter(user_a, user_b)
