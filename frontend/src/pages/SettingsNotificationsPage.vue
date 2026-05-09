@@ -172,6 +172,27 @@ async function setChannelEnabled(
   const previous = channel.enabled
   channel.enabled = enabled
 
+  // Turning a push cell on while no subscription exists is otherwise a
+  // silent no-op — the preference is stored but no push ever arrives.
+  // Walk the user through the subscription so the toggle does what it
+  // looks like it does.
+  if (
+    channelKey === 'push' &&
+    enabled &&
+    push.supported.value &&
+    !pushSubscribed.value
+  ) {
+    const ok = await push.subscribe()
+    pushSubscribed.value = ok
+    if (!ok) {
+      channel.enabled = previous
+      if (push.error.value) {
+        useNotificationsStore().showError(push.error.value)
+      }
+      return
+    }
+  }
+
   try {
     await rawApi.put(
       '/notifications/preferences',
