@@ -74,5 +74,42 @@ class App
         { message: "Database reset" }
       end
     end
+
+    # POST /api/test/dispatch-test-push - Fire one synthetic push delivery
+    # to the current user's stored subscriptions. Used by the push smoke
+    # test to drive a real round-trip from web-push to a fake push service
+    # the test stands up locally. Bypasses the job queue (which only runs
+    # under falcon-host, not `falcon serve` as the e2e backend does) and
+    # signs/sends inline.
+    r.is "dispatch-test-push" do
+      r.post do
+        user = current_user
+        unless user
+          response.status = 401
+          next { error: "Not authenticated" }
+        end
+
+        payload = JSON.generate(
+          title: "Smoke Test",
+          body: "Hello from the e2e push smoke test",
+          href: "/"
+        )
+
+        begin
+          PushSubscription.for_user(user.id).each do |sub|
+            Notifications::Channels::Push.deliver_now(
+              endpoint: sub.endpoint,
+              p256dh_key: sub.p256dh_key,
+              auth_key: sub.auth_key,
+              payload: payload
+            )
+          end
+          { ok: true }
+        rescue StandardError => e
+          response.status = 500
+          { error: "#{e.class}: #{e.message}", backtrace: e.backtrace&.first(5) }
+        end
+      end
+    end
   end
 end

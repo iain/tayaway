@@ -87,4 +87,23 @@ end
 Mailers::Base.configure!
 RateLimiter.configure!
 
+# The web-push gem hard-codes `http.use_ssl = true`, which means an e2e
+# smoke test that points push delivery at a localhost server has to
+# present a TLS cert. We use a self-signed cert in that test server, so
+# in e2e mode disable peer verification globally — this environment
+# never makes outbound HTTPS calls to anyone but the test fake.
+if APP_ENV == "e2e"
+  require "net/http"
+  require "openssl"
+
+  module E2eSkipSslVerify
+    def use_ssl=(value)
+      super
+      self.verify_mode = OpenSSL::SSL::VERIFY_NONE if value
+    end
+  end
+
+  Net::HTTP.prepend(E2eSkipSslVerify)
+end
+
 require_relative "../app/app"
