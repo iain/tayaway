@@ -12,7 +12,7 @@ RSpec.describe Notifications::Preferences::Fetch do
       expect(result.success?).to be true
       kinds = result.value![:kinds]
       keys = kinds.map { |k| k[:key] }
-      expect(keys).to include("workspace_invite", "poll_closed", "settlement_owed")
+      expect(keys).to include("workspace_invite", "poll_closed", "settlement_created")
       poll_closed = kinds.find { |k| k[:key] == "poll_closed" }
       expect(poll_closed[:channels].find { |c| c[:channel] == "email" }).to include(enabled: true)
     end

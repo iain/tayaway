@@ -61,7 +61,7 @@ const GROUPS: KindGroup[] = [
     key: 'money',
     title: 'Money',
     icon: BanknotesIcon,
-    kinds: ['settlement_owed', 'settlement_owes_you', 'expense_added'],
+    kinds: ['settlement_created', 'transfer_paid', 'expense_added'],
   },
 ]
 
@@ -79,13 +79,14 @@ const KIND_COPY: Record<string, KindCopy> = {
     label: 'Event details changed',
     description: "When dates or location change on an event you're attending.",
   },
-  settlement_owed: {
-    label: 'You owe money',
-    description: 'When a settlement is created and you owe someone.',
+  settlement_created: {
+    label: 'Settlement created',
+    description:
+      'When event expenses are settled and you owe someone or are owed.',
   },
-  settlement_owes_you: {
-    label: "You're owed money",
-    description: 'When a settlement is created and someone owes you.',
+  transfer_paid: {
+    label: 'Payment marked as paid',
+    description: 'When the other person marks a balance between you as paid.',
   },
   expense_added: {
     label: 'Expense added',

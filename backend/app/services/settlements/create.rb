@@ -229,36 +229,34 @@ module Settlements
           creditor = users_by_id[transfer[:to_user_id].to_s]
           next unless debtor && creditor
 
-          Notifications::Dispatch.call(
-            kind: :settlement_owed,
-            user_id: debtor.id.to_s,
-            workspace_id: workspace_id,
-            data: {
-              email: debtor.email.to_s,
-              recipient_name: debtor.name,
-              creditor_name: creditor.name || creditor.email.to_s,
-              amount: transfer[:amount].to_f,
-              event_name: event.name,
-              event_url: event_url
-            }
+          dispatch_settlement_created(
+            recipient: debtor, counterparty: creditor, recipient_role: "debtor",
+            amount: transfer[:amount], event: event, event_url: event_url, workspace_id: workspace_id
           )
-
-          Notifications::Dispatch.call(
-            kind: :settlement_owes_you,
-            user_id: creditor.id.to_s,
-            workspace_id: workspace_id,
-            data: {
-              email: creditor.email.to_s,
-              recipient_name: creditor.name,
-              debtor_name: debtor.name || debtor.email.to_s,
-              amount: transfer[:amount].to_f,
-              event_name: event.name,
-              event_url: event_url
-            }
+          dispatch_settlement_created(
+            recipient: creditor, counterparty: debtor, recipient_role: "creditor",
+            amount: transfer[:amount], event: event, event_url: event_url, workspace_id: workspace_id
           )
         end
       rescue StandardError => e
         APP_LOGGER.error { "[Settlements::Create] Failed to dispatch settlement notifications: #{e.class} - #{e.message}" }
+      end
+
+      def dispatch_settlement_created(recipient:, counterparty:, recipient_role:, amount:, event:, event_url:, workspace_id:)
+        Notifications::Dispatch.call(
+          kind: :settlement_created,
+          user_id: recipient.id.to_s,
+          workspace_id: workspace_id,
+          data: {
+            email: recipient.email.to_s,
+            recipient_name: recipient.name,
+            counterparty_name: counterparty.name || counterparty.email.to_s,
+            recipient_role: recipient_role,
+            amount: amount.to_f,
+            event_name: event.name,
+            event_url: event_url
+          }
+        )
       end
 
       def concurrent_settlement_exists?(event_id)
