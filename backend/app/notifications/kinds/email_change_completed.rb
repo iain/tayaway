@@ -13,6 +13,7 @@ module Notifications
         def key = :email_change_completed
         def default_channels = %i[email in_app]
         def supported_channels = %i[email in_app push]
+        def forced_channels = %i[email]
         def email_delivery_job = EmailDeliveryJob
 
         def in_app_payload(old_email:, new_email:, session_url:, **)

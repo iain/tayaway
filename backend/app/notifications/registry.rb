@@ -12,8 +12,7 @@ module Notifications
   module Registry
     KINDS = {
       new_session: Kinds::NewSession,
-      passkey_added: Kinds::PasskeyAdded,
-      passkey_removed: Kinds::PasskeyRemoved,
+      passkey_changed: Kinds::PasskeyChanged,
       email_change_completed: Kinds::EmailChangeCompleted,
       workspace_invite: Kinds::WorkspaceInvite,
       workspace_invite_accepted: Kinds::WorkspaceInviteAccepted,

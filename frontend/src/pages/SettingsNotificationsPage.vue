@@ -19,6 +19,7 @@ import FormToggle from '@/components/form/FormToggle.vue'
 interface ChannelState {
   channel: string
   enabled: boolean
+  forced?: boolean
 }
 
 interface KindState {
@@ -50,12 +51,7 @@ const GROUPS: KindGroup[] = [
     key: 'security',
     title: 'Account & security',
     icon: ShieldCheckIcon,
-    kinds: [
-      'new_session',
-      'passkey_added',
-      'passkey_removed',
-      'email_change_completed',
-    ],
+    kinds: ['new_session', 'passkey_changed', 'email_change_completed'],
   },
   {
     key: 'workspaces',
@@ -97,13 +93,10 @@ const KIND_COPY: Record<string, KindCopy> = {
     description:
       'When your account is signed in to from a new browser or country.',
   },
-  passkey_added: {
-    label: 'Passkey added',
-    description: 'When a new passkey is registered on your account.',
-  },
-  passkey_removed: {
-    label: 'Passkey removed',
-    description: 'When a passkey is removed from your account.',
+  passkey_changed: {
+    label: 'Passkey added or removed',
+    description:
+      'When a passkey is registered on or removed from your account.',
   },
   email_change_completed: {
     label: 'Email address changed',
@@ -233,6 +226,11 @@ async function setChannelEnabled(
   const kind = kinds.value.find((k) => k.key === kindKey)
   const channel = kind?.channels.find((c) => c.channel === channelKey)
   if (!channel) return
+  // Forced channels can't be flipped — the backend would reject and the
+  // server-side dispatcher would fire anyway. Belt and braces against a
+  // misclick on a tooltip that the FormToggle's disabled state should
+  // already have blocked.
+  if (channel.forced) return
 
   const previous = channel.enabled
   channel.enabled = enabled
@@ -282,7 +280,11 @@ async function toggleColumn(
   if (!group) return
   const cells = group.rows.flatMap((kind) => {
     const cell = channelStateFor(kind, channelKey)
-    return cell ? [{ kind, cell }] : []
+    // Forced cells stay on regardless — leave them out of the toggle-all
+    // computation so the "every cell on?" check isn't fooled into
+    // thinking the column is already maxed and flipping non-forced
+    // rows off when really only the forced ones were keeping it green.
+    return cell && !cell.forced ? [{ kind, cell }] : []
   })
   if (cells.length === 0) return
 
@@ -414,11 +416,17 @@ onMounted(() => {
                 v-for="channelKey in CHANNEL_ORDER"
                 :key="channelKey"
                 class="px-2 py-3 text-center"
+                :title="
+                  channelStateFor(kind, channelKey)?.forced
+                    ? 'Always on for security — this channel can’t be turned off.'
+                    : undefined
+                "
               >
                 <FormToggle
                   v-if="channelStateFor(kind, channelKey)"
                   :id="toggleId(kind.key, channelKey)"
                   :model-value="channelStateFor(kind, channelKey)!.enabled"
+                  :disabled="channelStateFor(kind, channelKey)!.forced"
                   :aria-label="`${KIND_COPY[kind.key]?.label ?? kind.key} via ${CHANNEL_LABELS[channelKey] ?? channelKey}`"
                   class="justify-center"
                   @update:model-value="

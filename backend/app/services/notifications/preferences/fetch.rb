@@ -27,19 +27,30 @@ module Notifications
         def build_matrix(overrides)
           Registry.all.map do |kind_class|
             key = kind_class.key.to_s
+            forced = forced_channels(kind_class)
             {
               key: key,
               channels: kind_class.supported_channels.map do |channel|
                 channel_key = channel.to_s
+                is_forced = forced.include?(channel)
                 default_on = kind_class.default_channels.include?(channel)
                 enabled = overrides.dig(key, channel_key)
                 {
                   channel: channel_key,
-                  enabled: enabled.nil? ? default_on : enabled
+                  # Forced channels always read as on regardless of any
+                  # stored override — the dispatcher ignores the override
+                  # too, so showing it as off in the UI would lie to the
+                  # user about what actually happens.
+                  enabled: is_forced || (enabled.nil? ? default_on : enabled),
+                  forced: is_forced
                 }
               end
             }
           end
+        end
+
+        def forced_channels(kind_class)
+          kind_class.respond_to?(:forced_channels) ? kind_class.forced_channels : []
         end
       end
     end

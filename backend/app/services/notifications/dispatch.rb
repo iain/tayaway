@@ -37,6 +37,12 @@ module Notifications
           else
             apply_overrides(kind_class, user_id)
           end
+        # Forced channels always fire regardless of preferences — they're
+        # how the security tripwires resist a session-hijacking attacker
+        # who would otherwise just disable the alert that catches them.
+        # Union before stripping user-bound channels so a forced :email
+        # still goes through when no user is bound.
+        channels = (channels | forced_channels_for(kind_class))
         user_id.nil? ? channels - USER_REQUIRED_CHANNELS : channels
       end
 
@@ -45,6 +51,10 @@ module Notifications
         overrides = UserNotificationPreference.overrides_for(user_id: user_id, kind: kind_class.key)
         defaults.select { |channel| overrides.fetch(channel, true) } +
           overrides.select { |channel, enabled| enabled && !defaults.include?(channel) }.keys
+      end
+
+      def forced_channels_for(kind_class)
+        kind_class.respond_to?(:forced_channels) ? kind_class.forced_channels : []
       end
 
       def dispatch(channel, kind_class, data, user_id, workspace_id)

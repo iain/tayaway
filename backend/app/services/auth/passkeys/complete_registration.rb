@@ -58,29 +58,30 @@ module Auth
           )
 
           APP_LOGGER.info { "[Auth::Passkeys] Passkey #{id} registered for user #{user_id}" }
-          notify_passkey_added(user_id, device_name)
+          notify_passkey_change(user_id, device_name, "added")
           Success({ passkey: passkey.to_api_hash })
         rescue Sequel::Error => e
           APP_LOGGER.warn { "[Auth::Passkeys] Registration DB error: #{e.class}" }
           Failure(ServiceError.validation("Failed to store passkey"))
         end
 
-        def notify_passkey_added(user_id, passkey_name)
+        def notify_passkey_change(user_id, passkey_name, action)
           user = User.find(user_id)
           return unless user
 
           Notifications::Dispatch.call(
-            kind: :passkey_added,
+            kind: :passkey_changed,
             user_id: user_id.to_s,
             data: {
               email: user.email.to_s,
               recipient_name: user.name,
+              action: action,
               passkey_name: passkey_name,
               session_url: "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/settings/login"
             }
           )
         rescue StandardError => e
-          APP_LOGGER.error { "[Auth::Passkeys] Failed to dispatch passkey_added: #{e.class} - #{e.message}" }
+          APP_LOGGER.error { "[Auth::Passkeys] Failed to dispatch passkey_changed (#{action}): #{e.class} - #{e.message}" }
         end
 
         def fido_store
