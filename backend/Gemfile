@@ -24,7 +24,7 @@ gem "dotenv"
 gem "mail", "~> 2.8"
 
 # Web push notifications
-gem "webpush"
+gem "web-push", "~> 3.1"
 
 # QR code generation
 gem "chunky_png"

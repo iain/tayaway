@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "webpush"
+require "web-push"
 
 module Notifications
   module Channels
@@ -33,7 +33,7 @@ module Notifications
         end
 
         def deliver_now(endpoint:, p256dh_key:, auth_key:, payload:)
-          Webpush.payload_send(
+          WebPush.payload_send(
             message: payload,
             endpoint: endpoint,
             p256dh: p256dh_key,
@@ -44,7 +44,7 @@ module Notifications
               private_key: ENV.fetch("VAPID_PRIVATE_KEY")
             }
           )
-        rescue Webpush::ExpiredSubscription, Webpush::InvalidSubscription
+        rescue WebPush::ExpiredSubscription, WebPush::InvalidSubscription
           # Browser revoked the subscription — drop it so we stop trying.
           PushSubscription.delete_endpoint(endpoint)
         end

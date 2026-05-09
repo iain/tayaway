@@ -153,8 +153,8 @@ end
 namespace :notifications do
   desc "Generate a fresh VAPID key pair for push notifications"
   task :vapid do
-    require "webpush"
-    pair = Webpush.generate_key
+    require "web-push"
+    pair = WebPush.generate_key
     puts "VAPID_PUBLIC_KEY=#{pair.public_key}"
     puts "VAPID_PRIVATE_KEY=#{pair.private_key}"
     puts ""
