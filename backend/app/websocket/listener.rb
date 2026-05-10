@@ -57,11 +57,12 @@ module Websocket
 
       def handle_notification(payload, connections = ConnectionManager.instance)
         data = JSON.parse(payload, symbolize_names: true)
-        workspace_id = data[:workspaceId]
+        audience = data[:audience]
+        audience_id = data[:audienceId]
         object_type = data[:objectType]
         object_id = data[:objectId]
         action = data[:action]
-        return unless workspace_id && object_type && object_id && action
+        return unless audience && audience_id && object_type && object_id && action
 
         config = type_config(object_type)
         unless config
@@ -69,12 +70,32 @@ module Websocket
           return
         end
 
+        case audience
+        when "workspace"
+          dispatch_workspace(connections, audience_id, config, object_id, action)
+        when "user"
+          dispatch_user(connections, audience_id, config, object_id, action)
+        else
+          APP_LOGGER.warn { "[Listener] Unknown audience: #{audience.inspect}" }
+        end
+      rescue JSON::ParserError => e
+        APP_LOGGER.error { "[Listener] Invalid JSON payload: #{e.message}" }
+      rescue StandardError => e
+        APP_LOGGER.error { "[Listener] Error handling notification: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
+      end
+
+      private
+
+      # Workspace audience: fan out to every connection currently subscribed
+      # to that workspace, and thread a PolicyContext so the connection
+      # manager can attach per-recipient permissions.
+      def dispatch_workspace(connections, workspace_id, config, object_id, action)
         message = { type: "broadcast", workspaceId: workspace_id, action: action }
         policy_context = nil
 
         case action
         when "update"
-          object = find_object(object_type, object_id)
+          object = find_object(config.key, object_id)
           if object
             pool = PoolSerializer.new(workspace_id: workspace_id, collect_policy_contexts: true)
             pool.add(config.key, [object])
@@ -98,13 +119,31 @@ module Websocket
         end
 
         connections.broadcast_to_workspace(workspace_id, message, policy_context: policy_context)
-      rescue JSON::ParserError => e
-        APP_LOGGER.error { "[Listener] Invalid JSON payload: #{e.message}" }
-      rescue StandardError => e
-        APP_LOGGER.error { "[Listener] Error handling notification: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
       end
 
-      private
+      # User audience: fan out to every connection authenticated as that
+      # user. No policy context — the user is the audience, so visibility
+      # is decided at dispatch time, not by per-viewer permission diffs.
+      def dispatch_user(connections, user_id, config, object_id, action)
+        message = { type: "broadcast", action: action }
+
+        case action
+        when "update"
+          object = find_object(config.key, object_id)
+          if object
+            pool = PoolSerializer.new
+            pool.add(config.key, [object])
+            message[:data] = { objects: pool.to_a }
+          else
+            message[:action] = "delete"
+            message[:data] = { deleted: [{ objectType: config.client_type, id: object_id }] }
+          end
+        when "delete"
+          message[:data] = { deleted: [{ objectType: config.client_type, id: object_id }] }
+        end
+
+        connections.broadcast_to_user(user_id, message)
+      end
 
       def semaphore
         @_semaphore ||= Async::Semaphore.new(BROADCAST_CONCURRENCY)

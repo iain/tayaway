@@ -35,6 +35,7 @@ module Sync
         ObjectRegistry::TYPES.each do |entry|
           next if entry.key == "workspace" # already added
           next if entry.key == "member"    # added below with all memberships
+          next unless entry.workspace_audience? # user-audience types ride their own delivery path
 
           model = Object.const_get(entry.model)
           items = model.changed_since(workspace_id, effective_since)

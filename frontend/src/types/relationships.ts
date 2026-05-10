@@ -137,4 +137,5 @@ export const relationshipSchema: RelationshipSchema = {
     },
   },
   workspaceInvite: {},
+  notification: {},
 } as const

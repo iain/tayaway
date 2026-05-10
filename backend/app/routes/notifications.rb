@@ -95,13 +95,15 @@ class App
     end
 
     r.is do
-      # GET /api/notifications - the current user's recent notifications
+      # GET /api/notifications - the current user's recent notifications.
+      # Returned as a pool envelope so the frontend can hydrate the shared
+      # object pool (where live broadcasts also land) and derive unread
+      # state from one source.
       r.get do
         notifications = Notification.for_user(user.id)
-        {
-          notifications: notifications.map(&:to_api_hash),
-          unreadCount: Notification.unread_count_for_user(user.id)
-        }
+        pool = PoolSerializer.new
+        pool.add(:notification, notifications)
+        { objects: pool.to_a }
       end
     end
 

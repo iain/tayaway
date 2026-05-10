@@ -2,56 +2,54 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { rawApi } from '@/api/client'
 import { useNotificationsStore } from '@/stores/notifications'
+import { useObjectPoolStore } from '@/stores/objectPool'
+import type { PoolNotification } from '@/types/pool'
 
 const SILENCE_UNDO_MS = 5000
 
-export interface InboxNotification {
-  id: string
-  objectType: 'notification'
-  userId: string
-  workspaceId: string | null
-  kind: string
-  data: {
-    title?: string
-    body?: string
-    href?: string
-    [key: string]: unknown
-  }
-  readAt: string | null
-  createdAt: string
-  updatedAt: string
-}
+// Re-exported under the original name so the bell component (and any other
+// consumers) keeps a single import surface as we move from a parallel array
+// to the shared object pool.
+export type InboxNotification = PoolNotification
 
 interface InboxResponse {
-  notifications: InboxNotification[]
-  unreadCount: number
+  objects: PoolNotification[]
 }
 
 /**
  * Persistent in-app notification inbox. Distinct from `useNotificationsStore`
  * (transient toasts) — this one backs the bell icon and the user's history.
  *
- * Loads via REST today; live websocket sync can be added without changing
- * this store's shape since notifications would just arrive through the
- * same `notifications` array.
+ * Notifications live in the shared object pool, which is the same place
+ * real-time WebSocket broadcasts land. The store is a thin reactive view
+ * over that pool plus the mutation paths (mark read, silence) that don't
+ * fit the optimistic-mutation queue.
  */
 export const useInboxStore = defineStore('inbox', () => {
-  const notifications = ref<InboxNotification[]>([])
-  const unreadCount = ref(0)
   const loading = ref(false)
   const lastError = ref<string | null>(null)
+
+  function pool() {
+    return useObjectPoolStore()
+  }
+
+  const notifications = computed<PoolNotification[]>(() => {
+    const all = pool().getAll('notification')
+    return [...all].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+  })
 
   const unread = computed(() =>
     notifications.value.filter((n) => n.readAt === null)
   )
+
+  const unreadCount = computed(() => unread.value.length)
 
   async function load(): Promise<void> {
     loading.value = true
     lastError.value = null
     try {
       const { data } = await rawApi.get<InboxResponse>('/notifications', {})
-      notifications.value = data.notifications
-      unreadCount.value = data.unreadCount
+      pool().importObjects(data.objects)
     } catch (e) {
       lastError.value =
         e && typeof e === 'object' && 'message' in e
@@ -63,42 +61,36 @@ export const useInboxStore = defineStore('inbox', () => {
   }
 
   async function markRead(id: string): Promise<void> {
-    const target = notifications.value.find((n) => n.id === id)
+    const target = pool().get('notification', id)
     if (!target || target.readAt !== null) return
 
-    const previousReadAt = target.readAt
-    target.readAt = new Date().toISOString()
-    if (unreadCount.value > 0) unreadCount.value -= 1
+    const previous = target
+    pool().set({ ...target, readAt: new Date().toISOString() })
 
     try {
       await rawApi.put(`/notifications/${id}/read`, {}, { silent: true })
     } catch {
-      target.readAt = previousReadAt
-      unreadCount.value += 1
+      pool().set(previous)
     }
   }
 
   async function markAllRead(): Promise<void> {
-    const previously = notifications.value.map((n) => ({
-      id: n.id,
-      readAt: n.readAt,
-    }))
-    const previousCount = unreadCount.value
-    const now = new Date().toISOString()
+    const before = pool()
+      .getAll('notification')
+      .filter((n) => n.readAt === null)
+    if (before.length === 0) return
 
-    notifications.value.forEach((n) => {
-      if (n.readAt === null) n.readAt = now
-    })
-    unreadCount.value = 0
+    const now = new Date().toISOString()
+    for (const n of before) {
+      pool().set({ ...n, readAt: now })
+    }
 
     try {
       await rawApi.put('/notifications/read-all', {}, { silent: true })
     } catch {
-      previously.forEach((p) => {
-        const target = notifications.value.find((n) => n.id === p.id)
-        if (target) target.readAt = p.readAt
-      })
-      unreadCount.value = previousCount
+      for (const n of before) {
+        pool().set(n)
+      }
     }
   }
 

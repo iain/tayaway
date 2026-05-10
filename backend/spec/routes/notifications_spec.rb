@@ -30,7 +30,7 @@ RSpec.describe "Notifications inbox endpoints" do
       expect(last_response.status).to eq(401)
     end
 
-    it "lists the user's notifications, newest first" do
+    it "returns notifications as pool objects, newest first" do
       old_id = insert_notification(data: { title: "old" }, created_at: Time.now - 60)
       new_id = insert_notification(data: { title: "new" }, created_at: Time.now)
 
@@ -38,18 +38,8 @@ RSpec.describe "Notifications inbox endpoints" do
 
       expect(last_response.status).to eq(200)
       body = JSON.parse(last_response.body)
-      expect(body["notifications"].map { |n| n["id"] }).to eq([new_id, old_id])
-    end
-
-    it "reports the unread count" do
-      insert_notification
-      insert_notification
-      insert_notification(read_at: Time.now)
-
-      get "/api/notifications", {}, auth_cookie
-
-      body = JSON.parse(last_response.body)
-      expect(body["unreadCount"]).to eq(2)
+      expect(body["objects"].map { |n| n["objectType"] }).to all(eq("notification"))
+      expect(body["objects"].map { |n| n["id"] }).to eq([new_id, old_id])
     end
 
     it "doesn't leak another user's notifications" do
@@ -59,7 +49,7 @@ RSpec.describe "Notifications inbox endpoints" do
       get "/api/notifications", {}, auth_cookie
 
       body = JSON.parse(last_response.body)
-      expect(body["notifications"]).to be_empty
+      expect(body["objects"]).to be_empty
     end
   end
 

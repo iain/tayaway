@@ -84,10 +84,11 @@ RSpec.describe Sync::WorkspaceSync do
   # the iteration) must at minimum reach its model's changed_since. Catches
   # a new type being added without WorkspaceSync picking it up, which would
   # otherwise only surface at runtime on a full sync of that type.
-  it "iterates every registered type via ObjectRegistry::TYPES" do
+  it "iterates every workspace-audience registered type via ObjectRegistry::TYPES" do
     called_keys = []
     ObjectRegistry::TYPES.each do |entry|
       next if %w[workspace member].include?(entry.key)
+      next unless entry.workspace_audience?
 
       model = Object.const_get(entry.model)
       allow(model).to receive(:changed_since).and_wrap_original do |orig, *args|
@@ -98,7 +99,19 @@ RSpec.describe Sync::WorkspaceSync do
 
     described_class.call(workspace_id: workspace[:id])
 
-    missing = ObjectRegistry::TYPES.map(&:key) - called_keys - %w[workspace member]
+    expected = ObjectRegistry::TYPES.select(&:workspace_audience?).map(&:key) - %w[workspace member]
+    missing = expected - called_keys
     expect(missing).to be_empty, "WorkspaceSync skipped registry entries: #{missing.inspect}"
+  end
+
+  it "skips user-audience registered types (they ride a per-user broadcast path)" do
+    # User-audience models (e.g. Notification) deliberately don't implement
+    # `changed_since(workspace_id, ...)` — they aren't owned by a workspace.
+    # If WorkspaceSync ever forgets to filter by audience, the iteration will
+    # raise NoMethodError. Asserting "doesn't blow up" is the regression test.
+    user_audience_entries = ObjectRegistry::TYPES.select(&:user_audience?)
+    expect(user_audience_entries).not_to be_empty, "no user-audience entries to assert against"
+
+    expect { described_class.call(workspace_id: workspace[:id]) }.not_to raise_error
   end
 end
