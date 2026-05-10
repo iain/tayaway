@@ -62,4 +62,36 @@ RSpec.describe "Notification preferences endpoints" do
       expect(last_response.status).to eq(400)
     end
   end
+
+  describe "POST /api/notifications/preferences/silence" do
+    it "returns 401 without auth" do
+      post "/api/notifications/preferences/silence",
+           { kind: "expense_added" }.to_json,
+           "CONTENT_TYPE" => "application/json"
+
+      expect(last_response.status).to eq(401)
+    end
+
+    it "silences every configurable channel for the kind" do
+      post "/api/notifications/preferences/silence",
+           { kind: "expense_added" }.to_json,
+           json_headers
+
+      expect(last_response.status).to eq(200)
+      rows = DB[:user_notification_preferences]
+             .where(user_id: user[:id], kind: "expense_added")
+             .all
+      channels = rows.map { |r| r[:channel] }.sort
+      expect(channels).to eq(%w[email in_app push])
+      expect(rows.map { |r| r[:enabled] }.uniq).to eq([false])
+    end
+
+    it "rejects an unknown kind" do
+      post "/api/notifications/preferences/silence",
+           { kind: "no_such" }.to_json,
+           json_headers
+
+      expect(last_response.status).to eq(400)
+    end
+  end
 end

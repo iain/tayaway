@@ -1,6 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { rawApi } from '@/api/client'
+import { useNotificationsStore } from '@/stores/notifications'
+
+const SILENCE_UNDO_MS = 5000
 
 export interface InboxNotification {
   id: string
@@ -99,6 +102,45 @@ export const useInboxStore = defineStore('inbox', () => {
     }
   }
 
+  // "Stop sending me these" from a bell row. Optimistically marks the
+  // current notification read, shows an undo toast, and only fires the
+  // POST after the undo window expires. If the user undoes it, nothing
+  // ever hits the server. Keeps the bell as the everyday control surface
+  // promised by the design (settings is rare-visit).
+  function silenceKind(
+    kind: string,
+    message: string,
+    notificationId?: string
+  ): void {
+    const toast = useNotificationsStore()
+
+    if (notificationId) void markRead(notificationId)
+
+    let undone = false
+    toast.showInfo(message, {
+      actionLabel: 'Undo',
+      action: () => {
+        undone = true
+      },
+      duration: SILENCE_UNDO_MS,
+    })
+
+    setTimeout(async () => {
+      if (undone) return
+      try {
+        await rawApi.post(
+          '/notifications/preferences/silence',
+          { kind },
+          { silent: true }
+        )
+      } catch {
+        toast.showError(
+          "Couldn't update. Try again from notification settings."
+        )
+      }
+    }, SILENCE_UNDO_MS)
+  }
+
   return {
     notifications,
     unread,
@@ -108,5 +150,6 @@ export const useInboxStore = defineStore('inbox', () => {
     load,
     markRead,
     markAllRead,
+    silenceKind,
   }
 })

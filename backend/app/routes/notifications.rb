@@ -27,6 +27,18 @@ class App
           handle_result(result)
         end
       end
+
+      # POST /api/notifications/preferences/silence - silence a kind across
+      # every configurable channel in one call. Used by the bell's
+      # row-level "stop sending me these" so the user doesn't have to go
+      # to settings to shut up an annoying kind.
+      r.post "silence" do
+        result = Notifications::Preferences::Silence.call(
+          user_id: user.id,
+          kind: r.params["kind"]
+        )
+        handle_result(result)
+      end
     end
 
     r.on "read-all" do
@@ -62,6 +74,14 @@ class App
           PushSubscription.delete_by_endpoint(user_id: user.id, endpoint: r.params["endpoint"].to_s)
           { ok: true }
         end
+      end
+
+      # POST /api/notifications/push-subscriptions/test - fire a synthetic
+      # push to every registered subscription so the user can verify their
+      # setup before relying on it.
+      r.post "test" do
+        result = Notifications::TestPush.call(user_id: user.id)
+        handle_result(result)
       end
     end
 

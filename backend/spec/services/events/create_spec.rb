@@ -246,4 +246,68 @@ RSpec.describe Events::Create do
     expect(DB[:events].where(id: client_id).get(:name)).to eq("Original")
     expect(DB[:events].where(id: client_id).count).to eq(1)
   end
+
+  describe "event_created notifications" do
+    it "does not dispatch event_created when the event has no dates" do
+      owner = TestFactories.user
+      other = TestFactories.user
+      workspace = TestFactories.workspace
+      membership = membership_for(owner, workspace)
+      membership_for(other, workspace)
+      allow(Notifications::Dispatch).to receive(:call)
+
+      described_class.call(
+        workspace_id: workspace[:id],
+        membership: membership,
+        name: "Tentative trip",
+        description: nil
+      )
+
+      expect(Notifications::Dispatch).not_to have_received(:call).with(
+        hash_including(kind: :event_created)
+      )
+    end
+
+    it "dispatches event_created to other members when the event has dates" do
+      owner = TestFactories.user
+      other = TestFactories.user
+      workspace = TestFactories.workspace
+      membership = membership_for(owner, workspace)
+      membership_for(other, workspace)
+      allow(Notifications::Dispatch).to receive(:call)
+
+      described_class.call(
+        workspace_id: workspace[:id],
+        membership: membership,
+        name: "Holiday Trip",
+        description: nil,
+        start_date: "2026-03-15",
+        end_date: "2026-03-20"
+      )
+
+      expect(Notifications::Dispatch).to have_received(:call).with(
+        hash_including(kind: :event_created, user_id: other[:id].to_s)
+      )
+    end
+
+    it "does not notify the actor about their own event" do
+      owner = TestFactories.user
+      workspace = TestFactories.workspace
+      membership = membership_for(owner, workspace)
+      allow(Notifications::Dispatch).to receive(:call)
+
+      described_class.call(
+        workspace_id: workspace[:id],
+        membership: membership,
+        name: "Solo planner",
+        description: nil,
+        start_date: "2026-03-15",
+        end_date: "2026-03-20"
+      )
+
+      expect(Notifications::Dispatch).not_to have_received(:call).with(
+        hash_including(kind: :event_created, user_id: owner[:id].to_s)
+      )
+    end
+  end
 end

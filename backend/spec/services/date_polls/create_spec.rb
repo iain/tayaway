@@ -87,4 +87,42 @@ RSpec.describe DatePolls::Create do
     event_obj = result.value![:objects].find { |o| o[:objectType] == "event" }
     expect(event_obj[:datePollId]).to eq(poll[:id])
   end
+
+  describe "event_created notifications" do
+    it "dispatches event_created to other workspace members when the poll opens" do
+      owner = TestFactories.user
+      other = TestFactories.user
+      event = TestFactories.event(workspace: workspace, user: owner)
+      owner_membership = membership_for(owner)
+      membership_for(other)
+      allow(Notifications::Dispatch).to receive(:call)
+
+      described_class.call(
+        event_id: event[:id],
+        membership: owner_membership,
+        deadline: (Time.now + 86_400).iso8601
+      )
+
+      expect(Notifications::Dispatch).to have_received(:call).with(
+        hash_including(kind: :event_created, user_id: other[:id].to_s)
+      )
+    end
+
+    it "does not notify the actor about a poll on their own event" do
+      owner = TestFactories.user
+      event = TestFactories.event(workspace: workspace, user: owner)
+      owner_membership = membership_for(owner)
+      allow(Notifications::Dispatch).to receive(:call)
+
+      described_class.call(
+        event_id: event[:id],
+        membership: owner_membership,
+        deadline: (Time.now + 86_400).iso8601
+      )
+
+      expect(Notifications::Dispatch).not_to have_received(:call).with(
+        hash_including(kind: :event_created, user_id: owner[:id].to_s)
+      )
+    end
+  end
 end

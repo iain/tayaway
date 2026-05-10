@@ -11,6 +11,11 @@ module Notifications
         def key = :new_session
         def default_channels = %i[email in_app]
         def supported_channels = %i[email in_app push]
+        # Email is forced for the same reason as passkey_changed: a
+        # session-hijacking attacker who can disable the alert defeats
+        # the tripwire. Email reaches an inbox the attacker doesn't
+        # control after they've taken over the active session.
+        def forced_channels = %i[email]
         def email_delivery_job = EmailDeliveryJob
 
         def in_app_payload(browser_name:, os_name:, city:, country:, session_url:, **)

@@ -2,10 +2,20 @@
 import { onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
-import { Popover, PopoverButton, PopoverPanel } from '@headlessui/vue'
-import { BellIcon } from '@heroicons/vue/24/outline'
+import {
+  Menu,
+  MenuButton,
+  MenuItems,
+  MenuItem,
+  Popover,
+  PopoverButton,
+  PopoverPanel,
+} from '@headlessui/vue'
+import { BellIcon, EllipsisHorizontalIcon } from '@heroicons/vue/24/outline'
 import { useInboxStore } from '@/stores/inbox'
 import type { InboxNotification } from '@/stores/inbox'
+import EmptyState from '@/components/common/EmptyState.vue'
+import { iconForKind } from '@/utils/notificationKind'
 
 const inbox = useInboxStore()
 const { notifications, unreadCount, loading } = storeToRefs(inbox)
@@ -62,6 +72,14 @@ async function activate(
   } else {
     close()
   }
+}
+
+function silence(notification: InboxNotification): void {
+  inbox.silenceKind(
+    notification.kind,
+    "Won't send these anymore.",
+    notification.id
+  )
 }
 
 function relativeTime(iso: string): string {
@@ -128,11 +146,12 @@ function relativeTime(iso: string): string {
           Loading…
         </div>
 
-        <div
-          v-else-if="notifications.length === 0"
-          class="px-4 py-6 text-center text-sm text-gray-500 dark:text-stone-400"
-        >
-          You’re all caught up.
+        <div v-else-if="notifications.length === 0" class="px-4">
+          <EmptyState
+            :icon="BellIcon"
+            heading="You’re all caught up."
+            description="New events, settlements, and sign-ins will show up here."
+          />
         </div>
 
         <ul v-else class="max-h-96 overflow-y-auto">
@@ -143,31 +162,87 @@ function relativeTime(iso: string): string {
               notification.readAt === null
                 ? 'bg-rose-50/50 dark:bg-rose-500/5'
                 : '',
-              'border-b border-gray-100 last:border-b-0 dark:border-stone-700',
+              'group/row relative border-b border-gray-100 last:border-b-0 dark:border-stone-700',
             ]"
           >
             <button
               type="button"
-              class="block w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-stone-700"
+              class="flex w-full items-start gap-3 px-4 py-3 pr-12 text-left hover:bg-gray-50 dark:hover:bg-stone-700"
               @click="activate(notification, close)"
             >
-              <div class="flex items-start justify-between gap-2">
-                <p class="text-sm font-medium text-gray-900 dark:text-white">
-                  {{ notification.data.title ?? 'Notification' }}
-                </p>
-                <span
-                  class="shrink-0 text-xs text-gray-400 dark:text-stone-500"
+              <component
+                :is="iconForKind(notification.kind)"
+                class="mt-0.5 size-5 shrink-0 text-gray-400 dark:text-stone-500"
+                aria-hidden="true"
+              />
+              <div class="min-w-0 flex-1">
+                <div class="flex items-start justify-between gap-2">
+                  <p class="text-sm font-medium text-gray-900 dark:text-white">
+                    {{ notification.data.title ?? 'Notification' }}
+                  </p>
+                  <span
+                    class="shrink-0 text-xs text-gray-400 dark:text-stone-500"
+                  >
+                    {{ relativeTime(notification.createdAt) }}
+                  </span>
+                </div>
+                <p
+                  v-if="notification.data.body"
+                  class="mt-1 text-sm text-gray-600 dark:text-stone-400"
                 >
-                  {{ relativeTime(notification.createdAt) }}
-                </span>
+                  {{ notification.data.body }}
+                </p>
               </div>
-              <p
-                v-if="notification.data.body"
-                class="mt-1 text-sm text-gray-600 dark:text-stone-400"
-              >
-                {{ notification.data.body }}
-              </p>
             </button>
+
+            <Menu as="div" class="absolute top-2 right-2">
+              <MenuButton
+                aria-label="More actions"
+                class="flex size-8 cursor-pointer items-center justify-center rounded-md text-gray-400 transition-opacity hover:bg-black/5 hover:text-gray-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 max-md:opacity-100 md:opacity-0 md:group-focus-within/row:opacity-100 md:group-hover/row:opacity-100 dark:text-stone-500 dark:hover:bg-white/10 dark:hover:text-stone-300"
+              >
+                <EllipsisHorizontalIcon class="size-5" aria-hidden="true" />
+              </MenuButton>
+              <transition
+                enter-active-class="transition ease-out duration-100"
+                enter-from-class="transform opacity-0 scale-95"
+                enter-to-class="transform opacity-100 scale-100"
+                leave-active-class="transition ease-in duration-75"
+                leave-from-class="transform opacity-100 scale-100"
+                leave-to-class="transform opacity-0 scale-95"
+              >
+                <MenuItems
+                  class="absolute right-0 z-30 mt-1 w-52 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5 focus:outline-hidden dark:bg-stone-800"
+                >
+                  <MenuItem
+                    v-if="notification.readAt === null"
+                    v-slot="{ active }"
+                  >
+                    <button
+                      type="button"
+                      :class="[
+                        active ? 'bg-gray-100 dark:bg-stone-700' : '',
+                        'block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-stone-300',
+                      ]"
+                      @click="inbox.markRead(notification.id)"
+                    >
+                      Mark as read
+                    </button>
+                  </MenuItem>
+                  <MenuItem v-slot="{ active }">
+                    <button
+                      type="button"
+                      :class="[
+                        active ? 'bg-gray-100 dark:bg-stone-700' : '',
+                        'block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-stone-300',
+                      ]"
+                      @click="silence(notification)"
+                    >
+                      Stop sending me these
+                    </button>
+                  </MenuItem>
+                </MenuItems>
+              </transition>
+            </Menu>
           </li>
         </ul>
       </PopoverPanel>

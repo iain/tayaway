@@ -64,6 +64,12 @@ module DatePolls
           Broadcaster.object_changed("date_poll", poll_id, workspace_id: event.workspace_id)
         end
 
+        # Opening a poll is the moment an undated event becomes real to
+        # the rest of the workspace — that's when they should hear about
+        # it. Events::Create stays silent for undated events for exactly
+        # this reason.
+        Events::AnnounceCreated.call(event: event, actor_user_id: membership.user_id)
+
         pool = PoolSerializer.new(membership: membership)
         pool.add(:event, [Event.find(event.id)])
         pool.add(:date_poll, [DatePoll.find(poll_id)])

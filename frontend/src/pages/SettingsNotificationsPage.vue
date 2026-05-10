@@ -11,61 +11,58 @@ import {
 import { rawApi } from '@/api/client'
 import { useNotificationsStore } from '@/stores/notifications'
 import { usePushSubscription } from '@/composables/usePushSubscription'
+import {
+  chipState,
+  chipWrites,
+  type ChannelKey,
+  type ChipState,
+  type KindState,
+} from '@/composables/useChannelChips'
 import BaseCard from '@/components/common/BaseCard.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import AppButton from '@/components/common/AppButton.vue'
-import FormToggle from '@/components/form/FormToggle.vue'
-
-interface ChannelState {
-  channel: string
-  enabled: boolean
-  forced?: boolean
-}
-
-interface KindState {
-  key: string
-  channels: ChannelState[]
-}
+import TextButton from '@/components/common/TextButton.vue'
+import ChannelChip from '@/components/notifications/ChannelChip.vue'
 
 interface PreferencesResponse {
   kinds: KindState[]
 }
 
-interface KindCopy {
-  label: string
-  description: string
-}
-
-interface KindGroup {
+interface Group {
   key: string
   title: string
+  blurb: string
   icon: Component
   kinds: string[]
+  forcedReason: Partial<Record<ChannelKey, string>>
 }
 
-// Group kinds by domain so the page reads as a few related sections
-// rather than a flat list. The groups are display-only — the backend
-// stores preferences keyed by (kind, channel) regardless.
-const GROUPS: KindGroup[] = [
+const GROUPS: Group[] = [
   {
     key: 'security',
     title: 'Account & security',
+    blurb: 'Sign-ins, passkey changes, and email updates.',
     icon: ShieldCheckIcon,
     kinds: ['new_session', 'passkey_changed', 'email_change_completed'],
+    forcedReason: { email: 'Security alerts always reach you by email.' },
   },
   {
     key: 'workspaces',
     title: 'Workspaces',
+    blurb: 'Invitations, role changes, and accepted invites.',
     icon: UserGroupIcon,
     kinds: [
       'workspace_invite',
       'workspace_invite_accepted',
       'member_role_changed',
     ],
+    forcedReason: {},
   },
   {
     key: 'events',
     title: 'Events',
+    blurb:
+      'New events, cancellations, date or location changes, and polls closing.',
     icon: CalendarDaysIcon,
     kinds: [
       'event_created',
@@ -73,103 +70,77 @@ const GROUPS: KindGroup[] = [
       'event_details_changed',
       'poll_closed',
     ],
+    forcedReason: {},
   },
   {
     key: 'money',
     title: 'Money',
+    blurb: 'Settlements, payment marks, and new expenses on shared events.',
     icon: BanknotesIcon,
     kinds: ['settlement_created', 'payment_status_changed', 'expense_added'],
+    forcedReason: {},
   },
 ]
 
-const KIND_COPY: Record<string, KindCopy> = {
-  new_session: {
-    label: 'New sign-in to your account',
-    description:
-      'When your account is signed in to from a new browser or country.',
-  },
-  passkey_changed: {
-    label: 'Passkey added or removed',
-    description:
-      'When a passkey is registered on or removed from your account.',
-  },
-  email_change_completed: {
-    label: 'Email address changed',
-    description:
-      "When your account's email is changed (sent to the previous address).",
-  },
-  workspace_invite: {
-    label: 'Workspace invitations',
-    description: "When someone invites you to a workspace you're not in yet.",
-  },
-  workspace_invite_accepted: {
-    label: 'Invitation accepted',
-    description: 'When someone you invited accepts and joins the workspace.',
-  },
-  member_role_changed: {
-    label: 'Your role changed',
-    description: 'When your role in a workspace is promoted or demoted.',
-  },
-  event_created: {
-    label: 'Event added',
-    description: 'When someone creates a new event in a workspace you’re in.',
-  },
-  event_canceled: {
-    label: 'Event canceled',
-    description: "When an event you're attending is deleted.",
-  },
-  event_details_changed: {
-    label: 'Event details changed',
-    description: "When dates or location change on an event you're attending.",
-  },
-  poll_closed: {
-    label: 'Event date confirmed',
-    description:
-      'When a date poll you voted on resolves with the chosen dates.',
-  },
-  settlement_created: {
-    label: 'Settlement created',
-    description:
-      'When event expenses are settled and you owe someone or are owed.',
-  },
-  payment_status_changed: {
-    label: 'Payment marked or reversed',
-    description:
-      'When a balance between you is marked as paid or that mark is reversed.',
-  },
-  expense_added: {
-    label: 'Expense added',
-    description:
-      "When someone logs a new expense on an event you're attending.",
-  },
-}
-
-const CHANNEL_LABELS: Record<string, string> = {
+const CHANNEL_ORDER: ChannelKey[] = ['email', 'in_app', 'push']
+const CHANNEL_LABELS: Record<ChannelKey, string> = {
   email: 'Email',
   in_app: 'In-app',
   push: 'Push',
 }
 
-// Fixed column order. The matrix renders these in order regardless of
-// what the server returns; missing channels for a kind would show as a
-// blank cell, but every kind currently supports all three.
-const CHANNEL_ORDER = ['email', 'in_app', 'push'] as const
-
 const kinds = ref<KindState[]>([])
 const loading = ref(true)
 const loadError = ref(false)
+const saving = ref(new Set<string>())
+const sendingTest = ref(false)
 
 const push = usePushSubscription()
 const pushSubscribed = ref(false)
 
-const groupedKinds = computed(() =>
-  GROUPS.map((group) => ({
-    ...group,
-    rows: group.kinds
+const groups = computed(() =>
+  GROUPS.map((group) => {
+    const rows = group.kinds
       .map((key) => kinds.value.find((k) => k.key === key))
-      .filter((k): k is KindState => k !== undefined),
-  })).filter((g) => g.rows.length > 0)
+      .filter((k): k is KindState => k !== undefined)
+    return {
+      ...group,
+      rows,
+      chips: CHANNEL_ORDER.map((channel) => ({
+        channel,
+        label: CHANNEL_LABELS[channel],
+        state: chipState(rows, channel),
+        forcedReason: group.forcedReason[channel],
+        savingKey: `${group.key}-${channel}`,
+      })),
+    }
+  }).filter((g) => g.rows.length > 0)
 )
+
+// One-line summary footer — shows only when something is locked anywhere on
+// the page, so the user knows where the floor is.
+const forcedFooterParts = computed(() => {
+  const parts: string[] = []
+  for (const group of groups.value) {
+    for (const chip of group.chips) {
+      if (chip.state.kind === 'forced' && chip.forcedReason) {
+        parts.push(chip.forcedReason)
+      }
+    }
+  }
+  // Workspace invites force every channel but are deliberately not chipped
+  // as forced (the chip aggregates *configurable* rows; the forced invite
+  // row is silent in the chip). Surface the rule in the footer instead.
+  const hasInviteForced = kinds.value.some(
+    (k) => k.key === 'workspace_invite' && k.channels.some((c) => c.forced)
+  )
+  if (hasInviteForced) {
+    parts.push(
+      "Workspace invitations always reach you, since that's how you get into a workspace."
+    )
+  }
+  return Array.from(new Set(parts))
+})
 
 async function load(): Promise<void> {
   loading.value = true
@@ -203,44 +174,69 @@ async function disablePush(): Promise<void> {
   pushSubscribed.value = false
 }
 
-function channelStateFor(
-  kind: KindState,
-  channelKey: string
-): ChannelState | undefined {
-  return kind.channels.find((c) => c.channel === channelKey)
+async function sendTestPush(): Promise<void> {
+  if (sendingTest.value) return
+  sendingTest.value = true
+  const toast = useNotificationsStore()
+  try {
+    await rawApi.post(
+      '/notifications/push-subscriptions/test',
+      {},
+      { silent: true }
+    )
+    toast.showInfo('Test push sent. It should arrive in a moment.')
+  } catch (err) {
+    const message =
+      err instanceof Error && err.message
+        ? err.message
+        : "Couldn't send a test push."
+    toast.showError(message)
+  } finally {
+    sendingTest.value = false
+  }
 }
 
-async function setChannelEnabled(
-  kindKey: string,
-  channelKey: string,
-  enabled: boolean
+function denyHelpHint(): string {
+  if (typeof navigator === 'undefined') return ''
+  const ua = navigator.userAgent
+  if (/iPhone|iPad|iPod/.test(ua)) {
+    return 'On iOS, install Tayaway to your home screen first, then enable notifications from there.'
+  }
+  if (/Firefox/.test(ua)) {
+    return 'In Firefox, click the lock icon in the address bar, then set Notifications to Allow.'
+  }
+  if (/Safari/.test(ua) && !/Chrome|Chromium/.test(ua)) {
+    return 'In Safari, open Settings, choose Websites, then Notifications, and allow this site.'
+  }
+  return 'Click the lock or settings icon in your address bar, then set Notifications to Allow.'
+}
+
+async function flipChip(
+  groupKey: string,
+  channel: ChannelKey,
+  state: ChipState
 ): Promise<void> {
-  const kind = kinds.value.find((k) => k.key === kindKey)
-  const channel = kind?.channels.find((c) => c.channel === channelKey)
-  if (!channel) return
-  // Forced channels can't be flipped — the backend would reject and the
-  // server-side dispatcher would fire anyway. Belt and braces against a
-  // misclick on a tooltip that the FormToggle's disabled state should
-  // already have blocked.
-  if (channel.forced) return
+  if (state.kind !== 'configurable') return
 
-  const previous = channel.enabled
-  channel.enabled = enabled
+  const target = !state.enabled
+  const group = groups.value.find((g) => g.key === groupKey)
+  if (!group) return
 
-  // Turning a push cell on while no subscription exists is otherwise a
-  // silent no-op — the preference is stored but no push ever arrives.
-  // Walk the user through the subscription so the toggle does what it
-  // looks like it does.
+  const writes = chipWrites(group.rows, channel, target)
+  if (writes.length === 0) return
+
+  // If turning push on without a device subscription, walk the user through
+  // the subscribe flow first. Without this, the preference is stored but
+  // no push ever arrives.
   if (
-    channelKey === 'push' &&
-    enabled &&
+    channel === 'push' &&
+    target === true &&
     push.supported.value &&
     !pushSubscribed.value
   ) {
     const ok = await push.subscribe()
     pushSubscribed.value = ok
     if (!ok) {
-      channel.enabled = previous
       if (push.error.value) {
         useNotificationsStore().showError(push.error.value)
       }
@@ -248,50 +244,45 @@ async function setChannelEnabled(
     }
   }
 
+  const savingKey = `${groupKey}-${channel}`
+  saving.value.add(savingKey)
+  saving.value = new Set(saving.value)
+
+  // Optimistic local update so the chip flips immediately.
+  const previous: { kindKey: string; enabled: boolean }[] = []
+  for (const write of writes) {
+    const kind = kinds.value.find((k) => k.key === write.kindKey)
+    const cell = kind?.channels.find((c) => c.channel === channel)
+    if (!cell) continue
+    previous.push({ kindKey: write.kindKey, enabled: cell.enabled })
+    cell.enabled = write.enabled
+  }
+
   try {
-    await rawApi.put(
-      '/notifications/preferences',
-      { kind: kindKey, channel: channelKey, enabled },
-      { silent: true }
+    await Promise.all(
+      writes.map((write) =>
+        rawApi.put(
+          '/notifications/preferences',
+          {
+            kind: write.kindKey,
+            channel: write.channel,
+            enabled: write.enabled,
+          },
+          { silent: true }
+        )
+      )
     )
   } catch {
-    channel.enabled = previous
+    for (const item of previous) {
+      const kind = kinds.value.find((k) => k.key === item.kindKey)
+      const cell = kind?.channels.find((c) => c.channel === channel)
+      if (cell) cell.enabled = item.enabled
+    }
     useNotificationsStore().showError("Couldn't save that change. Try again.")
+  } finally {
+    saving.value.delete(savingKey)
+    saving.value = new Set(saving.value)
   }
-}
-
-// "Toggle all" semantics for a column header: if every supported cell
-// in this column for this group is on, turn them all off; otherwise
-// turn them all on. Skips cells where the kind doesn't support the
-// channel so we never push an override the dispatcher would reject.
-async function toggleColumn(
-  groupKey: string,
-  channelKey: string
-): Promise<void> {
-  const group = groupedKinds.value.find((g) => g.key === groupKey)
-  if (!group) return
-  const cells = group.rows.flatMap((kind) => {
-    const cell = channelStateFor(kind, channelKey)
-    // Forced cells stay on regardless — leave them out of the toggle-all
-    // computation so the "every cell on?" check isn't fooled into
-    // thinking the column is already maxed and flipping non-forced
-    // rows off when really only the forced ones were keeping it green.
-    return cell && !cell.forced ? [{ kind, cell }] : []
-  })
-  if (cells.length === 0) return
-
-  const allOn = cells.every(({ cell }) => cell.enabled)
-  const target = !allOn
-
-  await Promise.all(
-    cells
-      .filter(({ cell }) => cell.enabled !== target)
-      .map(({ kind }) => setChannelEnabled(kind.key, channelKey, target))
-  )
-}
-
-function toggleId(kindKey: string, channelKey: string): string {
-  return `notif-${kindKey}-${channelKey}`
 }
 
 onMounted(() => {
@@ -302,141 +293,152 @@ onMounted(() => {
 
 <template>
   <div class="space-y-6">
-    <p class="text-sm text-gray-600 dark:text-stone-400">
-      Choose how Tayaway reaches you for each kind of notification. Click a
-      column header to toggle every row in the group at once.
-    </p>
-
     <BaseCard v-if="push.supported.value" padded>
       <SectionHeading :icon="BellIcon" title="Push notifications" />
-      <div class="flex items-center justify-between gap-4">
-        <p class="text-sm text-gray-600 dark:text-stone-400">
+      <div
+        class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+      >
+        <p class="text-gray-600 dark:text-stone-400">
           <template v-if="pushSubscribed">
-            Push is enabled on this device. Per-kind preferences below control
-            which alerts come through.
+            Push is on for this device.
           </template>
           <template v-else-if="push.permission.value === 'denied'">
-            Notifications are blocked in your browser. Allow them in your site
-            settings to enable push.
+            Notifications are blocked in your browser. {{ denyHelpHint() }}
           </template>
           <template v-else>
             Get alerts on this device when something time-sensitive happens.
           </template>
         </p>
-        <AppButton
-          v-if="pushSubscribed"
-          variant="secondary"
-          size="sm"
-          @click="disablePush"
-        >
-          Disable
-        </AppButton>
-        <AppButton
-          v-else
-          size="sm"
-          :disabled="
-            push.subscribing.value || push.permission.value === 'denied'
-          "
-          @click="enablePush"
-        >
-          {{ push.subscribing.value ? 'Enabling…' : 'Enable' }}
-        </AppButton>
+        <div class="flex shrink-0 flex-wrap items-center gap-2">
+          <AppButton
+            v-if="pushSubscribed"
+            variant="secondary"
+            size="sm"
+            :disabled="sendingTest"
+            @click="sendTestPush"
+          >
+            {{ sendingTest ? 'Sending…' : 'Send a test' }}
+          </AppButton>
+          <AppButton
+            v-if="pushSubscribed"
+            variant="secondary"
+            size="sm"
+            @click="disablePush"
+          >
+            Disable
+          </AppButton>
+          <AppButton
+            v-else
+            size="sm"
+            :disabled="
+              push.subscribing.value || push.permission.value === 'denied'
+            "
+            @click="enablePush"
+          >
+            {{ push.subscribing.value ? 'Enabling…' : 'Enable' }}
+          </AppButton>
+        </div>
       </div>
     </BaseCard>
 
-    <p v-if="loading" class="text-sm text-gray-500 dark:text-stone-400">
-      Loading…
-    </p>
-
-    <p v-else-if="loadError" class="text-sm text-rose-600 dark:text-rose-400">
-      Couldn’t load your notification preferences.
-      <button type="button" class="underline" @click="load">Try again</button>
-    </p>
-
-    <BaseCard v-for="group in groupedKinds" v-else :key="group.key" padded>
-      <SectionHeading :icon="group.icon" :title="group.title" />
-
-      <div class="overflow-x-auto">
-        <table class="w-full text-left">
-          <thead>
-            <tr>
-              <th
-                class="w-full pr-4 pb-3 text-sm font-medium text-gray-500 dark:text-stone-400"
-              >
-                <span class="sr-only">Notification</span>
-              </th>
-              <th
-                v-for="channelKey in CHANNEL_ORDER"
-                :key="channelKey"
-                scope="col"
-                class="px-2 pb-3 text-center"
-              >
-                <button
-                  type="button"
-                  class="inline-flex cursor-pointer items-center justify-center rounded-md px-2 py-1 text-xs font-semibold tracking-wide text-gray-600 uppercase transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-stone-400 dark:hover:bg-stone-700 dark:hover:text-white"
-                  :title="`Toggle every ${CHANNEL_LABELS[channelKey] ?? channelKey} row in ${group.title}`"
-                  @click="toggleColumn(group.key, channelKey)"
-                >
-                  {{ CHANNEL_LABELS[channelKey] ?? channelKey }}
-                </button>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="(kind, index) in group.rows"
-              :key="kind.key"
-              :class="[
-                'align-top',
-                index > 0
-                  ? 'border-t border-gray-100 dark:border-stone-700'
-                  : '',
-              ]"
+    <BaseCard v-if="loading" padded aria-busy="true">
+      <ul class="divide-y divide-gray-200 dark:divide-stone-700">
+        <li
+          v-for="group in GROUPS"
+          :key="`skel-${group.key}`"
+          class="flex flex-col gap-4 py-5 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-8"
+        >
+          <div class="min-w-0 flex-1">
+            <h3
+              class="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white"
             >
-              <td class="py-3 pr-4">
-                <p class="text-sm font-medium text-gray-900 dark:text-white">
-                  {{ KIND_COPY[kind.key]?.label ?? kind.key }}
-                </p>
-                <p
-                  v-if="KIND_COPY[kind.key]?.description"
-                  class="mt-0.5 text-xs text-gray-600 dark:text-stone-400"
-                >
-                  {{ KIND_COPY[kind.key].description }}
-                </p>
-              </td>
-              <td
-                v-for="channelKey in CHANNEL_ORDER"
-                :key="channelKey"
-                class="px-2 py-3 text-center"
-                :title="
-                  channelStateFor(kind, channelKey)?.forced
-                    ? 'Always on for security — this channel can’t be turned off.'
-                    : undefined
-                "
-              >
-                <FormToggle
-                  v-if="channelStateFor(kind, channelKey)"
-                  :id="toggleId(kind.key, channelKey)"
-                  :model-value="channelStateFor(kind, channelKey)!.enabled"
-                  :disabled="channelStateFor(kind, channelKey)!.forced"
-                  :aria-label="`${KIND_COPY[kind.key]?.label ?? kind.key} via ${CHANNEL_LABELS[channelKey] ?? channelKey}`"
-                  class="justify-center"
-                  @update:model-value="
-                    (value) => setChannelEnabled(kind.key, channelKey, value)
-                  "
-                />
-                <span
-                  v-else
-                  class="text-xs text-gray-300 dark:text-stone-600"
-                  aria-hidden="true"
-                >
-                  —
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+              <component
+                :is="group.icon"
+                class="size-5 text-amber-600 dark:text-amber-400"
+                aria-hidden="true"
+              />
+              {{ group.title }}
+            </h3>
+            <p class="mt-0.5 text-sm text-gray-500 dark:text-stone-400">
+              {{ group.blurb }}
+            </p>
+          </div>
+          <div class="flex shrink-0 flex-wrap gap-2">
+            <span
+              v-for="i in 3"
+              :key="i"
+              class="h-9 w-20 animate-pulse rounded-full bg-gray-100 dark:bg-stone-700"
+            />
+          </div>
+        </li>
+      </ul>
     </BaseCard>
+
+    <BaseCard v-else-if="loadError" padded variant="urgent">
+      <p
+        role="alert"
+        class="flex flex-wrap items-center gap-x-2 gap-y-1 text-rose-700 dark:text-rose-300"
+      >
+        <span>Couldn’t load your notification preferences.</span>
+        <TextButton @click="load">Try again</TextButton>
+      </p>
+    </BaseCard>
+
+    <template v-else>
+      <BaseCard padded>
+        <ul class="divide-y divide-gray-200 dark:divide-stone-700">
+          <li
+            v-for="group in groups"
+            :key="group.key"
+            class="flex flex-col gap-4 py-5 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-8"
+          >
+            <div class="min-w-0 flex-1">
+              <h3
+                class="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white"
+              >
+                <component
+                  :is="group.icon"
+                  class="size-5 text-amber-600 dark:text-amber-400"
+                  aria-hidden="true"
+                />
+                {{ group.title }}
+              </h3>
+              <p class="mt-0.5 text-sm text-gray-500 dark:text-stone-400">
+                {{ group.blurb }}
+              </p>
+            </div>
+            <div
+              class="flex shrink-0 flex-wrap gap-2"
+              role="group"
+              :aria-label="`Channels for ${group.title}`"
+            >
+              <template v-for="chip in group.chips" :key="chip.channel">
+                <ChannelChip
+                  v-if="chip.state.kind !== 'hidden'"
+                  :state="
+                    chip.state.kind === 'forced'
+                      ? 'forced'
+                      : chip.state.enabled
+                        ? 'on'
+                        : 'off'
+                  "
+                  :label="chip.label"
+                  :saving="saving.has(chip.savingKey)"
+                  :forced-reason="chip.forcedReason"
+                  @toggle="flipChip(group.key, chip.channel, chip.state)"
+                />
+              </template>
+            </div>
+          </li>
+        </ul>
+      </BaseCard>
+
+      <p
+        v-if="forcedFooterParts.length > 0"
+        class="text-sm text-gray-500 dark:text-stone-400"
+      >
+        {{ forcedFooterParts.join(' ') }}
+      </p>
+    </template>
   </div>
 </template>
