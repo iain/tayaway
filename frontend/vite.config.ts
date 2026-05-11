@@ -44,6 +44,14 @@ export default defineConfig({
         ],
       },
       injectRegister: false,
+      // The push channel needs an active service worker even in dev,
+      // because `pushManager.subscribe` waits on `serviceWorker.ready`.
+      // Without this the Enable-push button hangs forever locally.
+      devOptions: {
+        enabled: true,
+        type: 'module',
+        navigateFallback: 'index.html',
+      },
       workbox: {
         globPatterns: [
           '**/*.{js,css,html,ico,png,svg,webp,avif,woff,woff2,ttf,otf}',
@@ -55,6 +63,10 @@ export default defineConfig({
         globIgnores: ['**/*.map'],
         navigateFallback: '/index.html',
         clientsClaim: true,
+        // Imported into the generated SW so `push` and `notificationclick`
+        // handlers ship alongside the workbox precache. Lives in `public/`
+        // so it's served at the same origin as the SW.
+        importScripts: ['/push-sw.js'],
       },
     }),
   ],

@@ -92,6 +92,7 @@ module Events
       def update_event(event:, membership:, name:, description:, dates:, location_name:, latitude:, longitude:)
         event_id = event.id
         workspace_id = event.workspace_id
+        before = event
 
         DB.transaction do
           update_data = {
@@ -130,8 +131,11 @@ module Events
 
         APP_LOGGER.info { "[Events::Update] Event #{event_id} updated in workspace #{workspace_id}" }
 
+        after = Event.find(event_id)
+        Events::OnDetailsChanged.call(before: before, after: after, actor_user_id: membership.user_id) if after
+
         pool = PoolSerializer.new(membership: membership)
-        pool.add(:event, [Event.find(event_id)])
+        pool.add(:event, [after]) if after
         Success({ objects: pool.to_a })
       end
     end

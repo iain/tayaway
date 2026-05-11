@@ -226,6 +226,22 @@ module TestFactories
       DB[:workspace_invites].where(id: id).first
     end
 
+    def notification(user: nil, workspace: nil, kind: "expense_added", data: { "title" => "test", "body" => "test" }, read_at: nil, id: SecureRandom.uuid)
+      user ||= self.user
+      now = Time.now
+      DB[:notifications].insert(
+        id: id,
+        user_id: user[:id],
+        workspace_id: workspace&.dig(:id),
+        kind: kind,
+        data: Sequel.pg_jsonb(data),
+        read_at: read_at,
+        created_at: now,
+        updated_at: now
+      )
+      DB[:notifications].where(id: id).first
+    end
+
     def session(user: nil, token: SecureRandom.hex(32), expires_at: Time.now + Session::EXPIRY_SECONDS, id: SecureRandom.uuid)
       user ||= self.user
       now = Time.now

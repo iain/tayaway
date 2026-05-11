@@ -5,6 +5,7 @@ import {
   UserIcon,
   KeyIcon,
   BanknotesIcon,
+  BellIcon,
   ChevronRightIcon,
   ChevronLeftIcon,
 } from '@heroicons/vue/24/outline'
@@ -36,6 +37,12 @@ const sections: SettingsSection[] = [
     label: 'Payment',
     to: '/settings/payment',
     icon: BanknotesIcon,
+  },
+  {
+    name: 'settings-notifications',
+    label: 'Notifications',
+    to: '/settings/notifications',
+    icon: BellIcon,
   },
 ]
 

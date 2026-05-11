@@ -149,3 +149,17 @@ namespace :db do
     puts "Deleted #{count} audit_log_entries rows older than #{retention_days} days"
   end
 end
+
+namespace :notifications do
+  desc "Generate a fresh VAPID key pair for push notifications"
+  task :vapid do
+    require "web-push"
+    pair = WebPush.generate_key
+    puts "VAPID_PUBLIC_KEY=#{pair.public_key}"
+    puts "VAPID_PRIVATE_KEY=#{pair.private_key}"
+    puts ""
+    puts "Add these to your environment, plus VAPID_SUBJECT=mailto:you@example.com"
+    puts "Restart the app afterwards. Existing browser subscriptions are tied to"
+    puts "the old key — rotating means every subscriber re-subscribes."
+  end
+end

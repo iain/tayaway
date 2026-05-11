@@ -18,19 +18,20 @@ service ─► Broadcaster.object_changed/deleted ─► pg_notify
                                                     │
                                           PoolSerializer.add(...)
                                                     │
-                              ConnectionManager.broadcast_to_workspace
-                                                    │
-                                          PermissionAttacher (per recipient)
-                                                    │
-                                                    ▼
-                                                WebSocket
+                          ┌─────────────── audience ───────────────┐
+                          ▼                                        ▼
+            ConnectionManager.broadcast_to_workspace    ConnectionManager.broadcast_to_user
+                          │                                        │
+                PermissionAttacher (per recipient)                 │
+                          │                                        │
+                          └────────────────► WebSocket ◄───────────┘
 ```
 
-- **`Broadcaster`** (`app/services/broadcaster.rb`): two methods, `object_changed` and `object_deleted`. Sends a tiny JSON payload over `pg_notify` on channel `tayaway_objects`. Payload is just `workspaceId`, `objectType`, `objectId`, `action` — small enough to stay under Postgres' 8KB NOTIFY limit.
+- **`Broadcaster`** (`app/services/broadcaster.rb`): two methods, `object_changed` and `object_deleted`. Each takes either `workspace_id:` (the standard collaborative path) or `user_id:` (per-user objects like notifications) — exactly one. Sends a tiny JSON payload over `pg_notify` on channel `tayaway_objects` with `audience`, `audienceId`, `objectType`, `objectId`, `action` — small enough to stay under Postgres' 8KB NOTIFY limit.
 - **`Listener`** (`app/websocket/listener.rb`): one fiber per worker, parked on `LISTEN tayaway_objects` against a pooled DB connection. On each notification it looks the object up in `ObjectRegistry`, fetches the current row, runs it through `PoolSerializer`, and hands the message to `ConnectionManager` — each dispatch on a child fiber under a semaphore so a slow client cannot stall the next workspace's broadcast. Errors restart the listen loop after a delay. See `doc/falcon-architecture.md` for the per-worker fiber model.
-- **`ObjectRegistry`** (`app/object_registry.rb`): the single source of truth for what's syncable. Each entry binds a registry key (`"task_item"`) to a model (`TaskItem`), a client-side `objectType` string (`"taskItem"`), a serializer, and a policy class. `Listener`, `WorkspaceSync`, and `PoolSerializer` all walk this table — adding a new syncable type is a single registration, not a hunt-and-peck across files.
+- **`ObjectRegistry`** (`app/object_registry.rb`): the single source of truth for what's syncable. Each entry binds a registry key (`"task_item"`) to a model (`TaskItem`), a client-side `objectType` string (`"taskItem"`), a serializer, a policy class, and an `audience` (`:workspace` or `:user`). `Listener`, `WorkspaceSync`, and `PoolSerializer` all walk this table — adding a new syncable type is a single registration, not a hunt-and-peck across files. User-audience entries (e.g. `notification`) skip workspace sync and may set `policy: nil` because the recipient itself is the authorisation gate.
 - **`PoolSerializer`** (`app/serializers/pool_serializer.rb`): builds the `{ objects: [...] }` payload. When invoked from the listener it also collects the raw model and policy context for each object so `PermissionAttacher` can stamp per-recipient permissions onto the broadcast without reloading from the database.
-- **`ConnectionManager`** (`app/websocket/connection_manager.rb`): tracks live WebSocket connections grouped by workspace. `broadcast_to_workspace` iterates every connection, runs `PermissionAttacher` for that recipient's membership, and writes the message.
+- **`ConnectionManager`** (`app/websocket/connection_manager.rb`): tracks live WebSocket connections grouped by workspace and by user. `broadcast_to_workspace` iterates every connection in a workspace and runs `PermissionAttacher` for that recipient's membership. `broadcast_to_user` fans out to every connection authenticated as the user regardless of their currently-selected workspace; it skips `PermissionAttacher` because the user is the audience and there's no per-viewer permission diff to compute.
 - **`PermissionAttacher`** (`app/serializers/permission_attacher.rb`): the one place that merges policy-derived `permissions:` into a serialized object. Used at sync time and at broadcast time, so the two paths can never drift.
 - **`Sync::WorkspaceSync`** (`app/services/sync/workspace_sync.rb`): handles the catch-up sync that runs when a client (re)connects. See "Partial sync" below.
 - **`DeletedItems`** (`lib/deleted_items.rb`): a thin helper for bulk-inserting `deleted_items` rows. Use it for any cascade where you have a list of child IDs.
@@ -41,14 +42,19 @@ Three rules. Break any of them and a class of users will need to reload.
 
 ### 1. Broadcast every changed object
 
-After a successful create or update, call `Broadcaster.object_changed(<registry_key>, id, workspace_id: ...)`. The registry key is the snake_case key from `ObjectRegistry`, not the camelCase client type — the listener uses it to look up the model.
+After a successful create or update, call `Broadcaster.object_changed(<registry_key>, id, ...)`. The registry key is the snake_case key from `ObjectRegistry`, not the camelCase client type — the listener uses it to look up the model. Pass an audience: `workspace_id:` for collaborative objects, `user_id:` for per-user objects like notifications.
 
 ```ruby
+# Workspace audience: everyone in the workspace hears it.
 DB[:expenses].insert(id: expense_id, ...)
 Broadcaster.object_changed("expense", expense_id, workspace_id: workspace_id)
+
+# User audience: only the recipient's connected devices hear it.
+DB[:notifications].insert(id: id, user_id: user_id, ...)
+Broadcaster.object_changed("notification", id, user_id: user_id)
 ```
 
-The listener will fetch the current row and broadcast it to everyone in the workspace. You don't pass any payload — `Broadcaster` is the trigger, the listener is the source of truth.
+The listener will fetch the current row and broadcast it to the matching audience. You don't pass any payload — `Broadcaster` is the trigger, the listener is the source of truth.
 
 ### 2. Broadcast every cascaded child individually
 
@@ -79,6 +85,8 @@ DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "task_list", 
 
 The retention window is 7 days (`Sync::WorkspaceSync::RETENTION_PERIOD`). A client whose `since` timestamp is older falls back to a full sync, so older `deleted_items` rows can be pruned by an out-of-band job without breaking correctness.
 
+Rule 3 applies to workspace-audience objects only. User-audience types ride a per-user delivery path that isn't part of `WorkspaceSync`, so a missed broadcast is recovered by the type's own `GET` endpoint on next load (e.g. `GET /api/notifications`) rather than by `deleted_items`.
+
 ## Partial sync
 
 `Sync::WorkspaceSync.call(workspace_id:, since:, membership:)` is what answers the WebSocket's catch-up request. It returns a `{ syncType, syncedAt, objects, deleted }` payload.
@@ -101,10 +109,10 @@ A policy crash for one object is caught in `PermissionAttacher.attach_to_message
 
 ## Adding a new syncable object type
 
-1. Add a row to `ObjectRegistry::TYPES` with the model, serializer, and policy.
-2. Implement `<Model>.changed_since(workspace_id, since)` so partial sync can find changed rows.
+1. Add a row to `ObjectRegistry::TYPES` with the model, serializer, policy, and `audience` (`:workspace` by default; `:user` for per-recipient types).
+2. **Workspace audience only:** implement `<Model>.changed_since(workspace_id, since)` so partial sync can find changed rows. User-audience types skip this — they aren't part of `WorkspaceSync`.
 3. Implement `<Model>Serializer.serialize_batch` (or extend `PoolObjectSerializer` if it fits).
-4. Implement `<Model>Policy` with at least the actions your routes enforce.
-5. In every service that mutates the new type, follow the three rules above.
+4. Implement `<Model>Policy` with at least the actions your routes enforce. User-audience types may set `policy: nil`.
+5. In every service that mutates the new type, follow the three rules above. User-audience services pass `user_id:` to `Broadcaster` and skip rules 2 and 3.
 6. Bump `CACHE_VERSION` in `frontend/src/api/poolDb.ts` if the wire shape changes — clients with stale caches will reset and full-sync.
 7. Add a `CASCADE_RULES` entry in `frontend/src/stores/objectPool.ts` if the new type is a parent — this is the client-side safety net, not a substitute for backend broadcasts.

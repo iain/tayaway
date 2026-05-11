@@ -91,6 +91,8 @@ module Invites
         # Broadcast new member
         Broadcaster.object_changed("member", membership_id, workspace_id: invite.workspace_id.to_s)
 
+        Invites::OnAccepted.call(invite: invite, invitee: user)
+
         # Send login link so the user can log in
         Auth::CreateLoginLink.send_login_link(user)
 

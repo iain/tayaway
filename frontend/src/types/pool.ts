@@ -44,6 +44,7 @@ export const OBJECT_TYPES = [
   'choreAssignment',
   'workspaceInvite',
   'expenseParticipant',
+  'notification',
 ] as const
 
 export interface ObjectTypeMap {
@@ -192,6 +193,19 @@ export interface ObjectTypeMap {
     lastRemindedAt: string | null
     createdAt: string
   }
+  notification: PoolObjectBase<'notification'> & {
+    userId: string
+    workspaceId: string | null
+    kind: string
+    data: {
+      title?: string
+      body?: string
+      href?: string
+      [key: string]: unknown
+    }
+    readAt: string | null
+    createdAt: string
+  }
 }
 
 // ============================================================================
@@ -219,6 +233,7 @@ export type PoolChore = ObjectTypeMap['chore']
 export type PoolChoreAssignment = ObjectTypeMap['choreAssignment']
 export type PoolExpenseParticipant = ObjectTypeMap['expenseParticipant']
 export type PoolWorkspaceInvite = ObjectTypeMap['workspaceInvite']
+export type PoolNotification = ObjectTypeMap['notification']
 
 // API response wrapper - all endpoints include objects array
 export interface PoolApiResponse {

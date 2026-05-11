@@ -87,4 +87,45 @@ RSpec.describe DatePolls::Create do
     event_obj = result.value![:objects].find { |o| o[:objectType] == "event" }
     expect(event_obj[:datePollId]).to eq(poll[:id])
   end
+
+  describe "event_created notifications" do
+    # Recipient/exclusion logic is covered in Events::OnCreated's spec.
+    # Here we verify the two wire-up rules specific to opening a poll:
+    # an undated event triggers an announce, a dated event doesn't (the
+    # announce already fired at create time).
+
+    it "lands a notification row in another member's inbox when the poll opens on an undated event" do
+      owner = TestFactories.user
+      other = TestFactories.user
+      event = TestFactories.event(workspace: workspace, user: owner)
+      owner_membership = membership_for(owner)
+      membership_for(other)
+
+      described_class.call(
+        event_id: event[:id],
+        membership: owner_membership,
+        deadline: (Time.now + 86_400).iso8601
+      )
+
+      rows = DB[:notifications].where(user_id: other[:id], kind: "event_created").all
+      expect(rows.length).to eq(1)
+    end
+
+    it "stays silent when the event already has dates (announce already fired at create)" do
+      owner = TestFactories.user
+      other = TestFactories.user
+      event = TestFactories.event(workspace: workspace, user: owner)
+      DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 2)
+      owner_membership = membership_for(owner)
+      membership_for(other)
+
+      described_class.call(
+        event_id: event[:id],
+        membership: owner_membership,
+        deadline: (Time.now + 86_400).iso8601
+      )
+
+      expect(DB[:notifications].where(kind: "event_created").count).to eq(0)
+    end
+  end
 end

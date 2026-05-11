@@ -74,6 +74,10 @@ RSpec.describe Users::VerifyEmailChange do
     expect(result.value![:message]).to include("email has been updated")
     expect(DB[:users].where(id: user[:id]).first[:email]).to eq("new@example.com")
     expect(DB[:email_change_tokens].where(id: email_token.record.id.to_s).first[:used_at]).not_to be_nil
-    expect(Broadcaster).to have_received(:object_changed).twice
+    # Two `member` broadcasts — one per workspace the user belongs to —
+    # plus one `notification` broadcast for the in-app delivery of
+    # `email_change_completed` to the user.
+    expect(Broadcaster).to have_received(:object_changed).with("member", anything, hash_including(:workspace_id)).twice
+    expect(Broadcaster).to have_received(:object_changed).with("notification", anything, hash_including(:user_id)).once
   end
 end

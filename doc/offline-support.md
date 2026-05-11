@@ -116,6 +116,8 @@ The client includes `since=<timestamp>` when connecting or switching workspaces.
 
 After sync, the new `syncedAt` is stored in memory and persisted to IndexedDB.
 
+Partial sync covers workspace-audience objects only. Per-user types (e.g. notifications) live in the same pool but ride a separate per-user broadcast path; a client that missed broadcasts while offline catches up on the next load via the type's own REST endpoint (e.g. `GET /api/notifications`).
+
 ### Queue flush
 
 On WebSocket authentication, `commandQueue.processQueue()` is called to flush any offline mutations.

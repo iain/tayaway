@@ -153,10 +153,30 @@ module Websocket
 
         if policy_context
           personalized = attach_permissions(message, connection.membership, policy_context).to_json
-          send_to_connection(connection, connection_id, personalized, workspace_id)
+          send_to_connection(connection, connection_id, personalized, "workspace:#{workspace_id}")
         else
-          send_to_connection(connection, connection_id, json_message, workspace_id)
+          send_to_connection(connection, connection_id, json_message, "workspace:#{workspace_id}")
         end
+      end
+    end
+
+    # Fans a message out to every connection authenticated as `user_id`,
+    # regardless of which workspace each connection currently has selected.
+    # Used for objects whose audience is a single user (e.g. notifications).
+    def broadcast_to_user(user_id, message)
+      uid = user_id.to_s
+      connection_ids = @mutex.synchronize do
+        @connections.values.select { |c| c.user_id == uid }.map(&:id)
+      end
+      return if connection_ids.empty?
+
+      json_message = message.to_json
+
+      fan_out(connection_ids) do |connection_id|
+        connection = @mutex.synchronize { @connections[connection_id] }
+        next unless connection
+
+        send_to_connection(connection, connection_id, json_message, "user:#{uid}")
       end
     end
 
@@ -216,11 +236,11 @@ module Websocket
       PermissionAttacher.attach_to_message(message, membership, policy_context)
     end
 
-    def send_to_connection(connection, connection_id, json_message, workspace_id)
+    def send_to_connection(connection, connection_id, json_message, audience_label)
       connection.websocket.write(json_message)
       connection.websocket.flush
     rescue StandardError => e
-      APP_LOGGER.error { "[ConnectionManager] Error broadcasting to workspace #{workspace_id}, conn #{connection_id}: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
+      APP_LOGGER.error { "[ConnectionManager] Error broadcasting to #{audience_label}, conn #{connection_id}: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
       unregister(connection_id)
     end
 

@@ -86,12 +86,9 @@ module Invites
         frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:5173")
         invite_link = "#{frontend_url}/invite/accept?token=#{jwt}"
 
-        workspace = Workspace.find(workspace_id)
-        workspace_name = workspace ? workspace.name : "Tayaway"
-
         APP_LOGGER.info { "[Invites::Create] Invite #{id} sent to #{email} in workspace #{workspace_id} by #{membership.user_id}" }
         APP_LOGGER.info { "INVITE LINK FOR #{email}: #{invite_link}" } if APP_ENV == "development"
-        Mailers::WorkspaceInvite.send_email(email: email, invite_link: invite_link, workspace_name: workspace_name, name: name)
+        Invites::OnSent.call(email: email, invite_link: invite_link, workspace_id: workspace_id, name: name)
 
         Broadcaster.object_changed("workspace_invite", id, workspace_id: workspace_id.to_s)
 

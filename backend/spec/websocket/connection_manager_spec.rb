@@ -453,6 +453,95 @@ RSpec.describe Websocket::ConnectionManager do
     end
   end
 
+  describe "#broadcast_to_user" do
+    it "writes the JSON-encoded message to every connection of the user" do
+      ws1 = FakeWebsocket.new
+      ws2 = FakeWebsocket.new
+      ws_other = FakeWebsocket.new
+      user_id = SecureRandom.uuid
+
+      manager.register(ws1, user_id)
+      manager.register(ws2, user_id)
+      manager.register(ws_other, SecureRandom.uuid)
+
+      manager.broadcast_to_user(user_id, { type: "broadcast", action: "update" })
+
+      expect(ws1.written).to include(include('"action":"update"'))
+      expect(ws2.written).to include(include('"action":"update"'))
+      expect(ws_other.written).to be_empty
+    end
+
+    it "is a no-op when the user has no connections" do
+      ws = FakeWebsocket.new
+      manager.register(ws, SecureRandom.uuid)
+
+      expect do
+        manager.broadcast_to_user(SecureRandom.uuid, { type: "broadcast" })
+      end.not_to raise_error
+
+      expect(ws.written).to be_empty
+    end
+
+    it "delivers across every workspace the user is currently subscribed to" do
+      # Per-user broadcasts (notifications, etc.) must arrive regardless of
+      # which workspace the user happens to have open right now — they are
+      # owned by the user, not by a workspace.
+      ws = FakeWebsocket.new
+      user_id = SecureRandom.uuid
+      conn_id = manager.register(ws, user_id)
+      manager.set_workspaces(conn_id, [SecureRandom.uuid])
+
+      manager.broadcast_to_user(user_id, { type: "broadcast", action: "update" })
+
+      expect(ws.written).to include(include('"action":"update"'))
+    end
+
+    it "unregisters connections whose write raises" do
+      user_id = SecureRandom.uuid
+      manager.register(BrokenWebsocket.new, user_id)
+
+      manager.broadcast_to_user(user_id, { type: "broadcast" })
+
+      expect(manager.connection_count).to eq(0)
+    end
+
+    it "still delivers to healthy connections when one write raises" do
+      user_id = SecureRandom.uuid
+      broken = BrokenWebsocket.new
+      healthy = FakeWebsocket.new
+      manager.register(broken, user_id)
+      manager.register(healthy, user_id)
+
+      manager.broadcast_to_user(user_id, { type: "broadcast", action: "update" })
+
+      expect(healthy.written).to include(include('"action":"update"'))
+    end
+
+    it "delivers to fast clients without waiting for a slow client's write" do
+      release = Async::Notification.new
+      slow = BlockingWebsocket.new(release)
+      fast = FakeWebsocket.new
+      user_id = SecureRandom.uuid
+
+      manager.register(slow, user_id)
+      manager.register(fast, user_id)
+
+      Sync do |task|
+        broadcast = task.async do
+          manager.broadcast_to_user(user_id, { type: "broadcast" })
+        end
+
+        task.sleep(0.01)
+        expect(fast.written).not_to be_empty
+        expect(slow.write_count).to eq(0)
+
+        release.signal
+        broadcast.wait
+        expect(slow.write_count).to eq(1)
+      end
+    end
+  end
+
   describe "#connections_for_user" do
     it "returns IDs of all connections for a given user" do
       user_id = SecureRandom.uuid
