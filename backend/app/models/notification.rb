@@ -35,34 +35,28 @@ class Notification < Data.define(:id, :user_id, :workspace_id, :kind, :data, :re
       DB[:notifications].where(user_id: user_id, read_at: nil).count
     end
 
-    # Marks one notification read and broadcasts the change so the user's
-    # other devices/tabs pick up the new read_at without a refresh. The
-    # `read_at: nil` predicate keeps the operation idempotent — re-reading
-    # an already-read row updates nothing and broadcasts nothing.
+    # DB primitive: flips read_at on a single unread row for this user and
+    # returns the affected ids (empty if the row was already read or
+    # belongs to a different user). The `read_at: nil` predicate makes the
+    # call idempotent; broadcasting is the service layer's job.
     def mark_read(id, user_id:)
-      affected = DB[:notifications]
-                 .where(id: id, user_id: user_id, read_at: nil)
-                 .returning(:id)
-                 .update(read_at: Sequel::CURRENT_TIMESTAMP, updated_at: Sequel::CURRENT_TIMESTAMP)
-      broadcast_changes(affected, user_id)
-      affected.length
+      DB[:notifications]
+        .where(id: id, user_id: user_id, read_at: nil)
+        .returning(:id)
+        .update(read_at: Sequel::CURRENT_TIMESTAMP, updated_at: Sequel::CURRENT_TIMESTAMP)
     end
 
+    # DB primitive: flips read_at on every unread row for this user and
+    # returns the affected ids. Already-read rows aren't returned, so the
+    # service can broadcast only the rows whose state actually moved.
     def mark_all_read(user_id)
-      affected = DB[:notifications]
-                 .where(user_id: user_id, read_at: nil)
-                 .returning(:id)
-                 .update(read_at: Sequel::CURRENT_TIMESTAMP, updated_at: Sequel::CURRENT_TIMESTAMP)
-      broadcast_changes(affected, user_id)
-      affected.length
+      DB[:notifications]
+        .where(user_id: user_id, read_at: nil)
+        .returning(:id)
+        .update(read_at: Sequel::CURRENT_TIMESTAMP, updated_at: Sequel::CURRENT_TIMESTAMP)
     end
 
     private
-
-    def broadcast_changes(rows, user_id)
-      uid = user_id.to_s
-      rows.each { |row| Broadcaster.object_changed("notification", row[:id], user_id: uid) }
-    end
 
     def dataset
       DB[:notifications].with_row_proc(method(:from_row))

@@ -57,8 +57,8 @@ class App
     r.on "read-all" do
       # PUT /api/notifications/read-all - mark every unread notification read
       r.put do
-        Notification.mark_all_read(user.id)
-        { ok: true }
+        result = Notifications::Inbox::MarkAllRead.call(user_id: user.id)
+        handle_result(result)
       end
     end
 
@@ -66,26 +66,23 @@ class App
       r.is do
         # POST /api/notifications/push-subscriptions - register a browser push subscription
         r.post do
-          endpoint = r.params["endpoint"].to_s
-          if endpoint.empty?
-            response.status = 400
-            { error: "endpoint is required" }
-          else
-            PushSubscription.upsert(
-              user_id: user.id,
-              endpoint: endpoint,
-              p256dh_key: r.params["p256dhKey"].to_s,
-              auth_key: r.params["authKey"].to_s,
-              user_agent: r.env["HTTP_USER_AGENT"]
-            )
-            { ok: true, vapidPublicKey: ENV.fetch("VAPID_PUBLIC_KEY", "") }
-          end
+          result = Notifications::PushSubscriptions::Register.call(
+            user_id: user.id,
+            endpoint: r.params["endpoint"],
+            p256dh_key: r.params["p256dhKey"],
+            auth_key: r.params["authKey"],
+            user_agent: r.env["HTTP_USER_AGENT"]
+          )
+          handle_result(result)
         end
 
         # DELETE /api/notifications/push-subscriptions - unregister
         r.delete do
-          PushSubscription.delete_by_endpoint(user_id: user.id, endpoint: r.params["endpoint"].to_s)
-          { ok: true }
+          result = Notifications::PushSubscriptions::Unregister.call(
+            user_id: user.id,
+            endpoint: r.params["endpoint"]
+          )
+          handle_result(result)
         end
       end
 
@@ -113,10 +110,8 @@ class App
       # object pool (where live broadcasts also land) and derive unread
       # state from one source.
       r.get do
-        notifications = Notification.for_user(user.id)
-        pool = PoolSerializer.new
-        pool.add(:notification, notifications)
-        { objects: pool.to_a }
+        result = Notifications::Inbox::List.call(user_id: user.id)
+        handle_result(result)
       end
     end
 
@@ -128,8 +123,8 @@ class App
       r.on "read" do
         # PUT /api/notifications/:id/read - mark one notification read
         r.put do
-          Notification.mark_read(id, user_id: user.id)
-          { ok: true }
+          result = Notifications::Inbox::MarkRead.call(id: id, user_id: user.id)
+          handle_result(result)
         end
       end
     end
