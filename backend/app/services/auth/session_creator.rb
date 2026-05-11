@@ -36,6 +36,7 @@ module Auth
       )
 
       APP_LOGGER.info { "[Auth::SessionCreator] Session created for user #{user_id}" }
+      Auth::OnNewSession.call(user_id: user_id, session_id: id, browser_info: browser_info, geo: geo)
       { session_token: token, user_id: user_id }
     end
 

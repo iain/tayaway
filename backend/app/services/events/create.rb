@@ -111,6 +111,11 @@ module Events
 
         if inserted
           APP_LOGGER.info { "[Events::Create] User #{membership.user_id} created event #{event.id} in workspace #{workspace_id}" }
+          # Undated events are placeholders — silent until they land a
+          # date or a poll opens. DatePolls::Create handles the latter.
+          if event.start_date
+            Events::OnCreated.call(event: event, actor_user_id: membership.user_id)
+          end
         end
 
         pool = PoolSerializer.new(membership: membership)

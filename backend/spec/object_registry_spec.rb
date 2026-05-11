@@ -6,10 +6,19 @@ RSpec.describe ObjectRegistry do
   describe "every registered entry" do
     ObjectRegistry::TYPES.each do |entry|
       context "when the entry is #{entry.key}" do
-        it "has a policy class that resolves and exposes ACTIONS" do
-          policy_class = Object.const_get(entry.policy)
-          expect(policy_class).to respond_to(:new)
-          expect(policy_class.const_get(:ACTIONS)).to be_an(Array)
+        if entry.policy
+          it "has a policy class that resolves and exposes ACTIONS" do
+            policy_class = Object.const_get(entry.policy)
+            expect(policy_class).to respond_to(:new)
+            expect(policy_class.const_get(:ACTIONS)).to be_an(Array)
+          end
+        else
+          # Policyless entries skip the per-viewer permission attacher and
+          # must therefore deliver only via the user-audience path, where
+          # the recipient itself is the authorisation gate.
+          it "is a user-audience entry (no policy → recipient is the audience)" do
+            expect(entry.user_audience?).to be(true)
+          end
         end
 
         it "has a serializer_class satisfying the pool-serializer contract" do
@@ -26,6 +35,10 @@ RSpec.describe ObjectRegistry do
         it "is discoverable via BY_CLIENT_TYPE by its client_type" do
           expect(ObjectRegistry::BY_CLIENT_TYPE[entry.client_type]).to eq(entry)
         end
+
+        it "declares an audience the rest of the system understands" do
+          expect(entry.audience).to(eq(:workspace).or(eq(:user)))
+        end
       end
     end
   end
@@ -37,6 +50,16 @@ RSpec.describe ObjectRegistry do
           key: "x", model: "X", client_type: "x", tracks_user: false
         )
       end.to raise_error(ArgumentError, /missing keyword/)
+    end
+
+    it "defaults audience to :workspace so existing entries keep their semantics" do
+      entry = ObjectRegistry::Entry.new(
+        key: "x", model: "Workspace", client_type: "x", tracks_user: false,
+        policy: "WorkspacePolicy", serializer_class: WorkspaceSerializer
+      )
+      expect(entry.audience).to eq(:workspace)
+      expect(entry.workspace_audience?).to be(true)
+      expect(entry.user_audience?).to be(false)
     end
   end
 end

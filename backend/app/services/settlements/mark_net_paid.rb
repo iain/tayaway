@@ -47,6 +47,8 @@ module Settlements
       def settle(workspace_id, membership, counterparty_user_id, expected_amount)
         failure = nil
         updated_ids = []
+        net_amount = nil
+        actor_role = nil
         now = Time.now
 
         DB.transaction do
@@ -113,6 +115,8 @@ module Settlements
             .where(id: net[:underlying_transfer_ids])
             .update(paid_at: now, paid_by_user_id: membership.user_id, updated_at: now)
           updated_ids = net[:underlying_transfer_ids]
+          net_amount = net[:amount]
+          actor_role = membership.user_id.to_s == net[:from_user_id].to_s ? "debtor" : "creditor"
         end
 
         return failure if failure
@@ -120,6 +124,14 @@ module Settlements
         updated_ids.each do |id|
           Broadcaster.object_changed("settlement_transfer", id, workspace_id: workspace_id)
         end
+
+        Settlements::OnPaid.call(
+          workspace_id: workspace_id,
+          actor_user_id: membership.user_id,
+          counterparty_user_id: counterparty_user_id,
+          amount: net_amount,
+          actor_role: actor_role
+        )
 
         pool = PoolSerializer.new(membership: membership)
         pool.add(:settlement_transfer, updated_ids.filter_map { |id| SettlementTransfer.find(id) })

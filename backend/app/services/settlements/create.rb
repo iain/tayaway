@@ -33,6 +33,7 @@ module Settlements
         now = Time.now
         failure = nil
         superseded_ids = []
+        committed_transfers = []
 
         DB.transaction do
           # Event-level lock serializes concurrent settlement attempts for the
@@ -172,6 +173,7 @@ module Settlements
             )
             Broadcaster.object_changed("settlement_transfer", transfer_id, workspace_id: workspace_id)
           end
+          committed_transfers = transfers
 
           if unsettled.any?
             # Target rows by the locked ids rather than re-evaluating
@@ -200,6 +202,8 @@ module Settlements
         all_expenses.select { |e| e.settlement_id&.to_s == settlement_id }.each do |expense|
           Broadcaster.object_changed("expense", expense.id, workspace_id: workspace_id)
         end
+
+        Settlements::OnCreated.call(transfers: committed_transfers, event: event, workspace_id: workspace_id)
 
         pool = PoolSerializer.new(membership: membership)
         settlement = Settlement.find(settlement_id)

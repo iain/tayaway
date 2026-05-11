@@ -58,6 +58,7 @@ module Auth
           )
 
           APP_LOGGER.info { "[Auth::Passkeys] Passkey #{id} registered for user #{user_id}" }
+          Auth::Passkeys::OnChanged.call(user_id: user_id, passkey_name: device_name, action: "added")
           Success({ passkey: passkey.to_api_hash })
         rescue Sequel::Error => e
           APP_LOGGER.warn { "[Auth::Passkeys] Registration DB error: #{e.class}" }

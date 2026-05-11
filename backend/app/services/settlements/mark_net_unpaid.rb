@@ -46,6 +46,7 @@ module Settlements
       def unmark(workspace_id, membership, counterparty_user_id, transfer_ids)
         failure = nil
         updated_ids = []
+        notify_payload = nil
         now = Time.now
 
         DB.transaction do
@@ -93,6 +94,7 @@ module Settlements
           DB[:settlement_transfers]
             .where(id: updated_ids)
             .update(paid_at: nil, paid_by_user_id: nil, updated_at: now)
+          notify_payload = build_notify_payload(rows, membership.user_id)
         end
 
         return failure if failure
@@ -101,9 +103,35 @@ module Settlements
           Broadcaster.object_changed("settlement_transfer", id, workspace_id: workspace_id)
         end
 
+        if notify_payload
+          Settlements::OnUnpaid.call(
+            workspace_id: workspace_id,
+            actor_user_id: membership.user_id,
+            counterparty_user_id: counterparty_user_id,
+            amount: notify_payload[:amount],
+            actor_role: notify_payload[:actor_role]
+          )
+        end
+
         pool = PoolSerializer.new(membership: membership)
         pool.add(:settlement_transfer, updated_ids.filter_map { |id| SettlementTransfer.find(id) })
         Success({ objects: pool.to_a })
+      end
+
+      # Determines the actor's role (debtor vs creditor) and total
+      # amount across the unmarked rows from the actor's perspective:
+      # positive net = actor was paying (debtor), negative = receiving
+      # (creditor). Mirrors what `compute_pair` does for MarkNetPaid,
+      # but inline because we already have the rows in hand.
+      def build_notify_payload(rows, actor_user_id)
+        actor_id = actor_user_id.to_s
+        signed = rows.sum do |r|
+          r[:from_user_id].to_s == actor_id ? r[:amount].to_f : -r[:amount].to_f
+        end
+        amount = signed.abs.round(2)
+        return nil if amount.zero?
+
+        { amount: amount, actor_role: signed.positive? ? "debtor" : "creditor" }
       end
 
       def pair_filter(user_a, user_b)

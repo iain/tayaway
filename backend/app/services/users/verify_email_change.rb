@@ -56,11 +56,14 @@ module Users
       end
 
       def update_email(email_token)
+        old_email = email_token.email.to_s
+        new_email = email_token.new_email.to_s
+
         DB.transaction do
           DB[:email_change_tokens].where(id: email_token.id.to_s).update(used_at: Time.now)
 
           DB[:users].where(id: email_token.user_id.to_s).update(
-            email: email_token.new_email.to_s,
+            email: new_email,
             updated_at: Time.now
           )
 
@@ -75,7 +78,8 @@ module Users
           end
         end
 
-        APP_LOGGER.info { "[Users::VerifyEmailChange] User #{email_token.user_id} changed email from #{email_token.email} to #{email_token.new_email}" }
+        APP_LOGGER.info { "[Users::VerifyEmailChange] User #{email_token.user_id} changed email from #{old_email} to #{new_email}" }
+        Users::OnEmailChanged.call(user_id: email_token.user_id, old_email: old_email, new_email: new_email)
         Success({ message: "Your email has been updated successfully." })
       end
     end

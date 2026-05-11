@@ -170,6 +170,7 @@ module Expenses
       def create_expense(event_id, membership, user_id, workspace_id, valid, id)
         now = Time.now
         expense_id = id || SecureRandom.uuid
+        notify = false
 
         DB.transaction do
           inserted = DB[:expenses]
@@ -192,7 +193,18 @@ module Expenses
           if inserted
             insert_participants(expense_id, valid[:participants], workspace_id)
             Broadcaster.object_changed("expense", expense_id, workspace_id: workspace_id)
+            notify = true
           end
+        end
+
+        if notify
+          Expenses::OnAdded.call(
+            event_id: event_id,
+            actor_user_id: membership.user_id,
+            description: valid[:description],
+            amount: valid[:amount],
+            workspace_id: workspace_id
+          )
         end
 
         pool = PoolSerializer.new(membership: membership)

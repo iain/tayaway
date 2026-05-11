@@ -28,6 +28,11 @@ module Auth
         def delete_passkey(passkey)
           DB[:passkey_credentials].where(id: passkey.id.to_s).delete
           APP_LOGGER.info { "[Auth::Passkeys] Passkey #{passkey.id} deleted for user #{passkey.user_id}" }
+          Auth::Passkeys::OnChanged.call(
+            user_id: passkey.user_id,
+            passkey_name: passkey.name,
+            action: "removed"
+          )
           Success({ message: "Passkey deleted" })
         end
       end

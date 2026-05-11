@@ -79,15 +79,12 @@ module Invites
         frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:5173")
         invite_link = "#{frontend_url}/invite/accept?token=#{jwt}"
 
-        workspace = Workspace.find(invite.workspace_id)
-        workspace_name = workspace ? workspace.name : "Tayaway"
-
         APP_LOGGER.info { "[Invites::Remind] Reminder sent for invite #{invite.id} to #{invite.email} in workspace #{invite.workspace_id}" }
         APP_LOGGER.info { "REMINDER INVITE LINK FOR #{invite.email}: #{invite_link}" } if APP_ENV == "development"
-        Mailers::WorkspaceInvite.send_email(
-          email: invite.email,
+        Invites::OnSent.call(
+          email: invite.email.to_s,
           invite_link: invite_link,
-          workspace_name: workspace_name,
+          workspace_id: invite.workspace_id,
           name: invite.name
         )
 

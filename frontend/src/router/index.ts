@@ -7,6 +7,8 @@ const SettingsLayout = () => import('@/layouts/SettingsLayout.vue')
 const SettingsProfilePage = () => import('@/pages/SettingsProfilePage.vue')
 const SettingsLoginPage = () => import('@/pages/SettingsLoginPage.vue')
 const SettingsPaymentPage = () => import('@/pages/SettingsPaymentPage.vue')
+const SettingsNotificationsPage = () =>
+  import('@/pages/SettingsNotificationsPage.vue')
 const EventsPage = () => import('@/pages/EventsPage.vue')
 const EventCreatePage = () => import('@/pages/EventCreatePage.vue')
 const EventPage = () => import('@/pages/EventPage.vue')
@@ -61,6 +63,11 @@ const router = createRouter({
               path: 'payment',
               name: 'settings-payment',
               component: SettingsPaymentPage,
+            },
+            {
+              path: 'notifications',
+              name: 'settings-notifications',
+              component: SettingsNotificationsPage,
             },
           ],
         },
