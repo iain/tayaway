@@ -1,20 +1,16 @@
 # frozen_string_literal: true
 
 module Events
-  # Fan an event_created notification out to every workspace member
-  # except the actor. Used by both `Events::Create` (when an event lands
-  # with concrete dates) and `DatePolls::Create` (when a date poll opens
-  # on a still-undated event). The two callers represent the only
-  # moments the event becomes worth telling people about: a fixed date,
-  # or a poll asking them to weigh in. An undated, poll-less event is a
+  # Fans an event_created notification out to every workspace member
+  # except the actor. Called by both `Events::Create` (when an event
+  # lands with concrete dates) and `DatePolls::Create` (when a date poll
+  # opens on a still-undated event) — the two moments the event becomes
+  # worth telling people about. An undated, poll-less event is a
   # placeholder and stays silent until one of those things happens.
-  #
-  # Errors are logged and swallowed so a notification failure can't
-  # block the underlying create flow.
-  module AnnounceCreated
+  module OnCreated
     class << self
       def call(event:, actor_user_id:)
-        Notifications::Safely.deliver(context: "Events::AnnounceCreated") do
+        Notifications::Safely.deliver(context: "Events::OnCreated") do
           actor = User.find(actor_user_id)
           workspace = Workspace.find(event.workspace_id)
           return unless actor && workspace

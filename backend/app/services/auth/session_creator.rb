@@ -36,44 +36,8 @@ module Auth
       )
 
       APP_LOGGER.info { "[Auth::SessionCreator] Session created for user #{user_id}" }
-      notify_if_new(user_id, id, browser_info, geo)
+      Auth::OnNewSession.call(user_id: user_id, session_id: id, browser_info: browser_info, geo: geo)
       { session_token: token, user_id: user_id }
-    end
-
-    # Fires `:new_session` only when this (browser, country) combination
-    # is novel for the user in the last 30 days. The first session a user
-    # ever has trips it (welcome and confirmation that login worked); a
-    # repeat sign-in from the same browser and country stays quiet.
-    def self.notify_if_new(user_id, session_id, browser_info, geo)
-      Notifications::Safely.deliver(context: "Auth::SessionCreator") do
-        browser_name = browser_info&.dig(:browser_name)
-        country = geo&.dig(:country)
-
-        seen_before = DB[:sessions]
-                      .where(user_id: user_id)
-                      .exclude(id: session_id)
-                      .where(browser_name: browser_name, country: country)
-                      .where { created_at >= (Time.now - (30 * 86_400)) }
-                      .any?
-        return if seen_before
-
-        user = User.find(user_id)
-        return unless user
-
-        Notifications::Dispatch.call(
-          kind: :new_session,
-          user_id: user_id.to_s,
-          data: {
-            email: user.email.to_s,
-            recipient_name: user.name,
-            browser_name: browser_name,
-            os_name: browser_info&.dig(:os_name),
-            city: geo&.dig(:city),
-            country: country,
-            session_url: "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/settings/login"
-          }
-        )
-      end
     end
 
     def self.parse_user_agent(user_agent)

@@ -125,35 +125,17 @@ module Settlements
           Broadcaster.object_changed("settlement_transfer", id, workspace_id: workspace_id)
         end
 
-        notify_counterparty(workspace_id, membership, counterparty_user_id, net_amount, actor_role)
+        Settlements::OnPaid.call(
+          workspace_id: workspace_id,
+          actor_user_id: membership.user_id,
+          counterparty_user_id: counterparty_user_id,
+          amount: net_amount,
+          actor_role: actor_role
+        )
 
         pool = PoolSerializer.new(membership: membership)
         pool.add(:settlement_transfer, updated_ids.filter_map { |id| SettlementTransfer.find(id) })
         Success({ objects: pool.to_a })
-      end
-
-      def notify_counterparty(workspace_id, membership, counterparty_user_id, amount, actor_role)
-        Notifications::Safely.deliver(context: "Settlements::MarkNetPaid") do
-          counterparty = User.find(counterparty_user_id)
-          actor = User.find(membership.user_id)
-          return unless counterparty && actor
-
-          settle_up_url = "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/settle-up"
-          Notifications::Dispatch.call(
-            kind: :payment_status_changed,
-            user_id: counterparty.id.to_s,
-            workspace_id: workspace_id.to_s,
-            data: {
-              email: counterparty.email.to_s,
-              recipient_name: counterparty.name,
-              action: "paid",
-              actor_name: actor.name || actor.email.to_s,
-              amount: amount.to_f,
-              actor_role: actor_role,
-              settle_up_url: settle_up_url
-            }
-          )
-        end
       end
 
       def pair_filter(user_a, user_b)

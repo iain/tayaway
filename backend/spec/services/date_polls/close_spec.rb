@@ -245,25 +245,9 @@ RSpec.describe DatePolls::Close do
       expect(text_body).to include("Head to the event page to RSVP")
     end
 
-    it "does not break the API response if email sending fails" do
-      owner = TestFactories.user
-      voter = TestFactories.user
-      event = TestFactories.event(workspace: workspace, user: owner)
-      date_poll = TestFactories.date_poll(event: event)
-      date_range = TestFactories.date_range(date_poll: date_poll)
-
-      TestFactories.vote(user: voter, date_range: date_range, response: "yes")
-
-      allow(Notifications::Dispatch).to receive(:call).and_raise(StandardError, "SMTP down")
-
-      result = described_class.call(
-        event_id: event[:id],
-        membership: membership_for(owner),
-        selected_date_range_id: date_range[:id]
-      )
-
-      expect(result.success?).to be true
-    end
+    # Failure-isolation for the notifier is exercised in
+    # DatePolls::OnClosed's spec; here we trust that the wire-up calls
+    # the handler and don't repeat the rescue assertion.
   end
 
   it "logs info when poll is closed" do

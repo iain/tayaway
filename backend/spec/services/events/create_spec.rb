@@ -248,33 +248,16 @@ RSpec.describe Events::Create do
   end
 
   describe "event_created notifications" do
-    it "does not dispatch event_created when the event has no dates" do
+    # Detailed recipient logic is covered in Events::OnCreated's spec.
+    # Here we just verify the wire-up: dated events trigger an announce,
+    # undated events stay silent.
+
+    it "lands a notification row in another member's inbox when dates are set" do
       owner = TestFactories.user
       other = TestFactories.user
       workspace = TestFactories.workspace
       membership = membership_for(owner, workspace)
       membership_for(other, workspace)
-      allow(Notifications::Dispatch).to receive(:call)
-
-      described_class.call(
-        workspace_id: workspace[:id],
-        membership: membership,
-        name: "Tentative trip",
-        description: nil
-      )
-
-      expect(Notifications::Dispatch).not_to have_received(:call).with(
-        hash_including(kind: :event_created)
-      )
-    end
-
-    it "dispatches event_created to other members when the event has dates" do
-      owner = TestFactories.user
-      other = TestFactories.user
-      workspace = TestFactories.workspace
-      membership = membership_for(owner, workspace)
-      membership_for(other, workspace)
-      allow(Notifications::Dispatch).to receive(:call)
 
       described_class.call(
         workspace_id: workspace[:id],
@@ -285,29 +268,25 @@ RSpec.describe Events::Create do
         end_date: "2026-03-20"
       )
 
-      expect(Notifications::Dispatch).to have_received(:call).with(
-        hash_including(kind: :event_created, user_id: other[:id].to_s)
-      )
+      rows = DB[:notifications].where(user_id: other[:id], kind: "event_created").all
+      expect(rows.length).to eq(1)
     end
 
-    it "does not notify the actor about their own event" do
+    it "stays silent for an undated event" do
       owner = TestFactories.user
+      other = TestFactories.user
       workspace = TestFactories.workspace
       membership = membership_for(owner, workspace)
-      allow(Notifications::Dispatch).to receive(:call)
+      membership_for(other, workspace)
 
       described_class.call(
         workspace_id: workspace[:id],
         membership: membership,
-        name: "Solo planner",
-        description: nil,
-        start_date: "2026-03-15",
-        end_date: "2026-03-20"
+        name: "Tentative trip",
+        description: nil
       )
 
-      expect(Notifications::Dispatch).not_to have_received(:call).with(
-        hash_including(kind: :event_created, user_id: owner[:id].to_s)
-      )
+      expect(DB[:notifications].where(kind: "event_created").count).to eq(0)
     end
   end
 end

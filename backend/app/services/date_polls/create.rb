@@ -70,7 +70,7 @@ module DatePolls
         # this reason. A dated event already announced itself at create
         # time, so opening a poll on it must not re-announce.
         if event.start_date.nil?
-          Events::AnnounceCreated.call(event: event, actor_user_id: membership.user_id)
+          Events::OnCreated.call(event: event, actor_user_id: membership.user_id)
         end
 
         pool = PoolSerializer.new(membership: membership)

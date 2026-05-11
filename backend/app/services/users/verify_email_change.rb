@@ -79,29 +79,8 @@ module Users
         end
 
         APP_LOGGER.info { "[Users::VerifyEmailChange] User #{email_token.user_id} changed email from #{old_email} to #{new_email}" }
-        notify_email_changed(email_token.user_id, old_email, new_email)
+        Users::OnEmailChanged.call(user_id: email_token.user_id, old_email: old_email, new_email: new_email)
         Success({ message: "Your email has been updated successfully." })
-      end
-
-      # Sends to the OLD email address — that's the security-critical
-      # surface, because if an attacker drove this flow the old inbox is
-      # the one the legitimate owner still controls. The in-app/push side
-      # of the dispatch reaches the user under the new email regardless.
-      def notify_email_changed(user_id, old_email, new_email)
-        Notifications::Safely.deliver(context: "Users::VerifyEmailChange") do
-          user = User.find(user_id)
-          Notifications::Dispatch.call(
-            kind: :email_change_completed,
-            user_id: user_id.to_s,
-            data: {
-              email: old_email,
-              recipient_name: user&.name,
-              old_email: old_email,
-              new_email: new_email,
-              session_url: "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/settings/login"
-            }
-          )
-        end
       end
     end
   end

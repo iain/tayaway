@@ -103,7 +103,15 @@ module Settlements
           Broadcaster.object_changed("settlement_transfer", id, workspace_id: workspace_id)
         end
 
-        notify_counterparty(workspace_id, membership, counterparty_user_id, notify_payload) if notify_payload
+        if notify_payload
+          Settlements::OnUnpaid.call(
+            workspace_id: workspace_id,
+            actor_user_id: membership.user_id,
+            counterparty_user_id: counterparty_user_id,
+            amount: notify_payload[:amount],
+            actor_role: notify_payload[:actor_role]
+          )
+        end
 
         pool = PoolSerializer.new(membership: membership)
         pool.add(:settlement_transfer, updated_ids.filter_map { |id| SettlementTransfer.find(id) })
@@ -124,30 +132,6 @@ module Settlements
         return nil if amount.zero?
 
         { amount: amount, actor_role: signed.positive? ? "debtor" : "creditor" }
-      end
-
-      def notify_counterparty(workspace_id, membership, counterparty_user_id, payload)
-        Notifications::Safely.deliver(context: "Settlements::MarkNetUnpaid") do
-          counterparty = User.find(counterparty_user_id)
-          actor = User.find(membership.user_id)
-          return unless counterparty && actor
-
-          settle_up_url = "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/settle-up"
-          Notifications::Dispatch.call(
-            kind: :payment_status_changed,
-            user_id: counterparty.id.to_s,
-            workspace_id: workspace_id.to_s,
-            data: {
-              email: counterparty.email.to_s,
-              recipient_name: counterparty.name,
-              action: "unpaid",
-              actor_name: actor.name || actor.email.to_s,
-              amount: payload[:amount],
-              actor_role: payload[:actor_role],
-              settle_up_url: settle_up_url
-            }
-          )
-        end
       end
 
       def pair_filter(user_a, user_b)

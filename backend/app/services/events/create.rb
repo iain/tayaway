@@ -114,7 +114,7 @@ module Events
           # Undated events are placeholders — silent until they land a
           # date or a poll opens. DatePolls::Create handles the latter.
           if event.start_date
-            Events::AnnounceCreated.call(event: event, actor_user_id: membership.user_id)
+            Events::OnCreated.call(event: event, actor_user_id: membership.user_id)
           end
         end
 

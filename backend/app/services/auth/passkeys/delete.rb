@@ -28,27 +28,12 @@ module Auth
         def delete_passkey(passkey)
           DB[:passkey_credentials].where(id: passkey.id.to_s).delete
           APP_LOGGER.info { "[Auth::Passkeys] Passkey #{passkey.id} deleted for user #{passkey.user_id}" }
-          notify_passkey_removed(passkey)
+          Auth::Passkeys::OnChanged.call(
+            user_id: passkey.user_id,
+            passkey_name: passkey.name,
+            action: "removed"
+          )
           Success({ message: "Passkey deleted" })
-        end
-
-        def notify_passkey_removed(passkey)
-          Notifications::Safely.deliver(context: "Auth::Passkeys") do
-            user = User.find(passkey.user_id)
-            return unless user
-
-            Notifications::Dispatch.call(
-              kind: :passkey_changed,
-              user_id: passkey.user_id.to_s,
-              data: {
-                email: user.email.to_s,
-                recipient_name: user.name,
-                action: "removed",
-                passkey_name: passkey.name,
-                session_url: "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/settings/login"
-              }
-            )
-          end
         end
       end
     end

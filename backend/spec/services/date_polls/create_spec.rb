@@ -89,13 +89,17 @@ RSpec.describe DatePolls::Create do
   end
 
   describe "event_created notifications" do
-    it "dispatches event_created to other workspace members when the poll opens" do
+    # Recipient/exclusion logic is covered in Events::OnCreated's spec.
+    # Here we verify the two wire-up rules specific to opening a poll:
+    # an undated event triggers an announce, a dated event doesn't (the
+    # announce already fired at create time).
+
+    it "lands a notification row in another member's inbox when the poll opens on an undated event" do
       owner = TestFactories.user
       other = TestFactories.user
       event = TestFactories.event(workspace: workspace, user: owner)
       owner_membership = membership_for(owner)
       membership_for(other)
-      allow(Notifications::Dispatch).to receive(:call)
 
       described_class.call(
         event_id: event[:id],
@@ -103,39 +107,17 @@ RSpec.describe DatePolls::Create do
         deadline: (Time.now + 86_400).iso8601
       )
 
-      expect(Notifications::Dispatch).to have_received(:call).with(
-        hash_including(kind: :event_created, user_id: other[:id].to_s)
-      )
+      rows = DB[:notifications].where(user_id: other[:id], kind: "event_created").all
+      expect(rows.length).to eq(1)
     end
 
-    it "does not notify the actor about a poll on their own event" do
-      owner = TestFactories.user
-      event = TestFactories.event(workspace: workspace, user: owner)
-      owner_membership = membership_for(owner)
-      allow(Notifications::Dispatch).to receive(:call)
-
-      described_class.call(
-        event_id: event[:id],
-        membership: owner_membership,
-        deadline: (Time.now + 86_400).iso8601
-      )
-
-      expect(Notifications::Dispatch).not_to have_received(:call).with(
-        hash_including(kind: :event_created, user_id: owner[:id].to_s)
-      )
-    end
-
-    # A dated event already announced itself at Events::Create time; firing
-    # again when someone opens a poll on it would be a duplicate ping. Only
-    # undated events earn an announce here.
-    it "does not dispatch event_created when the event already has dates" do
+    it "stays silent when the event already has dates (announce already fired at create)" do
       owner = TestFactories.user
       other = TestFactories.user
       event = TestFactories.event(workspace: workspace, user: owner)
       DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 2)
       owner_membership = membership_for(owner)
       membership_for(other)
-      allow(Notifications::Dispatch).to receive(:call)
 
       described_class.call(
         event_id: event[:id],
@@ -143,9 +125,7 @@ RSpec.describe DatePolls::Create do
         deadline: (Time.now + 86_400).iso8601
       )
 
-      expect(Notifications::Dispatch).not_to have_received(:call).with(
-        hash_including(kind: :event_created)
-      )
+      expect(DB[:notifications].where(kind: "event_created").count).to eq(0)
     end
   end
 end

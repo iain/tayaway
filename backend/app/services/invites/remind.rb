@@ -79,21 +79,13 @@ module Invites
         frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:5173")
         invite_link = "#{frontend_url}/invite/accept?token=#{jwt}"
 
-        workspace = Workspace.find(invite.workspace_id)
-        workspace_name = workspace ? workspace.name : "Tayaway"
-
         APP_LOGGER.info { "[Invites::Remind] Reminder sent for invite #{invite.id} to #{invite.email} in workspace #{invite.workspace_id}" }
         APP_LOGGER.info { "REMINDER INVITE LINK FOR #{invite.email}: #{invite_link}" } if APP_ENV == "development"
-        Notifications::Dispatch.call(
-          kind: :workspace_invite,
-          user_id: User.find_by_email(invite.email)&.id&.to_s,
-          workspace_id: invite.workspace_id.to_s,
-          data: {
-            email: invite.email.to_s,
-            invite_link: invite_link,
-            workspace_name: workspace_name,
-            name: invite.name
-          }
+        Invites::OnSent.call(
+          email: invite.email.to_s,
+          invite_link: invite_link,
+          workspace_id: invite.workspace_id,
+          name: invite.name
         )
 
         Broadcaster.object_changed("workspace_invite", invite.id, workspace_id: invite.workspace_id.to_s)

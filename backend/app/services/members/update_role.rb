@@ -54,35 +54,15 @@ module Members
 
         Broadcaster.object_changed("member", target.id.to_s, workspace_id: target.workspace_id.to_s)
 
-        notify_target(target, old_role, new_role) if old_role != new_role && acting_membership.user_id.to_s != target.user_id.to_s
+        if old_role != new_role && acting_membership.user_id.to_s != target.user_id.to_s
+          Members::OnRoleChanged.call(member: target, old_role: old_role, new_role: new_role)
+        end
 
         updated = WorkspaceMembership.find(target.id)
         pool = PoolSerializer.new(membership: acting_membership)
         pool.add(:member, [updated])
 
         Success({ objects: pool.to_a })
-      end
-
-      def notify_target(target, old_role, new_role)
-        Notifications::Safely.deliver(context: "Members::UpdateRole") do
-          user = User.find(target.user_id)
-          workspace = Workspace.find(target.workspace_id)
-          return unless user && workspace
-
-          Notifications::Dispatch.call(
-            kind: :member_role_changed,
-            user_id: target.user_id.to_s,
-            workspace_id: target.workspace_id.to_s,
-            data: {
-              email: user.email.to_s,
-              recipient_name: user.name,
-              workspace_name: workspace.name,
-              old_role: old_role,
-              new_role: new_role,
-              workspace_url: ENV.fetch("FRONTEND_URL", "https://tayaway.nl").to_s
-            }
-          )
-        end
       end
     end
   end
