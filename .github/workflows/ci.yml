@@ -41,6 +41,8 @@ jobs:
     env:
       APP_SECRET: dGVzdHNlY3JldHRlc3RzZWNyZXR0ZXN0c2VjcmV0dGU=
       CI: true
+      # Required by mise's monorepo mode (gated on this flag in 2026.5.x).
+      MISE_EXPERIMENTAL: true
 
     steps:
       - uses: actions/checkout@v6
@@ -84,11 +86,10 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm exec playwright install chromium --with-deps
 
-      - name: Set up databases
-        run: |
-          cd backend
-          DATABASE_URL=postgres://postgres:postgres@localhost:5432/tayaway_test RACK_ENV=test bundle exec rake db:create db:migrate
-          DATABASE_URL=postgres://postgres:postgres@localhost:5432/tayaway_e2e RACK_ENV=e2e bundle exec rake db:create db:migrate
+      - name: Set up test database
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/tayaway_test
+        run: mise run //backend:db:setup-test
 
       - name: Run checks (lint, typecheck, test, audit)
         env:
@@ -101,7 +102,9 @@ jobs:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/tayaway_e2e
           RACK_ENV: e2e
           FRONTEND_URL: http://localhost:5174
-        run: pnpm exec playwright test
+        # `mise run e2e` depends on //backend:db:setup-e2e, so the e2e DB
+        # gets created here under the right DATABASE_URL/RACK_ENV.
+        run: mise run e2e
 
       - name: Upload test report
         if: failure()
