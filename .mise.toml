@@ -1,17 +1,42 @@
+# Fail fast on older mise binaries — monorepo mode and several of the
+# settings below didn't exist before this release.
+min_version = "2026.5.5"
+
+# Marks this file as the root of a mise monorepo. Subproject mise.toml files
+# (listed below under [monorepo]) get their own tools, env, and tasks, and
+# inherit from this root. Cross-subproject task references use //path:task
+# (and //...:task wildcards). Requires MISE_EXPERIMENTAL=1 in your shell.
+experimental_monorepo_root = true
+
+[monorepo]
+config_roots = ["backend", "frontend"]
+
+[hooks]
+# After installing or updating any tool, refresh the project's deps so a
+# `mise install` (or a Ruby/Node bump that triggers one) leaves you with a
+# working bundle + node_modules. setup:deps fans out to both subprojects.
+postinstall = { task = "setup:deps" }
+
 [settings]
 experimental = true
 
+# Pin resolved tool versions + checksums into mise.lock so installs are
+# reproducible across the team and CI. Equivalent to Gemfile.lock /
+# pnpm-lock.yaml but for the toolchain itself.
+lockfile = true
+
+# Supply-chain verification at install time. Both are no-ops for backends
+# that don't publish provenance, so leaving them on is free insurance for
+# the tools that do.
+github_attestations = true
+slsa = true
+
+# Tools that every subproject (and root scripts: prettier, Playwright)
+# needs. Ruby lives in backend/mise.toml so frontend-only developers
+# don't pay for a Ruby install.
 [tools]
 node = "24"
-ruby = "4"
 "npm:pnpm" = "11.0.8"
-
-[env]
-# Required for any forked-worker setup on macOS (falcon-host, falcon serve,
-# rspec parallelisation): without it, libpq triggers Foundation's fork-safety
-# guard and the child process aborts on its first DB connect. Linux ignores
-# the variable, so it's safe to set unconditionally for everything mise runs.
-OBJC_DISABLE_INITIALIZE_FORK_SAFETY = "YES"
 
 # ── Workflows ────────────────────────────────────────────────────────────────
 #
@@ -22,46 +47,25 @@ OBJC_DISABLE_INITIALIZE_FORK_SAFETY = "YES"
 
 [tasks.dev]
 description = "Start frontend + backend dev servers"
-depends = ["dev:backend", "dev:frontend"]
-wait_for = ["dev:backend"]
+depends = ["//backend:dev", "//frontend:dev"]
+wait_for = ["//backend:dev"]
 run = "echo 'Dev servers started'"
-
-[tasks."dev:backend"]
-description = "Start backend dev server"
-depends = ["db:seed"]
-dir = "{{config_root}}/backend"
-run = "bundle exec falcon-host falcon.rb"
-
-[tasks."dev:frontend"]
-description = "Start frontend dev server"
-dir = "{{config_root}}/frontend"
-run = "pnpm run dev"
-
-[tasks."dev:reset"]
-description = "Kill any falcon-host / fsevent_watch processes left holding the dev backend port"
-run = """
-pids=$(lsof -ti :9292 2>/dev/null || true)
-if [ -n "$pids" ]; then
-  echo "Killing $(echo $pids | wc -w | tr -d ' ') process(es) on :9292"
-  kill -KILL $pids 2>/dev/null || true
-fi
-pkill -KILL -f fsevent_watch 2>/dev/null && echo "Killed orphaned fsevent_watch" || true
-echo "Dev backend port is free."
-"""
 
 [tasks.check]
 description = "Pre-commit: lint, typecheck, test, audit, cache-version (no e2e)"
 depends = [
-  "lint:*",
-  "typecheck:*",
-  "test:*",
-  "audit:*",
+  "//...:lint",
+  "//...:typecheck",
+  "//...:test",
+  "//...:audit",
   "check:cache-version",
 ]
 
 [tasks."check:cache-version"]
 description = "Verify CACHE_VERSION is bumped when pool-cache schema changes"
 run = "./scripts/check-cache-version.sh"
+sources = ["frontend/src/api/poolDb.ts", "scripts/check-cache-version.sh"]
+outputs = { auto = true }
 
 [tasks.ci]
 description = "Full CI: check + e2e"
@@ -69,6 +73,7 @@ depends = ["check", "e2e"]
 
 [tasks."ci:fresh"]
 description = "Wipe local daemon/cache/DB state, then run full CI"
+confirm = "Wipe local DB/cache state and run full CI. Continue?"
 # Reproduces the parts of GitHub Actions' clean-VM behaviour that
 # bite us locally: a wedged RuboCop server scoping inspections to a
 # subdirectory, stale TypeScript incremental build info masking real
@@ -89,197 +94,137 @@ echo "→ Resetting test database..."
 echo "→ Resetting e2e database..."
 (cd backend && RACK_ENV=e2e bundle exec rake db:drop db:create db:migrate)
 
-mise run ci
+mise run --force ci
 """
 
-# ── Lint (always autofix) ────────────────────────────────────────────────────
+# ── Aggregate task wildcards ─────────────────────────────────────────────────
+#
+# These collapse `lint:backend + lint:frontend` etc. into a single root task.
+# Subproject definitions are the source of truth; root just fans out.
 
 [tasks.lint]
 description = "Lint and autofix all code"
-depends = ["lint:*"]
+depends = ["//...:lint", "lint:config"]
 
-[tasks."lint:frontend"]
-description = "ESLint with autofix"
-dir = "{{config_root}}/frontend"
-run = "pnpm exec eslint src --fix"
-
-[tasks."lint:backend"]
-description = "RuboCop with autofix"
-dir = "{{config_root}}/backend"
-# `--no-server` avoids RuboCop's long-lived daemon, which can wedge
-# itself onto the wrong working directory and report a clean run on
-# files CI then catches. Costs ~0.5 s per invocation; cheap insurance.
-run = "bundle exec rubocop -A -f q --no-server"
-
-# ── Typecheck ────────────────────────────────────────────────────────────────
+[tasks."lint:config"]
+description = "Canonically format all mise.toml files"
+run = "mise fmt"
+sources = [".mise.toml", "backend/mise.toml", "frontend/mise.toml"]
+outputs = { auto = true }
 
 [tasks.typecheck]
 description = "Run all type checkers"
-depends = ["typecheck:*"]
-
-[tasks."typecheck:frontend"]
-description = "Vue + TypeScript type checking"
-dir = "{{config_root}}/frontend"
-run = "pnpm exec vue-tsc -b"
-
-# ── Test ─────────────────────────────────────────────────────────────────────
+depends = ["//...:typecheck"]
 
 [tasks.test]
 description = "Run unit and integration tests"
-depends = ["test:*"]
+depends = ["//...:test"]
 
-[tasks."test:frontend"]
-description = "Vitest"
-dir = "{{config_root}}/frontend"
-run = "pnpm exec vitest run --reporter=dot --silent"
+[tasks.audit]
+description = "Dependency vulnerability scanning"
+depends = ["//...:audit"]
 
-[tasks."test:backend"]
-description = "RSpec"
-dir = "{{config_root}}/backend"
-run = "RACK_ENV=test bundle exec rspec -f progress"
+[tasks.build]
+description = "Build production frontend assets"
+depends = ["//frontend:build"]
 
 # ── E2E (standalone — not part of test:*) ────────────────────────────────────
 
 [tasks.e2e]
 description = "Playwright end-to-end tests"
-depends = ["db:setup-e2e"]
-run = "pnpm exec playwright test"
+depends = ["//backend:db:setup-e2e"]
+usage = '''
+arg "[pattern]" help="Test file path or glob (default: all)"
+flag "-g --grep <grep>" help="Run only tests whose title matches the given regex"
+flag "--ui" help="Open Playwright's UI mode for interactive debugging"
+flag "--headed" help="Run browsers in headed mode (visible window)"
+'''
+shell = "bash -c"
+run = """
+args=()
+[ -n "$usage_grep" ] && args+=( --grep "$usage_grep" )
+[ "$usage_ui" = "true" ] && args+=( --ui )
+[ "$usage_headed" = "true" ] && args+=( --headed )
+[ -n "$usage_pattern" ] && args+=( "$usage_pattern" )
+pnpm exec playwright test "${args[@]}"
+"""
 
-# ── Audit ────────────────────────────────────────────────────────────────────
-
-[tasks.audit]
-description = "Dependency vulnerability scanning"
-depends = ["audit:*"]
-
-[tasks."audit:frontend"]
-description = "pnpm audit"
-dir = "{{config_root}}/frontend"
-run = "pnpm audit --audit-level=high"
-
-[tasks."audit:backend"]
-description = "bundler-audit"
-dir = "{{config_root}}/backend"
-run = "bundle exec bundler-audit check --update"
-
-# ── Build & Deploy ───────────────────────────────────────────────────────────
-
-[tasks.build]
-description = "Build production frontend assets"
-dir = "{{config_root}}/frontend"
-run = "pnpm run build"
-
-[tasks.deploy]
-description = "Deploy to production"
-run = "bundle exec cap production deploy"
-
-# ── Database ─────────────────────────────────────────────────────────────────
+# ── Backend convenience aliases ──────────────────────────────────────────────
+#
+# Root-level passthroughs so `mise run db:migrate` from the project root keeps
+# working the way it always has. The real definitions live in backend/mise.toml.
 
 [tasks."db:create"]
 description = "Create the development database"
-dir = "{{config_root}}/backend"
-run = "bundle exec rake db:create"
+depends = ["//backend:db:create"]
 
 [tasks."db:drop"]
 description = "Drop the development database"
-dir = "{{config_root}}/backend"
-run = "bundle exec rake db:drop"
+depends = ["//backend:db:drop"]
 
 [tasks."db:migrate"]
 description = "Run database migrations"
-dir = "{{config_root}}/backend"
-run = "bundle exec rake db:migrate"
+depends = ["//backend:db:migrate"]
 
 [tasks."db:rollback"]
 description = "Rollback the last migration"
-dir = "{{config_root}}/backend"
-run = "bundle exec rake db:rollback"
+depends = ["//backend:db:rollback"]
 
 [tasks."db:reset"]
 description = "Reset the development database"
-dir = "{{config_root}}/backend"
-run = "bundle exec rake db:reset"
+depends = ["//backend:db:reset"]
 
 [tasks."db:seed"]
 description = "Seed the development database"
-dir = "{{config_root}}/backend"
-run = "bundle exec rake db:seed"
+depends = ["//backend:db:seed"]
 
 [tasks."db:seed-dev"]
 description = "Populate the development database with rich sample data"
-dir = "{{config_root}}/backend"
-run = "RACK_ENV=development bundle exec ruby db/seed_dev.rb"
+depends = ["//backend:db:seed-dev"]
 
-[tasks."db:setup-e2e"]
-description = "Create and migrate the e2e database"
-dir = "{{config_root}}/backend"
-run = "RACK_ENV=e2e bundle exec rake db:create db:migrate"
+[tasks."db:backup"]
+description = "Trigger a database backup on the production server"
+depends = ["//backend:db:backup"]
+
+[tasks.console]
+description = "Open a Ruby console with the app loaded"
+depends = ["//backend:console"]
+
+# ── Deploy ───────────────────────────────────────────────────────────────────
+
+[tasks.deploy]
+description = "Deploy to production"
+confirm = "Deploy to PRODUCTION. Continue?"
+# Capistrano lives at the project root (Capfile, root Gemfile), so this task
+# needs Ruby even though backend/mise.toml owns the main Ruby dependency.
+tools = { ruby = "4" }
+run = "bundle exec cap production deploy"
 
 # ── Setup ────────────────────────────────────────────────────────────────────
 
 [tasks.setup]
 description = "Set up the project after cloning"
-depends = ["setup:deps", "setup:db"]
+depends = ["setup:deps", "setup:db", "setup:hooks"]
 run = "echo \"Setup complete! Run 'mise run dev' to start.\""
 
 [tasks."setup:deps"]
 description = "Install all dependencies"
-depends = ["setup:deps-frontend", "setup:deps-backend", "setup:deps-root"]
-
-[tasks."setup:deps-frontend"]
-description = "Install frontend dependencies"
-dir = "{{config_root}}/frontend"
-run = "pnpm install"
-
-[tasks."setup:deps-backend"]
-description = "Install backend dependencies"
-dir = "{{config_root}}/backend"
-run = "bundle install"
+depends = ["//...:setup:deps", "setup:deps-root"]
 
 [tasks."setup:deps-root"]
-description = "Install root dependencies (Playwright)"
+description = "Install root dependencies (Playwright, prettier)"
 run = "pnpm install"
 
 [tasks."setup:db"]
-description = "Create and migrate all databases"
-dir = "{{config_root}}/backend"
+description = "Create and migrate the development, test, and e2e databases"
+depends = ["//backend:setup:db"]
+
+[tasks."setup:hooks"]
+description = "Install the git pre-commit hook"
+# Writes .git/hooks/pre-commit that runs `mise run check` on commit. Each
+# clone needs this once; rerunning is harmless. The unset clears the leftover
+# `core.hooksPath = .husky/_` from clones that pre-date the husky removal.
 run = """
-echo "Setting up development database..."
-RACK_ENV=development bundle exec rake db:create db:migrate
-
-echo "Setting up test database..."
-RACK_ENV=test bundle exec rake db:create db:migrate
-
-echo "Setting up e2e database..."
-RACK_ENV=e2e bundle exec rake db:create db:migrate
-
-echo "All databases ready"
+git config --unset core.hooksPath 2>/dev/null || true
+mise generate git-pre-commit --task check --write
 """
-
-# ── Data ─────────────────────────────────────────────────────────────────────
-
-[tasks."data:geoip"]
-description = "Download DB-IP Lite city database for IP geolocation"
-dir = "{{config_root}}/backend"
-run = """
-mkdir -p data
-MONTH=$(date +%Y-%m)
-URL="https://download.db-ip.com/free/dbip-city-lite-${MONTH}.mmdb.gz"
-echo "Downloading DB-IP Lite city database (${MONTH})..."
-curl -fSL -o /tmp/dbip-city-lite.mmdb.gz "$URL"
-gunzip -c /tmp/dbip-city-lite.mmdb.gz > data/dbip-city-lite.mmdb
-rm /tmp/dbip-city-lite.mmdb.gz
-echo "Saved to backend/data/dbip-city-lite.mmdb"
-"""
-
-# ── Backup ───────────────────────────────────────────────────────────────────
-
-[tasks."db:backup"]
-description = "Trigger a database backup on the production server"
-run = "ssh -p 50022 ubuntu@tayaway.nl '/var/www/tayaway/current/config/deploy/backup-db.sh'"
-
-# ── Misc ─────────────────────────────────────────────────────────────────────
-
-[tasks.console]
-description = "Open a Ruby console with the app loaded"
-dir = "{{config_root}}/backend"
-run = "bundle exec pry -r ./config/environment"

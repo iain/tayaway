@@ -1,0 +1,85 @@
+# ── Dev ──────────────────────────────────────────────────────────────────────
+
+[tasks.dev]
+description = "Start frontend dev server"
+run = "pnpm run dev"
+
+# ── Lint / Typecheck / Test / Audit ──────────────────────────────────────────
+
+[tasks.lint]
+description = "ESLint (autofix by default)"
+usage = '''
+flag "--no-fix" help="Report errors without autofixing (use in CI)"
+'''
+shell = "bash -c"
+run = """
+args=( src )
+[ "$usage_no_fix" = "true" ] || args+=( --fix )
+pnpm exec eslint "${args[@]}"
+"""
+sources = ["src/**/*.{ts,tsx,vue,js,jsx}", "eslint.config.js", "package.json"]
+outputs = { auto = true }
+
+[tasks.typecheck]
+description = "Vue + TypeScript type checking"
+run = "pnpm exec vue-tsc -b"
+sources = [
+  "src/**/*.{ts,tsx,vue}",
+  "tsconfig.json",
+  "tsconfig.app.json",
+  "tsconfig.node.json",
+  "package.json",
+]
+outputs = { auto = true }
+
+[tasks.test]
+description = "Vitest"
+usage = '''
+arg "[pattern]" help="Filename or glob to run (default: all)"
+flag "-w --watch" help="Re-run on file changes"
+flag "-c --coverage" help="Collect coverage report"
+'''
+shell = "bash -c"
+run = """
+# Vitest defaults: `vitest run` is one-shot, plain `vitest` is watch mode.
+mode="run"
+[ "$usage_watch" = "true" ] && mode=""
+args=( --reporter=dot --silent )
+[ "$usage_coverage" = "true" ] && args+=( --coverage )
+[ -n "$usage_pattern" ] && args+=( "$usage_pattern" )
+pnpm exec vitest $mode "${args[@]}"
+"""
+sources = [
+  "src/**/*.{ts,tsx,vue}",
+  "vitest.config.ts",
+  "package.json",
+]
+outputs = { auto = true }
+
+[tasks.audit]
+description = "pnpm audit"
+run = "pnpm audit --audit-level=high"
+
+# ── Build ────────────────────────────────────────────────────────────────────
+
+[tasks.build]
+description = "Build frontend assets"
+usage = '''
+flag "-m --mode <mode>" help="Vite build mode (production, staging, development)" default="production"
+'''
+run = 'pnpm exec vite build --mode "${usage_mode}"'
+sources = [
+  "src/**",
+  "public/**",
+  "index.html",
+  "vite.config.ts",
+  "tsconfig*.json",
+  "package.json",
+]
+outputs = ["dist/**"]
+
+# ── Setup ────────────────────────────────────────────────────────────────────
+
+[tasks."setup:deps"]
+description = "Install frontend dependencies"
+run = "pnpm install"
