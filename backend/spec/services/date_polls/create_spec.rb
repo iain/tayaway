@@ -124,5 +124,28 @@ RSpec.describe DatePolls::Create do
         hash_including(kind: :event_created, user_id: owner[:id].to_s)
       )
     end
+
+    # A dated event already announced itself at Events::Create time; firing
+    # again when someone opens a poll on it would be a duplicate ping. Only
+    # undated events earn an announce here.
+    it "does not dispatch event_created when the event already has dates" do
+      owner = TestFactories.user
+      other = TestFactories.user
+      event = TestFactories.event(workspace: workspace, user: owner)
+      DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 2)
+      owner_membership = membership_for(owner)
+      membership_for(other)
+      allow(Notifications::Dispatch).to receive(:call)
+
+      described_class.call(
+        event_id: event[:id],
+        membership: owner_membership,
+        deadline: (Time.now + 86_400).iso8601
+      )
+
+      expect(Notifications::Dispatch).not_to have_received(:call).with(
+        hash_including(kind: :event_created)
+      )
+    end
   end
 end

@@ -88,20 +88,20 @@ module Users
       # the one the legitimate owner still controls. The in-app/push side
       # of the dispatch reaches the user under the new email regardless.
       def notify_email_changed(user_id, old_email, new_email)
-        user = User.find(user_id)
-        Notifications::Dispatch.call(
-          kind: :email_change_completed,
-          user_id: user_id.to_s,
-          data: {
-            email: old_email,
-            recipient_name: user&.name,
-            old_email: old_email,
-            new_email: new_email,
-            session_url: "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/settings/login"
-          }
-        )
-      rescue StandardError => e
-        APP_LOGGER.error { "[Users::VerifyEmailChange] Failed to dispatch email_change_completed: #{e.class} - #{e.message}" }
+        Notifications::Safely.deliver(context: "Users::VerifyEmailChange") do
+          user = User.find(user_id)
+          Notifications::Dispatch.call(
+            kind: :email_change_completed,
+            user_id: user_id.to_s,
+            data: {
+              email: old_email,
+              recipient_name: user&.name,
+              old_email: old_email,
+              new_email: new_email,
+              session_url: "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/settings/login"
+            }
+          )
+        end
       end
     end
   end

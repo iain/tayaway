@@ -39,6 +39,19 @@ class App
         )
         handle_result(result)
       end
+
+      # POST /api/notifications/preferences/unsilence - reverse of silence,
+      # clearing override rows so the kind falls back to defaults. Powers
+      # the bell's Undo action — the silence POST fires immediately on
+      # click so the preference survives page navigation, and Undo fires
+      # this to restore.
+      r.post "unsilence" do
+        result = Notifications::Preferences::Unsilence.call(
+          user_id: user.id,
+          kind: r.params["kind"]
+        )
+        handle_result(result)
+      end
     end
 
     r.on "read-all" do

@@ -100,28 +100,28 @@ module Invites
       end
 
       def notify_inviter(invite, invitee)
-        return unless invite.invited_by
+        Notifications::Safely.deliver(context: "Invites::Accept") do
+          return unless invite.invited_by
 
-        inviter = User.find(invite.invited_by)
-        workspace = Workspace.find(invite.workspace_id)
-        return unless inviter && workspace
+          inviter = User.find(invite.invited_by)
+          workspace = Workspace.find(invite.workspace_id)
+          return unless inviter && workspace
 
-        invitee_display = invitee.name || invitee.email.to_s
+          invitee_display = invitee.name || invitee.email.to_s
 
-        Notifications::Dispatch.call(
-          kind: :workspace_invite_accepted,
-          user_id: inviter.id.to_s,
-          workspace_id: invite.workspace_id.to_s,
-          data: {
-            email: inviter.email.to_s,
-            recipient_name: inviter.name,
-            invitee_name: invitee_display,
-            workspace_name: workspace.name,
-            workspace_url: ENV.fetch("FRONTEND_URL", "https://tayaway.nl").to_s
-          }
-        )
-      rescue StandardError => e
-        APP_LOGGER.error { "[Invites::Accept] Failed to dispatch workspace_invite_accepted: #{e.class} - #{e.message}" }
+          Notifications::Dispatch.call(
+            kind: :workspace_invite_accepted,
+            user_id: inviter.id.to_s,
+            workspace_id: invite.workspace_id.to_s,
+            data: {
+              email: inviter.email.to_s,
+              recipient_name: inviter.name,
+              invitee_name: invitee_display,
+              workspace_name: workspace.name,
+              workspace_url: ENV.fetch("FRONTEND_URL", "https://tayaway.nl").to_s
+            }
+          )
+        end
       end
     end
   end

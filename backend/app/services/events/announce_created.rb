@@ -14,36 +14,36 @@ module Events
   module AnnounceCreated
     class << self
       def call(event:, actor_user_id:)
-        actor = User.find(actor_user_id)
-        workspace = Workspace.find(event.workspace_id)
-        return unless actor && workspace
+        Notifications::Safely.deliver(context: "Events::AnnounceCreated") do
+          actor = User.find(actor_user_id)
+          workspace = Workspace.find(event.workspace_id)
+          return unless actor && workspace
 
-        actor_name = actor.name || actor.email.to_s
-        recipient_user_ids = WorkspaceMembership
-                             .for_workspace(event.workspace_id)
-                             .map { |m| m.user_id.to_s } - [actor_user_id.to_s]
-        return if recipient_user_ids.empty?
+          actor_name = actor.name || actor.email.to_s
+          recipient_user_ids = WorkspaceMembership
+                               .for_workspace(event.workspace_id)
+                               .map { |m| m.user_id.to_s } - [actor_user_id.to_s]
+          return if recipient_user_ids.empty?
 
-        users = User.for_ids(recipient_user_ids)
-        event_url = "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/events/#{event.id}"
+          users = User.for_ids(recipient_user_ids)
+          event_url = "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/events/#{event.id}"
 
-        users.each do |user|
-          Notifications::Dispatch.call(
-            kind: :event_created,
-            user_id: user.id.to_s,
-            workspace_id: event.workspace_id.to_s,
-            data: {
-              email: user.email.to_s,
-              recipient_name: user.name,
-              actor_name: actor_name,
-              event_name: event.name,
-              workspace_name: workspace.name,
-              event_url: event_url
-            }
-          )
+          users.each do |user|
+            Notifications::Dispatch.call(
+              kind: :event_created,
+              user_id: user.id.to_s,
+              workspace_id: event.workspace_id.to_s,
+              data: {
+                email: user.email.to_s,
+                recipient_name: user.name,
+                actor_name: actor_name,
+                event_name: event.name,
+                workspace_name: workspace.name,
+                event_url: event_url
+              }
+            )
+          end
         end
-      rescue StandardError => e
-        APP_LOGGER.error { "[Events::AnnounceCreated] Failed to dispatch event_created: #{e.class} - #{e.message}" }
       end
     end
   end

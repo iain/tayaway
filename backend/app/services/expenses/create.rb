@@ -206,36 +206,36 @@ module Expenses
       end
 
       def notify_attendees(event_id, membership, valid, workspace_id)
-        event = Event.find(event_id)
-        return unless event
+        Notifications::Safely.deliver(context: "Expenses::Create") do
+          event = Event.find(event_id)
+          return unless event
 
-        attending_rsvps = Rsvp.for_event(event_id).select(&:attending)
-        recipient_ids = attending_rsvps.map { |r| r.user_id.to_s } - [membership.user_id.to_s]
-        return if recipient_ids.empty?
+          attending_rsvps = Rsvp.for_event(event_id).select(&:attending)
+          recipient_ids = attending_rsvps.map { |r| r.user_id.to_s } - [membership.user_id.to_s]
+          return if recipient_ids.empty?
 
-        users = User.for_ids(recipient_ids)
-        actor = User.find(membership.user_id)
-        actor_name = actor&.name || actor&.email&.to_s || "Someone"
-        event_url = "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/events/#{event_id}"
+          users = User.for_ids(recipient_ids)
+          actor = User.find(membership.user_id)
+          actor_name = actor&.name || actor&.email&.to_s || "Someone"
+          event_url = "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/events/#{event_id}"
 
-        users.each do |user|
-          Notifications::Dispatch.call(
-            kind: :expense_added,
-            user_id: user.id.to_s,
-            workspace_id: workspace_id,
-            data: {
-              email: user.email.to_s,
-              recipient_name: user.name,
-              actor_name: actor_name,
-              description: valid[:description],
-              amount: valid[:amount].to_f,
-              event_name: event.name,
-              event_url: event_url
-            }
-          )
+          users.each do |user|
+            Notifications::Dispatch.call(
+              kind: :expense_added,
+              user_id: user.id.to_s,
+              workspace_id: workspace_id,
+              data: {
+                email: user.email.to_s,
+                recipient_name: user.name,
+                actor_name: actor_name,
+                description: valid[:description],
+                amount: valid[:amount].to_f,
+                event_name: event.name,
+                event_url: event_url
+              }
+            )
+          end
         end
-      rescue StandardError => e
-        APP_LOGGER.error { "[Expenses::Create] Failed to dispatch expense notifications: #{e.class} - #{e.message}" }
       end
 
       def insert_participants(expense_id, participants, workspace_id)

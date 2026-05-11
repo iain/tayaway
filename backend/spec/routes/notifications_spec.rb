@@ -63,6 +63,24 @@ RSpec.describe "Notifications inbox endpoints" do
       expect(DB[:notifications].where(id: id).get(:read_at)).not_to be_nil
     end
 
+    it "broadcasts the change so other devices update" do
+      id = insert_notification
+      allow(Broadcaster).to receive(:object_changed)
+
+      put "/api/notifications/#{id}/read", "{}", auth_headers.merge("CONTENT_TYPE" => "application/json")
+
+      expect(Broadcaster).to have_received(:object_changed).with("notification", id, user_id: user[:id])
+    end
+
+    it "doesn't broadcast when the row was already read" do
+      id = insert_notification(read_at: Time.now - 60)
+      allow(Broadcaster).to receive(:object_changed)
+
+      put "/api/notifications/#{id}/read", "{}", auth_headers.merge("CONTENT_TYPE" => "application/json")
+
+      expect(Broadcaster).not_to have_received(:object_changed)
+    end
+
     it "doesn't mark another user's notification" do
       other = TestFactories.user
       id = insert_notification(user_id: other[:id])
@@ -70,6 +88,16 @@ RSpec.describe "Notifications inbox endpoints" do
       put "/api/notifications/#{id}/read", "{}", auth_headers.merge("CONTENT_TYPE" => "application/json")
 
       expect(DB[:notifications].where(id: id).get(:read_at)).to be_nil
+    end
+
+    it "doesn't broadcast when targeting another user's notification" do
+      other = TestFactories.user
+      id = insert_notification(user_id: other[:id])
+      allow(Broadcaster).to receive(:object_changed)
+
+      put "/api/notifications/#{id}/read", "{}", auth_headers.merge("CONTENT_TYPE" => "application/json")
+
+      expect(Broadcaster).not_to have_received(:object_changed)
     end
   end
 
@@ -137,6 +165,28 @@ RSpec.describe "Notifications inbox endpoints" do
       expect(DB[:notifications].where(user_id: user[:id], read_at: nil).count).to eq(0)
       # Pre-existing read_at must not have been clobbered.
       expect(DB[:notifications].where(id: already_read).get(:read_at)).to eq(original_read_at)
+    end
+
+    it "broadcasts each newly-read row so other devices update" do
+      a = insert_notification
+      b = insert_notification
+      insert_notification(read_at: Time.now - 60)
+      allow(Broadcaster).to receive(:object_changed)
+
+      put "/api/notifications/read-all", "{}", auth_headers.merge("CONTENT_TYPE" => "application/json")
+
+      expect(Broadcaster).to have_received(:object_changed).with("notification", a, user_id: user[:id])
+      expect(Broadcaster).to have_received(:object_changed).with("notification", b, user_id: user[:id])
+      expect(Broadcaster).to have_received(:object_changed).twice
+    end
+
+    it "doesn't broadcast when there's nothing to mark" do
+      insert_notification(read_at: Time.now - 60)
+      allow(Broadcaster).to receive(:object_changed)
+
+      put "/api/notifications/read-all", "{}", auth_headers.merge("CONTENT_TYPE" => "application/json")
+
+      expect(Broadcaster).not_to have_received(:object_changed)
     end
   end
 end

@@ -140,32 +140,32 @@ module Events
       end
 
       def notify_attendees_of_changes(before, after, membership, workspace_id)
-        change_summary = summarize_changes(before, after)
-        return unless change_summary
+        Notifications::Safely.deliver(context: "Events::Update") do
+          change_summary = summarize_changes(before, after)
+          return unless change_summary
 
-        attending_rsvps = Rsvp.for_event(after.id).select(&:attending)
-        recipient_ids = attending_rsvps.map { |r| r.user_id.to_s } - [membership.user_id.to_s]
-        return if recipient_ids.empty?
+          attending_rsvps = Rsvp.for_event(after.id).select(&:attending)
+          recipient_ids = attending_rsvps.map { |r| r.user_id.to_s } - [membership.user_id.to_s]
+          return if recipient_ids.empty?
 
-        event_url = "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/events/#{after.id}"
-        users = User.for_ids(recipient_ids)
+          event_url = "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/events/#{after.id}"
+          users = User.for_ids(recipient_ids)
 
-        users.each do |user|
-          Notifications::Dispatch.call(
-            kind: :event_details_changed,
-            user_id: user.id.to_s,
-            workspace_id: workspace_id,
-            data: {
-              email: user.email.to_s,
-              recipient_name: user.name,
-              event_name: after.name,
-              change_summary: change_summary,
-              event_url: event_url
-            }
-          )
+          users.each do |user|
+            Notifications::Dispatch.call(
+              kind: :event_details_changed,
+              user_id: user.id.to_s,
+              workspace_id: workspace_id,
+              data: {
+                email: user.email.to_s,
+                recipient_name: user.name,
+                event_name: after.name,
+                change_summary: change_summary,
+                event_url: event_url
+              }
+            )
+          end
         end
-      rescue StandardError => e
-        APP_LOGGER.error { "[Events::Update] Failed to dispatch event-changed notifications: #{e.class} - #{e.message}" }
       end
 
       # Returns a human-readable summary of the changes that warrant a

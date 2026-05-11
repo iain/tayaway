@@ -7,6 +7,9 @@ import type { PoolNotification } from '@/types/pool'
 
 const SILENCE_UNDO_MS = 5000
 
+const SILENCE_FAILURE_MESSAGE =
+  "Couldn't update. Try again from notification settings."
+
 // Re-exported under the original name so the bell component (and any other
 // consumers) keeps a single import surface as we move from a parallel array
 // to the shared object pool.
@@ -94,11 +97,12 @@ export const useInboxStore = defineStore('inbox', () => {
     }
   }
 
-  // "Stop sending me these" from a bell row. Optimistically marks the
-  // current notification read, shows an undo toast, and only fires the
-  // POST after the undo window expires. If the user undoes it, nothing
-  // ever hits the server. Keeps the bell as the everyday control surface
-  // promised by the design (settings is rare-visit).
+  // "Stop sending me these" from a bell row. Persists the silence
+  // immediately so the preference survives the user closing the tab or
+  // navigating away inside the undo window. The toast's Undo action POSTs
+  // unsilence to clear the override rows and restore defaults. Keeps the
+  // bell as the everyday control surface promised by the design (settings
+  // is rare-visit).
   function silenceKind(
     kind: string,
     message: string,
@@ -108,29 +112,27 @@ export const useInboxStore = defineStore('inbox', () => {
 
     if (notificationId) void markRead(notificationId)
 
-    let undone = false
+    void rawApi
+      .post('/notifications/preferences/silence', { kind }, { silent: true })
+      .catch(() => {
+        toast.showError(SILENCE_FAILURE_MESSAGE)
+      })
+
     toast.showInfo(message, {
       actionLabel: 'Undo',
       action: () => {
-        undone = true
+        void rawApi
+          .post(
+            '/notifications/preferences/unsilence',
+            { kind },
+            { silent: true }
+          )
+          .catch(() => {
+            toast.showError(SILENCE_FAILURE_MESSAGE)
+          })
       },
       duration: SILENCE_UNDO_MS,
     })
-
-    setTimeout(async () => {
-      if (undone) return
-      try {
-        await rawApi.post(
-          '/notifications/preferences/silence',
-          { kind },
-          { silent: true }
-        )
-      } catch {
-        toast.showError(
-          "Couldn't update. Try again from notification settings."
-        )
-      }
-    }, SILENCE_UNDO_MS)
   }
 
   return {

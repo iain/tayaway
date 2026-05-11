@@ -26,7 +26,7 @@ module Notifications
 
         def build_email(email:, recipient_name:, action:, actor_name:, amount:, actor_role:, settle_up_url:)
           greeting = recipient_name && !recipient_name.empty? ? "Hi #{recipient_name}," : "Hi,"
-          formatted = format_amount(amount)
+          formatted = Money.format_amount(amount)
           subject = title_for(action, actor_role, actor_name, amount)
           heading = heading_for(action, actor_role)
           body_line = body_line_for(action, actor_role, actor_name, formatted)
@@ -54,7 +54,7 @@ module Notifications
         private
 
         def title_for(action, actor_role, actor_name, amount)
-          formatted = format_amount(amount)
+          formatted = Money.format_amount(amount)
           case [action, actor_role]
           when ["paid", "debtor"] then "#{actor_name} paid you #{formatted}"
           when ["paid", "creditor"] then "#{actor_name} confirmed your #{formatted} payment"
@@ -81,11 +81,6 @@ module Notifications
           else
             "The status of a #{formatted} balance changed."
           end
-        end
-        # rubocop:enable Style/CombinableLoops
-
-        def format_amount(amount)
-          format("€%.2f", amount)
         end
       end
 

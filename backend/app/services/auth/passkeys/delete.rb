@@ -33,22 +33,22 @@ module Auth
         end
 
         def notify_passkey_removed(passkey)
-          user = User.find(passkey.user_id)
-          return unless user
+          Notifications::Safely.deliver(context: "Auth::Passkeys") do
+            user = User.find(passkey.user_id)
+            return unless user
 
-          Notifications::Dispatch.call(
-            kind: :passkey_changed,
-            user_id: passkey.user_id.to_s,
-            data: {
-              email: user.email.to_s,
-              recipient_name: user.name,
-              action: "removed",
-              passkey_name: passkey.name,
-              session_url: "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/settings/login"
-            }
-          )
-        rescue StandardError => e
-          APP_LOGGER.error { "[Auth::Passkeys] Failed to dispatch passkey_changed (removed): #{e.class} - #{e.message}" }
+            Notifications::Dispatch.call(
+              kind: :passkey_changed,
+              user_id: passkey.user_id.to_s,
+              data: {
+                email: user.email.to_s,
+                recipient_name: user.name,
+                action: "removed",
+                passkey_name: passkey.name,
+                session_url: "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/settings/login"
+              }
+            )
+          end
         end
       end
     end

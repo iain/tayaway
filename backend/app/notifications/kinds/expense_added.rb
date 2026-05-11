@@ -15,14 +15,14 @@ module Notifications
         def in_app_payload(actor_name:, description:, amount:, event_name:, event_url:, **)
           {
             title: "New expense in #{event_name}",
-            body: "#{actor_name} added #{description} (#{format_amount(amount)})",
+            body: "#{actor_name} added #{description} (#{Money.format_amount(amount)})",
             href: event_url
           }
         end
 
         def build_email(email:, recipient_name:, actor_name:, description:, amount:, event_name:, event_url:)
           greeting = recipient_name && !recipient_name.empty? ? "Hi #{recipient_name}," : "Hi,"
-          formatted = format_amount(amount)
+          formatted = Money.format_amount(amount)
 
           Mailers::EmailRenderer.build_message(
             to: email,
@@ -50,12 +50,6 @@ module Notifications
               Mailers::EmailRenderer.button(text: "View event", href: event_url)
             ].join
           )
-        end
-
-        private
-
-        def format_amount(amount)
-          format("€%.2f", amount)
         end
       end
 

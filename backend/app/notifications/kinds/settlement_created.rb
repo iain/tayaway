@@ -26,7 +26,7 @@ module Notifications
 
         def build_email(email:, recipient_name:, counterparty_name:, recipient_role:, amount:, event_name:, event_url:)
           greeting = recipient_name && !recipient_name.empty? ? "Hi #{recipient_name}," : "Hi,"
-          formatted = format_amount(amount)
+          formatted = Money.format_amount(amount)
           subject = "#{title_for(recipient_role, counterparty_name, amount)} for #{event_name}"
           heading = recipient_role == "debtor" ? "Time to settle up" : "Money coming your way"
           balance_line = balance_line(recipient_role, counterparty_name, formatted)
@@ -59,7 +59,7 @@ module Notifications
         private
 
         def title_for(recipient_role, counterparty_name, amount)
-          formatted = format_amount(amount)
+          formatted = Money.format_amount(amount)
           if recipient_role == "debtor"
             "You owe #{counterparty_name} #{formatted}"
           else
@@ -73,10 +73,6 @@ module Notifications
           else
             "#{counterparty_name} owes you #{formatted}."
           end
-        end
-
-        def format_amount(amount)
-          format("€%.2f", amount)
         end
       end
 

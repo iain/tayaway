@@ -52,11 +52,15 @@ vi.mock('@/api/client', () => ({
   rawApi: rawApiMock,
 }))
 
-vi.mock('@/stores/notifications', () => ({
-  useNotificationsStore: () => ({
+const { toastMock } = vi.hoisted(() => ({
+  toastMock: {
     showInfo: vi.fn(),
     showError: vi.fn(),
-  }),
+  },
+}))
+
+vi.mock('@/stores/notifications', () => ({
+  useNotificationsStore: () => toastMock,
 }))
 
 describe('inbox store', () => {
@@ -66,6 +70,9 @@ describe('inbox store', () => {
     rawApiMock.put.mockReset()
     rawApiMock.post.mockReset()
     rawApiMock.put.mockResolvedValue(okResponse({ ok: true }))
+    rawApiMock.post.mockResolvedValue(okResponse({ ok: true }))
+    toastMock.showInfo.mockReset()
+    toastMock.showError.mockReset()
   })
 
   describe('derived from the object pool', () => {
@@ -193,6 +200,70 @@ describe('inbox store', () => {
       expect(pool.get('notification', 'a')?.readAt).toBeNull()
       expect(pool.get('notification', 'b')?.readAt).toBeNull()
       expect(inbox.unreadCount).toBe(2)
+    })
+  })
+
+  describe('silenceKind', () => {
+    // The bell's "Stop sending me these" must persist immediately so the
+    // preference survives the user closing the tab or navigating away
+    // inside the Undo window. The undo path POSTs unsilence to restore.
+    it('fires the silence POST synchronously, before the undo window expires', async () => {
+      const inbox = useInboxStore()
+      inbox.silenceKind('expense_added', 'Silenced')
+      await Promise.resolve()
+
+      expect(rawApiMock.post).toHaveBeenCalledWith(
+        '/notifications/preferences/silence',
+        { kind: 'expense_added' },
+        expect.objectContaining({ silent: true })
+      )
+    })
+
+    it('shows an undo toast labelled Undo', () => {
+      const inbox = useInboxStore()
+      inbox.silenceKind('expense_added', 'Silenced')
+
+      expect(toastMock.showInfo).toHaveBeenCalledWith(
+        'Silenced',
+        expect.objectContaining({ actionLabel: 'Undo' })
+      )
+    })
+
+    it('invokes the unsilence endpoint when the Undo action runs', async () => {
+      const inbox = useInboxStore()
+      inbox.silenceKind('expense_added', 'Silenced')
+      await Promise.resolve()
+
+      const lastCall = toastMock.showInfo.mock.calls.at(-1)
+      const options = lastCall?.[1] as { action: () => void }
+      options.action()
+      await Promise.resolve()
+
+      expect(rawApiMock.post).toHaveBeenCalledWith(
+        '/notifications/preferences/unsilence',
+        { kind: 'expense_added' },
+        expect.objectContaining({ silent: true })
+      )
+    })
+
+    it('shows an error toast when the silence POST fails', async () => {
+      rawApiMock.post.mockRejectedValueOnce(new Error('boom'))
+      const inbox = useInboxStore()
+      inbox.silenceKind('expense_added', 'Silenced')
+      await Promise.resolve()
+      await Promise.resolve()
+
+      expect(toastMock.showError).toHaveBeenCalled()
+    })
+
+    it('also marks the source notification read when given an id', async () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeNotification({ id: 'n-1' })])
+      const inbox = useInboxStore()
+      inbox.silenceKind('expense_added', 'Silenced', 'n-1')
+      await Promise.resolve()
+
+      expect(pool.get('notification', 'n-1')?.readAt).not.toBeNull()
     })
   })
 })

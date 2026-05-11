@@ -90,16 +90,28 @@ RateLimiter.configure!
 # The web-push gem hard-codes `http.use_ssl = true`, which means an e2e
 # smoke test that points push delivery at a localhost server has to
 # present a TLS cert. We use a self-signed cert in that test server, so
-# in e2e mode disable peer verification globally — this environment
-# never makes outbound HTTPS calls to anyone but the test fake.
+# in e2e mode skip peer verification — but only for loopback destinations.
+# Scoping by destination keeps real TLS verification on for any other
+# outbound HTTPS call this env might gain in the future.
 if APP_ENV == "e2e"
   require "net/http"
   require "openssl"
+  require "ipaddr"
 
   module E2eSkipSslVerify
+    LOOPBACK_HOSTS = %w[localhost ip6-localhost].freeze
+
     def use_ssl=(value)
       super
-      self.verify_mode = OpenSSL::SSL::VERIFY_NONE if value
+      self.verify_mode = OpenSSL::SSL::VERIFY_NONE if value && E2eSkipSslVerify.loopback?(address)
+    end
+
+    def self.loopback?(host)
+      return true if LOOPBACK_HOSTS.include?(host)
+
+      IPAddr.new(host).loopback?
+    rescue IPAddr::InvalidAddressError
+      false
     end
   end
 

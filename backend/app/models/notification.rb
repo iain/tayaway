@@ -35,19 +35,34 @@ class Notification < Data.define(:id, :user_id, :workspace_id, :kind, :data, :re
       DB[:notifications].where(user_id: user_id, read_at: nil).count
     end
 
+    # Marks one notification read and broadcasts the change so the user's
+    # other devices/tabs pick up the new read_at without a refresh. The
+    # `read_at: nil` predicate keeps the operation idempotent — re-reading
+    # an already-read row updates nothing and broadcasts nothing.
     def mark_read(id, user_id:)
-      DB[:notifications]
-        .where(id: id, user_id: user_id, read_at: nil)
-        .update(read_at: Sequel::CURRENT_TIMESTAMP, updated_at: Sequel::CURRENT_TIMESTAMP)
+      affected = DB[:notifications]
+                 .where(id: id, user_id: user_id, read_at: nil)
+                 .returning(:id)
+                 .update(read_at: Sequel::CURRENT_TIMESTAMP, updated_at: Sequel::CURRENT_TIMESTAMP)
+      broadcast_changes(affected, user_id)
+      affected.length
     end
 
     def mark_all_read(user_id)
-      DB[:notifications]
-        .where(user_id: user_id, read_at: nil)
-        .update(read_at: Sequel::CURRENT_TIMESTAMP, updated_at: Sequel::CURRENT_TIMESTAMP)
+      affected = DB[:notifications]
+                 .where(user_id: user_id, read_at: nil)
+                 .returning(:id)
+                 .update(read_at: Sequel::CURRENT_TIMESTAMP, updated_at: Sequel::CURRENT_TIMESTAMP)
+      broadcast_changes(affected, user_id)
+      affected.length
     end
 
     private
+
+    def broadcast_changes(rows, user_id)
+      uid = user_id.to_s
+      rows.each { |row| Broadcaster.object_changed("notification", row[:id], user_id: uid) }
+    end
 
     def dataset
       DB[:notifications].with_row_proc(method(:from_row))

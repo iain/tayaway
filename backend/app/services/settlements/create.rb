@@ -218,28 +218,28 @@ module Settlements
       end
 
       def notify_transfers(transfers, event, workspace_id)
-        return if transfers.empty?
+        Notifications::Safely.deliver(context: "Settlements::Create") do
+          return if transfers.empty?
 
-        user_ids = transfers.flat_map { |t| [t[:from_user_id], t[:to_user_id]] }.uniq
-        users_by_id = User.for_ids(user_ids).each_with_object({}) { |u, h| h[u.id.to_s] = u }
-        event_url = "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/events/#{event.id}"
+          user_ids = transfers.flat_map { |t| [t[:from_user_id], t[:to_user_id]] }.uniq
+          users_by_id = User.for_ids(user_ids).each_with_object({}) { |u, h| h[u.id.to_s] = u }
+          event_url = "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/events/#{event.id}"
 
-        transfers.each do |transfer|
-          debtor = users_by_id[transfer[:from_user_id].to_s]
-          creditor = users_by_id[transfer[:to_user_id].to_s]
-          next unless debtor && creditor
+          transfers.each do |transfer|
+            debtor = users_by_id[transfer[:from_user_id].to_s]
+            creditor = users_by_id[transfer[:to_user_id].to_s]
+            next unless debtor && creditor
 
-          dispatch_settlement_created(
-            recipient: debtor, counterparty: creditor, recipient_role: "debtor",
-            amount: transfer[:amount], event: event, event_url: event_url, workspace_id: workspace_id
-          )
-          dispatch_settlement_created(
-            recipient: creditor, counterparty: debtor, recipient_role: "creditor",
-            amount: transfer[:amount], event: event, event_url: event_url, workspace_id: workspace_id
-          )
+            dispatch_settlement_created(
+              recipient: debtor, counterparty: creditor, recipient_role: "debtor",
+              amount: transfer[:amount], event: event, event_url: event_url, workspace_id: workspace_id
+            )
+            dispatch_settlement_created(
+              recipient: creditor, counterparty: debtor, recipient_role: "creditor",
+              amount: transfer[:amount], event: event, event_url: event_url, workspace_id: workspace_id
+            )
+          end
         end
-      rescue StandardError => e
-        APP_LOGGER.error { "[Settlements::Create] Failed to dispatch settlement notifications: #{e.class} - #{e.message}" }
       end
 
       def dispatch_settlement_created(recipient:, counterparty:, recipient_role:, amount:, event:, event_url:, workspace_id:)

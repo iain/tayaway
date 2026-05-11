@@ -94,4 +94,41 @@ RSpec.describe "Notification preferences endpoints" do
       expect(last_response.status).to eq(400)
     end
   end
+
+  describe "POST /api/notifications/preferences/unsilence" do
+    it "returns 401 without auth" do
+      post "/api/notifications/preferences/unsilence",
+           { kind: "expense_added" }.to_json,
+           "CONTENT_TYPE" => "application/json"
+
+      expect(last_response.status).to eq(401)
+    end
+
+    it "deletes every override row for the kind, restoring defaults" do
+      DB[:user_notification_preferences].insert(
+        user_id: user[:id], kind: "expense_added", channel: "email", enabled: false
+      )
+      DB[:user_notification_preferences].insert(
+        user_id: user[:id], kind: "expense_added", channel: "in_app", enabled: false
+      )
+
+      post "/api/notifications/preferences/unsilence",
+           { kind: "expense_added" }.to_json,
+           json_headers
+
+      expect(last_response.status).to eq(200)
+      remaining = DB[:user_notification_preferences]
+                  .where(user_id: user[:id], kind: "expense_added")
+                  .count
+      expect(remaining).to eq(0)
+    end
+
+    it "rejects an unknown kind" do
+      post "/api/notifications/preferences/unsilence",
+           { kind: "no_such" }.to_json,
+           json_headers
+
+      expect(last_response.status).to eq(400)
+    end
+  end
 end
