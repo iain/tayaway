@@ -91,6 +91,13 @@ jobs:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/tayaway_test
         run: mise run //backend:db:setup-test
 
+      - name: Lint (no-fix — actually fails on offenses)
+        # Must come before `mise run check`. `check` runs lint with autofix by
+        # default; without this gate, CI would silently fix issues in the
+        # ephemeral workspace and report green for a PR whose author hadn't
+        # actually run lint locally.
+        run: mise run lint:ci
+
       - name: Run checks (lint, typecheck, test, audit)
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/tayaway_test

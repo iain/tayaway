@@ -47,12 +47,14 @@ node = "24"
 
 [tasks.dev]
 description = "Start frontend + backend dev servers"
+alias = "d"
 depends = ["//backend:dev", "//frontend:dev"]
 wait_for = ["//backend:dev"]
 run = "echo 'Dev servers started'"
 
 [tasks.check]
 description = "Pre-commit: lint, typecheck, test, audit, cache-version (no e2e)"
+alias = "c"
 depends = [
   "//...:lint",
   "//...:typecheck",
@@ -104,7 +106,19 @@ mise run --force ci
 
 [tasks.lint]
 description = "Lint and autofix all code"
-depends = ["//...:lint", "lint:config"]
+depends = ["//...:lint", "lint:config", "docs:tasks"]
+
+[tasks."lint:ci"]
+description = "Lint without autofix — fails on offenses instead of fixing them in place"
+# In CI, autofix would silently mutate the ephemeral workspace and report
+# clean, greenlighting PRs whose authors hadn't run lint locally. This
+# variant forces a real verification. Subproject tasks ship --no-fix on
+# their `usage` specs; wildcards don't pass args, so we list both.
+shell = "bash -c"
+run = """
+mise run //backend:lint --no-fix
+mise run //frontend:lint --no-fix
+"""
 
 [tasks."lint:config"]
 description = "Canonically format all mise.toml files"
@@ -112,12 +126,21 @@ run = "mise fmt"
 sources = [".mise.toml", "backend/mise.toml", "frontend/mise.toml"]
 outputs = { auto = true }
 
+[tasks."docs:tasks"]
+description = "Regenerate TASKS.md from mise task descriptions and usage specs"
+# Pinned in lint so the file can't drift from the source of truth.
+# Claude reads CLAUDE.md on session start; CLAUDE.md links to TASKS.md.
+run = "mise generate task-docs --output TASKS.md"
+sources = [".mise.toml", "backend/mise.toml", "frontend/mise.toml"]
+outputs = ["TASKS.md"]
+
 [tasks.typecheck]
 description = "Run all type checkers"
 depends = ["//...:typecheck"]
 
 [tasks.test]
 description = "Run unit and integration tests"
+alias = "t"
 depends = ["//...:test"]
 
 [tasks.audit]
