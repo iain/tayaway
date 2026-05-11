@@ -1,0 +1,80 @@
+name: mise outdated
+
+on:
+  schedule:
+    # Mondays, 09:00 UTC. Cheap enough to do weekly; signal stays useful.
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  outdated:
+    runs-on: ubuntu-latest
+    env:
+      MISE_EXPERIMENTAL: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: jdx/mise-action@v4
+        with:
+          install: false
+
+      - name: Collect outdated tools
+        id: check
+        run: |
+          set -euo pipefail
+
+          # Aggregate across the monorepo. mise outdated from a config_root
+          # only checks that root's own tools, so loop to cover subproject
+          # ones (e.g. Ruby in backend/mise.toml).
+          : > outdated-raw.json
+          for dir in . backend frontend; do
+            (cd "$dir" && mise outdated --bump --json 2>/dev/null) >> outdated-raw.json || true
+          done
+
+          # Merge object documents, filter to tools whose source lives in
+          # this repo (drop user-global ~/.tool-versions noise), dedupe.
+          OUTDATED=$(jq -s --arg root "$GITHUB_WORKSPACE" '
+            add // {}
+            | to_entries
+            | map(select(.value.source.path | startswith($root)))
+            | unique_by(.key)
+            | from_entries' outdated-raw.json)
+
+          COUNT=$(echo "$OUTDATED" | jq 'length')
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "Found $COUNT outdated tool(s)."
+
+          if [ "$COUNT" -gt 0 ]; then
+            {
+              echo "The toolchain pinned in \`mise.toml\` has updates available:"
+              echo
+              echo "| Tool | Requested | Current | Bump | Latest |"
+              echo "|------|-----------|---------|------|--------|"
+              echo "$OUTDATED" | jq -r '
+                to_entries[]
+                | .value
+                | "| `\(.name)` | \(.requested) | \(.current) | \(.bump) | \(.latest) |"'
+              echo
+              echo "Run \`mise upgrade --bump\` locally to apply, then commit the resulting \`mise.lock\` and any \`mise.toml\` changes."
+            } > body.md
+          fi
+
+      - name: Open or update issue
+        if: steps.check.outputs.count != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_TITLE: Toolchain has updates available
+        run: |
+          set -euo pipefail
+          EXISTING=$(gh issue list --search "in:title \"$ISSUE_TITLE\"" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body-file body.md
+            echo "Commented on existing issue #$EXISTING"
+          else
+            gh issue create --title "$ISSUE_TITLE" --body-file body.md
+            echo "Opened new issue"
+          fi
