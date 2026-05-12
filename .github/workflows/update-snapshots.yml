@@ -29,11 +29,6 @@ jobs:
           --health-timeout 3s
           --health-retries 5
 
-    env:
-      APP_SECRET: dGVzdHNlY3JldHRlc3RzZWNyZXR0ZXN0c2VjcmV0dGU=
-      CI: true
-      MISE_EXPERIMENTAL: true
-
     steps:
       - uses: actions/checkout@v6
         with:
@@ -70,13 +65,29 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm exec playwright install chromium --with-deps
 
+      # mise's `_.file = ".env.{{env.MISE_ENV | ... }}"` template owns env
+      # loading for backend tasks, so every CI-only value belongs in the
+      # dotenv files it'll consume (test or e2e) rather than in a workflow-
+      # level `env:` block. The files themselves are .gitignored because
+      # contents differ per developer machine.
+      #
+      # APP_SECRET is test-only signing material — required by Config,
+      # never used to protect real data.
+      #
+      # The VAPID keys are test-only material generated for the push smoke
+      # test; the frontend gates the subscribe flow on a non-empty public
+      # key, so the test fails without them. Safe to commit because they
+      # grant nothing — real deploys carry production keys via Capistrano
+      # env, never CI.
       - name: Write CI dotenv files
         run: |
           cat > backend/.env.test <<'EOF'
           DATABASE_URL=postgres://postgres:postgres@localhost:5432/tayaway_test
+          APP_SECRET=dGVzdHNlY3JldHRlc3RzZWNyZXR0ZXN0c2VjcmV0dGU=
           EOF
           cat > backend/.env.e2e <<'EOF'
           DATABASE_URL=postgres://postgres:postgres@localhost:5432/tayaway_e2e
+          APP_SECRET=dGVzdHNlY3JldHRlc3RzZWNyZXR0ZXN0c2VjcmV0dGU=
           FRONTEND_URL=http://localhost:5174
           VAPID_PUBLIC_KEY=BPDZXyMZhyzQ-lmi5MAm-djBp5kecbgrlVGSZ6TsE8yUEOX_cEid5TxdYbBv3YoA2OiwjIHiilvTwA9-vCWeQpE=
           VAPID_PRIVATE_KEY=CofJgcTG6lqV_HszPSpDw_oE3s8fhbQEsBZJ1Ne9t_k=
@@ -101,7 +112,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add 'e2e/tests/**/*-snapshots/**' 2>/dev/null || true
+          # The runner's checkout is clean apart from the regenerated PNGs,
+          # so a plain `git add e2e/tests` picks up new and changed snapshot
+          # files without depending on bash's globstar setting (off by
+          # default; a quoted `**` pattern reaches git as a literal).
+          git add e2e/tests
           if git diff --staged --quiet; then
             echo "No baseline changes — nothing to commit."
             exit 0
