@@ -47,18 +47,19 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: jdx/mise-action@v4
-        with:
-          install: true
-          cache: true
+      # mise-action's postinstall hook runs `setup:deps`, which `bundle
+      # install`s — and the mmdb gem builds a native extension against
+      # libmaxminddb. Has to be installed before mise-action runs, not
+      # after, or that gem fails to compile and everything downstream
+      # falls over with "Could not find mmdb-0.3.2 in locally installed
+      # gems" once any task tries to bundle exec.
+      - name: Install system dependencies
+        run: sudo apt-get install -y libmaxminddb-dev
 
-      - name: Cache backend gems
-        uses: actions/cache@v5
-        with:
-          path: backend/vendor/bundle
-          key: gems-${{ runner.os }}-${{ hashFiles('backend/Gemfile.lock') }}
-          restore-keys: gems-${{ runner.os }}-
-
+      # node_modules and the Playwright browser cache live outside mise's
+      # install dir, so they need their own caches; gems and tool binaries
+      # are inside ~/.local/share/mise/installs and ride along with
+      # mise-action's cache: true.
       - name: Cache frontend node_modules
         uses: actions/cache@v5
         with:
@@ -68,20 +69,17 @@ jobs:
           key: node-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: node-${{ runner.os }}-
 
-      - name: Install system dependencies
-        run: sudo apt-get install -y libmaxminddb-dev
-
-      - name: Install dependencies
-        run: |
-          cd backend && bundle config set --local path vendor/bundle && bundle install --jobs 4 --retry 3
-          pnpm install --frozen-lockfile
-
       - name: Cache Playwright browsers
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: playwright-${{ runner.os }}-
+
+      - uses: jdx/mise-action@v4
+        with:
+          install: true
+          cache: true
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install chromium --with-deps
