@@ -92,7 +92,7 @@ export default defineConfig({
         defaultHandler(warning)
       },
       output: {
-        advancedChunks: {
+        codeSplitting: {
           groups: [
             { name: 'leaflet', test: /node_modules\/leaflet\// },
             {
