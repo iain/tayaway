@@ -23,7 +23,7 @@ ENV["GIT_SHA"] ||=
   (File.read("#{APP_DIR}/REVISION").strip[0, 7] if File.exist?("#{APP_DIR}/REVISION")) ||
   `git rev-parse --short HEAD 2>/dev/null`.strip
 
-require_relative "config"
+require_relative "../lib/config"
 APP_CONFIG.load!
 
 require "logger"

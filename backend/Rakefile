@@ -4,7 +4,7 @@ require "bundler/setup"
 require "dotenv"
 Dotenv.load(".env.#{ENV.fetch("RACK_ENV", "development")}")
 require "sequel"
-require_relative "config/config"
+require_relative "lib/config"
 APP_CONFIG.load!
 
 namespace :db do

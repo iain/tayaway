@@ -326,4 +326,4 @@ class Config
   end
 end
 
-require_relative "schema"
+require_relative "../config/schema"
