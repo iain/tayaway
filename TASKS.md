@@ -229,6 +229,12 @@ Install the git pre-commit hook
 
 Run unit and integration tests
 
+## `tools:upgrade`
+
+- **Usage**: `tools:upgrade`
+
+Bump every config_root's tool versions to the latest available
+
 ## `typecheck`
 
 - Depends: //...:typecheck
