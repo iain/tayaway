@@ -56,8 +56,8 @@ ENVFILE
 done
 
 echo "Setting up databases..."
-mise --env=development exec -- bundle exec rake db:migrate
-mise --env=test exec -- bundle exec rake db:migrate
-mise --env=e2e exec -- bundle exec rake db:migrate
+MISE_ENV=development mise exec -- bundle exec rake db:migrate
+MISE_ENV=test mise exec -- bundle exec rake db:migrate
+MISE_ENV=e2e mise exec -- bundle exec rake db:migrate
 
 echo "Setup complete! Run 'mise run serve' to start the development server."

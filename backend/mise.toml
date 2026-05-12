@@ -23,15 +23,25 @@ run = "bundle exec falcon-host falcon.rb"
 
 [tasks."dev:e2e"]
 description = "Start backend in e2e mode on port 9293 — spawned by playwright.config.ts"
-# Re-enter mise with --env=e2e for the same reason as `test`: top-level
-# [env] resolves before task `env =` overrides, so a plain MISE_ENV=e2e
-# in task env would still load .env.development. FALCON_URL is task-only
+# Re-enter mise with MISE_ENV set in the shell — that's what triggers
+# the top-level [env] template to load .env.e2e. Setting MISE_ENV via
+# task `env =` would be too late (top-level [env] is resolved first),
+# and mise's --env flag triggers profile-config loading rather than
+# templating, so it doesn't help here either. FALCON_URL is task-only
 # config (port binding), not part of the .env file.
 shell = "bash -c"
 env = { FALCON_URL = "http://localhost:9293" }
-run = 'mise --env=e2e exec -- bundle exec falcon-host falcon.rb'
+run = 'MISE_ENV=e2e mise exec -- bundle exec falcon-host falcon.rb'
 
 # dev:reset lives in backend/.mise/tasks/dev/reset.
+
+[tasks.serve]
+description = "Start falcon-host in the current mise env — used by the production systemd unit"
+# `exec` so the shell replaces itself with falcon-host: the systemd unit
+# is Type=notify, and we want falcon-host to be as close to the main
+# process as possible. (One intermediate `mise run` parent remains, which
+# is why the unit sets NotifyAccess=all rather than the default `main`.)
+run = "exec bundle exec falcon-host falcon.rb"
 
 # ── Lint / Test / Audit ──────────────────────────────────────────────────────
 
@@ -53,12 +63,11 @@ bundle exec rubocop "${args[@]}"
 
 [tasks.test]
 description = "RSpec — extra args pass through to rspec"
-# Re-enter mise with --env=test so the top-level [env] block reloads
-# .env.test in the inner process. Setting MISE_ENV via task `env =`
-# alone would be too late — top-level [env] is resolved before task
-# env applies, so the file load would still pick up .env.development.
+# Re-enter mise with MISE_ENV=test in the shell so the top-level [env]
+# block reloads .env.test for the inner process. See dev:e2e for the
+# longer explanation of why neither task `env =` nor `--env` works.
 shell = "bash -c"
-run = 'mise --env=test exec -- bundle exec rspec -f progress "$@"'
+run = 'MISE_ENV=test mise exec -- bundle exec rspec -f progress "$@"'
 
 [tasks.audit]
 description = "bundler-audit"
@@ -100,12 +109,12 @@ run = "bundle exec ruby db/seed_dev.rb"
 [tasks."db:setup-e2e"]
 description = "Create and migrate the e2e database"
 shell = "bash -c"
-run = 'mise --env=e2e exec -- bundle exec rake db:create db:migrate'
+run = 'MISE_ENV=e2e mise exec -- bundle exec rake db:create db:migrate'
 
 [tasks."db:setup-test"]
 description = "Create and migrate the test database"
 shell = "bash -c"
-run = 'mise --env=test exec -- bundle exec rake db:create db:migrate'
+run = 'MISE_ENV=test mise exec -- bundle exec rake db:create db:migrate'
 
 [tasks."db:backup"]
 description = "Trigger a database backup on the production server"

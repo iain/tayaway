@@ -84,8 +84,9 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm exec playwright install chromium --with-deps
 
-      # The mise tasks re-enter mise with --env=<test|e2e>, which loads
-      # backend/.env.<env> via mise's _.file directive in backend/mise.toml.
+      # The mise tasks re-enter mise with MISE_ENV=<test|e2e> set, which
+      # triggers mise's _.file template in backend/mise.toml to load
+      # backend/.env.<env>.
       # Writing these files here means `mise run ci` can fan out check +
       # e2e in parallel — each picks up its own DB without us having to
       # thread two different DATABASE_URLs through a single GitHub Actions

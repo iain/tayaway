@@ -17,6 +17,11 @@ StartLimitBurst=3
 # the new workers being ready. async-container speaks the sd_notify
 # protocol via NOTIFY_SOCKET (Notify::Socket) when systemd sets it.
 Type=notify
+# ExecStart goes through `mise run`, which leaves mise as an
+# intermediate parent above falcon-host. Without this, systemd would
+# only accept sd_notify from MainPID (mise) and drop falcon-host's
+# READY=1, leaving the unit stuck in "activating" until timeout.
+NotifyAccess=all
 User=tayaway
 Group=tayaway
 WorkingDirectory=/var/www/tayaway/current/backend
@@ -30,14 +35,18 @@ Environment=PATH=/home/tayaway/.local/share/mise/installs/ruby/<%= ruby_version 
 Environment=GEM_HOME=/var/www/tayaway/shared/backend/vendor/bundle/ruby/<%= ruby_gem_version %>
 Environment=GEM_PATH=/var/www/tayaway/shared/backend/vendor/bundle/ruby/<%= ruby_gem_version %>
 Environment=FALCON_URL=http://127.0.0.1:9292
-# Goes through the Bundler binstub (committed at backend/bin/falcon-host)
-# rather than the gem's bare bin shim. The binstub does
-# `require "bundler/setup"` before activating falcon, which is required
-# here — without it, the gem-activation chain combined with config.ru's
-# `Bundler.require` triggers a second default-config falcon serve in
-# the same process, races for port 9292, and crashes the unit.
-ExecStart=/home/tayaway/.local/bin/mise exec -- /var/www/tayaway/current/backend/bin/falcon-host falcon.rb
-ExecReload=/bin/kill -HUP $MAINPID
+# mise resolves the env (loads .env.production via _.file) and then
+# runs the `serve` task in backend/mise.toml, which exec's into the
+# Bundler binstub for falcon-host. Bundler is what loads falcon — going
+# via the binstub gets `require "bundler/setup"` ahead of the gem
+# activation that config.ru triggers, which otherwise races a second
+# default-config falcon serve onto port 9292 and crashes the unit.
+ExecStart=/home/tayaway/.local/bin/mise run serve
+# MainPID is mise (the launcher), not falcon-host. The serve task uses
+# `exec` so mise's one child IS falcon-host — pgrep -P finds it and
+# forwards SIGHUP, which Async::Container::Controller treats as a
+# graceful worker restart.
+ExecReload=/bin/sh -c 'pgrep -P $MAINPID | xargs -r kill -HUP'
 # Cap the graceful-stop window. async-container's container.stop sends
 # SIGINT and waits up to its 10 s graceful timeout before SIGKILL, so
 # 15 s leaves a small buffer for the host process itself to finish
