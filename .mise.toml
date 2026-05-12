@@ -35,8 +35,8 @@ slsa = true
 # needs. Ruby lives in backend/mise.toml so frontend-only developers
 # don't pay for a Ruby install.
 [tools]
-node = "24"
-"npm:pnpm" = "11.0.8"
+node = "26"
+"npm:pnpm" = "11.1.0"
 
 # ── Workflows ────────────────────────────────────────────────────────────────
 #
