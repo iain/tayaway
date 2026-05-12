@@ -1,6 +1,3 @@
-[tools]
-ruby = "4"
-
 [env]
 # Required for any forked-worker setup on macOS (falcon-host, falcon serve,
 # rspec parallelisation): without it, libpq triggers Foundation's fork-safety

@@ -5,6 +5,10 @@ namespace :frontend do
   task :install do
     on roles(:app) do
       within release_path do
+        # Direct invocation rather than `mise run //frontend:setup:deps`
+        # because that task is a bare `pnpm install` (for dev ergonomics);
+        # deploys want --frozen-lockfile so a divergent lockfile fails the
+        # build instead of silently regenerating it.
         execute :pnpm, "install", "--frozen-lockfile"
       end
     end
@@ -14,7 +18,7 @@ namespace :frontend do
   task :build do
     on roles(:app) do
       within release_path do
-        execute :pnpm, "-C", "frontend", "exec", "vite", "build"
+        execute :mise, "run", "//frontend:build"
       end
     end
   end

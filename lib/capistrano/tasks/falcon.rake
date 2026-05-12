@@ -17,7 +17,7 @@ namespace :falcon do
       # bypasses Capistrano's default_env, so the global setting in deploy.rb
       # doesn't reach mise here. Without it, mise refuses to load .mise.toml
       # in fresh release directories on first deploy.
-      mise = "MISE_TRUSTED_CONFIG_PATHS=#{fetch(:deploy_to)} /home/tayaway/.local/bin/mise"
+      mise = "MISE_TRUSTED_CONFIG_PATHS=#{fetch(:deploy_to)} #{fetch(:mise_bin)}"
       rp = release_path
       ruby_version = capture("cd #{rp} && #{mise} exec -- ruby -e 'print RUBY_VERSION'").strip
       ruby_gem_version = capture("cd #{rp} && #{mise} exec -- ruby -e 'print RbConfig::CONFIG[\"ruby_version\"]'").strip

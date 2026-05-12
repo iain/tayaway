@@ -37,15 +37,22 @@ set :bundle_version, 4
 # mise integration — prefix commands so they run through mise exec.
 # Production runs as the restricted `tayaway` system user; mise lives
 # in that user's home dir.
-mise = "/home/tayaway/.local/bin/mise exec --"
-SSHKit.config.command_map[:bundle] = "#{mise} bundle"
-SSHKit.config.command_map[:ruby]   = "#{mise} ruby"
-SSHKit.config.command_map[:rake]   = "#{mise} rake"
-SSHKit.config.command_map[:node]   = "#{mise} node"
-SSHKit.config.command_map[:pnpm]   = "#{mise} pnpm"
+set :mise_bin, "/home/tayaway/.local/bin/mise"
+mise_bin = fetch(:mise_bin)
+mise_dir = File.dirname(mise_bin)
+mise_exec = "#{mise_bin} exec --"
+SSHKit.config.command_map[:mise]   = mise_bin
+SSHKit.config.command_map[:bundle] = "#{mise_exec} bundle"
+SSHKit.config.command_map[:ruby]   = "#{mise_exec} ruby"
+SSHKit.config.command_map[:rake]   = "#{mise_exec} rake"
+SSHKit.config.command_map[:node]   = "#{mise_exec} node"
+SSHKit.config.command_map[:pnpm]   = "#{mise_exec} pnpm"
 
-# Ensure mise is on PATH and trusts the deploy directory
+# Ensure mise is on PATH, trusts the deploy directory, and has the
+# experimental flag turned on (monorepo mode is gated behind it in the
+# 2026.5.x line — without it, mise ignores backend/frontend mise.toml).
 set :default_env, {
-  path: "/home/tayaway/.local/bin:$PATH",
-  mise_trusted_config_paths: "/var/www/tayaway"
+  path: "#{mise_dir}:$PATH",
+  mise_trusted_config_paths: "/var/www/tayaway",
+  mise_experimental: "1"
 }

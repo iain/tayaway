@@ -32,10 +32,14 @@ github_attestations = true
 slsa = true
 
 # Tools that every subproject (and root scripts: prettier, Playwright)
-# needs. Ruby lives in backend/mise.toml so frontend-only developers
-# don't pay for a Ruby install.
+# needs. Ruby is here rather than in backend/mise.toml because Capistrano
+# runs from the repo root during deploy and needs to resolve Ruby via
+# mise exec — monorepo inheritance flows root → subproject, not the
+# other way. The frontend-only-dev cost of installing Ruby is small
+# compared to duplicating tool resolution into the deploy pipeline.
 [tools]
 node = "26"
+ruby = "4"
 "npm:pnpm" = "11.1.0"
 
 # ── Workflows ────────────────────────────────────────────────────────────────
@@ -90,13 +94,12 @@ outputs = { auto = true }
 
 [tasks."docs:tasks"]
 description = "Regenerate TASKS.md from mise task descriptions and usage specs"
-# Pinned in lint so the file can't drift from the source of truth.
-# Claude reads CLAUDE.md on session start; CLAUDE.md links to TASKS.md.
-# In pre-commit context (MISE_PRE_COMMIT=1, set by the generated hook), also
-# stage the regenerated file so it lands in the in-flight commit — without
-# this, a task-definition change would leave TASKS.md modified in the working
-# tree and require a second commit. Outside pre-commit, the regen runs but
-# staging is left alone.
+# Pinned in lint so the checked-in reference can't drift from the source
+# of truth. In pre-commit context (MISE_PRE_COMMIT=1, set by the generated
+# hook), also stage the regenerated file so it lands in the in-flight
+# commit — without this, a task-definition change would leave TASKS.md
+# modified in the working tree and require a second commit. Outside
+# pre-commit, the regen runs but staging is left alone.
 run = """
 mise generate task-docs --output TASKS.md
 if [ -n "${MISE_PRE_COMMIT:-}" ]; then
@@ -135,12 +138,6 @@ depends = ["//frontend:build"]
 [tasks.e2e]
 description = "Playwright end-to-end tests — extra args pass through to playwright"
 depends = ["//backend:db:setup-e2e"]
-# Playwright's webServer config spawns `cd backend && bundle exec falcon serve`.
-# Declare Ruby on the task so it's in PATH at the right version — without it
-# the task runs with whatever the user-global mise config resolves to, which
-# may not match backend's pin (and mise installs gems per-Ruby-install, so a
-# mismatch means Bundler can't find falcon).
-tools = { ruby = "4" }
 # Playwright still calls `module.register()` to install its TS ESM loader;
 # on Node 22+ that emits DEP0205. Silence only that code so real deprecation
 # warnings stay visible. Drop once Playwright migrates to registerHooks().
@@ -197,9 +194,6 @@ depends = ["//backend:dev:reset"]
 [tasks.deploy]
 description = "Deploy to production"
 confirm = "Deploy to PRODUCTION. Continue?"
-# Capistrano lives at the project root (Capfile, root Gemfile), so this task
-# needs Ruby even though backend/mise.toml owns the main Ruby dependency.
-tools = { ruby = "4" }
 run = "bundle exec cap production deploy"
 
 # ── Setup ────────────────────────────────────────────────────────────────────
