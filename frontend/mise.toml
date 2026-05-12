@@ -17,32 +17,16 @@ args=( src )
 [ "$usage_no_fix" = "true" ] || args+=( --fix )
 pnpm exec eslint "${args[@]}"
 """
-sources = ["src/**/*.{ts,tsx,vue,js,jsx}", "eslint.config.js", "package.json"]
-outputs = { auto = true }
 
 [tasks.typecheck]
 description = "Vue + TypeScript type checking"
 run = "pnpm exec vue-tsc -b"
-sources = [
-  "src/**/*.{ts,tsx,vue}",
-  "tsconfig.json",
-  "tsconfig.app.json",
-  "tsconfig.node.json",
-  "package.json",
-]
-outputs = { auto = true }
 
 [tasks.test]
 description = "Vitest (one-shot) — extra args pass through to vitest"
 # Locked to `vitest run` so this task is always non-watch; users who want
 # watch mode should `mise watch test:frontend` or invoke vitest directly.
 run = 'pnpm exec vitest run --reporter=dot --silent=true "$@"'
-sources = [
-  "src/**/*.{ts,tsx,vue}",
-  "vitest.config.ts",
-  "package.json",
-]
-outputs = { auto = true }
 
 [tasks.audit]
 description = "pnpm audit"
@@ -56,15 +40,6 @@ usage = '''
 flag "-m --mode <mode>" help="Vite build mode (production, staging, development)" default="production"
 '''
 run = 'pnpm exec vite build --mode "${usage_mode}"'
-sources = [
-  "src/**",
-  "public/**",
-  "index.html",
-  "vite.config.ts",
-  "tsconfig*.json",
-  "package.json",
-]
-outputs = ["dist/**"]
 
 # ── Setup ────────────────────────────────────────────────────────────────────
 
