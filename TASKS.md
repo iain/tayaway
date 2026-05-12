@@ -148,29 +148,9 @@ Regenerate TASKS.md from mise task descriptions and usage specs
 
 - Depends: //backend:db:setup-e2e
 
-- **Usage**: `e2e [FLAGS] [pattern]`
+- **Usage**: `e2e`
 
-Playwright end-to-end tests
-
-### Arguments
-
-#### `[pattern]`
-
-Test file path or glob (default: all)
-
-### Flags
-
-#### `-g --grep <grep>`
-
-Run only tests whose title matches the given regex
-
-#### `--ui`
-
-Open Playwright's UI mode for interactive debugging
-
-#### `--headed`
-
-Run browsers in headed mode (visible window)
+Playwright end-to-end tests — extra args pass through to playwright
 
 ## `lint`
 

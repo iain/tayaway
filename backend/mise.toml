@@ -37,23 +37,9 @@ sources = ["app/**/*.rb", "lib/**/*.rb", "spec/**/*.rb", "config/**/*.rb", "db/*
 outputs = { auto = true }
 
 [tasks.test]
-description = "RSpec"
+description = "RSpec — extra args pass through to rspec"
 env = { RACK_ENV = "test" }
-usage = '''
-arg "[pattern]" help="Spec file or directory to run (default: all)"
-flag "--fail-fast" help="Stop on the first failure"
-flag "-e --example <example>" help="Run only examples whose name matches the given pattern"
-flag "--seed <seed>" help="Set the random seed for ordering"
-'''
-shell = "bash -c"
-run = """
-args=( -f progress )
-[ "$usage_fail_fast" = "true" ] && args+=( --fail-fast )
-[ -n "$usage_example" ] && args+=( -e "$usage_example" )
-[ -n "$usage_seed" ] && args+=( --seed "$usage_seed" )
-[ -n "$usage_pattern" ] && args+=( "$usage_pattern" )
-bundle exec rspec "${args[@]}"
-"""
+run = 'bundle exec rspec -f progress "$@"'
 sources = ["app/**/*.rb", "lib/**/*.rb", "spec/**/*.rb", "config/**/*.rb", "db/**/*.rb", "Gemfile.lock"]
 outputs = { auto = true }
 

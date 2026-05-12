@@ -145,7 +145,7 @@ depends = ["//frontend:build"]
 # ── E2E (standalone — not part of test:*) ────────────────────────────────────
 
 [tasks.e2e]
-description = "Playwright end-to-end tests"
+description = "Playwright end-to-end tests — extra args pass through to playwright"
 depends = ["//backend:db:setup-e2e"]
 # Playwright's webServer config spawns `cd backend && bundle exec falcon serve`.
 # Declare Ruby on the task so it's in PATH at the right version — without it
@@ -153,21 +153,7 @@ depends = ["//backend:db:setup-e2e"]
 # may not match backend's pin (and mise installs gems per-Ruby-install, so a
 # mismatch means Bundler can't find falcon).
 tools = { ruby = "4" }
-usage = '''
-arg "[pattern]" help="Test file path or glob (default: all)"
-flag "-g --grep <grep>" help="Run only tests whose title matches the given regex"
-flag "--ui" help="Open Playwright's UI mode for interactive debugging"
-flag "--headed" help="Run browsers in headed mode (visible window)"
-'''
-shell = "bash -c"
-run = """
-args=()
-[ -n "$usage_grep" ] && args+=( --grep "$usage_grep" )
-[ "$usage_ui" = "true" ] && args+=( --ui )
-[ "$usage_headed" = "true" ] && args+=( --headed )
-[ -n "$usage_pattern" ] && args+=( "$usage_pattern" )
-pnpm exec playwright test "${args[@]}"
-"""
+run = 'pnpm exec playwright test "$@"'
 
 # ── Backend convenience aliases ──────────────────────────────────────────────
 #

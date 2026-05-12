@@ -33,22 +33,10 @@ sources = [
 outputs = { auto = true }
 
 [tasks.test]
-description = "Vitest"
-usage = '''
-arg "[pattern]" help="Filename or glob to run (default: all)"
-flag "-w --watch" help="Re-run on file changes"
-flag "-c --coverage" help="Collect coverage report"
-'''
-shell = "bash -c"
-run = """
-# Vitest defaults: `vitest run` is one-shot, plain `vitest` is watch mode.
-mode="run"
-[ "$usage_watch" = "true" ] && mode=""
-args=( --reporter=dot --silent )
-[ "$usage_coverage" = "true" ] && args+=( --coverage )
-[ -n "$usage_pattern" ] && args+=( "$usage_pattern" )
-pnpm exec vitest $mode "${args[@]}"
-"""
+description = "Vitest (one-shot) — extra args pass through to vitest"
+# Locked to `vitest run` so this task is always non-watch; users who want
+# watch mode should `mise watch test:frontend` or invoke vitest directly.
+run = 'pnpm exec vitest run --reporter=dot --silent=true "$@"'
 sources = [
   "src/**/*.{ts,tsx,vue}",
   "vitest.config.ts",
