@@ -56,6 +56,11 @@ class Config
     def initialize(base)
       @base = base.to_s.chomp("/")
       @uri = URI.parse(@base)
+      # URI.parse is permissive — "garbage" parses to a URI::Generic with
+      # nil host. Require an http(s) scheme and a host so misconfigured
+      # FRONTEND_URL fails at boot, not later as a nil host in WebAuthn.
+      raise URI::InvalidURIError, "missing scheme" unless %w[http https].include?(@uri.scheme)
+      raise URI::InvalidURIError, "missing host" if @uri.host.nil? || @uri.host.empty?
     end
 
     def to_s = @base
@@ -151,8 +156,21 @@ class Config
     raise Error, format_errors(errors) if errors.any?
 
     @values = values.freeze
-    log_boot_summary
     self
+  end
+
+  # Logs a one-line summary of enabled/disabled features. Called from
+  # config/environment.rb *after* APP_LOGGER is initialized — load!
+  # runs before the logger exists, so it can't do this itself.
+  def log_boot_summary(logger)
+    enabled = @features.map(&:name).select { |n| feature_enabled?(n) }
+    disabled = @features.map(&:name) - enabled
+    logger.info do
+      parts = ["[Config] env=#{app_env}"]
+      parts << "features=[#{enabled.join(",")}]" if enabled.any?
+      parts << "features_disabled=[#{disabled.join(",")}]" if disabled.any?
+      parts.join(" ")
+    end
   end
 
   def feature_enabled?(name)
@@ -182,7 +200,11 @@ class Config
   end
 
   RACK_ENVS.each { |name| define_method("#{name}?") { app_env == name } }
-  def local? = !production?
+  # True when an automated test harness (RSpec or Playwright) is driving
+  # the app. These envs share ephemeral databases, skip rate limiting,
+  # and unlock the /api/test/* routes — distinct from a developer's
+  # interactive `mise run dev`.
+  def under_test? = test? || e2e?
 
   private
 
@@ -338,19 +360,6 @@ class Config
 
   def format_errors(errors)
     "Config validation failed:\n" + errors.map { "  - #{_1}" }.join("\n")
-  end
-
-  def log_boot_summary
-    return unless defined?(APP_LOGGER) && APP_LOGGER
-
-    enabled = @features.map(&:name).select { |n| feature_enabled?(n) }
-    disabled = @features.map(&:name) - enabled
-    APP_LOGGER.info do
-      parts = ["[Config] env=#{app_env}"]
-      parts << "features=[#{enabled.join(",")}]" if enabled.any?
-      parts << "features_disabled=[#{disabled.join(",")}]" if disabled.any?
-      parts.join(" ")
-    end
   end
 end
 

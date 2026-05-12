@@ -234,6 +234,19 @@ RSpec.describe Config do
       expect { config.load!(env: base_env.merge("FRONTEND_URL" => "not a url")) }
         .to raise_error(Config::Error, /FRONTEND_URL/)
     end
+
+    it "rejects a value that parses but has no host" do
+      # URI.parse is lenient — "garbage" parses to a URI::Generic with host=nil.
+      # The Url wrapper must reject these so the failure surfaces at boot, not
+      # later as a nil host in WebAuthn config.
+      expect { config.load!(env: base_env.merge("FRONTEND_URL" => "garbage")) }
+        .to raise_error(Config::Error, /FRONTEND_URL/)
+    end
+
+    it "rejects a value that has no scheme" do
+      expect { config.load!(env: base_env.merge("FRONTEND_URL" => "example.com")) }
+        .to raise_error(Config::Error, /FRONTEND_URL/)
+    end
   end
 
   describe "env predicates" do
@@ -243,6 +256,17 @@ RSpec.describe Config do
       expect(config.production?).to be(false)
       expect(config.development?).to be(false)
       expect(config.e2e?).to be(false)
+    end
+
+    it "exposes under_test? for the test and e2e envs but not production or development" do
+      config.load!(env: base_env.merge("RACK_ENV" => "test"))
+      expect(config.under_test?).to be(true)
+      config.load!(env: base_env.merge("RACK_ENV" => "e2e"))
+      expect(config.under_test?).to be(true)
+      config.load!(env: base_env.merge("RACK_ENV" => "development"))
+      expect(config.under_test?).to be(false)
+      config.load!(env: base_env.merge("RACK_ENV" => "production"))
+      expect(config.under_test?).to be(false)
     end
   end
 

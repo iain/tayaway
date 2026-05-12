@@ -70,8 +70,8 @@ module RateLimiter
   def self.configure!
     Rack::Attack.cache.store = PgStore.new
 
-    # Skip rate limiting in test and e2e environments
-    if APP_CONFIG.production? || APP_CONFIG.development?
+    # Skip rate limiting under automated tests
+    unless APP_CONFIG.under_test?
       Rack::Attack.throttle("auth/login-link", limit: 5, period: 60) do |req|
         req.ip if req.post? && req.path == "/api/auth/login-link"
       end

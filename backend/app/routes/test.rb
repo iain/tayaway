@@ -8,7 +8,7 @@
 # These endpoints should NOT be enabled in production.
 class App
   hash_branch("api", "test") do |r|
-    unless APP_CONFIG.local?
+    unless APP_CONFIG.under_test?
       response.status = 404
       next { error: "Not found" }
     end
