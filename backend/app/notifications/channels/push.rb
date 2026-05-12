@@ -39,9 +39,9 @@ module Notifications
             p256dh: p256dh_key,
             auth: auth_key,
             vapid: {
-              subject: Config.vapid_subject,
-              public_key: Config.vapid_public_key,
-              private_key: Config.vapid_private_key
+              subject: APP_CONFIG.vapid_subject,
+              public_key: APP_CONFIG.vapid_public_key,
+              private_key: APP_CONFIG.vapid_private_key
             }
           )
         rescue WebPush::ExpiredSubscription, WebPush::InvalidSubscription
@@ -50,7 +50,7 @@ module Notifications
         end
 
         def configured?
-          Config.feature_enabled?(:push)
+          APP_CONFIG.feature_enabled?(:push)
         end
       end
 

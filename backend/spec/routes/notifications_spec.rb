@@ -103,7 +103,7 @@ RSpec.describe "Notifications inbox endpoints" do
 
   describe "GET /api/notifications/push-config" do
     it "returns the configured VAPID public key" do
-      Config.with(vapid_public_key: "test-public-key") do
+      APP_CONFIG.with(vapid_public_key: "test-public-key") do
         get "/api/notifications/push-config", {}, auth_cookie
 
         expect(last_response.status).to eq(200)
@@ -113,7 +113,7 @@ RSpec.describe "Notifications inbox endpoints" do
     end
 
     it "returns an empty key when VAPID isn't configured" do
-      Config.with(vapid_public_key: nil) do
+      APP_CONFIG.with(vapid_public_key: nil) do
         get "/api/notifications/push-config", {}, auth_cookie
 
         expect(last_response.status).to eq(200)

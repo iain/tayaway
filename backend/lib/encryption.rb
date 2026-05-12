@@ -48,7 +48,7 @@ module Encryption
 
     def encryption_key
       OpenSSL::KDF.hkdf(
-        APP_SECRET,
+        APP_CONFIG.app_secret,
         salt: "tayaway-iban-encryption",
         info: "iban-nacl-secretbox",
         length: 32,

@@ -4,6 +4,12 @@ require "spec_helper"
 require "base64"
 
 RSpec.describe Config do
+  # Exercise the live APP_CONFIG instance. Each example builds an env
+  # hash, calls #load! against it, then asserts on the resulting state.
+  # The around-block snapshots APP_CONFIG's values so each example is
+  # isolated from the next and from the .env.test-loaded defaults.
+  subject(:config) { APP_CONFIG }
+
   # A baseline env that satisfies every required-in-production var so each
   # example can express its scenario as a delta.
   let(:base_env) do
@@ -15,36 +21,34 @@ RSpec.describe Config do
     }
   end
 
-  # The whole Config module is process-global. Snapshot the live state
-  # (which was loaded from .env.test during spec_helper) and restore it.
   around do |example|
-    snapshot = described_class.send(:values_snapshot)
+    snapshot = config.send(:values_snapshot)
     example.run
   ensure
-    described_class.send(:restore_snapshot, snapshot)
+    config.send(:restore_snapshot, snapshot)
   end
 
-  describe ".load!" do
+  describe "#load!" do
     it "decodes APP_SECRET from base64" do
       secret_bytes = "x" * 32
-      described_class.load!(env: base_env.merge("APP_SECRET" => Base64.strict_encode64(secret_bytes)))
-      expect(described_class.app_secret).to eq(secret_bytes)
+      config.load!(env: base_env.merge("APP_SECRET" => Base64.strict_encode64(secret_bytes)))
+      expect(config.app_secret).to eq(secret_bytes)
     end
 
     it "applies the dev default for FRONTEND_URL outside production" do
-      described_class.load!(env: base_env.tap { _1.delete("FRONTEND_URL") })
-      expect(described_class.frontend_url).to eq("http://localhost:5173")
+      config.load!(env: base_env.tap { _1.delete("FRONTEND_URL") })
+      expect(config.frontend_url).to eq("http://localhost:5173")
     end
 
     it "requires FRONTEND_URL in production" do
       env = base_env.merge("RACK_ENV" => "production").tap { _1.delete("FRONTEND_URL") }
-      expect { described_class.load!(env: env) }
+      expect { config.load!(env: env) }
         .to raise_error(Config::Error, /FRONTEND_URL/)
     end
 
     it "fails fast when a required var is missing in production" do
       env = base_env.merge("RACK_ENV" => "production").tap { _1.delete("APP_SECRET") }
-      expect { described_class.load!(env: env) }
+      expect { config.load!(env: env) }
         .to raise_error(Config::Error, /APP_SECRET/)
     end
 
@@ -52,7 +56,7 @@ RSpec.describe Config do
       env = base_env.merge("RACK_ENV" => "production")
       env.delete("APP_SECRET")
       env.delete("DATABASE_URL")
-      expect { described_class.load!(env: env) }
+      expect { config.load!(env: env) }
         .to raise_error(Config::Error) { |e|
           expect(e.message).to include("APP_SECRET")
           expect(e.message).to include("DATABASE_URL")
@@ -60,65 +64,63 @@ RSpec.describe Config do
     end
 
     it "coerces int-typed vars" do
-      described_class.load!(env: base_env.merge("DATABASE_POOL_SIZE" => "32"))
-      expect(described_class.database_pool_size).to eq(32)
+      config.load!(env: base_env.merge("DATABASE_POOL_SIZE" => "32"))
+      expect(config.database_pool_size).to eq(32)
     end
 
     it "raises a clear error when an int-typed var is not numeric" do
-      expect { described_class.load!(env: base_env.merge("DATABASE_POOL_SIZE" => "lots")) }
+      expect { config.load!(env: base_env.merge("DATABASE_POOL_SIZE" => "lots")) }
         .to raise_error(Config::Error, /DATABASE_POOL_SIZE/)
     end
 
     it "parses csv-typed vars into a stripped, non-empty list" do
-      described_class.load!(env: base_env.merge("WEBAUTHN_EXTRA_ORIGINS" => "https://a.test, https://b.test, ,"))
-      expect(described_class.webauthn_extra_origins).to eq(["https://a.test", "https://b.test"])
+      config.load!(env: base_env.merge("WEBAUTHN_EXTRA_ORIGINS" => "https://a.test, https://b.test, ,"))
+      expect(config.webauthn_extra_origins).to eq(["https://a.test", "https://b.test"])
     end
 
     it "defaults csv-typed vars to an empty array" do
-      described_class.load!(env: base_env)
-      expect(described_class.webauthn_extra_origins).to eq([])
+      config.load!(env: base_env)
+      expect(config.webauthn_extra_origins).to eq([])
     end
 
     it "rejects RACK_ENV values not in the enum" do
-      expect { described_class.load!(env: base_env.merge("RACK_ENV" => "staging")) }
+      expect { config.load!(env: base_env.merge("RACK_ENV" => "staging")) }
         .to raise_error(Config::Error, /RACK_ENV/)
     end
 
-    it "exposes app_env as a convenience reader" do
-      described_class.load!(env: base_env.merge("RACK_ENV" => "test"))
-      expect(described_class.app_env).to eq("test")
+    it "exposes app_env as a reader" do
+      config.load!(env: base_env.merge("RACK_ENV" => "test"))
+      expect(config.app_env).to eq("test")
     end
   end
 
   describe "feature detection" do
     it "is disabled when no feature-required vars are set" do
-      described_class.load!(env: base_env)
-      expect(described_class.feature_enabled?(:push)).to be(false)
-      expect(described_class.feature_enabled?(:smtp)).to be(false)
+      config.load!(env: base_env)
+      expect(config.feature_enabled?(:push)).to be(false)
+      expect(config.feature_enabled?(:smtp)).to be(false)
     end
 
     it "enables :push when both VAPID keys are present" do
-      described_class.load!(env: base_env.merge(
-        "VAPID_PUBLIC_KEY" => "pub", "VAPID_PRIVATE_KEY" => "priv"
-      )
-                           )
-      expect(described_class.feature_enabled?(:push)).to be(true)
-      expect(described_class.vapid_public_key).to eq("pub")
+      config.load!(env: base_env.merge("VAPID_PUBLIC_KEY" => "pub", "VAPID_PRIVATE_KEY" => "priv"))
+      expect(config.feature_enabled?(:push)).to be(true)
+      expect(config.vapid_public_key).to eq("pub")
     end
 
     it "keeps :push disabled when only one VAPID key is set" do
-      described_class.load!(env: base_env.merge("VAPID_PUBLIC_KEY" => "pub"))
-      expect(described_class.feature_enabled?(:push)).to be(false)
+      config.load!(env: base_env.merge("VAPID_PUBLIC_KEY" => "pub"))
+      expect(config.feature_enabled?(:push)).to be(false)
     end
 
     it "enables :smtp when host/username/password are present" do
-      described_class.load!(env: base_env.merge(
+      config.load!(env: base_env.merge(
         "SMTP_HOST" => "smtp.example.com",
-        "SMTP_USERNAME" => "u", "SMTP_PASSWORD" => "p"
+        "SMTP_USERNAME" => "u",
+        "SMTP_PASSWORD" => "p"
       )
-                           )
-      expect(described_class.feature_enabled?(:smtp)).to be(true)
-      expect(described_class.smtp_port).to eq(587)
+                  )
+      expect(config.feature_enabled?(:smtp)).to be(true)
+      expect(config.smtp_port).to eq(587)
     end
 
     it "raises in production when a feature is half-configured" do
@@ -127,7 +129,7 @@ RSpec.describe Config do
         "SMTP_HOST" => "smtp.example.com",
         "SMTP_PASSWORD" => "p"
       )
-      expect { described_class.load!(env: env) }
+      expect { config.load!(env: env) }
         .to raise_error(Config::Error, /SMTP_USERNAME/)
     end
 
@@ -135,62 +137,61 @@ RSpec.describe Config do
       # Mirrors .env.test/.env.e2e, where SMTP_HOST is scaffolded with
       # empty credentials. The feature just stays off and gets reported
       # in the boot summary.
-      env = base_env.merge("SMTP_HOST" => "smtp.example.com")
-      described_class.load!(env: env)
-      expect(described_class.feature_enabled?(:smtp)).to be(false)
+      config.load!(env: base_env.merge("SMTP_HOST" => "smtp.example.com"))
+      expect(config.feature_enabled?(:smtp)).to be(false)
     end
 
     it "applies feature-scoped defaults regardless of activation state" do
-      described_class.load!(env: base_env)
-      expect(described_class.vapid_subject).to eq("mailto:noreply@tayaway.nl")
+      config.load!(env: base_env)
+      expect(config.vapid_subject).to eq("mailto:noreply@tayaway.nl")
     end
   end
 
-  describe ".to_h_redacted" do
+  describe "#to_h_redacted" do
     it "redacts secret-tagged values" do
-      described_class.load!(env: base_env)
-      redacted = described_class.to_h_redacted
+      config.load!(env: base_env)
+      redacted = config.to_h_redacted
       expect(redacted[:app_secret]).to eq("[REDACTED]")
       expect(redacted[:database_url]).to eq("[REDACTED]")
       expect(redacted[:frontend_url]).to eq("http://localhost:5173")
     end
   end
 
-  describe ".with" do
-    before { described_class.load!(env: base_env) }
+  describe "#with" do
+    before { config.load!(env: base_env) }
 
     it "scopes overrides to the block and restores afterwards" do
-      original = described_class.frontend_url
-      described_class.with(frontend_url: "https://override.test") do
-        expect(described_class.frontend_url).to eq("https://override.test")
+      original = config.frontend_url
+      config.with(frontend_url: "https://override.test") do
+        expect(config.frontend_url).to eq("https://override.test")
       end
-      expect(described_class.frontend_url).to eq(original)
+      expect(config.frontend_url).to eq(original)
     end
 
     it "restores values even when the block raises" do
-      original = described_class.frontend_url
+      original = config.frontend_url
       expect {
-        described_class.with(frontend_url: "https://x.test") { raise "boom" }
+        config.with(frontend_url: "https://x.test") { raise "boom" }
       }.to raise_error("boom")
-      expect(described_class.frontend_url).to eq(original)
+      expect(config.frontend_url).to eq(original)
     end
 
     it "temporarily activates a feature when its required keys are provided" do
-      expect(described_class.feature_enabled?(:push)).to be(false)
-      described_class.with(vapid_public_key: "pub", vapid_private_key: "priv") do
-        expect(described_class.feature_enabled?(:push)).to be(true)
+      expect(config.feature_enabled?(:push)).to be(false)
+      config.with(vapid_public_key: "pub", vapid_private_key: "priv") do
+        expect(config.feature_enabled?(:push)).to be(true)
       end
-      expect(described_class.feature_enabled?(:push)).to be(false)
+      expect(config.feature_enabled?(:push)).to be(false)
     end
   end
 
-  describe ".env_predicates" do
+  describe "env predicates" do
     it "exposes production?/development?/test?/e2e? matching app_env" do
-      described_class.load!(env: base_env.merge("RACK_ENV" => "test"))
-      expect(described_class.test?).to be(true)
-      expect(described_class.production?).to be(false)
-      expect(described_class.development?).to be(false)
-      expect(described_class.e2e?).to be(false)
+      config.load!(env: base_env.merge("RACK_ENV" => "test"))
+      expect(config.test?).to be(true)
+      expect(config.production?).to be(false)
+      expect(config.development?).to be(false)
+      expect(config.e2e?).to be(false)
     end
   end
 end

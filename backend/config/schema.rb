@@ -3,7 +3,7 @@
 # Every env var the backend reads, declared in one place. The DSL is
 # defined in `config/config.rb`; this file is data.
 
-Config.define do |c|
+APP_CONFIG = Config.define do |c|
   c.optional :app_env, env: "RACK_ENV", type: :enum, values: Config::RACK_ENVS, default: "development",
              description: "Application environment"
 

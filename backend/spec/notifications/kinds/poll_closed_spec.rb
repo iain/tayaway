@@ -115,7 +115,7 @@ RSpec.describe Notifications::Kinds::PollClosed do
 
     context "when an unsubscribe address is configured" do
       it "sets a mailto List-Unsubscribe header" do
-        Config.with(smtp_unsubscribe_email: "unsubscribe@tayaway.nl") do
+        APP_CONFIG.with(smtp_unsubscribe_email: "unsubscribe@tayaway.nl") do
           message = described_class.build_email(**base_params)
 
           expect(message["List-Unsubscribe"].to_s)

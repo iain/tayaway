@@ -16,22 +16,19 @@ Object.include Dry::Monads[:result]
 
 Dotenv.load("#{APP_DIR}/.env.#{boot_env}") unless boot_env == "production"
 
+# GIT_SHA can come from three places in priority order — env, the REVISION
+# file written by Capistrano, or `git rev-parse` on a working tree. Resolve
+# the fallback chain *before* APP_CONFIG.load! so Config sees a single source.
+ENV["GIT_SHA"] ||=
+  (File.read("#{APP_DIR}/REVISION").strip[0, 7] if File.exist?("#{APP_DIR}/REVISION")) ||
+  `git rev-parse --short HEAD 2>/dev/null`.strip
+
 require_relative "config"
-Config.load!
-
-APP_ENV = Config.app_env
-
-GIT_SHA = (
-    Config.git_sha ||
-    (File.read("#{APP_DIR}/REVISION").strip[0, 7] if File.exist?("#{APP_DIR}/REVISION")) ||
-    `git rev-parse --short HEAD 2>/dev/null`.strip
-  ).freeze
-
-APP_SECRET = Config.app_secret
+APP_CONFIG.load!
 
 require "logger"
 APP_LOGGER = Logger.new($stdout)
-APP_LOGGER.level = case APP_ENV
+APP_LOGGER.level = case APP_CONFIG.app_env
                    when "production" then Logger::INFO
                    when "test" then Logger::FATAL
                    when "e2e" then Logger::WARN
@@ -39,7 +36,7 @@ APP_LOGGER.level = case APP_ENV
                    end
 require_relative "../lib/request_context"
 require_relative "../lib/log_formatter"
-APP_LOGGER.formatter = APP_ENV == "production" ? LogFormatter.json : LogFormatter.tagged
+APP_LOGGER.formatter = APP_CONFIG.production? ? LogFormatter.json : LogFormatter.tagged
 
 require_relative "database"
 
@@ -54,15 +51,12 @@ LOADER.push_dir(File.expand_path("../app/policies", __dir__))
 LOADER.ignore(File.expand_path("../app/app.rb", __dir__))
 LOADER.ignore(File.expand_path("../app/routes", __dir__))
 LOADER.setup
-LOADER.eager_load if APP_ENV == "production"
-
-FRONTEND_URL = Config.frontend_url.freeze
-WEBAUTHN_EXTRA_ORIGINS = Config.webauthn_extra_origins.freeze
+LOADER.eager_load if APP_CONFIG.production?
 
 WebAuthn.configure do |config|
-  config.allowed_origins = [FRONTEND_URL, *WEBAUTHN_EXTRA_ORIGINS]
+  config.allowed_origins = [APP_CONFIG.frontend_url, *APP_CONFIG.webauthn_extra_origins]
   config.rp_name = "Tayaway"
-  config.rp_id = URI.parse(FRONTEND_URL).host
+  config.rp_id = URI.parse(APP_CONFIG.frontend_url).host
   # We request indirect attestation only to preserve the AAGUID for friendly-name
   # lookup via FIDO MDS. We don't restrict to specific authenticators, so verifying
   # the attestation chain adds no security and would reject any roaming key whose
@@ -78,7 +72,7 @@ FidoMetadata.configure do |config|
 end
 
 # Pre-warm the FIDO metadata cache in a background thread so no user request pays the cost.
-if %w[production development].include?(APP_ENV)
+if APP_CONFIG.production? || APP_CONFIG.development?
   Thread.new do
     FidoMetadata::Store.new.table_of_contents
     APP_LOGGER.info { "[FidoMetadata] Cache warmed" }
@@ -96,7 +90,7 @@ RateLimiter.configure!
 # in e2e mode skip peer verification — but only for loopback destinations.
 # Scoping by destination keeps real TLS verification on for any other
 # outbound HTTPS call this env might gain in the future.
-if APP_ENV == "e2e"
+if APP_CONFIG.e2e?
   require "net/http"
   require "openssl"
   require "ipaddr"

@@ -22,7 +22,7 @@ module Auth
                 recipient_name: user.name,
                 action: action,
                 passkey_name: passkey_name,
-                session_url: "#{FRONTEND_URL}/settings/login"
+                session_url: "#{APP_CONFIG.frontend_url}/settings/login"
               }
             )
           end

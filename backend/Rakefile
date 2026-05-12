@@ -5,12 +5,12 @@ require "dotenv"
 Dotenv.load(".env.#{ENV.fetch("RACK_ENV", "development")}")
 require "sequel"
 require_relative "config/config"
-Config.load!
+APP_CONFIG.load!
 
 namespace :db do
   desc "Create the database"
   task :create do
-    database_url = Config.database_url
+    database_url = APP_CONFIG.database_url
     db_name = database_url.split("/").last
 
     # Connect to a maintenance database to issue CREATE DATABASE.
@@ -45,7 +45,7 @@ namespace :db do
 
   desc "Drop the database"
   task :drop do
-    database_url = Config.database_url
+    database_url = APP_CONFIG.database_url
     db_name = database_url.split("/").last
 
     candidates = ["postgres"] + (%w[tayaway_development tayaway_test tayaway_e2e] - [db_name])
@@ -125,7 +125,7 @@ namespace :db do
   task :cleanup_deleted_items do
     require_relative "config/database"
 
-    retention_days = Config.deleted_items_retention_days
+    retention_days = APP_CONFIG.deleted_items_retention_days
     cutoff = Time.now - (retention_days * 24 * 60 * 60)
     count = DB[:deleted_items].where { deleted_at < cutoff }.delete
     puts "Deleted #{count} deleted_items rows older than #{retention_days} days"
@@ -135,7 +135,7 @@ namespace :db do
   task :cleanup_idempotency_keys do
     require_relative "config/database"
 
-    ttl_hours = Config.idempotency_key_ttl_hours
+    ttl_hours = APP_CONFIG.idempotency_key_ttl_hours
     cutoff = Time.now - (ttl_hours * 60 * 60)
     count = DB[:idempotency_keys].where { created_at < cutoff }.delete
     puts "Deleted #{count} idempotency_keys rows older than #{ttl_hours} hours"
@@ -145,7 +145,7 @@ namespace :db do
   task :cleanup_audit_log_entries do
     require_relative "config/database"
 
-    retention_days = Config.audit_log_retention_days
+    retention_days = APP_CONFIG.audit_log_retention_days
     cutoff = Time.now - (retention_days * 24 * 60 * 60)
     count = DB[:audit_log_entries].where { created_at < cutoff }.delete
     puts "Deleted #{count} audit_log_entries rows older than #{retention_days} days"
@@ -169,9 +169,9 @@ end
 namespace :config do
   desc "Validate env vars against the Config schema and print which features are enabled"
   task :validate do
-    enabled = Config.features.map(&:name).select { |n| Config.feature_enabled?(n) }
-    disabled = Config.features.map(&:name) - enabled
-    puts "env=#{Config.app_env}"
+    enabled = APP_CONFIG.features.map(&:name).select { |n| APP_CONFIG.feature_enabled?(n) }
+    disabled = APP_CONFIG.features.map(&:name) - enabled
+    puts "env=#{APP_CONFIG.app_env}"
     puts "features enabled: #{enabled.empty? ? "(none)" : enabled.join(", ")}"
     puts "features disabled: #{disabled.empty? ? "(none)" : disabled.join(", ")}"
   end

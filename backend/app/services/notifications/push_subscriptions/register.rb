@@ -33,7 +33,7 @@ module Notifications
             auth_key: auth_key.to_s,
             user_agent: user_agent
           )
-          Success({ ok: true, vapidPublicKey: Config.vapid_public_key.to_s })
+          Success({ ok: true, vapidPublicKey: APP_CONFIG.vapid_public_key.to_s })
         end
       end
     end

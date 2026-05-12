@@ -56,11 +56,13 @@ RSpec.describe Events::OnCreated do
     it "stays silent when notification dispatch raises (failure isolation)" do
       event, actor, = event_with_actor_and_others(other_count: 1)
       allow(Notifications::Dispatch).to receive(:call).and_raise(StandardError, "boom")
-      stub_const("APP_ENV", "production") # Safely re-raises in test by default
 
-      expect do
-        described_class.call(event: event, actor_user_id: actor[:id])
-      end.not_to raise_error
+      # Safely re-raises in test by default; flip to production to exercise the swallow path.
+      APP_CONFIG.with(app_env: "production") do
+        expect do
+          described_class.call(event: event, actor_user_id: actor[:id])
+        end.not_to raise_error
+      end
     end
   end
 end

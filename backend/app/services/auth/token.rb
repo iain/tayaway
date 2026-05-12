@@ -7,7 +7,7 @@ require "jwt"
 module Auth
   module Token
     def self.digest(message)
-      digest = OpenSSL::HMAC.digest("SHA3-512", APP_SECRET, message)
+      digest = OpenSSL::HMAC.digest("SHA3-512", APP_CONFIG.app_secret, message)
       Base64.urlsafe_encode64(digest[0, 32], padding: false)
     end
 
@@ -18,11 +18,11 @@ module Auth
         typ: "login_link",
         exp: (Time.now + (LoginLinkToken::EXPIRY_MINUTES * 60)).to_i
       }
-      JWT.encode(payload, APP_SECRET, "HS256")
+      JWT.encode(payload, APP_CONFIG.app_secret, "HS256")
     end
 
     def self.decode_login_link(jwt)
-      decoded = JWT.decode(jwt, APP_SECRET, true, algorithm: "HS256")
+      decoded = JWT.decode(jwt, APP_CONFIG.app_secret, true, algorithm: "HS256")
       payload = decoded.first
       raise JWT::DecodeError, "Invalid token type" unless payload["typ"] == "login_link"
 
@@ -35,11 +35,11 @@ module Auth
         typ: "ws_ticket",
         exp: (Time.now + WsTicket::EXPIRY_SECONDS).to_i
       }
-      JWT.encode(payload, APP_SECRET, "HS256")
+      JWT.encode(payload, APP_CONFIG.app_secret, "HS256")
     end
 
     def self.decode_ws_ticket(jwt)
-      decoded = JWT.decode(jwt, APP_SECRET, true, algorithm: "HS256")
+      decoded = JWT.decode(jwt, APP_CONFIG.app_secret, true, algorithm: "HS256")
       payload = decoded.first
       raise JWT::DecodeError, "Invalid token type" unless payload["typ"] == "ws_ticket"
 
@@ -53,11 +53,11 @@ module Auth
         typ: "invite",
         exp: (Time.now + (WorkspaceInvite::EXPIRY_HOURS * 3600)).to_i
       }
-      JWT.encode(payload, APP_SECRET, "HS256")
+      JWT.encode(payload, APP_CONFIG.app_secret, "HS256")
     end
 
     def self.decode_invite(jwt)
-      decoded = JWT.decode(jwt, APP_SECRET, true, algorithm: "HS256")
+      decoded = JWT.decode(jwt, APP_CONFIG.app_secret, true, algorithm: "HS256")
       payload = decoded.first
       raise JWT::DecodeError, "Invalid token type" unless payload["typ"] == "invite"
 
@@ -71,11 +71,11 @@ module Auth
         typ: "email_change",
         exp: (Time.now + (EmailChangeToken::EXPIRY_MINUTES * 60)).to_i
       }
-      JWT.encode(payload, APP_SECRET, "HS256")
+      JWT.encode(payload, APP_CONFIG.app_secret, "HS256")
     end
 
     def self.decode_email_change(jwt)
-      decoded = JWT.decode(jwt, APP_SECRET, true, algorithm: "HS256")
+      decoded = JWT.decode(jwt, APP_CONFIG.app_secret, true, algorithm: "HS256")
       payload = decoded.first
       raise JWT::DecodeError, "Invalid token type" unless payload["typ"] == "email_change"
 
@@ -92,11 +92,11 @@ module Auth
         exp: (Time.now + WEBAUTHN_CHALLENGE_EXPIRY_SECONDS).to_i
       }
       payload[:sub] = user_id if user_id
-      JWT.encode(payload, APP_SECRET, "HS256")
+      JWT.encode(payload, APP_CONFIG.app_secret, "HS256")
     end
 
     def self.decode_webauthn_challenge(jwt, user_id: nil)
-      decoded = JWT.decode(jwt, APP_SECRET, true, algorithm: "HS256")
+      decoded = JWT.decode(jwt, APP_CONFIG.app_secret, true, algorithm: "HS256")
       payload = decoded.first
 
       expected_typ = user_id ? "webauthn_register" : "webauthn_authenticate"

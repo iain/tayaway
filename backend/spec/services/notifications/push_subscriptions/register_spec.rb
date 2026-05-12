@@ -22,7 +22,7 @@ RSpec.describe Notifications::PushSubscriptions::Register do
     end
 
     it "returns the VAPID public key so the page can confirm it matches" do
-      Config.with(vapid_public_key: "k-public") do
+      APP_CONFIG.with(vapid_public_key: "k-public") do
         result = described_class.call(
           user_id: user[:id],
           endpoint: "https://push.example.com/abc",

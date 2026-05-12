@@ -23,7 +23,7 @@ module Settlements
               actor_name: actor.name || actor.email.to_s,
               amount: amount.to_f,
               actor_role: actor_role,
-              settle_up_url: "#{FRONTEND_URL}/settle-up"
+              settle_up_url: "#{APP_CONFIG.frontend_url}/settle-up"
             }
           )
         end

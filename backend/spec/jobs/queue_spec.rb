@@ -7,7 +7,6 @@ RSpec.describe Jobs::Queue do
 
   describe ".enqueue" do
     it "runs the job inline in the test environment" do
-      stub_const("APP_ENV", "test")
       called_with = nil
       stub_const("Jobs::FakeNoop", Class.new(Jobs::Base) do
         define_method(:call) { |label:| called_with = label }
@@ -24,7 +23,6 @@ RSpec.describe Jobs::Queue do
       # gets a string-keyed hash. The test path stringifies before calling
       # .run for parity, so a job whose .run depends on string keys behaves
       # the same in both environments.
-      stub_const("APP_ENV", "test")
       stub_const("Jobs::FakeKeyCheck", Class.new(Jobs::Base) do
         define_method(:call) { |label:| label }
       end
@@ -41,7 +39,6 @@ RSpec.describe Jobs::Queue do
       # silently diverge from production semantics if a caller asked for
       # a delayed run. Refuse loudly instead — exercise delayed jobs by
       # inserting directly and calling Worker.drain.
-      stub_const("APP_ENV", "test")
       stub_const("Jobs::FakeDelayed", Class.new(Jobs::Base) do
         define_method(:call) { |x:| x }
       end
@@ -57,14 +54,15 @@ RSpec.describe Jobs::Queue do
     end
 
     it "inserts a runnable row outside test mode and the worker can pick it up" do
-      stub_const("APP_ENV", "development")
       stub_const("QueueSpecBuffer", [])
       stub_const("Jobs::QueueSpecJob", Class.new(Jobs::Base) do
         define_method(:call) { |value:| QueueSpecBuffer << value }
       end
       )
 
-      described_class.enqueue(job_class: "Jobs::QueueSpecJob", args: { value: "queued" })
+      APP_CONFIG.with(app_env: "development") do
+        described_class.enqueue(job_class: "Jobs::QueueSpecJob", args: { value: "queued" })
+      end
 
       row = DB[described_class::TABLE].first
       expect(row[:job_class]).to eq("Jobs::QueueSpecJob")

@@ -13,14 +13,14 @@ class App < Roda
   plugin :cookies
   plugin :websockets
   plugin :error_handler do |e|
-    unless APP_ENV == "test"
+    unless APP_CONFIG.test?
       $stderr.puts "Unhandled error: #{e.class}: #{e.message}"
       e.backtrace&.each { |line| $stderr.puts line }
     end
     { error: "Internal server error" }
   end
 
-  STATIC_DIR = Pathname.new(Config.static_dir || File.expand_path("../../frontend/dist", __dir__))
+  STATIC_DIR = Pathname.new(APP_CONFIG.static_dir || File.expand_path("../../frontend/dist", __dir__))
 
   plugin :public, root: STATIC_DIR.to_s
 
@@ -30,7 +30,7 @@ class App < Roda
 
   # __Host- prefix enforces Secure, exact host match, and Path=/ in browsers.
   # Only used in production since __Host- requires HTTPS.
-  COOKIE_NAME = Config.production? ? "__Host-session_token" : "session_token"
+  COOKIE_NAME = APP_CONFIG.production? ? "__Host-session_token" : "session_token"
 
   def set_session_cookie(token, expires_at)
     response.set_cookie(
@@ -38,7 +38,7 @@ class App < Roda
       value: token,
       path: "/",
       httponly: true,
-      secure: Config.production?,
+      secure: APP_CONFIG.production?,
       same_site: :lax,
       expires: expires_at
     )
@@ -50,7 +50,7 @@ class App < Roda
       value: "",
       path: "/",
       httponly: true,
-      secure: Config.production?,
+      secure: APP_CONFIG.production?,
       same_site: :lax,
       expires: Time.at(0)
     )

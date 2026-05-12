@@ -14,7 +14,7 @@ module Jobs
       # @param args [Hash] keyword arguments to persist with the job
       # @param scheduled_at [Time, nil] earliest time the job may run; defaults to now
       def enqueue(job_class:, args:, scheduled_at: nil)
-        if APP_ENV == "test"
+        if APP_CONFIG.test?
           # Run synchronously so specs can assert on side-effects without
           # spinning up a worker. The inline path can't honour
           # `scheduled_at`, so refuse it loudly rather than diverging

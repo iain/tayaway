@@ -73,10 +73,10 @@ module Users
         )
 
         jwt = Auth::Token.encode_email_change(token: raw_token, email: parsed_email.to_s)
-        verification_link = "#{FRONTEND_URL}/verify-email?token=#{jwt}"
+        verification_link = "#{APP_CONFIG.frontend_url}/verify-email?token=#{jwt}"
 
         APP_LOGGER.info { "[Users::RequestEmailChange] User #{user.id} requested email change to #{parsed_email}" }
-        APP_LOGGER.info { "EMAIL CHANGE LINK FOR #{parsed_email}: #{verification_link}" } if APP_ENV == "development"
+        APP_LOGGER.info { "EMAIL CHANGE LINK FOR #{parsed_email}: #{verification_link}" } if APP_CONFIG.development?
         Mailers::EmailChange.send_email(email: parsed_email, verification_link: verification_link)
 
         Success({ message: "A verification link has been sent to #{parsed_email}. Please check your inbox." })

@@ -11,7 +11,7 @@ RSpec.describe Notifications::Safely do
     end
 
     context "when the block raises in production" do
-      before { stub_const("APP_ENV", "production") }
+      around { |example| APP_CONFIG.with(app_env: "production") { example.run } }
 
       it "logs with the context and swallows the error" do
         allow(APP_LOGGER).to receive(:error)

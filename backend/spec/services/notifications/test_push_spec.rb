@@ -7,13 +7,13 @@ RSpec.describe Notifications::TestPush do
 
   describe ".call" do
     around do |example|
-      Config.with(vapid_public_key: "stub-public", vapid_private_key: "stub-private") { example.run }
+      APP_CONFIG.with(vapid_public_key: "stub-public", vapid_private_key: "stub-private") { example.run }
     end
 
     before { allow(WebPush).to receive(:payload_send) }
 
     it "fails when push is not configured" do
-      Config.with(vapid_public_key: nil, vapid_private_key: nil) do
+      APP_CONFIG.with(vapid_public_key: nil, vapid_private_key: nil) do
         result = described_class.call(user_id: user[:id])
 
         expect(result.failure?).to be true

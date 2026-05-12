@@ -99,7 +99,7 @@ class App
       r.is do
         # GET /api/notifications/push-config - VAPID public key for the browser
         r.get do
-          { vapidPublicKey: Config.vapid_public_key.to_s }
+          { vapidPublicKey: APP_CONFIG.vapid_public_key.to_s }
         end
       end
     end

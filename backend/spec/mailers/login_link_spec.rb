@@ -60,7 +60,7 @@ RSpec.describe Mailers::LoginLink do
 
     context "when an unsubscribe address is configured" do
       it "still does not set a List-Unsubscribe header (login is user-requested)" do
-        Config.with(smtp_unsubscribe_email: "unsubscribe@tayaway.nl") do
+        APP_CONFIG.with(smtp_unsubscribe_email: "unsubscribe@tayaway.nl") do
           described_class.send_email(email: email, login_link: login_link)
           expect(Mail::TestMailer.deliveries.first["List-Unsubscribe"]).to be_nil
         end

@@ -13,7 +13,7 @@ module Mailers
   module Base
     class << self
       def configure!
-        if APP_ENV == "production"
+        if APP_CONFIG.production?
           APP_LOGGER.info { "[Mailer] SMTP delivery configured (credentials loaded on first send)" }
         else
           Mail.defaults { self.delivery_method :test }
@@ -22,24 +22,24 @@ module Mailers
       end
 
       def deliver(message)
-        apply_smtp_settings(message) if APP_ENV == "production"
+        apply_smtp_settings(message) if APP_CONFIG.production?
         masked = mask_recipients(message.to)
         APP_LOGGER.info { "[Mailer] Sending email to #{masked} (subject: #{message.subject})" }
         message.deliver
         APP_LOGGER.info { "[Mailer] Email delivered to #{masked}" }
       end
 
-      def from_address = Config.smtp_from_email
-      def from_name    = Config.smtp_from_name
+      def from_address = APP_CONFIG.smtp_from_email
+      def from_name    = APP_CONFIG.smtp_from_name
       def from_header  = "#{from_name} <#{from_address}>"
 
       def reply_to_address
-        value = Config.smtp_reply_to_email
+        value = APP_CONFIG.smtp_reply_to_email
         value && !value.empty? ? value : nil
       end
 
       def unsubscribe_mailto
-        address = Config.smtp_unsubscribe_email
+        address = APP_CONFIG.smtp_unsubscribe_email
         return nil if address.nil? || address.empty?
 
         "<mailto:#{address}?subject=unsubscribe>"
@@ -71,18 +71,18 @@ module Mailers
 
       def apply_smtp_settings(message)
         # Port 465 uses implicit SSL; port 587 uses STARTTLS
-        tls_options = if Config.smtp_port == 465
+        tls_options = if APP_CONFIG.smtp_port == 465
                         { ssl: true, enable_starttls_auto: false }
                       else
                         { ssl: false, enable_starttls_auto: true }
                       end
 
         message.delivery_method(:smtp, {
-          address: Config.smtp_host,
-          port: Config.smtp_port,
-          user_name: Config.smtp_username,
-          password: Config.smtp_password,
-          domain: Config.smtp_domain,
+          address: APP_CONFIG.smtp_host,
+          port: APP_CONFIG.smtp_port,
+          user_name: APP_CONFIG.smtp_username,
+          password: APP_CONFIG.smtp_password,
+          domain: APP_CONFIG.smtp_domain,
           authentication: "plain"
         }.merge(tls_options)
         )

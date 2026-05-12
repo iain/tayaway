@@ -28,7 +28,7 @@ module Auth
               os_name: browser_info&.dig(:os_name),
               city: geo&.dig(:city),
               country: country,
-              session_url: "#{FRONTEND_URL}/settings/login"
+              session_url: "#{APP_CONFIG.frontend_url}/settings/login"
             }
           )
         end

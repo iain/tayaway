@@ -69,7 +69,7 @@ class App
       }
       auth_message[:initialWorkspaceId] = synced_workspace_id if synced_workspace_id
       connection.write(auth_message.to_json)
-      connection.write({ type: "pong", gitSha: GIT_SHA }.to_json)
+      connection.write({ type: "pong", gitSha: APP_CONFIG.git_sha }.to_json)
 
       # Send workspace summaries for the workspace selector
       pool = PoolSerializer.new
