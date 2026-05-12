@@ -97,11 +97,17 @@ jobs:
       - name: Set up test database
         run: mise run //backend:db:setup-test
 
-      # Only the design-system spec carries visual baselines today; restrict
-      # the update to that file so a regression-test workflow can't silently
+      # `--update-snapshots=all` (rather than the default `changed` mode)
+      # always rewrites the baseline, even when the new render falls within
+      # the spec's pixel-ratio tolerance against the existing image. Without
+      # it, a visual fix smaller than the tolerance would leave the stale
+      # baseline in place — which is exactly the case this workflow exists
+      # to handle.
+      #
+      # Restricted to the design-system spec so the workflow can't silently
       # bake other tests' incidental output into a baseline.
       - name: Regenerate visual baselines
-        run: mise run e2e -- design-system --update-snapshots
+        run: mise run e2e -- design-system --update-snapshots=all
 
       # `github.ref_name` is user-controllable (branch name), so it goes
       # through env rather than being inlined into the shell command — keeps
