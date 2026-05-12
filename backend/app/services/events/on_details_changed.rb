@@ -16,7 +16,7 @@ module Events
           recipient_ids = attending_rsvps.map { |r| r.user_id.to_s } - [actor_user_id.to_s]
           return if recipient_ids.empty?
 
-          event_url = "#{APP_CONFIG.frontend_url}/events/#{after.id}"
+          event_url = APP_CONFIG.frontend_url.path("/events/#{after.id}")
           users = User.for_ids(recipient_ids)
 
           users.each do |user|

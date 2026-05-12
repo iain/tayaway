@@ -37,7 +37,7 @@ RSpec.describe Config do
 
     it "applies the dev default for FRONTEND_URL outside production" do
       config.load!(env: base_env.tap { _1.delete("FRONTEND_URL") })
-      expect(config.frontend_url).to eq("http://localhost:5173")
+      expect(config.frontend_url.to_s).to eq("http://localhost:5173")
     end
 
     it "requires FRONTEND_URL in production" do
@@ -153,7 +153,7 @@ RSpec.describe Config do
       redacted = config.to_h_redacted
       expect(redacted[:app_secret]).to eq("[REDACTED]")
       expect(redacted[:database_url]).to eq("[REDACTED]")
-      expect(redacted[:frontend_url]).to eq("http://localhost:5173")
+      expect(redacted[:frontend_url].to_s).to eq("http://localhost:5173")
     end
   end
 
@@ -163,9 +163,16 @@ RSpec.describe Config do
     it "scopes overrides to the block and restores afterwards" do
       original = config.frontend_url
       config.with(frontend_url: "https://override.test") do
-        expect(config.frontend_url).to eq("https://override.test")
+        expect(config.frontend_url.to_s).to eq("https://override.test")
       end
       expect(config.frontend_url).to eq(original)
+    end
+
+    it "wraps url-typed overrides so callers can still pass strings" do
+      config.with(frontend_url: "https://override.test") do
+        expect(config.frontend_url).to be_a(Config::Url)
+        expect(config.frontend_url.host).to eq("override.test")
+      end
     end
 
     it "restores values even when the block raises" do
@@ -182,6 +189,50 @@ RSpec.describe Config do
         expect(config.feature_enabled?(:push)).to be(true)
       end
       expect(config.feature_enabled?(:push)).to be(false)
+    end
+  end
+
+  describe Config::Url do
+    subject(:url) { described_class.new("https://example.com") }
+
+    it "preserves the input as to_s for interpolation compatibility" do
+      expect(url.to_s).to eq("https://example.com")
+      expect("link: #{url}").to eq("link: https://example.com")
+    end
+
+    it "strips a trailing slash from the base" do
+      expect(described_class.new("https://example.com/").to_s).to eq("https://example.com")
+    end
+
+    it "exposes the host" do
+      expect(url.host).to eq("example.com")
+    end
+
+    it "builds a path with a leading slash" do
+      expect(url.path("/events/123")).to eq("https://example.com/events/123")
+    end
+
+    it "adds a leading slash when the caller omits it" do
+      expect(url.path("events/123")).to eq("https://example.com/events/123")
+    end
+
+    it "appends a query string from keyword arguments" do
+      expect(url.path("/invite", token: "abc")).to eq("https://example.com/invite?token=abc")
+    end
+
+    it "url-encodes query values" do
+      expect(url.path("/x", token: "a b&c")).to eq("https://example.com/x?token=a+b%26c")
+    end
+
+    it "compares equal when the bases match" do
+      expect(described_class.new("https://example.com")).to eq(described_class.new("https://example.com/"))
+    end
+  end
+
+  describe ":url type" do
+    it "raises a clear error when the value is not a valid URI" do
+      expect { config.load!(env: base_env.merge("FRONTEND_URL" => "not a url")) }
+        .to raise_error(Config::Error, /FRONTEND_URL/)
     end
   end
 

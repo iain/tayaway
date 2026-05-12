@@ -25,7 +25,7 @@ module Invites
               recipient_name: inviter.name,
               invitee_name: invitee_display,
               workspace_name: workspace.name,
-              workspace_url: APP_CONFIG.frontend_url
+              workspace_url: APP_CONFIG.frontend_url.to_s
             }
           )
         end

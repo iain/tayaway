@@ -54,9 +54,9 @@ LOADER.setup
 LOADER.eager_load if APP_CONFIG.production?
 
 WebAuthn.configure do |config|
-  config.allowed_origins = [APP_CONFIG.frontend_url, *APP_CONFIG.webauthn_extra_origins]
+  config.allowed_origins = [APP_CONFIG.frontend_url.to_s, *APP_CONFIG.webauthn_extra_origins]
   config.rp_name = "Tayaway"
-  config.rp_id = URI.parse(APP_CONFIG.frontend_url).host
+  config.rp_id = APP_CONFIG.frontend_url.host
   # We request indirect attestation only to preserve the AAGUID for friendly-name
   # lookup via FIDO MDS. We don't restrict to specific authenticators, so verifying
   # the attestation chain adds no security and would reject any roaming key whose

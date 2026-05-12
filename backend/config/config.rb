@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "base64"
+require "uri"
 
 # Per-app configuration object. The declarations live in
 # `config/schema.rb`, which constructs the application's `APP_CONFIG`
@@ -35,6 +36,36 @@ class Config
 
   ParseFailure = Data.define(:message)
   private_constant :ParseFailure
+
+  # Wrapper for `:url`-typed entries. Carries the URL as a string for
+  # interpolation compatibility (`"#{url}"` and `url.to_s` both yield
+  # the original string) and exposes ergonomic builders so call sites
+  # don't have to interpolate paths by hand:
+  #
+  #   url.path("/events/#{id}")           # => "<base>/events/<id>"
+  #   url.path("/invite", token: "abc")   # => "<base>/invite?token=abc"
+  #   url.host                            # => "example.com"
+  class Url
+    attr_reader :base
+
+    def initialize(base)
+      @base = base.to_s.chomp("/")
+      @uri = URI.parse(@base)
+    end
+
+    def to_s = @base
+    def host = @uri.host
+
+    def path(path, **query)
+      path = "/#{path}" unless path.start_with?("/")
+      query_string = query.empty? ? "" : "?#{URI.encode_www_form(query)}"
+      "#{@base}#{path}#{query_string}"
+    end
+
+    def ==(other) = other.is_a?(Url) && @base == other.base
+    alias_method :eql?, :==
+    def hash = @base.hash
+  end
 
   RACK_ENVS = %w[production development test e2e].freeze
 
@@ -137,8 +168,9 @@ class Config
   def with(overrides)
     raise Error, "Config#with called before load!" unless @values
 
+    coerced = overrides.to_h { |k, v| [k, coerce_override(k, v)] }
     snapshot = @values
-    @values = @values.merge(overrides).freeze
+    @values = @values.merge(coerced).freeze
     yield
   ensure
     @values = snapshot
@@ -217,12 +249,34 @@ class Config
       return
     end
 
-    values[spec.key] =
-      if in_production || spec.dev_default.nil?
-        spec.default
-      else
-        spec.dev_default
-      end
+    fallback = in_production || spec.dev_default.nil? ? spec.default : spec.dev_default
+    values[spec.key] = coerce_default(spec, fallback)
+  end
+
+  # Defaults from the schema are written as plain Ruby values
+  # (`"http://localhost:5173"`, `16`, `[]`). Run them through the same
+  # type wrapping as env-derived values so a caller never has to think
+  # about whether a value originated from ENV or the default branch.
+  def coerce_default(spec, value)
+    coerce_for_type(spec.type, value)
+  end
+
+  # `with(...)` overrides come from test/app code as plain Ruby values
+  # — apply the same type wrapping as load!.
+  def coerce_override(key, value)
+    spec = @specs_by_key[key]
+    return value unless spec
+
+    coerce_for_type(spec.type, value)
+  end
+
+  def coerce_for_type(type, value)
+    return value if value.nil?
+
+    case type
+    when :url then value.is_a?(Url) ? value : Url.new(value)
+    else value
+    end
   end
 
   def parse_or_default(spec, env, errors, in_production:)
@@ -238,13 +292,15 @@ class Config
       Base64.strict_decode64(raw)
     when :csv
       raw.split(",").map(&:strip).reject(&:empty?)
+    when :url
+      Url.new(raw)
     when :enum
       # `spec` is a Data, not a Hash — `.values` is the enum allow-list.
       spec.values.include?(raw) ? raw : ParseFailure.new("#{spec.env}=#{raw.inspect} is not one of #{spec.values.join(", ")}") # rubocop:disable Performance/InefficientHashSearch
     else
       raw
     end
-  rescue ArgumentError => e
+  rescue ArgumentError, URI::InvalidURIError => e
     ParseFailure.new("#{spec.env}=#{raw.inspect} is invalid: #{e.message}")
   end
 

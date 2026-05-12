@@ -22,7 +22,7 @@ module Members
               workspace_name: workspace.name,
               old_role: old_role,
               new_role: new_role,
-              workspace_url: APP_CONFIG.frontend_url
+              workspace_url: APP_CONFIG.frontend_url.to_s
             }
           )
         end

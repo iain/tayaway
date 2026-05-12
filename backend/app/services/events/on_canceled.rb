@@ -18,7 +18,7 @@ module Events
 
           actor_name = actor.name || actor.email.to_s
           users = User.for_ids(recipient_ids)
-          workspace_url = APP_CONFIG.frontend_url
+          workspace_url = APP_CONFIG.frontend_url.to_s
 
           users.each do |user|
             Notifications::Dispatch.call(

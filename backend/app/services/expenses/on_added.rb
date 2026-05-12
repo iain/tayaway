@@ -19,7 +19,7 @@ module Expenses
           users = User.for_ids(recipient_ids)
           actor = User.find(actor_user_id)
           actor_name = actor&.name || actor&.email&.to_s || "Someone"
-          event_url = "#{APP_CONFIG.frontend_url}/events/#{event_id}"
+          event_url = APP_CONFIG.frontend_url.path("/events/#{event_id}")
 
           users.each do |user|
             Notifications::Dispatch.call(
