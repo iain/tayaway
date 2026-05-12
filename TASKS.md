@@ -158,6 +158,12 @@ Playwright end-to-end tests — extra args pass through to playwright
 
 Kill any falcon / vite / fsevent_watch processes left holding the e2e ports
 
+## `e2e:snapshots:update`
+
+- **Usage**: `e2e:snapshots:update`
+
+Trigger the GitHub workflow that regenerates Playwright visual baselines on Linux and commits them back
+
 ## `lint`
 
 - Depends: //...:lint, lint:config, docs:tasks

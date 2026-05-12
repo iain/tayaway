@@ -199,7 +199,7 @@ onUnmounted(() => {
                   <AppBadge
                     v-if="session.current"
                     data-testid="current-session-badge"
-                    variant="green"
+                    variant="success"
                   >
                     Current session
                   </AppBadge>

@@ -17,7 +17,7 @@ defineEmits<{
 <template>
   <div :class="['flex gap-3', { 'opacity-50': disabled }]">
     <div
-      class="group relative inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-gray-200 p-0.5 inset-ring inset-ring-gray-900/5 outline-offset-2 outline-rose-500 transition-colors duration-200 ease-in-out has-checked:bg-rose-500 has-focus-visible:outline-2 has-disabled:cursor-not-allowed dark:bg-white/5 dark:inset-ring-white/10 dark:outline-rose-500"
+      class="group outline-focus relative inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-gray-200 p-0.5 inset-ring inset-ring-gray-900/5 outline-offset-2 transition-colors duration-200 ease-in-out has-checked:bg-rose-500 has-focus-visible:outline-2 has-disabled:cursor-not-allowed dark:bg-white/5 dark:inset-ring-white/10"
     >
       <span
         class="relative size-5 rounded-full bg-white shadow-xs ring-1 ring-gray-900/5 transition-transform duration-200 ease-in-out group-has-checked:translate-x-5"
@@ -74,18 +74,10 @@ defineEmits<{
       />
     </div>
     <div v-if="label || description" class="text-sm/6">
-      <label
-        v-if="label"
-        :for="id"
-        class="font-medium text-gray-900 dark:text-white"
-      >
+      <label v-if="label" :for="id" class="text-ink font-medium">
         {{ label }}
       </label>
-      <p
-        v-if="description"
-        :id="`${id}-description`"
-        class="text-gray-600 dark:text-stone-400"
-      >
+      <p v-if="description" :id="`${id}-description`" class="text-ink-muted">
         {{ description }}
       </p>
     </div>

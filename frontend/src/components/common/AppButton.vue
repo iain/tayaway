@@ -8,8 +8,8 @@ const props = withDefaults(
       | 'primary'
       | 'secondary'
       | 'amber'
-      | 'cyan-soft'
-      | 'amber-soft'
+      | 'inflow'
+      | 'outflow'
       | 'danger'
     size?: 'sm' | 'md' | 'lg'
     disabled?: boolean
@@ -33,18 +33,15 @@ defineEmits<{
 }>()
 
 const variantClasses: Record<string, string> = {
-  primary:
-    'bg-rose-600 text-white hover:bg-rose-500 focus-visible:outline-rose-500',
+  primary: 'bg-rose-600 text-white hover:bg-rose-500',
   secondary:
-    'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600',
-  amber:
-    'bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600',
-  'cyan-soft':
-    'bg-cyan-100 text-cyan-700 hover:bg-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:hover:bg-cyan-900/50',
-  'amber-soft':
-    'bg-amber-200 text-amber-900 hover:bg-amber-300 dark:bg-amber-900/50 dark:text-amber-200 dark:hover:bg-amber-900/70',
-  danger:
-    'bg-red-600 text-white hover:bg-red-500 focus-visible:outline-rose-500',
+    'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-btn-secondary-fill-hover',
+  amber: 'bg-amber-700 text-white hover:bg-amber-800',
+  inflow:
+    'bg-btn-inflow-fill text-btn-inflow-ink hover:bg-btn-inflow-fill-hover',
+  outflow:
+    'bg-btn-outflow-fill text-btn-outflow-ink hover:bg-btn-outflow-fill-hover',
+  danger: 'bg-red-700 text-white hover:bg-red-600',
 }
 
 const sizeClasses: Record<string, string> = {
@@ -54,7 +51,7 @@ const sizeClasses: Record<string, string> = {
 }
 
 const classes = computed(() => [
-  'inline-flex cursor-pointer items-center justify-center gap-2 rounded-md font-semibold shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+  'inline-flex cursor-pointer items-center justify-center gap-2 rounded-md font-semibold shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-50',
   variantClasses[props.variant],
   sizeClasses[props.size],
   props.fullWidth && 'w-full',

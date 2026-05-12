@@ -81,7 +81,7 @@ function navigateToEvent(eventId: string): void {
             <div class="flex shrink-0 items-center gap-2">
               <AppBadge
                 v-if="isPastDeadline(item.deadline)"
-                variant="red"
+                variant="danger"
                 size="sm"
               >
                 Overdue

@@ -55,7 +55,7 @@ function handleAction(notification: Notification) {
           <button
             v-if="notification.actionLabel && notification.action"
             type="button"
-            class="mt-1 text-sm font-medium text-amber-600 hover:text-amber-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-amber-400 dark:hover:text-amber-300"
+            class="mt-1 text-sm font-medium text-amber-600 hover:text-amber-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:text-amber-400 dark:hover:text-amber-300"
             @click="handleAction(notification)"
           >
             {{ notification.actionLabel }}
@@ -64,7 +64,7 @@ function handleAction(notification: Notification) {
         <div class="ml-4 flex shrink-0">
           <button
             type="button"
-            class="inline-flex rounded-md bg-white text-gray-500 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:bg-stone-800 dark:text-stone-400 dark:hover:text-stone-200"
+            class="inline-flex rounded-md bg-white text-gray-500 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:bg-stone-800 dark:text-stone-400 dark:hover:text-stone-200"
             @click="emit('dismiss', notification.id)"
           >
             <span class="sr-only">Close</span>

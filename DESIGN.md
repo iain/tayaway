@@ -19,12 +19,13 @@ colors:
   surface-page-dark: '#1c1917'
   surface-raised-dark: '#44403c'
   ink: '#111827'
-  ink-muted: '#6b7280'
-  ink-faint: '#9ca3af'
+  ink-muted: '#4b5563'
+  ink-faint: '#4b5563'
   ink-dark: '#ffffff'
   ink-muted-dark: '#a8a29e'
-  ink-faint-dark: '#78716c'
-  state-danger: '#dc2626'
+  ink-faint-dark: '#a8a29e'
+  state-danger: '#b91c1c'
+  state-danger-outline: '#b91c1c'
   state-danger-tint: '#fef2f2'
   state-warning-tint: '#fffbeb'
   state-success: '#16a34a'
@@ -66,11 +67,9 @@ rounded:
   lg: '8px'
   full: '9999px'
 spacing:
-  xs: '4px'
-  sm: '8px'
-  md: '16px'
-  lg: '24px'
-  xl: '32px'
+  card: '24px'
+  section: '32px'
+  heading: '16px'
 components:
   button-primary:
     backgroundColor: '{colors.attention-red}'
@@ -85,7 +84,7 @@ components:
     rounded: '{rounded.md}'
     padding: '8px 12px'
   button-amber:
-    backgroundColor: '{colors.crt-amber}'
+    backgroundColor: '{colors.crt-amber-deep}'
     textColor: '{colors.ink-dark}'
     rounded: '{rounded.md}'
     padding: '8px 12px'
@@ -172,8 +171,8 @@ A hushed neutral field with three saturated voices that earn their visibility �
 - **Card surface** (`#ffffff` light / `#292524` dark): Where content sits.
 - **Sunken / raised** (`#e5e7eb` light / `#44403c` dark): Secondary buttons, dividers, raised input shells.
 - **Ink** (`#111827` light / `#ffffff` dark): Primary text.
-- **Ink muted** (`#6b7280` light / `#a8a29e` dark): Subtitles, secondary metadata.
-- **Ink faint** (`#9ca3af` light / `#78716c` dark): Helper text, "last synced" labels — the quietest tier.
+- **Ink muted** (`#4b5563` light / `#a8a29e` dark): Subtitles, secondary metadata. Tuned to clear WCAG AA on the page surface.
+- **Ink faint** (`#4b5563` light / `#a8a29e` dark): Helper text, "last synced" labels. Visually identical to `ink-muted` today; the semantic tier is preserved in code so a future re-introduction of a distinct faint shade has a place to land.
 
 ### State Tints
 
@@ -197,11 +196,13 @@ A hushed neutral field with three saturated voices that earn their visibility �
 
 ### Hierarchy
 
-- **Page title** (700, `1.875rem` / 30px, `tracking-tight`): The H1 in `PageHeader`. One per screen. Bold and tracking-tight — confident without being loud. A small variant (`text-2xl` / 24px) for sub-pages.
-- **Section heading** (600, `1.125rem` / 18px): The `SectionHeading` H2 with a `size-5` CRT Amber icon to its left. Splits a page into named regions.
-- **Body** (400, `1rem` / 16px, line-height `1.5`): The default. Anything a user needs to read at a glance is body size. Cap at 65–75ch where prose-like.
-- **Label** (500, `0.875rem` / 14px, line-height `1.5`): Form labels, button text, primary metadata. The 14px tier is for _deliberate_ uses, not "small text".
-- **Meta** (400, `0.875rem` / 14px, sometimes `0.75rem` / 12px): Captions, "last synced X ago", timestamps, helper text under inputs. The quietest tier; lives in `ink-faint`.
+Each tier ships as a single Tailwind utility (`text-{tier}`) that bundles size, line-height, weight, and letter-spacing. Components reach for the utility, not raw `text-lg font-semibold` combos.
+
+- **Page title** (`text-page-title`, 700 / 30px / `tracking-tight`): The H1 in `PageHeader`. One per screen. A small variant (`text-page-title-sm`, 24px) exists for sub-pages.
+- **Section heading** (`text-section-heading`, 600 / 18px): The `SectionHeading` H2 with a `size-5` CRT Amber icon to its left. Splits a page into named regions. Also the modal title.
+- **Body** (`text-body`, 400 / 16px / line-height 1.5): The default. Anything a user needs to read at a glance is body size. Cap at 65–75ch where prose-like.
+- **Label** (`text-label`, 500 / 14px / line-height 1.5): Form labels, button text, primary metadata. The 14px tier is for _deliberate_ uses, not "small text".
+- **Meta** (`text-meta`, 400 / 14px / line-height 1.25): Captions, "last synced X ago", timestamps, helper text under inputs. The quietest tier; lives in `ink-faint` or `ink-muted`.
 
 ### Named Rules
 
@@ -221,7 +222,7 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 - **Button shadow** (`shadow-sm` — `0 1px 2px 0 rgb(0 0 0 / 0.05)`): Primary/secondary/cyan/amber/danger buttons. Hairline lift; the button feels like a chip.
 - **Inset active** (`inset 0 1px 2px rgba(0,0,0,0.15)` light / `0.35` dark): The active nav item. Pressed, not raised.
 - **Modal shadow** (`shadow-xl` — `0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)`): The only place the system genuinely lifts. Modals are loud about being modal.
-- **Hover ring on interactive cards** (`ring-2 ring-rose-500`): A 2px Attention Red ring appears on hover for clickable cards. The ring _is_ the hover affordance — no scale, no shadow change.
+- **Hover ring on interactive cards** (`ring-2 ring-ring-hover`, a darkened hairline at ~18% opacity): A 2px hairline deepens around the card on hover. The ring _is_ the hover affordance — no scale, no shadow change. The colour is deliberately neutral rather than saturated rose so a hover-on-card and a focus-on-button never read as the same signal.
 
 ### Named Rules
 
@@ -236,12 +237,12 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 - **Shape:** Rounded `6px` (`rounded-md`), `font-semibold`, `shadow-sm`, `transition-colors`. Three sizes: `sm` (`px-3 py-1.5 text-sm`), `md` (`px-3 py-2 text-sm`, default), `lg` (`px-6 py-4 text-lg`).
 - **Primary** (Attention Red, `#e11d48`, white text): The single "do this" button on a screen — and the only saturated button variant inside the authenticated shell. Hovers to `#f43f5e`.
 - **Secondary** (`#f3f4f6` light / `#44403c` dark, ink text): The neutral button. Cancel, Back, "Got it" dismissals, secondary actions.
-- **Cyan-soft** (`#cffafe` light / `#164e63`-tinted dark, cyan-700 text): A quiet chip-style button for "incoming / good news" row actions — most often "Mark as received" on settlement rows. Tinted background + saturated text mirrors the AppBadge pattern.
-- **Amber-soft** (`#fde68a` light / amber-900-tinted dark, amber-900 text): The dual to cyan-soft for "outgoing / needs attention" row actions — most often "Pay via QR" on settlement rows. Sits a step deeper than cyan-soft because it lives on the amber-tinted `action` card variant; same visual role, different absolute weight.
-- **Amber** (CRT Amber, `#d97706`, white text): Pre-auth surfaces only (Login, Auth Verify, Invite Accept) — the amber voice carries the brand on screens with no nav present. Don't use inside the authenticated shell, where the amber nav already carries that voice.
-- **Danger** (`#dc2626`, white text): Destructive actions. Pairs with `confirm` flows.
+- **Inflow** (`#cffafe` light / `#164e63`-tinted dark, cyan-800 text): A quiet chip-style button for "incoming / good news" row actions — most often "Mark as received" on settlement rows. Tinted background + saturated text mirrors the AppBadge pattern.
+- **Outflow** (`#fde68a` light / amber-900-tinted dark, amber-900 text): The dual to inflow for "outgoing / needs attention" row actions — most often "Pay via QR" on settlement rows. Sits a step deeper than inflow because it lives on the amber-tinted `action` card variant; same visual role, different absolute weight.
+- **Amber** (CRT Amber Deep, `#b45309`, white text): Pre-auth surfaces only (Login, Auth Verify, Invite Accept) — the amber voice carries the brand on screens with no nav present. Sits one step deeper than the nav's `#d97706` so white text clears WCAG AA. Don't use inside the authenticated shell, where the amber nav already carries that voice.
+- **Danger** (`#b91c1c`, white text): Destructive actions. Sits a step darker than Attention Red so "irreversible" and "do this" never read as the same button. Pairs with `confirm` flows.
 - **Loading state:** Replaces the slot with an animated spinner (`animate-spin` on a 16px SVG) plus the `loadingLabel` prop. The button width does not collapse — the action stays where the user clicked.
-- **Focus:** `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500`. Attention Red ring on every button regardless of variant.
+- **Focus:** `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus`. Attention Red ring on every button regardless of variant, served through the `--color-focus` token so the ring is one place to change.
 
 ### Text buttons (`TextButton`)
 
@@ -257,26 +258,27 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 - **Action variant:** `bg-amber-50/60` with `ring-2 ring-amber-300/50`. Reads as "this is for you to look at" — used for staleness banners, action prompts.
 - **Urgent variant:** `bg-red-50` with `ring-2 ring-red-300/60`. Reserved for genuine alarms (overdue, broken sync, conflicting actions).
 - **Interactive:** Adds `hover:ring-2 hover:ring-rose-500`, `active:scale-[0.99]`, `active:brightness-95` (dark: `brightness-110`). Never wraps a non-actionable surface.
-- **Internal Padding:** `p-6` (24px) when `padded` is true. Cards without `padded` are bare containers — typography and spacing come from inside.
+- **Internal Padding:** `p-card` (24px) when `padded` is true. Cards without `padded` are bare containers — typography and spacing come from inside.
 
 ### Inputs (`FormInput`)
 
 - **Style:** `bg-gray-100` light / `bg-white/5` dark, `outline-1 -outline-offset-1 outline-gray-300` light / `outline-white/10` dark, `rounded-md` (6px), `px-3 py-1.5`, `text-base` (mobile) / `text-sm/6` (desktop).
-- **Label:** Above the field, `text-sm/6 font-medium`, ink color.
-- **Focus:** `focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500`. The Attention Red ring is the system-wide focus signal — same on buttons, cards, modals, inputs.
+- **Label:** Above the field, `text-label`, ink color.
+- **Focus:** `focus:outline-2 focus:-outline-offset-2 focus:outline-focus`. The Attention Red ring is the system-wide focus signal — same on buttons, cards, modals, inputs.
 - **Prefix:** Optional inline prefix slot (currency, URL scheme) sits inside the same outlined shell, separated visually by a `select-none` ink-muted span.
+- **Error:** Pass an `error` string; the field swaps to a 2px `outline-state-danger-outline` (one step deeper than the badge ink so it carries on its own), keeps that outline on focus rather than reverting to the rose ring, sets `aria-invalid` + `aria-describedby`, and renders the message below in `text-state-danger-ink`.
 - **Disabled:** `disabled:opacity-50` plus `disabled:cursor-not-allowed`.
 
 ### Badges (`AppBadge`)
 
 - **Shape:** `rounded-full`, `text-xs font-medium`, `px-2 py-0.5` (xs) or `px-2.5 py-0.5` (sm).
-- **Variants:** Six tinted variants (`green`, `red`, `yellow`, `amber`, `blue`, `gray`). Each is a soft tinted background with a saturated ink color (e.g. `bg-green-100 text-green-700` light / `bg-green-900 text-green-300` dark).
-- **Rule:** Badges carry state, not decoration. A badge without a meaning is a violation.
+- **Variants:** Six state-named variants (`success`, `danger`, `warning`, `pending`, `info`, `neutral`). Each pairs a soft tinted fill with a saturated ink, drawn from `--color-state-*` tokens so dark mode swaps automatically.
+- **Rule:** Badges carry state, not decoration. A badge without a meaning is a violation — the API enforces this by refusing color-name variants.
 
 ### Avatars (`AppAvatar`)
 
-- **Shape:** `rounded-full`, `font-semibold`, initials only — no image avatars by design.
-- **Variants:** `rose` (default — soft rose tint with rose ink), `amber` (CRT-warm — amber tint with amber ink), `nav` (white-ink-on-amber-hover for the top nav).
+- **Shape:** `rounded-full`, `font-semibold`. Initials today; image upload isn't built yet and would slot into the same disk when it lands.
+- **Variants:** `neutral` (default — soft rose tint with rose ink), `pending` (CRT-warm — amber tint with amber ink), `nav` (white-ink-on-amber-hover for the top nav).
 - **Sizes:** `sm` (32px), `md` (40px), `lg` (48px).
 
 ### Modal (`BaseModal`)
@@ -284,7 +286,8 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 - **Element:** Native `<dialog>` with `showModal()`. Backdrop is `bg-gray-500/85` (light) / `bg-stone-900/80` (dark).
 - **Shape:** `rounded-lg`, `shadow-xl`, `ring-1 ring-black/10`, `p-4 sm:p-6`. Five widths (`sm` through `2xl`).
 - **Motion:** 200ms `cubic-bezier(0.25, 1, 0.5, 1)` ease-out — fades + slides 8px up + scales from 0.98. Backdrop fades with the same curve. `@starting-style` and `allow-discrete` carry the entry transition under modern browsers; `prefers-reduced-motion` collapses to 0.01ms.
-- **Close:** Top-right X button (`XMarkIcon`), keyboard `Escape`, backdrop click. Title is `text-lg font-semibold` — same scale as a section heading.
+- **Close:** Top-right X button (`XMarkIcon`), keyboard `Escape`, backdrop click. Title uses `text-section-heading` with `mb-heading` underneath — same scale and spacing as a `SectionHeading`, so a modal opens "feeling like" a single page region.
+- **Accessibility:** Native `<dialog>` + `showModal()` traps focus inside the modal, makes the page behind it inert, and routes `Escape` through a cancelable `cancel` event. `preventClose` blocks both the X button and the cancel route. The X button carries an `sr-only` "Close" label so screen readers announce its purpose.
 
 ### Top navigation (`AuthenticatedLayout`)
 
@@ -296,7 +299,7 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 
 ### Section heading (`SectionHeading`)
 
-- **Shape:** `text-lg font-semibold` ink, `mb-4` margin, with a `size-5` Heroicons icon in `text-amber-600 dark:text-amber-400` to the left of the title.
+- **Shape:** `text-section-heading` ink, `mb-heading` margin, with a `size-5` Heroicons icon in `text-amber-600 dark:text-amber-400` to the left of the title.
 - **Right slot:** Optional action slot — typically a `TextButton` ("View all", "Edit") or a count.
 - **Rule:** The amber-icon section header is the system's _only_ mandatory color use — every region of every page is announced this way.
 
@@ -311,9 +314,9 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 
 **The One-Action Rule.** Each card or modal carries at most one Primary button. Secondary actions are TextButtons or the secondary button variant. If you need two primaries, you are showing two screens.
 
-**The List-Row Rule.** Repeated row actions in a list are _not_ Primary, even when they're the row's main button. A column of five Attention Red buttons stacked down the page breaks the principle that saturation is rare and meaningful. Row actions use `secondary`, `cyan-soft`, or `amber-soft` instead. Reserve Primary for one page-level CTA at most.
+**The List-Row Rule.** Repeated row actions in a list are _not_ Primary, even when they're the row's main button. A column of five Attention Red buttons stacked down the page breaks the principle that saturation is rare and meaningful. Row actions use `secondary`, `inflow`, or `outflow` instead. Reserve Primary for one page-level CTA at most.
 
-**The Dual-Coding Rule.** Where rows convey directional meaning (incoming vs outgoing, gain vs spend), pair `cyan-soft` with `amber-soft` so the button colors echo the row's other signals (card variant, amount text). The two soft variants exist as a dual; if you use one, you usually want the other on its counterpart row.
+**The Dual-Coding Rule.** Where rows convey directional meaning (incoming vs outgoing, gain vs spend), pair `inflow` with `outflow` so the button colors echo the row's other signals (card variant, amount text). The two soft variants exist as a dual; if you use one, you usually want the other on its counterpart row.
 
 ## 6. Do's and Don'ts
 
@@ -322,7 +325,7 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 - **Do** keep ≥90% of any screen in neutrals. The bright voices (CRT Amber `#d97706`, Attention Red `#e11d48`, Navigator Cyan `#0891b2`) earn their saturation by being rare.
 - **Do** put `focus-visible:outline-rose-500` on every interactive element. The Attention Red ring is the system-wide focus signal.
 - **Do** use Inter Variable at 16px for primary content. Reach for `text-sm` / `text-xs` only for secondary metadata that the user does not need to read first.
-- **Do** lead each screen region with a `SectionHeading` — `text-lg font-semibold` plus a `text-amber-600` icon. This is the only mandatory color use in the body of a page.
+- **Do** lead each screen region with a `SectionHeading` — `text-section-heading` plus a `text-amber-600` icon. This is the only mandatory color use in the body of a page.
 - **Do** design dark mode at the same time as light mode. Both are first-class. Light uses cool gray neutrals; dark uses warm stone neutrals. Never copy values across.
 - **Do** respect `prefers-reduced-motion`. The modal already collapses its 200ms entrance to 0.01ms; new motion must do the same.
 - **Do** show what matters now. Surface the active event phase (voting, chores, expenses) as the dominant UI of any screen rooted in an event.
@@ -344,3 +347,47 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 - **Don't** add fine print, "learn more" links to nowhere, marketing-tone microcopy, or hedge language. Components say what they mean.
 - **Don't** use bouncy or elastic motion. Ease-out only — the modal's `cubic-bezier(0.25, 1, 0.5, 1)` is the canonical curve.
 - **Don't** animate CSS layout properties. Transform and opacity only, with `will-change` reserved for known-hot interactions.
+
+## 7. Using the system in code
+
+The design system lives in three places: `frontend/src/style.css` (the Tailwind `@theme` tokens), `frontend/src/components/common/` and `frontend/src/components/form/` (the primitives), and `/design` (the gallery — every primitive in every state, light and dark).
+
+### Semantic tokens
+
+`style.css` defines tokens that automatically swap in dark mode, so components don't need to carry `dark:` variants for color. Reach for these before raw Tailwind colors:
+
+| Use                                | Token                                                                           |
+| ---------------------------------- | ------------------------------------------------------------------------------- |
+| Page background                    | `bg-surface-page`                                                               |
+| Card / dialog surface              | `bg-surface`                                                                    |
+| Sunken fill (input, secondary btn) | `bg-surface-sunken`                                                             |
+| Action card variant                | `bg-surface-action` + `ring-ring-action`                                        |
+| Urgent card variant                | `bg-surface-urgent` + `ring-ring-urgent`                                        |
+| Body text                          | `text-ink`                                                                      |
+| Muted text (subtitles, meta)       | `text-ink-muted`                                                                |
+| Faint text (helper, "last synced") | `text-ink-faint`                                                                |
+| Hairline edge / outline            | `outline-line` / `border-line` / `ring-ring-hairline`                           |
+| Top-nav surfaces                   | `bg-nav` / `bg-nav-active` / `bg-nav-hover` / `text-nav-text`                   |
+| Focus indicator (system-wide)      | `focus-visible:outline-focus`                                                   |
+| Form-control error outline         | `outline-state-danger-outline` (one step deeper than `-ink`)                    |
+| Badge / state tints                | `bg-state-{success,danger,warning,pending,info,neutral}-fill` + matching `-ink` |
+| Soft button surfaces               | `bg-btn-{secondary,inflow,outflow}-fill` (+`-fill-hover`, `-ink`)               |
+| Avatar variants                    | `bg-avatar-{default,pending}-fill` + matching `-ink`                            |
+| Typography ramp                    | `text-{page-title,page-title-sm,section-heading,body,label,meta}`               |
+| Spacing roles                      | `p-card` / `m-card` (24px), `mt-section` (32px), `mb-heading` (16px)            |
+
+Saturated brand voices (`rose-`, `cyan-`, `amber-`) stay as raw Tailwind utilities — they carry meaning and shouldn't bleed into anonymous tokens.
+
+### Rules for code
+
+**Use the primitive, not the raw element.** `<AppButton>` over `<button>`, `<TextButton>` over `<a>`-styled-as-button, `<BaseCard>` over a hand-styled `<div>`. If the primitive doesn't fit, change the primitive — don't fork the styling inline.
+
+**Color comes from tokens, not hex.** No `#` literals in components. New shades go in `style.css` or the existing `@theme` palette. The `--color-*` namespace is the contract.
+
+**No `dark:` for color.** Surfaces, ink, and lines switch via tokens. `dark:` is reserved for genuinely dark-mode-only properties (e.g. the inset highlight on cards). If you find yourself writing `bg-X dark:bg-Y`, the right move is a token.
+
+**Spacing comes from the Tailwind scale.** No arbitrary `p-[13px]`. The 4-px scale is the system; if a value needs to land off-grid, the surrounding layout is wrong. Three semantic roles are tokenised on top of that scale: `p-card` / `m-card` (24px) for card-and-page-header padding, `mt-section` (32px) for the gap between named regions on a page, and `mb-heading` (16px) for the gap below a `SectionHeading`. Reach for the role token where it fits so the value lives in one place.
+
+**Add to the gallery when you add a primitive.** Anything in `components/common` or `components/form` should appear in `/design`. The gallery is the screenshot baseline — primitives missing from it have no regression coverage.
+
+**Visual regression: `mise run e2e -- design-system`.** Diffs the gallery against `e2e/tests/design-system.spec.ts-snapshots/`, which holds the Linux-rendered baseline used by CI. After an intentional design change, refresh the baseline with `mise run e2e:snapshots:update` — the task dispatches a GitHub workflow that re-renders on Linux and pushes the updated images back to your branch, so the committed baseline stays platform-stable. Running `--update-snapshots` locally on macOS produces a darwin-suffixed image which is gitignored by design.

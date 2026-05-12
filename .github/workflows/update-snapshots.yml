@@ -109,23 +109,75 @@ jobs:
       - name: Regenerate visual baselines
         run: mise run e2e -- design-system --update-snapshots=all
 
-      # `github.ref_name` is user-controllable (branch name), so it goes
-      # through env rather than being inlined into the shell command — keeps
-      # workflow-injection static analysis happy and is safer in general.
-      - name: Commit refreshed baselines
+      # Commit via the GraphQL `createCommitOnBranch` mutation rather than
+      # `git push`. Commits authored through GitHub's API are automatically
+      # signed by GitHub and show up "Verified", which lets branches with
+      # required-signatures protection accept the refreshed baseline. A
+      # plain `git push` from the runner produces unsigned commits and
+      # blocks the merge.
+      #
+      # `expectedHeadOid` makes the mutation atomic: if anything else
+      # pushes to the branch between us reading HEAD and creating the
+      # commit, the call fails rather than silently overwriting.
+      #
+      # `github.ref_name` is user-controllable (branch name), so it flows
+      # through env into `process.env` inside the script — never inlined
+      # into the mutation string or any shell command.
+      - name: Commit refreshed baselines (signed via GraphQL)
+        uses: actions/github-script@v8
         env:
           TARGET_REF: ${{ github.ref_name }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # The runner's checkout is clean apart from the regenerated PNGs,
-          # so a plain `git add e2e/tests` picks up new and changed snapshot
-          # files without depending on bash's globstar setting (off by
-          # default; a quoted `**` pattern reaches git as a literal).
-          git add e2e/tests
-          if git diff --staged --quiet; then
-            echo "No baseline changes — nothing to commit."
-            exit 0
-          fi
-          git commit -m "Refresh visual baselines"
-          git push origin "HEAD:${TARGET_REF}"
+        with:
+          script: |
+            const fs = require('fs')
+            const { execFileSync } = require('child_process')
+
+            const sh = (cmd, args) =>
+              execFileSync(cmd, args, { encoding: 'utf8' }).trim()
+            const lines = (s) => s.split('\n').filter(Boolean)
+
+            // Changed tracked files + untracked files under e2e/tests. The
+            // baseline regen step is the only thing that touches that tree,
+            // so anything dirty here is by definition a refreshed snapshot.
+            const changed = lines(
+              sh('git', ['diff', '--name-only', '--', 'e2e/tests'])
+            )
+            const untracked = lines(
+              sh('git', ['ls-files', '--others', '--exclude-standard', '--', 'e2e/tests'])
+            )
+            const paths = [...new Set([...changed, ...untracked])]
+
+            if (paths.length === 0) {
+              core.info('No baseline changes — nothing to commit.')
+              return
+            }
+
+            const additions = paths.map((path) => ({
+              path,
+              contents: fs.readFileSync(path).toString('base64'),
+            }))
+
+            const expectedHeadOid = sh('git', ['rev-parse', 'HEAD'])
+
+            const result = await github.graphql(
+              `mutation($input: CreateCommitOnBranchInput!) {
+                createCommitOnBranch(input: $input) {
+                  commit { url }
+                }
+              }`,
+              {
+                input: {
+                  branch: {
+                    repositoryNameWithOwner: process.env.GITHUB_REPOSITORY,
+                    branchName: process.env.TARGET_REF,
+                  },
+                  message: { headline: 'Refresh visual baselines' },
+                  fileChanges: { additions },
+                  expectedHeadOid,
+                },
+              }
+            )
+
+            core.info(
+              `Created signed commit: ${result.createCommitOnBranch.commit.url}`
+            )

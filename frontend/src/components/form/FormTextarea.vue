@@ -25,10 +25,7 @@ const attrs = useAttrs()
 
 <template>
   <div>
-    <label
-      :for="id"
-      class="block text-sm/6 font-medium text-gray-900 dark:text-white"
-    >
+    <label :for="id" class="text-label text-ink block">
       {{ label }}
     </label>
     <div class="mt-2">
@@ -40,7 +37,7 @@ const attrs = useAttrs()
         :disabled="disabled"
         :rows="rows ?? 3"
         v-bind="attrs"
-        class="block w-full rounded-md bg-gray-100 px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
+        class="focus:outline-focus block w-full rounded-md bg-gray-100 px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
         @input="
           $emit(
             'update:modelValue',
@@ -49,7 +46,7 @@ const attrs = useAttrs()
         "
       />
     </div>
-    <p v-if="hint" class="mt-3 text-sm/6 text-gray-500 dark:text-stone-400">
+    <p v-if="hint" class="text-ink-muted mt-3 text-sm/6">
       {{ hint }}
     </p>
   </div>

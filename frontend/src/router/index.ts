@@ -26,6 +26,7 @@ const LoginPage = () => import('@/pages/LoginPage.vue')
 const AuthVerifyPage = () => import('@/pages/AuthVerifyPage.vue')
 const InviteAcceptPage = () => import('@/pages/InviteAcceptPage.vue')
 const VerifyEmailChangePage = () => import('@/pages/VerifyEmailChangePage.vue')
+const DesignGalleryPage = () => import('@/pages/DesignGalleryPage.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -156,6 +157,12 @@ const router = createRouter({
       name: 'verify-email',
       component: VerifyEmailChangePage,
       meta: { title: 'Verify Email' },
+    },
+    {
+      path: '/design',
+      name: 'design',
+      component: DesignGalleryPage,
+      meta: { title: 'Design system' },
     },
   ],
 })

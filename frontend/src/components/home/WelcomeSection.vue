@@ -62,7 +62,7 @@ function navigateToTasks(): void {
     <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
       <button
         type="button"
-        class="group inline-flex cursor-pointer items-center gap-2 rounded py-2 text-sm text-gray-600 transition-colors hover:text-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-stone-400 dark:hover:text-amber-400"
+        class="group inline-flex cursor-pointer items-center gap-2 rounded py-2 text-sm text-gray-600 transition-colors hover:text-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:text-stone-400 dark:hover:text-amber-400"
         @click="navigateToMembers"
       >
         <UserGroupIcon class="size-4 shrink-0" />
@@ -79,7 +79,7 @@ function navigateToTasks(): void {
       </button>
       <button
         type="button"
-        class="group inline-flex cursor-pointer items-center gap-2 rounded py-2 text-sm text-gray-600 transition-colors hover:text-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-stone-400 dark:hover:text-amber-400"
+        class="group inline-flex cursor-pointer items-center gap-2 rounded py-2 text-sm text-gray-600 transition-colors hover:text-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:text-stone-400 dark:hover:text-amber-400"
         @click="navigateToTasks"
       >
         <ClipboardDocumentListIcon class="size-4 shrink-0" />

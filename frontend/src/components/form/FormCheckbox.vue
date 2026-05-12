@@ -22,7 +22,7 @@ defineEmits<{
           :checked="modelValue"
           :disabled="disabled"
           :aria-describedby="description ? `${id}-description` : undefined"
-          class="col-start-1 row-start-1 appearance-none rounded-sm border border-gray-300 bg-gray-100 checked:border-rose-500 checked:bg-rose-500 indeterminate:border-rose-500 indeterminate:bg-rose-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:border-gray-200 disabled:bg-gray-100 disabled:checked:bg-gray-300 dark:border-white/10 dark:bg-white/5 dark:disabled:border-white/5 dark:disabled:bg-white/10 dark:disabled:checked:bg-white/10 forced-colors:appearance-auto"
+          class="focus-visible:outline-focus col-start-1 row-start-1 appearance-none rounded-sm border border-gray-300 bg-gray-100 checked:border-rose-500 checked:bg-rose-500 indeterminate:border-rose-500 indeterminate:bg-rose-500 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:border-gray-200 disabled:bg-gray-100 disabled:checked:bg-gray-300 dark:border-white/10 dark:bg-white/5 dark:disabled:border-white/5 dark:disabled:bg-white/10 dark:disabled:checked:bg-white/10 forced-colors:appearance-auto"
           @change="
             $emit(
               'update:modelValue',
@@ -46,14 +46,10 @@ defineEmits<{
       </div>
     </div>
     <div class="text-sm/6">
-      <label :for="id" class="font-medium text-gray-900 dark:text-white">
+      <label :for="id" class="text-ink font-medium">
         {{ label }}
       </label>
-      <p
-        v-if="description"
-        :id="`${id}-description`"
-        class="text-gray-600 dark:text-stone-400"
-      >
+      <p v-if="description" :id="`${id}-description`" class="text-ink-muted">
         {{ description }}
       </p>
     </div>

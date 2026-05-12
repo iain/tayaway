@@ -124,7 +124,7 @@ function getEventIdForTransfer(
             </p>
           </div>
           <AppButton
-            variant="cyan-soft"
+            variant="inflow"
             size="sm"
             class="min-h-[44px] sm:min-h-0"
             :loading="markingPaidIds.has(transfer.id)"
@@ -169,7 +169,7 @@ function getEventIdForTransfer(
             </p>
           </div>
           <AppButton
-            variant="amber-soft"
+            variant="outflow"
             size="sm"
             class="min-h-[44px] sm:min-h-0"
             title="Show QR code for bank transfer"

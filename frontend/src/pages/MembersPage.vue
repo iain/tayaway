@@ -262,10 +262,10 @@ onMounted(() => {
                     }}
                   </p>
                   <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <AppBadge v-if="isExpired(invite)" variant="red">
+                    <AppBadge v-if="isExpired(invite)" variant="danger">
                       Expired
                     </AppBadge>
-                    <AppBadge v-else variant="yellow"> Pending </AppBadge>
+                    <AppBadge v-else variant="warning"> Pending </AppBadge>
                     <span class="text-xs text-gray-400 dark:text-stone-500">
                       Sent {{ formatRelativeDate(invite.createdAt) }}
                       <template v-if="invitedByName(invite)">
@@ -381,7 +381,7 @@ onMounted(() => {
                 v-if="canChangeRole(member)"
                 data-testid="member-role-select"
                 :value="member.role"
-                class="inline-flex shrink-0 cursor-pointer items-center rounded-full border-0 px-2 py-0.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500"
+                class="inline-flex shrink-0 cursor-pointer items-center rounded-full border-0 px-2 py-0.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 :class="{
                   'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400':
                     member.role === 'owner',
@@ -410,10 +410,10 @@ onMounted(() => {
                 data-testid="member-role"
                 :variant="
                   member.role === 'owner'
-                    ? 'amber'
+                    ? 'pending'
                     : member.role === 'admin'
-                      ? 'blue'
-                      : 'gray'
+                      ? 'info'
+                      : 'neutral'
                 "
               >
                 {{ member.role }}
@@ -447,7 +447,7 @@ onMounted(() => {
         >
           <a
             :href="`mailto:${member.email}`"
-            class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-stone-300 dark:hover:bg-stone-700"
+            class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:text-stone-300 dark:hover:bg-stone-700"
           >
             <EnvelopeIcon class="size-4" />
             Email
@@ -455,14 +455,14 @@ onMounted(() => {
           <a
             v-if="member.phoneNumber"
             :href="`tel:${member.phoneNumber}`"
-            class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-stone-300 dark:hover:bg-stone-700"
+            class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:text-stone-300 dark:hover:bg-stone-700"
           >
             <PhoneIcon class="size-4" />
             Call
           </a>
           <button
             data-testid="download-vcard-button"
-            class="ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-stone-300 dark:hover:bg-stone-700"
+            class="ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:text-stone-300 dark:hover:bg-stone-700"
             title="Download contact card"
             @click="handleDownloadVCard(member)"
           >

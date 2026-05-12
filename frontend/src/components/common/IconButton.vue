@@ -21,7 +21,7 @@ const props = withDefaults(
 )
 
 const classes = computed(() => [
-  'cursor-pointer rounded transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 inline-flex items-center justify-center',
+  'cursor-pointer rounded transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus inline-flex items-center justify-center',
   props.size === 'compact'
     ? 'p-1'
     : 'p-2 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 sm:p-1',

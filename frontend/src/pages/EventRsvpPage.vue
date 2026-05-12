@@ -158,7 +158,7 @@ function handleDownloadIcs(): void {
                   v-model="editStartDate"
                   type="date"
                   :disabled="loading"
-                  class="rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:[color-scheme:dark] dark:outline-white/10"
+                  class="rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-focus dark:bg-white/5 dark:text-white dark:[color-scheme:dark] dark:outline-white/10"
                 />
               </div>
               <div>
@@ -173,7 +173,7 @@ function handleDownloadIcs(): void {
                   v-model="editEndDate"
                   type="date"
                   :disabled="loading"
-                  class="rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 dark:bg-white/5 dark:text-white dark:[color-scheme:dark] dark:outline-white/10"
+                  class="rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-focus dark:bg-white/5 dark:text-white dark:[color-scheme:dark] dark:outline-white/10"
                 />
               </div>
               <AppButton type="submit" size="sm" :loading="loading">

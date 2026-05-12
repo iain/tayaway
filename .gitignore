@@ -41,6 +41,13 @@ coverage/
 playwright-report/
 test-results/
 
+# Playwright visual-regression baselines are committed only for the CI
+# environment (Linux). Local `--update-snapshots` runs on macOS/Windows
+# generate platform-suffixed images that stay local — refresh the tracked
+# baselines via `mise run e2e:snapshots:update` (Linux, in CI) instead.
+e2e/tests/**/*-snapshots/*-darwin.png
+e2e/tests/**/*-snapshots/*-win32.png
+
 # Ruby
 backend/.bundle/
 backend/vendor/bundle/

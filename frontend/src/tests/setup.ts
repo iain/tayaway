@@ -26,6 +26,27 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 })
 
+// jsdom doesn't implement HTMLDialogElement.showModal / close yet. Polyfill
+// them as minimal no-ops so components built on native <dialog> (BaseModal)
+// can mount and we can dispatch the close/cancel events the real element
+// would fire. Guarded so a future jsdom that ships the real methods isn't
+// silently overridden.
+if (typeof HTMLDialogElement !== 'undefined') {
+  if (typeof HTMLDialogElement.prototype.showModal !== 'function') {
+    HTMLDialogElement.prototype.showModal = function () {
+      if (this.hasAttribute('open')) return
+      this.setAttribute('open', '')
+    }
+  }
+  if (typeof HTMLDialogElement.prototype.close !== 'function') {
+    HTMLDialogElement.prototype.close = function () {
+      if (!this.hasAttribute('open')) return
+      this.removeAttribute('open')
+      this.dispatchEvent(new Event('close'))
+    }
+  }
+}
+
 // Mock window.matchMedia for components that use it (e.g., useDarkMode)
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

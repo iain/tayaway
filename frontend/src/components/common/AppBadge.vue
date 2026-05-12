@@ -1,23 +1,28 @@
 <script setup lang="ts">
 const props = withDefaults(
   defineProps<{
-    variant?: 'green' | 'red' | 'yellow' | 'amber' | 'blue' | 'gray'
+    variant?:
+      | 'success'
+      | 'danger'
+      | 'warning'
+      | 'pending'
+      | 'info'
+      | 'neutral'
     size?: 'xs' | 'sm'
   }>(),
   {
-    variant: 'gray',
+    variant: 'neutral',
     size: 'xs',
   }
 )
 
 const variantClasses: Record<string, string> = {
-  green: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
-  red: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-  yellow:
-    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-  amber: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
-  blue: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  gray: 'bg-gray-100 text-gray-600 dark:bg-stone-700 dark:text-stone-300',
+  success: 'bg-state-success-fill text-state-success-ink',
+  danger: 'bg-state-danger-fill text-state-danger-ink',
+  warning: 'bg-state-warning-fill text-state-warning-ink',
+  pending: 'bg-state-pending-fill text-state-pending-ink',
+  info: 'bg-state-info-fill text-state-info-ink',
+  neutral: 'bg-state-neutral-fill text-state-neutral-ink',
 }
 
 const sizeClasses: Record<string, string> = {
