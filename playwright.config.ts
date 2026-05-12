@@ -31,16 +31,16 @@ export default defineConfig({
       url: 'http://localhost:9293/health',
       reuseExistingServer: false,
       timeout: 120000,
-      stdout: 'ignore',
-      stderr: 'ignore',
+      stdout: 'pipe',
+      stderr: 'pipe',
     },
     {
       command: 'mise run //frontend:dev:e2e',
       url: 'http://localhost:5174',
       reuseExistingServer: false,
       timeout: 120000,
-      stdout: 'ignore',
-      stderr: 'ignore',
+      stdout: 'pipe',
+      stderr: 'pipe',
     },
     // Production-built preview server used by tests that need a real service
     // worker (e.g. offline cold-launch). vite preview serves dist/ statically
@@ -51,8 +51,8 @@ export default defineConfig({
       url: 'http://localhost:5175',
       reuseExistingServer: false,
       timeout: 120000,
-      stdout: 'ignore',
-      stderr: 'ignore',
+      stdout: 'pipe',
+      stderr: 'pipe',
     },
   ],
 })
