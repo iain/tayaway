@@ -13,7 +13,7 @@ defineEmits<{
 
 <template>
   <div
-    class="flex items-center rounded-md bg-gray-100 px-3 outline-1 -outline-offset-1 outline-gray-300 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-rose-500 dark:bg-white/5 dark:outline-white/10 dark:focus-within:outline-rose-500"
+    class="focus-within:outline-focus flex items-center rounded-md bg-gray-100 px-3 outline-1 -outline-offset-1 outline-gray-300 focus-within:outline-2 focus-within:-outline-offset-2 dark:bg-white/5 dark:outline-white/10"
   >
     <div
       class="shrink-0 text-sm/6 text-gray-500 select-none dark:text-stone-400"

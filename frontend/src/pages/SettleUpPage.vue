@@ -242,7 +242,7 @@ async function handleUnmark(net: RecentSettlement) {
                 </p>
                 <button
                   type="button"
-                  class="-mx-1 mt-0.5 inline-flex min-h-[44px] items-center gap-1 rounded-sm px-1 text-xs text-gray-500 hover:text-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 sm:min-h-0 dark:text-stone-400 dark:hover:text-rose-400"
+                  class="-mx-1 mt-0.5 inline-flex min-h-[44px] items-center gap-1 rounded-sm px-1 text-xs text-gray-500 hover:text-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0 dark:text-stone-400 dark:hover:text-rose-400"
                   :aria-expanded="isExpanded(net.id)"
                   @click="toggleExpanded(net.id)"
                 >
@@ -255,7 +255,7 @@ async function handleUnmark(net: RecentSettlement) {
                 </button>
               </div>
               <AppButton
-                variant="cyan-soft"
+                variant="inflow"
                 size="sm"
                 :loading="markingIds.has(net.id)"
                 loading-label="Marking…"
@@ -277,7 +277,7 @@ async function handleUnmark(net: RecentSettlement) {
                   <router-link
                     v-if="b.event?.id"
                     :to="`/events/${b.event.id}/expenses`"
-                    class="-mx-1 truncate rounded-sm px-1 text-gray-700 hover:text-rose-600 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-stone-300 dark:hover:text-rose-400"
+                    class="-mx-1 truncate rounded-sm px-1 text-gray-700 hover:text-rose-600 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:text-stone-300 dark:hover:text-rose-400"
                   >
                     {{ eventNameFor(b.event?.id) }}
                   </router-link>
@@ -342,7 +342,7 @@ async function handleUnmark(net: RecentSettlement) {
                 </p>
                 <button
                   type="button"
-                  class="-mx-1 mt-0.5 inline-flex min-h-[44px] items-center gap-1 rounded-sm px-1 text-xs text-gray-500 hover:text-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 sm:min-h-0 dark:text-stone-400 dark:hover:text-rose-400"
+                  class="-mx-1 mt-0.5 inline-flex min-h-[44px] items-center gap-1 rounded-sm px-1 text-xs text-gray-500 hover:text-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0 dark:text-stone-400 dark:hover:text-rose-400"
                   :aria-expanded="isExpanded(net.id)"
                   @click="toggleExpanded(net.id)"
                 >
@@ -354,7 +354,7 @@ async function handleUnmark(net: RecentSettlement) {
                   />
                 </button>
               </div>
-              <AppButton variant="amber-soft" size="sm" @click="openQr(net)">
+              <AppButton variant="outflow" size="sm" @click="openQr(net)">
                 <QrCodeIcon class="size-4" aria-hidden="true" />
                 Pay via QR
               </AppButton>
@@ -372,7 +372,7 @@ async function handleUnmark(net: RecentSettlement) {
                   <router-link
                     v-if="b.event?.id"
                     :to="`/events/${b.event.id}/expenses`"
-                    class="-mx-1 truncate rounded-sm px-1 text-gray-700 hover:text-rose-600 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-stone-300 dark:hover:text-rose-400"
+                    class="-mx-1 truncate rounded-sm px-1 text-gray-700 hover:text-rose-600 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:text-stone-300 dark:hover:text-rose-400"
                   >
                     {{ eventNameFor(b.event?.id) }}
                   </router-link>
@@ -453,7 +453,7 @@ async function handleUnmark(net: RecentSettlement) {
                 </p>
                 <button
                   type="button"
-                  class="-mx-1 mt-0.5 inline-flex min-h-[44px] items-center gap-1 rounded-sm px-1 text-xs text-gray-500 hover:text-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 sm:min-h-0 dark:text-stone-400 dark:hover:text-rose-400"
+                  class="-mx-1 mt-0.5 inline-flex min-h-[44px] items-center gap-1 rounded-sm px-1 text-xs text-gray-500 hover:text-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0 dark:text-stone-400 dark:hover:text-rose-400"
                   :aria-expanded="isExpanded(net.id)"
                   @click="toggleExpanded(net.id)"
                 >
@@ -488,7 +488,7 @@ async function handleUnmark(net: RecentSettlement) {
                   <router-link
                     v-if="b.event?.id"
                     :to="`/events/${b.event.id}/expenses`"
-                    class="-mx-1 truncate rounded-sm px-1 text-gray-700 hover:text-rose-600 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-stone-300 dark:hover:text-rose-400"
+                    class="-mx-1 truncate rounded-sm px-1 text-gray-700 hover:text-rose-600 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:text-stone-300 dark:hover:text-rose-400"
                   >
                     {{ eventNameFor(b.event?.id) }}
                   </router-link>

@@ -5,7 +5,8 @@ min_version = "2026.5.5"
 # Marks this file as the root of a mise monorepo. Subproject mise.toml files
 # (listed below under [monorepo]) get their own tools, env, and tasks, and
 # inherit from this root. Cross-subproject task references use //path:task
-# (and //...:task wildcards). Requires MISE_EXPERIMENTAL=1 in your shell.
+# (and //...:task wildcards). Gated on the `experimental = true` setting
+# below — no env var needed.
 experimental_monorepo_root = true
 
 [monorepo]
@@ -143,6 +144,34 @@ depends = ["//backend:db:setup-e2e"]
 # warnings stay visible. Drop once Playwright migrates to registerHooks().
 env = { NODE_OPTIONS = "--disable-warning=DEP0205" }
 run = 'pnpm exec playwright test "$@"'
+
+# Visual-regression baselines (the `*-snapshots/` directories next to specs)
+# are environment-dependent — font rendering and antialiasing differ between
+# macOS and the Ubuntu runners that drive ci.yml. To keep a single committed
+# baseline that matches CI, this task fires the `update-snapshots` workflow on
+# the current branch instead of running playwright locally; the workflow
+# regenerates on Linux and pushes the refreshed images back here. A `git pull`
+# after completion brings them down. Requires gh CLI auth + a pushed branch.
+[tasks."e2e:snapshots:update"]
+description = "Trigger the GitHub workflow that regenerates Playwright visual baselines on Linux and commits them back"
+shell = "bash -c"
+run = """
+set -euo pipefail
+branch=$(git rev-parse --abbrev-ref HEAD)
+if [ "$branch" = "HEAD" ]; then
+  echo "Detached HEAD — check out a branch before refreshing baselines." >&2
+  exit 1
+fi
+echo "→ dispatching update-snapshots.yml on branch '$branch'"
+gh workflow run update-snapshots.yml --ref "$branch"
+echo "→ waiting for the run to appear (gh polls every ~3s)…"
+sleep 5
+run_id=$(gh run list --workflow=update-snapshots.yml --branch "$branch" --limit 1 --json databaseId --jq '.[0].databaseId')
+echo "→ watching run $run_id"
+gh run watch "$run_id" --exit-status
+echo "→ pulling the new baseline commit"
+git pull --ff-only origin "$branch"
+"""
 
 # ── Backend convenience aliases ──────────────────────────────────────────────
 #

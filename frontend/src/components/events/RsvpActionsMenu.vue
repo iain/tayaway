@@ -25,7 +25,7 @@ const emit = defineEmits<{
     <MenuButton
       :aria-label="menuLabel"
       data-testid="rsvp-other-menu"
-      class="flex size-8 cursor-pointer items-center justify-center rounded-md text-gray-500 hover:bg-black/5 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-stone-400 dark:hover:bg-white/10 dark:hover:text-stone-200"
+      class="flex size-8 cursor-pointer items-center justify-center rounded-md text-gray-500 hover:bg-black/5 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:text-stone-400 dark:hover:bg-white/10 dark:hover:text-stone-200"
     >
       <EllipsisVerticalIcon class="size-5" aria-hidden="true" />
     </MenuButton>

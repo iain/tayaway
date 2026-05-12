@@ -23,18 +23,18 @@ function handleKeydown(event: KeyboardEvent) {
   <component
     :is="as ?? 'div'"
     ref="root"
-    class="rounded-lg shadow"
+    class="text-ink rounded-lg shadow"
     :class="[
       {
-        'p-6': padded,
-        'cursor-pointer transition-[box-shadow,transform,filter] hover:ring-2 hover:ring-rose-500 active:scale-[0.99] active:brightness-95 dark:active:brightness-110':
+        'p-card': padded,
+        'cursor-pointer transition-[box-shadow,transform,filter] hover:ring-2 hover:ring-ring-hover active:scale-[0.99] active:brightness-95 dark:active:brightness-110':
           interactive,
       },
       variant === 'urgent'
-        ? 'bg-red-50 ring-2 ring-red-300/60 dark:bg-red-950/30 dark:ring-red-800/50'
+        ? 'bg-surface-urgent ring-ring-urgent ring-2'
         : variant === 'action'
-          ? 'bg-amber-50/60 ring-2 ring-amber-300/50 dark:bg-amber-950/20 dark:ring-amber-700/40'
-          : 'bg-white ring-1 ring-black/5 dark:bg-stone-800 dark:shadow-[0_2px_8px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.06)] dark:ring-white/[0.06]',
+          ? 'bg-surface-action ring-ring-action ring-2'
+          : 'bg-surface ring-ring-hairline ring-1 dark:shadow-[0_2px_8px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.06)]',
     ]"
     :tabindex="interactive ? 0 : undefined"
     :role="interactive ? 'button' : undefined"

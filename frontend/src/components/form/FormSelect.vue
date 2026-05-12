@@ -18,10 +18,7 @@ defineEmits<{
 
 <template>
   <div>
-    <label
-      :for="id"
-      class="block text-sm/6 font-medium text-gray-900 dark:text-white"
-    >
+    <label :for="id" class="text-label text-ink block">
       {{ label }}
     </label>
     <div class="mt-2 grid grid-cols-1">
@@ -31,7 +28,7 @@ defineEmits<{
         :required="required"
         :disabled="disabled"
         :autocomplete="autocomplete"
-        class="col-start-1 row-start-1 w-full appearance-none rounded-md bg-gray-100 py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 *:bg-white focus:outline-2 focus:-outline-offset-2 focus:outline-rose-500 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:*:bg-stone-800"
+        class="focus:outline-focus col-start-1 row-start-1 w-full appearance-none rounded-md bg-gray-100 py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 *:bg-white focus:outline-2 focus:-outline-offset-2 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:*:bg-stone-800"
         @change="
           $emit('update:modelValue', ($event.target as HTMLSelectElement).value)
         "

@@ -289,7 +289,7 @@ const partialPickerRsvp = computed(() => {
           type="button"
           data-testid="rsvp-attend"
           :aria-pressed="currentUserRsvp?.attending ? 'true' : 'false'"
-          class="inline-flex cursor-pointer items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500"
+          class="inline-flex cursor-pointer items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           :class="
             currentUserRsvp?.attending
               ? 'bg-green-600 text-white'
@@ -306,7 +306,7 @@ const partialPickerRsvp = computed(() => {
           :aria-pressed="
             currentUserRsvp && !currentUserRsvp.attending ? 'true' : 'false'
           "
-          class="inline-flex cursor-pointer items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500"
+          class="inline-flex cursor-pointer items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           :class="
             currentUserRsvp && !currentUserRsvp.attending
               ? 'bg-red-600 text-white'

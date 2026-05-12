@@ -438,7 +438,7 @@ async function handlePaidClick(
               {{ formatRelativeDate(settlement.createdAt) }}
             </span>
           </span>
-          <AppBadge v-if="allTransfersPaid(settlement.id)" variant="green">
+          <AppBadge v-if="allTransfersPaid(settlement.id)" variant="success">
             <CheckCircleIcon class="size-3" />
             All paid
           </AppBadge>
@@ -523,7 +523,7 @@ async function handlePaidClick(
             >
               {{ formatAmount(transfer.amount) }}
             </span>
-            <AppBadge v-if="transfer.supersededAt" variant="gray">
+            <AppBadge v-if="transfer.supersededAt" variant="neutral">
               Superseded
             </AppBadge>
           </div>
@@ -533,7 +533,7 @@ async function handlePaidClick(
                 !transfer.paidAt && can(transfer.permissions, 'generate_qr')
               "
               type="button"
-              class="inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 sm:min-h-0 dark:border-stone-600 dark:bg-stone-700 dark:text-stone-200 dark:hover:bg-stone-600"
+              class="inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0 dark:border-stone-600 dark:bg-stone-700 dark:text-stone-200 dark:hover:bg-stone-600"
               title="Show QR code for bank transfer"
               @click="openQrModal(transfer)"
             >
@@ -567,7 +567,7 @@ async function handlePaidClick(
       <p
         class="mb-4 flex items-center gap-2 text-sm text-gray-600 dark:text-stone-400"
       >
-        <AppBadge variant="gray">Preview</AppBadge>
+        <AppBadge variant="neutral">Preview</AppBadge>
         Nothing has been settled yet.
       </p>
 

@@ -198,7 +198,7 @@ function relativeTime(iso: string): string {
             <Menu as="div" class="absolute top-2 right-2">
               <MenuButton
                 aria-label="More actions"
-                class="flex size-8 cursor-pointer items-center justify-center rounded-md text-gray-400 transition-opacity hover:bg-black/5 hover:text-gray-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 max-md:opacity-100 md:opacity-0 md:group-focus-within/row:opacity-100 md:group-hover/row:opacity-100 dark:text-stone-500 dark:hover:bg-white/10 dark:hover:text-stone-300"
+                class="flex size-8 cursor-pointer items-center justify-center rounded-md text-gray-400 transition-opacity hover:bg-black/5 hover:text-gray-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus max-md:opacity-100 md:opacity-0 md:group-focus-within/row:opacity-100 md:group-hover/row:opacity-100 dark:text-stone-500 dark:hover:bg-white/10 dark:hover:text-stone-300"
               >
                 <EllipsisHorizontalIcon class="size-5" aria-hidden="true" />
               </MenuButton>

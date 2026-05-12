@@ -314,7 +314,7 @@ const submitLabel = computed(() => {
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <button
           type="button"
-          class="cursor-pointer rounded-lg border border-gray-200 p-4 text-left transition-colors hover:border-amber-300 hover:bg-amber-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:border-stone-700 dark:hover:border-amber-700 dark:hover:bg-amber-900/10"
+          class="cursor-pointer rounded-lg border border-gray-200 p-4 text-left transition-colors hover:border-amber-300 hover:bg-amber-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:border-stone-700 dark:hover:border-amber-700 dark:hover:bg-amber-900/10"
           @click="selectMode('known')"
         >
           <CalendarDaysIcon
@@ -329,7 +329,7 @@ const submitLabel = computed(() => {
         </button>
         <button
           type="button"
-          class="cursor-pointer rounded-lg border border-gray-200 p-4 text-left transition-colors hover:border-amber-300 hover:bg-amber-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:border-stone-700 dark:hover:border-amber-700 dark:hover:bg-amber-900/10"
+          class="cursor-pointer rounded-lg border border-gray-200 p-4 text-left transition-colors hover:border-amber-300 hover:bg-amber-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:border-stone-700 dark:hover:border-amber-700 dark:hover:bg-amber-900/10"
           @click="selectMode('poll')"
         >
           <UsersIcon class="mb-2 size-6 text-amber-600 dark:text-amber-400" />

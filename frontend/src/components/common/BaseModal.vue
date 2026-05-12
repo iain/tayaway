@@ -57,7 +57,7 @@ const sizeClasses: Record<string, string> = {
   <dialog
     ref="dialogRef"
     :class="[
-      'modal-dialog m-auto rounded-lg bg-white p-4 text-left shadow-xl ring-1 ring-black/10 backdrop:bg-gray-500/85 sm:w-full sm:p-6 dark:bg-stone-900 dark:ring-white/10 dark:backdrop:bg-stone-900/80',
+      'modal-dialog bg-surface m-auto rounded-lg p-4 text-left shadow-xl ring-1 ring-black/10 backdrop:bg-gray-500/85 sm:w-full sm:p-6 dark:ring-white/10 dark:backdrop:bg-stone-900/80',
       sizeClasses[size ?? 'md'],
     ]"
     @close="handleClose"
@@ -67,7 +67,7 @@ const sizeClasses: Record<string, string> = {
       <button
         type="button"
         :disabled="preventClose"
-        class="rounded-md bg-white text-gray-500 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-stone-900 dark:text-stone-400 dark:hover:text-stone-300"
+        class="bg-surface text-ink-muted hover:text-ink focus-visible:outline-focus rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         @click="handleClose"
       >
         <span class="sr-only">Close</span>
@@ -75,7 +75,7 @@ const sizeClasses: Record<string, string> = {
       </button>
     </div>
 
-    <h3 class="mb-6 text-lg font-semibold text-gray-900 dark:text-white">
+    <h3 class="text-section-heading text-ink mb-heading">
       {{ title }}
     </h3>
 
