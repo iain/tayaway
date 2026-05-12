@@ -6,7 +6,7 @@ require "sequel"
 # pool keys connections by Thread.current, so fibers would share connections
 # and corrupt each other's query results. This extension keys by Fiber.current.
 # Skip in test env where DatabaseCleaner uses transaction strategy.
-Sequel.extension :fiber_concurrency unless ENV["RACK_ENV"] == "test"
+Sequel.extension :fiber_concurrency unless APP_CONFIG.test?
 
 # Lazy database connection - defers connection until first use
 # This is required for Falcon which forks after loading config.ru.
@@ -19,10 +19,10 @@ Sequel.extension :fiber_concurrency unless ENV["RACK_ENV"] == "test"
 # pods × DATABASE_POOL_SIZE (with one slot reserved per worker) must stay
 # under PG's max_connections.
 DB = Sequel.connect(
-  ENV.fetch("DATABASE_URL"),
+  APP_CONFIG.database_url,
   preconnect: false,
   test: false,
-  max_connections: Integer(ENV.fetch("DATABASE_POOL_SIZE", 16)),
+  max_connections: APP_CONFIG.database_pool_size,
   pool_timeout: 5,
   connect_timeout: 5,
   after_connect: proc { |conn| conn.exec("SET statement_timeout = '30s'") }

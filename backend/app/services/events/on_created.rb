@@ -22,7 +22,7 @@ module Events
           return if recipient_user_ids.empty?
 
           users = User.for_ids(recipient_user_ids)
-          event_url = "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/events/#{event.id}"
+          event_url = APP_CONFIG.frontend_url.path("/events/#{event.id}")
 
           users.each do |user|
             Notifications::Dispatch.call(

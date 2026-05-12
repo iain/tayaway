@@ -29,7 +29,7 @@ module Websocket
           # 90 s after it opens, which silently breaks broadcast routing
           # while the WebSocket itself stays open.
           Websocket::ConnectionManager.instance.update_last_pong(connection_id)
-          connection.write({ type: "pong", gitSha: GIT_SHA }.to_json)
+          connection.write({ type: "pong", gitSha: APP_CONFIG.git_sha }.to_json)
         when "switch_workspace"
           switch_workspace(connection, connection_id, user_id, data[:workspaceId], data[:since])
         else

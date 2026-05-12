@@ -6,24 +6,19 @@ RSpec.describe Notifications::TestPush do
   let(:user) { TestFactories.user }
 
   describe ".call" do
-    before do
-      stub_const(
-        "ENV",
-        ENV.to_h.merge(
-          "VAPID_PUBLIC_KEY" => "stub-public",
-          "VAPID_PRIVATE_KEY" => "stub-private"
-        )
-      )
-      allow(WebPush).to receive(:payload_send)
+    around do |example|
+      APP_CONFIG.with(vapid_public_key: "stub-public", vapid_private_key: "stub-private") { example.run }
     end
 
+    before { allow(WebPush).to receive(:payload_send) }
+
     it "fails when push is not configured" do
-      stub_const("ENV", ENV.to_h.merge("VAPID_PUBLIC_KEY" => "", "VAPID_PRIVATE_KEY" => ""))
+      APP_CONFIG.with(vapid_public_key: nil, vapid_private_key: nil) do
+        result = described_class.call(user_id: user[:id])
 
-      result = described_class.call(user_id: user[:id])
-
-      expect(result.failure?).to be true
-      expect(result.failure.message).to match(/configured/i)
+        expect(result.failure?).to be true
+        expect(result.failure.message).to match(/configured/i)
+      end
     end
 
     it "fails when the user has no subscriptions" do

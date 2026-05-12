@@ -18,8 +18,7 @@ module Auth
       def send_login_link(user)
         raw_token = create_token(user.id, user.email)
         jwt = Auth::Token.encode_login_link(token: raw_token, email: user.email.to_s)
-        frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:5173")
-        login_link = "#{frontend_url}/auth/verify?token=#{jwt}"
+        login_link = APP_CONFIG.frontend_url.path("/auth/verify", token: jwt)
 
         workspaces = Workspace.for_user(user.id)
         workspace_name = workspaces.length == 1 ? workspaces.first.name : "Tayaway"
@@ -27,7 +26,7 @@ module Auth
         email = user.email.to_s
 
         APP_LOGGER.info { "[Auth::CreateLoginLink] Login link requested for user #{user.id}" }
-        APP_LOGGER.info { "[Auth::CreateLoginLink] LOGIN LINK FOR #{email}: #{login_link}" } if APP_ENV == "development"
+        APP_LOGGER.info { "[Auth::CreateLoginLink] LOGIN LINK FOR #{email}: #{login_link}" } if APP_CONFIG.development?
         Mailers::LoginLink.send_email(email: email, login_link: login_link, workspace_name: workspace_name)
       end
 

@@ -8,7 +8,7 @@
 require_relative "../config/environment"
 require "digest"
 
-raise "Refusing to run seed_dev outside development" unless APP_ENV == "development"
+raise "Refusing to run seed_dev outside development" unless APP_CONFIG.development?
 
 # Deterministic UUIDs so reruns upsert the same rows.
 def det_uuid(label)

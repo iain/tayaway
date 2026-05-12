@@ -29,8 +29,9 @@ RSpec.describe Auth::CreateLoginLink do
       logged_messages << block.call if block
     end
 
-    stub_const("APP_ENV", "development")
-    described_class.call(email: "test@example.com")
+    APP_CONFIG.with(app_env: "development") do
+      described_class.call(email: "test@example.com")
+    end
 
     login_link_log = logged_messages.find { |m| m.include?("LOGIN LINK") }
     expect(login_link_log).to match(/auth\/verify\?token=eyJ/)

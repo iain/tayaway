@@ -12,7 +12,7 @@ RSpec.describe Users::VerifyEmailChange do
     expect(invalid_result.failure?).to be true
     expect(invalid_result.failure.http_status).to eq(401)
 
-    expired_jwt = JWT.encode({ token: "t", email: "e@e.com", exp: (Time.now - 60).to_i }, APP_SECRET, "HS256")
+    expired_jwt = JWT.encode({ token: "t", email: "e@e.com", exp: (Time.now - 60).to_i }, APP_CONFIG.app_secret, "HS256")
     expired_result = described_class.call(token: expired_jwt)
     expect(expired_result.failure?).to be true
     expect(expired_result.failure.message).to eq("Invalid or expired verification link")

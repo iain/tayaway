@@ -5,7 +5,6 @@ require "spec_helper"
 RSpec.describe Jobs::Base do
   describe ".perform_later" do
     it "delegates to Jobs::Queue with the class name and args" do
-      stub_const("APP_ENV", "test")
       allow(Jobs::Queue).to receive(:enqueue)
       stub_const("Jobs::FakeJob", Class.new(described_class) do
         define_method(:call) { |x:| x }

@@ -15,7 +15,7 @@ module Notifications
         yield
       rescue StandardError => e
         APP_LOGGER.error { "[#{context}] notification dispatch failed: #{e.class} - #{e.message}" }
-        raise if APP_ENV == "test"
+        raise if APP_CONFIG.test?
       end
     end
   end

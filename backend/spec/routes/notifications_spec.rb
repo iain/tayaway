@@ -103,24 +103,22 @@ RSpec.describe "Notifications inbox endpoints" do
 
   describe "GET /api/notifications/push-config" do
     it "returns the configured VAPID public key" do
-      ENV["VAPID_PUBLIC_KEY"] = "test-public-key"
+      APP_CONFIG.with(vapid_public_key: "test-public-key") do
+        get "/api/notifications/push-config", {}, auth_cookie
 
-      get "/api/notifications/push-config", {}, auth_cookie
-
-      expect(last_response.status).to eq(200)
-      body = JSON.parse(last_response.body)
-      expect(body["vapidPublicKey"]).to eq("test-public-key")
-    ensure
-      ENV.delete("VAPID_PUBLIC_KEY")
+        expect(last_response.status).to eq(200)
+        body = JSON.parse(last_response.body)
+        expect(body["vapidPublicKey"]).to eq("test-public-key")
+      end
     end
 
     it "returns an empty key when VAPID isn't configured" do
-      ENV.delete("VAPID_PUBLIC_KEY")
+      APP_CONFIG.with(vapid_public_key: nil) do
+        get "/api/notifications/push-config", {}, auth_cookie
 
-      get "/api/notifications/push-config", {}, auth_cookie
-
-      expect(last_response.status).to eq(200)
-      expect(JSON.parse(last_response.body)["vapidPublicKey"]).to eq("")
+        expect(last_response.status).to eq(200)
+        expect(JSON.parse(last_response.body)["vapidPublicKey"]).to eq("")
+      end
     end
   end
 

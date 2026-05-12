@@ -70,9 +70,9 @@ module Notifications
           p256dh: sub.p256dh_key,
           auth: sub.auth_key,
           vapid: {
-            subject: ENV.fetch("VAPID_SUBJECT", "mailto:noreply@tayaway.nl"),
-            public_key: ENV.fetch("VAPID_PUBLIC_KEY"),
-            private_key: ENV.fetch("VAPID_PRIVATE_KEY")
+            subject: APP_CONFIG.vapid_subject,
+            public_key: APP_CONFIG.vapid_public_key,
+            private_key: APP_CONFIG.vapid_private_key
           }
         )
       end

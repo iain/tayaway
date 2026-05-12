@@ -76,11 +76,10 @@ module Invites
         )
 
         jwt = Auth::Token.encode_invite(token: raw_token, email: invite.email.to_s)
-        frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:5173")
-        invite_link = "#{frontend_url}/invite/accept?token=#{jwt}"
+        invite_link = APP_CONFIG.frontend_url.path("/invite/accept", token: jwt)
 
         APP_LOGGER.info { "[Invites::Remind] Reminder sent for invite #{invite.id} to #{invite.email} in workspace #{invite.workspace_id}" }
-        APP_LOGGER.info { "REMINDER INVITE LINK FOR #{invite.email}: #{invite_link}" } if APP_ENV == "development"
+        APP_LOGGER.info { "REMINDER INVITE LINK FOR #{invite.email}: #{invite_link}" } if APP_CONFIG.development?
         Invites::OnSent.call(
           email: invite.email.to_s,
           invite_link: invite_link,

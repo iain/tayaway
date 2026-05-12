@@ -20,7 +20,7 @@ RSpec.describe Auth::VerifyToken do
 
   it "returns failure for expired JWT" do
     payload = { token: "sometoken", email: "test@example.com", exp: (Time.now - 60).to_i }
-    expired_jwt = JWT.encode(payload, APP_SECRET, "HS256")
+    expired_jwt = JWT.encode(payload, APP_CONFIG.app_secret, "HS256")
 
     result = described_class.call(token: expired_jwt)
 
