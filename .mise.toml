@@ -104,7 +104,17 @@ outputs = { auto = true }
 description = "Regenerate TASKS.md from mise task descriptions and usage specs"
 # Pinned in lint so the file can't drift from the source of truth.
 # Claude reads CLAUDE.md on session start; CLAUDE.md links to TASKS.md.
-run = "mise generate task-docs --output TASKS.md"
+# In pre-commit context (MISE_PRE_COMMIT=1, set by the generated hook), also
+# stage the regenerated file so it lands in the in-flight commit — without
+# this, a task-definition change would leave TASKS.md modified in the working
+# tree and require a second commit. Outside pre-commit, the regen runs but
+# staging is left alone.
+run = """
+mise generate task-docs --output TASKS.md
+if [ -n "${MISE_PRE_COMMIT:-}" ]; then
+  git add TASKS.md
+fi
+"""
 sources = [
   ".mise.toml",
   "backend/mise.toml",
