@@ -153,6 +153,10 @@ depends = ["//backend:db:setup-e2e"]
 # may not match backend's pin (and mise installs gems per-Ruby-install, so a
 # mismatch means Bundler can't find falcon).
 tools = { ruby = "4" }
+# Playwright still calls `module.register()` to install its TS ESM loader;
+# on Node 22+ that emits DEP0205. Silence only that code so real deprecation
+# warnings stay visible. Drop once Playwright migrates to registerHooks().
+env = { NODE_OPTIONS = "--disable-warning=DEP0205" }
 run = 'pnpm exec playwright test "$@"'
 
 # ── Backend convenience aliases ──────────────────────────────────────────────

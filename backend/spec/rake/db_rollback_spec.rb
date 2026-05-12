@@ -5,7 +5,7 @@ require "rake"
 
 Sequel.extension :migration
 
-RSpec.describe "rake db:rollback" do
+RSpec.describe "rake db:rollback", :silence_stdout do
   let(:rake) do
     app = Rake::Application.new
     Rake.application = app

@@ -52,4 +52,14 @@ RSpec.configure do |config|
       example.run
     end
   end
+
+  config.around(:each, :silence_stdout) do |example|
+    original = $stdout
+    $stdout = StringIO.new
+    begin
+      example.run
+    ensure
+      $stdout = original
+    end
+  end
 end
