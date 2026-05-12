@@ -92,6 +92,12 @@ jobs:
       # without us having to thread two different DATABASE_URLs through
       # a single GitHub Actions step env. The files are .gitignored
       # because contents differ per developer machine.
+      #
+      # The VAPID keys are test-only material generated for the push
+      # smoke test (`notifications-push.spec.ts`); the frontend gates
+      # the subscribe flow on a non-empty public key, so the test fails
+      # without them. Safe to commit because they grant nothing — real
+      # deploys carry production keys via Capistrano env, never CI.
       - name: Write CI dotenv files
         run: |
           cat > backend/.env.test <<'EOF'
@@ -100,6 +106,9 @@ jobs:
           cat > backend/.env.e2e <<'EOF'
           DATABASE_URL=postgres://postgres:postgres@localhost:5432/tayaway_e2e
           FRONTEND_URL=http://localhost:5174
+          VAPID_PUBLIC_KEY=BPDZXyMZhyzQ-lmi5MAm-djBp5kecbgrlVGSZ6TsE8yUEOX_cEid5TxdYbBv3YoA2OiwjIHiilvTwA9-vCWeQpE=
+          VAPID_PRIVATE_KEY=CofJgcTG6lqV_HszPSpDw_oE3s8fhbQEsBZJ1Ne9t_k=
+          VAPID_SUBJECT=mailto:noreply@tayaway.nl
           EOF
 
       - name: Set up test database
