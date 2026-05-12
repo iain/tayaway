@@ -22,7 +22,7 @@ module Members
               workspace_name: workspace.name,
               old_role: old_role,
               new_role: new_role,
-              workspace_url: ENV.fetch("FRONTEND_URL", "https://tayaway.nl").to_s
+              workspace_url: FRONTEND_URL
             }
           )
         end

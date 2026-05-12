@@ -38,14 +38,13 @@ RSpec.describe Notifications::Kinds::WorkspaceInvite do
     end
 
     context "when an unsubscribe address is configured" do
-      before { ENV["SMTP_UNSUBSCRIBE_EMAIL"] = "unsubscribe@tayaway.nl" }
-      after { ENV.delete("SMTP_UNSUBSCRIBE_EMAIL") }
-
       it "sets a mailto List-Unsubscribe header" do
-        message = described_class.build_email(**params)
+        Config.with(smtp_unsubscribe_email: "unsubscribe@tayaway.nl") do
+          message = described_class.build_email(**params)
 
-        expect(message["List-Unsubscribe"].to_s)
-          .to eq("<mailto:unsubscribe@tayaway.nl?subject=unsubscribe>")
+          expect(message["List-Unsubscribe"].to_s)
+            .to eq("<mailto:unsubscribe@tayaway.nl?subject=unsubscribe>")
+        end
       end
     end
 

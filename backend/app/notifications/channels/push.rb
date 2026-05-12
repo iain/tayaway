@@ -39,9 +39,9 @@ module Notifications
             p256dh: p256dh_key,
             auth: auth_key,
             vapid: {
-              subject: ENV.fetch("VAPID_SUBJECT", "mailto:noreply@tayaway.nl"),
-              public_key: ENV.fetch("VAPID_PUBLIC_KEY"),
-              private_key: ENV.fetch("VAPID_PRIVATE_KEY")
+              subject: Config.vapid_subject,
+              public_key: Config.vapid_public_key,
+              private_key: Config.vapid_private_key
             }
           )
         rescue WebPush::ExpiredSubscription, WebPush::InvalidSubscription
@@ -50,7 +50,7 @@ module Notifications
         end
 
         def configured?
-          !ENV["VAPID_PUBLIC_KEY"].to_s.empty? && !ENV["VAPID_PRIVATE_KEY"].to_s.empty?
+          Config.feature_enabled?(:push)
         end
       end
 

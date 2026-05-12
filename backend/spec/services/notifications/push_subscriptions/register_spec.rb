@@ -22,15 +22,15 @@ RSpec.describe Notifications::PushSubscriptions::Register do
     end
 
     it "returns the VAPID public key so the page can confirm it matches" do
-      stub_const("ENV", ENV.to_h.merge("VAPID_PUBLIC_KEY" => "k-public"))
+      Config.with(vapid_public_key: "k-public") do
+        result = described_class.call(
+          user_id: user[:id],
+          endpoint: "https://push.example.com/abc",
+          p256dh_key: "p", auth_key: "a"
+        )
 
-      result = described_class.call(
-        user_id: user[:id],
-        endpoint: "https://push.example.com/abc",
-        p256dh_key: "p", auth_key: "a"
-      )
-
-      expect(result.value!).to include(ok: true, vapidPublicKey: "k-public")
+        expect(result.value!).to include(ok: true, vapidPublicKey: "k-public")
+      end
     end
 
     it "rejects an empty endpoint" do

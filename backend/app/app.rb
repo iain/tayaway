@@ -20,7 +20,7 @@ class App < Roda
     { error: "Internal server error" }
   end
 
-  STATIC_DIR = Pathname.new(ENV.fetch("STATIC_DIR", File.expand_path("../../frontend/dist", __dir__)))
+  STATIC_DIR = Pathname.new(Config.static_dir || File.expand_path("../../frontend/dist", __dir__))
 
   plugin :public, root: STATIC_DIR.to_s
 
@@ -30,7 +30,7 @@ class App < Roda
 
   # __Host- prefix enforces Secure, exact host match, and Path=/ in browsers.
   # Only used in production since __Host- requires HTTPS.
-  COOKIE_NAME = ENV["RACK_ENV"] == "production" ? "__Host-session_token" : "session_token"
+  COOKIE_NAME = Config.production? ? "__Host-session_token" : "session_token"
 
   def set_session_cookie(token, expires_at)
     response.set_cookie(
@@ -38,7 +38,7 @@ class App < Roda
       value: token,
       path: "/",
       httponly: true,
-      secure: ENV["RACK_ENV"] == "production",
+      secure: Config.production?,
       same_site: :lax,
       expires: expires_at
     )
@@ -50,7 +50,7 @@ class App < Roda
       value: "",
       path: "/",
       httponly: true,
-      secure: ENV["RACK_ENV"] == "production",
+      secure: Config.production?,
       same_site: :lax,
       expires: Time.at(0)
     )

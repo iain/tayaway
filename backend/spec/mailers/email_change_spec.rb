@@ -35,13 +35,12 @@ RSpec.describe Mailers::EmailChange do
     end
 
     context "when an unsubscribe address is configured" do
-      before { ENV["SMTP_UNSUBSCRIBE_EMAIL"] = "unsubscribe@tayaway.nl" }
-      after { ENV.delete("SMTP_UNSUBSCRIBE_EMAIL") }
-
       it "still does not set List-Unsubscribe (verification is user-requested)" do
-        described_class.send_email(**params)
+        Config.with(smtp_unsubscribe_email: "unsubscribe@tayaway.nl") do
+          described_class.send_email(**params)
 
-        expect(Mail::TestMailer.deliveries.first["List-Unsubscribe"]).to be_nil
+          expect(Mail::TestMailer.deliveries.first["List-Unsubscribe"]).to be_nil
+        end
       end
     end
   end

@@ -73,8 +73,7 @@ module Users
         )
 
         jwt = Auth::Token.encode_email_change(token: raw_token, email: parsed_email.to_s)
-        frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:5173")
-        verification_link = "#{frontend_url}/verify-email?token=#{jwt}"
+        verification_link = "#{FRONTEND_URL}/verify-email?token=#{jwt}"
 
         APP_LOGGER.info { "[Users::RequestEmailChange] User #{user.id} requested email change to #{parsed_email}" }
         APP_LOGGER.info { "EMAIL CHANGE LINK FOR #{parsed_email}: #{verification_link}" } if APP_ENV == "development"

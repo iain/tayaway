@@ -18,7 +18,7 @@ module DatePolls
           users = User.for_ids(voter_user_ids)
           ics_content = build_ics(event, date_range)
           date_label = format_date_label(date_range.start_date, date_range.end_date)
-          event_url = "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/events/#{event.id}"
+          event_url = "#{FRONTEND_URL}/events/#{event.id}"
           ics_filename = "#{event.name.downcase.gsub(/[^a-z0-9]+/, "-").gsub(/\A-|-\z/, "")}.ics"
 
           users.each do |user|

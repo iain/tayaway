@@ -83,8 +83,7 @@ module Invites
         )
 
         jwt = Auth::Token.encode_invite(token: raw_token, email: email)
-        frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:5173")
-        invite_link = "#{frontend_url}/invite/accept?token=#{jwt}"
+        invite_link = "#{FRONTEND_URL}/invite/accept?token=#{jwt}"
 
         APP_LOGGER.info { "[Invites::Create] Invite #{id} sent to #{email} in workspace #{workspace_id} by #{membership.user_id}" }
         APP_LOGGER.info { "INVITE LINK FOR #{email}: #{invite_link}" } if APP_ENV == "development"

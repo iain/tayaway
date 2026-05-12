@@ -28,7 +28,7 @@ module Auth
               os_name: browser_info&.dig(:os_name),
               city: geo&.dig(:city),
               country: country,
-              session_url: "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/settings/login"
+              session_url: "#{FRONTEND_URL}/settings/login"
             }
           )
         end

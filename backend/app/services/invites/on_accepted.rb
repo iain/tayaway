@@ -25,7 +25,7 @@ module Invites
               recipient_name: inviter.name,
               invitee_name: invitee_display,
               workspace_name: workspace.name,
-              workspace_url: ENV.fetch("FRONTEND_URL", "https://tayaway.nl").to_s
+              workspace_url: FRONTEND_URL
             }
           )
         end

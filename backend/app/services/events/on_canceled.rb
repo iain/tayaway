@@ -18,7 +18,7 @@ module Events
 
           actor_name = actor.name || actor.email.to_s
           users = User.for_ids(recipient_ids)
-          workspace_url = ENV.fetch("FRONTEND_URL", "https://tayaway.nl").to_s
+          workspace_url = FRONTEND_URL
 
           users.each do |user|
             Notifications::Dispatch.call(

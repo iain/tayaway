@@ -13,7 +13,7 @@ module Settlements
 
           user_ids = transfers.flat_map { |t| [t[:from_user_id], t[:to_user_id]] }.uniq
           users_by_id = User.for_ids(user_ids).each_with_object({}) { |u, h| h[u.id.to_s] = u }
-          event_url = "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/events/#{event.id}"
+          event_url = "#{FRONTEND_URL}/events/#{event.id}"
 
           transfers.each do |transfer|
             debtor = users_by_id[transfer[:from_user_id].to_s]

@@ -18,8 +18,7 @@ module Auth
       def send_login_link(user)
         raw_token = create_token(user.id, user.email)
         jwt = Auth::Token.encode_login_link(token: raw_token, email: user.email.to_s)
-        frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:5173")
-        login_link = "#{frontend_url}/auth/verify?token=#{jwt}"
+        login_link = "#{FRONTEND_URL}/auth/verify?token=#{jwt}"
 
         workspaces = Workspace.for_user(user.id)
         workspace_name = workspaces.length == 1 ? workspaces.first.name : "Tayaway"

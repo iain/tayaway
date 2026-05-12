@@ -23,7 +23,7 @@ module Settlements
               actor_name: actor.name || actor.email.to_s,
               amount: amount.to_f,
               actor_role: actor_role,
-              settle_up_url: "#{ENV.fetch("FRONTEND_URL", "https://tayaway.nl")}/settle-up"
+              settle_up_url: "#{FRONTEND_URL}/settle-up"
             }
           )
         end
