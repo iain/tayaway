@@ -14,7 +14,7 @@ use RequestLogger
 # the lifetime of the worker. Outside a reactor (e.g. `rackup` directly,
 # or a tool that loads config.ru just to introspect routes) we skip the
 # spawn rather than crash.
-unless APP_ENV == "test"
+unless APP_CONFIG.test?
   parent = Async::Task.current?
   if parent
     parent.async(annotation: "websocket.listener")  { Websocket::Listener.run }
