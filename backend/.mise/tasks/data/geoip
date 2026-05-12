@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+#MISE description="Download DB-IP Lite city database for IP geolocation"
+#USAGE flag "-m --month <month>" help="DB-IP city DB release month (YYYY-MM); defaults to the current month"
+
+# `--month YYYY-MM` overrides the default (current month) — useful for
+# pinning a snapshot or recovering an older one if a release is broken.
+
+set -euo pipefail
+
+MONTH="${usage_month:-$(date +%Y-%m)}"
+URL="https://download.db-ip.com/free/dbip-city-lite-${MONTH}.mmdb.gz"
+
+mkdir -p data
+echo "Downloading DB-IP Lite city database (${MONTH})..."
+curl -fSL -o /tmp/dbip-city-lite.mmdb.gz "$URL"
+gunzip -c /tmp/dbip-city-lite.mmdb.gz > data/dbip-city-lite.mmdb
+rm /tmp/dbip-city-lite.mmdb.gz
+echo "Saved to backend/data/dbip-city-lite.mmdb"

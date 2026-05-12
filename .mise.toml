@@ -73,32 +73,6 @@ outputs = { auto = true }
 description = "Full CI: check + e2e"
 depends = ["check", "e2e"]
 
-[tasks."ci:fresh"]
-description = "Wipe local daemon/cache/DB state, then run full CI"
-confirm = "Wipe local DB/cache state and run full CI. Continue?"
-# Reproduces the parts of GitHub Actions' clean-VM behaviour that
-# bite us locally: a wedged RuboCop server scoping inspections to a
-# subdirectory, stale TypeScript incremental build info masking real
-# type errors, and test/e2e DBs that have drifted (leftover rows,
-# half-applied migrations, idle-in-transaction backends).
-run = """
-set -e
-
-echo "→ Stopping RuboCop server (no-op if it's not running)..."
-(cd backend && bundle exec rubocop --stop-server) 2>/dev/null || true
-
-echo "→ Clearing TypeScript incremental build info..."
-rm -rf frontend/node_modules/.tmp
-
-echo "→ Resetting test database..."
-(cd backend && RACK_ENV=test bundle exec rake db:drop db:create db:migrate)
-
-echo "→ Resetting e2e database..."
-(cd backend && RACK_ENV=e2e bundle exec rake db:drop db:create db:migrate)
-
-mise run --force ci
-"""
-
 # ── Aggregate task wildcards ─────────────────────────────────────────────────
 #
 # These collapse `lint:backend + lint:frontend` etc. into a single root task.
@@ -218,6 +192,10 @@ depends = ["//backend:db:backup"]
 [tasks.console]
 description = "Open a Ruby console with the app loaded"
 depends = ["//backend:console"]
+
+[tasks."dev:reset"]
+description = "Kill any falcon-host / fsevent_watch processes left holding the dev backend port"
+depends = ["//backend:dev:reset"]
 
 # ── Deploy ───────────────────────────────────────────────────────────────────
 

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+#MISE description="Create and migrate the development, test, and e2e databases"
+
+set -euo pipefail
+
+for env in development test e2e; do
+  echo "Setting up $env database..."
+  RACK_ENV="$env" bundle exec rake db:create db:migrate
+done
+
+echo "All databases ready"

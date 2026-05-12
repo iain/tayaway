@@ -15,17 +15,7 @@ description = "Start backend dev server"
 depends = ["db:seed"]
 run = "bundle exec falcon-host falcon.rb"
 
-[tasks."dev:reset"]
-description = "Kill any falcon-host / fsevent_watch processes left holding the dev backend port"
-run = """
-pids=$(lsof -ti :9292 2>/dev/null || true)
-if [ -n "$pids" ]; then
-  echo "Killing $(echo $pids | wc -w | tr -d ' ') process(es) on :9292"
-  kill -KILL $pids 2>/dev/null || true
-fi
-pkill -KILL -f fsevent_watch 2>/dev/null && echo "Killed orphaned fsevent_watch" || true
-echo "Dev backend port is free."
-"""
+# dev:reset lives in backend/.mise/tasks/dev/reset.
 
 # ── Lint / Test / Audit ──────────────────────────────────────────────────────
 
@@ -125,40 +115,7 @@ run = "ssh -p 50022 ubuntu@tayaway.nl '/var/www/tayaway/current/config/deploy/ba
 description = "Install backend dependencies"
 run = "bundle install"
 
-[tasks."setup:db"]
-description = "Create and migrate the development, test, and e2e databases"
-run = """
-echo "Setting up development database..."
-RACK_ENV=development bundle exec rake db:create db:migrate
-
-echo "Setting up test database..."
-RACK_ENV=test bundle exec rake db:create db:migrate
-
-echo "Setting up e2e database..."
-RACK_ENV=e2e bundle exec rake db:create db:migrate
-
-echo "All databases ready"
-"""
-
-# ── Data ─────────────────────────────────────────────────────────────────────
-
-[tasks."data:geoip"]
-description = "Download DB-IP Lite city database for IP geolocation"
-# `--month YYYY-MM` overrides the default (current month) — useful for
-# pinning a snapshot or recovering an older one if a release is broken.
-usage = '''
-flag "-m --month <month>" help="DB-IP city DB release month (YYYY-MM); defaults to the current month"
-'''
-run = """
-mkdir -p data
-MONTH="${usage_month:-$(date +%Y-%m)}"
-URL="https://download.db-ip.com/free/dbip-city-lite-${MONTH}.mmdb.gz"
-echo "Downloading DB-IP Lite city database (${MONTH})..."
-curl -fSL -o /tmp/dbip-city-lite.mmdb.gz "$URL"
-gunzip -c /tmp/dbip-city-lite.mmdb.gz > data/dbip-city-lite.mmdb
-rm /tmp/dbip-city-lite.mmdb.gz
-echo "Saved to backend/data/dbip-city-lite.mmdb"
-"""
+# setup:db and data:geoip live in backend/.mise/tasks/.
 
 # ── Misc ─────────────────────────────────────────────────────────────────────
 
