@@ -4,6 +4,20 @@
 description = "Start frontend dev server"
 run = "pnpm run dev"
 
+[tasks."dev:e2e"]
+description = "Start frontend dev server on port 5174 against the e2e backend — spawned by playwright.config.ts"
+env = { FRONTEND_PORT = "5174", API_PORT = "9293" }
+run = "pnpm run dev"
+
+[tasks."preview:e2e"]
+description = "Build then serve the production bundle on 5175 against the e2e backend — spawned by playwright.config.ts for the offline cold-launch test, which needs a real service worker (vite dev produces a stub)"
+env = { FRONTEND_PREVIEW_PORT = "5175", API_PORT = "9293" }
+shell = "bash -c"
+run = """
+pnpm run build
+pnpm exec vite preview --strictPort
+"""
+
 # ── Lint / Typecheck / Test / Audit ──────────────────────────────────────────
 
 [tasks.lint]

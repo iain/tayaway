@@ -15,6 +15,11 @@ description = "Start backend dev server"
 depends = ["db:seed"]
 run = "bundle exec falcon-host falcon.rb"
 
+[tasks."dev:e2e"]
+description = "Start backend in e2e mode on port 9293 — spawned by playwright.config.ts"
+env = { RACK_ENV = "e2e", FALCON_URL = "http://localhost:9293" }
+run = "bundle exec falcon-host falcon.rb"
+
 # dev:reset lives in backend/.mise/tasks/dev/reset.
 
 # ── Lint / Test / Audit ──────────────────────────────────────────────────────

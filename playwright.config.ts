@@ -27,8 +27,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command:
-        'cd backend && RACK_ENV=e2e bundle exec falcon serve --bind http://localhost:9293 --threaded',
+      command: 'mise run //backend:dev:e2e',
       url: 'http://localhost:9293/health',
       reuseExistingServer: false,
       timeout: 120000,
@@ -36,7 +35,7 @@ export default defineConfig({
       stderr: 'ignore',
     },
     {
-      command: 'cd frontend && FRONTEND_PORT=5174 API_PORT=9293 pnpm run dev',
+      command: 'mise run //frontend:dev:e2e',
       url: 'http://localhost:5174',
       reuseExistingServer: false,
       timeout: 120000,
@@ -48,8 +47,7 @@ export default defineConfig({
     // and proxies /api and /ws to the e2e backend via the `preview.proxy`
     // config in frontend/vite.config.ts.
     {
-      command:
-        'cd frontend && FRONTEND_PREVIEW_PORT=5175 API_PORT=9293 pnpm run build && FRONTEND_PREVIEW_PORT=5175 API_PORT=9293 pnpm exec vite preview --strictPort',
+      command: 'mise run //frontend:preview:e2e',
       url: 'http://localhost:5175',
       reuseExistingServer: false,
       timeout: 120000,
