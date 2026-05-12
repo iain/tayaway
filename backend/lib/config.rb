@@ -31,8 +31,13 @@ require "uri"
 class Config
   Error = Class.new(StandardError)
 
-  Spec = Data.define(:key, :env, :required, :type, :default, :dev_default, :secret, :values, :description)
+  Spec = Data.define(:key, :env, :required, :type, :default, :dev_default, :secret, :values, :min, :max, :description)
   Feature = Data.define(:name, :requires, :description)
+
+  # Minimal sanity check for email addresses — local@domain.tld. Catches
+  # obvious typos at boot; full RFC 5322 compliance is the Mail gem's
+  # problem at delivery time.
+  EMAIL_PATTERN = /\A[^\s@]+@[^\s@]+\.[^\s@]+\z/
 
   ParseFailure = Data.define(:message)
   private_constant :ParseFailure
@@ -89,12 +94,12 @@ class Config
 
     private
 
-    def add(key, type: :string, env: nil, required: false, default: nil, dev_default: nil, secret: false, values: nil, description: "")
+    def add(key, type: :string, env: nil, required: false, default: nil, dev_default: nil, secret: false, values: nil, min: nil, max: nil, description: "")
       @entries << Spec.new(
         key: key,
         env: env || key.to_s.upcase,
         required: required, type: type, default: default, dev_default: dev_default,
-        secret: secret, values: values, description: description
+        secret: secret, values: values, min: min, max: max, description: description
       )
     end
   end
@@ -255,28 +260,35 @@ class Config
 
   # Defaults from the schema are written as plain Ruby values
   # (`"http://localhost:5173"`, `16`, `[]`). Run them through the same
-  # type wrapping as env-derived values so a caller never has to think
-  # about whether a value originated from ENV or the default branch.
+  # type wrapping and constraint checks as env-derived values so a
+  # caller never has to think about where a value originated.
   def coerce_default(spec, value)
-    coerce_for_type(spec.type, value)
+    coerce_typed(spec, value)
   end
 
   # `with(...)` overrides come from test/app code as plain Ruby values
-  # — apply the same type wrapping as load!.
+  # — apply the same coercion as load!. Bad values raise immediately so
+  # a test mistake fails noisily.
   def coerce_override(key, value)
     spec = @specs_by_key[key]
     return value unless spec
 
-    coerce_for_type(spec.type, value)
+    coerce_typed(spec, value)
   end
 
-  def coerce_for_type(type, value)
+  def coerce_typed(spec, value)
     return value if value.nil?
 
-    case type
-    when :url then value.is_a?(Url) ? value : Url.new(value)
-    else value
-    end
+    wrapped = case spec.type
+              when :url then value.is_a?(Url) ? value : Url.new(value)
+              when :path then value.is_a?(Pathname) ? value : Pathname.new(value)
+              else value
+              end
+
+    failure = validate_constraints(spec, wrapped)
+    raise Error, failure.message if failure
+
+    wrapped
   end
 
   def parse_or_default(spec, env, errors, in_production:)
@@ -285,23 +297,39 @@ class Config
   end
 
   def parse_value(spec, raw)
-    case spec.type
-    when :int
-      Integer(raw)
-    when :base64
-      Base64.strict_decode64(raw)
-    when :csv
-      raw.split(",").map(&:strip).reject(&:empty?)
-    when :url
-      Url.new(raw)
-    when :enum
-      # `spec` is a Data, not a Hash — `.values` is the enum allow-list.
-      spec.values.include?(raw) ? raw : ParseFailure.new("#{spec.env}=#{raw.inspect} is not one of #{spec.values.join(", ")}") # rubocop:disable Performance/InefficientHashSearch
-    else
-      raw
-    end
+    parsed = case spec.type
+             when :int
+               Integer(raw)
+             when :base64
+               Base64.strict_decode64(raw)
+             when :csv
+               raw.split(",").map(&:strip).reject(&:empty?)
+             when :url
+               Url.new(raw)
+             when :path
+               Pathname.new(raw)
+             when :email
+               EMAIL_PATTERN.match?(raw) ? raw : ParseFailure.new("#{spec.env}=#{raw.inspect} is not a valid email")
+             when :enum
+               # `spec` is a Data, not a Hash — `.values` is the enum allow-list.
+               spec.values.include?(raw) ? raw : ParseFailure.new("#{spec.env}=#{raw.inspect} is not one of #{spec.values.join(", ")}") # rubocop:disable Performance/InefficientHashSearch
+             else
+               raw
+             end
+
+    return parsed if parsed.is_a?(ParseFailure)
+
+    validate_constraints(spec, parsed) || parsed
   rescue ArgumentError, URI::InvalidURIError => e
     ParseFailure.new("#{spec.env}=#{raw.inspect} is invalid: #{e.message}")
+  end
+
+  def validate_constraints(spec, value)
+    if spec.type == :int
+      return ParseFailure.new("#{spec.env}=#{value} is below min #{spec.min}") if spec.min && value < spec.min
+      return ParseFailure.new("#{spec.env}=#{value} is above max #{spec.max}") if spec.max && value > spec.max
+    end
+    nil
   end
 
   def present?(value)

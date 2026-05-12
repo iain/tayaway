@@ -14,21 +14,21 @@ APP_CONFIG = Config.define do |c|
   c.required :frontend_url, production_only: true, type: :url, dev_default: "http://localhost:5173",
              description: "Public URL of the SPA — used in email links and WebAuthn config"
 
-  c.optional :database_pool_size, type: :int, default: 16,
+  c.optional :database_pool_size, type: :int, default: 16, min: 1,
              description: "Sequel max_connections per worker"
-  c.optional :web_concurrency, type: :int, default: 1,
+  c.optional :web_concurrency, type: :int, default: 1, min: 1,
              description: "Falcon web worker count"
-  c.optional :job_concurrency, type: :int, default: 1,
+  c.optional :job_concurrency, type: :int, default: 1, min: 1,
              description: "Falcon jobs worker count"
   c.optional :falcon_url, type: :url, default: "http://localhost:9292",
              description: "Falcon bind URL"
-  c.optional :static_dir,
+  c.optional :static_dir, type: :path,
              description: "Override for the frontend dist directory"
-  c.optional :deleted_items_retention_days, type: :int, default: 7,
+  c.optional :deleted_items_retention_days, type: :int, default: 7, min: 1,
              description: "Soft-deleted item TTL (days)"
-  c.optional :idempotency_key_ttl_hours, type: :int, default: 24,
+  c.optional :idempotency_key_ttl_hours, type: :int, default: 24, min: 1,
              description: "Idempotency key TTL (hours)"
-  c.optional :audit_log_retention_days, type: :int, default: 365,
+  c.optional :audit_log_retention_days, type: :int, default: 365, min: 1,
              description: "Audit log retention (days)"
   c.optional :webauthn_extra_origins, type: :csv, default: [],
              description: "Extra WebAuthn origins (CSV)"
@@ -46,13 +46,13 @@ APP_CONFIG = Config.define do |c|
   c.feature :smtp, requires: %i[smtp_host smtp_username smtp_password],
             description: "Outbound email via SMTP" do |f|
     f.optional :smtp_host, description: "SMTP host"
-    f.optional :smtp_port, type: :int, default: 587, description: "SMTP port"
+    f.optional :smtp_port, type: :int, default: 587, min: 1, max: 65535, description: "SMTP port"
     f.optional :smtp_username, description: "SMTP username"
     f.optional :smtp_password, secret: true, description: "SMTP password"
     f.optional :smtp_domain, default: "tayaway.nl", description: "SMTP HELO domain"
-    f.optional :smtp_from_email, default: "noreply@tayaway.nl", description: "Default From address"
+    f.optional :smtp_from_email, type: :email, default: "noreply@tayaway.nl", description: "Default From address"
     f.optional :smtp_from_name, default: "Tayaway", description: "Default From display name"
-    f.optional :smtp_reply_to_email, description: "Optional Reply-To address"
-    f.optional :smtp_unsubscribe_email, description: "Optional List-Unsubscribe address"
+    f.optional :smtp_reply_to_email, type: :email, description: "Optional Reply-To address"
+    f.optional :smtp_unsubscribe_email, type: :email, description: "Optional List-Unsubscribe address"
   end
 end

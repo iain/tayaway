@@ -20,7 +20,7 @@ class App < Roda
     { error: "Internal server error" }
   end
 
-  STATIC_DIR = Pathname.new(APP_CONFIG.static_dir || File.expand_path("../../frontend/dist", __dir__))
+  STATIC_DIR = APP_CONFIG.static_dir || Pathname.new(File.expand_path("../../frontend/dist", __dir__))
 
   plugin :public, root: STATIC_DIR.to_s
 

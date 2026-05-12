@@ -245,4 +245,65 @@ RSpec.describe Config do
       expect(config.e2e?).to be(false)
     end
   end
+
+  describe ":int min/max constraints" do
+    it "rejects an env value below the minimum" do
+      expect { config.load!(env: base_env.merge("DATABASE_POOL_SIZE" => "0")) }
+        .to raise_error(Config::Error, /DATABASE_POOL_SIZE.*below min/)
+    end
+
+    it "rejects an env value above the maximum" do
+      env = base_env.merge(
+        "SMTP_HOST" => "smtp.example.com",
+        "SMTP_USERNAME" => "u",
+        "SMTP_PASSWORD" => "p",
+        "SMTP_PORT" => "99999"
+      )
+      expect { config.load!(env: env) }.to raise_error(Config::Error, /SMTP_PORT.*above max/)
+    end
+
+    it "raises immediately when a #with override violates the range" do
+      config.load!(env: base_env)
+      expect { config.with(database_pool_size: 0) { nil } }
+        .to raise_error(Config::Error, /below min/)
+    end
+  end
+
+  describe ":email type" do
+    it "rejects an env value that doesn't look like an email" do
+      env = base_env.merge(
+        "SMTP_HOST" => "smtp.example.com",
+        "SMTP_USERNAME" => "u",
+        "SMTP_PASSWORD" => "p",
+        "SMTP_FROM_EMAIL" => "not-an-email"
+      )
+      expect { config.load!(env: env) }.to raise_error(Config::Error, /SMTP_FROM_EMAIL.*valid email/)
+    end
+
+    it "accepts a well-formed email" do
+      env = base_env.merge(
+        "SMTP_HOST" => "smtp.example.com",
+        "SMTP_USERNAME" => "u",
+        "SMTP_PASSWORD" => "p",
+        "SMTP_FROM_EMAIL" => "from@example.com"
+      )
+      config.load!(env: env)
+      expect(config.smtp_from_email).to eq("from@example.com")
+    end
+  end
+
+  describe ":path type" do
+    it "returns a Pathname when set" do
+      config.load!(env: base_env.merge("STATIC_DIR" => "/srv/static"))
+      expect(config.static_dir).to eq(Pathname.new("/srv/static"))
+    end
+
+    it "wraps #with overrides in a Pathname" do
+      config.load!(env: base_env)
+      config.with(static_dir: "/srv/other") do
+        expect(config.static_dir).to be_a(Pathname)
+        expect(config.static_dir.to_s).to eq("/srv/other")
+      end
+    end
+  end
 end
