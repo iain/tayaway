@@ -130,6 +130,14 @@ Deploy to production
 
 Start frontend + backend dev servers
 
+## `dev:reset`
+
+- Depends: //backend:dev:reset
+
+- **Usage**: `dev:reset`
+
+Kill any falcon-host / fsevent_watch processes left holding the dev backend port
+
 ## `docs:tasks`
 
 - **Usage**: `docs:tasks`

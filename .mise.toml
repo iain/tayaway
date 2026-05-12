@@ -105,7 +105,14 @@ description = "Regenerate TASKS.md from mise task descriptions and usage specs"
 # Pinned in lint so the file can't drift from the source of truth.
 # Claude reads CLAUDE.md on session start; CLAUDE.md links to TASKS.md.
 run = "mise generate task-docs --output TASKS.md"
-sources = [".mise.toml", "backend/mise.toml", "frontend/mise.toml"]
+sources = [
+  ".mise.toml",
+  "backend/mise.toml",
+  "frontend/mise.toml",
+  ".mise/tasks/**",
+  "backend/.mise/tasks/**",
+  "frontend/.mise/tasks/**",
+]
 outputs = ["TASKS.md"]
 
 [tasks.typecheck]
