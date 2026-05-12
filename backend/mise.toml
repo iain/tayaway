@@ -78,6 +78,7 @@ run = "bundle exec rake db:migrate"
 
 [tasks."db:rollback"]
 description = "Rollback the last migration"
+confirm = "Rollback the last migration. This can drop columns or tables. Continue?"
 run = "bundle exec rake db:rollback"
 
 [tasks."db:reset"]
