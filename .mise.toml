@@ -156,6 +156,12 @@ depends = ["//frontend:build"]
 [tasks.e2e]
 description = "Playwright end-to-end tests"
 depends = ["//backend:db:setup-e2e"]
+# Playwright's webServer config spawns `cd backend && bundle exec falcon serve`.
+# Declare Ruby on the task so it's in PATH at the right version — without it
+# the task runs with whatever the user-global mise config resolves to, which
+# may not match backend's pin (and mise installs gems per-Ruby-install, so a
+# mismatch means Bundler can't find falcon).
+tools = { ruby = "4" }
 usage = '''
 arg "[pattern]" help="Test file path or glob (default: all)"
 flag "-g --grep <grep>" help="Run only tests whose title matches the given regex"
@@ -241,6 +247,21 @@ run = "pnpm install"
 [tasks."setup:db"]
 description = "Create and migrate the development, test, and e2e databases"
 depends = ["//backend:setup:db"]
+
+[tasks."tools:upgrade"]
+description = "Bump every config_root's tool versions to the latest available"
+# `mise upgrade --bump` only walks the current config_root, so running it at
+# the project root never touches backend/mise.lock. Loop so a single command
+# bumps every subproject's pins. setup:deps fires via the postinstall hook
+# after the install, reinstalling gems/node_modules against the new Rubies/
+# Nodes.
+shell = "bash -c"
+run = """
+for dir in . backend frontend; do
+  echo "→ upgrading $dir"
+  (cd "$dir" && mise upgrade --bump)
+done
+"""
 
 [tasks."setup:hooks"]
 description = "Install the git pre-commit hook"
