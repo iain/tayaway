@@ -67,7 +67,7 @@ end
 # runs on plain IO.select before any reactor exists in the host, and
 # Listen's callback runs on its own thread, so a Mutex is the
 # correct primitive to synchronise the two.
-if ENV.fetch("RACK_ENV", "development") == "development"
+if ENV.fetch("MISE_ENV", "development") == "development"
   require "listen"
   require "async/container/controller"
 

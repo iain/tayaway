@@ -14,7 +14,7 @@ RSpec.describe Config do
   # example can express its scenario as a delta.
   let(:base_env) do
     {
-      "RACK_ENV" => "development",
+      "MISE_ENV" => "development",
       "DATABASE_URL" => "postgres://example/db",
       "APP_SECRET" => Base64.strict_encode64("x" * 32),
       "FRONTEND_URL" => "http://localhost:5173"
@@ -41,19 +41,19 @@ RSpec.describe Config do
     end
 
     it "requires FRONTEND_URL in production" do
-      env = base_env.merge("RACK_ENV" => "production").tap { _1.delete("FRONTEND_URL") }
+      env = base_env.merge("MISE_ENV" => "production").tap { _1.delete("FRONTEND_URL") }
       expect { config.load!(env: env) }
         .to raise_error(Config::Error, /FRONTEND_URL/)
     end
 
     it "fails fast when a required var is missing in production" do
-      env = base_env.merge("RACK_ENV" => "production").tap { _1.delete("APP_SECRET") }
+      env = base_env.merge("MISE_ENV" => "production").tap { _1.delete("APP_SECRET") }
       expect { config.load!(env: env) }
         .to raise_error(Config::Error, /APP_SECRET/)
     end
 
     it "reports every missing required var in a single error" do
-      env = base_env.merge("RACK_ENV" => "production")
+      env = base_env.merge("MISE_ENV" => "production")
       env.delete("APP_SECRET")
       env.delete("DATABASE_URL")
       expect { config.load!(env: env) }
@@ -83,13 +83,13 @@ RSpec.describe Config do
       expect(config.webauthn_extra_origins).to eq([])
     end
 
-    it "rejects RACK_ENV values not in the enum" do
-      expect { config.load!(env: base_env.merge("RACK_ENV" => "staging")) }
-        .to raise_error(Config::Error, /RACK_ENV/)
+    it "rejects MISE_ENV values not in the enum" do
+      expect { config.load!(env: base_env.merge("MISE_ENV" => "staging")) }
+        .to raise_error(Config::Error, /MISE_ENV/)
     end
 
     it "exposes app_env as a reader" do
-      config.load!(env: base_env.merge("RACK_ENV" => "test"))
+      config.load!(env: base_env.merge("MISE_ENV" => "test"))
       expect(config.app_env).to eq("test")
     end
   end
@@ -125,7 +125,7 @@ RSpec.describe Config do
 
     it "raises in production when a feature is half-configured" do
       env = base_env.merge(
-        "RACK_ENV" => "production",
+        "MISE_ENV" => "production",
         "SMTP_HOST" => "smtp.example.com",
         "SMTP_PASSWORD" => "p"
       )
@@ -251,7 +251,7 @@ RSpec.describe Config do
 
   describe "env predicates" do
     it "exposes production?/development?/test?/e2e? matching app_env" do
-      config.load!(env: base_env.merge("RACK_ENV" => "test"))
+      config.load!(env: base_env.merge("MISE_ENV" => "test"))
       expect(config.test?).to be(true)
       expect(config.production?).to be(false)
       expect(config.development?).to be(false)
@@ -259,13 +259,13 @@ RSpec.describe Config do
     end
 
     it "exposes under_test? for the test and e2e envs but not production or development" do
-      config.load!(env: base_env.merge("RACK_ENV" => "test"))
+      config.load!(env: base_env.merge("MISE_ENV" => "test"))
       expect(config.under_test?).to be(true)
-      config.load!(env: base_env.merge("RACK_ENV" => "e2e"))
+      config.load!(env: base_env.merge("MISE_ENV" => "e2e"))
       expect(config.under_test?).to be(true)
-      config.load!(env: base_env.merge("RACK_ENV" => "development"))
+      config.load!(env: base_env.merge("MISE_ENV" => "development"))
       expect(config.under_test?).to be(false)
-      config.load!(env: base_env.merge("RACK_ENV" => "production"))
+      config.load!(env: base_env.merge("MISE_ENV" => "production"))
       expect(config.under_test?).to be(false)
     end
   end

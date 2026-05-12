@@ -37,7 +37,7 @@ practice that's nothing today.
 
 `bin/falcon-host falcon.rb` is the only command. Dev and prod run the same
 binary; the systemd unit is one `ExecStart` line. Per-environment behaviour
-comes from env vars (`RACK_ENV`, `WEB_CONCURRENCY`, `JOB_CONCURRENCY`,
+comes from env vars (`MISE_ENV`, `WEB_CONCURRENCY`, `JOB_CONCURRENCY`,
 `DATABASE_URL`, `FALCON_URL`).
 
 Inside `falcon.rb`:

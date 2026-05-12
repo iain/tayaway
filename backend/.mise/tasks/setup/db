@@ -5,7 +5,7 @@ set -euo pipefail
 
 for env in development test e2e; do
   echo "Setting up $env database..."
-  RACK_ENV="$env" bundle exec rake db:create db:migrate
+  MISE_ENV="$env" mise exec -- bundle exec rake db:create db:migrate
 done
 
 echo "All databases ready"

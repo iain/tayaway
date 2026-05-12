@@ -77,7 +77,7 @@ class Config
     def hash = @base.hash
   end
 
-  RACK_ENVS = %w[production development test e2e].freeze
+  APP_ENVS = %w[production development test e2e].freeze
 
   # DSL receiver. The top-level one (`TopBuilder`) also accepts
   # `feature`; the inner one used inside a feature block does not, so
@@ -199,7 +199,7 @@ class Config
     @values = snapshot
   end
 
-  RACK_ENVS.each { |name| define_method("#{name}?") { app_env == name } }
+  APP_ENVS.each { |name| define_method("#{name}?") { app_env == name } }
   # True when an automated test harness (RSpec or Playwright) is driving
   # the app. These envs share ephemeral databases, skip rate limiting,
   # and unlock the /api/test/* routes — distinct from a developer's
