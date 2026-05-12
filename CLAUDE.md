@@ -122,5 +122,5 @@ Migrations run **before** the app restarts during deploy — old code is still s
 ## Environment
 
 - Required env vars: `DATABASE_URL`, `APP_SECRET`, `FRONTEND_URL`
-- Config loaded from `backend/.env.{development,test,e2e}` via dotenv (not in production)
+- Config loaded from `backend/.env.{development,test,e2e,production}` by mise (`_.file` in `backend/mise.toml`), keyed off `MISE_ENV`. Tasks that need a non-default env wrap themselves with `mise --env=<env> exec -- …`. Production: systemd sets `MISE_ENV=production`; `ExecStart` goes through `mise exec`. No dotenv at runtime.
 - Three databases: `tayaway_development`, `tayaway_test`, `tayaway_e2e`

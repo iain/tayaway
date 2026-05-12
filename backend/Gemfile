@@ -17,9 +17,6 @@ gem "sequel_pg", require: "sequel"
 gem "json"
 gem "jwt"
 
-# Environment
-gem "dotenv"
-
 # Email
 gem "mail", "~> 2.8"
 

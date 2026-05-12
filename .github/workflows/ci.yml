@@ -84,14 +84,13 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm exec playwright install chromium --with-deps
 
-      # The mise tasks set RACK_ENV per-task (test vs. e2e). Each task's
-      # subprocess loads backend/.env.<RACK_ENV> via dotenv, which is how
-      # local dev resolves DATABASE_URL etc. without the caller having to
-      # plumb env per step. Writing these files here means `mise run ci`
-      # can fan out check + e2e in parallel — each picks up its own DB
-      # without us having to thread two different DATABASE_URLs through
-      # a single GitHub Actions step env. The files are .gitignored
-      # because contents differ per developer machine.
+      # The mise tasks re-enter mise with --env=<test|e2e>, which loads
+      # backend/.env.<env> via mise's _.file directive in backend/mise.toml.
+      # Writing these files here means `mise run ci` can fan out check +
+      # e2e in parallel — each picks up its own DB without us having to
+      # thread two different DATABASE_URLs through a single GitHub Actions
+      # step env. The files are .gitignored because contents differ per
+      # developer machine.
       #
       # The VAPID keys are test-only material generated for the push
       # smoke test (`notifications-push.spec.ts`); the frontend gates

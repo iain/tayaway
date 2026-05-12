@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 VALID_ENVIRONMENTS = %w[production development test e2e].freeze
-boot_env = ENV.fetch("RACK_ENV", "development")
+boot_env = ENV.fetch("MISE_ENV", "development")
 unless VALID_ENVIRONMENTS.include?(boot_env)
-  raise "Invalid RACK_ENV=#{boot_env.inspect}. Must be one of: #{VALID_ENVIRONMENTS.join(", ")}"
+  raise "Invalid MISE_ENV=#{boot_env.inspect}. Must be one of: #{VALID_ENVIRONMENTS.join(", ")}"
 end
 APP_DIR = Pathname(File.expand_path("..", __dir__))
 
@@ -14,7 +14,9 @@ Bundler.require(:default, boot_env)
 # without each model/service/policy having to repeat `include Dry::Monads[:result]`.
 Object.include Dry::Monads[:result]
 
-Dotenv.load("#{APP_DIR}/.env.#{boot_env}") unless boot_env == "production"
+# Env vars are loaded by mise from .env.<MISE_ENV> before this process
+# starts — see backend/mise.toml. In production the same file is loaded
+# via mise from the systemd unit's ExecStart wrapper. No dotenv at runtime.
 
 # GIT_SHA can come from three places in priority order — env, the REVISION
 # file written by Capistrano, or `git rev-parse` on a working tree. Resolve

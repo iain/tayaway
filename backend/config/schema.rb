@@ -4,7 +4,7 @@
 # defined in `lib/config.rb`; this file is data.
 
 APP_CONFIG = Config.define do |c|
-  c.optional :app_env, env: "RACK_ENV", type: :enum, values: Config::RACK_ENVS, default: "development",
+  c.optional :app_env, env: "MISE_ENV", type: :enum, values: Config::APP_ENVS, default: "development",
              description: "Application environment"
 
   c.required :database_url, secret: true,

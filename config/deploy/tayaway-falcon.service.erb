@@ -20,9 +20,13 @@ Type=notify
 User=tayaway
 Group=tayaway
 WorkingDirectory=/var/www/tayaway/current/backend
-EnvironmentFile=/var/www/tayaway/shared/backend/.env.production
-Environment=RACK_ENV=production
-Environment=PATH=/home/tayaway/.local/share/mise/installs/ruby/<%= ruby_version %>/bin:/usr/local/bin:/usr/bin:/bin
+# mise loads .env.production via backend/mise.toml's `_.file` directive,
+# keyed off MISE_ENV. systemd no longer reads the env file directly —
+# one parser, one source of truth across dev, test, e2e, and prod.
+Environment=MISE_ENV=production
+Environment=MISE_TRUSTED_CONFIG_PATHS=/var/www/tayaway
+Environment=MISE_EXPERIMENTAL=1
+Environment=PATH=/home/tayaway/.local/share/mise/installs/ruby/<%= ruby_version %>/bin:/home/tayaway/.local/bin:/usr/local/bin:/usr/bin:/bin
 Environment=GEM_HOME=/var/www/tayaway/shared/backend/vendor/bundle/ruby/<%= ruby_gem_version %>
 Environment=GEM_PATH=/var/www/tayaway/shared/backend/vendor/bundle/ruby/<%= ruby_gem_version %>
 Environment=FALCON_URL=http://127.0.0.1:9292
@@ -32,7 +36,7 @@ Environment=FALCON_URL=http://127.0.0.1:9292
 # here — without it, the gem-activation chain combined with config.ru's
 # `Bundler.require` triggers a second default-config falcon serve in
 # the same process, races for port 9292, and crashes the unit.
-ExecStart=/var/www/tayaway/current/backend/bin/falcon-host falcon.rb
+ExecStart=/home/tayaway/.local/bin/mise exec -- /var/www/tayaway/current/backend/bin/falcon-host falcon.rb
 ExecReload=/bin/kill -HUP $MAINPID
 # Cap the graceful-stop window. async-container's container.stop sends
 # SIGINT and waits up to its 10 s graceful timeout before SIGKILL, so

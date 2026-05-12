@@ -13,7 +13,7 @@ namespace :database do
   task :migrate do
     on roles(:db) do
       within release_path.join("backend") do
-        with rack_env: "production" do
+        with mise_env: "production" do
           execute :bundle, "exec", "rake", "db:migrate"
         end
       end

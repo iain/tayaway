@@ -15,7 +15,7 @@ namespace :config do
   task :validate_release do
     on roles(:app) do
       within release_path.join("backend") do
-        with rack_env: "production" do
+        with mise_env: "production" do
           execute :bundle, "exec", "rake", "config:validate"
         end
       end

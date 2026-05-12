@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-ENV["RACK_ENV"] = "test"
+ENV["MISE_ENV"] = "test"
 
 module Warning
   def self.warn(msg, **)
