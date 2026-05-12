@@ -1,0 +1,110 @@
+name: Update visual baselines
+
+# Manually re-generates the Playwright visual-regression baselines in CI and
+# commits them back to the triggering branch. Runs on Linux so the baselines
+# match what `ci.yml` renders against — local macOS/Windows runs of
+# `--update-snapshots` produce environment-specific images that aren't tracked.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    env:
+      APP_SECRET: dGVzdHNlY3JldHRlc3RzZWNyZXR0ZXN0c2VjcmV0dGU=
+      CI: true
+      MISE_EXPERIMENTAL: true
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Need the branch's full history so the bot push fast-forwards instead
+          # of clobbering, and a token that can push back (default token's
+          # GITHUB_TOKEN is fine because `permissions: contents: write` is set).
+          ref: ${{ github.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install system dependencies
+        run: sudo apt-get install -y libmaxminddb-dev
+
+      - name: Cache frontend node_modules
+        uses: actions/cache@v5
+        with:
+          path: |
+            node_modules
+            frontend/node_modules
+          key: node-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: node-${{ runner.os }}-
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: playwright-${{ runner.os }}-
+
+      - uses: jdx/mise-action@v4
+        with:
+          install: true
+          cache: true
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: Write CI dotenv files
+        run: |
+          cat > backend/.env.test <<'EOF'
+          DATABASE_URL=postgres://postgres:postgres@localhost:5432/tayaway_test
+          EOF
+          cat > backend/.env.e2e <<'EOF'
+          DATABASE_URL=postgres://postgres:postgres@localhost:5432/tayaway_e2e
+          FRONTEND_URL=http://localhost:5174
+          VAPID_PUBLIC_KEY=BPDZXyMZhyzQ-lmi5MAm-djBp5kecbgrlVGSZ6TsE8yUEOX_cEid5TxdYbBv3YoA2OiwjIHiilvTwA9-vCWeQpE=
+          VAPID_PRIVATE_KEY=CofJgcTG6lqV_HszPSpDw_oE3s8fhbQEsBZJ1Ne9t_k=
+          VAPID_SUBJECT=mailto:noreply@tayaway.nl
+          EOF
+
+      - name: Set up test database
+        run: mise run //backend:db:setup-test
+
+      # Only the design-system spec carries visual baselines today; restrict
+      # the update to that file so a regression-test workflow can't silently
+      # bake other tests' incidental output into a baseline.
+      - name: Regenerate visual baselines
+        run: mise run e2e -- design-system --update-snapshots
+
+      # `github.ref_name` is user-controllable (branch name), so it goes
+      # through env rather than being inlined into the shell command — keeps
+      # workflow-injection static analysis happy and is safer in general.
+      - name: Commit refreshed baselines
+        env:
+          TARGET_REF: ${{ github.ref_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add 'e2e/tests/**/*-snapshots/**' 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "No baseline changes — nothing to commit."
+            exit 0
+          fi
+          git commit -m "Refresh visual baselines"
+          git push origin "HEAD:${TARGET_REF}"
