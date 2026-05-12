@@ -4,129 +4,106 @@ require "base64"
 
 # Single source of truth for every env var the backend reads.
 #
-# Boot order: `Config.load!` is the first thing `config/environment.rb` runs
-# after `Dotenv.load`, so the rest of the boot can read `Config.x` without
-# worrying about whether a var was set, valid, or coerced. Missing required
-# vars in production raise here, before the app ever serves a request.
+# The declarations live in `config/schema.rb`; this file is the loader
+# behind them. The DSL is:
 #
-# Three states for a var:
-#   - required: true            — must be set in every environment
-#   - required: :production_only — must be set in production; uses dev_default elsewhere
-#   - required: false (default)  — uses `default` (or `dev_default` outside production)
+#   Config.define do |c|
+#     c.required :database_url, secret: true
+#     c.optional :web_concurrency, type: :int, default: 1
+#     c.feature :push, requires: %i[vapid_public_key vapid_private_key] do |f|
+#       f.optional :vapid_public_key
+#       f.optional :vapid_private_key, secret: true
+#     end
+#   end
 #
-# Features group a set of vars under a single name. A feature is "enabled"
-# when every var in its `requires:` list is present. A feature with *some*
-# of its required vars set (but not all) is a configuration error, not a
-# silent half-on state — almost always a typo or a half-applied secret roll.
+# Required-ness has three shapes:
+#   - `required :x`                       — must be set in every environment
+#   - `required :x, production_only: true` — must be set in production; uses `dev_default` elsewhere
+#   - `optional :x, default: ...`         — never required
 #
-# Tests use `Config.with(overrides) { ... }` for scoped overrides instead
-# of mutating ENV in `before`/`after` hooks.
+# A feature is "enabled" when every var in its `requires:` list is
+# present. In production a half-configured feature fails boot. Outside
+# production it stays off — dotenv scaffolding with empty SMTP creds is
+# common and isn't a real error.
+#
+# Tests use `Config.with(overrides) { ... }` for scoped overrides
+# instead of mutating ENV in before/after hooks.
 module Config
   Error = Class.new(StandardError)
 
   Spec = Data.define(:key, :env, :required, :type, :default, :dev_default, :secret, :values, :description)
   Feature = Data.define(:name, :requires, :description)
 
+  ParseFailure = Data.define(:message)
+  private_constant :ParseFailure
+
   RACK_ENVS = %w[production development test e2e].freeze
 
-  class << self
-    def spec(key, type: :string, env: nil, required: false, default: nil, dev_default: nil, secret: false, values: nil, description: "")
-      Spec.new(
+  # DSL receiver. The top-level one (`TopBuilder`) also accepts
+  # `feature`; the inner one used inside a feature block does not, so
+  # features can't accidentally nest.
+  class Builder
+    attr_reader :entries
+
+    def initialize
+      @entries = []
+    end
+
+    def required(key, production_only: false, **opts)
+      add(key, required: production_only ? :production_only : true, **opts)
+    end
+
+    def optional(key, **opts)
+      add(key, required: false, **opts)
+    end
+
+    private
+
+    def add(key, type: :string, env: nil, required: false, default: nil, dev_default: nil, secret: false, values: nil, description: "")
+      @entries << Spec.new(
         key: key,
         env: env || key.to_s.upcase,
-        required: required,
-        type: type,
-        default: default,
-        dev_default: dev_default,
-        secret: secret,
-        values: values,
-        description: description
+        required: required, type: type, default: default, dev_default: dev_default,
+        secret: secret, values: values, description: description
       )
     end
   end
 
-  ENTRIES = [
-    spec(:app_env, env: "RACK_ENV", type: :enum, values: RACK_ENVS, default: "development",
-         description: "Application environment"
-    ),
-    spec(:database_url, required: true, secret: true,
-         description: "Postgres connection URL"
-    ),
-    spec(:app_secret, required: true, type: :base64, secret: true,
-         description: "Session/cookie signing key (base64-encoded raw bytes)"
-    ),
-    spec(:frontend_url, required: :production_only, type: :url, dev_default: "http://localhost:5173",
-         description: "Public URL of the SPA — used in email links and WebAuthn config"
-    ),
-    spec(:database_pool_size, type: :int, default: 16,
-         description: "Sequel max_connections per worker"
-    ),
-    spec(:web_concurrency, type: :int, default: 1,
-         description: "Falcon web worker count"
-    ),
-    spec(:job_concurrency, type: :int, default: 1,
-         description: "Falcon jobs worker count"
-    ),
-    spec(:falcon_url, type: :url, default: "http://localhost:9292",
-         description: "Falcon bind URL"
-    ),
-    spec(:static_dir, type: :string, default: nil,
-         description: "Override for the frontend dist directory"
-    ),
-    spec(:deleted_items_retention_days, type: :int, default: 7,
-         description: "Soft-deleted item TTL (days)"
-    ),
-    spec(:idempotency_key_ttl_hours, type: :int, default: 24,
-         description: "Idempotency key TTL (hours)"
-    ),
-    spec(:audit_log_retention_days, type: :int, default: 365,
-         description: "Audit log retention (days)"
-    ),
-    spec(:webauthn_extra_origins, type: :csv, default: [],
-         description: "Extra WebAuthn origins (CSV)"
-    ),
-    spec(:git_sha, type: :string, default: nil,
-         description: "Build SHA — env, REVISION file, or git rev-parse"
-    )
-  ].freeze
+  class TopBuilder < Builder
+    attr_reader :features, :feature_entries
 
-  FEATURES = [
-    Feature.new(name: :push, requires: %i[vapid_public_key vapid_private_key],
-                description: "Web push notifications"
-    ),
-    Feature.new(name: :smtp, requires: %i[smtp_host smtp_username smtp_password],
-                description: "Outbound email via SMTP"
-    )
-  ].freeze
+    def initialize
+      super
+      @features = []
+      @feature_entries = {}
+    end
 
-  FEATURE_ENTRIES = {
-    push: [
-      spec(:vapid_public_key, description: "Web push public VAPID key"),
-      spec(:vapid_private_key, secret: true, description: "Web push private VAPID key"),
-      spec(:vapid_subject, default: "mailto:noreply@tayaway.nl",
-           description: "RFC 8292 subject — contact for push providers"
-      )
-    ].freeze,
-    smtp: [
-      spec(:smtp_host, description: "SMTP host"),
-      spec(:smtp_port, type: :int, default: 587, description: "SMTP port"),
-      spec(:smtp_username, description: "SMTP username"),
-      spec(:smtp_password, secret: true, description: "SMTP password"),
-      spec(:smtp_domain, default: "tayaway.nl", description: "SMTP HELO domain"),
-      spec(:smtp_from_email, default: "noreply@tayaway.nl", description: "Default From address"),
-      spec(:smtp_from_name, default: "Tayaway", description: "Default From display name"),
-      spec(:smtp_reply_to_email, default: nil, description: "Optional Reply-To address"),
-      spec(:smtp_unsubscribe_email, default: nil, description: "Optional List-Unsubscribe address")
-    ].freeze
-  }.freeze
-
-  ALL_SPECS = (ENTRIES + FEATURE_ENTRIES.values.flatten).freeze
-  SPECS_BY_KEY = ALL_SPECS.each_with_object({}) { |s, h| h[s.key] = s }.freeze
-
-  ParseFailure = Data.define(:message)
-  private_constant :ParseFailure
+    def feature(name, requires:, description: "", &block)
+      @features << Feature.new(name: name, requires: requires, description: description)
+      inner = Builder.new
+      yield(inner)
+      @feature_entries[name] = inner.entries.freeze
+    end
+  end
 
   class << self
+    attr_reader :entries, :features, :feature_entries, :all_specs
+
+    def define
+      builder = TopBuilder.new
+      yield builder
+
+      @entries = builder.entries.freeze
+      @features = builder.features.freeze
+      @feature_entries = builder.feature_entries.freeze
+      @all_specs = (@entries + @feature_entries.values.flatten).freeze
+      @specs_by_key = @all_specs.each_with_object({}) { |s, h| h[s.key] = s }.freeze
+
+      @all_specs.each do |spec|
+        define_singleton_method(spec.key) { @values&.fetch(spec.key, nil) }
+      end
+    end
+
     def load!(env: ENV)
       values, errors = build(env)
       raise Error, format_errors(errors) if errors.any?
@@ -137,14 +114,14 @@ module Config
     end
 
     def feature_enabled?(name)
-      feature = FEATURES.find { _1.name == name }
+      feature = @features.find { _1.name == name }
       return false unless feature
 
       feature.requires.all? { |k| present?(@values[k]) }
     end
 
     def to_h_redacted
-      ALL_SPECS.each_with_object({}) do |s, h|
+      @all_specs.each_with_object({}) do |s, h|
         next unless @values&.key?(s.key)
 
         h[s.key] = s.secret ? "[REDACTED]" : @values[s.key]
@@ -164,10 +141,6 @@ module Config
     RACK_ENVS.each { |name| define_method("#{name}?") { app_env == name } }
     def local? = !production?
 
-    ALL_SPECS.each do |spec|
-      define_method(spec.key) { @values&.fetch(spec.key, nil) }
-    end
-
     private
 
     def values_snapshot = @values
@@ -177,21 +150,22 @@ module Config
       values = {}
       errors = []
 
-      # Resolve app_env first because other specs key off "required in
-      # production" — we have to know which env we're in before deciding
-      # whether a missing var is an error.
-      app_env_value = parse_or_default(SPECS_BY_KEY[:app_env], env, errors, in_production: false)
+      # Resolve app_env first — other specs key off "required in
+      # production", so we need to know the env before deciding whether
+      # a missing var is an error.
+      app_env_spec = @specs_by_key[:app_env]
+      app_env_value = parse_or_default(app_env_spec, env, errors, in_production: false)
       values[:app_env] = app_env_value
       in_production = app_env_value == "production"
 
-      ENTRIES.each do |s|
+      @entries.each do |s|
         next if s.key == :app_env
 
         load_spec(s, env, values, errors, in_production: in_production)
       end
 
-      FEATURES.each do |feature|
-        present_keys = feature.requires.select { |k| present?(env[SPECS_BY_KEY[k].env]) }
+      @features.each do |feature|
+        present_keys = feature.requires.select { |k| present?(env[@specs_by_key[k].env]) }
         enabled = present_keys.length == feature.requires.length
         partial = !enabled && present_keys.any?
 
@@ -202,10 +176,10 @@ module Config
         # surfaces it.
         if partial && in_production
           missing = feature.requires - present_keys
-          errors << "Feature :#{feature.name} partially configured — missing #{missing.map { SPECS_BY_KEY[_1].env }.join(", ")}"
+          errors << "Feature :#{feature.name} partially configured — missing #{missing.map { @specs_by_key[_1].env }.join(", ")}"
         end
 
-        FEATURE_ENTRIES.fetch(feature.name).each do |s|
+        @feature_entries.fetch(feature.name).each do |s|
           must_be_set = enabled && feature.requires.include?(s.key)
           load_spec(s, env, values, errors, in_production: in_production, force_required: must_be_set)
         end
@@ -279,8 +253,8 @@ module Config
     def log_boot_summary
       return unless defined?(APP_LOGGER) && APP_LOGGER
 
-      enabled = FEATURES.map(&:name).select { |n| feature_enabled?(n) }
-      disabled = FEATURES.map(&:name) - enabled
+      enabled = @features.map(&:name).select { |n| feature_enabled?(n) }
+      disabled = @features.map(&:name) - enabled
       APP_LOGGER.info do
         parts = ["[Config] env=#{app_env}"]
         parts << "features=[#{enabled.join(",")}]" if enabled.any?
@@ -290,3 +264,5 @@ module Config
     end
   end
 end
+
+require_relative "schema"

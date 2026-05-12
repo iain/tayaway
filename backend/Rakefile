@@ -169,8 +169,8 @@ end
 namespace :config do
   desc "Validate env vars against the Config schema and print which features are enabled"
   task :validate do
-    enabled = Config::FEATURES.map(&:name).select { |n| Config.feature_enabled?(n) }
-    disabled = Config::FEATURES.map(&:name) - enabled
+    enabled = Config.features.map(&:name).select { |n| Config.feature_enabled?(n) }
+    disabled = Config.features.map(&:name) - enabled
     puts "env=#{Config.app_env}"
     puts "features enabled: #{enabled.empty? ? "(none)" : enabled.join(", ")}"
     puts "features disabled: #{disabled.empty? ? "(none)" : disabled.join(", ")}"
