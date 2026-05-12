@@ -164,13 +164,7 @@ Kill any falcon / vite / fsevent_watch processes left holding the e2e ports
 
 - **Usage**: `lint`
 
-Lint and autofix all code
-
-## `lint:ci`
-
-- **Usage**: `lint:ci`
-
-Lint without autofix — fails on offenses instead of fixing them in place
+Lint all code (autofix locally; report-only when $CI is set)
 
 ## `lint:config`
 

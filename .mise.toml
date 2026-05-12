@@ -79,20 +79,8 @@ depends = ["check", "e2e"]
 # Subproject definitions are the source of truth; root just fans out.
 
 [tasks.lint]
-description = "Lint and autofix all code"
+description = "Lint all code (autofix locally; report-only when $CI is set)"
 depends = ["//...:lint", "lint:config", "docs:tasks"]
-
-[tasks."lint:ci"]
-description = "Lint without autofix — fails on offenses instead of fixing them in place"
-# In CI, autofix would silently mutate the ephemeral workspace and report
-# clean, greenlighting PRs whose authors hadn't run lint locally. This
-# variant forces a real verification. Subproject tasks ship --no-fix on
-# their `usage` specs; wildcards don't pass args, so we list both.
-shell = "bash -c"
-run = """
-mise run //backend:lint --no-fix
-mise run //frontend:lint --no-fix
-"""
 
 [tasks."lint:config"]
 description = "Canonically format all mise.toml files"

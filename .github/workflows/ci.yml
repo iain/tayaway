@@ -84,32 +84,34 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm exec playwright install chromium --with-deps
 
+      # The mise tasks set RACK_ENV per-task (test vs. e2e). Each task's
+      # subprocess loads backend/.env.<RACK_ENV> via dotenv, which is how
+      # local dev resolves DATABASE_URL etc. without the caller having to
+      # plumb env per step. Writing these files here means `mise run ci`
+      # can fan out check + e2e in parallel — each picks up its own DB
+      # without us having to thread two different DATABASE_URLs through
+      # a single GitHub Actions step env. The files are .gitignored
+      # because contents differ per developer machine.
+      - name: Write CI dotenv files
+        run: |
+          cat > backend/.env.test <<'EOF'
+          DATABASE_URL=postgres://postgres:postgres@localhost:5432/tayaway_test
+          EOF
+          cat > backend/.env.e2e <<'EOF'
+          DATABASE_URL=postgres://postgres:postgres@localhost:5432/tayaway_e2e
+          FRONTEND_URL=http://localhost:5174
+          EOF
+
       - name: Set up test database
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/tayaway_test
         run: mise run //backend:db:setup-test
 
-      - name: Lint (no-fix — actually fails on offenses)
-        # Must come before `mise run check`. `check` runs lint with autofix by
-        # default; without this gate, CI would silently fix issues in the
-        # ephemeral workspace and report green for a PR whose author hadn't
-        # actually run lint locally.
-        run: mise run lint:ci
-
-      - name: Run checks (lint, typecheck, test, audit)
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/tayaway_test
-          RACK_ENV: test
-        run: mise run check
-
-      - name: Run e2e tests
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/tayaway_e2e
-          RACK_ENV: e2e
-          FRONTEND_URL: http://localhost:5174
-        # `mise run e2e` depends on //backend:db:setup-e2e, so the e2e DB
-        # gets created here under the right DATABASE_URL/RACK_ENV.
-        run: mise run e2e
+      # `mise run ci` runs check (lint, typecheck, test, audit) and e2e
+      # in parallel, mirroring `mise run ci` on a developer machine.
+      # Lint is CI-aware: with $CI set, `//...:lint` defaults to no-fix,
+      # so we don't need a separate gate to prevent autofix from silently
+      # masking offenses in the ephemeral workspace.
+      - name: Run CI
+        run: mise run ci
 
       - name: Upload test report
         if: failure()

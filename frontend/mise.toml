@@ -21,14 +21,15 @@ pnpm exec vite preview --strictPort
 # ── Lint / Typecheck / Test / Audit ──────────────────────────────────────────
 
 [tasks.lint]
-description = "ESLint (autofix by default)"
+description = "ESLint (autofix locally; report-only when $CI is set)"
 usage = '''
-flag "--no-fix" help="Report errors without autofixing (use in CI)"
+flag "--no-fix" help="Report errors without autofixing — also the default when $CI is set"
 '''
 shell = "bash -c"
 run = """
 args=( src )
-[ "$usage_no_fix" = "true" ] || args+=( --fix )
+no_fix="${usage_no_fix:-${CI:+true}}"
+[ "$no_fix" = "true" ] || args+=( --fix )
 pnpm exec eslint "${args[@]}"
 """
 
