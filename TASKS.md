@@ -152,6 +152,12 @@ Regenerate TASKS.md from mise task descriptions and usage specs
 
 Playwright end-to-end tests — extra args pass through to playwright
 
+## `e2e:reset`
+
+- **Usage**: `e2e:reset`
+
+Kill any falcon / vite / fsevent_watch processes left holding the e2e ports
+
 ## `lint`
 
 - Depends: //...:lint, lint:config, docs:tasks
