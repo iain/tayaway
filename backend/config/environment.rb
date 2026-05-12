@@ -1,29 +1,33 @@
 # frozen_string_literal: true
 
 VALID_ENVIRONMENTS = %w[production development test e2e].freeze
-APP_ENV = ENV.fetch("RACK_ENV", "development")
-unless VALID_ENVIRONMENTS.include?(APP_ENV)
-  raise "Invalid RACK_ENV=#{APP_ENV.inspect}. Must be one of: #{VALID_ENVIRONMENTS.join(", ")}"
+boot_env = ENV.fetch("RACK_ENV", "development")
+unless VALID_ENVIRONMENTS.include?(boot_env)
+  raise "Invalid RACK_ENV=#{boot_env.inspect}. Must be one of: #{VALID_ENVIRONMENTS.join(", ")}"
 end
 APP_DIR = Pathname(File.expand_path("..", __dir__))
 
 require "bundler/setup"
-Bundler.require(:default, APP_ENV)
+Bundler.require(:default, boot_env)
 
 # Make the Result monad constructors (Success, Failure) available everywhere
 # without each model/service/policy having to repeat `include Dry::Monads[:result]`.
 Object.include Dry::Monads[:result]
 
+Dotenv.load("#{APP_DIR}/.env.#{boot_env}") unless boot_env == "production"
+
+require_relative "config"
+Config.load!
+
+APP_ENV = Config.app_env
+
 GIT_SHA = (
-    ENV["GIT_SHA"] ||
+    Config.git_sha ||
     (File.read("#{APP_DIR}/REVISION").strip[0, 7] if File.exist?("#{APP_DIR}/REVISION")) ||
     `git rev-parse --short HEAD 2>/dev/null`.strip
   ).freeze
 
-Dotenv.load("#{APP_DIR}/.env.#{APP_ENV}") unless APP_ENV == "production"
-
-require "base64"
-APP_SECRET = Base64.strict_decode64(ENV.fetch("APP_SECRET"))
+APP_SECRET = Config.app_secret
 
 require "logger"
 APP_LOGGER = Logger.new($stdout)
@@ -52,9 +56,8 @@ LOADER.ignore(File.expand_path("../app/routes", __dir__))
 LOADER.setup
 LOADER.eager_load if APP_ENV == "production"
 
-FRONTEND_URL = ENV.fetch("FRONTEND_URL", "http://localhost:5173").freeze
-
-WEBAUTHN_EXTRA_ORIGINS = ENV.fetch("WEBAUTHN_EXTRA_ORIGINS", "").split(",").map(&:strip).reject(&:empty?).freeze
+FRONTEND_URL = Config.frontend_url.freeze
+WEBAUTHN_EXTRA_ORIGINS = Config.webauthn_extra_origins.freeze
 
 WebAuthn.configure do |config|
   config.allowed_origins = [FRONTEND_URL, *WEBAUTHN_EXTRA_ORIGINS]
