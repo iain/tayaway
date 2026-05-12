@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+#MISE description="Kill any falcon / vite / fsevent_watch processes left holding the e2e ports"
+
+# Playwright's webServer.reuseExistingServer is false, so a stuck server from a
+# previous crashed run blocks the next e2e invocation entirely. Mirrors
+# dev:reset, but for the three ports the e2e suite owns: 9293 (falcon backend),
+# 5174 (vite dev), 5175 (vite preview).
+
+set -euo pipefail
+
+for port in 9293 5174 5175; do
+  if pids=$(lsof -ti :"$port" 2>/dev/null) && [ -n "$pids" ]; then
+    count=$(echo "$pids" | wc -w | tr -d ' ')
+    echo "Killing $count process(es) on :$port"
+    # shellcheck disable=SC2086  # word splitting intentional — kill takes multiple pids
+    kill -KILL $pids 2>/dev/null || true
+  fi
+done
+
+if pkill -KILL -f fsevent_watch 2>/dev/null; then
+  echo "Killed orphaned fsevent_watch"
+fi
+
+echo "E2E ports are free."

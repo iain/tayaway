@@ -1,0 +1,117 @@
+[tools]
+ruby = "4"
+
+[env]
+# Required for any forked-worker setup on macOS (falcon-host, falcon serve,
+# rspec parallelisation): without it, libpq triggers Foundation's fork-safety
+# guard and the child process aborts on its first DB connect. Linux ignores
+# the variable, so it's safe to set unconditionally for everything mise runs.
+OBJC_DISABLE_INITIALIZE_FORK_SAFETY = "YES"
+
+# ── Dev ──────────────────────────────────────────────────────────────────────
+
+[tasks.dev]
+description = "Start backend dev server"
+depends = ["db:seed"]
+run = "bundle exec falcon-host falcon.rb"
+
+[tasks."dev:e2e"]
+description = "Start backend in e2e mode on port 9293 — spawned by playwright.config.ts"
+env = { RACK_ENV = "e2e", FALCON_URL = "http://localhost:9293" }
+run = "bundle exec falcon-host falcon.rb"
+
+# dev:reset lives in backend/.mise/tasks/dev/reset.
+
+# ── Lint / Test / Audit ──────────────────────────────────────────────────────
+
+[tasks.lint]
+description = "RuboCop (autofix locally; report-only when $CI is set)"
+# `--no-server` avoids RuboCop's long-lived daemon, which can wedge
+# itself onto the wrong working directory and report a clean run on
+# files CI then catches. Costs ~0.5 s per invocation; cheap insurance.
+usage = '''
+flag "--no-fix" help="Report offenses without autofixing — also the default when $CI is set"
+'''
+shell = "bash -c"
+run = """
+args=( -f q --no-server )
+no_fix="${usage_no_fix:-${CI:+true}}"
+[ "$no_fix" = "true" ] || args+=( -A )
+bundle exec rubocop "${args[@]}"
+"""
+
+[tasks.test]
+description = "RSpec — extra args pass through to rspec"
+env = { RACK_ENV = "test" }
+run = 'bundle exec rspec -f progress "$@"'
+
+[tasks.audit]
+description = "bundler-audit"
+run = "bundle exec bundler-audit check --update"
+
+# ── Database ─────────────────────────────────────────────────────────────────
+
+[tasks."db:create"]
+description = "Create the development database"
+run = "bundle exec rake db:create"
+
+[tasks."db:drop"]
+description = "Drop the development database"
+confirm = "Drop the development database. Continue?"
+run = "bundle exec rake db:drop"
+
+[tasks."db:migrate"]
+description = "Run database migrations"
+run = "bundle exec rake db:migrate"
+
+[tasks."db:rollback"]
+description = "Rollback the last migration"
+confirm = "Rollback the last migration. This can drop columns or tables. Continue?"
+run = "bundle exec rake db:rollback"
+
+[tasks."db:reset"]
+description = "Reset the development database"
+confirm = "Reset the development database (drops and recreates). Continue?"
+run = "bundle exec rake db:reset"
+
+[tasks."db:seed"]
+description = "Seed the development database"
+run = "bundle exec rake db:seed"
+
+[tasks."db:seed-dev"]
+description = "Populate the development database with rich sample data"
+env = { RACK_ENV = "development" }
+run = "bundle exec ruby db/seed_dev.rb"
+
+[tasks."db:setup-e2e"]
+description = "Create and migrate the e2e database"
+env = { RACK_ENV = "e2e" }
+run = "bundle exec rake db:create db:migrate"
+
+[tasks."db:setup-test"]
+description = "Create and migrate the test database"
+env = { RACK_ENV = "test" }
+run = "bundle exec rake db:create db:migrate"
+
+[tasks."db:backup"]
+description = "Trigger a database backup on the production server"
+confirm = "Trigger a backup on PRODUCTION. Continue?"
+run = "ssh -p 50022 ubuntu@tayaway.nl '/var/www/tayaway/current/config/deploy/backup-db.sh'"
+
+# ── Setup ────────────────────────────────────────────────────────────────────
+
+[tasks."setup:deps"]
+description = "Install backend dependencies"
+run = "bundle install"
+
+# setup:db and data:geoip live in backend/.mise/tasks/.
+
+# ── Misc ─────────────────────────────────────────────────────────────────────
+
+[tasks.console]
+description = "Open a Ruby console with the app loaded"
+# Pry needs an exclusive terminal lock. `interactive` grabs stdin/stdout/stderr
+# while letting other unrelated tasks still run in parallel — strictly nicer
+# than `raw` for a long-lived REPL.
+interactive = true
+run = "bundle exec pry -r ./config/environment"

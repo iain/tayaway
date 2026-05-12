@@ -41,22 +41,25 @@ jobs:
     env:
       APP_SECRET: dGVzdHNlY3JldHRlc3RzZWNyZXR0ZXN0c2VjcmV0dGU=
       CI: true
+      # Required by mise's monorepo mode (gated on this flag in 2026.5.x).
+      MISE_EXPERIMENTAL: true
 
     steps:
       - uses: actions/checkout@v6
 
-      - uses: jdx/mise-action@v4
-        with:
-          install: true
-          cache: true
+      # mise-action's postinstall hook runs `setup:deps`, which `bundle
+      # install`s — and the mmdb gem builds a native extension against
+      # libmaxminddb. Has to be installed before mise-action runs, not
+      # after, or that gem fails to compile and everything downstream
+      # falls over with "Could not find mmdb-0.3.2 in locally installed
+      # gems" once any task tries to bundle exec.
+      - name: Install system dependencies
+        run: sudo apt-get install -y libmaxminddb-dev
 
-      - name: Cache backend gems
-        uses: actions/cache@v5
-        with:
-          path: backend/vendor/bundle
-          key: gems-${{ runner.os }}-${{ hashFiles('backend/Gemfile.lock') }}
-          restore-keys: gems-${{ runner.os }}-
-
+      # node_modules and the Playwright browser cache live outside mise's
+      # install dir, so they need their own caches; gems and tool binaries
+      # are inside ~/.local/share/mise/installs and ride along with
+      # mise-action's cache: true.
       - name: Cache frontend node_modules
         uses: actions/cache@v5
         with:
@@ -66,14 +69,6 @@ jobs:
           key: node-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: node-${{ runner.os }}-
 
-      - name: Install system dependencies
-        run: sudo apt-get install -y libmaxminddb-dev
-
-      - name: Install dependencies
-        run: |
-          cd backend && bundle config set --local path vendor/bundle && bundle install --jobs 4 --retry 3
-          pnpm install --frozen-lockfile
-
       - name: Cache Playwright browsers
         uses: actions/cache@v5
         with:
@@ -81,27 +76,51 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: playwright-${{ runner.os }}-
 
+      - uses: jdx/mise-action@v4
+        with:
+          install: true
+          cache: true
+
       - name: Install Playwright browsers
         run: pnpm exec playwright install chromium --with-deps
 
-      - name: Set up databases
+      # The mise tasks set RACK_ENV per-task (test vs. e2e). Each task's
+      # subprocess loads backend/.env.<RACK_ENV> via dotenv, which is how
+      # local dev resolves DATABASE_URL etc. without the caller having to
+      # plumb env per step. Writing these files here means `mise run ci`
+      # can fan out check + e2e in parallel — each picks up its own DB
+      # without us having to thread two different DATABASE_URLs through
+      # a single GitHub Actions step env. The files are .gitignored
+      # because contents differ per developer machine.
+      #
+      # The VAPID keys are test-only material generated for the push
+      # smoke test (`notifications-push.spec.ts`); the frontend gates
+      # the subscribe flow on a non-empty public key, so the test fails
+      # without them. Safe to commit because they grant nothing — real
+      # deploys carry production keys via Capistrano env, never CI.
+      - name: Write CI dotenv files
         run: |
-          cd backend
-          DATABASE_URL=postgres://postgres:postgres@localhost:5432/tayaway_test RACK_ENV=test bundle exec rake db:create db:migrate
-          DATABASE_URL=postgres://postgres:postgres@localhost:5432/tayaway_e2e RACK_ENV=e2e bundle exec rake db:create db:migrate
+          cat > backend/.env.test <<'EOF'
+          DATABASE_URL=postgres://postgres:postgres@localhost:5432/tayaway_test
+          EOF
+          cat > backend/.env.e2e <<'EOF'
+          DATABASE_URL=postgres://postgres:postgres@localhost:5432/tayaway_e2e
+          FRONTEND_URL=http://localhost:5174
+          VAPID_PUBLIC_KEY=BPDZXyMZhyzQ-lmi5MAm-djBp5kecbgrlVGSZ6TsE8yUEOX_cEid5TxdYbBv3YoA2OiwjIHiilvTwA9-vCWeQpE=
+          VAPID_PRIVATE_KEY=CofJgcTG6lqV_HszPSpDw_oE3s8fhbQEsBZJ1Ne9t_k=
+          VAPID_SUBJECT=mailto:noreply@tayaway.nl
+          EOF
 
-      - name: Run checks (lint, typecheck, test, audit)
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/tayaway_test
-          RACK_ENV: test
-        run: mise run check
+      - name: Set up test database
+        run: mise run //backend:db:setup-test
 
-      - name: Run e2e tests
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/tayaway_e2e
-          RACK_ENV: e2e
-          FRONTEND_URL: http://localhost:5174
-        run: pnpm exec playwright test
+      # `mise run ci` runs check (lint, typecheck, test, audit) and e2e
+      # in parallel, mirroring `mise run ci` on a developer machine.
+      # Lint is CI-aware: with $CI set, `//...:lint` defaults to no-fix,
+      # so we don't need a separate gate to prevent autofix from silently
+      # masking offenses in the ephemeral workspace.
+      - name: Run CI
+        run: mise run ci
 
       - name: Upload test report
         if: failure()

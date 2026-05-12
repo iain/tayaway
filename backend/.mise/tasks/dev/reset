@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+#MISE description="Kill any falcon-host / fsevent_watch processes left holding the dev backend port"
+
+set -euo pipefail
+
+if pids=$(lsof -ti :9292 2>/dev/null) && [ -n "$pids" ]; then
+  count=$(echo "$pids" | wc -w | tr -d ' ')
+  echo "Killing $count process(es) on :9292"
+  # shellcheck disable=SC2086  # word splitting intentional — kill takes multiple pids
+  kill -KILL $pids 2>/dev/null || true
+fi
+
+if pkill -KILL -f fsevent_watch 2>/dev/null; then
+  echo "Killed orphaned fsevent_watch"
+fi
+
+echo "Dev backend port is free."

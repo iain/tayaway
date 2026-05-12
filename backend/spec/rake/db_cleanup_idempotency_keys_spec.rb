@@ -3,7 +3,7 @@
 require "spec_helper"
 require "rake"
 
-RSpec.describe "rake db:cleanup_idempotency_keys" do
+RSpec.describe "rake db:cleanup_idempotency_keys", :silence_stdout do
   let(:user) { TestFactories.user }
 
   let(:rake) do

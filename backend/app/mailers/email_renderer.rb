@@ -25,6 +25,7 @@ module Mailers
         Mailers::Base.apply_sender_headers(message, unsubscribable: unsubscribable)
 
         text = Mail::Part.new
+        text.content_type = "text/plain; charset=UTF-8"
         text.body = text_body
         message.text_part = text
 

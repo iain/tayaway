@@ -3,7 +3,7 @@
 require "spec_helper"
 require "rake"
 
-RSpec.describe "rake db:cleanup_audit_log_entries" do
+RSpec.describe "rake db:cleanup_audit_log_entries", :silence_stdout do
   let(:rake) do
     app = Rake::Application.new
     Rake.application = app

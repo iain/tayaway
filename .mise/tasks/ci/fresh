@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+#MISE description="Wipe local daemon/cache/DB state, then run full CI"
+#MISE confirm="Wipe local DB/cache state and run full CI. Continue?"
+
+# Reproduces the parts of GitHub Actions' clean-VM behaviour that bite us
+# locally: a wedged RuboCop server scoping inspections to a subdirectory,
+# stale TypeScript incremental build info masking real type errors, and
+# test/e2e DBs that have drifted (leftover rows, half-applied migrations,
+# idle-in-transaction backends).
+
+set -euo pipefail
+
+echo "→ Stopping RuboCop server (no-op if it's not running)..."
+(cd backend && bundle exec rubocop --stop-server) 2>/dev/null || true
+
+echo "→ Clearing TypeScript incremental build info..."
+rm -rf frontend/node_modules/.tmp
+
+for env in test e2e; do
+  echo "→ Resetting $env database..."
+  (cd backend && RACK_ENV="$env" bundle exec rake db:drop db:create db:migrate)
+done
+
+mise run --force ci

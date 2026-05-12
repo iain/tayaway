@@ -1,0 +1,63 @@
+# ── Dev ──────────────────────────────────────────────────────────────────────
+
+[tasks.dev]
+description = "Start frontend dev server"
+run = "pnpm run dev"
+
+[tasks."dev:e2e"]
+description = "Start frontend dev server on port 5174 against the e2e backend — spawned by playwright.config.ts"
+env = { FRONTEND_PORT = "5174", API_PORT = "9293" }
+run = "pnpm run dev"
+
+[tasks."preview:e2e"]
+description = "Build then serve the production bundle on 5175 against the e2e backend — spawned by playwright.config.ts for the offline cold-launch test, which needs a real service worker (vite dev produces a stub)"
+env = { FRONTEND_PREVIEW_PORT = "5175", API_PORT = "9293" }
+shell = "bash -c"
+run = """
+pnpm run build
+pnpm exec vite preview --strictPort
+"""
+
+# ── Lint / Typecheck / Test / Audit ──────────────────────────────────────────
+
+[tasks.lint]
+description = "ESLint (autofix locally; report-only when $CI is set)"
+usage = '''
+flag "--no-fix" help="Report errors without autofixing — also the default when $CI is set"
+'''
+shell = "bash -c"
+run = """
+args=( src )
+no_fix="${usage_no_fix:-${CI:+true}}"
+[ "$no_fix" = "true" ] || args+=( --fix )
+pnpm exec eslint "${args[@]}"
+"""
+
+[tasks.typecheck]
+description = "Vue + TypeScript type checking"
+run = "pnpm exec vue-tsc -b"
+
+[tasks.test]
+description = "Vitest (one-shot) — extra args pass through to vitest"
+# Locked to `vitest run` so this task is always non-watch; users who want
+# watch mode should `mise watch test:frontend` or invoke vitest directly.
+run = 'pnpm exec vitest run --reporter=dot --silent=true "$@"'
+
+[tasks.audit]
+description = "pnpm audit"
+run = "pnpm audit --audit-level=high"
+
+# ── Build ────────────────────────────────────────────────────────────────────
+
+[tasks.build]
+description = "Build frontend assets"
+usage = '''
+flag "-m --mode <mode>" help="Vite build mode (production, staging, development)" default="production"
+'''
+run = 'pnpm exec vite build --mode "${usage_mode}"'
+
+# ── Setup ────────────────────────────────────────────────────────────────────
+
+[tasks."setup:deps"]
+description = "Install frontend dependencies"
+run = "pnpm install"

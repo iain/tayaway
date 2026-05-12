@@ -8,18 +8,11 @@
     "test": "mise run test",
     "test:e2e": "mise run test:e2e",
     "lint": "mise run lint",
-    "typecheck": "mise run typecheck",
-    "prepare": "husky || true"
-  },
-  "lint-staged": {
-    "frontend/src/**/*.{js,ts,vue}": "pnpm -C frontend exec eslint --fix",
-    "*.{js,ts,vue,css,html,json,md}": "prettier --write"
+    "typecheck": "mise run typecheck"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
     "@types/node": "^25.6.2",
-    "husky": "^9.1.7",
-    "lint-staged": "^17.0.2",
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.8.0"
   }

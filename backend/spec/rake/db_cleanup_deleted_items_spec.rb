@@ -3,7 +3,7 @@
 require "spec_helper"
 require "rake"
 
-RSpec.describe "rake db:cleanup_deleted_items" do
+RSpec.describe "rake db:cleanup_deleted_items", :silence_stdout do
   let(:fake_dataset) { instance_double(Sequel::Dataset) }
 
   let(:rake) do
