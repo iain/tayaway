@@ -4,9 +4,11 @@ import {
   BanknotesIcon,
   CalendarDaysIcon,
   ChevronRightIcon,
+  ClockIcon,
 } from '@heroicons/vue/24/outline'
 import BaseCard from '@/components/common/BaseCard.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
+import SectionHeading from '@/components/common/SectionHeading.vue'
 import type { PoolEvent } from '@/types/pool'
 
 defineProps<{
@@ -24,9 +26,7 @@ function navigateToEventPage(eventId: string): void {
 
 <template>
   <section>
-    <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-      Past events with open expenses
-    </h2>
+    <SectionHeading :icon="ClockIcon" title="Past events with open expenses" />
 
     <ul class="space-y-3">
       <BaseCard

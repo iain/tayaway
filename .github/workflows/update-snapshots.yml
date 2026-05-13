@@ -116,6 +116,16 @@ jobs:
       # plain `git push` from the runner produces unsigned commits and
       # blocks the merge.
       #
+      # The mutation authenticates as a fine-grained PAT
+      # (BASELINE_BOT_TOKEN) rather than the default `GITHUB_TOKEN`.
+      # GitHub deliberately suppresses workflow triggers from
+      # `GITHUB_TOKEN`-authored events to prevent runaway loops, which
+      # means a bot-pushed baseline commit doesn't fire the
+      # `pull_request: synchronize` event and CI never runs on it. The
+      # PAT authenticates as a real user, so the resulting commit fires
+      # triggers like any other push and ci.yml runs against the
+      # refreshed branch.
+      #
       # `expectedHeadOid` makes the mutation atomic: if anything else
       # pushes to the branch between us reading HEAD and creating the
       # commit, the call fails rather than silently overwriting.
@@ -128,6 +138,7 @@ jobs:
         env:
           TARGET_REF: ${{ github.ref_name }}
         with:
+          github-token: ${{ secrets.BASELINE_BOT_TOKEN }}
           script: |
             const fs = require('fs')
             const { execFileSync } = require('child_process')

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { AnnotatedTransfer } from '@/utils/settlement'
-import { formatAmount } from '@/utils/format'
+import LedgerAmount from '@/components/common/LedgerAmount.vue'
 
 const props = defineProps<{
   balances: Map<string, number>
@@ -56,18 +56,11 @@ const showDrift = computed(
         <span class="truncate text-gray-800 dark:text-stone-200">
           {{ row.name }}
         </span>
-        <span
-          class="font-mono"
-          :class="
-            row.amount < 0
-              ? 'text-green-700 dark:text-green-400'
-              : 'text-red-700 dark:text-red-400'
-          "
-        >
+        <span>
           <template v-if="row.amount < 0">
-            is owed {{ formatAmount(-row.amount) }}
+            is owed <LedgerAmount :amount="-row.amount" />
           </template>
-          <template v-else> owes {{ formatAmount(row.amount) }} </template>
+          <template v-else> owes <LedgerAmount :amount="row.amount" /> </template>
         </span>
       </div>
       <div
@@ -75,7 +68,7 @@ const showDrift = computed(
         data-testid="math-drift"
         class="mt-1 text-xs text-amber-700 dark:text-amber-400"
       >
-        ⚠ Rounding drift {{ formatAmount(Math.abs(roundingDrift ?? 0)) }}
+        ⚠ Rounding drift <LedgerAmount :amount="Math.abs(roundingDrift ?? 0)" />
       </div>
     </div>
 
@@ -92,8 +85,8 @@ const showDrift = computed(
             <span class="text-gray-400 dark:text-stone-500"> → </span>
             {{ t.toUserId ? nameFor(t.toUserId) : 'Unknown' }}
           </span>
-          <span class="font-mono text-gray-900 dark:text-white">
-            {{ formatAmount(t.amount) }}
+          <span class="text-gray-900 dark:text-white">
+            <LedgerAmount :amount="t.amount" />
           </span>
         </div>
         <div

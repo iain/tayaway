@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { CakeIcon } from '@heroicons/vue/24/outline'
+import SectionHeading from '@/components/common/SectionHeading.vue'
 import type { PoolMember } from '@/types/pool'
 
 defineProps<{
@@ -8,9 +10,7 @@ defineProps<{
 
 <template>
   <section>
-    <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-      🎂 Happy Birthday!
-    </h2>
+    <SectionHeading :icon="CakeIcon" title="Happy Birthday!" />
 
     <ul class="space-y-3">
       <li

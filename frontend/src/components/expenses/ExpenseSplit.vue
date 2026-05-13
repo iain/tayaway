@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { CalculatorIcon } from '@heroicons/vue/24/outline'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { countDays } from '@/utils/event'
-import { formatAmount } from '@/utils/format'
+import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import type { PoolEvent } from '@/types/pool'
@@ -163,32 +163,29 @@ function formatDays(days: number): string {
               {{ formatDays(row.days) }}
             </td>
             <td
-              class="py-2 pr-4 text-right font-mono whitespace-nowrap text-gray-600 dark:text-stone-400"
+              class="text-ink-muted py-2 pr-4 text-right whitespace-nowrap"
             >
-              {{ formatAmount(row.paid) }}
+              <LedgerAmount :amount="row.paid" />
             </td>
             <td
-              class="hidden py-2 pr-4 text-right font-mono whitespace-nowrap sm:table-cell"
+              class="hidden py-2 pr-4 text-right whitespace-nowrap sm:table-cell"
             >
-              {{ formatAmount(row.share) }}
+              <LedgerAmount :amount="row.share" />
             </td>
             <td
-              class="py-2 pr-4 text-right font-mono font-semibold whitespace-nowrap"
+              class="py-2 pr-4 text-right font-semibold whitespace-nowrap"
               :class="{
-                'text-red-600 dark:text-red-400': row.balance > 0.005,
-                'text-green-600 dark:text-green-400': row.balance < -0.005,
-                'text-gray-400 dark:text-stone-500':
-                  Math.abs(row.balance) <= 0.005,
+                'text-ink-faint': Math.abs(row.balance) <= 0.005,
               }"
             >
               <template v-if="row.balance > 0.005"
                 ><span class="sr-only sm:not-sr-only sm:inline">owes </span
-                >{{ formatAmount(row.balance) }}</template
-              >
+                ><LedgerAmount :amount="row.balance"
+              /></template>
               <template v-else-if="row.balance < -0.005"
                 ><span class="sr-only sm:not-sr-only sm:inline">is owed </span
-                >{{ formatAmount(Math.abs(row.balance)) }}</template
-              >
+                ><LedgerAmount :amount="Math.abs(row.balance)"
+              /></template>
               <template v-else>even</template>
             </td>
           </tr>
@@ -203,15 +200,11 @@ function formatDays(days: number): string {
             >
               {{ formatDays(totalDays) }}
             </td>
-            <td
-              class="pt-2 pr-4 pb-3 text-right font-mono text-gray-600 dark:text-stone-400"
-            >
-              {{ formatAmount(total) }}
+            <td class="text-ink-muted pt-2 pr-4 pb-3 text-right">
+              <LedgerAmount :amount="total" />
             </td>
-            <td
-              class="hidden pt-2 pr-4 pb-3 text-right font-mono sm:table-cell"
-            >
-              {{ formatAmount(total) }}
+            <td class="hidden pt-2 pr-4 pb-3 text-right sm:table-cell">
+              <LedgerAmount :amount="total" />
             </td>
             <td class="pt-2 pr-4 pb-3"></td>
           </tr>

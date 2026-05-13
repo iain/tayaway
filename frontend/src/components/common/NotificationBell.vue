@@ -15,6 +15,7 @@ import { BellIcon, EllipsisHorizontalIcon } from '@heroicons/vue/24/outline'
 import { useInboxStore } from '@/stores/inbox'
 import type { InboxNotification } from '@/stores/inbox'
 import EmptyState from '@/components/common/EmptyState.vue'
+import TimeAnchor from '@/components/common/TimeAnchor.vue'
 import { iconForKind } from '@/utils/notificationKind'
 
 const inbox = useInboxStore()
@@ -82,17 +83,6 @@ function silence(notification: InboxNotification): void {
   )
 }
 
-function relativeTime(iso: string): string {
-  const seconds = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000)
-  if (seconds < 60) return 'just now'
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  if (days < 7) return `${days}d ago`
-  return new Date(iso).toLocaleDateString()
-}
 </script>
 
 <template>
@@ -180,11 +170,10 @@ function relativeTime(iso: string): string {
                   <p class="text-sm font-medium text-gray-900 dark:text-white">
                     {{ notification.data.title ?? 'Notification' }}
                   </p>
-                  <span
+                  <TimeAnchor
+                    :at="notification.createdAt"
                     class="shrink-0 text-xs text-gray-400 dark:text-stone-500"
-                  >
-                    {{ relativeTime(notification.createdAt) }}
-                  </span>
+                  />
                 </div>
                 <p
                   v-if="notification.data.body"

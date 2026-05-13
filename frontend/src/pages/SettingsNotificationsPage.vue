@@ -293,11 +293,12 @@ onMounted(() => {
 
 <template>
   <div class="space-y-6">
-    <BaseCard v-if="push.supported.value" padded>
+    <section v-if="push.supported.value">
       <SectionHeading :icon="BellIcon" title="Push notifications" />
-      <div
-        class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-      >
+      <BaseCard padded>
+        <div
+          class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+        >
         <p class="text-gray-600 dark:text-stone-400">
           <template v-if="pushSubscribed">
             Push is on for this device.
@@ -337,9 +338,10 @@ onMounted(() => {
           >
             {{ push.subscribing.value ? 'Enabling…' : 'Enable' }}
           </AppButton>
+          </div>
         </div>
-      </div>
-    </BaseCard>
+      </BaseCard>
+    </section>
 
     <BaseCard v-if="loading" padded aria-busy="true">
       <ul class="divide-y divide-gray-200 dark:divide-stone-700">

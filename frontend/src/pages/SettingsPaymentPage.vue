@@ -121,9 +121,8 @@ function removeHolderName(): Promise<void> {
 
 <template>
   <div>
+    <SectionHeading :icon="BanknotesIcon" title="Payment" />
     <BaseCard padded>
-      <SectionHeading :icon="BanknotesIcon" title="Payment" />
-
       <p class="mb-2 text-sm text-gray-500 dark:text-stone-400">
         Adding your IBAN lets others pay you with a single QR code scan when
         settling shared expenses. Your IBAN is stored securely and never shared

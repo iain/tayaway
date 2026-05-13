@@ -87,10 +87,10 @@ function handleVote(): void {
 </script>
 
 <template>
-  <BaseCard as="section" padded>
+  <section>
     <SectionHeading :icon="CalendarIcon" title="Date Poll" />
-
-    <template v-if="poll">
+    <BaseCard padded>
+      <template v-if="poll">
       <!-- Status bar -->
       <div
         class="mb-4 flex items-center justify-between rounded-md px-3 py-2"
@@ -221,13 +221,14 @@ function handleVote(): void {
       </div>
     </template>
 
-    <!-- Modals -->
-    <ClosePollModal
-      :open="showClosePollModal"
-      :date-ranges="rankedDateRanges"
-      :loading="datePollsStore.loading"
-      @confirm="handleClosePollConfirm"
-      @close="showClosePollModal = false"
-    />
-  </BaseCard>
+      <!-- Modals -->
+      <ClosePollModal
+        :open="showClosePollModal"
+        :date-ranges="rankedDateRanges"
+        :loading="datePollsStore.loading"
+        @confirm="handleClosePollConfirm"
+        @close="showClosePollModal = false"
+      />
+    </BaseCard>
+  </section>
 </template>

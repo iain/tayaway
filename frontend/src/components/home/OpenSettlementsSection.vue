@@ -1,14 +1,19 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { BanknotesIcon, QrCodeIcon } from '@heroicons/vue/24/outline'
+import {
+  BanknotesIcon,
+  QrCodeIcon,
+  ScaleIcon,
+} from '@heroicons/vue/24/outline'
 import { useObjectPoolStore } from '@/stores'
 import { useSettlementsStore } from '@/stores/settlements'
 import { getMemberName } from '@/utils/member'
-import { formatAmount } from '@/utils/format'
+import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import AlertBox from '@/components/common/AlertBox.vue'
+import SectionHeading from '@/components/common/SectionHeading.vue'
 import EpcQrModal from '@/components/expenses/EpcQrModal.vue'
 import type { PoolSettlementTransfer } from '@/types/pool'
 
@@ -66,10 +71,8 @@ function getEventIdForTransfer(
 
 <template>
   <section>
-    <h2 class="mb-1 text-lg font-semibold text-gray-900 dark:text-white">
-      Open settlements
-    </h2>
-    <p class="mb-4 text-sm text-gray-500 dark:text-stone-400">
+    <SectionHeading :icon="ScaleIcon" title="Open settlements" />
+    <p class="mb-4 -mt-2 text-sm text-gray-500 dark:text-stone-400">
       Mark a transfer as paid once you've received the payment.
     </p>
 
@@ -107,10 +110,9 @@ function getEventIdForTransfer(
                 getMemberName(transfer.fromUserId, pool)
               }}</span>
               owes you
-              <span
-                class="font-mono font-semibold text-gray-900 dark:text-white"
-                >{{ formatAmount(transfer.amount) }}</span
-              >
+              <span class="font-semibold text-gray-900 dark:text-white">
+                <LedgerAmount :amount="transfer.amount" />
+              </span>
             </p>
             <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
               <router-link
@@ -152,10 +154,8 @@ function getEventIdForTransfer(
                 getMemberName(transfer.toUserId, pool)
               }}</span>
             </p>
-            <p
-              class="mt-0.5 font-mono text-lg font-bold text-amber-700 dark:text-amber-400"
-            >
-              {{ formatAmount(transfer.amount) }}
+            <p class="text-ink mt-0.5 text-lg font-bold">
+              <LedgerAmount :amount="transfer.amount" />
             </p>
             <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
               <router-link

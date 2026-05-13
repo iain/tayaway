@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { rawApi } from '@/api/client'
-import { formatRelativeDate } from '@/utils/date'
+import TimeAnchor from '@/components/common/TimeAnchor.vue'
 import type { Session, SessionsResponse } from '@/types'
 import { useNotificationsStore } from '@/stores'
 import BaseCard from '@/components/common/BaseCard.vue'
@@ -205,11 +205,13 @@ onUnmounted(() => {
                   </AppBadge>
                 </div>
                 <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
-                  <span v-if="session.last_active_at"
-                    >Last active
-                    {{ formatRelativeDate(session.last_active_at) }}
-                    &middot; </span
-                  >Expires {{ formatDate(session.expires_at) }}
+                  <template v-if="session.last_active_at">
+                    <TimeAnchor :at="session.last_active_at"
+                      >Last active</TimeAnchor
+                    >
+                    &middot;
+                  </template>
+                  Expires {{ formatDate(session.expires_at) }}
                 </p>
               </div>
               <TextButton

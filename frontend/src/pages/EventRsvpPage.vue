@@ -6,6 +6,7 @@ import {
   ArrowDownTrayIcon,
   CalendarDaysIcon,
   ClockIcon,
+  UserGroupIcon,
 } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
@@ -18,6 +19,8 @@ import RsvpSection from '@/components/events/RsvpSection.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import TextButton from '@/components/common/TextButton.vue'
+import PageHeader from '@/components/common/PageHeader.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import { can } from '@/composables/usePermission'
 
 const route = useRoute()
@@ -92,26 +95,22 @@ function handleDownloadIcs(): void {
     </div>
 
     <div v-else>
+      <PageHeader title="RSVP" size="sm" :icon="UserGroupIcon" />
+
       <!-- Poll still active: show empty state -->
-      <div
+      <EmptyState
         v-if="isPollActive(event.datePoll)"
-        class="flex flex-col items-center py-12 text-center"
+        :icon="ClockIcon"
+        heading="Voting in progress"
+        description="A date poll is open and members are voting. RSVP will be available once dates are confirmed."
       >
-        <ClockIcon class="mb-4 size-12 text-amber-500 dark:text-amber-400" />
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-          Voting in progress
-        </h2>
-        <p class="mt-1 max-w-sm text-gray-500 dark:text-stone-400">
-          A date poll is open and members are voting. RSVP will be available
-          once dates are confirmed.
-        </p>
         <router-link
           :to="`/events/${event.id}/planning`"
-          class="mt-4 text-sm text-cyan-600 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
+          class="text-sm text-cyan-600 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
         >
           Go to Planning
         </router-link>
-      </div>
+      </EmptyState>
 
       <!-- Event has dates: show RSVP section -->
       <template v-else-if="eventHasDates(event)">
@@ -123,26 +122,23 @@ function handleDownloadIcs(): void {
       </template>
 
       <!-- No dates yet: show empty state with inline date form -->
-      <div v-else class="flex flex-col items-center py-12 text-center">
-        <CalendarDaysIcon
-          class="mb-4 size-12 text-amber-500 dark:text-amber-400"
-        />
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-          No dates confirmed yet
-        </h2>
-        <p class="mt-1 max-w-sm text-gray-500 dark:text-stone-400">
-          Once the event dates have been decided, you'll be able to RSVP here.
-        </p>
-        <router-link
-          :to="`/events/${event.id}/planning`"
-          class="mt-4 text-sm font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
-        >
-          Go to Planning
-        </router-link>
+      <EmptyState
+        v-else
+        :icon="CalendarDaysIcon"
+        heading="No dates confirmed yet"
+        description="Once the event dates have been decided, you'll be able to RSVP here."
+      >
+        <div class="flex flex-col items-center gap-3">
+          <router-link
+            :to="`/events/${event.id}/planning`"
+            class="text-sm font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
+          >
+            Go to Planning
+          </router-link>
 
-        <template v-if="canEditEvent">
-          <div v-if="showDateForm" class="mt-4">
+          <template v-if="canEditEvent">
             <form
+              v-if="showDateForm"
               class="flex flex-wrap items-end justify-center gap-3"
               @submit.prevent="saveDates"
             >
@@ -187,17 +183,12 @@ function handleDownloadIcs(): void {
                 Cancel
               </TextButton>
             </form>
-          </div>
-          <TextButton
-            v-else
-            variant="secondary"
-            class="mt-2"
-            @click="openDatesEdit"
-          >
-            or set dates directly
-          </TextButton>
-        </template>
-      </div>
+            <TextButton v-else variant="secondary" @click="openDatesEdit">
+              or set dates directly
+            </TextButton>
+          </template>
+        </div>
+      </EmptyState>
 
       <BaseModal
         :open="datesBlockedOpen"

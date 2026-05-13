@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import {
-  CheckCircleIcon,
-  XCircleIcon,
-  UserGroupIcon,
-} from '@heroicons/vue/24/solid'
+import { CheckCircleIcon, XCircleIcon } from '@heroicons/vue/24/solid'
 import {
   UserIcon,
   CalendarDaysIcon,
@@ -16,7 +12,6 @@ import RsvpActionsMenu from '@/components/events/RsvpActionsMenu.vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import type { HydratedEvent } from '@/composables/useHydratedEvent'
 import { useCalendar } from '@/composables/useCalendar'
-import SectionHeading from '@/components/common/SectionHeading.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
@@ -275,10 +270,9 @@ const partialPickerRsvp = computed(() => {
 </script>
 
 <template>
-  <BaseCard as="section" padded data-testid="rsvp-section">
-    <SectionHeading :icon="UserGroupIcon" title="RSVPs" />
-
-    <!-- Current user RSVP toggle -->
+  <section data-testid="rsvp-section">
+    <BaseCard padded>
+      <!-- Current user RSVP toggle -->
     <div class="mb-6">
       <p class="mb-2 text-sm font-medium text-gray-700 dark:text-stone-300">
         Your response
@@ -571,5 +565,6 @@ const partialPickerRsvp = computed(() => {
         </AppButton>
       </div>
     </BaseModal>
-  </BaseCard>
+    </BaseCard>
+  </section>
 </template>

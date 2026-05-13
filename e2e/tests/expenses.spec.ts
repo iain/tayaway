@@ -506,17 +506,17 @@ test.describe('Expenses Feature', () => {
       const rowA = splitTable
         .getByRole('row')
         .filter({ hasText: SPLIT_USER_A_NAME })
-      await expect(rowA.getByText('€100.00', { exact: true })).toBeVisible()
-      await expect(rowA.getByText('€50.00', { exact: true })).toBeVisible()
-      await expect(rowA.getByText('is owed €50.00')).toBeVisible()
+      await expect(rowA.locator('td').nth(2)).toHaveText('€100.00')
+      await expect(rowA.locator('td').nth(3)).toHaveText('€50.00')
+      await expect(rowA.locator('td').nth(4)).toHaveText('is owed €50.00')
 
       // User B: paid €0.00, fair share €50.00 → owes €50.00
       const rowB = splitTable
         .getByRole('row')
         .filter({ hasText: SPLIT_USER_B_NAME })
-      await expect(rowB.getByText('€0.00', { exact: true })).toBeVisible()
-      await expect(rowB.getByText('€50.00', { exact: true })).toBeVisible()
-      await expect(rowB.getByText('owes €50.00')).toBeVisible()
+      await expect(rowB.locator('td').nth(2)).toHaveText('€0.00')
+      await expect(rowB.locator('td').nth(3)).toHaveText('€50.00')
+      await expect(rowB.locator('td').nth(4)).toHaveText('owes €50.00')
     })
 
     test('weights the split by per-participant factors', async ({
@@ -577,17 +577,17 @@ test.describe('Expenses Feature', () => {
         .getByRole('row')
         .filter({ hasText: SPLIT_USER_A_NAME })
       // A paid €30, fair share €10.00 → is owed €20.00 back
-      await expect(rowA.getByText('€30.00', { exact: true })).toBeVisible()
-      await expect(rowA.getByText('€10.00', { exact: true })).toBeVisible()
-      await expect(rowA.getByText('is owed €20.00')).toBeVisible()
+      await expect(rowA.locator('td').nth(2)).toHaveText('€30.00')
+      await expect(rowA.locator('td').nth(3)).toHaveText('€10.00')
+      await expect(rowA.locator('td').nth(4)).toHaveText('is owed €20.00')
 
       const rowB = splitTable
         .getByRole('row')
         .filter({ hasText: SPLIT_USER_B_NAME })
       // B paid nothing, fair share €20.00 → owes €20.00
-      await expect(rowB.getByText('€0.00', { exact: true })).toBeVisible()
-      await expect(rowB.getByText('€20.00', { exact: true })).toBeVisible()
-      await expect(rowB.getByText('owes €20.00')).toBeVisible()
+      await expect(rowB.locator('td').nth(2)).toHaveText('€0.00')
+      await expect(rowB.locator('td').nth(3)).toHaveText('€20.00')
+      await expect(rowB.locator('td').nth(4)).toHaveText('owes €20.00')
     })
 
     test('date-scoped expense only splits among overlapping attendees', async ({

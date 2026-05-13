@@ -3,6 +3,7 @@ import { useRouter } from 'vue-router'
 import {
   ChevronRightIcon,
   ClockIcon,
+  HandRaisedIcon,
   InboxIcon,
 } from '@heroicons/vue/24/outline'
 import {
@@ -13,6 +14,7 @@ import {
 } from '@/composables/usePollsNeedingAttention'
 import BaseCard from '@/components/common/BaseCard.vue'
 import AppBadge from '@/components/common/AppBadge.vue'
+import SectionHeading from '@/components/common/SectionHeading.vue'
 
 defineProps<{
   polls: PollItem[]
@@ -27,9 +29,7 @@ function navigateToEvent(eventId: string): void {
 
 <template>
   <section>
-    <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-      Polls awaiting your vote
-    </h2>
+    <SectionHeading :icon="HandRaisedIcon" title="Polls awaiting your vote" />
 
     <ul class="space-y-3">
       <BaseCard

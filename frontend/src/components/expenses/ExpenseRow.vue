@@ -8,6 +8,7 @@ import {
   ArrowUturnLeftIcon,
 } from '@heroicons/vue/24/outline'
 import IconButton from '@/components/common/IconButton.vue'
+import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useExpensesStore } from '@/stores/expenses'
 import { countDays } from '@/utils/event'
@@ -53,10 +54,6 @@ const filedByName = computed(() => {
   if (!filedOnBehalf.value) return null
   const m = pool.findBy('member', 'userId', props.expense.createdByUserId)
   return m?.name || m?.email || 'Unknown'
-})
-
-const formattedAmount = computed(() => {
-  return `€${props.expense.amount.toFixed(2)}`
 })
 
 const editUx = computed(() => permissionUx(props.expense.permissions, 'edit'))
@@ -305,10 +302,8 @@ function handleDelete(e: Event) {
         </p>
       </div>
       <div class="flex items-center gap-3">
-        <span
-          class="font-mono text-sm font-medium whitespace-nowrap text-gray-900 dark:text-white"
-        >
-          {{ formattedAmount }}
+        <span class="text-sm font-medium whitespace-nowrap text-gray-900 dark:text-white">
+          <LedgerAmount :amount="expense.amount" />
         </span>
         <div class="flex items-center gap-1">
           <LockClosedIcon
@@ -409,8 +404,8 @@ function handleDelete(e: Event) {
               <td v-if="!hasParticipants" class="py-0.5 pr-2">
                 {{ payer.overlapDays }}
               </td>
-              <td class="py-0.5 text-right font-mono">
-                €{{ payer.share.toFixed(2) }}
+              <td class="py-0.5 text-right">
+                <LedgerAmount :amount="payer.share" />
               </td>
             </tr>
           </tbody>
@@ -426,8 +421,9 @@ function handleDelete(e: Event) {
     @close="closeRevertModal"
   >
     <p class="text-sm text-gray-600 dark:text-stone-400">
-      This adds a mirror-image entry of €{{ expense.amount.toFixed(2) }} that
-      offsets the original. The reverted expense stays visible for history. If
+      This adds a mirror-image entry of
+      <LedgerAmount :amount="expense.amount" /> that offsets the original. The
+      reverted expense stays visible for history. If
       you want to re-enter it with different details, add a new expense
       afterwards.
     </p>

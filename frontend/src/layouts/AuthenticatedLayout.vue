@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watchEffect } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter, useRoute } from 'vue-router'
 import {
@@ -28,12 +28,13 @@ import {
 } from '@/stores'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useDarkMode } from '@/composables/useDarkMode'
+import { useMinuteTicker } from '@/composables/useMinuteTicker'
 import {
   getStaleness,
   staleDays,
   type StalenessLevel,
 } from '@/composables/useStaleness'
-import { formatRelativeDate } from '@/utils/date'
+import TimeAnchor from '@/components/common/TimeAnchor.vue'
 import { getInitials } from '@/utils/member'
 import AppAvatar from '@/components/common/AppAvatar.vue'
 import CommandPalette from '@/components/common/CommandPalette.vue'
@@ -63,13 +64,10 @@ const { pendingCount } = storeToRefs(commandQueueStore)
 const showConnectionBadge = computed(() => wsState.value !== 'authenticated')
 const { currentWorkspace, otherWorkspaces } = storeToRefs(workspaceStore)
 
-// Ticks once a minute so the staleness indicators advance from "fresh" to
-// "stale" to "warning" without a page refresh. Stops on unmount.
-const now = ref(Date.now())
-const nowTicker = setInterval(() => {
-  now.value = Date.now()
-}, 60_000)
-onUnmounted(() => clearInterval(nowTicker))
+// Staleness indicators tick once a minute via the shared minute ticker so
+// "fresh" → "stale" → "warning" advances without a page refresh, and so the
+// nav agrees with every `<TimeAnchor>` on what "now" means.
+const { now } = useMinuteTicker()
 
 // Staleness tier derived locally from the persisted syncedAt + `now`, so it
 // advances in-place while the user is offline. Returns null once a live sync
@@ -81,11 +79,10 @@ const cacheStaleLevel = computed<StalenessLevel | null>(() => {
   return getStaleness(since, now.value)
 })
 
-// "Last synced X ago" text shown for the stale tier
-const lastSyncedText = computed(() => {
+// Timestamp the staleness indicator anchors to (ISO string for `<TimeAnchor>`).
+const lastSyncedAt = computed<string | null>(() => {
   const since = wsStore.getSyncedAt(workspaceStore.currentWorkspaceId ?? '')
-  if (!since) return null
-  return `Last synced ${formatRelativeDate(since, now.value)}`
+  return since ?? null
 })
 
 // Show "Last synced" only when we have stale cached data and are connected
@@ -95,7 +92,7 @@ const showLastSynced = computed(
     !showConnectionBadge.value &&
     !hasSynced.value &&
     cacheStaleLevel.value === 'stale' &&
-    lastSyncedText.value !== null
+    lastSyncedAt.value !== null
 )
 
 // Dismissible warning banner for caches 1–7 days old
@@ -332,12 +329,12 @@ async function handleSignOut() {
           <div class="hidden md:block">
             <div class="ml-4 flex items-center md:ml-6">
               <!-- Stale cache indicator: "Last synced X ago" -->
-              <span
-                v-if="showLastSynced"
+              <TimeAnchor
+                v-if="showLastSynced && lastSyncedAt"
+                :at="lastSyncedAt"
                 class="mr-3 text-xs text-gray-400 dark:text-stone-500"
+                >Last synced</TimeAnchor
               >
-                {{ lastSyncedText }}
-              </span>
 
               <!-- Connection status badge -->
               <button
@@ -524,12 +521,12 @@ async function handleSignOut() {
                 {{ user?.email }}
               </div>
               <!-- Mobile stale cache indicator -->
-              <div
-                v-if="showLastSynced"
-                class="text-xs text-gray-400 dark:text-stone-500"
+              <TimeAnchor
+                v-if="showLastSynced && lastSyncedAt"
+                :at="lastSyncedAt"
+                class="block text-xs text-gray-400 dark:text-stone-500"
+                >Last synced</TimeAnchor
               >
-                {{ lastSyncedText }}
-              </div>
             </div>
             <button
               v-if="showConnectionBadge"

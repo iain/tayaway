@@ -303,7 +303,11 @@ onMounted(async () => {
     </div>
 
     <div v-else>
-      <PageHeader title="Chores" size="sm">
+      <PageHeader
+        title="Chores"
+        size="sm"
+        :icon="ClipboardDocumentListIcon"
+      >
         <ChoreRosterToolbar
           :can-delete="canDeleteRoster"
           @add-chore="openAddChore"

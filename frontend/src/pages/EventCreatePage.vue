@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
+import { PlusCircleIcon } from '@heroicons/vue/24/outline'
 import EventForm, {
   type EventFormData,
 } from '@/components/events/EventForm.vue'
@@ -43,7 +44,7 @@ function handleCancel(): void {
 
 <template>
   <div>
-    <PageHeader title="Create Event" />
+    <PageHeader title="Create Event" :icon="PlusCircleIcon" />
 
     <BaseCard>
       <div class="px-4 py-5 sm:p-6">

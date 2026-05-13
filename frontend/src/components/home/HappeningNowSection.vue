@@ -2,12 +2,14 @@
 import { useRouter } from 'vue-router'
 import {
   BanknotesIcon,
+  BoltIcon,
   CalendarDaysIcon,
   ChevronRightIcon,
   UserGroupIcon,
 } from '@heroicons/vue/24/outline'
 import BaseCard from '@/components/common/BaseCard.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
+import SectionHeading from '@/components/common/SectionHeading.vue'
 import type { PoolEvent } from '@/types/pool'
 
 defineProps<{
@@ -25,9 +27,7 @@ function navigateToEventPage(eventId: string): void {
 
 <template>
   <section data-testid="happening-now-section">
-    <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-      Happening now
-    </h2>
+    <SectionHeading :icon="BoltIcon" title="Happening now" />
 
     <ul class="space-y-3">
       <BaseCard

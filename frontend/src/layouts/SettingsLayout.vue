@@ -8,6 +8,7 @@ import {
   BellIcon,
   ChevronRightIcon,
   ChevronLeftIcon,
+  Cog6ToothIcon,
 } from '@heroicons/vue/24/outline'
 import type { FunctionalComponent } from 'vue'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -89,7 +90,7 @@ watch(() => route.name, redirectIfDesktopIndex)
       Settings
     </RouterLink>
 
-    <PageHeader title="Settings" />
+    <PageHeader title="Settings" :icon="Cog6ToothIcon" />
 
     <div class="lg:grid lg:grid-cols-[16rem_1fr] lg:gap-10">
       <!-- Sidebar: always visible at lg+; on mobile, only when no section selected -->

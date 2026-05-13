@@ -262,7 +262,7 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 
 ### Inputs (`FormInput`)
 
-- **Style:** `bg-gray-100` light / `bg-white/5` dark, `outline-1 -outline-offset-1 outline-gray-300` light / `outline-white/10` dark, `rounded-md` (6px), `px-3 py-1.5`, `text-base` (mobile) / `text-sm/6` (desktop).
+- **Style:** `bg-gray-100` light / `bg-white/5` dark, `outline-1 -outline-offset-1 outline-gray-300` light / `outline-white/10` dark, `rounded-md` (6px), `px-3 py-1.5`. The field text stays at `text-base` (16px) on mobile so iOS Safari doesn't auto-zoom the page on focus, and tightens to `text-sm/6` on `sm:` and up — the one place the system uses a responsive font-size on purpose, which is why it doesn't ride a `text-*` token.
 - **Label:** Above the field, `text-label`, ink color.
 - **Focus:** `focus:outline-2 focus:-outline-offset-2 focus:outline-focus`. The Attention Red ring is the system-wide focus signal — same on buttons, cards, modals, inputs.
 - **Prefix:** Optional inline prefix slot (currency, URL scheme) sits inside the same outlined shell, separated visually by a `select-none` ink-muted span.
@@ -297,11 +297,23 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 - **Right rail:** Stale-cache hint, connection badge ("Offline" pill on `bg-gray-900/40`), dark-mode toggle, profile avatar.
 - **Mobile:** HeadlessUI `Disclosure` collapses to a hamburger; expanded panel mirrors desktop nav.
 
+### Page header (`PageHeader`)
+
+- **Shape:** `text-page-title` ink (`text-page-title-sm` on the `size="sm"` variant), with an optional `size-7` Heroicons icon in `text-amber-600 dark:text-amber-400` to the left of the title. Subtitle slot renders in `text-meta` ink-muted.
+- **Icon:** The page-scale expression of the amber-landmark signature — same vocabulary as `SectionHeading`, one tier larger. One icon per page; the page is itself a region.
+
 ### Section heading (`SectionHeading`)
 
 - **Shape:** `text-section-heading` ink, `mb-heading` margin, with a `size-5` Heroicons icon in `text-amber-600 dark:text-amber-400` to the left of the title.
 - **Right slot:** Optional action slot — typically a `TextButton` ("View all", "Edit") or a count.
-- **Rule:** The amber-icon section header is the system's _only_ mandatory color use — every region of every page is announced this way.
+- **Rule:** The section-scale amber landmark. Every region of every page is announced this way.
+
+### Time anchors (`TimeAnchor`)
+
+- **Shape:** A native `<time datetime="…">` wrapped in a span that prepends an optional verb slot. The verb sets context ("Sent", "Last synced", "Daisy paid", "Expires"); the component appends the compact relative time.
+- **Compact unit voice:** `m` (under an hour), `h` (under a day), `d` (under a week), `w` (under four weeks). Anything older falls back to a short absolute date. Past renders as `"3h ago"`, future as `"in 3h"`, anything within the last minute as `"just now"`. Long forms ("three hours ago") are a violation.
+- **Live ticking:** Reads from the shared `useMinuteTicker`, so an "8m ago" row becomes "9m ago" without a refresh and every TimeAnchor on a page agrees on what "now" means.
+- **Rule:** Pick the verb in the right tense — `<TimeAnchor>Expired</TimeAnchor>` for past, `<TimeAnchor>Expires</TimeAnchor>` for future. The primitive doesn't try to be clever; the consumer chose the verb.
 
 ### Empty states (`EmptyState`)
 
@@ -318,12 +330,14 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 
 **The Dual-Coding Rule.** Where rows convey directional meaning (incoming vs outgoing, gain vs spend), pair `inflow` with `outflow` so the button colors echo the row's other signals (card variant, amount text). The two soft variants exist as a dual; if you use one, you usually want the other on its counterpart row.
 
+**The Amber-Icon Rule.** Amber landmark icons announce regions, not destinations — they live in `PageHeader` (`size-7`), `SectionHeading` (`size-5`), and `EmptyState` (`size-12`), and nowhere else. They never appear on modal titles, card-internal headings, button glyphs, or anywhere inside card chrome. `EmptyState`'s icon is exempt from "no amber inside a card" because its job is precisely to announce the empty region the card contains. This is one of the system's three signature moves, alongside the ledger amount and the time anchor.
+
 ## 6. Do's and Don'ts
 
 ### Do:
 
 - **Do** keep ≥90% of any screen in neutrals. The bright voices (CRT Amber `#d97706`, Attention Red `#e11d48`, Navigator Cyan `#0891b2`) earn their saturation by being rare.
-- **Do** put `focus-visible:outline-rose-500` on every interactive element. The Attention Red ring is the system-wide focus signal.
+- **Do** put `focus-visible:outline-focus` on every interactive element. The Attention Red ring is the system-wide focus signal — one token, one place to change.
 - **Do** use Inter Variable at 16px for primary content. Reach for `text-sm` / `text-xs` only for secondary metadata that the user does not need to read first.
 - **Do** lead each screen region with a `SectionHeading` — `text-section-heading` plus a `text-amber-600` icon. This is the only mandatory color use in the body of a page.
 - **Do** design dark mode at the same time as light mode. Both are first-class. Light uses cool gray neutrals; dark uses warm stone neutrals. Never copy values across.

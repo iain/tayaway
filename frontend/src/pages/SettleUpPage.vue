@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import {
+  ArrowDownLeftIcon,
+  ArrowUpRightIcon,
   BanknotesIcon,
   ChevronDownIcon,
   QrCodeIcon,
+  ScaleIcon,
 } from '@heroicons/vue/24/outline'
 import { storeToRefs } from 'pinia'
 import {
@@ -20,8 +23,11 @@ import {
 } from '@/composables/useWorkspaceNet'
 import { getMemberName } from '@/utils/member'
 import { formatAmount } from '@/utils/format'
-import { formatRelativeDate } from '@/utils/date'
+import { useLocale } from '@/composables/useLocale'
+import LedgerAmount from '@/components/common/LedgerAmount.vue'
+import TimeAnchor from '@/components/common/TimeAnchor.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
+import SectionHeading from '@/components/common/SectionHeading.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import AlertBox from '@/components/common/AlertBox.vue'
 import AppButton from '@/components/common/AppButton.vue'
@@ -106,11 +112,15 @@ function eventNameFor(eventId: string | undefined): string {
   return pool.get('event', eventId)?.name ?? 'Unknown event'
 }
 
+const { locale } = useLocale()
+
 function breakdownAria(amount: number, dominant: boolean): string {
   // Mirrors the +/− glyph for screen readers — they get the meaning
-  // ("adds" vs "offsets") without having to interpret a sign.
+  // ("adds" vs "offsets") without having to interpret a sign. The amount
+  // formats in the active locale so screen-reader output matches the
+  // visible `<LedgerAmount>` digits.
   const verb = dominant ? 'adds' : 'offsets'
-  return `${verb} ${formatAmount(amount)}`
+  return `${verb} ${formatAmount(amount, locale.value)}`
 }
 
 function transferCountLabel(count: number): string {
@@ -145,7 +155,11 @@ async function handleUnmark(net: RecentSettlement) {
 
 <template>
   <div>
-    <PageHeader title="Settle up" data-testid="page-title">
+    <PageHeader
+      title="Settle up"
+      :icon="ScaleIcon"
+      data-testid="page-title"
+    >
       <template #subtitle>
         Net balances across every event in this workspace, so you only transfer
         what's actually owed.
@@ -216,9 +230,7 @@ async function handleUnmark(net: RecentSettlement) {
       class="flex flex-col gap-8"
     >
       <section v-if="owedToYou.length > 0">
-        <h2 class="mb-3 text-lg font-semibold text-gray-900 dark:text-white">
-          Owed to you
-        </h2>
+        <SectionHeading :icon="ArrowDownLeftIcon" title="Owed to you" />
         <ul class="space-y-3">
           <BaseCard
             v-for="net in owedToYou"
@@ -235,10 +247,9 @@ async function handleUnmark(net: RecentSettlement) {
                     getMemberName(net.counterpartyUserId, pool)
                   }}</span>
                   owes you
-                  <span
-                    class="font-mono font-semibold text-gray-900 dark:text-white"
-                    >{{ formatAmount(net.amount) }}</span
-                  >
+                  <span class="font-semibold text-gray-900 dark:text-white">
+                    <LedgerAmount :amount="net.amount" />
+                  </span>
                 </p>
                 <button
                   type="button"
@@ -287,18 +298,12 @@ async function handleUnmark(net: RecentSettlement) {
                   >
                     {{ eventNameFor(b.event?.id) }}
                   </span>
-                  <span
-                    class="shrink-0 font-mono"
-                    :class="
-                      b.isDominantDirection
-                        ? 'text-cyan-700 dark:text-cyan-300'
-                        : 'text-amber-700 dark:text-amber-400'
-                    "
-                  >
-                    <span aria-hidden="true">
-                      {{ b.isDominantDirection ? '+' : '−'
-                      }}{{ formatAmount(b.transfer.amount) }}
-                    </span>
+                  <span class="shrink-0">
+                    <LedgerAmount
+                      aria-hidden="true"
+                      :amount="b.transfer.amount"
+                      :direction="b.isDominantDirection ? 'in' : 'out'"
+                    />
                     <span class="sr-only">
                       {{
                         breakdownAria(b.transfer.amount, b.isDominantDirection)
@@ -314,9 +319,7 @@ async function handleUnmark(net: RecentSettlement) {
       </section>
 
       <section v-if="youOwe.length > 0">
-        <h2 class="mb-3 text-lg font-semibold text-gray-900 dark:text-white">
-          You owe
-        </h2>
+        <SectionHeading :icon="ArrowUpRightIcon" title="You owe" />
         <ul class="space-y-3">
           <BaseCard
             v-for="net in youOwe"
@@ -335,10 +338,8 @@ async function handleUnmark(net: RecentSettlement) {
                     getMemberName(net.counterpartyUserId, pool)
                   }}</span>
                 </p>
-                <p
-                  class="mt-0.5 font-mono text-lg font-bold text-amber-700 dark:text-amber-400"
-                >
-                  {{ formatAmount(net.amount) }}
+                <p class="text-ink mt-0.5 text-lg font-bold">
+                  <LedgerAmount :amount="net.amount" />
                 </p>
                 <button
                   type="button"
@@ -382,18 +383,12 @@ async function handleUnmark(net: RecentSettlement) {
                   >
                     {{ eventNameFor(b.event?.id) }}
                   </span>
-                  <span
-                    class="shrink-0 font-mono"
-                    :class="
-                      b.isDominantDirection
-                        ? 'text-amber-700 dark:text-amber-400'
-                        : 'text-cyan-700 dark:text-cyan-300'
-                    "
-                  >
-                    <span aria-hidden="true">
-                      {{ b.isDominantDirection ? '+' : '−'
-                      }}{{ formatAmount(b.transfer.amount) }}
-                    </span>
+                  <span class="shrink-0">
+                    <LedgerAmount
+                      aria-hidden="true"
+                      :amount="b.transfer.amount"
+                      :direction="b.isDominantDirection ? 'out' : 'in'"
+                    />
                     <span class="sr-only">
                       {{
                         breakdownAria(b.transfer.amount, b.isDominantDirection)
@@ -409,9 +404,7 @@ async function handleUnmark(net: RecentSettlement) {
       </section>
 
       <section v-if="recentSettlements.length > 0" data-testid="recent-settled">
-        <h2 class="mb-3 text-lg font-semibold text-gray-900 dark:text-white">
-          Recently settled
-        </h2>
+        <SectionHeading :icon="CheckCircleIcon" title="Recently settled" />
         <ul class="space-y-3">
           <!-- Recently-settled cards override BaseCard's default surface with a
                muted treatment — no shadow, no ring, soft tint. Reads as "at
@@ -440,13 +433,11 @@ async function handleUnmark(net: RecentSettlement) {
                     paid you
                   </template>
                 </p>
-                <p
-                  class="mt-0.5 font-mono text-lg font-semibold text-gray-700 dark:text-stone-300"
-                >
-                  {{ formatAmount(net.amount) }}
+                <p class="text-ink-muted mt-0.5 text-lg font-semibold">
+                  <LedgerAmount :amount="net.amount" />
                 </p>
                 <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
-                  {{ formatRelativeDate(net.latestPaidAt) }}
+                  <TimeAnchor :at="net.latestPaidAt" />
                   <template v-if="settledByLabel(net)">
                     · {{ settledByLabel(net) }}
                   </template>
@@ -499,17 +490,17 @@ async function handleUnmark(net: RecentSettlement) {
                     {{ eventNameFor(b.event?.id) }}
                   </span>
                   <span
-                    class="shrink-0 font-mono"
+                    class="shrink-0"
                     :class="
                       b.isDominantDirection
-                        ? 'text-gray-700 dark:text-stone-300'
-                        : 'text-gray-500 dark:text-stone-400'
+                        ? 'text-ink-muted'
+                        : 'text-ink-faint'
                     "
                   >
-                    <span aria-hidden="true">
-                      {{ b.isDominantDirection ? '+' : '−'
-                      }}{{ formatAmount(b.transfer.amount) }}
-                    </span>
+                    <span aria-hidden="true"
+                      >{{ b.isDominantDirection ? '+' : '−'
+                      }}<LedgerAmount :amount="b.transfer.amount"
+                    /></span>
                     <span class="sr-only">
                       {{
                         breakdownAria(b.transfer.amount, b.isDominantDirection)
