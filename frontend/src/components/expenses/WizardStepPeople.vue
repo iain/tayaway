@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { countDays } from '@/utils/event'
-import { formatAmount } from '@/utils/format'
+import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import type { PoolEvent, PoolMember } from '@/types/pool'
 
 const props = defineProps<{
@@ -263,10 +263,10 @@ const previewRows = computed(() => {
         >
           <span v-for="(row, i) in previewRows" :key="row.userId"
             >{{ i > 0 ? ' · ' : '' }}{{ row.name }}
-            {{ formatAmount(row.share) }}</span
-          >
+            <LedgerAmount :amount="row.share"
+          /></span>
           <span class="text-gray-400 dark:text-stone-500">
-            (of {{ formatAmount(amount) }})
+            (of <LedgerAmount :amount="amount" />)
           </span>
         </p>
       </div>

@@ -17,6 +17,7 @@ import BaseCard from '@/components/common/BaseCard.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import IconButton from '@/components/common/IconButton.vue'
+import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import TextButton from '@/components/common/TextButton.vue'
@@ -158,6 +159,111 @@ const modalOpen = ref(false)
                 </p>
               </BaseCard>
             </div>
+          </div>
+
+          <!-- Money. The signature treatment for amounts: tabular figures, a
+               faint currency mark that reads as context not value, and a
+               direction sign that echoes the inflow / outflow duality from
+               the soft buttons. -->
+          <div class="mt-section">
+            <SectionHeading :icon="InboxIcon" title="Money" />
+            <BaseCard padded>
+              <div class="space-y-6">
+                <div class="flex flex-wrap items-baseline gap-x-6 gap-y-3">
+                  <LedgerAmount :amount="42.5" />
+                  <LedgerAmount :amount="42.5" direction="in" />
+                  <LedgerAmount :amount="42.5" direction="out" />
+                  <LedgerAmount :amount="1234.56" />
+                  <LedgerAmount :amount="1234567.89" direction="out" />
+                  <LedgerAmount :amount="0" />
+                </div>
+                <!-- Same amount across four locales so the locale-aware
+                     separators, decimal style, and currency placement are
+                     visible side-by-side. -->
+                <div>
+                  <p
+                    class="text-ink-faint mb-2 text-xs tracking-wide uppercase"
+                  >
+                    Same amount, four locales
+                  </p>
+                  <div class="grid max-w-md grid-cols-2 gap-x-6 gap-y-1">
+                    <span class="text-ink-muted text-meta">en-US</span>
+                    <LedgerAmount
+                      :amount="1234.56"
+                      direction="in"
+                      locale="en-US"
+                    />
+                    <span class="text-ink-muted text-meta">nl-NL</span>
+                    <LedgerAmount
+                      :amount="1234.56"
+                      direction="in"
+                      locale="nl-NL"
+                    />
+                    <span class="text-ink-muted text-meta">fr-FR</span>
+                    <LedgerAmount
+                      :amount="1234.56"
+                      direction="in"
+                      locale="fr-FR"
+                    />
+                    <span class="text-ink-muted text-meta">de-DE</span>
+                    <LedgerAmount
+                      :amount="1234.56"
+                      direction="in"
+                      locale="de-DE"
+                    />
+                  </div>
+                </div>
+                <!-- A small ledger sketch so the tabular-figure alignment and
+                     direction colouring read against each other. -->
+                <table
+                  class="text-body w-full max-w-sm border-collapse"
+                >
+                  <thead>
+                    <tr class="text-ink-muted text-meta">
+                      <th class="pb-2 text-left font-medium">Member</th>
+                      <th class="pb-2 text-right font-medium">Paid</th>
+                      <th class="pb-2 text-right font-medium">Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody class="text-ink">
+                    <tr>
+                      <td class="py-1">Daisy</td>
+                      <td class="py-1 text-right text-ink-muted">
+                        <LedgerAmount :amount="80" />
+                      </td>
+                      <td class="py-1 text-right">
+                        <LedgerAmount :amount="15.5" direction="in" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="py-1">Iain</td>
+                      <td class="py-1 text-right text-ink-muted">
+                        <LedgerAmount :amount="42.5" />
+                      </td>
+                      <td class="py-1 text-right">
+                        <LedgerAmount :amount="9.25" direction="out" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="py-1">Joep</td>
+                      <td class="py-1 text-right text-ink-muted">
+                        <LedgerAmount :amount="0" />
+                      </td>
+                      <td class="py-1 text-right text-ink-faint">even</td>
+                    </tr>
+                    <tr class="border-line border-t">
+                      <td class="pt-2 font-semibold">Total</td>
+                      <td
+                        class="pt-2 text-right font-semibold text-ink-muted"
+                      >
+                        <LedgerAmount :amount="122.5" />
+                      </td>
+                      <td class="pt-2"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </BaseCard>
           </div>
 
           <!-- Inputs -->

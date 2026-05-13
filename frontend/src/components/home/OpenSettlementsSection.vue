@@ -5,7 +5,7 @@ import { BanknotesIcon, QrCodeIcon } from '@heroicons/vue/24/outline'
 import { useObjectPoolStore } from '@/stores'
 import { useSettlementsStore } from '@/stores/settlements'
 import { getMemberName } from '@/utils/member'
-import { formatAmount } from '@/utils/format'
+import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import AlertBox from '@/components/common/AlertBox.vue'
@@ -107,10 +107,9 @@ function getEventIdForTransfer(
                 getMemberName(transfer.fromUserId, pool)
               }}</span>
               owes you
-              <span
-                class="font-mono font-semibold text-gray-900 dark:text-white"
-                >{{ formatAmount(transfer.amount) }}</span
-              >
+              <span class="font-semibold text-gray-900 dark:text-white">
+                <LedgerAmount :amount="transfer.amount" />
+              </span>
             </p>
             <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
               <router-link
@@ -152,10 +151,8 @@ function getEventIdForTransfer(
                 getMemberName(transfer.toUserId, pool)
               }}</span>
             </p>
-            <p
-              class="mt-0.5 font-mono text-lg font-bold text-amber-700 dark:text-amber-400"
-            >
-              {{ formatAmount(transfer.amount) }}
+            <p class="text-ink mt-0.5 text-lg font-bold">
+              <LedgerAmount :amount="transfer.amount" />
             </p>
             <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
               <router-link

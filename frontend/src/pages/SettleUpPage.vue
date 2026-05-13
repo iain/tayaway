@@ -20,6 +20,7 @@ import {
 } from '@/composables/useWorkspaceNet'
 import { getMemberName } from '@/utils/member'
 import { formatAmount } from '@/utils/format'
+import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import { formatRelativeDate } from '@/utils/date'
 import PageHeader from '@/components/common/PageHeader.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
@@ -235,10 +236,9 @@ async function handleUnmark(net: RecentSettlement) {
                     getMemberName(net.counterpartyUserId, pool)
                   }}</span>
                   owes you
-                  <span
-                    class="font-mono font-semibold text-gray-900 dark:text-white"
-                    >{{ formatAmount(net.amount) }}</span
-                  >
+                  <span class="font-semibold text-gray-900 dark:text-white">
+                    <LedgerAmount :amount="net.amount" />
+                  </span>
                 </p>
                 <button
                   type="button"
@@ -287,18 +287,12 @@ async function handleUnmark(net: RecentSettlement) {
                   >
                     {{ eventNameFor(b.event?.id) }}
                   </span>
-                  <span
-                    class="shrink-0 font-mono"
-                    :class="
-                      b.isDominantDirection
-                        ? 'text-cyan-700 dark:text-cyan-300'
-                        : 'text-amber-700 dark:text-amber-400'
-                    "
-                  >
-                    <span aria-hidden="true">
-                      {{ b.isDominantDirection ? '+' : '−'
-                      }}{{ formatAmount(b.transfer.amount) }}
-                    </span>
+                  <span class="shrink-0">
+                    <LedgerAmount
+                      aria-hidden="true"
+                      :amount="b.transfer.amount"
+                      :direction="b.isDominantDirection ? 'in' : 'out'"
+                    />
                     <span class="sr-only">
                       {{
                         breakdownAria(b.transfer.amount, b.isDominantDirection)
@@ -335,10 +329,8 @@ async function handleUnmark(net: RecentSettlement) {
                     getMemberName(net.counterpartyUserId, pool)
                   }}</span>
                 </p>
-                <p
-                  class="mt-0.5 font-mono text-lg font-bold text-amber-700 dark:text-amber-400"
-                >
-                  {{ formatAmount(net.amount) }}
+                <p class="text-ink mt-0.5 text-lg font-bold">
+                  <LedgerAmount :amount="net.amount" />
                 </p>
                 <button
                   type="button"
@@ -382,18 +374,12 @@ async function handleUnmark(net: RecentSettlement) {
                   >
                     {{ eventNameFor(b.event?.id) }}
                   </span>
-                  <span
-                    class="shrink-0 font-mono"
-                    :class="
-                      b.isDominantDirection
-                        ? 'text-amber-700 dark:text-amber-400'
-                        : 'text-cyan-700 dark:text-cyan-300'
-                    "
-                  >
-                    <span aria-hidden="true">
-                      {{ b.isDominantDirection ? '+' : '−'
-                      }}{{ formatAmount(b.transfer.amount) }}
-                    </span>
+                  <span class="shrink-0">
+                    <LedgerAmount
+                      aria-hidden="true"
+                      :amount="b.transfer.amount"
+                      :direction="b.isDominantDirection ? 'out' : 'in'"
+                    />
                     <span class="sr-only">
                       {{
                         breakdownAria(b.transfer.amount, b.isDominantDirection)
@@ -440,10 +426,8 @@ async function handleUnmark(net: RecentSettlement) {
                     paid you
                   </template>
                 </p>
-                <p
-                  class="mt-0.5 font-mono text-lg font-semibold text-gray-700 dark:text-stone-300"
-                >
-                  {{ formatAmount(net.amount) }}
+                <p class="text-ink-muted mt-0.5 text-lg font-semibold">
+                  <LedgerAmount :amount="net.amount" />
                 </p>
                 <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
                   {{ formatRelativeDate(net.latestPaidAt) }}
@@ -499,17 +483,17 @@ async function handleUnmark(net: RecentSettlement) {
                     {{ eventNameFor(b.event?.id) }}
                   </span>
                   <span
-                    class="shrink-0 font-mono"
+                    class="shrink-0"
                     :class="
                       b.isDominantDirection
-                        ? 'text-gray-700 dark:text-stone-300'
-                        : 'text-gray-500 dark:text-stone-400'
+                        ? 'text-ink-muted'
+                        : 'text-ink-faint'
                     "
                   >
-                    <span aria-hidden="true">
-                      {{ b.isDominantDirection ? '+' : '−'
-                      }}{{ formatAmount(b.transfer.amount) }}
-                    </span>
+                    <span aria-hidden="true"
+                      >{{ b.isDominantDirection ? '+' : '−'
+                      }}<LedgerAmount :amount="b.transfer.amount"
+                    /></span>
                     <span class="sr-only">
                       {{
                         breakdownAria(b.transfer.amount, b.isDominantDirection)

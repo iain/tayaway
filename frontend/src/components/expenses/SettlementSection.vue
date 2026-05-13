@@ -23,7 +23,7 @@ import {
   type AnnotatedTransfer,
 } from '@/utils/settlement'
 import { formatDateTime, formatRelativeDate } from '@/utils/date'
-import { formatAmount } from '@/utils/format'
+import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import { getMemberName } from '@/utils/member'
 import AppButton from '@/components/common/AppButton.vue'
 import AppBadge from '@/components/common/AppBadge.vue'
@@ -518,10 +518,10 @@ async function handlePaidClick(
               {{ getMemberName(transfer.toUserId, pool) }}
             </span>
             <span
-              class="shrink-0 font-mono text-sm font-semibold text-gray-900 dark:text-white"
+              class="shrink-0 text-sm font-semibold text-gray-900 dark:text-white"
               :class="{ 'line-through': transfer.supersededAt }"
             >
-              {{ formatAmount(transfer.amount) }}
+              <LedgerAmount :amount="transfer.amount" />
             </span>
             <AppBadge v-if="transfer.supersededAt" variant="neutral">
               Superseded
@@ -634,9 +634,9 @@ async function handlePaidClick(
               {{ getMemberName(transfer.toUserId, pool) }}
             </span>
             <span
-              class="ml-auto shrink-0 font-mono text-sm font-medium text-gray-900 dark:text-white"
+              class="ml-auto shrink-0 text-sm font-medium text-gray-900 dark:text-white"
             >
-              {{ formatAmount(transfer.amount) }}
+              <LedgerAmount :amount="transfer.amount" />
             </span>
           </div>
         </div>
