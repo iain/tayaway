@@ -297,11 +297,16 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 - **Right rail:** Stale-cache hint, connection badge ("Offline" pill on `bg-gray-900/40`), dark-mode toggle, profile avatar.
 - **Mobile:** HeadlessUI `Disclosure` collapses to a hamburger; expanded panel mirrors desktop nav.
 
+### Page header (`PageHeader`)
+
+- **Shape:** `text-page-title` ink (`text-page-title-sm` on the `size="sm"` variant), with an optional `size-7` Heroicons icon in `text-amber-600 dark:text-amber-400` to the left of the title. Subtitle slot renders in `text-meta` ink-muted.
+- **Icon:** The page-scale expression of the amber-landmark signature — same vocabulary as `SectionHeading`, one tier larger. One icon per page; the page is itself a region.
+
 ### Section heading (`SectionHeading`)
 
 - **Shape:** `text-section-heading` ink, `mb-heading` margin, with a `size-5` Heroicons icon in `text-amber-600 dark:text-amber-400` to the left of the title.
 - **Right slot:** Optional action slot — typically a `TextButton` ("View all", "Edit") or a count.
-- **Rule:** The amber-icon section header is the system's _only_ mandatory color use — every region of every page is announced this way.
+- **Rule:** The section-scale amber landmark. Every region of every page is announced this way.
 
 ### Time anchors (`TimeAnchor`)
 
@@ -324,6 +329,8 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 **The List-Row Rule.** Repeated row actions in a list are _not_ Primary, even when they're the row's main button. A column of five Attention Red buttons stacked down the page breaks the principle that saturation is rare and meaningful. Row actions use `secondary`, `inflow`, or `outflow` instead. Reserve Primary for one page-level CTA at most.
 
 **The Dual-Coding Rule.** Where rows convey directional meaning (incoming vs outgoing, gain vs spend), pair `inflow` with `outflow` so the button colors echo the row's other signals (card variant, amount text). The two soft variants exist as a dual; if you use one, you usually want the other on its counterpart row.
+
+**The Amber-Icon Rule.** Amber landmark icons announce regions, not destinations — they live in `PageHeader` (`size-7`), `SectionHeading` (`size-5`), and `EmptyState` (`size-12`), and nowhere else. They never appear on modal titles, card-internal headings, button glyphs, or anywhere inside card chrome. `EmptyState`'s icon is exempt from "no amber inside a card" because its job is precisely to announce the empty region the card contains. This is one of the system's three signature moves, alongside the ledger amount and the time anchor.
 
 ## 6. Do's and Don'ts
 

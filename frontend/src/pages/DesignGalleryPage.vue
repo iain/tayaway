@@ -6,6 +6,7 @@ import {
   ExclamationTriangleIcon,
   InboxIcon,
   PencilSquareIcon,
+  SwatchIcon,
   TrashIcon,
   XCircleIcon,
 } from '@heroicons/vue/24/outline'
@@ -59,7 +60,7 @@ const futureTs = new Date(renderedAt + 3 * HOUR).toISOString()
 <template>
   <div class="bg-surface-page text-ink min-h-screen">
     <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <PageHeader title="Design system">
+      <PageHeader title="Design system" :icon="SwatchIcon">
         <template #subtitle>
           Every primitive in its meaningful states. The gallery is the system
           made visible — anything that drifts here drifts in production.
