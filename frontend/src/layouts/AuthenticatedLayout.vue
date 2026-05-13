@@ -34,7 +34,7 @@ import {
   staleDays,
   type StalenessLevel,
 } from '@/composables/useStaleness'
-import { formatRelativeDate } from '@/utils/date'
+import TimeAnchor from '@/components/common/TimeAnchor.vue'
 import { getInitials } from '@/utils/member'
 import AppAvatar from '@/components/common/AppAvatar.vue'
 import CommandPalette from '@/components/common/CommandPalette.vue'
@@ -79,11 +79,10 @@ const cacheStaleLevel = computed<StalenessLevel | null>(() => {
   return getStaleness(since, now.value)
 })
 
-// "Last synced X ago" text shown for the stale tier
-const lastSyncedText = computed(() => {
+// Timestamp the staleness indicator anchors to (ISO string for `<TimeAnchor>`).
+const lastSyncedAt = computed<string | null>(() => {
   const since = wsStore.getSyncedAt(workspaceStore.currentWorkspaceId ?? '')
-  if (!since) return null
-  return `Last synced ${formatRelativeDate(since, now.value)}`
+  return since ?? null
 })
 
 // Show "Last synced" only when we have stale cached data and are connected
@@ -93,7 +92,7 @@ const showLastSynced = computed(
     !showConnectionBadge.value &&
     !hasSynced.value &&
     cacheStaleLevel.value === 'stale' &&
-    lastSyncedText.value !== null
+    lastSyncedAt.value !== null
 )
 
 // Dismissible warning banner for caches 1–7 days old
@@ -330,12 +329,12 @@ async function handleSignOut() {
           <div class="hidden md:block">
             <div class="ml-4 flex items-center md:ml-6">
               <!-- Stale cache indicator: "Last synced X ago" -->
-              <span
-                v-if="showLastSynced"
+              <TimeAnchor
+                v-if="showLastSynced && lastSyncedAt"
+                :at="lastSyncedAt"
                 class="mr-3 text-xs text-gray-400 dark:text-stone-500"
+                >Last synced</TimeAnchor
               >
-                {{ lastSyncedText }}
-              </span>
 
               <!-- Connection status badge -->
               <button
@@ -522,12 +521,12 @@ async function handleSignOut() {
                 {{ user?.email }}
               </div>
               <!-- Mobile stale cache indicator -->
-              <div
-                v-if="showLastSynced"
-                class="text-xs text-gray-400 dark:text-stone-500"
+              <TimeAnchor
+                v-if="showLastSynced && lastSyncedAt"
+                :at="lastSyncedAt"
+                class="block text-xs text-gray-400 dark:text-stone-500"
+                >Last synced</TimeAnchor
               >
-                {{ lastSyncedText }}
-              </div>
             </div>
             <button
               v-if="showConnectionBadge"

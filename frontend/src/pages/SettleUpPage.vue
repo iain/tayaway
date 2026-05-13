@@ -4,6 +4,7 @@ import {
   BanknotesIcon,
   ChevronDownIcon,
   QrCodeIcon,
+  ScaleIcon,
 } from '@heroicons/vue/24/outline'
 import { storeToRefs } from 'pinia'
 import {
@@ -151,7 +152,11 @@ async function handleUnmark(net: RecentSettlement) {
 
 <template>
   <div>
-    <PageHeader title="Settle up" data-testid="page-title">
+    <PageHeader
+      title="Settle up"
+      :icon="ScaleIcon"
+      data-testid="page-title"
+    >
       <template #subtitle>
         Net balances across every event in this workspace, so you only transfer
         what's actually owed.

@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import {
   UserIcon,
+  UsersIcon,
   PlusIcon,
   EnvelopeIcon,
   PhoneIcon,
@@ -27,7 +28,7 @@ import TimeAnchor from '@/components/common/TimeAnchor.vue'
 import AlertBox from '@/components/common/AlertBox.vue'
 import type { PoolMember, PoolWorkspaceInvite } from '@/types/pool'
 import { can } from '@/composables/usePermission'
-import { formatBirthday, formatRelativeDate } from '@/utils/date'
+import { formatBirthday } from '@/utils/date'
 import { generateVCard, downloadVCard } from '@/utils/vcard'
 import { getInitials } from '@/utils/member'
 
@@ -155,10 +156,8 @@ async function handleRemind(id: string): Promise<void> {
   }
 }
 
-function inviteExpiryText(invite: PoolWorkspaceInvite): string {
-  const verb =
-    new Date(invite.expiresAt) < new Date() ? 'Expired' : 'Expires'
-  return `${verb} ${formatRelativeDate(invite.expiresAt)}`
+function inviteExpiryVerb(invite: PoolWorkspaceInvite): 'Expired' | 'Expires' {
+  return new Date(invite.expiresAt) < new Date() ? 'Expired' : 'Expires'
 }
 
 function invitedByName(invite: PoolWorkspaceInvite): string | null {
@@ -197,7 +196,11 @@ onMounted(() => {
 
 <template>
   <div>
-    <PageHeader title="Members" data-testid="page-title">
+    <PageHeader
+      title="Members"
+      :icon="UsersIcon"
+      data-testid="page-title"
+    >
       <AppButton
         v-if="canInvite"
         data-testid="invite-member-button"
@@ -264,7 +267,10 @@ onMounted(() => {
                       <template v-if="invitedByName(invite)">
                         by {{ invitedByName(invite) }}
                       </template>
-                      · {{ inviteExpiryText(invite) }}
+                      ·
+                      <TimeAnchor :at="invite.expiresAt">
+                        {{ inviteExpiryVerb(invite) }}
+                      </TimeAnchor>
                     </span>
                   </div>
                 </div>

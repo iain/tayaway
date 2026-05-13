@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { api } from '@/api/client'
 import ExpenseRow from '@/components/expenses/ExpenseRow.vue'
+import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
 import ExpenseSplit from '@/components/expenses/ExpenseSplit.vue'
 import SettlementSection from '@/components/expenses/SettlementSection.vue'
@@ -72,7 +73,6 @@ const total = computed(() =>
   expenses.value.reduce((sum, e) => sum + e.amount, 0)
 )
 
-const formattedTotal = computed(() => `€${total.value.toFixed(2)}`)
 
 const hasAttendees = computed(() =>
   pool.getAll('rsvp').some((r) => r.eventId === eventId.value && r.attending)
@@ -107,7 +107,7 @@ onMounted(async () => {
             data-testid="expenses-total"
             class="text-lg font-semibold text-gray-700 dark:text-stone-300"
           >
-            {{ formattedTotal }} total
+            <LedgerAmount :amount="total" /> total
           </span>
         </div>
         <AppButton v-if="expenses.length > 0" @click="openAdd"

@@ -20,7 +20,8 @@ defineProps<{
       <component
         :is="icon"
         v-if="icon"
-        class="size-7 shrink-0 text-amber-600 dark:text-amber-400"
+        class="shrink-0 text-amber-600 dark:text-amber-400"
+        :class="size === 'sm' ? 'size-6' : 'size-7'"
         aria-hidden="true"
       />
       <div class="min-w-0 flex-1">

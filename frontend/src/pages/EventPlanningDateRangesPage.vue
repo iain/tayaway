@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { PlusIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import {
+  CalendarDaysIcon,
+  PlusIcon,
+  TrashIcon,
+} from '@heroicons/vue/24/outline'
 import { useDatePollsStore } from '@/stores'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
 import type { HydratedDateRange } from '@/composables/useHydratedEvent'
@@ -107,7 +111,7 @@ async function deleteRange(dateRangeId: string): Promise<void> {
     </div>
 
     <div v-else>
-      <PageHeader title="Edit Date Ranges" size="sm" />
+      <PageHeader title="Edit Date Ranges" size="sm" :icon="CalendarDaysIcon" />
 
       <section>
         <div class="mb-4 flex items-center justify-between">
