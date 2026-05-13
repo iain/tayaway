@@ -4,18 +4,20 @@ import {
   ArrowPathIcon,
   ArrowTopRightOnSquareIcon,
   Bars3BottomLeftIcon,
+  BanknotesIcon,
   BookmarkIcon,
   CalendarDaysIcon,
   CalendarIcon,
-  ChatBubbleBottomCenterTextIcon,
   CheckCircleIcon,
   ClipboardDocumentListIcon,
+  ClockIcon,
   CurrencyEuroIcon,
   ExclamationTriangleIcon,
   IdentificationIcon,
-  InboxIcon,
   MapPinIcon,
+  MegaphoneIcon,
   PencilSquareIcon,
+  RectangleStackIcon,
   Squares2X2Icon,
   SwatchIcon,
   TrashIcon,
@@ -392,8 +394,8 @@ function openModal(size: ModalSize): void {
                 </div>
 
                 <GalleryRule
-                  rule="Badges-as-state"
-                  statement="A badge without a meaning is a violation — the API refuses colour-name variants. Always say what the badge announces."
+                  rule="State, not decoration"
+                  statement="A badge without a meaning is a violation. The API refuses colour-name variants; always say what the badge announces."
                   doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#5-components"
                 >
                   <div class="border-line bg-surface flex items-center gap-3 rounded-md border px-4 py-3">
@@ -522,10 +524,7 @@ function openModal(size: ModalSize): void {
               description="Compact unit voice (m/h/d/w), verb-anchored, live-ticking from the shared minute clock."
               motion="Live-ticking via the shared minute clock — 23m becomes 24m without a refresh, and every TimeAnchor on the page agrees on what 'now' means."
             >
-              <SectionHeading
-                :icon="ChatBubbleBottomCenterTextIcon"
-                title="TimeAnchor"
-              />
+              <SectionHeading :icon="ClockIcon" title="TimeAnchor" />
               <BaseCard padded>
                 <div class="text-meta space-y-4">
                   <div class="text-ink-muted">
@@ -701,7 +700,7 @@ function openModal(size: ModalSize): void {
               description="A FormInput-shaped shell with a leading € glyph. Inputmode=decimal so mobile keyboards show the numeric pad."
             >
               <template #default="{ mode }">
-                <SectionHeading :icon="CurrencyEuroIcon" title="CurrencyInput" />
+                <SectionHeading :icon="BanknotesIcon" title="CurrencyInput" />
                 <BaseCard padded>
                   <label
                     :for="`gallery-currency-${mode}`"
@@ -793,7 +792,7 @@ function openModal(size: ModalSize): void {
               description="Default, action, urgent, and the interactive variant. Hover lifts only the interactive one."
               motion="Interactive cards add a 2px ring on hover and a 5% brightness shift on active. Never scale or translate."
             >
-              <SectionHeading :icon="InboxIcon" title="Variants" />
+              <SectionHeading :icon="RectangleStackIcon" title="Variants" />
               <div class="space-y-4">
                 <BaseCard padded>
                   <h4 class="text-ink font-semibold">Default</h4>
@@ -960,7 +959,10 @@ function openModal(size: ModalSize): void {
                 title="SectionHeading anatomy"
               />
               <BaseCard padded>
-                <SectionHeading :icon="InboxIcon" title="Dates the group has agreed on">
+                <SectionHeading
+                  :icon="CalendarDaysIcon"
+                  title="Dates the group has agreed on"
+                >
                   <TextButton>View all</TextButton>
                 </SectionHeading>
                 <div class="text-ink-muted text-meta -mt-2 ml-7 flex flex-wrap gap-x-4">
@@ -1029,10 +1031,7 @@ function openModal(size: ModalSize): void {
               title="Toast"
               description="Transient notifications stacked top-right by the global ToastContainer. Info and error variants; an optional action link."
             >
-              <SectionHeading
-                :icon="ChatBubbleBottomCenterTextIcon"
-                title="ToastNotification"
-              />
+              <SectionHeading :icon="MegaphoneIcon" title="ToastNotification" />
               <div class="space-y-3">
                 <ToastNotification
                   :notification="toastInfo"
@@ -1076,10 +1075,10 @@ function openModal(size: ModalSize): void {
           <section class="border-line border-t pt-6">
             <p class="text-ink-faint text-meta">
               <span class="text-ink font-medium">Not in gallery:</span>
-              CommandPalette, NotificationBell, and StaticMap are feature
-              primitives tied to live stores or external SDKs. Their visual
-              regression coverage lives in feature e2e tests, not in this
-              page.
+              CommandPalette, NotificationBell, and StaticMap render only
+              inside the app shell — they bind to live stores or load Leaflet
+              over the network. Their coverage lives in feature tests, not on
+              this page.
             </p>
           </section>
         </div>
