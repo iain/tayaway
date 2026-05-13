@@ -314,7 +314,7 @@ function openModal(size: ModalSize): void {
               <GalleryRule
                 rule="One-Action Rule"
                 statement="Each card or modal carries at most one Primary button. Secondary actions are TextButtons or the secondary variant."
-                doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#5-components"
+                doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#one-action-rule"
               >
                 <BaseCard padded>
                   <h5 class="text-ink font-semibold">Lock in dates</h5>
@@ -332,7 +332,7 @@ function openModal(size: ModalSize): void {
               <GalleryRule
                 rule="List-Row Rule"
                 statement="Repeated row actions are never Primary. Use secondary, inflow, or outflow so a stack of five rows doesn't read as five page-level CTAs."
-                doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#5-components"
+                doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#list-row-rule"
               >
                 <ul
                   class="border-line divide-line bg-surface divide-y rounded-md border"
@@ -363,7 +363,7 @@ function openModal(size: ModalSize): void {
               <GalleryRule
                 rule="Dual-Coding Rule"
                 statement="Where rows carry directional meaning, pair inflow with outflow so the colours echo the row's other signals."
-                doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#5-components"
+                doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#dual-coding-rule"
               >
                 <div class="flex flex-wrap items-center gap-2">
                   <AppButton variant="inflow" size="sm">+ Received</AppButton>
@@ -400,7 +400,7 @@ function openModal(size: ModalSize): void {
               <GalleryRule
                 rule="State, not decoration"
                 statement="A badge without a meaning is a violation. The API refuses colour-name variants; always say what the badge announces."
-                doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#5-components"
+                doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#badges-state-rule"
               >
                 <BaseCard padded>
                   <div class="flex items-center gap-3">
@@ -828,7 +828,7 @@ function openModal(size: ModalSize): void {
               <GalleryRule
                 rule="Quiet-Surface Rule"
                 statement="Cards stay in neutrals. Saturation belongs to actions and states. A card 'themed' with brand colour is a violation unless it's the action or urgent variant."
-                doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#5-components"
+                doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#quiet-surface-rule"
               >
                 <BaseCard padded>
                   <div class="mb-2 flex items-center justify-between">
@@ -940,7 +940,7 @@ function openModal(size: ModalSize): void {
               <GalleryRule
                 rule="Amber-Icon Rule"
                 statement="Amber landmark icons appear only on PageHeader (size-7), SectionHeading (size-5), and EmptyState (size-12). Nowhere else."
-                doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#5-components"
+                doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#amber-icon-rule"
               >
                 <p class="text-ink-muted text-sm">
                   The amber icon is how the system tells you "you're in a new
