@@ -77,15 +77,15 @@ function handleClick(event: MouseEvent, id: string): void {
         >
           {{ group.group }}
         </p>
-        <ul class="space-y-1">
+        <ul class="space-y-0.5">
           <li v-for="item in group.items" :key="item.id">
             <a
               :href="`#${item.id}`"
               :class="[
-                'focus-visible:outline-focus block rounded-sm border-l-2 py-0.5 pl-3 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2',
+                'focus-visible:outline-focus -ml-2 block rounded-md px-2 py-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2',
                 activeId === item.id
-                  ? 'border-rose-500 text-ink font-medium'
-                  : 'border-transparent text-ink-muted hover:text-ink hover:border-line',
+                  ? 'bg-surface-sunken text-ink font-medium'
+                  : 'text-ink-muted hover:bg-surface-sunken hover:text-ink',
               ]"
               @click="handleClick($event, item.id)"
               >{{ item.label }}</a

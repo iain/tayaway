@@ -56,6 +56,7 @@ import GalleryGroup from '@/pages/design-gallery/GalleryGroup.vue'
 import GalleryRule from '@/pages/design-gallery/GalleryRule.vue'
 import GallerySection from '@/pages/design-gallery/GallerySection.vue'
 import GalleryTOC from '@/pages/design-gallery/GalleryTOC.vue'
+import GalleryTOCMobile from '@/pages/design-gallery/GalleryTOCMobile.vue'
 import type { TOCItem } from '@/pages/design-gallery/types'
 import ColorTokens from '@/pages/design-gallery/ColorTokens.vue'
 import TypographySpecimen from '@/pages/design-gallery/TypographySpecimen.vue'
@@ -176,7 +177,7 @@ function openModal(size: ModalSize): void {
           that govern how they compose. The gallery is the system made
           visible — anything that drifts here drifts in production.
         </template>
-        <div class="text-meta hidden items-center gap-4 sm:flex">
+        <div class="text-meta flex flex-wrap items-center gap-x-4 gap-y-1">
           <a
             href="https://github.com/iain/tayaway/blob/main/DESIGN.md"
             target="_blank"
@@ -197,6 +198,8 @@ function openModal(size: ModalSize): void {
           </a>
         </div>
       </PageHeader>
+
+      <GalleryTOCMobile :items="tocItems" />
 
       <div class="lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-10">
         <aside class="hidden lg:block">
