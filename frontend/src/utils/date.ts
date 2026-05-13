@@ -54,9 +54,14 @@ export function formatBirthday(dateString: string): string {
   })
 }
 
-/** "Jan 1, 11:30" — date + time (for settlement timestamps) */
-export function formatDateTime(isoString: string): string {
-  return new Date(isoString).toLocaleDateString(undefined, {
+/**
+ * "Jan 1, 11:30" — date + time, used for the absolute tooltip on
+ * `<TimeAnchor>` and any other place that wants to expose the exact moment
+ * behind a relative label. Pass `useLocale().value` from a Vue component so
+ * a future user-chosen locale propagates here too.
+ */
+export function formatDateTime(isoString: string, locale?: string): string {
+  return new Date(isoString).toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',

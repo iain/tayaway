@@ -262,7 +262,7 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 
 ### Inputs (`FormInput`)
 
-- **Style:** `bg-gray-100` light / `bg-white/5` dark, `outline-1 -outline-offset-1 outline-gray-300` light / `outline-white/10` dark, `rounded-md` (6px), `px-3 py-1.5`, `text-base` (mobile) / `text-sm/6` (desktop).
+- **Style:** `bg-gray-100` light / `bg-white/5` dark, `outline-1 -outline-offset-1 outline-gray-300` light / `outline-white/10` dark, `rounded-md` (6px), `px-3 py-1.5`. The field text stays at `text-base` (16px) on mobile so iOS Safari doesn't auto-zoom the page on focus, and tightens to `text-sm/6` on `sm:` and up — the one place the system uses a responsive font-size on purpose, which is why it doesn't ride a `text-*` token.
 - **Label:** Above the field, `text-label`, ink color.
 - **Focus:** `focus:outline-2 focus:-outline-offset-2 focus:outline-focus`. The Attention Red ring is the system-wide focus signal — same on buttons, cards, modals, inputs.
 - **Prefix:** Optional inline prefix slot (currency, URL scheme) sits inside the same outlined shell, separated visually by a `select-none` ink-muted span.
@@ -330,7 +330,7 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 ### Do:
 
 - **Do** keep ≥90% of any screen in neutrals. The bright voices (CRT Amber `#d97706`, Attention Red `#e11d48`, Navigator Cyan `#0891b2`) earn their saturation by being rare.
-- **Do** put `focus-visible:outline-rose-500` on every interactive element. The Attention Red ring is the system-wide focus signal.
+- **Do** put `focus-visible:outline-focus` on every interactive element. The Attention Red ring is the system-wide focus signal — one token, one place to change.
 - **Do** use Inter Variable at 16px for primary content. Reach for `text-sm` / `text-xs` only for secondary metadata that the user does not need to read first.
 - **Do** lead each screen region with a `SectionHeading` — `text-section-heading` plus a `text-amber-600` icon. This is the only mandatory color use in the body of a page.
 - **Do** design dark mode at the same time as light mode. Both are first-class. Light uses cool gray neutrals; dark uses warm stone neutrals. Never copy values across.

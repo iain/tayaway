@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useLocale } from '@/composables/useLocale'
 import { useRelativeTime } from '@/composables/useRelativeTime'
 import { formatDateTime } from '@/utils/date'
 
@@ -28,8 +29,11 @@ const props = defineProps<{
 
 defineOptions({ inheritAttrs: false })
 
+const { locale } = useLocale()
 const relative = useRelativeTime(() => props.at)
-const tooltip = computed(() => props.title ?? formatDateTime(props.at))
+const tooltip = computed(
+  () => props.title ?? formatDateTime(props.at, locale.value)
+)
 </script>
 
 <template>

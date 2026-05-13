@@ -20,6 +20,7 @@ import {
 } from '@/composables/useWorkspaceNet'
 import { getMemberName } from '@/utils/member'
 import { formatAmount } from '@/utils/format'
+import { useLocale } from '@/composables/useLocale'
 import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import TimeAnchor from '@/components/common/TimeAnchor.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -107,11 +108,15 @@ function eventNameFor(eventId: string | undefined): string {
   return pool.get('event', eventId)?.name ?? 'Unknown event'
 }
 
+const { locale } = useLocale()
+
 function breakdownAria(amount: number, dominant: boolean): string {
   // Mirrors the +/− glyph for screen readers — they get the meaning
-  // ("adds" vs "offsets") without having to interpret a sign.
+  // ("adds" vs "offsets") without having to interpret a sign. The amount
+  // formats in the active locale so screen-reader output matches the
+  // visible `<LedgerAmount>` digits.
   const verb = dominant ? 'adds' : 'offsets'
-  return `${verb} ${formatAmount(amount)}`
+  return `${verb} ${formatAmount(amount, locale.value)}`
 }
 
 function transferCountLabel(count: number): string {
