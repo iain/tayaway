@@ -4,6 +4,7 @@ import { formatBirthday } from '@/utils/date'
 import { getInitials } from '@/utils/member'
 import BaseCard from '@/components/common/BaseCard.vue'
 import AppAvatar from '@/components/common/AppAvatar.vue'
+import SectionHeading from '@/components/common/SectionHeading.vue'
 import type { PoolMember } from '@/types/pool'
 
 defineProps<{
@@ -33,9 +34,7 @@ function formatBirthdayDate(member: PoolMember): string {
 
 <template>
   <section>
-    <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-      Upcoming birthdays
-    </h2>
+    <SectionHeading :icon="CakeIcon" title="Upcoming birthdays" />
 
     <ul class="space-y-3">
       <BaseCard

@@ -149,9 +149,8 @@ async function clearAddress(): Promise<void> {
 
 <template>
   <div>
+    <SectionHeading :icon="UserIcon" title="About you" />
     <BaseCard padded>
-      <SectionHeading :icon="UserIcon" title="About you" />
-
       <dl class="divide-y divide-gray-200 dark:divide-stone-700">
         <DefinitionRow
           label="Name"

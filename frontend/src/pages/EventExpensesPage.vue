@@ -14,7 +14,8 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import TextButton from '@/components/common/TextButton.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
-import { CurrencyEuroIcon } from '@heroicons/vue/24/outline'
+import PageHeader from '@/components/common/PageHeader.vue'
+import { BanknotesIcon, CurrencyEuroIcon } from '@heroicons/vue/24/outline'
 import { useExpenseActions } from '@/composables/useExpenseActions'
 import type { PoolApiResponse, PoolExpense } from '@/types/pool'
 
@@ -94,26 +95,16 @@ onMounted(async () => {
     </div>
 
     <div v-else>
-      <div
-        class="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2"
-      >
-        <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-          <h1
-            class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white"
-          >
-            Expenses
-          </h1>
-          <span
-            data-testid="expenses-total"
-            class="text-lg font-semibold text-gray-700 dark:text-stone-300"
-          >
+      <PageHeader title="Expenses" size="sm" :icon="BanknotesIcon">
+        <template #subtitle>
+          <span data-testid="expenses-total">
             <LedgerAmount :amount="total" /> total
           </span>
-        </div>
+        </template>
         <AppButton v-if="expenses.length > 0" @click="openAdd"
           >Add expense</AppButton
         >
-      </div>
+      </PageHeader>
 
       <div v-if="expenses.length > 0" class="mb-6 space-y-3">
         <ExpenseRow

@@ -16,6 +16,8 @@ import DatePollSection from '@/components/events/DatePollSection.vue'
 import AwaitingVotesSection from '@/components/events/AwaitingVotesSection.vue'
 import OpenPollModal from '@/components/events/OpenPollModal.vue'
 import AppButton from '@/components/common/AppButton.vue'
+import PageHeader from '@/components/common/PageHeader.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import { can } from '@/composables/usePermission'
 
 const route = useRoute()
@@ -79,6 +81,8 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
     </div>
 
     <div v-else>
+      <PageHeader title="Planning" size="sm" :icon="CalendarDaysIcon" />
+
       <!-- Poll open/expired: show poll sections -->
       <div
         v-if="isPollActive(event.datePoll)"
@@ -98,24 +102,14 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
       </div>
 
       <!-- Poll resolved: show closed state -->
-      <div
+      <EmptyState
         v-else-if="isPollResolved(event.datePoll)"
-        class="flex flex-col items-center py-12 text-center"
+        :icon="CheckCircleIcon"
+        icon-class="text-gray-400 dark:text-stone-500"
+        heading="Date poll closed"
+        description="The date poll has been resolved and is no longer accepting votes."
       >
-        <CheckCircleIcon
-          class="mb-4 size-12 text-gray-400 dark:text-stone-500"
-        />
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-          Date poll closed
-        </h2>
-        <p class="mt-1 max-w-sm text-gray-500 dark:text-stone-400">
-          The date poll has been resolved and is no longer accepting votes.
-        </p>
-        <AppButton
-          v-if="canOpenOrReopenPoll"
-          class="mt-6"
-          @click="handleReopenPoll"
-        >
+        <AppButton v-if="canOpenOrReopenPoll" @click="handleReopenPoll">
           <ArrowPathIcon class="size-4" />
           Reopen Poll
         </AppButton>
@@ -125,57 +119,35 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
         >
           The poll can't be reopened because the event has already started.
         </p>
-      </div>
+      </EmptyState>
 
       <!-- No poll, dates already set -->
-      <div
+      <EmptyState
         v-else-if="eventHasDates(event)"
-        class="flex flex-col items-center py-12 text-center"
+        :icon="CheckCircleIcon"
+        heading="Dates are set"
+        description="This event already has dates. Members can RSVP on the RSVP tab."
       >
-        <CheckCircleIcon
-          class="mb-4 size-12 text-amber-500 dark:text-amber-400"
-        />
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-          Dates are set
-        </h2>
-        <p class="mt-1 max-w-sm text-gray-500 dark:text-stone-400">
-          This event already has dates. Members can RSVP on the RSVP tab.
-        </p>
-        <p
-          v-if="canOpenOrReopenPoll"
-          class="mt-4 max-w-sm text-sm text-gray-400 dark:text-stone-500"
-        >
-          Need to reconsider? Opening a date poll lets members vote on
-          alternatives. When you close the poll, the winning dates will replace
-          the current ones and RSVPs will be reset.
-        </p>
-        <AppButton
-          v-if="canOpenOrReopenPoll"
-          variant="secondary"
-          class="mt-4"
-          @click="handleOpenPoll"
-        >
-          Open Date Poll Anyway
-        </AppButton>
-      </div>
+        <template v-if="canOpenOrReopenPoll">
+          <p class="max-w-sm text-sm text-gray-400 dark:text-stone-500">
+            Need to reconsider? Opening a date poll lets members vote on
+            alternatives. When you close the poll, the winning dates will
+            replace the current ones and RSVPs will be reset.
+          </p>
+          <AppButton variant="secondary" class="mt-4" @click="handleOpenPoll">
+            Open Date Poll Anyway
+          </AppButton>
+        </template>
+      </EmptyState>
 
       <!-- No poll, no dates -->
-      <div v-else class="flex flex-col items-center py-12 text-center">
-        <CalendarDaysIcon
-          class="mb-4 size-12 text-amber-500 dark:text-amber-400"
-        />
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-          No dates yet
-        </h2>
-        <p class="mt-1 max-w-sm text-gray-500 dark:text-stone-400">
-          Open a date poll to let members vote on when to go. You propose date
-          options, everyone votes, then you pick the winner.
-        </p>
-        <AppButton
-          v-if="canOpenOrReopenPoll"
-          class="mt-6"
-          @click="handleOpenPoll"
-        >
+      <EmptyState
+        v-else
+        :icon="CalendarDaysIcon"
+        heading="No dates yet"
+        description="Open a date poll to let members vote on when to go. You propose date options, everyone votes, then you pick the winner."
+      >
+        <AppButton v-if="canOpenOrReopenPoll" @click="handleOpenPoll">
           Open Date Poll
         </AppButton>
         <p
@@ -184,7 +156,7 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
         >
           A date poll can't be opened because the event has already started.
         </p>
-      </div>
+      </EmptyState>
     </div>
   </div>
 

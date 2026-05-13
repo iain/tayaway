@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { CheckCircleIcon } from '@heroicons/vue/24/solid'
+import { HomeIcon } from '@heroicons/vue/24/outline'
 import { usePollsNeedingAttention } from '@/composables/usePollsNeedingAttention'
 import { useEventsNeedingRsvp } from '@/composables/useEventsNeedingRsvp'
 import { useEventsList } from '@/composables/useEventsList'
@@ -12,6 +13,7 @@ import {
   useWorkspaceStore,
 } from '@/stores'
 import PageHeader from '@/components/common/PageHeader.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import type { PoolMember } from '@/types/pool'
 import TodayBirthdays from '@/components/home/TodayBirthdays.vue'
 import UpcomingBirthdays from '@/components/home/UpcomingBirthdays.vue'
@@ -173,7 +175,7 @@ const allCaughtUp = computed(
 
 <template>
   <div>
-    <PageHeader title="Dashboard" data-testid="page-title" />
+    <PageHeader title="Dashboard" data-testid="page-title" :icon="HomeIcon" />
 
     <WelcomeSection
       v-if="isNewUser"
@@ -186,18 +188,12 @@ const allCaughtUp = computed(
       @create-event="showEventModal = true"
     />
 
-    <div v-else-if="allCaughtUp" class="py-16 text-center">
-      <CheckCircleIcon
-        class="mx-auto size-16 text-amber-500 dark:text-amber-400"
-        aria-hidden="true"
-      />
-      <h2 class="mt-4 text-xl font-semibold text-gray-900 dark:text-white">
-        Nice work — nothing needs your attention.
-      </h2>
-      <p class="mt-2 text-sm text-gray-500 dark:text-stone-400">
-        You're all caught up. Enjoy the quiet.
-      </p>
-    </div>
+    <EmptyState
+      v-else-if="allCaughtUp"
+      :icon="CheckCircleIcon"
+      heading="Nice work — nothing needs your attention."
+      description="You're all caught up. Enjoy the quiet."
+    />
 
     <div v-else class="flex flex-col gap-8">
       <TodayBirthdays

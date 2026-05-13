@@ -4,6 +4,7 @@ import { UserIcon } from '@heroicons/vue/24/outline'
 import { CheckCircleIcon } from '@heroicons/vue/24/solid'
 import type { HydratedEvent } from '@/composables/useHydratedEvent'
 import BaseCard from '@/components/common/BaseCard.vue'
+import SectionHeading from '@/components/common/SectionHeading.vue'
 
 const props = defineProps<{
   event: HydratedEvent
@@ -70,100 +71,96 @@ const awaitingVotesCount = computed(() =>
 </script>
 
 <template>
-  <BaseCard as="section" padded data-testid="awaiting-votes-section">
-    <h2
-      class="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white"
-    >
-      <UserIcon class="size-5" />
-      Votes
-    </h2>
-
-    <div
-      v-if="!event.workspace"
-      class="py-4 text-center text-gray-500 dark:text-stone-400"
-    >
-      Loading workspace members...
-    </div>
-
-    <div
-      v-else-if="!event.datePoll"
-      class="py-4 text-center text-gray-500 dark:text-stone-400"
-    >
-      Open a date poll to start collecting votes.
-    </div>
-
-    <div v-else-if="awaitingVotesCount === 0" class="py-4 text-center">
-      <CheckCircleIcon class="mx-auto mb-2 size-8 text-green-500" />
-      <p class="text-gray-600 dark:text-stone-400">Everyone has voted!</p>
-    </div>
-
-    <div v-else class="space-y-4">
-      <div v-for="group in memberGroups" :key="group.label">
-        <h3
-          class="mb-2 text-sm font-medium"
-          :class="
-            group.completed
-              ? 'text-green-600 dark:text-green-400'
-              : 'text-gray-500 dark:text-stone-400'
-          "
-        >
-          {{ group.label }}
-        </h3>
-        <ul class="space-y-2">
-          <li
-            v-for="member in group.members"
-            :key="member.id"
-            class="flex items-center gap-3 rounded-md px-3 py-2"
-            :class="
-              group.completed
-                ? 'bg-green-50 dark:bg-green-900/20'
-                : member.userId === currentUserId
-                  ? 'bg-amber-50 ring-1 ring-amber-200 dark:bg-amber-900/20 dark:ring-amber-800'
-                  : 'bg-gray-50 dark:bg-stone-700/50'
-            "
-          >
-            <div
-              class="flex size-8 items-center justify-center rounded-full"
-              :class="
-                group.completed
-                  ? 'bg-green-200 dark:bg-green-800'
-                  : member.userId === currentUserId
-                    ? 'bg-amber-200 dark:bg-amber-800'
-                    : 'bg-gray-200 dark:bg-stone-600'
-              "
-            >
-              <CheckCircleIcon
-                v-if="group.completed"
-                class="size-4 text-green-600 dark:text-green-400"
-              />
-              <UserIcon
-                v-else
-                class="size-4"
-                :class="
-                  member.userId === currentUserId
-                    ? 'text-amber-600 dark:text-amber-400'
-                    : 'text-gray-500 dark:text-stone-400'
-                "
-              />
-            </div>
-            <span class="text-gray-900 dark:text-white">
-              {{ member.name || member.email || 'Unknown' }}
-              <span
-                v-if="member.userId === currentUserId"
-                class="text-sm text-amber-600 dark:text-amber-400"
-              >
-                (you)
-              </span>
-            </span>
-          </li>
-        </ul>
+  <section data-testid="awaiting-votes-section">
+    <SectionHeading :icon="UserIcon" title="Votes" />
+    <BaseCard padded>
+      <div
+        v-if="!event.workspace"
+        class="py-4 text-center text-gray-500 dark:text-stone-400"
+      >
+        Loading workspace members...
       </div>
 
-      <p class="text-sm text-gray-500 dark:text-stone-400">
-        {{ awaitingVotesCount }}
-        {{ awaitingVotesCount === 1 ? "person hasn't" : "people haven't" }}
-        fully voted yet
-      </p>
-    </div>
-  </BaseCard>
+      <div
+        v-else-if="!event.datePoll"
+        class="py-4 text-center text-gray-500 dark:text-stone-400"
+      >
+        Open a date poll to start collecting votes.
+      </div>
+
+      <div v-else-if="awaitingVotesCount === 0" class="py-4 text-center">
+        <CheckCircleIcon class="mx-auto mb-2 size-8 text-green-500" />
+        <p class="text-gray-600 dark:text-stone-400">Everyone has voted!</p>
+      </div>
+
+      <div v-else class="space-y-4">
+        <div v-for="group in memberGroups" :key="group.label">
+          <h3
+            class="mb-2 text-sm font-medium"
+            :class="
+              group.completed
+                ? 'text-green-600 dark:text-green-400'
+                : 'text-gray-500 dark:text-stone-400'
+            "
+          >
+            {{ group.label }}
+          </h3>
+          <ul class="space-y-2">
+            <li
+              v-for="member in group.members"
+              :key="member.id"
+              class="flex items-center gap-3 rounded-md px-3 py-2"
+              :class="
+                group.completed
+                  ? 'bg-green-50 dark:bg-green-900/20'
+                  : member.userId === currentUserId
+                    ? 'bg-amber-50 ring-1 ring-amber-200 dark:bg-amber-900/20 dark:ring-amber-800'
+                    : 'bg-gray-50 dark:bg-stone-700/50'
+              "
+            >
+              <div
+                class="flex size-8 items-center justify-center rounded-full"
+                :class="
+                  group.completed
+                    ? 'bg-green-200 dark:bg-green-800'
+                    : member.userId === currentUserId
+                      ? 'bg-amber-200 dark:bg-amber-800'
+                      : 'bg-gray-200 dark:bg-stone-600'
+                "
+              >
+                <CheckCircleIcon
+                  v-if="group.completed"
+                  class="size-4 text-green-600 dark:text-green-400"
+                />
+                <UserIcon
+                  v-else
+                  class="size-4"
+                  :class="
+                    member.userId === currentUserId
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-gray-500 dark:text-stone-400'
+                  "
+                />
+              </div>
+              <span class="text-gray-900 dark:text-white">
+                {{ member.name || member.email || 'Unknown' }}
+                <span
+                  v-if="member.userId === currentUserId"
+                  class="text-sm text-amber-600 dark:text-amber-400"
+                >
+                  (you)
+                </span>
+              </span>
+            </li>
+          </ul>
+        </div>
+
+        <p class="text-sm text-gray-500 dark:text-stone-400">
+          {{ awaitingVotesCount }}
+          {{ awaitingVotesCount === 1 ? "person hasn't" : "people haven't" }}
+          fully voted yet
+        </p>
+      </div>
+    </BaseCard>
+  </section>
 </template>

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import {
+  ArrowDownLeftIcon,
+  ArrowUpRightIcon,
   BanknotesIcon,
   ChevronDownIcon,
   QrCodeIcon,
@@ -25,6 +27,7 @@ import { useLocale } from '@/composables/useLocale'
 import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import TimeAnchor from '@/components/common/TimeAnchor.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
+import SectionHeading from '@/components/common/SectionHeading.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import AlertBox from '@/components/common/AlertBox.vue'
 import AppButton from '@/components/common/AppButton.vue'
@@ -227,9 +230,7 @@ async function handleUnmark(net: RecentSettlement) {
       class="flex flex-col gap-8"
     >
       <section v-if="owedToYou.length > 0">
-        <h2 class="mb-3 text-lg font-semibold text-gray-900 dark:text-white">
-          Owed to you
-        </h2>
+        <SectionHeading :icon="ArrowDownLeftIcon" title="Owed to you" />
         <ul class="space-y-3">
           <BaseCard
             v-for="net in owedToYou"
@@ -318,9 +319,7 @@ async function handleUnmark(net: RecentSettlement) {
       </section>
 
       <section v-if="youOwe.length > 0">
-        <h2 class="mb-3 text-lg font-semibold text-gray-900 dark:text-white">
-          You owe
-        </h2>
+        <SectionHeading :icon="ArrowUpRightIcon" title="You owe" />
         <ul class="space-y-3">
           <BaseCard
             v-for="net in youOwe"
@@ -405,9 +404,7 @@ async function handleUnmark(net: RecentSettlement) {
       </section>
 
       <section v-if="recentSettlements.length > 0" data-testid="recent-settled">
-        <h2 class="mb-3 text-lg font-semibold text-gray-900 dark:text-white">
-          Recently settled
-        </h2>
+        <SectionHeading :icon="CheckCircleIcon" title="Recently settled" />
         <ul class="space-y-3">
           <!-- Recently-settled cards override BaseCard's default surface with a
                muted treatment — no shadow, no ring, soft tint. Reads as "at

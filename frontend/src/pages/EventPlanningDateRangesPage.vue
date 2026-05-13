@@ -17,6 +17,7 @@ import AppButton from '@/components/common/AppButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import { useDateRangeActions } from '@/composables/useDateRangeActions'
 import { can } from '@/composables/usePermission'
@@ -111,13 +112,28 @@ async function deleteRange(dateRangeId: string): Promise<void> {
     </div>
 
     <div v-else>
-      <PageHeader title="Edit Date Ranges" size="sm" :icon="CalendarDaysIcon" />
+      <PageHeader
+        title="Edit Date Ranges"
+        size="sm"
+        :icon="CalendarDaysIcon"
+      >
+        <AppButton
+          v-if="canManageDateRanges && dateRanges.length > 0"
+          :disabled="datePollsStore.loading"
+          @click="handleAddDateRange"
+        >
+          <PlusIcon class="size-4" />
+          Add Date Range
+        </AppButton>
+      </PageHeader>
 
       <section>
-        <div class="mb-4 flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-            Date Options
-          </h2>
+        <EmptyState
+          v-if="dateRanges.length === 0"
+          :icon="CalendarDaysIcon"
+          heading="No date ranges yet"
+          description="Add a date range so members have something to vote on."
+        >
           <AppButton
             v-if="canManageDateRanges"
             :disabled="datePollsStore.loading"
@@ -126,21 +142,7 @@ async function deleteRange(dateRangeId: string): Promise<void> {
             <PlusIcon class="size-4" />
             Add Date Range
           </AppButton>
-        </div>
-
-        <div v-if="dateRanges.length === 0" class="py-12 text-center">
-          <p class="mb-4 text-gray-500 dark:text-stone-400">
-            No date ranges added yet.
-          </p>
-          <AppButton
-            v-if="canManageDateRanges"
-            :disabled="datePollsStore.loading"
-            @click="handleAddDateRange"
-          >
-            <PlusIcon class="size-4" />
-            Add Date Range
-          </AppButton>
-        </div>
+        </EmptyState>
 
         <ul v-else class="space-y-3">
           <BaseCard

@@ -2,13 +2,21 @@
 import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
-import { PlusIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline'
+import {
+  ArchiveBoxIcon,
+  BoltIcon,
+  CalendarDaysIcon,
+  ClockIcon,
+  HandRaisedIcon,
+  PlusIcon,
+} from '@heroicons/vue/24/outline'
 import { formatDateRange } from '@/utils/date'
 import { useEventsStore } from '@/stores'
 import { useEventsList } from '@/composables/useEventsList'
 import CreateEventWizard from '@/components/events/CreateEventWizard.vue'
 import EventListItem from '@/components/events/EventListItem.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
+import SectionHeading from '@/components/common/SectionHeading.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import AppButton from '@/components/common/AppButton.vue'
@@ -50,7 +58,11 @@ function formatDateRangeSummary(
 
 <template>
   <div>
-    <PageHeader title="Events" data-testid="page-title">
+    <PageHeader
+      title="Events"
+      data-testid="page-title"
+      :icon="CalendarDaysIcon"
+    >
       <AppButton data-testid="new-event-button" @click="showWizard = true">
         <PlusIcon class="size-5" />
         New Event
@@ -78,9 +90,7 @@ function formatDateRangeSummary(
         v-if="currentEvents.length > 0"
         data-testid="happening-now-section"
       >
-        <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-          Happening Now
-        </h2>
+        <SectionHeading :icon="BoltIcon" title="Happening Now" />
         <ul class="space-y-4">
           <EventListItem
             v-for="event in currentEvents"
@@ -105,9 +115,7 @@ function formatDateRangeSummary(
       </section>
 
       <section v-if="upcomingEvents.length > 0" data-testid="upcoming-section">
-        <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-          Upcoming
-        </h2>
+        <SectionHeading :icon="ClockIcon" title="Upcoming" />
         <ul class="space-y-4">
           <EventListItem
             v-for="event in upcomingEvents"
@@ -132,9 +140,7 @@ function formatDateRangeSummary(
       </section>
 
       <section v-if="planningEvents.length > 0">
-        <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-          Planning
-        </h2>
+        <SectionHeading :icon="HandRaisedIcon" title="Planning" />
         <ul class="space-y-4">
           <EventListItem
             v-for="event in planningEvents"
@@ -151,9 +157,7 @@ function formatDateRangeSummary(
       </section>
 
       <section v-if="pastEvents.length > 0">
-        <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-          Past
-        </h2>
+        <SectionHeading :icon="ArchiveBoxIcon" title="Past" />
         <ul class="space-y-4">
           <EventListItem
             v-for="event in pastEvents"

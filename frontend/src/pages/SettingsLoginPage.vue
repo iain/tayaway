@@ -60,10 +60,10 @@ const sessionsRef = ref<InstanceType<typeof SessionsList> | null>(null)
 
 <template>
   <div class="space-y-6">
-    <BaseCard padded>
+    <section>
       <SectionHeading :icon="EnvelopeIcon" title="Email" />
-
-      <dl class="divide-y divide-gray-200 dark:divide-stone-700">
+      <BaseCard padded>
+        <dl class="divide-y divide-gray-200 dark:divide-stone-700">
         <DefinitionRow
           label="Email"
           value-class="truncate"
@@ -124,24 +124,27 @@ const sessionsRef = ref<InstanceType<typeof SessionsList> | null>(null)
         </DefinitionRow>
       </dl>
 
-      <AlertBox
-        v-if="successMessage"
-        data-testid="email-change-success"
-        variant="success"
-        class="mt-4"
-      >
-        <p class="text-sm">
-          {{ successMessage }}
-        </p>
-      </AlertBox>
-    </BaseCard>
+        <AlertBox
+          v-if="successMessage"
+          data-testid="email-change-success"
+          variant="success"
+          class="mt-4"
+        >
+          <p class="text-sm">
+            {{ successMessage }}
+          </p>
+        </AlertBox>
+      </BaseCard>
+    </section>
 
-    <BaseCard padded>
+    <section>
       <SectionHeading :icon="KeyIcon" title="Passkeys" />
-      <PasskeysList />
-    </BaseCard>
+      <BaseCard padded>
+        <PasskeysList />
+      </BaseCard>
+    </section>
 
-    <BaseCard padded>
+    <section>
       <SectionHeading :icon="ComputerDesktopIcon" title="Active Sessions">
         <TextButton
           v-if="
@@ -160,7 +163,9 @@ const sessionsRef = ref<InstanceType<typeof SessionsList> | null>(null)
           }}
         </TextButton>
       </SectionHeading>
-      <SessionsList ref="sessionsRef" bare />
-    </BaseCard>
+      <BaseCard padded>
+        <SessionsList ref="sessionsRef" bare />
+      </BaseCard>
+    </section>
   </div>
 </template>

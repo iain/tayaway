@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { CalendarDaysIcon, ChevronRightIcon } from '@heroicons/vue/24/outline'
+import {
+  CalendarDaysIcon,
+  ChevronRightIcon,
+  UserGroupIcon,
+} from '@heroicons/vue/24/outline'
 import {
   formatEventDateRange,
   type RsvpEventItem,
 } from '@/composables/useEventsNeedingRsvp'
 import BaseCard from '@/components/common/BaseCard.vue'
+import SectionHeading from '@/components/common/SectionHeading.vue'
 
 defineProps<{
   events: RsvpEventItem[]
@@ -20,9 +25,7 @@ function navigateToEventPage(eventId: string): void {
 
 <template>
   <section>
-    <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-      Events awaiting your RSVP
-    </h2>
+    <SectionHeading :icon="UserGroupIcon" title="Events awaiting your RSVP" />
 
     <ul class="space-y-3">
       <BaseCard

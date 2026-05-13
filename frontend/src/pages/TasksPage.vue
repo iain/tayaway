@@ -225,7 +225,11 @@ function handleNewListBlur(): void {
 
 <template>
   <div>
-    <PageHeader title="Tasks" data-testid="page-title">
+    <PageHeader
+      title="Tasks"
+      data-testid="page-title"
+      :icon="ClipboardDocumentListIcon"
+    >
       <AppButton data-testid="add-task-list-button" @click="openNewListInput">
         <PlusIcon class="size-5" />
         New List
