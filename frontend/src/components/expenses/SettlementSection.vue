@@ -22,7 +22,7 @@ import {
   type PreviewTransfer,
   type AnnotatedTransfer,
 } from '@/utils/settlement'
-import { formatDateTime, formatRelativeDate } from '@/utils/date'
+import TimeAnchor from '@/components/common/TimeAnchor.vue'
 import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import { getMemberName } from '@/utils/member'
 import AppButton from '@/components/common/AppButton.vue'
@@ -92,10 +92,6 @@ function activeTransfersForSettlement(settlementId: string) {
 function allTransfersPaid(settlementId: string): boolean {
   const transfers = activeTransfersForSettlement(settlementId)
   return transfers.length > 0 && transfers.every((t) => t.paidAt !== null)
-}
-
-function formatDate(iso: string): string {
-  return formatDateTime(iso)
 }
 
 const showPreviewModal = ref(false)
@@ -434,9 +430,7 @@ async function handlePaidClick(
             <span v-if="settlement.previousSettlementId">Top-up</span>
             <span v-else>Settled</span>
             by {{ getMemberName(settlement.userId, pool) }}
-            <span :title="formatDate(settlement.createdAt)">
-              {{ formatRelativeDate(settlement.createdAt) }}
-            </span>
+            <TimeAnchor :at="settlement.createdAt" />
           </span>
           <AppBadge v-if="allTransfersPaid(settlement.id)" variant="success">
             <CheckCircleIcon class="size-3" />

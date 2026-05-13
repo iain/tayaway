@@ -75,10 +75,10 @@ describe('formatRelativeDate', () => {
     vi.useRealTimers()
   })
 
-  it('returns "Just now" for very recent timestamps', () => {
+  it('returns "just now" for very recent timestamps', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2024-06-15T12:00:00Z'))
-    expect(formatRelativeDate('2024-06-15T12:00:00Z')).toBe('Just now')
+    expect(formatRelativeDate('2024-06-15T12:00:00Z')).toBe('just now')
   })
 
   it('returns minutes ago for timestamps within an hour', () => {
@@ -93,13 +93,26 @@ describe('formatRelativeDate', () => {
     expect(formatRelativeDate('2024-06-15T12:00:00Z')).toBe('3h ago')
   })
 
-  it('returns days ago for timestamps within 30 days', () => {
+  it('returns days ago for timestamps within a week', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2024-06-20T12:00:00Z'))
     expect(formatRelativeDate('2024-06-15T12:00:00Z')).toBe('5d ago')
   })
 
-  it('falls back to a date string for timestamps older than 30 days', () => {
+  it('returns weeks ago for timestamps within four weeks', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2024-07-06T12:00:00Z'))
+    expect(formatRelativeDate('2024-06-15T12:00:00Z')).toBe('3w ago')
+  })
+
+  it('uses "in" for future timestamps', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2024-06-15T12:00:00Z'))
+    expect(formatRelativeDate('2024-06-15T14:30:00Z')).toBe('in 2h')
+    expect(formatRelativeDate('2024-06-17T12:00:00Z')).toBe('in 2d')
+  })
+
+  it('falls back to a date string for timestamps older than four weeks', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2024-08-15T12:00:00Z'))
     const result = formatRelativeDate('2024-06-15T12:00:00Z')

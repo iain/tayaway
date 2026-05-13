@@ -65,11 +65,16 @@ export function formatDateTime(isoString: string): string {
 }
 
 /**
- * "Just now", "5m ago", "2h ago", "3d ago", or fallback to short date.
+ * Compact relative time: "just now", "5m ago", "2h ago", "3d ago", "2w ago",
+ * "in 5m", "in 3d", or a fallback short date for anything older than four
+ * weeks. The Tayaway time voice — always compact units (`m`/`h`/`d`/`w`),
+ * never long forms, anchored to a verb by the caller ("Sent 3h ago" rather
+ * than "Sent three hours ago").
  *
- * Accepts an optional `now` so consumers with a reactive clock (e.g. the
- * layout's minute ticker) can pass it in and have the output update as
- * time passes. Defaults to Date.now() for one-shot callers.
+ * Accepts an optional `now` so consumers with a reactive clock (the shared
+ * minute ticker behind `useRelativeTime`) can pass it in and have the
+ * output update as time passes. Defaults to Date.now() for one-shot
+ * callers.
  */
 export function formatRelativeDate(
   isoString: string,
@@ -77,19 +82,29 @@ export function formatRelativeDate(
 ): string {
   const date = new Date(isoString)
   const diffMs = now - date.getTime()
-  const diffMinutes = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
+  const absMs = Math.abs(diffMs)
+  const isPast = diffMs >= 0
 
-  if (diffMinutes < 1) return 'Just now'
-  if (diffMinutes < 60) return `${diffMinutes}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
-  if (diffDays < 30) return `${diffDays}d ago`
-  return date.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
+  const diffMinutes = Math.floor(absMs / 60_000)
+  const diffHours = Math.floor(absMs / 3_600_000)
+  const diffDays = Math.floor(absMs / 86_400_000)
+  const diffWeeks = Math.floor(absMs / (7 * 86_400_000))
+
+  if (diffMinutes < 1) return 'just now'
+
+  let unit: string
+  if (diffMinutes < 60) unit = `${diffMinutes}m`
+  else if (diffHours < 24) unit = `${diffHours}h`
+  else if (diffDays < 7) unit = `${diffDays}d`
+  else if (diffWeeks < 4) unit = `${diffWeeks}w`
+  else
+    return date.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
+
+  return isPast ? `${unit} ago` : `in ${unit}`
 }
 
 /** "Past deadline", "Due today", "Due tomorrow", "Due in 3 days", or short date */

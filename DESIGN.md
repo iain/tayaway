@@ -303,6 +303,13 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 - **Right slot:** Optional action slot — typically a `TextButton` ("View all", "Edit") or a count.
 - **Rule:** The amber-icon section header is the system's _only_ mandatory color use — every region of every page is announced this way.
 
+### Time anchors (`TimeAnchor`)
+
+- **Shape:** A native `<time datetime="…">` wrapped in a span that prepends an optional verb slot. The verb sets context ("Sent", "Last synced", "Daisy paid", "Expires"); the component appends the compact relative time.
+- **Compact unit voice:** `m` (under an hour), `h` (under a day), `d` (under a week), `w` (under four weeks). Anything older falls back to a short absolute date. Past renders as `"3h ago"`, future as `"in 3h"`, anything within the last minute as `"just now"`. Long forms ("three hours ago") are a violation.
+- **Live ticking:** Reads from the shared `useMinuteTicker`, so an "8m ago" row becomes "9m ago" without a refresh and every TimeAnchor on a page agrees on what "now" means.
+- **Rule:** Pick the verb in the right tense — `<TimeAnchor>Expired</TimeAnchor>` for past, `<TimeAnchor>Expires</TimeAnchor>` for future. The primitive doesn't try to be clever; the consumer chose the verb.
+
 ### Empty states (`EmptyState`)
 
 - **Shape:** Centered `py-12`, `mx-auto` Heroicons icon at 48px in `text-amber-500` (light) / `text-amber-400` (dark), `text-sm font-semibold` heading, `text-base text-gray-500` description, slot for an action button below.

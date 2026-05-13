@@ -23,6 +23,7 @@ import AppButton from '@/components/common/AppButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import AppBadge from '@/components/common/AppBadge.vue'
 import AppAvatar from '@/components/common/AppAvatar.vue'
+import TimeAnchor from '@/components/common/TimeAnchor.vue'
 import AlertBox from '@/components/common/AlertBox.vue'
 import type { PoolMember, PoolWorkspaceInvite } from '@/types/pool'
 import { can } from '@/composables/usePermission'
@@ -155,17 +156,9 @@ async function handleRemind(id: string): Promise<void> {
 }
 
 function inviteExpiryText(invite: PoolWorkspaceInvite): string {
-  const expiresAt = new Date(invite.expiresAt)
-  const now = new Date()
-  if (expiresAt < now) {
-    return `Expired ${formatRelativeDate(invite.expiresAt)}`
-  }
-  const diffMs = expiresAt.getTime() - now.getTime()
-  const diffMinutes = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  if (diffMinutes < 60) return `Expires in ${diffMinutes}m`
-  if (diffHours < 24) return `Expires in ${diffHours}h`
-  return `Expires in ${Math.floor(diffHours / 24)}d`
+  const verb =
+    new Date(invite.expiresAt) < new Date() ? 'Expired' : 'Expires'
+  return `${verb} ${formatRelativeDate(invite.expiresAt)}`
 }
 
 function invitedByName(invite: PoolWorkspaceInvite): string | null {
@@ -267,7 +260,7 @@ onMounted(() => {
                     </AppBadge>
                     <AppBadge v-else variant="warning"> Pending </AppBadge>
                     <span class="text-xs text-gray-400 dark:text-stone-500">
-                      Sent {{ formatRelativeDate(invite.createdAt) }}
+                      <TimeAnchor :at="invite.createdAt">Sent</TimeAnchor>
                       <template v-if="invitedByName(invite)">
                         by {{ invitedByName(invite) }}
                       </template>

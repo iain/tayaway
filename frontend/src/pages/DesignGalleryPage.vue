@@ -19,6 +19,7 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
+import TimeAnchor from '@/components/common/TimeAnchor.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import TextButton from '@/components/common/TextButton.vue'
 import {
@@ -37,6 +38,22 @@ const radioValue = ref('a')
 const checked = ref(true)
 const toggleOn = ref(true)
 const modalOpen = ref(false)
+
+// Live timestamps for the TimeAnchor showcase — sit mid-tier (e.g. 23m, 5h)
+// rather than at boundaries so a snapshot taken a few seconds later still
+// formats the same. Subsequent baseline refreshes will pick up the latest
+// tier the wall clock has crossed into.
+const renderedAt = Date.now()
+const SECOND = 1_000
+const MINUTE = 60 * SECOND
+const HOUR = 60 * MINUTE
+const DAY = 24 * HOUR
+const justNowTs = new Date(renderedAt - 20 * SECOND).toISOString()
+const minutesAgoTs = new Date(renderedAt - 23 * MINUTE).toISOString()
+const hoursAgoTs = new Date(renderedAt - 5 * HOUR).toISOString()
+const daysAgoTs = new Date(renderedAt - 2 * DAY).toISOString()
+const weeksAgoTs = new Date(renderedAt - 2 * 7 * DAY).toISOString()
+const futureTs = new Date(renderedAt + 3 * HOUR).toISOString()
 </script>
 
 <template>
@@ -262,6 +279,56 @@ const modalOpen = ref(false)
                     </tr>
                   </tbody>
                 </table>
+              </div>
+            </BaseCard>
+          </div>
+
+          <!-- Time anchors. The Tayaway time voice in one primitive: compact
+               units (m/h/d/w), always anchored to a verb in the right tense.
+               Past gets "ago", future gets "in". Timestamps live-tick via
+               the shared minute clock, so 23m → 24m without a refresh. -->
+          <div class="mt-section">
+            <SectionHeading :icon="InboxIcon" title="Time" />
+            <BaseCard padded>
+              <div class="space-y-4 text-meta">
+                <div class="text-ink-muted">
+                  <p class="text-ink-faint text-xs tracking-wide uppercase">
+                    Tiers
+                  </p>
+                  <div class="mt-2 grid grid-cols-2 gap-x-6 gap-y-1">
+                    <span>under a minute</span>
+                    <TimeAnchor :at="justNowTs" />
+                    <span>under an hour</span>
+                    <TimeAnchor :at="minutesAgoTs" />
+                    <span>under a day</span>
+                    <TimeAnchor :at="hoursAgoTs" />
+                    <span>under a week</span>
+                    <TimeAnchor :at="daysAgoTs" />
+                    <span>under four weeks</span>
+                    <TimeAnchor :at="weeksAgoTs" />
+                    <span>future</span>
+                    <TimeAnchor :at="futureTs" />
+                  </div>
+                </div>
+                <div class="text-ink-muted">
+                  <p class="text-ink-faint text-xs tracking-wide uppercase">
+                    Anchored to a verb
+                  </p>
+                  <ul class="mt-2 space-y-1">
+                    <li>
+                      <TimeAnchor :at="minutesAgoTs">Last synced</TimeAnchor>
+                    </li>
+                    <li>
+                      <TimeAnchor :at="hoursAgoTs">Daisy paid</TimeAnchor>
+                    </li>
+                    <li>
+                      <TimeAnchor :at="daysAgoTs">Sent</TimeAnchor>
+                    </li>
+                    <li>
+                      <TimeAnchor :at="futureTs">Expires</TimeAnchor>
+                    </li>
+                  </ul>
+                </div>
               </div>
             </BaseCard>
           </div>

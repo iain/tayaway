@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watchEffect } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter, useRoute } from 'vue-router'
 import {
@@ -28,6 +28,7 @@ import {
 } from '@/stores'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useDarkMode } from '@/composables/useDarkMode'
+import { useMinuteTicker } from '@/composables/useMinuteTicker'
 import {
   getStaleness,
   staleDays,
@@ -63,13 +64,10 @@ const { pendingCount } = storeToRefs(commandQueueStore)
 const showConnectionBadge = computed(() => wsState.value !== 'authenticated')
 const { currentWorkspace, otherWorkspaces } = storeToRefs(workspaceStore)
 
-// Ticks once a minute so the staleness indicators advance from "fresh" to
-// "stale" to "warning" without a page refresh. Stops on unmount.
-const now = ref(Date.now())
-const nowTicker = setInterval(() => {
-  now.value = Date.now()
-}, 60_000)
-onUnmounted(() => clearInterval(nowTicker))
+// Staleness indicators tick once a minute via the shared minute ticker so
+// "fresh" → "stale" → "warning" advances without a page refresh, and so the
+// nav agrees with every `<TimeAnchor>` on what "now" means.
+const { now } = useMinuteTicker()
 
 // Staleness tier derived locally from the persisted syncedAt + `now`, so it
 // advances in-place while the user is offline. Returns null once a live sync

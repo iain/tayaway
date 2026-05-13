@@ -21,7 +21,7 @@ import {
 import { getMemberName } from '@/utils/member'
 import { formatAmount } from '@/utils/format'
 import LedgerAmount from '@/components/common/LedgerAmount.vue'
-import { formatRelativeDate } from '@/utils/date'
+import TimeAnchor from '@/components/common/TimeAnchor.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import AlertBox from '@/components/common/AlertBox.vue'
@@ -430,7 +430,7 @@ async function handleUnmark(net: RecentSettlement) {
                   <LedgerAmount :amount="net.amount" />
                 </p>
                 <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
-                  {{ formatRelativeDate(net.latestPaidAt) }}
+                  <TimeAnchor :at="net.latestPaidAt" />
                   <template v-if="settledByLabel(net)">
                     · {{ settledByLabel(net) }}
                   </template>
