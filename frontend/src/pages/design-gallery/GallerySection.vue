@@ -32,6 +32,11 @@ const modes = ['light', 'dark'] as const
         ]"
         :data-mode="mode"
       >
+        <p
+          class="text-ink-faint mb-4 text-xs font-semibold tracking-wide uppercase"
+        >
+          {{ mode }}
+        </p>
         <slot :mode="mode" />
       </div>
     </div>

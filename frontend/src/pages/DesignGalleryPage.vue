@@ -874,15 +874,13 @@ function openModal(size: ModalSize): void {
               description="A region body, not a card child. The amber landmark icon at 48px announces the missing region."
             >
               <SectionHeading :icon="CalendarDaysIcon" title="EmptyState" />
-              <div class="ring-ring-hairline rounded-lg ring-1">
-                <EmptyState
-                  :icon="CalendarDaysIcon"
-                  heading="No events yet"
-                  description="Create one to start coordinating with the group."
-                >
-                  <AppButton>Plan an event</AppButton>
-                </EmptyState>
-              </div>
+              <EmptyState
+                :icon="CalendarDaysIcon"
+                heading="No events yet"
+                description="Create one to start coordinating with the group."
+              >
+                <AppButton>Plan an event</AppButton>
+              </EmptyState>
             </GallerySection>
 
             <GallerySection
