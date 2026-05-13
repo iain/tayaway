@@ -309,67 +309,67 @@ function openModal(size: ModalSize): void {
                     </IconButton>
                   </div>
                 </div>
-
-                <GalleryRule
-                  rule="One-Action Rule"
-                  statement="Each card or modal carries at most one Primary button. Secondary actions are TextButtons or the secondary variant."
-                  doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#5-components"
-                >
-                  <div class="border-line bg-surface rounded-md border p-4">
-                    <h5 class="text-ink font-semibold">Lock in dates</h5>
-                    <p class="text-ink-muted text-sm">
-                      The group has agreed on the 4th and 5th of October.
-                      Confirm to send the calendar invite.
-                    </p>
-                    <div class="mt-4 flex items-center gap-3">
-                      <AppButton variant="primary">Send invite</AppButton>
-                      <TextButton variant="secondary">Edit dates</TextButton>
-                    </div>
-                  </div>
-                </GalleryRule>
-
-                <GalleryRule
-                  rule="List-Row Rule"
-                  statement="Repeated row actions are never Primary. Use secondary, inflow, or outflow so a stack of five rows doesn't read as five page-level CTAs."
-                  doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#5-components"
-                >
-                  <ul
-                    class="border-line divide-line divide-y rounded-md border"
-                  >
-                    <li
-                      v-for="row in [
-                        { name: 'Daisy', amount: 24.5, action: 'inflow' as const, label: 'Mark received' },
-                        { name: 'Iain', amount: 9.25, action: 'outflow' as const, label: 'Pay via QR' },
-                        { name: 'Joep', amount: 18, action: 'inflow' as const, label: 'Mark received' },
-                      ]"
-                      :key="row.name"
-                      class="bg-surface flex items-center gap-3 px-4 py-3"
-                    >
-                      <span class="text-ink text-label flex-1">{{
-                        row.name
-                      }}</span>
-                      <LedgerAmount
-                        :amount="row.amount"
-                        :direction="row.action === 'inflow' ? 'in' : 'out'"
-                      />
-                      <AppButton :variant="row.action" size="sm">{{
-                        row.label
-                      }}</AppButton>
-                    </li>
-                  </ul>
-                </GalleryRule>
-
-                <GalleryRule
-                  rule="Dual-Coding Rule"
-                  statement="Where rows carry directional meaning, pair inflow with outflow so the colours echo the row's other signals."
-                  doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#5-components"
-                >
-                  <div class="flex flex-wrap items-center gap-2">
-                    <AppButton variant="inflow" size="sm">+ Received</AppButton>
-                    <AppButton variant="outflow" size="sm">− Pay</AppButton>
-                  </div>
-                </GalleryRule>
               </BaseCard>
+
+              <GalleryRule
+                rule="One-Action Rule"
+                statement="Each card or modal carries at most one Primary button. Secondary actions are TextButtons or the secondary variant."
+                doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#5-components"
+              >
+                <BaseCard padded>
+                  <h5 class="text-ink font-semibold">Lock in dates</h5>
+                  <p class="text-ink-muted text-sm">
+                    The group has agreed on the 4th and 5th of October.
+                    Confirm to send the calendar invite.
+                  </p>
+                  <div class="mt-4 flex items-center gap-3">
+                    <AppButton variant="primary">Send invite</AppButton>
+                    <TextButton variant="secondary">Edit dates</TextButton>
+                  </div>
+                </BaseCard>
+              </GalleryRule>
+
+              <GalleryRule
+                rule="List-Row Rule"
+                statement="Repeated row actions are never Primary. Use secondary, inflow, or outflow so a stack of five rows doesn't read as five page-level CTAs."
+                doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#5-components"
+              >
+                <ul
+                  class="border-line divide-line bg-surface divide-y rounded-md border"
+                >
+                  <li
+                    v-for="row in [
+                      { name: 'Daisy', amount: 24.5, action: 'inflow' as const, label: 'Mark received' },
+                      { name: 'Iain', amount: 9.25, action: 'outflow' as const, label: 'Pay via QR' },
+                      { name: 'Joep', amount: 18, action: 'inflow' as const, label: 'Mark received' },
+                    ]"
+                    :key="row.name"
+                    class="flex items-center gap-3 px-4 py-3"
+                  >
+                    <span class="text-ink text-label flex-1">{{
+                      row.name
+                    }}</span>
+                    <LedgerAmount
+                      :amount="row.amount"
+                      :direction="row.action === 'inflow' ? 'in' : 'out'"
+                    />
+                    <AppButton :variant="row.action" size="sm">{{
+                      row.label
+                    }}</AppButton>
+                  </li>
+                </ul>
+              </GalleryRule>
+
+              <GalleryRule
+                rule="Dual-Coding Rule"
+                statement="Where rows carry directional meaning, pair inflow with outflow so the colours echo the row's other signals."
+                doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#5-components"
+              >
+                <div class="flex flex-wrap items-center gap-2">
+                  <AppButton variant="inflow" size="sm">+ Received</AppButton>
+                  <AppButton variant="outflow" size="sm">− Pay</AppButton>
+                </div>
+              </GalleryRule>
             </GallerySection>
 
             <GallerySection
@@ -395,21 +395,23 @@ function openModal(size: ModalSize): void {
                     <AppAvatar initials="SB" variant="pending" />
                   </div>
                 </div>
+              </BaseCard>
 
-                <GalleryRule
-                  rule="State, not decoration"
-                  statement="A badge without a meaning is a violation. The API refuses colour-name variants; always say what the badge announces."
-                  doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#5-components"
-                >
-                  <div class="border-line bg-surface flex items-center gap-3 rounded-md border px-4 py-3">
+              <GalleryRule
+                rule="State, not decoration"
+                statement="A badge without a meaning is a violation. The API refuses colour-name variants; always say what the badge announces."
+                doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#5-components"
+              >
+                <BaseCard padded>
+                  <div class="flex items-center gap-3">
                     <h5 class="text-ink text-label flex-1 font-semibold">
                       Lisbon weekend
                     </h5>
                     <AppBadge variant="pending">Voting</AppBadge>
                     <TimeAnchor :at="hoursAgoTs">Updated</TimeAnchor>
                   </div>
-                </GalleryRule>
-              </BaseCard>
+                </BaseCard>
+              </GalleryRule>
             </GallerySection>
           </GalleryGroup>
 
@@ -823,27 +825,25 @@ function openModal(size: ModalSize): void {
                 </BaseCard>
               </div>
 
-              <BaseCard padded class="mt-4">
-                <GalleryRule
-                  rule="Quiet-Surface Rule"
-                  statement="Cards stay in neutrals. Saturation belongs to actions and states. A card 'themed' with brand colour is a violation unless it's the action or urgent variant."
-                  doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#5-components"
-                >
-                  <div class="border-line bg-surface rounded-md border p-4">
-                    <div class="mb-2 flex items-center justify-between">
-                      <h5 class="text-ink font-semibold">
-                        Settlement: Daisy ↔ Iain
-                      </h5>
-                      <AppBadge variant="success">Settled</AppBadge>
-                    </div>
-                    <p class="text-ink-muted text-sm">
-                      Iain paid Daisy
-                      <LedgerAmount :amount="9.25" direction="out" /> for
-                      groceries.
-                    </p>
+              <GalleryRule
+                rule="Quiet-Surface Rule"
+                statement="Cards stay in neutrals. Saturation belongs to actions and states. A card 'themed' with brand colour is a violation unless it's the action or urgent variant."
+                doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#5-components"
+              >
+                <BaseCard padded>
+                  <div class="mb-2 flex items-center justify-between">
+                    <h5 class="text-ink font-semibold">
+                      Settlement: Daisy ↔ Iain
+                    </h5>
+                    <AppBadge variant="success">Settled</AppBadge>
                   </div>
-                </GalleryRule>
-              </BaseCard>
+                  <p class="text-ink-muted text-sm">
+                    Iain paid Daisy
+                    <LedgerAmount :amount="9.25" direction="out" /> for
+                    groceries.
+                  </p>
+                </BaseCard>
+              </GalleryRule>
             </GallerySection>
 
             <GallerySection
@@ -935,19 +935,19 @@ function openModal(size: ModalSize): void {
                   <span>icon <span class="font-mono">size-7</span> · <span class="font-mono">text-amber-600</span></span>
                   <span>subtitle <span class="font-mono">text-meta</span> · <span class="font-mono">text-ink-muted</span></span>
                 </div>
-
-                <GalleryRule
-                  rule="Amber-Icon Rule"
-                  statement="Amber landmark icons appear only on PageHeader (size-7), SectionHeading (size-5), and EmptyState (size-12). Nowhere else."
-                  doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#5-components"
-                >
-                  <p class="text-ink-muted text-sm">
-                    The amber icon is how the system tells you "you're in a
-                    new region." Reusing it on card titles, modal headers, or
-                    button glyphs dilutes that signal.
-                  </p>
-                </GalleryRule>
               </BaseCard>
+
+              <GalleryRule
+                rule="Amber-Icon Rule"
+                statement="Amber landmark icons appear only on PageHeader (size-7), SectionHeading (size-5), and EmptyState (size-12). Nowhere else."
+                doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#5-components"
+              >
+                <p class="text-ink-muted text-sm">
+                  The amber icon is how the system tells you "you're in a new
+                  region." Reusing it on card titles, modal headers, or button
+                  glyphs dilutes that signal.
+                </p>
+              </GalleryRule>
             </GallerySection>
 
             <GallerySection
