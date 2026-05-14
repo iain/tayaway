@@ -36,7 +36,7 @@ Run `mise tasks ls --all` for the full task surface.
 ### Frontend (`frontend/`)
 
 - **Framework**: Vue 3.5 with `<script setup lang="ts">`, Pinia stores, Vue Router
-- **Build**: Vite 7, Tailwind CSS 4, PWA via `vite-plugin-pwa`
+- **Build**: Vite 8, Tailwind CSS 4, PWA via `vite-plugin-pwa`
 - **Central store** (`src/stores/objectPool.ts`): Normalized object pool — all entities merged here, timestamp-based conflict resolution (newer wins)
 - **WebSocket store** (`src/stores/websocket.ts`): Connection management, full/partial sync coordination, reconnection
 - **Command queue** (`src/stores/commandQueue.ts`): Offline mutation queue persisted to IndexedDB
@@ -67,28 +67,7 @@ cd frontend && pnpm exec vitest run src/path/to/file.spec.ts
 
 Playwright tests live in `e2e/` and run against separate servers (backend :9293, frontend :5174) with a dedicated `tayaway_e2e` database.
 
-### Test-driven development
-
-Default to TDD for any non-trivial change — new behavior, bug fixes, refactors that change observable behavior. The discipline: write the test first, watch it fail for the right reason, then make it pass. Do not write implementation and tests together, and do not write the implementation first and backfill tests.
-
-The loop, one small step at a time:
-
-1. **Write one failing test.** Pick the smallest piece of behavior that moves the feature forward. Write the test as if the ideal API already existed — call the method you wish you had, with the arguments you wish it took, and assert on the result you wish it returned. This is where API design happens; the test is the first consumer of the code, so let it pull the shape of the interface.
-2. **Run the test and confirm it fails for the right reason.** A `NoMethodError` because the method doesn't exist yet, or a real assertion failure on the behavior you're adding. If it fails for the wrong reason (typo, missing fixture, unrelated error), fix the test before going further. A green test on the first run means the test isn't actually exercising the new behavior — rewrite it.
-3. **Write the simplest implementation that makes the test pass.** Don't add cases the tests don't demand. Don't generalize ahead of the next test. Just go green.
-4. **Review and clean up.** With the test green, look at both the implementation and the test. Is naming clear? Is there duplication to pull out? Does the code match surrounding conventions? Refactor with the safety net of the green test.
-5. **Decide the next test.** What's the next slice of behavior, edge case, or error path? Go back to step 1. Stop when the tests cover the behavior you set out to add — including the failure modes a reviewer would ask about.
-
-For big new features, wrap this loop in an outer one: start with a failing end-to-end test that captures the user-visible flow, then iterate the inner loop above on each unit needed to drive it green. The e2e test stays red the whole time the feature is under construction; the inner unit tests bring it home one slice at a time.
-
-When TDD doesn't fit, say so explicitly and proceed without it. Genuine cases: pure exploration to learn an unfamiliar API, throwaway scripts, UI tweaks where a test would assert on snapshot-like detail, or migrations whose only "test" is running them. Reaching for these exemptions on a normal feature is the smell — when in doubt, write the test first.
-
-A few rules that keep the loop honest:
-
-- One failing test at a time. Don't write three tests and then implement against all of them — you lose the per-step feedback that catches design problems early.
-- Don't change the test to match what the code happens to do. If a passing implementation surprises you, the test was wrong or the behavior is wrong; figure out which before moving on.
-- Tests describe behavior, not implementation. Assert on outcomes (return values, persisted state, emitted events), not on which private method got called. Behavioral tests are what makes step 4's refactor safe — they stay green when internals move, so the green you saw in step 3 still holds after cleanup.
-- If a bug slipped through, the first step of the fix is a test that reproduces it and fails. Then fix the code.
+For big new features, drive development with a failing Playwright test that captures the user-visible flow, then iterate inner-loop unit tests against the layers it touches. The e2e test stays red while the inner tests come up green one by one.
 
 ## Code conventions
 
@@ -96,7 +75,7 @@ A few rules that keep the loop honest:
 
 ### Backend
 
-- **Authorization**: see `doc/authorization.md` before changing any policy, adding policy actions, or touching `usePermission.ts`.
+- **Authorization**: see `doc/authorization.md` before changing any policy, adding policy actions, or touching `frontend/src/composables/usePermission.ts`.
 - **Module singletons**: Define singleton methods inside `class << self`. Don't use `module_function` — it duplicates each method as both a module-level and a private instance method, which obscures intent and breaks cleanly with `private` for helpers.
 - **`Result` chains**: Start chains with a bare `Success()` and put every step (including the first lookup) inside a `.bind { … }` block. Every step then reads as a uniform link in the chain — easier to reorder, insert steps, or skim — instead of having one bare leading call followed by `.bind`s.
 
@@ -113,11 +92,9 @@ Migrations run **before** the app restarts during deploy — old code is still s
 
 ## Commits and PRs
 
-- **Commit messages**: Free-form imperative subject (e.g. "Fix request body consumption in rate limiter"). No conventional commit prefixes. Always explain _why_ in the body unless the change is truly trivial. Don't list what changed unless it's not obvious from the diff.
-- **PRs**: Default to draft. Body should be minimal and focused on _why_, no headers or sections, no test plan. We squash-merge to keep main clean, so write the PR title+body as if it will become the final commit message. Always base the description on the actual diff against the base branch (`git diff main...HEAD`), not on individual commit messages — intermediate work that was later reverted should not appear in the description.
-- **No trailers or footers** — no "Generated with Claude Code", no Co-Authored-By.
-- **Cohesive commits**: Split unrelated changes into separate commits, but don't over-split. Use judgement.
-- **Don't push to main** without asking first.
+We squash-merge to `main`, so a PR's title and body should read as the commit message they'll become.
+
+Don't push to `main` without asking first.
 
 ## Environment
 
