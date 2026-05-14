@@ -120,10 +120,12 @@ RSpec.describe Auth::Passkeys::CompleteAuthentication do
 
     challenge_token, assertion = begin_and_get
 
-    # Delete user between verification and session creation
-    DB.run("SET session_replication_role = replica")
-    DB[:users].where(id: user[:id]).delete
-    DB.run("SET session_replication_role = DEFAULT")
+    # Simulates a TOCTOU between credential verification and user fetch.
+    # The FK cascade prevents an orphan passkey at the SQL level (so we
+    # can't reproduce by deleting the user), but the in-process race is
+    # real — stub User.find to return nil and exercise the missing-user
+    # branch in the service.
+    allow(User).to receive(:find).and_return(nil)
 
     result = described_class.call(
       challenge_token: challenge_token,

@@ -11,23 +11,20 @@
 ```bash
 # Install runtimes (Ruby 4.0.1, Node 24, pnpm 10)
 mise install
-
-# Configure environment
-cp backend/.env.example backend/.env.development
 ```
 
-Edit `backend/.env.development`:
-
-- Set `DATABASE_URL` to your PostgreSQL connection string
-- Generate `APP_SECRET` with: `ruby -e "require 'securerandom'; puts SecureRandom.base64(32)"`
-- Configure SMTP settings if you want emails sent (in development, login links are printed to the console instead)
+The default `DATABASE_URL` connects as a `tayaway` Postgres role, which won't exist on a fresh install. Create it with `CREATEDB` so the setup task can create the per-env databases:
 
 ```bash
-# Install dependencies and set up databases
+createuser --createdb tayaway
+```
+
+```bash
+# Install dependencies, generate dotenv files, and set up databases
 mise run setup
 ```
 
-This installs frontend (pnpm) and backend (bundler) dependencies, then creates and migrates all three databases (development, test, e2e).
+This installs frontend (pnpm) and backend (bundler) dependencies, generates `backend/.env.development` (and `.env.test`) from `backend/.env.example` with a fresh `APP_SECRET`, then creates and migrates all three databases (development, test, e2e). Edit `backend/.env.development` afterwards if you need non-default settings (custom DB URL, SMTP for outgoing email, etc.) — uncommented lines are required, commented lines show optional overrides with their defaults.
 
 If the `mmdb` gem fails to build with `'maxminddb.h' file not found`, Homebrew's `libmaxminddb` is keg-installed and isn't on mkmf's default search path. Point bundler at it once:
 
@@ -68,6 +65,10 @@ Run a single test:
 cd backend && bundle exec rspec spec/path/to/spec.rb
 cd frontend && pnpm exec vitest run src/path/to/file.spec.ts
 ```
+
+### Visual snapshot tests
+
+The Playwright suite includes one visual-regression spec (`e2e/tests/design-system.spec.ts`). Only the Linux baselines that CI generates are tracked in git; `*-darwin.png` and `*-win32.png` are gitignored. On your first local e2e run the test fails and writes the actual screenshot as the new local baseline — re-run and it'll pass. To refresh the local baseline after intentional design changes, use `mise run e2e -- design-system --update-snapshots`. To refresh the Linux baselines that CI compares against, use `mise run e2e:snapshots:update` (runs the regen workflow on GitHub Actions).
 
 ## Devcontainer (experimental)
 

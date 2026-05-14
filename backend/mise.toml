@@ -127,6 +127,10 @@ run = "ssh -p 50022 ubuntu@tayaway.nl '/var/www/tayaway/current/config/deploy/ba
 description = "Install backend dependencies"
 run = "bundle install"
 
+[tasks."config:example"]
+description = "Regenerate backend/.env.example from the Config schema"
+run = "bundle exec rake config:example"
+
 # setup:db and data:geoip live in backend/.mise/tasks/.
 
 # ── Misc ─────────────────────────────────────────────────────────────────────

@@ -25,15 +25,13 @@ RSpec.describe "Auth me endpoint" do
     end
 
     it "returns 401 when the user has been deleted" do
-      # Force eager creation of user and session before manipulating the DB
+      # Simulates a TOCTOU between session lookup and user fetch: the session
+      # row is valid but the user is gone. The FK cascade prevents an orphan
+      # session at the SQL level (so we can't reproduce by deleting the user),
+      # but the in-process race is real — stub User.find to return nil for
+      # this user_id and exercise the missing-user branch in the route.
       token = session[:token]
-      user_id = user[:id]
-
-      # Bypass FK to simulate a race condition where the user is deleted but
-      # their session row survives (e.g. between the session check and user fetch)
-      DB.run("SET session_replication_role = replica")
-      DB[:users].where(id: user_id).delete
-      DB.run("SET session_replication_role = DEFAULT")
+      allow(User).to receive(:find).and_return(nil)
 
       get "/api/auth/me", {}, { "HTTP_COOKIE" => "session_token=#{token}" }
 

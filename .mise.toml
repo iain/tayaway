@@ -229,7 +229,7 @@ run = "bundle exec cap production deploy"
 
 [tasks.setup]
 description = "Set up the project after cloning"
-depends = ["setup:deps", "setup:db", "setup:hooks"]
+depends = ["setup:deps", "setup:db", "setup:hooks", "//backend:data:geoip"]
 run = "echo \"Setup complete! Run 'mise run dev' to start.\""
 
 [tasks."setup:deps"]
@@ -238,7 +238,12 @@ depends = ["//...:setup:deps", "setup:deps-root"]
 
 [tasks."setup:deps-root"]
 description = "Install root dependencies (Playwright, prettier)"
-run = "pnpm install"
+# `playwright install` is idempotent — it skips browsers already present in
+# ~/Library/Caches/ms-playwright, so re-running setup is cheap. Skip
+# --with-deps; on Linux it shells out to apt and wants sudo, which is fine
+# in CI / the devcontainer but a friction point for a local dev setup. If
+# you hit a missing system lib, run it manually with --with-deps.
+run = ["pnpm install", "pnpm exec playwright install chromium"]
 
 [tasks."setup:db"]
 description = "Create and migrate the development, test, and e2e databases"

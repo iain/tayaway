@@ -180,7 +180,7 @@ Canonically format all mise.toml files
 
 ## `setup`
 
-- Depends: setup:deps, setup:db, setup:hooks
+- Depends: setup:deps, setup:db, setup:hooks, //backend:data:geoip
 
 - **Usage**: `setup`
 

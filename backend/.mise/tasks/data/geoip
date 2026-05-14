@@ -7,6 +7,16 @@
 
 set -euo pipefail
 
+# Idempotent when invoked without --month: skip if the mmdb already exists.
+# Mise's source/output mtime check would need a `sources` file to compare
+# against, and there isn't a meaningful one (the source is a remote URL),
+# so guard in-script. An explicit --month is treated as "go fetch that
+# snapshot" and bypasses the skip.
+if [[ -z "${usage_month:-}" && -f data/dbip-city-lite.mmdb ]]; then
+  echo "data/dbip-city-lite.mmdb already present — skipping (pass --month to force re-download)"
+  exit 0
+fi
+
 MONTH="${usage_month:-$(date +%Y-%m)}"
 URL="https://download.db-ip.com/free/dbip-city-lite-${MONTH}.mmdb.gz"
 
