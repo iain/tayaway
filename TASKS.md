@@ -21,7 +21,7 @@ Build production frontend assets
 - **Usage**: `check`
 - **Aliases**: `c`
 
-Pre-commit: lint, typecheck, test, audit, cache-version (no e2e)
+Full local validation: lint, typecheck, test, audit, cache-version (no e2e)
 
 ## `check:cache-version`
 
@@ -177,6 +177,14 @@ Lint all code (autofix locally; report-only when $CI is set)
 - **Usage**: `lint:config`
 
 Canonically format all mise.toml files
+
+## `precommit`
+
+- Depends: lint, check:cache-version
+
+- **Usage**: `precommit`
+
+Pre-commit hook: fast formatters only (lint + cache-version). Full validation lives in `check` and CI.
 
 ## `setup`
 

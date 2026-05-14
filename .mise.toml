@@ -58,7 +58,7 @@ wait_for = ["//backend:dev"]
 run = "echo 'Dev servers started'"
 
 [tasks.check]
-description = "Pre-commit: lint, typecheck, test, audit, cache-version (no e2e)"
+description = "Full local validation: lint, typecheck, test, audit, cache-version (no e2e)"
 alias = "c"
 depends = [
   "//...:lint",
@@ -67,6 +67,10 @@ depends = [
   "//...:audit",
   "check:cache-version",
 ]
+
+[tasks.precommit]
+description = "Pre-commit hook: fast formatters only (lint + cache-version). Full validation lives in `check` and CI."
+depends = ["lint", "check:cache-version"]
 
 [tasks."check:cache-version"]
 description = "Verify CACHE_VERSION is bumped when pool-cache schema changes"
@@ -266,10 +270,12 @@ done
 
 [tasks."setup:hooks"]
 description = "Install the git pre-commit hook"
-# Writes .git/hooks/pre-commit that runs `mise run check` on commit. Each
-# clone needs this once; rerunning is harmless. The unset clears the leftover
-# `core.hooksPath = .husky/_` from clones that pre-date the husky removal.
+# Writes .git/hooks/pre-commit that runs `mise run precommit` on commit
+# (fast formatters only — full validation runs in CI and via `mise run check`).
+# Each clone needs this once; rerunning is harmless. The unset clears the
+# leftover `core.hooksPath = .husky/_` from clones that pre-date the husky
+# removal.
 run = """
 git config --unset core.hooksPath 2>/dev/null || true
-mise generate git-pre-commit --task check --write
+mise generate git-pre-commit --task precommit --write
 """
