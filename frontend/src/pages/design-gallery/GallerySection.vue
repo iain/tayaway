@@ -35,7 +35,7 @@ const modes = ['light', 'dark'] as const
         :key="mode"
         :class="[
           mode,
-          'bg-surface-page ring-ring-hairline relative rounded-lg p-6 ring-1',
+          'bg-surface-page text-ink ring-ring-hairline relative rounded-lg p-6 ring-1',
         ]"
         :data-mode="mode"
       >
