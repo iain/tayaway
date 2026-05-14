@@ -138,6 +138,19 @@
   color-scheme: dark;
 }
 
+/* Eyebrow tier — small uppercase labels used to announce a region inside a
+ * card or section (column titles in the gallery, group labels in the TOC,
+ * "Tiers" / "Anchored to a verb" callouts on TimeAnchor demos). Bundles the
+ * type ramp plus the uppercase transform; color is intentionally not set so
+ * callers pick `text-ink-faint` or `text-ink-muted` per context. */
+@utility text-eyebrow {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
 html {
   @apply bg-surface-page overflow-x-hidden;
 }

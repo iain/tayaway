@@ -206,6 +206,7 @@ Each tier ships as a single Tailwind utility (`text-{tier}`) that bundles size, 
 - **Body** (`text-body`, 400 / 16px / line-height 1.5): The default. Anything a user needs to read at a glance is body size. Cap at 65–75ch where prose-like.
 - **Label** (`text-label`, 500 / 14px / line-height 1.5): Form labels, button text, primary metadata. The 14px tier is for _deliberate_ uses, not "small text".
 - **Meta** (`text-meta`, 400 / 14px / line-height 1.25): Captions, "last synced X ago", timestamps, helper text under inputs. The quietest tier; lives in `ink-faint` or `ink-muted`.
+- **Eyebrow** (`text-eyebrow`, 600 / 12px / `tracking-wide` / `uppercase`): Small uppercase labels that announce a region inside a card or section — column titles, group labels in a TOC, "Tiers" / "Anchored to a verb" callouts. Bundles the uppercase transform; pair with `text-ink-faint` for the standard quiet voice. Reach for it instead of writing `text-xs font-semibold tracking-wide uppercase` inline.
 
 ### Named Rules
 

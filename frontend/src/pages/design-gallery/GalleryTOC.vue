@@ -30,7 +30,7 @@ const grouped = computed(() => {
     <ol class="space-y-6">
       <li v-for="group in grouped" :key="group.group">
         <p
-          class="text-ink-faint mb-2 text-xs font-semibold tracking-wide uppercase"
+          class="text-ink-faint mb-2 text-eyebrow"
         >
           {{ group.group }}
         </p>

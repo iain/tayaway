@@ -277,7 +277,7 @@ function openModal(size: ModalSize): void {
                        captures resting + disabled + loading across variants. -->
                   <div class="space-y-3">
                     <p
-                      class="text-ink-faint mb-1 text-xs font-semibold tracking-wide uppercase"
+                      class="text-ink-faint mb-1 text-eyebrow"
                     >
                       States — interact for hover and focus
                     </p>
@@ -451,7 +451,7 @@ function openModal(size: ModalSize): void {
                        visible side-by-side. -->
                   <div>
                     <p
-                      class="text-ink-faint mb-2 text-xs font-semibold tracking-wide uppercase"
+                      class="text-ink-faint mb-2 text-eyebrow"
                     >
                       Same amount, four locales
                     </p>
@@ -543,7 +543,7 @@ function openModal(size: ModalSize): void {
               <BaseCard padded>
                 <div class="text-meta space-y-4">
                   <div class="text-ink-muted">
-                    <p class="text-ink-faint text-xs font-semibold tracking-wide uppercase">
+                    <p class="text-ink-faint text-eyebrow">
                       Tiers
                     </p>
                     <div class="mt-2 grid grid-cols-2 gap-x-6 gap-y-1">
@@ -562,7 +562,7 @@ function openModal(size: ModalSize): void {
                     </div>
                   </div>
                   <div class="text-ink-muted">
-                    <p class="text-ink-faint text-xs font-semibold tracking-wide uppercase">
+                    <p class="text-ink-faint text-eyebrow">
                       Anchored to a verb
                     </p>
                     <ul class="mt-2 space-y-1">
@@ -1003,7 +1003,7 @@ function openModal(size: ModalSize): void {
                 <div class="space-y-4">
                   <div>
                     <p
-                      class="text-ink-faint mb-2 text-xs font-semibold tracking-wide uppercase"
+                      class="text-ink-faint mb-2 text-eyebrow"
                     >
                       Widths
                     </p>
@@ -1020,7 +1020,7 @@ function openModal(size: ModalSize): void {
                   </div>
                   <div>
                     <p
-                      class="text-ink-faint mb-2 text-xs font-semibold tracking-wide uppercase"
+                      class="text-ink-faint mb-2 text-eyebrow"
                     >
                       Compositions
                     </p>

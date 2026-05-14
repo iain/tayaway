@@ -163,7 +163,7 @@ const avatars: { name: string; fill: string; ink: string }[] = [
 <template>
   <div class="space-y-6">
     <div>
-      <p class="text-ink-faint mb-3 text-xs font-semibold tracking-wide uppercase">
+      <p class="text-ink-faint mb-3 text-eyebrow">
         Surfaces
       </p>
       <ul class="space-y-2">
@@ -185,7 +185,7 @@ const avatars: { name: string; fill: string; ink: string }[] = [
     </div>
 
     <div>
-      <p class="text-ink-faint mb-3 text-xs font-semibold tracking-wide uppercase">
+      <p class="text-ink-faint mb-3 text-eyebrow">
         Ink
       </p>
       <ul class="space-y-2">
@@ -208,7 +208,7 @@ const avatars: { name: string; fill: string; ink: string }[] = [
     </div>
 
     <div>
-      <p class="text-ink-faint mb-3 text-xs font-semibold tracking-wide uppercase">
+      <p class="text-ink-faint mb-3 text-eyebrow">
         Lines &amp; rings
       </p>
       <ul class="space-y-2">
@@ -230,7 +230,7 @@ const avatars: { name: string; fill: string; ink: string }[] = [
     </div>
 
     <div>
-      <p class="text-ink-faint mb-3 text-xs font-semibold tracking-wide uppercase">
+      <p class="text-ink-faint mb-3 text-eyebrow">
         Focus
       </p>
       <p class="text-ink-muted text-meta mb-2">
@@ -251,7 +251,7 @@ const avatars: { name: string; fill: string; ink: string }[] = [
     </div>
 
     <div>
-      <p class="text-ink-faint mb-3 text-xs font-semibold tracking-wide uppercase">
+      <p class="text-ink-faint mb-3 text-eyebrow">
         State (fill + ink)
       </p>
       <ul class="space-y-2">
@@ -273,7 +273,7 @@ const avatars: { name: string; fill: string; ink: string }[] = [
     </div>
 
     <div>
-      <p class="text-ink-faint mb-3 text-xs font-semibold tracking-wide uppercase">
+      <p class="text-ink-faint mb-3 text-eyebrow">
         Soft buttons
       </p>
       <ul class="space-y-2">
@@ -295,7 +295,7 @@ const avatars: { name: string; fill: string; ink: string }[] = [
     </div>
 
     <div>
-      <p class="text-ink-faint mb-3 text-xs font-semibold tracking-wide uppercase">
+      <p class="text-ink-faint mb-3 text-eyebrow">
         Avatars
       </p>
       <ul class="space-y-2">
@@ -317,7 +317,7 @@ const avatars: { name: string; fill: string; ink: string }[] = [
     </div>
 
     <div>
-      <p class="text-ink-faint mb-3 text-xs font-semibold tracking-wide uppercase">
+      <p class="text-ink-faint mb-3 text-eyebrow">
         Nav
       </p>
       <div class="bg-nav text-nav-text flex items-center gap-3 rounded-md px-4 py-3">

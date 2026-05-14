@@ -7,7 +7,7 @@
 <template>
   <div class="space-y-6">
     <div>
-      <p class="text-ink-faint mb-2 text-xs font-semibold tracking-wide uppercase">
+      <p class="text-ink-faint mb-2 text-eyebrow">
         p-card · m-card — 24px
       </p>
       <div class="bg-surface ring-ring-hairline p-card rounded-md ring-1">
@@ -22,7 +22,7 @@
     </div>
 
     <div>
-      <p class="text-ink-faint mb-2 text-xs font-semibold tracking-wide uppercase">
+      <p class="text-ink-faint mb-2 text-eyebrow">
         mt-section — 32px
       </p>
       <div class="space-y-0">
@@ -40,7 +40,7 @@
     </div>
 
     <div>
-      <p class="text-ink-faint mb-2 text-xs font-semibold tracking-wide uppercase">
+      <p class="text-ink-faint mb-2 text-eyebrow">
         mb-heading — 16px
       </p>
       <div>
