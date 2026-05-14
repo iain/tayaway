@@ -133,6 +133,12 @@ const tocItems: TOCItem[] = [
   { group: 'Overlays', id: 'overlays-modal', label: 'Modal' },
   { group: 'Overlays', id: 'overlays-toast', label: 'Toast' },
   { group: 'Overlays', id: 'overlays-updatepill', label: 'Update pill' },
+  { group: 'Rules', id: 'rule-one-action', label: 'One-Action' },
+  { group: 'Rules', id: 'rule-list-row', label: 'List-Row' },
+  { group: 'Rules', id: 'rule-dual-coding', label: 'Dual-Coding' },
+  { group: 'Rules', id: 'rule-state-not-decoration', label: 'State, not decoration' },
+  { group: 'Rules', id: 'rule-quiet-surface', label: 'Quiet-Surface' },
+  { group: 'Rules', id: 'rule-amber-icon', label: 'Amber-Icon' },
 ]
 
 const toastInfo = {
@@ -312,6 +318,7 @@ function openModal(size: ModalSize): void {
               </BaseCard>
 
               <GalleryRule
+                id="rule-one-action"
                 rule="One-Action Rule"
                 statement="Each card or modal carries at most one Primary button. Secondary actions are TextButtons or the secondary variant."
                 doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#one-action-rule"
@@ -330,6 +337,7 @@ function openModal(size: ModalSize): void {
               </GalleryRule>
 
               <GalleryRule
+                id="rule-list-row"
                 rule="List-Row Rule"
                 statement="Repeated row actions are never Primary. Use secondary, inflow, or outflow so a stack of five rows doesn't read as five page-level CTAs."
                 doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#list-row-rule"
@@ -361,6 +369,7 @@ function openModal(size: ModalSize): void {
               </GalleryRule>
 
               <GalleryRule
+                id="rule-dual-coding"
                 rule="Dual-Coding Rule"
                 statement="Where rows carry directional meaning, pair inflow with outflow so the colours echo the row's other signals."
                 doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#dual-coding-rule"
@@ -398,6 +407,7 @@ function openModal(size: ModalSize): void {
               </BaseCard>
 
               <GalleryRule
+                id="rule-state-not-decoration"
                 rule="State, not decoration"
                 statement="A badge without a meaning is a violation. The API refuses colour-name variants; always say what the badge announces."
                 doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#badges-state-rule"
@@ -826,6 +836,7 @@ function openModal(size: ModalSize): void {
               </div>
 
               <GalleryRule
+                id="rule-quiet-surface"
                 rule="Quiet-Surface Rule"
                 statement="Cards stay in neutrals. Saturation belongs to actions and states. A card 'themed' with brand colour is a violation unless it's the action or urgent variant."
                 doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#quiet-surface-rule"
@@ -938,6 +949,7 @@ function openModal(size: ModalSize): void {
               </BaseCard>
 
               <GalleryRule
+                id="rule-amber-icon"
                 rule="Amber-Icon Rule"
                 statement="Amber landmark icons appear only on PageHeader (size-7), SectionHeading (size-5), and EmptyState (size-12). Nowhere else."
                 doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#amber-icon-rule"
