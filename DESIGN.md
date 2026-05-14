@@ -182,10 +182,13 @@ A hushed neutral field with three saturated voices that earn their visibility �
 
 ### Named Rules
 
+<a id="bright-action-rule"></a>
 **The Bright-Action Rule.** Only buttons, focus rings, the nav bar, and pending-state indicators carry full saturation. Everything else — body, cards, headings, dividers — stays in neutrals. If two saturated elements appear in the same viewport, one of them is wrong.
 
+<a id="two-hue-restraint"></a>
 **The Two-Hue Restraint.** A single screen uses CRT Amber _or_ Attention Red at full strength, not both — the nav already carries amber, so the page-level action layer leans on red. Cyan is permitted alongside either, because it reads as a link rather than as an action.
 
+<a id="no-decoration-rule"></a>
 **The No-Decoration Rule.** Color never decorates. If a color is on screen, it carries meaning — orientation (amber), attention (red), link (cyan), or state (red/green/amber tint).
 
 ## 3. Typography
@@ -203,11 +206,14 @@ Each tier ships as a single Tailwind utility (`text-{tier}`) that bundles size, 
 - **Body** (`text-body`, 400 / 16px / line-height 1.5): The default. Anything a user needs to read at a glance is body size. Cap at 65–75ch where prose-like.
 - **Label** (`text-label`, 500 / 14px / line-height 1.5): Form labels, button text, primary metadata. The 14px tier is for _deliberate_ uses, not "small text".
 - **Meta** (`text-meta`, 400 / 14px / line-height 1.25): Captions, "last synced X ago", timestamps, helper text under inputs. The quietest tier; lives in `ink-faint` or `ink-muted`.
+- **Eyebrow** (`text-eyebrow`, 600 / 12px / `tracking-wide` / `uppercase`): Small uppercase labels that announce a region inside a card or section — column titles, group labels in a TOC, "Tiers" / "Anchored to a verb" callouts. Bundles the uppercase transform; pair with `text-ink-faint` for the standard quiet voice. Reach for it instead of writing `text-xs font-semibold tracking-wide uppercase` inline.
 
 ### Named Rules
 
+<a id="body-size-by-default-rule"></a>
 **The Body-Size-By-Default Rule.** Primary content uses 16px. `text-sm` and `text-xs` are intentional choices for secondary metadata, never reflexive defaults. If the user has to squint to read it, it isn't body content; if it is body content, it isn't `text-sm`.
 
+<a id="single-family-rule"></a>
 **The Single-Family Rule.** Inter Variable for everything. No display face for marketing flourishes. No monospace for data — Inter has tabular figures (`font-feature: tnum`) when alignment matters.
 
 ## 4. Elevation
@@ -226,8 +232,10 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 
 ### Named Rules
 
+<a id="calm-field-rule"></a>
 **The Calm-Field Rule.** Static content is flat and ringed; saturated lift is reserved for things you can act on. If a card is glowing without being clickable, the glow is wrong.
 
+<a id="press-dont-lift-rule"></a>
 **The Press-Don't-Lift Rule.** Active states press in (inset shadow, brightness-95), they don't pop out. The exception is hover — hover gets a ring, never a translation.
 
 ## 5. Components
@@ -273,7 +281,7 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 
 - **Shape:** `rounded-full`, `text-xs font-medium`, `px-2 py-0.5` (xs) or `px-2.5 py-0.5` (sm).
 - **Variants:** Six state-named variants (`success`, `danger`, `warning`, `pending`, `info`, `neutral`). Each pairs a soft tinted fill with a saturated ink, drawn from `--color-state-*` tokens so dark mode swaps automatically.
-- **Rule:** Badges carry state, not decoration. A badge without a meaning is a violation — the API enforces this by refusing color-name variants.
+- <a id="badges-state-rule"></a>**Rule:** Badges carry state, not decoration. A badge without a meaning is a violation — the API enforces this by refusing color-name variants.
 
 ### Avatars (`AppAvatar`)
 
@@ -322,14 +330,19 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 
 ### Named Rules
 
+<a id="quiet-surface-rule"></a>
 **The Quiet-Surface Rule.** Cards, inputs, modals, and section bodies stay in neutrals. Saturation belongs to actions and states — buttons, focus rings, badges, the nav. A card that is "themed" with a brand color is a violation unless it is the `action` or `urgent` variant.
 
+<a id="one-action-rule"></a>
 **The One-Action Rule.** Each card or modal carries at most one Primary button. Secondary actions are TextButtons or the secondary button variant. If you need two primaries, you are showing two screens.
 
+<a id="list-row-rule"></a>
 **The List-Row Rule.** Repeated row actions in a list are _not_ Primary, even when they're the row's main button. A column of five Attention Red buttons stacked down the page breaks the principle that saturation is rare and meaningful. Row actions use `secondary`, `inflow`, or `outflow` instead. Reserve Primary for one page-level CTA at most.
 
+<a id="dual-coding-rule"></a>
 **The Dual-Coding Rule.** Where rows convey directional meaning (incoming vs outgoing, gain vs spend), pair `inflow` with `outflow` so the button colors echo the row's other signals (card variant, amount text). The two soft variants exist as a dual; if you use one, you usually want the other on its counterpart row.
 
+<a id="amber-icon-rule"></a>
 **The Amber-Icon Rule.** Amber landmark icons announce regions, not destinations — they live in `PageHeader` (`size-7`), `SectionHeading` (`size-5`), and `EmptyState` (`size-12`), and nowhere else. They never appear on modal titles, card-internal headings, button glyphs, or anywhere inside card chrome. `EmptyState`'s icon is exempt from "no amber inside a card" because its job is precisely to announce the empty region the card contains. This is one of the system's three signature moves, alongside the ledger amount and the time anchor.
 
 ## 6. Do's and Don'ts
