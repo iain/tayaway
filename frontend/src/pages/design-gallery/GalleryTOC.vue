@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed } from 'vue'
 import type { TOCItem } from '@/pages/design-gallery/types'
+import { useActiveSection } from '@/pages/design-gallery/useActiveSection'
 
 const props = defineProps<{
   items: TOCItem[]
 }>()
 
-const activeId = ref<string | null>(null)
-let observer: IntersectionObserver | null = null
+const { activeId, scrollTo } = useActiveSection(props.items)
 
 // Group items in display order, preserving first-seen group sequence so the
 // TOC matches the page top-to-bottom rather than alphabetising group names.
@@ -23,49 +23,6 @@ const grouped = computed(() => {
   }
   return out
 })
-
-onMounted(() => {
-  // Highlight whichever section is currently mid-viewport. The asymmetric
-  // root margin biases activation toward the upper third so a section
-  // becomes active as it crosses into reading position, not when it's already
-  // half off-screen at the bottom.
-  observer = new IntersectionObserver(
-    (entries) => {
-      const visible = entries
-        .filter((e) => e.isIntersecting)
-        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
-      if (visible[0]) {
-        activeId.value = visible[0].target.id
-      }
-    },
-    { rootMargin: '-20% 0px -70% 0px', threshold: 0 }
-  )
-  for (const item of props.items) {
-    const el = document.getElementById(item.id)
-    if (el) observer.observe(el)
-  }
-})
-
-onBeforeUnmount(() => {
-  observer?.disconnect()
-})
-
-function handleClick(event: MouseEvent, id: string): void {
-  // Smooth-scroll the anchor; respect prefers-reduced-motion by deferring to
-  // the browser's native jump for users that have asked for less movement.
-  const prefersReducedMotion = window.matchMedia(
-    '(prefers-reduced-motion: reduce)'
-  ).matches
-  const target = document.getElementById(id)
-  if (!target) return
-  event.preventDefault()
-  target.scrollIntoView({
-    behavior: prefersReducedMotion ? 'auto' : 'smooth',
-    block: 'start',
-  })
-  history.replaceState(null, '', `#${id}`)
-  activeId.value = id
-}
 </script>
 
 <template>
@@ -87,7 +44,7 @@ function handleClick(event: MouseEvent, id: string): void {
                   ? 'bg-surface-sunken text-ink font-medium'
                   : 'text-ink-muted hover:bg-surface-sunken hover:text-ink',
               ]"
-              @click="handleClick($event, item.id)"
+              @click="scrollTo($event, item.id)"
               >{{ item.label }}</a
             >
           </li>
