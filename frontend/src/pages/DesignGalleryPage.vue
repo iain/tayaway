@@ -324,7 +324,7 @@ function openModal(size: ModalSize): void {
                 doc="https://github.com/iain/tayaway/blob/main/DESIGN.md#one-action-rule"
               >
                 <BaseCard padded>
-                  <h5 class="text-ink font-semibold">Lock in dates</h5>
+                  <p class="text-ink font-semibold">Lock in dates</p>
                   <p class="text-ink-muted text-sm">
                     The group has agreed on the 4th and 5th of October.
                     Confirm to send the calendar invite.
@@ -414,9 +414,9 @@ function openModal(size: ModalSize): void {
               >
                 <BaseCard padded>
                   <div class="flex items-center gap-3">
-                    <h5 class="text-ink text-label flex-1 font-semibold">
+                    <p class="text-ink text-label flex-1 font-semibold">
                       Lisbon weekend
-                    </h5>
+                    </p>
                     <AppBadge variant="pending">Voting</AppBadge>
                     <TimeAnchor :at="hoursAgoTs">Updated</TimeAnchor>
                   </div>
@@ -810,25 +810,25 @@ function openModal(size: ModalSize): void {
               <SectionHeading :icon="RectangleStackIcon" title="Variants" />
               <div class="space-y-4">
                 <BaseCard padded>
-                  <h4 class="text-ink font-semibold">Default</h4>
+                  <p class="text-ink font-semibold">Default</p>
                   <p class="text-ink-muted text-sm">
                     White surface, hairline ring, hairline shadow.
                   </p>
                 </BaseCard>
                 <BaseCard padded variant="action">
-                  <h4 class="text-ink font-semibold">Action</h4>
+                  <p class="text-ink font-semibold">Action</p>
                   <p class="text-ink-muted text-sm">
                     3 votes waiting. Decide on dates so the group can lock in.
                   </p>
                 </BaseCard>
                 <BaseCard padded variant="urgent">
-                  <h4 class="text-ink font-semibold">Urgent</h4>
+                  <p class="text-ink font-semibold">Urgent</p>
                   <p class="text-ink-muted text-sm">
                     Settlement overdue by 4 days.
                   </p>
                 </BaseCard>
                 <BaseCard padded interactive>
-                  <h4 class="text-ink font-semibold">Interactive</h4>
+                  <p class="text-ink font-semibold">Interactive</p>
                   <p class="text-ink-muted text-sm">
                     Hover to see the rose ring affordance.
                   </p>
@@ -843,9 +843,9 @@ function openModal(size: ModalSize): void {
               >
                 <BaseCard padded>
                   <div class="mb-2 flex items-center justify-between">
-                    <h5 class="text-ink font-semibold">
+                    <p class="text-ink font-semibold">
                       Settlement: Daisy ↔ Iain
-                    </h5>
+                    </p>
                     <AppBadge variant="success">Settled</AppBadge>
                   </div>
                   <p class="text-ink-muted text-sm">
