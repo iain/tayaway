@@ -33,7 +33,7 @@ checksum = "sha256:089a02c4c687451c9f0b7f1bfd252dae85a7ba27df0295a14096bdcc956fd
 url = "https://nodejs.org/dist/v26.1.0/node-v26.1.0-win-x64.zip"
 
 [[tools."npm:pnpm"]]
-version = "11.1.0"
+version = "11.1.2"
 backend = "npm:pnpm"
 
 [[tools.ruby]]

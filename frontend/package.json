@@ -22,7 +22,7 @@
     "pinia": "^3.0.4",
     "vue": "^3.5.34",
     "vue-draggable-plus": "^0.6.1",
-    "vue-router": "^5.0.6"
+    "vue-router": "^5.0.7"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.0",
@@ -34,7 +34,7 @@
     "eslint": "^10.3.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-vue": "^10.9.1",
-    "impeccable": "^2.1.8",
+    "impeccable": "^2.1.9",
     "jsdom": "^29.1.1",
     "tailwindcss": "^4.3.0",
     "typescript": "~6.0.3",
@@ -43,7 +43,7 @@
     "vite-plugin-pwa": "^1.3.0",
     "vitest": "^4.1.6",
     "vue-eslint-parser": "^10.4.0",
-    "vue-tsc": "^3.2.8",
+    "vue-tsc": "^3.2.9",
     "workbox-build": "^7.4.1",
     "workbox-window": "^7.4.1"
   }
