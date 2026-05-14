@@ -95,7 +95,7 @@ function handleClick(event: MouseEvent, id: string): void {
             :href="`#${item.id}`"
             :data-chip="item.id"
             :class="[
-              'focus-visible:outline-focus inline-flex items-center rounded-full px-3 py-1 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2',
+              'focus-visible:outline-focus inline-flex items-center rounded-full px-3 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 min-h-[36px]',
               activeId === item.id
                 ? 'bg-surface-sunken text-ink font-medium'
                 : 'text-ink-muted hover:bg-surface-sunken hover:text-ink',
