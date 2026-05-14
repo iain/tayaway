@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { TOCItem } from '@/pages/design-gallery/types'
 
 const props = defineProps<{ items: TOCItem[] }>()
@@ -7,6 +7,22 @@ const props = defineProps<{ items: TOCItem[] }>()
 const activeId = ref<string | null>(null)
 const scroller = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
+
+// Bucket items by group while preserving the order they appear in. Groups
+// render as adjacent chip clusters separated by a vertical hairline, so the
+// rail's grouping becomes visible on the chip row too.
+const grouped = computed(() => {
+  const out: { group: string; items: TOCItem[] }[] = []
+  for (const item of props.items) {
+    const bucket = out.find((g) => g.group === item.group)
+    if (bucket) {
+      bucket.items.push(item)
+    } else {
+      out.push({ group: item.group, items: [item] })
+    }
+  }
+  return out
+})
 
 onMounted(() => {
   // Same activation logic as the desktop rail — biased toward the upper third
@@ -66,22 +82,45 @@ function handleClick(event: MouseEvent, id: string): void {
   >
     <ol
       ref="scroller"
-      class="flex gap-1 overflow-x-auto px-4 py-2 sm:px-6"
+      class="scroller flex gap-1 overflow-x-auto px-4 py-2 sm:px-6"
     >
-      <li v-for="item in items" :key="item.id" class="shrink-0">
-        <a
-          :href="`#${item.id}`"
-          :data-chip="item.id"
-          :class="[
-            'focus-visible:outline-focus inline-flex items-center rounded-full px-3 py-1 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2',
-            activeId === item.id
-              ? 'bg-surface-sunken text-ink font-medium'
-              : 'text-ink-muted hover:bg-surface-sunken hover:text-ink',
-          ]"
-          @click="handleClick($event, item.id)"
-          >{{ item.label }}</a
-        >
-      </li>
+      <template v-for="(group, gi) in grouped" :key="group.group">
+        <li
+          v-if="gi > 0"
+          aria-hidden="true"
+          class="bg-line mx-1 my-1.5 w-px shrink-0 self-stretch"
+        />
+        <li v-for="item in group.items" :key="item.id" class="shrink-0">
+          <a
+            :href="`#${item.id}`"
+            :data-chip="item.id"
+            :class="[
+              'focus-visible:outline-focus inline-flex items-center rounded-full px-3 py-1 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2',
+              activeId === item.id
+                ? 'bg-surface-sunken text-ink font-medium'
+                : 'text-ink-muted hover:bg-surface-sunken hover:text-ink',
+            ]"
+            @click="handleClick($event, item.id)"
+            >{{ item.label }}</a
+          >
+        </li>
+      </template>
     </ol>
   </nav>
 </template>
+
+<style scoped>
+/* Fade the scroll edges so it's clear there's more content offscreen. The
+   mask starts opaque at 1rem from each edge — same distance as the ol's
+   horizontal padding — so the first/last chips aren't dimmed, only the
+   padding area is. */
+.scroller {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 1rem,
+    black calc(100% - 1rem),
+    transparent
+  );
+}
+</style>
