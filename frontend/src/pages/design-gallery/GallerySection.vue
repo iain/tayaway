@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { MoonIcon, SunIcon } from '@heroicons/vue/24/outline'
+import { useDarkMode } from '@/composables/useDarkMode'
 
 // One row in the design gallery. Renders its slot twice — once inside a `.light`
 // island and once inside `.dark` — so a primitive's variants appear side by side
@@ -10,6 +11,11 @@ import { MoonIcon, SunIcon } from '@heroicons/vue/24/outline'
 // The label is glyph-only so the eyebrow tier inside the slot (token names,
 // foundation sub-groups) reads as the dominant signal — typographic hierarchy
 // goes to the content, not the wrapping frame.
+//
+// Screen readers hear only the column that matches the user's current global
+// theme — the other column stays visually present for a sighted comparison
+// but is marked aria-hidden so AT users aren't forced through every primitive
+// twice.
 defineProps<{
   id: string
   title: string
@@ -18,6 +24,8 @@ defineProps<{
 }>()
 
 const modes = ['light', 'dark'] as const
+
+const { isDark } = useDarkMode()
 </script>
 
 <template>
@@ -38,6 +46,7 @@ const modes = ['light', 'dark'] as const
           'bg-surface-page text-ink ring-ring-hairline relative rounded-lg p-6 ring-1',
         ]"
         :data-mode="mode"
+        :aria-hidden="(mode === 'dark') !== isDark"
       >
         <span class="sr-only">{{ mode }} mode</span>
         <component
