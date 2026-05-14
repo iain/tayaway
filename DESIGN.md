@@ -238,7 +238,51 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 <a id="press-dont-lift-rule"></a>
 **The Press-Don't-Lift Rule.** Active states press in (inset shadow, brightness-95), they don't pop out. The exception is hover — hover gets a ring, never a translation.
 
-## 5. Components
+## 5. Interaction states
+
+A unified vocabulary across every interactive primitive: one focus signal, a named hover behavior per element type, one active gesture. State variation is principled, not per-component.
+
+### Focus
+
+<a id="unified-focus-rule"></a>
+**The Unified-Focus Rule.** Every interactive primitive uses `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus` — the Attention Red ring served from `--color-focus`, sitting 2px outside the element's edge. Buttons, text buttons, icon buttons, form inputs, textareas, selects, checkboxes, radios, toggles, and interactive cards all share this exact signal. One token, one offset, one place to change.
+
+The one exception: **top-nav items** swap the rose token for white (`focus-visible:outline-white`) because Attention Red disappears against the amber bar. The offset and width stay the same.
+
+Form inputs in error state behave the same as healthy inputs on focus — the rose ring still appears, because the error signal lives in the field's interior (see [the Error-Orthogonal Rule](#error-orthogonal-rule)) rather than competing for the outline.
+
+### Hover
+
+Hover always moves the element one step toward higher contrast against its own ink. The technique varies by element type, but the principle is one:
+
+- **Saturated solid buttons** (primary, danger, amber): shift one step in the direction that widens contrast against white ink. Mid-saturation surfaces (`rose-600`, `red-700`) lighten (`rose-500`, `red-600`); already-deep surfaces (`amber-700`) darken (`amber-800`).
+- **Soft-tint buttons** (secondary, inflow, outflow): deepen one step in their own tint (`bg-btn-{variant}-fill` → `bg-btn-{variant}-fill-hover`). The shift is intentionally small — these buttons live in lists where many appear at once.
+- **Text and icon buttons**: shift the ink color toward higher contrast (`text-cyan-600` → `text-cyan-700`, `text-gray-400` → `text-gray-600`). No fill change.
+- **Interactive cards**: swap the 1px hairline for a 2px `ring-ring-hover` — a darkened hairline at ~18% opacity. Neutral, not saturated, so a card hover and a button focus never read as the same signal. No scale, no shadow change.
+- **Top-nav items**: shift the bg to `bg-nav-hover` (one step lighter in light, deeper in dark). Active items don't hover — they're already pressed in.
+
+<a id="hover-contrast-rule"></a>
+**The Hover-Contrast Rule.** Hover moves one step toward higher contrast against the element's own ink. The direction (lighten or darken) is whichever way widens the gap. Same principle, different implementations per element type.
+
+### Active
+
+See [the Press-Don't-Lift Rule](#press-dont-lift-rule). Active states press in (`active:scale-[0.99]` + `active:brightness-95` light / `brightness-110` dark on cards; inset shadow on nav). They never translate or pop out.
+
+### Error
+
+Error is a persistent state of a form field — not an interaction state. It lives in different visual channels from focus so that the two can coexist without collapsing into "another red ring".
+
+- **Fill** — the field swaps `bg-gray-100` / `dark:bg-white/5` for `bg-state-danger-fill` (a soft red tint). The whole interior signals "broken".
+- **Outline** — the gray 1px hairline becomes a 1px `outline-state-danger-outline` (one step deeper than `state-danger-ink`). Same width as the resting healthy outline, just red.
+- **Icon** — an inline `ExclamationCircleIcon` in `text-state-danger-ink` sits at the field's right edge (top-right on textarea, left of the chevron on select). This carries the state when color alone isn't enough (WCAG 1.4.1).
+- **Message** — the `text-state-danger-ink` line of text below the field, wired to the input through `aria-describedby` and `aria-invalid="true"`.
+
+On focus, the error field gets the system-wide rose 2px outset focus ring on top of all of the above. The fill and icon stay; the outline shape changes from "thin red edge" to "outset rose ring". The user sees a tinted, iconned, focused-and-erroring field — every channel is legible.
+
+<a id="error-orthogonal-rule"></a>
+**The Error-Orthogonal Rule.** Error and focus live in different channels. Focus owns the outline; error owns the fill, the icon, and the resting-edge color. They never use the same channel to compete for the user's attention. A field that is tinted and carries an icon is broken regardless of focus; a field with no tint and no icon is fine regardless of focus.
+
+## 6. Components
 
 ### Buttons (`AppButton`)
 
@@ -265,16 +309,16 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 - **Default:** White on light / stone-800 on dark, `shadow` (light) / `shadow + inset highlight` (dark), hairline `ring-1` in `black/5` light / `white/[0.06]` dark.
 - **Action variant:** `bg-amber-50/60` with `ring-2 ring-amber-300/50`. Reads as "this is for you to look at" — used for staleness banners, action prompts.
 - **Urgent variant:** `bg-red-50` with `ring-2 ring-red-300/60`. Reserved for genuine alarms (overdue, broken sync, conflicting actions).
-- **Interactive:** Adds `hover:ring-2 hover:ring-rose-500`, `active:scale-[0.99]`, `active:brightness-95` (dark: `brightness-110`). Never wraps a non-actionable surface.
+- **Interactive:** Adds `hover:ring-2 hover:ring-ring-hover` (a neutral darkened hairline, deliberately not saturated), the system-wide `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus`, plus `active:scale-[0.99]` and `active:brightness-95` (dark: `brightness-110`). Never wraps a non-actionable surface.
 - **Internal Padding:** `p-card` (24px) when `padded` is true. Cards without `padded` are bare containers — typography and spacing come from inside.
 
 ### Inputs (`FormInput`)
 
 - **Style:** `bg-gray-100` light / `bg-white/5` dark, `outline-1 -outline-offset-1 outline-gray-300` light / `outline-white/10` dark, `rounded-md` (6px), `px-3 py-1.5`. The field text stays at `text-base` (16px) on mobile so iOS Safari doesn't auto-zoom the page on focus, and tightens to `text-sm/6` on `sm:` and up — the one place the system uses a responsive font-size on purpose, which is why it doesn't ride a `text-*` token.
 - **Label:** Above the field, `text-label`, ink color.
-- **Focus:** `focus:outline-2 focus:-outline-offset-2 focus:outline-focus`. The Attention Red ring is the system-wide focus signal — same on buttons, cards, modals, inputs.
+- **Focus:** `focus:outline-2 focus:outline-offset-2 focus:outline-focus`. The Attention Red ring is the system-wide focus signal — same offset and width on buttons, cards, modals, inputs (see [the Unified-Focus Rule](#unified-focus-rule)).
 - **Prefix:** Optional inline prefix slot (currency, URL scheme) sits inside the same outlined shell, separated visually by a `select-none` ink-muted span.
-- **Error:** Pass an `error` string; the field swaps to a 2px `outline-state-danger-outline` (one step deeper than the badge ink so it carries on its own), keeps that outline on focus rather than reverting to the rose ring, sets `aria-invalid` + `aria-describedby`, and renders the message below in `text-state-danger-ink`.
+- **Error:** Pass an `error` string; the field swaps to `bg-state-danger-fill` with a 1px `outline-state-danger-outline` and an inline `ExclamationCircleIcon` (in `text-state-danger-ink`) at the right edge, sets `aria-invalid` + `aria-describedby`, and renders the message below in `text-state-danger-ink`. Focus is unchanged — the rose ring appears on top because error and focus are orthogonal (see [the Error-Orthogonal Rule](#error-orthogonal-rule)). `FormTextarea` and `FormSelect` use the same vocabulary.
 - **Disabled:** `disabled:opacity-50` plus `disabled:cursor-not-allowed`.
 
 ### Badges (`AppBadge`)
@@ -345,7 +389,7 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 <a id="amber-icon-rule"></a>
 **The Amber-Icon Rule.** Amber landmark icons announce regions, not destinations — they live in `PageHeader` (`size-7`), `SectionHeading` (`size-5`), and `EmptyState` (`size-12`), and nowhere else. They never appear on modal titles, card-internal headings, button glyphs, or anywhere inside card chrome. `EmptyState`'s icon is exempt from "no amber inside a card" because its job is precisely to announce the empty region the card contains. This is one of the system's three signature moves, alongside the ledger amount and the time anchor.
 
-## 6. Do's and Don'ts
+## 7. Do's and Don'ts
 
 ### Do:
 
@@ -375,7 +419,7 @@ Flat at rest, lifts on interaction. The system uses a thin-ring + light-shadow v
 - **Don't** use bouncy or elastic motion. Ease-out only — the modal's `cubic-bezier(0.25, 1, 0.5, 1)` is the canonical curve.
 - **Don't** animate CSS layout properties. Transform and opacity only, with `will-change` reserved for known-hot interactions.
 
-## 7. Using the system in code
+## 8. Using the system in code
 
 The design system lives in three places: `frontend/src/style.css` (the Tailwind `@theme` tokens), `frontend/src/components/common/` and `frontend/src/components/form/` (the primitives), and `/design` (the gallery — every primitive in every state, light and dark).
 

@@ -47,5 +47,19 @@ describe('BaseCard', () => {
       await wrapper.trigger('keydown', { key: 'Tab' })
       expect(clickHandler).not.toHaveBeenCalled()
     })
+
+    it('renders the system-wide focus outline so keyboard users see Tab focus', () => {
+      const wrapper = mount(BaseCard, { props: { interactive: true } })
+      const cls = wrapper.classes().join(' ')
+      expect(cls).toContain('focus-visible:outline-2')
+      expect(cls).toContain('focus-visible:outline-offset-2')
+      expect(cls).toContain('focus-visible:outline-focus')
+    })
+
+    it('omits the focus outline when not interactive', () => {
+      const wrapper = mount(BaseCard)
+      const cls = wrapper.classes().join(' ')
+      expect(cls).not.toContain('focus-visible:outline-focus')
+    })
   })
 })

@@ -17,6 +17,15 @@ describe('FormInput', () => {
       expect(input.attributes('aria-invalid')).toBeUndefined()
       expect(input.attributes('aria-describedby')).toBeUndefined()
     })
+
+    it('renders an outset focus outline matching the system-wide focus vocabulary', () => {
+      const wrapper = mount(FormInput, { props: baseProps })
+      const cls = wrapper.get('input').classes().join(' ')
+      expect(cls).toContain('focus:outline-2')
+      expect(cls).toContain('focus:outline-offset-2')
+      expect(cls).toContain('focus:outline-focus')
+      expect(cls).not.toContain('focus:-outline-offset-2')
+    })
   })
 
   describe('with error', () => {
@@ -38,28 +47,51 @@ describe('FormInput', () => {
       expect(wrapper.get('p').attributes('id')).toBe('field-error')
     })
 
-    it('applies a danger outline to the input that persists on focus', () => {
+    it('signals error through fill, outline, and icon — but leaves focus orthogonal', () => {
       const wrapper = mount(FormInput, {
         props: { ...baseProps, error: 'Required' },
       })
       const cls = wrapper.get('input').classes().join(' ')
+
+      expect(cls).toContain('bg-state-danger-fill')
+      expect(cls).toContain('outline-1')
       expect(cls).toContain('outline-state-danger-outline')
-      expect(cls).toContain('focus:outline-state-danger-outline')
       expect(cls).not.toContain('outline-gray-300')
-      expect(cls).not.toContain('focus:outline-focus')
+      expect(cls).not.toContain('bg-gray-100')
+
+      // Focus stays the system-wide rose ring — error signal is fill + icon,
+      // not a competing focus-color override.
+      expect(cls).toContain('focus:outline-focus')
+      expect(cls).not.toContain('focus:outline-state-danger-outline')
+
+      expect(wrapper.find('[data-testid="form-input-error-icon"]').exists()).toBe(
+        true
+      )
     })
 
     it('still wires the error state when a prefix is shown', () => {
       const wrapper = mount(FormInput, {
         props: { ...baseProps, prefix: 'tayaway.com/', error: 'Bad URL' },
       })
-      const wrapperDiv = wrapper.get('input').element
-        .parentElement as HTMLElement
-      expect(wrapperDiv.className).toContain('outline-state-danger-outline')
-      expect(wrapperDiv.className).toContain(
+      const shell = wrapper.get('input').element.parentElement as HTMLElement
+      expect(shell.className).toContain('bg-state-danger-fill')
+      expect(shell.className).toContain('outline-state-danger-outline')
+      expect(shell.className).not.toContain(
         'focus-within:outline-state-danger-outline'
       )
       expect(wrapper.get('input').attributes('aria-invalid')).toBe('true')
+      expect(wrapper.find('[data-testid="form-input-error-icon"]').exists()).toBe(
+        true
+      )
+    })
+  })
+
+  describe('icon visibility', () => {
+    it('does not render the error icon for healthy fields', () => {
+      const wrapper = mount(FormInput, { props: baseProps })
+      expect(wrapper.find('[data-testid="form-input-error-icon"]').exists()).toBe(
+        false
+      )
     })
   })
 })

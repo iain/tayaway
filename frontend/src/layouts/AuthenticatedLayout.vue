@@ -316,7 +316,7 @@ async function handleSignOut() {
                   :class="[
                     isActive(item.routeName)
                       ? 'bg-nav-active text-nav-text shadow-[inset_0_1px_2px_rgba(0,0,0,0.15)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)]'
-                      : 'text-nav-text hover:bg-nav-hover hover:bg-opacity-75',
+                      : 'text-nav-text hover:bg-nav-hover',
                     'rounded-md px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white',
                   ]"
                   :aria-current="isActive(item.routeName) ? 'page' : undefined"
@@ -436,7 +436,7 @@ async function handleSignOut() {
           <div class="-mr-2 flex md:hidden">
             <!-- Mobile menu button -->
             <DisclosureButton
-              class="group bg-nav text-nav-text-muted hover:bg-nav-hover hover:bg-opacity-75 hover:text-nav-text relative inline-flex items-center justify-center rounded-md p-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              class="group bg-nav text-nav-text-muted hover:bg-nav-hover hover:text-nav-text relative inline-flex items-center justify-center rounded-md p-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
               <span class="sr-only">Open main menu</span>
               <Bars3Icon
@@ -467,7 +467,7 @@ async function handleSignOut() {
             v-for="ws in otherWorkspaces"
             :key="ws.id"
             type="button"
-            class="text-nav-text hover:bg-nav-hover hover:bg-opacity-75 mt-1 block w-full rounded-md px-3 py-2 text-left text-base font-medium"
+            class="text-nav-text hover:bg-nav-hover mt-1 block w-full rounded-md px-3 py-2 text-left text-base font-medium"
             @click="
               () => {
                 close()
@@ -486,7 +486,7 @@ async function handleSignOut() {
             :class="[
               isActive(item.routeName)
                 ? 'bg-nav-active text-nav-text shadow-[inset_0_1px_2px_rgba(0,0,0,0.15)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)]'
-                : 'text-nav-text hover:bg-nav-hover hover:bg-opacity-75',
+                : 'text-nav-text hover:bg-nav-hover',
               'block rounded-md px-3 py-2 text-base font-medium',
             ]"
             :aria-current="isActive(item.routeName) ? 'page' : undefined"
@@ -496,7 +496,7 @@ async function handleSignOut() {
           </router-link>
           <button
             type="button"
-            class="text-nav-text hover:bg-nav-hover hover:bg-opacity-75 flex w-full items-center gap-2 rounded-md px-3 py-2 text-base font-medium"
+            class="text-nav-text hover:bg-nav-hover flex w-full items-center gap-2 rounded-md px-3 py-2 text-base font-medium"
             @click="
               () => {
                 close()
@@ -554,14 +554,14 @@ async function handleSignOut() {
               v-for="item in userNavigation"
               :key="item.name"
               :to="item.href"
-              class="text-nav-text hover:bg-nav-hover hover:bg-opacity-75 block rounded-md px-3 py-2 text-base font-medium"
+              class="text-nav-text hover:bg-nav-hover block rounded-md px-3 py-2 text-base font-medium"
               @click="close"
             >
               {{ item.name }}
             </router-link>
             <button
               type="button"
-              class="text-nav-text hover:bg-nav-hover hover:bg-opacity-75 block w-full rounded-md px-3 py-2 text-left text-base font-medium"
+              class="text-nav-text hover:bg-nav-hover block w-full rounded-md px-3 py-2 text-left text-base font-medium"
               @click="
                 () => {
                   close()
