@@ -4,6 +4,7 @@
 
 - [mise](https://mise.jdx.dev/) — manages Ruby, Node.js, and pnpm versions
 - PostgreSQL 18+
+- `libmaxminddb` — needed to build the `mmdb` gem's native extension (`brew install libmaxminddb` on macOS)
 
 ## Setup
 
@@ -27,6 +28,12 @@ mise run setup
 ```
 
 This installs frontend (pnpm) and backend (bundler) dependencies, then creates and migrates all three databases (development, test, e2e).
+
+If the `mmdb` gem fails to build with `'maxminddb.h' file not found`, Homebrew's `libmaxminddb` is keg-installed and isn't on mkmf's default search path. Point bundler at it once:
+
+```bash
+cd backend && bundle config set build.mmdb --with-opt-dir=$(brew --prefix libmaxminddb)
+```
 
 ## Development
 
