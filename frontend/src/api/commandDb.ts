@@ -5,6 +5,10 @@ export interface StoredCommand {
   method: 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   path: string
   body?: unknown
+  // The workspace the user was in when this command was enqueued. Carried
+  // through replay so cross-workspace queued mutations don't get attributed
+  // to whatever workspace happens to be active at the moment they go out.
+  workspaceId?: string | null
   createdAt: number
 }
 
@@ -12,7 +16,7 @@ interface CommandQueueDB {
   commands: {
     key: string
     value: StoredCommand
-    indexes: { createdAt: number }
+    indexes: { createdAt: number; workspaceId: string }
   }
 }
 
@@ -20,7 +24,7 @@ let dbPromise: Promise<IDBPDatabase<CommandQueueDB>> | null = null
 
 function getDb(): Promise<IDBPDatabase<CommandQueueDB>> {
   if (!dbPromise) {
-    dbPromise = openDB<CommandQueueDB>('tayaway-command-queue', 2, {
+    dbPromise = openDB<CommandQueueDB>('tayaway-command-queue', 3, {
       upgrade(db, oldVersion, _newVersion, transaction) {
         if (oldVersion < 1) {
           const store = db.createObjectStore('commands', { keyPath: 'id' })
@@ -30,6 +34,12 @@ function getDb(): Promise<IDBPDatabase<CommandQueueDB>> {
           const store = transaction.objectStore('commands')
           if (store.indexNames.contains('status')) {
             store.deleteIndex('status')
+          }
+        }
+        if (oldVersion < 3) {
+          const store = transaction.objectStore('commands')
+          if (!store.indexNames.contains('workspaceId')) {
+            store.createIndex('workspaceId', 'workspaceId')
           }
         }
       },

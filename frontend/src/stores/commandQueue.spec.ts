@@ -141,7 +141,23 @@ describe('commandQueue store', () => {
         method: 'PUT',
         path: '/api/events/1',
         body: { name: 'Updated' },
+        workspaceId: null,
       })
+    })
+
+    it('tags the enqueued command with the workspace it was issued in', async () => {
+      localStorage.setItem('current_workspace_id', 'ws-A')
+      const { useWorkspaceStore } = await import('./workspace')
+      useWorkspaceStore().initialize(['ws-A'])
+      const store = useCommandQueueStore()
+      mockedApi.post.mockResolvedValueOnce(okResponse(null))
+
+      await store.enqueue('POST', '/api/events', { name: 'Event' })
+
+      expect(addCommand).toHaveBeenCalledWith(
+        expect.objectContaining({ workspaceId: 'ws-A' })
+      )
+      localStorage.removeItem('current_workspace_id')
     })
 
     it('removes command from db on success', async () => {

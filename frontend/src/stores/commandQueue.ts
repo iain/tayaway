@@ -11,6 +11,7 @@ import {
 } from '@/api/commandDb'
 import { coalesceCommands } from '@/api/coalesceCommands'
 import { useWebSocketStore } from './websocket'
+import { useWorkspaceStore } from './workspace'
 
 export class CommandQueuedError extends Error {
   constructor() {
@@ -65,7 +66,8 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
     path: string,
     body?: unknown
   ): Promise<ApiResponse<T>> {
-    const commandId = await addCommand({ method, path, body })
+    const workspaceId = useWorkspaceStore().currentWorkspaceId ?? null
+    const commandId = await addCommand({ method, path, body, workspaceId })
     pendingCount.value++
 
     try {
