@@ -66,17 +66,6 @@ vi.mock('@/stores/objectPool', () => ({
   })),
   onPoolChange: vi.fn(),
   offPoolChange: vi.fn(),
-  isPersonalObject: (
-    obj: { objectType: string; userId?: string },
-    currentUserId: string | null
-  ) => {
-    if (obj.objectType === 'workspace') return true
-    if (obj.objectType === 'notification') return true
-    if (obj.objectType === 'member' && currentUserId) {
-      return obj.userId === currentUserId
-    }
-    return false
-  },
 }))
 
 vi.mock('@/stores/websocket', () => ({

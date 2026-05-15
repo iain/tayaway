@@ -2,8 +2,8 @@ import {
   useObjectPoolStore,
   onPoolChange,
   offPoolChange,
-  isPersonalObject,
 } from '@/stores/objectPool'
+import { isPersonalObject } from '@/stores/personalObject'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useWorkspaceStore, WORKSPACE_ID_STORAGE_KEY } from '@/stores/workspace'
 import { useAuthStore } from '@/stores/auth'
