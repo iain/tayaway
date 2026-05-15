@@ -214,7 +214,7 @@ Install all dependencies
 
 - **Usage**: `setup:deps-root`
 
-Install root dependencies (Playwright, prettier)
+Install root dependencies (Capistrano, Playwright, prettier)
 
 ## `setup:hooks`
 

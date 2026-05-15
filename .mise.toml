@@ -241,13 +241,15 @@ description = "Install all dependencies"
 depends = ["//...:setup:deps", "setup:deps-root"]
 
 [tasks."setup:deps-root"]
-description = "Install root dependencies (Playwright, prettier)"
+description = "Install root dependencies (Capistrano, Playwright, prettier)"
 # `playwright install` is idempotent — it skips browsers already present in
 # ~/Library/Caches/ms-playwright, so re-running setup is cheap. Skip
 # --with-deps; on Linux it shells out to apt and wants sudo, which is fine
 # in CI / the devcontainer but a friction point for a local dev setup. If
 # you hit a missing system lib, run it manually with --with-deps.
-run = ["pnpm install", "pnpm exec playwright install chromium"]
+# `bundle install` covers the root Gemfile (Capistrano + ssh deps) that
+# `mise run deploy` resolves from the repo root.
+run = ["bundle install", "pnpm install", "pnpm exec playwright install chromium"]
 
 [tasks."setup:db"]
 description = "Create and migrate the development, test, and e2e databases"
