@@ -201,7 +201,7 @@ async function handleSignOut() {
   <!-- Loading screen while waiting for initial sync -->
   <div
     v-if="!hasSynced && !hasCachedData && !connectionFailed"
-    class="flex min-h-screen flex-col items-center justify-center bg-gray-100 dark:bg-stone-900"
+    class="flex min-h-screen flex-col items-center justify-center bg-surface-page"
   >
     <div class="text-center">
       <div
@@ -284,7 +284,7 @@ async function handleSignOut() {
                     leave-to-class="transform opacity-0 scale-95"
                   >
                     <MenuItems
-                      class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md bg-surface py-1 shadow-lg ring-1 ring-black/5 focus:outline-hidden"
+                      class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md bg-surface py-1 shadow-lg ring-1 ring-ring-hairline focus:outline-hidden"
                     >
                       <MenuItem
                         v-for="ws in otherWorkspaces"
@@ -387,7 +387,7 @@ async function handleSignOut() {
                   leave-to-class="transform opacity-0 scale-95"
                 >
                   <MenuItems
-                    class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-surface py-1 shadow-lg ring-1 ring-black/5 focus:outline-hidden"
+                    class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-surface py-1 shadow-lg ring-1 ring-ring-hairline focus:outline-hidden"
                   >
                     <div
                       class="truncate border-b border-line px-4 py-2 text-sm text-ink"

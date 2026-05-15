@@ -176,7 +176,7 @@ function openModal(size: ModalSize): void {
 
 <template>
   <div class="bg-surface-page text-ink min-h-screen">
-    <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <main class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <PageHeader title="Design system" :icon="SwatchIcon">
         <template #subtitle>
           Every visual primitive in its meaningful states, and the named rules
@@ -1067,7 +1067,7 @@ function openModal(size: ModalSize): void {
                 <div class="flex justify-center">
                   <button
                     type="button"
-                    class="flex items-center gap-2 rounded-full bg-amber-600 px-4 py-2 text-sm font-medium text-white shadow-lg dark:bg-amber-700"
+                    class="flex items-center gap-2 rounded-full bg-amber-700 px-4 py-2 text-sm font-medium text-white shadow-lg dark:bg-amber-800"
                   >
                     <ArrowPathIcon class="size-4" aria-hidden="true" />
                     {{ updatePill.message }}
@@ -1088,7 +1088,7 @@ function openModal(size: ModalSize): void {
           </section>
         </div>
       </div>
-    </div>
+    </main>
 
     <BaseModal
       v-for="size in (['sm', 'md', 'lg', 'xl', '2xl'] as const)"

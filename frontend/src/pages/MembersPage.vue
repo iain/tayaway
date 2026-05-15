@@ -446,7 +446,7 @@ onMounted(() => {
         >
           <a
             :href="`mailto:${member.email}`"
-            class="text-ink inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:hover:bg-stone-700"
+            class="text-ink inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:bg-btn-secondary-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             <EnvelopeIcon class="size-4" />
             Email
@@ -454,14 +454,14 @@ onMounted(() => {
           <a
             v-if="member.phoneNumber"
             :href="`tel:${member.phoneNumber}`"
-            class="text-ink inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:hover:bg-stone-700"
+            class="text-ink inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:bg-btn-secondary-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             <PhoneIcon class="size-4" />
             Call
           </a>
           <button
             data-testid="download-vcard-button"
-            class="text-ink ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:hover:bg-stone-700"
+            class="text-ink ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:bg-btn-secondary-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             title="Download contact card"
             @click="handleDownloadVCard(member)"
           >

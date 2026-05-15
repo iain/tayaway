@@ -357,7 +357,7 @@ async function handlePaidClick(
             <CurrencyEuroIcon class="size-3.5" />
           </span>
           <span class="text-sm text-ink-muted">
-            <span class="font-medium text-gray-800 dark:text-stone-200"
+            <span class="font-medium text-ink"
               >Log expenses</span
             >
             &mdash; everyone adds what they paid for. Costs are split per day
@@ -371,7 +371,7 @@ async function handlePaidClick(
             <CalculatorIcon class="size-3.5 text-white" />
           </span>
           <span class="text-sm text-ink-muted">
-            <span class="font-medium text-gray-800 dark:text-stone-200"
+            <span class="font-medium text-ink"
               >Start settlement</span
             >
             &mdash; see who owes whom, then lock it in. Locked expenses can no
@@ -385,7 +385,7 @@ async function handlePaidClick(
             <BanknotesIcon class="size-3.5 text-white" />
           </span>
           <span class="text-sm text-ink-muted">
-            <span class="font-medium text-gray-800 dark:text-stone-200"
+            <span class="font-medium text-ink"
               >Pay up</span
             >
             &mdash; transfer money via your banking app. When someone you owe
@@ -405,7 +405,7 @@ async function handlePaidClick(
             <CheckCircleIcon class="size-3.5 text-white" />
           </span>
           <span class="text-sm text-ink-muted">
-            <span class="font-medium text-gray-800 dark:text-stone-200"
+            <span class="font-medium text-ink"
               >Mark as paid</span
             >
             &mdash; once the money arrives, the recipient marks the transfer as
@@ -452,7 +452,7 @@ async function handlePaidClick(
       >
         <button
           type="button"
-          class="flex w-full items-center justify-between rounded-md px-1.5 py-1 text-xs text-ink-muted hover:bg-gray-100 dark:hover:bg-stone-700/50"
+          class="flex w-full cursor-pointer items-center justify-between rounded-md px-1.5 py-1 text-xs text-ink-muted transition-colors hover:bg-btn-secondary-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           :data-testid="`settlement-math-toggle-${settlement.id}`"
           :aria-expanded="isSettlementMathOpen(settlement.id)"
           :aria-controls="`settlement-math-panel-${settlement.id}`"
@@ -484,7 +484,7 @@ async function handlePaidClick(
         </div>
       </div>
 
-      <div class="divide-y divide-gray-100 dark:divide-stone-700/50">
+      <div class="divide-y divide-line-faint">
         <div
           v-for="transfer in transfersForSettlement(settlement.id)"
           :key="transfer.id"
@@ -495,7 +495,7 @@ async function handlePaidClick(
         >
           <div class="flex min-w-0 items-center gap-2">
             <span
-              class="truncate text-sm text-gray-800 dark:text-stone-200"
+              class="truncate text-sm text-ink"
               :class="{ 'line-through': transfer.supersededAt }"
             >
               {{ getMemberName(transfer.fromUserId, pool) }}
@@ -504,7 +504,7 @@ async function handlePaidClick(
               &rarr;
             </span>
             <span
-              class="truncate text-sm text-gray-800 dark:text-stone-200"
+              class="truncate text-sm text-ink"
               :class="{ 'line-through': transfer.supersededAt }"
             >
               {{ getMemberName(transfer.toUserId, pool) }}
@@ -520,18 +520,18 @@ async function handlePaidClick(
             </AppBadge>
           </div>
           <div v-if="!transfer.supersededAt" class="flex items-center gap-2">
-            <button
+            <AppButton
               v-if="
                 !transfer.paidAt && can(transfer.permissions, 'generate_qr')
               "
-              type="button"
-              class="inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-1.5 rounded-md border border-line bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0 dark:bg-stone-700 dark:text-stone-200 dark:hover:bg-stone-600"
+              variant="secondary"
+              size="sm"
               title="Show QR code for bank transfer"
               @click="openQrModal(transfer)"
             >
               <QrCodeIcon class="size-4" aria-hidden="true" />
               Pay via QR
-            </button>
+            </AppButton>
             <button
               type="button"
               class="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 sm:min-h-0"
@@ -577,7 +577,7 @@ async function handlePaidClick(
       <div v-if="previewTransfers.length > 0" class="mb-3">
         <button
           type="button"
-          class="flex w-full items-center justify-between rounded-md px-2 py-1 text-sm text-ink-muted hover:bg-gray-100 dark:hover:bg-stone-700/50"
+          class="flex w-full cursor-pointer items-center justify-between rounded-md px-2 py-1 text-sm text-ink-muted transition-colors hover:bg-btn-secondary-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           data-testid="preview-math-toggle"
           :aria-expanded="previewMathOpen"
           aria-controls="preview-math-panel"
@@ -605,19 +605,19 @@ async function handlePaidClick(
         v-if="previewTransfers.length > 0 && !previewMathOpen"
         class="overflow-hidden rounded-lg border border-dashed border-line"
       >
-        <div class="divide-y divide-gray-100 dark:divide-stone-700/50">
+        <div class="divide-y divide-line-faint">
           <div
             v-for="(transfer, i) in previewTransfers"
             :key="i"
             class="flex items-center gap-2 px-3 py-2"
           >
-            <span class="truncate text-sm text-gray-800 dark:text-stone-200">
+            <span class="truncate text-sm text-ink">
               {{ getMemberName(transfer.fromUserId, pool) }}
             </span>
             <span class="shrink-0 text-xs text-ink-muted">
               &rarr;
             </span>
-            <span class="truncate text-sm text-gray-800 dark:text-stone-200">
+            <span class="truncate text-sm text-ink">
               {{ getMemberName(transfer.toUserId, pool) }}
             </span>
             <span

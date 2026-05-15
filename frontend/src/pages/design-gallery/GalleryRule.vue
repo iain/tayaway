@@ -23,7 +23,7 @@ defineProps<{
         :href="doc"
         target="_blank"
         rel="noopener"
-        class="focus-visible:outline-focus text-meta text-cyan-600 underline hover:text-cyan-700 focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-cyan-400 dark:hover:text-cyan-300"
+        class="focus-visible:outline-focus text-meta text-cyan-700 underline hover:text-cyan-800 focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-cyan-400 dark:hover:text-cyan-300"
         >See DESIGN.md →</a
       >
     </div>

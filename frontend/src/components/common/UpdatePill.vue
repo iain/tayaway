@@ -20,7 +20,7 @@ function handleClick() {
   <div class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2">
     <button
       type="button"
-      class="flex items-center gap-2 rounded-full bg-amber-600 px-4 py-2 text-sm font-medium text-white shadow-lg active:scale-95 dark:bg-amber-700"
+      class="flex items-center gap-2 rounded-full bg-amber-700 px-4 py-2 text-sm font-medium text-white shadow-lg active:scale-95 dark:bg-amber-800"
       @click="handleClick"
     >
       <ArrowPathIcon

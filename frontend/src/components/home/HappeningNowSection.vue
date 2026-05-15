@@ -73,7 +73,7 @@ function navigateToEventPage(eventId: string): void {
           <div class="mt-3 flex flex-wrap gap-2">
             <router-link
               :to="`/events/${event.id}/rsvp`"
-              class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 transition-colors hover:bg-rose-100 hover:text-rose-700 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
+              class="inline-flex items-center gap-1.5 rounded-full bg-btn-secondary-fill text-btn-secondary-ink px-3 py-1 text-sm font-medium transition-colors hover:bg-rose-100 hover:text-rose-700 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
             >
               <UserGroupIcon class="size-4" />
               {{ attendeeCountByEvent.get(event.id) ?? 0 }} attending
@@ -81,7 +81,7 @@ function navigateToEventPage(eventId: string): void {
             <router-link
               v-if="(unpaidTransferCountByEvent.get(event.id) ?? 0) > 0"
               :to="`/events/${event.id}/expenses`"
-              class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 transition-colors hover:bg-rose-100 hover:text-rose-700 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
+              class="inline-flex items-center gap-1.5 rounded-full bg-btn-secondary-fill text-btn-secondary-ink px-3 py-1 text-sm font-medium transition-colors hover:bg-rose-100 hover:text-rose-700 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
             >
               <BanknotesIcon class="size-4" />
               {{ unpaidTransferCountByEvent.get(event.id) ?? 0 }} unpaid

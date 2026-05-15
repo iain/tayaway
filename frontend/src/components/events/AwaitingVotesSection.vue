@@ -119,7 +119,7 @@ const awaitingVotesCount = computed(() =>
                     ? 'bg-green-200 dark:bg-green-800'
                     : member.userId === currentUserId
                       ? 'bg-amber-200 dark:bg-amber-800'
-                      : 'bg-gray-200 dark:bg-stone-600'
+                      : 'bg-line'
                 "
               >
                 <CheckCircleIcon

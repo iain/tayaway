@@ -139,7 +139,7 @@ const previewRows = computed(() => {
       >
         <button
           type="button"
-          class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors"
+          class="cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           :class="
             everyone
               ? 'bg-amber-100 text-amber-800 shadow-sm dark:bg-amber-900/40 dark:text-amber-300'
@@ -151,7 +151,7 @@ const previewRows = computed(() => {
         </button>
         <button
           type="button"
-          class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors"
+          class="cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           :class="
             !everyone
               ? 'bg-amber-100 text-amber-800 shadow-sm dark:bg-amber-900/40 dark:text-amber-300'
@@ -218,7 +218,7 @@ const previewRows = computed(() => {
             >
               <button
                 type="button"
-                class="flex size-8 items-center justify-center rounded-md bg-gray-200 text-gray-700 enabled:hover:bg-gray-300 disabled:opacity-40 dark:bg-stone-700 dark:text-stone-200 dark:enabled:hover:bg-stone-600"
+                class="flex size-8 cursor-pointer items-center justify-center rounded-md bg-gray-200 text-gray-700 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus enabled:hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-stone-700 dark:text-stone-200 dark:enabled:hover:bg-stone-600"
                 :disabled="!canDecrement(m.userId)"
                 :aria-label="`Decrease factor for ${m.name}`"
                 @click.prevent="adjustFactor(m.userId, -FACTOR_STEP)"
@@ -233,7 +233,7 @@ const previewRows = computed(() => {
               </span>
               <button
                 type="button"
-                class="flex size-8 items-center justify-center rounded-md bg-gray-200 text-gray-700 enabled:hover:bg-gray-300 disabled:opacity-40 dark:bg-stone-700 dark:text-stone-200 dark:enabled:hover:bg-stone-600"
+                class="flex size-8 cursor-pointer items-center justify-center rounded-md bg-gray-200 text-gray-700 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus enabled:hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-stone-700 dark:text-stone-200 dark:enabled:hover:bg-stone-600"
                 :disabled="!canIncrement(m.userId)"
                 :aria-label="`Increase factor for ${m.name}`"
                 @click.prevent="adjustFactor(m.userId, FACTOR_STEP)"

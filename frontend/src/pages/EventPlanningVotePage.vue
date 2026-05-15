@@ -62,7 +62,7 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
         <router-link
           v-if="canManagePoll && event.datePoll && pollOpen"
           :to="`/events/${eventId}/planning/date-ranges`"
-          class="inline-flex items-center gap-1.5 text-sm text-cyan-600 underline hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
+          class="inline-flex items-center gap-1.5 text-sm text-cyan-700 underline hover:text-cyan-800 dark:text-cyan-400 dark:hover:text-cyan-300"
         >
           <PencilSquareIcon class="size-4" />
           Edit options

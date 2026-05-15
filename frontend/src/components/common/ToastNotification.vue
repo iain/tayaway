@@ -56,7 +56,7 @@ function handleAction(notification: Notification) {
           <button
             v-if="notification.actionLabel && notification.action"
             type="button"
-            class="focus-visible:outline-focus mt-1 text-sm font-medium text-amber-600 hover:text-amber-500 focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-amber-400 dark:hover:text-amber-300"
+            class="focus-visible:outline-focus mt-1 text-sm font-medium text-amber-700 hover:text-amber-800 focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-amber-400 dark:hover:text-amber-300"
             @click="handleAction(notification)"
           >
             {{ notification.actionLabel }}

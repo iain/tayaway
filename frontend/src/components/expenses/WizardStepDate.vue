@@ -131,7 +131,7 @@ function toggleMode(): void {
       >
         <button
           type="button"
-          class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors"
+          class="cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           :class="
             singleDate
               ? 'bg-amber-100 text-amber-800 shadow-sm dark:bg-amber-900/40 dark:text-amber-300'
@@ -143,7 +143,7 @@ function toggleMode(): void {
         </button>
         <button
           type="button"
-          class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors"
+          class="cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           :class="
             !singleDate
               ? 'bg-amber-100 text-amber-800 shadow-sm dark:bg-amber-900/40 dark:text-amber-300'

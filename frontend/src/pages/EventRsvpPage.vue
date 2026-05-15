@@ -106,7 +106,7 @@ function handleDownloadIcs(): void {
       >
         <router-link
           :to="`/events/${event.id}/planning`"
-          class="text-sm text-cyan-600 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
+          class="text-sm text-cyan-700 hover:text-cyan-800 dark:text-cyan-400 dark:hover:text-cyan-300"
         >
           Go to Planning
         </router-link>
@@ -131,7 +131,7 @@ function handleDownloadIcs(): void {
         <div class="flex flex-col items-center gap-3">
           <router-link
             :to="`/events/${event.id}/planning`"
-            class="text-sm font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300"
+            class="text-sm font-medium text-cyan-700 hover:text-cyan-800 dark:text-cyan-400 dark:hover:text-cyan-300"
           >
             Go to Planning
           </router-link>

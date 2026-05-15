@@ -464,6 +464,7 @@ The design system lives in three places: `frontend/src/style.css` (the Tailwind 
 | Faint text (helper, "last synced") | `text-ink-faint`                                                                |
 | Placeholder text (form controls)   | `text-ink-placeholder`                                                          |
 | Hairline edge / outline            | `outline-line` / `border-line` / `ring-ring-hairline`                           |
+| Faint internal divider             | `border-line-faint` / `divide-line-faint`                                       |
 | Top-nav surfaces                   | `bg-nav` / `bg-nav-active` / `bg-nav-hover` / `text-nav-text`                   |
 | Focus indicator (system-wide)      | `focus-visible:outline-focus`                                                   |
 | Form-control error outline         | `outline-state-danger-outline` (one step deeper than `-ink`)                    |

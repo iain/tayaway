@@ -87,7 +87,7 @@ function getEventIdForTransfer(
       </p>
       <button
         type="button"
-        class="mt-1 text-sm font-medium text-amber-700 underline hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-200"
+        class="mt-1 cursor-pointer text-sm font-medium text-amber-700 underline transition-colors hover:text-amber-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:text-amber-400 dark:hover:text-amber-200"
         @click="router.push('/settings/payment')"
       >
         Add IBAN in settings

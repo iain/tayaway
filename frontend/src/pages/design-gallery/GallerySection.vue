@@ -47,6 +47,7 @@ const { isDark } = useDarkMode()
         ]"
         :data-mode="mode"
         :aria-hidden="(mode === 'dark') !== isDark"
+        :inert="(mode === 'dark') !== isDark"
       >
         <span class="sr-only">{{ mode }} mode</span>
         <component

@@ -501,7 +501,7 @@ const partialPickerRsvp = computed(() => {
             class="flex items-center gap-3 rounded-md bg-surface-sunken px-3 py-2"
           >
             <div
-              class="flex size-8 items-center justify-center rounded-full bg-gray-200 dark:bg-stone-600"
+              class="flex size-8 items-center justify-center rounded-full bg-line"
             >
               <UserIcon class="size-4 text-ink-muted" />
             </div>

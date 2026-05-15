@@ -78,8 +78,8 @@ const rows = computed<SummaryRow[]>(() => {
           <tr
             v-for="(row, i) in rows"
             :key="row.userId"
-            class="text-gray-800 dark:text-stone-200"
-            :class="i % 2 === 0 ? 'bg-gray-50 dark:bg-white/[0.04]' : ''"
+            class="text-ink"
+            :class="i % 2 === 0 ? 'bg-surface-sunken' : ''"
           >
             <td
               class="max-w-[8rem] truncate py-2 pr-4 pl-4 font-medium sm:max-w-none"

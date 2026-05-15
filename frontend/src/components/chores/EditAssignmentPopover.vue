@@ -5,6 +5,7 @@ import PushPinIcon from '@/components/icons/PushPinIcon.vue'
 import type { PoolChoreAssignment, PoolMember } from '@/types/pool'
 import { getMemberNameFromMap } from '@/utils/member'
 import TextButton from '@/components/common/TextButton.vue'
+import AppButton from '@/components/common/AppButton.vue'
 
 const props = defineProps<{
   assignment: PoolChoreAssignment
@@ -106,13 +107,7 @@ onBeforeUnmount(() => {
       <TextButton variant="danger" @click="handleRemove">
         Remove
       </TextButton>
-      <button
-        type="button"
-        class="cursor-pointer rounded-md bg-rose-600 px-2 py-1 text-xs font-medium text-white transition-colors hover:bg-rose-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-        @click="handleSaveNote"
-      >
-        Save
-      </button>
+      <AppButton size="sm" @click="handleSaveNote"> Save </AppButton>
     </div>
   </div>
 </template>

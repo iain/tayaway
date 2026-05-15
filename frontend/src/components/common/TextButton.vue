@@ -15,8 +15,11 @@ defineEmits<{
 }>()
 
 const variantClasses: Record<string, string> = {
+  // Primary uses Navigator Cyan Deep (cyan-700) so the underlined link clears
+  // WCAG AA 4.5:1 on both `surface` and `surface-page` — cyan-600 (the brand
+  // canonical) fell to ~3.3:1 on the page surface. Dark mode keeps cyan-400.
   primary:
-    'text-cyan-600 underline hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300',
+    'text-cyan-700 underline hover:text-cyan-800 dark:text-cyan-400 dark:hover:text-cyan-300',
   // secondary lifted to ink-muted so it clears WCAG AA 4.5:1 on both surface
   // and surface-page — text-gray-500 fell short on the page surface.
   secondary: 'text-ink-muted hover:text-ink',

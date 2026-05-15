@@ -38,7 +38,7 @@ const emit = defineEmits<{
       leave-to-class="transform opacity-0 scale-95"
     >
       <MenuItems
-        class="absolute right-0 z-10 mt-1 w-48 origin-top-right rounded-md bg-surface py-1 shadow-lg ring-1 ring-black/5 focus:outline-hidden"
+        class="absolute right-0 z-10 mt-1 w-48 origin-top-right rounded-md bg-surface py-1 shadow-lg ring-1 ring-ring-hairline focus:outline-hidden"
       >
         <MenuItem
           v-for="action in actions"

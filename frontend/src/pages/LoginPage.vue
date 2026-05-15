@@ -146,7 +146,7 @@ onUnmounted(() => {
       <div v-if="passkeyAvailable" class="mt-4">
         <div class="my-4 flex items-center gap-3">
           <div class="h-px flex-1 bg-stone-700" />
-          <span class="text-sm text-stone-500">or</span>
+          <span class="text-sm text-stone-300">or</span>
           <div class="h-px flex-1 bg-stone-700" />
         </div>
 

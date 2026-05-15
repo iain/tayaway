@@ -200,7 +200,7 @@ async function handleUnmark(net: RecentSettlement) {
       <div
         v-for="i in 2"
         :key="i"
-        class="bg-surface flex items-center justify-between gap-4 rounded-lg px-4 py-3 shadow ring-1 ring-black/5 sm:px-6 dark:ring-white/[0.06]"
+        class="bg-surface flex items-center justify-between gap-4 rounded-lg px-4 py-3 shadow ring-1 ring-ring-hairline sm:px-6"
       >
         <div class="flex-1 space-y-2">
           <div

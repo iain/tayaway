@@ -63,7 +63,7 @@ function handleClose(): void {
           :key="dateRange.id"
           type="button"
           data-testid="date-range-option"
-          class="w-full rounded-lg border-2 p-4 text-left transition-colors"
+          class="w-full cursor-pointer rounded-lg border-2 p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           :class="
             selectedId === dateRange.id
               ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20'

@@ -149,7 +149,7 @@ function getAssignments(choreId: string, date: string): PoolChoreAssignment[] {
         </tr>
       </thead>
       <tbody
-        class="divide-y divide-line bg-white dark:bg-stone-900"
+        class="divide-y divide-line bg-surface"
       >
         <tr v-for="date in dates" :key="date">
           <td

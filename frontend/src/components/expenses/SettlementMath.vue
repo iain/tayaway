@@ -51,7 +51,7 @@ const showDrift = computed(
         data-testid="math-balance-row"
         class="flex items-center justify-between text-sm"
       >
-        <span class="truncate text-gray-800 dark:text-stone-200">
+        <span class="truncate text-ink">
           {{ row.name }}
         </span>
         <span>
@@ -78,7 +78,7 @@ const showDrift = computed(
     <ul class="space-y-1">
       <li v-for="(t, i) in transfers" :key="i" class="text-sm">
         <div class="flex items-center justify-between">
-          <span class="truncate text-gray-800 dark:text-stone-200">
+          <span class="truncate text-ink">
             {{ t.fromUserId ? nameFor(t.fromUserId) : 'Unknown' }}
             <span class="text-ink-muted"> → </span>
             {{ t.toUserId ? nameFor(t.toUserId) : 'Unknown' }}

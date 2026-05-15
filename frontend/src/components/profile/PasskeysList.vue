@@ -321,13 +321,9 @@ onUnmounted(() => {
           using Touch ID, Face ID, Windows Hello, or a security key.
         </p>
         <div class="flex justify-end gap-x-6">
-          <button
-            type="button"
-            class="text-ink min-h-[44px] px-3 py-2 text-sm/6 font-semibold sm:min-h-0"
-            @click="registerOpen = false"
-          >
+          <AppButton variant="secondary" @click="registerOpen = false">
             Cancel
-          </button>
+          </AppButton>
           <AppButton autofocus @click="startCeremony"> Continue </AppButton>
         </div>
       </div>

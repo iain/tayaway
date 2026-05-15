@@ -309,7 +309,7 @@ defineExpose({
         v-model="itemsLocal"
         tag="ul"
         data-testid="task-items-list"
-        class="divide-y divide-gray-100 dark:divide-stone-700"
+        class="divide-y divide-line-faint"
         :class="{ 'min-h-8': items.length === 0 }"
         group="task-items"
         handle=".item-drag-handle"

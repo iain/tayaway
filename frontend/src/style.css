@@ -53,8 +53,18 @@
   );
   --color-nav-hover: light-dark(var(--color-amber-400), var(--color-amber-600));
   --color-nav-text: light-dark(var(--color-black), var(--color-white));
-  --color-nav-text-muted: var(--color-amber-200);
-  --color-nav-text-muted-hover: var(--color-amber-100);
+  /* Muted nav voice — used on icon-only buttons, the mobile workspace-switcher
+     eyebrow, and the connection-badge text. Has to clear WCAG AA 4.5:1
+     against `bg-nav` in both modes; the prior `var(--color-amber-200)` was
+     amber-200 in both modes and sat at 1.71:1 on the amber-500 light nav. */
+  --color-nav-text-muted: light-dark(
+    var(--color-amber-950),
+    var(--color-amber-50)
+  );
+  --color-nav-text-muted-hover: light-dark(
+    var(--color-black),
+    var(--color-white)
+  );
 
   /* Surfaces */
   --color-surface: light-dark(#ffffff, #292524);
@@ -78,6 +88,11 @@
 
   /* Lines, hairlines, rings */
   --color-line: light-dark(#d1d5db, rgb(255 255 255 / 0.1));
+  /* Internal row dividers inside a card — quieter than `line`. Light uses
+     gray-100 (the same neutral the rest of the system already speaks);
+     dark uses 8% white so the divider stays perceptible against the
+     `surface` card without competing with the card's own outer ring. */
+  --color-line-faint: light-dark(#f3f4f6, rgb(255 255 255 / 0.08));
   --color-ring-hairline: light-dark(rgb(0 0 0 / 0.05), rgb(255 255 255 / 0.06));
   --color-ring-hover: light-dark(rgb(0 0 0 / 0.18), rgb(255 255 255 / 0.22));
   --color-ring-action: light-dark(rgb(252 211 77 / 0.5), rgb(180 83 9 / 0.4));
