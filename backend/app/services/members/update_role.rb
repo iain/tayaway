@@ -53,6 +53,7 @@ module Members
           .update(role: new_role, updated_at: Time.now)
 
         Broadcaster.object_changed("member", target.id.to_s, workspace_id: target.workspace_id.to_s)
+        Broadcaster.object_changed("member", target.id.to_s, user_id: target.user_id.to_s)
 
         if old_role != new_role && acting_membership.user_id.to_s != target.user_id.to_s
           Members::OnRoleChanged.call(member: target, old_role: old_role, new_role: new_role)

@@ -26,7 +26,7 @@ interface BroadcastMessage {
 interface SyncMessage {
   type: 'sync'
   data: {
-    syncType?: 'full' | 'partial'
+    syncType?: 'full' | 'partial' | 'personal'
     syncedAt?: string
     objects: PoolObject[]
     deleted?: DeletedObject[]
@@ -307,8 +307,14 @@ export const useWebSocketStore = defineStore('websocket', () => {
       })
     }
 
-    // Store syncedAt for next partial sync
-    if (message.data?.syncedAt && workspaceStore.currentWorkspaceId) {
+    // Store syncedAt for next partial sync. Personal syncs aren't
+    // workspace-scoped, so their syncedAt must not be attributed to a
+    // specific workspace's cursor.
+    if (
+      message.data?.syncedAt &&
+      workspaceStore.currentWorkspaceId &&
+      message.data?.syncType !== 'personal'
+    ) {
       syncTimestamps.set(
         workspaceStore.currentWorkspaceId,
         message.data.syncedAt

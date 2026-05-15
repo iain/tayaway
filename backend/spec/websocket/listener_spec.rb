@@ -108,6 +108,33 @@ RSpec.describe Websocket::Listener do
         expect(manager).not_to have_received(:broadcast_to_workspace)
       end
 
+      it "dispatches a member object on the user channel so cross-workspace memberships reach the affected user" do
+        membership_row = TestFactories.workspace_membership(workspace: workspace, user: user, role: "member")
+
+        captured_user_id = nil
+        captured_msg = nil
+        allow(manager).to receive(:broadcast_to_user) do |uid, msg|
+          captured_user_id = uid
+          captured_msg = msg
+        end
+
+        invoke(
+          audience: "user",
+          audienceId: user[:id].to_s,
+          objectType: "member",
+          objectId: membership_row[:id],
+          action: "update"
+        )
+
+        expect(captured_user_id).to eq(user[:id].to_s)
+        expect(captured_msg[:data][:objects].first).to include(
+          objectType: "member",
+          id: membership_row[:id],
+          workspaceId: workspace[:id].to_s
+        )
+        expect(manager).not_to have_received(:broadcast_to_workspace)
+      end
+
       it "broadcasts a deleted marker for an explicit delete to a user" do
         captured_msg = nil
         allow(manager).to receive(:broadcast_to_user) { |_uid, msg| captured_msg = msg }

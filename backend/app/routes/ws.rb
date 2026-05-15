@@ -71,10 +71,12 @@ class App
       connection.write(auth_message.to_json)
       connection.write({ type: "pong", gitSha: APP_CONFIG.git_sha }.to_json)
 
-      # Send workspace summaries for the workspace selector
-      pool = PoolSerializer.new
-      pool.add(:workspace, workspaces)
-      connection.write({ type: "sync", data: { objects: pool.to_a } }.to_json)
+      # Personal sync delivers the workspace selector (workspace rows + the
+      # user's own memberships across every workspace). Cross-workspace
+      # personal events ride the user-audience broadcast channel and merge
+      # into the same pool.
+      personal_sync = Sync::PersonalSync.call(user_id: user_id)
+      connection.write({ type: "sync", data: personal_sync }.to_json)
 
       # If we have a valid initial workspace, subscribe and sync immediately
       if synced_workspace_id

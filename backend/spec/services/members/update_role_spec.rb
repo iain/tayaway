@@ -160,6 +160,32 @@ RSpec.describe Members::UpdateRole do
     end
   end
 
+  describe "broadcasts" do
+    def capture_broadcasts
+      captured = []
+      allow(DB).to receive(:run) do |lit|
+        captured << JSON.parse(lit.args.last)
+      end
+      yield
+      captured.select { |p| p["objectType"] == "member" }
+    end
+
+    it "fires both workspace and user audience broadcasts so the affected user sees the role change across all their sessions" do
+      member_broadcasts = capture_broadcasts do
+        described_class.call(
+          acting_membership: owner_membership,
+          membership_id: target_membership_row[:id],
+          new_role: "admin"
+        )
+      end
+
+      expect(member_broadcasts).to contain_exactly(
+        a_hash_including("audience" => "workspace", "audienceId" => workspace[:id].to_s, "objectId" => target_membership_row[:id]),
+        a_hash_including("audience" => "user", "audienceId" => target_user[:id].to_s, "objectId" => target_membership_row[:id])
+      )
+    end
+  end
+
   context "when acting as member" do # rubocop:disable RSpec/MultipleMemoizedHelpers
     let(:member_user) { TestFactories.user(email: "member@example.com") }
     let(:member_membership_row) { TestFactories.workspace_membership(workspace: workspace, user: member_user, role: "member") }

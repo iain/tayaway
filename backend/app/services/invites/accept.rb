@@ -88,8 +88,11 @@ module Invites
 
         APP_LOGGER.info { "[Invites::Accept] User #{user.id} (#{user.email}) accepted invite to workspace #{invite.workspace_id}" }
 
-        # Broadcast new member
+        # Broadcast new member: workspace audience for the team view, plus
+        # user audience so the joining user's other sessions see the new
+        # membership without subscribing to the workspace yet.
         Broadcaster.object_changed("member", membership_id, workspace_id: invite.workspace_id.to_s)
+        Broadcaster.object_changed("member", membership_id, user_id: user.id.to_s)
 
         Invites::OnAccepted.call(invite: invite, invitee: user)
 

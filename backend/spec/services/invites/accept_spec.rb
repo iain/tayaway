@@ -84,6 +84,23 @@ RSpec.describe Invites::Accept do
     expect(result.value![:message]).to include("already a member")
   end
 
+  it "broadcasts new membership to both workspace and the affected user so the joining user's other sessions see it" do
+    captured = []
+    allow(DB).to receive(:run) do |lit|
+      captured << JSON.parse(lit.args.last)
+    end
+    invite = create_invite_with_token(email: "newuser@example.com")
+
+    described_class.call(token_jwt: invite[:jwt])
+
+    user = User.find_by_email("newuser@example.com")
+    member_broadcasts = captured.select { |p| p["objectType"] == "member" }
+    expect(member_broadcasts).to contain_exactly(
+      a_hash_including("audience" => "workspace", "audienceId" => workspace[:id].to_s),
+      a_hash_including("audience" => "user", "audienceId" => user.id.to_s)
+    )
+  end
+
   it "returns failure for missing token" do
     result = described_class.call(token_jwt: nil)
 
