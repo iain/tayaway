@@ -749,6 +749,8 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   // observe an empty pool. Subsequent chunks are scheduled via setTimeout(0) to yield
   // to the browser between each batch. Reactivity fires once after the final chunk.
   function replaceObjects(poolObjects: PoolObject[]): Promise<void> {
+    const currentUserId = useAuthStore().currentUserId
+
     // Build set of IDs present in the server payload
     const serverIds = new Set<string>()
     for (const obj of poolObjects) {
@@ -804,9 +806,16 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
 
     // Clear all type maps and rebuild the reverse index, then insert the first
     // chunk synchronously so that consumers never observe an empty pool — the
-    // clear and first insertion happen in the same call frame.
+    // clear and first insertion happen in the same call frame. Personal
+    // objects are kept: a workspace full-sync is authoritative for that
+    // workspace's data, not for cross-workspace personal state (the user's
+    // memberships, the workspaces they belong to, notifications).
     for (const typeMap of objects.value.values()) {
-      typeMap.clear()
+      for (const [id, obj] of typeMap) {
+        if (!isPersonalObject(obj, currentUserId)) {
+          typeMap.delete(id)
+        }
+      }
     }
     for (const parentMap of cascadeIndex.values()) {
       parentMap.clear()

@@ -606,6 +606,55 @@ describe('objectPool store', () => {
     })
   })
 
+  describe('personal pool survival across full sync', () => {
+    it('keeps workspace rows the user belongs to when a workspace full-sync replaces the pool', async () => {
+      const pool = useObjectPoolStore()
+      const wsA = makeWorkspace({ id: 'ws-A', name: 'A' })
+      const wsB = makeWorkspace({ id: 'ws-B', name: 'B' })
+      pool.importObjects([wsA, wsB])
+
+      // Workspace full sync arrives carrying only the active workspace's data
+      await pool.replaceObjects([wsA, makeEvent({ id: 'evt-1' })])
+
+      expect(pool.get('workspace', 'ws-A')).toBeDefined()
+      // Other workspaces in the personal pool must survive — the workspace
+      // full sync is authoritative for the active workspace's data only.
+      expect(pool.get('workspace', 'ws-B')).toBeDefined()
+    })
+
+    it("keeps the current user's own membership rows across a workspace full-sync replace", async () => {
+      const pool = useObjectPoolStore()
+      const ownInA = makeMember({ id: 'mem-a', workspaceId: 'ws-A', userId: 'user-1' })
+      const ownInB = makeMember({ id: 'mem-b', workspaceId: 'ws-B', userId: 'user-1' })
+      pool.importObjects([ownInA, ownInB])
+
+      await pool.replaceObjects([])
+
+      expect(pool.get('member', 'mem-a')).toBeDefined()
+      expect(pool.get('member', 'mem-b')).toBeDefined()
+    })
+
+    it('keeps notifications across a workspace full-sync replace', async () => {
+      const pool = useObjectPoolStore()
+      const notification = {
+        id: 'note-1',
+        objectType: 'notification' as const,
+        userId: 'user-1',
+        workspaceId: 'ws-1',
+        kind: 'mention',
+        data: { title: 'Hi', body: 'Hello' },
+        readAt: null,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      }
+      pool.importObjects([notification])
+
+      await pool.replaceObjects([])
+
+      expect(pool.get('notification', 'note-1')).toBeDefined()
+    })
+  })
+
   describe('restorePendingUpdates', () => {
     it('restores cached pending updates', () => {
       const pool = useObjectPoolStore()
