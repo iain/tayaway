@@ -22,7 +22,7 @@ defineEmits<{
       type="button"
       data-testid="cancel-button"
       :disabled="loading"
-      class="min-h-[44px] px-3 py-2 text-sm/6 font-semibold text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-0 dark:text-white"
+      class="min-h-[44px] px-3 py-2 text-sm/6 font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-0"
       @click="$emit('cancel')"
     >
       {{ cancelLabel ?? 'Cancel' }}

@@ -16,7 +16,7 @@ defineEmits<{
 
 <template>
   <div class="py-3">
-    <dt class="text-sm font-medium text-gray-500 dark:text-stone-400">
+    <dt class="text-sm font-medium text-ink-muted">
       {{ label }}
     </dt>
 
@@ -35,13 +35,13 @@ defineEmits<{
         @click="$emit('edit')"
       >
         <span
-          class="min-w-0 flex-1 text-sm text-gray-900 dark:text-white"
+          class="min-w-0 flex-1 text-sm text-ink"
           :class="valueClass"
         >
           <slot />
         </span>
         <PencilIcon
-          class="size-3.5 shrink-0 text-gray-400 dark:text-stone-500"
+          class="size-3.5 shrink-0 text-ink-muted"
           aria-hidden="true"
         />
       </button>
@@ -49,7 +49,7 @@ defineEmits<{
 
     <!-- View mode (read-only) -->
     <dd v-else class="mt-0.5">
-      <span class="text-sm text-gray-900 dark:text-white" :class="valueClass">
+      <span class="text-sm text-ink" :class="valueClass">
         <slot />
       </span>
     </dd>

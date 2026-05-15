@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-01T00:00:00Z",
+  "generatedAt": "2026-05-15T00:00:00Z",
   "title": "Design System: Tayaway",
   "extensions": {
     "colorMeta": {
@@ -187,7 +187,8 @@
       "ink-muted": {
         "role": "neutral",
         "displayName": "Ink Muted",
-        "canonical": "#6b7280",
+        "canonical": "#4b5563",
+        "darkCanonical": "#a8a29e",
         "tonalRamp": [
           "#030712",
           "#111827",
@@ -202,7 +203,8 @@
       "ink-faint": {
         "role": "neutral",
         "displayName": "Ink Faint",
-        "canonical": "#9ca3af",
+        "canonical": "#4b5563",
+        "darkCanonical": "#a8a29e",
         "tonalRamp": [
           "#030712",
           "#111827",
@@ -214,35 +216,123 @@
           "#d1d5db"
         ]
       },
-      "state-danger": {
+      "ink-placeholder": {
         "role": "neutral",
-        "displayName": "State: Danger",
-        "canonical": "#dc2626",
+        "displayName": "Ink Placeholder",
+        "canonical": "#6b7280",
+        "darkCanonical": "#a8a29e",
         "tonalRamp": [
-          "#450a0a",
-          "#7f1d1d",
-          "#991b1b",
-          "#b91c1c",
-          "#dc2626",
-          "#ef4444",
-          "#f87171",
-          "#fecaca"
+          "#030712",
+          "#111827",
+          "#1f2937",
+          "#374151",
+          "#4b5563",
+          "#6b7280",
+          "#9ca3af",
+          "#d1d5db"
         ]
       },
-      "state-success": {
+      "surface-sunken": {
         "role": "neutral",
-        "displayName": "State: Success",
-        "canonical": "#16a34a",
-        "tonalRamp": [
-          "#052e16",
-          "#14532d",
-          "#166534",
-          "#15803d",
-          "#16a34a",
-          "#22c55e",
-          "#4ade80",
-          "#bbf7d0"
-        ]
+        "displayName": "Surface Sunken",
+        "canonical": "#f3f4f6",
+        "darkCanonical": "rgb(255 255 255 / 0.05)"
+      },
+      "surface-action": {
+        "role": "neutral",
+        "displayName": "Surface Action",
+        "canonical": "rgb(255 251 235 / 0.6)",
+        "darkCanonical": "rgb(69 26 3 / 0.2)"
+      },
+      "surface-urgent": {
+        "role": "neutral",
+        "displayName": "Surface Urgent",
+        "canonical": "#fef2f2",
+        "darkCanonical": "rgb(69 10 10 / 0.3)"
+      },
+      "focus": {
+        "role": "secondary",
+        "displayName": "Focus Ring",
+        "canonical": "#f43f5e",
+        "darkCanonical": "#f43f5e"
+      },
+      "state-success-fill": {
+        "role": "neutral",
+        "displayName": "State: Success (fill)",
+        "canonical": "#dcfce7",
+        "darkCanonical": "#14532d"
+      },
+      "state-success-ink": {
+        "role": "neutral",
+        "displayName": "State: Success (ink)",
+        "canonical": "#15803d",
+        "darkCanonical": "#86efac"
+      },
+      "state-danger-fill": {
+        "role": "neutral",
+        "displayName": "State: Danger (fill)",
+        "canonical": "#fee2e2",
+        "darkCanonical": "rgb(127 29 29 / 0.3)"
+      },
+      "state-danger-ink": {
+        "role": "neutral",
+        "displayName": "State: Danger (ink)",
+        "canonical": "#991b1b",
+        "darkCanonical": "#f87171"
+      },
+      "state-danger-outline": {
+        "role": "neutral",
+        "displayName": "State: Danger (outline / form edge)",
+        "canonical": "#b91c1c",
+        "darkCanonical": "#f87171"
+      },
+      "state-warning-fill": {
+        "role": "neutral",
+        "displayName": "State: Warning (fill)",
+        "canonical": "#fef08a",
+        "darkCanonical": "rgb(133 77 14 / 0.3)"
+      },
+      "state-warning-ink": {
+        "role": "neutral",
+        "displayName": "State: Warning (ink)",
+        "canonical": "#713f12",
+        "darkCanonical": "#fde047"
+      },
+      "state-pending-fill": {
+        "role": "neutral",
+        "displayName": "State: Pending (fill)",
+        "canonical": "#fed7aa",
+        "darkCanonical": "rgb(154 52 18 / 0.3)"
+      },
+      "state-pending-ink": {
+        "role": "neutral",
+        "displayName": "State: Pending (ink)",
+        "canonical": "#9a3412",
+        "darkCanonical": "#fdba74"
+      },
+      "state-info-fill": {
+        "role": "neutral",
+        "displayName": "State: Info (fill)",
+        "canonical": "#dbeafe",
+        "darkCanonical": "rgb(30 58 138 / 0.3)"
+      },
+      "state-info-ink": {
+        "role": "neutral",
+        "displayName": "State: Info (ink)",
+        "canonical": "#1e40af",
+        "darkCanonical": "#60a5fa"
+      },
+      "state-neutral-fill": {
+        "role": "neutral",
+        "displayName": "State: Neutral (fill)",
+        "canonical": "#f3f4f6",
+        "darkCanonical": "#44403c"
+      },
+      "state-neutral-ink": {
+        "role": "neutral",
+        "displayName": "State: Neutral (ink)",
+        "canonical": "#4b5563",
+        "darkCanonical": "#d6d3d1"
       }
     },
     "typographyMeta": {
@@ -309,9 +399,10 @@
         "purpose": "HeadlessUI Menu and Disclosure popovers — workspace switcher, profile dropdown."
       },
       {
-        "name": "hover-ring-action",
-        "value": "0 0 0 2px #f43f5e",
-        "purpose": "Interactive card hover. The 2px Attention Red ring IS the hover affordance — no scale, no shadow change."
+        "name": "hover-ring-card",
+        "value": "0 0 0 2px rgb(0 0 0 / 0.18)",
+        "darkValue": "0 0 0 2px rgb(255 255 255 / 0.22)",
+        "purpose": "Interactive card hover. The 2px neutral darkened-hairline ring IS the hover affordance — no scale, no shadow change. Neutral (not saturated) so a card hover and a button focus never read as the same signal."
       }
     ],
     "motion": [
@@ -376,9 +467,41 @@
       "name": "Text Button (Navigator Cyan)",
       "kind": "button",
       "refersTo": "text-button",
-      "description": "Inline link button. Old-school HTML link energy — underlined Navigator Cyan.",
+      "description": "Inline link button. Old-school HTML link energy — underlined Navigator Cyan. The secondary variant rides text-ink-muted so it clears WCAG AA on every surface. The danger variant rides red-600. Supports an href prop for external links — the primitive picks <a> vs <button> automatically.",
       "html": "<button class=\"ds-text-button\" type=\"button\">View all events</button>",
       "css": ".ds-text-button { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0; background: transparent; color: #0891b2; border: none; font-family: 'Inter Variable', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 400; text-decoration: underline; cursor: pointer; transition: color 150ms ease-out; } .ds-text-button:hover { color: #0e7490; } .ds-text-button:focus-visible { outline: 2px solid #f43f5e; outline-offset: 2px; border-radius: 4px; }"
+    },
+    {
+      "name": "Amber Button",
+      "kind": "button",
+      "refersTo": "button-amber",
+      "description": "Pre-auth surfaces only (Login, Auth Verify, Invite Accept) — the amber voice carries the brand on screens with no nav present. Don't use inside the authenticated shell, where the amber nav already carries that voice.",
+      "html": "<button class=\"ds-btn-amber\" type=\"button\">Continue</button>",
+      "css": ".ds-btn-amber { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: #b45309; color: #ffffff; border: none; border-radius: 6px; font-family: 'Inter Variable', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 600; line-height: 1.5; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); cursor: pointer; transition: background 150ms ease-out; } .ds-btn-amber:hover { background: #92400e; } .ds-btn-amber:focus-visible { outline: 2px solid #f43f5e; outline-offset: 2px; }"
+    },
+    {
+      "name": "Inflow Button",
+      "kind": "button",
+      "refersTo": "button-inflow",
+      "description": "A quiet chip-style button for 'incoming / good news' row actions — most often 'Mark as received' on settlement rows. Tinted background + saturated text mirrors the AppBadge pattern. Pairs with Outflow on counterpart rows (see the Dual-Coding Rule).",
+      "html": "<button class=\"ds-btn-inflow\" type=\"button\">Mark received</button>",
+      "css": ".ds-btn-inflow { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: #cffafe; color: #155e75; border: none; border-radius: 6px; font-family: 'Inter Variable', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 600; line-height: 1.5; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); cursor: pointer; transition: background 150ms ease-out; } .ds-btn-inflow:hover { background: #a5f3fc; } .ds-btn-inflow:focus-visible { outline: 2px solid #f43f5e; outline-offset: 2px; }"
+    },
+    {
+      "name": "Outflow Button",
+      "kind": "button",
+      "refersTo": "button-outflow",
+      "description": "The dual to inflow for 'outgoing / needs attention' row actions — most often 'Pay via QR' on settlement rows. Sits a step deeper than inflow because it lives on the amber-tinted action card variant.",
+      "html": "<button class=\"ds-btn-outflow\" type=\"button\">Pay via QR</button>",
+      "css": ".ds-btn-outflow { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: #fde68a; color: #78350f; border: none; border-radius: 6px; font-family: 'Inter Variable', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 600; line-height: 1.5; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); cursor: pointer; transition: background 150ms ease-out; } .ds-btn-outflow:hover { background: #fcd34d; } .ds-btn-outflow:focus-visible { outline: 2px solid #f43f5e; outline-offset: 2px; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive actions. Sits a step darker than Attention Red so 'irreversible' and 'do this' never read as the same button. Pairs with confirm flows.",
+      "html": "<button class=\"ds-btn-danger\" type=\"button\">Delete</button>",
+      "css": ".ds-btn-danger { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: #b91c1c; color: #ffffff; border: none; border-radius: 6px; font-family: 'Inter Variable', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 600; line-height: 1.5; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); cursor: pointer; transition: background 150ms ease-out; } .ds-btn-danger:hover { background: #dc2626; } .ds-btn-danger:focus-visible { outline: 2px solid #f43f5e; outline-offset: 2px; }"
     },
     {
       "name": "Card (Default)",
@@ -386,7 +509,7 @@
       "refersTo": "card",
       "description": "Default container. White surface, hairline ring, hairline shadow.",
       "html": "<div class=\"ds-card\"><h3 class=\"ds-card-title\">Trip to Lisbon</h3><p class=\"ds-card-meta\">5 attending · 2 pending votes</p></div>",
-      "css": ".ds-card { background: #ffffff; color: #111827; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05); font-family: 'Inter Variable', ui-sans-serif, system-ui, sans-serif; } .ds-card-title { margin: 0 0 0.25rem; font-size: 1.125rem; font-weight: 600; line-height: 1.75rem; color: #111827; } .ds-card-meta { margin: 0; font-size: 0.875rem; color: #6b7280; }"
+      "css": ".ds-card { background: #ffffff; color: #111827; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05); font-family: 'Inter Variable', ui-sans-serif, system-ui, sans-serif; } .ds-card-title { margin: 0 0 0.25rem; font-size: 1.125rem; font-weight: 600; line-height: 1.75rem; color: #111827; } .ds-card-meta { margin: 0; font-size: 0.875rem; color: #4b5563; }"
     },
     {
       "name": "Card (Action Variant)",
@@ -394,15 +517,15 @@
       "refersTo": "card-action",
       "description": "Soft amber card for prompts the user should look at — staleness, action items.",
       "html": "<div class=\"ds-card-action\"><h3 class=\"ds-card-action-title\">3 votes waiting</h3><p class=\"ds-card-action-body\">Decide on dates so the group can lock in the trip.</p></div>",
-      "css": ".ds-card-action { background: rgba(255, 251, 235, 0.6); color: #111827; border-radius: 8px; padding: 24px; box-shadow: 0 0 0 2px rgba(252, 211, 77, 0.5); font-family: 'Inter Variable', ui-sans-serif, system-ui, sans-serif; } .ds-card-action-title { margin: 0 0 0.25rem; font-size: 1.125rem; font-weight: 600; color: #111827; } .ds-card-action-body { margin: 0; font-size: 0.875rem; color: #6b7280; }"
+      "css": ".ds-card-action { background: rgba(255, 251, 235, 0.6); color: #111827; border-radius: 8px; padding: 24px; box-shadow: 0 0 0 2px rgba(252, 211, 77, 0.5); font-family: 'Inter Variable', ui-sans-serif, system-ui, sans-serif; } .ds-card-action-title { margin: 0 0 0.25rem; font-size: 1.125rem; font-weight: 600; color: #111827; } .ds-card-action-body { margin: 0; font-size: 0.875rem; color: #4b5563; }"
     },
     {
       "name": "Input (Form Field)",
       "kind": "input",
       "refersTo": "input",
-      "description": "Form input with label above. Sunken page-surface fill, gray outline, rose focus ring.",
-      "html": "<label class=\"ds-input-wrap\"><span class=\"ds-input-label\">Event name</span><input class=\"ds-input\" type=\"text\" value=\"Lisbon weekend\" /></label>",
-      "css": ".ds-input-wrap { display: block; font-family: 'Inter Variable', ui-sans-serif, system-ui, sans-serif; } .ds-input-label { display: block; margin-bottom: 0.5rem; font-size: 0.875rem; font-weight: 500; line-height: 1.5; color: #111827; } .ds-input { display: block; width: 100%; padding: 0.375rem 0.75rem; background: #f3f4f6; color: #111827; border: none; border-radius: 6px; outline: 1px solid #d1d5db; outline-offset: -1px; font-size: 1rem; line-height: 1.5; transition: outline-color 150ms ease-out; } .ds-input::placeholder { color: #9ca3af; } .ds-input:focus { outline: 2px solid #f43f5e; outline-offset: -2px; }"
+      "description": "Form input with label above. Sunken fill (bg-surface-sunken) and hairline outline (outline-line) both ride dual-mode tokens. Placeholder uses text-ink-placeholder so it clears WCAG AA 4.5:1 against the sunken fill in both modes. Focus is the system-wide outset rose ring (outline-focus). FormTextarea, FormSelect, CurrencyInput, and LocationInput share this vocabulary.",
+      "html": "<label class=\"ds-input-wrap\"><span class=\"ds-input-label\">Event name</span><input class=\"ds-input\" type=\"text\" placeholder=\"e.g. Lisbon weekend\" /></label>",
+      "css": ".ds-input-wrap { display: block; font-family: 'Inter Variable', ui-sans-serif, system-ui, sans-serif; } .ds-input-label { display: block; margin-bottom: 0.5rem; font-size: 0.875rem; font-weight: 500; line-height: 1.5; color: #111827; } .ds-input { display: block; width: 100%; padding: 0.375rem 0.75rem; background: #f3f4f6; color: #111827; border: none; border-radius: 6px; outline: 1px solid #d1d5db; outline-offset: -1px; font-size: 1rem; line-height: 1.5; transition: outline-color 150ms ease-out; } .ds-input::placeholder { color: #6b7280; } .ds-input:focus { outline: 2px solid #f43f5e; outline-offset: -2px; } .ds-input:disabled { opacity: 0.5; cursor: not-allowed; }"
     },
     {
       "name": "Badge (State)",
@@ -416,16 +539,16 @@
       "name": "Avatar (Initials)",
       "kind": "custom",
       "refersTo": null,
-      "description": "Initials-only avatar. No image avatars in the system. Three variants — rose (default), amber (warm), nav (white-on-amber).",
-      "html": "<span class=\"ds-avatar ds-avatar-rose\">IK</span><span class=\"ds-avatar ds-avatar-amber\">JM</span>",
-      "css": ".ds-avatar { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 9999px; font-family: 'Inter Variable', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 600; margin-right: 0.5rem; } .ds-avatar-rose { background: #ffe4e6; color: #be123c; } .ds-avatar-amber { background: #fcd34d; color: #78350f; }"
+      "description": "Initials-only avatar. No image avatars in the system. Three variants — `neutral` (default, soft rose-tinted fill with rose ink), `pending` (CRT-warm amber-tinted fill with amber ink), `nav` (white-on-amber-hover for the top nav).",
+      "html": "<span class=\"ds-avatar ds-avatar-neutral\">IK</span><span class=\"ds-avatar ds-avatar-pending\">JM</span>",
+      "css": ".ds-avatar { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 9999px; font-family: 'Inter Variable', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 600; margin-right: 0.5rem; } .ds-avatar-neutral { background: #ffe4e6; color: #be123c; } .ds-avatar-pending { background: #fcd34d; color: #78350f; }"
     },
     {
       "name": "Section Heading",
       "kind": "custom",
       "refersTo": null,
       "description": "H2 with a CRT Amber Heroicons icon. The system's only mandatory color use in the body of a page.",
-      "html": "<h2 class=\"ds-section-heading\"><svg class=\"ds-section-icon\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 24 24\" stroke-width=\"1.5\" stroke=\"currentColor\" aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5\\\" /></svg>Upcoming events</h2>",
+      "html": "<h2 class=\"ds-section-heading\"><svg class=\"ds-section-icon\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 24 24\" stroke-width=\"1.5\" stroke=\"currentColor\" aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5\" /></svg>Upcoming events</h2>",
       "css": ".ds-section-heading { display: flex; align-items: center; gap: 0.5rem; margin: 0 0 1rem; font-family: 'Inter Variable', ui-sans-serif, system-ui, sans-serif; font-size: 1.125rem; font-weight: 600; line-height: 1.75rem; color: #111827; } .ds-section-icon { width: 20px; height: 20px; color: #d97706; flex-shrink: 0; }"
     },
     {
@@ -496,7 +619,7 @@
     ],
     "dos": [
       "Do keep ≥90% of any screen in neutrals. The bright voices (CRT Amber #d97706, Attention Red #e11d48, Navigator Cyan #0891b2) earn their saturation by being rare.",
-      "Do put focus-visible:outline-rose-500 on every interactive element. The Attention Red ring is the system-wide focus signal.",
+      "Do put focus-visible:outline-focus on every interactive element. The Attention Red ring (served via --color-focus) is the system-wide focus signal — one token, one place to change.",
       "Do use Inter Variable at 16px for primary content. Reach for text-sm / text-xs only for secondary metadata.",
       "Do lead each screen region with a SectionHeading — text-lg semibold plus a text-amber-600 icon.",
       "Do design dark mode at the same time as light mode. Both are first-class.",

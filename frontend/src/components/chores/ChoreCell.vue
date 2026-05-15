@@ -35,7 +35,7 @@ function handleAddClick(event: MouseEvent) {
       :class="
         a.pinned
           ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
-          : 'bg-gray-100 text-gray-700 dark:bg-stone-700 dark:text-stone-300'
+          : 'bg-btn-secondary-fill text-btn-secondary-ink'
       "
       :title="
         a.note
@@ -50,13 +50,13 @@ function handleAddClick(event: MouseEvent) {
       }}</span>
       <ChatBubbleLeftIcon
         v-if="a.note"
-        class="size-3 shrink-0 text-gray-400 dark:text-stone-500"
+        class="size-3 shrink-0 text-ink-muted"
       />
     </button>
     <button
       v-if="hasEmptySlots"
       type="button"
-      class="inline-flex size-5 items-center justify-center rounded text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:text-stone-500 dark:hover:bg-stone-700 dark:hover:text-stone-300"
+      class="inline-flex size-5 items-center justify-center rounded text-ink-muted transition-colors hover:bg-gray-100 hover:text-gray-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:hover:bg-stone-700 dark:hover:text-stone-300"
       title="Assign member"
       aria-label="Assign member"
       @click="handleAddClick"

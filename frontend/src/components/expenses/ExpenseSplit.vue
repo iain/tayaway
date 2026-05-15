@@ -124,10 +124,7 @@ function formatDays(days: number): string {
   <div v-if="event.startDate && event.endDate" class="mt-8">
     <SectionHeading :icon="CalculatorIcon" title="Fair shares" />
 
-    <p
-      v-if="rows.length === 0"
-      class="text-sm text-gray-500 dark:text-stone-400"
-    >
+    <p v-if="rows.length === 0" class="text-sm text-ink-muted">
       No attendees yet.
     </p>
 
@@ -135,7 +132,7 @@ function formatDays(days: number): string {
       <table class="w-full text-sm">
         <thead>
           <tr
-            class="border-b border-gray-200 text-left text-xs font-medium tracking-wide text-gray-500 uppercase dark:border-stone-700 dark:text-stone-400"
+            class="border-b border-line text-left text-xs font-medium tracking-wide text-ink-muted uppercase"
           >
             <th class="pt-3 pr-4 pb-2 pl-4">Name</th>
             <th class="hidden pt-3 pr-4 pb-2 sm:table-cell">Days</th>
@@ -157,9 +154,7 @@ function formatDays(days: number): string {
             >
               {{ row.name }}
             </td>
-            <td
-              class="hidden py-2 pr-4 text-gray-600 sm:table-cell dark:text-stone-400"
-            >
+            <td class="hidden py-2 pr-4 text-ink-muted sm:table-cell">
               {{ formatDays(row.days) }}
             </td>
             <td
@@ -191,12 +186,10 @@ function formatDays(days: number): string {
           </tr>
         </tbody>
         <tfoot>
-          <tr
-            class="border-t border-gray-300 font-semibold text-gray-900 dark:border-stone-600 dark:text-white"
-          >
+          <tr class="border-t border-line font-semibold text-ink">
             <td class="pt-2 pr-4 pb-3 pl-4">Total</td>
             <td
-              class="hidden pt-2 pr-4 pb-3 text-gray-600 sm:table-cell dark:text-stone-400"
+              class="hidden pt-2 pr-4 pb-3 text-ink-muted sm:table-cell"
             >
               {{ formatDays(totalDays) }}
             </td>

@@ -184,24 +184,14 @@ function openModal(size: ModalSize): void {
           visible — anything that drifts here drifts in production.
         </template>
         <div class="text-meta flex flex-wrap items-center gap-x-4 gap-y-1">
-          <a
-            href="https://github.com/iain/tayaway/blob/main/DESIGN.md"
-            target="_blank"
-            rel="noopener"
-            class="focus-visible:outline-focus inline-flex items-center gap-1 text-cyan-600 underline hover:text-cyan-700 focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-cyan-400 dark:hover:text-cyan-300"
-          >
+          <TextButton href="https://github.com/iain/tayaway/blob/main/DESIGN.md">
             DESIGN.md
             <ArrowTopRightOnSquareIcon class="size-3.5" aria-hidden="true" />
-          </a>
-          <a
-            href="https://github.com/iain/tayaway/blob/main/PRODUCT.md"
-            target="_blank"
-            rel="noopener"
-            class="focus-visible:outline-focus inline-flex items-center gap-1 text-cyan-600 underline hover:text-cyan-700 focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-cyan-400 dark:hover:text-cyan-300"
-          >
+          </TextButton>
+          <TextButton href="https://github.com/iain/tayaway/blob/main/PRODUCT.md">
             PRODUCT.md
             <ArrowTopRightOnSquareIcon class="size-3.5" aria-hidden="true" />
-          </a>
+          </TextButton>
         </div>
       </PageHeader>
 
@@ -805,7 +795,7 @@ function openModal(size: ModalSize): void {
               id="containers-cards"
               title="Cards"
               description="Default, action, urgent, and the interactive variant. Hover lifts only the interactive one."
-              motion="Interactive cards add a 2px ring on hover and a 5% brightness shift on active. Never scale or translate."
+              motion="Interactive cards deepen to a 2px neutral ring on hover and press in on active (scale 0.99 + 5% brightness shift). They never translate or lift."
             >
               <SectionHeading :icon="RectangleStackIcon" title="Variants" />
               <div class="space-y-4">
@@ -830,7 +820,9 @@ function openModal(size: ModalSize): void {
                 <BaseCard padded interactive>
                   <p class="text-ink font-semibold">Interactive</p>
                   <p class="text-ink-muted text-sm">
-                    Hover to see the rose ring affordance.
+                    Hover deepens the hairline to a 2px neutral ring — no
+                    saturation, so a card hover and a button focus never read
+                    as the same signal.
                   </p>
                 </BaseCard>
               </div>

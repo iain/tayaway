@@ -124,11 +124,9 @@ function toggleMode(): void {
 <template>
   <div>
     <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-      <p class="text-sm font-medium text-gray-700 dark:text-stone-300">
-        Expense period
-      </p>
+      <p class="text-sm font-medium text-ink">Expense period</p>
       <div
-        class="inline-flex gap-0.5 rounded-lg bg-gray-100 p-0.5 dark:bg-stone-700"
+        class="inline-flex gap-0.5 rounded-lg bg-btn-secondary-fill p-0.5"
         data-testid="toggle-date-mode"
       >
         <button
@@ -137,7 +135,7 @@ function toggleMode(): void {
           :class="
             singleDate
               ? 'bg-amber-100 text-amber-800 shadow-sm dark:bg-amber-900/40 dark:text-amber-300'
-              : 'text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:text-stone-400 dark:hover:bg-stone-600 dark:hover:text-stone-200'
+              : 'text-ink-muted hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-stone-600 dark:hover:text-stone-200'
           "
           @click="singleDate || toggleMode()"
         >
@@ -149,7 +147,7 @@ function toggleMode(): void {
           :class="
             !singleDate
               ? 'bg-amber-100 text-amber-800 shadow-sm dark:bg-amber-900/40 dark:text-amber-300'
-              : 'text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:text-stone-400 dark:hover:bg-stone-600 dark:hover:text-stone-200'
+              : 'text-ink-muted hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-stone-600 dark:hover:text-stone-200'
           "
           @click="singleDate && toggleMode()"
         >
@@ -158,9 +156,7 @@ function toggleMode(): void {
       </div>
     </div>
 
-    <div
-      class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-stone-700 dark:bg-stone-800"
-    >
+    <div class="rounded-xl border border-line bg-surface-sunken p-4">
       <div class="mb-2 flex items-center justify-between">
         <IconButton
           label="Previous month"
@@ -170,7 +166,7 @@ function toggleMode(): void {
         >
           <ChevronLeftIcon class="size-5" />
         </IconButton>
-        <span class="text-sm font-semibold text-gray-900 dark:text-white">
+        <span class="text-sm font-semibold text-ink">
           {{ monthLabel }}
         </span>
         <IconButton
@@ -196,7 +192,7 @@ function toggleMode(): void {
         @hover="handleHover"
       />
 
-      <div class="mt-2 text-center text-sm text-gray-500 dark:text-stone-400">
+      <div class="mt-2 text-center text-sm text-ink-muted">
         {{ selectionText }}
       </div>
     </div>

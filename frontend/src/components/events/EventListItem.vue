@@ -26,28 +26,24 @@ defineEmits<{
         <div class="min-w-0 flex-1">
           <h3
             data-testid="event-name"
-            class="truncate text-lg font-semibold text-gray-900 dark:text-white"
+            class="truncate text-lg font-semibold text-ink"
           >
             {{ event.name }}
           </h3>
           <p
             v-if="event.description"
-            class="mt-1 line-clamp-2 text-sm text-gray-500 dark:text-stone-400"
+            class="mt-1 line-clamp-2 text-sm text-ink-muted"
             :title="event.description"
           >
             {{ event.description }}
           </p>
-          <div
-            class="mt-2 flex items-center gap-3 text-sm text-gray-600 dark:text-stone-300"
-          >
+          <div class="mt-2 flex items-center gap-3 text-sm text-ink-muted">
             <slot name="meta" />
-            <span class="text-gray-400 dark:text-stone-500"
-              >by {{ ownerName }}</span
-            >
+            <span class="text-ink-muted">by {{ ownerName }}</span>
           </div>
         </div>
         <ChevronRightIcon
-          class="size-5 shrink-0 text-gray-400 dark:text-stone-500"
+          class="size-5 shrink-0 text-ink-muted"
           aria-hidden="true"
         />
       </div>

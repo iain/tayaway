@@ -146,7 +146,7 @@ const selectionText = computed(() => {
     size="2xl"
     @close="handleClose"
   >
-    <div class="mb-4 text-sm text-gray-500 dark:text-stone-400">
+    <div class="mb-4 text-sm text-ink-muted">
       {{ selectionText }}
     </div>
 

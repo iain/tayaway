@@ -26,7 +26,7 @@ defineProps<{
           </div>
           <div class="min-w-0 flex-1">
             <h3
-              class="truncate text-base font-semibold text-gray-900 dark:text-white"
+              class="truncate text-base font-semibold text-ink"
             >
               {{ member.name || member.email }}
             </h3>

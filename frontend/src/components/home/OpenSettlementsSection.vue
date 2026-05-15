@@ -72,7 +72,7 @@ function getEventIdForTransfer(
 <template>
   <section>
     <SectionHeading :icon="ScaleIcon" title="Open settlements" />
-    <p class="mb-4 -mt-2 text-sm text-gray-500 dark:text-stone-400">
+    <p class="text-ink-muted mb-4 -mt-2 text-sm">
       Mark a transfer as paid once you've received the payment.
     </p>
 
@@ -105,16 +105,16 @@ function getEventIdForTransfer(
           class="flex flex-wrap items-center justify-between gap-y-2 px-4 py-3 sm:px-6"
         >
           <div class="min-w-0 flex-1">
-            <p class="text-sm text-gray-900 dark:text-white">
+            <p class="text-ink text-sm">
               <span class="font-semibold">{{
                 getMemberName(transfer.fromUserId, pool)
               }}</span>
               owes you
-              <span class="font-semibold text-gray-900 dark:text-white">
+              <span class="text-ink font-semibold">
                 <LedgerAmount :amount="transfer.amount" />
               </span>
             </p>
-            <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
+            <p class="text-ink-muted mt-0.5 text-xs">
               <router-link
                 v-if="getEventIdForTransfer(transfer)"
                 :to="`/events/${getEventIdForTransfer(transfer)}/expenses`"
@@ -148,16 +148,16 @@ function getEventIdForTransfer(
           class="flex flex-wrap items-center justify-between gap-y-2 px-4 py-3 sm:px-6"
         >
           <div class="min-w-0 flex-1">
-            <p class="text-sm text-gray-700 dark:text-stone-300">
+            <p class="text-ink text-sm">
               You owe
-              <span class="font-semibold text-gray-900 dark:text-white">{{
+              <span class="text-ink font-semibold">{{
                 getMemberName(transfer.toUserId, pool)
               }}</span>
             </p>
             <p class="text-ink mt-0.5 text-lg font-bold">
               <LedgerAmount :amount="transfer.amount" />
             </p>
-            <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
+            <p class="text-ink-muted mt-0.5 text-xs">
               <router-link
                 v-if="getEventIdForTransfer(transfer)"
                 :to="`/events/${getEventIdForTransfer(transfer)}/expenses`"

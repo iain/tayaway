@@ -2,7 +2,7 @@
 withDefaults(
   defineProps<{
     initials: string
-    size?: 'sm' | 'md' | 'lg'
+    size?: 'xs' | 'sm' | 'md' | 'lg'
     variant?: 'neutral' | 'pending' | 'nav'
   }>(),
   {
@@ -12,6 +12,8 @@ withDefaults(
 )
 
 const sizeClasses: Record<string, string> = {
+  // 24px for inline ledger-row contexts where 32px (sm) is too large.
+  xs: 'size-6 text-xs',
   sm: 'size-8 text-sm',
   md: 'size-10 text-sm',
   lg: 'size-12 text-lg',

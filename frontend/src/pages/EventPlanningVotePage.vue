@@ -53,7 +53,7 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
 
 <template>
   <div>
-    <div v-if="!event" class="text-gray-500 dark:text-stone-400">
+    <div v-if="!event" class="text-ink-muted">
       Event not found
     </div>
 
@@ -73,7 +73,7 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
         v-if="!event.datePoll || !pollOpen"
         data-testid="poll-closed-message"
         :icon="CheckCircleIcon"
-        icon-class="text-gray-400 dark:text-stone-500"
+        icon-class="text-ink-muted"
         heading="Voting has ended"
         description="The date poll is closed and no longer accepting votes."
       >

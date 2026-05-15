@@ -31,17 +31,17 @@ const errorId = computed(() => `${props.id}-error`)
 
 // Error state is carried by fill + icon + a 1px red edge — orthogonal to
 // focus, which keeps its system-wide outset rose ring on top. The healthy
-// branch keeps the gray edge that swaps to the rose focus ring.
+// branch keeps the hairline edge that swaps to the rose focus ring.
 const wrapperShell = computed(() =>
   hasError.value
     ? 'bg-state-danger-fill outline-1 -outline-offset-1 outline-state-danger-outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus'
-    : 'bg-gray-100 outline-1 -outline-offset-1 outline-gray-300 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus dark:bg-white/5 dark:outline-white/10'
+    : 'bg-surface-sunken outline-1 -outline-offset-1 outline-line focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus'
 )
 
 const inputShell = computed(() =>
   hasError.value
     ? 'bg-state-danger-fill outline-1 -outline-offset-1 outline-state-danger-outline focus:outline-2 focus:outline-offset-2 focus:outline-focus'
-    : 'bg-gray-100 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:outline-offset-2 focus:outline-focus dark:bg-white/5 dark:outline-white/10'
+    : 'bg-surface-sunken outline-1 -outline-offset-1 outline-line focus:outline-2 focus:outline-offset-2 focus:outline-focus'
 )
 </script>
 
@@ -57,7 +57,7 @@ const inputShell = computed(() =>
         :class="wrapperShell"
       >
         <div
-          class="shrink-0 text-base text-gray-500 select-none sm:text-sm/6 dark:text-stone-400"
+          class="text-ink-muted shrink-0 text-base select-none sm:text-sm/6"
         >
           {{ prefix }}
         </div>
@@ -73,7 +73,7 @@ const inputShell = computed(() =>
           :aria-invalid="hasError || undefined"
           :aria-describedby="hasError ? errorId : undefined"
           v-bind="attrs"
-          class="block min-w-0 grow bg-transparent py-1.5 pl-1 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6 dark:text-white dark:placeholder:text-stone-500"
+          class="text-ink placeholder:text-ink-placeholder block min-w-0 grow bg-transparent py-1.5 pl-1 text-base focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm/6"
           :class="hasError ? 'pr-10' : 'pr-3'"
           @input="
             $emit(
@@ -103,7 +103,7 @@ const inputShell = computed(() =>
           :aria-invalid="hasError || undefined"
           :aria-describedby="hasError ? errorId : undefined"
           v-bind="attrs"
-          class="block w-full rounded-md py-1.5 pl-3 text-base text-gray-900 placeholder:text-gray-400 sm:text-sm/6 dark:text-white dark:placeholder:text-stone-500"
+          class="text-ink placeholder:text-ink-placeholder block w-full rounded-md py-1.5 pl-3 text-base disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm/6"
           :class="[inputShell, hasError ? 'pr-10' : 'pr-3']"
           @input="
             $emit('update:modelValue', ($event.target as HTMLInputElement).value)
@@ -118,7 +118,7 @@ const inputShell = computed(() =>
         </span>
       </div>
     </div>
-    <p v-if="hasError" :id="errorId" class="text-state-danger-ink mt-1 text-sm">
+    <p v-if="hasError" :id="errorId" class="text-state-danger-ink text-meta mt-1">
       {{ error }}
     </p>
   </div>

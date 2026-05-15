@@ -349,12 +349,12 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
           leave-to="opacity-0 scale-95"
         >
           <DialogPanel
-            class="mx-auto max-w-2xl transform divide-y divide-gray-200 overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-gray-200 transition-all dark:divide-white/10 dark:bg-stone-900 dark:ring-white/10"
+            class="mx-auto max-w-2xl transform divide-y divide-line overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-gray-200 transition-all dark:bg-stone-900 dark:ring-white/10"
           >
             <Combobox @update:model-value="onSelect">
               <div class="grid grid-cols-1">
                 <ComboboxInput
-                  class="col-start-1 row-start-1 h-12 w-full bg-transparent pr-4 pl-11 text-base text-gray-900 outline-hidden placeholder:text-gray-400 sm:text-sm dark:text-white"
+                  class="col-start-1 row-start-1 h-12 w-full bg-transparent pr-4 pl-11 text-base text-ink outline-hidden placeholder:text-gray-400 sm:text-sm"
                   placeholder="Search..."
                   @change="query = ($event.target as HTMLInputElement).value"
                 />

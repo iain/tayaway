@@ -47,13 +47,13 @@ function navigateToEventPage(eventId: string): void {
           >
             <div class="min-w-0 flex-1">
               <h3
-                class="truncate text-base font-semibold text-gray-900 dark:text-white"
+                class="truncate text-base font-semibold text-ink"
               >
                 {{ event.name }}
               </h3>
               <div class="mt-1 flex flex-wrap items-center gap-3 text-sm">
                 <span
-                  class="inline-flex items-center gap-1 text-gray-500 dark:text-stone-400"
+                  class="text-ink-muted inline-flex items-center gap-1"
                 >
                   <CalendarDaysIcon
                     class="size-4 text-amber-600 dark:text-amber-400"
@@ -66,7 +66,7 @@ function navigateToEventPage(eventId: string): void {
               </div>
             </div>
             <ChevronRightIcon
-              class="size-5 shrink-0 text-gray-400 dark:text-stone-500"
+              class="text-ink-muted size-5 shrink-0"
               aria-hidden="true"
             />
           </div>

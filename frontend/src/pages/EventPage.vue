@@ -325,7 +325,7 @@ function handleDownloadIcs(): void {
 </script>
 
 <template>
-  <div v-if="!event" class="text-gray-500 dark:text-stone-400">
+  <div v-if="!event" class="text-ink-muted">
     Event not found
   </div>
 
@@ -344,7 +344,7 @@ function handleDownloadIcs(): void {
             :maxlength="255"
             :disabled="loading"
             data-testid="edit-name-input"
-            class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-2 text-2xl font-bold tracking-tight text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:font-normal placeholder:text-gray-400 focus:outline-2 focus:outline-offset-2 focus:outline-focus sm:text-3xl dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
+            class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder min-w-0 flex-1 rounded-md px-3 py-2 text-2xl font-bold tracking-tight outline-1 -outline-offset-1 placeholder:font-normal focus:outline-2 focus:outline-offset-2 focus:outline-focus sm:text-3xl"
             @keyup.escape="cancelEdit"
           />
           <AppButton
@@ -366,7 +366,7 @@ function handleDownloadIcs(): void {
       </div>
       <div v-else class="group flex items-start gap-0.5">
         <h1
-          class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl lg:text-4xl dark:text-white"
+          class="text-ink text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl"
         >
           {{ event.name }}
         </h1>
@@ -393,7 +393,7 @@ function handleDownloadIcs(): void {
             rows="3"
             :disabled="loading"
             data-testid="edit-description-input"
-            class="w-full rounded-md bg-gray-100 px-3 py-2 text-xl text-gray-600 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:outline-offset-2 focus:outline-focus dark:bg-white/5 dark:text-stone-300 dark:outline-white/10 dark:placeholder:text-stone-500"
+            class="bg-surface-sunken outline-line placeholder:text-ink-placeholder w-full rounded-md px-3 py-2 text-xl text-gray-600 outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 focus:outline-focus dark:text-stone-300"
             @keyup.escape="cancelEdit"
           />
           <div class="mt-2 flex items-center gap-2">
@@ -419,7 +419,7 @@ function handleDownloadIcs(): void {
         </p>
         <p
           v-else-if="canEdit"
-          class="text-xl text-gray-400 italic dark:text-stone-500"
+          class="text-ink-muted text-xl italic"
         >
           No description
         </p>
@@ -442,7 +442,7 @@ function handleDownloadIcs(): void {
         size="2xl"
         @close="cancelEdit"
       >
-        <div class="mb-4 text-sm text-gray-500 dark:text-stone-400">
+        <div class="text-ink-muted mb-4 text-sm">
           {{ dateSelectionText }}
         </div>
 
@@ -492,7 +492,7 @@ function handleDownloadIcs(): void {
       <div class="group mt-4 flex items-center gap-0.5">
         <div
           v-if="eventHasDates(event)"
-          class="flex items-center gap-2 text-gray-500 dark:text-stone-400"
+          class="text-ink-muted flex items-center gap-2"
         >
           <CalendarDaysIcon class="size-5 text-amber-600 dark:text-amber-400" />
           <DateRangeDisplay
@@ -502,7 +502,7 @@ function handleDownloadIcs(): void {
         </div>
         <div
           v-else-if="canEdit"
-          class="flex items-center gap-2 text-gray-400 dark:text-stone-500"
+          class="text-ink-muted flex items-center gap-2"
         >
           <CalendarDaysIcon class="size-5" />
           <span class="italic">No dates set</span>
@@ -550,7 +550,7 @@ function handleDownloadIcs(): void {
           :href="mapsUrl ?? undefined"
           :target="mapsUrl ? '_blank' : undefined"
           :rel="mapsUrl ? 'noopener noreferrer' : undefined"
-          class="flex items-center gap-2 text-gray-500 dark:text-stone-400"
+          class="text-ink-muted flex items-center gap-2"
           :class="
             mapsUrl &&
             'rounded hover:text-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:hover:text-amber-400'
@@ -563,7 +563,7 @@ function handleDownloadIcs(): void {
         </component>
         <div
           v-else-if="canEdit"
-          class="flex items-center gap-2 text-gray-400 dark:text-stone-500"
+          class="text-ink-muted flex items-center gap-2"
         >
           <MapPinIcon class="size-5" />
           <span class="italic">No location set</span>
@@ -615,7 +615,7 @@ function handleDownloadIcs(): void {
   <!-- Delete (owner only, below the two-column layout) -->
   <div
     v-if="event && canEdit"
-    class="mt-12 border-t border-gray-200 pt-6 dark:border-stone-700"
+    class="border-line mt-12 border-t pt-6"
   >
     <TextButton variant="danger" @click="showDeleteConfirm = true">
       <TrashIcon class="size-4" />
@@ -647,7 +647,7 @@ function handleDownloadIcs(): void {
       size="sm"
       @close="showRsvpWarning = false"
     >
-      <p class="text-sm text-gray-600 dark:text-stone-400">
+      <p class="text-ink-muted text-sm">
         {{ eventRsvps.length }}
         {{ eventRsvps.length === 1 ? 'member has' : 'members have' }} already
         RSVPed. Changing the dates will reset all RSVPs so members can
@@ -670,7 +670,7 @@ function handleDownloadIcs(): void {
       @close="showDeleteConfirm = false"
     >
       <template v-if="!canDelete">
-        <p class="text-sm text-gray-600 dark:text-stone-400">
+        <p class="text-ink-muted text-sm">
           This event has expenses or settlements. Settle up and delete expenses
           before deleting the event.
         </p>
@@ -682,16 +682,16 @@ function handleDownloadIcs(): void {
       </template>
 
       <template v-else>
-        <p class="text-sm text-gray-600 dark:text-stone-400">
+        <p class="text-ink-muted text-sm">
           Permanently delete
-          <strong class="text-gray-900 dark:text-white">{{
+          <strong class="text-ink">{{
             event?.name
           }}</strong
           >? This can't be undone.
         </p>
         <p
           v-if="deleteSummary.length > 0"
-          class="mt-2 text-sm text-gray-500 dark:text-stone-400"
+          class="text-ink-muted mt-2 text-sm"
         >
           This will also delete {{ deleteSummary.join(', ') }}.
         </p>

@@ -13,13 +13,9 @@ defineEmits<{
 
 <template>
   <div
-    class="focus-within:outline-focus flex items-center rounded-md bg-gray-100 px-3 outline-1 -outline-offset-1 outline-gray-300 focus-within:outline-2 focus-within:outline-offset-2 dark:bg-white/5 dark:outline-white/10"
+    class="bg-surface-sunken focus-within:outline-focus flex items-center rounded-md px-3 outline-1 -outline-offset-1 outline-line focus-within:outline-2 focus-within:outline-offset-2"
   >
-    <div
-      class="shrink-0 text-sm/6 text-gray-500 select-none dark:text-stone-400"
-    >
-      €
-    </div>
+    <div class="text-ink-muted shrink-0 text-sm/6 select-none">€</div>
     <input
       :id="id"
       type="text"
@@ -27,7 +23,7 @@ defineEmits<{
       :value="modelValue"
       :placeholder="placeholder ?? '0.00'"
       :disabled="disabled"
-      class="block min-w-0 grow bg-transparent py-1.5 pr-3 pl-1 text-sm/6 text-gray-900 placeholder:text-gray-400 focus:outline-none dark:text-white dark:placeholder:text-stone-500"
+      class="text-ink placeholder:text-ink-placeholder block min-w-0 grow bg-transparent py-1.5 pr-3 pl-1 text-sm/6 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
       @input="
         $emit('update:modelValue', ($event.target as HTMLInputElement).value)
       "

@@ -84,7 +84,7 @@ watch(() => route.name, redirectIfDesktopIndex)
     <RouterLink
       v-if="currentSection"
       to="/settings"
-      class="mb-2 -ml-2 inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm text-gray-600 hover:bg-gray-100 lg:hidden dark:text-stone-300 dark:hover:bg-white/5"
+      class="mb-2 -ml-2 inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm text-ink-muted hover:bg-surface-sunken lg:hidden"
     >
       <ChevronLeftIcon class="size-4" aria-hidden="true" />
       Settings
@@ -108,7 +108,7 @@ watch(() => route.name, redirectIfDesktopIndex)
             :class="
               route.name === section.name
                 ? ''
-                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-stone-300 dark:hover:bg-white/5 dark:hover:text-white'
+                : 'text-ink hover:bg-surface-sunken'
             "
           >
             <component
@@ -118,7 +118,7 @@ watch(() => route.name, redirectIfDesktopIndex)
             />
             <span class="flex-1">{{ section.label }}</span>
             <ChevronRightIcon
-              class="size-4 text-gray-400 lg:hidden dark:text-stone-500"
+              class="size-4 text-ink-muted lg:hidden"
               aria-hidden="true"
             />
           </RouterLink>

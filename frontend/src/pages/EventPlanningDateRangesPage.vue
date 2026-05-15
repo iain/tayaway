@@ -103,11 +103,11 @@ async function deleteRange(dateRangeId: string): Promise<void> {
 
 <template>
   <div>
-    <div v-if="!event" class="text-gray-500 dark:text-stone-400">
+    <div v-if="!event" class="text-ink-muted">
       Event not found
     </div>
 
-    <div v-else-if="!event.datePoll" class="text-gray-500 dark:text-stone-400">
+    <div v-else-if="!event.datePoll" class="text-ink-muted">
       No date poll found for this event.
     </div>
 
@@ -153,13 +153,13 @@ async function deleteRange(dateRangeId: string): Promise<void> {
             data-testid="date-range-item"
           >
             <div>
-              <span class="text-sm font-medium text-gray-900 dark:text-white">
+              <span class="text-ink text-sm font-medium">
                 <DateRangeDisplay
                   :start-date="dateRange.startDate"
                   :end-date="dateRange.endDate"
                 />
               </span>
-              <span class="ml-3 text-sm text-gray-500 dark:text-stone-400">
+              <span class="text-ink-muted ml-3 text-sm">
                 {{ dateRange.voteSummary.total }}
                 {{ dateRange.voteSummary.total === 1 ? 'vote' : 'votes' }}
               </span>
@@ -187,13 +187,13 @@ async function deleteRange(dateRangeId: string): Promise<void> {
       @close="confirmingDateRange = null"
     >
       <div v-if="confirmingDateRange">
-        <p class="mb-1 text-sm font-medium text-gray-900 dark:text-white">
+        <p class="text-ink mb-1 text-sm font-medium">
           <DateRangeDisplay
             :start-date="confirmingDateRange.startDate"
             :end-date="confirmingDateRange.endDate"
           />
         </p>
-        <p class="mb-4 text-sm text-gray-500 dark:text-stone-400">
+        <p class="text-ink-muted mb-4 text-sm">
           This date range has
           {{ confirmingDateRange.voteSummary.total }}
           {{ confirmingDateRange.voteSummary.total === 1 ? 'vote' : 'votes' }}.

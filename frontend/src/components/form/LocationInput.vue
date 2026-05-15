@@ -162,17 +162,14 @@ defineExpose({
 
 <template>
   <div class="relative">
-    <label
-      v-if="label"
-      class="block text-sm/6 font-medium text-gray-900 dark:text-white"
-    >
+    <label v-if="label" class="text-label text-ink block">
       {{ label }}
     </label>
     <div class="relative mt-2">
       <div
         class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"
       >
-        <MapPinIcon class="size-4 text-gray-400 dark:text-stone-500" />
+        <MapPinIcon class="text-ink-muted size-4" />
       </div>
       <input
         ref="inputEl"
@@ -182,7 +179,7 @@ defineExpose({
         :disabled="disabled"
         placeholder="Search for a location..."
         autocomplete="off"
-        class="block w-full rounded-md bg-gray-100 py-1.5 pr-9 pl-9 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:outline-offset-2 focus:outline-focus disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
+        class="bg-surface-sunken text-ink placeholder:text-ink-placeholder block w-full rounded-md py-1.5 pr-9 pl-9 text-base outline-1 -outline-offset-1 outline-line focus:outline-2 focus:outline-offset-2 focus:outline-focus disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm/6"
         @input="handleInput"
         @keydown="handleKeydown"
         @focus="showDropdown = suggestions.length > 0"
@@ -191,7 +188,7 @@ defineExpose({
       <button
         v-if="query"
         type="button"
-        class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:text-stone-500 dark:hover:text-stone-300"
+        class="text-ink-muted hover:text-ink absolute inset-y-0 right-0 flex items-center pr-3"
         @click="clear"
       >
         <XMarkIcon class="size-4" />
@@ -200,17 +197,17 @@ defineExpose({
     <ul
       v-if="showDropdown"
       role="listbox"
-      class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black/5 sm:text-sm dark:bg-stone-800 dark:ring-white/10"
+      class="bg-surface ring-ring-hairline absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md py-1 text-base shadow-lg ring-1 sm:text-sm"
     >
       <li
         v-for="(feature, i) in suggestions"
         :key="i"
         role="option"
-        class="cursor-pointer px-3 py-2 text-gray-900 transition-colors dark:text-white"
+        class="text-ink cursor-pointer px-3 py-2 transition-colors"
         :class="
           i === activeIndex
-            ? 'bg-rose-50 dark:bg-stone-700'
-            : 'hover:bg-rose-50 dark:hover:bg-stone-700'
+            ? 'bg-rose-50 dark:bg-rose-950/40'
+            : 'hover:bg-rose-50 dark:hover:bg-rose-950/40'
         "
         @mousedown.prevent="selectSuggestion(feature)"
         @mouseenter="activeIndex = i"

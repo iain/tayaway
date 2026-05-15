@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref, useId, watch } from 'vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps<{
@@ -8,6 +8,10 @@ const props = defineProps<{
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
   preventClose?: boolean
 }>()
+
+// Wire the dialog's accessible name to the heading text so screen readers
+// announce the title on open. Native <dialog> doesn't do this automatically.
+const titleId = useId()
 
 const emit = defineEmits<{
   close: []
@@ -56,6 +60,7 @@ const sizeClasses: Record<string, string> = {
 <template>
   <dialog
     ref="dialogRef"
+    :aria-labelledby="titleId"
     :class="[
       'modal-dialog bg-surface m-auto rounded-lg p-4 text-left shadow-xl ring-1 ring-black/10 backdrop:bg-gray-500/85 sm:w-full sm:p-6 dark:ring-white/10 dark:backdrop:bg-stone-900/80',
       sizeClasses[size ?? 'md'],
@@ -75,7 +80,7 @@ const sizeClasses: Record<string, string> = {
       </button>
     </div>
 
-    <h3 class="text-section-heading text-ink mb-heading">
+    <h3 :id="titleId" class="text-section-heading text-ink mb-heading">
       {{ title }}
     </h3>
 

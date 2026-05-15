@@ -226,11 +226,11 @@ onMounted(() => {
       data-testid="pending-invites-section"
     >
       <h2
-        class="mb-3 text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-stone-400"
+        class="text-ink-muted mb-3 text-sm font-semibold tracking-wide uppercase"
       >
         Pending Invitations
       </h2>
-      <ul class="divide-y divide-gray-200 dark:divide-stone-700">
+      <ul class="divide-line divide-y">
         <BaseCard
           v-for="invite in pendingInvites"
           :key="invite.id"
@@ -243,7 +243,7 @@ onMounted(() => {
                 <EnvelopeIcon class="mr-3 size-8 shrink-0 text-gray-400" />
                 <div class="min-w-0 flex-1">
                   <p
-                    class="truncate text-sm font-medium text-gray-900 dark:text-white"
+                    class="truncate text-sm font-medium text-ink"
                     data-testid="invite-email"
                     :title="
                       invite.name
@@ -262,7 +262,7 @@ onMounted(() => {
                       Expired
                     </AppBadge>
                     <AppBadge v-else variant="warning"> Pending </AppBadge>
-                    <span class="text-xs text-gray-400 dark:text-stone-500">
+                    <span class="text-ink-muted text-xs">
                       <TimeAnchor :at="invite.createdAt">Sent</TimeAnchor>
                       <template v-if="invitedByName(invite)">
                         by {{ invitedByName(invite) }}
@@ -372,7 +372,7 @@ onMounted(() => {
             <div class="flex items-center gap-2">
               <h2
                 data-testid="member-name"
-                class="truncate text-lg font-semibold text-gray-900 dark:text-white"
+                class="truncate text-lg font-semibold text-ink"
               >
                 {{ member.name || 'No name' }}
               </h2>
@@ -426,13 +426,13 @@ onMounted(() => {
             </p>
             <p
               data-testid="member-email"
-              class="truncate text-sm text-gray-500 dark:text-stone-400"
+              class="text-ink-muted truncate text-sm"
             >
               {{ member.email }}
             </p>
             <p
               v-if="member.birthday && !isBirthday(member)"
-              class="flex items-center gap-1 text-sm text-gray-500 dark:text-stone-400"
+              class="text-ink-muted flex items-center gap-1 text-sm"
             >
               <CakeIcon class="size-3.5" />
               {{ formatBirthday(member.birthday) }}
@@ -442,11 +442,11 @@ onMounted(() => {
 
         <!-- Bottom section: action buttons -->
         <div
-          class="flex items-center gap-1 border-t border-gray-200 px-5 py-3 dark:border-stone-700"
+          class="border-line flex items-center gap-1 border-t px-5 py-3"
         >
           <a
             :href="`mailto:${member.email}`"
-            class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:text-stone-300 dark:hover:bg-stone-700"
+            class="text-ink inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:hover:bg-stone-700"
           >
             <EnvelopeIcon class="size-4" />
             Email
@@ -454,14 +454,14 @@ onMounted(() => {
           <a
             v-if="member.phoneNumber"
             :href="`tel:${member.phoneNumber}`"
-            class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:text-stone-300 dark:hover:bg-stone-700"
+            class="text-ink inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:hover:bg-stone-700"
           >
             <PhoneIcon class="size-4" />
             Call
           </a>
           <button
             data-testid="download-vcard-button"
-            class="ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:text-stone-300 dark:hover:bg-stone-700"
+            class="text-ink ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:hover:bg-stone-700"
             title="Download contact card"
             @click="handleDownloadVCard(member)"
           >

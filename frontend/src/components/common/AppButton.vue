@@ -51,7 +51,11 @@ const sizeClasses: Record<string, string> = {
 }
 
 const classes = computed(() => [
-  'inline-flex cursor-pointer items-center justify-center gap-2 rounded-md font-semibold shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-50',
+  // `min-h-[44px] sm:min-h-0` enforces the 44pt HIG tap target on touch
+  // viewports while leaving desktop heights driven by size + padding. Mirrors
+  // the IconButton default-size pattern so every interactive primitive shares
+  // one mobile floor.
+  'inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-md font-semibold shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-0',
   variantClasses[props.variant],
   sizeClasses[props.size],
   props.fullWidth && 'w-full',

@@ -17,9 +17,10 @@ const updateNotification = computed(() =>
 </script>
 
 <template>
-  <!-- Regular toasts (error, info) -->
+  <!-- Regular toasts (error, info). Each ToastNotification carries its own
+       role — alert for error (implicit assertive), status for info (implicit
+       polite) — so the container is a plain wrapper, not a live region. -->
   <div
-    aria-live="assertive"
     class="pointer-events-none fixed inset-0 z-50 flex flex-col items-end px-4 py-6 sm:p-6"
   >
     <TransitionGroup

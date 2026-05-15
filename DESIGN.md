@@ -5,31 +5,39 @@ colors:
   crt-amber: '#d97706'
   crt-amber-bright: '#f59e0b'
   crt-amber-deep: '#b45309'
-  crt-amber-tint: '#fffbeb'
   attention-red: '#e11d48'
   attention-red-bright: '#f43f5e'
-  attention-red-tint: '#ffe4e6'
   navigator-cyan: '#0891b2'
   navigator-cyan-bright: '#22d3ee'
   navigator-cyan-deep: '#0e7490'
+  focus: '#f43f5e'
   surface: '#ffffff'
   surface-page: '#f3f4f6'
-  surface-sunken: '#e5e7eb'
+  surface-sunken: '#f3f4f6'
+  surface-action: '#fffbeb'
+  surface-urgent: '#fef2f2'
   surface-dark: '#292524'
   surface-page-dark: '#1c1917'
-  surface-raised-dark: '#44403c'
   ink: '#111827'
   ink-muted: '#4b5563'
   ink-faint: '#4b5563'
+  ink-placeholder: '#6b7280'
   ink-dark: '#ffffff'
   ink-muted-dark: '#a8a29e'
-  ink-faint-dark: '#a8a29e'
-  state-danger: '#b91c1c'
+  ink-placeholder-dark: '#a8a29e'
+  state-success-fill: '#dcfce7'
+  state-success-ink: '#15803d'
+  state-danger-fill: '#fee2e2'
+  state-danger-ink: '#991b1b'
   state-danger-outline: '#b91c1c'
-  state-danger-tint: '#fef2f2'
-  state-warning-tint: '#fffbeb'
-  state-success: '#16a34a'
-  state-success-tint: '#dcfce7'
+  state-warning-fill: '#fef08a'
+  state-warning-ink: '#713f12'
+  state-pending-fill: '#fed7aa'
+  state-pending-ink: '#9a3412'
+  state-info-fill: '#dbeafe'
+  state-info-ink: '#1e40af'
+  state-neutral-fill: '#f3f4f6'
+  state-neutral-ink: '#4b5563'
 typography:
   page-title:
     fontFamily: 'Inter Variable, ui-sans-serif, system-ui, sans-serif'
@@ -89,7 +97,7 @@ components:
     rounded: '{rounded.md}'
     padding: '8px 12px'
   button-danger:
-    backgroundColor: '{colors.state-danger}'
+    backgroundColor: '{colors.state-danger-outline}'
     textColor: '{colors.ink-dark}'
     rounded: '{rounded.md}'
     padding: '8px 12px'
@@ -104,17 +112,17 @@ components:
     rounded: '{rounded.lg}'
     padding: '24px'
   card-action:
-    backgroundColor: '{colors.state-warning-tint}'
+    backgroundColor: '{colors.surface-action}'
     textColor: '{colors.ink}'
     rounded: '{rounded.lg}'
     padding: '24px'
   card-urgent:
-    backgroundColor: '{colors.state-danger-tint}'
+    backgroundColor: '{colors.surface-urgent}'
     textColor: '{colors.ink}'
     rounded: '{rounded.lg}'
     padding: '24px'
   input:
-    backgroundColor: '{colors.surface-page}'
+    backgroundColor: '{colors.surface-sunken}'
     textColor: '{colors.ink}'
     rounded: '{rounded.md}'
     padding: '6px 12px'
@@ -169,16 +177,33 @@ A hushed neutral field with three saturated voices that earn their visibility �
 
 - **Page surface** (`#f3f4f6` light / `#1c1917` dark): The background of the world. Light mode uses Tailwind's gray for cool restraint; dark mode uses stone for warmth — both intentional.
 - **Card surface** (`#ffffff` light / `#292524` dark): Where content sits.
-- **Sunken / raised** (`#e5e7eb` light / `#44403c` dark): Secondary buttons, dividers, raised input shells.
+- **Sunken surface** (`#f3f4f6` light / 5% white over card dark): Form-control fills — `FormInput`, `FormTextarea`, `FormSelect`, `CurrencyInput`, `LocationInput`. Equal to the page surface in light, slightly lifted in dark, so an input reads as a recessed field on the card without inventing a new neutral.
 - **Ink** (`#111827` light / `#ffffff` dark): Primary text.
-- **Ink muted** (`#4b5563` light / `#a8a29e` dark): Subtitles, secondary metadata. Tuned to clear WCAG AA on the page surface.
+- **Ink muted** (`#4b5563` light / `#a8a29e` dark): Subtitles, secondary metadata, the secondary `TextButton`. Tuned to clear WCAG AA on every surface in the system.
 - **Ink faint** (`#4b5563` light / `#a8a29e` dark): Helper text, "last synced" labels. Visually identical to `ink-muted` today; the semantic tier is preserved in code so a future re-introduction of a distinct faint shade has a place to land.
+- **Ink placeholder** (`#6b7280` light / `#a8a29e` dark): Form placeholder text. One step lighter than `ink-muted` in light so entered text still reads as primary against the ghost text — tuned to clear WCAG AA 4.5:1 on `bg-surface-sunken` in both modes.
 
-### State Tints
+### Surface tints
 
-- **Urgent tint** (`#fef2f2`): The `urgent` card variant. Pairs with a red ring; never used as raw text background.
-- **Action tint** (`#fffbeb`): The `action` card variant — "this needs your attention but isn't on fire".
-- **Success tint** (`#dcfce7`): The success badge background only; never a full-card surface.
+The two off-neutral card surfaces. Both are "calm with intent" — soft enough to belong to the neutral field, saturated enough to mean something.
+
+- **Urgent** (`bg-surface-urgent`, `#fef2f2` light / `rgb(69 10 10 / 0.3)` dark): The `urgent` card variant. Pairs with a red ring; never used as a raw text background. Reserved for genuine alarms (overdue, broken sync, conflicting actions).
+- **Action** (`bg-surface-action`, `#fffbeb` at 60% over card light / `rgb(69 26 3 / 0.2)` dark): The `action` card variant — "this needs your attention but isn't on fire". Pairs with an amber ring.
+
+### Badge state tints
+
+Each `AppBadge` variant pairs a soft tinted fill with a saturated ink, drawn from the `--color-state-*` token pairs so dark mode swaps automatically. All six are state-named (never color-named — see [the Badges State Rule](#badges-state-rule)):
+
+| Variant | Fill (light) | Ink (light) |
+| --- | --- | --- |
+| success | `#dcfce7` | `#15803d` |
+| danger | `#fee2e2` | `#991b1b` |
+| warning | `#fef08a` | `#713f12` |
+| pending | `#fed7aa` | `#9a3412` |
+| info | `#dbeafe` | `#1e40af` |
+| neutral | `#f3f4f6` | `#4b5563` |
+
+The `state-danger-outline` token (`#b91c1c`) is one step deeper than `state-danger-ink` and serves the form-input error edge — it's the only state token that's not a fill/ink pair.
 
 ### Named Rules
 
@@ -272,8 +297,8 @@ See [the Press-Don't-Lift Rule](#press-dont-lift-rule). Active states press in (
 
 Error is a persistent state of a form field — not an interaction state. It lives in different visual channels from focus so that the two can coexist without collapsing into "another red ring".
 
-- **Fill** — the field swaps `bg-gray-100` / `dark:bg-white/5` for `bg-state-danger-fill` (a soft red tint). The whole interior signals "broken".
-- **Outline** — the gray 1px hairline becomes a 1px `outline-state-danger-outline` (one step deeper than `state-danger-ink`). Same width as the resting healthy outline, just red.
+- **Fill** — the field swaps `bg-surface-sunken` for `bg-state-danger-fill` (a soft red tint). The whole interior signals "broken".
+- **Outline** — the `outline-line` 1px hairline becomes a 1px `outline-state-danger-outline` (one step deeper than `state-danger-ink`). Same width as the resting healthy outline, just red.
 - **Icon** — an inline `ExclamationCircleIcon` in `text-state-danger-ink` sits at the field's right edge (top-right on textarea, left of the chevron on select). This carries the state when color alone isn't enough (WCAG 1.4.1).
 - **Message** — the `text-state-danger-ink` line of text below the field, wired to the input through `aria-describedby` and `aria-invalid="true"`.
 
@@ -314,7 +339,7 @@ On focus, the error field gets the system-wide rose 2px outset focus ring on top
 
 ### Inputs (`FormInput`)
 
-- **Style:** `bg-gray-100` light / `bg-white/5` dark, `outline-1 -outline-offset-1 outline-gray-300` light / `outline-white/10` dark, `rounded-md` (6px), `px-3 py-1.5`. The field text stays at `text-base` (16px) on mobile so iOS Safari doesn't auto-zoom the page on focus, and tightens to `text-sm/6` on `sm:` and up — the one place the system uses a responsive font-size on purpose, which is why it doesn't ride a `text-*` token.
+- **Style:** `bg-surface-sunken`, `outline-1 -outline-offset-1 outline-line`, `rounded-md` (6px), `px-3 py-1.5`. The sunken fill and hairline outline both ride dual-mode tokens — no `dark:` color overrides. The field text stays at `text-base` (16px) on mobile so iOS Safari doesn't auto-zoom the page on focus, and tightens to `text-sm/6` on `sm:` and up — the one place the system uses a responsive font-size on purpose, which is why it doesn't ride a `text-*` token. Placeholder text uses `text-ink-placeholder` so it clears WCAG AA against the sunken fill in both modes.
 - **Label:** Above the field, `text-label`, ink color.
 - **Focus:** `focus:outline-2 focus:outline-offset-2 focus:outline-focus`. The Attention Red ring is the system-wide focus signal — same offset and width on buttons, cards, modals, inputs (see [the Unified-Focus Rule](#unified-focus-rule)).
 - **Prefix:** Optional inline prefix slot (currency, URL scheme) sits inside the same outlined shell, separated visually by a `select-none` ink-muted span.
@@ -339,7 +364,7 @@ On focus, the error field gets the system-wide rose 2px outset focus ring on top
 - **Shape:** `rounded-lg`, `shadow-xl`, `ring-1 ring-black/10`, `p-4 sm:p-6`. Five widths (`sm` through `2xl`).
 - **Motion:** 200ms `cubic-bezier(0.25, 1, 0.5, 1)` ease-out — fades + slides 8px up + scales from 0.98. Backdrop fades with the same curve. `@starting-style` and `allow-discrete` carry the entry transition under modern browsers; `prefers-reduced-motion` collapses to 0.01ms.
 - **Close:** Top-right X button (`XMarkIcon`), keyboard `Escape`, backdrop click. Title uses `text-section-heading` with `mb-heading` underneath — same scale and spacing as a `SectionHeading`, so a modal opens "feeling like" a single page region.
-- **Accessibility:** Native `<dialog>` + `showModal()` traps focus inside the modal, makes the page behind it inert, and routes `Escape` through a cancelable `cancel` event. `preventClose` blocks both the X button and the cancel route. The X button carries an `sr-only` "Close" label so screen readers announce its purpose.
+- **Accessibility:** Native `<dialog>` + `showModal()` traps focus inside the modal, makes the page behind it inert, and routes `Escape` through a cancelable `cancel` event. `preventClose` blocks both the X button and the cancel route. The X button carries an `sr-only` "Close" label so screen readers announce its purpose. `aria-labelledby` on the dialog points at the title `<h3>` so screen readers announce the modal's name when it opens.
 
 ### Top navigation (`AuthenticatedLayout`)
 
@@ -431,12 +456,13 @@ The design system lives in three places: `frontend/src/style.css` (the Tailwind 
 | ---------------------------------- | ------------------------------------------------------------------------------- |
 | Page background                    | `bg-surface-page`                                                               |
 | Card / dialog surface              | `bg-surface`                                                                    |
-| Sunken fill (input, secondary btn) | `bg-surface-sunken`                                                             |
+| Sunken fill (form controls)        | `bg-surface-sunken`                                                             |
 | Action card variant                | `bg-surface-action` + `ring-ring-action`                                        |
 | Urgent card variant                | `bg-surface-urgent` + `ring-ring-urgent`                                        |
 | Body text                          | `text-ink`                                                                      |
 | Muted text (subtitles, meta)       | `text-ink-muted`                                                                |
 | Faint text (helper, "last synced") | `text-ink-faint`                                                                |
+| Placeholder text (form controls)   | `text-ink-placeholder`                                                          |
 | Hairline edge / outline            | `outline-line` / `border-line` / `ring-ring-hairline`                           |
 | Top-nav surfaces                   | `bg-nav` / `bg-nav-active` / `bg-nav-hover` / `text-nav-text`                   |
 | Focus indicator (system-wide)      | `focus-visible:outline-focus`                                                   |

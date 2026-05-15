@@ -110,21 +110,19 @@ function getAssignments(choreId: string, date: string): PoolChoreAssignment[] {
 </script>
 
 <template>
-  <div
-    class="overflow-x-auto rounded-lg border border-gray-200 dark:border-stone-700"
-  >
-    <table class="min-w-full divide-y divide-gray-200 dark:divide-stone-700">
+  <div class="overflow-x-auto rounded-lg border border-line">
+    <table class="min-w-full divide-y divide-line">
       <thead>
-        <tr ref="headerRow" class="bg-gray-50 dark:bg-stone-800">
+        <tr ref="headerRow" class="bg-surface-sunken">
           <th
-            class="sticky left-0 z-10 bg-gray-50 px-3 py-2 text-left text-xs font-medium tracking-wider text-gray-500 uppercase dark:bg-stone-800 dark:text-stone-400"
+            class="sticky left-0 z-10 bg-surface-sunken px-3 py-2 text-left text-xs font-medium tracking-wider text-ink-muted uppercase"
           >
             Date
           </th>
           <th
             v-for="chore in choresSorted"
             :key="chore.id"
-            class="chore-col px-3 py-2 text-center text-xs font-medium tracking-wider whitespace-nowrap text-gray-500 uppercase dark:text-stone-400"
+            class="chore-col px-3 py-2 text-center text-xs font-medium tracking-wider whitespace-nowrap text-ink-muted uppercase"
           >
             <div class="group inline-flex items-center gap-1">
               <Bars3Icon
@@ -143,7 +141,7 @@ function getAssignments(choreId: string, date: string): PoolChoreAssignment[] {
             </div>
             <div
               v-if="chore.peoplePerDay > 1"
-              class="text-[10px] font-normal tracking-normal text-gray-400 normal-case dark:text-stone-500"
+              class="text-[10px] font-normal tracking-normal text-ink-muted normal-case"
             >
               {{ chore.peoplePerDay }}/day
             </div>
@@ -151,11 +149,11 @@ function getAssignments(choreId: string, date: string): PoolChoreAssignment[] {
         </tr>
       </thead>
       <tbody
-        class="divide-y divide-gray-200 bg-white dark:divide-stone-700 dark:bg-stone-900"
+        class="divide-y divide-line bg-white dark:bg-stone-900"
       >
         <tr v-for="date in dates" :key="date">
           <td
-            class="sticky left-0 z-10 bg-white px-3 py-2 text-sm font-medium whitespace-nowrap text-gray-900 dark:bg-stone-900 dark:text-white"
+            class="sticky left-0 z-10 bg-white px-3 py-2 text-sm font-medium whitespace-nowrap text-ink dark:bg-stone-900"
           >
             {{ formatDayHeader(date) }}
           </td>

@@ -90,7 +90,7 @@ onMounted(async () => {
 
 <template>
   <div>
-    <div v-if="!event" class="text-gray-500 dark:text-stone-400">
+    <div v-if="!event" class="text-ink-muted">
       Event not found
     </div>
 
@@ -141,7 +141,7 @@ onMounted(async () => {
       >
         <p
           data-testid="rsvp-required-dialog"
-          class="text-sm text-gray-600 dark:text-stone-400"
+          class="text-ink-muted text-sm"
         >
           Nobody has RSVP'd as attending yet. Costs are split among attendees
           only, so at least one person needs to RSVP first.

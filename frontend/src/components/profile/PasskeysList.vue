@@ -220,7 +220,7 @@ onUnmounted(() => {
       v-if="loading"
       role="status"
       aria-live="polite"
-      class="py-4 text-sm text-gray-500 dark:text-stone-400"
+      class="text-ink-muted py-4 text-sm"
     >
       Loading passkeys...
     </div>
@@ -236,7 +236,7 @@ onUnmounted(() => {
     <template v-else>
       <ul
         v-if="passkeys.length > 0"
-        class="divide-y divide-gray-200 dark:divide-stone-700"
+        class="divide-line divide-y"
       >
         <li
           v-for="passkey in passkeys"
@@ -258,7 +258,7 @@ onUnmounted(() => {
                 type="text"
                 maxlength="100"
                 placeholder="Enter a name"
-                class="block min-w-0 flex-1 rounded-md bg-gray-100 px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:outline-offset-2 focus:outline-focus dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
+                class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder block min-w-0 flex-1 rounded-md px-2 py-1 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 focus:outline-focus"
                 @keydown.escape="cancelEdit"
               />
               <AppButton type="submit" size="sm"> Save </AppButton>
@@ -269,11 +269,11 @@ onUnmounted(() => {
 
             <template v-else>
               <p
-                class="truncate text-sm font-medium text-gray-900 dark:text-white"
+                class="truncate text-sm font-medium text-ink"
               >
                 {{ passkey.name || 'Unnamed passkey' }}
               </p>
-              <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
+              <p class="text-ink-muted mt-0.5 text-xs">
                 Added {{ formatDate(passkey.createdAt) }}
               </p>
             </template>
@@ -296,7 +296,7 @@ onUnmounted(() => {
         </li>
       </ul>
 
-      <p v-else class="py-4 text-sm text-gray-500 dark:text-stone-400">
+      <p v-else class="text-ink-muted py-4 text-sm">
         No passkeys registered. Add a passkey for faster, more secure sign-in.
       </p>
 
@@ -316,14 +316,14 @@ onUnmounted(() => {
     >
       <!-- Step 1: Ready to start -->
       <div v-if="registerStep === 'ready'" class="space-y-4">
-        <p class="text-sm text-gray-500 dark:text-stone-400">
+        <p class="text-ink-muted text-sm">
           Your browser will ask you to verify your identity. This usually means
           using Touch ID, Face ID, Windows Hello, or a security key.
         </p>
         <div class="flex justify-end gap-x-6">
           <button
             type="button"
-            class="min-h-[44px] px-3 py-2 text-sm/6 font-semibold text-gray-900 sm:min-h-0 dark:text-white"
+            class="text-ink min-h-[44px] px-3 py-2 text-sm/6 font-semibold sm:min-h-0"
             @click="registerOpen = false"
           >
             Cancel
@@ -338,9 +338,9 @@ onUnmounted(() => {
         class="flex flex-col items-center gap-4 py-6"
       >
         <ArrowPathIcon
-          class="size-8 animate-spin text-gray-400 dark:text-stone-500"
+          class="text-ink-muted size-8 animate-spin"
         />
-        <p class="text-sm text-gray-500 dark:text-stone-400">
+        <p class="text-ink-muted text-sm">
           Follow your browser's prompt to create a passkey...
         </p>
       </div>
@@ -351,7 +351,7 @@ onUnmounted(() => {
         class="space-y-4"
         @submit.prevent="savePasskeyName"
       >
-        <p class="text-sm text-gray-500 dark:text-stone-400">
+        <p class="text-ink-muted text-sm">
           Give this passkey a name so you can identify it later.
         </p>
 

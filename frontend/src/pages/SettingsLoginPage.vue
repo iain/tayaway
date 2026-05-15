@@ -63,7 +63,7 @@ const sessionsRef = ref<InstanceType<typeof SessionsList> | null>(null)
     <section>
       <SectionHeading :icon="EnvelopeIcon" title="Email" />
       <BaseCard padded>
-        <dl class="divide-y divide-gray-200 dark:divide-stone-700">
+        <dl class="divide-line divide-y">
         <DefinitionRow
           label="Email"
           value-class="truncate"
@@ -75,7 +75,7 @@ const sessionsRef = ref<InstanceType<typeof SessionsList> | null>(null)
           {{ user?.email }}
           <template #editor>
             <div>
-              <p class="mb-2 text-xs text-gray-500 dark:text-stone-400">
+              <p class="text-ink-muted mb-2 text-xs">
                 We'll send a verification link to confirm the new address.
               </p>
               <form
@@ -92,7 +92,7 @@ const sessionsRef = ref<InstanceType<typeof SessionsList> | null>(null)
                   placeholder="new@example.com"
                   required
                   :disabled="sending"
-                  class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:outline-offset-2 focus:outline-focus sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
+                  class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder min-w-0 flex-1 rounded-md px-3 py-1.5 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 focus:outline-focus sm:text-sm/6"
                   @keyup.escape="cancelEmailEdit"
                 />
                 <AppButton

@@ -30,7 +30,7 @@ const errorId = computed(() => `${props.id}-error`)
 const shell = computed(() =>
   hasError.value
     ? 'bg-state-danger-fill outline-1 -outline-offset-1 outline-state-danger-outline focus:outline-2 focus:outline-offset-2 focus:outline-focus'
-    : 'bg-gray-100 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:outline-offset-2 focus:outline-focus dark:bg-white/5 dark:outline-white/10'
+    : 'bg-surface-sunken outline-1 -outline-offset-1 outline-line focus:outline-2 focus:outline-offset-2 focus:outline-focus'
 )
 </script>
 
@@ -50,7 +50,7 @@ const shell = computed(() =>
         :aria-invalid="hasError || undefined"
         :aria-describedby="hasError ? errorId : undefined"
         v-bind="attrs"
-        class="block w-full rounded-md py-1.5 pl-3 text-base text-gray-900 placeholder:text-gray-400 sm:text-sm/6 dark:text-white dark:placeholder:text-stone-500"
+        class="text-ink placeholder:text-ink-placeholder block w-full rounded-md py-1.5 pl-3 text-base disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm/6"
         :class="[shell, hasError ? 'pr-10' : 'pr-3']"
         @input="
           $emit(
@@ -67,10 +67,10 @@ const shell = computed(() =>
         <ExclamationCircleIcon class="size-5" aria-hidden="true" />
       </span>
     </div>
-    <p v-if="hasError" :id="errorId" class="text-state-danger-ink mt-1 text-sm">
+    <p v-if="hasError" :id="errorId" class="text-state-danger-ink text-meta mt-1">
       {{ error }}
     </p>
-    <p v-else-if="hint" class="text-ink-muted mt-3 text-sm/6">
+    <p v-else-if="hint" class="text-ink-muted text-meta mt-3">
       {{ hint }}
     </p>
   </div>

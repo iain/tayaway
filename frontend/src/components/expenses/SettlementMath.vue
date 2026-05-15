@@ -38,11 +38,9 @@ const showDrift = computed(
 </script>
 
 <template>
-  <div
-    class="rounded-md border border-gray-200 bg-gray-50 p-3 dark:border-stone-700 dark:bg-stone-800/50"
-  >
+  <div class="rounded-md border border-line bg-surface-sunken p-3">
     <p
-      class="mb-2 text-xs font-medium tracking-wide text-gray-500 uppercase dark:text-stone-400"
+      class="mb-2 text-xs font-medium tracking-wide text-ink-muted uppercase"
     >
       Net balances
     </p>
@@ -73,7 +71,7 @@ const showDrift = computed(
     </div>
 
     <p
-      class="mb-1 text-xs font-medium tracking-wide text-gray-500 uppercase dark:text-stone-400"
+      class="mb-1 text-xs font-medium tracking-wide text-ink-muted uppercase"
     >
       Transfers
     </p>
@@ -82,16 +80,16 @@ const showDrift = computed(
         <div class="flex items-center justify-between">
           <span class="truncate text-gray-800 dark:text-stone-200">
             {{ t.fromUserId ? nameFor(t.fromUserId) : 'Unknown' }}
-            <span class="text-gray-400 dark:text-stone-500"> → </span>
+            <span class="text-ink-muted"> → </span>
             {{ t.toUserId ? nameFor(t.toUserId) : 'Unknown' }}
           </span>
-          <span class="text-gray-900 dark:text-white">
+          <span class="text-ink">
             <LedgerAmount :amount="t.amount" />
           </span>
         </div>
         <div
           data-testid="math-transfer-annotation"
-          class="mt-0.5 text-xs text-gray-500 dark:text-stone-400"
+          class="mt-0.5 text-xs text-ink-muted"
         >
           {{ t.annotation }}
         </div>

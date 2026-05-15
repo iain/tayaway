@@ -51,7 +51,7 @@ function navigateToEvent(eventId: string): void {
           <div class="flex items-center justify-between gap-3">
             <div class="min-w-0 flex-1">
               <h3
-                class="truncate text-base font-semibold text-gray-900 dark:text-white"
+                class="truncate text-base font-semibold text-ink"
               >
                 {{ item.eventName }}
               </h3>
@@ -63,14 +63,14 @@ function navigateToEvent(eventId: string): void {
                       ? 'font-semibold text-red-600 dark:text-red-400'
                       : isUrgent(item.deadline)
                         ? 'font-medium text-amber-600 dark:text-amber-400'
-                        : 'text-gray-500 dark:text-stone-400'
+                        : 'text-ink-muted'
                   "
                 >
                   <ClockIcon class="size-4" />
                   {{ formatDeadline(item.deadline) }}
                 </span>
                 <span
-                  class="inline-flex items-center gap-1 text-gray-500 dark:text-stone-400"
+                  class="text-ink-muted inline-flex items-center gap-1"
                 >
                   <InboxIcon class="size-4" />
                   Voted on {{ item.votedCount }} of {{ item.totalCount }} date
@@ -87,7 +87,7 @@ function navigateToEvent(eventId: string): void {
                 Overdue
               </AppBadge>
               <ChevronRightIcon
-                class="size-5 text-gray-400 dark:text-stone-500"
+                class="text-ink-muted size-5"
                 aria-hidden="true"
               />
             </div>

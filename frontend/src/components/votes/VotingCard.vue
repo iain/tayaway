@@ -102,7 +102,7 @@ function toggleCommentInput() {
     <div class="flex flex-col md:flex-row md:gap-6">
       <!-- Left side: Date range info and stats -->
       <div class="mb-4 flex-1 md:mb-0">
-        <h3 class="mb-3 text-sm font-medium text-gray-900 dark:text-white">
+        <h3 class="mb-3 text-sm font-medium text-ink">
           <DateRangeDisplay
             :start-date="dateRange.startDate"
             :end-date="dateRange.endDate"
@@ -113,7 +113,7 @@ function toggleCommentInput() {
         <VoteSummaryBar :summary="dateRange.voteSummary" />
 
         <!-- Voters List Toggle -->
-        <div class="mt-3 border-t border-gray-200 pt-3 dark:border-stone-700">
+        <div class="mt-3 border-t border-line pt-3">
           <TextButton @click="showVoters = !showVoters">
             <component
               :is="showVoters ? ChevronUpIcon : ChevronDownIcon"
@@ -130,9 +130,7 @@ function toggleCommentInput() {
       </div>
 
       <!-- Right side: Voting elements -->
-      <div
-        class="flex-1 md:border-l md:border-gray-200 md:pl-6 md:dark:border-stone-700"
-      >
+      <div class="flex-1 md:border-l md:border-line md:pl-6">
         <!-- Vote Buttons -->
         <div class="mb-4 flex flex-col gap-2 sm:flex-row">
           <button
@@ -143,7 +141,7 @@ function toggleCommentInput() {
             :class="[
               isSelected('yes')
                 ? 'bg-green-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-green-100 hover:text-green-700 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-green-900/30 dark:hover:text-green-400',
+                : 'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900/30 dark:hover:text-green-400',
             ]"
             @click="handleVote('yes')"
           >
@@ -157,7 +155,7 @@ function toggleCommentInput() {
             :class="[
               isSelected('preferably_not')
                 ? 'bg-yellow-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-yellow-100 hover:text-yellow-700 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-yellow-900/30 dark:hover:text-yellow-400',
+                : 'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-yellow-100 hover:text-yellow-700 dark:hover:bg-yellow-900/30 dark:hover:text-yellow-400',
             ]"
             @click="handleVote('preferably_not')"
           >
@@ -171,7 +169,7 @@ function toggleCommentInput() {
             :class="[
               isSelected('no')
                 ? 'bg-red-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-red-100 hover:text-red-700 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-red-900/30 dark:hover:text-red-400',
+                : 'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-900/30 dark:hover:text-red-400',
             ]"
             @click="handleVote('no')"
           >

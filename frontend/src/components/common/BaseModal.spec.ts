@@ -29,6 +29,15 @@ describe('BaseModal', () => {
     expect(wrapper.emitted('close')).toHaveLength(1)
   })
 
+  it('wires aria-labelledby to the title heading so screen readers announce the name', () => {
+    const wrapper = mount(BaseModal, { props: baseProps })
+    const labelledBy = wrapper.get('dialog').attributes('aria-labelledby')
+    expect(labelledBy).toBeTruthy()
+    const heading = wrapper.get('h3')
+    expect(heading.attributes('id')).toBe(labelledBy)
+    expect(heading.text()).toBe('Confirm delete')
+  })
+
   describe('with preventClose', () => {
     it('does not emit close when the dialog fires close', () => {
       const wrapper = mount(BaseModal, {

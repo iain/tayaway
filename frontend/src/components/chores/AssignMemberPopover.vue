@@ -93,21 +93,19 @@ onBeforeUnmount(() => {
 <template>
   <div
     ref="popoverRef"
-    class="fixed z-50 w-64 rounded-lg border border-gray-200 bg-white p-3 shadow-lg dark:border-stone-700 dark:bg-stone-800"
+    class="fixed z-50 w-64 rounded-lg border border-line bg-surface p-3 shadow-lg"
     :style="{
       top: `${anchorEl.getBoundingClientRect().bottom + 4}px`,
       left: `${anchorEl.getBoundingClientRect().left}px`,
     }"
   >
-    <p class="mb-2 text-xs font-medium text-gray-500 dark:text-stone-400">
-      Assign member
-    </p>
+    <p class="mb-2 text-xs font-medium text-ink-muted">Assign member</p>
 
     <input
       v-model="note"
       type="text"
       placeholder="Note (optional)"
-      class="mb-2 block w-full rounded-md bg-gray-100 px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:outline-offset-2 focus:outline-focus dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
+      class="mb-2 block w-full rounded-md bg-surface-sunken px-2 py-1 text-sm text-ink outline-1 -outline-offset-1 outline-line placeholder:text-ink-placeholder focus:outline-2 focus:outline-offset-2 focus:outline-focus"
     />
 
     <div class="max-h-48 overflow-y-auto">
@@ -115,14 +113,14 @@ onBeforeUnmount(() => {
         v-for="member in availableMembers"
         :key="member.id"
         type="button"
-        class="flex w-full cursor-pointer items-center rounded-md px-2 py-1.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:text-stone-300 dark:hover:bg-stone-700"
+        class="flex w-full cursor-pointer items-center rounded-md px-2 py-1.5 text-left text-sm text-ink transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:hover:bg-stone-700"
         @click="handleSelect(member.userId)"
       >
         {{ getMemberDisplayName(member) }}
       </button>
       <p
         v-if="availableMembers.length === 0"
-        class="py-2 text-center text-xs text-gray-500 dark:text-stone-400"
+        class="py-2 text-center text-xs text-ink-muted"
       >
         No available members
       </p>

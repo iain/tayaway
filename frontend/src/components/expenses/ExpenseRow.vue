@@ -259,13 +259,13 @@ function handleDelete(e: Event) {
       <div class="min-w-0 flex-1">
         <p
           :class="[
-            'truncate text-base text-gray-900 dark:text-white',
+            'truncate text-base text-ink',
             hasBeenReverted ? 'line-through' : '',
           ]"
         >
           {{ expense.description }}
         </p>
-        <p class="mt-0.5 truncate text-xs text-gray-500 dark:text-stone-400">
+        <p class="mt-0.5 truncate text-xs text-ink-muted">
           <span
             v-if="isRevert"
             class="mr-1 font-medium text-amber-700 dark:text-amber-400"
@@ -285,7 +285,7 @@ function handleDelete(e: Event) {
           {{ displayName }}
           <span
             v-if="filedOnBehalf"
-            class="ml-1 text-gray-400 dark:text-stone-500"
+            class="ml-1 text-ink-muted"
             data-testid="filed-by"
           >
             (filed by {{ filedByName }})
@@ -302,13 +302,13 @@ function handleDelete(e: Event) {
         </p>
       </div>
       <div class="flex items-center gap-3">
-        <span class="text-sm font-medium whitespace-nowrap text-gray-900 dark:text-white">
+        <span class="text-sm font-medium whitespace-nowrap text-ink">
           <LedgerAmount :amount="expense.amount" />
         </span>
         <div class="flex items-center gap-1">
           <LockClosedIcon
             v-if="isSettled"
-            class="size-4 text-gray-400 dark:text-stone-500"
+            class="size-4 text-ink-muted"
             title="Part of a settlement"
           />
           <IconButton
@@ -350,7 +350,7 @@ function handleDelete(e: Event) {
             </IconButton>
           </span>
           <ChevronDownIcon
-            class="size-4 text-gray-400 transition-transform duration-200 dark:text-stone-500"
+            class="size-4 text-ink-muted transition-transform duration-200"
             :class="{ 'rotate-180': expanded }"
           />
         </div>
@@ -362,33 +362,26 @@ function handleDelete(e: Event) {
       data-testid="expense-detail"
       class="border-t border-gray-100 px-4 pt-3 pb-3 dark:border-stone-700"
     >
-      <p
-        v-if="payers.length === 0"
-        class="text-xs text-gray-500 dark:text-stone-400"
-      >
+      <p v-if="payers.length === 0" class="text-xs text-ink-muted">
         No one was attending on these dates.
       </p>
       <template v-else>
         <p
           v-if="hasParticipants"
-          class="mb-1.5 text-xs font-medium text-gray-500 dark:text-stone-400"
+          class="mb-1.5 text-xs font-medium text-ink-muted"
         >
           {{ participantsHeading }}
         </p>
         <table class="w-full text-xs">
           <thead>
-            <tr class="text-left text-gray-500 uppercase dark:text-stone-400">
+            <tr class="text-left text-ink-muted uppercase">
               <th class="pr-2 pb-1">Person</th>
               <th v-if="!hasParticipants" class="pr-2 pb-1">Days</th>
               <th class="pb-1 text-right">Share</th>
             </tr>
           </thead>
           <tbody>
-            <tr
-              v-for="(payer, index) in payers"
-              :key="index"
-              class="text-gray-700 dark:text-stone-300"
-            >
+            <tr v-for="(payer, index) in payers" :key="index" class="text-ink">
               <td
                 class="max-w-[6rem] truncate py-0.5 pr-2 sm:max-w-[10rem]"
                 :title="payer.name"
@@ -396,7 +389,7 @@ function handleDelete(e: Event) {
                 {{ payer.name }}
                 <span
                   v-if="payer.factor != null && payer.factor !== 1"
-                  class="ml-1 text-gray-500 dark:text-stone-400"
+                  class="ml-1 text-ink-muted"
                 >
                   {{ formatFactor(payer.factor) }}
                 </span>
@@ -420,7 +413,7 @@ function handleDelete(e: Event) {
     size="sm"
     @close="closeRevertModal"
   >
-    <p class="text-sm text-gray-600 dark:text-stone-400">
+    <p class="text-sm text-ink-muted">
       This adds a mirror-image entry of
       <LedgerAmount :amount="expense.amount" /> that offsets the original. The
       reverted expense stays visible for history. If
@@ -462,7 +455,7 @@ function handleDelete(e: Event) {
     data-testid="expense-blocked-modal"
     @close="showBlockedActionModal = false"
   >
-    <p class="text-sm text-gray-600 dark:text-stone-400">
+    <p class="text-sm text-ink-muted">
       {{ blockedActionMessage }}
     </p>
     <div class="mt-6 flex justify-end">

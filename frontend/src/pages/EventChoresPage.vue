@@ -276,7 +276,7 @@ onMounted(async () => {
 
 <template>
   <div>
-    <div v-if="!event" class="text-gray-500 dark:text-stone-400">
+    <div v-if="!event" class="text-ink-muted">
       Event not found
     </div>
 
@@ -356,7 +356,7 @@ onMounted(async () => {
           <div class="min-w-0 flex-1">
             <label
               for="new-chore-name"
-              class="mb-1 block text-xs font-medium text-gray-500 dark:text-stone-400"
+              class="text-ink-muted mb-1 block text-xs font-medium"
             >
               Chore name
             </label>
@@ -366,7 +366,7 @@ onMounted(async () => {
               v-model="newChoreName"
               type="text"
               placeholder="e.g. Cooking, Washing up"
-              class="w-full rounded-md bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:font-normal placeholder:text-gray-400 focus:outline-2 focus:outline-offset-2 focus:outline-focus dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
+              class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder w-full rounded-md px-3 py-2 text-sm font-semibold outline-1 -outline-offset-1 placeholder:font-normal focus:outline-2 focus:outline-offset-2 focus:outline-focus"
               :maxlength="255"
               :disabled="addChoreSubmitting"
               @keyup.escape="cancelAddChore"
@@ -376,7 +376,7 @@ onMounted(async () => {
           <div class="w-20 shrink-0">
             <label
               for="new-chore-ppd"
-              class="mb-1 block text-xs font-medium text-gray-500 dark:text-stone-400"
+              class="text-ink-muted mb-1 block text-xs font-medium"
             >
               People/day
             </label>
@@ -386,7 +386,7 @@ onMounted(async () => {
               type="number"
               min="1"
               max="50"
-              class="w-full rounded-md bg-gray-100 px-3 py-2 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:outline-offset-2 focus:outline-focus dark:bg-white/5 dark:text-white dark:outline-white/10"
+              class="bg-surface-sunken text-ink outline-line w-full rounded-md px-3 py-2 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 focus:outline-focus"
               :disabled="addChoreSubmitting"
               @keyup.escape="cancelAddChore"
             />
@@ -432,7 +432,7 @@ onMounted(async () => {
       size="sm"
       @close="confirmDeleteChoreId = null"
     >
-      <p class="text-sm text-gray-600 dark:text-stone-400">
+      <p class="text-ink-muted text-sm">
         Delete "{{ confirmDeleteChoreName }}"? This will remove all its
         assignments.
       </p>
@@ -452,7 +452,7 @@ onMounted(async () => {
       size="sm"
       @close="confirmAutofill = false"
     >
-      <p class="text-sm text-gray-600 dark:text-stone-400">
+      <p class="text-ink-muted text-sm">
         This will clear all non-pinned assignments and redistribute them fairly
         among attendees. Pinned assignments stay as they are.
       </p>
@@ -488,7 +488,7 @@ onMounted(async () => {
       size="sm"
       @close="showRsvpDialog = false"
     >
-      <p class="text-sm text-gray-600 dark:text-stone-400">
+      <p class="text-ink-muted text-sm">
         You need to RSVP as attending before you can manage chores.
       </p>
       <div class="mt-6 flex justify-end gap-3">

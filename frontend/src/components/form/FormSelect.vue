@@ -24,7 +24,7 @@ const errorId = computed(() => `${props.id}-error`)
 const shell = computed(() =>
   hasError.value
     ? 'bg-state-danger-fill outline-1 -outline-offset-1 outline-state-danger-outline focus:outline-2 focus:outline-offset-2 focus:outline-focus'
-    : 'bg-gray-100 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:outline-offset-2 focus:outline-focus dark:bg-white/5 dark:outline-white/10'
+    : 'bg-surface-sunken outline-1 -outline-offset-1 outline-line focus:outline-2 focus:outline-offset-2 focus:outline-focus'
 )
 </script>
 
@@ -42,7 +42,7 @@ const shell = computed(() =>
         :autocomplete="autocomplete"
         :aria-invalid="hasError || undefined"
         :aria-describedby="hasError ? errorId : undefined"
-        class="col-start-1 row-start-1 w-full appearance-none rounded-md py-1.5 pl-3 text-base text-gray-900 *:bg-white sm:text-sm/6 dark:text-white dark:*:bg-stone-800"
+        class="text-ink *:bg-surface col-start-1 row-start-1 w-full appearance-none rounded-md py-1.5 pl-3 text-base disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm/6"
         :class="[shell, hasError ? 'pr-16' : 'pr-8']"
         @change="
           $emit('update:modelValue', ($event.target as HTMLSelectElement).value)
@@ -64,11 +64,11 @@ const shell = computed(() =>
         <ExclamationCircleIcon class="size-5 sm:size-4" aria-hidden="true" />
       </span>
       <ChevronDownIcon
-        class="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-400 sm:size-4"
+        class="text-ink-muted pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end sm:size-4"
         aria-hidden="true"
       />
     </div>
-    <p v-if="hasError" :id="errorId" class="text-state-danger-ink mt-1 text-sm">
+    <p v-if="hasError" :id="errorId" class="text-state-danger-ink text-meta mt-1">
       {{ error }}
     </p>
   </div>

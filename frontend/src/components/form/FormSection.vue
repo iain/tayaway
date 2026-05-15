@@ -7,16 +7,11 @@ defineProps<{
 </script>
 
 <template>
-  <div
-    :class="border ? 'border-b border-gray-200 pb-12 dark:border-white/10' : ''"
-  >
-    <h2 class="text-base/7 font-semibold text-gray-900 dark:text-white">
+  <div :class="border ? 'border-line border-b pb-12' : ''">
+    <h2 class="text-section-heading text-ink">
       {{ title }}
     </h2>
-    <p
-      v-if="description"
-      class="mt-1 text-sm/6 text-gray-600 dark:text-stone-400"
-    >
+    <p v-if="description" class="text-meta text-ink-muted mt-1">
       {{ description }}
     </p>
     <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">

@@ -299,7 +299,7 @@ onMounted(() => {
         <div
           class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
         >
-        <p class="text-gray-600 dark:text-stone-400">
+        <p class="text-ink-muted">
           <template v-if="pushSubscribed">
             Push is on for this device.
           </template>
@@ -344,7 +344,7 @@ onMounted(() => {
     </section>
 
     <BaseCard v-if="loading" padded aria-busy="true">
-      <ul class="divide-y divide-gray-200 dark:divide-stone-700">
+      <ul class="divide-line divide-y">
         <li
           v-for="group in GROUPS"
           :key="`skel-${group.key}`"
@@ -352,7 +352,7 @@ onMounted(() => {
         >
           <div class="min-w-0 flex-1">
             <h3
-              class="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white"
+              class="text-ink flex items-center gap-2 text-base font-semibold"
             >
               <component
                 :is="group.icon"
@@ -361,7 +361,7 @@ onMounted(() => {
               />
               {{ group.title }}
             </h3>
-            <p class="mt-0.5 text-sm text-gray-500 dark:text-stone-400">
+            <p class="text-ink-muted mt-0.5 text-sm">
               {{ group.blurb }}
             </p>
           </div>
@@ -369,7 +369,7 @@ onMounted(() => {
             <span
               v-for="i in 3"
               :key="i"
-              class="h-9 w-20 animate-pulse rounded-full bg-gray-100 dark:bg-stone-700"
+              class="bg-btn-secondary-fill h-9 w-20 animate-pulse rounded-full"
             />
           </div>
         </li>
@@ -388,7 +388,7 @@ onMounted(() => {
 
     <template v-else>
       <BaseCard padded>
-        <ul class="divide-y divide-gray-200 dark:divide-stone-700">
+        <ul class="divide-line divide-y">
           <li
             v-for="group in groups"
             :key="group.key"
@@ -396,7 +396,7 @@ onMounted(() => {
           >
             <div class="min-w-0 flex-1">
               <h3
-                class="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white"
+                class="text-ink flex items-center gap-2 text-base font-semibold"
               >
                 <component
                   :is="group.icon"
@@ -405,7 +405,7 @@ onMounted(() => {
                 />
                 {{ group.title }}
               </h3>
-              <p class="mt-0.5 text-sm text-gray-500 dark:text-stone-400">
+              <p class="text-ink-muted mt-0.5 text-sm">
                 {{ group.blurb }}
               </p>
             </div>
@@ -437,7 +437,7 @@ onMounted(() => {
 
       <p
         v-if="forcedFooterParts.length > 0"
-        class="text-sm text-gray-500 dark:text-stone-400"
+        class="text-ink-muted text-sm"
       >
         {{ forcedFooterParts.join(' ') }}
       </p>

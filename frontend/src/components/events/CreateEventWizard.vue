@@ -307,36 +307,30 @@ const submitLabel = computed(() => {
 
     <!-- Step 2: Date choice -->
     <div v-else-if="step === 2 && !dateMode">
-      <p class="mb-5 text-sm text-gray-500 dark:text-stone-400">
+      <p class="mb-5 text-sm text-ink-muted">
         Do you already know the dates, or should members vote?
       </p>
 
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <button
           type="button"
-          class="cursor-pointer rounded-lg border border-gray-200 p-4 text-left transition-colors hover:border-amber-300 hover:bg-amber-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:border-stone-700 dark:hover:border-amber-700 dark:hover:bg-amber-900/10"
+          class="cursor-pointer rounded-lg border border-line p-4 text-left transition-colors hover:border-amber-300 hover:bg-amber-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:hover:border-amber-700 dark:hover:bg-amber-900/10"
           @click="selectMode('known')"
         >
           <CalendarDaysIcon
             class="mb-2 size-6 text-amber-600 dark:text-amber-400"
           />
-          <p class="text-sm font-semibold text-gray-900 dark:text-white">
-            I know the dates
-          </p>
-          <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
-            Set start and end dates now
-          </p>
+          <p class="text-sm font-semibold text-ink">I know the dates</p>
+          <p class="mt-0.5 text-xs text-ink-muted">Set start and end dates now</p>
         </button>
         <button
           type="button"
-          class="cursor-pointer rounded-lg border border-gray-200 p-4 text-left transition-colors hover:border-amber-300 hover:bg-amber-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:border-stone-700 dark:hover:border-amber-700 dark:hover:bg-amber-900/10"
+          class="cursor-pointer rounded-lg border border-line p-4 text-left transition-colors hover:border-amber-300 hover:bg-amber-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:hover:border-amber-700 dark:hover:bg-amber-900/10"
           @click="selectMode('poll')"
         >
           <UsersIcon class="mb-2 size-6 text-amber-600 dark:text-amber-400" />
-          <p class="text-sm font-semibold text-gray-900 dark:text-white">
-            Let members vote
-          </p>
-          <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
+          <p class="text-sm font-semibold text-ink">Let members vote</p>
+          <p class="mt-0.5 text-xs text-ink-muted">
             Open a date poll with a deadline
           </p>
         </button>
@@ -356,7 +350,7 @@ const submitLabel = computed(() => {
 
     <!-- Step 2b: Known dates — calendar range picker -->
     <div v-else-if="step === 2 && dateMode === 'known'">
-      <div class="mb-4 text-sm text-gray-500 dark:text-stone-400">
+      <div class="mb-4 text-sm text-ink-muted">
         {{ dateSelectionText }}
       </div>
 
@@ -404,7 +398,7 @@ const submitLabel = computed(() => {
 
     <!-- Step 2c: Poll — single date picker for deadline -->
     <div v-else-if="step === 2 && dateMode === 'poll'">
-      <div class="mb-4 text-sm text-gray-500 dark:text-stone-400">
+      <div class="mb-4 text-sm text-ink-muted">
         {{ dateSelectionText }}
       </div>
 

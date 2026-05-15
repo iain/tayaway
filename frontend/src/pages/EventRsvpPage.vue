@@ -90,7 +90,7 @@ function handleDownloadIcs(): void {
 
 <template>
   <div>
-    <div v-if="!event" class="text-gray-500 dark:text-stone-400">
+    <div v-if="!event" class="text-ink-muted">
       Event not found
     </div>
 
@@ -145,7 +145,7 @@ function handleDownloadIcs(): void {
               <div>
                 <label
                   for="rsvp-start-date"
-                  class="mb-1 block text-xs font-medium text-gray-500 dark:text-stone-400"
+                  class="text-ink-muted mb-1 block text-xs font-medium"
                 >
                   Start date
                 </label>
@@ -154,13 +154,13 @@ function handleDownloadIcs(): void {
                   v-model="editStartDate"
                   type="date"
                   :disabled="loading"
-                  class="rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:outline-offset-2 focus:outline-focus dark:bg-white/5 dark:text-white dark:[color-scheme:dark] dark:outline-white/10"
+                  class="bg-surface-sunken text-ink outline-line rounded-md px-3 py-1.5 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 focus:outline-focus dark:[color-scheme:dark]"
                 />
               </div>
               <div>
                 <label
                   for="rsvp-end-date"
-                  class="mb-1 block text-xs font-medium text-gray-500 dark:text-stone-400"
+                  class="text-ink-muted mb-1 block text-xs font-medium"
                 >
                   End date
                 </label>
@@ -169,7 +169,7 @@ function handleDownloadIcs(): void {
                   v-model="editEndDate"
                   type="date"
                   :disabled="loading"
-                  class="rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:outline-offset-2 focus:outline-focus dark:bg-white/5 dark:text-white dark:[color-scheme:dark] dark:outline-white/10"
+                  class="bg-surface-sunken text-ink outline-line rounded-md px-3 py-1.5 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 focus:outline-focus dark:[color-scheme:dark]"
                 />
               </div>
               <AppButton type="submit" size="sm" :loading="loading">

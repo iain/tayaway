@@ -140,7 +140,7 @@ function handleVote(): void {
         </AppButton>
         <p
           v-if="currentUserVoteStatus.total > 0"
-          class="mt-2 text-sm text-gray-500 dark:text-stone-400"
+          class="mt-2 text-sm text-ink-muted"
         >
           <template
             v-if="currentUserVoteStatus.voted === currentUserVoteStatus.total"
@@ -157,9 +157,7 @@ function handleVote(): void {
 
       <!-- Date ranges list -->
       <div v-if="rankedDateRanges.length === 0" class="py-4 text-center">
-        <p class="text-gray-500 dark:text-stone-400">
-          No date ranges have been added yet.
-        </p>
+        <p class="text-ink-muted">No date ranges have been added yet.</p>
       </div>
 
       <div v-else class="space-y-3">
@@ -174,7 +172,7 @@ function handleVote(): void {
               !isPollResolved(poll) &&
               index === 0 &&
               dateRange.voteSummary.yes > 0,
-            'border-gray-200 dark:border-stone-700': !isPollResolved(poll)
+            'border-line': !isPollResolved(poll)
               ? index !== 0 || dateRange.voteSummary.yes === 0
               : dateRange.id !== poll.selectedDateRangeId,
             'opacity-50':
@@ -182,7 +180,7 @@ function handleVote(): void {
           }"
         >
           <div class="mb-2 flex items-center justify-between">
-            <span class="font-medium text-gray-900 dark:text-white">
+            <span class="font-medium text-ink">
               <span
                 v-if="
                   isPollResolved(poll) &&
@@ -203,7 +201,7 @@ function handleVote(): void {
                 :end-date="dateRange.endDate"
               />
             </span>
-            <span class="text-sm text-gray-500 dark:text-stone-400">
+            <span class="text-sm text-ink-muted">
               {{ dateRange.voteSummary.total }}
               {{ dateRange.voteSummary.total === 1 ? 'vote' : 'votes' }}
             </span>

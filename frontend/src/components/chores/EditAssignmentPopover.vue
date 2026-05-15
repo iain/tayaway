@@ -69,14 +69,14 @@ onBeforeUnmount(() => {
 <template>
   <div
     ref="popoverRef"
-    class="fixed z-50 w-64 rounded-lg border border-gray-200 bg-white p-3 shadow-lg dark:border-stone-700 dark:bg-stone-800"
+    class="fixed z-50 w-64 rounded-lg border border-line bg-surface p-3 shadow-lg"
     :style="{
       top: `${anchorEl.getBoundingClientRect().bottom + 4}px`,
       left: `${anchorEl.getBoundingClientRect().left}px`,
     }"
   >
     <div class="mb-2 flex items-center justify-between">
-      <p class="text-xs font-medium text-gray-500 dark:text-stone-400">
+      <p class="text-xs font-medium text-ink-muted">
         {{ getMemberNameFromMap(assignment.userId, memberMap) }}
       </p>
       <button
@@ -85,7 +85,7 @@ onBeforeUnmount(() => {
         :class="
           assignment.pinned
             ? 'text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/30 dark:hover:text-amber-300'
-            : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-stone-500 dark:hover:bg-stone-700 dark:hover:text-stone-300'
+            : 'text-ink-muted hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-stone-700 dark:hover:text-stone-300'
         "
         :title="assignment.pinned ? 'Unpin' : 'Pin'"
         @click="handleTogglePin"
@@ -98,7 +98,7 @@ onBeforeUnmount(() => {
       v-model="note"
       type="text"
       placeholder="Note (optional)"
-      class="mb-3 block w-full rounded-md bg-gray-100 px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:outline-offset-2 focus:outline-focus dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
+      class="mb-3 block w-full rounded-md bg-surface-sunken px-2 py-1 text-sm text-ink outline-1 -outline-offset-1 outline-line placeholder:text-ink-placeholder focus:outline-2 focus:outline-offset-2 focus:outline-focus"
       @keydown.enter="handleSaveNote"
     />
 

@@ -26,8 +26,8 @@ const classes = computed(() => [
     ? 'p-1'
     : 'p-2 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 sm:p-1',
   props.variant === 'danger'
-    ? 'text-gray-400 hover:text-red-500 dark:text-stone-500 dark:hover:text-red-400'
-    : 'text-gray-400 hover:text-gray-600 dark:text-stone-500 dark:hover:text-stone-300',
+    ? 'text-ink-muted hover:text-red-500 dark:hover:text-red-400'
+    : 'text-ink-muted hover:text-ink',
   props.hoverReveal &&
     'lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100',
   props.disabled && 'disabled:opacity-50 disabled:cursor-not-allowed',

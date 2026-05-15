@@ -53,7 +53,7 @@ function handleClose(): void {
     @close="handleClose"
   >
     <form @submit.prevent="handleConfirm">
-      <p class="mb-4 text-sm text-gray-500 dark:text-stone-400">
+      <p class="mb-4 text-sm text-ink-muted">
         Choose the winning date from the top-ranked options.
       </p>
 
@@ -67,18 +67,18 @@ function handleClose(): void {
           :class="
             selectedId === dateRange.id
               ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20'
-              : 'border-gray-200 hover:border-gray-300 dark:border-stone-700 dark:hover:border-stone-600'
+              : 'border-line hover:border-gray-300 dark:hover:border-stone-600'
           "
           @click="selectedId = dateRange.id"
         >
           <div class="mb-2 flex items-center justify-between">
-            <span class="font-medium text-gray-900 dark:text-white">
+            <span class="font-medium text-ink">
               <DateRangeDisplay
                 :start-date="dateRange.startDate"
                 :end-date="dateRange.endDate"
               />
             </span>
-            <span class="text-sm text-gray-500 dark:text-stone-400">
+            <span class="text-sm text-ink-muted">
               {{ dateRange.voteSummary.total }}
               {{ dateRange.voteSummary.total === 1 ? 'vote' : 'votes' }}
             </span>

@@ -18,7 +18,7 @@ const emit = defineEmits<{
 <template>
   <li
     class="-mx-2 flex items-center gap-3 rounded px-2 py-3"
-    :class="highlighted ? 'bg-gray-100 dark:bg-white/5' : ''"
+    :class="highlighted ? 'bg-surface-sunken' : ''"
     :data-item-id="item.id"
     :data-highlighted="highlighted ? 'true' : undefined"
     data-testid="task-item-row"
@@ -53,8 +53,8 @@ const emit = defineEmits<{
         class="flex-1 text-base"
         :class="
           item.completedAt
-            ? 'text-gray-400 line-through dark:text-stone-500'
-            : 'text-gray-900 dark:text-white'
+            ? 'text-ink-muted line-through'
+            : 'text-ink'
         "
         :data-completed="item.completedAt ? 'true' : undefined"
       >

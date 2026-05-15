@@ -274,9 +274,7 @@ const partialPickerRsvp = computed(() => {
     <BaseCard padded>
       <!-- Current user RSVP toggle -->
     <div class="mb-6">
-      <p class="mb-2 text-sm font-medium text-gray-700 dark:text-stone-300">
-        Your response
-      </p>
+      <p class="mb-2 text-sm font-medium text-ink">Your response</p>
 
       <div class="flex gap-2">
         <button
@@ -287,7 +285,7 @@ const partialPickerRsvp = computed(() => {
           :class="
             currentUserRsvp?.attending
               ? 'bg-green-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600'
+              : 'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-btn-secondary-fill-hover'
           "
           @click="handleAttend"
         >
@@ -304,7 +302,7 @@ const partialPickerRsvp = computed(() => {
           :class="
             currentUserRsvp && !currentUserRsvp.attending
               ? 'bg-red-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600'
+              : 'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-btn-secondary-fill-hover'
           "
           @click="handleDecline"
         >
@@ -317,14 +315,14 @@ const partialPickerRsvp = computed(() => {
       <div v-if="currentUserRsvp?.attending" class="mt-4">
         <div
           v-if="currentUserRsvp.startDate && currentUserRsvp.endDate"
-          class="mb-2 flex items-center gap-1.5 text-sm text-gray-600 dark:text-stone-400"
+          class="mb-2 flex items-center gap-1.5 text-sm text-ink-muted"
         >
           <CalendarDaysIcon class="size-4 shrink-0" />
           <DateRangeDisplay
             :start-date="currentUserRsvp.startDate"
             :end-date="currentUserRsvp.endDate"
           />
-          <span class="text-gray-400 dark:text-stone-500">(partial)</span>
+          <span class="text-ink-muted">(partial)</span>
         </div>
         <TextButton
           v-if="!showPartialPicker"
@@ -343,7 +341,7 @@ const partialPickerRsvp = computed(() => {
       size="sm"
       @close="showPartialPicker = false"
     >
-      <div class="mb-4 text-sm text-gray-500 dark:text-stone-400">
+      <div class="mb-4 text-sm text-ink-muted">
         {{ partialSelectionText }}
       </div>
 
@@ -413,7 +411,7 @@ const partialPickerRsvp = computed(() => {
               />
             </div>
             <div class="min-w-0 flex-1">
-              <span class="text-gray-900 dark:text-white">
+              <span class="text-ink">
                 {{ rsvp.member?.name || rsvp.member?.email || 'Unknown' }}
                 <span
                   v-if="rsvp.userId === currentUserId"
@@ -423,7 +421,7 @@ const partialPickerRsvp = computed(() => {
                 </span>
                 <span
                   v-if="filedByLabel(rsvp)"
-                  class="text-sm text-gray-500 dark:text-stone-400"
+                  class="text-sm text-ink-muted"
                   data-testid="rsvp-filed-by"
                 >
                   (RSVP'd by {{ filedByLabel(rsvp) }})
@@ -431,7 +429,7 @@ const partialPickerRsvp = computed(() => {
               </span>
               <p
                 v-if="rsvp.startDate && rsvp.endDate"
-                class="text-xs text-gray-500 dark:text-stone-400"
+                class="text-xs text-ink-muted"
               >
                 <DateRangeDisplay
                   :start-date="rsvp.startDate"
@@ -465,7 +463,7 @@ const partialPickerRsvp = computed(() => {
             >
               <XCircleIcon class="size-4 text-red-600 dark:text-red-400" />
             </div>
-            <span class="min-w-0 flex-1 text-gray-900 dark:text-white">
+            <span class="min-w-0 flex-1 text-ink">
               {{ rsvp.member?.name || rsvp.member?.email || 'Unknown' }}
               <span
                 v-if="rsvp.userId === currentUserId"
@@ -475,7 +473,7 @@ const partialPickerRsvp = computed(() => {
               </span>
               <span
                 v-if="filedByLabel(rsvp)"
-                class="text-sm text-gray-500 dark:text-stone-400"
+                class="text-sm text-ink-muted"
                 data-testid="rsvp-filed-by"
               >
                 (RSVP'd by {{ filedByLabel(rsvp) }})
@@ -493,21 +491,21 @@ const partialPickerRsvp = computed(() => {
 
       <!-- No response -->
       <div v-if="noResponse.length > 0">
-        <h3 class="mb-2 text-sm font-medium text-gray-500 dark:text-stone-400">
+        <h3 class="mb-2 text-sm font-medium text-ink-muted">
           No Response ({{ noResponse.length }})
         </h3>
         <ul class="space-y-2">
           <li
             v-for="member in noResponse"
             :key="member.id"
-            class="flex items-center gap-3 rounded-md bg-gray-50 px-3 py-2 dark:bg-stone-700/50"
+            class="flex items-center gap-3 rounded-md bg-surface-sunken px-3 py-2"
           >
             <div
               class="flex size-8 items-center justify-center rounded-full bg-gray-200 dark:bg-stone-600"
             >
-              <UserIcon class="size-4 text-gray-500 dark:text-stone-400" />
+              <UserIcon class="size-4 text-ink-muted" />
             </div>
-            <span class="min-w-0 flex-1 text-gray-900 dark:text-white">
+            <span class="min-w-0 flex-1 text-ink">
               {{ member.name || member.email || 'Unknown' }}
               <span
                 v-if="member.userId === currentUserId"
@@ -529,7 +527,7 @@ const partialPickerRsvp = computed(() => {
       <!-- Summary -->
       <p
         v-if="event.rsvps.length > 0"
-        class="text-sm text-gray-500 dark:text-stone-400"
+        class="text-sm text-ink-muted"
       >
         {{ attending.length }} attending, {{ notAttending.length }} not
         attending, {{ noResponse.length }} pending
@@ -542,7 +540,7 @@ const partialPickerRsvp = computed(() => {
       size="sm"
       @close="declineBlocked = null"
     >
-      <p class="text-sm text-gray-600 dark:text-stone-400">
+      <p class="text-sm text-ink-muted">
         <template v-if="declineBlocked?.type === 'self'">
           You have expenses on this event. Delete your expenses before changing
           your RSVP to not attending.

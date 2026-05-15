@@ -56,8 +56,8 @@ describe('FormInput', () => {
       expect(cls).toContain('bg-state-danger-fill')
       expect(cls).toContain('outline-1')
       expect(cls).toContain('outline-state-danger-outline')
-      expect(cls).not.toContain('outline-gray-300')
-      expect(cls).not.toContain('bg-gray-100')
+      expect(cls).not.toContain('outline-line')
+      expect(cls).not.toContain('bg-surface-sunken')
 
       // Focus stays the system-wide rose ring — error signal is fill + icon,
       // not a competing focus-color override.

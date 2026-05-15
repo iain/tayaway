@@ -207,7 +207,7 @@ async function handleSignOut() {
       <div
         class="inline-block h-12 w-12 animate-spin rounded-full border-4 border-amber-600 border-t-transparent"
       />
-      <p class="mt-4 text-lg font-medium text-gray-700 dark:text-stone-300">
+      <p class="mt-4 text-lg font-medium text-ink">
         Loading...
       </p>
     </div>
@@ -284,7 +284,7 @@ async function handleSignOut() {
                     leave-to-class="transform opacity-0 scale-95"
                   >
                     <MenuItems
-                      class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5 focus:outline-hidden dark:bg-stone-800"
+                      class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md bg-surface py-1 shadow-lg ring-1 ring-black/5 focus:outline-hidden"
                     >
                       <MenuItem
                         v-for="ws in otherWorkspaces"
@@ -294,8 +294,8 @@ async function handleSignOut() {
                         <button
                           type="button"
                           :class="[
-                            active ? 'bg-gray-100 dark:bg-stone-700' : '',
-                            'block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-stone-300',
+                            active ? 'bg-btn-secondary-fill' : '',
+                            'block w-full px-4 py-2 text-left text-sm text-ink',
                           ]"
                           @click="handleSwitchWorkspace(ws.id)"
                         >
@@ -332,7 +332,7 @@ async function handleSignOut() {
               <TimeAnchor
                 v-if="showLastSynced && lastSyncedAt"
                 :at="lastSyncedAt"
-                class="mr-3 text-xs text-gray-400 dark:text-stone-500"
+                class="mr-3 text-xs text-ink-muted"
                 >Last synced</TimeAnchor
               >
 
@@ -387,10 +387,10 @@ async function handleSignOut() {
                   leave-to-class="transform opacity-0 scale-95"
                 >
                   <MenuItems
-                    class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5 focus:outline-hidden dark:bg-stone-800"
+                    class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-surface py-1 shadow-lg ring-1 ring-black/5 focus:outline-hidden"
                   >
                     <div
-                      class="truncate border-b border-gray-200 px-4 py-2 text-sm text-gray-700 dark:border-stone-700 dark:text-stone-300"
+                      class="truncate border-b border-line px-4 py-2 text-sm text-ink"
                     >
                       {{ user?.email }}
                     </div>
@@ -402,8 +402,8 @@ async function handleSignOut() {
                       <button
                         type="button"
                         :class="[
-                          active ? 'bg-gray-100 dark:bg-stone-700' : '',
-                          'block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-stone-300',
+                          active ? 'bg-btn-secondary-fill' : '',
+                          'block w-full px-4 py-2 text-left text-sm text-ink',
                         ]"
                         @click="
                           () => {
@@ -420,8 +420,8 @@ async function handleSignOut() {
                         type="button"
                         data-testid="log-out-button"
                         :class="[
-                          active ? 'bg-gray-100 dark:bg-stone-700' : '',
-                          'block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-stone-300',
+                          active ? 'bg-btn-secondary-fill' : '',
+                          'block w-full px-4 py-2 text-left text-sm text-ink',
                         ]"
                         @click="handleSignOut"
                       >
@@ -524,7 +524,7 @@ async function handleSignOut() {
               <TimeAnchor
                 v-if="showLastSynced && lastSyncedAt"
                 :at="lastSyncedAt"
-                class="block text-xs text-gray-400 dark:text-stone-500"
+                class="block text-xs text-ink-muted"
                 >Last synced</TimeAnchor
               >
             </div>
@@ -576,7 +576,7 @@ async function handleSignOut() {
       </DisclosurePanel>
     </Disclosure>
 
-    <header v-if="$slots.header" class="bg-white shadow dark:bg-stone-800">
+    <header v-if="$slots.header" class="bg-surface shadow">
       <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <slot name="header" />
       </div>

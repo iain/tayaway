@@ -74,23 +74,17 @@ const awaitingVotesCount = computed(() =>
   <section data-testid="awaiting-votes-section">
     <SectionHeading :icon="UserIcon" title="Votes" />
     <BaseCard padded>
-      <div
-        v-if="!event.workspace"
-        class="py-4 text-center text-gray-500 dark:text-stone-400"
-      >
+      <div v-if="!event.workspace" class="py-4 text-center text-ink-muted">
         Loading workspace members...
       </div>
 
-      <div
-        v-else-if="!event.datePoll"
-        class="py-4 text-center text-gray-500 dark:text-stone-400"
-      >
+      <div v-else-if="!event.datePoll" class="py-4 text-center text-ink-muted">
         Open a date poll to start collecting votes.
       </div>
 
       <div v-else-if="awaitingVotesCount === 0" class="py-4 text-center">
         <CheckCircleIcon class="mx-auto mb-2 size-8 text-green-500" />
-        <p class="text-gray-600 dark:text-stone-400">Everyone has voted!</p>
+        <p class="text-ink-muted">Everyone has voted!</p>
       </div>
 
       <div v-else class="space-y-4">
@@ -100,7 +94,7 @@ const awaitingVotesCount = computed(() =>
             :class="
               group.completed
                 ? 'text-green-600 dark:text-green-400'
-                : 'text-gray-500 dark:text-stone-400'
+                : 'text-ink-muted'
             "
           >
             {{ group.label }}
@@ -115,7 +109,7 @@ const awaitingVotesCount = computed(() =>
                   ? 'bg-green-50 dark:bg-green-900/20'
                   : member.userId === currentUserId
                     ? 'bg-amber-50 ring-1 ring-amber-200 dark:bg-amber-900/20 dark:ring-amber-800'
-                    : 'bg-gray-50 dark:bg-stone-700/50'
+                    : 'bg-surface-sunken'
               "
             >
               <div
@@ -138,11 +132,11 @@ const awaitingVotesCount = computed(() =>
                   :class="
                     member.userId === currentUserId
                       ? 'text-amber-600 dark:text-amber-400'
-                      : 'text-gray-500 dark:text-stone-400'
+                      : 'text-ink-muted'
                   "
                 />
               </div>
-              <span class="text-gray-900 dark:text-white">
+              <span class="text-ink">
                 {{ member.name || member.email || 'Unknown' }}
                 <span
                   v-if="member.userId === currentUserId"
@@ -155,7 +149,7 @@ const awaitingVotesCount = computed(() =>
           </ul>
         </div>
 
-        <p class="text-sm text-gray-500 dark:text-stone-400">
+        <p class="text-sm text-ink-muted">
           {{ awaitingVotesCount }}
           {{ awaitingVotesCount === 1 ? "person hasn't" : "people haven't" }}
           fully voted yet

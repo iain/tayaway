@@ -64,11 +64,11 @@ function handleClose(): void {
         <div>
           <label
             for="deadline"
-            class="block text-sm/6 font-medium text-gray-900 dark:text-white"
+            class="block text-sm/6 font-medium text-ink"
           >
             Voting Deadline
           </label>
-          <p class="mt-1 text-sm text-gray-500 dark:text-stone-400">
+          <p class="mt-1 text-sm text-ink-muted">
             Set when voting closes. You can always close it early or reopen
             later.
           </p>
@@ -76,7 +76,7 @@ function handleClose(): void {
             id="deadline"
             v-model="deadline"
             type="datetime-local"
-            class="mt-2 block w-full rounded-md border-0 bg-white/5 px-3 py-1.5 text-gray-900 shadow-sm ring-1 ring-gray-300 ring-inset focus:ring-2 focus:ring-rose-500 focus:ring-inset sm:text-sm/6 dark:text-white dark:ring-stone-700"
+            class="mt-2 block w-full rounded-md border-0 bg-white/5 px-3 py-1.5 text-ink shadow-sm ring-1 ring-gray-300 ring-inset focus:ring-2 focus:ring-rose-500 focus:ring-inset sm:text-sm/6 dark:ring-stone-700"
           />
         </div>
       </div>

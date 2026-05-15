@@ -22,7 +22,8 @@ function handleAction(notification: Notification) {
 
 <template>
   <div
-    class="pointer-events-auto w-full max-w-sm overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-black/5 dark:bg-stone-800 dark:ring-white/10"
+    :role="notification.type === 'error' ? 'alert' : 'status'"
+    class="bg-surface ring-ring-hairline pointer-events-auto w-full max-w-sm overflow-hidden rounded-lg shadow-lg ring-1"
   >
     <div class="p-4">
       <div class="flex items-start">
@@ -49,13 +50,13 @@ function handleAction(notification: Notification) {
             !notification.actionLabel ? notification.action?.() : undefined
           "
         >
-          <p class="text-sm font-medium text-gray-900 dark:text-white">
+          <p class="text-label text-ink">
             {{ notification.message }}
           </p>
           <button
             v-if="notification.actionLabel && notification.action"
             type="button"
-            class="mt-1 text-sm font-medium text-amber-600 hover:text-amber-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:text-amber-400 dark:hover:text-amber-300"
+            class="focus-visible:outline-focus mt-1 text-sm font-medium text-amber-600 hover:text-amber-500 focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-amber-400 dark:hover:text-amber-300"
             @click="handleAction(notification)"
           >
             {{ notification.actionLabel }}
@@ -64,7 +65,7 @@ function handleAction(notification: Notification) {
         <div class="ml-4 flex shrink-0">
           <button
             type="button"
-            class="inline-flex rounded-md bg-white text-gray-500 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:bg-stone-800 dark:text-stone-400 dark:hover:text-stone-200"
+            class="bg-surface text-ink-muted hover:text-ink focus-visible:outline-focus inline-flex rounded-md focus-visible:outline-2 focus-visible:outline-offset-2"
             @click="emit('dismiss', notification.id)"
           >
             <span class="sr-only">Close</span>

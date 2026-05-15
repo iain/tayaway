@@ -123,14 +123,14 @@ function removeHolderName(): Promise<void> {
   <div>
     <SectionHeading :icon="BanknotesIcon" title="Payment" />
     <BaseCard padded>
-      <p class="mb-2 text-sm text-gray-500 dark:text-stone-400">
+      <p class="text-ink-muted mb-2 text-sm">
         Adding your IBAN lets others pay you with a single QR code scan when
         settling shared expenses. Your IBAN is stored securely and never shared
         with other members, and is only used server-side to generate payment QR
         codes.
       </p>
 
-      <dl class="divide-y divide-gray-200 dark:divide-stone-700">
+      <dl class="divide-line divide-y">
         <DefinitionRow
           label="IBAN"
           value-class="truncate font-mono"
@@ -158,7 +158,7 @@ function removeHolderName(): Promise<void> {
                   :maxlength="42"
                   :disabled="savingFields.has('iban')"
                   :aria-invalid="ibanError !== null"
-                  class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 font-mono text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:font-mono placeholder:text-gray-400 focus:outline-2 focus:outline-offset-2 focus:outline-focus sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
+                  class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder min-w-0 flex-1 rounded-md px-3 py-1.5 font-mono text-base outline-1 -outline-offset-1 placeholder:font-mono focus:outline-2 focus:outline-offset-2 focus:outline-focus sm:text-sm/6"
                   @input="onIbanInput"
                   @keyup.escape="cancelEdit('iban')"
                 />
@@ -218,7 +218,7 @@ function removeHolderName(): Promise<void> {
             {{ user.ibanHolderName }}
           </template>
           <template v-else>
-            <span class="text-gray-500 dark:text-stone-400">
+            <span class="text-ink-muted">
               {{ user?.name ? `${user.name} (your display name)` : 'Not set' }}
             </span>
           </template>
@@ -238,7 +238,7 @@ function removeHolderName(): Promise<void> {
                   placeholder="Exactly as on your bank account"
                   :maxlength="70"
                   :disabled="savingFields.has('holderName')"
-                  class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:outline-offset-2 focus:outline-focus sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
+                  class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder min-w-0 flex-1 rounded-md px-3 py-1.5 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 focus:outline-focus sm:text-sm/6"
                   @keyup.escape="cancelEdit('holderName')"
                 />
                 <AppButton

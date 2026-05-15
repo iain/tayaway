@@ -151,11 +151,11 @@ onUnmounted(() => {
         <div v-if="!bare">
           <h3
             data-testid="active-sessions-heading"
-            class="text-lg font-semibold text-gray-900 dark:text-white"
+            class="text-ink text-lg font-semibold"
           >
             Active Sessions
           </h3>
-          <p class="mt-1 text-sm text-gray-500 dark:text-stone-400">
+          <p class="text-ink-muted mt-1 text-sm">
             Devices where you're currently signed in.
           </p>
         </div>
@@ -164,7 +164,7 @@ onUnmounted(() => {
           v-if="loading"
           role="status"
           aria-live="polite"
-          class="py-4 text-sm text-gray-500 dark:text-stone-400"
+          class="text-ink-muted py-4 text-sm"
         >
           Loading sessions...
         </div>
@@ -180,8 +180,8 @@ onUnmounted(() => {
         <template v-else>
           <ul
             :class="[
-              'divide-y divide-gray-200 dark:divide-stone-700',
-              !bare && 'border-t border-gray-200 dark:border-stone-700',
+              'divide-line divide-y',
+              !bare && 'border-line border-t',
             ]"
           >
             <li
@@ -192,7 +192,7 @@ onUnmounted(() => {
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2">
                   <p
-                    class="truncate text-sm font-medium text-gray-900 dark:text-white"
+                    class="truncate text-sm font-medium text-ink"
                   >
                     {{ sessionContext(session) || 'Unknown device' }}
                   </p>
@@ -204,7 +204,7 @@ onUnmounted(() => {
                     Current session
                   </AppBadge>
                 </div>
-                <p class="mt-0.5 text-xs text-gray-500 dark:text-stone-400">
+                <p class="text-ink-muted mt-0.5 text-xs">
                   <template v-if="session.last_active_at">
                     <TimeAnchor :at="session.last_active_at"
                       >Last active</TimeAnchor
@@ -228,7 +228,7 @@ onUnmounted(() => {
 
         <p
           v-if="hasGeolocation"
-          class="text-xs text-gray-400 dark:text-stone-500"
+          class="text-ink-muted text-xs"
         >
           IP Geolocation by
           <a

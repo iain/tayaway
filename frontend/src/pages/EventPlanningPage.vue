@@ -76,7 +76,7 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
 
 <template>
   <div>
-    <div v-if="!event" class="text-gray-500 dark:text-stone-400">
+    <div v-if="!event" class="text-ink-muted">
       Event not found
     </div>
 
@@ -105,7 +105,7 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
       <EmptyState
         v-else-if="isPollResolved(event.datePoll)"
         :icon="CheckCircleIcon"
-        icon-class="text-gray-400 dark:text-stone-500"
+        icon-class="text-ink-muted"
         heading="Date poll closed"
         description="The date poll has been resolved and is no longer accepting votes."
       >
@@ -115,7 +115,7 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
         </AppButton>
         <p
           v-if="canCreatePoll && eventHasStarted"
-          class="mt-4 text-sm text-gray-400 dark:text-stone-500"
+          class="text-ink-muted mt-4 text-sm"
         >
           The poll can't be reopened because the event has already started.
         </p>
@@ -129,7 +129,7 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
         description="This event already has dates. Members can RSVP on the RSVP tab."
       >
         <template v-if="canOpenOrReopenPoll">
-          <p class="max-w-sm text-sm text-gray-400 dark:text-stone-500">
+          <p class="text-ink-muted max-w-sm text-sm">
             Need to reconsider? Opening a date poll lets members vote on
             alternatives. When you close the poll, the winning dates will
             replace the current ones and RSVPs will be reset.
@@ -152,7 +152,7 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
         </AppButton>
         <p
           v-if="canCreatePoll && eventHasStarted"
-          class="mt-4 text-sm text-gray-400 dark:text-stone-500"
+          class="text-ink-muted mt-4 text-sm"
         >
           A date poll can't be opened because the event has already started.
         </p>

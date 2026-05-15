@@ -71,6 +71,11 @@
   --color-ink-muted: light-dark(#4b5563, #a8a29e);
   --color-ink-faint: light-dark(#4b5563, #a8a29e);
 
+  /* Placeholder ink for form controls. One step lighter than `ink-muted` so
+     entered text still reads as primary against ghost text, but tuned to
+     clear WCAG AA 4.5:1 on `bg-surface-sunken` in both modes. */
+  --color-ink-placeholder: light-dark(#6b7280, #a8a29e);
+
   /* Lines, hairlines, rings */
   --color-line: light-dark(#d1d5db, rgb(255 255 255 / 0.1));
   --color-ring-hairline: light-dark(rgb(0 0 0 / 0.05), rgb(255 255 255 / 0.06));

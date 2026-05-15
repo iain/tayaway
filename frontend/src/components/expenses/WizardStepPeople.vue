@@ -132,11 +132,9 @@ const previewRows = computed(() => {
 <template>
   <div>
     <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-      <p class="text-sm font-medium text-gray-700 dark:text-stone-300">
-        Who is this for?
-      </p>
+      <p class="text-sm font-medium text-ink">Who is this for?</p>
       <div
-        class="inline-flex gap-0.5 rounded-lg bg-gray-100 p-0.5 dark:bg-stone-700"
+        class="inline-flex gap-0.5 rounded-lg bg-btn-secondary-fill p-0.5"
         data-testid="toggle-people-mode"
       >
         <button
@@ -145,7 +143,7 @@ const previewRows = computed(() => {
           :class="
             everyone
               ? 'bg-amber-100 text-amber-800 shadow-sm dark:bg-amber-900/40 dark:text-amber-300'
-              : 'text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:text-stone-400 dark:hover:bg-stone-600 dark:hover:text-stone-200'
+              : 'text-ink-muted hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-stone-600 dark:hover:text-stone-200'
           "
           @click="!everyone && toggleEveryone()"
         >
@@ -157,7 +155,7 @@ const previewRows = computed(() => {
           :class="
             !everyone
               ? 'bg-amber-100 text-amber-800 shadow-sm dark:bg-amber-900/40 dark:text-amber-300'
-              : 'text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:text-stone-400 dark:hover:bg-stone-600 dark:hover:text-stone-200'
+              : 'text-ink-muted hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-stone-600 dark:hover:text-stone-200'
           "
           @click="everyone && toggleEveryone()"
         >
@@ -167,7 +165,7 @@ const previewRows = computed(() => {
     </div>
 
     <div v-if="everyone">
-      <p class="text-sm text-gray-500 dark:text-stone-400">
+      <p class="text-sm text-ink-muted">
         Split by attendance overlap — everyone who RSVPs will be included
         automatically.
       </p>
@@ -178,12 +176,12 @@ const previewRows = computed(() => {
         <span
           v-for="m in overlappingMembers"
           :key="m.userId"
-          class="inline-block rounded-full bg-gray-100 px-2.5 py-0.5 text-xs text-gray-700 dark:bg-stone-700 dark:text-stone-300"
+          class="inline-block rounded-full bg-btn-secondary-fill px-2.5 py-0.5 text-xs text-btn-secondary-ink"
         >
           {{ m.name }}
         </span>
       </div>
-      <p v-else class="mt-2 text-xs text-gray-400 dark:text-stone-500">
+      <p v-else class="mt-2 text-xs text-ink-muted">
         No attending members overlap with this expense period.
       </p>
     </div>
@@ -191,7 +189,7 @@ const previewRows = computed(() => {
     <div v-else>
       <p
         v-if="overlappingMembers.length === 0"
-        class="text-sm text-gray-500 dark:text-stone-400"
+        class="text-sm text-ink-muted"
       >
         No attending members overlap with this expense period. Go back and
         adjust the dates, or switch to Everyone.
@@ -206,11 +204,11 @@ const previewRows = computed(() => {
           >
             <input
               type="checkbox"
-              class="size-4 rounded border-gray-300 text-rose-500 focus:ring-rose-500 dark:border-stone-600 dark:bg-stone-800"
+              class="size-4 rounded border-line text-rose-500 focus:ring-rose-500 dark:bg-stone-800"
               :checked="selectedUserIds.includes(m.userId)"
               @change="toggleUser(m.userId)"
             />
-            <span class="flex-1 text-sm text-gray-900 dark:text-white">
+            <span class="flex-1 text-sm text-ink">
               {{ m.name }}
             </span>
             <div
@@ -228,7 +226,7 @@ const previewRows = computed(() => {
                 −
               </button>
               <span
-                class="min-w-[2.25rem] text-center font-mono text-sm text-gray-900 tabular-nums dark:text-white"
+                class="min-w-[2.25rem] text-center font-mono text-sm text-ink tabular-nums"
                 :data-testid="`factor-value-${m.userId}`"
               >
                 {{ formatFactor(factorFor(m.userId)) }}
@@ -250,7 +248,7 @@ const previewRows = computed(() => {
           :class="
             selectedUserIds.length > 0
               ? 'text-amber-700 dark:text-amber-400'
-              : 'text-gray-500 dark:text-stone-400'
+              : 'text-ink-muted'
           "
         >
           {{ selectedUserIds.length }} of
@@ -259,15 +257,13 @@ const previewRows = computed(() => {
         <p
           v-if="previewRows.length > 0"
           data-testid="share-preview"
-          class="mt-1 text-xs text-gray-600 dark:text-stone-400"
+          class="mt-1 text-xs text-ink-muted"
         >
           <span v-for="(row, i) in previewRows" :key="row.userId"
             >{{ i > 0 ? ' · ' : '' }}{{ row.name }}
             <LedgerAmount :amount="row.share"
           /></span>
-          <span class="text-gray-400 dark:text-stone-500">
-            (of <LedgerAmount :amount="amount" />)
-          </span>
+          <span class="text-ink-muted"> (of <LedgerAmount :amount="amount" />) </span>
         </p>
       </div>
     </div>

@@ -43,11 +43,11 @@ function navigateToTasks(): void {
       class="rounded-xl border border-amber-200 bg-amber-50/50 p-6 sm:p-8 dark:border-amber-800/40 dark:bg-amber-950/20"
     >
       <h2
-        class="text-xl font-semibold tracking-tight text-gray-900 dark:text-white"
+        class="text-xl font-semibold tracking-tight text-ink"
       >
         {{ greeting }}
       </h2>
-      <p class="mt-1 text-sm text-gray-600 dark:text-stone-400">
+      <p class="text-ink-muted mt-1 text-sm">
         Start by creating an event — a trip, party, or anything your group is
         planning. From there you can vote on dates, split costs, and organise
         chores.
@@ -62,7 +62,7 @@ function navigateToTasks(): void {
     <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
       <button
         type="button"
-        class="group inline-flex cursor-pointer items-center gap-2 rounded py-2 text-sm text-gray-600 transition-colors hover:text-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:text-stone-400 dark:hover:text-amber-400"
+        class="text-ink-muted group inline-flex cursor-pointer items-center gap-2 rounded py-2 text-sm transition-colors hover:text-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:hover:text-amber-400"
         @click="navigateToMembers"
       >
         <UserGroupIcon class="size-4 shrink-0" />
@@ -79,7 +79,7 @@ function navigateToTasks(): void {
       </button>
       <button
         type="button"
-        class="group inline-flex cursor-pointer items-center gap-2 rounded py-2 text-sm text-gray-600 transition-colors hover:text-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:text-stone-400 dark:hover:text-amber-400"
+        class="text-ink-muted group inline-flex cursor-pointer items-center gap-2 rounded py-2 text-sm transition-colors hover:text-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:hover:text-amber-400"
         @click="navigateToTasks"
       >
         <ClipboardDocumentListIcon class="size-4 shrink-0" />

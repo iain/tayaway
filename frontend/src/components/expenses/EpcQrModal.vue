@@ -208,14 +208,14 @@ async function copyIban() {
     <div v-if="transferId || netRequest" class="space-y-4">
       <dl class="space-y-2 text-sm">
         <div class="flex justify-between">
-          <dt class="text-gray-500 dark:text-stone-400">To</dt>
-          <dd class="font-medium text-gray-900 dark:text-white">
+          <dt class="text-ink-muted">To</dt>
+          <dd class="font-medium text-ink">
             {{ recipientName }}
           </dd>
         </div>
         <div class="flex justify-between">
-          <dt class="text-gray-500 dark:text-stone-400">Amount</dt>
-          <dd class="font-mono font-medium text-gray-900 dark:text-white">
+          <dt class="text-ink-muted">Amount</dt>
+          <dd class="font-mono font-medium text-ink">
             &euro;{{ amount?.toFixed(2) }}
           </dd>
         </div>
@@ -277,10 +277,10 @@ async function copyIban() {
             class="size-12 text-emerald-500 dark:text-emerald-400"
             aria-hidden="true"
           />
-          <p class="text-base font-medium text-gray-900 dark:text-white">
+          <p class="text-base font-medium text-ink">
             Marked as paid.
           </p>
-          <p class="text-sm text-gray-500 dark:text-stone-400">
+          <p class="text-sm text-ink-muted">
             {{ recipientName }} will see this update next time they open
             Tayaway.
           </p>
@@ -322,7 +322,7 @@ async function copyIban() {
 
             <p
               v-else
-              class="text-center text-sm text-gray-500 dark:text-stone-400"
+              class="text-center text-sm text-ink-muted"
             >
               QR code unavailable for this transfer &mdash; copy the IBAN below
               to pay manually.
@@ -330,7 +330,7 @@ async function copyIban() {
 
             <p
               v-if="details.qrPng"
-              class="text-center text-xs text-gray-500 dark:text-stone-400"
+              class="text-center text-xs text-ink-muted"
             >
               Scan with your banking app to pre-fill the transfer, or copy the
               IBAN below to pay manually.
@@ -339,7 +339,7 @@ async function copyIban() {
             <div class="space-y-1">
               <label
                 for="payment-iban"
-                class="block text-xs text-gray-500 dark:text-stone-400"
+                class="block text-xs text-ink-muted"
               >
                 IBAN
               </label>
@@ -349,7 +349,7 @@ async function copyIban() {
                   data-testid="payment-iban"
                   :value="details.iban"
                   readonly
-                  class="min-w-0 flex-1 rounded-md border border-gray-300 bg-gray-50 px-2.5 py-1.5 font-mono text-sm text-gray-900 select-all focus:outline-none dark:border-stone-600 dark:bg-stone-800 dark:text-white"
+                  class="min-w-0 flex-1 rounded-md border border-line bg-surface-sunken px-2.5 py-1.5 font-mono text-sm text-ink select-all focus:outline-none"
                   @focus="($event.target as HTMLInputElement).select()"
                 />
                 <button
@@ -373,7 +373,7 @@ async function copyIban() {
             </div>
           </template>
 
-          <div class="border-t border-gray-200 pt-4 dark:border-stone-700">
+          <div class="border-t border-line pt-4">
             <button
               type="button"
               data-testid="attest-paid"
@@ -389,7 +389,7 @@ async function copyIban() {
               }}
             </button>
             <p
-              class="mt-2 text-center text-xs text-gray-500 dark:text-stone-400"
+              class="mt-2 text-center text-xs text-ink-muted"
             >
               Click after you've completed the bank transfer.
               {{ recipientName }}

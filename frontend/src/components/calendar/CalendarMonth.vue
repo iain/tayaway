@@ -148,13 +148,13 @@ function handleMouseLeave(): void {
   <div class="w-full">
     <div
       v-if="!hideHeader"
-      class="mb-4 text-center font-semibold text-gray-900 dark:text-white"
+      class="mb-4 text-center font-semibold text-ink"
     >
       {{ monthName }} {{ year }}
     </div>
 
     <div
-      class="mb-1 grid grid-cols-7 text-center text-xs font-medium text-gray-500 dark:text-stone-400"
+      class="mb-1 grid grid-cols-7 text-center text-xs font-medium text-ink-muted"
     >
       <div v-for="day in weekDays" :key="day" class="py-1.5">
         {{ day }}
@@ -170,7 +170,7 @@ function handleMouseLeave(): void {
         class="relative aspect-square text-sm transition-colors duration-100 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         :class="[
           day.isCurrentMonth
-            ? 'text-gray-900 dark:text-white'
+            ? 'text-ink'
             : 'text-gray-400 dark:text-gray-600',
           getDayClasses(day.dateString),
         ]"
