@@ -129,26 +129,35 @@ hydrates immediately for the last-active workspace.
 
 ## Phase 4 — Sync on switch (the visible win)
 
-**Failing test first:** e2e test where Browser 1 switches A→B→A. The second
-visit to A shows cached A data immediately (assert via DOM appearing before
-the network roundtrip resolves), then merges any deltas.
+**Failing test first:** a unit spec asserting that `switchWorkspace`
+hydrates the new workspace's IndexedDB cache into the pool so a switch-back
+shows data before the partial sync response arrives.
 
-- Segment workspace data: refactor `objectPool` from one flat workspace map
-  to `Map<workspaceId, Pool>`. Expose `currentObjects` as a computed
-  unioning the active workspace pool with the personal pool. Same shape
-  as today's `objects` — selectors don't change.
-- Tag every incoming non-personal object with `workspaceId` at the
-  WebSocket boundary; assert in merge that `workspaceId` never mutates.
-- `switchWorkspace` no longer clears the pool or IndexedDB.
-- Send `switch_workspace` with the workspace's stored `syncedAt` cursor.
-- Server runs `Sync::WorkspaceSync` with `since:` → partial sync (or full if
-  no cursor exists).
-- Frontend merges deltas into the existing workspace pool.
-- Subtle "syncing" indicator in the header (small pulse on the workspace
-  name) until the response arrives; never block UI.
+- `switchWorkspace` clears in-memory workspace data (personal data
+  survives via Phase 2) and triggers an async hydration from the new
+  workspace's IndexedDB scope. The hydration sets `hasCachedData=true`
+  so the full-page loader doesn't flash.
+- `sendSwitchWorkspace` already sends the workspace's stored `syncedAt`
+  cursor (Phase 3); server runs `Sync::WorkspaceSync` with `since:` →
+  partial sync (or full if no cursor / cache too stale).
+- Partial sync deltas merge into the existing in-memory pool via the
+  existing `handleSync` path.
+- The full structural in-memory `Map<workspaceId, Pool>` refactor is
+  deliberately *not* done — cache hydration on switch achieves the same
+  visible win (instant render on switch-back) with much less surgery.
+  The cost is one extra IndexedDB round-trip per switch (~50ms typical).
 
-**Done when:** the marquee test's switch step renders instantly; partial
-sync deltas land without flicker.
+Deferred to a follow-up:
+
+- Subtle "syncing" indicator (pulse on the workspace name) until the
+  partial sync resolves.
+- Workspace-id invariant assertion in `mergeObject` — defensive code
+  with no current failure mode now that personal vs workspace routing
+  is explicit at the persistence layer.
+
+**Done when:** unit test confirms the new workspace's cache hydrates
+into the pool on switch; full-page loader is suppressed when cached
+data is available.
 
 ## Phase 5 — Command queue per workspace
 
