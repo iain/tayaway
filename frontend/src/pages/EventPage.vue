@@ -344,7 +344,7 @@ function handleDownloadIcs(): void {
             :maxlength="255"
             :disabled="loading"
             data-testid="edit-name-input"
-            class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-2 text-2xl font-bold tracking-tight text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:font-normal placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-focus sm:text-3xl dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
+            class="min-w-0 flex-1 rounded-md bg-gray-100 px-3 py-2 text-2xl font-bold tracking-tight text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:font-normal placeholder:text-gray-400 focus:outline-2 focus:outline-offset-2 focus:outline-focus sm:text-3xl dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
             @keyup.escape="cancelEdit"
           />
           <AppButton
@@ -393,7 +393,7 @@ function handleDownloadIcs(): void {
             rows="3"
             :disabled="loading"
             data-testid="edit-description-input"
-            class="w-full rounded-md bg-gray-100 px-3 py-2 text-xl text-gray-600 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-focus dark:bg-white/5 dark:text-stone-300 dark:outline-white/10 dark:placeholder:text-stone-500"
+            class="w-full rounded-md bg-gray-100 px-3 py-2 text-xl text-gray-600 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:outline-offset-2 focus:outline-focus dark:bg-white/5 dark:text-stone-300 dark:outline-white/10 dark:placeholder:text-stone-500"
             @keyup.escape="cancelEdit"
           />
           <div class="mt-2 flex items-center gap-2">

@@ -167,7 +167,7 @@ function handleMouseLeave(): void {
         :key="day.dateString"
         :data-testid="`calendar-day-${day.dateString}`"
         type="button"
-        class="relative aspect-square text-sm transition-colors duration-100 focus-visible:z-10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+        class="relative aspect-square text-sm transition-colors duration-100 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         :class="[
           day.isCurrentMonth
             ? 'text-gray-900 dark:text-white'

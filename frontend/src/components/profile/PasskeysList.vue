@@ -258,7 +258,7 @@ onUnmounted(() => {
                 type="text"
                 maxlength="100"
                 placeholder="Enter a name"
-                class="block min-w-0 flex-1 rounded-md bg-gray-100 px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-focus dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
+                class="block min-w-0 flex-1 rounded-md bg-gray-100 px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:outline-offset-2 focus:outline-focus dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-stone-500"
                 @keydown.escape="cancelEdit"
               />
               <AppButton type="submit" size="sm"> Save </AppButton>
