@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { useObjectPoolStore } from './objectPool'
 import type { PoolWorkspace, PoolObject } from '@/types/pool'
@@ -84,6 +84,36 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       useWebSocketStore().hasCachedData = true
     }
   }
+
+  // Track whether we've ever seen the authoritative workspace list. Until the
+  // first non-empty list arrives, an empty pool is "not loaded yet" rather
+  // than "you have no workspaces" — guards the cold-start path before the
+  // personal sync hydrates the pool.
+  let workspacesEverLoaded = false
+
+  // If the user gets removed from the workspace they're currently looking at,
+  // the personal-channel broadcast drops the workspace row from the pool.
+  // Redirect to the next remaining workspace so the UI doesn't sit on a stale
+  // workspace context. If there are no workspaces left, clear and let the
+  // empty state take over.
+  watch(
+    allWorkspaces,
+    (all) => {
+      if (all.length > 0) workspacesEverLoaded = true
+      if (!workspacesEverLoaded) return
+      const wsId = currentWorkspaceId.value
+      if (!wsId) return
+      if (all.length === 0) {
+        currentWorkspaceId.value = null
+        localStorage.removeItem(STORAGE_KEY)
+        return
+      }
+      if (!all.some((w) => w.id === wsId)) {
+        switchWorkspace(all[0]!.id)
+      }
+    },
+    { flush: 'sync', immediate: true }
+  )
 
   function $reset(): void {
     currentWorkspaceId.value = null

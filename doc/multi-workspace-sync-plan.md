@@ -198,18 +198,16 @@ session, with no extra round-trips beyond the existing notification path.
 
 ## Phase 6 — UX edges
 
-Small but want explicit decisions before merging:
-
-- **You're removed from the workspace you're viewing:** redirect to the first
-  remaining workspace; if none, show an empty "no workspaces" state.
-  Membership disappears from personal pool → trigger via a watcher on
-  `personalObjects`.
-- **Notifications referencing uncached workspaces:** the notification card
-  degrades to "Workspace `<name>`" using the personal-pool `Workspace` row
-  (always cached for any workspace you're in). No further fetch needed.
-- **Quota:** wrap IndexedDB writes; on `QuotaExceededError`, evict the
-  least-recently-active workspace's segment. Don't pre-build LRU; trigger
-  only on quota errors.
+- **You're removed from the workspace you're viewing** — done. A watcher on
+  `allWorkspaces` redirects to the first remaining workspace, or clears
+  `currentWorkspaceId` (and the localStorage marker) if no workspaces
+  remain. Guarded against cold start: only acts once an authoritative
+  workspace list has been observed.
+- **Notifications referencing uncached workspaces** — moot. Workspace rows
+  the user belongs to live in the personal pool and are always cached, so
+  notification cards can always resolve a workspace name.
+- **Quota eviction** — deferred. Build only when telemetry shows users
+  hitting IndexedDB limits; the unbounded cache covers normal use.
 
 ## Sequencing
 

@@ -60,3 +60,69 @@ describe('workspace store — switchWorkspace', () => {
     expect(poolDb.setCurrentWorkspaceId).toHaveBeenCalledWith('ws-2')
   })
 })
+
+describe('workspace store — removed from current workspace', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+    vi.mocked(poolDb.loadObjectsByType).mockReset().mockResolvedValue([])
+    vi.mocked(poolDb.setCurrentWorkspaceId).mockReset().mockResolvedValue(undefined)
+  })
+
+  it('redirects to the next remaining workspace when the current one disappears from the personal pool', async () => {
+    const pool = useObjectPoolStore()
+    const wsA: PoolObject = {
+      id: 'ws-A',
+      objectType: 'workspace',
+      name: 'A',
+      memberIds: [],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    } as unknown as PoolObject
+    const wsB: PoolObject = {
+      id: 'ws-B',
+      objectType: 'workspace',
+      name: 'B',
+      memberIds: [],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    } as unknown as PoolObject
+    pool.importObjects([wsA, wsB])
+
+    const store = useWorkspaceStore()
+    store.initialize(['ws-A', 'ws-B'])
+    store.switchWorkspace('ws-A')
+    expect(store.currentWorkspaceId).toBe('ws-A')
+
+    // Personal channel: user was removed from ws-A — pool drops the row
+    pool.remove('workspace', 'ws-A')
+
+    await vi.waitFor(() => {
+      expect(store.currentWorkspaceId).toBe('ws-B')
+    })
+  })
+
+  it('clears the current workspace and storage when the last workspace disappears', async () => {
+    const pool = useObjectPoolStore()
+    const ws: PoolObject = {
+      id: 'ws-only',
+      objectType: 'workspace',
+      name: 'Only',
+      memberIds: [],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    } as unknown as PoolObject
+    pool.importObjects([ws])
+
+    const store = useWorkspaceStore()
+    store.initialize(['ws-only'])
+    store.switchWorkspace('ws-only')
+
+    pool.remove('workspace', 'ws-only')
+
+    await vi.waitFor(() => {
+      expect(store.currentWorkspaceId).toBeNull()
+    })
+    expect(localStorage.getItem('current_workspace_id')).toBeNull()
+  })
+})
