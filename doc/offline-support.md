@@ -44,10 +44,9 @@ Triggered by the browser `online` event or WebSocket re-authentication. Reads al
 
 ```typescript
 function isNetworkError(e: unknown): boolean {
-  if (!(e instanceof TypeError)) return false
-  if (!navigator.onLine) return true
-  const msg = e.message.toLowerCase()
-  return msg.includes('fetch') || msg.includes('network')
+  // fetch() rejects with TypeError only for network failures per the spec,
+  // so instanceof alone is the complete check.
+  return e instanceof TypeError
 }
 ```
 
@@ -78,7 +77,7 @@ Components read from the pool normally and see optimistic state transparently.
 
 ## Pool Persistence
 
-**Files:** `api/poolDb.ts`, `composables/usePoolPersistence.ts`
+**Files:** `api/poolDb.ts`, `api/poolPersistence.ts`
 
 The object pool is cached in IndexedDB (`tayaway-pool-cache`) with three stores:
 
@@ -98,7 +97,7 @@ The object pool is cached in IndexedDB (`tayaway-pool-cache`) with three stores:
 
 ### Cache invalidation
 
-`CACHE_VERSION` (currently 8) is bumped when the sync protocol changes. Mismatch clears the cache and forces a full sync.
+`CACHE_VERSION` (currently 10) is bumped when the sync protocol changes. Mismatch clears the cache and forces a full sync.
 
 ## WebSocket Reconnection
 
@@ -106,7 +105,7 @@ The object pool is cached in IndexedDB (`tayaway-pool-cache`) with three stores:
 
 ### Triggers
 
-- **Socket close:** 1-second delay, then reconnect
+- **Socket close:** Exponential backoff starting at 1s, capped at 30s, with jitter; then reconnect
 - **Browser online event:** Immediate reconnect
 - **User click:** Connection badge in the header triggers `reconnect()`
 

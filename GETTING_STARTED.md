@@ -9,7 +9,7 @@
 ## Setup
 
 ```bash
-# Install runtimes (Ruby 4.0.1, Node 24, pnpm 10)
+# Install runtimes (Ruby 4, Node 26, pnpm 11)
 mise install
 ```
 

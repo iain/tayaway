@@ -23,15 +23,15 @@ A real-time collaborative event planning app. Create events, propose date ranges
 
 ## Tech Stack
 
-| Layer     | Technologies                                                 |
-| --------- | ------------------------------------------------------------ |
-| Frontend  | Vue 3.5, TypeScript 6, Vite 7, Tailwind CSS 4, Pinia 3       |
-| Backend   | Ruby 4.0, Roda 3, Sequel 5, Sorbet                           |
-| Database  | PostgreSQL 18 (LISTEN/NOTIFY for real-time)                  |
-| WebSocket | roda-websockets, Falcon                                      |
-| Testing   | Vitest (frontend), RSpec (backend), Playwright (e2e)         |
-| Deploy    | Capistrano, Nginx, systemd                                   |
-| Tooling   | mise, pnpm 10, Husky, lint-staged, ESLint, RuboCop, Prettier |
+| Layer     | Technologies                                         |
+| --------- | ---------------------------------------------------- |
+| Frontend  | Vue 3.5, TypeScript 6, Vite 8, Tailwind CSS 4, Pinia 3 |
+| Backend   | Ruby 4, Roda 3, Sequel 5                             |
+| Database  | PostgreSQL 18 (LISTEN/NOTIFY for real-time)          |
+| WebSocket | roda-websockets, Falcon                              |
+| Testing   | Vitest (frontend), RSpec (backend), Playwright (e2e) |
+| Deploy    | Capistrano, Nginx, systemd                           |
+| Tooling   | mise, pnpm 11, ESLint, RuboCop, Prettier             |
 
 ## Getting Started
 
@@ -54,13 +54,14 @@ tayaway/
 ├── backend/               Ruby API server
 │   └── app/
 │       ├── routes/        Roda hash_routes (auth, events, expenses, task_lists, members, ...)
-│       ├── models/        Immutable Sorbet T::Struct models
+│       ├── models/        Immutable plain Ruby classes (Data.define) with factory class methods
 │       ├── services/      Business logic with Result monad pattern
-│       ├── serializers/   PoolSerializer for normalized API responses
+│       ├── policies/      Policy classes — the source of truth for permissions
+│       ├── serializers/   PoolSerializer + PermissionAttacher
 │       └── websocket/     Listener, ConnectionManager, MessageHandler
 │
 ├── e2e/                   Playwright end-to-end tests
-├── doc/                   Architecture docs (offline-support.md)
+├── doc/                   Architecture docs (backend-sync, offline-support, authorization, falcon-architecture, database-migrations, connectivity-guidelines)
 └── config/                Capistrano deployment configuration
 ```
 
@@ -69,7 +70,7 @@ tayaway/
 The app uses a normalized **object pool** pattern for state management:
 
 1. Backend services mutate the database and call `Broadcaster.object_changed`
-2. PostgreSQL `NOTIFY` triggers a background `Listener` thread
+2. PostgreSQL `NOTIFY` wakes a per-worker `Listener` fiber on the Falcon reactor
 3. Listener fetches the full object, serializes it, and broadcasts via WebSocket
 4. All connected clients merge the update into their local object pool (newer timestamp wins)
 5. Vue reactivity re-renders affected components automatically

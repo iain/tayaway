@@ -49,7 +49,11 @@ them — it never computes permissions from user IDs.
 - `Failure(:not_admin_or_owner)` — wrong workspace role
 - `Failure(:settled)` — temporary state blocker
 - `Failure(:has_expenses)` — temporary state blocker
-- `Failure(:not_recipient)` / `Failure(:not_sender)` — transfer-specific
+- `Failure(:not_pair_member)` / `Failure(:not_sender)` — transfer-specific
+
+`frontend/src/composables/usePermission.ts` is the canonical list of reasons
+the frontend handles. Reach for it when in doubt about which reasons exist or
+how each is presented.
 
 Policies take the subject as the first positional arg and `membership:` as a
 keyword. Extra context (e.g., `event:`, `has_expenses:`) can be passed as
@@ -68,9 +72,9 @@ If a policy's `initialize` doesn't take `membership:`, it has only invariants (`
 
 `usePermission.ts` doesn't sort reasons by axis. It asks "does the user have a path to making this succeed?":
 
-- HIDE: no path. Most actor failures, plus invariants the user can't fix (`:revert_of_revert`, `:superseded`).
-- MODAL: path worth explaining. Invariants the user can resolve (`:has_expenses` → settle and delete first); a few actor failures with educational value (`:not_recipient`).
-- DISABLE: transient or automatic-fix states. Currently unused.
+- HIDE: no path. Most actor failures, plus invariants the user can't fix (`:revert_of_revert`, `:already_paid`).
+- MODAL: path worth explaining. Invariants the user can resolve (`:has_expenses` → settle and delete first); a few actor failures with educational value (`:not_pair_member`).
+- DISABLE: transient or automatic-fix states. The bucket is declared but currently has no entries.
 
 So the actor/invariant axis is the right lens for thinking about a _policy_; path-forward is the right lens for placing a _reason_ in `usePermission.ts`.
 

@@ -364,7 +364,7 @@ On focus, the error field gets the system-wide rose 2px outset focus ring on top
 
 - **Shape:** A native `<time datetime="…">` wrapped in a span that prepends an optional verb slot. The verb sets context ("Sent", "Last synced", "Daisy paid", "Expires"); the component appends the compact relative time.
 - **Compact unit voice:** `m` (under an hour), `h` (under a day), `d` (under a week), `w` (under four weeks). Anything older falls back to a short absolute date. Past renders as `"3h ago"`, future as `"in 3h"`, anything within the last minute as `"just now"`. Long forms ("three hours ago") are a violation.
-- **Live ticking:** Reads from the shared `useMinuteTicker`, so an "8m ago" row becomes "9m ago" without a refresh and every TimeAnchor on a page agrees on what "now" means.
+- **Live ticking:** Driven by `useRelativeTime`, which reads from the shared `useMinuteTicker`, so an "8m ago" row becomes "9m ago" without a refresh and every TimeAnchor on a page agrees on what "now" means.
 - **Rule:** Pick the verb in the right tense — `<TimeAnchor>Expired</TimeAnchor>` for past, `<TimeAnchor>Expires</TimeAnchor>` for future. The primitive doesn't try to be clever; the consumer chose the verb.
 
 ### Empty states (`EmptyState`)

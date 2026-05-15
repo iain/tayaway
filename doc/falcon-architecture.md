@@ -114,7 +114,7 @@ The durability invariants worth knowing:
   hard (SIGKILL, OOM, container eviction) holding `locked_at`, no one
   else can pick the row up because the runnable index excludes locked
   rows. Each worker tick therefore starts with a `reclaim_stale` sweep:
-  rows whose `locked_at` is older than `RECLAIM_AFTER` (5 min,
+  rows whose `locked_at` is older than `RECLAIM_AFTER` (60 s,
   comfortably above the 30 s `statement_timeout`) are routed through
   the same retry path a normal failure takes. SKIP LOCKED in the sweep
   ensures we never steal a row from a still-running peer.
@@ -170,12 +170,13 @@ SIGHUP.
 
 ## Deployment
 
-`config/deploy/tayaway-falcon.service.erb` is a systemd unit that
-`ExecStart`s `bin/falcon-host falcon.rb`. `Restart=on-failure` covers
-crashes; `ExecReload=/bin/kill -HUP $MAINPID` is wired for graceful
-worker reloads. Capistrano's post-publish step today is a
-`systemctl restart`, so deploys take the few-second 502 blip while the
-new process binds.
+`config/deploy/tayaway-falcon.service.erb` is a systemd unit whose
+`ExecStart` calls `mise run serve`, which `exec`s
+`bundle exec falcon-host falcon.rb` so the falcon-host process sits
+directly under systemd. `Restart=on-failure` covers crashes;
+`ExecReload=/bin/kill -HUP $MAINPID` is wired for graceful worker
+reloads. Capistrano's post-publish step today is a `systemctl restart`,
+so deploys take the few-second 502 blip while the new process binds.
 
 Genuine zero-downtime requires the host to re-exec against the new
 release (SIGHUP only re-forks workers, which inherit the host's stale
