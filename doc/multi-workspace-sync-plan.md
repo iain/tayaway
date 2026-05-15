@@ -90,25 +90,26 @@ user-audience message even when subscribed to a different workspace.
 **Done when:** marquee test sees the personal-channel update arrive at the
 client, but Browser 1's UI doesn't render it yet (frontend not wired).
 
-## Phase 2 — Frontend: segmented pool with a facade
+## Phase 2 — Frontend: personal-pool semantics
 
-**Failing test first:** a unit spec on `objectPool` that puts objects with
-different `workspaceId`s into the pool and asserts `currentObjects` returns
-only the active workspace's objects, while a separate `personalObjects`
-accessor returns cross-workspace personal data.
+**Failing test first:** a unit spec on `objectPool` asserting that an object
+classified as personal (`workspace`, `notification`, or the current user's
+own `member` row) survives `clearExcept`, and that other people's
+memberships do not.
 
-- Refactor `objectPool` internals from one flat map to
-  `Map<workspaceId, Pool>` plus a `personalPool`.
-- Expose `currentObjects` as a computed that merges
-  `pools.get(currentWorkspaceId)` with `personalPool`. Same shape as today's
-  `objects` — selectors don't change.
-- Tag every incoming object with `workspaceId` at the WebSocket boundary;
-  assert in `mergeObject` that `workspaceId` never mutates between merges.
-- Personal objects (own memberships, workspaces you belong to, notifications)
-  route to `personalPool`. Everything else routes to its workspace pool.
+- Add `isPersonalObject(obj, currentUserId)` predicate routing notifications,
+  workspace rows, and the user's own membership rows to "personal" status.
+- Modify `clearExcept` so personal objects are preserved regardless of
+  `keepTypes`. Workspace data still wipes on switch (today's behavior, until
+  Phase 4 segments by workspace).
+- Pool reads `currentUserId` from `useAuthStore`; tests mock it.
 
-**Done when:** existing tests still pass; pool is segmented under the hood;
-UI behavior unchanged.
+**Done when:** existing tests still pass; personal objects survive workspace
+switches; selectors don't change.
+
+Per-workspace segmentation of the workspace data (the
+`Map<workspaceId, Pool>` structural change) is deferred to Phase 4 where
+sync-on-switch needs it. Doing both in one phase made for too much surgery.
 
 ## Phase 3 — Frontend: per-workspace IndexedDB
 
@@ -132,6 +133,12 @@ hydrates immediately for the last-active workspace.
 visit to A shows cached A data immediately (assert via DOM appearing before
 the network roundtrip resolves), then merges any deltas.
 
+- Segment workspace data: refactor `objectPool` from one flat workspace map
+  to `Map<workspaceId, Pool>`. Expose `currentObjects` as a computed
+  unioning the active workspace pool with the personal pool. Same shape
+  as today's `objects` — selectors don't change.
+- Tag every incoming non-personal object with `workspaceId` at the
+  WebSocket boundary; assert in merge that `workspaceId` never mutates.
 - `switchWorkspace` no longer clears the pool or IndexedDB.
 - Send `switch_workspace` with the workspace's stored `syncedAt` cursor.
 - Server runs `Sync::WorkspaceSync` with `since:` → partial sync (or full if

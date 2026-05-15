@@ -8,6 +8,20 @@ import {
   type PendingUpdate,
 } from '@/types/pool'
 import type { PoolUpdate } from '@/types/poolUpdate'
+import { useAuthStore } from '@/stores/auth'
+
+// Personal objects belong to the user, not to any one workspace, and survive
+// workspace switches so cross-workspace state (the workspace selector, your
+// own membership in each workspace, your notification feed) stays coherent
+// without having to re-sync on every switch.
+function isPersonalObject(obj: PoolObject, currentUserId: string | null): boolean {
+  if (obj.objectType === 'workspace') return true
+  if (obj.objectType === 'notification') return true
+  if (obj.objectType === 'member' && currentUserId) {
+    return (obj as { userId: string }).userId === currentUserId
+  }
+  return false
+}
 
 // Helper to compare ISO8601 timestamps
 // ISO 8601 strings with the same format are lexicographically sortable
@@ -649,42 +663,70 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     return result
   })
 
-  // Clear all object types except specified ones (used during workspace switch)
+  // Clear all object types except specified ones (used during workspace switch).
+  // Personal objects (the user's own membership in every workspace, the
+  // workspace rows themselves, notifications) are always preserved regardless
+  // of keepTypes — they're not workspace-scoped data.
   function clearExcept(...keepTypes: ObjectType[]): void {
     const keepSet = new Set(keepTypes)
+    const currentUserId = useAuthStore().currentUserId
     const clearedTypes: ObjectType[] = []
+    const personalKeysByType = new Map<ObjectType, Set<string>>()
+
     for (const type of OBJECT_TYPES) {
-      if (!keepSet.has(type)) {
-        objects.value.get(type)?.clear()
-        clearedTypes.push(type)
+      if (keepSet.has(type)) continue
+      const typeMap = objects.value.get(type)
+      if (!typeMap) continue
+      const personalIds = new Set<string>()
+      for (const [id, obj] of typeMap) {
+        if (isPersonalObject(obj, currentUserId)) {
+          personalIds.add(id)
+        } else {
+          typeMap.delete(id)
+        }
       }
+      if (personalIds.size > 0) personalKeysByType.set(type, personalIds)
+      clearedTypes.push(type)
     }
-    // Clear reverse index entries for child types that were cleared
+
+    // Clear reverse index entries for child types that were cleared, but
+    // preserve entries pointing at personal objects (cascade parents may
+    // reference personal types via foreign keys).
     for (const [indexKey, parentMap] of cascadeIndex) {
       const childType = indexKey.split(':')[0] as ObjectType
-      if (!keepSet.has(childType)) {
+      if (keepSet.has(childType)) continue
+      const personalIds = personalKeysByType.get(childType)
+      if (!personalIds) {
         parentMap.clear()
+        continue
+      }
+      for (const [parentId, childSet] of parentMap) {
+        for (const childId of childSet) {
+          if (!personalIds.has(childId)) childSet.delete(childId)
+        }
+        if (childSet.size === 0) parentMap.delete(parentId)
       }
     }
-    // Clear pending updates and temp tracking for cleared types
+    // Clear pending updates and temp tracking for cleared types, except
+    // pending updates that target preserved personal objects.
     for (const [key, updates] of pendingUpdates.value) {
-      const objectType = key.split(':')[0] as ObjectType
-      if (!keepSet.has(objectType)) {
-        for (const u of updates) pendingIdToKey.delete(u.id)
-        pendingUpdates.value.delete(key)
-      }
+      const [objectType, objectId] = key.split(':') as [ObjectType, string]
+      if (keepSet.has(objectType)) continue
+      if (personalKeysByType.get(objectType)?.has(objectId)) continue
+      for (const u of updates) pendingIdToKey.delete(u.id)
+      pendingUpdates.value.delete(key)
     }
     // Clear temp IDs whose objects were wiped. An ID belongs to a cleared type
     // if it no longer appears in any kept type map (the cleared maps are empty now).
     for (const id of tempObjectIds) {
-      let foundInKept = false
-      for (const type of keepTypes) {
-        if (objects.value.get(type)?.has(id)) {
-          foundInKept = true
+      let stillPresent = false
+      for (const typeMap of objects.value.values()) {
+        if (typeMap.has(id)) {
+          stillPresent = true
           break
         }
       }
-      if (!foundInKept) {
+      if (!stillPresent) {
         tempObjectIds.delete(id)
       }
     }

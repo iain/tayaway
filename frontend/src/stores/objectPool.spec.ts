@@ -17,7 +17,13 @@ import {
   makeChore,
   makeChoreAssignment,
   makeTaskList,
+  makeMember,
+  makeWorkspace,
 } from '@/test/factories'
+
+vi.mock('@/stores/auth', () => ({
+  useAuthStore: () => ({ currentUserId: 'user-1' }),
+}))
 
 describe('objectPool store', () => {
   beforeEach(() => {
@@ -543,6 +549,60 @@ describe('objectPool store', () => {
 
       expect(pool.hasPending('event', 'evt-1')).toBe(true)
       expect(pool.hasPending('taskItem', 'item-1')).toBe(false)
+    })
+  })
+
+  describe('personal pool', () => {
+    it("preserves the current user's own membership across clearExcept", () => {
+      const pool = useObjectPoolStore()
+      const ownMember = makeMember({ userId: 'user-1' })
+
+      pool.importObjects([ownMember, makeEvent()])
+      pool.clearExcept('workspace')
+
+      expect(pool.get('member', ownMember.id)).toEqual(ownMember)
+    })
+
+    it("clears other people's memberships on clearExcept (they belong to the workspace, not the user)", () => {
+      const pool = useObjectPoolStore()
+      const otherMember = makeMember({ id: 'mem-2', userId: 'user-2' })
+
+      pool.importObjects([otherMember])
+      pool.clearExcept('workspace')
+
+      expect(pool.get('member', 'mem-2')).toBeUndefined()
+    })
+
+    it('preserves workspaces across clearExcept', () => {
+      const pool = useObjectPoolStore()
+      const wsA = makeWorkspace({ id: 'ws-a' })
+      const wsB = makeWorkspace({ id: 'ws-b' })
+
+      pool.importObjects([wsA, wsB])
+      pool.clearExcept()
+
+      expect(pool.get('workspace', 'ws-a')).toEqual(wsA)
+      expect(pool.get('workspace', 'ws-b')).toEqual(wsB)
+    })
+
+    it('preserves notifications across clearExcept', () => {
+      const pool = useObjectPoolStore()
+      const notification = {
+        id: 'note-1',
+        objectType: 'notification' as const,
+        userId: 'user-1',
+        workspaceId: 'ws-1',
+        kind: 'mention',
+        data: { title: 'Hi', body: 'Hello' },
+        readAt: null,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      }
+
+      pool.importObjects([notification])
+      pool.clearExcept()
+
+      expect(pool.get('notification', 'note-1')).toEqual(notification)
     })
   })
 
