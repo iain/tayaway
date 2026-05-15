@@ -14,7 +14,10 @@ import { useAuthStore } from '@/stores/auth'
 // workspace switches so cross-workspace state (the workspace selector, your
 // own membership in each workspace, your notification feed) stays coherent
 // without having to re-sync on every switch.
-function isPersonalObject(obj: PoolObject, currentUserId: string | null): boolean {
+export function isPersonalObject(
+  obj: PoolObject,
+  currentUserId: string | null
+): boolean {
   if (obj.objectType === 'workspace') return true
   if (obj.objectType === 'notification') return true
   if (obj.objectType === 'member' && currentUserId) {

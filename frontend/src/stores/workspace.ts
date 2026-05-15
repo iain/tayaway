@@ -40,12 +40,18 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     currentWorkspaceId.value = id
     localStorage.setItem(STORAGE_KEY, id)
 
-    // Clear pool data except workspace objects (needed for the workspace selector)
+    // In-memory: drop the previous workspace's data. Personal data (own
+    // memberships, workspace rows, notifications) survives via clearExcept.
+    // Phase 4 will replace this clear with a per-workspace pool that
+    // preserves both workspaces in memory.
     pool.clearExcept('workspace')
 
-    // Clear IndexedDB cache so stale data from the old workspace isn't
-    // loaded on next app restart
-    import('@/api/poolDb').then((poolDb) => poolDb.clearAll()).catch(() => {})
+    // IndexedDB: persist the new active workspace and let the new
+    // workspace's sync replace its own scope. Other workspaces' caches
+    // are preserved so a switch-back can hydrate from them.
+    import('@/api/poolDb')
+      .then((poolDb) => poolDb.setCurrentWorkspaceId(id))
+      .catch(() => {})
   }
 
   function $reset(): void {

@@ -2,11 +2,13 @@ import {
   useObjectPoolStore,
   onPoolChange,
   offPoolChange,
+  isPersonalObject,
 } from '@/stores/objectPool'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useWorkspaceStore, WORKSPACE_ID_STORAGE_KEY } from '@/stores/workspace'
+import { useAuthStore } from '@/stores/auth'
 import * as poolDb from '@/api/poolDb'
-import { CACHE_VERSION } from '@/api/poolDb'
+import { CACHE_VERSION, PERSONAL_SCOPE, workspaceScope } from '@/api/poolDb'
 import { getStaleness } from '@/composables/useStaleness'
 import type { PoolChange } from '@/stores/objectPool'
 import type { PoolObject, ObjectType } from '@/types/pool'
@@ -31,6 +33,31 @@ let pendingRemoves: { objectType: string; id: string }[] = []
 let changeHandler: ((change: PoolChange) => void) | null = null
 let pageHideHandler: (() => void) | null = null
 
+function scopeFor(obj: PoolObject, currentUserId: string | null): string | null {
+  if (isPersonalObject(obj, currentUserId)) return PERSONAL_SCOPE
+  const workspaceId = (obj as { workspaceId?: string | null }).workspaceId
+  if (!workspaceId) return null
+  return workspaceScope(workspaceId)
+}
+
+function groupByScope<T extends { objectType: string }>(
+  items: T[],
+  getObj: (item: T) => PoolObject | null,
+  currentUserId: string | null
+): Map<string, T[]> {
+  const grouped = new Map<string, T[]>()
+  for (const item of items) {
+    const obj = getObj(item)
+    if (!obj) continue
+    const scope = scopeFor(obj, currentUserId)
+    if (!scope) continue
+    const bucket = grouped.get(scope) ?? []
+    bucket.push(item)
+    grouped.set(scope, bucket)
+  }
+  return grouped
+}
+
 async function flushWrites(): Promise<void> {
   if (idleCallbackHandle !== null) {
     if (typeof cancelIdleCallback === 'function') {
@@ -47,8 +74,36 @@ async function flushWrites(): Promise<void> {
   debounceTimer = null
 
   try {
-    if (saves.length > 0) await poolDb.saveObjects(saves)
-    if (removes.length > 0) await poolDb.removeObjects(removes)
+    const currentUserId = useAuthStore().currentUserId
+    const writes: Promise<unknown>[] = []
+    if (saves.length > 0) {
+      const savesByScope = groupByScope(saves, (o) => o, currentUserId)
+      for (const [scope, objs] of savesByScope) {
+        writes.push(poolDb.saveObjects(scope, objs))
+      }
+    }
+    if (removes.length > 0) {
+      const pool = useObjectPoolStore()
+      const workspaceStore = useWorkspaceStore()
+      const currentScope = workspaceStore.currentWorkspaceId
+        ? workspaceScope(workspaceStore.currentWorkspaceId)
+        : null
+      const removesByScope = new Map<string, { objectType: string; id: string }[]>()
+      for (const entry of removes) {
+        const cached = pool.getServer(entry.objectType as ObjectType, entry.id)
+        const scope = cached
+          ? scopeFor(cached, currentUserId)
+          : currentScope
+        if (!scope) continue
+        const bucket = removesByScope.get(scope) ?? []
+        bucket.push(entry)
+        removesByScope.set(scope, bucket)
+      }
+      for (const [scope, entries] of removesByScope) {
+        writes.push(poolDb.removeObjects(scope, entries))
+      }
+    }
+    if (writes.length > 0) await Promise.all(writes)
   } catch (e) {
     console.warn('Failed to persist pool objects to IndexedDB', e)
   }
@@ -91,8 +146,8 @@ async function loadFromCache(): Promise<void> {
   try {
     // Phase 1: Read lightweight metadata only. This is fast on all devices
     // and lets us validate the cache identity before reading any objects.
-    const { workspaceId, syncedAt, cacheVersion } = await poolDb.loadMeta()
-    if (workspaceId !== expectedWorkspaceId || cacheVersion !== CACHE_VERSION) {
+    const { cacheVersion, syncedAt } = await poolDb.loadMeta()
+    if (cacheVersion !== CACHE_VERSION) {
       await poolDb.clearAll()
       return
     }
@@ -101,17 +156,22 @@ async function loadFromCache(): Promise<void> {
     const wsStore = useWebSocketStore()
     if (wsStore.hasSynced) return // Server already sent authoritative data
 
+    const workspaceScopeKey = workspaceScope(expectedWorkspaceId)
+    const workspaceSyncedAt = syncedAt.get(workspaceScopeKey) ?? null
+
     // Check cache age and apply staleness policy. The staleness tier itself
     // is now derived reactively by AuthenticatedLayout from a ticking `now`
     // + the persisted syncedAt — no need to push a static value into the
     // store. We only need the one-shot 'expired' check here to decide
-    // whether to clear the cache at load time.
-    if (syncedAt && getStaleness(syncedAt) === 'expired') {
-      // Cache is older than 7 days — too stale to trust. Clear it and force
-      // a full sync without showing any cached data.
-      await poolDb.clearAll()
+    // whether to clear the workspace scope at load time.
+    if (workspaceSyncedAt && getStaleness(workspaceSyncedAt) === 'expired') {
+      // Cache is older than 7 days — too stale to trust. Wipe just the
+      // active workspace scope; personal data and other workspaces survive.
+      await poolDb.clearScope(workspaceScopeKey)
       return
     }
+
+    const scopesToLoad = [PERSONAL_SCOPE, workspaceScopeKey]
 
     // Phase 2: Load priority types first (member, workspace, event) so the
     // app shell can render immediately with the most important data.
@@ -120,10 +180,12 @@ async function loadFromCache(): Promise<void> {
     for (const type of PRIORITY_TYPES) {
       if (wsStore.hasSynced) return // Server beat us — stop loading stale cache
       await new Promise<void>((resolve) => setTimeout(resolve, 0))
-      const objects = await poolDb.loadObjectsByType(type)
-      if (objects.length > 0) {
-        pool.importObjects(objects)
-        anyLoaded = true
+      for (const scope of scopesToLoad) {
+        const objects = await poolDb.loadObjectsByType(scope, type)
+        if (objects.length > 0) {
+          pool.importObjects(objects)
+          anyLoaded = true
+        }
       }
     }
 
@@ -132,10 +194,12 @@ async function loadFromCache(): Promise<void> {
     for (const type of DEFERRED_TYPES) {
       if (wsStore.hasSynced) break // Server beat us — stop loading stale cache
       await new Promise<void>((resolve) => setTimeout(resolve, 0))
-      const objects = await poolDb.loadObjectsByType(type)
-      if (objects.length > 0) {
-        pool.importObjects(objects)
-        anyLoaded = true
+      for (const scope of scopesToLoad) {
+        const objects = await poolDb.loadObjectsByType(scope, type)
+        if (objects.length > 0) {
+          pool.importObjects(objects)
+          anyLoaded = true
+        }
       }
     }
 
@@ -154,11 +218,52 @@ async function loadFromCache(): Promise<void> {
     wsStore.hasCachedData = true
 
     // Restore syncedAt so the next sync can be partial
-    if (syncedAt && expectedWorkspaceId) {
-      wsStore.restoreSyncTimestamp(expectedWorkspaceId, syncedAt)
+    if (workspaceSyncedAt) {
+      wsStore.restoreSyncTimestamp(expectedWorkspaceId, workspaceSyncedAt)
     }
   } catch {
     // IndexedDB might be unavailable — proceed without cache
+  }
+}
+
+function persistFullSync(objects: PoolObject[]): void {
+  const workspaceStore = useWorkspaceStore()
+  const workspaceId = workspaceStore.currentWorkspaceId
+  if (!workspaceId) return
+  // Cancel any pending debounced writes — they'd race with the replace
+  if (debounceTimer) {
+    clearTimeout(debounceTimer)
+    debounceTimer = null
+  }
+  if (pendingDebounceTimer) {
+    clearTimeout(pendingDebounceTimer)
+    pendingDebounceTimer = null
+  }
+  pendingSaves = []
+  pendingRemoves = []
+  const wsStore = useWebSocketStore()
+  const syncedAt = wsStore.getSyncedAt(workspaceId) ?? undefined
+  const currentUserId = useAuthStore().currentUserId
+  const grouped = groupByScope(objects, (o) => o, currentUserId)
+  const scopeKey = workspaceScope(workspaceId)
+
+  // Always clear+rewrite the active workspace scope, even when empty — a
+  // server full sync is authoritative for that workspace's data.
+  const workspaceObjs = grouped.get(scopeKey) ?? []
+  void poolDb
+    .replaceScope(scopeKey, workspaceObjs, syncedAt)
+    .catch((e) => console.warn('Failed to replace workspace scope in IndexedDB', e))
+
+  // Personal objects arriving alongside the workspace sync get merged into
+  // the personal scope — they're not authoritative over other workspaces'
+  // personal data, so we never wipe personal scope here.
+  const personalObjs = grouped.get(PERSONAL_SCOPE) ?? []
+  if (personalObjs.length > 0) {
+    void poolDb
+      .saveObjects(PERSONAL_SCOPE, personalObjs)
+      .catch((e) =>
+        console.warn('Failed to persist personal objects to IndexedDB', e)
+      )
   }
 }
 
@@ -167,27 +272,7 @@ function startPersisting(): void {
 
   changeHandler = (change: PoolChange) => {
     if (change.type === 'replace') {
-      // Full sync from server — replace entire cache
-      const workspaceStore = useWorkspaceStore()
-      const workspaceId = workspaceStore.currentWorkspaceId
-      if (workspaceId) {
-        // Cancel any pending debounced writes
-        if (debounceTimer) {
-          clearTimeout(debounceTimer)
-          debounceTimer = null
-        }
-        if (pendingDebounceTimer) {
-          clearTimeout(pendingDebounceTimer)
-          pendingDebounceTimer = null
-        }
-        pendingSaves = []
-        pendingRemoves = []
-        const wsStore = useWebSocketStore()
-        const syncedAt = wsStore.getSyncedAt(workspaceId)
-        poolDb.replaceAll(workspaceId, change.objects, syncedAt).catch((e) => {
-          console.warn('Failed to replace pool cache in IndexedDB', e)
-        })
-      }
+      persistFullSync(change.objects)
       return
     }
 
@@ -195,14 +280,14 @@ function startPersisting(): void {
       pendingSaves.push(...change.objects)
       scheduleFlush()
       schedulePendingFlush()
-      // Persist updated syncedAt after partial sync
+      // Persist updated syncedAt for the active workspace after partial sync.
       const workspaceStore = useWorkspaceStore()
       const wId = workspaceStore.currentWorkspaceId
       if (wId) {
         const wsStore = useWebSocketStore()
         const syncedAt = wsStore.getSyncedAt(wId)
         if (syncedAt) {
-          poolDb.saveSyncedAt(syncedAt).catch((e) => {
+          poolDb.saveSyncedAt(workspaceScope(wId), syncedAt).catch((e) => {
             console.warn('Failed to persist syncedAt to IndexedDB', e)
           })
         }
@@ -225,16 +310,6 @@ function startPersisting(): void {
 
   // Flush any debounced writes when the page becomes hidden so we don't
   // lose them if the tab is backgrounded, frozen for bfcache, or closed.
-  // We listen on BOTH visibilitychange and pagehide:
-  //   - visibilitychange fires when the tab loses visibility (OS switch,
-  //     new tab, minimise) but the page may still be alive.
-  //   - pagehide fires on actual unload/bfcache, including iOS PWA force-
-  //     close from the app switcher, which does NOT trigger a prior
-  //     visibilitychange. Without this, force-closing the PWA loses any
-  //     pool changes that were still sitting in the debounced buffer.
-  // The handler is fire-and-forget — we can't reliably await async work
-  // from these events, but the browser's unload grace period is typically
-  // enough for small IndexedDB writes to commit.
   pageHideHandler = () => {
     if (document.visibilityState !== 'hidden') return
     if (debounceTimer === null && idleCallbackHandle === null) return
@@ -281,10 +356,7 @@ function stopPersisting(): void {
 /**
  * Singleton service that mirrors pool changes to IndexedDB. Called once
  * from App.vue on startup (loadFromCache + startPersisting) and once from
- * teardownSession on logout/session-expiry (stopPersisting). Not a
- * composable — the previous `usePoolPersistence()` name suggested per-
- * instance state, but the module holds one set of debounced write
- * buffers and event listeners for the entire app.
+ * teardownSession on logout/session-expiry (stopPersisting).
  */
 export const poolPersistence = {
   loadFromCache,
