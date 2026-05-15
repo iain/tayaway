@@ -158,6 +158,28 @@ switch to B, come online — the mutation replays against A, not B.
 **Done when:** offline mutations across workspace switches don't
 cross-contaminate.
 
+## Phase 7 — Cross-workspace unread badges
+
+**Failing test first:** an e2e test where Browser 1 (on workspace A) receives
+a notification targeting workspace B; without switching, the workspace
+selector shows an unread indicator on B. Marking the notification read clears
+the indicator. Depends on Phases 1 + 2 (personal channel + personal pool).
+
+- Notifications are already user-audience and carry `workspace_id`, so no new
+  broadcast plumbing is needed.
+- Extend `Sync::PersonalSync` to include the user's recent notification
+  backlog (capped — most-recent N or last X days) so badges hydrate on cold
+  start, not just from broadcasts received after connect.
+- Frontend derives `unreadCountByWorkspace` from the notification pool
+  (`personalObjects` filtered by `readAt == null`, grouped by `workspaceId`).
+  No new object type; derived state.
+- Render a dot/count in the workspace selector.
+- Read state already round-trips via notification updates on the
+  user-audience channel — no extra wiring.
+
+**Done when:** badges reflect cross-workspace unread state live on every
+session, with no extra round-trips beyond the existing notification path.
+
 ## Phase 6 — UX edges
 
 Small but want explicit decisions before merging:
@@ -179,13 +201,12 @@ Small but want explicit decisions before merging:
   they don't touch each other.
 - **Then:** Phase 3 (IndexedDB) → Phase 4 (sync-on-switch) →
   Phase 5 (command queue) → Phase 6 (edges).
+- **Phase 7 (unread badges)** can land any time after Phases 1 + 2.
 - Phase 5 must land before users start switching across queued mutations in
   the wild, so if Phase 4 ships behind a flag, Phase 5 ships with it.
 
 ## Out of scope (explicit non-goals)
 
-- Cross-workspace unread badges. Natural follow-up on the personal channel,
-  but separate work.
 - LRU eviction beyond the quota-error path.
 - Subscribing to multiple workspaces simultaneously.
 - Moving `UserNotificationPreference` into the pool.
