@@ -54,5 +54,10 @@ SSHKit.config.command_map[:pnpm]   = "#{mise_exec} pnpm"
 set :default_env, {
   path: "#{mise_dir}:$PATH",
   mise_trusted_config_paths: "/var/www/tayaway",
-  mise_experimental: "1"
+  mise_experimental: "1",
+  # The root [hooks] postinstall fans out to setup:deps-root, which is dev
+  # ergonomics (Capistrano gems, Playwright browsers, prettier). Capistrano
+  # handles backend and frontend dependency installation explicitly, so the
+  # hook would only waste time and pull non-production tooling onto the box.
+  mise_hooks: "0"
 }
