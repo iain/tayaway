@@ -111,6 +111,24 @@ describe('inbox store', () => {
       expect(inbox.notifications.map((n) => n.id)).toEqual(['pushed'])
       expect(inbox.unreadCount).toBe(1)
     })
+
+    it('groups unread counts by workspace so other workspaces can be badged', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([
+        makeNotification({ id: 'a', workspaceId: 'ws-1' }),
+        makeNotification({ id: 'b', workspaceId: 'ws-1' }),
+        makeNotification({ id: 'c', workspaceId: 'ws-2' }),
+        makeNotification({
+          id: 'd',
+          workspaceId: 'ws-2',
+          readAt: '2026-05-10T11:00:00.000Z',
+        }),
+      ])
+
+      const inbox = useInboxStore()
+      expect(inbox.unreadCountByWorkspace.get('ws-1')).toBe(2)
+      expect(inbox.unreadCountByWorkspace.get('ws-2')).toBe(1)
+    })
   })
 
   describe('load', () => {

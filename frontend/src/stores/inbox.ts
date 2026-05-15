@@ -47,6 +47,18 @@ export const useInboxStore = defineStore('inbox', () => {
 
   const unreadCount = computed(() => unread.value.length)
 
+  // Per-workspace unread counts derived from the notification pool. Used by
+  // the workspace selector to badge workspaces that have new activity even
+  // when the user is currently looking at a different one.
+  const unreadCountByWorkspace = computed(() => {
+    const counts = new Map<string, number>()
+    for (const n of unread.value) {
+      if (!n.workspaceId) continue
+      counts.set(n.workspaceId, (counts.get(n.workspaceId) ?? 0) + 1)
+    }
+    return counts
+  })
+
   async function load(): Promise<void> {
     loading.value = true
     lastError.value = null
@@ -139,6 +151,7 @@ export const useInboxStore = defineStore('inbox', () => {
     notifications,
     unread,
     unreadCount,
+    unreadCountByWorkspace,
     loading,
     lastError,
     load,

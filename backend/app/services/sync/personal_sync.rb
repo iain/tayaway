@@ -11,14 +11,23 @@ module Sync
   #   Sync::PersonalSync.call(user_id: "uuid")
   module PersonalSync
     class << self
+      # Cap on the notification backlog included in the handshake. The
+      # frontend derives unread-per-workspace badges from these rows, so
+      # the limit needs to cover the typical "what's new across all my
+      # workspaces" view but doesn't need to be unbounded — older items
+      # load on demand from the inbox endpoint.
+      NOTIFICATION_BACKLOG_LIMIT = 50
+
       def call(user_id:)
         synced_at = Time.now
         workspaces = Workspace.for_user(user_id)
         memberships = WorkspaceMembership.for_user(user_id)
+        notifications = Notification.for_user(user_id, limit: NOTIFICATION_BACKLOG_LIMIT)
 
         pool = PoolSerializer.new
         pool.add(:workspace, workspaces) if workspaces.any?
         pool.add(:member, memberships) if memberships.any?
+        pool.add(:notification, notifications) if notifications.any?
 
         {
           syncType: "personal",

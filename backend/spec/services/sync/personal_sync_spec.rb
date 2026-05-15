@@ -42,6 +42,26 @@ RSpec.describe Sync::PersonalSync do
     expect(result[:syncedAt]).not_to be_nil
   end
 
+  it "includes the user's recent notification backlog so unread badges hydrate on connect" do
+    notification_row = TestFactories.notification(user: user, workspace: workspace_a, kind: "test_event")
+
+    result = described_class.call(user_id: user[:id])
+
+    notification = result[:objects].find { |o| o[:objectType] == "notification" }
+    expect(notification).not_to be_nil
+    expect(notification[:id]).to eq(notification_row[:id].to_s)
+    expect(notification[:workspaceId]).to eq(workspace_a[:id].to_s)
+  end
+
+  it "does not include other users' notifications" do
+    TestFactories.notification(user: other_user, workspace: other_workspace, kind: "test_event")
+
+    result = described_class.call(user_id: user[:id])
+
+    notifications = result[:objects].select { |o| o[:objectType] == "notification" }
+    expect(notifications).to be_empty
+  end
+
   it "returns an empty pool for a user with no memberships" do
     loner = TestFactories.user
 

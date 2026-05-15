@@ -27,6 +27,7 @@ import {
   useCommandQueueStore,
 } from '@/stores'
 import { useObjectPoolStore } from '@/stores/objectPool'
+import { useInboxStore } from '@/stores/inbox'
 import { useDarkMode } from '@/composables/useDarkMode'
 import { useMinuteTicker } from '@/composables/useMinuteTicker'
 import {
@@ -63,6 +64,8 @@ const { pendingCount } = storeToRefs(commandQueueStore)
 
 const showConnectionBadge = computed(() => wsState.value !== 'authenticated')
 const { currentWorkspace, otherWorkspaces } = storeToRefs(workspaceStore)
+const inboxStore = useInboxStore()
+const { unreadCountByWorkspace } = storeToRefs(inboxStore)
 
 // Staleness indicators tick once a minute via the shared minute ticker so
 // "fresh" → "stale" → "warning" advances without a page refresh, and so the
@@ -295,11 +298,16 @@ async function handleSignOut() {
                           type="button"
                           :class="[
                             active ? 'bg-btn-secondary-fill' : '',
-                            'block w-full px-4 py-2 text-left text-sm text-ink',
+                            'flex w-full items-center justify-between px-4 py-2 text-left text-sm text-ink',
                           ]"
                           @click="handleSwitchWorkspace(ws.id)"
                         >
-                          {{ ws.name }}
+                          <span>{{ ws.name }}</span>
+                          <span
+                            v-if="(unreadCountByWorkspace.get(ws.id) ?? 0) > 0"
+                            :aria-label="`${unreadCountByWorkspace.get(ws.id)} unread`"
+                            class="ml-2 inline-flex h-2 w-2 rounded-full bg-brand"
+                          />
                         </button>
                       </MenuItem>
                     </MenuItems>
@@ -467,7 +475,7 @@ async function handleSignOut() {
             v-for="ws in otherWorkspaces"
             :key="ws.id"
             type="button"
-            class="text-nav-text hover:bg-nav-hover mt-1 block w-full rounded-md px-3 py-2 text-left text-base font-medium"
+            class="text-nav-text hover:bg-nav-hover mt-1 flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-base font-medium"
             @click="
               () => {
                 close()
@@ -475,7 +483,12 @@ async function handleSignOut() {
               }
             "
           >
-            {{ ws.name }}
+            <span>{{ ws.name }}</span>
+            <span
+              v-if="(unreadCountByWorkspace.get(ws.id) ?? 0) > 0"
+              :aria-label="`${unreadCountByWorkspace.get(ws.id)} unread`"
+              class="ml-2 inline-flex h-2 w-2 rounded-full bg-brand"
+            />
           </button>
         </div>
         <div class="space-y-1 px-2 pt-2 pb-3 sm:px-3">
