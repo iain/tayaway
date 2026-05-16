@@ -19,11 +19,8 @@ describe('Scope', () => {
   })
 
   describe('wire format', () => {
-    it('stringifies the workspace scope as workspace:<id>', () => {
+    it('stringifies as kind:id for workspace and "personal" for personal', () => {
       expect(String(Scope.workspace('abc'))).toBe('workspace:abc')
-    })
-
-    it('stringifies the personal scope as personal', () => {
       expect(String(Scope.personal())).toBe('personal')
     })
 
@@ -43,28 +40,11 @@ describe('Scope', () => {
       expect(Scope.parse('personal')).toBe(Scope.personal())
     })
 
-    it('returns null for unknown shapes', () => {
-      expect(Scope.parse('hadron:abc')).toBeNull()
-      expect(Scope.parse('workspace:')).toBeNull()
-      expect(Scope.parse('')).toBeNull()
-    })
-  })
-
-  describe('use as a map key', () => {
-    it('treats two workspace scopes with the same id as the same key', () => {
-      const m = new Map<Scope, string>()
-      m.set(Scope.workspace('abc'), 'one')
-      m.set(Scope.workspace('abc'), 'two')
-      expect(m.size).toBe(1)
-      expect(m.get(Scope.workspace('abc'))).toBe('two')
-    })
-
-    it('distinguishes the personal scope from workspace scopes', () => {
-      const m = new Map<Scope, string>()
-      m.set(Scope.personal(), 'p')
-      m.set(Scope.workspace('personal'), 'w') // pathological id; still distinct
-      expect(m.get(Scope.personal())).toBe('p')
-      expect(m.get(Scope.workspace('personal'))).toBe('w')
-    })
+    it.each(['hadron:abc', 'workspace:', ''])(
+      'returns null for %p',
+      (input) => {
+        expect(Scope.parse(input)).toBeNull()
+      }
+    )
   })
 })

@@ -149,19 +149,6 @@ RSpec.describe Websocket::ConnectionManager do
       expect { manager.subscribe(SecureRandom.uuid, Topic.workspace(SecureRandom.uuid)) }.not_to raise_error
       expect { manager.unsubscribe(SecureRandom.uuid, Topic.workspace(SecureRandom.uuid)) }.not_to raise_error
     end
-
-    it "rejects raw strings — callers must pass a Topic" do
-      conn_id = manager.register(FakeWebsocket.new, SecureRandom.uuid)
-      expect { manager.subscribe(conn_id, "workspace:abc") }.to raise_error(ArgumentError, /Topic/)
-      expect { manager.unsubscribe(conn_id, "workspace:abc") }.to raise_error(ArgumentError, /Topic/)
-    end
-  end
-
-  describe "#broadcast" do
-    it "rejects raw strings — callers must pass a Topic" do
-      expect { manager.broadcast("workspace:abc", { type: "ping" }) }
-        .to raise_error(ArgumentError, /Topic/)
-    end
   end
 
   describe "#subscribed?" do
@@ -182,10 +169,23 @@ RSpec.describe Websocket::ConnectionManager do
     it "returns false for an unknown connection" do
       expect(manager.subscribed?(SecureRandom.uuid, Topic.workspace(SecureRandom.uuid))).to be(false)
     end
+  end
 
-    it "rejects raw strings — callers must pass a Topic" do
-      conn_id = manager.register(FakeWebsocket.new, SecureRandom.uuid)
-      expect { manager.subscribed?(conn_id, "workspace:abc") }.to raise_error(ArgumentError, /Topic/)
+  # Every topic-accepting API enforces the Topic value type so a stray
+  # string literal can't sneak past the value-object boundary and break
+  # equality-based routing.
+  describe "topic-type guard" do
+    let(:conn_id) { manager.register(FakeWebsocket.new, SecureRandom.uuid) }
+
+    {
+      "#subscribe": ->(mgr, id) { mgr.subscribe(id, "workspace:abc") },
+      "#unsubscribe": ->(mgr, id) { mgr.unsubscribe(id, "workspace:abc") },
+      "#subscribed?": ->(mgr, id) { mgr.subscribed?(id, "workspace:abc") },
+      "#broadcast": ->(mgr, _id) { mgr.broadcast("workspace:abc", { type: "ping" }) }
+    }.each do |method_name, invoke|
+      it "#{method_name} rejects a raw string" do
+        expect { invoke.call(manager, conn_id) }.to raise_error(ArgumentError, /Topic/)
+      end
     end
   end
 

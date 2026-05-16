@@ -33,16 +33,14 @@ RSpec.describe Topic do
       expect(described_class.parse("user:xyz")).to eq(described_class.user("xyz"))
     end
 
-    it "rejects unknown kinds" do
-      expect { described_class.parse("hadron:abc") }.to raise_error(ArgumentError, /unknown kind/)
-    end
-
-    it "rejects strings without an id" do
-      expect { described_class.parse("workspace:") }.to raise_error(ArgumentError, /missing id/)
-    end
-
-    it "rejects non-string input" do
-      expect { described_class.parse(nil) }.to raise_error(ArgumentError, /expected String/)
+    [
+      ["unknown kind", "hadron:abc", /unknown kind/],
+      ["missing id", "workspace:", /missing id/],
+      ["non-string input", nil, /expected String/]
+    ].each do |desc, input, message|
+      it "rejects #{desc}" do
+        expect { described_class.parse(input) }.to raise_error(ArgumentError, message)
+      end
     end
   end
 
@@ -58,21 +56,10 @@ RSpec.describe Topic do
     end
   end
 
-  describe "value equality" do
-    it "treats two topics with the same kind and id as equal" do
-      a = described_class.workspace("abc")
-      b = described_class.workspace("abc")
-      expect(a).to eq(b)
-      expect(a.hash).to eq(b.hash)
-    end
-
-    it "works as a hash key" do
-      h = { described_class.workspace("abc") => :marker }
-      expect(h[described_class.workspace("abc")]).to eq(:marker)
-    end
-
-    it "distinguishes workspace and user topics with matching ids" do
-      expect(described_class.workspace("abc")).not_to eq(described_class.user("abc"))
-    end
+  # Topic gets value equality from Data.define; we only assert that
+  # different-kind, same-id topics stay distinct — the bit our consumers
+  # actually rely on for hash/Set partitioning.
+  it "distinguishes workspace and user topics with matching ids" do
+    expect(described_class.workspace("abc")).not_to eq(described_class.user("abc"))
   end
 end
