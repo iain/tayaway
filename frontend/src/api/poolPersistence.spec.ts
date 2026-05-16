@@ -39,7 +39,10 @@ function flushIdleCallbacks(): void {
 vi.mock('@/api/poolDb', () => ({
   CACHE_VERSION: 11,
   PERSONAL_SCOPE: 'personal',
+  WORKSPACE_SCOPE_PREFIX: 'workspace:',
   workspaceScope: (id: string) => `workspace:${id}`,
+  workspaceIdFromScope: (scope: string) =>
+    scope.startsWith('workspace:') ? scope.slice('workspace:'.length) : null,
   saveObjects: vi.fn().mockResolvedValue(undefined),
   removeObjects: vi.fn().mockResolvedValue(undefined),
   savePendingUpdates: vi.fn().mockResolvedValue(undefined),

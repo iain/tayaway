@@ -6,7 +6,12 @@ import {
 import { useWebSocketStore } from '@/stores/websocket'
 import { WORKSPACE_ID_STORAGE_KEY } from '@/stores/workspace'
 import * as poolDb from '@/api/poolDb'
-import { CACHE_VERSION, PERSONAL_SCOPE, workspaceScope } from '@/api/poolDb'
+import {
+  CACHE_VERSION,
+  PERSONAL_SCOPE,
+  workspaceScope,
+  workspaceIdFromScope,
+} from '@/api/poolDb'
 import { getStaleness } from '@/composables/useStaleness'
 import type { PoolChange } from '@/stores/objectPool'
 import type { PoolObject, ObjectType } from '@/types/pool'
@@ -41,10 +46,6 @@ let pendingSaves: PendingSave[] = []
 let pendingRemoves: PendingRemove[] = []
 let changeHandler: ((change: PoolChange) => void) | null = null
 let pageHideHandler: (() => void) | null = null
-
-function workspaceIdFromScope(scope: string): string | null {
-  return scope.startsWith('workspace:') ? scope.slice('workspace:'.length) : null
-}
 
 async function flushWrites(): Promise<void> {
   if (idleCallbackHandle !== null) {

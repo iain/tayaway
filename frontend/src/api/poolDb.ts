@@ -5,8 +5,14 @@ import type { PoolObject, ObjectType, PendingUpdate } from '@/types/pool'
 // and is shared across all workspaces; everything else lives in a
 // per-workspace scope so other workspaces' data survives a switch.
 export const PERSONAL_SCOPE = 'personal'
+export const WORKSPACE_SCOPE_PREFIX = 'workspace:'
 export function workspaceScope(workspaceId: string): string {
-  return `workspace:${workspaceId}`
+  return `${WORKSPACE_SCOPE_PREFIX}${workspaceId}`
+}
+export function workspaceIdFromScope(scope: string): string | null {
+  return scope.startsWith(WORKSPACE_SCOPE_PREFIX)
+    ? scope.slice(WORKSPACE_SCOPE_PREFIX.length)
+    : null
 }
 
 interface StoredObject {
