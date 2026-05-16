@@ -839,7 +839,10 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
 
     // Remove `scope` from every object that carries it. Multi-scope objects
     // (e.g. own member row in both `personal` and `workspace:A`) stay; only
-    // scope-only objects are dropped from the pool entirely.
+    // scope-only objects are dropped from the pool entirely. When an object
+    // is dropped, drop any pending updates keyed to it too — otherwise they
+    // would linger orphaned in pendingUpdates with no server object to
+    // overlay, and resurrect if the same id reappeared.
     const changedTypes = new Set<ObjectType>()
     for (const [id, scopes] of objectScopes) {
       if (!scopes.has(scope)) continue
@@ -852,6 +855,11 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
           reverseIndexRemove(cascadeIndex, existing)
           typeMap.delete(id)
           changedTypes.add(type)
+          // Only drop pending overlays for objects that aren't coming back
+          // in this replay — objects that will be re-inserted below keep
+          // their (newer-than-server) pending updates from the reconcile
+          // pass above.
+          if (!serverIds.has(id)) clearPendingFor(type, id)
           break
         }
       }

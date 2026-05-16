@@ -623,6 +623,20 @@ describe('objectPool store', () => {
       expect(pool.get('event', 'gone')).toBeUndefined()
       expect(pool.get('event', 'kept')).toBeDefined()
     })
+
+    it('clears pending updates for objects dropped by the replace', async () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects('workspace:A', [makeEvent({ id: 'gone' })])
+      pool.addPending('event', 'gone', { name: 'Optimistic' })
+      expect(pool.hasPending('event', 'gone')).toBe(true)
+
+      // Server replay no longer lists 'gone' — drop both the object and any
+      // pending overlay so the pending update can't linger as a zombie.
+      await pool.replaceScope('workspace:A', [])
+
+      expect(pool.get('event', 'gone')).toBeUndefined()
+      expect(pool.hasPending('event', 'gone')).toBe(false)
+    })
   })
 
   describe('restorePendingUpdates', () => {
