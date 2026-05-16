@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
+import { Scope } from './scope'
 
 const mockHandleSessionExpired = vi.fn()
 vi.mock('@/api/sessionExpired', () => ({
@@ -14,10 +15,20 @@ vi.mock('@/stores', () => ({
   })),
 }))
 
-// Import after mocks are set up. Tests exercise the raw client directly
-// because the request/401/error logic lives there — `api` is a thin
-// pool-aware wrapper around `rawApi.get` and doesn't have mutations.
-const { rawApi } = await import('./client')
+const workspaceStore = { currentWorkspaceId: null as string | null }
+vi.mock('@/stores/workspace', () => ({
+  useWorkspaceStore: vi.fn(() => workspaceStore),
+  WORKSPACE_ID_STORAGE_KEY: 'tayaway:workspaceId',
+}))
+
+const mockProcessPoolResponse = vi.fn()
+vi.mock('@/api/processPoolResponse', () => ({
+  processPoolResponse: mockProcessPoolResponse,
+}))
+
+// Import after mocks are set up. Tests exercise the raw client for the
+// request/401/error logic and the pool-aware `api.get` for scope snapshotting.
+const { rawApi, api } = await import('./client')
 
 function mockFetchResponse(
   status: number,
@@ -134,5 +145,52 @@ describe('ApiClient 401 interceptor', () => {
 
     await expect(rawApi.get('/events')).rejects.toMatchObject({ status: 403 })
     expect(mockHandleSessionExpired).not.toHaveBeenCalled()
+  })
+})
+
+describe('api.get workspace-scope snapshot', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    mockProcessPoolResponse.mockReset()
+    workspaceStore.currentWorkspaceId = null
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('tags the response with the workspace that was active at request time, not at response time', async () => {
+    workspaceStore.currentWorkspaceId = 'ws-A'
+
+    let resolveFetch: (value: unknown) => void = () => {}
+    const fetchPromise = new Promise((resolve) => {
+      resolveFetch = resolve
+    })
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(fetchPromise))
+
+    const inFlight = api.get('/events')
+    workspaceStore.currentWorkspaceId = 'ws-B'
+
+    resolveFetch({
+      ok: true,
+      status: 200,
+      statusText: '200',
+      json: vi.fn().mockResolvedValue({ objects: [] }),
+    })
+    await inFlight
+
+    expect(mockProcessPoolResponse).toHaveBeenCalledOnce()
+    expect(mockProcessPoolResponse.mock.calls[0]![1]).toBe(Scope.workspace('ws-A'))
+  })
+
+  it('passes undefined scope when no workspace is active', async () => {
+    workspaceStore.currentWorkspaceId = null
+    mockFetchResponse(200, { objects: [] })
+
+    await api.get('/events')
+
+    expect(mockProcessPoolResponse).toHaveBeenCalledOnce()
+    expect(mockProcessPoolResponse.mock.calls[0]![1]).toBeUndefined()
   })
 })
