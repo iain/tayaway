@@ -15,11 +15,33 @@ vi.mock('@/stores/auth', () => ({
   useAuthStore: () => ({ currentUserId: 'user-1' }),
 }))
 
+// Stand-in for the websocket store so switchWorkspace's dynamic import
+// resolves without dragging in the real WebSocket/auth/rawApi machinery.
+const sendSwitchWorkspaceMock = vi.fn()
+vi.mock('./websocket', () => ({
+  useWebSocketStore: () => ({
+    sendSwitchWorkspace: sendSwitchWorkspaceMock,
+    hasCachedData: false,
+  }),
+}))
+
 describe('workspace store — switchWorkspace', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     localStorage.clear()
     vi.mocked(poolDb.loadObjectsByType).mockReset().mockResolvedValue([])
+    sendSwitchWorkspaceMock.mockReset()
+  })
+
+  it('asks the websocket to swap workspaces on the server', async () => {
+    // Without this, clicking a workspace in the selector silently does
+    // nothing — no NOTIFY, no sync. The user has to reload to recover.
+    const store = useWorkspaceStore()
+    store.initialize(['ws-1', 'ws-2'])
+
+    await store.switchWorkspace('ws-2')
+
+    expect(sendSwitchWorkspaceMock).toHaveBeenCalledWith('ws-2')
   })
 
   it('hydrates the new workspace cache into the pool so a switch-back shows data before the partial sync', async () => {

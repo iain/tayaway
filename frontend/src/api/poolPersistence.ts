@@ -248,9 +248,12 @@ function startPersisting(): void {
     }
 
     if (change.type === 'clearScope') {
-      void poolDb
-        .clearScope(change.scope)
-        .catch((e) => console.warn('Failed to clear scope in IndexedDB', e))
+      // Don't touch the IDB cache here — clearScope is used to free the
+      // in-memory pool on a workspace switch, but the cache must survive
+      // so a switch-back can rehydrate the previous workspace's data
+      // without round-tripping through the server for everything that
+      // hasn't changed. Cache clearing for genuine workspace removal goes
+      // through replaceScope or an explicit clearAll instead.
       return
     }
 

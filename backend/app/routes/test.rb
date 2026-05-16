@@ -65,6 +65,33 @@ class App
       end
     end
 
+    # PUT /api/test/workspace - Rename a workspace. Lets e2e tests give
+    # workspaces distinguishable names when they need to assert on the
+    # workspace selector UI.
+    r.is "workspace" do
+      r.put do
+        workspace_id = r.params["workspace_id"]
+        name = r.params["name"]&.strip
+
+        if workspace_id.nil? || name.nil? || name.empty?
+          response.status = 400
+          next { error: "workspace_id and name are required" }
+        end
+
+        updated = DB[:workspaces]
+                  .where(id: workspace_id)
+                  .update(name: name, updated_at: Time.now)
+
+        if updated.zero?
+          response.status = 404
+          next { error: "Workspace not found" }
+        end
+
+        Broadcaster.object_changed("workspace", workspace_id)
+        { ok: true }
+      end
+    end
+
     # POST /api/test/reset - Truncate all tables
     r.is "reset" do
       r.post do

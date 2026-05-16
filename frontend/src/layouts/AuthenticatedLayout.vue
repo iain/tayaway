@@ -271,6 +271,8 @@ async function handleSignOut() {
                 </router-link>
                 <Menu as="div" class="relative">
                   <MenuButton
+                    data-testid="workspace-switcher-trigger"
+                    aria-label="Switch workspace"
                     class="text-nav-text hover:text-nav-text-muted-hover flex items-center focus:outline-hidden"
                   >
                     <ChevronDownIcon class="size-5" aria-hidden="true" />
@@ -293,6 +295,8 @@ async function handleSignOut() {
                       >
                         <button
                           type="button"
+                          data-testid="workspace-switcher-option"
+                          :data-workspace-id="ws.id"
                           :class="[
                             active ? 'bg-btn-secondary-fill' : '',
                             'flex w-full items-center justify-between px-4 py-2 text-left text-sm text-ink',
