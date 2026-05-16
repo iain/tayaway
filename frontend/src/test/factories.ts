@@ -1,5 +1,6 @@
 import type { ObjectTypeMap } from '@/types/pool'
 import type { useObjectPoolStore } from '@/stores/objectPool'
+import { Scope } from '@/api/scope'
 
 // ============================================================================
 // Pool object factories
@@ -323,7 +324,7 @@ type ObjectPoolStore = ReturnType<typeof useObjectPoolStore>
  * doesn't matter what we tag fixtures with — but it does have to be *some*
  * scope, since every object in the pool now belongs to at least one.
  */
-export const TEST_SCOPE = 'workspace:test'
+export const TEST_SCOPE = Scope.workspace('test')
 
 export function seedPool(
   pool: ObjectPoolStore,

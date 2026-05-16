@@ -149,6 +149,19 @@ RSpec.describe Websocket::ConnectionManager do
       expect { manager.subscribe(SecureRandom.uuid, Topic.workspace(SecureRandom.uuid)) }.not_to raise_error
       expect { manager.unsubscribe(SecureRandom.uuid, Topic.workspace(SecureRandom.uuid)) }.not_to raise_error
     end
+
+    it "rejects raw strings — callers must pass a Topic" do
+      conn_id = manager.register(FakeWebsocket.new, SecureRandom.uuid)
+      expect { manager.subscribe(conn_id, "workspace:abc") }.to raise_error(ArgumentError, /Topic/)
+      expect { manager.unsubscribe(conn_id, "workspace:abc") }.to raise_error(ArgumentError, /Topic/)
+    end
+  end
+
+  describe "#broadcast" do
+    it "rejects raw strings — callers must pass a Topic" do
+      expect { manager.broadcast("workspace:abc", { type: "ping" }) }
+        .to raise_error(ArgumentError, /Topic/)
+    end
   end
 
   describe "#subscribed?" do

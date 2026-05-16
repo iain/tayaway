@@ -53,11 +53,9 @@ class Topic
     "#{kind}:#{id}"
   end
 
-  def to_json(*args)
-    to_s.to_json(*args)
-  end
-
-  def as_json(*)
-    to_s
+  # JSON.generate calls to_json directly; this is the only serialization
+  # path Topic rides over (pg_notify payloads built by Broadcaster).
+  def to_json(state = nil)
+    to_s.to_json(state)
   end
 end

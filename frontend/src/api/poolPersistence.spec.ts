@@ -1,3 +1,4 @@
+import { Scope } from '@/api/scope'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { poolPersistence } from './poolPersistence'
@@ -38,11 +39,6 @@ function flushIdleCallbacks(): void {
 
 vi.mock('@/api/poolDb', () => ({
   CACHE_VERSION: 11,
-  PERSONAL_SCOPE: 'personal',
-  WORKSPACE_SCOPE_PREFIX: 'workspace:',
-  workspaceScope: (id: string) => `workspace:${id}`,
-  workspaceIdFromScope: (scope: string) =>
-    scope.startsWith('workspace:') ? scope.slice('workspace:'.length) : null,
   saveObjects: vi.fn().mockResolvedValue(undefined),
   removeObjects: vi.fn().mockResolvedValue(undefined),
   savePendingUpdates: vi.fn().mockResolvedValue(undefined),
@@ -51,7 +47,7 @@ vi.mock('@/api/poolDb', () => ({
   saveSyncedAt: vi.fn().mockResolvedValue(undefined),
   loadMeta: vi.fn().mockResolvedValue({
     cacheVersion: 11,
-    syncedAt: new Map<string, string>(),
+    syncedAt: new Map(),
   }),
   loadObjectsByType: vi.fn().mockResolvedValue([]),
   loadPendingUpdatesFromDb: vi.fn().mockResolvedValue(new Map()),
@@ -163,7 +159,7 @@ describe('poolPersistence — visibilitychange flush', () => {
     // Simulate a pool 'set' change — this schedules a 500ms debounce
     capturedPoolChangeHandler!({
       type: 'set',
-      scope: 'workspace:ws-1',
+      scope: Scope.workspace('ws-1'),
       object: {
         id: 'evt-1',
         objectType: 'event',
@@ -183,7 +179,7 @@ describe('poolPersistence — visibilitychange flush', () => {
     await Promise.resolve()
 
     expect(poolDb.saveObjects).toHaveBeenCalledTimes(1)
-    expect(poolDb.saveObjects).toHaveBeenCalledWith('workspace:ws-1', [
+    expect(poolDb.saveObjects).toHaveBeenCalledWith(Scope.workspace('ws-1'), [
       expect.objectContaining({ id: 'evt-1', objectType: 'event' }),
     ])
 
@@ -203,7 +199,7 @@ describe('poolPersistence — visibilitychange flush', () => {
 
     capturedPoolChangeHandler!({
       type: 'set',
-      scope: 'workspace:ws-1',
+      scope: Scope.workspace('ws-1'),
       object: {
         id: 'evt-2',
         objectType: 'event',
@@ -233,7 +229,7 @@ describe('poolPersistence — visibilitychange flush', () => {
 
     capturedPoolChangeHandler!({
       type: 'set',
-      scope: 'workspace:ws-1',
+      scope: Scope.workspace('ws-1'),
       object: {
         id: 'evt-3',
         objectType: 'event',
@@ -254,7 +250,7 @@ describe('poolPersistence — visibilitychange flush', () => {
     await Promise.resolve()
 
     expect(poolDb.saveObjects).toHaveBeenCalledTimes(1)
-    expect(poolDb.saveObjects).toHaveBeenCalledWith('workspace:ws-1', [
+    expect(poolDb.saveObjects).toHaveBeenCalledWith(Scope.workspace('ws-1'), [
       expect.objectContaining({ id: 'evt-3', objectType: 'event' }),
     ])
   })
@@ -270,7 +266,7 @@ describe('poolPersistence — visibilitychange flush', () => {
 
     capturedPoolChangeHandler!({
       type: 'set',
-      scope: 'workspace:ws-1',
+      scope: Scope.workspace('ws-1'),
       object: {
         id: 'evt-4',
         objectType: 'event',
@@ -306,7 +302,7 @@ describe('poolPersistence — visibilitychange flush', () => {
 
     capturedPoolChangeHandler!({
       type: 'set',
-      scope: 'workspace:ws-1',
+      scope: Scope.workspace('ws-1'),
       object: {
         id: 'evt-5',
         objectType: 'event',
@@ -353,7 +349,7 @@ describe('poolPersistence — multi-workspace scope routing', () => {
     // routes by that tag and doesn't re-classify anything.
     capturedHandler!({
       type: 'set',
-      scope: 'personal',
+      scope: Scope.personal(),
       object: {
         id: 'note-1',
         objectType: 'notification',
@@ -364,7 +360,7 @@ describe('poolPersistence — multi-workspace scope routing', () => {
     })
     capturedHandler!({
       type: 'set',
-      scope: 'workspace:ws-1',
+      scope: Scope.workspace('ws-1'),
       object: {
         id: 'evt-A',
         objectType: 'event',
@@ -378,10 +374,10 @@ describe('poolPersistence — multi-workspace scope routing', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    expect(poolDb.saveObjects).toHaveBeenCalledWith('personal', [
+    expect(poolDb.saveObjects).toHaveBeenCalledWith(Scope.personal(), [
       expect.objectContaining({ id: 'note-1' }),
     ])
-    expect(poolDb.saveObjects).toHaveBeenCalledWith('workspace:ws-1', [
+    expect(poolDb.saveObjects).toHaveBeenCalledWith(Scope.workspace('ws-1'), [
       expect.objectContaining({ id: 'evt-A' }),
     ])
   })
@@ -389,7 +385,7 @@ describe('poolPersistence — multi-workspace scope routing', () => {
   it('replaces only the active workspace scope on a full sync — other workspaces survive', async () => {
     capturedHandler!({
       type: 'replaceScope',
-      scope: 'workspace:ws-1',
+      scope: Scope.workspace('ws-1'),
       objects: [
         {
           id: 'evt-A',
@@ -403,7 +399,7 @@ describe('poolPersistence — multi-workspace scope routing', () => {
     await Promise.resolve()
 
     expect(poolDb.replaceScope).toHaveBeenCalledWith(
-      'workspace:ws-1',
+      Scope.workspace('ws-1'),
       expect.arrayContaining([expect.objectContaining({ id: 'evt-A' })]),
       undefined
     )
@@ -420,7 +416,7 @@ describe('poolPersistence — progressive cache loading', () => {
 
     vi.mocked(poolDb.loadMeta).mockReset().mockResolvedValue({
       cacheVersion: 11,
-      syncedAt: new Map([['workspace:ws-1', new Date().toISOString()]]),
+      syncedAt: new Map([[Scope.workspace('ws-1'), new Date().toISOString()]]),
     })
     vi.mocked(poolDb.loadObjectsByType).mockReset().mockResolvedValue([])
     vi.mocked(poolDb.loadPendingUpdatesFromDb)
@@ -461,8 +457,8 @@ describe('poolPersistence — progressive cache loading', () => {
     } as PoolObject
 
     vi.mocked(poolDb.loadObjectsByType).mockImplementation(async (scope, type) => {
-      if (scope === 'workspace:ws-1' && type === 'member') return [memberObj]
-      if (scope === 'workspace:ws-1' && type === 'event') return [eventObj]
+      if (scope === Scope.workspace('ws-1') && type === 'member') return [memberObj]
+      if (scope === Scope.workspace('ws-1') && type === 'event') return [eventObj]
       return []
     })
 
@@ -475,25 +471,25 @@ describe('poolPersistence — progressive cache loading', () => {
     await loadPromise
 
     expect(poolDb.loadMeta).toHaveBeenCalledTimes(1)
-    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith('personal', 'member')
-    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith('workspace:ws-1', 'member')
-    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith('workspace:ws-1', 'event')
-    expect(pool.importObjects).toHaveBeenCalledWith([memberObj], { scope: 'workspace:ws-1' })
-    expect(pool.importObjects).toHaveBeenCalledWith([eventObj], { scope: 'workspace:ws-1' })
+    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith(Scope.personal(), 'member')
+    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith(Scope.workspace('ws-1'), 'member')
+    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith(Scope.workspace('ws-1'), 'event')
+    expect(pool.importObjects).toHaveBeenCalledWith([memberObj], { scope: Scope.workspace('ws-1') })
+    expect(pool.importObjects).toHaveBeenCalledWith([eventObj], { scope: Scope.workspace('ws-1') })
   })
 
   it('clears the workspace scope and returns when its cache is too stale', async () => {
     const oldDate = new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString()
     vi.mocked(poolDb.loadMeta).mockResolvedValue({
       cacheVersion: 11,
-      syncedAt: new Map([['workspace:ws-1', oldDate]]),
+      syncedAt: new Map([[Scope.workspace('ws-1'), oldDate]]),
     })
 
     const pool = useObjectPoolStore()
     const { loadFromCache } = poolPersistence
     await loadFromCache()
 
-    expect(poolDb.clearScope).toHaveBeenCalledWith('workspace:ws-1')
+    expect(poolDb.clearScope).toHaveBeenCalledWith(Scope.workspace('ws-1'))
     expect(pool.importObjects).not.toHaveBeenCalled()
     expect(poolDb.loadObjectsByType).not.toHaveBeenCalled()
   })
@@ -538,9 +534,9 @@ describe('poolPersistence — progressive cache loading', () => {
     // and workspace), then the next type ('workspace') sees hasSynced=true
     // and returns. The 'event' bucket is never touched.
     expect(memberCallCount).toBe(2)
-    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith('personal', 'member')
+    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith(Scope.personal(), 'member')
     expect(poolDb.loadObjectsByType).toHaveBeenCalledWith(
-      'workspace:ws-1',
+      Scope.workspace('ws-1'),
       'member'
     )
     expect(poolDb.loadObjectsByType).not.toHaveBeenCalledWith(
@@ -571,7 +567,7 @@ describe('poolPersistence — progressive cache loading', () => {
       >
     )
     vi.mocked(poolDb.loadObjectsByType).mockImplementation(async (scope, type) => {
-      if (scope === 'workspace:ws-1' && type === 'member') {
+      if (scope === Scope.workspace('ws-1') && type === 'member') {
         return [
           {
             id: 'm-1',

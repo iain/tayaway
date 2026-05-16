@@ -1,6 +1,6 @@
 import { useObjectPoolStore } from '@/stores'
 import { useWorkspaceStore } from '@/stores/workspace'
-import { workspaceScope } from '@/api/poolDb'
+import { Scope } from '@/api/scope'
 import type { PoolObject, ObjectType } from '@/types/pool'
 
 interface DeletedObject {
@@ -28,9 +28,9 @@ interface DeletedObject {
  * current workspace.
  *
  * Endpoints that deliver personal data (notifications) bypass this path
- * and route through rawApi + an explicit pool.importObjects(PERSONAL_SCOPE).
+ * and route through rawApi + an explicit pool.importObjects(Scope.personal()).
  */
-export function processPoolResponse(data: unknown, scope?: string): void {
+export function processPoolResponse(data: unknown, scope?: Scope): void {
   if (!data || typeof data !== 'object') return
 
   const pool = useObjectPoolStore()
@@ -60,7 +60,7 @@ export function processPoolResponse(data: unknown, scope?: string): void {
   }
 }
 
-function defaultScope(): string | null {
+function defaultScope(): Scope | null {
   const wsId = useWorkspaceStore().currentWorkspaceId
-  return wsId ? workspaceScope(wsId) : null
+  return wsId ? Scope.workspace(wsId) : null
 }

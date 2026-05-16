@@ -4,7 +4,7 @@ import { rawApi } from '@/api/client'
 import { checkForServiceWorkerUpdate } from '@/api/swUpdate'
 import { useObjectPoolStore } from './objectPool'
 import { useWorkspaceStore, WORKSPACE_ID_STORAGE_KEY } from './workspace'
-import { PERSONAL_SCOPE, workspaceScope } from '@/api/poolDb'
+import { Scope } from '@/api/scope'
 import type { PoolObject } from '@/types/pool'
 import type { DeletedObject } from '@/types/poolUpdate'
 
@@ -294,14 +294,14 @@ export const useWebSocketStore = defineStore('websocket', () => {
     const pool = useObjectPoolStore()
     const workspaceStore = useWorkspaceStore()
 
-    // Personal syncs land in PERSONAL_SCOPE; full and partial workspace syncs
-    // land in the current workspace's scope. There's no workspace context
-    // around a personal sync, so it has no cursor either.
+    // Personal syncs land in Scope.personal(); full and partial workspace
+    // syncs land in the current workspace's scope. There's no workspace
+    // context around a personal sync, so it has no cursor either.
     const isPersonal = message.data?.syncType === 'personal'
     const scope = isPersonal
-      ? PERSONAL_SCOPE
+      ? Scope.personal()
       : workspaceStore.currentWorkspaceId
-        ? workspaceScope(workspaceStore.currentWorkspaceId)
+        ? Scope.workspace(workspaceStore.currentWorkspaceId)
         : null
     if (!scope) return
 
@@ -337,8 +337,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
     // Workspace-audience broadcasts carry workspaceId on the envelope; user-
     // audience ones don't and land in the personal scope.
     const scope = message.workspaceId
-      ? workspaceScope(message.workspaceId)
-      : PERSONAL_SCOPE
+      ? Scope.workspace(message.workspaceId)
+      : Scope.personal()
     pool.applyUpdate(scope, {
       kind: 'merge',
       objects: message.action === 'update' ? message.data?.objects : undefined,

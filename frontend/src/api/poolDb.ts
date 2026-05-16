@@ -1,23 +1,10 @@
 import { openDB, type IDBPDatabase } from 'idb'
 import type { PoolObject, ObjectType, PendingUpdate } from '@/types/pool'
-
-// A scope is a partition of the cache. Personal data lives in PERSONAL_SCOPE
-// and is shared across all workspaces; everything else lives in a
-// per-workspace scope so other workspaces' data survives a switch.
-export const PERSONAL_SCOPE = 'personal'
-export const WORKSPACE_SCOPE_PREFIX = 'workspace:'
-export function workspaceScope(workspaceId: string): string {
-  return `${WORKSPACE_SCOPE_PREFIX}${workspaceId}`
-}
-export function workspaceIdFromScope(scope: string): string | null {
-  return scope.startsWith(WORKSPACE_SCOPE_PREFIX)
-    ? scope.slice(WORKSPACE_SCOPE_PREFIX.length)
-    : null
-}
+import { Scope } from '@/api/scope'
 
 interface StoredObject {
   key: string
-  scope: string
+  scope: Scope
   objectType: ObjectType
   id: string
   data: PoolObject
@@ -98,12 +85,12 @@ function getDb(): Promise<IDBPDatabase<PoolCacheDB>> {
   return dbPromise
 }
 
-function toKey(scope: string, objectType: string, id: string): string {
+function toKey(scope: Scope, objectType: string, id: string): string {
   return `${scope}::${objectType}:${id}`
 }
 
 export async function saveObjects(
-  scope: string,
+  scope: Scope,
   objects: PoolObject[]
 ): Promise<void> {
   if (objects.length === 0) return
@@ -122,7 +109,7 @@ export async function saveObjects(
 }
 
 export async function removeObjects(
-  scope: string,
+  scope: Scope,
   entries: { objectType: string; id: string }[]
 ): Promise<void> {
   if (entries.length === 0) return
@@ -164,7 +151,7 @@ export async function loadPendingUpdates(): Promise<
  * caches we want to keep hot.
  */
 export async function replaceScope(
-  scope: string,
+  scope: Scope,
   objects: PoolObject[],
   syncedAt?: string
 ): Promise<void> {
@@ -202,7 +189,7 @@ export async function replaceScope(
   await tx.done
 }
 
-export async function clearScope(scope: string): Promise<void> {
+export async function clearScope(scope: Scope): Promise<void> {
   const db = await getDb()
   const tx = db.transaction(['objects', 'meta'], 'readwrite')
   const scopeIndex = tx.objectStore('objects').index('scope')
@@ -215,30 +202,29 @@ export async function clearScope(scope: string): Promise<void> {
   await tx.done
 }
 
-interface ScopedSyncedAt {
-  syncedAt: Map<string, string>
-}
-
 /**
  * Read only the lightweight metadata record from the cache.
  * Returns the cache version and a per-scope syncedAt map (so a partial sync
  * per workspace can use its own cursor). The active workspace lives in
- * localStorage; IDB doesn't track it.
+ * localStorage; IDB doesn't track it. The map's keys are best-effort parsed
+ * into Scope — meta records persist across schema changes and the parser
+ * skips anything it doesn't recognise.
  */
 export async function loadMeta(): Promise<{
   cacheVersion: number | null
-  syncedAt: Map<string, string>
+  syncedAt: Map<Scope, string>
 }> {
   const db = await getDb()
   const tx = db.transaction('meta', 'readonly')
   const all = await tx.store.getAll()
   let cacheVersion: number | null = null
-  const syncedAt = new Map<string, string>()
+  const syncedAt = new Map<Scope, string>()
   for (const entry of all) {
     if (entry.key === CACHE_VERSION_META_KEY) {
       cacheVersion = entry.cacheVersion ?? null
     } else if (entry.key.startsWith(SYNCED_AT_META_PREFIX) && entry.syncedAt) {
-      syncedAt.set(entry.key.slice(SYNCED_AT_META_PREFIX.length), entry.syncedAt)
+      const scope = Scope.parse(entry.key.slice(SYNCED_AT_META_PREFIX.length))
+      if (scope) syncedAt.set(scope, entry.syncedAt)
     }
   }
   return { cacheVersion, syncedAt }
@@ -250,7 +236,7 @@ export async function loadMeta(): Promise<{
  * browser can paint frames while the cache is being restored progressively.
  */
 export async function loadObjectsByType(
-  scope: string,
+  scope: Scope,
   objectType: ObjectType
 ): Promise<PoolObject[]> {
   const db = await getDb()
@@ -279,7 +265,7 @@ export async function loadPendingUpdatesFromDb(): Promise<
 export { CACHE_VERSION }
 
 export async function saveSyncedAt(
-  scope: string,
+  scope: Scope,
   syncedAt: string
 ): Promise<void> {
   const db = await getDb()
@@ -297,5 +283,3 @@ export async function clearAll(): Promise<void> {
   tx.objectStore('pendingUpdates').clear()
   await tx.done
 }
-
-export type { ScopedSyncedAt }

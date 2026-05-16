@@ -8,8 +8,10 @@ import {
   type PendingUpdate,
 } from '@/types/pool'
 import type { PoolUpdate } from '@/types/poolUpdate'
-import { workspaceScope } from '@/api/poolDb'
+import { Scope } from '@/api/scope'
 import { useWorkspaceStore } from './workspace'
+
+export { Scope }
 
 // Helper to compare ISO8601 timestamps
 // ISO 8601 strings with the same format are lexicographically sortable
@@ -31,9 +33,11 @@ const REPLACE_CHUNK_SIZE = 200
  * This is how cross-scope objects (the user's own member row, which arrives
  * via both the personal channel and a workspace channel) naturally survive
  * a workspace switch: clearing `workspace:A` leaves them in `personal`.
+ *
+ * Scope is the branded string from `@/api/scope` — kept stringly-equal so
+ * it slots into Map/Set keys, but the compiler refuses raw strings at
+ * callsites that take a Scope.
  */
-export type Scope = string
-
 /** A removed object plus the set of scopes it was in, so callers can
  *  restore it correctly on rollback. */
 export interface RemovedEntry {
@@ -398,14 +402,14 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       return existing.values().next().value as Scope
     }
     const objWsId = (obj as { workspaceId?: string | null }).workspaceId
-    if (objWsId) return workspaceScope(objWsId)
+    if (objWsId) return Scope.workspace(objWsId)
     const wsId = useWorkspaceStore().currentWorkspaceId
     if (!wsId) {
       throw new Error(
         `objectPool: no scope could be derived for ${obj.objectType}:${obj.id} — pass opts.scope, set obj.workspaceId, or ensure a workspace is active`
       )
     }
-    return workspaceScope(wsId)
+    return Scope.workspace(wsId)
   }
 
   // Merge a batch of objects from a delivery channel into the pool. Each

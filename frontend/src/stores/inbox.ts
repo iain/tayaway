@@ -4,7 +4,7 @@ import { rawApi } from '@/api/client'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useWorkspaceStore } from '@/stores/workspace'
-import { PERSONAL_SCOPE } from '@/api/poolDb'
+import { Scope } from '@/api/scope'
 import type { PoolNotification } from '@/types/pool'
 
 const SILENCE_UNDO_MS = 5000
@@ -53,6 +53,10 @@ export const useInboxStore = defineStore('inbox', () => {
   // in. The current workspace's notifications surface in the bell directly,
   // so the selector dot is only meaningful elsewhere. Filtering here keeps
   // callers from having to remember the exclusion.
+  //
+  // notification.workspaceId is nullable (no NOT NULL on the column) —
+  // workspace-less notifications can't badge any selector entry, so we
+  // skip them outright.
   const unreadCountByOtherWorkspace = computed(() => {
     const workspaceStore = useWorkspaceStore()
     const currentId = workspaceStore.currentWorkspaceId
@@ -71,7 +75,7 @@ export const useInboxStore = defineStore('inbox', () => {
       const { data } = await rawApi.get<InboxResponse>('/notifications', {})
       // Notifications live in the personal scope — they're delivered to the
       // user across all workspaces.
-      pool().importObjects(data.objects, { scope: PERSONAL_SCOPE })
+      pool().importObjects(data.objects, { scope: Scope.personal() })
     } catch (e) {
       lastError.value =
         e && typeof e === 'object' && 'message' in e

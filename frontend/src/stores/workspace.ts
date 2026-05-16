@@ -3,7 +3,8 @@ import { defineStore } from 'pinia'
 import { useObjectPoolStore } from './objectPool'
 import type { PoolWorkspace, PoolObject } from '@/types/pool'
 import { OBJECT_TYPES } from '@/types/pool'
-import { loadObjectsByType, workspaceScope } from '@/api/poolDb'
+import { loadObjectsByType } from '@/api/poolDb'
+import { Scope } from '@/api/scope'
 
 // Exported so other modules (poolPersistence cold-start, websocket
 // reconnect URL) can read the same key without hardcoding the string.
@@ -50,7 +51,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     currentWorkspaceId.value = id
     localStorage.setItem(STORAGE_KEY, id)
     if (previousId && previousId !== id) {
-      pool.clearScope(workspaceScope(previousId))
+      pool.clearScope(Scope.workspace(previousId))
     }
 
     const { useWebSocketStore } = await import('./websocket')
@@ -60,7 +61,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function hydrateCachedWorkspace(id: string): Promise<void> {
-    const scope = workspaceScope(id)
+    const scope = Scope.workspace(id)
     for (const type of OBJECT_TYPES) {
       // Stop if the user has switched again — don't hydrate stale data
       // into a different workspace's active view.
@@ -90,6 +91,14 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   // Redirect to the next remaining workspace so the UI doesn't sit on a stale
   // workspace context. If there are no workspaces left, clear and let the
   // empty state take over.
+  //
+  // `flush: 'sync'` runs the handler in the same microtask as the pool
+  // mutation; the alternative ('pre' / 'post') defers to the next render
+  // tick, by which point a route guard or computed reading
+  // currentWorkspaceId can have already evaluated against the stale id.
+  // `immediate: true` lets the gate fire on registration; the
+  // workspacesEverLoaded flag stops the cold start from clearing the
+  // active workspace before personal sync delivers the workspace list.
   watch(
     allWorkspaces,
     (all) => {

@@ -225,7 +225,7 @@ module Websocket
         connection = @mutex.synchronize { @connections[connection_id] }
         next unless connection
 
-        send_to_connection(connection, connection_id, json_message, "direct")
+        send_to_connection(connection, connection_id, json_message, "<direct>")
       end
     end
 

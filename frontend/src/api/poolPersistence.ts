@@ -6,12 +6,8 @@ import {
 import { useWebSocketStore } from '@/stores/websocket'
 import { WORKSPACE_ID_STORAGE_KEY } from '@/stores/workspace'
 import * as poolDb from '@/api/poolDb'
-import {
-  CACHE_VERSION,
-  PERSONAL_SCOPE,
-  workspaceScope,
-  workspaceIdFromScope,
-} from '@/api/poolDb'
+import { CACHE_VERSION } from '@/api/poolDb'
+import { Scope } from '@/api/scope'
 import { getStaleness } from '@/composables/useStaleness'
 import type { PoolChange } from '@/stores/objectPool'
 import type { PoolObject, ObjectType } from '@/types/pool'
@@ -29,12 +25,12 @@ const DEFERRED_TYPES: ObjectType[] = OBJECT_TYPES.filter(
 )
 
 interface PendingSave {
-  scope: string
+  scope: Scope
   object: PoolObject
 }
 
 interface PendingRemove {
-  scope: string
+  scope: Scope
   objectType: string
   id: string
 }
@@ -65,7 +61,7 @@ async function flushWrites(): Promise<void> {
   try {
     const writes: Promise<unknown>[] = []
 
-    const savesByScope = new Map<string, PoolObject[]>()
+    const savesByScope = new Map<Scope, PoolObject[]>()
     for (const s of saves) {
       const bucket = savesByScope.get(s.scope) ?? []
       bucket.push(s.object)
@@ -76,7 +72,7 @@ async function flushWrites(): Promise<void> {
     }
 
     const removesByScope = new Map<
-      string,
+      Scope,
       { objectType: string; id: string }[]
     >()
     for (const r of removes) {
@@ -122,8 +118,8 @@ function scheduleFlush(): void {
   }, 500)
 }
 
-function persistSyncedAtForScope(scope: string): void {
-  const wsId = workspaceIdFromScope(scope)
+function persistSyncedAtForScope(scope: Scope): void {
+  const wsId = Scope.workspaceId(scope)
   if (!wsId) return
   const wsStore = useWebSocketStore()
   const syncedAt = wsStore.getSyncedAt(wsId)
@@ -152,7 +148,7 @@ async function loadFromCache(): Promise<void> {
     const wsStore = useWebSocketStore()
     if (wsStore.hasSynced) return // Server already sent authoritative data
 
-    const workspaceScopeKey = workspaceScope(expectedWorkspaceId)
+    const workspaceScopeKey = Scope.workspace(expectedWorkspaceId)
     const workspaceSyncedAt = syncedAt.get(workspaceScopeKey) ?? null
 
     // Check cache age and apply staleness policy. The staleness tier itself
@@ -167,7 +163,7 @@ async function loadFromCache(): Promise<void> {
       return
     }
 
-    const scopesToLoad = [PERSONAL_SCOPE, workspaceScopeKey]
+    const scopesToLoad = [Scope.personal(), workspaceScopeKey]
 
     // Phase 2: Load priority types first (member, workspace, event) so the
     // app shell can render immediately with the most important data.
@@ -222,13 +218,13 @@ async function loadFromCache(): Promise<void> {
   }
 }
 
-function persistReplaceScope(scope: string, objects: PoolObject[]): void {
+function persistReplaceScope(scope: Scope, objects: PoolObject[]): void {
   // Drop any pending debounced writes for this scope — the replace is
   // authoritative and would race with stale buffered saves/removes.
   pendingSaves = pendingSaves.filter((s) => s.scope !== scope)
   pendingRemoves = pendingRemoves.filter((r) => r.scope !== scope)
 
-  const wsId = workspaceIdFromScope(scope)
+  const wsId = Scope.workspaceId(scope)
   const syncedAt = wsId
     ? (useWebSocketStore().getSyncedAt(wsId) ?? undefined)
     : undefined

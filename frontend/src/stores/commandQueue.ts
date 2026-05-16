@@ -2,7 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { rawApi, type ApiResponse } from '@/api/client'
 import { processPoolResponse } from '@/api/processPoolResponse'
-import { workspaceScope } from '@/api/poolDb'
+import { Scope } from '@/api/scope'
 import {
   addCommand,
   removeCommand,
@@ -243,7 +243,7 @@ async function executeRequest<T>(
   // workspaceId snapshot from enqueue time is threaded through so a
   // workspace switch between enqueue and replay doesn't misroute the
   // response into the new workspace's scope.
-  const scope = workspaceId ? workspaceScope(workspaceId) : undefined
+  const scope = workspaceId ? Scope.workspace(workspaceId) : undefined
   processPoolResponse(response.data, scope)
   return response
 }

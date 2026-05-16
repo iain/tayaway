@@ -1,3 +1,4 @@
+import { Scope } from '@/api/scope'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useDatePollsStore } from './datePolls'
@@ -72,7 +73,7 @@ describe('datePolls store', () => {
   describe('closePoll', () => {
     it('optimistically updates the poll status to resolved', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeDatePoll({ status: 'open' })], { scope: "workspace:test" })
+      pool.importObjects([makeDatePoll({ status: 'open' })], { scope: Scope.workspace("test") })
       const store = useDatePollsStore()
 
       let statusDuringCall: string | undefined
@@ -88,7 +89,7 @@ describe('datePolls store', () => {
 
     it('optimistically sets the selectedDateRangeId', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeDatePoll({ selectedDateRangeId: null })], { scope: "workspace:test" })
+      pool.importObjects([makeDatePoll({ selectedDateRangeId: null })], { scope: Scope.workspace("test") })
       const store = useDatePollsStore()
 
       let selectedDuringCall: string | null | undefined
@@ -114,7 +115,7 @@ describe('datePolls store', () => {
       const pool = useObjectPoolStore()
       pool.importObjects([
         makeDatePoll({ status: 'open', selectedDateRangeId: null }),
-      ], { scope: "workspace:test" })
+      ], { scope: Scope.workspace("test") })
       const store = useDatePollsStore()
 
       enqueueImpl = async () => {
@@ -137,7 +138,7 @@ describe('datePolls store', () => {
           selectedDateRangeId: 'dr-1',
           closedAt: '2026-01-15T00:00:00.000Z',
         }),
-      ], { scope: "workspace:test" })
+      ], { scope: Scope.workspace("test") })
       const store = useDatePollsStore()
 
       let statusDuringCall: string | undefined
@@ -159,7 +160,7 @@ describe('datePolls store', () => {
           selectedDateRangeId: 'dr-1',
           closedAt: '2026-01-15T00:00:00.000Z',
         }),
-      ], { scope: "workspace:test" })
+      ], { scope: Scope.workspace("test") })
       const store = useDatePollsStore()
 
       let pollDuringCall: ObjectTypeMap['datePoll'] | undefined
@@ -186,7 +187,7 @@ describe('datePolls store', () => {
   describe('addDateRange', () => {
     it('inserts a temp date range and updates poll.dateRangeIds optimistically', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeDatePoll({ dateRangeIds: [] })], { scope: "workspace:test" })
+      pool.importObjects([makeDatePoll({ dateRangeIds: [] })], { scope: Scope.workspace("test") })
       const store = useDatePollsStore()
 
       let dateRangesDuringCall: ObjectTypeMap['dateRange'][] | undefined
@@ -207,7 +208,7 @@ describe('datePolls store', () => {
 
     it('rolls back both temp date range and poll pending update on server error', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeDatePoll({ dateRangeIds: [] })], { scope: "workspace:test" })
+      pool.importObjects([makeDatePoll({ dateRangeIds: [] })], { scope: Scope.workspace("test") })
       const store = useDatePollsStore()
 
       enqueueImpl = async () => {
@@ -226,7 +227,7 @@ describe('datePolls store', () => {
 
     it('keeps the optimistic state when request is queued offline', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeDatePoll({ dateRangeIds: [] })], { scope: "workspace:test" })
+      pool.importObjects([makeDatePoll({ dateRangeIds: [] })], { scope: Scope.workspace("test") })
       const store = useDatePollsStore()
 
       enqueueImpl = async () => {
@@ -254,7 +255,7 @@ describe('datePolls store', () => {
       pool.importObjects([
         makeDatePoll({ dateRangeIds: ['dr-1'] }),
         makeDateRange(),
-      ], { scope: "workspace:test" })
+      ], { scope: Scope.workspace("test") })
       const store = useDatePollsStore()
 
       let dateRangesDuringCall: ObjectTypeMap['dateRange'][] | undefined
@@ -276,7 +277,7 @@ describe('datePolls store', () => {
       pool.importObjects([
         makeDatePoll({ dateRangeIds: ['dr-1'] }),
         makeDateRange(),
-      ], { scope: "workspace:test" })
+      ], { scope: Scope.workspace("test") })
       const store = useDatePollsStore()
 
       enqueueImpl = async () => {
@@ -298,7 +299,7 @@ describe('datePolls store', () => {
       pool.importObjects([
         makeDatePoll({ dateRangeIds: ['dr-1'] }),
         makeDateRange(),
-      ], { scope: "workspace:test" })
+      ], { scope: Scope.workspace("test") })
       const store = useDatePollsStore()
 
       enqueueImpl = async () => {
@@ -323,7 +324,7 @@ describe('datePolls store', () => {
   describe('$reset', () => {
     it('clears loading and error state', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeDatePoll()], { scope: "workspace:test" })
+      pool.importObjects([makeDatePoll()], { scope: Scope.workspace("test") })
       const store = useDatePollsStore()
 
       enqueueImpl = async () => {

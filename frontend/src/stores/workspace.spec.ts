@@ -1,3 +1,4 @@
+import { Scope } from '@/api/scope'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useWorkspaceStore } from './workspace'
@@ -6,7 +7,7 @@ import * as poolDb from '@/api/poolDb'
 import type { PoolObject } from '@/types/pool'
 
 vi.mock('@/api/poolDb', () => ({
-  PERSONAL_SCOPE: 'personal',
+  PERSONAL_SCOPE: Scope.personal(),
   workspaceScope: (id: string) => `workspace:${id}`,
   loadObjectsByType: vi.fn().mockResolvedValue([]),
 }))
@@ -57,7 +58,7 @@ describe('workspace store — switchWorkspace', () => {
     } as unknown as PoolObject
 
     vi.mocked(poolDb.loadObjectsByType).mockImplementation(async (scope, type) => {
-      if (scope === 'workspace:ws-2' && type === 'event') return [cached]
+      if (scope === Scope.workspace('ws-2') && type === 'event') return [cached]
       return []
     })
 
@@ -100,7 +101,7 @@ describe('workspace store — removed from current workspace', () => {
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
     } as unknown as PoolObject
-    pool.importObjects([wsA, wsB], { scope: "workspace:test" })
+    pool.importObjects([wsA, wsB], { scope: Scope.workspace("test") })
 
     const store = useWorkspaceStore()
     store.initialize(['ws-A', 'ws-B'])
@@ -124,7 +125,7 @@ describe('workspace store — removed from current workspace', () => {
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
     } as unknown as PoolObject
-    pool.importObjects([ws], { scope: "workspace:test" })
+    pool.importObjects([ws], { scope: Scope.workspace("test") })
 
     const store = useWorkspaceStore()
     store.initialize(['ws-only'])

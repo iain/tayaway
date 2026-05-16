@@ -78,9 +78,13 @@ class App
       connection.write({ type: "pong", gitSha: APP_CONFIG.git_sha }.to_json)
 
       # Personal sync delivers the workspace selector (workspace rows + the
-      # user's own memberships across every workspace). Cross-workspace
-      # personal events ride the user topic and merge into the same pool.
-      personal_sync = Sync::PersonalSync.call(user_id: user_id)
+      # user's own memberships across every workspace) plus the recent
+      # notification backlog. Cross-workspace personal events ride the user
+      # topic and merge into the same pool. Pass the already-loaded
+      # workspaces + memberships through to avoid duplicate queries.
+      personal_sync = Sync::PersonalSync.call(
+        user_id: user_id, workspaces: workspaces, memberships: memberships
+      )
       connection.write({ type: "sync", data: personal_sync }.to_json)
 
       # If we have a valid initial workspace, send its workspace-scoped sync.

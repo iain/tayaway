@@ -1,3 +1,4 @@
+import { Scope } from '@/api/scope'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useObjectPoolStore } from '@/stores/objectPool'
@@ -96,7 +97,7 @@ describe('HomePage computed maps', () => {
         makeRsvp({ id: 'r2', eventId: 'evt-1', attending: true }),
         makeRsvp({ id: 'r3', eventId: 'evt-1', attending: false }),
         makeRsvp({ id: 'r4', eventId: 'evt-2', attending: true }),
-      ], { scope: "workspace:test" })
+      ], { scope: Scope.workspace("test") })
 
       // Replicate the HomePage attendeeCountByEvent logic
       const counts = new Map<string, number>()
@@ -124,7 +125,7 @@ describe('HomePage computed maps', () => {
           settlementId: 'settlement-1',
         }),
         makeExpense({ id: 'exp-4', eventId: 'evt-2', settlementId: null }),
-      ], { scope: "workspace:test" })
+      ], { scope: Scope.workspace("test") })
 
       const counts = new Map<string, number>()
       for (const e of pool.getAll('expense')) {
@@ -166,7 +167,7 @@ describe('HomePage computed maps', () => {
           paidAt: null,
           supersededAt: '2026-01-03T00:00:00.000Z',
         }),
-      ], { scope: "workspace:test" })
+      ], { scope: Scope.workspace("test") })
 
       const eventBySettlement = new Map<string, string>()
       for (const s of pool.getAll('settlement')) {
@@ -191,7 +192,7 @@ describe('HomePage computed maps', () => {
       const pool = useObjectPoolStore()
       pool.importObjects([
         makeTransfer({ id: 't1', settlementId: 'missing-settlement' }),
-      ], { scope: "workspace:test" })
+      ], { scope: Scope.workspace("test") })
 
       const eventBySettlement = new Map<string, string>()
       for (const s of pool.getAll('settlement')) {

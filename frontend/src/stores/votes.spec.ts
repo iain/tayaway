@@ -1,3 +1,4 @@
+import { Scope } from '@/api/scope'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useVotesStore } from './votes'
@@ -139,7 +140,7 @@ describe('votes store', () => {
   describe('submitVote — existing vote (update)', () => {
     it('optimistically updates the existing vote response', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeVote({ response: 'yes' })], { scope: "workspace:test" })
+      pool.importObjects([makeVote({ response: 'yes' })], { scope: Scope.workspace("test") })
       const store = useVotesStore()
 
       let responseDuringCall: string | undefined
@@ -157,7 +158,7 @@ describe('votes store', () => {
 
     it('optimistically updates the comment', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeVote({ comment: null })], { scope: "workspace:test" })
+      pool.importObjects([makeVote({ comment: null })], { scope: Scope.workspace("test") })
       const store = useVotesStore()
 
       let commentDuringCall: string | null | undefined
@@ -173,7 +174,7 @@ describe('votes store', () => {
 
     it('sets comment to null when not provided on update', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeVote({ comment: 'old' })], { scope: "workspace:test" })
+      pool.importObjects([makeVote({ comment: 'old' })], { scope: Scope.workspace("test") })
       const store = useVotesStore()
 
       let commentDuringCall: string | null | undefined
@@ -189,7 +190,7 @@ describe('votes store', () => {
 
     it('keeps pending update when queued offline', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeVote({ response: 'yes' })], { scope: "workspace:test" })
+      pool.importObjects([makeVote({ response: 'yes' })], { scope: Scope.workspace("test") })
       const store = useVotesStore()
 
       enqueueImpl = async () => {
@@ -205,7 +206,7 @@ describe('votes store', () => {
 
     it('rolls back pending update on server error', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeVote({ response: 'yes' })], { scope: "workspace:test" })
+      pool.importObjects([makeVote({ response: 'yes' })], { scope: Scope.workspace("test") })
       const store = useVotesStore()
 
       enqueueImpl = async () => {
@@ -224,7 +225,7 @@ describe('votes store', () => {
   describe('deleteVote', () => {
     it('optimistically removes the vote from the pool', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeVote()], { scope: "workspace:test" })
+      pool.importObjects([makeVote()], { scope: Scope.workspace("test") })
       const store = useVotesStore()
 
       let presentDuringCall: boolean | undefined
@@ -241,7 +242,7 @@ describe('votes store', () => {
 
     it('restores the vote when the API call fails', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeVote()], { scope: "workspace:test" })
+      pool.importObjects([makeVote()], { scope: Scope.workspace("test") })
       const store = useVotesStore()
 
       enqueueImpl = async () => {
@@ -258,7 +259,7 @@ describe('votes store', () => {
 
     it('keeps the vote removed when queued offline', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeVote()], { scope: "workspace:test" })
+      pool.importObjects([makeVote()], { scope: Scope.workspace("test") })
       const store = useVotesStore()
 
       enqueueImpl = async () => {

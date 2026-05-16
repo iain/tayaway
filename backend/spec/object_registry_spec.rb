@@ -93,4 +93,26 @@ RSpec.describe ObjectRegistry do
       expect(topics.first).to be_workspace
     end
   end
+
+  # Locks in which entries opt into the optional policy_context_batch
+  # prefetch. If a new serializer needs prefetched policy kwargs, add it
+  # here as a load-bearing acknowledgement; if a serializer loses its
+  # prefetch (or grows one accidentally), this spec catches the drift.
+  describe "policy_context_batch opt-in" do
+    opt_ins = %w[event date_poll date_range expense settlement settlement_transfer].freeze
+
+    ObjectRegistry::TYPES.each do |entry|
+      context "when the entry is #{entry.key}" do
+        if opt_ins.include?(entry.key)
+          it "defines policy_context_batch (PoolSerializer feeds it prefetched kwargs)" do
+            expect(entry.serializer_class).to respond_to(:policy_context_batch)
+          end
+        else
+          it "does not define policy_context_batch (PoolSerializer falls back to {})" do
+            expect(entry.serializer_class).not_to respond_to(:policy_context_batch)
+          end
+        end
+      end
+    end
+  end
 end

@@ -1,7 +1,7 @@
 import { useNotificationsStore } from '@/stores'
 import { processPoolResponse } from '@/api/processPoolResponse'
 import { useWorkspaceStore } from '@/stores/workspace'
-import { workspaceScope } from '@/api/poolDb'
+import { Scope } from '@/api/scope'
 import { handleSessionExpired } from '@/api/sessionExpired'
 
 export interface ApiResponse<T> {
@@ -214,7 +214,7 @@ export const api = {
     // stale GET for workspace A landing after switch to B would tag A's
     // objects with workspace:B and orphan them when B's scope is cleared.
     const wsId = useWorkspaceStore().currentWorkspaceId
-    const scope = wsId ? workspaceScope(wsId) : undefined
+    const scope = wsId ? Scope.workspace(wsId) : undefined
     const response = await rawApi.get<T>(path, options)
     processPoolResponse(response.data, scope)
     return response
