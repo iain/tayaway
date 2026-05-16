@@ -111,7 +111,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         return
       }
       if (!all.some((w) => w.id === wsId)) {
-        switchWorkspace(all[0]!.id)
+        switchWorkspace(all[0]!.id).catch((e) => {
+          console.error('Auto-switch after workspace removal failed', e)
+        })
       }
     },
     { flush: 'sync', immediate: true }
