@@ -832,6 +832,29 @@ describe('objectPool store', () => {
       expect(() => pool.cascadeRemove('event', 'nonexistent')).not.toThrow()
     })
 
+    it('fully removes a multi-scope object across every scope it lived in', () => {
+      // A delete signal means the entity is gone from the system, not from
+      // one channel. The realistic case is the user's own member row being
+      // deleted (they were removed from a workspace) — it lives in both
+      // `personal` and `workspace:A`, and either channel's delete should
+      // clean up both. We lock this in here so a future scope-gating
+      // refactor doesn't accidentally leave a stale copy behind in one
+      // scope with no future signal scheduled to clean it up.
+      const pool = useObjectPoolStore()
+      const ownMember = makeMember({ userId: 'user-1' })
+      pool.importObjects('workspace:A', [ownMember])
+      pool.importObjects('personal', [ownMember])
+      expect(pool.scopesOf(ownMember.id).sort()).toEqual([
+        'personal',
+        'workspace:A',
+      ])
+
+      pool.cascadeRemove('member', ownMember.id)
+
+      expect(pool.get('member', ownMember.id)).toBeUndefined()
+      expect(pool.scopesOf(ownMember.id)).toEqual([])
+    })
+
     it('removes event and its rsvps', () => {
       const pool = useObjectPoolStore()
       pool.importObjects('workspace:test', [

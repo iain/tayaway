@@ -155,7 +155,9 @@ function fromStored(cmd: StoredCommand): CoalescedCommand {
 // Two merged commands must agree on the workspace they target for the
 // resulting replay to be unambiguously attributable. Disagreement falls
 // back to undefined so processPoolResponse uses the current workspace —
-// not ideal, but better than picking one arbitrarily.
+// not ideal, but better than picking one arbitrarily. This shouldn't
+// happen in practice (commands keyed by resource id won't naturally span
+// workspaces), so we log loudly to catch any regression.
 function reconcileWorkspaceId(
   earlier: string | null | undefined,
   later: StoredCommand
@@ -163,6 +165,10 @@ function reconcileWorkspaceId(
   const laterWs = later.workspaceId ?? null
   if (earlier === undefined) return laterWs
   if (earlier === laterWs) return earlier
+  console.error(
+    '[coalesceCommands] cross-workspace coalescing — replay response will route to the current workspace; this is unexpected',
+    { earlier, later: laterWs, command: later }
+  )
   return undefined
 }
 

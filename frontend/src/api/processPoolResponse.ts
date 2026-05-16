@@ -36,15 +36,18 @@ export function processPoolResponse(data: unknown, scope?: string): void {
   const pool = useObjectPoolStore()
   const resolvedScope = scope ?? defaultScope()
 
-  if (
-    resolvedScope &&
-    'objects' in data &&
-    Array.isArray((data as { objects: unknown }).objects)
-  ) {
-    pool.importObjects(
-      resolvedScope,
-      (data as { objects: PoolObject[] }).objects
-    )
+  if ('objects' in data && Array.isArray((data as { objects: unknown }).objects)) {
+    const objects = (data as { objects: PoolObject[] }).objects
+    if (resolvedScope) {
+      pool.importObjects(resolvedScope, objects)
+    } else if (objects.length > 0) {
+      // No active workspace and no explicit scope — dropping the payload
+      // silently would hide bugs (e.g. a REST call firing before
+      // initialization completes). Log so this doesn't disappear.
+      console.warn(
+        `[processPoolResponse] dropping ${objects.length} pool object(s): no workspace scope available`
+      )
+    }
   }
 
   if (

@@ -278,7 +278,16 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   // object's set; the object itself is only removed when its set is empty.
   // This is how the user's own member row (delivered via both the personal
   // channel and a workspace channel) naturally survives a workspace switch.
+  //
+  // Keyed by object id alone — IDs are UUIDs and globally unique across
+  // object types, so no type prefix is needed.
   const objectScopes = new Map<string, Set<Scope>>()
+
+  // Reverse index: which object ids live in each scope. Lets clearScope and
+  // replaceScope iterate just the affected scope's objects instead of
+  // scanning the entire pool. Kept in sync with objectScopes via the
+  // helpers below.
+  const scopeToIds = new Map<Scope, Set<string>>()
 
   function addObjectScope(id: string, scope: Scope): void {
     let set = objectScopes.get(id)
@@ -287,6 +296,38 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       objectScopes.set(id, set)
     }
     set.add(scope)
+    let idsInScope = scopeToIds.get(scope)
+    if (!idsInScope) {
+      idsInScope = new Set()
+      scopeToIds.set(scope, idsInScope)
+    }
+    idsInScope.add(id)
+  }
+
+  function removeObjectScope(id: string, scope: Scope): void {
+    const set = objectScopes.get(id)
+    if (set) {
+      set.delete(scope)
+      if (set.size === 0) objectScopes.delete(id)
+    }
+    const idsInScope = scopeToIds.get(scope)
+    if (idsInScope) {
+      idsInScope.delete(id)
+      if (idsInScope.size === 0) scopeToIds.delete(scope)
+    }
+  }
+
+  function dropObjectFromAllScopes(id: string): void {
+    const set = objectScopes.get(id)
+    if (!set) return
+    for (const scope of set) {
+      const idsInScope = scopeToIds.get(scope)
+      if (idsInScope) {
+        idsInScope.delete(id)
+        if (idsInScope.size === 0) scopeToIds.delete(scope)
+      }
+    }
+    objectScopes.delete(id)
   }
 
   function scopesOf(id: string): Scope[] {
@@ -605,7 +646,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       if (existing) reverseIndexRemove(cascadeIndex, existing)
       typeMap.delete(objectId)
     }
-    objectScopes.delete(objectId)
+    dropObjectFromAllScopes(objectId)
     // Also clear any pending updates and temp tracking
     const removedKey = `${objectType}:${objectId}`
     const removedPending = pendingUpdates.value.get(removedKey)
@@ -632,7 +673,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
         if (existing) reverseIndexRemove(cascadeIndex, existing)
         typeMap.delete(objectId)
       }
-      objectScopes.delete(objectId)
+      dropObjectFromAllScopes(objectId)
       const removedKey = `${objectType}:${objectId}`
       const removedPending = pendingUpdates.value.get(removedKey)
       if (removedPending) {
@@ -676,7 +717,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
         removed.push({ object: obj, scopes: scopesOf(id) })
         reverseIndexRemove(cascadeIndex, obj)
         typeMap.delete(id)
-        objectScopes.delete(id)
+        dropObjectFromAllScopes(id)
         const cascadeKey = `${type}:${id}`
         const cascadePending = pendingUpdates.value.get(cascadeKey)
         if (cascadePending) {
@@ -743,23 +784,32 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   // in place because those objects also live in `personal`.
   function clearScope(scope: Scope): void {
     const changedTypes = new Set<ObjectType>()
-    for (const [id, scopes] of objectScopes) {
-      if (!scopes.has(scope)) continue
-      scopes.delete(scope)
-      if (scopes.size > 0) continue
-      // Last scope — fully remove the object.
-      objectScopes.delete(id)
-      tempObjectIds.delete(id)
-      for (const [type, typeMap] of objects.value) {
-        const existing = typeMap.get(id)
-        if (existing) {
-          reverseIndexRemove(cascadeIndex, existing)
-          typeMap.delete(id)
-          changedTypes.add(type)
-          // We know the type, so build the exact pending key directly
-          // instead of scanning every key for a suffix match.
-          clearPendingFor(type, id)
-          break
+    const idsInScope = scopeToIds.get(scope)
+    if (idsInScope) {
+      // Snapshot because removeObjectScope/dropObjectFromAllScopes mutate
+      // scopeToIds underneath us.
+      for (const id of Array.from(idsInScope)) {
+        const scopes = objectScopes.get(id)
+        if (!scopes) continue
+        if (scopes.size > 1) {
+          // Object also lives in another scope — strip just this one.
+          removeObjectScope(id, scope)
+          continue
+        }
+        // Last scope — fully remove the object.
+        dropObjectFromAllScopes(id)
+        tempObjectIds.delete(id)
+        for (const [type, typeMap] of objects.value) {
+          const existing = typeMap.get(id)
+          if (existing) {
+            reverseIndexRemove(cascadeIndex, existing)
+            typeMap.delete(id)
+            changedTypes.add(type)
+            // We know the type, so build the exact pending key directly
+            // instead of scanning every key for a suffix match.
+            clearPendingFor(type, id)
+            break
+          }
         }
       }
     }
@@ -821,13 +871,14 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     // Snapshot temp objects in this scope that aren't in the server payload —
     // their create commands are still queued and the object must survive.
     // Temp objects confirmed by the server drop their temp flag.
+    const idsInScope = scopeToIds.get(scope)
     const tempObjectsToPreserve: PoolObject[] = []
     for (const id of Array.from(tempObjectIds)) {
       if (serverIds.has(id)) {
         tempObjectIds.delete(id)
         continue
       }
-      if (!objectScopes.get(id)?.has(scope)) continue
+      if (!idsInScope?.has(id)) continue
       for (const typeMap of objects.value.values()) {
         const obj = typeMap.get(id)
         if (obj) {
@@ -844,23 +895,30 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     // would linger orphaned in pendingUpdates with no server object to
     // overlay, and resurrect if the same id reappeared.
     const changedTypes = new Set<ObjectType>()
-    for (const [id, scopes] of objectScopes) {
-      if (!scopes.has(scope)) continue
-      scopes.delete(scope)
-      if (scopes.size > 0) continue
-      objectScopes.delete(id)
-      for (const [type, typeMap] of objects.value) {
-        const existing = typeMap.get(id)
-        if (existing) {
-          reverseIndexRemove(cascadeIndex, existing)
-          typeMap.delete(id)
-          changedTypes.add(type)
-          // Only drop pending overlays for objects that aren't coming back
-          // in this replay — objects that will be re-inserted below keep
-          // their (newer-than-server) pending updates from the reconcile
-          // pass above.
-          if (!serverIds.has(id)) clearPendingFor(type, id)
-          break
+    if (idsInScope) {
+      // Snapshot because removeObjectScope/dropObjectFromAllScopes mutate
+      // scopeToIds underneath us.
+      for (const id of Array.from(idsInScope)) {
+        const scopes = objectScopes.get(id)
+        if (!scopes) continue
+        if (scopes.size > 1) {
+          removeObjectScope(id, scope)
+          continue
+        }
+        dropObjectFromAllScopes(id)
+        for (const [type, typeMap] of objects.value) {
+          const existing = typeMap.get(id)
+          if (existing) {
+            reverseIndexRemove(cascadeIndex, existing)
+            typeMap.delete(id)
+            changedTypes.add(type)
+            // Only drop pending overlays for objects that aren't coming back
+            // in this replay — objects that will be re-inserted below keep
+            // their (newer-than-server) pending updates from the reconcile
+            // pass above.
+            if (!serverIds.has(id)) clearPendingFor(type, id)
+            break
+          }
         }
       }
     }
@@ -966,6 +1024,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     pendingIdToKey.clear()
     tempObjectIds.clear()
     objectScopes.clear()
+    scopeToIds.clear()
     getAllCache.clear()
     for (const parentMap of cascadeIndex.values()) {
       parentMap.clear()
