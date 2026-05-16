@@ -21,10 +21,6 @@ import {
   makeWorkspace,
 } from '@/test/factories'
 
-vi.mock('@/stores/auth', () => ({
-  useAuthStore: () => ({ currentUserId: 'user-1' }),
-}))
-
 describe('objectPool store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())

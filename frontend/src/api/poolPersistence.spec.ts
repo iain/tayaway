@@ -530,11 +530,20 @@ describe('poolPersistence — progressive cache loading', () => {
     await vi.runAllTimersAsync()
     await loadPromise
 
-    // Stops after the first member load triggers hasSynced; one scope's
-    // load can complete before the loop noticed (personal then workspace,
-    // depending on ordering).
-    expect(memberCallCount).toBeGreaterThanOrEqual(1)
-    expect(memberCallCount).toBeLessThanOrEqual(2)
+    // hasSynced is checked at the top of each *type* iteration, not between
+    // scopes within a type — so both scope loads for 'member' run (personal
+    // and workspace), then the next type ('workspace') sees hasSynced=true
+    // and returns. The 'event' bucket is never touched.
+    expect(memberCallCount).toBe(2)
+    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith('personal', 'member')
+    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith(
+      'workspace:ws-1',
+      'member'
+    )
+    expect(poolDb.loadObjectsByType).not.toHaveBeenCalledWith(
+      expect.anything(),
+      'event'
+    )
     expect(pool.importObjects).not.toHaveBeenCalled()
   })
 
