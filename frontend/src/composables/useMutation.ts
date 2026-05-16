@@ -1,27 +1,22 @@
 import { ref } from 'vue'
 import { useCommandQueueStore, CommandQueuedError } from '@/stores/commandQueue'
 import { useObjectPoolStore } from '@/stores/objectPool'
-import { useWorkspaceStore } from '@/stores/workspace'
 import { workspaceScope } from '@/api/poolDb'
+import { currentWorkspaceScopeOrThrow } from '@/api/poolScope'
 import type { ApiResponse } from '@/api/client'
 import type { ObjectType, ObjectTypeMap, PoolObject } from '@/types/pool'
 
 // Optimistic creates land in the workspace's scope so the matching server
 // confirmation, which arrives on the same channel, merges into the same
-// bucket. Most pool objects carry their own workspaceId, so prefer that
-// over the global "current workspace" — it's resilient to a rapid switch
-// while a mutation is in flight, and to tests that don't mock the
-// workspace store.
+// bucket. Most pool objects carry their own workspaceId — prefer that, since
+// it's resilient to a rapid workspace switch while the mutation is in
+// flight. Scope-less objects (dateRange, vote, etc.) fall back to the
+// active workspace; if none is set, that's a bug and we'd rather throw
+// than silently misroute data.
 function scopeForOptimisticObject(obj: PoolObject): string {
   const objectWsId = (obj as { workspaceId?: string | null }).workspaceId
   if (objectWsId) return workspaceScope(objectWsId)
-  // In production the workspace store is always initialized by the time a
-  // mutation fires (handleAuthenticated does it before any mutation control
-  // is even rendered). The 'test' fallback exists for unit tests that
-  // exercise pool semantics without an authenticated workspace — pool reads
-  // are scope-agnostic, so the synthetic tag has no observable effect.
-  const wsId = useWorkspaceStore().currentWorkspaceId ?? 'test'
-  return workspaceScope(wsId)
+  return currentWorkspaceScopeOrThrow()
 }
 
 export type MutationResult<T> = { queued: false; data: T } | { queued: true }

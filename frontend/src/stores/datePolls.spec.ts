@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useDatePollsStore } from './datePolls'
 import { useObjectPoolStore } from './objectPool'
+import { useWorkspaceStore } from './workspace'
 import { CommandQueuedError } from '@/stores/commandQueue'
 import type { ObjectTypeMap } from '@/types/pool'
 import type { ApiResponse } from '@/api/client'
@@ -60,6 +61,11 @@ vi.mock('@/stores/commandQueue', async () => {
 describe('datePolls store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    // addDateRange (and the error-path rollback in removeDateRange) tag the
+    // optimistic dateRange with the active workspace's scope; production code
+    // throws if none is set, so the tests need a workspace too.
+    localStorage.setItem('current_workspace_id', 'ws-test')
+    useWorkspaceStore().initialize(['ws-test'])
     enqueueImpl = async () => okResponse({ objects: [] })
   })
 

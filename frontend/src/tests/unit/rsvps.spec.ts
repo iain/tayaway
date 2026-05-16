@@ -30,6 +30,13 @@ vi.mock('@/stores/auth', () => ({
   useAuthStore: () => ({ currentUserId: 'user-1' }),
 }))
 
+// useMutation derives the scope for optimistic temp objects from the active
+// workspace and throws if none is set; this suite only exercises body
+// shaping, so a stub workspace is enough.
+vi.mock('@/stores/workspace', () => ({
+  useWorkspaceStore: () => ({ currentWorkspaceId: 'test' }),
+}))
+
 vi.mock('@/api/commandDb', () => ({
   addCommand: vi.fn(),
   removeCommand: vi.fn(),

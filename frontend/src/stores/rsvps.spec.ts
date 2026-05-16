@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useRsvpsStore } from './rsvps'
 import { useObjectPoolStore } from './objectPool'
+import { useWorkspaceStore } from './workspace'
 import { CommandQueuedError } from '@/stores/commandQueue'
 import type { ObjectTypeMap } from '@/types/pool'
 import type { ApiResponse } from '@/api/client'
@@ -50,6 +51,10 @@ vi.mock('@/stores/auth', () => ({
 describe('rsvps store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    // Optimistic temp RSVPs are scope-less objects; useMutation tags them
+    // with the active workspace's scope and throws if none is set.
+    localStorage.setItem('current_workspace_id', 'test')
+    useWorkspaceStore().initialize(['test'])
     enqueueImpl = async () => okResponse({ objects: [] })
   })
 
