@@ -30,6 +30,8 @@ APP_CONFIG = Config.define do |c|
              description: "Idempotency key TTL (hours)"
   c.optional :audit_log_retention_days, type: :int, default: 365, min: 1,
              description: "Audit log retention (days)"
+  c.optional :personal_sync_notification_limit, type: :int, default: 50, min: 1,
+             description: "Max notifications included in the WS handshake personal-sync payload"
   c.optional :webauthn_extra_origins, type: :csv, default: [],
              description: "Extra WebAuthn origins (CSV)"
   c.optional :git_sha,

@@ -15,14 +15,14 @@ module Sync
       # frontend derives unread-per-workspace badges from these rows, so
       # the limit needs to cover the typical "what's new across all my
       # workspaces" view but doesn't need to be unbounded — older items
-      # load on demand from the inbox endpoint.
-      NOTIFICATION_BACKLOG_LIMIT = 50
-
+      # load on demand from the inbox endpoint. Configurable via
+      # PERSONAL_SYNC_NOTIFICATION_LIMIT so it can be tuned without a
+      # code change as user behaviour shifts.
       def call(user_id:)
         synced_at = Time.now
         workspaces = Workspace.for_user(user_id)
         memberships = WorkspaceMembership.for_user(user_id)
-        notifications = Notification.for_user(user_id, limit: NOTIFICATION_BACKLOG_LIMIT)
+        notifications = Notification.for_user(user_id, limit: APP_CONFIG.personal_sync_notification_limit)
 
         pool = PoolSerializer.new
         pool.add(:workspace, workspaces) if workspaces.any?
