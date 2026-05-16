@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class SettlementTransferSerializer
-  extend PoolObjectSerializer
-
   class << self
     def serialize_batch(transfers, pool:)
       transfers.map do |transfer|

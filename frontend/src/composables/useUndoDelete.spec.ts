@@ -1,3 +1,4 @@
+import { Scope } from '@/api/scope'
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useUndoDelete } from './useUndoDelete'
@@ -49,7 +50,7 @@ describe('useUndoDelete', () => {
 
   it('removes the object from the pool immediately', () => {
     const pool = useObjectPoolStore()
-    pool.set(makeTaskItem())
+    pool.set(makeTaskItem(), { scope: Scope.workspace('test') })
     expect(pool.get('taskItem', 'item-1')).toBeDefined()
 
     const { undoableDelete } = useUndoDelete()
@@ -65,7 +66,7 @@ describe('useUndoDelete', () => {
 
   it('shows a toast with Undo action', () => {
     const pool = useObjectPoolStore()
-    pool.set(makeTaskItem())
+    pool.set(makeTaskItem(), { scope: Scope.workspace('test') })
 
     const { undoableDelete } = useUndoDelete()
     undoableDelete({
@@ -83,7 +84,7 @@ describe('useUndoDelete', () => {
 
   it('restores the object when Undo is clicked', () => {
     const pool = useObjectPoolStore()
-    pool.set(makeTaskItem())
+    pool.set(makeTaskItem(), { scope: Scope.workspace('test') })
 
     const { undoableDelete } = useUndoDelete()
     undoableDelete({
@@ -105,7 +106,7 @@ describe('useUndoDelete', () => {
 
   it('fires the API delete after the undo window expires', async () => {
     const pool = useObjectPoolStore()
-    pool.set(makeTaskItem())
+    pool.set(makeTaskItem(), { scope: Scope.workspace('test') })
 
     const { undoableDelete } = useUndoDelete()
     undoableDelete({
@@ -129,7 +130,7 @@ describe('useUndoDelete', () => {
 
   it('does not fire the API delete if Undo was clicked', async () => {
     const pool = useObjectPoolStore()
-    pool.set(makeTaskItem())
+    pool.set(makeTaskItem(), { scope: Scope.workspace('test') })
 
     const { undoableDelete } = useUndoDelete()
     undoableDelete({
@@ -150,7 +151,7 @@ describe('useUndoDelete', () => {
 
   it('restores objects if the API call fails', async () => {
     const pool = useObjectPoolStore()
-    pool.set(makeTaskItem())
+    pool.set(makeTaskItem(), { scope: Scope.workspace('test') })
 
     enqueueMock.mockRejectedValueOnce(new Error('Server error'))
 

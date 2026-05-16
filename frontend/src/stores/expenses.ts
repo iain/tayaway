@@ -65,6 +65,8 @@ export const useExpensesStore = defineStore('expenses', () => {
     )
 
     if (tempParticipants.length > 0) {
+      // Participants don't carry workspaceId — the pool derives the active
+      // workspace's scope from useWorkspaceStore.
       pool.importObjects(tempParticipants)
     }
 

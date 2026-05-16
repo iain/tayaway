@@ -52,7 +52,10 @@ module Members
           .where(id: target.id.to_s)
           .update(role: new_role, updated_at: Time.now)
 
-        Broadcaster.object_changed("member", target.id.to_s, workspace_id: target.workspace_id.to_s)
+        # One NOTIFY — the Listener fans out to workspace + user audiences
+        # via ObjectRegistry so the affected user's other sessions see the
+        # role change even when they're looking at a different workspace.
+        Broadcaster.object_changed("member", target.id.to_s)
 
         if old_role != new_role && acting_membership.user_id.to_s != target.user_id.to_s
           Members::OnRoleChanged.call(member: target, old_role: old_role, new_role: new_role)

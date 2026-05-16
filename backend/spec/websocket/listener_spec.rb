@@ -9,8 +9,12 @@ RSpec.describe Websocket::Listener do
     let(:manager) do
       instance_double(
         Websocket::ConnectionManager,
-        broadcast_to_workspace: nil,
-        broadcast_to_user: nil
+        broadcast: nil,
+        connections_for_user: [],
+        subscribed?: true,
+        subscribe: nil,
+        set_membership: nil,
+        send_to_connections: nil
       )
     end
 
@@ -18,18 +22,25 @@ RSpec.describe Websocket::Listener do
       described_class.handle_notification(payload.to_json, manager)
     end
 
-    context "with workspace audience" do
-      it "threads a PolicyContext built from the pool into the broadcast" do
+    def captured_topics
+      received = []
+      allow(manager).to receive(:broadcast) do |topic, _msg, **_|
+        received << topic
+      end
+      yield
+      received
+    end
+
+    context "with update payloads (no topic inline — Listener derives from the loaded object)" do
+      it "threads a PolicyContext built from the pool into the workspace broadcast" do
         event_row = TestFactories.event(workspace: workspace, user: user)
 
         captured = nil
-        allow(manager).to receive(:broadcast_to_workspace) do |_ws, _msg, policy_context:|
+        allow(manager).to receive(:broadcast) do |_topic, _msg, policy_context: nil|
           captured = policy_context
         end
 
         invoke(
-          audience: "workspace",
-          audienceId: workspace[:id].to_s,
           objectType: "event",
           objectId: event_row[:id].to_s,
           action: "update"
@@ -41,105 +52,169 @@ RSpec.describe Websocket::Listener do
         expect(captured.policy_contexts["event:#{event_row[:id]}"]).to include(has_expenses: false)
       end
 
-      it "broadcasts a deleted marker when an update notify loses the race to a delete" do
-        ghost_id = SecureRandom.uuid
-        captured_msg = nil
-        allow(manager).to receive(:broadcast_to_workspace) do |_ws, msg, **_|
-          captured_msg = msg
+      it "addresses event broadcasts to the workspace topic" do
+        event_row = TestFactories.event(workspace: workspace, user: user)
+
+        topics = captured_topics do
+          invoke(
+            objectType: "event",
+            objectId: event_row[:id].to_s,
+            action: "update"
+          )
         end
 
+        expect(topics).to eq([Topic.workspace(workspace[:id])])
+      end
+
+      it "drops the update when the object is gone — the corresponding delete NOTIFY handles cleanup" do
+        ghost_id = SecureRandom.uuid
+
         invoke(
-          audience: "workspace",
-          audienceId: workspace[:id].to_s,
           objectType: "event",
           objectId: ghost_id,
           action: "update"
         )
 
-        expect(captured_msg[:action]).to eq("delete")
-        expect(captured_msg[:data][:deleted].first).to include(objectType: "event", id: ghost_id)
+        expect(manager).not_to have_received(:broadcast)
       end
 
-      it "broadcasts a deleted marker for explicit delete notifications" do
-        event_row = TestFactories.event(workspace: workspace, user: user)
-        captured_msg = nil
-        allow(manager).to receive(:broadcast_to_workspace) do |_ws, msg, **_|
-          captured_msg = msg
+      it "ships a member update to the workspace topic only — the user gets it because they're auto-subscribed" do
+        membership_row = TestFactories.workspace_membership(workspace: workspace, user: user, role: "member")
+        # Subscribed to that workspace already — the auto-subscribed path.
+        allow(manager).to receive(:subscribed?).and_return(true)
+
+        captured = []
+        allow(manager).to receive(:broadcast) do |topic, msg, **_|
+          captured << [topic, msg]
         end
 
         invoke(
-          audience: "workspace",
-          audienceId: workspace[:id].to_s,
-          objectType: "event",
-          objectId: event_row[:id].to_s,
-          action: "delete"
-        )
-
-        expect(captured_msg[:action]).to eq("delete")
-        expect(captured_msg[:data][:deleted].first).to include(objectType: "event", id: event_row[:id].to_s)
-      end
-    end
-
-    context "with user audience" do
-      it "broadcasts the serialized object to the recipient user" do
-        notification = TestFactories.notification(user: user, workspace: workspace)
-
-        captured_user_id = nil
-        captured_msg = nil
-        allow(manager).to receive(:broadcast_to_user) do |uid, msg|
-          captured_user_id = uid
-          captured_msg = msg
-        end
-
-        invoke(
-          audience: "user",
-          audienceId: user[:id].to_s,
-          objectType: "notification",
-          objectId: notification[:id].to_s,
+          objectType: "member",
+          objectId: membership_row[:id],
           action: "update"
         )
 
-        expect(captured_user_id).to eq(user[:id].to_s)
-        expect(captured_msg[:type]).to eq("broadcast")
-        expect(captured_msg[:action]).to eq("update")
-        objects = captured_msg[:data][:objects]
-        expect(objects).to be_an(Array).and have_attributes(length: 1)
-        expect(objects.first).to include(objectType: "notification", id: notification[:id].to_s)
-        expect(manager).not_to have_received(:broadcast_to_workspace)
+        expect(captured.size).to eq(1)
+        topic, msg = captured.first
+        expect(topic).to eq(Topic.workspace(workspace[:id]))
+        expect(msg.dig(:data, :objects, 0)).to include(
+          objectType: "member",
+          id: membership_row[:id]
+        )
       end
 
-      it "broadcasts a deleted marker for an explicit delete to a user" do
-        captured_msg = nil
-        allow(manager).to receive(:broadcast_to_user) { |_uid, msg| captured_msg = msg }
+      it "bootstraps a freshly-added member: subscribes their connections + ships a WorkspaceSync before the workspace broadcast" do
+        # This is the new-workspace bootstrap path: the user is freshly
+        # added to a workspace, their existing connections are not yet
+        # subscribed to its topic. The Listener subscribes them, loads
+        # the membership for permission attachment, and direct-sends a
+        # WorkspaceSync so the pool gets the workspace row + initial data.
+        membership_row = TestFactories.workspace_membership(workspace: workspace, user: user, role: "member")
+        conn_id = SecureRandom.uuid
 
-        notification_id = SecureRandom.uuid
+        allow(manager).to receive(:connections_for_user).with(user[:id].to_s).and_return([conn_id])
+        allow(manager).to receive(:subscribed?).with(conn_id, Topic.workspace(workspace[:id])).and_return(false)
+
         invoke(
-          audience: "user",
-          audienceId: user[:id].to_s,
+          objectType: "member",
+          objectId: membership_row[:id],
+          action: "update"
+        )
+
+        expect(manager).to have_received(:set_membership)
+          .with(conn_id, workspace[:id].to_s, kind_of(WorkspaceMembership))
+        expect(manager).to have_received(:subscribe).with(conn_id, Topic.workspace(workspace[:id]))
+        expect(manager).to have_received(:send_to_connections) do |conn_ids, msg|
+          expect(conn_ids).to eq([conn_id])
+          expect(msg[:type]).to eq("sync")
+          expect(msg[:data][:syncType]).to eq("full").or eq("partial")
+        end
+      end
+
+      it "broadcasts a notification to its user topic" do
+        notification = TestFactories.notification(user: user, workspace: workspace)
+
+        topics = captured_topics do
+          invoke(
+            objectType: "notification",
+            objectId: notification[:id].to_s,
+            action: "update"
+          )
+        end
+
+        expect(topics).to eq([Topic.user(user[:id])])
+      end
+    end
+
+    context "with delete payloads (topics stay inline because the object can't be reloaded)" do
+      it "broadcasts a deleted marker on each topic carried in the payload" do
+        event_id = SecureRandom.uuid
+
+        captured = []
+        allow(manager).to receive(:broadcast) do |topic, msg, **_|
+          captured << [topic, msg]
+        end
+
+        invoke(
+          topics: ["workspace:#{workspace[:id]}"],
+          objectType: "event",
+          objectId: event_id,
+          action: "delete"
+        )
+
+        expect(captured.size).to eq(1)
+        topic, msg = captured.first
+        expect(topic).to eq(Topic.workspace(workspace[:id]))
+        expect(msg[:action]).to eq("delete")
+        expect(msg[:data][:deleted].first).to include(objectType: "event", id: event_id)
+      end
+
+      it "broadcasts a deleted marker on the user topic" do
+        notification_id = SecureRandom.uuid
+
+        captured = []
+        allow(manager).to receive(:broadcast) do |topic, msg, **_|
+          captured << [topic, msg]
+        end
+
+        invoke(
+          topics: ["user:#{user[:id]}"],
           objectType: "notification",
           objectId: notification_id,
           action: "delete"
         )
 
-        expect(captured_msg[:action]).to eq("delete")
-        expect(captured_msg[:data][:deleted].first).to include(objectType: "notification", id: notification_id)
+        expect(captured.size).to eq(1)
+        topic, msg = captured.first
+        expect(topic).to eq(Topic.user(user[:id]))
+        expect(msg[:action]).to eq("delete")
+        expect(msg[:data][:deleted].first).to include(objectType: "notification", id: notification_id)
       end
 
-      it "downgrades a stale update to a delete when the row is gone" do
-        captured_msg = nil
-        allow(manager).to receive(:broadcast_to_user) { |_uid, msg| captured_msg = msg }
+      it "logs and drops a delete payload with an unknown topic namespace" do
+        allow(APP_LOGGER).to receive(:warn)
 
-        ghost_id = SecureRandom.uuid
         invoke(
-          audience: "user",
-          audienceId: user[:id].to_s,
-          objectType: "notification",
-          objectId: ghost_id,
-          action: "update"
+          topics: ["the_void:#{SecureRandom.uuid}"],
+          objectType: "event",
+          objectId: SecureRandom.uuid,
+          action: "delete"
         )
 
-        expect(captured_msg[:action]).to eq("delete")
-        expect(captured_msg[:data][:deleted].first).to include(objectType: "notification", id: ghost_id)
+        expect(APP_LOGGER).to have_received(:warn)
+        expect(manager).not_to have_received(:broadcast)
+      end
+
+      it "logs and drops a delete payload with no topics" do
+        allow(APP_LOGGER).to receive(:warn)
+
+        invoke(
+          objectType: "event",
+          objectId: SecureRandom.uuid,
+          action: "delete"
+        )
+
+        expect(manager).not_to have_received(:broadcast)
       end
     end
 
@@ -147,31 +222,13 @@ RSpec.describe Websocket::Listener do
       allow(APP_LOGGER).to receive(:warn)
 
       invoke(
-        audience: "workspace",
-        audienceId: workspace[:id].to_s,
         objectType: "not_a_real_type",
         objectId: SecureRandom.uuid,
         action: "update"
       )
 
       expect(APP_LOGGER).to have_received(:warn)
-      expect(manager).not_to have_received(:broadcast_to_workspace)
-    end
-
-    it "logs and drops payloads with an unknown audience" do
-      allow(APP_LOGGER).to receive(:warn)
-
-      invoke(
-        audience: "the_void",
-        audienceId: SecureRandom.uuid,
-        objectType: "event",
-        objectId: SecureRandom.uuid,
-        action: "update"
-      )
-
-      expect(APP_LOGGER).to have_received(:warn)
-      expect(manager).not_to have_received(:broadcast_to_workspace)
-      expect(manager).not_to have_received(:broadcast_to_user)
+      expect(manager).not_to have_received(:broadcast)
     end
 
     it "logs and drops malformed JSON without raising" do

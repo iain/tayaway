@@ -84,6 +84,26 @@ RSpec.describe Invites::Accept do
     expect(result.value![:message]).to include("already a member")
   end
 
+  it "emits a single NOTIFY for the new membership — the Listener derives the topic from the loaded object" do
+    # The producer no longer enumerates audiences; routing happens in the
+    # Listener via MemberSerializer.topics_for. Asserting only the bare
+    # NOTIFY shape here; the listener spec covers the workspace topic
+    # dispatch and the bootstrap path that runs when the joining user
+    # isn't yet subscribed to the new workspace.
+    captured = []
+    allow(DB).to receive(:notify) do |_channel, payload:|
+      captured << JSON.parse(payload)
+    end
+    invite = create_invite_with_token(email: "newuser@example.com")
+
+    described_class.call(token_jwt: invite[:jwt])
+
+    member_broadcasts = captured.select { |p| p["objectType"] == "member" }
+    expect(member_broadcasts.size).to eq(1)
+    expect(member_broadcasts.first).not_to have_key("audience")
+    expect(member_broadcasts.first).to include("action" => "update")
+  end
+
   it "returns failure for missing token" do
     result = described_class.call(token_jwt: nil)
 

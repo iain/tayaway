@@ -89,7 +89,7 @@ module Invites
         APP_LOGGER.info { "INVITE LINK FOR #{email}: #{invite_link}" } if APP_CONFIG.development?
         Invites::OnSent.call(email: email, invite_link: invite_link, workspace_id: workspace_id, name: name)
 
-        Broadcaster.object_changed("workspace_invite", id, workspace_id: workspace_id.to_s)
+        Broadcaster.object_changed("workspace_invite", id)
 
         invite = WorkspaceInvite.find(id)
         pool = PoolSerializer.new(membership: membership)

@@ -1,5 +1,7 @@
 import { useNotificationsStore } from '@/stores'
 import { processPoolResponse } from '@/api/processPoolResponse'
+import { useWorkspaceStore } from '@/stores/workspace'
+import { Scope } from '@/api/scope'
 import { handleSessionExpired } from '@/api/sessionExpired'
 
 export interface ApiResponse<T> {
@@ -207,8 +209,14 @@ export const api = {
     path: string,
     options?: { signal?: AbortSignal }
   ): Promise<ApiResponse<T>> {
+    // Snapshot the workspace at request time so a switch mid-flight doesn't
+    // route the response into the new workspace's scope. Without this, a
+    // stale GET for workspace A landing after switch to B would tag A's
+    // objects with workspace:B and orphan them when B's scope is cleared.
+    const wsId = useWorkspaceStore().currentWorkspaceId
+    const scope = wsId ? Scope.workspace(wsId) : undefined
     const response = await rawApi.get<T>(path, options)
-    processPoolResponse(response.data)
+    processPoolResponse(response.data, scope)
     return response
   },
 }

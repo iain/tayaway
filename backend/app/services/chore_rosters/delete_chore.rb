@@ -37,19 +37,19 @@ module ChoreRosters
           assignment_ids = DB[:chore_assignments].where(chore_id: chore.id).select_map(:id)
           assignment_ids.each do |aid|
             DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "chore_assignment", object_id: aid)
-            Broadcaster.object_deleted("chore_assignment", aid, workspace_id: workspace_id)
+            Broadcaster.object_deleted("chore_assignment", aid, topics: [Topic.workspace(workspace_id)])
             deleted << { objectType: "choreAssignment", id: aid.to_s }
           end
 
           # Track chore deletion
           DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "chore", object_id: chore.id)
-          Broadcaster.object_deleted("chore", chore.id, workspace_id: workspace_id)
+          Broadcaster.object_deleted("chore", chore.id, topics: [Topic.workspace(workspace_id)])
           deleted << { objectType: "chore", id: chore.id.to_s }
 
           # Delete chore (cascades to assignments)
           DB[:chores].where(id: chore.id).delete
 
-          Broadcaster.object_changed("chore_roster", roster_id, workspace_id: workspace_id)
+          Broadcaster.object_changed("chore_roster", roster_id)
         end
 
         pool = PoolSerializer.new(membership: membership)

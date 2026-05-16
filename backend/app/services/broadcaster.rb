@@ -3,56 +3,50 @@
 require "json"
 
 # Service module for broadcasting changes via PostgreSQL NOTIFY.
-# Sends minimal payloads (audience + object info) to stay under pg_notify's 8KB limit.
-# The Listener fetches full data before broadcasting to WebSocket clients.
+# Sends minimal payloads (type + id, plus topics for deletes) to stay
+# under pg_notify's 8KB limit. The Listener fetches the full object,
+# asks the registry for its topic set, and dispatches.
 #
-# Audience selects who hears the change:
-#   workspace_id: → fan out to every connection subscribed to that workspace
-#                   (the standard collaborative path)
-#   user_id:      → fan out to every connection authenticated as that user
-#                   (per-user objects like notifications, read receipts, etc.)
-#
-# Exactly one of workspace_id: / user_id: must be passed.
+# Updates carry no topic info — the Listener loads the object and asks
+# `entry.topics_for(obj)`. Deletes do carry topics because the object is
+# gone by the time the Listener fires and can no longer be queried;
+# topics ride the wire as their string form (Topic#to_json serializes
+# as `"workspace:<id>"` / `"user:<id>"`).
 #
 # @example
-#   Broadcaster.object_changed("event", event_id, workspace_id: workspace_id)
-#   Broadcaster.object_changed("notification", notification_id, user_id: user_id)
-#   Broadcaster.object_deleted("notification", notification_id, user_id: user_id)
+#   Broadcaster.object_changed("event", event_id)
+#   Broadcaster.object_changed("member", membership_id)
+#   Broadcaster.object_deleted("notification", id, topics: [Topic.user(user_id)])
+#   Broadcaster.object_deleted("event", id, topics: [Topic.workspace(workspace_id)])
 module Broadcaster
   CHANNEL = "tayaway_objects"
 
   class << self
-    def object_changed(object_type, object_id, workspace_id: nil, user_id: nil)
-      notify(object_type, object_id, audience: build_audience(workspace_id, user_id), action: "update")
+    def object_changed(object_type, object_id)
+      notify(
+        objectType: object_type,
+        objectId: object_id.to_s,
+        action: "update"
+      )
     end
 
-    def object_deleted(object_type, object_id, workspace_id: nil, user_id: nil)
-      notify(object_type, object_id, audience: build_audience(workspace_id, user_id), action: "delete")
+    def object_deleted(object_type, object_id, topics:)
+      topics = Array(topics)
+      raise ArgumentError, "Broadcaster: object_deleted needs at least one topic" if topics.empty?
+      raise ArgumentError, "Broadcaster: object_deleted topics: must be Topic instances" unless topics.all?(Topic)
+
+      notify(
+        objectType: object_type,
+        objectId: object_id.to_s,
+        action: "delete",
+        topics: topics
+      )
     end
 
     private
 
-    def build_audience(workspace_id, user_id)
-      if workspace_id && user_id
-        raise ArgumentError, "Broadcaster: pass exactly one of workspace_id: or user_id: as audience"
-      elsif workspace_id
-        { kind: "workspace", id: workspace_id.to_s }
-      elsif user_id
-        { kind: "user", id: user_id.to_s }
-      else
-        raise ArgumentError, "Broadcaster: missing audience — pass workspace_id: or user_id:"
-      end
-    end
-
-    def notify(object_type, object_id, audience:, action:)
-      payload = {
-        audience: audience[:kind],
-        audienceId: audience[:id],
-        objectType: object_type,
-        objectId: object_id.to_s,
-        action: action
-      }.to_json
-      DB.run(Sequel.lit("SELECT pg_notify(?, ?)", CHANNEL, payload))
+    def notify(**payload)
+      DB.notify(CHANNEL, payload: payload.to_json)
     rescue StandardError => e
       APP_LOGGER.error { "[Broadcaster] Error sending notification: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
     end

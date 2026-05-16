@@ -5,6 +5,7 @@ import { MagnifyingGlassIcon } from '@heroicons/vue/20/solid'
 import {
   ArrowPathIcon,
   ArrowRightOnRectangleIcon,
+  ArrowsRightLeftIcon,
   BanknotesIcon,
   CalendarDaysIcon,
   CheckCircleIcon,
@@ -90,7 +91,18 @@ async function logout(): Promise<void> {
   router.push('/login')
 }
 
+const workspaceSwitchActions = computed<NavAction[]>(() =>
+  workspaceStore.otherWorkspaces.map((ws) => ({
+    type: 'action' as const,
+    id: `switch-workspace-${ws.id}`,
+    name: `Switch to ${ws.name}`,
+    icon: ArrowsRightLeftIcon,
+    run: () => workspaceStore.switchWorkspace(ws.id),
+  }))
+)
+
 const quickActions = computed<NavAction[]>(() => [
+  ...workspaceSwitchActions.value,
   { type: 'action', id: 'home', name: 'Dashboard', icon: HomeIcon, href: '/' },
   {
     type: 'action',

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import type { StoredCommand } from './commandDb'
 import { getResourceKey, coalesceCommands } from './coalesceCommands'
 
@@ -341,5 +341,71 @@ describe('coalesceCommands', () => {
     expect(result).toHaveLength(1)
     expect(result[0]!.method).toBe('PATCH')
     expect(result[0]!.body).toEqual({ name: 'v1', description: 'desc' })
+  })
+
+  describe('workspaceId reconciliation', () => {
+    it('preserves the workspaceId of a single command', () => {
+      const result = coalesceCommands([
+        cmd({ method: 'PUT', path: '/events/abc', workspaceId: 'ws-1' }),
+      ])
+
+      expect(result[0]!.workspaceId).toBe('ws-1')
+    })
+
+    it('coerces a missing workspaceId to null', () => {
+      const result = coalesceCommands([
+        cmd({ method: 'PUT', path: '/events/abc' }),
+      ])
+
+      expect(result[0]!.workspaceId).toBeNull()
+    })
+
+    it('keeps the agreed workspaceId when merged commands match', () => {
+      const result = coalesceCommands([
+        cmd({
+          method: 'POST',
+          path: '/events',
+          body: { id: 'abc' },
+          workspaceId: 'ws-1',
+        }),
+        cmd({
+          method: 'PUT',
+          path: '/events/abc',
+          body: { name: 'x' },
+          workspaceId: 'ws-1',
+        }),
+      ])
+
+      expect(result).toHaveLength(1)
+      expect(result[0]!.workspaceId).toBe('ws-1')
+    })
+
+    // When commands disagree on workspaceId we surface undefined so the
+    // replay falls back to the current workspace, and log loudly because
+    // resource-keyed merges shouldn't naturally span workspaces.
+    it('returns undefined and logs when merged commands disagree', () => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {})
+
+      const result = coalesceCommands([
+        cmd({
+          method: 'PUT',
+          path: '/events/abc',
+          body: { name: 'a' },
+          workspaceId: 'ws-1',
+        }),
+        cmd({
+          method: 'PUT',
+          path: '/events/abc',
+          body: { name: 'b' },
+          workspaceId: 'ws-2',
+        }),
+      ])
+
+      expect(result[0]!.workspaceId).toBeUndefined()
+      expect(consoleError).toHaveBeenCalledOnce()
+      consoleError.mockRestore()
+    })
   })
 })

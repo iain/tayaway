@@ -61,7 +61,7 @@ module DatePolls
             updated_at: now
           )
 
-          Broadcaster.object_changed("date_poll", poll_id, workspace_id: event.workspace_id)
+          Broadcaster.object_changed("date_poll", poll_id)
         end
 
         # Opening a poll is the moment an undated event becomes real to

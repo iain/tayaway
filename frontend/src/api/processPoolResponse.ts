@@ -1,4 +1,6 @@
 import { useObjectPoolStore } from '@/stores'
+import { useWorkspaceStore } from '@/stores/workspace'
+import { Scope } from '@/api/scope'
 import type { PoolObject, ObjectType } from '@/types/pool'
 
 interface DeletedObject {
@@ -15,17 +17,37 @@ interface DeletedObject {
  * choice rather than a hidden side effect of every request. The pool-
  * aware `api` wrapper in `@/api/client` calls this on GET responses, and
  * the command queue calls it on successful mutation replays.
+ *
+ * REST responses are tagged with the workspace's scope — that's the
+ * channel the matching WebSocket broadcasts will arrive on, so the REST-
+ * delivered copy and the WS-delivered copy share a scope. Callers that
+ * know the originating workspace (api.get snapshots it at request time;
+ * the command queue carries the workspaceId the command was enqueued in)
+ * pass `scope` explicitly so a workspace switch mid-flight doesn't
+ * misroute the response. Without an explicit scope we fall back to the
+ * current workspace.
+ *
+ * Endpoints that deliver personal data (notifications) bypass this path
+ * and route through rawApi + an explicit pool.importObjects(Scope.personal()).
  */
-export function processPoolResponse(data: unknown): void {
+export function processPoolResponse(data: unknown, scope?: Scope): void {
   if (!data || typeof data !== 'object') return
 
   const pool = useObjectPoolStore()
+  const resolvedScope = scope ?? defaultScope()
 
-  if (
-    'objects' in data &&
-    Array.isArray((data as { objects: unknown }).objects)
-  ) {
-    pool.importObjects((data as { objects: PoolObject[] }).objects)
+  if ('objects' in data && Array.isArray((data as { objects: unknown }).objects)) {
+    const objects = (data as { objects: PoolObject[] }).objects
+    if (resolvedScope) {
+      pool.importObjects(objects, { scope: resolvedScope })
+    } else if (objects.length > 0) {
+      // No active workspace and no explicit scope — dropping the payload
+      // silently would hide bugs (e.g. a REST call firing before
+      // initialization completes). Log so this doesn't disappear.
+      console.warn(
+        `[processPoolResponse] dropping ${objects.length} pool object(s): no workspace scope available`
+      )
+    }
   }
 
   if (
@@ -36,4 +58,9 @@ export function processPoolResponse(data: unknown): void {
       pool.remove(item.objectType, item.id)
     }
   }
+}
+
+function defaultScope(): Scope | null {
+  const wsId = useWorkspaceStore().currentWorkspaceId
+  return wsId ? Scope.workspace(wsId) : null
 }

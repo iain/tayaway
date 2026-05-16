@@ -6,7 +6,13 @@ require "async/semaphore"
 require "json"
 
 module Websocket
-  # Singleton that tracks WebSocket connections and their workspace associations.
+  # Topic-based pub/sub registry for WebSocket connections.
+  #
+  # A connection subscribes to one or more Topic instances
+  # (`Topic.workspace(id)` / `Topic.user(id)`); a broadcast names the
+  # topic and fans out to every connection in it. The kind of audience
+  # is carried as data on the Topic value object, not sniffed from a
+  # string prefix.
   #
   # Each falcon-host worker is a forked process with one reactor and one
   # thread, so this singleton is only ever touched by fibers cooperatively
@@ -19,15 +25,15 @@ module Websocket
 
     # Cap on per-broadcast / per-keepalive-tick fan-out fibers. Each child
     # does one `write` + `flush`, so a slow TCP receiver only stalls its
-    # own fiber — other clients in the same workspace deliver in parallel.
-    # Sized well above realistic per-workspace connection counts but well
-    # below the Sequel pool so writes never crowd request connections.
+    # own fiber — other clients deliver in parallel. Sized well above
+    # realistic per-topic connection counts but well below the Sequel pool
+    # so writes never crowd request connections.
     WRITE_CONCURRENCY = 32
 
     def initialize
       @mutex = Mutex.new
       @connections = {}
-      @workspace_connections = {}
+      @topic_connections = {}
     end
 
     def register(websocket, user_id, session_id = nil)
@@ -55,51 +61,87 @@ module Websocket
         return unless connection
 
         user_id = connection.user_id
+        connection.topics.each do |topic|
+          subs = @topic_connections[topic]
+          next unless subs
 
-        # Clean up workspace associations
-        connection.workspace_ids.each do |workspace_id|
-          ws_conns = @workspace_connections[workspace_id]
-          next unless ws_conns
-
-          ws_conns.delete(connection_id)
-          @workspace_connections.delete(workspace_id) if ws_conns.empty?
+          subs.delete(connection_id)
+          @topic_connections.delete(topic) if subs.empty?
         end
         total = @connections.size
       end
       APP_LOGGER.info { "[ConnectionManager] User #{user_id} disconnected (conn: #{connection_id}, total: #{total})" }
     end
 
-    def set_workspaces(connection_id, workspace_ids)
-      user_id = nil
+    # Subscribe a connection to one or more topics. Idempotent — re-subscribing
+    # to an existing topic is a no-op. Topics must be Topic instances; mixing
+    # string and Topic keys would silently miss the hash lookup at broadcast.
+    def subscribe(connection_id, *topics)
+      return if topics.empty?
+
+      validate_topics!(topics)
+
       @mutex.synchronize do
         connection = @connections[connection_id]
         return unless connection
 
-        user_id = connection.user_id
+        topics.each do |topic|
+          next if connection.topics.include?(topic)
 
-        # Clear old workspace associations
-        connection.workspace_ids.each do |old_ws_id|
-          ws_conns = @workspace_connections[old_ws_id]
-          next unless ws_conns
-
-          ws_conns.delete(connection_id)
-          @workspace_connections.delete(old_ws_id) if ws_conns.empty?
-        end
-
-        # Set new workspace associations
-        connection.workspace_ids = workspace_ids.to_set
-        workspace_ids.each do |ws_id|
-          @workspace_connections[ws_id] ||= Set.new
-          @workspace_connections[ws_id].add(connection_id)
+          connection.topics.add(topic)
+          (@topic_connections[topic] ||= Set.new).add(connection_id)
         end
       end
-      APP_LOGGER.info { "[ConnectionManager] User #{user_id} switched workspaces (conn: #{connection_id}, workspaces: #{workspace_ids.join(', ')})" }
     end
 
-    def set_membership(connection_id, membership)
+    # Unsubscribe a connection from one or more topics. Topics the connection
+    # wasn't subscribed to are silently skipped.
+    def unsubscribe(connection_id, *topics)
+      return if topics.empty?
+
+      validate_topics!(topics)
+
       @mutex.synchronize do
         connection = @connections[connection_id]
-        connection&.membership = membership
+        return unless connection
+
+        topics.each do |topic|
+          next unless connection.topics.delete?(topic)
+
+          subs = @topic_connections[topic]
+          next unless subs
+
+          subs.delete(connection_id)
+          @topic_connections.delete(topic) if subs.empty?
+        end
+      end
+    end
+
+    def subscribed?(connection_id, topic)
+      raise ArgumentError, "ConnectionManager#subscribed? requires a Topic, got #{topic.class}" unless topic.is_a?(Topic)
+
+      @mutex.synchronize do
+        connection = @connections[connection_id]
+        return false unless connection
+
+        connection.topics.include?(topic)
+      end
+    end
+
+    # Replace the membership the connection holds for the given workspace.
+    # Per-workspace because a connection is now subscribed to every workspace
+    # the user belongs to, and the right membership for permission attachment
+    # depends on which workspace a broadcast names.
+    def set_membership(connection_id, workspace_id, membership)
+      @mutex.synchronize do
+        connection = @connections[connection_id]
+        return unless connection
+
+        if membership
+          connection.memberships[workspace_id.to_s] = membership
+        else
+          connection.memberships.delete(workspace_id.to_s)
+        end
       end
     end
 
@@ -141,33 +183,40 @@ module Websocket
       stale_ids.size
     end
 
-    def broadcast_to_workspace(workspace_id, message, policy_context: nil)
-      connection_ids = @mutex.synchronize { (@workspace_connections[workspace_id] || Set.new).to_a }
+    # Broadcast a message to every connection subscribed to the topic.
+    #
+    # When `policy_context` is supplied AND `topic.workspace?`, permissions
+    # are attached per-recipient using the membership that connection holds
+    # for that workspace. User-topic broadcasts ignore the policy context —
+    # the addressee is the audience, no per-viewer permission diff applies.
+    def broadcast(topic, message, policy_context: nil)
+      raise ArgumentError, "ConnectionManager#broadcast requires a Topic, got #{topic.class}" unless topic.is_a?(Topic)
+
+      connection_ids = @mutex.synchronize { (@topic_connections[topic] || Set.new).to_a }
       return if connection_ids.empty?
 
-      json_message = message.to_json unless policy_context
+      use_policy = policy_context && topic.workspace?
+      json_message = message.to_json unless use_policy
 
       fan_out(connection_ids) do |connection_id|
         connection = @mutex.synchronize { @connections[connection_id] }
         next unless connection
 
-        if policy_context
-          personalized = attach_permissions(message, connection.membership, policy_context).to_json
-          send_to_connection(connection, connection_id, personalized, "workspace:#{workspace_id}")
+        if use_policy
+          membership = connection.memberships[topic.id]
+          payload = attach_permissions(message, membership, policy_context).to_json
+          send_to_connection(connection, connection_id, payload, topic)
         else
-          send_to_connection(connection, connection_id, json_message, "workspace:#{workspace_id}")
+          send_to_connection(connection, connection_id, json_message, topic)
         end
       end
     end
 
-    # Fans a message out to every connection authenticated as `user_id`,
-    # regardless of which workspace each connection currently has selected.
-    # Used for objects whose audience is a single user (e.g. notifications).
-    def broadcast_to_user(user_id, message)
-      uid = user_id.to_s
-      connection_ids = @mutex.synchronize do
-        @connections.values.select { |c| c.user_id == uid }.map(&:id)
-      end
+    # Send a message directly to specific connections without going through
+    # a topic. Used by the listener's new-workspace bootstrap to ship a
+    # WorkspaceSync to the connections that just joined a workspace, before
+    # the topic subscription is observable.
+    def send_to_connections(connection_ids, message)
       return if connection_ids.empty?
 
       json_message = message.to_json
@@ -176,13 +225,14 @@ module Websocket
         connection = @mutex.synchronize { @connections[connection_id] }
         next unless connection
 
-        send_to_connection(connection, connection_id, json_message, "user:#{uid}")
+        send_to_connection(connection, connection_id, json_message, "<direct>")
       end
     end
 
     def connections_for_user(user_id)
+      uid = user_id.to_s
       @mutex.synchronize do
-        @connections.values.select { |c| c.user_id == user_id }.map(&:id)
+        @connections.values.select { |c| c.user_id == uid }.map(&:id)
       end
     end
 
@@ -215,6 +265,13 @@ module Websocket
 
     private
 
+    def validate_topics!(topics)
+      bad = topics.reject { |t| t.is_a?(Topic) }
+      return if bad.empty?
+
+      raise ArgumentError, "ConnectionManager: topics must be Topic instances, got #{bad.map(&:class).uniq.inspect}"
+    end
+
     # Run `block` against each item in `items` on its own fiber under a
     # bounded semaphore, awaiting all of them before returning. `Sync`
     # runs inline if a reactor is already current (the listener and
@@ -236,32 +293,32 @@ module Websocket
       PermissionAttacher.attach_to_message(message, membership, policy_context)
     end
 
-    def send_to_connection(connection, connection_id, json_message, audience_label)
+    def send_to_connection(connection, connection_id, json_message, topic)
       connection.websocket.write(json_message)
       connection.websocket.flush
     rescue StandardError => e
-      APP_LOGGER.error { "[ConnectionManager] Error broadcasting to #{audience_label}, conn #{connection_id}: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
+      APP_LOGGER.error { "[ConnectionManager] Error broadcasting to #{topic}, conn #{connection_id}: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
       unregister(connection_id)
     end
 
-    # Internal connection struct
+    # Internal connection struct.
     class Connection
-      attr_reader :id, :websocket, :user_id, :session_id
-      attr_accessor :workspace_ids, :last_pong_at, :membership
+      attr_reader :id, :websocket, :user_id, :session_id, :topics, :memberships
+      attr_accessor :last_pong_at
 
       def initialize(
         id:,
         websocket:,
         user_id:,
         session_id:,
-        workspace_ids: Set.new,
         last_pong_at: Time.now
       )
         @id = id
         @websocket = websocket
         @user_id = user_id
         @session_id = session_id
-        @workspace_ids = workspace_ids
+        @topics = Set.new
+        @memberships = {}
         @last_pong_at = last_pong_at
       end
     end

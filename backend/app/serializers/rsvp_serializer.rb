@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class RsvpSerializer
-  extend PoolObjectSerializer
-
   class << self
     def serialize_batch(rsvps, pool:)
       rsvps.map do |rsvp|

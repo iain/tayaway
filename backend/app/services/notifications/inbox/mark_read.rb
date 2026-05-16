@@ -11,7 +11,7 @@ module Notifications
       class << self
         def call(id:, user_id:)
           affected = Notification.mark_read(id, user_id: user_id)
-          Broadcast.fan_out(affected, user_id)
+          Broadcast.fan_out(affected)
           Success({ ok: true })
         end
       end

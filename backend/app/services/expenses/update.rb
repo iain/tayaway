@@ -143,7 +143,7 @@ module Expenses
 
           sync_participants(expense.id, valid[:participants], workspace_id) unless valid[:participants].nil?
 
-          Broadcaster.object_changed("expense", expense.id, workspace_id: workspace_id)
+          Broadcaster.object_changed("expense", expense.id)
         end
 
         updated = Expense.find(expense.id)
@@ -163,7 +163,7 @@ module Expenses
         to_remove = existing.reject { |p| desired_user_ids.include?(p.user_id.to_s) }
         to_remove.each do |p|
           DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "expense_participant", object_id: p.id)
-          Broadcaster.object_deleted("expense_participant", p.id, workspace_id: workspace_id)
+          Broadcaster.object_deleted("expense_participant", p.id, topics: [Topic.workspace(workspace_id)])
         end
         unless to_remove.empty?
           DB[:expense_participants].where(id: to_remove.map(&:id)).delete
@@ -175,7 +175,7 @@ module Expenses
             effective_factor = factor.nil? ? existing_row.factor : factor
             if existing_row.factor != effective_factor
               DB[:expense_participants].where(id: existing_row.id).update(factor: effective_factor, updated_at: now)
-              Broadcaster.object_changed("expense_participant", existing_row.id, workspace_id: workspace_id)
+              Broadcaster.object_changed("expense_participant", existing_row.id)
             end
           else
             effective_factor = factor.nil? ? 1.0 : factor
@@ -188,7 +188,7 @@ module Expenses
               created_at: now,
               updated_at: now
             )
-            Broadcaster.object_changed("expense_participant", pid, workspace_id: workspace_id)
+            Broadcaster.object_changed("expense_participant", pid)
           end
         end
       end

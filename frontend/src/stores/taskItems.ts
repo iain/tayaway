@@ -115,9 +115,12 @@ export const useTaskItemsStore = defineStore('taskItems', () => {
     completedItemIds: string[]
   ) {
     const pool = useObjectPoolStore()
-    const saved = completedItemIds
-      .map((id) => pool.getServer('taskItem', id))
-      .filter(Boolean)
+    // Snapshot each item with its scope set so a rollback restores it to
+    // the same delivery channels.
+    const saved = completedItemIds.flatMap((id) => {
+      const item = pool.getServer('taskItem', id)
+      return item ? [{ object: item, scopes: pool.scopesOf(id) }] : []
+    })
 
     // Optimistic: remove completed items from pool (single reactivity trigger)
     pool.removeMany('taskItem', completedItemIds)
@@ -136,10 +139,7 @@ export const useTaskItemsStore = defineStore('taskItems', () => {
         // Request queued for later — keep items optimistically removed
         return
       }
-      // Restore items on actual error
-      for (const item of saved) {
-        if (item) pool.set(item)
-      }
+      pool.restore(saved)
       error.value = 'Failed to clear completed items'
       throw e
     } finally {

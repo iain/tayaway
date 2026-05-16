@@ -1,7 +1,9 @@
+import { Scope } from '@/api/scope'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useRsvpsStore } from './rsvps'
 import { useObjectPoolStore } from './objectPool'
+import { useWorkspaceStore } from './workspace'
 import { CommandQueuedError } from '@/stores/commandQueue'
 import type { ObjectTypeMap } from '@/types/pool'
 import type { ApiResponse } from '@/api/client'
@@ -50,6 +52,10 @@ vi.mock('@/stores/auth', () => ({
 describe('rsvps store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    // Optimistic temp RSVPs are scope-less objects; useMutation tags them
+    // with the active workspace's scope and throws if none is set.
+    localStorage.setItem('current_workspace_id', 'test')
+    useWorkspaceStore().initialize(['test'])
     enqueueImpl = async () => okResponse({ objects: [] })
   })
 
@@ -153,7 +159,7 @@ describe('rsvps store', () => {
   describe('submitRsvp — existing RSVP (update)', () => {
     it('optimistically updates the existing RSVP attending status', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeRsvp({ attending: true })])
+      pool.importObjects([makeRsvp({ attending: true })], { scope: Scope.workspace("test") })
       const store = useRsvpsStore()
 
       let attendingDuringCall: boolean | undefined
@@ -171,7 +177,7 @@ describe('rsvps store', () => {
 
     it('optimistically updates the date fields', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeRsvp({ startDate: null, endDate: null })])
+      pool.importObjects([makeRsvp({ startDate: null, endDate: null })], { scope: Scope.workspace("test") })
       const store = useRsvpsStore()
 
       let startDuringCall: string | null | undefined
@@ -187,7 +193,7 @@ describe('rsvps store', () => {
 
     it('keeps pending update when queued offline', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeRsvp({ attending: true })])
+      pool.importObjects([makeRsvp({ attending: true })], { scope: Scope.workspace("test") })
       const store = useRsvpsStore()
 
       enqueueImpl = async () => {
@@ -203,7 +209,7 @@ describe('rsvps store', () => {
 
     it('rolls back pending update on server error', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeRsvp({ attending: true })])
+      pool.importObjects([makeRsvp({ attending: true })], { scope: Scope.workspace("test") })
       const store = useRsvpsStore()
 
       enqueueImpl = async () => {
@@ -220,7 +226,7 @@ describe('rsvps store', () => {
   describe('deleteRsvp', () => {
     it('optimistically removes the RSVP from the pool', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeRsvp()])
+      pool.importObjects([makeRsvp()], { scope: Scope.workspace("test") })
       const store = useRsvpsStore()
 
       let presentDuringCall: boolean | undefined
@@ -237,7 +243,7 @@ describe('rsvps store', () => {
 
     it('restores the RSVP when the API call fails', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeRsvp()])
+      pool.importObjects([makeRsvp()], { scope: Scope.workspace("test") })
       const store = useRsvpsStore()
 
       enqueueImpl = async () => {
@@ -254,7 +260,7 @@ describe('rsvps store', () => {
 
     it('keeps the RSVP removed when queued offline', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeRsvp()])
+      pool.importObjects([makeRsvp()], { scope: Scope.workspace("test") })
       const store = useRsvpsStore()
 
       enqueueImpl = async () => {

@@ -7,8 +7,6 @@
 # truth for event serialization — called by PoolSerializer at sync time and by
 # Websocket::ConnectionManager at broadcast time (via PermissionAttacher).
 class EventSerializer
-  extend PoolObjectSerializer
-
   class << self
     def serialize_batch(events, pool:)
       return [] if events.empty?

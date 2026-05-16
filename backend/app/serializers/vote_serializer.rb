@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class VoteSerializer
-  extend PoolObjectSerializer
-
   class << self
     def serialize_batch(votes, pool:)
       votes.map do |vote|

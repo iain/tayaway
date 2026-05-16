@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { rawApi, type ApiResponse } from '@/api/client'
 import { processPoolResponse } from '@/api/processPoolResponse'
+import { Scope } from '@/api/scope'
 import {
   addCommand,
   removeCommand,
@@ -11,6 +12,7 @@ import {
 } from '@/api/commandDb'
 import { coalesceCommands } from '@/api/coalesceCommands'
 import { useWebSocketStore } from './websocket'
+import { useWorkspaceStore } from './workspace'
 
 export class CommandQueuedError extends Error {
   constructor() {
@@ -65,7 +67,8 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
     path: string,
     body?: unknown
   ): Promise<ApiResponse<T>> {
-    const commandId = await addCommand({ method, path, body })
+    const workspaceId = useWorkspaceStore().currentWorkspaceId ?? null
+    const commandId = await addCommand({ method, path, body, workspaceId })
     pendingCount.value++
 
     try {
@@ -73,7 +76,8 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
         method,
         path,
         body,
-        idempotencyKeyFor([commandId])
+        idempotencyKeyFor([commandId]),
+        workspaceId
       )
       await removeCommand(commandId)
       pendingCount.value--
@@ -137,7 +141,8 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
               command.method,
               command.path,
               command.body,
-              idempotencyKeyFor(command.originalIds)
+              idempotencyKeyFor(command.originalIds),
+              command.workspaceId ?? null
             )
             for (const id of command.originalIds) {
               await removeCommand(id)
@@ -220,7 +225,8 @@ async function executeRequest<T>(
   method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
   body?: unknown,
-  idempotencyKey?: string
+  idempotencyKey?: string,
+  workspaceId?: string | null
 ): Promise<ApiResponse<T>> {
   const opts = idempotencyKey ? { idempotencyKey } : undefined
   const response =
@@ -233,7 +239,11 @@ async function executeRequest<T>(
           : await rawApi.delete<T>(path, opts)
   // Successful mutations hydrate the pool explicitly here instead of as a
   // hidden side effect inside the HTTP client, so rawApi stays pure and
-  // the coupling is visible at the only layer that actually needs it.
-  processPoolResponse(response.data)
+  // the coupling is visible at the only layer that actually needs it. The
+  // workspaceId snapshot from enqueue time is threaded through so a
+  // workspace switch between enqueue and replay doesn't misroute the
+  // response into the new workspace's scope.
+  const scope = workspaceId ? Scope.workspace(workspaceId) : undefined
+  processPoolResponse(response.data, scope)
   return response
 }

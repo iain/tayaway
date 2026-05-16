@@ -138,10 +138,9 @@ export function useMutation() {
       if (e instanceof CommandQueuedError) {
         return { queued: true }
       }
-      // Restore all removed objects on error
-      for (const obj of removedObjects) {
-        pool.set(obj)
-      }
+      // Restore each removed object to every scope it came from. The pool
+      // tracks scope membership per object, so callers don't have to.
+      pool.restore(removedObjects)
       error.value = errorMessage
       throw e
     } finally {

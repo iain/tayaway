@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class ChoreAssignmentSerializer
-  extend PoolObjectSerializer
-
   class << self
     def serialize_batch(assignments, pool:)
       assignments.map do |assignment|

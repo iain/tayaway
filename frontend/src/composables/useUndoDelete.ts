@@ -36,9 +36,7 @@ export function useUndoDelete() {
       actionLabel: 'Undo',
       action: () => {
         undone = true
-        for (const obj of removedObjects) {
-          pool.set(obj)
-        }
+        pool.restore(removedObjects)
       },
       duration: UNDO_WINDOW_MS,
     })
@@ -51,10 +49,7 @@ export function useUndoDelete() {
         await commandQueue.enqueue('DELETE', options.apiPath)
       } catch (e) {
         if (e instanceof CommandQueuedError) return
-        // API failed — restore objects
-        for (const obj of removedObjects) {
-          pool.set(obj)
-        }
+        pool.restore(removedObjects)
         notifications.showError("Couldn't delete — the item has been restored.")
       }
     }, UNDO_WINDOW_MS)

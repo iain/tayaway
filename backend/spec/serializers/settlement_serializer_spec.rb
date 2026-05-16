@@ -84,7 +84,7 @@ RSpec.describe SettlementSerializer do
       membership_row = TestFactories.workspace_membership(workspace: workspace, user: user)
       membership = WorkspaceMembership.find(membership_row[:id])
 
-      ctx = described_class.policy_context(settlement)
+      ctx = described_class.policy_context_batch([settlement])[settlement.id.to_s] || {}
       allow(Event).to receive(:find).and_call_original
 
       expect(SettlementPolicy.new(settlement, membership: membership, **ctx).delete).to be_success

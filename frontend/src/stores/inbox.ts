@@ -3,6 +3,8 @@ import { ref, computed } from 'vue'
 import { rawApi } from '@/api/client'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useObjectPoolStore } from '@/stores/objectPool'
+import { useWorkspaceStore } from '@/stores/workspace'
+import { Scope } from '@/api/scope'
 import type { PoolNotification } from '@/types/pool'
 
 const SILENCE_UNDO_MS = 5000
@@ -47,12 +49,33 @@ export const useInboxStore = defineStore('inbox', () => {
 
   const unreadCount = computed(() => unread.value.length)
 
+  // Unread counts for workspaces *other than* the one the user is currently
+  // in. The current workspace's notifications surface in the bell directly,
+  // so the selector dot is only meaningful elsewhere. Filtering here keeps
+  // callers from having to remember the exclusion.
+  //
+  // notification.workspaceId is nullable (no NOT NULL on the column) —
+  // workspace-less notifications can't badge any selector entry, so we
+  // skip them outright.
+  const unreadCountByOtherWorkspace = computed(() => {
+    const workspaceStore = useWorkspaceStore()
+    const currentId = workspaceStore.currentWorkspaceId
+    const counts = new Map<string, number>()
+    for (const n of unread.value) {
+      if (!n.workspaceId || n.workspaceId === currentId) continue
+      counts.set(n.workspaceId, (counts.get(n.workspaceId) ?? 0) + 1)
+    }
+    return counts
+  })
+
   async function load(): Promise<void> {
     loading.value = true
     lastError.value = null
     try {
       const { data } = await rawApi.get<InboxResponse>('/notifications', {})
-      pool().importObjects(data.objects)
+      // Notifications live in the personal scope — they're delivered to the
+      // user across all workspaces.
+      pool().importObjects(data.objects, { scope: Scope.personal() })
     } catch (e) {
       lastError.value =
         e && typeof e === 'object' && 'message' in e
@@ -68,6 +91,8 @@ export const useInboxStore = defineStore('inbox', () => {
     if (!target || target.readAt !== null) return
 
     const previous = target
+    // No scope arg — the pool keeps the notification in whatever scope it's
+    // already in (personal, from the handshake).
     pool().set({ ...target, readAt: new Date().toISOString() })
 
     try {
@@ -139,6 +164,7 @@ export const useInboxStore = defineStore('inbox', () => {
     notifications,
     unread,
     unreadCount,
+    unreadCountByOtherWorkspace,
     loading,
     lastError,
     load,

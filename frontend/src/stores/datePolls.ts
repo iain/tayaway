@@ -83,7 +83,9 @@ export const useDatePollsStore = defineStore('datePolls', () => {
       updatedAt: now,
     }
 
-    // Multi-object optimistic: add dateRange + update poll's dateRangeIds
+    // Multi-object optimistic: add dateRange + update poll's dateRangeIds.
+    // dateRange has no workspaceId field; the pool falls back to the active
+    // workspace's scope.
     pool.set(tempDateRange, { isTemp: true })
     const pendingId = pool.addPending('datePoll', poll.id, {
       dateRangeIds: [...poll.dateRangeIds, dateRangeId],
@@ -118,11 +120,9 @@ export const useDatePollsStore = defineStore('datePolls', () => {
     const poll = pool.getAll('datePoll').find((dp) => dp.eventId === eventId)
     if (!poll) throw new Error('Poll not found')
 
-    // Save for rollback
-    const savedDateRange = pool.getServer('dateRange', dateRangeId)
-
-    // Multi-object optimistic: remove dateRange + update poll's dateRangeIds
-    pool.remove('dateRange', dateRangeId)
+    // Snapshot for rollback. cascadeRemove returns the entries with their
+    // prior scope sets attached, which pool.restore replays on failure.
+    const removed = pool.cascadeRemove('dateRange', dateRangeId)
     const pendingId = pool.addPending('datePoll', poll.id, {
       dateRangeIds: poll.dateRangeIds.filter((id) => id !== dateRangeId),
     })
@@ -138,10 +138,7 @@ export const useDatePollsStore = defineStore('datePolls', () => {
       if (e instanceof CommandQueuedError) {
         return
       }
-      // Rollback both
-      if (savedDateRange) {
-        pool.set(savedDateRange)
-      }
+      pool.restore(removed)
       pool.removePending(pendingId)
       error.value = 'Failed to remove date range'
       throw e

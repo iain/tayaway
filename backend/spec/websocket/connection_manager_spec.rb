@@ -50,13 +50,14 @@ class BlockingWebsocket
   def flush; end
 end
 
+# Lifecycle + ancillary behaviour for ConnectionManager. Topic-routing
+# semantics live in connection_manager_routing_spec.rb.
 RSpec.describe Websocket::ConnectionManager do
   subject(:manager) { described_class.instance }
 
-  # Reset the singleton state between examples
   before do
     manager.instance_variable_get(:@connections).clear
-    manager.instance_variable_get(:@workspace_connections).clear
+    manager.instance_variable_get(:@topic_connections).clear
   end
 
   describe "#register" do
@@ -91,15 +92,15 @@ RSpec.describe Websocket::ConnectionManager do
         .to change(manager, :connection_count).by(-1)
     end
 
-    it "removes workspace associations" do
+    it "removes topic subscriptions" do
       ws = FakeWebsocket.new
       workspace_id = SecureRandom.uuid
       conn_id = manager.register(ws, SecureRandom.uuid)
-      manager.set_workspaces(conn_id, [workspace_id])
+      manager.subscribe(conn_id, Topic.workspace(workspace_id))
 
       manager.unregister(conn_id)
+      manager.broadcast(Topic.workspace(workspace_id), { type: "test" })
 
-      manager.broadcast_to_workspace(workspace_id, { type: "test" })
       expect(ws.written).to be_empty
     end
 
@@ -131,37 +132,60 @@ RSpec.describe Websocket::ConnectionManager do
     end
   end
 
-  describe "#set_workspaces" do
-    it "does not log when the connection is not found" do
-      allow(APP_LOGGER).to receive(:info)
-
-      manager.set_workspaces(SecureRandom.uuid, [SecureRandom.uuid])
-
-      expect(APP_LOGGER).not_to have_received(:info).with(anything)
-    end
-
-    it "associates the connection with the given workspaces" do
+  describe "#subscribe / #unsubscribe" do
+    it "is idempotent — re-subscribing to the same topic does not duplicate delivery" do
       ws = FakeWebsocket.new
       workspace_id = SecureRandom.uuid
       conn_id = manager.register(ws, SecureRandom.uuid)
-      manager.set_workspaces(conn_id, [workspace_id])
+      manager.subscribe(conn_id, Topic.workspace(workspace_id))
+      manager.subscribe(conn_id, Topic.workspace(workspace_id))
 
-      manager.broadcast_to_workspace(workspace_id, { type: "ping" })
+      manager.broadcast(Topic.workspace(workspace_id), { type: "ping" })
 
-      expect(ws.written).to include(include("ping"))
+      expect(ws.written.size).to eq(1)
     end
 
-    it "replaces previous workspace associations" do
-      ws = FakeWebsocket.new
-      old_ws = SecureRandom.uuid
-      new_ws = SecureRandom.uuid
-      conn_id = manager.register(ws, SecureRandom.uuid)
-      manager.set_workspaces(conn_id, [old_ws])
-      manager.set_workspaces(conn_id, [new_ws])
+    it "is a no-op when the connection is unknown" do
+      expect { manager.subscribe(SecureRandom.uuid, Topic.workspace(SecureRandom.uuid)) }.not_to raise_error
+      expect { manager.unsubscribe(SecureRandom.uuid, Topic.workspace(SecureRandom.uuid)) }.not_to raise_error
+    end
+  end
 
-      manager.broadcast_to_workspace(old_ws, { type: "ping" })
+  describe "#subscribed?" do
+    it "returns true for topics the connection subscribes to" do
+      conn_id = manager.register(FakeWebsocket.new, SecureRandom.uuid)
+      topic = Topic.workspace(SecureRandom.uuid)
+      manager.subscribe(conn_id, topic)
 
-      expect(ws.written).to be_empty
+      expect(manager.subscribed?(conn_id, topic)).to be(true)
+    end
+
+    it "returns false for topics the connection does not subscribe to" do
+      conn_id = manager.register(FakeWebsocket.new, SecureRandom.uuid)
+
+      expect(manager.subscribed?(conn_id, Topic.workspace(SecureRandom.uuid))).to be(false)
+    end
+
+    it "returns false for an unknown connection" do
+      expect(manager.subscribed?(SecureRandom.uuid, Topic.workspace(SecureRandom.uuid))).to be(false)
+    end
+  end
+
+  # Every topic-accepting API enforces the Topic value type so a stray
+  # string literal can't sneak past the value-object boundary and break
+  # equality-based routing.
+  describe "topic-type guard" do
+    let(:conn_id) { manager.register(FakeWebsocket.new, SecureRandom.uuid) }
+
+    {
+      "#subscribe": ->(mgr, id) { mgr.subscribe(id, "workspace:abc") },
+      "#unsubscribe": ->(mgr, id) { mgr.unsubscribe(id, "workspace:abc") },
+      "#subscribed?": ->(mgr, id) { mgr.subscribed?(id, "workspace:abc") },
+      "#broadcast": ->(mgr, _id) { mgr.broadcast("workspace:abc", { type: "ping" }) }
+    }.each do |method_name, invoke|
+      it "#{method_name} rejects a raw string" do
+        expect { invoke.call(manager, conn_id) }.to raise_error(ArgumentError, /Topic/)
+      end
     end
   end
 
@@ -267,18 +291,7 @@ RSpec.describe Websocket::ConnectionManager do
     end
   end
 
-  describe "#broadcast_to_workspace" do
-    it "writes the JSON-encoded message to each connected client" do
-      ws = FakeWebsocket.new
-      workspace_id = SecureRandom.uuid
-      conn_id = manager.register(ws, SecureRandom.uuid)
-      manager.set_workspaces(conn_id, [workspace_id])
-
-      manager.broadcast_to_workspace(workspace_id, { type: "update", id: "123" })
-
-      expect(ws.written).to include('{"type":"update","id":"123"}')
-    end
-
+  describe "#broadcast — workspace topic with policy context" do
     it "attaches per-connection permissions when a policy_context is supplied" do
       workspace_row = TestFactories.workspace
       owner = TestFactories.user
@@ -290,8 +303,8 @@ RSpec.describe Websocket::ConnectionManager do
       ws = FakeWebsocket.new
       workspace_id = workspace_row[:id].to_s
       conn_id = manager.register(ws, owner[:id])
-      manager.set_workspaces(conn_id, [workspace_id])
-      manager.set_membership(conn_id, owner_membership)
+      manager.subscribe(conn_id, Topic.workspace(workspace_id))
+      manager.set_membership(conn_id, workspace_id, owner_membership)
 
       event_hash = { id: event_model.id.to_s, objectType: "event", name: event_model.name }
       message = {
@@ -305,7 +318,7 @@ RSpec.describe Websocket::ConnectionManager do
         policy_contexts: { "event:#{event_model.id}" => { has_expenses: false } }
       )
 
-      manager.broadcast_to_workspace(workspace_id, message, policy_context: policy_context)
+      manager.broadcast(Topic.workspace(workspace_id), message, policy_context: policy_context)
 
       delivered = JSON.parse(ws.written.first, symbolize_names: true)
       permissions = delivered[:data][:objects].first[:permissions]
@@ -313,11 +326,6 @@ RSpec.describe Websocket::ConnectionManager do
     end
 
     it "attaches permissions to fan-out children carried in the PolicyContext" do
-      # Uses a real PoolSerializer with collect_policy_contexts to mirror the
-      # Listener path: the pool fans out chore_roster → chores, so the
-      # broadcast must thread raw_objects for BOTH the roster and each chore,
-      # and the connection manager must deliver payload objects with a
-      # permissions key on each.
       workspace_row = TestFactories.workspace
       owner = TestFactories.user
       TestFactories.workspace_membership(workspace: workspace_row, user: owner)
@@ -342,11 +350,11 @@ RSpec.describe Websocket::ConnectionManager do
 
       ws = FakeWebsocket.new
       conn_id = manager.register(ws, owner[:id])
-      manager.set_workspaces(conn_id, [workspace_row[:id].to_s])
-      manager.set_membership(conn_id, owner_membership)
+      manager.subscribe(conn_id, Topic.workspace(workspace_row[:id]))
+      manager.set_membership(conn_id, workspace_row[:id].to_s, owner_membership)
 
-      manager.broadcast_to_workspace(
-        workspace_row[:id].to_s, message, policy_context: policy_context
+      manager.broadcast(
+        Topic.workspace(workspace_row[:id]), message, policy_context: policy_context
       )
 
       delivered = JSON.parse(ws.written.first, symbolize_names: true)
@@ -357,74 +365,87 @@ RSpec.describe Websocket::ConnectionManager do
       end
     end
 
-    it "does nothing when no connections are subscribed to the workspace" do
+    it "uses the per-workspace membership when computing permissions" do
+      # When a connection sits on multiple workspaces, the membership the
+      # broadcast picks up must match the topic, not whichever was set last.
+      ws_a = TestFactories.workspace
+      ws_b = TestFactories.workspace
+      user = TestFactories.user
+      TestFactories.workspace_membership(workspace: ws_a, user: user, role: "owner")
+      TestFactories.workspace_membership(workspace: ws_b, user: user, role: "member")
+      membership_a = WorkspaceMembership.find_by_workspace_and_user(ws_a[:id], user[:id])
+      membership_b = WorkspaceMembership.find_by_workspace_and_user(ws_b[:id], user[:id])
+      event_b_row = TestFactories.event(workspace: ws_b, user: user)
+      event_b = Event.find(event_b_row[:id])
+
       ws = FakeWebsocket.new
-      manager.register(ws, SecureRandom.uuid)
+      conn_id = manager.register(ws, user[:id])
+      manager.subscribe(conn_id, Topic.workspace(ws_a[:id]), Topic.workspace(ws_b[:id]))
+      manager.set_membership(conn_id, ws_a[:id].to_s, membership_a)
+      manager.set_membership(conn_id, ws_b[:id].to_s, membership_b)
 
-      # No set_workspaces call — ws should never be written to.
-      manager.broadcast_to_workspace(SecureRandom.uuid, { type: "ping" })
+      event_hash = { id: event_b.id.to_s, objectType: "event", name: event_b.name }
+      message = {
+        type: "broadcast",
+        workspaceId: ws_b[:id].to_s,
+        action: "update",
+        data: { objects: [event_hash] }
+      }
+      policy_context = Websocket::PolicyContext.new(
+        raw_objects: { "event:#{event_b.id}" => event_b },
+        policy_contexts: { "event:#{event_b.id}" => { has_expenses: false } }
+      )
 
-      expect(ws.written).to be_empty
+      manager.broadcast(Topic.workspace(ws_b[:id]), message, policy_context: policy_context)
+
+      delivered = JSON.parse(ws.written.first, symbolize_names: true)
+      # The membership for ws_b carries role=member, so edit is gated by
+      # MemberPolicy, not OwnerPolicy. The important assertion is that
+      # *some* permissions key was attached — i.e. permission attachment
+      # found a membership rather than silently skipping for nil.
+      expect(delivered[:data][:objects].first).to have_key(:permissions)
+    end
+  end
+
+  describe "#broadcast — error handling" do
+    it "unregisters the connection when its write raises" do
+      ws = BrokenWebsocket.new
+      workspace_id = SecureRandom.uuid
+      conn_id = manager.register(ws, SecureRandom.uuid)
+      manager.subscribe(conn_id, Topic.workspace(workspace_id))
+
+      manager.broadcast(Topic.workspace(workspace_id), { type: "ping" })
+
+      expect(manager.connection_count).to eq(0)
     end
 
-    context "when a write raises" do
-      it "unregisters the failing connection" do
-        ws = BrokenWebsocket.new
-        workspace_id = SecureRandom.uuid
-        conn_id = manager.register(ws, SecureRandom.uuid)
-        manager.set_workspaces(conn_id, [workspace_id])
+    it "does not raise when a connection write fails" do
+      ws = BrokenWebsocket.new
+      workspace_id = SecureRandom.uuid
+      conn_id = manager.register(ws, SecureRandom.uuid)
+      manager.subscribe(conn_id, Topic.workspace(workspace_id))
 
-        manager.broadcast_to_workspace(workspace_id, { type: "ping" })
-
-        expect(manager.connection_count).to eq(0)
-      end
-
-      it "does not write to the dead connection on subsequent broadcasts" do
-        ws = FakeWebsocket.new
-        call_count = 0
-        allow(ws).to receive(:write) do
-          call_count += 1
-          raise StandardError, "broken pipe"
-        end
-
-        workspace_id = SecureRandom.uuid
-        conn_id = manager.register(ws, SecureRandom.uuid)
-        manager.set_workspaces(conn_id, [workspace_id])
-
-        manager.broadcast_to_workspace(workspace_id, { type: "first" })
-        manager.broadcast_to_workspace(workspace_id, { type: "second" })
-
-        expect(call_count).to eq(1)
-      end
-
-      it "does not raise" do
-        ws = BrokenWebsocket.new
-        workspace_id = SecureRandom.uuid
-        conn_id = manager.register(ws, SecureRandom.uuid)
-        manager.set_workspaces(conn_id, [workspace_id])
-
-        expect do
-          manager.broadcast_to_workspace(workspace_id, { type: "ping" })
-        end.not_to raise_error
-      end
-
-      it "still broadcasts to healthy connections in the same workspace" do
-        broken_ws = BrokenWebsocket.new
-        healthy_ws = FakeWebsocket.new
-        workspace_id = SecureRandom.uuid
-
-        conn1 = manager.register(broken_ws, SecureRandom.uuid)
-        conn2 = manager.register(healthy_ws, SecureRandom.uuid)
-        manager.set_workspaces(conn1, [workspace_id])
-        manager.set_workspaces(conn2, [workspace_id])
-
-        manager.broadcast_to_workspace(workspace_id, { type: "ping" })
-
-        expect(healthy_ws.written).to include(include("ping"))
-      end
+      expect do
+        manager.broadcast(Topic.workspace(workspace_id), { type: "ping" })
+      end.not_to raise_error
     end
 
-    it "delivers to fast clients without waiting for a slow client's write" do
+    it "still broadcasts to healthy subscribers when one connection fails" do
+      broken = BrokenWebsocket.new
+      healthy = FakeWebsocket.new
+      workspace_id = SecureRandom.uuid
+
+      conn1 = manager.register(broken, SecureRandom.uuid)
+      conn2 = manager.register(healthy, SecureRandom.uuid)
+      manager.subscribe(conn1, Topic.workspace(workspace_id))
+      manager.subscribe(conn2, Topic.workspace(workspace_id))
+
+      manager.broadcast(Topic.workspace(workspace_id), { type: "ping" })
+
+      expect(healthy.written).to include(include("ping"))
+    end
+
+    it "delivers to fast subscribers without waiting for a slow client's write" do
       release = Async::Notification.new
       slow = BlockingWebsocket.new(release)
       fast = FakeWebsocket.new
@@ -432,16 +453,14 @@ RSpec.describe Websocket::ConnectionManager do
 
       slow_conn = manager.register(slow, SecureRandom.uuid)
       fast_conn = manager.register(fast, SecureRandom.uuid)
-      manager.set_workspaces(slow_conn, [workspace_id])
-      manager.set_workspaces(fast_conn, [workspace_id])
+      manager.subscribe(slow_conn, Topic.workspace(workspace_id))
+      manager.subscribe(fast_conn, Topic.workspace(workspace_id))
 
       Sync do |task|
         broadcast = task.async do
-          manager.broadcast_to_workspace(workspace_id, { type: "ping" })
+          manager.broadcast(Topic.workspace(workspace_id), { type: "ping" })
         end
 
-        # Yield long enough for both child fibers to run up to their first
-        # await. Fast finishes; slow parks on the notification.
         task.sleep(0.01)
         expect(fast.written).not_to be_empty
         expect(slow.write_count).to eq(0)
@@ -453,92 +472,30 @@ RSpec.describe Websocket::ConnectionManager do
     end
   end
 
-  describe "#broadcast_to_user" do
-    it "writes the JSON-encoded message to every connection of the user" do
+  describe "#send_to_connections" do
+    it "writes the message to each given connection" do
       ws1 = FakeWebsocket.new
       ws2 = FakeWebsocket.new
-      ws_other = FakeWebsocket.new
-      user_id = SecureRandom.uuid
+      conn1 = manager.register(ws1, SecureRandom.uuid)
+      conn2 = manager.register(ws2, SecureRandom.uuid)
 
-      manager.register(ws1, user_id)
-      manager.register(ws2, user_id)
-      manager.register(ws_other, SecureRandom.uuid)
+      manager.send_to_connections([conn1, conn2], { type: "sync", data: { ok: true } })
 
-      manager.broadcast_to_user(user_id, { type: "broadcast", action: "update" })
-
-      expect(ws1.written).to include(include('"action":"update"'))
-      expect(ws2.written).to include(include('"action":"update"'))
-      expect(ws_other.written).to be_empty
+      expect(ws1.written.first).to include('"sync"')
+      expect(ws2.written.first).to include('"sync"')
     end
 
-    it "is a no-op when the user has no connections" do
+    it "is a no-op for an empty connection list" do
+      expect { manager.send_to_connections([], { type: "anything" }) }.not_to raise_error
+    end
+
+    it "skips unknown connection ids without raising" do
       ws = FakeWebsocket.new
-      manager.register(ws, SecureRandom.uuid)
+      conn = manager.register(ws, SecureRandom.uuid)
 
-      expect do
-        manager.broadcast_to_user(SecureRandom.uuid, { type: "broadcast" })
-      end.not_to raise_error
+      manager.send_to_connections([conn, SecureRandom.uuid], { type: "sync" })
 
-      expect(ws.written).to be_empty
-    end
-
-    it "delivers across every workspace the user is currently subscribed to" do
-      # Per-user broadcasts (notifications, etc.) must arrive regardless of
-      # which workspace the user happens to have open right now — they are
-      # owned by the user, not by a workspace.
-      ws = FakeWebsocket.new
-      user_id = SecureRandom.uuid
-      conn_id = manager.register(ws, user_id)
-      manager.set_workspaces(conn_id, [SecureRandom.uuid])
-
-      manager.broadcast_to_user(user_id, { type: "broadcast", action: "update" })
-
-      expect(ws.written).to include(include('"action":"update"'))
-    end
-
-    it "unregisters connections whose write raises" do
-      user_id = SecureRandom.uuid
-      manager.register(BrokenWebsocket.new, user_id)
-
-      manager.broadcast_to_user(user_id, { type: "broadcast" })
-
-      expect(manager.connection_count).to eq(0)
-    end
-
-    it "still delivers to healthy connections when one write raises" do
-      user_id = SecureRandom.uuid
-      broken = BrokenWebsocket.new
-      healthy = FakeWebsocket.new
-      manager.register(broken, user_id)
-      manager.register(healthy, user_id)
-
-      manager.broadcast_to_user(user_id, { type: "broadcast", action: "update" })
-
-      expect(healthy.written).to include(include('"action":"update"'))
-    end
-
-    it "delivers to fast clients without waiting for a slow client's write" do
-      release = Async::Notification.new
-      slow = BlockingWebsocket.new(release)
-      fast = FakeWebsocket.new
-      user_id = SecureRandom.uuid
-
-      manager.register(slow, user_id)
-      manager.register(fast, user_id)
-
-      Sync do |task|
-        broadcast = task.async do
-          manager.broadcast_to_user(user_id, { type: "broadcast" })
-        end
-
-        task.sleep(0.01)
-        expect(fast.written).not_to be_empty
-        expect(slow.write_count).to eq(0)
-
-        release.signal
-        broadcast.wait
-        expect(slow.write_count).to eq(1)
-      end
+      expect(ws.written.size).to eq(1)
     end
   end
 

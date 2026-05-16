@@ -60,7 +60,7 @@ module Settlements
           if expense_ids.any?
             DB[:expenses].where(id: expense_ids).update(settlement_id: nil, updated_at: Time.now)
             expense_ids.each do |eid|
-              Broadcaster.object_changed("expense", eid, workspace_id: workspace_id)
+              Broadcaster.object_changed("expense", eid)
             end
           end
 
@@ -68,7 +68,7 @@ module Settlements
           transfer_ids = DB[:settlement_transfers].where(settlement_id: settlement.id).select_map(:id)
           transfer_ids.each do |tid|
             DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "settlement_transfer", object_id: tid)
-            Broadcaster.object_deleted("settlement_transfer", tid, workspace_id: workspace_id)
+            Broadcaster.object_deleted("settlement_transfer", tid, topics: [Topic.workspace(workspace_id)])
             deleted << { objectType: "settlementTransfer", id: tid.to_s }
           end
 
@@ -89,21 +89,21 @@ module Settlements
 
           # Record settlement deletion
           DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "settlement", object_id: settlement.id)
-          Broadcaster.object_deleted("settlement", settlement.id, workspace_id: workspace_id)
+          Broadcaster.object_deleted("settlement", settlement.id, topics: [Topic.workspace(workspace_id)])
           deleted << { objectType: "settlement", id: settlement.id.to_s }
 
           # Delete settlement (cascades to transfers)
           DB[:settlements].where(id: settlement.id).delete
 
           restored_ids.each do |tid|
-            Broadcaster.object_changed("settlement_transfer", tid, workspace_id: workspace_id)
+            Broadcaster.object_changed("settlement_transfer", tid)
           end
 
           # The predecessor's permissions.delete flipped from false to true
           # now that its successor is gone — clients need the fresh payload
           # to surface the delete affordance again.
           if settlement.previous_settlement_id
-            Broadcaster.object_changed("settlement", settlement.previous_settlement_id, workspace_id: workspace_id)
+            Broadcaster.object_changed("settlement", settlement.previous_settlement_id)
           end
         end
 

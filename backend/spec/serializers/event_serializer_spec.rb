@@ -106,7 +106,7 @@ RSpec.describe EventSerializer do
       event_row = TestFactories.event(workspace: workspace, user: user)
       event = Event.find(event_row[:id])
 
-      expect(described_class.policy_context(event)).to eq(has_expenses: false)
+      expect(described_class.policy_context_batch([event])[event.id.to_s] || {}).to eq(has_expenses: false)
     end
   end
 
@@ -119,7 +119,7 @@ RSpec.describe EventSerializer do
     end
 
     it "feeds the policy the keys it reads so delete flips on has_expenses" do
-      ctx = described_class.policy_context(event)
+      ctx = described_class.policy_context_batch([event])[event.id.to_s] || {}
       expect(EventPolicy.new(event, membership: membership, **ctx).delete).to be_success
 
       DB[:expenses].insert(
@@ -127,7 +127,7 @@ RSpec.describe EventSerializer do
         description: "x", amount: 1.0, start_date: Date.today, end_date: Date.today,
         created_at: Time.now, updated_at: Time.now
       )
-      ctx_with_expense = described_class.policy_context(event)
+      ctx_with_expense = described_class.policy_context_batch([event])[event.id.to_s] || {}
       result = EventPolicy.new(event, membership: membership, **ctx_with_expense).delete
       expect(result).to be_failure
       expect(result.failure).to eq(:has_expenses)

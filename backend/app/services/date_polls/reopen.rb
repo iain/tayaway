@@ -56,7 +56,7 @@ module DatePolls
           rsvp_ids = Rsvp.ids_for_event(event.id)
           DeletedItems.bulk_insert(event.workspace_id, "rsvp", rsvp_ids, deleted_by: membership.user_id)
           rsvp_ids.each do |rid|
-            Broadcaster.object_deleted("rsvp", rid, workspace_id: event.workspace_id)
+            Broadcaster.object_deleted("rsvp", rid, topics: [Topic.workspace(event.workspace_id)])
           end
           DB[:rsvps].where(event_id: event.id).delete
           deleted_rsvp_ids = rsvp_ids.map(&:to_s)
@@ -72,8 +72,8 @@ module DatePolls
             end_date: nil
           )
 
-          Broadcaster.object_changed("date_poll", poll.id, workspace_id: event.workspace_id)
-          Broadcaster.object_changed("event", event.id, workspace_id: event.workspace_id)
+          Broadcaster.object_changed("date_poll", poll.id)
+          Broadcaster.object_changed("event", event.id)
         end
 
         APP_LOGGER.info { "[DatePolls::Reopen] Poll #{poll.id} reopened on event #{event.id}" }

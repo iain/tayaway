@@ -30,19 +30,19 @@ module ChoreRosters
             assignment_ids = DB[:chore_assignments].where(chore_id: cid).select_map(:id)
             assignment_ids.each do |aid|
               DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "chore_assignment", object_id: aid)
-              Broadcaster.object_deleted("chore_assignment", aid, workspace_id: workspace_id)
+              Broadcaster.object_deleted("chore_assignment", aid, topics: [Topic.workspace(workspace_id)])
               deleted << { objectType: "choreAssignment", id: aid.to_s }
             end
 
             # Track chore deletion
             DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "chore", object_id: cid)
-            Broadcaster.object_deleted("chore", cid, workspace_id: workspace_id)
+            Broadcaster.object_deleted("chore", cid, topics: [Topic.workspace(workspace_id)])
             deleted << { objectType: "chore", id: cid.to_s }
           end
 
           # Track roster deletion
           DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "chore_roster", object_id: roster.id)
-          Broadcaster.object_deleted("chore_roster", roster.id, workspace_id: workspace_id)
+          Broadcaster.object_deleted("chore_roster", roster.id, topics: [Topic.workspace(workspace_id)])
           deleted << { objectType: "choreRoster", id: roster.id.to_s }
 
           # Delete roster (FK cascade handles chores and assignments)

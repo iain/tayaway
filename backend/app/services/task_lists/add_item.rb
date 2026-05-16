@@ -58,7 +58,7 @@ module TaskLists
             updated_at: now
           )
 
-          Broadcaster.object_changed("task_item", item_id, workspace_id: task_list.workspace_id)
+          Broadcaster.object_changed("task_item", item_id)
         end
 
         item = TaskItem.find(item_id)

@@ -51,7 +51,7 @@ module Rsvps
         DB.transaction do
           DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "rsvp", object_id: rsvp_id)
           DB[:rsvps].where(id: rsvp_id).delete
-          Broadcaster.object_deleted("rsvp", rsvp_id, workspace_id: workspace_id)
+          Broadcaster.object_deleted("rsvp", rsvp_id, topics: [Topic.workspace(workspace_id)])
         end
 
         Success({ deleted: [{ objectType: "rsvp", id: rsvp_id.to_s }] })

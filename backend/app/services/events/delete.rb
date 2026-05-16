@@ -40,7 +40,7 @@ module Events
         DB.transaction do
           DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "event", object_id: event_id)
           DB[:events].where(id: event_id).delete
-          Broadcaster.object_deleted("event", event_id, workspace_id: workspace_id)
+          Broadcaster.object_deleted("event", event_id, topics: [Topic.workspace(workspace_id)])
         end
 
         APP_LOGGER.info { "[Events::Delete] Event #{event_id} deleted from workspace #{workspace_id}" }

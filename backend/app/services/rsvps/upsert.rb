@@ -147,7 +147,7 @@ module Rsvps
                 )
                 .first
 
-          Broadcaster.object_changed("rsvp", row[:id], workspace_id: event.workspace_id)
+          Broadcaster.object_changed("rsvp", row[:id])
         end
 
         Success({ rsvp_id: row[:id], created: row[:created] })

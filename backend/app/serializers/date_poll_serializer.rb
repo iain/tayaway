@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class DatePollSerializer
-  extend PoolObjectSerializer
-
   class << self
     def serialize_batch(polls, pool:)
       return [] if polls.empty?

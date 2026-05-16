@@ -1,3 +1,4 @@
+import { Scope } from '@/api/scope'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { poolPersistence } from './poolPersistence'
@@ -37,23 +38,16 @@ function flushIdleCallbacks(): void {
 }
 
 vi.mock('@/api/poolDb', () => ({
-  CACHE_VERSION: 4,
+  CACHE_VERSION: 11,
   saveObjects: vi.fn().mockResolvedValue(undefined),
   removeObjects: vi.fn().mockResolvedValue(undefined),
   savePendingUpdates: vi.fn().mockResolvedValue(undefined),
-  replaceAll: vi.fn().mockResolvedValue(undefined),
+  replaceScope: vi.fn().mockResolvedValue(undefined),
+  clearScope: vi.fn().mockResolvedValue(undefined),
   saveSyncedAt: vi.fn().mockResolvedValue(undefined),
-  loadAll: vi.fn().mockResolvedValue({
-    workspaceId: null,
-    syncedAt: null,
-    cacheVersion: 4,
-    objects: [],
-    pendingUpdates: new Map(),
-  }),
   loadMeta: vi.fn().mockResolvedValue({
-    workspaceId: null,
-    syncedAt: null,
-    cacheVersion: 4,
+    cacheVersion: 11,
+    syncedAt: new Map(),
   }),
   loadObjectsByType: vi.fn().mockResolvedValue([]),
   loadPendingUpdatesFromDb: vi.fn().mockResolvedValue(new Map()),
@@ -65,6 +59,7 @@ vi.mock('@/stores/objectPool', () => ({
     pendingUpdates: new Map(),
     importObjects: vi.fn(),
     restorePendingUpdates: vi.fn(),
+    getServer: vi.fn(() => undefined),
   })),
   onPoolChange: vi.fn(),
   offPoolChange: vi.fn(),
@@ -84,6 +79,10 @@ vi.mock('@/stores/workspace', () => ({
     currentWorkspaceId: 'ws-1',
   })),
   WORKSPACE_ID_STORAGE_KEY: 'current_workspace_id',
+}))
+
+vi.mock('@/stores/auth', () => ({
+  useAuthStore: vi.fn(() => ({ currentUserId: 'user-1' })),
 }))
 
 // Dispatch a real visibilitychange event after setting visibilityState so the
@@ -160,9 +159,11 @@ describe('poolPersistence — visibilitychange flush', () => {
     // Simulate a pool 'set' change — this schedules a 500ms debounce
     capturedPoolChangeHandler!({
       type: 'set',
+      scope: Scope.workspace('ws-1'),
       object: {
         id: 'evt-1',
         objectType: 'event',
+        workspaceId: 'ws-1',
         updatedAt: '2026-01-01T00:00:00.000Z',
       } as PoolObject,
     })
@@ -178,7 +179,7 @@ describe('poolPersistence — visibilitychange flush', () => {
     await Promise.resolve()
 
     expect(poolDb.saveObjects).toHaveBeenCalledTimes(1)
-    expect(poolDb.saveObjects).toHaveBeenCalledWith([
+    expect(poolDb.saveObjects).toHaveBeenCalledWith(Scope.workspace('ws-1'), [
       expect.objectContaining({ id: 'evt-1', objectType: 'event' }),
     ])
 
@@ -198,9 +199,11 @@ describe('poolPersistence — visibilitychange flush', () => {
 
     capturedPoolChangeHandler!({
       type: 'set',
+      scope: Scope.workspace('ws-1'),
       object: {
         id: 'evt-2',
         objectType: 'event',
+        workspaceId: 'ws-1',
         updatedAt: '2026-01-01T00:00:00.000Z',
       } as PoolObject,
     })
@@ -226,9 +229,11 @@ describe('poolPersistence — visibilitychange flush', () => {
 
     capturedPoolChangeHandler!({
       type: 'set',
+      scope: Scope.workspace('ws-1'),
       object: {
         id: 'evt-3',
         objectType: 'event',
+        workspaceId: 'ws-1',
         updatedAt: '2026-01-01T00:00:00.000Z',
       } as PoolObject,
     })
@@ -245,7 +250,7 @@ describe('poolPersistence — visibilitychange flush', () => {
     await Promise.resolve()
 
     expect(poolDb.saveObjects).toHaveBeenCalledTimes(1)
-    expect(poolDb.saveObjects).toHaveBeenCalledWith([
+    expect(poolDb.saveObjects).toHaveBeenCalledWith(Scope.workspace('ws-1'), [
       expect.objectContaining({ id: 'evt-3', objectType: 'event' }),
     ])
   })
@@ -261,9 +266,11 @@ describe('poolPersistence — visibilitychange flush', () => {
 
     capturedPoolChangeHandler!({
       type: 'set',
+      scope: Scope.workspace('ws-1'),
       object: {
         id: 'evt-4',
         objectType: 'event',
+        workspaceId: 'ws-1',
         updatedAt: '2026-01-01T00:00:00.000Z',
       } as PoolObject,
     })
@@ -295,9 +302,11 @@ describe('poolPersistence — visibilitychange flush', () => {
 
     capturedPoolChangeHandler!({
       type: 'set',
+      scope: Scope.workspace('ws-1'),
       object: {
         id: 'evt-5',
         objectType: 'event',
+        workspaceId: 'ws-1',
         updatedAt: '2026-01-01T00:00:00.000Z',
       } as PoolObject,
     })
@@ -313,6 +322,91 @@ describe('poolPersistence — visibilitychange flush', () => {
   })
 })
 
+describe('poolPersistence — multi-workspace scope routing', () => {
+  let capturedHandler: ((change: PoolChange) => void) | null = null
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.useFakeTimers()
+    installIdlePolyfill()
+    capturedHandler = null
+    vi.mocked(onPoolChange).mockReset().mockImplementation((h) => {
+      capturedHandler = h
+    })
+    vi.mocked(poolDb.saveObjects).mockReset().mockResolvedValue(undefined)
+    vi.mocked(poolDb.replaceScope).mockReset().mockResolvedValue(undefined)
+    vi.mocked(poolDb.clearAll).mockReset().mockResolvedValue(undefined)
+    poolPersistence.startPersisting()
+  })
+
+  afterEach(() => {
+    poolPersistence.stopPersisting()
+    vi.useRealTimers()
+  })
+
+  it('writes each object to the scope its change event carries', async () => {
+    // Events declare their scope explicitly; the persistence layer just
+    // routes by that tag and doesn't re-classify anything.
+    capturedHandler!({
+      type: 'set',
+      scope: Scope.personal(),
+      object: {
+        id: 'note-1',
+        objectType: 'notification',
+        userId: 'user-1',
+        workspaceId: 'ws-2',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      } as unknown as PoolObject,
+    })
+    capturedHandler!({
+      type: 'set',
+      scope: Scope.workspace('ws-1'),
+      object: {
+        id: 'evt-A',
+        objectType: 'event',
+        workspaceId: 'ws-1',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      } as PoolObject,
+    })
+
+    await vi.advanceTimersByTimeAsync(500)
+    flushIdleCallbacks()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(poolDb.saveObjects).toHaveBeenCalledWith(Scope.personal(), [
+      expect.objectContaining({ id: 'note-1' }),
+    ])
+    expect(poolDb.saveObjects).toHaveBeenCalledWith(Scope.workspace('ws-1'), [
+      expect.objectContaining({ id: 'evt-A' }),
+    ])
+  })
+
+  it('replaces only the active workspace scope on a full sync — other workspaces survive', async () => {
+    capturedHandler!({
+      type: 'replaceScope',
+      scope: Scope.workspace('ws-1'),
+      objects: [
+        {
+          id: 'evt-A',
+          objectType: 'event',
+          workspaceId: 'ws-1',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        } as PoolObject,
+      ],
+    })
+
+    await Promise.resolve()
+
+    expect(poolDb.replaceScope).toHaveBeenCalledWith(
+      Scope.workspace('ws-1'),
+      expect.arrayContaining([expect.objectContaining({ id: 'evt-A' })]),
+      undefined
+    )
+    expect(poolDb.clearAll).not.toHaveBeenCalled()
+  })
+})
+
 describe('poolPersistence — progressive cache loading', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -321,9 +415,8 @@ describe('poolPersistence — progressive cache loading', () => {
     localStorage.setItem('current_workspace_id', 'ws-1')
 
     vi.mocked(poolDb.loadMeta).mockReset().mockResolvedValue({
-      workspaceId: 'ws-1',
-      syncedAt: new Date().toISOString(),
-      cacheVersion: 4,
+      cacheVersion: 11,
+      syncedAt: new Map([[Scope.workspace('ws-1'), new Date().toISOString()]]),
     })
     vi.mocked(poolDb.loadObjectsByType).mockReset().mockResolvedValue([])
     vi.mocked(poolDb.loadPendingUpdatesFromDb)
@@ -363,9 +456,9 @@ describe('poolPersistence — progressive cache loading', () => {
       updatedAt: '2026-01-01T00:00:00.000Z',
     } as PoolObject
 
-    vi.mocked(poolDb.loadObjectsByType).mockImplementation(async (type) => {
-      if (type === 'member') return [memberObj]
-      if (type === 'event') return [eventObj]
+    vi.mocked(poolDb.loadObjectsByType).mockImplementation(async (scope, type) => {
+      if (scope === Scope.workspace('ws-1') && type === 'member') return [memberObj]
+      if (scope === Scope.workspace('ws-1') && type === 'event') return [eventObj]
       return []
     })
 
@@ -378,33 +471,33 @@ describe('poolPersistence — progressive cache loading', () => {
     await loadPromise
 
     expect(poolDb.loadMeta).toHaveBeenCalledTimes(1)
-    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith('member')
-    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith('event')
-    expect(pool.importObjects).toHaveBeenCalledWith([memberObj])
-    expect(pool.importObjects).toHaveBeenCalledWith([eventObj])
+    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith(Scope.personal(), 'member')
+    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith(Scope.workspace('ws-1'), 'member')
+    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith(Scope.workspace('ws-1'), 'event')
+    expect(pool.importObjects).toHaveBeenCalledWith([memberObj], { scope: Scope.workspace('ws-1') })
+    expect(pool.importObjects).toHaveBeenCalledWith([eventObj], { scope: Scope.workspace('ws-1') })
   })
 
-  it('clears cache and returns when workspaceId does not match', async () => {
+  it('clears the workspace scope and returns when its cache is too stale', async () => {
+    const oldDate = new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString()
     vi.mocked(poolDb.loadMeta).mockResolvedValue({
-      workspaceId: 'ws-other',
-      syncedAt: null,
-      cacheVersion: 4,
+      cacheVersion: 11,
+      syncedAt: new Map([[Scope.workspace('ws-1'), oldDate]]),
     })
 
     const pool = useObjectPoolStore()
     const { loadFromCache } = poolPersistence
     await loadFromCache()
 
-    expect(poolDb.clearAll).toHaveBeenCalledTimes(1)
+    expect(poolDb.clearScope).toHaveBeenCalledWith(Scope.workspace('ws-1'))
     expect(pool.importObjects).not.toHaveBeenCalled()
     expect(poolDb.loadObjectsByType).not.toHaveBeenCalled()
   })
 
   it('clears cache and returns when cacheVersion is stale', async () => {
     vi.mocked(poolDb.loadMeta).mockResolvedValue({
-      workspaceId: 'ws-1',
-      syncedAt: null,
       cacheVersion: 1, // old version
+      syncedAt: new Map(),
     })
 
     const pool = useObjectPoolStore()
@@ -419,7 +512,7 @@ describe('poolPersistence — progressive cache loading', () => {
     const wsStore = useWebSocketStore()
 
     let memberCallCount = 0
-    vi.mocked(poolDb.loadObjectsByType).mockImplementation(async (type) => {
+    vi.mocked(poolDb.loadObjectsByType).mockImplementation(async (_scope, type) => {
       if (type === 'member') {
         memberCallCount++
         // Simulate server sync arriving while loading members
@@ -436,8 +529,20 @@ describe('poolPersistence — progressive cache loading', () => {
     await vi.runAllTimersAsync()
     await loadPromise
 
-    // Should have stopped after detecting hasSynced = true
-    expect(memberCallCount).toBe(1)
+    // hasSynced is checked at the top of each *type* iteration, not between
+    // scopes within a type — so both scope loads for 'member' run (personal
+    // and workspace), then the next type ('workspace') sees hasSynced=true
+    // and returns. The 'event' bucket is never touched.
+    expect(memberCallCount).toBe(2)
+    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith(Scope.personal(), 'member')
+    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith(
+      Scope.workspace('ws-1'),
+      'member'
+    )
+    expect(poolDb.loadObjectsByType).not.toHaveBeenCalledWith(
+      expect.anything(),
+      'event'
+    )
     expect(pool.importObjects).not.toHaveBeenCalled()
   })
 
@@ -461,8 +566,8 @@ describe('poolPersistence — progressive cache loading', () => {
         ReturnType<typeof poolDb.loadPendingUpdatesFromDb>
       >
     )
-    vi.mocked(poolDb.loadObjectsByType).mockImplementation(async (type) => {
-      if (type === 'member') {
+    vi.mocked(poolDb.loadObjectsByType).mockImplementation(async (scope, type) => {
+      if (scope === Scope.workspace('ws-1') && type === 'member') {
         return [
           {
             id: 'm-1',

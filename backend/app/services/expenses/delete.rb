@@ -36,12 +36,12 @@ module Expenses
           # see the participants disappear.
           ExpenseParticipant.for_expense(expense_id).each do |p|
             DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "expense_participant", object_id: p.id)
-            Broadcaster.object_deleted("expense_participant", p.id, workspace_id: workspace_id)
+            Broadcaster.object_deleted("expense_participant", p.id, topics: [Topic.workspace(workspace_id)])
           end
 
           DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "expense", object_id: expense_id)
           DB[:expenses].where(id: expense_id).delete
-          Broadcaster.object_deleted("expense", expense_id, workspace_id: workspace_id)
+          Broadcaster.object_deleted("expense", expense_id, topics: [Topic.workspace(workspace_id)])
         end
 
         Success({ deleted: [{ objectType: "expense", id: expense_id.to_s }] })

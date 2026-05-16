@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class ExpenseParticipantSerializer
-  extend PoolObjectSerializer
-
   class << self
     def serialize_batch(participants, pool:)
       participants.map do |participant|

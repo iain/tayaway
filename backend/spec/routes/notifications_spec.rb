@@ -69,7 +69,7 @@ RSpec.describe "Notifications inbox endpoints" do
 
       put "/api/notifications/#{id}/read", "{}", auth_headers.merge("CONTENT_TYPE" => "application/json")
 
-      expect(Broadcaster).to have_received(:object_changed).with("notification", id, user_id: user[:id])
+      expect(Broadcaster).to have_received(:object_changed).with("notification", id)
     end
 
     it "doesn't broadcast when the row was already read" do
@@ -173,8 +173,8 @@ RSpec.describe "Notifications inbox endpoints" do
 
       put "/api/notifications/read-all", "{}", auth_headers.merge("CONTENT_TYPE" => "application/json")
 
-      expect(Broadcaster).to have_received(:object_changed).with("notification", a, user_id: user[:id])
-      expect(Broadcaster).to have_received(:object_changed).with("notification", b, user_id: user[:id])
+      expect(Broadcaster).to have_received(:object_changed).with("notification", a)
+      expect(Broadcaster).to have_received(:object_changed).with("notification", b)
       expect(Broadcaster).to have_received(:object_changed).twice
     end
 

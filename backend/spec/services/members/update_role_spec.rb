@@ -160,6 +160,38 @@ RSpec.describe Members::UpdateRole do
     end
   end
 
+  describe "broadcasts" do
+    def capture_broadcasts
+      captured = []
+      allow(DB).to receive(:notify) do |_channel, payload:|
+        captured << JSON.parse(payload)
+      end
+      yield
+      captured.select { |p| p["objectType"] == "member" }
+    end
+
+    it "emits a single NOTIFY — the Listener fans out to workspace + user audiences" do
+      # Before this refactor the service fired two pg_notify calls (one
+      # per audience). Now it fires one, and MemberSerializer derives the
+      # full audience set on the Listener side.
+      member_broadcasts = capture_broadcasts do
+        described_class.call(
+          acting_membership: owner_membership,
+          membership_id: target_membership_row[:id],
+          new_role: "admin"
+        )
+      end
+
+      expect(member_broadcasts.size).to eq(1)
+      expect(member_broadcasts.first).not_to have_key("audience")
+      expect(member_broadcasts.first).to include(
+        "objectType" => "member",
+        "objectId" => target_membership_row[:id],
+        "action" => "update"
+      )
+    end
+  end
+
   context "when acting as member" do # rubocop:disable RSpec/MultipleMemoizedHelpers
     let(:member_user) { TestFactories.user(email: "member@example.com") }
     let(:member_membership_row) { TestFactories.workspace_membership(workspace: workspace, user: member_user, role: "member") }

@@ -1,5 +1,6 @@
 import type { ObjectTypeMap } from '@/types/pool'
 import type { useObjectPoolStore } from '@/stores/objectPool'
+import { Scope } from '@/api/scope'
 
 // ============================================================================
 // Pool object factories
@@ -318,9 +319,16 @@ export function makeWorkspaceInvite(
 
 type ObjectPoolStore = ReturnType<typeof useObjectPoolStore>
 
+/**
+ * Test-only scope used by seedPool. Pool reads are scope-agnostic, so it
+ * doesn't matter what we tag fixtures with — but it does have to be *some*
+ * scope, since every object in the pool now belongs to at least one.
+ */
+export const TEST_SCOPE = Scope.workspace('test')
+
 export function seedPool(
   pool: ObjectPoolStore,
   ...objects: Parameters<ObjectPoolStore['importObjects']>[0]
 ): void {
-  pool.importObjects(objects)
+  pool.importObjects(objects, { scope: TEST_SCOPE })
 }

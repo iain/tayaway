@@ -40,7 +40,7 @@ module DatePolls
         DB.transaction do
           DB[:deleted_items].insert(workspace_id: event.workspace_id, object_type: "dateRange", object_id: date_range_id)
           DB[:date_ranges].where(id: date_range_id).delete
-          Broadcaster.object_deleted("date_range", date_range_id, workspace_id: event.workspace_id)
+          Broadcaster.object_deleted("date_range", date_range_id, topics: [Topic.workspace(event.workspace_id)])
         end
 
         pool = PoolSerializer.new(membership: membership)

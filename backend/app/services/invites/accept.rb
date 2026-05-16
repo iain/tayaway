@@ -67,7 +67,7 @@ module Invites
             # Mark invite accepted but skip membership creation
             DB[:workspace_invites].where(id: invite.id).update(accepted_at: now, updated_at: now)
             DB[:deleted_items].insert(workspace_id: invite.workspace_id, object_type: "workspace_invite", object_id: invite.id)
-            Broadcaster.object_deleted("workspace_invite", invite.id, workspace_id: invite.workspace_id.to_s)
+            Broadcaster.object_deleted("workspace_invite", invite.id, topics: [Topic.workspace(invite.workspace_id)])
             return Success({ message: "You are already a member of this workspace" })
           end
 
@@ -83,13 +83,16 @@ module Invites
           # Mark invite accepted and remove from pool
           DB[:workspace_invites].where(id: invite.id).update(accepted_at: now, updated_at: now)
           DB[:deleted_items].insert(workspace_id: invite.workspace_id, object_type: "workspace_invite", object_id: invite.id)
-          Broadcaster.object_deleted("workspace_invite", invite.id, workspace_id: invite.workspace_id.to_s)
+          Broadcaster.object_deleted("workspace_invite", invite.id, topics: [Topic.workspace(invite.workspace_id)])
         end
 
         APP_LOGGER.info { "[Invites::Accept] User #{user.id} (#{user.email}) accepted invite to workspace #{invite.workspace_id}" }
 
-        # Broadcast new member
-        Broadcaster.object_changed("member", membership_id, workspace_id: invite.workspace_id.to_s)
+        # One NOTIFY — the Listener derives both the workspace audience
+        # (for the team view) and the user audience (so the joining user's
+        # other sessions see the new membership across workspaces) from
+        # the member object via ObjectRegistry.
+        Broadcaster.object_changed("member", membership_id)
 
         Invites::OnAccepted.call(invite: invite, invitee: user)
 

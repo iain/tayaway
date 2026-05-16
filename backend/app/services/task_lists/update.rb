@@ -39,7 +39,7 @@ module TaskLists
           updates[:name] = name if name && !name.empty?
           updates[:position] = position unless position.nil?
           DB[:task_lists].where(id: task_list.id).update(updates)
-          Broadcaster.object_changed("task_list", task_list.id, workspace_id: task_list.workspace_id)
+          Broadcaster.object_changed("task_list", task_list.id)
         end
 
         updated = TaskList.find(task_list.id)

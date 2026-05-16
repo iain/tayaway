@@ -96,9 +96,9 @@ module ChoreRosters
             created_at: now,
             updated_at: now
           )
-          Broadcaster.object_changed("chore_assignment", assignment_id, workspace_id: workspace_id)
+          Broadcaster.object_changed("chore_assignment", assignment_id)
           # Update parent chore so clients see new assignment_ids
-          Broadcaster.object_changed("chore", valid[:chore_id], workspace_id: workspace_id)
+          Broadcaster.object_changed("chore", valid[:chore_id])
         end
 
         pool = PoolSerializer.new(membership: membership)

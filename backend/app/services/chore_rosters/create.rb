@@ -74,7 +74,7 @@ module ChoreRosters
             created_at: now,
             updated_at: now
           )
-          Broadcaster.object_changed("chore_roster", roster_id, workspace_id: workspace_id)
+          Broadcaster.object_changed("chore_roster", roster_id)
         end
 
         pool = PoolSerializer.new(membership: membership)

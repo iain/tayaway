@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class ChoreSerializer
-  extend PoolObjectSerializer
-
   class << self
     def serialize_batch(chores, pool:)
       return [] if chores.empty?

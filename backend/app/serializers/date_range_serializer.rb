@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class DateRangeSerializer
-  extend PoolObjectSerializer
-
   class << self
     def serialize_batch(ranges, pool:)
       ranges.map do |range|

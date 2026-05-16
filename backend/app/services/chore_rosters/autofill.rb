@@ -153,7 +153,7 @@ module ChoreRosters
           DB[:chore_assignments].multi_insert(new_rows) if new_rows.any?
 
           # Single broadcast for the entire roster change
-          Broadcaster.object_changed("chore_roster", roster.id, workspace_id: workspace_id)
+          Broadcaster.object_changed("chore_roster", roster.id)
         end
 
         # Serialize full roster state

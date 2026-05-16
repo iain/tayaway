@@ -88,11 +88,6 @@ module Votes
 
         clean_comment = comment&.empty? ? nil : comment
 
-        # Get workspace_id by traversing: date_range -> date_poll -> event -> workspace_id
-        poll = DatePoll.find(date_range.date_poll_id)
-        event = Event.find(poll.event_id)
-        workspace_id = event.workspace_id
-
         row = nil
         DB.transaction do
           now = Time.now
@@ -117,7 +112,7 @@ module Votes
                 )
                 .first
 
-          Broadcaster.object_changed("vote", row[:id], workspace_id: workspace_id)
+          Broadcaster.object_changed("vote", row[:id])
         end
 
         Success({ vote_id: row[:id], created: row[:created] })

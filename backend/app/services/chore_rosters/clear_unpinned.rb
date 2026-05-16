@@ -38,9 +38,9 @@ module ChoreRosters
             # Broadcast one deletion signal per assignment so clients remove them from the pool.
             # This is N pg_notify calls after a single bulk DB delete — not N individual deletes.
             non_pinned_ids.each do |aid|
-              Broadcaster.object_deleted("chore_assignment", aid, workspace_id: workspace_id)
+              Broadcaster.object_deleted("chore_assignment", aid, topics: [Topic.workspace(workspace_id)])
             end
-            Broadcaster.object_changed("chore_roster", roster.id, workspace_id: workspace_id)
+            Broadcaster.object_changed("chore_roster", roster.id)
           end
         end
 

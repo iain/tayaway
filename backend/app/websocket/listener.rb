@@ -57,12 +57,10 @@ module Websocket
 
       def handle_notification(payload, connections = ConnectionManager.instance)
         data = JSON.parse(payload, symbolize_names: true)
-        audience = data[:audience]
-        audience_id = data[:audienceId]
         object_type = data[:objectType]
         object_id = data[:objectId]
         action = data[:action]
-        return unless audience && audience_id && object_type && object_id && action
+        return unless object_type && object_id && action
 
         config = type_config(object_type)
         unless config
@@ -70,13 +68,32 @@ module Websocket
           return
         end
 
-        case audience
-        when "workspace"
-          dispatch_workspace(connections, audience_id, config, object_id, action)
-        when "user"
-          dispatch_user(connections, audience_id, config, object_id, action)
-        else
-          APP_LOGGER.warn { "[Listener] Unknown audience: #{audience.inspect}" }
+        case action
+        when "update"
+          # Load the object once and ask the registry for its topic set.
+          # If the object disappeared between notify and fetch, drop the
+          # notification — the corresponding delete NOTIFY will handle it.
+          object = find_object(config.key, object_id)
+          return unless object
+
+          bootstrap_new_workspace_members(connections, object) if config.key == "member"
+
+          config.topics_for(object).each do |topic|
+            dispatch_update(connections, topic, config, object)
+          end
+        when "delete"
+          # Deletes carry topics inline because the object can no longer
+          # be reloaded to derive them. The wire payload spells topics as
+          # strings; reify each into a Topic value before dispatching.
+          raw_topics = Array(data[:topics])
+          return if raw_topics.empty?
+
+          raw_topics.each do |raw|
+            topic = parse_topic(raw)
+            next unless topic
+
+            dispatch_delete(connections, topic, config, object_id)
+          end
         end
       rescue JSON::ParserError => e
         APP_LOGGER.error { "[Listener] Invalid JSON payload: #{e.message}" }
@@ -86,63 +103,88 @@ module Websocket
 
       private
 
-      # Workspace audience: fan out to every connection currently subscribed
-      # to that workspace, and thread a PolicyContext so the connection
-      # manager can attach per-recipient permissions.
-      def dispatch_workspace(connections, workspace_id, config, object_id, action)
-        message = { type: "broadcast", workspaceId: workspace_id, action: action }
-        policy_context = nil
-
-        case action
-        when "update"
-          object = find_object(config.key, object_id)
-          if object
-            pool = PoolSerializer.new(workspace_id: workspace_id, collect_policy_contexts: true)
-            pool.add(config.key, [object])
-            message[:data] = { objects: pool.to_a }
-            # Pull raw_objects and per-object policy contexts from the pool so
-            # fan-out children (task_items under a task_list, chores under a
-            # chore_roster, participants under an expense) get permissions
-            # computed on the broadcast side instead of silently shipping
-            # without a permissions key.
-            policy_context = Websocket::PolicyContext.new(
-              raw_objects: pool.raw_objects,
-              policy_contexts: pool.policy_contexts
-            )
-          else
-            # Object was deleted between notify and fetch
-            message[:action] = "delete"
-            message[:data] = { deleted: [{ objectType: config.client_type, id: object_id }] }
-          end
-        when "delete"
-          message[:data] = { deleted: [{ objectType: config.client_type, id: object_id }] }
-        end
-
-        connections.broadcast_to_workspace(workspace_id, message, policy_context: policy_context)
+      def parse_topic(raw)
+        Topic.parse(raw)
+      rescue ArgumentError => e
+        APP_LOGGER.warn { "[Listener] #{e.message}" }
+        nil
       end
 
-      # User audience: fan out to every connection authenticated as that
-      # user. No policy context — the user is the audience, so visibility
-      # is decided at dispatch time, not by per-viewer permission diffs.
-      def dispatch_user(connections, user_id, config, object_id, action)
-        message = { type: "broadcast", action: action }
+      def dispatch_update(connections, topic, config, object)
+        if topic.workspace?
+          # Thread a PolicyContext so the connection manager can attach
+          # per-recipient permissions; PoolSerializer needs the workspace
+          # id to compute the right policy view.
+          pool = PoolSerializer.new(workspace_id: topic.id, collect_policy_contexts: true)
+          pool.add(config.key, [object])
+          message = {
+            type: "broadcast",
+            workspaceId: topic.id,
+            action: "update",
+            data: { objects: pool.to_a }
+          }
+          policy_context = Websocket::PolicyContext.new(
+            raw_objects: pool.raw_objects,
+            policy_contexts: pool.policy_contexts
+          )
+          connections.broadcast(topic, message, policy_context: policy_context)
+        elsif topic.user?
+          # No policy context — the user is the audience, so visibility
+          # is decided at dispatch time, not by per-viewer permission diffs.
+          pool = PoolSerializer.new
+          pool.add(config.key, [object])
+          message = {
+            type: "broadcast",
+            action: "update",
+            data: { objects: pool.to_a }
+          }
+          connections.broadcast(topic, message)
+        end
+      end
 
-        case action
-        when "update"
-          object = find_object(config.key, object_id)
-          if object
-            pool = PoolSerializer.new
-            pool.add(config.key, [object])
-            message[:data] = { objects: pool.to_a }
-          else
-            message[:action] = "delete"
-            message[:data] = { deleted: [{ objectType: config.client_type, id: object_id }] }
-          end
-        when "delete"
-          message[:data] = { deleted: [{ objectType: config.client_type, id: object_id }] }
+      def dispatch_delete(connections, topic, config, object_id)
+        deleted_data = { deleted: [{ objectType: config.client_type, id: object_id }] }
+        if topic.workspace?
+          message = {
+            type: "broadcast",
+            workspaceId: topic.id,
+            action: "delete",
+            data: deleted_data
+          }
+          connections.broadcast(topic, message)
+        elsif topic.user?
+          message = { type: "broadcast", action: "delete", data: deleted_data }
+          connections.broadcast(topic, message)
+        end
+      end
+
+      # New-workspace bootstrap. Member changes only go to the workspace
+      # topic; if the affected user is freshly added and their connections
+      # aren't subscribed to that workspace yet, they'd miss the broadcast
+      # entirely (and never see the new workspace in their selector).
+      # Subscribe them, populate the membership for permission attachment,
+      # and ship a one-shot WorkspaceSync so their pool gets the workspace
+      # row + initial data before the broadcast lands.
+      def bootstrap_new_workspace_members(connections, member)
+        user_id = member.user_id.to_s
+        workspace_id = member.workspace_id.to_s
+        topic = Topic.workspace(workspace_id)
+
+        unsubscribed = connections.connections_for_user(user_id).reject do |conn_id|
+          connections.subscribed?(conn_id, topic)
+        end
+        return if unsubscribed.empty?
+
+        membership = WorkspaceMembership.find_by_workspace_and_user(workspace_id, user_id)
+        return unless membership
+
+        unsubscribed.each do |conn_id|
+          connections.set_membership(conn_id, workspace_id, membership)
+          connections.subscribe(conn_id, topic)
         end
 
-        connections.broadcast_to_user(user_id, message)
+        sync_payload = Sync::WorkspaceSync.call(workspace_id: workspace_id, since: nil, membership: membership)
+        connections.send_to_connections(unsubscribed, { type: "sync", data: sync_payload })
       end
 
       def semaphore

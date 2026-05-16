@@ -1,3 +1,4 @@
+import { Scope } from '@/api/scope'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
@@ -127,7 +128,7 @@ describe('attendeeCountByEvent aggregation', () => {
       makeRsvp({ id: 'r2', eventId: 'evt-1', userId: 'u2', attending: true }),
       makeRsvp({ id: 'r3', eventId: 'evt-1', userId: 'u3', attending: false }),
       makeRsvp({ id: 'r4', eventId: 'evt-2', userId: 'u1', attending: true }),
-    ])
+    ], { scope: Scope.workspace("test") })
 
     const counts = new Map<string, number>()
     for (const r of pool.getAll('rsvp')) {
@@ -142,7 +143,7 @@ describe('attendeeCountByEvent aggregation', () => {
     const pool = useObjectPoolStore()
     pool.importObjects([
       makeRsvp({ id: 'r1', eventId: 'evt-1', attending: false }),
-    ])
+    ], { scope: Scope.workspace("test") })
 
     const counts = new Map<string, number>()
     for (const r of pool.getAll('rsvp')) {
@@ -169,7 +170,7 @@ describe('unsettledExpenseCountByEvent aggregation', () => {
       }),
       makeExpense({ id: 'e3', eventId: 'evt-2', settlementId: null }),
       makeExpense({ id: 'e4', eventId: 'evt-2', settlementId: null }),
-    ])
+    ], { scope: Scope.workspace("test") })
 
     const counts = new Map<string, number>()
     for (const e of pool.getAll('expense')) {
@@ -185,7 +186,7 @@ describe('unsettledExpenseCountByEvent aggregation', () => {
     const pool = useObjectPoolStore()
     pool.importObjects([
       makeExpense({ id: 'e1', eventId: 'evt-1', settlementId: 'settlement-1' }),
-    ])
+    ], { scope: Scope.workspace("test") })
 
     const counts = new Map<string, number>()
     for (const e of pool.getAll('expense')) {
@@ -214,7 +215,7 @@ describe('unpaidTransferCountByEvent aggregation', () => {
         paidAt: '2026-01-02T00:00:00.000Z',
       }),
       makeTransfer({ id: 't3', settlementId: 's2', paidAt: null }),
-    ])
+    ], { scope: Scope.workspace("test") })
 
     const eventBySettlement = new Map<string, string>()
     for (const s of pool.getAll('settlement')) {
@@ -241,7 +242,7 @@ describe('unpaidTransferCountByEvent aggregation', () => {
         settlementId: 's1',
         paidAt: '2026-03-01T00:00:00.000Z',
       }),
-    ])
+    ], { scope: Scope.workspace("test") })
 
     const eventBySettlement = new Map<string, string>()
     for (const s of pool.getAll('settlement')) {

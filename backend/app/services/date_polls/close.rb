@@ -69,16 +69,16 @@ module DatePolls
             existing = DB[:rsvps].where(event_id: event.id, user_id: uid).first
             if existing
               DB[:rsvps].where(id: existing[:id]).update(attending: true, updated_at: now)
-              Broadcaster.object_changed("rsvp", existing[:id], workspace_id: event.workspace_id)
+              Broadcaster.object_changed("rsvp", existing[:id])
             else
               rsvp_id = SecureRandom.uuid
               DB[:rsvps].insert(id: rsvp_id, event_id: event.id, user_id: uid, attending: true, created_at: now, updated_at: now)
-              Broadcaster.object_changed("rsvp", rsvp_id, workspace_id: event.workspace_id)
+              Broadcaster.object_changed("rsvp", rsvp_id)
             end
           end
 
-          Broadcaster.object_changed("date_poll", poll.id, workspace_id: event.workspace_id)
-          Broadcaster.object_changed("event", event.id, workspace_id: event.workspace_id)
+          Broadcaster.object_changed("date_poll", poll.id)
+          Broadcaster.object_changed("event", event.id)
         end
 
         APP_LOGGER.info { "[DatePolls::Close] Poll #{poll.id} closed on event #{event.id} with date range #{selected_date_range_id}" }

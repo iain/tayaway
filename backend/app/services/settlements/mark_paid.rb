@@ -66,7 +66,7 @@ module Settlements
           DB[:settlement_transfers]
             .where(id: transfer.id)
             .update(paid_at: paid_at, paid_by_user_id: paid ? membership.user_id : nil)
-          Broadcaster.object_changed("settlement_transfer", transfer.id, workspace_id: workspace_id)
+          Broadcaster.object_changed("settlement_transfer", transfer.id)
           updated = SettlementTransfer.find(transfer.id)
         end
 

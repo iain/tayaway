@@ -23,8 +23,6 @@ RSpec.describe ObjectRegistry do
 
         it "has a serializer_class satisfying the pool-serializer contract" do
           expect(entry.serializer_class).to respond_to(:serialize_batch)
-          expect(entry.serializer_class).to respond_to(:policy_context)
-          expect(entry.serializer_class).to respond_to(:policy_context_batch)
         end
 
         it "has a model name that resolves to a class" do
@@ -60,6 +58,61 @@ RSpec.describe ObjectRegistry do
       expect(entry.audience).to eq(:workspace)
       expect(entry.workspace_audience?).to be(true)
       expect(entry.user_audience?).to be(false)
+    end
+  end
+
+  describe "topic derivation" do
+    it "routes a member change to its workspace topic — the user is already auto-subscribed there" do
+      fake_member = Struct.new(:workspace_id, :user_id).new("ws-1", "user-1")
+
+      expect(ObjectRegistry::BY_KEY["member"].topics_for(fake_member))
+        .to eq([Topic.workspace("ws-1")])
+    end
+
+    it "routes a notification to the user topic" do
+      fake_notification = Struct.new(:user_id).new("user-1")
+
+      expect(ObjectRegistry::BY_KEY["notification"].topics_for(fake_notification))
+        .to eq([Topic.user("user-1")])
+    end
+
+    it "defaults to the object's workspace topic for entries without a custom topics: proc" do
+      fake = Struct.new(:workspace_id).new("ws-9")
+
+      expect(ObjectRegistry::BY_KEY["workspace_invite"].topics_for(fake))
+        .to eq([Topic.workspace("ws-9")])
+    end
+
+    it "follows the join chain a chore needs to reach its workspace" do
+      chore_row = TestFactories.chore
+      chore = Chore.find(chore_row[:id])
+
+      topics = ObjectRegistry::BY_KEY["chore"].topics_for(chore)
+
+      expect(topics.size).to eq(1)
+      expect(topics.first).to be_workspace
+    end
+  end
+
+  # Locks in which entries opt into the optional policy_context_batch
+  # prefetch. If a new serializer needs prefetched policy kwargs, add it
+  # here as a load-bearing acknowledgement; if a serializer loses its
+  # prefetch (or grows one accidentally), this spec catches the drift.
+  describe "policy_context_batch opt-in" do
+    opt_ins = %w[event date_poll date_range expense settlement settlement_transfer].freeze
+
+    ObjectRegistry::TYPES.each do |entry|
+      context "when the entry is #{entry.key}" do
+        if opt_ins.include?(entry.key)
+          it "defines policy_context_batch (PoolSerializer feeds it prefetched kwargs)" do
+            expect(entry.serializer_class).to respond_to(:policy_context_batch)
+          end
+        else
+          it "does not define policy_context_batch (PoolSerializer falls back to {})" do
+            expect(entry.serializer_class).not_to respond_to(:policy_context_batch)
+          end
+        end
+      end
     end
   end
 end

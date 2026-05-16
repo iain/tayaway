@@ -192,7 +192,7 @@ module Expenses
 
           if inserted
             insert_participants(expense_id, valid[:participants], workspace_id)
-            Broadcaster.object_changed("expense", expense_id, workspace_id: workspace_id)
+            Broadcaster.object_changed("expense", expense_id)
             notify = true
           end
         end
@@ -227,7 +227,7 @@ module Expenses
             created_at: now,
             updated_at: now
           )
-          Broadcaster.object_changed("expense_participant", participant_id, workspace_id: workspace_id)
+          Broadcaster.object_changed("expense_participant", participant_id)
         end
       end
     end

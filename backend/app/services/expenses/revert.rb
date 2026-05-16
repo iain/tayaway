@@ -91,13 +91,13 @@ module Expenses
               created_at: now,
               updated_at: now
             )
-            Broadcaster.object_changed("expense_participant", participant_id, workspace_id: workspace_id)
+            Broadcaster.object_changed("expense_participant", participant_id)
           end
 
-          Broadcaster.object_changed("expense", revert_id, workspace_id: workspace_id)
+          Broadcaster.object_changed("expense", revert_id)
           # The original's permissions change (revert becomes disallowed) so
           # clients need to refresh it too.
-          Broadcaster.object_changed("expense", original.id, workspace_id: workspace_id)
+          Broadcaster.object_changed("expense", original.id)
         end
 
         return Failure(ServiceError.validation("This expense has already been reverted")) unless inserted

@@ -1,3 +1,4 @@
+import { Scope } from '@/api/scope'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useObjectPoolStore } from '@/stores/objectPool'
@@ -39,7 +40,7 @@ describe('useWorkspaceNet', () => {
     setViewer('user-viewer')
     setWorkspace('ws-1')
     const pool = useObjectPoolStore()
-    pool.importObjects([makeWorkspace({ id: 'ws-1' })])
+    pool.importObjects([makeWorkspace({ id: 'ws-1' })], { scope: Scope.workspace("test") })
   })
 
   it('returns no suggestions when the pool is empty', () => {
@@ -75,7 +76,7 @@ describe('useWorkspaceNet', () => {
         toUserId: 'user-viewer',
         amount: 10,
       }),
-    ])
+    ], { scope: Scope.workspace("test") })
 
     const { netSettlements } = useWorkspaceNet()
 
@@ -111,7 +112,7 @@ describe('useWorkspaceNet', () => {
         toUserId: 'user-viewer',
         amount: 10,
       }),
-    ])
+    ], { scope: Scope.workspace("test") })
 
     const { netSettlements } = useWorkspaceNet()
     const breakdown = netSettlements.value[0]!.breakdown
@@ -142,7 +143,7 @@ describe('useWorkspaceNet', () => {
         toUserId: 'user-other',
         amount: 15,
       }),
-    ])
+    ], { scope: Scope.workspace("test") })
 
     const { netSettlements } = useWorkspaceNet()
     expect(netSettlements.value[0]!.amount).toBe(40)
@@ -170,7 +171,7 @@ describe('useWorkspaceNet', () => {
         toUserId: 'user-viewer',
         amount: 30,
       }),
-    ])
+    ], { scope: Scope.workspace("test") })
 
     const { netSettlements } = useWorkspaceNet()
     expect(netSettlements.value).toEqual([])
@@ -197,7 +198,7 @@ describe('useWorkspaceNet', () => {
         amount: 30,
         supersededAt: '2026-04-01T00:00:00.000Z',
       }),
-    ])
+    ], { scope: Scope.workspace("test") })
 
     const { netSettlements } = useWorkspaceNet()
     expect(netSettlements.value).toEqual([])
@@ -215,7 +216,7 @@ describe('useWorkspaceNet', () => {
         toUserId: 'user-b',
         amount: 50,
       }),
-    ])
+    ], { scope: Scope.workspace("test") })
 
     const { netSettlements } = useWorkspaceNet()
     expect(netSettlements.value).toEqual([])
@@ -233,7 +234,7 @@ describe('useWorkspaceNet', () => {
         toUserId: 'user-other',
         amount: 50,
       }),
-    ])
+    ], { scope: Scope.workspace("test") })
 
     const { netSettlements } = useWorkspaceNet()
     expect(netSettlements.value).toEqual([])
@@ -251,7 +252,7 @@ describe('useWorkspaceNet', () => {
         toUserId: 'user-viewer',
         amount: 25,
       }),
-    ])
+    ], { scope: Scope.workspace("test") })
 
     const { netSettlements } = useWorkspaceNet()
     expect(netSettlements.value[0]!.direction).toBe('owed')
@@ -277,7 +278,7 @@ describe('useWorkspaceNet', () => {
         toUserId: 'user-b',
         amount: 80,
       }),
-    ])
+    ], { scope: Scope.workspace("test") })
 
     const { netSettlements } = useWorkspaceNet()
     expect(netSettlements.value.map((n) => n.counterpartyUserId)).toEqual([
@@ -300,7 +301,7 @@ describe('useWorkspaceNet', () => {
           amount: 25,
           paidAt: null,
         }),
-      ])
+      ], { scope: Scope.workspace("test") })
 
       const { recentSettlements } = useWorkspaceNet()
       expect(recentSettlements.value).toEqual([])
@@ -332,7 +333,7 @@ describe('useWorkspaceNet', () => {
           paidAt: recent,
           paidByUserId: 'user-viewer',
         }),
-      ])
+      ], { scope: Scope.workspace("test") })
 
       const { recentSettlements } = useWorkspaceNet()
       expect(recentSettlements.value).toHaveLength(1)
@@ -368,7 +369,7 @@ describe('useWorkspaceNet', () => {
           amount: 15,
           paidAt: recent,
         }),
-      ])
+      ], { scope: Scope.workspace("test") })
 
       const { recentSettlements } = useWorkspaceNet()
       expect(recentSettlements.value).toHaveLength(1)
@@ -408,7 +409,7 @@ describe('useWorkspaceNet', () => {
           amount: 20,
           paidAt: recent,
         }),
-      ])
+      ], { scope: Scope.workspace("test") })
 
       const { recentSettlements } = useWorkspaceNet()
       expect(recentSettlements.value).toEqual([])
@@ -428,7 +429,7 @@ describe('useWorkspaceNet', () => {
           amount: 50,
           paidAt: old,
         }),
-      ])
+      ], { scope: Scope.workspace("test") })
 
       const { recentSettlements } = useWorkspaceNet()
       expect(recentSettlements.value).toEqual([])
@@ -457,7 +458,7 @@ describe('useWorkspaceNet', () => {
           amount: 10,
           paidAt: newer,
         }),
-      ])
+      ], { scope: Scope.workspace("test") })
 
       const { recentSettlements } = useWorkspaceNet()
       expect(recentSettlements.value.map((r) => r.counterpartyUserId)).toEqual([
@@ -479,7 +480,7 @@ describe('useWorkspaceNet', () => {
         toUserId: 'user-other',
         amount: 25,
       }),
-    ])
+    ], { scope: Scope.workspace("test") })
 
     const { netSettlements } = useWorkspaceNet()
     const expectedId = ['user-viewer', 'user-other'].sort().join(':')

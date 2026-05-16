@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class WorkspaceInviteSerializer
-  extend PoolObjectSerializer
-
   class << self
     def serialize_batch(invites, pool:)
       invites.map do |invite|

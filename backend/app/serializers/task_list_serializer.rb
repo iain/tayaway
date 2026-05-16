@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class TaskListSerializer
-  extend PoolObjectSerializer
-
   class << self
     def serialize_batch(task_lists, pool:)
       return [] if task_lists.empty?

@@ -27,6 +27,7 @@ import {
   useCommandQueueStore,
 } from '@/stores'
 import { useObjectPoolStore } from '@/stores/objectPool'
+import { useInboxStore } from '@/stores/inbox'
 import { useDarkMode } from '@/composables/useDarkMode'
 import { useMinuteTicker } from '@/composables/useMinuteTicker'
 import {
@@ -39,6 +40,7 @@ import { getInitials } from '@/utils/member'
 import AppAvatar from '@/components/common/AppAvatar.vue'
 import CommandPalette from '@/components/common/CommandPalette.vue'
 import NotificationBell from '@/components/common/NotificationBell.vue'
+import UnreadDot from '@/components/common/UnreadDot.vue'
 import EventSubheader from '@/components/events/EventSubheader.vue'
 import { useCommandPalette } from '@/composables/useCommandPalette'
 import { useEventContextCommands } from '@/composables/useEventContextCommands'
@@ -63,6 +65,8 @@ const { pendingCount } = storeToRefs(commandQueueStore)
 
 const showConnectionBadge = computed(() => wsState.value !== 'authenticated')
 const { currentWorkspace, otherWorkspaces } = storeToRefs(workspaceStore)
+const inboxStore = useInboxStore()
+const { unreadCountByOtherWorkspace } = storeToRefs(inboxStore)
 
 // Staleness indicators tick once a minute via the shared minute ticker so
 // "fresh" → "stale" → "warning" advances without a page refresh, and so the
@@ -110,10 +114,6 @@ const warningBannerDays = computed(() => {
   return staleDays(since, now.value)
 })
 
-function handleSwitchWorkspace(workspaceId: string) {
-  workspaceStore.switchWorkspace(workspaceId)
-  wsStore.sendSwitchWorkspace(workspaceId)
-}
 const { isDark, toggle: toggleDarkMode } = useDarkMode()
 const { open: openCommandPalette } = useCommandPalette()
 
@@ -271,6 +271,8 @@ async function handleSignOut() {
                 </router-link>
                 <Menu as="div" class="relative">
                   <MenuButton
+                    data-testid="workspace-switcher-trigger"
+                    aria-label="Switch workspace"
                     class="text-nav-text hover:text-nav-text-muted-hover flex items-center focus:outline-hidden"
                   >
                     <ChevronDownIcon class="size-5" aria-hidden="true" />
@@ -293,13 +295,18 @@ async function handleSignOut() {
                       >
                         <button
                           type="button"
+                          data-testid="workspace-switcher-option"
+                          :data-workspace-id="ws.id"
                           :class="[
                             active ? 'bg-btn-secondary-fill' : '',
-                            'block w-full px-4 py-2 text-left text-sm text-ink',
+                            'flex w-full items-center justify-between px-4 py-2 text-left text-sm text-ink',
                           ]"
-                          @click="handleSwitchWorkspace(ws.id)"
+                          @click="workspaceStore.switchWorkspace(ws.id)"
                         >
-                          {{ ws.name }}
+                          <span>{{ ws.name }}</span>
+                          <UnreadDot
+                            :count="unreadCountByOtherWorkspace.get(ws.id) ?? 0"
+                          />
                         </button>
                       </MenuItem>
                     </MenuItems>
@@ -467,15 +474,16 @@ async function handleSignOut() {
             v-for="ws in otherWorkspaces"
             :key="ws.id"
             type="button"
-            class="text-nav-text hover:bg-nav-hover mt-1 block w-full rounded-md px-3 py-2 text-left text-base font-medium"
+            class="text-nav-text hover:bg-nav-hover mt-1 flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-base font-medium"
             @click="
               () => {
                 close()
-                handleSwitchWorkspace(ws.id)
+                void workspaceStore.switchWorkspace(ws.id)
               }
             "
           >
-            {{ ws.name }}
+            <span>{{ ws.name }}</span>
+            <UnreadDot :count="unreadCountByOtherWorkspace.get(ws.id) ?? 0" />
           </button>
         </div>
         <div class="space-y-1 px-2 pt-2 pb-3 sm:px-3">

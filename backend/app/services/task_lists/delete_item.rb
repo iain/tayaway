@@ -31,7 +31,7 @@ module TaskLists
           DB[:deleted_items].insert(workspace_id: task_list.workspace_id, object_type: "task_item", object_id: item_id)
           DB[:task_items].where(id: item_id).delete
 
-          Broadcaster.object_deleted("task_item", item_id, workspace_id: task_list.workspace_id)
+          Broadcaster.object_deleted("task_item", item_id, topics: [Topic.workspace(task_list.workspace_id)])
         end
 
         Success({ deleted: [{ objectType: "taskItem", id: item_id.to_s }] })

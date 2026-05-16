@@ -126,7 +126,7 @@ module Events
 
           DB[:events].where(id: event_id).update(update_data)
 
-          Broadcaster.object_changed("event", event_id, workspace_id: workspace_id)
+          Broadcaster.object_changed("event", event_id)
         end
 
         APP_LOGGER.info { "[Events::Update] Event #{event_id} updated in workspace #{workspace_id}" }

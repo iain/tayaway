@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class ExpenseSerializer
-  extend PoolObjectSerializer
-
   class << self
     def serialize_batch(expenses, pool:)
       return [] if expenses.empty?

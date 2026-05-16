@@ -8,6 +8,10 @@ import {
   type PendingUpdate,
 } from '@/types/pool'
 import type { PoolUpdate } from '@/types/poolUpdate'
+import { Scope } from '@/api/scope'
+import { useWorkspaceStore } from './workspace'
+
+export { Scope }
 
 // Helper to compare ISO8601 timestamps
 // ISO 8601 strings with the same format are lexicographically sortable
@@ -15,11 +19,31 @@ function isNewer(a: string, b: string): boolean {
   return a > b
 }
 
-// Maximum objects inserted per synchronous chunk in replaceObjects().
-// The first chunk is always processed synchronously (in the same call frame as
-// the clear) so consumers never observe an empty pool. Subsequent chunks are
-// scheduled via setTimeout(0) to yield to the browser between each batch.
+// Maximum objects inserted per synchronous chunk in replaceScope().
+// The first chunk is always processed synchronously (in the same call frame
+// as the clear) so consumers never observe an empty pool. Subsequent chunks
+// are scheduled via setTimeout(0) to yield to the browser between each batch.
 const REPLACE_CHUNK_SIZE = 200
+
+/**
+ * A scope is the delivery channel an object came from. Every object in the
+ * pool belongs to one or more scopes; clearing a scope removes that scope
+ * from each object's set, and only removes the object when its set is empty.
+ *
+ * This is how cross-scope objects (the user's own member row, which arrives
+ * via both the personal channel and a workspace channel) naturally survive
+ * a workspace switch: clearing `workspace:A` leaves them in `personal`.
+ *
+ * Scope is the branded string from `@/api/scope` — kept stringly-equal so
+ * it slots into Map/Set keys, but the compiler refuses raw strings at
+ * callsites that take a Scope.
+ */
+/** A removed object plus the set of scopes it was in, so callers can
+ *  restore it correctly on rollback. */
+export interface RemovedEntry {
+  object: PoolObject
+  scopes: Scope[]
+}
 
 // Generate unique ID for pending updates
 let pendingIdCounter = 0
@@ -27,14 +51,19 @@ function generatePendingId(): string {
   return `pending_${++pendingIdCounter}_${Date.now()}`
 }
 
-// Pool change notification types
+// Pool change notification types. Every event that creates or updates data
+// carries a `scope` so the persistence layer can route to the right cache
+// bucket without re-deriving anything. `remove` carries the set of scopes
+// the object was in so the cache can clean up every bucket it occupied.
 export interface PoolChangeImport {
   type: 'import'
+  scope: Scope
   objects: PoolObject[]
 }
 
 export interface PoolChangeSet {
   type: 'set'
+  scope: Scope
   object: PoolObject
 }
 
@@ -42,18 +71,26 @@ export interface PoolChangeRemove {
   type: 'remove'
   objectType: ObjectType
   id: string
+  scopes: Scope[]
 }
 
-export interface PoolChangeReplace {
-  type: 'replace'
+export interface PoolChangeReplaceScope {
+  type: 'replaceScope'
+  scope: Scope
   objects: PoolObject[]
+}
+
+export interface PoolChangeClearScope {
+  type: 'clearScope'
+  scope: Scope
 }
 
 export type PoolChange =
   | PoolChangeImport
   | PoolChangeSet
   | PoolChangeRemove
-  | PoolChangeReplace
+  | PoolChangeReplaceScope
+  | PoolChangeClearScope
 
 type PoolChangeCallback = (change: PoolChange) => void
 
@@ -235,11 +272,74 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   const pendingIdToKey = new Map<string, string>()
 
   // IDs of temp objects inserted via set() whose create commands are still in
-  // the command queue (not yet confirmed by the server). Cleared when the server
-  // confirms the object via importObjects() or replaceObjects(). Used by
-  // replaceObjects() to distinguish temp objects (which must survive a full sync)
-  // from server-confirmed objects that have since been deleted on the server.
+  // the command queue (not yet confirmed by the server). Cleared when the
+  // server confirms the object via importObjects() or replaceScope(). Used by
+  // replaceScope() to distinguish temp objects (which must survive a full
+  // sync) from server-confirmed objects that have since been deleted on the
+  // server.
   const tempObjectIds = new Set<string>()
+
+  // Tracks which scopes each object currently belongs to. The pool is a
+  // multi-scope union: clearing a scope removes that scope from every
+  // object's set; the object itself is only removed when its set is empty.
+  // This is how the user's own member row (delivered via both the personal
+  // channel and a workspace channel) naturally survives a workspace switch.
+  //
+  // Keyed by object id alone — IDs are UUIDs and globally unique across
+  // object types, so no type prefix is needed.
+  const objectScopes = new Map<string, Set<Scope>>()
+
+  // Reverse index: which object ids live in each scope. Lets clearScope and
+  // replaceScope iterate just the affected scope's objects instead of
+  // scanning the entire pool. Kept in sync with objectScopes via the
+  // helpers below.
+  const scopeToIds = new Map<Scope, Set<string>>()
+
+  function addObjectScope(id: string, scope: Scope): void {
+    let set = objectScopes.get(id)
+    if (!set) {
+      set = new Set()
+      objectScopes.set(id, set)
+    }
+    set.add(scope)
+    let idsInScope = scopeToIds.get(scope)
+    if (!idsInScope) {
+      idsInScope = new Set()
+      scopeToIds.set(scope, idsInScope)
+    }
+    idsInScope.add(id)
+  }
+
+  function removeObjectScope(id: string, scope: Scope): void {
+    const set = objectScopes.get(id)
+    if (set) {
+      set.delete(scope)
+      if (set.size === 0) objectScopes.delete(id)
+    }
+    const idsInScope = scopeToIds.get(scope)
+    if (idsInScope) {
+      idsInScope.delete(id)
+      if (idsInScope.size === 0) scopeToIds.delete(scope)
+    }
+  }
+
+  function dropObjectFromAllScopes(id: string): void {
+    const set = objectScopes.get(id)
+    if (!set) return
+    for (const scope of set) {
+      const idsInScope = scopeToIds.get(scope)
+      if (idsInScope) {
+        idsInScope.delete(id)
+        if (idsInScope.size === 0) scopeToIds.delete(scope)
+      }
+    }
+    objectScopes.delete(id)
+  }
+
+  function scopesOf(id: string): Scope[] {
+    const set = objectScopes.get(id)
+    return set ? Array.from(set) : []
+  }
 
   // Per-type version counters to limit reactivity invalidation scope
   const typeVersions = ref(
@@ -287,14 +387,54 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     return typeVersions.value.get(type) ?? 0
   }
 
-  // Import objects from API response - no parsing needed
-  function importObjects(poolObjects: PoolObject[]): void {
+  // Derive the scope an object should be inserted into when no scope is
+  // explicitly passed. Order:
+  //   1. existing scopes of this object id — preserve current membership
+  //      (so an update to a notification already in `personal` stays there)
+  //   2. `obj.workspaceId` if present — fresh insert into the object's home
+  //      workspace, resilient to a workspace switch mid-flight
+  //   3. the active workspace — last resort for scope-less objects like
+  //      dateRange / vote whose own row doesn't carry workspaceId
+  // Throws if none of the above is available — better loud than misrouting.
+  function deriveScope(obj: PoolObject): Scope {
+    const existing = objectScopes.get(obj.id)
+    if (existing && existing.size > 0) {
+      return existing.values().next().value as Scope
+    }
+    const objWsId = (obj as { workspaceId?: string | null }).workspaceId
+    if (objWsId) return Scope.workspace(objWsId)
+    const wsId = useWorkspaceStore().currentWorkspaceId
+    if (!wsId) {
+      throw new Error(
+        `objectPool: no scope could be derived for ${obj.objectType}:${obj.id} — pass opts.scope, set obj.workspaceId, or ensure a workspace is active`
+      )
+    }
+    return Scope.workspace(wsId)
+  }
+
+  // Merge a batch of objects from a delivery channel into the pool. Each
+  // object is tagged with a scope — if it's already in the pool from
+  // another scope, the scope is added to its set without replacing the
+  // object (newer-updatedAt still wins for the actual data).
+  //
+  // Pass `opts.scope` from sync paths (WebSocket envelope, REST snapshot)
+  // where the delivery channel is the authoritative scope. Omit it from
+  // optimistic-create paths in stores; the pool will derive a scope from
+  // each object via `deriveScope`.
+  function importObjects(
+    poolObjects: PoolObject[],
+    opts?: { scope?: Scope }
+  ): void {
+    const explicitScope = opts?.scope
     let changed = false
-    const imported: PoolObject[] = []
+    // Group imported objects by their resolved scope so we can emit one
+    // import change per scope (persistence layer routes per-scope buckets).
+    const importedByScope = new Map<Scope, PoolObject[]>()
     for (const obj of poolObjects) {
       const typeMap = objects.value.get(obj.objectType)
       if (!typeMap) continue
 
+      const scope = explicitScope ?? deriveScope(obj)
       const existing = typeMap.get(obj.id)
       const pendingKey = `${obj.objectType}:${obj.id}`
       const hadPending = pendingUpdates.value.has(pendingKey)
@@ -322,13 +462,17 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
         tempObjectIds.delete(obj.id)
       }
 
+      addObjectScope(obj.id, scope)
+
       // Update pool object if newer or doesn't exist
       if (!existing || isNewer(obj.updatedAt, existing.updatedAt)) {
         // Update reverse index: remove old FK entry (if any), add new one
         if (existing) reverseIndexRemove(cascadeIndex, existing)
         reverseIndexAdd(cascadeIndex, obj)
         typeMap.set(obj.id, obj)
-        imported.push(obj)
+        const bucket = importedByScope.get(scope) ?? []
+        bucket.push(obj)
+        importedByScope.set(scope, bucket)
         changed = true
       }
     }
@@ -338,16 +482,18 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     if (changed) {
       // Increment per-type version counters eagerly so getAll() cache
       // invalidation is correct when the deferred triggerRef() fires.
-      for (const obj of imported) {
-        typeVersions.value.set(
-          obj.objectType,
-          (typeVersions.value.get(obj.objectType) ?? 0) + 1
-        )
+      for (const objs of importedByScope.values()) {
+        for (const obj of objs) {
+          typeVersions.value.set(
+            obj.objectType,
+            (typeVersions.value.get(obj.objectType) ?? 0) + 1
+          )
+        }
       }
       scheduleImportTrigger()
     }
-    if (imported.length > 0) {
-      notifyChange({ type: 'import', objects: imported })
+    for (const [scope, objs] of importedByScope) {
+      notifyChange({ type: 'import', scope, objects: objs })
     }
   }
 
@@ -503,42 +649,84 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     return Boolean(pending && pending.length > 0)
   }
 
-  // Set an object directly.
+  // Set an object directly. Scope resolution mirrors `importObjects`:
+  // opts.scope from sync paths overrides; otherwise the pool keeps the
+  // object in whatever scopes it already lives in (so marking a personal-
+  // scope notification read doesn't move it), and falls back to deriving a
+  // fresh scope from `obj.workspaceId` or the active workspace.
   //
   // Pass `isTemp: true` when the object is an optimistic placeholder for a
   // create command still in the queue. This records the ID in tempObjectIds
-  // so replaceObjects() can preserve the object during a full sync.
+  // so replaceScope() can preserve the object during a full sync.
   //
   // Do NOT pass isTemp for rollback restores — those are server-confirmed
   // objects being put back after a failed delete and must not be preserved
-  // beyond the next authoritative full sync.
+  // beyond the next authoritative full sync. Rollback callers should use
+  // `restore(removedEntries)` rather than calling `set` per scope.
   function set<T extends ObjectType>(
     object: ObjectTypeMap[T],
-    { isTemp = false }: { isTemp?: boolean } = {}
+    opts?: { scope?: Scope; isTemp?: boolean }
   ): void {
     const typeMap = objects.value.get(object.objectType)
-    if (typeMap) {
-      const existing = typeMap.get(object.id)
-      if (existing) reverseIndexRemove(cascadeIndex, existing)
-      reverseIndexAdd(cascadeIndex, object)
-      typeMap.set(object.id, object)
-      if (isTemp) {
-        tempObjectIds.add(object.id)
+    if (!typeMap) return
+    const existing = typeMap.get(object.id)
+    if (existing) reverseIndexRemove(cascadeIndex, existing)
+    reverseIndexAdd(cascadeIndex, object)
+    typeMap.set(object.id, object)
+    if (opts?.isTemp) tempObjectIds.add(object.id)
+
+    // Resolve target scopes: explicit beats existing beats derivation.
+    let scopes: Scope[]
+    if (opts?.scope) {
+      addObjectScope(object.id, opts.scope)
+      scopes = [opts.scope]
+    } else {
+      const existingScopes = objectScopes.get(object.id)
+      if (existingScopes && existingScopes.size > 0) {
+        scopes = Array.from(existingScopes)
+      } else {
+        const derived = deriveScope(object)
+        addObjectScope(object.id, derived)
+        scopes = [derived]
       }
-      bumpVersion(object.objectType)
-      triggerRef(objects)
-      notifyChange({ type: 'set', object })
+    }
+
+    bumpVersion(object.objectType)
+    triggerRef(objects)
+    // Emit one event per scope so persistence routes to every IDB bucket
+    // the object belongs to. For the common single-scope case this is just
+    // one event; for a multi-scope object (own member row) an update fans
+    // out to both buckets without callers having to loop.
+    for (const scope of scopes) {
+      notifyChange({ type: 'set', scope, object })
     }
   }
 
-  // Remove an object from the pool
+  // Restore a batch of previously-removed entries to the pool. Each entry
+  // re-enters every scope it came from (carried on RemovedEntry), so a
+  // rollback for a multi-scope object restores it to every channel it
+  // was on. Pool persistence is updated once per (entry, scope) pair.
+  function restore(entries: RemovedEntry[]): void {
+    for (const entry of entries) {
+      const scopes = entry.scopes.length > 0 ? entry.scopes : [deriveScope(entry.object)]
+      for (const scope of scopes) {
+        set(entry.object, { scope })
+      }
+    }
+  }
+
+  // Remove an object from the pool across all scopes it belonged to.
+  // The emitted change carries those scopes so persistence can clean up
+  // every IDB bucket the object lived in.
   function remove(objectType: ObjectType, objectId: string): void {
+    const scopes = scopesOf(objectId)
     const typeMap = objects.value.get(objectType)
     if (typeMap) {
       const existing = typeMap.get(objectId)
       if (existing) reverseIndexRemove(cascadeIndex, existing)
       typeMap.delete(objectId)
     }
+    dropObjectFromAllScopes(objectId)
     // Also clear any pending updates and temp tracking
     const removedKey = `${objectType}:${objectId}`
     const removedPending = pendingUpdates.value.get(removedKey)
@@ -550,19 +738,22 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     bumpVersion(objectType)
     triggerRef(objects)
     triggerRef(pendingUpdates)
-    notifyChange({ type: 'remove', objectType, id: objectId })
+    notifyChange({ type: 'remove', objectType, id: objectId, scopes })
   }
 
   // Batch remove: removes multiple objects of the same type with a single
   // reactivity trigger instead of one per object.
   function removeMany(objectType: ObjectType, objectIds: string[]): void {
     const typeMap = objects.value.get(objectType)
+    const removedScopes = new Map<string, Scope[]>()
     for (const objectId of objectIds) {
+      removedScopes.set(objectId, scopesOf(objectId))
       if (typeMap) {
         const existing = typeMap.get(objectId)
         if (existing) reverseIndexRemove(cascadeIndex, existing)
         typeMap.delete(objectId)
       }
+      dropObjectFromAllScopes(objectId)
       const removedKey = `${objectType}:${objectId}`
       const removedPending = pendingUpdates.value.get(removedKey)
       if (removedPending) {
@@ -576,17 +767,25 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       triggerRef(objects)
       triggerRef(pendingUpdates)
       for (const id of objectIds) {
-        notifyChange({ type: 'remove', objectType, id })
+        notifyChange({
+          type: 'remove',
+          objectType,
+          id,
+          scopes: removedScopes.get(id) ?? [],
+        })
       }
     }
   }
 
-  // Cascade-remove an object and all its children, returning all removed objects for rollback
+  // Cascade-remove an object and all its children, returning every removed
+  // entry (object + its prior scope set). Rollback callers thread those
+  // scopes back into pool.set() so the restored objects re-enter the same
+  // channels they came from.
   function cascadeRemove(
     objectType: ObjectType,
     objectId: string
-  ): PoolObject[] {
-    const removed: PoolObject[] = []
+  ): RemovedEntry[] {
+    const removed: RemovedEntry[] = []
     const typesChanged = new Set<ObjectType>()
 
     function removeRecursive(type: ObjectType, id: string): void {
@@ -595,9 +794,10 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
 
       const obj = typeMap.get(id)
       if (obj) {
-        removed.push(obj)
+        removed.push({ object: obj, scopes: scopesOf(id) })
         reverseIndexRemove(cascadeIndex, obj)
         typeMap.delete(id)
+        dropObjectFromAllScopes(id)
         const cascadeKey = `${type}:${id}`
         const cascadePending = pendingUpdates.value.get(cascadeKey)
         if (cascadePending) {
@@ -634,7 +834,14 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       bumpVersion(...typesChanged)
       triggerRef(objects)
       triggerRef(pendingUpdates)
-      notifyChange({ type: 'remove', objectType, id: objectId })
+      for (const entry of removed) {
+        notifyChange({
+          type: 'remove',
+          objectType: entry.object.objectType,
+          id: entry.object.id,
+          scopes: entry.scopes,
+        })
+      }
     }
 
     return removed
@@ -649,62 +856,71 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     return result
   })
 
-  // Clear all object types except specified ones (used during workspace switch)
-  function clearExcept(...keepTypes: ObjectType[]): void {
-    const keepSet = new Set(keepTypes)
-    const clearedTypes: ObjectType[] = []
-    for (const type of OBJECT_TYPES) {
-      if (!keepSet.has(type)) {
-        objects.value.get(type)?.clear()
-        clearedTypes.push(type)
-      }
-    }
-    // Clear reverse index entries for child types that were cleared
-    for (const [indexKey, parentMap] of cascadeIndex) {
-      const childType = indexKey.split(':')[0] as ObjectType
-      if (!keepSet.has(childType)) {
-        parentMap.clear()
-      }
-    }
-    // Clear pending updates and temp tracking for cleared types
-    for (const [key, updates] of pendingUpdates.value) {
-      const objectType = key.split(':')[0] as ObjectType
-      if (!keepSet.has(objectType)) {
-        for (const u of updates) pendingIdToKey.delete(u.id)
-        pendingUpdates.value.delete(key)
-      }
-    }
-    // Clear temp IDs whose objects were wiped. An ID belongs to a cleared type
-    // if it no longer appears in any kept type map (the cleared maps are empty now).
-    for (const id of tempObjectIds) {
-      let foundInKept = false
-      for (const type of keepTypes) {
-        if (objects.value.get(type)?.has(id)) {
-          foundInKept = true
-          break
+  // Remove `scope` from every object that carries it. Objects that also
+  // belong to another scope stay in the pool with their remaining scope
+  // set; objects whose only scope was this one are dropped. Used during a
+  // workspace switch: clearing `workspace:<previous>` keeps personally-
+  // scoped data (the workspace selector, own memberships, notifications)
+  // in place because those objects also live in `personal`.
+  function clearScope(scope: Scope): void {
+    const changedTypes = new Set<ObjectType>()
+    const idsInScope = scopeToIds.get(scope)
+    if (idsInScope) {
+      // Snapshot because removeObjectScope/dropObjectFromAllScopes mutate
+      // scopeToIds underneath us.
+      for (const id of Array.from(idsInScope)) {
+        const scopes = objectScopes.get(id)
+        if (!scopes) continue
+        if (scopes.size > 1) {
+          // Object also lives in another scope — strip just this one.
+          removeObjectScope(id, scope)
+          continue
+        }
+        // Last scope — fully remove the object.
+        dropObjectFromAllScopes(id)
+        tempObjectIds.delete(id)
+        for (const [type, typeMap] of objects.value) {
+          const existing = typeMap.get(id)
+          if (existing) {
+            reverseIndexRemove(cascadeIndex, existing)
+            typeMap.delete(id)
+            changedTypes.add(type)
+            // We know the type, so build the exact pending key directly
+            // instead of scanning every key for a suffix match.
+            clearPendingFor(type, id)
+            break
+          }
         }
       }
-      if (!foundInKept) {
-        tempObjectIds.delete(id)
-      }
     }
-    bumpVersion(...clearedTypes)
-    triggerRef(objects)
-    triggerRef(pendingUpdates)
+    if (changedTypes.size > 0) {
+      bumpVersion(...changedTypes)
+      triggerRef(objects)
+      triggerRef(pendingUpdates)
+    }
+    notifyChange({ type: 'clearScope', scope })
   }
 
-  // Replace all objects — clears existing data then imports.
-  // Used on sync to ensure server-side deletions are reflected.
-  // Preserves pending updates that are newer than the server data (queued commands).
-  // Preserves temp objects (added via set()) absent from the server payload —
-  // these are optimistically-created objects whose create commands are still queued.
+  function clearPendingFor(type: ObjectType, id: string): void {
+    const key = `${type}:${id}`
+    const updates = pendingUpdates.value.get(key)
+    if (!updates) return
+    for (const u of updates) pendingIdToKey.delete(u.id)
+    pendingUpdates.value.delete(key)
+  }
+
+  // Replace one scope's objects with the server's authoritative set.
+  // Preserves pending updates that are newer than the server data (queued
+  // commands), and temp objects in this scope that aren't yet in the server
+  // payload (their create commands are still queued).
   //
-  // Objects are inserted in chunks of REPLACE_CHUNK_SIZE. The clear and the first
-  // chunk are always processed in the same synchronous call frame so consumers never
-  // observe an empty pool. Subsequent chunks are scheduled via setTimeout(0) to yield
-  // to the browser between each batch. Reactivity fires once after the final chunk.
-  function replaceObjects(poolObjects: PoolObject[]): Promise<void> {
-    // Build set of IDs present in the server payload
+  // Objects are inserted in chunks of REPLACE_CHUNK_SIZE. The clear and the
+  // first chunk run in the same synchronous call frame so consumers never
+  // observe an empty pool. Subsequent chunks yield via setTimeout(0).
+  function replaceScope(
+    scope: Scope,
+    poolObjects: PoolObject[]
+  ): Promise<void> {
     const serverIds = new Set<string>()
     for (const obj of poolObjects) {
       serverIds.add(obj.id)
@@ -732,60 +948,86 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       }
     }
 
-    // Snapshot temp objects not present in the server payload.
-    // These are optimistically-created objects whose create commands are still
-    // in the command queue — they must survive the sync to stay visible in the UI.
-    // Objects that appear in the server payload are removed from tempObjectIds
-    // (the server has confirmed them) and replaced by the authoritative server data.
+    // Snapshot temp objects in this scope that aren't in the server payload —
+    // their create commands are still queued and the object must survive.
+    // Temp objects confirmed by the server drop their temp flag.
+    const idsInScope = scopeToIds.get(scope)
     const tempObjectsToPreserve: PoolObject[] = []
-    for (const id of tempObjectIds) {
+    for (const id of Array.from(tempObjectIds)) {
       if (serverIds.has(id)) {
-        // Server confirmed this object — no longer an unconfirmed temp
         tempObjectIds.delete(id)
-      } else {
-        // Still unconfirmed — find and preserve the object before clearing
-        for (const typeMap of objects.value.values()) {
-          const obj = typeMap.get(id)
-          if (obj) {
-            tempObjectsToPreserve.push(obj)
+        continue
+      }
+      if (!idsInScope?.has(id)) continue
+      for (const typeMap of objects.value.values()) {
+        const obj = typeMap.get(id)
+        if (obj) {
+          tempObjectsToPreserve.push(obj)
+          break
+        }
+      }
+    }
+
+    // Remove `scope` from every object that carries it. Multi-scope objects
+    // (e.g. own member row in both `personal` and `workspace:A`) stay; only
+    // scope-only objects are dropped from the pool entirely. When an object
+    // is dropped, drop any pending updates keyed to it too — otherwise they
+    // would linger orphaned in pendingUpdates with no server object to
+    // overlay, and resurrect if the same id reappeared.
+    const changedTypes = new Set<ObjectType>()
+    if (idsInScope) {
+      // Snapshot because removeObjectScope/dropObjectFromAllScopes mutate
+      // scopeToIds underneath us.
+      for (const id of Array.from(idsInScope)) {
+        const scopes = objectScopes.get(id)
+        if (!scopes) continue
+        if (scopes.size > 1) {
+          removeObjectScope(id, scope)
+          continue
+        }
+        dropObjectFromAllScopes(id)
+        for (const [type, typeMap] of objects.value) {
+          const existing = typeMap.get(id)
+          if (existing) {
+            reverseIndexRemove(cascadeIndex, existing)
+            typeMap.delete(id)
+            changedTypes.add(type)
+            // Only drop pending overlays for objects that aren't coming back
+            // in this replay — objects that will be re-inserted below keep
+            // their (newer-than-server) pending updates from the reconcile
+            // pass above.
+            if (!serverIds.has(id)) clearPendingFor(type, id)
             break
           }
         }
       }
     }
 
-    // All objects to insert: server data + preserved temp objects
+    // All objects to insert: server data (under `scope`) + preserved temps
+    // (re-tagged with `scope` since they were already in this scope).
     const allObjects: PoolObject[] = [...poolObjects, ...tempObjectsToPreserve]
 
-    // Clear all type maps and rebuild the reverse index, then insert the first
-    // chunk synchronously so that consumers never observe an empty pool — the
-    // clear and first insertion happen in the same call frame.
-    for (const typeMap of objects.value.values()) {
-      typeMap.clear()
-    }
-    for (const parentMap of cascadeIndex.values()) {
-      parentMap.clear()
-    }
     const firstChunk = allObjects.slice(0, REPLACE_CHUNK_SIZE)
     for (const obj of firstChunk) {
       const typeMap = objects.value.get(obj.objectType)
       if (typeMap) {
-        typeMap.set(obj.id, obj)
+        const existing = typeMap.get(obj.id)
+        if (existing) reverseIndexRemove(cascadeIndex, existing)
         reverseIndexAdd(cascadeIndex, obj)
+        typeMap.set(obj.id, obj)
+        addObjectScope(obj.id, scope)
+        changedTypes.add(obj.objectType)
       }
     }
 
-    // For small payloads (or when the first chunk covered everything), we're done
     if (allObjects.length <= REPLACE_CHUNK_SIZE) {
-      bumpVersion(...OBJECT_TYPES)
+      if (changedTypes.size > 0) bumpVersion(...changedTypes)
       triggerRef(objects)
       triggerRef(pendingUpdates)
-      notifyChange({ type: 'replace', objects: poolObjects })
+      notifyChange({ type: 'replaceScope', scope, objects: poolObjects })
       return Promise.resolve()
     }
 
-    // Large payload: insert remaining chunks via setTimeout(0) so the browser
-    // can paint frames between each batch. Reactivity fires once at the end.
     return new Promise<void>((resolve) => {
       let offset = REPLACE_CHUNK_SIZE
 
@@ -796,20 +1038,22 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
         for (const obj of chunk) {
           const typeMap = objects.value.get(obj.objectType)
           if (typeMap) {
-            typeMap.set(obj.id, obj)
+            const existing = typeMap.get(obj.id)
+            if (existing) reverseIndexRemove(cascadeIndex, existing)
             reverseIndexAdd(cascadeIndex, obj)
+            typeMap.set(obj.id, obj)
+            addObjectScope(obj.id, scope)
+            changedTypes.add(obj.objectType)
           }
         }
 
         if (offset < allObjects.length) {
-          // More chunks remain — yield to the event loop then continue
           setTimeout(processNextChunk, 0)
         } else {
-          // All chunks done — trigger reactivity once
-          bumpVersion(...OBJECT_TYPES)
+          if (changedTypes.size > 0) bumpVersion(...changedTypes)
           triggerRef(objects)
           triggerRef(pendingUpdates)
-          notifyChange({ type: 'replace', objects: poolObjects })
+          notifyChange({ type: 'replaceScope', scope, objects: poolObjects })
           resolve()
         }
       }
@@ -819,23 +1063,19 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   }
 
   /**
-   * Single entry point for "the server sent us a batch of changes, merge
-   * them into the pool." Takes a neutral `PoolUpdate` shape so callers
-   * (WebSocket sync/broadcast handlers, future bulk-import paths) don't
-   * need to know which low-level pool method to reach for. Dispatches to
-   * replaceObjects for full syncs and importObjects + cascadeRemove for
-   * incremental merges.
+   * Single entry point for "the server sent us a batch of changes for this
+   * scope, merge them into the pool." Dispatches to replaceScope for full
+   * syncs and importObjects + cascadeRemove for incremental merges.
    */
-  function applyUpdate(update: PoolUpdate): void {
+  function applyUpdate(scope: Scope, update: PoolUpdate): void {
     if (update.kind === 'replace') {
-      // replaceObjects returns a Promise but its async work (chunked
-      // rebuild) is fire-and-forget at the WebSocket level today; preserve
-      // that behaviour here to avoid a surprise API change.
-      void replaceObjects(update.objects)
+      // replaceScope returns a Promise but its async work (chunked rebuild)
+      // is fire-and-forget at the WebSocket level today.
+      void replaceScope(scope, update.objects)
       return
     }
     if (update.objects?.length) {
-      importObjects(update.objects)
+      importObjects(update.objects, { scope })
     }
     if (update.deleted?.length) {
       for (const ref of update.deleted) {
@@ -863,6 +1103,8 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     pendingUpdates.value = new Map()
     pendingIdToKey.clear()
     tempObjectIds.clear()
+    objectScopes.clear()
+    scopeToIds.clear()
     getAllCache.clear()
     for (const parentMap of cascadeIndex.values()) {
       parentMap.clear()
@@ -888,14 +1130,16 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     removePending,
     hasPending,
     set,
+    restore,
     remove,
     removeMany,
     cascadeRemove,
-    replaceObjects,
+    replaceScope,
+    clearScope,
     applyUpdate,
     restorePendingUpdates,
-    clearExcept,
     setReadTransform,
+    scopesOf,
     $reset,
   }
 })

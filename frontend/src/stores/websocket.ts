@@ -4,6 +4,7 @@ import { rawApi } from '@/api/client'
 import { checkForServiceWorkerUpdate } from '@/api/swUpdate'
 import { useObjectPoolStore } from './objectPool'
 import { useWorkspaceStore, WORKSPACE_ID_STORAGE_KEY } from './workspace'
+import { Scope } from '@/api/scope'
 import type { PoolObject } from '@/types/pool'
 import type { DeletedObject } from '@/types/poolUpdate'
 
@@ -15,7 +16,9 @@ type ConnectionState =
 
 interface BroadcastMessage {
   type: 'broadcast'
-  workspaceId: string
+  // Workspace-audience broadcasts carry workspaceId; user-audience ones omit
+  // it (the connection itself is the audience identifier).
+  workspaceId?: string
   action: 'update' | 'delete'
   data: {
     objects?: PoolObject[]
@@ -26,7 +29,7 @@ interface BroadcastMessage {
 interface SyncMessage {
   type: 'sync'
   data: {
-    syncType?: 'full' | 'partial'
+    syncType?: 'full' | 'partial' | 'personal'
     syncedAt?: string
     objects: PoolObject[]
     deleted?: DeletedObject[]
@@ -291,24 +294,35 @@ export const useWebSocketStore = defineStore('websocket', () => {
     const pool = useObjectPoolStore()
     const workspaceStore = useWorkspaceStore()
 
+    // Personal syncs land in Scope.personal(); full and partial workspace
+    // syncs land in the current workspace's scope. There's no workspace
+    // context around a personal sync, so it has no cursor either.
+    const isPersonal = message.data?.syncType === 'personal'
+    const scope = isPersonal
+      ? Scope.personal()
+      : workspaceStore.currentWorkspaceId
+        ? Scope.workspace(workspaceStore.currentWorkspaceId)
+        : null
+    if (!scope) return
+
     if (message.data?.syncType === 'full') {
-      // Full sync: replace everything — server is authoritative
-      pool.applyUpdate({
+      pool.applyUpdate(scope, {
         kind: 'replace',
         objects: message.data.objects ?? [],
       })
     } else {
-      // Partial sync, workspace summary, or any other incremental update —
-      // same merge semantics regardless of whether `syncType` is set.
-      pool.applyUpdate({
+      pool.applyUpdate(scope, {
         kind: 'merge',
         objects: message.data?.objects,
         deleted: message.data?.deleted,
       })
     }
 
-    // Store syncedAt for next partial sync
-    if (message.data?.syncedAt && workspaceStore.currentWorkspaceId) {
+    if (
+      message.data?.syncedAt &&
+      !isPersonal &&
+      workspaceStore.currentWorkspaceId
+    ) {
       syncTimestamps.set(
         workspaceStore.currentWorkspaceId,
         message.data.syncedAt
@@ -320,7 +334,12 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
   function handleBroadcast(message: BroadcastMessage): void {
     const pool = useObjectPoolStore()
-    pool.applyUpdate({
+    // Workspace-audience broadcasts carry workspaceId on the envelope; user-
+    // audience ones don't and land in the personal scope.
+    const scope = message.workspaceId
+      ? Scope.workspace(message.workspaceId)
+      : Scope.personal()
+    pool.applyUpdate(scope, {
       kind: 'merge',
       objects: message.action === 'update' ? message.data?.objects : undefined,
       deleted: message.action === 'delete' ? message.data?.deleted : undefined,
@@ -329,7 +348,11 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
   function sendSwitchWorkspace(workspaceId: string): void {
     hasSynced.value = false
-    hasCachedData.value = false
+    // hasCachedData stays as-is — it gates the full-page loader, not per-
+    // route loading. Personal data (workspace selector, own memberships,
+    // notifications) is still in the pool, so the layout should keep
+    // rendering during the switch; route-level skeletons handle the empty
+    // new-workspace view until the sync arrives.
     const since = getSyncedAt(workspaceId)
     send({ type: 'switch_workspace', workspaceId, since: since ?? null })
   }
