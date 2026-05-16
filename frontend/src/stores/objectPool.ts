@@ -756,16 +756,11 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
           reverseIndexRemove(cascadeIndex, existing)
           typeMap.delete(id)
           changedTypes.add(type)
+          // We know the type, so build the exact pending key directly
+          // instead of scanning every key for a suffix match.
+          clearPendingFor(type, id)
           break
         }
-      }
-      const pendingKey = Array.from(pendingUpdates.value.keys()).find(
-        (k) => k.endsWith(`:${id}`)
-      )
-      if (pendingKey) {
-        const updates = pendingUpdates.value.get(pendingKey)
-        if (updates) for (const u of updates) pendingIdToKey.delete(u.id)
-        pendingUpdates.value.delete(pendingKey)
       }
     }
     if (changedTypes.size > 0) {
@@ -774,6 +769,14 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       triggerRef(pendingUpdates)
     }
     notifyChange({ type: 'clearScope', scope })
+  }
+
+  function clearPendingFor(type: ObjectType, id: string): void {
+    const key = `${type}:${id}`
+    const updates = pendingUpdates.value.get(key)
+    if (!updates) return
+    for (const u of updates) pendingIdToKey.delete(u.id)
+    pendingUpdates.value.delete(key)
   }
 
   // Replace one scope's objects with the server's authoritative set.
