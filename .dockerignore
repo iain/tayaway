@@ -1,6 +1,45 @@
+.git
+.gitignore
+.dockerignore
+.DS_Store
+
+# Editor and tooling state.
+.vscode
+.idea
+*.swp
+
+# Dependencies and build artefacts. Re-installed/built inside each stage.
 node_modules
 frontend/node_modules
 frontend/dist
+frontend/dev-dist
 backend/vendor
+backend/tmp
 e2e/node_modules
-.git
+
+# Logs and local databases.
+**/*.log
+backend/log
+
+# Local secrets and env. Production values flow via mise + sops at runtime,
+# not via the image.
+.env
+.env.*
+backend/.env
+backend/.env.*
+
+# The 125 MB DB-IP file. Lives on a podman volume populated by geoip.container;
+# baking it in would double the image and force a full rebuild per refresh.
+backend/data/dbip-city-lite.mmdb
+backend/data/dbip-city-lite.mmdb.tmp
+
+# Test artefacts that don't belong in a production image.
+backend/spec/examples.txt
+backend/coverage
+e2e/test-results
+e2e/playwright-report
+
+# Devcontainer scaffolding and Capistrano deploy bits — replaced by the
+# podman/quadlet stack.
+.devcontainer
+config/deploy

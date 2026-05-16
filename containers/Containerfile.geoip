@@ -1,0 +1,16 @@
+# Oneshot loader for the DB-IP Lite city database. Writes to a named volume
+# that the web container mounts read-only at /app/backend/data. Pairs with a
+# monthly geoip.timer so refreshes are decoupled from app deploys; the web
+# stat()s the file per-lookup and picks up new versions without restarting.
+FROM alpine:3.20
+
+RUN apk add --no-cache bash curl
+
+COPY containers/geoip-load.sh /usr/local/bin/geoip-load
+RUN chmod +x /usr/local/bin/geoip-load
+
+# Default target inside the volume the web container mounts. Override with
+# DATA_DIR if the volume is mounted somewhere else.
+ENV DATA_DIR=/data
+
+ENTRYPOINT ["/usr/local/bin/geoip-load"]

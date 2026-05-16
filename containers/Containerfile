@@ -1,0 +1,56 @@
+# syntax=docker/dockerfile:1.7
+
+# The toolchain image is built and pushed by CI from the three mise.toml files
+# (`mise oci push ghcr.io/iain/tayaway-toolchain:<sha>`); each tool sits on its
+# own layer so a pnpm bump does not invalidate the Ruby layer. For local dev
+# before that CI job lands, push a toolchain image to a registry of your
+# choice — `mise oci push <registry>/tayaway-toolchain:dev` — and override
+# this ARG when building.
+ARG TOOLCHAIN_IMAGE=ghcr.io/iain/tayaway-toolchain:latest
+
+# ── frontend-build ──────────────────────────────────────────────────────────
+# Emits frontend/dist. Shared by `backend` (no-op consumer) and `edge` via
+# buildkit's layer cache, so `pnpm build` runs once per CI even though both
+# images are built.
+FROM ${TOOLCHAIN_IMAGE} AS frontend-build
+
+WORKDIR /build/frontend
+
+COPY frontend/package.json frontend/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+COPY frontend/ ./
+RUN pnpm run build
+
+# ── backend ─────────────────────────────────────────────────────────────────
+# Falcon app server. Production quadlet mounts this ReadOnly=true with a tmpfs
+# on /tmp; nothing in this stage writes outside /tmp at runtime.
+FROM ${TOOLCHAIN_IMAGE} AS backend
+
+WORKDIR /app/backend
+
+COPY backend/Gemfile backend/Gemfile.lock ./
+RUN bundle config set --local deployment 'true' \
+ && bundle config set --local without 'development test' \
+ && bundle install --jobs 4 --retry 3
+
+COPY backend/ ./
+
+ENV MISE_ENV=production \
+    RACK_ENV=production \
+    FALCON_URL=http://0.0.0.0:9292
+
+EXPOSE 9292
+
+CMD ["bundle", "exec", "falcon-host", "falcon.rb"]
+
+# ── edge ────────────────────────────────────────────────────────────────────
+# Caddy fronts the stack: serves the built SPA, reverse-proxies /api and /ws
+# to the backend container, terminates TLS via ACME in production.
+FROM caddy:2-alpine AS edge
+
+COPY containers/Caddyfile /etc/caddy/Caddyfile
+COPY --from=frontend-build /build/frontend/dist /srv/dist
+
+EXPOSE 8080
+EXPOSE 8443
