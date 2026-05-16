@@ -5,18 +5,20 @@
 # The DB-IP Lite City database is a free, CC BY 4.0 licensed dataset from
 # https://db-ip.com — "IP Geolocation by DB-IP".
 #
-# The database file is expected at backend/data/dbip-city-lite.mmdb.
-# If the file is missing (e.g. in test/CI) all lookups return nil gracefully.
+# In production the file lives on a podman volume mounted read-only and is
+# refreshed monthly by a separate `geoip.container` oneshot that writes the
+# new file under a temp name and atomically renames over the old one. The
+# handle is cached by file mtime; each lookup does one stat() and rebuilds
+# the handle when the mtime changes, so a refresh is picked up without
+# restarting the web container or coordinating between processes. If the
+# file is missing (e.g. in test/CI) all lookups return nil.
 module GeoIP
   MMDB_PATH = File.expand_path("../data/dbip-city-lite.mmdb", __dir__)
-
-  @db = nil
-  @db_loaded = false
 
   class << self
     # Returns { city: "Amsterdam", country: "Netherlands" } or nil.
     def lookup(ip)
-      db = load_db
+      db = current_db
       return nil unless db
       return nil if ip.nil? || ip.empty? || local_ip?(ip)
 
@@ -34,20 +36,32 @@ module GeoIP
 
     private
 
-    def load_db
-      return @db if @db_loaded
+    def current_db
+      mtime = begin
+        File.mtime(MMDB_PATH)
+      rescue Errno::ENOENT
+        nil
+      end
 
-      @db_loaded = true
-      unless File.exist?(MMDB_PATH)
-        APP_LOGGER.info { "[GeoIP] No mmdb file at #{MMDB_PATH} — geolocation disabled" }
+      if mtime.nil?
+        if @db
+          APP_LOGGER.info { "[GeoIP] mmdb file disappeared at #{MMDB_PATH} — geolocation disabled" }
+          @db = nil
+          @db_mtime = nil
+        end
         return nil
       end
 
+      return @db if @db && @db_mtime == mtime
+
       @db = MaxMindDB.new(MMDB_PATH)
-      APP_LOGGER.info { "[GeoIP] Loaded DB-IP database from #{MMDB_PATH}" }
+      @db_mtime = mtime
+      APP_LOGGER.info { "[GeoIP] Loaded DB-IP database from #{MMDB_PATH} (mtime=#{mtime.iso8601})" }
       @db
     rescue StandardError => e
       APP_LOGGER.warn { "[GeoIP] Failed to load mmdb: #{e.message}" }
+      @db = nil
+      @db_mtime = nil
       nil
     end
 
