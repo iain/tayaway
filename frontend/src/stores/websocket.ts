@@ -348,12 +348,11 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
   function sendSwitchWorkspace(workspaceId: string): void {
     hasSynced.value = false
-    // Reset hasCachedData so it tells the truth about the *new* workspace:
-    // workspace.ts's hydrateCachedWorkspace flips it back to true once it
-    // imports any cached data, and a cold-cache miss leaves it false so the
-    // per-route loading affordances take over instead of seeing a stale
-    // "we have data" signal from the workspace we just left.
-    hasCachedData.value = false
+    // hasCachedData stays as-is — it gates the full-page loader, not per-
+    // route loading. Personal data (workspace selector, own memberships,
+    // notifications) is still in the pool, so the layout should keep
+    // rendering during the switch; route-level skeletons handle the empty
+    // new-workspace view until the sync arrives.
     const since = getSyncedAt(workspaceId)
     send({ type: 'switch_workspace', workspaceId, since: since ?? null })
   }

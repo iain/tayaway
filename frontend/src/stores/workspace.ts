@@ -61,8 +61,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   async function hydrateCachedWorkspace(id: string): Promise<void> {
     const scope = workspaceScope(id)
-    const { useWebSocketStore } = await import('./websocket')
-    const wsStore = useWebSocketStore()
     for (const type of OBJECT_TYPES) {
       // Stop if the user has switched again — don't hydrate stale data
       // into a different workspace's active view.
@@ -71,10 +69,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         const cached: PoolObject[] = await loadObjectsByType(scope, type)
         if (cached.length > 0 && currentWorkspaceId.value === id) {
           pool.importObjects(cached, { scope })
-          // First non-empty bucket flips hasCachedData back on so the
-          // page-level loader gives way to the cached view immediately,
-          // even before later types finish loading.
-          if (!wsStore.hasCachedData) wsStore.hasCachedData = true
           // Yield after a non-empty import so the browser can paint
           // between chunks. Empty buckets are cheap and don't need it.
           await new Promise<void>((resolve) => setTimeout(resolve, 0))
@@ -83,9 +77,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         // IndexedDB unavailable — proceed without cached data.
       }
     }
-    // If nothing was loaded, hasCachedData stays false (set by
-    // sendSwitchWorkspace) so per-route skeletons take over while the
-    // partial sync is in flight.
   }
 
   // Track whether we've ever seen the authoritative workspace list. Until the
