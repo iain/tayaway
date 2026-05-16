@@ -35,7 +35,7 @@ describe('objectPool store', () => {
       const pool = useObjectPoolStore()
       const event = makeEvent()
 
-      pool.importObjects([event])
+      pool.importObjects('workspace:test', [event])
 
       expect(pool.get('event', 'evt-1')).toEqual(event)
     })
@@ -48,8 +48,8 @@ describe('objectPool store', () => {
         name: 'Updated',
       })
 
-      pool.importObjects([old])
-      pool.importObjects([newer])
+      pool.importObjects('workspace:test', [old])
+      pool.importObjects('workspace:test', [newer])
 
       expect(pool.get('event', 'evt-1')?.name).toBe('Updated')
     })
@@ -65,8 +65,8 @@ describe('objectPool store', () => {
         name: 'Older',
       })
 
-      pool.importObjects([newer])
-      pool.importObjects([older])
+      pool.importObjects('workspace:test', [newer])
+      pool.importObjects('workspace:test', [older])
 
       expect(pool.get('event', 'evt-1')?.name).toBe('Newer')
     })
@@ -76,7 +76,7 @@ describe('objectPool store', () => {
       const event = makeEvent()
       const item = makeTaskItem()
 
-      pool.importObjects([event, item])
+      pool.importObjects('workspace:test', [event, item])
 
       expect(pool.get('event', 'evt-1')).toEqual(event)
       expect(pool.get('taskItem', 'item-1')).toEqual(item)
@@ -85,7 +85,7 @@ describe('objectPool store', () => {
     it('clears pending updates when server object is newer', () => {
       const pool = useObjectPoolStore()
       const event = makeEvent({ updatedAt: '2026-01-01T00:00:00.000Z' })
-      pool.importObjects([event])
+      pool.importObjects('workspace:test', [event])
 
       pool.addPending('event', 'evt-1', { name: 'Optimistic' })
       expect(pool.hasPending('event', 'evt-1')).toBe(true)
@@ -95,7 +95,7 @@ describe('objectPool store', () => {
         updatedAt: '2099-01-01T00:00:00.000Z',
         name: 'Server',
       })
-      pool.importObjects([serverUpdate])
+      pool.importObjects('workspace:test', [serverUpdate])
 
       expect(pool.hasPending('event', 'evt-1')).toBe(false)
       expect(pool.get('event', 'evt-1')?.name).toBe('Server')
@@ -104,7 +104,7 @@ describe('objectPool store', () => {
     it('preserves pending updates when they are newer than server object', () => {
       const pool = useObjectPoolStore()
       const event = makeEvent({ updatedAt: '2026-01-01T00:00:00.000Z' })
-      pool.importObjects([event])
+      pool.importObjects('workspace:test', [event])
 
       // Add pending — its timestamp will be Date.now() which is newer than 2026-01-02
       pool.addPending('event', 'evt-1', { name: 'Optimistic' })
@@ -114,7 +114,7 @@ describe('objectPool store', () => {
         updatedAt: '2026-01-02T00:00:00.000Z',
         name: 'Server',
       })
-      pool.importObjects([serverUpdate])
+      pool.importObjects('workspace:test', [serverUpdate])
 
       // Pending should still be there since Date.now() > 2026-01-02 timestamp
       expect(pool.hasPending('event', 'evt-1')).toBe(true)
@@ -126,7 +126,7 @@ describe('objectPool store', () => {
     it('returns server data when no pending updates', () => {
       const pool = useObjectPoolStore()
       const event = makeEvent({ name: 'Original' })
-      pool.importObjects([event])
+      pool.importObjects('workspace:test', [event])
 
       expect(pool.get('event', 'evt-1')?.name).toBe('Original')
     })
@@ -134,7 +134,7 @@ describe('objectPool store', () => {
     it('merges pending updates over server data', () => {
       const pool = useObjectPoolStore()
       const event = makeEvent({ name: 'Original', description: 'desc' })
-      pool.importObjects([event])
+      pool.importObjects('workspace:test', [event])
 
       pool.addPending('event', 'evt-1', { name: 'Pending Name' })
 
@@ -146,7 +146,7 @@ describe('objectPool store', () => {
     it('merges multiple pending updates in order', () => {
       const pool = useObjectPoolStore()
       const event = makeEvent({ name: 'Original' })
-      pool.importObjects([event])
+      pool.importObjects('workspace:test', [event])
 
       pool.addPending('event', 'evt-1', { name: 'First' })
       pool.addPending('event', 'evt-1', { name: 'Second' })
@@ -164,7 +164,7 @@ describe('objectPool store', () => {
     it('addPending returns a unique pendingId', () => {
       const pool = useObjectPoolStore()
       const event = makeEvent()
-      pool.importObjects([event])
+      pool.importObjects('workspace:test', [event])
 
       const id1 = pool.addPending('event', 'evt-1', { name: 'A' })
       const id2 = pool.addPending('event', 'evt-1', { name: 'B' })
@@ -175,7 +175,7 @@ describe('objectPool store', () => {
     it('removePending rolls back a specific pending update', () => {
       const pool = useObjectPoolStore()
       const event = makeEvent({ name: 'Original' })
-      pool.importObjects([event])
+      pool.importObjects('workspace:test', [event])
 
       const pendingId = pool.addPending('event', 'evt-1', {
         name: 'Optimistic',
@@ -190,7 +190,7 @@ describe('objectPool store', () => {
     it('removePending only removes the targeted update', () => {
       const pool = useObjectPoolStore()
       const event = makeEvent({ name: 'Original' })
-      pool.importObjects([event])
+      pool.importObjects('workspace:test', [event])
 
       const id1 = pool.addPending('event', 'evt-1', { name: 'First' })
       pool.addPending('event', 'evt-1', { description: 'Added desc' })
@@ -214,15 +214,15 @@ describe('objectPool store', () => {
       const pool = useObjectPoolStore()
       const event = makeEvent()
 
-      pool.set(event)
+      pool.set('workspace:test', event)
 
       expect(pool.get('event', 'evt-1')).toEqual(event)
     })
 
     it('overwrites an existing object', () => {
       const pool = useObjectPoolStore()
-      pool.set(makeEvent({ name: 'First' }))
-      pool.set(makeEvent({ name: 'Second' }))
+      pool.set('workspace:test', makeEvent({ name: 'First' }))
+      pool.set('workspace:test', makeEvent({ name: 'Second' }))
 
       expect(pool.get('event', 'evt-1')?.name).toBe('Second')
     })
@@ -231,7 +231,7 @@ describe('objectPool store', () => {
   describe('remove', () => {
     it('removes an object from the pool', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent()])
+      pool.importObjects('workspace:test', [makeEvent()])
 
       pool.remove('event', 'evt-1')
 
@@ -240,7 +240,7 @@ describe('objectPool store', () => {
 
     it('clears pending updates for the removed object', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent()])
+      pool.importObjects('workspace:test', [makeEvent()])
       pool.addPending('event', 'evt-1', { name: 'Pending' })
 
       pool.remove('event', 'evt-1')
@@ -254,7 +254,7 @@ describe('objectPool store', () => {
       const pool = useObjectPoolStore()
       const e1 = makeEvent({ id: 'evt-1' })
       const e2 = makeEvent({ id: 'evt-2', name: 'Second' })
-      pool.importObjects([e1, e2])
+      pool.importObjects('workspace:test', [e1, e2])
 
       const all = pool.getAll('event')
       expect(all).toHaveLength(2)
@@ -262,7 +262,7 @@ describe('objectPool store', () => {
 
     it('returns objects with pending updates merged', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent({ name: 'Original' })])
+      pool.importObjects('workspace:test', [makeEvent({ name: 'Original' })])
       pool.addPending('event', 'evt-1', { name: 'Pending' })
 
       const all = pool.getAll('event')
@@ -277,7 +277,7 @@ describe('objectPool store', () => {
 
     it('returns the same array reference when nothing has changed (cache hit)', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent({ id: 'evt-1' })])
+      pool.importObjects('workspace:test', [makeEvent({ id: 'evt-1' })])
 
       const first = pool.getAll('event')
       const second = pool.getAll('event')
@@ -287,11 +287,11 @@ describe('objectPool store', () => {
 
     it('returns a new array reference after an import (cache miss)', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent({ id: 'evt-1' })])
+      pool.importObjects('workspace:test', [makeEvent({ id: 'evt-1' })])
 
       const first = pool.getAll('event')
 
-      pool.importObjects([makeEvent({ id: 'evt-2', name: 'Second' })])
+      pool.importObjects('workspace:test', [makeEvent({ id: 'evt-2', name: 'Second' })])
       const second = pool.getAll('event')
 
       expect(second).not.toBe(first)
@@ -300,7 +300,7 @@ describe('objectPool store', () => {
 
     it('returns a new array reference after remove (cache miss)', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent({ id: 'evt-1' })])
+      pool.importObjects('workspace:test', [makeEvent({ id: 'evt-1' })])
 
       const first = pool.getAll('event')
       pool.remove('event', 'evt-1')
@@ -312,7 +312,7 @@ describe('objectPool store', () => {
 
     it('returns a new array reference after addPending (cache miss)', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent({ id: 'evt-1', name: 'Original' })])
+      pool.importObjects('workspace:test', [makeEvent({ id: 'evt-1', name: 'Original' })])
 
       const first = pool.getAll('event')
       pool.addPending('event', 'evt-1', { name: 'Pending' })
@@ -324,7 +324,7 @@ describe('objectPool store', () => {
 
     it('does not invalidate cache for an unrelated type mutation', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent({ id: 'evt-1' }), makeTaskItem()])
+      pool.importObjects('workspace:test', [makeEvent({ id: 'evt-1' }), makeTaskItem()])
 
       const eventsBefore = pool.getAll('event')
 
@@ -339,7 +339,7 @@ describe('objectPool store', () => {
   describe('getMany', () => {
     it('returns objects matching the given IDs', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ id: 'evt-1' }),
         makeEvent({ id: 'evt-2' }),
         makeEvent({ id: 'evt-3' }),
@@ -352,7 +352,7 @@ describe('objectPool store', () => {
 
     it('skips nonexistent IDs', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent({ id: 'evt-1' })])
+      pool.importObjects('workspace:test', [makeEvent({ id: 'evt-1' })])
 
       const result = pool.getMany('event', ['evt-1', 'missing'])
       expect(result).toHaveLength(1)
@@ -362,7 +362,7 @@ describe('objectPool store', () => {
   describe('findBy', () => {
     it('finds an object by a field value', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ id: 'evt-1', userId: 'user-a' }),
         makeEvent({ id: 'evt-2', userId: 'user-b' }),
       ])
@@ -380,7 +380,7 @@ describe('objectPool store', () => {
   describe('getServer', () => {
     it('returns raw server data without pending overlay', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent({ name: 'Server Name' })])
+      pool.importObjects('workspace:test', [makeEvent({ name: 'Server Name' })])
       pool.addPending('event', 'evt-1', { name: 'Pending' })
 
       const server = pool.getServer('event', 'evt-1')
@@ -396,12 +396,12 @@ describe('objectPool store', () => {
   describe('replaceObjects', () => {
     it('replaces all pool data with the given objects', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ id: 'evt-1' }),
         makeEvent({ id: 'evt-2' }),
       ])
 
-      pool.replaceObjects([makeEvent({ id: 'evt-3', name: 'New' })])
+      pool.replaceScope('workspace:test', [makeEvent({ id: 'evt-3', name: 'New' })])
 
       expect(pool.get('event', 'evt-1')).toBeUndefined()
       expect(pool.get('event', 'evt-2')).toBeUndefined()
@@ -410,24 +410,24 @@ describe('objectPool store', () => {
 
     it('clears pending updates older than server data', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent()])
+      pool.importObjects('workspace:test', [makeEvent()])
       pool.addPending('event', 'evt-1', { name: 'Pending' })
 
       // Replace with a server object whose updatedAt is in the future,
       // so the pending update (created at Date.now()) is older
       const futureDate = new Date(Date.now() + 60_000).toISOString()
-      pool.replaceObjects([makeEvent({ updatedAt: futureDate })])
+      pool.replaceScope('workspace:test', [makeEvent({ updatedAt: futureDate })])
 
       expect(pool.hasPending('event', 'evt-1')).toBe(false)
     })
 
     it('preserves pending updates newer than server data', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent()])
+      pool.importObjects('workspace:test', [makeEvent()])
       pool.addPending('event', 'evt-1', { name: 'Pending' })
 
       // Replace with server data that has an old updatedAt
-      pool.replaceObjects([makeEvent()])
+      pool.replaceScope('workspace:test', [makeEvent()])
 
       // Pending update was created at Date.now() which is after 2026-01-01,
       // so it should be preserved
@@ -439,11 +439,11 @@ describe('objectPool store', () => {
       // Simulate an optimistic create: object inserted directly via set(),
       // no server confirmation yet (create command still in queue)
       const tempEvent = makeEvent({ id: 'temp-1', name: 'Temp Event' })
-      pool.set(tempEvent, { isTemp: true })
+      pool.set('workspace:test', tempEvent, { isTemp: true })
 
       // Full sync arrives — server does not know about temp-1 yet
       const serverEvent = makeEvent({ id: 'evt-2', name: 'Server Event' })
-      pool.replaceObjects([serverEvent])
+      pool.replaceScope('workspace:test', [serverEvent])
 
       // Temp object must survive the sync so it stays visible in the UI
       expect(pool.get('event', 'temp-1')?.name).toBe('Temp Event')
@@ -454,10 +454,10 @@ describe('objectPool store', () => {
     it('removes server-imported objects that are absent from the server payload', () => {
       const pool = useObjectPoolStore()
       // Object confirmed by server (imported normally, not a temp)
-      pool.importObjects([makeEvent({ id: 'evt-old' })])
+      pool.importObjects('workspace:test', [makeEvent({ id: 'evt-old' })])
 
       // Full sync omits evt-old (deleted server-side)
-      pool.replaceObjects([makeEvent({ id: 'evt-new', name: 'New' })])
+      pool.replaceScope('workspace:test', [makeEvent({ id: 'evt-new', name: 'New' })])
 
       expect(pool.get('event', 'evt-old')).toBeUndefined()
       expect(pool.get('event', 'evt-new')?.name).toBe('New')
@@ -470,7 +470,7 @@ describe('objectPool store', () => {
         name: 'Temp Event',
         updatedAt: '2026-01-01T00:00:00.000Z',
       })
-      pool.set(tempEvent, { isTemp: true })
+      pool.set('workspace:test', tempEvent, { isTemp: true })
 
       // Server now includes it (create command was executed)
       const confirmedEvent = makeEvent({
@@ -478,7 +478,7 @@ describe('objectPool store', () => {
         name: 'Confirmed',
         updatedAt: '2026-01-02T00:00:00.000Z',
       })
-      pool.replaceObjects([confirmedEvent])
+      pool.replaceScope('workspace:test', [confirmedEvent])
 
       // Server version wins — temp is replaced, not duplicated or reverted
       expect(pool.get('event', 'temp-1')?.name).toBe('Confirmed')
@@ -487,13 +487,13 @@ describe('objectPool store', () => {
     it('does not preserve a temp object after cascadeRemove', () => {
       const pool = useObjectPoolStore()
       const tempEvent = makeEvent({ id: 'temp-1', name: 'Temp Event' })
-      pool.set(tempEvent, { isTemp: true })
+      pool.set('workspace:test', tempEvent, { isTemp: true })
 
       // User cancels / error path removes the temp object
       pool.cascadeRemove('event', 'temp-1')
 
       // Full sync — temp-1 should not reappear
-      pool.replaceObjects([makeEvent({ id: 'evt-2' })])
+      pool.replaceScope('workspace:test', [makeEvent({ id: 'evt-2' })])
       expect(pool.get('event', 'temp-1')).toBeUndefined()
     })
 
@@ -506,7 +506,7 @@ describe('objectPool store', () => {
         makeEvent({ id: `evt-${i}`, name: `Event ${i}` })
       )
 
-      const promise = pool.replaceObjects(events)
+      const promise = pool.replaceScope('workspace:test', events)
 
       // Before timers run: the first chunk (0–199) is inserted synchronously
       // in the same call frame as the clear, so consumers never see an empty pool
@@ -528,137 +528,111 @@ describe('objectPool store', () => {
     })
   })
 
-  describe('clearExcept', () => {
-    it('clears all types except the specified ones', () => {
+  describe('clearScope', () => {
+    it('removes every object that lived only in the cleared scope', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent(), makeTaskItem()])
+      pool.importObjects('workspace:A', [makeEvent(), makeTaskItem()])
 
-      pool.clearExcept('event')
+      pool.clearScope('workspace:A')
 
-      expect(pool.get('event', 'evt-1')).toBeDefined()
+      expect(pool.get('event', 'evt-1')).toBeUndefined()
       expect(pool.get('taskItem', 'item-1')).toBeUndefined()
     })
 
-    it('clears pending updates for cleared types', () => {
+    it('leaves objects in other scopes alone', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent(), makeTaskItem()])
+      pool.importObjects('workspace:A', [makeEvent({ id: 'evt-A' })])
+      pool.importObjects('workspace:B', [makeEvent({ id: 'evt-B' })])
+
+      pool.clearScope('workspace:A')
+
+      expect(pool.get('event', 'evt-A')).toBeUndefined()
+      expect(pool.get('event', 'evt-B')).toBeDefined()
+    })
+
+    it('keeps multi-scope objects when only one of their scopes is cleared', () => {
+      const pool = useObjectPoolStore()
+      const ownMember = makeMember({ userId: 'user-1' })
+      // The user's own member row is delivered on both the workspace channel
+      // (for the team view) and the personal channel (for cross-workspace
+      // visibility), so it ends up tagged with both scopes.
+      pool.importObjects('workspace:A', [ownMember])
+      pool.importObjects('personal', [ownMember])
+
+      pool.clearScope('workspace:A')
+
+      expect(pool.get('member', ownMember.id)).toEqual(ownMember)
+      expect(pool.scopesOf(ownMember.id)).toEqual(['personal'])
+    })
+
+    it('clears pending updates only when the underlying object is removed', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects('workspace:A', [makeEvent()])
+      pool.importObjects('workspace:B', [makeTaskItem()])
       pool.addPending('event', 'evt-1', { name: 'A' })
       pool.addPending('taskItem', 'item-1', { content: 'B' })
 
-      pool.clearExcept('event')
+      pool.clearScope('workspace:A')
 
-      expect(pool.hasPending('event', 'evt-1')).toBe(true)
-      expect(pool.hasPending('taskItem', 'item-1')).toBe(false)
+      // The event was only in workspace:A and is gone, so its pending update
+      // dies with it. The taskItem lives in a different scope, untouched.
+      expect(pool.hasPending('event', 'evt-1')).toBe(false)
+      expect(pool.hasPending('taskItem', 'item-1')).toBe(true)
     })
   })
 
-  describe('personal pool', () => {
-    it("preserves the current user's own membership across clearExcept", () => {
-      const pool = useObjectPoolStore()
-      const ownMember = makeMember({ userId: 'user-1' })
-
-      pool.importObjects([ownMember, makeEvent()])
-      pool.clearExcept('workspace')
-
-      expect(pool.get('member', ownMember.id)).toEqual(ownMember)
-    })
-
-    it("clears other people's memberships on clearExcept (they belong to the workspace, not the user)", () => {
-      const pool = useObjectPoolStore()
-      const otherMember = makeMember({ id: 'mem-2', userId: 'user-2' })
-
-      pool.importObjects([otherMember])
-      pool.clearExcept('workspace')
-
-      expect(pool.get('member', 'mem-2')).toBeUndefined()
-    })
-
-    it('preserves workspaces across clearExcept', () => {
-      const pool = useObjectPoolStore()
-      const wsA = makeWorkspace({ id: 'ws-a' })
-      const wsB = makeWorkspace({ id: 'ws-b' })
-
-      pool.importObjects([wsA, wsB])
-      pool.clearExcept()
-
-      expect(pool.get('workspace', 'ws-a')).toEqual(wsA)
-      expect(pool.get('workspace', 'ws-b')).toEqual(wsB)
-    })
-
-    it('preserves notifications across clearExcept', () => {
-      const pool = useObjectPoolStore()
-      const notification = {
-        id: 'note-1',
-        objectType: 'notification' as const,
-        userId: 'user-1',
-        workspaceId: 'ws-1',
-        kind: 'mention',
-        data: { title: 'Hi', body: 'Hello' },
-        readAt: null,
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-      }
-
-      pool.importObjects([notification])
-      pool.clearExcept()
-
-      expect(pool.get('notification', 'note-1')).toEqual(notification)
-    })
-  })
-
-  describe('personal pool survival across full sync', () => {
-    it('keeps workspace rows the user belongs to when a workspace full-sync replaces the pool', async () => {
+  describe('replaceScope', () => {
+    it('replaces only the named scope; other scopes are untouched', async () => {
       const pool = useObjectPoolStore()
       const wsA = makeWorkspace({ id: 'ws-A', name: 'A' })
       const wsB = makeWorkspace({ id: 'ws-B', name: 'B' })
-      pool.importObjects([wsA, wsB])
+      pool.importObjects('personal', [wsA, wsB])
 
-      // Workspace full sync arrives carrying only the active workspace's data
-      await pool.replaceObjects([wsA, makeEvent({ id: 'evt-1' })])
+      // A workspace full-sync arrives for workspace:A's scope, carrying just
+      // ws-A's data. The personal scope (which holds both workspace rows) is
+      // not affected — both workspaces still appear in the pool.
+      await pool.replaceScope('workspace:A', [makeEvent({ id: 'evt-1' })])
 
       expect(pool.get('workspace', 'ws-A')).toBeDefined()
-      // Other workspaces in the personal pool must survive — the workspace
-      // full sync is authoritative for the active workspace's data only.
       expect(pool.get('workspace', 'ws-B')).toBeDefined()
     })
 
-    it("keeps the current user's own membership rows across a workspace full-sync replace", async () => {
+    it('keeps multi-scope objects when only one of their scopes is replaced', async () => {
       const pool = useObjectPoolStore()
-      const ownInA = makeMember({ id: 'mem-a', workspaceId: 'ws-A', userId: 'user-1' })
-      const ownInB = makeMember({ id: 'mem-b', workspaceId: 'ws-B', userId: 'user-1' })
-      pool.importObjects([ownInA, ownInB])
+      const ownInA = makeMember({
+        id: 'mem-a',
+        workspaceId: 'ws-A',
+        userId: 'user-1',
+      })
+      pool.importObjects('personal', [ownInA])
+      pool.importObjects('workspace:A', [ownInA])
 
-      await pool.replaceObjects([])
+      // Replacing workspace:A with an empty payload removes the row from
+      // workspace:A's scope but leaves it in `personal`.
+      await pool.replaceScope('workspace:A', [])
 
       expect(pool.get('member', 'mem-a')).toBeDefined()
-      expect(pool.get('member', 'mem-b')).toBeDefined()
+      expect(pool.scopesOf('mem-a')).toEqual(['personal'])
     })
 
-    it('keeps notifications across a workspace full-sync replace', async () => {
+    it('drops objects whose only scope is replaced and not re-listed', async () => {
       const pool = useObjectPoolStore()
-      const notification = {
-        id: 'note-1',
-        objectType: 'notification' as const,
-        userId: 'user-1',
-        workspaceId: 'ws-1',
-        kind: 'mention',
-        data: { title: 'Hi', body: 'Hello' },
-        readAt: null,
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-      }
-      pool.importObjects([notification])
+      pool.importObjects('workspace:A', [
+        makeEvent({ id: 'gone' }),
+        makeEvent({ id: 'kept' }),
+      ])
 
-      await pool.replaceObjects([])
+      await pool.replaceScope('workspace:A', [makeEvent({ id: 'kept' })])
 
-      expect(pool.get('notification', 'note-1')).toBeDefined()
+      expect(pool.get('event', 'gone')).toBeUndefined()
+      expect(pool.get('event', 'kept')).toBeDefined()
     })
   })
 
   describe('restorePendingUpdates', () => {
     it('restores cached pending updates', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent({ name: 'Server' })])
+      pool.importObjects('workspace:test', [makeEvent({ name: 'Server' })])
 
       const cached = new Map([
         [
@@ -701,7 +675,7 @@ describe('objectPool store', () => {
       const eventVersionBefore = pool.getVersion('event')
       const taskItemVersionBefore = pool.getVersion('taskItem')
 
-      pool.importObjects([makeEvent()])
+      pool.importObjects('workspace:test', [makeEvent()])
 
       expect(pool.getVersion('event')).toBe(eventVersionBefore + 1)
       // Unrelated type must not be bumped
@@ -712,14 +686,14 @@ describe('objectPool store', () => {
       const pool = useObjectPoolStore()
       const taskItemVersionBefore = pool.getVersion('taskItem')
 
-      pool.set(makeEvent())
+      pool.set('workspace:test', makeEvent())
 
       expect(pool.getVersion('taskItem')).toBe(taskItemVersionBefore)
     })
 
     it('increments only the affected type when an object is removed', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent()])
+      pool.importObjects('workspace:test', [makeEvent()])
       const taskItemVersionBefore = pool.getVersion('taskItem')
 
       pool.remove('event', 'evt-1')
@@ -731,7 +705,7 @@ describe('objectPool store', () => {
   describe('$reset', () => {
     it('clears all objects and pending updates', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent()])
+      pool.importObjects('workspace:test', [makeEvent()])
       pool.addPending('event', 'evt-1', { name: 'Pending' })
 
       pool.$reset()
@@ -744,7 +718,7 @@ describe('objectPool store', () => {
   describe('cascadeRemove', () => {
     it('removes the object itself', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent()])
+      pool.importObjects('workspace:test', [makeEvent()])
 
       pool.cascadeRemove('event', 'evt-1')
 
@@ -753,7 +727,7 @@ describe('objectPool store', () => {
 
     it('removes deeply nested children in a single pass', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent(),
         makeDatePoll(),
         makeDateRange(),
@@ -772,7 +746,7 @@ describe('objectPool store', () => {
 
     it('only removes children belonging to the deleted parent', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ id: 'evt-1' }),
         makeEvent({ id: 'evt-2' }),
         makeDatePoll({ id: 'poll-1', eventId: 'evt-1' }),
@@ -789,7 +763,7 @@ describe('objectPool store', () => {
     it('bumps the version exactly once per affected type regardless of child count', () => {
       const pool = useObjectPoolStore()
       // 1 event → 1 datePoll → 3 dateRanges → 2 votes each = 8 total objects
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent(),
         makeDatePoll(),
         makeDateRange({ id: 'dr-1', datePollId: 'poll-1' }),
@@ -819,7 +793,7 @@ describe('objectPool store', () => {
 
     it('clears pending updates for removed objects', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent(), makeDatePoll()])
+      pool.importObjects('workspace:test', [makeEvent(), makeDatePoll()])
       pool.addPending('datePoll', 'poll-1', {
         deadline: '2099-01-01T00:00:00.000Z',
       })
@@ -831,12 +805,12 @@ describe('objectPool store', () => {
 
     it('returns all removed objects for rollback', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent(), makeDatePoll(), makeDateRange()])
+      pool.importObjects('workspace:test', [makeEvent(), makeDatePoll(), makeDateRange()])
 
       const removed = pool.cascadeRemove('event', 'evt-1')
 
       expect(removed).toHaveLength(3)
-      const ids = removed.map((o) => o.id)
+      const ids = removed.map((entry) => entry.object.id)
       expect(ids).toContain('evt-1')
       expect(ids).toContain('poll-1')
       expect(ids).toContain('dr-1')
@@ -850,7 +824,7 @@ describe('objectPool store', () => {
 
     it('removes event and its rsvps', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent(),
         makeRsvp({ id: 'r1', eventId: 'evt-1' }),
         makeRsvp({ id: 'r2', eventId: 'evt-1' }),
@@ -865,7 +839,7 @@ describe('objectPool store', () => {
 
     it('removes event and its expenses with their participants', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent(),
         makeExpense({ id: 'exp-1', eventId: 'evt-1' }),
         makeExpenseParticipant({ id: 'ep-1', expenseId: 'exp-1' }),
@@ -882,7 +856,7 @@ describe('objectPool store', () => {
 
     it('removes event and its settlements with their transfers', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent(),
         makeSettlement({ id: 'settlement-1', eventId: 'evt-1' }),
         makeSettlementTransfer({ id: 't1', settlementId: 'settlement-1' }),
@@ -899,7 +873,7 @@ describe('objectPool store', () => {
 
     it('removes event and its choreRoster, chores, and assignments', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent(),
         makeChoreRoster({ id: 'roster-1', eventId: 'evt-1' }),
         makeChore({ id: 'chore-1', choreRosterId: 'roster-1' }),
@@ -918,7 +892,7 @@ describe('objectPool store', () => {
 
     it('removes settlement and its transfers when settlement is deleted directly', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeSettlement(),
         makeSettlementTransfer({ id: 't1', settlementId: 'settlement-1' }),
       ])
@@ -931,7 +905,7 @@ describe('objectPool store', () => {
 
     it('removes choreRoster, chores, and assignments when roster is deleted directly', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeChoreRoster(),
         makeChore({ id: 'c1', choreRosterId: 'roster-1' }),
         makeChore({ id: 'c2', choreRosterId: 'roster-1' }),
@@ -950,7 +924,7 @@ describe('objectPool store', () => {
 
     it('removes expense and its participants when expense is deleted directly', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeExpense(),
         makeExpenseParticipant({ id: 'ep-1', expenseId: 'exp-1' }),
         makeExpenseParticipant({ id: 'ep-2', expenseId: 'exp-1' }),
@@ -965,7 +939,7 @@ describe('objectPool store', () => {
 
     it('removes taskList and its items', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeTaskList(),
         makeTaskItem({ id: 'i1', taskListId: 'list-1' }),
         makeTaskItem({ id: 'i2', taskListId: 'list-1' }),
@@ -980,7 +954,7 @@ describe('objectPool store', () => {
 
     it('does not remove sibling objects belonging to a different parent', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ id: 'evt-1' }),
         makeEvent({ id: 'evt-2' }),
         makeRsvp({ id: 'r1', eventId: 'evt-1' }),
@@ -1000,7 +974,7 @@ describe('objectPool store', () => {
 
     it('removes all children across every cascade chain in one event deletion', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent(),
         // Poll chain
         makeDatePoll(),
@@ -1043,7 +1017,7 @@ describe('objectPool store', () => {
 
     it('keeps reverse index consistent after remove so re-added children are found', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent(),
         makeRsvp({ id: 'r1', eventId: 'evt-1' }),
         makeRsvp({ id: 'r2', eventId: 'evt-1' }),
@@ -1051,7 +1025,7 @@ describe('objectPool store', () => {
 
       // Remove one child and re-add it
       pool.remove('rsvp', 'r1')
-      pool.importObjects([makeRsvp({ id: 'r1', eventId: 'evt-1' })])
+      pool.importObjects('workspace:test', [makeRsvp({ id: 'r1', eventId: 'evt-1' })])
 
       pool.cascadeRemove('event', 'evt-1')
 
@@ -1061,9 +1035,9 @@ describe('objectPool store', () => {
 
     it('keeps reverse index consistent after set so children added via set are cascaded', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent()])
-      pool.set(makeRsvp({ id: 'r1', eventId: 'evt-1' }))
-      pool.set(makeRsvp({ id: 'r2', eventId: 'evt-1' }))
+      pool.importObjects('workspace:test', [makeEvent()])
+      pool.set('workspace:test', makeRsvp({ id: 'r1', eventId: 'evt-1' }))
+      pool.set('workspace:test', makeRsvp({ id: 'r2', eventId: 'evt-1' }))
 
       pool.cascadeRemove('event', 'evt-1')
 
@@ -1074,13 +1048,13 @@ describe('objectPool store', () => {
     it('rebuilds reverse index correctly after replaceObjects', async () => {
       const pool = useObjectPoolStore()
       // First populate with some objects
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ id: 'evt-old' }),
         makeRsvp({ id: 'r-old', eventId: 'evt-old' }),
       ])
 
       // Replace with a different set
-      await pool.replaceObjects([
+      await pool.replaceScope('workspace:test', [
         makeEvent({ id: 'evt-1' }),
         makeRsvp({ id: 'r1', eventId: 'evt-1' }),
         makeRsvp({ id: 'r2', eventId: 'evt-1' }),
@@ -1100,7 +1074,7 @@ describe('objectPool store', () => {
       const children = Array.from({ length: childCount }, (_, i) =>
         makeRsvp({ id: `r${i}`, eventId: 'evt-1' })
       )
-      pool.importObjects([makeEvent(), ...children])
+      pool.importObjects('workspace:test', [makeEvent(), ...children])
 
       pool.cascadeRemove('event', 'evt-1')
 
@@ -1125,8 +1099,8 @@ describe('objectPool store', () => {
       expect(triggerCount).toBe(1)
 
       // Two separate importObjects calls — both in the same synchronous tick
-      pool.importObjects([makeEvent({ id: 'evt-1', name: 'A' })])
-      pool.importObjects([
+      pool.importObjects('workspace:test', [makeEvent({ id: 'evt-1', name: 'A' })])
+      pool.importObjects('workspace:test', [
         makeEvent({
           id: 'evt-2',
           name: 'B',
@@ -1157,12 +1131,12 @@ describe('objectPool store', () => {
       expect(triggerCount).toBe(1)
 
       // First tick
-      pool.importObjects([makeEvent({ id: 'evt-1' })])
+      pool.importObjects('workspace:test', [makeEvent({ id: 'evt-1' })])
       await Promise.resolve()
       expect(triggerCount).toBe(2)
 
       // Second tick (new event loop turn)
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ id: 'evt-2', updatedAt: '2026-06-01T00:00:00.000Z' }),
       ])
       await Promise.resolve()
@@ -1174,8 +1148,8 @@ describe('objectPool store', () => {
     it('reflects all coalesced objects after the deferred trigger fires', async () => {
       const pool = useObjectPoolStore()
 
-      pool.importObjects([makeEvent({ id: 'evt-1', name: 'Alpha' })])
-      pool.importObjects([
+      pool.importObjects('workspace:test', [makeEvent({ id: 'evt-1', name: 'Alpha' })])
+      pool.importObjects('workspace:test', [
         makeEvent({
           id: 'evt-2',
           name: 'Beta',

@@ -91,18 +91,13 @@ async function logout(): Promise<void> {
   router.push('/login')
 }
 
-function switchToWorkspace(workspaceId: string): void {
-  workspaceStore.switchWorkspace(workspaceId)
-  wsStore.sendSwitchWorkspace(workspaceId)
-}
-
 const workspaceSwitchActions = computed<NavAction[]>(() =>
   workspaceStore.otherWorkspaces.map((ws) => ({
     type: 'action' as const,
     id: `switch-workspace-${ws.id}`,
     name: `Switch to ${ws.name}`,
     icon: ArrowsRightLeftIcon,
-    run: () => switchToWorkspace(ws.id),
+    run: () => workspaceStore.switchWorkspace(ws.id),
   }))
 )
 

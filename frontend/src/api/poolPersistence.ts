@@ -3,10 +3,8 @@ import {
   onPoolChange,
   offPoolChange,
 } from '@/stores/objectPool'
-import { isPersonalObject } from '@/stores/personalObject'
 import { useWebSocketStore } from '@/stores/websocket'
-import { useWorkspaceStore, WORKSPACE_ID_STORAGE_KEY } from '@/stores/workspace'
-import { useAuthStore } from '@/stores/auth'
+import { WORKSPACE_ID_STORAGE_KEY } from '@/stores/workspace'
 import * as poolDb from '@/api/poolDb'
 import { CACHE_VERSION, PERSONAL_SCOPE, workspaceScope } from '@/api/poolDb'
 import { getStaleness } from '@/composables/useStaleness'
@@ -25,37 +23,27 @@ const DEFERRED_TYPES: ObjectType[] = OBJECT_TYPES.filter(
   (t) => !PRIORITY_TYPES.includes(t)
 )
 
+interface PendingSave {
+  scope: string
+  object: PoolObject
+}
+
+interface PendingRemove {
+  scope: string
+  objectType: string
+  id: string
+}
+
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 let idleCallbackHandle: number | null = null
 let pendingDebounceTimer: ReturnType<typeof setTimeout> | null = null
-let pendingSaves: PoolObject[] = []
-let pendingRemoves: { objectType: string; id: string }[] = []
+let pendingSaves: PendingSave[] = []
+let pendingRemoves: PendingRemove[] = []
 let changeHandler: ((change: PoolChange) => void) | null = null
 let pageHideHandler: (() => void) | null = null
 
-function scopeFor(obj: PoolObject, currentUserId: string | null): string | null {
-  if (isPersonalObject(obj, currentUserId)) return PERSONAL_SCOPE
-  const workspaceId = (obj as { workspaceId?: string | null }).workspaceId
-  if (!workspaceId) return null
-  return workspaceScope(workspaceId)
-}
-
-function groupByScope<T extends { objectType: string }>(
-  items: T[],
-  getObj: (item: T) => PoolObject | null,
-  currentUserId: string | null
-): Map<string, T[]> {
-  const grouped = new Map<string, T[]>()
-  for (const item of items) {
-    const obj = getObj(item)
-    if (!obj) continue
-    const scope = scopeFor(obj, currentUserId)
-    if (!scope) continue
-    const bucket = grouped.get(scope) ?? []
-    bucket.push(item)
-    grouped.set(scope, bucket)
-  }
-  return grouped
+function workspaceIdFromScope(scope: string): string | null {
+  return scope.startsWith('workspace:') ? scope.slice('workspace:'.length) : null
 }
 
 async function flushWrites(): Promise<void> {
@@ -74,35 +62,31 @@ async function flushWrites(): Promise<void> {
   debounceTimer = null
 
   try {
-    const currentUserId = useAuthStore().currentUserId
     const writes: Promise<unknown>[] = []
-    if (saves.length > 0) {
-      const savesByScope = groupByScope(saves, (o) => o, currentUserId)
-      for (const [scope, objs] of savesByScope) {
-        writes.push(poolDb.saveObjects(scope, objs))
-      }
+
+    const savesByScope = new Map<string, PoolObject[]>()
+    for (const s of saves) {
+      const bucket = savesByScope.get(s.scope) ?? []
+      bucket.push(s.object)
+      savesByScope.set(s.scope, bucket)
     }
-    if (removes.length > 0) {
-      const pool = useObjectPoolStore()
-      const workspaceStore = useWorkspaceStore()
-      const currentScope = workspaceStore.currentWorkspaceId
-        ? workspaceScope(workspaceStore.currentWorkspaceId)
-        : null
-      const removesByScope = new Map<string, { objectType: string; id: string }[]>()
-      for (const entry of removes) {
-        const cached = pool.getServer(entry.objectType as ObjectType, entry.id)
-        const scope = cached
-          ? scopeFor(cached, currentUserId)
-          : currentScope
-        if (!scope) continue
-        const bucket = removesByScope.get(scope) ?? []
-        bucket.push(entry)
-        removesByScope.set(scope, bucket)
-      }
-      for (const [scope, entries] of removesByScope) {
-        writes.push(poolDb.removeObjects(scope, entries))
-      }
+    for (const [scope, objs] of savesByScope) {
+      writes.push(poolDb.saveObjects(scope, objs))
     }
+
+    const removesByScope = new Map<
+      string,
+      { objectType: string; id: string }[]
+    >()
+    for (const r of removes) {
+      const bucket = removesByScope.get(r.scope) ?? []
+      bucket.push({ objectType: r.objectType, id: r.id })
+      removesByScope.set(r.scope, bucket)
+    }
+    for (const [scope, entries] of removesByScope) {
+      writes.push(poolDb.removeObjects(scope, entries))
+    }
+
     if (writes.length > 0) await Promise.all(writes)
   } catch (e) {
     console.warn('Failed to persist pool objects to IndexedDB', e)
@@ -135,6 +119,17 @@ function scheduleFlush(): void {
       idleCallbackHandle = setTimeout(flushWrites, 0) as unknown as number
     }
   }, 500)
+}
+
+function persistSyncedAtForScope(scope: string): void {
+  const wsId = workspaceIdFromScope(scope)
+  if (!wsId) return
+  const wsStore = useWebSocketStore()
+  const syncedAt = wsStore.getSyncedAt(wsId)
+  if (!syncedAt) return
+  poolDb.saveSyncedAt(scope, syncedAt).catch((e) => {
+    console.warn('Failed to persist syncedAt to IndexedDB', e)
+  })
 }
 
 async function loadFromCache(): Promise<void> {
@@ -183,7 +178,7 @@ async function loadFromCache(): Promise<void> {
       for (const scope of scopesToLoad) {
         const objects = await poolDb.loadObjectsByType(scope, type)
         if (objects.length > 0) {
-          pool.importObjects(objects)
+          pool.importObjects(scope, objects)
           anyLoaded = true
         }
       }
@@ -197,7 +192,7 @@ async function loadFromCache(): Promise<void> {
       for (const scope of scopesToLoad) {
         const objects = await poolDb.loadObjectsByType(scope, type)
         if (objects.length > 0) {
-          pool.importObjects(objects)
+          pool.importObjects(scope, objects)
           anyLoaded = true
         }
       }
@@ -226,81 +221,57 @@ async function loadFromCache(): Promise<void> {
   }
 }
 
-function persistFullSync(objects: PoolObject[]): void {
-  const workspaceStore = useWorkspaceStore()
-  const workspaceId = workspaceStore.currentWorkspaceId
-  if (!workspaceId) return
-  // Cancel any pending debounced writes — they'd race with the replace
-  if (debounceTimer) {
-    clearTimeout(debounceTimer)
-    debounceTimer = null
-  }
-  if (pendingDebounceTimer) {
-    clearTimeout(pendingDebounceTimer)
-    pendingDebounceTimer = null
-  }
-  pendingSaves = []
-  pendingRemoves = []
-  const wsStore = useWebSocketStore()
-  const syncedAt = wsStore.getSyncedAt(workspaceId) ?? undefined
-  const currentUserId = useAuthStore().currentUserId
-  const grouped = groupByScope(objects, (o) => o, currentUserId)
-  const scopeKey = workspaceScope(workspaceId)
+function persistReplaceScope(scope: string, objects: PoolObject[]): void {
+  // Drop any pending debounced writes for this scope — the replace is
+  // authoritative and would race with stale buffered saves/removes.
+  pendingSaves = pendingSaves.filter((s) => s.scope !== scope)
+  pendingRemoves = pendingRemoves.filter((r) => r.scope !== scope)
 
-  // Always clear+rewrite the active workspace scope, even when empty — a
-  // server full sync is authoritative for that workspace's data.
-  const workspaceObjs = grouped.get(scopeKey) ?? []
+  const wsId = workspaceIdFromScope(scope)
+  const syncedAt = wsId
+    ? (useWebSocketStore().getSyncedAt(wsId) ?? undefined)
+    : undefined
+
   void poolDb
-    .replaceScope(scopeKey, workspaceObjs, syncedAt)
-    .catch((e) => console.warn('Failed to replace workspace scope in IndexedDB', e))
-
-  // Personal objects arriving alongside the workspace sync get merged into
-  // the personal scope — they're not authoritative over other workspaces'
-  // personal data, so we never wipe personal scope here.
-  const personalObjs = grouped.get(PERSONAL_SCOPE) ?? []
-  if (personalObjs.length > 0) {
-    void poolDb
-      .saveObjects(PERSONAL_SCOPE, personalObjs)
-      .catch((e) =>
-        console.warn('Failed to persist personal objects to IndexedDB', e)
-      )
-  }
+    .replaceScope(scope, objects, syncedAt)
+    .catch((e) => console.warn('Failed to replace scope in IndexedDB', e))
 }
 
 function startPersisting(): void {
   if (changeHandler) return
 
   changeHandler = (change: PoolChange) => {
-    if (change.type === 'replace') {
-      persistFullSync(change.objects)
+    if (change.type === 'replaceScope') {
+      persistReplaceScope(change.scope, change.objects)
+      return
+    }
+
+    if (change.type === 'clearScope') {
+      void poolDb
+        .clearScope(change.scope)
+        .catch((e) => console.warn('Failed to clear scope in IndexedDB', e))
       return
     }
 
     if (change.type === 'import') {
-      pendingSaves.push(...change.objects)
+      for (const object of change.objects) {
+        pendingSaves.push({ scope: change.scope, object })
+      }
       scheduleFlush()
       schedulePendingFlush()
-      // Persist updated syncedAt for the active workspace after partial sync.
-      const workspaceStore = useWorkspaceStore()
-      const wId = workspaceStore.currentWorkspaceId
-      if (wId) {
-        const wsStore = useWebSocketStore()
-        const syncedAt = wsStore.getSyncedAt(wId)
-        if (syncedAt) {
-          poolDb.saveSyncedAt(workspaceScope(wId), syncedAt).catch((e) => {
-            console.warn('Failed to persist syncedAt to IndexedDB', e)
-          })
-        }
-      }
+      persistSyncedAtForScope(change.scope)
     } else if (change.type === 'set') {
-      pendingSaves.push(change.object)
+      pendingSaves.push({ scope: change.scope, object: change.object })
       scheduleFlush()
       schedulePendingFlush()
     } else if (change.type === 'remove') {
-      pendingRemoves.push({
-        objectType: change.objectType,
-        id: change.id,
-      })
+      for (const scope of change.scopes) {
+        pendingRemoves.push({
+          scope,
+          objectType: change.objectType,
+          id: change.id,
+        })
+      }
       scheduleFlush()
       schedulePendingFlush()
     }

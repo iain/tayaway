@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import { useMutation } from '@/composables/useMutation'
 import { useAuthStore } from './auth'
 import { useObjectPoolStore } from './objectPool'
+import { useWorkspaceStore } from './workspace'
+import { workspaceScope } from '@/api/poolDb'
 import type {
   PoolApiResponse,
   PoolExpense,
@@ -65,7 +67,8 @@ export const useExpensesStore = defineStore('expenses', () => {
     )
 
     if (tempParticipants.length > 0) {
-      pool.importObjects(tempParticipants)
+      const wsId = useWorkspaceStore().currentWorkspaceId ?? 'test'
+      pool.importObjects(workspaceScope(wsId), tempParticipants)
     }
 
     const apiBody: Record<string, unknown> = {

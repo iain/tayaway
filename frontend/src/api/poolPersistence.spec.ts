@@ -46,9 +46,7 @@ vi.mock('@/api/poolDb', () => ({
   replaceScope: vi.fn().mockResolvedValue(undefined),
   clearScope: vi.fn().mockResolvedValue(undefined),
   saveSyncedAt: vi.fn().mockResolvedValue(undefined),
-  setCurrentWorkspaceId: vi.fn().mockResolvedValue(undefined),
   loadMeta: vi.fn().mockResolvedValue({
-    currentWorkspaceId: null,
     cacheVersion: 11,
     syncedAt: new Map<string, string>(),
   }),
@@ -162,6 +160,7 @@ describe('poolPersistence — visibilitychange flush', () => {
     // Simulate a pool 'set' change — this schedules a 500ms debounce
     capturedPoolChangeHandler!({
       type: 'set',
+      scope: 'workspace:ws-1',
       object: {
         id: 'evt-1',
         objectType: 'event',
@@ -201,6 +200,7 @@ describe('poolPersistence — visibilitychange flush', () => {
 
     capturedPoolChangeHandler!({
       type: 'set',
+      scope: 'workspace:ws-1',
       object: {
         id: 'evt-2',
         objectType: 'event',
@@ -230,6 +230,7 @@ describe('poolPersistence — visibilitychange flush', () => {
 
     capturedPoolChangeHandler!({
       type: 'set',
+      scope: 'workspace:ws-1',
       object: {
         id: 'evt-3',
         objectType: 'event',
@@ -266,6 +267,7 @@ describe('poolPersistence — visibilitychange flush', () => {
 
     capturedPoolChangeHandler!({
       type: 'set',
+      scope: 'workspace:ws-1',
       object: {
         id: 'evt-4',
         objectType: 'event',
@@ -301,6 +303,7 @@ describe('poolPersistence — visibilitychange flush', () => {
 
     capturedPoolChangeHandler!({
       type: 'set',
+      scope: 'workspace:ws-1',
       object: {
         id: 'evt-5',
         objectType: 'event',
@@ -342,9 +345,12 @@ describe('poolPersistence — multi-workspace scope routing', () => {
     vi.useRealTimers()
   })
 
-  it('routes personal objects to the personal scope and workspace objects to the active workspace scope', async () => {
+  it('writes each object to the scope its change event carries', async () => {
+    // Events declare their scope explicitly; the persistence layer just
+    // routes by that tag and doesn't re-classify anything.
     capturedHandler!({
       type: 'set',
+      scope: 'personal',
       object: {
         id: 'note-1',
         objectType: 'notification',
@@ -355,6 +361,7 @@ describe('poolPersistence — multi-workspace scope routing', () => {
     })
     capturedHandler!({
       type: 'set',
+      scope: 'workspace:ws-1',
       object: {
         id: 'evt-A',
         objectType: 'event',
@@ -378,7 +385,8 @@ describe('poolPersistence — multi-workspace scope routing', () => {
 
   it('replaces only the active workspace scope on a full sync — other workspaces survive', async () => {
     capturedHandler!({
-      type: 'replace',
+      type: 'replaceScope',
+      scope: 'workspace:ws-1',
       objects: [
         {
           id: 'evt-A',
@@ -408,7 +416,6 @@ describe('poolPersistence — progressive cache loading', () => {
     localStorage.setItem('current_workspace_id', 'ws-1')
 
     vi.mocked(poolDb.loadMeta).mockReset().mockResolvedValue({
-      currentWorkspaceId: 'ws-1',
       cacheVersion: 11,
       syncedAt: new Map([['workspace:ws-1', new Date().toISOString()]]),
     })
@@ -468,14 +475,13 @@ describe('poolPersistence — progressive cache loading', () => {
     expect(poolDb.loadObjectsByType).toHaveBeenCalledWith('personal', 'member')
     expect(poolDb.loadObjectsByType).toHaveBeenCalledWith('workspace:ws-1', 'member')
     expect(poolDb.loadObjectsByType).toHaveBeenCalledWith('workspace:ws-1', 'event')
-    expect(pool.importObjects).toHaveBeenCalledWith([memberObj])
-    expect(pool.importObjects).toHaveBeenCalledWith([eventObj])
+    expect(pool.importObjects).toHaveBeenCalledWith('workspace:ws-1', [memberObj])
+    expect(pool.importObjects).toHaveBeenCalledWith('workspace:ws-1', [eventObj])
   })
 
   it('clears the workspace scope and returns when its cache is too stale', async () => {
     const oldDate = new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString()
     vi.mocked(poolDb.loadMeta).mockResolvedValue({
-      currentWorkspaceId: 'ws-1',
       cacheVersion: 11,
       syncedAt: new Map([['workspace:ws-1', oldDate]]),
     })
@@ -491,7 +497,6 @@ describe('poolPersistence — progressive cache loading', () => {
 
   it('clears cache and returns when cacheVersion is stale', async () => {
     vi.mocked(poolDb.loadMeta).mockResolvedValue({
-      currentWorkspaceId: 'ws-1',
       cacheVersion: 1, // old version
       syncedAt: new Map(),
     })

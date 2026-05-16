@@ -122,7 +122,7 @@ describe('attendeeCountByEvent aggregation', () => {
 
   it('counts attending rsvps per event, ignoring non-attending', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
+    pool.importObjects('workspace:test', [
       makeRsvp({ id: 'r1', eventId: 'evt-1', userId: 'u1', attending: true }),
       makeRsvp({ id: 'r2', eventId: 'evt-1', userId: 'u2', attending: true }),
       makeRsvp({ id: 'r3', eventId: 'evt-1', userId: 'u3', attending: false }),
@@ -140,7 +140,7 @@ describe('attendeeCountByEvent aggregation', () => {
 
   it('returns no entry for events with only non-attending rsvps', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
+    pool.importObjects('workspace:test', [
       makeRsvp({ id: 'r1', eventId: 'evt-1', attending: false }),
     ])
 
@@ -160,7 +160,7 @@ describe('unsettledExpenseCountByEvent aggregation', () => {
 
   it('counts expenses without a settlement per event', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
+    pool.importObjects('workspace:test', [
       makeExpense({ id: 'e1', eventId: 'evt-1', settlementId: null }),
       makeExpense({
         id: 'e2',
@@ -183,7 +183,7 @@ describe('unsettledExpenseCountByEvent aggregation', () => {
 
   it('returns no entry when all expenses are settled', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
+    pool.importObjects('workspace:test', [
       makeExpense({ id: 'e1', eventId: 'evt-1', settlementId: 'settlement-1' }),
     ])
 
@@ -204,7 +204,7 @@ describe('unpaidTransferCountByEvent aggregation', () => {
 
   it('resolves transfers to events via settlements and counts unpaid', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
+    pool.importObjects('workspace:test', [
       makeSettlement({ id: 's1', eventId: 'evt-1' }),
       makeSettlement({ id: 's2', eventId: 'evt-2' }),
       makeTransfer({ id: 't1', settlementId: 's1', paidAt: null }),
@@ -234,7 +234,7 @@ describe('unpaidTransferCountByEvent aggregation', () => {
 
   it('returns no entry when all transfers are paid', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
+    pool.importObjects('workspace:test', [
       makeSettlement({ id: 's1', eventId: 'evt-1' }),
       makeTransfer({
         id: 't1',

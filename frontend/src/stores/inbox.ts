@@ -3,6 +3,8 @@ import { ref, computed } from 'vue'
 import { rawApi } from '@/api/client'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useObjectPoolStore } from '@/stores/objectPool'
+import { useWorkspaceStore } from '@/stores/workspace'
+import { PERSONAL_SCOPE } from '@/api/poolDb'
 import type { PoolNotification } from '@/types/pool'
 
 const SILENCE_UNDO_MS = 5000
@@ -47,13 +49,16 @@ export const useInboxStore = defineStore('inbox', () => {
 
   const unreadCount = computed(() => unread.value.length)
 
-  // Per-workspace unread counts derived from the notification pool. Used by
-  // the workspace selector to badge workspaces that have new activity even
-  // when the user is currently looking at a different one.
-  const unreadCountByWorkspace = computed(() => {
+  // Unread counts for workspaces *other than* the one the user is currently
+  // in. The current workspace's notifications surface in the bell directly,
+  // so the selector dot is only meaningful elsewhere. Filtering here keeps
+  // callers from having to remember the exclusion.
+  const unreadCountByOtherWorkspace = computed(() => {
+    const workspaceStore = useWorkspaceStore()
+    const currentId = workspaceStore.currentWorkspaceId
     const counts = new Map<string, number>()
     for (const n of unread.value) {
-      if (!n.workspaceId) continue
+      if (!n.workspaceId || n.workspaceId === currentId) continue
       counts.set(n.workspaceId, (counts.get(n.workspaceId) ?? 0) + 1)
     }
     return counts
@@ -64,7 +69,9 @@ export const useInboxStore = defineStore('inbox', () => {
     lastError.value = null
     try {
       const { data } = await rawApi.get<InboxResponse>('/notifications', {})
-      pool().importObjects(data.objects)
+      // Notifications live in the personal scope — they're delivered to the
+      // user across all workspaces.
+      pool().importObjects(PERSONAL_SCOPE, data.objects)
     } catch (e) {
       lastError.value =
         e && typeof e === 'object' && 'message' in e
@@ -80,12 +87,12 @@ export const useInboxStore = defineStore('inbox', () => {
     if (!target || target.readAt !== null) return
 
     const previous = target
-    pool().set({ ...target, readAt: new Date().toISOString() })
+    pool().set(PERSONAL_SCOPE, { ...target, readAt: new Date().toISOString() })
 
     try {
       await rawApi.put(`/notifications/${id}/read`, {}, { silent: true })
     } catch {
-      pool().set(previous)
+      pool().set(PERSONAL_SCOPE, previous)
     }
   }
 
@@ -97,14 +104,14 @@ export const useInboxStore = defineStore('inbox', () => {
 
     const now = new Date().toISOString()
     for (const n of before) {
-      pool().set({ ...n, readAt: now })
+      pool().set(PERSONAL_SCOPE, { ...n, readAt: now })
     }
 
     try {
       await rawApi.put('/notifications/read-all', {}, { silent: true })
     } catch {
       for (const n of before) {
-        pool().set(n)
+        pool().set(PERSONAL_SCOPE, n)
       }
     }
   }
@@ -151,7 +158,7 @@ export const useInboxStore = defineStore('inbox', () => {
     notifications,
     unread,
     unreadCount,
-    unreadCountByWorkspace,
+    unreadCountByOtherWorkspace,
     loading,
     lastError,
     load,

@@ -31,14 +31,20 @@ export function useUndoDelete() {
     // 2. Track whether undo was clicked
     let undone = false
 
+    function restoreAll(): void {
+      for (const entry of removedObjects) {
+        for (const scope of entry.scopes) {
+          pool.set(scope, entry.object)
+        }
+      }
+    }
+
     // 3. Show toast with Undo action
     notifications.showInfo(options.message, {
       actionLabel: 'Undo',
       action: () => {
         undone = true
-        for (const obj of removedObjects) {
-          pool.set(obj)
-        }
+        restoreAll()
       },
       duration: UNDO_WINDOW_MS,
     })
@@ -51,10 +57,7 @@ export function useUndoDelete() {
         await commandQueue.enqueue('DELETE', options.apiPath)
       } catch (e) {
         if (e instanceof CommandQueuedError) return
-        // API failed — restore objects
-        for (const obj of removedObjects) {
-          pool.set(obj)
-        }
+        restoreAll()
         notifications.showError("Couldn't delete — the item has been restored.")
       }
     }, UNDO_WINDOW_MS)

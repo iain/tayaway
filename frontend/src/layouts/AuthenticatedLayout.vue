@@ -40,6 +40,7 @@ import { getInitials } from '@/utils/member'
 import AppAvatar from '@/components/common/AppAvatar.vue'
 import CommandPalette from '@/components/common/CommandPalette.vue'
 import NotificationBell from '@/components/common/NotificationBell.vue'
+import UnreadDot from '@/components/common/UnreadDot.vue'
 import EventSubheader from '@/components/events/EventSubheader.vue'
 import { useCommandPalette } from '@/composables/useCommandPalette'
 import { useEventContextCommands } from '@/composables/useEventContextCommands'
@@ -65,7 +66,7 @@ const { pendingCount } = storeToRefs(commandQueueStore)
 const showConnectionBadge = computed(() => wsState.value !== 'authenticated')
 const { currentWorkspace, otherWorkspaces } = storeToRefs(workspaceStore)
 const inboxStore = useInboxStore()
-const { unreadCountByWorkspace } = storeToRefs(inboxStore)
+const { unreadCountByOtherWorkspace } = storeToRefs(inboxStore)
 
 // Staleness indicators tick once a minute via the shared minute ticker so
 // "fresh" → "stale" → "warning" advances without a page refresh, and so the
@@ -113,10 +114,6 @@ const warningBannerDays = computed(() => {
   return staleDays(since, now.value)
 })
 
-function handleSwitchWorkspace(workspaceId: string) {
-  workspaceStore.switchWorkspace(workspaceId)
-  wsStore.sendSwitchWorkspace(workspaceId)
-}
 const { isDark, toggle: toggleDarkMode } = useDarkMode()
 const { open: openCommandPalette } = useCommandPalette()
 
@@ -300,13 +297,11 @@ async function handleSignOut() {
                             active ? 'bg-btn-secondary-fill' : '',
                             'flex w-full items-center justify-between px-4 py-2 text-left text-sm text-ink',
                           ]"
-                          @click="handleSwitchWorkspace(ws.id)"
+                          @click="workspaceStore.switchWorkspace(ws.id)"
                         >
                           <span>{{ ws.name }}</span>
-                          <span
-                            v-if="(unreadCountByWorkspace.get(ws.id) ?? 0) > 0"
-                            :aria-label="`${unreadCountByWorkspace.get(ws.id)} unread`"
-                            class="ml-2 inline-flex h-2 w-2 rounded-full bg-brand"
+                          <UnreadDot
+                            :count="unreadCountByOtherWorkspace.get(ws.id) ?? 0"
                           />
                         </button>
                       </MenuItem>
@@ -479,16 +474,12 @@ async function handleSignOut() {
             @click="
               () => {
                 close()
-                handleSwitchWorkspace(ws.id)
+                void workspaceStore.switchWorkspace(ws.id)
               }
             "
           >
             <span>{{ ws.name }}</span>
-            <span
-              v-if="(unreadCountByWorkspace.get(ws.id) ?? 0) > 0"
-              :aria-label="`${unreadCountByWorkspace.get(ws.id)} unread`"
-              class="ml-2 inline-flex h-2 w-2 rounded-full bg-brand"
-            />
+            <UnreadDot :count="unreadCountByOtherWorkspace.get(ws.id) ?? 0" />
           </button>
         </div>
         <div class="space-y-1 px-2 pt-2 pb-3 sm:px-3">

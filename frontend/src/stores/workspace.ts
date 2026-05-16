@@ -3,11 +3,7 @@ import { defineStore } from 'pinia'
 import { useObjectPoolStore } from './objectPool'
 import type { PoolWorkspace, PoolObject } from '@/types/pool'
 import { OBJECT_TYPES } from '@/types/pool'
-import {
-  loadObjectsByType,
-  setCurrentWorkspaceId,
-  workspaceScope,
-} from '@/api/poolDb'
+import { loadObjectsByType, workspaceScope } from '@/api/poolDb'
 
 // Exported so other modules (poolPersistence cold-start, websocket
 // reconnect URL) can read the same key without hardcoding the string.
@@ -42,21 +38,24 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
-  function switchWorkspace(id: string): void {
+  // Single entry point for "user wants to be in workspace X." Updates local
+  // state, clears the previous workspace's scope from the pool (objects also
+  // in personal scope survive — the workspace selector, own memberships,
+  // notifications), kicks off cache hydration so the UI shows something
+  // instantly on switch-back, and tells the server to swap our workspace
+  // subscription. Callers in components don't need to coordinate these
+  // steps themselves.
+  async function switchWorkspace(id: string): Promise<void> {
+    const previousId = currentWorkspaceId.value
     currentWorkspaceId.value = id
     localStorage.setItem(STORAGE_KEY, id)
+    if (previousId && previousId !== id) {
+      pool.clearScope(workspaceScope(previousId))
+    }
 
-    // In-memory: drop the previous workspace's data. Personal data (own
-    // memberships, workspace rows, notifications) survives via clearExcept.
-    pool.clearExcept('workspace')
+    const { useWebSocketStore } = await import('./websocket')
+    useWebSocketStore().sendSwitchWorkspace(id)
 
-    // Persist the new active workspace marker so cold-starts pick it up.
-    setCurrentWorkspaceId(id).catch(() => {})
-
-    // Hydrate the new workspace's cached data into the pool so the UI
-    // can render before the partial sync arrives. Personal data is
-    // already in memory from the previous workspace. Each type yields
-    // to the event loop between loads so the browser can paint frames.
     void hydrateCachedWorkspace(id)
   }
 
@@ -70,8 +69,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       try {
         const cached: PoolObject[] = await loadObjectsByType(scope, type)
         if (cached.length > 0 && currentWorkspaceId.value === id) {
-          pool.importObjects(cached)
+          pool.importObjects(scope, cached)
           loadedAny = true
+          // Yield after a non-empty import so the browser can paint
+          // between chunks. Empty buckets are cheap and don't need it.
+          await new Promise<void>((resolve) => setTimeout(resolve, 0))
         }
       } catch {
         // IndexedDB unavailable — proceed without cached data.

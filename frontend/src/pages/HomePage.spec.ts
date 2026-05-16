@@ -91,7 +91,7 @@ describe('HomePage computed maps', () => {
   describe('attendeeCountByEvent', () => {
     it('counts attending RSVPs per event, excluding non-attending', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeRsvp({ id: 'r1', eventId: 'evt-1', attending: true }),
         makeRsvp({ id: 'r2', eventId: 'evt-1', attending: true }),
         makeRsvp({ id: 'r3', eventId: 'evt-1', attending: false }),
@@ -115,7 +115,7 @@ describe('HomePage computed maps', () => {
   describe('unsettledExpenseCountByEvent', () => {
     it('counts expenses without a settlement, keyed by event', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeExpense({ id: 'exp-1', eventId: 'evt-1', settlementId: null }),
         makeExpense({ id: 'exp-2', eventId: 'evt-1', settlementId: null }),
         makeExpense({
@@ -142,7 +142,7 @@ describe('HomePage computed maps', () => {
   describe('unpaidTransferCountByEvent', () => {
     it('counts unpaid, non-superseded transfers per event via settlement join', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeSettlement({ id: 's1', eventId: 'evt-1' }),
         makeSettlement({ id: 's2', eventId: 'evt-2' }),
         makeTransfer({
@@ -189,7 +189,7 @@ describe('HomePage computed maps', () => {
 
     it('ignores transfers whose settlement is not in the pool', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeTransfer({ id: 't1', settlementId: 'missing-settlement' }),
       ])
 

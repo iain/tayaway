@@ -24,7 +24,6 @@ interface StoredPendingEntry {
 
 interface MetaEntry {
   key: string
-  workspaceId?: string
   syncedAt?: string
   cacheVersion?: number
 }
@@ -33,7 +32,7 @@ interface PoolCacheDB {
   objects: {
     key: string
     value: StoredObject
-    indexes: { objectType: ObjectType; scope: string }
+    indexes: { scope: string; scopeAndType: [string, ObjectType] }
   }
   meta: {
     key: string
@@ -50,7 +49,6 @@ interface PoolCacheDB {
 // scope field and must be wiped on upgrade.
 const CACHE_VERSION = 11
 
-const CURRENT_WORKSPACE_META_KEY = 'currentWorkspaceId'
 const CACHE_VERSION_META_KEY = 'cacheVersion'
 const SYNCED_AT_META_PREFIX = 'syncedAt:'
 
@@ -58,7 +56,7 @@ let dbPromise: Promise<IDBPDatabase<PoolCacheDB>> | null = null
 
 function getDb(): Promise<IDBPDatabase<PoolCacheDB>> {
   if (!dbPromise) {
-    dbPromise = openDB<PoolCacheDB>('tayaway-pool-cache', 3, {
+    dbPromise = openDB<PoolCacheDB>('tayaway-pool-cache', 4, {
       upgrade(db, oldVersion, _newVersion, tx) {
         if (oldVersion < 1) {
           const store = db.createObjectStore('objects', { keyPath: 'key' })
@@ -76,6 +74,17 @@ function getDb(): Promise<IDBPDatabase<PoolCacheDB>> {
           objectsStore.createIndex('scope', 'scope')
           tx.objectStore('meta').clear()
           tx.objectStore('pendingUpdates').clear()
+        }
+        if (oldVersion < 4) {
+          // Hydration loads one (scope, objectType) bucket at a time; the
+          // standalone `objectType` index would force a full-scope scan
+          // plus filter. Replace it with a compound index so each load
+          // is a single tight seek.
+          const objectsStore = tx.objectStore('objects')
+          if (objectsStore.indexNames.contains('objectType')) {
+            objectsStore.deleteIndex('objectType')
+          }
+          objectsStore.createIndex('scopeAndType', ['scope', 'objectType'])
         }
       },
     })
@@ -206,30 +215,27 @@ interface ScopedSyncedAt {
 
 /**
  * Read only the lightweight metadata record from the cache.
- * Returns the last-active workspace, cache version, and a per-scope syncedAt
- * map (so a partial sync per workspace can use its own cursor).
+ * Returns the cache version and a per-scope syncedAt map (so a partial sync
+ * per workspace can use its own cursor). The active workspace lives in
+ * localStorage; IDB doesn't track it.
  */
 export async function loadMeta(): Promise<{
-  currentWorkspaceId: string | null
   cacheVersion: number | null
   syncedAt: Map<string, string>
 }> {
   const db = await getDb()
   const tx = db.transaction('meta', 'readonly')
   const all = await tx.store.getAll()
-  let currentWorkspaceId: string | null = null
   let cacheVersion: number | null = null
   const syncedAt = new Map<string, string>()
   for (const entry of all) {
-    if (entry.key === CURRENT_WORKSPACE_META_KEY) {
-      currentWorkspaceId = entry.workspaceId ?? null
-    } else if (entry.key === CACHE_VERSION_META_KEY) {
+    if (entry.key === CACHE_VERSION_META_KEY) {
       cacheVersion = entry.cacheVersion ?? null
     } else if (entry.key.startsWith(SYNCED_AT_META_PREFIX) && entry.syncedAt) {
       syncedAt.set(entry.key.slice(SYNCED_AT_META_PREFIX.length), entry.syncedAt)
     }
   }
-  return { currentWorkspaceId, cacheVersion, syncedAt }
+  return { cacheVersion, syncedAt }
 }
 
 /**
@@ -243,11 +249,10 @@ export async function loadObjectsByType(
 ): Promise<PoolObject[]> {
   const db = await getDb()
   const tx = db.transaction('objects', 'readonly')
-  const scopeIndex = tx.store.index('scope')
-  const stored = await scopeIndex.getAll(IDBKeyRange.only(scope))
-  return stored
-    .filter((s) => s.objectType === objectType)
-    .map((s) => s.data)
+  const stored = await tx.store
+    .index('scopeAndType')
+    .getAll(IDBKeyRange.only([scope, objectType]))
+  return stored.map((s) => s.data)
 }
 
 /**
@@ -276,11 +281,6 @@ export async function saveSyncedAt(
     key: `${SYNCED_AT_META_PREFIX}${scope}`,
     syncedAt,
   })
-}
-
-export async function setCurrentWorkspaceId(workspaceId: string): Promise<void> {
-  const db = await getDb()
-  await db.put('meta', { key: CURRENT_WORKSPACE_META_KEY, workspaceId })
 }
 
 export async function clearAll(): Promise<void> {

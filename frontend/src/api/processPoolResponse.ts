@@ -1,4 +1,6 @@
 import { useObjectPoolStore } from '@/stores'
+import { useWorkspaceStore } from '@/stores/workspace'
+import { workspaceScope } from '@/api/poolDb'
 import type { PoolObject, ObjectType } from '@/types/pool'
 
 interface DeletedObject {
@@ -15,17 +17,26 @@ interface DeletedObject {
  * choice rather than a hidden side effect of every request. The pool-
  * aware `api` wrapper in `@/api/client` calls this on GET responses, and
  * the command queue calls it on successful mutation replays.
+ *
+ * REST responses are tagged with the current workspace's scope — that's
+ * the channel the matching WebSocket broadcasts will arrive on, so the
+ * REST-delivered copy and the WS-delivered copy end up sharing a scope.
+ * Endpoints that deliver personal data (notifications) bypass this path
+ * and route through rawApi + an explicit pool.importObjects(PERSONAL_SCOPE).
  */
 export function processPoolResponse(data: unknown): void {
   if (!data || typeof data !== 'object') return
 
   const pool = useObjectPoolStore()
+  const wsId = useWorkspaceStore().currentWorkspaceId
+  const scope = wsId ? workspaceScope(wsId) : null
 
   if (
+    scope &&
     'objects' in data &&
     Array.isArray((data as { objects: unknown }).objects)
   ) {
-    pool.importObjects((data as { objects: PoolObject[] }).objects)
+    pool.importObjects(scope, (data as { objects: PoolObject[] }).objects)
   }
 
   if (

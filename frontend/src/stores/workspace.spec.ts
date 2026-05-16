@@ -8,7 +8,6 @@ import type { PoolObject } from '@/types/pool'
 vi.mock('@/api/poolDb', () => ({
   PERSONAL_SCOPE: 'personal',
   workspaceScope: (id: string) => `workspace:${id}`,
-  setCurrentWorkspaceId: vi.fn().mockResolvedValue(undefined),
   loadObjectsByType: vi.fn().mockResolvedValue([]),
 }))
 
@@ -21,7 +20,6 @@ describe('workspace store — switchWorkspace', () => {
     setActivePinia(createPinia())
     localStorage.clear()
     vi.mocked(poolDb.loadObjectsByType).mockReset().mockResolvedValue([])
-    vi.mocked(poolDb.setCurrentWorkspaceId).mockReset().mockResolvedValue(undefined)
   })
 
   it('hydrates the new workspace cache into the pool so a switch-back shows data before the partial sync', async () => {
@@ -45,7 +43,7 @@ describe('workspace store — switchWorkspace', () => {
     store.initialize(['ws-1', 'ws-2'])
     expect(store.currentWorkspaceId).toBe('ws-1')
 
-    store.switchWorkspace('ws-2')
+    void store.switchWorkspace('ws-2')
     // The hydration is asynchronous — wait for it to resolve.
     await vi.waitFor(() => {
       const pool = useObjectPoolStore()
@@ -53,12 +51,6 @@ describe('workspace store — switchWorkspace', () => {
     })
   })
 
-  it('persists the new workspace id in IndexedDB on switch', () => {
-    const store = useWorkspaceStore()
-    store.initialize(['ws-1', 'ws-2'])
-    store.switchWorkspace('ws-2')
-    expect(poolDb.setCurrentWorkspaceId).toHaveBeenCalledWith('ws-2')
-  })
 })
 
 describe('workspace store — removed from current workspace', () => {
@@ -66,10 +58,9 @@ describe('workspace store — removed from current workspace', () => {
     setActivePinia(createPinia())
     localStorage.clear()
     vi.mocked(poolDb.loadObjectsByType).mockReset().mockResolvedValue([])
-    vi.mocked(poolDb.setCurrentWorkspaceId).mockReset().mockResolvedValue(undefined)
   })
 
-  it('redirects to the next remaining workspace when the current one disappears from the personal pool', async () => {
+  it('redirects to the next remaining workspace when the current one disappears from the personal pool', () => {
     const pool = useObjectPoolStore()
     const wsA: PoolObject = {
       id: 'ws-A',
@@ -87,22 +78,21 @@ describe('workspace store — removed from current workspace', () => {
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
     } as unknown as PoolObject
-    pool.importObjects([wsA, wsB])
+    pool.importObjects('workspace:test', [wsA, wsB])
 
     const store = useWorkspaceStore()
     store.initialize(['ws-A', 'ws-B'])
-    store.switchWorkspace('ws-A')
+    void store.switchWorkspace('ws-A')
     expect(store.currentWorkspaceId).toBe('ws-A')
 
-    // Personal channel: user was removed from ws-A — pool drops the row
+    // Personal channel: user was removed from ws-A — pool drops the row.
+    // The watcher uses flush: 'sync' so the redirect runs in the same tick.
     pool.remove('workspace', 'ws-A')
 
-    await vi.waitFor(() => {
-      expect(store.currentWorkspaceId).toBe('ws-B')
-    })
+    expect(store.currentWorkspaceId).toBe('ws-B')
   })
 
-  it('clears the current workspace and storage when the last workspace disappears', async () => {
+  it('clears the current workspace and storage when the last workspace disappears', () => {
     const pool = useObjectPoolStore()
     const ws: PoolObject = {
       id: 'ws-only',
@@ -112,17 +102,15 @@ describe('workspace store — removed from current workspace', () => {
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
     } as unknown as PoolObject
-    pool.importObjects([ws])
+    pool.importObjects('workspace:test', [ws])
 
     const store = useWorkspaceStore()
     store.initialize(['ws-only'])
-    store.switchWorkspace('ws-only')
+    void store.switchWorkspace('ws-only')
 
     pool.remove('workspace', 'ws-only')
 
-    await vi.waitFor(() => {
-      expect(store.currentWorkspaceId).toBeNull()
-    })
+    expect(store.currentWorkspaceId).toBeNull()
     expect(localStorage.getItem('current_workspace_id')).toBeNull()
   })
 })

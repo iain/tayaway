@@ -39,7 +39,7 @@ describe('useWorkspaceNet', () => {
     setViewer('user-viewer')
     setWorkspace('ws-1')
     const pool = useObjectPoolStore()
-    pool.importObjects([makeWorkspace({ id: 'ws-1' })])
+    pool.importObjects('workspace:test', [makeWorkspace({ id: 'ws-1' })])
   })
 
   it('returns no suggestions when the pool is empty', () => {
@@ -56,7 +56,7 @@ describe('useWorkspaceNet', () => {
 
   it('nets opposite-direction transfers across two events into one card', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
+    pool.importObjects('workspace:test', [
       makeEvent({ id: 'evt-1', workspaceId: 'ws-1', name: 'Cabin' }),
       makeEvent({ id: 'evt-2', workspaceId: 'ws-1', name: 'Bowling' }),
       makeSettlement({ id: 'set-1', eventId: 'evt-1' }),
@@ -92,7 +92,7 @@ describe('useWorkspaceNet', () => {
 
   it('flags counter-direction transfers in the breakdown', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
+    pool.importObjects('workspace:test', [
       makeEvent({ id: 'evt-1', workspaceId: 'ws-1' }),
       makeEvent({ id: 'evt-2', workspaceId: 'ws-1' }),
       makeSettlement({ id: 'set-1', eventId: 'evt-1' }),
@@ -123,7 +123,7 @@ describe('useWorkspaceNet', () => {
 
   it('sums same-direction transfers across events', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
+    pool.importObjects('workspace:test', [
       makeEvent({ id: 'evt-1', workspaceId: 'ws-1' }),
       makeEvent({ id: 'evt-2', workspaceId: 'ws-1' }),
       makeSettlement({ id: 'set-1', eventId: 'evt-1' }),
@@ -151,7 +151,7 @@ describe('useWorkspaceNet', () => {
 
   it('drops pairs that cancel exactly', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
+    pool.importObjects('workspace:test', [
       makeEvent({ id: 'evt-1', workspaceId: 'ws-1' }),
       makeEvent({ id: 'evt-2', workspaceId: 'ws-1' }),
       makeSettlement({ id: 'set-1', eventId: 'evt-1' }),
@@ -178,7 +178,7 @@ describe('useWorkspaceNet', () => {
 
   it('ignores paid and superseded transfers', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
+    pool.importObjects('workspace:test', [
       makeEvent({ id: 'evt-1', workspaceId: 'ws-1' }),
       makeSettlement({ id: 'set-1', eventId: 'evt-1' }),
       makeSettlementTransfer({
@@ -205,7 +205,7 @@ describe('useWorkspaceNet', () => {
 
   it("hides pairs the viewer isn't part of", () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
+    pool.importObjects('workspace:test', [
       makeEvent({ id: 'evt-1', workspaceId: 'ws-1' }),
       makeSettlement({ id: 'set-1', eventId: 'evt-1' }),
       makeSettlementTransfer({
@@ -223,7 +223,7 @@ describe('useWorkspaceNet', () => {
 
   it('scopes to the current workspace', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
+    pool.importObjects('workspace:test', [
       makeEvent({ id: 'evt-other', workspaceId: 'ws-other' }),
       makeSettlement({ id: 'set-1', eventId: 'evt-other' }),
       makeSettlementTransfer({
@@ -241,7 +241,7 @@ describe('useWorkspaceNet', () => {
 
   it('flips direction when the viewer is the net creditor', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
+    pool.importObjects('workspace:test', [
       makeEvent({ id: 'evt-1', workspaceId: 'ws-1' }),
       makeSettlement({ id: 'set-1', eventId: 'evt-1' }),
       makeSettlementTransfer({
@@ -260,7 +260,7 @@ describe('useWorkspaceNet', () => {
 
   it('sorts suggestions by amount descending', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
+    pool.importObjects('workspace:test', [
       makeEvent({ id: 'evt-1', workspaceId: 'ws-1' }),
       makeSettlement({ id: 'set-1', eventId: 'evt-1' }),
       makeSettlementTransfer({
@@ -289,7 +289,7 @@ describe('useWorkspaceNet', () => {
   describe('recentSettlements', () => {
     it('returns empty when no transfers have paidAt within the window', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ id: 'evt-1', workspaceId: 'ws-1' }),
         makeSettlement({ id: 'set-1', eventId: 'evt-1' }),
         makeSettlementTransfer({
@@ -309,7 +309,7 @@ describe('useWorkspaceNet', () => {
     it('groups recently-paid transfers between the same pair and direction', () => {
       const recent = new Date(Date.now() - 60_000).toISOString()
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ id: 'evt-1', workspaceId: 'ws-1', name: 'Cabin' }),
         makeEvent({ id: 'evt-2', workspaceId: 'ws-1', name: 'Bowling' }),
         makeSettlement({ id: 'set-1', eventId: 'evt-1' }),
@@ -347,7 +347,7 @@ describe('useWorkspaceNet', () => {
     it('nets mixed-direction transfers within the window into one card', () => {
       const recent = new Date(Date.now() - 60_000).toISOString()
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ id: 'evt-1', workspaceId: 'ws-1' }),
         makeEvent({ id: 'evt-2', workspaceId: 'ws-1' }),
         makeSettlement({ id: 'set-1', eventId: 'evt-1' }),
@@ -389,7 +389,7 @@ describe('useWorkspaceNet', () => {
     it('drops pairs where mixed directions cancel exactly', () => {
       const recent = new Date(Date.now() - 60_000).toISOString()
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ id: 'evt-1', workspaceId: 'ws-1' }),
         makeSettlement({ id: 'set-1', eventId: 'evt-1' }),
         makeSettlementTransfer({
@@ -417,7 +417,7 @@ describe('useWorkspaceNet', () => {
     it('drops transfers paid before the recency window', () => {
       const old = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ id: 'evt-1', workspaceId: 'ws-1' }),
         makeSettlement({ id: 'set-1', eventId: 'evt-1' }),
         makeSettlementTransfer({
@@ -438,7 +438,7 @@ describe('useWorkspaceNet', () => {
       const newer = new Date(Date.now() - 60_000).toISOString()
       const older = new Date(Date.now() - 60 * 60_000).toISOString()
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ id: 'evt-1', workspaceId: 'ws-1' }),
         makeSettlement({ id: 'set-1', eventId: 'evt-1' }),
         makeSettlementTransfer({
@@ -469,7 +469,7 @@ describe('useWorkspaceNet', () => {
 
   it('produces a stable id regardless of viewer/counterparty ordering', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
+    pool.importObjects('workspace:test', [
       makeEvent({ id: 'evt-1', workspaceId: 'ws-1' }),
       makeSettlement({ id: 'set-1', eventId: 'evt-1' }),
       makeSettlementTransfer({

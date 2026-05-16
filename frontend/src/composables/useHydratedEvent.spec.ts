@@ -33,7 +33,7 @@ describe('useHydratedEvent', () => {
 
     it('hydrates a basic event from the pool', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent()])
+      pool.importObjects('workspace:test', [makeEvent()])
 
       const { event, isLoading } = useHydratedEvent('evt-1')
 
@@ -47,7 +47,7 @@ describe('useHydratedEvent', () => {
 
     it('copies all scalar fields from the pool event', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({
           description: 'A fun trip',
           startDate: '2026-03-01',
@@ -70,7 +70,7 @@ describe('useHydratedEvent', () => {
 
     it('accepts a ComputedRef as eventId', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent()])
+      pool.importObjects('workspace:test', [makeEvent()])
 
       const eventId = computed(() => 'evt-1')
       const { event } = useHydratedEvent(eventId)
@@ -83,7 +83,7 @@ describe('useHydratedEvent', () => {
   describe('member resolution', () => {
     it('resolves the event creator member by userId', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent(), makeMember()])
+      pool.importObjects('workspace:test', [makeEvent(), makeMember()])
 
       const { event } = useHydratedEvent('evt-1')
 
@@ -94,7 +94,7 @@ describe('useHydratedEvent', () => {
 
     it('returns undefined member when the member is not in the pool', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent({ userId: 'unknown-user' })])
+      pool.importObjects('workspace:test', [makeEvent({ userId: 'unknown-user' })])
 
       const { event } = useHydratedEvent('evt-1')
 
@@ -113,7 +113,7 @@ describe('useHydratedEvent', () => {
         name: 'Bob',
         role: 'admin',
       })
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent(),
         makeWorkspace({ memberIds: ['mem-1', 'mem-2'] }),
         member1,
@@ -134,7 +134,7 @@ describe('useHydratedEvent', () => {
 
     it('returns undefined workspace when workspace is not in the pool', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent({ workspaceId: 'missing-ws' })])
+      pool.importObjects('workspace:test', [makeEvent({ workspaceId: 'missing-ws' })])
 
       const { event } = useHydratedEvent('evt-1')
 
@@ -145,7 +145,7 @@ describe('useHydratedEvent', () => {
   describe('date poll hydration', () => {
     it('returns null datePoll when no poll exists', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent()])
+      pool.importObjects('workspace:test', [makeEvent()])
 
       const { event } = useHydratedEvent('evt-1')
 
@@ -154,7 +154,7 @@ describe('useHydratedEvent', () => {
 
     it('hydrates a date poll with its date ranges', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ datePollId: 'poll-1' }),
         makeDatePoll({ dateRangeIds: ['dr-1', 'dr-2'] }),
         makeDateRange({
@@ -180,7 +180,7 @@ describe('useHydratedEvent', () => {
 
     it('sorts date ranges by startDate', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ datePollId: 'poll-1' }),
         makeDatePoll({ dateRangeIds: ['dr-1', 'dr-2'] }),
         makeDateRange({
@@ -203,7 +203,7 @@ describe('useHydratedEvent', () => {
 
     it('resolves selectedDateRange when poll has a selected date range', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ datePollId: 'poll-1' }),
         makeDatePoll({
           selectedDateRangeId: 'dr-2',
@@ -235,7 +235,7 @@ describe('useHydratedEvent', () => {
 
     it('returns undefined selectedDateRange when no date range is selected', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent({ datePollId: 'poll-1' }), makeDatePoll()])
+      pool.importObjects('workspace:test', [makeEvent({ datePollId: 'poll-1' }), makeDatePoll()])
 
       const { event } = useHydratedEvent('evt-1')
 
@@ -246,7 +246,7 @@ describe('useHydratedEvent', () => {
   describe('vote hydration', () => {
     it('hydrates votes onto their date ranges', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ datePollId: 'poll-1' }),
         makeDatePoll({ dateRangeIds: ['dr-1'] }),
         makeDateRange(),
@@ -266,7 +266,7 @@ describe('useHydratedEvent', () => {
 
     it('resolves member on each vote', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ datePollId: 'poll-1' }),
         makeDatePoll({ dateRangeIds: ['dr-1'] }),
         makeDateRange(),
@@ -283,7 +283,7 @@ describe('useHydratedEvent', () => {
 
     it('returns undefined member on vote when member is missing', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ datePollId: 'poll-1' }),
         makeDatePoll({ dateRangeIds: ['dr-1'] }),
         makeDateRange(),
@@ -298,7 +298,7 @@ describe('useHydratedEvent', () => {
 
     it('includes vote comment', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ datePollId: 'poll-1' }),
         makeDatePoll({ dateRangeIds: ['dr-1'] }),
         makeDateRange(),
@@ -315,7 +315,7 @@ describe('useHydratedEvent', () => {
   describe('vote summary calculation', () => {
     it('calculates vote summary for a date range', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ datePollId: 'poll-1' }),
         makeDatePoll({ dateRangeIds: ['dr-1'] }),
         makeDateRange(),
@@ -336,7 +336,7 @@ describe('useHydratedEvent', () => {
 
     it('returns zero counts when no votes exist', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ datePollId: 'poll-1' }),
         makeDatePoll({ dateRangeIds: ['dr-1'] }),
         makeDateRange(),
@@ -355,7 +355,7 @@ describe('useHydratedEvent', () => {
   describe('RSVP hydration', () => {
     it('hydrates RSVPs for the event', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ rsvpIds: ['rsvp-1', 'rsvp-2'] }),
         makeRsvp({ id: 'rsvp-1', userId: 'user-1', attending: true }),
         makeRsvp({ id: 'rsvp-2', userId: 'user-2', attending: false }),
@@ -375,7 +375,7 @@ describe('useHydratedEvent', () => {
 
     it('includes RSVP date range fields', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ rsvpIds: ['rsvp-1'] }),
         makeRsvp({
           startDate: '2026-03-01',
@@ -391,7 +391,7 @@ describe('useHydratedEvent', () => {
 
     it('returns empty rsvps array when no RSVPs exist', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent()])
+      pool.importObjects('workspace:test', [makeEvent()])
 
       const { event } = useHydratedEvent('evt-1')
 
@@ -400,7 +400,7 @@ describe('useHydratedEvent', () => {
 
     it('only includes RSVPs for the specific event', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ id: 'evt-1', rsvpIds: ['rsvp-1'] }),
         makeRsvp({ id: 'rsvp-1', eventId: 'evt-1' }),
         makeRsvp({ id: 'rsvp-2', eventId: 'evt-other' }),
@@ -421,7 +421,7 @@ describe('useHydratedEvent', () => {
       // still produce correct results but is the performance bug the index fixes.
       // The test ensures all lookups resolve correctly from a single index pass.
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ datePollId: 'poll-1' }),
         makeDatePoll({ dateRangeIds: ['dr-1', 'dr-2', 'dr-3'] }),
         makeDateRange({
@@ -498,7 +498,7 @@ describe('useHydratedEvent', () => {
       // Verifies that the shared memberIndex built once is used for both vote
       // and RSVP member resolution — not rebuilt or re-scanned per lookup.
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ datePollId: 'poll-1', rsvpIds: ['rsvp-1', 'rsvp-2'] }),
         makeDatePoll({ dateRangeIds: ['dr-1'] }),
         makeDateRange(),
@@ -538,7 +538,7 @@ describe('useHydratedEvent', () => {
   describe('cross-event isolation', () => {
     it('only includes date ranges belonging to the event poll', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ id: 'evt-1', datePollId: 'poll-1' }),
         makeDatePoll({
           id: 'poll-1',
@@ -557,7 +557,7 @@ describe('useHydratedEvent', () => {
 
     it('only includes votes belonging to the event date ranges', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ id: 'evt-1', datePollId: 'poll-1' }),
         makeDatePoll({
           id: 'poll-1',
@@ -580,12 +580,12 @@ describe('useHydratedEvent', () => {
   describe('reactivity', () => {
     it('updates when pool data changes', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent({ name: 'Original' })])
+      pool.importObjects('workspace:test', [makeEvent({ name: 'Original' })])
 
       const { event } = useHydratedEvent('evt-1')
       expect(event.value!.name).toBe('Original')
 
-      pool.importObjects([
+      pool.importObjects('workspace:test', [
         makeEvent({ name: 'Updated', updatedAt: '2026-02-01T00:00:00.000Z' }),
       ])
       expect(event.value!.name).toBe('Updated')
@@ -598,7 +598,7 @@ describe('useHydratedEvent', () => {
       expect(event.value).toBeUndefined()
       expect(isLoading.value).toBe(true)
 
-      pool.importObjects([makeEvent()])
+      pool.importObjects('workspace:test', [makeEvent()])
 
       expect(event.value).toBeDefined()
       expect(isLoading.value).toBe(false)
