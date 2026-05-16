@@ -5,6 +5,14 @@ export interface CoalescedCommand {
   path: string
   body?: unknown
   originalIds: string[]
+  // The workspace the originating command(s) were enqueued in. Preserved so
+  // the replay response lands in that workspace's scope rather than whatever
+  // workspace the user happens to be looking at when the queue drains. Only
+  // set when every merged command agreed on the same workspaceId; if they
+  // disagreed (cross-workspace coalescing is not a real scenario today, but
+  // belt-and-braces) we leave it undefined and let the response fall back
+  // to the current workspace.
+  workspaceId?: string | null
 }
 
 /**
@@ -55,12 +63,7 @@ export function coalesceCommands(
 
     if (key === null) {
       // Non-coalescable — pass through as-is
-      result.push({
-        method: cmd.method,
-        path: cmd.path,
-        body: cmd.body,
-        originalIds: [cmd.id],
-      })
+      result.push(fromStored(cmd))
       continue
     }
 
@@ -70,12 +73,7 @@ export function coalesceCommands(
     if (!existing) {
       // First command for this resource key
       const idx = result.length
-      result.push({
-        method: cmd.method,
-        path: cmd.path,
-        body: cmd.body,
-        originalIds: [cmd.id],
-      })
+      result.push(fromStored(cmd))
       keyIndex.set(key, idx)
       continue
     }
@@ -86,12 +84,7 @@ export function coalesceCommands(
     if (earlierMethod === 'DELETE') {
       // DELETE + anything → keep both in order, no merge
       const idx = result.length
-      result.push({
-        method: cmd.method,
-        path: cmd.path,
-        body: cmd.body,
-        originalIds: [cmd.id],
-      })
+      result.push(fromStored(cmd))
       keyIndex.set(key, idx)
       continue
     }
@@ -111,6 +104,7 @@ export function coalesceCommands(
       // POST + PUT/PATCH → merged POST
       existing.body = mergeBody(existing.body, cmd.body)
       existing.originalIds.push(cmd.id)
+      existing.workspaceId = reconcileWorkspaceId(existing.workspaceId, cmd)
       continue
     }
 
@@ -122,6 +116,7 @@ export function coalesceCommands(
       existing.method = laterMethod
       existing.body = mergeBody(existing.body, cmd.body)
       existing.originalIds.push(cmd.id)
+      existing.workspaceId = reconcileWorkspaceId(existing.workspaceId, cmd)
       continue
     }
 
@@ -134,21 +129,41 @@ export function coalesceCommands(
       existing.path = cmd.path
       existing.body = cmd.body
       existing.originalIds.push(cmd.id)
+      existing.workspaceId = reconcileWorkspaceId(existing.workspaceId, cmd)
       continue
     }
 
     // Fallback: keep both in order
     const idx = result.length
-    result.push({
-      method: cmd.method,
-      path: cmd.path,
-      body: cmd.body,
-      originalIds: [cmd.id],
-    })
+    result.push(fromStored(cmd))
     keyIndex.set(key, idx)
   }
 
   return result.filter((entry): entry is CoalescedCommand => entry !== null)
+}
+
+function fromStored(cmd: StoredCommand): CoalescedCommand {
+  return {
+    method: cmd.method,
+    path: cmd.path,
+    body: cmd.body,
+    originalIds: [cmd.id],
+    workspaceId: cmd.workspaceId ?? null,
+  }
+}
+
+// Two merged commands must agree on the workspace they target for the
+// resulting replay to be unambiguously attributable. Disagreement falls
+// back to undefined so processPoolResponse uses the current workspace —
+// not ideal, but better than picking one arbitrarily.
+function reconcileWorkspaceId(
+  earlier: string | null | undefined,
+  later: StoredCommand
+): string | null | undefined {
+  const laterWs = later.workspaceId ?? null
+  if (earlier === undefined) return laterWs
+  if (earlier === laterWs) return earlier
+  return undefined
 }
 
 function mergeBody(earlier: unknown, later: unknown): unknown {

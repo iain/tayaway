@@ -18,25 +18,33 @@ interface DeletedObject {
  * aware `api` wrapper in `@/api/client` calls this on GET responses, and
  * the command queue calls it on successful mutation replays.
  *
- * REST responses are tagged with the current workspace's scope — that's
- * the channel the matching WebSocket broadcasts will arrive on, so the
- * REST-delivered copy and the WS-delivered copy end up sharing a scope.
+ * REST responses are tagged with the workspace's scope — that's the
+ * channel the matching WebSocket broadcasts will arrive on, so the REST-
+ * delivered copy and the WS-delivered copy share a scope. Callers that
+ * know the originating workspace (api.get snapshots it at request time;
+ * the command queue carries the workspaceId the command was enqueued in)
+ * pass `scope` explicitly so a workspace switch mid-flight doesn't
+ * misroute the response. Without an explicit scope we fall back to the
+ * current workspace.
+ *
  * Endpoints that deliver personal data (notifications) bypass this path
  * and route through rawApi + an explicit pool.importObjects(PERSONAL_SCOPE).
  */
-export function processPoolResponse(data: unknown): void {
+export function processPoolResponse(data: unknown, scope?: string): void {
   if (!data || typeof data !== 'object') return
 
   const pool = useObjectPoolStore()
-  const wsId = useWorkspaceStore().currentWorkspaceId
-  const scope = wsId ? workspaceScope(wsId) : null
+  const resolvedScope = scope ?? defaultScope()
 
   if (
-    scope &&
+    resolvedScope &&
     'objects' in data &&
     Array.isArray((data as { objects: unknown }).objects)
   ) {
-    pool.importObjects(scope, (data as { objects: PoolObject[] }).objects)
+    pool.importObjects(
+      resolvedScope,
+      (data as { objects: PoolObject[] }).objects
+    )
   }
 
   if (
@@ -47,4 +55,9 @@ export function processPoolResponse(data: unknown): void {
       pool.remove(item.objectType, item.id)
     }
   }
+}
+
+function defaultScope(): string | null {
+  const wsId = useWorkspaceStore().currentWorkspaceId
+  return wsId ? workspaceScope(wsId) : null
 }
