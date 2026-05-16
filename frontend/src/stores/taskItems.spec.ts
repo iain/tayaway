@@ -111,7 +111,7 @@ describe('taskItems store', () => {
   describe('updateItem', () => {
     it('optimistically updates content', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [makeTaskItem({ content: 'Old content' })])
+      pool.importObjects([makeTaskItem({ content: 'Old content' })], { scope: "workspace:test" })
       const store = useTaskItemsStore()
 
       let contentDuringCall: string | undefined
@@ -127,7 +127,7 @@ describe('taskItems store', () => {
 
     it('sets completedAt to a timestamp when completing', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [makeTaskItem({ completedAt: null })])
+      pool.importObjects([makeTaskItem({ completedAt: null })], { scope: "workspace:test" })
       const store = useTaskItemsStore()
 
       let completedAtDuringCall: string | null | undefined
@@ -144,9 +144,9 @@ describe('taskItems store', () => {
 
     it('sets completedAt to null when uncompleting', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [
+      pool.importObjects([
         makeTaskItem({ completedAt: '2026-01-05T10:00:00.000Z' }),
-      ])
+      ], { scope: "workspace:test" })
       const store = useTaskItemsStore()
 
       let completedAtDuringCall: string | null | undefined
@@ -162,7 +162,7 @@ describe('taskItems store', () => {
 
     it('rolls back update on server error', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [makeTaskItem({ content: 'Original' })])
+      pool.importObjects([makeTaskItem({ content: 'Original' })], { scope: "workspace:test" })
       const store = useTaskItemsStore()
 
       enqueueImpl = async () => {
@@ -179,7 +179,7 @@ describe('taskItems store', () => {
 
     it('keeps pending update when queued offline', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [makeTaskItem({ content: 'Original' })])
+      pool.importObjects([makeTaskItem({ content: 'Original' })], { scope: "workspace:test" })
       const store = useTaskItemsStore()
 
       enqueueImpl = async () => {
@@ -196,7 +196,7 @@ describe('taskItems store', () => {
   describe('repositionItem', () => {
     it('optimistically updates the position', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [makeTaskItem({ position: 1000 })])
+      pool.importObjects([makeTaskItem({ position: 1000 })], { scope: "workspace:test" })
       const store = useTaskItemsStore()
 
       let positionDuringCall: number | undefined
@@ -215,7 +215,7 @@ describe('taskItems store', () => {
 
     it('updates taskListId when moving across lists', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [makeTaskItem({ taskListId: 'list-1' })])
+      pool.importObjects([makeTaskItem({ taskListId: 'list-1' })], { scope: "workspace:test" })
       const store = useTaskItemsStore()
 
       let listDuringCall: string | undefined
@@ -231,7 +231,7 @@ describe('taskItems store', () => {
 
     it('does not change taskListId when staying in same list', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [makeTaskItem({ taskListId: 'list-1' })])
+      pool.importObjects([makeTaskItem({ taskListId: 'list-1' })], { scope: "workspace:test" })
       const store = useTaskItemsStore()
 
       let listDuringCall: string | undefined
@@ -249,7 +249,7 @@ describe('taskItems store', () => {
   describe('deleteItem', () => {
     it('optimistically removes the item from the pool', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [makeTaskItem()])
+      pool.importObjects([makeTaskItem()], { scope: "workspace:test" })
       const store = useTaskItemsStore()
 
       let presentDuringCall: boolean | undefined
@@ -266,7 +266,7 @@ describe('taskItems store', () => {
 
     it('restores the item when the API call fails', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [makeTaskItem()])
+      pool.importObjects([makeTaskItem()], { scope: "workspace:test" })
       const store = useTaskItemsStore()
 
       enqueueImpl = async () => {
@@ -283,7 +283,7 @@ describe('taskItems store', () => {
 
     it('keeps the item removed when queued offline', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [makeTaskItem()])
+      pool.importObjects([makeTaskItem()], { scope: "workspace:test" })
       const store = useTaskItemsStore()
 
       enqueueImpl = async () => {
@@ -299,10 +299,10 @@ describe('taskItems store', () => {
   describe('clearCompleted', () => {
     it('optimistically removes completed items from the pool', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [
+      pool.importObjects([
         makeTaskItem({ id: 'item-1', completedAt: '2026-01-05T10:00:00.000Z' }),
         makeTaskItem({ id: 'item-2', completedAt: '2026-01-06T10:00:00.000Z' }),
-      ])
+      ], { scope: "workspace:test" })
       const store = useTaskItemsStore()
 
       let itemsDuringCall: ObjectTypeMap['taskItem'][] | undefined
@@ -319,9 +319,9 @@ describe('taskItems store', () => {
 
     it('restores completed items on server error', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [
+      pool.importObjects([
         makeTaskItem({ id: 'item-1', completedAt: '2026-01-05T10:00:00.000Z' }),
-      ])
+      ], { scope: "workspace:test" })
       const store = useTaskItemsStore()
 
       enqueueImpl = async () => {
@@ -338,9 +338,9 @@ describe('taskItems store', () => {
 
     it('keeps completed items removed when queued offline', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [
+      pool.importObjects([
         makeTaskItem({ id: 'item-1', completedAt: '2026-01-05T10:00:00.000Z' }),
-      ])
+      ], { scope: "workspace:test" })
       const store = useTaskItemsStore()
 
       enqueueImpl = async () => {

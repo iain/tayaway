@@ -70,7 +70,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       try {
         const cached: PoolObject[] = await loadObjectsByType(scope, type)
         if (cached.length > 0 && currentWorkspaceId.value === id) {
-          pool.importObjects(scope, cached)
+          pool.importObjects(cached, { scope })
           // First non-empty bucket flips hasCachedData back on so the
           // page-level loader gives way to the cached view immediately,
           // even before later types finish loading.

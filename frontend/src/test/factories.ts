@@ -327,7 +327,7 @@ export const TEST_SCOPE = 'workspace:test'
 
 export function seedPool(
   pool: ObjectPoolStore,
-  ...objects: Parameters<ObjectPoolStore['importObjects']>[1]
+  ...objects: Parameters<ObjectPoolStore['importObjects']>[0]
 ): void {
-  pool.importObjects(TEST_SCOPE, objects)
+  pool.importObjects(objects, { scope: TEST_SCOPE })
 }

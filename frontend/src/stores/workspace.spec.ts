@@ -78,7 +78,7 @@ describe('workspace store — removed from current workspace', () => {
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
     } as unknown as PoolObject
-    pool.importObjects('workspace:test', [wsA, wsB])
+    pool.importObjects([wsA, wsB], { scope: "workspace:test" })
 
     const store = useWorkspaceStore()
     store.initialize(['ws-A', 'ws-B'])
@@ -102,7 +102,7 @@ describe('workspace store — removed from current workspace', () => {
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
     } as unknown as PoolObject
-    pool.importObjects('workspace:test', [ws])
+    pool.importObjects([ws], { scope: "workspace:test" })
 
     const store = useWorkspaceStore()
     store.initialize(['ws-only'])

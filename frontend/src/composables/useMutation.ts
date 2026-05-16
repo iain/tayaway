@@ -1,23 +1,8 @@
 import { ref } from 'vue'
 import { useCommandQueueStore, CommandQueuedError } from '@/stores/commandQueue'
 import { useObjectPoolStore } from '@/stores/objectPool'
-import { workspaceScope } from '@/api/poolDb'
-import { currentWorkspaceScopeOrThrow } from '@/api/poolScope'
 import type { ApiResponse } from '@/api/client'
-import type { ObjectType, ObjectTypeMap, PoolObject } from '@/types/pool'
-
-// Optimistic creates land in the workspace's scope so the matching server
-// confirmation, which arrives on the same channel, merges into the same
-// bucket. Most pool objects carry their own workspaceId — prefer that, since
-// it's resilient to a rapid workspace switch while the mutation is in
-// flight. Scope-less objects (dateRange, vote, etc.) fall back to the
-// active workspace; if none is set, that's a bug and we'd rather throw
-// than silently misroute data.
-function scopeForOptimisticObject(obj: PoolObject): string {
-  const objectWsId = (obj as { workspaceId?: string | null }).workspaceId
-  if (objectWsId) return workspaceScope(objectWsId)
-  return currentWorkspaceScopeOrThrow()
-}
+import type { ObjectType, ObjectTypeMap } from '@/types/pool'
 
 export type MutationResult<T> = { queued: false; data: T } | { queued: true }
 
@@ -69,7 +54,7 @@ export function useMutation() {
     ) => Promise<ApiResponse<T>>
   ): Promise<MutationResult<T>> {
     const pool = useObjectPoolStore()
-    pool.set(scopeForOptimisticObject(tempObject), tempObject, { isTemp: true })
+    pool.set(tempObject, { isTemp: true })
 
     loading.value = true
     error.value = null
@@ -153,17 +138,9 @@ export function useMutation() {
       if (e instanceof CommandQueuedError) {
         return { queued: true }
       }
-      // Restore each removed object into every scope it came from. For
-      // objects with no recorded scopes (defensive — shouldn't happen if the
-      // pool was consistent), derive a scope from the object itself.
-      for (const entry of removedObjects) {
-        const scopes = entry.scopes.length
-          ? entry.scopes
-          : [scopeForOptimisticObject(entry.object)]
-        for (const scope of scopes) {
-          pool.set(scope, entry.object)
-        }
-      }
+      // Restore each removed object to every scope it came from. The pool
+      // tracks scope membership per object, so callers don't have to.
+      pool.restore(removedObjects)
       error.value = errorMessage
       throw e
     } finally {

@@ -478,8 +478,8 @@ describe('poolPersistence — progressive cache loading', () => {
     expect(poolDb.loadObjectsByType).toHaveBeenCalledWith('personal', 'member')
     expect(poolDb.loadObjectsByType).toHaveBeenCalledWith('workspace:ws-1', 'member')
     expect(poolDb.loadObjectsByType).toHaveBeenCalledWith('workspace:ws-1', 'event')
-    expect(pool.importObjects).toHaveBeenCalledWith('workspace:ws-1', [memberObj])
-    expect(pool.importObjects).toHaveBeenCalledWith('workspace:ws-1', [eventObj])
+    expect(pool.importObjects).toHaveBeenCalledWith([memberObj], { scope: 'workspace:ws-1' })
+    expect(pool.importObjects).toHaveBeenCalledWith([eventObj], { scope: 'workspace:ws-1' })
   })
 
   it('clears the workspace scope and returns when its cache is too stale', async () => {

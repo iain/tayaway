@@ -303,7 +303,7 @@ describe('websocket store — cascade delete', () => {
 
   it('deleting an event cascades to rsvp', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects('workspace:test', [makeEvent(), makeRsvp()])
+    pool.importObjects([makeEvent(), makeRsvp()], { scope: "workspace:test" })
 
     sendDeleteBroadcast('event', 'evt-1')
 
@@ -313,7 +313,7 @@ describe('websocket store — cascade delete', () => {
 
   it('deleting an event cascades to expense', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects('workspace:test', [makeEvent(), makeExpense()])
+    pool.importObjects([makeEvent(), makeExpense()], { scope: "workspace:test" })
 
     sendDeleteBroadcast('event', 'evt-1')
 
@@ -323,11 +323,11 @@ describe('websocket store — cascade delete', () => {
 
   it('deleting an event cascades to settlement and its transfers', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects('workspace:test', [
+    pool.importObjects([
       makeEvent(),
       makeSettlement(),
       makeSettlementTransfer(),
-    ])
+    ], { scope: "workspace:test" })
 
     sendDeleteBroadcast('event', 'evt-1')
 
@@ -338,12 +338,12 @@ describe('websocket store — cascade delete', () => {
 
   it('deleting an event cascades to choreRoster, chore, and choreAssignment', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects('workspace:test', [
+    pool.importObjects([
       makeEvent(),
       makeChoreRoster(),
       makeChore(),
       makeChoreAssignment(),
-    ])
+    ], { scope: "workspace:test" })
 
     sendDeleteBroadcast('event', 'evt-1')
 
@@ -355,7 +355,7 @@ describe('websocket store — cascade delete', () => {
 
   it('deleting a settlement cascades to settlementTransfer', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects('workspace:test', [makeSettlement(), makeSettlementTransfer()])
+    pool.importObjects([makeSettlement(), makeSettlementTransfer()], { scope: "workspace:test" })
 
     sendDeleteBroadcast('settlement', 'settle-1')
 
@@ -365,7 +365,7 @@ describe('websocket store — cascade delete', () => {
 
   it('deleting a choreRoster cascades to chore and choreAssignment', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects('workspace:test', [makeChoreRoster(), makeChore(), makeChoreAssignment()])
+    pool.importObjects([makeChoreRoster(), makeChore(), makeChoreAssignment()], { scope: "workspace:test" })
 
     sendDeleteBroadcast('choreRoster', 'roster-1')
 
@@ -376,7 +376,7 @@ describe('websocket store — cascade delete', () => {
 
   it('deleting a chore cascades to choreAssignment', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects('workspace:test', [makeChore(), makeChoreAssignment()])
+    pool.importObjects([makeChore(), makeChoreAssignment()], { scope: "workspace:test" })
 
     sendDeleteBroadcast('chore', 'chore-1')
 
@@ -386,12 +386,12 @@ describe('websocket store — cascade delete', () => {
 
   it('only removes children that belong to the deleted parent', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects('workspace:test', [
+    pool.importObjects([
       makeEvent({ id: 'evt-1' }),
       makeEvent({ id: 'evt-2' }),
       makeRsvp({ id: 'rsvp-1', eventId: 'evt-1' }),
       makeRsvp({ id: 'rsvp-2', eventId: 'evt-2' }),
-    ])
+    ], { scope: "workspace:test" })
 
     sendDeleteBroadcast('event', 'evt-1')
 
@@ -403,7 +403,7 @@ describe('websocket store — cascade delete', () => {
 
   it('handles cascade delete when there are no children', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects('workspace:test', [makeEvent()])
+    pool.importObjects([makeEvent()], { scope: "workspace:test" })
 
     expect(() => sendDeleteBroadcast('event', 'evt-1')).not.toThrow()
     expect(pool.get('event', 'evt-1')).toBeUndefined()
@@ -413,14 +413,14 @@ describe('websocket store — cascade delete', () => {
     const pool = useObjectPoolStore()
 
     // Build: 1 event → 1 datePoll → 1 dateRange → 3 votes (6 total objects)
-    pool.importObjects('workspace:test', [
+    pool.importObjects([
       makeEvent(),
       makeDatePoll(),
       makeDateRange(),
       makeVote({ id: 'vote-1', dateRangeId: 'dr-1' }),
       makeVote({ id: 'vote-2', dateRangeId: 'dr-1' }),
       makeVote({ id: 'vote-3', dateRangeId: 'dr-1' }),
-    ])
+    ], { scope: "workspace:test" })
 
     const voteVersionBefore = pool.getVersion('vote')
     // Type not involved should not change

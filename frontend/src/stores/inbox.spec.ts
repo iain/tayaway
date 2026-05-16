@@ -78,10 +78,10 @@ describe('inbox store', () => {
   describe('derived from the object pool', () => {
     it('exposes notifications sorted newest-first', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [
+      pool.importObjects([
         makeNotification({ id: 'old', createdAt: '2026-05-09T10:00:00.000Z' }),
         makeNotification({ id: 'new', createdAt: '2026-05-10T10:00:00.000Z' }),
-      ])
+      ], { scope: "workspace:test" })
 
       const inbox = useInboxStore()
 
@@ -90,11 +90,11 @@ describe('inbox store', () => {
 
     it('reports the unread count from the pool', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [
+      pool.importObjects([
         makeNotification({ id: 'a' }),
         makeNotification({ id: 'b' }),
         makeNotification({ id: 'c', readAt: '2026-05-10T11:00:00.000Z' }),
-      ])
+      ], { scope: "workspace:test" })
 
       const inbox = useInboxStore()
 
@@ -106,7 +106,7 @@ describe('inbox store', () => {
       const inbox = useInboxStore()
       expect(inbox.notifications).toEqual([])
 
-      pool.importObjects('workspace:test', [makeNotification({ id: 'pushed' })])
+      pool.importObjects([makeNotification({ id: 'pushed' })], { scope: "workspace:test" })
 
       expect(inbox.notifications.map((n) => n.id)).toEqual(['pushed'])
       expect(inbox.unreadCount).toBe(1)
@@ -114,7 +114,7 @@ describe('inbox store', () => {
 
     it('groups unread counts by workspace so other workspaces can be badged', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [
+      pool.importObjects([
         makeNotification({ id: 'a', workspaceId: 'ws-1' }),
         makeNotification({ id: 'b', workspaceId: 'ws-1' }),
         makeNotification({ id: 'c', workspaceId: 'ws-2' }),
@@ -123,7 +123,7 @@ describe('inbox store', () => {
           workspaceId: 'ws-2',
           readAt: '2026-05-10T11:00:00.000Z',
         }),
-      ])
+      ], { scope: "workspace:test" })
 
       const { useWorkspaceStore } = await import('./workspace')
       useWorkspaceStore().initialize(['ws-current'])
@@ -135,10 +135,10 @@ describe('inbox store', () => {
 
     it('excludes the current workspace from the unread-by-other-workspace map', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [
+      pool.importObjects([
         makeNotification({ id: 'a', workspaceId: 'ws-current' }),
         makeNotification({ id: 'b', workspaceId: 'ws-other' }),
-      ])
+      ], { scope: "workspace:test" })
 
       const { useWorkspaceStore } = await import('./workspace')
       useWorkspaceStore().initialize(['ws-current'])
@@ -167,7 +167,7 @@ describe('inbox store', () => {
   describe('markRead', () => {
     it('optimistically marks the notification read in the pool', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [makeNotification({ id: 'n-1' })])
+      pool.importObjects([makeNotification({ id: 'n-1' })], { scope: "workspace:test" })
 
       const inbox = useInboxStore()
       await inbox.markRead('n-1')
@@ -182,7 +182,7 @@ describe('inbox store', () => {
 
     it('rolls back the readAt change if the request fails', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [makeNotification({ id: 'n-1' })])
+      pool.importObjects([makeNotification({ id: 'n-1' })], { scope: "workspace:test" })
       rawApiMock.put.mockRejectedValueOnce(new Error('boom'))
 
       const inbox = useInboxStore()
@@ -194,9 +194,9 @@ describe('inbox store', () => {
 
     it('is a no-op for an already-read notification', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [
+      pool.importObjects([
         makeNotification({ id: 'n-1', readAt: '2026-05-10T11:00:00.000Z' }),
-      ])
+      ], { scope: "workspace:test" })
 
       const inbox = useInboxStore()
       await inbox.markRead('n-1')
@@ -208,11 +208,11 @@ describe('inbox store', () => {
   describe('markAllRead', () => {
     it('marks every unread notification read in the pool', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [
+      pool.importObjects([
         makeNotification({ id: 'a' }),
         makeNotification({ id: 'b' }),
         makeNotification({ id: 'c', readAt: '2026-05-10T11:00:00.000Z' }),
-      ])
+      ], { scope: "workspace:test" })
 
       const inbox = useInboxStore()
       await inbox.markAllRead()
@@ -224,10 +224,10 @@ describe('inbox store', () => {
 
     it('rolls each notification back if the request fails', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [
+      pool.importObjects([
         makeNotification({ id: 'a' }),
         makeNotification({ id: 'b' }),
-      ])
+      ], { scope: "workspace:test" })
       rawApiMock.put.mockRejectedValueOnce(new Error('boom'))
 
       const inbox = useInboxStore()
@@ -294,7 +294,7 @@ describe('inbox store', () => {
 
     it('also marks the source notification read when given an id', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [makeNotification({ id: 'n-1' })])
+      pool.importObjects([makeNotification({ id: 'n-1' })], { scope: "workspace:test" })
       const inbox = useInboxStore()
       inbox.silenceKind('expense_added', 'Silenced', 'n-1')
       await Promise.resolve()

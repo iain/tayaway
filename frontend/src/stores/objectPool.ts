@@ -8,6 +8,8 @@ import {
   type PendingUpdate,
 } from '@/types/pool'
 import type { PoolUpdate } from '@/types/poolUpdate'
+import { workspaceScope } from '@/api/poolDb'
+import { useWorkspaceStore } from './workspace'
 
 // Helper to compare ISO8601 timestamps
 // ISO 8601 strings with the same format are lexicographically sortable
@@ -381,17 +383,54 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     return typeVersions.value.get(type) ?? 0
   }
 
+  // Derive the scope an object should be inserted into when no scope is
+  // explicitly passed. Order:
+  //   1. existing scopes of this object id — preserve current membership
+  //      (so an update to a notification already in `personal` stays there)
+  //   2. `obj.workspaceId` if present — fresh insert into the object's home
+  //      workspace, resilient to a workspace switch mid-flight
+  //   3. the active workspace — last resort for scope-less objects like
+  //      dateRange / vote whose own row doesn't carry workspaceId
+  // Throws if none of the above is available — better loud than misrouting.
+  function deriveScope(obj: PoolObject): Scope {
+    const existing = objectScopes.get(obj.id)
+    if (existing && existing.size > 0) {
+      return existing.values().next().value as Scope
+    }
+    const objWsId = (obj as { workspaceId?: string | null }).workspaceId
+    if (objWsId) return workspaceScope(objWsId)
+    const wsId = useWorkspaceStore().currentWorkspaceId
+    if (!wsId) {
+      throw new Error(
+        `objectPool: no scope could be derived for ${obj.objectType}:${obj.id} — pass opts.scope, set obj.workspaceId, or ensure a workspace is active`
+      )
+    }
+    return workspaceScope(wsId)
+  }
+
   // Merge a batch of objects from a delivery channel into the pool. Each
-  // object is tagged with `scope` — if it's already in the pool from
+  // object is tagged with a scope — if it's already in the pool from
   // another scope, the scope is added to its set without replacing the
   // object (newer-updatedAt still wins for the actual data).
-  function importObjects(scope: Scope, poolObjects: PoolObject[]): void {
+  //
+  // Pass `opts.scope` from sync paths (WebSocket envelope, REST snapshot)
+  // where the delivery channel is the authoritative scope. Omit it from
+  // optimistic-create paths in stores; the pool will derive a scope from
+  // each object via `deriveScope`.
+  function importObjects(
+    poolObjects: PoolObject[],
+    opts?: { scope?: Scope }
+  ): void {
+    const explicitScope = opts?.scope
     let changed = false
-    const imported: PoolObject[] = []
+    // Group imported objects by their resolved scope so we can emit one
+    // import change per scope (persistence layer routes per-scope buckets).
+    const importedByScope = new Map<Scope, PoolObject[]>()
     for (const obj of poolObjects) {
       const typeMap = objects.value.get(obj.objectType)
       if (!typeMap) continue
 
+      const scope = explicitScope ?? deriveScope(obj)
       const existing = typeMap.get(obj.id)
       const pendingKey = `${obj.objectType}:${obj.id}`
       const hadPending = pendingUpdates.value.has(pendingKey)
@@ -427,7 +466,9 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
         if (existing) reverseIndexRemove(cascadeIndex, existing)
         reverseIndexAdd(cascadeIndex, obj)
         typeMap.set(obj.id, obj)
-        imported.push(obj)
+        const bucket = importedByScope.get(scope) ?? []
+        bucket.push(obj)
+        importedByScope.set(scope, bucket)
         changed = true
       }
     }
@@ -437,16 +478,18 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     if (changed) {
       // Increment per-type version counters eagerly so getAll() cache
       // invalidation is correct when the deferred triggerRef() fires.
-      for (const obj of imported) {
-        typeVersions.value.set(
-          obj.objectType,
-          (typeVersions.value.get(obj.objectType) ?? 0) + 1
-        )
+      for (const objs of importedByScope.values()) {
+        for (const obj of objs) {
+          typeVersions.value.set(
+            obj.objectType,
+            (typeVersions.value.get(obj.objectType) ?? 0) + 1
+          )
+        }
       }
       scheduleImportTrigger()
     }
-    if (imported.length > 0) {
-      notifyChange({ type: 'import', scope, objects: imported })
+    for (const [scope, objs] of importedByScope) {
+      notifyChange({ type: 'import', scope, objects: objs })
     }
   }
 
@@ -602,10 +645,11 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     return Boolean(pending && pending.length > 0)
   }
 
-  // Set an object directly. `scope` is the channel this object belongs to —
-  // for optimistic creates that's the workspace the user was in; for
-  // rollback restores, it's the scope the object came from before removal
-  // (callers thread it back through from cascadeRemove's return value).
+  // Set an object directly. Scope resolution mirrors `importObjects`:
+  // opts.scope from sync paths overrides; otherwise the pool keeps the
+  // object in whatever scopes it already lives in (so marking a personal-
+  // scope notification read doesn't move it), and falls back to deriving a
+  // fresh scope from `obj.workspaceId` or the active workspace.
   //
   // Pass `isTemp: true` when the object is an optimistic placeholder for a
   // create command still in the queue. This records the ID in tempObjectIds
@@ -613,25 +657,57 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   //
   // Do NOT pass isTemp for rollback restores — those are server-confirmed
   // objects being put back after a failed delete and must not be preserved
-  // beyond the next authoritative full sync.
+  // beyond the next authoritative full sync. Rollback callers should use
+  // `restore(removedEntries)` rather than calling `set` per scope.
   function set<T extends ObjectType>(
-    scope: Scope,
     object: ObjectTypeMap[T],
-    { isTemp = false }: { isTemp?: boolean } = {}
+    opts?: { scope?: Scope; isTemp?: boolean }
   ): void {
     const typeMap = objects.value.get(object.objectType)
-    if (typeMap) {
-      const existing = typeMap.get(object.id)
-      if (existing) reverseIndexRemove(cascadeIndex, existing)
-      reverseIndexAdd(cascadeIndex, object)
-      typeMap.set(object.id, object)
-      addObjectScope(object.id, scope)
-      if (isTemp) {
-        tempObjectIds.add(object.id)
+    if (!typeMap) return
+    const existing = typeMap.get(object.id)
+    if (existing) reverseIndexRemove(cascadeIndex, existing)
+    reverseIndexAdd(cascadeIndex, object)
+    typeMap.set(object.id, object)
+    if (opts?.isTemp) tempObjectIds.add(object.id)
+
+    // Resolve target scopes: explicit beats existing beats derivation.
+    let scopes: Scope[]
+    if (opts?.scope) {
+      addObjectScope(object.id, opts.scope)
+      scopes = [opts.scope]
+    } else {
+      const existingScopes = objectScopes.get(object.id)
+      if (existingScopes && existingScopes.size > 0) {
+        scopes = Array.from(existingScopes)
+      } else {
+        const derived = deriveScope(object)
+        addObjectScope(object.id, derived)
+        scopes = [derived]
       }
-      bumpVersion(object.objectType)
-      triggerRef(objects)
+    }
+
+    bumpVersion(object.objectType)
+    triggerRef(objects)
+    // Emit one event per scope so persistence routes to every IDB bucket
+    // the object belongs to. For the common single-scope case this is just
+    // one event; for a multi-scope object (own member row) an update fans
+    // out to both buckets without callers having to loop.
+    for (const scope of scopes) {
       notifyChange({ type: 'set', scope, object })
+    }
+  }
+
+  // Restore a batch of previously-removed entries to the pool. Each entry
+  // re-enters every scope it came from (carried on RemovedEntry), so a
+  // rollback for a multi-scope object restores it to every channel it
+  // was on. Pool persistence is updated once per (entry, scope) pair.
+  function restore(entries: RemovedEntry[]): void {
+    for (const entry of entries) {
+      const scopes = entry.scopes.length > 0 ? entry.scopes : [deriveScope(entry.object)]
+      for (const scope of scopes) {
+        set(entry.object, { scope })
+      }
     }
   }
 
@@ -995,7 +1071,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       return
     }
     if (update.objects?.length) {
-      importObjects(scope, update.objects)
+      importObjects(update.objects, { scope })
     }
     if (update.deleted?.length) {
       for (const ref of update.deleted) {
@@ -1050,6 +1126,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     removePending,
     hasPending,
     set,
+    restore,
     remove,
     removeMany,
     cascadeRemove,

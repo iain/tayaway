@@ -179,7 +179,7 @@ async function loadFromCache(): Promise<void> {
       for (const scope of scopesToLoad) {
         const objects = await poolDb.loadObjectsByType(scope, type)
         if (objects.length > 0) {
-          pool.importObjects(scope, objects)
+          pool.importObjects(objects, { scope })
           anyLoaded = true
         }
       }
@@ -193,7 +193,7 @@ async function loadFromCache(): Promise<void> {
       for (const scope of scopesToLoad) {
         const objects = await poolDb.loadObjectsByType(scope, type)
         if (objects.length > 0) {
-          pool.importObjects(scope, objects)
+          pool.importObjects(objects, { scope })
           anyLoaded = true
         }
       }

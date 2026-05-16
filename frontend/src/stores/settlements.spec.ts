@@ -50,7 +50,7 @@ describe('settlements store — deleteSettlement', () => {
 
   it('optimistically removes the settlement from the pool immediately', async () => {
     const pool = useObjectPoolStore()
-    pool.importObjects('workspace:test', [makeSettlement()])
+    pool.importObjects([makeSettlement()], { scope: "workspace:test" })
     const store = useSettlementsStore()
 
     let presentDuringCall: boolean | undefined
@@ -67,7 +67,7 @@ describe('settlements store — deleteSettlement', () => {
 
   it('restores the settlement when the API call fails', async () => {
     const pool = useObjectPoolStore()
-    pool.importObjects('workspace:test', [makeSettlement()])
+    pool.importObjects([makeSettlement()], { scope: "workspace:test" })
     const store = useSettlementsStore()
 
     enqueueImpl = async () => {
@@ -84,7 +84,7 @@ describe('settlements store — deleteSettlement', () => {
 
   it('keeps the settlement removed when the request is queued offline', async () => {
     const pool = useObjectPoolStore()
-    pool.importObjects('workspace:test', [makeSettlement()])
+    pool.importObjects([makeSettlement()], { scope: "workspace:test" })
     const store = useSettlementsStore()
 
     enqueueImpl = async () => {

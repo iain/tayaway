@@ -39,7 +39,7 @@ export function processPoolResponse(data: unknown, scope?: string): void {
   if ('objects' in data && Array.isArray((data as { objects: unknown }).objects)) {
     const objects = (data as { objects: PoolObject[] }).objects
     if (resolvedScope) {
-      pool.importObjects(resolvedScope, objects)
+      pool.importObjects(objects, { scope: resolvedScope })
     } else if (objects.length > 0) {
       // No active workspace and no explicit scope — dropping the payload
       // silently would hide bugs (e.g. a REST call firing before

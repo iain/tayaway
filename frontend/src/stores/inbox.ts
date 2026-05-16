@@ -71,7 +71,7 @@ export const useInboxStore = defineStore('inbox', () => {
       const { data } = await rawApi.get<InboxResponse>('/notifications', {})
       // Notifications live in the personal scope — they're delivered to the
       // user across all workspaces.
-      pool().importObjects(PERSONAL_SCOPE, data.objects)
+      pool().importObjects(data.objects, { scope: PERSONAL_SCOPE })
     } catch (e) {
       lastError.value =
         e && typeof e === 'object' && 'message' in e
@@ -87,12 +87,14 @@ export const useInboxStore = defineStore('inbox', () => {
     if (!target || target.readAt !== null) return
 
     const previous = target
-    pool().set(PERSONAL_SCOPE, { ...target, readAt: new Date().toISOString() })
+    // No scope arg — the pool keeps the notification in whatever scope it's
+    // already in (personal, from the handshake).
+    pool().set({ ...target, readAt: new Date().toISOString() })
 
     try {
       await rawApi.put(`/notifications/${id}/read`, {}, { silent: true })
     } catch {
-      pool().set(PERSONAL_SCOPE, previous)
+      pool().set(previous)
     }
   }
 
@@ -104,14 +106,14 @@ export const useInboxStore = defineStore('inbox', () => {
 
     const now = new Date().toISOString()
     for (const n of before) {
-      pool().set(PERSONAL_SCOPE, { ...n, readAt: now })
+      pool().set({ ...n, readAt: now })
     }
 
     try {
       await rawApi.put('/notifications/read-all', {}, { silent: true })
     } catch {
       for (const n of before) {
-        pool().set(PERSONAL_SCOPE, n)
+        pool().set(n)
       }
     }
   }

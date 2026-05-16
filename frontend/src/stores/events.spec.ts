@@ -146,7 +146,7 @@ describe('events store', () => {
   describe('updateEvent', () => {
     it('optimistically applies changes to the pool during the API call', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [makeEvent({ name: 'Old Name' })])
+      pool.importObjects([makeEvent({ name: 'Old Name' })], { scope: "workspace:test" })
       const store = useEventsStore()
 
       let nameDuringCall: string | undefined
@@ -162,7 +162,7 @@ describe('events store', () => {
 
     it('rolls back the optimistic update when the API call fails', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [makeEvent({ name: 'Original' })])
+      pool.importObjects([makeEvent({ name: 'Original' })], { scope: "workspace:test" })
       const store = useEventsStore()
 
       enqueueImpl = async () => {
@@ -180,7 +180,7 @@ describe('events store', () => {
 
     it('keeps pending update when queued offline', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [makeEvent({ name: 'Original' })])
+      pool.importObjects([makeEvent({ name: 'Original' })], { scope: "workspace:test" })
       const store = useEventsStore()
 
       enqueueImpl = async () => {
@@ -197,7 +197,7 @@ describe('events store', () => {
   describe('deleteEvent', () => {
     it('optimistically removes the event from the pool', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [makeEvent()])
+      pool.importObjects([makeEvent()], { scope: "workspace:test" })
       const store = useEventsStore()
 
       let presentDuringCall: boolean | undefined
@@ -214,7 +214,7 @@ describe('events store', () => {
 
     it('restores the event when the API call fails', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [makeEvent()])
+      pool.importObjects([makeEvent()], { scope: "workspace:test" })
       const store = useEventsStore()
 
       enqueueImpl = async () => {
@@ -229,7 +229,7 @@ describe('events store', () => {
 
     it('keeps the event removed when queued offline', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects('workspace:test', [makeEvent()])
+      pool.importObjects([makeEvent()], { scope: "workspace:test" })
       const store = useEventsStore()
 
       enqueueImpl = async () => {
