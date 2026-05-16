@@ -163,8 +163,8 @@ RSpec.describe Members::UpdateRole do
   describe "broadcasts" do
     def capture_broadcasts
       captured = []
-      allow(DB).to receive(:run) do |lit|
-        captured << JSON.parse(lit.args.last)
+      allow(DB).to receive(:notify) do |_channel, payload:|
+        captured << JSON.parse(payload)
       end
       yield
       captured.select { |p| p["objectType"] == "member" }

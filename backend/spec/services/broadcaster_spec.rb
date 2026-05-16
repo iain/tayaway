@@ -9,7 +9,7 @@ RSpec.describe Broadcaster do
 
   def capture_payload
     captured = nil
-    allow(DB).to receive(:run) { |lit| captured = JSON.parse(lit.args.last) }
+    allow(DB).to receive(:notify) { |_channel, payload:| captured = JSON.parse(payload) }
     yield
     captured
   end
@@ -17,7 +17,7 @@ RSpec.describe Broadcaster do
   describe ".object_changed" do
     it "sends a pg_notify on the correct channel" do
       captured_channel = nil
-      allow(DB).to receive(:run) { |lit| captured_channel = lit.args.first }
+      allow(DB).to receive(:notify) { |channel, **_| captured_channel = channel }
 
       described_class.object_changed("event", object_id)
 
@@ -37,7 +37,7 @@ RSpec.describe Broadcaster do
     end
 
     it "does not raise on DB errors" do
-      allow(DB).to receive(:run).and_raise(StandardError, "connection lost")
+      allow(DB).to receive(:notify).and_raise(StandardError, "connection lost")
 
       expect do
         described_class.object_changed("event", object_id)
@@ -99,7 +99,7 @@ RSpec.describe Broadcaster do
     end
 
     it "does not raise on DB errors" do
-      allow(DB).to receive(:run).and_raise(StandardError, "connection lost")
+      allow(DB).to receive(:notify).and_raise(StandardError, "connection lost")
 
       expect do
         described_class.object_deleted("event", object_id, topics: [Topic.workspace(workspace_id)])

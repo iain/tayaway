@@ -91,8 +91,8 @@ RSpec.describe Invites::Accept do
     # dispatch and the bootstrap path that runs when the joining user
     # isn't yet subscribed to the new workspace.
     captured = []
-    allow(DB).to receive(:run) do |lit|
-      captured << JSON.parse(lit.args.last)
+    allow(DB).to receive(:notify) do |_channel, payload:|
+      captured << JSON.parse(payload)
     end
     invite = create_invite_with_token(email: "newuser@example.com")
 
