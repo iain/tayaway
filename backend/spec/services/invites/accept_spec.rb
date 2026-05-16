@@ -84,7 +84,12 @@ RSpec.describe Invites::Accept do
     expect(result.value![:message]).to include("already a member")
   end
 
-  it "broadcasts new membership to both workspace and the affected user so the joining user's other sessions see it" do
+  it "emits a single NOTIFY for the new membership — the Listener fans out to both audiences" do
+    # We collapsed the two pg_notify calls into one. Audience fanout to the
+    # workspace AND the joining user's personal channel happens in the
+    # Listener via MemberSerializer.broadcast_audiences_for. Asserting the
+    # producer no longer enumerates audiences is the contract here; the
+    # listener spec covers the fanout.
     captured = []
     allow(DB).to receive(:run) do |lit|
       captured << JSON.parse(lit.args.last)
@@ -93,12 +98,10 @@ RSpec.describe Invites::Accept do
 
     described_class.call(token_jwt: invite[:jwt])
 
-    user = User.find_by_email("newuser@example.com")
     member_broadcasts = captured.select { |p| p["objectType"] == "member" }
-    expect(member_broadcasts).to contain_exactly(
-      a_hash_including("audience" => "workspace", "audienceId" => workspace[:id].to_s),
-      a_hash_including("audience" => "user", "audienceId" => user.id.to_s)
-    )
+    expect(member_broadcasts.size).to eq(1)
+    expect(member_broadcasts.first).not_to have_key("audience")
+    expect(member_broadcasts.first).to include("action" => "update")
   end
 
   it "returns failure for missing token" do

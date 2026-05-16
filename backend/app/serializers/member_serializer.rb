@@ -7,6 +7,13 @@ class MemberSerializer
   extend PoolObjectSerializer
 
   class << self
+    # Member changes fan out to both the workspace (team view) and the
+    # affected user (cross-workspace personal sessions). One NOTIFY,
+    # two audiences.
+    def broadcast_audiences_for(member)
+      [WS_AUD.call(member.workspace_id), USR_AUD.call(member.user_id)]
+    end
+
     def serialize_batch(memberships, pool:)
       return [] if memberships.empty?
 

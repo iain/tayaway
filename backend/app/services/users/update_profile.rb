@@ -186,7 +186,7 @@ module Users
 
           # Broadcast member changes to all workspaces the user belongs to
           WorkspaceMembership.for_user(user_id).each do |m|
-            Broadcaster.object_changed("member", m.id, workspace_id: m.workspace_id)
+            Broadcaster.object_changed("member", m.id)
           end
         end
 

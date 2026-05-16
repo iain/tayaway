@@ -60,7 +60,7 @@ module Settlements
           if expense_ids.any?
             DB[:expenses].where(id: expense_ids).update(settlement_id: nil, updated_at: Time.now)
             expense_ids.each do |eid|
-              Broadcaster.object_changed("expense", eid, workspace_id: workspace_id)
+              Broadcaster.object_changed("expense", eid)
             end
           end
 
@@ -96,14 +96,14 @@ module Settlements
           DB[:settlements].where(id: settlement.id).delete
 
           restored_ids.each do |tid|
-            Broadcaster.object_changed("settlement_transfer", tid, workspace_id: workspace_id)
+            Broadcaster.object_changed("settlement_transfer", tid)
           end
 
           # The predecessor's permissions.delete flipped from false to true
           # now that its successor is gone — clients need the fresh payload
           # to surface the delete affordance again.
           if settlement.previous_settlement_id
-            Broadcaster.object_changed("settlement", settlement.previous_settlement_id, workspace_id: workspace_id)
+            Broadcaster.object_changed("settlement", settlement.previous_settlement_id)
           end
         end
 

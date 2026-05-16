@@ -4,6 +4,15 @@ class ChoreAssignmentSerializer
   extend PoolObjectSerializer
 
   class << self
+    def broadcast_audiences_for(assignment)
+      ws_id = DB[:chores]
+              .join(:chore_rosters, id: :chore_roster_id)
+              .join(:events, id: Sequel[:chore_rosters][:event_id])
+              .where(Sequel[:chores][:id] => assignment.chore_id)
+              .get(Sequel[:events][:workspace_id])
+      [WS_AUD.call(ws_id)]
+    end
+
     def serialize_batch(assignments, pool:)
       assignments.map do |assignment|
         {

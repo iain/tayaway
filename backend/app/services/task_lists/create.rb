@@ -59,7 +59,7 @@ module TaskLists
             updated_at: now
           )
 
-          Broadcaster.object_changed("task_list", list_id, workspace_id: workspace_id)
+          Broadcaster.object_changed("task_list", list_id)
 
           TaskList.find(list_id)
         end

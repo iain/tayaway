@@ -4,6 +4,10 @@ class WorkspaceSerializer
   extend PoolObjectSerializer
 
   class << self
+    def broadcast_audiences_for(workspace)
+      [WS_AUD.call(workspace.id)]
+    end
+
     def serialize_batch(workspaces, pool:)
       return [] if workspaces.empty?
 

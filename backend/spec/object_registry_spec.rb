@@ -62,4 +62,25 @@ RSpec.describe ObjectRegistry do
       expect(entry.user_audience?).to be(false)
     end
   end
+
+  describe "broadcast_audiences delegation to serializer" do
+    it "fans out a member change to both workspace and user audiences" do
+      fake_member = Struct.new(:workspace_id, :user_id).new("ws-1", "user-1")
+
+      audiences = MemberSerializer.broadcast_audiences_for(fake_member)
+
+      expect(audiences).to contain_exactly(
+        { kind: "workspace", id: "ws-1" },
+        { kind: "user", id: "user-1" }
+      )
+    end
+
+    it "routes a notification to the user audience only" do
+      fake_notification = Struct.new(:user_id).new("user-1")
+
+      audiences = NotificationSerializer.broadcast_audiences_for(fake_notification)
+
+      expect(audiences).to eq([{ kind: "user", id: "user-1" }])
+    end
+  end
 end

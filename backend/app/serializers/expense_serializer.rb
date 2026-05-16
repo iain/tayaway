@@ -4,6 +4,11 @@ class ExpenseSerializer
   extend PoolObjectSerializer
 
   class << self
+    def broadcast_audiences_for(expense)
+      ws_id = DB[:events].where(id: expense.event_id).get(:workspace_id)
+      [WS_AUD.call(ws_id)]
+    end
+
     def serialize_batch(expenses, pool:)
       return [] if expenses.empty?
       raise ArgumentError, "ExpenseSerializer requires a non-nil pool for child expansion" unless pool

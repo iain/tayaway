@@ -49,7 +49,7 @@ module ChoreRosters
           # Delete chore (cascades to assignments)
           DB[:chores].where(id: chore.id).delete
 
-          Broadcaster.object_changed("chore_roster", roster_id, workspace_id: workspace_id)
+          Broadcaster.object_changed("chore_roster", roster_id)
         end
 
         pool = PoolSerializer.new(membership: membership)

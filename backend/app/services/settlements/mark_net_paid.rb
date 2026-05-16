@@ -122,7 +122,7 @@ module Settlements
         return failure if failure
 
         updated_ids.each do |id|
-          Broadcaster.object_changed("settlement_transfer", id, workspace_id: workspace_id)
+          Broadcaster.object_changed("settlement_transfer", id)
         end
 
         Settlements::OnPaid.call(

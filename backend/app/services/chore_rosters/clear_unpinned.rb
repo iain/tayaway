@@ -40,7 +40,7 @@ module ChoreRosters
             non_pinned_ids.each do |aid|
               Broadcaster.object_deleted("chore_assignment", aid, workspace_id: workspace_id)
             end
-            Broadcaster.object_changed("chore_roster", roster.id, workspace_id: workspace_id)
+            Broadcaster.object_changed("chore_roster", roster.id)
           end
         end
 

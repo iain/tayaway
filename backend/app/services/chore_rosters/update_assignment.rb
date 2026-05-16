@@ -42,9 +42,9 @@ module ChoreRosters
 
         DB.transaction do
           DB[:chore_assignments].where(id: assignment.id).update(updates)
-          Broadcaster.object_changed("chore_assignment", assignment.id, workspace_id: workspace_id)
+          Broadcaster.object_changed("chore_assignment", assignment.id)
           # If user changed, update parent chore too
-          Broadcaster.object_changed("chore", assignment.chore_id, workspace_id: workspace_id) if user_id
+          Broadcaster.object_changed("chore", assignment.chore_id) if user_id
         end
 
         pool = PoolSerializer.new(membership: membership)

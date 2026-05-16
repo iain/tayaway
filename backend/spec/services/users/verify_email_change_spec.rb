@@ -77,7 +77,7 @@ RSpec.describe Users::VerifyEmailChange do
     # Two `member` broadcasts — one per workspace the user belongs to —
     # plus one `notification` broadcast for the in-app delivery of
     # `email_change_completed` to the user.
-    expect(Broadcaster).to have_received(:object_changed).with("member", anything, hash_including(:workspace_id)).twice
-    expect(Broadcaster).to have_received(:object_changed).with("notification", anything, hash_including(:user_id)).once
+    expect(Broadcaster).to have_received(:object_changed).with("member", anything).twice
+    expect(Broadcaster).to have_received(:object_changed).with("notification", anything).once
   end
 end

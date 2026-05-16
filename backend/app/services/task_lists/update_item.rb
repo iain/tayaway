@@ -60,7 +60,7 @@ module TaskLists
 
           DB[:task_items].where(id: item.id).update(updates)
 
-          Broadcaster.object_changed("task_item", item.id, workspace_id: source_list.workspace_id)
+          Broadcaster.object_changed("task_item", item.id)
         end
 
         updated_item = TaskItem.find(item.id)

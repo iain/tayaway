@@ -49,7 +49,7 @@ module ChoreRosters
 
         DB.transaction do
           DB[:chores].where(id: chore.id).update(updates)
-          Broadcaster.object_changed("chore", chore.id, workspace_id: workspace_id)
+          Broadcaster.object_changed("chore", chore.id)
         end
 
         pool = PoolSerializer.new(membership: membership)

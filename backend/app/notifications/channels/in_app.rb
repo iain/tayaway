@@ -19,7 +19,7 @@ module Notifications
             kind: kind_class.key.to_s,
             data: Sequel.pg_jsonb(payload)
           )
-          Broadcaster.object_changed("notification", id, user_id: user_id)
+          Broadcaster.object_changed("notification", id)
         end
       end
     end

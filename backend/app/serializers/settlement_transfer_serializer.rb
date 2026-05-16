@@ -4,6 +4,14 @@ class SettlementTransferSerializer
   extend PoolObjectSerializer
 
   class << self
+    def broadcast_audiences_for(transfer)
+      ws_id = DB[:settlements]
+              .join(:events, id: :event_id)
+              .where(Sequel[:settlements][:id] => transfer.settlement_id)
+              .get(Sequel[:events][:workspace_id])
+      [WS_AUD.call(ws_id)]
+    end
+
     def serialize_batch(transfers, pool:)
       transfers.map do |transfer|
         {

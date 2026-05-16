@@ -45,7 +45,7 @@ module DatePolls
                      )
                      .first
 
-          Broadcaster.object_changed("date_range", dr_id, workspace_id: event.workspace_id) if inserted
+          Broadcaster.object_changed("date_range", dr_id) if inserted
         end
 
         pool = PoolSerializer.new(membership: membership)

@@ -170,7 +170,10 @@ RSpec.describe Members::UpdateRole do
       captured.select { |p| p["objectType"] == "member" }
     end
 
-    it "fires both workspace and user audience broadcasts so the affected user sees the role change across all their sessions" do
+    it "emits a single NOTIFY — the Listener fans out to workspace + user audiences" do
+      # Before this refactor the service fired two pg_notify calls (one
+      # per audience). Now it fires one, and MemberSerializer derives the
+      # full audience set on the Listener side.
       member_broadcasts = capture_broadcasts do
         described_class.call(
           acting_membership: owner_membership,
@@ -179,9 +182,12 @@ RSpec.describe Members::UpdateRole do
         )
       end
 
-      expect(member_broadcasts).to contain_exactly(
-        a_hash_including("audience" => "workspace", "audienceId" => workspace[:id].to_s, "objectId" => target_membership_row[:id]),
-        a_hash_including("audience" => "user", "audienceId" => target_user[:id].to_s, "objectId" => target_membership_row[:id])
+      expect(member_broadcasts.size).to eq(1)
+      expect(member_broadcasts.first).not_to have_key("audience")
+      expect(member_broadcasts.first).to include(
+        "objectType" => "member",
+        "objectId" => target_membership_row[:id],
+        "action" => "update"
       )
     end
   end

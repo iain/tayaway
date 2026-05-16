@@ -37,7 +37,7 @@ module ChoreRosters
           DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "chore_assignment", object_id: assignment.id)
           DB[:chore_assignments].where(id: assignment.id).delete
           Broadcaster.object_deleted("chore_assignment", assignment.id, workspace_id: workspace_id)
-          Broadcaster.object_changed("chore", chore_id, workspace_id: workspace_id)
+          Broadcaster.object_changed("chore", chore_id)
         end
 
         pool = PoolSerializer.new(membership: membership)

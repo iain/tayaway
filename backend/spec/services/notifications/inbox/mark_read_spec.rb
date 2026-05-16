@@ -23,7 +23,7 @@ RSpec.describe Notifications::Inbox::MarkRead do
       described_class.call(id: row[:id], user_id: user[:id])
 
       expect(Broadcaster).to have_received(:object_changed)
-        .with("notification", row[:id], user_id: user[:id].to_s)
+        .with("notification", row[:id])
     end
 
     it "is a no-op for an already-read row" do

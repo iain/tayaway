@@ -4,6 +4,14 @@ class ChoreSerializer
   extend PoolObjectSerializer
 
   class << self
+    def broadcast_audiences_for(chore)
+      ws_id = DB[:chore_rosters]
+              .join(:events, id: :event_id)
+              .where(Sequel[:chore_rosters][:id] => chore.chore_roster_id)
+              .get(Sequel[:events][:workspace_id])
+      [WS_AUD.call(ws_id)]
+    end
+
     def serialize_batch(chores, pool:)
       return [] if chores.empty?
       raise ArgumentError, "ChoreSerializer requires a non-nil pool for child expansion" unless pool

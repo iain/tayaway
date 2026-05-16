@@ -54,7 +54,7 @@ class App
                    .first
 
         if inserted
-          Broadcaster.object_changed("member", membership_id, workspace_id: workspace_id)
+          Broadcaster.object_changed("member", membership_id)
           response.status = 201
           next { member_id: membership_id }
         end

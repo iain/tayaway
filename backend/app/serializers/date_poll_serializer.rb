@@ -4,6 +4,11 @@ class DatePollSerializer
   extend PoolObjectSerializer
 
   class << self
+    def broadcast_audiences_for(poll)
+      ws_id = DB[:events].where(id: poll.event_id).get(:workspace_id)
+      [WS_AUD.call(ws_id)]
+    end
+
     def serialize_batch(polls, pool:)
       return [] if polls.empty?
 

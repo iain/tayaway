@@ -3,31 +3,41 @@
 require "json"
 
 # Service module for broadcasting changes via PostgreSQL NOTIFY.
-# Sends minimal payloads (audience + object info) to stay under pg_notify's 8KB limit.
-# The Listener fetches full data before broadcasting to WebSocket clients.
+# Sends minimal payloads (type + id) to stay under pg_notify's 8KB limit.
+# The Listener fetches the full object, asks ObjectRegistry to derive the
+# audience set for the change, and fans out to every connection in each
+# derived audience.
 #
-# Audience selects who hears the change:
-#   workspace_id: → fan out to every connection subscribed to that workspace
-#                   (the standard collaborative path)
-#   user_id:      → fan out to every connection authenticated as that user
-#                   (per-user objects like notifications, read receipts, etc.)
-#
-# Exactly one of workspace_id: / user_id: must be passed.
+# Updates carry no audience info — the Listener loads the object and looks
+# it up. Deletes do carry audience info because the object is gone by the
+# time the Listener fires and can no longer be queried.
 #
 # @example
-#   Broadcaster.object_changed("event", event_id, workspace_id: workspace_id)
-#   Broadcaster.object_changed("notification", notification_id, user_id: user_id)
+#   Broadcaster.object_changed("event", event_id)
+#   Broadcaster.object_changed("member", membership_id)  # fans out to ws + user
 #   Broadcaster.object_deleted("notification", notification_id, user_id: user_id)
+#   Broadcaster.object_deleted("event", event_id, workspace_id: workspace_id)
 module Broadcaster
   CHANNEL = "tayaway_objects"
 
   class << self
-    def object_changed(object_type, object_id, workspace_id: nil, user_id: nil)
-      notify(object_type, object_id, audience: build_audience(workspace_id, user_id), action: "update")
+    def object_changed(object_type, object_id)
+      notify(
+        objectType: object_type,
+        objectId: object_id.to_s,
+        action: "update"
+      )
     end
 
     def object_deleted(object_type, object_id, workspace_id: nil, user_id: nil)
-      notify(object_type, object_id, audience: build_audience(workspace_id, user_id), action: "delete")
+      audience = build_audience(workspace_id, user_id)
+      notify(
+        objectType: object_type,
+        objectId: object_id.to_s,
+        action: "delete",
+        audience: audience[:kind],
+        audienceId: audience[:id]
+      )
     end
 
     private
@@ -44,15 +54,8 @@ module Broadcaster
       end
     end
 
-    def notify(object_type, object_id, audience:, action:)
-      payload = {
-        audience: audience[:kind],
-        audienceId: audience[:id],
-        objectType: object_type,
-        objectId: object_id.to_s,
-        action: action
-      }.to_json
-      DB.run(Sequel.lit("SELECT pg_notify(?, ?)", CHANNEL, payload))
+    def notify(**payload)
+      DB.run(Sequel.lit("SELECT pg_notify(?, ?)", CHANNEL, payload.to_json))
     rescue StandardError => e
       APP_LOGGER.error { "[Broadcaster] Error sending notification: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
     end

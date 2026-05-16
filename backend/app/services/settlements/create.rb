@@ -171,7 +171,7 @@ module Settlements
               created_at: now,
               updated_at: now
             )
-            Broadcaster.object_changed("settlement_transfer", transfer_id, workspace_id: workspace_id)
+            Broadcaster.object_changed("settlement_transfer", transfer_id)
           end
           committed_transfers = transfers
 
@@ -187,20 +187,20 @@ module Settlements
           end
 
           superseded_ids.each do |tid|
-            Broadcaster.object_changed("settlement_transfer", tid, workspace_id: workspace_id)
+            Broadcaster.object_changed("settlement_transfer", tid)
           end
 
-          Broadcaster.object_changed("settlement", settlement_id, workspace_id: workspace_id)
+          Broadcaster.object_changed("settlement", settlement_id)
           # Re-broadcast the prior tip so clients recompute "can delete" — it
           # flips once a successor exists.
-          Broadcaster.object_changed("settlement", tip.id, workspace_id: workspace_id) if tip
+          Broadcaster.object_changed("settlement", tip.id) if tip
         end
 
         return failure if failure
 
         all_expenses = Expense.for_event(event.id)
         all_expenses.select { |e| e.settlement_id&.to_s == settlement_id }.each do |expense|
-          Broadcaster.object_changed("expense", expense.id, workspace_id: workspace_id)
+          Broadcaster.object_changed("expense", expense.id)
         end
 
         Settlements::OnCreated.call(transfers: committed_transfers, event: event, workspace_id: workspace_id)

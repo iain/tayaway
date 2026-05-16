@@ -72,8 +72,8 @@ module DatePolls
             end_date: nil
           )
 
-          Broadcaster.object_changed("date_poll", poll.id, workspace_id: event.workspace_id)
-          Broadcaster.object_changed("event", event.id, workspace_id: event.workspace_id)
+          Broadcaster.object_changed("date_poll", poll.id)
+          Broadcaster.object_changed("event", event.id)
         end
 
         APP_LOGGER.info { "[DatePolls::Reopen] Poll #{poll.id} reopened on event #{event.id}" }

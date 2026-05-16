@@ -104,7 +104,7 @@ module Events
                      .insert(insert_data)
                      .first
 
-          Broadcaster.object_changed("event", event_id, workspace_id: workspace_id) if inserted
+          Broadcaster.object_changed("event", event_id) if inserted
         end
 
         event = Event.find(event_id)

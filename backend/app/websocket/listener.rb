@@ -57,12 +57,10 @@ module Websocket
 
       def handle_notification(payload, connections = ConnectionManager.instance)
         data = JSON.parse(payload, symbolize_names: true)
-        audience = data[:audience]
-        audience_id = data[:audienceId]
         object_type = data[:objectType]
         object_id = data[:objectId]
         action = data[:action]
-        return unless audience && audience_id && object_type && object_id && action
+        return unless object_type && object_id && action
 
         config = type_config(object_type)
         unless config
@@ -70,13 +68,23 @@ module Websocket
           return
         end
 
-        case audience
-        when "workspace"
-          dispatch_workspace(connections, audience_id, config, object_id, action)
-        when "user"
-          dispatch_user(connections, audience_id, config, object_id, action)
-        else
-          APP_LOGGER.warn { "[Listener] Unknown audience: #{audience.inspect}" }
+        case action
+        when "update"
+          # Load the object once and ask the registry for its audience set.
+          # If the object disappeared between notify and fetch, drop the
+          # notification — the corresponding delete NOTIFY will handle it.
+          object = find_object(config.key, object_id)
+          return unless object
+          audiences = config.serializer_class.broadcast_audiences_for(object)
+          audiences.each do |audience|
+            dispatch_update(connections, audience, config, object)
+          end
+        when "delete"
+          # Deletes carry the audience inline because the object can no longer
+          # be reloaded to derive it.
+          audience = { kind: data[:audience], id: data[:audienceId] }
+          return unless audience[:kind] && audience[:id]
+          dispatch_delete(connections, audience, config, object_id)
         end
       rescue JSON::ParserError => e
         APP_LOGGER.error { "[Listener] Invalid JSON payload: #{e.message}" }
@@ -86,63 +94,58 @@ module Websocket
 
       private
 
-      # Workspace audience: fan out to every connection currently subscribed
-      # to that workspace, and thread a PolicyContext so the connection
-      # manager can attach per-recipient permissions.
-      def dispatch_workspace(connections, workspace_id, config, object_id, action)
-        message = { type: "broadcast", workspaceId: workspace_id, action: action }
-        policy_context = nil
-
-        case action
-        when "update"
-          object = find_object(config.key, object_id)
-          if object
-            pool = PoolSerializer.new(workspace_id: workspace_id, collect_policy_contexts: true)
-            pool.add(config.key, [object])
-            message[:data] = { objects: pool.to_a }
-            # Pull raw_objects and per-object policy contexts from the pool so
-            # fan-out children (task_items under a task_list, chores under a
-            # chore_roster, participants under an expense) get permissions
-            # computed on the broadcast side instead of silently shipping
-            # without a permissions key.
-            policy_context = Websocket::PolicyContext.new(
-              raw_objects: pool.raw_objects,
-              policy_contexts: pool.policy_contexts
-            )
-          else
-            # Object was deleted between notify and fetch
-            message[:action] = "delete"
-            message[:data] = { deleted: [{ objectType: config.client_type, id: object_id }] }
-          end
-        when "delete"
-          message[:data] = { deleted: [{ objectType: config.client_type, id: object_id }] }
+      def dispatch_update(connections, audience, config, object)
+        case audience[:kind]
+        when "workspace"
+          # Thread a PolicyContext so the connection manager can attach
+          # per-recipient permissions; PoolSerializer needs the workspace
+          # id to compute the right policy view.
+          pool = PoolSerializer.new(workspace_id: audience[:id], collect_policy_contexts: true)
+          pool.add(config.key, [object])
+          message = {
+            type: "broadcast",
+            workspaceId: audience[:id],
+            action: "update",
+            data: { objects: pool.to_a }
+          }
+          policy_context = Websocket::PolicyContext.new(
+            raw_objects: pool.raw_objects,
+            policy_contexts: pool.policy_contexts
+          )
+          connections.broadcast_to_workspace(audience[:id], message, policy_context: policy_context)
+        when "user"
+          # No policy context — the user is the audience, so visibility
+          # is decided at dispatch time, not by per-viewer permission diffs.
+          pool = PoolSerializer.new
+          pool.add(config.key, [object])
+          message = {
+            type: "broadcast",
+            action: "update",
+            data: { objects: pool.to_a }
+          }
+          connections.broadcast_to_user(audience[:id], message)
+        else
+          APP_LOGGER.warn { "[Listener] Unknown audience kind: #{audience[:kind].inspect}" }
         end
-
-        connections.broadcast_to_workspace(workspace_id, message, policy_context: policy_context)
       end
 
-      # User audience: fan out to every connection authenticated as that
-      # user. No policy context — the user is the audience, so visibility
-      # is decided at dispatch time, not by per-viewer permission diffs.
-      def dispatch_user(connections, user_id, config, object_id, action)
-        message = { type: "broadcast", action: action }
-
-        case action
-        when "update"
-          object = find_object(config.key, object_id)
-          if object
-            pool = PoolSerializer.new
-            pool.add(config.key, [object])
-            message[:data] = { objects: pool.to_a }
-          else
-            message[:action] = "delete"
-            message[:data] = { deleted: [{ objectType: config.client_type, id: object_id }] }
-          end
-        when "delete"
-          message[:data] = { deleted: [{ objectType: config.client_type, id: object_id }] }
+      def dispatch_delete(connections, audience, config, object_id)
+        deleted_data = { deleted: [{ objectType: config.client_type, id: object_id }] }
+        case audience[:kind]
+        when "workspace"
+          message = {
+            type: "broadcast",
+            workspaceId: audience[:id],
+            action: "delete",
+            data: deleted_data
+          }
+          connections.broadcast_to_workspace(audience[:id], message)
+        when "user"
+          message = { type: "broadcast", action: "delete", data: deleted_data }
+          connections.broadcast_to_user(audience[:id], message)
+        else
+          APP_LOGGER.warn { "[Listener] Unknown audience kind: #{audience[:kind].inspect}" }
         end
-
-        connections.broadcast_to_user(user_id, message)
       end
 
       def semaphore

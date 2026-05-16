@@ -87,7 +87,7 @@ module Invites
           name: invite.name
         )
 
-        Broadcaster.object_changed("workspace_invite", invite.id, workspace_id: invite.workspace_id.to_s)
+        Broadcaster.object_changed("workspace_invite", invite.id)
 
         updated_invite = WorkspaceInvite.find(invite.id)
         pool = PoolSerializer.new(membership: membership)

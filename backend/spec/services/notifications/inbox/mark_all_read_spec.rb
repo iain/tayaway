@@ -29,10 +29,8 @@ RSpec.describe Notifications::Inbox::MarkAllRead do
 
       described_class.call(user_id: user[:id])
 
-      expect(Broadcaster).to have_received(:object_changed)
-        .with("notification", a[:id], user_id: user[:id].to_s)
-      expect(Broadcaster).to have_received(:object_changed)
-        .with("notification", b[:id], user_id: user[:id].to_s)
+      expect(Broadcaster).to have_received(:object_changed).with("notification", a[:id])
+      expect(Broadcaster).to have_received(:object_changed).with("notification", b[:id])
       expect(Broadcaster).to have_received(:object_changed).twice
     end
 

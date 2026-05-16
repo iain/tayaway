@@ -4,6 +4,11 @@ class SettlementSerializer
   extend PoolObjectSerializer
 
   class << self
+    def broadcast_audiences_for(settlement)
+      ws_id = DB[:events].where(id: settlement.event_id).get(:workspace_id)
+      [WS_AUD.call(ws_id)]
+    end
+
     def serialize_batch(settlements, pool:)
       return [] if settlements.empty?
 
