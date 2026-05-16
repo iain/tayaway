@@ -63,24 +63,23 @@ RSpec.describe ObjectRegistry do
     end
   end
 
-  describe "broadcast_audiences delegation to serializer" do
-    it "fans out a member change to both workspace and user audiences" do
+  describe "topic delegation to serializer" do
+    it "routes a member change to its workspace topic — the user is already auto-subscribed there" do
       fake_member = Struct.new(:workspace_id, :user_id).new("ws-1", "user-1")
 
-      audiences = MemberSerializer.broadcast_audiences_for(fake_member)
-
-      expect(audiences).to contain_exactly(
-        { kind: "workspace", id: "ws-1" },
-        { kind: "user", id: "user-1" }
-      )
+      expect(MemberSerializer.topics_for(fake_member)).to eq(["workspace:ws-1"])
     end
 
-    it "routes a notification to the user audience only" do
+    it "routes a notification to the user topic" do
       fake_notification = Struct.new(:user_id).new("user-1")
 
-      audiences = NotificationSerializer.broadcast_audiences_for(fake_notification)
+      expect(NotificationSerializer.topics_for(fake_notification)).to eq(["user:user-1"])
+    end
 
-      expect(audiences).to eq([{ kind: "user", id: "user-1" }])
+    it "defaults to the object's workspace topic for serializers that don't override" do
+      fake = Struct.new(:workspace_id).new("ws-9")
+
+      expect(WorkspaceInviteSerializer.topics_for(fake)).to eq(["workspace:ws-9"])
     end
   end
 end

@@ -84,12 +84,12 @@ RSpec.describe Invites::Accept do
     expect(result.value![:message]).to include("already a member")
   end
 
-  it "emits a single NOTIFY for the new membership — the Listener fans out to both audiences" do
-    # We collapsed the two pg_notify calls into one. Audience fanout to the
-    # workspace AND the joining user's personal channel happens in the
-    # Listener via MemberSerializer.broadcast_audiences_for. Asserting the
-    # producer no longer enumerates audiences is the contract here; the
-    # listener spec covers the fanout.
+  it "emits a single NOTIFY for the new membership — the Listener derives the topic from the loaded object" do
+    # The producer no longer enumerates audiences; routing happens in the
+    # Listener via MemberSerializer.topics_for. Asserting only the bare
+    # NOTIFY shape here; the listener spec covers the workspace topic
+    # dispatch and the bootstrap path that runs when the joining user
+    # isn't yet subscribed to the new workspace.
     captured = []
     allow(DB).to receive(:run) do |lit|
       captured << JSON.parse(lit.args.last)

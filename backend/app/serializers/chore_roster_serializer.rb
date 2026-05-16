@@ -4,9 +4,9 @@ class ChoreRosterSerializer
   extend PoolObjectSerializer
 
   class << self
-    def broadcast_audiences_for(roster)
+    def topics_for(roster)
       ws_id = DB[:events].where(id: roster.event_id).get(:workspace_id)
-      [WS_AUD.call(ws_id)]
+      ["workspace:#{ws_id}"]
     end
 
     def serialize_batch(rosters, pool:)

@@ -163,7 +163,7 @@ module Expenses
         to_remove = existing.reject { |p| desired_user_ids.include?(p.user_id.to_s) }
         to_remove.each do |p|
           DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "expense_participant", object_id: p.id)
-          Broadcaster.object_deleted("expense_participant", p.id, workspace_id: workspace_id)
+          Broadcaster.object_deleted("expense_participant", p.id, topics: ["workspace:#{workspace_id}"])
         end
         unless to_remove.empty?
           DB[:expense_participants].where(id: to_remove.map(&:id)).delete

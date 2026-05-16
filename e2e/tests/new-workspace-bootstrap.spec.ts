@@ -11,16 +11,11 @@ import {
 
 // Pins the new-workspace bootstrap invariant: a user signed in to only
 // workspace A, who gets added to workspace B mid-session, should see B
-// appear in the workspace selector without reloading.
-//
-// CURRENTLY EXPECTED TO FAIL — annotated with `test.fail()` below. The
-// per-user member-change fanout delivers the membership row but not the
-// workspace row, and AuthenticatedLayout's switcher reads
-// `pool.getAll('workspace')`, so B never shows up until the user reloads.
-// The planned topic/subscription refactor closes this gap (a connection
-// auto-subscribes to every workspace its user is a member of, including
-// new ones). When that lands, remove the `test.fail()` annotation and
-// the test should turn green.
+// appear in the workspace selector without reloading. The Listener
+// detects the member change, subscribes the affected user's connections
+// to the new workspace topic, and ships a one-shot WorkspaceSync so
+// their pool gets the workspace row + initial data before broadcasts
+// for that workspace start to arrive.
 const RUN_TAG = Date.now().toString(36)
 const USER_EMAIL = `e2e-ws-boot-${RUN_TAG}@example.com`
 const USER_NAME = 'E2E WS Bootstrap User'
@@ -66,7 +61,6 @@ test.describe('New-workspace bootstrap', () => {
   test('being added to a new workspace mid-session surfaces it in the selector live', async ({
     page,
   }) => {
-    test.fail() // expected to fail until the topic/subscription refactor lands
     await setupAuthenticatedPage(page, userToken)
     await page.goto('/events')
 

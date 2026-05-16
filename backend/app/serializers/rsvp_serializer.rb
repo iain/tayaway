@@ -4,9 +4,9 @@ class RsvpSerializer
   extend PoolObjectSerializer
 
   class << self
-    def broadcast_audiences_for(rsvp)
+    def topics_for(rsvp)
       ws_id = DB[:events].where(id: rsvp.event_id).get(:workspace_id)
-      [WS_AUD.call(ws_id)]
+      ["workspace:#{ws_id}"]
     end
 
     def serialize_batch(rsvps, pool:)

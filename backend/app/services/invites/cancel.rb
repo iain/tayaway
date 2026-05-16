@@ -50,7 +50,7 @@ module Invites
         DB.transaction do
           DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "workspace_invite", object_id: invite_id)
           DB[:workspace_invites].where(id: invite_id).delete
-          Broadcaster.object_deleted("workspace_invite", invite_id, workspace_id: workspace_id.to_s)
+          Broadcaster.object_deleted("workspace_invite", invite_id, topics: ["workspace:#{workspace_id}"])
         end
 
         APP_LOGGER.info { "[Invites::Cancel] Invite #{invite_id} cancelled in workspace #{workspace_id}" }

@@ -33,14 +33,14 @@ module TaskLists
           if item_ids.any?
             DeletedItems.bulk_insert(workspace_id, "task_item", item_ids)
             item_ids.each do |item_id|
-              Broadcaster.object_deleted("task_item", item_id, workspace_id: workspace_id)
+              Broadcaster.object_deleted("task_item", item_id, topics: ["workspace:#{workspace_id}"])
               deleted << { objectType: "taskItem", id: item_id.to_s }
             end
           end
 
           DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "task_list", object_id: list_id)
           DB[:task_lists].where(id: list_id).delete
-          Broadcaster.object_deleted("task_list", list_id, workspace_id: workspace_id)
+          Broadcaster.object_deleted("task_list", list_id, topics: ["workspace:#{workspace_id}"])
           deleted << { objectType: "taskList", id: list_id.to_s }
         end
 

@@ -24,7 +24,7 @@ RSpec.describe Broadcaster do
       expect(captured_channel).to eq(Broadcaster::CHANNEL)
     end
 
-    it "carries only the type and id — the Listener derives the audience from the loaded object" do
+    it "carries only the type and id — the Listener derives the topic set from the loaded object" do
       payload = capture_payload do
         described_class.object_changed("event", object_id)
       end
@@ -46,49 +46,57 @@ RSpec.describe Broadcaster do
   end
 
   describe ".object_deleted" do
-    it "tags a workspace-audience deletion inline because the object can't be reloaded after delete" do
+    it "carries the topic list inline because the object can't be reloaded after delete" do
       payload = capture_payload do
-        described_class.object_deleted("event", object_id, workspace_id: workspace_id)
+        described_class.object_deleted("event", object_id, topics: ["workspace:#{workspace_id}"])
       end
 
       expect(payload).to include(
-        "audience" => "workspace",
-        "audienceId" => workspace_id,
         "objectType" => "event",
         "objectId" => object_id,
-        "action" => "delete"
+        "action" => "delete",
+        "topics" => ["workspace:#{workspace_id}"]
       )
     end
 
-    it "tags a user-audience deletion" do
+    it "accepts a user topic the same way" do
       payload = capture_payload do
-        described_class.object_deleted("notification", object_id, user_id: user_id)
+        described_class.object_deleted("notification", object_id, topics: ["user:#{user_id}"])
       end
 
       expect(payload).to include(
-        "audience" => "user",
-        "audienceId" => user_id,
-        "action" => "delete"
+        "objectType" => "notification",
+        "objectId" => object_id,
+        "action" => "delete",
+        "topics" => ["user:#{user_id}"]
       )
     end
 
-    it "raises when neither workspace_id nor user_id is given" do
-      expect do
-        described_class.object_deleted("event", object_id)
-      end.to raise_error(ArgumentError, /audience/)
+    it "accepts multiple topics on a single delete" do
+      payload = capture_payload do
+        described_class.object_deleted(
+          "member", object_id,
+          topics: ["workspace:#{workspace_id}", "user:#{user_id}"]
+        )
+      end
+
+      expect(payload["topics"]).to contain_exactly(
+        "workspace:#{workspace_id}",
+        "user:#{user_id}"
+      )
     end
 
-    it "raises when both workspace_id and user_id are given" do
+    it "raises when topics is empty" do
       expect do
-        described_class.object_deleted("event", object_id, workspace_id: workspace_id, user_id: user_id)
-      end.to raise_error(ArgumentError, /audience/)
+        described_class.object_deleted("event", object_id, topics: [])
+      end.to raise_error(ArgumentError, /topic/)
     end
 
     it "does not raise on DB errors" do
       allow(DB).to receive(:run).and_raise(StandardError, "connection lost")
 
       expect do
-        described_class.object_deleted("event", object_id, workspace_id: workspace_id)
+        described_class.object_deleted("event", object_id, topics: ["workspace:#{workspace_id}"])
       end.not_to raise_error
     end
   end

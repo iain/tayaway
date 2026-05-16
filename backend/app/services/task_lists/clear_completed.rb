@@ -31,7 +31,7 @@ module TaskLists
             deleted = completed_items.map { |item| { objectType: "taskItem", id: item.id.to_s } }
             DB[:task_items].where(id: ids).delete
             completed_items.each do |item|
-              Broadcaster.object_deleted("task_item", item.id, workspace_id: task_list.workspace_id)
+              Broadcaster.object_deleted("task_item", item.id, topics: ["workspace:#{task_list.workspace_id}"])
             end
           end
         end

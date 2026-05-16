@@ -4,9 +4,9 @@ class TaskItemSerializer
   extend PoolObjectSerializer
 
   class << self
-    def broadcast_audiences_for(item)
+    def topics_for(item)
       ws_id = DB[:task_lists].where(id: item.task_list_id).get(:workspace_id)
-      [WS_AUD.call(ws_id)]
+      ["workspace:#{ws_id}"]
     end
 
     def serialize_batch(task_items, pool:)

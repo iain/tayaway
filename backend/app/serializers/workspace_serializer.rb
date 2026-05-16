@@ -4,8 +4,8 @@ class WorkspaceSerializer
   extend PoolObjectSerializer
 
   class << self
-    def broadcast_audiences_for(workspace)
-      [WS_AUD.call(workspace.id)]
+    def topics_for(workspace)
+      ["workspace:#{workspace.id}"]
     end
 
     def serialize_batch(workspaces, pool:)

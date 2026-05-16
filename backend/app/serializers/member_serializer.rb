@@ -7,11 +7,14 @@ class MemberSerializer
   extend PoolObjectSerializer
 
   class << self
-    # Member changes fan out to both the workspace (team view) and the
-    # affected user (cross-workspace personal sessions). One NOTIFY,
-    # two audiences.
-    def broadcast_audiences_for(member)
-      [WS_AUD.call(member.workspace_id), USR_AUD.call(member.user_id)]
+    # Member changes ride the workspace topic. With the auth handshake
+    # auto-subscribing each connection to every workspace its user belongs
+    # to, the affected user's other sessions hear about their own role
+    # changes via that same topic — no user-channel duplication needed.
+    # Bootstrap for "user added to a new workspace" is handled in the
+    # Listener (subscribes new connections + delivers a WorkspaceSync).
+    def topics_for(member)
+      ["workspace:#{member.workspace_id}"]
     end
 
     def serialize_batch(memberships, pool:)

@@ -31,7 +31,7 @@ module Websocket
           Websocket::ConnectionManager.instance.update_last_pong(connection_id)
           connection.write({ type: "pong", gitSha: APP_CONFIG.git_sha }.to_json)
         when "switch_workspace"
-          switch_workspace(connection, connection_id, user_id, data[:workspaceId], data[:since])
+          switch_workspace(connection, user_id, data[:workspaceId], data[:since])
         else
           connection.write({ type: "error", message: "Unknown message type" }.to_json)
         end
@@ -44,24 +44,22 @@ module Websocket
 
       private
 
-      def switch_workspace(connection, connection_id, user_id, workspace_id, since = nil)
+      # The connection is already subscribed to every workspace the user
+      # belongs to (subscribed at auth), so switching is purely "send me a
+      # fresh sync for this workspace". No subscription change, no
+      # membership update — both were established at auth time.
+      def switch_workspace(connection, user_id, workspace_id, since = nil)
         unless workspace_id
           connection.write({ type: "error", message: "Missing workspaceId" }.to_json)
           return
         end
 
-        # Validate user is a member of this workspace
         membership = WorkspaceMembership.find_by_workspace_and_user(workspace_id, user_id)
         unless membership
           connection.write({ type: "error", message: "Not a member of this workspace" }.to_json)
           return
         end
 
-        # Subscribe only to this workspace
-        Websocket::ConnectionManager.instance.set_workspaces(connection_id, [workspace_id.to_s])
-        Websocket::ConnectionManager.instance.set_membership(connection_id, membership)
-
-        # Sync workspace data (full or partial based on since parameter)
         since_time = safe_parse_time(since)
         result = Sync::WorkspaceSync.call(workspace_id: workspace_id, since: since_time, membership: membership)
         connection.write({ type: "sync", data: result }.to_json)

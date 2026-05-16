@@ -6,7 +6,7 @@ module Notifications
     # and MarkAllRead get back from the DB into per-row notify calls.
     # Lives next to its callers because it's their shared shape, not a
     # general-purpose broadcaster concern. The user-audience fanout
-    # happens in the Listener via NotificationSerializer.broadcast_audiences_for.
+    # happens in the Listener via NotificationSerializer.topics_for.
     module Broadcast
       class << self
         def fan_out(rows)

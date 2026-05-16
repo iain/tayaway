@@ -3,20 +3,18 @@
 # Central registry of all pool object types. Single source of truth used by
 # Websocket::Listener, Sync::WorkspaceSync, and PoolSerializer.
 #
-# `audience` selects the **primary** delivery channel and is used by
-# WorkspaceSync to decide what's included in the workspace handshake:
+# `audience` is used by WorkspaceSync to decide what's included in the
+# workspace handshake:
 #   :workspace — owned by the workspace; included in WorkspaceSync.
 #   :user      — owned by a single user; not part of WorkspaceSync.
 #                User-audience types may have `policy: nil` because the
 #                recipient is the audience and there's no per-viewer
 #                permission diff to compute.
 #
-# Broadcast-time audience derivation is delegated to each `serializer_class`
-# via `.broadcast_audiences_for(obj)` (see PoolObjectSerializer). The Listener
-# loads the object once per NOTIFY, asks the serializer for its audience set,
-# and fans out — most types resolve to one audience, `member` resolves to
-# two so an own-membership change reaches the user's other sessions even
-# when they're looking at a different workspace.
+# Broadcast routing is decoupled from this field — each `serializer_class`
+# implements `.topics_for(obj)`, returning the topic strings
+# (`"workspace:<id>"`, `"user:<id>"`) the Listener fans out to. See
+# PoolObjectSerializer for the default; member/notification etc. override.
 module ObjectRegistry
   class Entry
     attr_reader :key, :model, :client_type, :tracks_user, :policy, :serializer_class, :audience

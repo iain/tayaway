@@ -68,7 +68,7 @@ module Settlements
           transfer_ids = DB[:settlement_transfers].where(settlement_id: settlement.id).select_map(:id)
           transfer_ids.each do |tid|
             DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "settlement_transfer", object_id: tid)
-            Broadcaster.object_deleted("settlement_transfer", tid, workspace_id: workspace_id)
+            Broadcaster.object_deleted("settlement_transfer", tid, topics: ["workspace:#{workspace_id}"])
             deleted << { objectType: "settlementTransfer", id: tid.to_s }
           end
 
@@ -89,7 +89,7 @@ module Settlements
 
           # Record settlement deletion
           DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "settlement", object_id: settlement.id)
-          Broadcaster.object_deleted("settlement", settlement.id, workspace_id: workspace_id)
+          Broadcaster.object_deleted("settlement", settlement.id, topics: ["workspace:#{workspace_id}"])
           deleted << { objectType: "settlement", id: settlement.id.to_s }
 
           # Delete settlement (cascades to transfers)

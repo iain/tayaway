@@ -29,37 +29,43 @@ class App
     r.websocket do |connection|
       connection_id = Websocket::ConnectionManager.instance.register(connection, user_id, session_id)
 
-      # When the client requests an initial workspace, fetch its membership
-      # speculatively in parallel with the workspace list. The list is needed
-      # to validate the request, but we don't have to wait for it before
-      # starting the membership lookup — on the happy path we save a
-      # round-trip; on the rejected path we waste a query. The barrier joins
-      # both tasks at one point so a failure in either propagates cleanly and
-      # neither task is orphaned if validation rejects the request.
-      #
-      # Note: because barrier.wait re-raises any child error, a DB failure in
-      # the speculative membership lookup will fail the whole WS init even
-      # when validation would have rejected the workspace anyway. That's the
-      # tradeoff for the round-trip; a DB error here is loud by design.
+      # Fetch every workspace the user belongs to AND every membership in one
+      # parallel pass. We need both at auth: workspace_ids to populate the
+      # auth message and validate the requested initial workspace; memberships
+      # to drive per-workspace permission attachment on broadcasts. Issuing
+      # them under one barrier lets failures propagate cleanly without
+      # orphaning tasks.
       barrier = Async::Barrier.new
       workspaces_task = barrier.async do |task|
         task.annotate("Workspace.for_user")
         Workspace.for_user(user_id)
       end
-      membership_task = if initial_workspace_id
-                          barrier.async do |task|
-                            task.annotate("WorkspaceMembership.find_by_workspace_and_user")
-                            WorkspaceMembership.find_by_workspace_and_user(initial_workspace_id, user_id)
-                          end
-                        end
+      memberships_task = barrier.async do |task|
+        task.annotate("WorkspaceMembership.for_user")
+        WorkspaceMembership.for_user(user_id)
+      end
 
       barrier.wait
 
       workspaces = workspaces_task.wait
+      memberships = memberships_task.wait
       workspace_ids = workspaces.map { |w| w.id.to_s }
+      memberships_by_workspace = memberships.each_with_object({}) { |m, h| h[m.workspace_id.to_s] = m }
 
       synced_workspace_id = nil
       synced_workspace_id = initial_workspace_id if initial_workspace_id && workspace_ids.include?(initial_workspace_id)
+
+      # Subscribe to every topic this user cares about: their own user
+      # channel (for notifications) plus every workspace they're a member
+      # of (so cross-workspace broadcasts arrive in real time, not just
+      # when they switch). Memberships are stored per-workspace so
+      # permission attachment picks the right one for each broadcast.
+      manager = Websocket::ConnectionManager.instance
+      topics = ["user:#{user_id}"] + workspace_ids.map { |id| "workspace:#{id}" }
+      manager.subscribe(connection_id, *topics)
+      memberships.each do |membership|
+        manager.set_membership(connection_id, membership.workspace_id.to_s, membership)
+      end
 
       # Send authenticated message with workspace IDs
       auth_message = {
@@ -73,16 +79,14 @@ class App
 
       # Personal sync delivers the workspace selector (workspace rows + the
       # user's own memberships across every workspace). Cross-workspace
-      # personal events ride the user-audience broadcast channel and merge
-      # into the same pool.
+      # personal events ride the user topic and merge into the same pool.
       personal_sync = Sync::PersonalSync.call(user_id: user_id)
       connection.write({ type: "sync", data: personal_sync }.to_json)
 
-      # If we have a valid initial workspace, subscribe and sync immediately
+      # If we have a valid initial workspace, send its workspace-scoped sync.
+      # Subscription is already in place from the bulk subscribe above.
       if synced_workspace_id
-        membership = membership_task.wait
-        Websocket::ConnectionManager.instance.set_workspaces(connection_id, [synced_workspace_id])
-        Websocket::ConnectionManager.instance.set_membership(connection_id, membership)
+        membership = memberships_by_workspace[synced_workspace_id]
         since_time = Websocket::MessageHandler.safe_parse_time(initial_since)
         sync_result = Sync::WorkspaceSync.call(workspace_id: synced_workspace_id, since: since_time, membership: membership)
         connection.write({ type: "sync", data: sync_result }.to_json)

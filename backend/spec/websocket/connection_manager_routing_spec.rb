@@ -32,33 +32,41 @@ RSpec.describe Websocket::ConnectionManager do
 
   before do
     manager.instance_variable_get(:@connections).clear
-    manager.instance_variable_get(:@workspace_connections).clear
+    manager.instance_variable_get(:@topic_connections).clear
   end
 
   # ------------------------------------------------------------------
-  # Helpers — the only place the current API surface is named. When the
-  # refactor lands, swap these to the new pub/sub primitives and every
-  # example below stays valid.
+  # Helpers — the only place the API surface is named. Routing examples
+  # below describe outcomes, not method names; if the underlying
+  # primitive moves again, only these helpers need to change.
   # ------------------------------------------------------------------
 
   def register(websocket, user_id: SecureRandom.uuid)
-    [manager.register(websocket, user_id), user_id]
+    conn_id = manager.register(websocket, user_id)
+    # The connection always subscribes to its own user topic — same
+    # behaviour as the production auth handshake.
+    manager.subscribe(conn_id, "user:#{user_id}")
+    [conn_id, user_id]
   end
 
   def subscribe_to_workspace(conn_id, workspace_id)
-    manager.set_workspaces(conn_id, [workspace_id])
+    manager.subscribe(conn_id, "workspace:#{workspace_id}")
   end
 
   def unsubscribe_all_workspaces(conn_id)
-    manager.set_workspaces(conn_id, [])
+    conn = manager.instance_variable_get(:@connections)[conn_id]
+    return unless conn
+
+    workspace_topics = conn.topics.select { |t| t.start_with?("workspace:") }
+    manager.unsubscribe(conn_id, *workspace_topics)
   end
 
   def send_to_workspace(workspace_id, message)
-    manager.broadcast_to_workspace(workspace_id, message)
+    manager.broadcast("workspace:#{workspace_id}", message)
   end
 
   def send_to_user(user_id, message)
-    manager.broadcast_to_user(user_id, message)
+    manager.broadcast("user:#{user_id}", message)
   end
 
   def received?(websocket, fragment)
@@ -105,19 +113,22 @@ RSpec.describe Websocket::ConnectionManager do
       expect(received?(ws2, "shared")).to be(true)
     end
 
-    it "stops delivering messages for a workspace once the connection swaps to a different workspace" do
-      # The user changing workspaces means previous-workspace broadcasts
-      # should no longer reach this connection.
+    it "delivers messages to a connection that is subscribed to several workspaces at once" do
+      # Auto-subscription at auth means a connection sits on every
+      # workspace its user is a member of. Each workspace's broadcasts
+      # must still reach that connection independently.
       ws = RoutingFakeWebsocket.new
-      old_workspace = SecureRandom.uuid
-      new_workspace = SecureRandom.uuid
+      ws_a = SecureRandom.uuid
+      ws_b = SecureRandom.uuid
       conn_id, = register(ws)
-      subscribe_to_workspace(conn_id, old_workspace)
-      subscribe_to_workspace(conn_id, new_workspace)
+      subscribe_to_workspace(conn_id, ws_a)
+      subscribe_to_workspace(conn_id, ws_b)
 
-      send_to_workspace(old_workspace, { type: "broadcast", id: "old" })
+      send_to_workspace(ws_a, { type: "broadcast", id: "a-msg" })
+      send_to_workspace(ws_b, { type: "broadcast", id: "b-msg" })
 
-      expect(received?(ws, "old")).to be(false)
+      expect(received?(ws, "a-msg")).to be(true)
+      expect(received?(ws, "b-msg")).to be(true)
     end
 
     it "stops delivering to a connection that explicitly unsubscribed from every workspace" do
