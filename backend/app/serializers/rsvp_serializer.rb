@@ -1,14 +1,7 @@
 # frozen_string_literal: true
 
 class RsvpSerializer
-  extend PoolObjectSerializer
-
   class << self
-    def topics_for(rsvp)
-      ws_id = DB[:events].where(id: rsvp.event_id).get(:workspace_id)
-      ["workspace:#{ws_id}"]
-    end
-
     def serialize_batch(rsvps, pool:)
       rsvps.map do |rsvp|
         {

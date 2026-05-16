@@ -45,9 +45,9 @@ RSpec.describe VoteSerializer do
     end
   end
 
-  describe ".policy_context_batch" do
-    it "returns an empty hash for votes" do
-      expect(described_class.policy_context_batch([])).to eq({})
+  describe "policy context" do
+    it "does not define a policy_context_batch — PoolSerializer falls back to {} via respond_to?" do
+      expect(described_class).not_to respond_to(:policy_context_batch)
     end
   end
 end

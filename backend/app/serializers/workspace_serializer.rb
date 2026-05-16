@@ -1,13 +1,7 @@
 # frozen_string_literal: true
 
 class WorkspaceSerializer
-  extend PoolObjectSerializer
-
   class << self
-    def topics_for(workspace)
-      ["workspace:#{workspace.id}"]
-    end
-
     def serialize_batch(workspaces, pool:)
       return [] if workspaces.empty?
 

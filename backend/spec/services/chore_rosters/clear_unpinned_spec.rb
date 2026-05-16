@@ -103,7 +103,7 @@ RSpec.describe ChoreRosters::ClearUnpinned do
 
     assignments.each do |a|
       expect(Broadcaster).to have_received(:object_deleted)
-        .with("chore_assignment", a[:id], topics: ["workspace:#{workspace[:id]}"])
+        .with("chore_assignment", a[:id], topics: [Topic.workspace(workspace[:id])])
     end
     expect(Broadcaster).to have_received(:object_changed)
       .with("chore_roster", anything).once

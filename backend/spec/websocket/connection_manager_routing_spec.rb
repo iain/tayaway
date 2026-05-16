@@ -45,28 +45,28 @@ RSpec.describe Websocket::ConnectionManager do
     conn_id = manager.register(websocket, user_id)
     # The connection always subscribes to its own user topic — same
     # behaviour as the production auth handshake.
-    manager.subscribe(conn_id, "user:#{user_id}")
+    manager.subscribe(conn_id, Topic.user(user_id))
     [conn_id, user_id]
   end
 
   def subscribe_to_workspace(conn_id, workspace_id)
-    manager.subscribe(conn_id, "workspace:#{workspace_id}")
+    manager.subscribe(conn_id, Topic.workspace(workspace_id))
   end
 
   def unsubscribe_all_workspaces(conn_id)
     conn = manager.instance_variable_get(:@connections)[conn_id]
     return unless conn
 
-    workspace_topics = conn.topics.select { |t| t.start_with?("workspace:") }
+    workspace_topics = conn.topics.select(&:workspace?)
     manager.unsubscribe(conn_id, *workspace_topics)
   end
 
   def send_to_workspace(workspace_id, message)
-    manager.broadcast("workspace:#{workspace_id}", message)
+    manager.broadcast(Topic.workspace(workspace_id), message)
   end
 
   def send_to_user(user_id, message)
-    manager.broadcast("user:#{user_id}", message)
+    manager.broadcast(Topic.user(user_id), message)
   end
 
   def received?(websocket, fragment)

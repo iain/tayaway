@@ -74,7 +74,7 @@ RSpec.describe DateRangeSerializer do
       membership_row = TestFactories.workspace_membership(workspace: workspace, user: user)
       membership = WorkspaceMembership.find(membership_row[:id])
 
-      ctx = described_class.policy_context(range)
+      ctx = described_class.policy_context_batch([range])[range.id.to_s] || {}
       allow(DatePoll).to receive(:find).and_call_original
       allow(Event).to receive(:find).and_call_original
 

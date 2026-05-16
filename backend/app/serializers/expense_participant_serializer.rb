@@ -1,17 +1,7 @@
 # frozen_string_literal: true
 
 class ExpenseParticipantSerializer
-  extend PoolObjectSerializer
-
   class << self
-    def topics_for(participant)
-      ws_id = DB[:expenses]
-              .join(:events, id: :event_id)
-              .where(Sequel[:expenses][:id] => participant.expense_id)
-              .get(Sequel[:events][:workspace_id])
-      ["workspace:#{ws_id}"]
-    end
-
     def serialize_batch(participants, pool:)
       participants.map do |participant|
         {

@@ -71,7 +71,11 @@ class PoolSerializer
     serializer = entry.serializer_class
     raise ArgumentError, "No serializer_class for #{entry.key}" unless serializer
 
-    contexts = @collect_policy_contexts ? serializer.policy_context_batch(items) : {}
+    contexts = if @collect_policy_contexts && serializer.respond_to?(:policy_context_batch)
+                 serializer.policy_context_batch(items)
+               else
+                 {}
+               end
     hashes = serializer.serialize_batch(items, pool: self)
     unless hashes.length == items.length
       raise "#{serializer}#serialize_batch returned #{hashes.length} hashes for #{items.length} items " \

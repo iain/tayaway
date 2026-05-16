@@ -4,19 +4,7 @@
 # fields from the membership and its User. Returns nil in place for any
 # membership whose user row is missing (can happen during deletion races).
 class MemberSerializer
-  extend PoolObjectSerializer
-
   class << self
-    # Member changes ride the workspace topic. With the auth handshake
-    # auto-subscribing each connection to every workspace its user belongs
-    # to, the affected user's other sessions hear about their own role
-    # changes via that same topic — no user-channel duplication needed.
-    # Bootstrap for "user added to a new workspace" is handled in the
-    # Listener (subscribes new connections + delivers a WorkspaceSync).
-    def topics_for(member)
-      ["workspace:#{member.workspace_id}"]
-    end
-
     def serialize_batch(memberships, pool:)
       return [] if memberships.empty?
 

@@ -70,7 +70,7 @@ module Websocket
 
         case action
         when "update"
-          # Load the object once and ask the serializer for its topic set.
+          # Load the object once and ask the registry for its topic set.
           # If the object disappeared between notify and fetch, drop the
           # notification — the corresponding delete NOTIFY will handle it.
           object = find_object(config.key, object_id)
@@ -78,16 +78,20 @@ module Websocket
 
           bootstrap_new_workspace_members(connections, object) if config.key == "member"
 
-          config.serializer_class.topics_for(object).each do |topic|
+          config.topics_for(object).each do |topic|
             dispatch_update(connections, topic, config, object)
           end
         when "delete"
           # Deletes carry topics inline because the object can no longer
-          # be reloaded to derive them.
-          topics = Array(data[:topics])
-          return if topics.empty?
+          # be reloaded to derive them. The wire payload spells topics as
+          # strings; reify each into a Topic value before dispatching.
+          raw_topics = Array(data[:topics])
+          return if raw_topics.empty?
 
-          topics.each do |topic|
+          raw_topics.each do |raw|
+            topic = parse_topic(raw)
+            next unless topic
+
             dispatch_delete(connections, topic, config, object_id)
           end
         end
@@ -99,17 +103,23 @@ module Websocket
 
       private
 
+      def parse_topic(raw)
+        Topic.parse(raw)
+      rescue ArgumentError => e
+        APP_LOGGER.warn { "[Listener] #{e.message}" }
+        nil
+      end
+
       def dispatch_update(connections, topic, config, object)
-        if topic.start_with?("workspace:")
-          workspace_id = topic.split(":", 2)[1]
+        if topic.workspace?
           # Thread a PolicyContext so the connection manager can attach
           # per-recipient permissions; PoolSerializer needs the workspace
           # id to compute the right policy view.
-          pool = PoolSerializer.new(workspace_id: workspace_id, collect_policy_contexts: true)
+          pool = PoolSerializer.new(workspace_id: topic.id, collect_policy_contexts: true)
           pool.add(config.key, [object])
           message = {
             type: "broadcast",
-            workspaceId: workspace_id,
+            workspaceId: topic.id,
             action: "update",
             data: { objects: pool.to_a }
           }
@@ -118,7 +128,7 @@ module Websocket
             policy_contexts: pool.policy_contexts
           )
           connections.broadcast(topic, message, policy_context: policy_context)
-        elsif topic.start_with?("user:")
+        elsif topic.user?
           # No policy context — the user is the audience, so visibility
           # is decided at dispatch time, not by per-viewer permission diffs.
           pool = PoolSerializer.new
@@ -129,41 +139,36 @@ module Websocket
             data: { objects: pool.to_a }
           }
           connections.broadcast(topic, message)
-        else
-          APP_LOGGER.warn { "[Listener] Unknown topic namespace: #{topic.inspect}" }
         end
       end
 
       def dispatch_delete(connections, topic, config, object_id)
         deleted_data = { deleted: [{ objectType: config.client_type, id: object_id }] }
-        if topic.start_with?("workspace:")
-          workspace_id = topic.split(":", 2)[1]
+        if topic.workspace?
           message = {
             type: "broadcast",
-            workspaceId: workspace_id,
+            workspaceId: topic.id,
             action: "delete",
             data: deleted_data
           }
           connections.broadcast(topic, message)
-        elsif topic.start_with?("user:")
+        elsif topic.user?
           message = { type: "broadcast", action: "delete", data: deleted_data }
           connections.broadcast(topic, message)
-        else
-          APP_LOGGER.warn { "[Listener] Unknown topic namespace: #{topic.inspect}" }
         end
       end
 
       # New-workspace bootstrap. Member changes only go to the workspace
-      # topic now; if the affected user is freshly added and their
-      # connections aren't subscribed to that workspace yet, they'd miss
-      # the broadcast entirely (and never see the new workspace in their
-      # selector). Subscribe them, populate the membership for permission
-      # attachment, and ship a one-shot WorkspaceSync so their pool gets
-      # the workspace row + initial data before the broadcast lands.
+      # topic; if the affected user is freshly added and their connections
+      # aren't subscribed to that workspace yet, they'd miss the broadcast
+      # entirely (and never see the new workspace in their selector).
+      # Subscribe them, populate the membership for permission attachment,
+      # and ship a one-shot WorkspaceSync so their pool gets the workspace
+      # row + initial data before the broadcast lands.
       def bootstrap_new_workspace_members(connections, member)
         user_id = member.user_id.to_s
         workspace_id = member.workspace_id.to_s
-        topic = "workspace:#{workspace_id}"
+        topic = Topic.workspace(workspace_id)
 
         unsubscribed = connections.connections_for_user(user_id).reject do |conn_id|
           connections.subscribed?(conn_id, topic)

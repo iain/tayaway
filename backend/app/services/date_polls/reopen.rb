@@ -56,7 +56,7 @@ module DatePolls
           rsvp_ids = Rsvp.ids_for_event(event.id)
           DeletedItems.bulk_insert(event.workspace_id, "rsvp", rsvp_ids, deleted_by: membership.user_id)
           rsvp_ids.each do |rid|
-            Broadcaster.object_deleted("rsvp", rid, topics: ["workspace:#{event.workspace_id}"])
+            Broadcaster.object_deleted("rsvp", rid, topics: [Topic.workspace(event.workspace_id)])
           end
           DB[:rsvps].where(event_id: event.id).delete
           deleted_rsvp_ids = rsvp_ids.map(&:to_s)

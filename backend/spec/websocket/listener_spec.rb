@@ -63,7 +63,7 @@ RSpec.describe Websocket::Listener do
           )
         end
 
-        expect(topics).to eq(["workspace:#{workspace[:id]}"])
+        expect(topics).to eq([Topic.workspace(workspace[:id])])
       end
 
       it "drops the update when the object is gone — the corresponding delete NOTIFY handles cleanup" do
@@ -96,7 +96,7 @@ RSpec.describe Websocket::Listener do
 
         expect(captured.size).to eq(1)
         topic, msg = captured.first
-        expect(topic).to eq("workspace:#{workspace[:id]}")
+        expect(topic).to eq(Topic.workspace(workspace[:id]))
         expect(msg.dig(:data, :objects, 0)).to include(
           objectType: "member",
           id: membership_row[:id]
@@ -113,7 +113,7 @@ RSpec.describe Websocket::Listener do
         conn_id = SecureRandom.uuid
 
         allow(manager).to receive(:connections_for_user).with(user[:id].to_s).and_return([conn_id])
-        allow(manager).to receive(:subscribed?).with(conn_id, "workspace:#{workspace[:id]}").and_return(false)
+        allow(manager).to receive(:subscribed?).with(conn_id, Topic.workspace(workspace[:id])).and_return(false)
 
         invoke(
           objectType: "member",
@@ -123,7 +123,7 @@ RSpec.describe Websocket::Listener do
 
         expect(manager).to have_received(:set_membership)
           .with(conn_id, workspace[:id].to_s, kind_of(WorkspaceMembership))
-        expect(manager).to have_received(:subscribe).with(conn_id, "workspace:#{workspace[:id]}")
+        expect(manager).to have_received(:subscribe).with(conn_id, Topic.workspace(workspace[:id]))
         expect(manager).to have_received(:send_to_connections) do |conn_ids, msg|
           expect(conn_ids).to eq([conn_id])
           expect(msg[:type]).to eq("sync")
@@ -142,7 +142,7 @@ RSpec.describe Websocket::Listener do
           )
         end
 
-        expect(topics).to eq(["user:#{user[:id]}"])
+        expect(topics).to eq([Topic.user(user[:id])])
       end
     end
 
@@ -164,7 +164,7 @@ RSpec.describe Websocket::Listener do
 
         expect(captured.size).to eq(1)
         topic, msg = captured.first
-        expect(topic).to eq("workspace:#{workspace[:id]}")
+        expect(topic).to eq(Topic.workspace(workspace[:id]))
         expect(msg[:action]).to eq("delete")
         expect(msg[:data][:deleted].first).to include(objectType: "event", id: event_id)
       end
@@ -186,7 +186,7 @@ RSpec.describe Websocket::Listener do
 
         expect(captured.size).to eq(1)
         topic, msg = captured.first
-        expect(topic).to eq("user:#{user[:id]}")
+        expect(topic).to eq(Topic.user(user[:id]))
         expect(msg[:action]).to eq("delete")
         expect(msg[:data][:deleted].first).to include(objectType: "notification", id: notification_id)
       end

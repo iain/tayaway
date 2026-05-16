@@ -1,14 +1,7 @@
 # frozen_string_literal: true
 
 class TaskItemSerializer
-  extend PoolObjectSerializer
-
   class << self
-    def topics_for(item)
-      ws_id = DB[:task_lists].where(id: item.task_list_id).get(:workspace_id)
-      ["workspace:#{ws_id}"]
-    end
-
     def serialize_batch(task_items, pool:)
       task_items.map do |item|
         {

@@ -5,18 +5,19 @@ require "json"
 # Service module for broadcasting changes via PostgreSQL NOTIFY.
 # Sends minimal payloads (type + id, plus topics for deletes) to stay
 # under pg_notify's 8KB limit. The Listener fetches the full object,
-# asks its serializer for the topic set, and dispatches.
+# asks the registry for its topic set, and dispatches.
 #
 # Updates carry no topic info — the Listener loads the object and asks
-# `serializer.topics_for(obj)`. Deletes do carry topics because the
-# object is gone by the time the Listener fires and can no longer be
-# queried; topics are spelled inline as strings.
+# `entry.topics_for(obj)`. Deletes do carry topics because the object is
+# gone by the time the Listener fires and can no longer be queried;
+# topics ride the wire as their string form (Topic#to_json serializes
+# as `"workspace:<id>"` / `"user:<id>"`).
 #
 # @example
 #   Broadcaster.object_changed("event", event_id)
 #   Broadcaster.object_changed("member", membership_id)
-#   Broadcaster.object_deleted("notification", id, topics: ["user:#{user_id}"])
-#   Broadcaster.object_deleted("event", id, topics: ["workspace:#{workspace_id}"])
+#   Broadcaster.object_deleted("notification", id, topics: [Topic.user(user_id)])
+#   Broadcaster.object_deleted("event", id, topics: [Topic.workspace(workspace_id)])
 module Broadcaster
   CHANNEL = "tayaway_objects"
 
@@ -32,6 +33,7 @@ module Broadcaster
     def object_deleted(object_type, object_id, topics:)
       topics = Array(topics)
       raise ArgumentError, "Broadcaster: object_deleted needs at least one topic" if topics.empty?
+      raise ArgumentError, "Broadcaster: object_deleted topics: must be Topic instances" unless topics.all?(Topic)
 
       notify(
         objectType: object_type,

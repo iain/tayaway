@@ -1,17 +1,7 @@
 # frozen_string_literal: true
 
 class SettlementTransferSerializer
-  extend PoolObjectSerializer
-
   class << self
-    def topics_for(transfer)
-      ws_id = DB[:settlements]
-              .join(:events, id: :event_id)
-              .where(Sequel[:settlements][:id] => transfer.settlement_id)
-              .get(Sequel[:events][:workspace_id])
-      ["workspace:#{ws_id}"]
-    end
-
     def serialize_batch(transfers, pool:)
       transfers.map do |transfer|
         {

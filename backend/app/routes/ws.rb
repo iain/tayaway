@@ -61,7 +61,7 @@ class App
       # when they switch). Memberships are stored per-workspace so
       # permission attachment picks the right one for each broadcast.
       manager = Websocket::ConnectionManager.instance
-      topics = ["user:#{user_id}"] + workspace_ids.map { |id| "workspace:#{id}" }
+      topics = [Topic.user(user_id)] + workspace_ids.map { |id| Topic.workspace(id) }
       manager.subscribe(connection_id, *topics)
       memberships.each do |membership|
         manager.set_membership(connection_id, membership.workspace_id.to_s, membership)

@@ -8,10 +8,11 @@ require "json"
 module Websocket
   # Topic-based pub/sub registry for WebSocket connections.
   #
-  # A connection subscribes to one or more topic strings (`"user:<id>"`,
-  # `"workspace:<id>"`); a broadcast names the topic and fans out to every
-  # connection in it. The kind of audience ("workspace" vs "user") is
-  # encoded in the topic string itself rather than dispatched in code.
+  # A connection subscribes to one or more Topic instances
+  # (`Topic.workspace(id)` / `Topic.user(id)`); a broadcast names the
+  # topic and fans out to every connection in it. The kind of audience
+  # is carried as data on the Topic value object, not sniffed from a
+  # string prefix.
   #
   # Each falcon-host worker is a forked process with one reactor and one
   # thread, so this singleton is only ever touched by fibers cooperatively
@@ -73,9 +74,12 @@ module Websocket
     end
 
     # Subscribe a connection to one or more topics. Idempotent — re-subscribing
-    # to an existing topic is a no-op.
+    # to an existing topic is a no-op. Topics must be Topic instances; mixing
+    # string and Topic keys would silently miss the hash lookup at broadcast.
     def subscribe(connection_id, *topics)
       return if topics.empty?
+
+      validate_topics!(topics)
 
       @mutex.synchronize do
         connection = @connections[connection_id]
@@ -95,6 +99,8 @@ module Websocket
     def unsubscribe(connection_id, *topics)
       return if topics.empty?
 
+      validate_topics!(topics)
+
       @mutex.synchronize do
         connection = @connections[connection_id]
         return unless connection
@@ -112,6 +118,8 @@ module Websocket
     end
 
     def subscribed?(connection_id, topic)
+      raise ArgumentError, "ConnectionManager#subscribed? requires a Topic, got #{topic.class}" unless topic.is_a?(Topic)
+
       @mutex.synchronize do
         connection = @connections[connection_id]
         return false unless connection
@@ -177,19 +185,17 @@ module Websocket
 
     # Broadcast a message to every connection subscribed to the topic.
     #
-    # When `policy_context` is supplied AND the topic names a workspace
-    # (`"workspace:<id>"`), permissions are attached per-recipient using
-    # the membership that connection holds for that workspace. Topics
-    # outside the workspace namespace (e.g. `"user:<id>"`) ignore the
-    # policy context because there's no per-viewer permission diff —
-    # the addressee is the audience.
+    # When `policy_context` is supplied AND `topic.workspace?`, permissions
+    # are attached per-recipient using the membership that connection holds
+    # for that workspace. User-topic broadcasts ignore the policy context —
+    # the addressee is the audience, no per-viewer permission diff applies.
     def broadcast(topic, message, policy_context: nil)
+      raise ArgumentError, "ConnectionManager#broadcast requires a Topic, got #{topic.class}" unless topic.is_a?(Topic)
+
       connection_ids = @mutex.synchronize { (@topic_connections[topic] || Set.new).to_a }
       return if connection_ids.empty?
 
-      workspace_id = workspace_id_from_topic(topic)
-      use_policy = policy_context && workspace_id
-
+      use_policy = policy_context && topic.workspace?
       json_message = message.to_json unless use_policy
 
       fan_out(connection_ids) do |connection_id|
@@ -197,7 +203,7 @@ module Websocket
         next unless connection
 
         if use_policy
-          membership = connection.memberships[workspace_id]
+          membership = connection.memberships[topic.id]
           payload = attach_permissions(message, membership, policy_context).to_json
           send_to_connection(connection, connection_id, payload, topic)
         else
@@ -259,10 +265,11 @@ module Websocket
 
     private
 
-    def workspace_id_from_topic(topic)
-      return nil unless topic.is_a?(String) && topic.start_with?("workspace:")
+    def validate_topics!(topics)
+      bad = topics.reject { |t| t.is_a?(Topic) }
+      return if bad.empty?
 
-      topic.split(":", 2)[1]
+      raise ArgumentError, "ConnectionManager: topics must be Topic instances, got #{bad.map(&:class).uniq.inspect}"
     end
 
     # Run `block` against each item in `items` on its own fiber under a

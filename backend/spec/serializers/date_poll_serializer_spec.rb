@@ -59,7 +59,7 @@ RSpec.describe DatePollSerializer do
       membership_row = TestFactories.workspace_membership(workspace: workspace, user: user)
       membership = WorkspaceMembership.find(membership_row[:id])
 
-      ctx = described_class.policy_context(poll)
+      ctx = described_class.policy_context_batch([poll])[poll.id.to_s] || {}
       allow(Event).to receive(:find).and_call_original
 
       expect(DatePollPolicy.new(poll, membership: membership, **ctx).close).to be_success

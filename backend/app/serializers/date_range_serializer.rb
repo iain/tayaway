@@ -1,17 +1,7 @@
 # frozen_string_literal: true
 
 class DateRangeSerializer
-  extend PoolObjectSerializer
-
   class << self
-    def topics_for(range)
-      ws_id = DB[:date_polls]
-              .join(:events, id: :event_id)
-              .where(Sequel[:date_polls][:id] => range.date_poll_id)
-              .get(Sequel[:events][:workspace_id])
-      ["workspace:#{ws_id}"]
-    end
-
     def serialize_batch(ranges, pool:)
       ranges.map do |range|
         {

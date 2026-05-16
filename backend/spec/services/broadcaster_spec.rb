@@ -46,9 +46,9 @@ RSpec.describe Broadcaster do
   end
 
   describe ".object_deleted" do
-    it "carries the topic list inline because the object can't be reloaded after delete" do
+    it "carries the topic list inline as wire strings because the object can't be reloaded after delete" do
       payload = capture_payload do
-        described_class.object_deleted("event", object_id, topics: ["workspace:#{workspace_id}"])
+        described_class.object_deleted("event", object_id, topics: [Topic.workspace(workspace_id)])
       end
 
       expect(payload).to include(
@@ -61,7 +61,7 @@ RSpec.describe Broadcaster do
 
     it "accepts a user topic the same way" do
       payload = capture_payload do
-        described_class.object_deleted("notification", object_id, topics: ["user:#{user_id}"])
+        described_class.object_deleted("notification", object_id, topics: [Topic.user(user_id)])
       end
 
       expect(payload).to include(
@@ -76,7 +76,7 @@ RSpec.describe Broadcaster do
       payload = capture_payload do
         described_class.object_deleted(
           "member", object_id,
-          topics: ["workspace:#{workspace_id}", "user:#{user_id}"]
+          topics: [Topic.workspace(workspace_id), Topic.user(user_id)]
         )
       end
 
@@ -92,11 +92,17 @@ RSpec.describe Broadcaster do
       end.to raise_error(ArgumentError, /topic/)
     end
 
+    it "rejects raw strings — producers must pass Topic instances" do
+      expect do
+        described_class.object_deleted("event", object_id, topics: ["workspace:#{workspace_id}"])
+      end.to raise_error(ArgumentError, /Topic instances/)
+    end
+
     it "does not raise on DB errors" do
       allow(DB).to receive(:run).and_raise(StandardError, "connection lost")
 
       expect do
-        described_class.object_deleted("event", object_id, topics: ["workspace:#{workspace_id}"])
+        described_class.object_deleted("event", object_id, topics: [Topic.workspace(workspace_id)])
       end.not_to raise_error
     end
   end
