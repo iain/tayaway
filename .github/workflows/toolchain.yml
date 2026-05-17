@@ -1,0 +1,77 @@
+# Builds and pushes the shared mise toolchain image to GHCR. The tag is a
+# content hash of every tracked mise.toml + mise.lock (see
+# `.mise/tasks/toolchain/tag`), so:
+#
+#   - skopeo dedupes on push: if the tag already exists, the push is
+#     metadata-only and no blobs upload. Safe to run every time.
+#   - App builds reference the same hash, so rolling back to an old git SHA
+#     pulls the exact toolchain that SHA tested with.
+#
+# Workflow only triggers on changes to inputs that affect the hash, so most
+# pushes don't run this at all.
+
+name: Toolchain image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .mise.toml
+      - "**/mise.toml"
+      - mise.lock
+      - "**/mise.lock"
+      - .mise/tasks/toolchain/**
+      - .github/workflows/toolchain.yml
+  pull_request:
+    paths:
+      - .mise.toml
+      - "**/mise.toml"
+      - mise.lock
+      - "**/mise.lock"
+      - .mise/tasks/toolchain/**
+      - .github/workflows/toolchain.yml
+  workflow_dispatch:
+
+concurrency:
+  group: toolchain-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: jdx/mise-action@v4
+        with:
+          install: true
+          cache: true
+
+      # `mise oci push` shells out to skopeo or crane; neither is on
+      # ubuntu-latest runners by default.
+      - name: Install skopeo
+        run: sudo apt-get update && sudo apt-get install -y skopeo
+
+      - name: Compute toolchain tag
+        id: tag
+        run: echo "tag=$(mise run toolchain:tag)" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GHCR_TOKEN" | skopeo login ghcr.io -u "$GHCR_USER" --password-stdin
+
+      # Content-addressed push. If the tag already exists, skopeo verifies
+      # the blobs and exits without re-uploading.
+      - name: Build and push toolchain image
+        env:
+          MISE_EXPERIMENTAL: "1"
+          OWNER: ${{ github.repository_owner }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: mise oci push "ghcr.io/${OWNER}/tayaway-toolchain:${TAG}"

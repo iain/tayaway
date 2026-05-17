@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+#MISE description="Print the content hash of the toolchain inputs — used as the GHCR tag"
+
+# The toolchain image is rebuilt iff any tracked mise.toml or mise.lock
+# changes. `git ls-files` is the source of truth (rather than a hard-coded
+# list) so a new subproject's mise.toml gets picked up automatically without
+# editing this script.
+#
+# 12 hex chars = 48 bits of uniqueness — astronomically safe for our scale
+# and short enough to read in a `podman pull` line.
+
+set -euo pipefail
+
+git ls-files \
+  '.mise.toml' \
+  '**/mise.toml' \
+  'mise.lock' \
+  '**/mise.lock' \
+  | sort \
+  | xargs sha256sum \
+  | sha256sum \
+  | cut -c1-12
