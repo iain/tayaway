@@ -8,13 +8,19 @@ require "fileutils"
 # and deploys. Falls back to in-memory only if the cache directory is not writable.
 class FidoCacheStore
   def initialize(dir: "tmp/cache/fido_metadata")
-    @dir = dir
     @memory = {}
-    FileUtils.mkdir_p(@dir)
+    @dir = begin
+      FileUtils.mkdir_p(dir)
+      dir
+    rescue Errno::EROFS, Errno::EACCES => e
+      APP_LOGGER.info { "[FidoCacheStore] #{dir} not writable (#{e.class}); using memory-only cache" }
+      nil
+    end
   end
 
   def read(name, _options = nil)
     return @memory[name] if @memory.key?(name)
+    return nil unless @dir
 
     path = cache_path(name)
     return nil unless File.exist?(path)
@@ -28,6 +34,8 @@ class FidoCacheStore
 
   def write(name, value, **_options)
     @memory[name] = value
+    return unless @dir
+
     File.binwrite(cache_path(name), Marshal.dump(value))
   rescue StandardError => e
     APP_LOGGER.debug { "[FidoCacheStore] Failed to write cache file for #{name}: #{e.message}" }
@@ -35,14 +43,17 @@ class FidoCacheStore
 
   def delete(name, _options = nil)
     @memory.delete(name)
-    path = cache_path(name)
-    FileUtils.rm_f(path)
+    return unless @dir
+
+    FileUtils.rm_f(cache_path(name))
   rescue StandardError
     nil
   end
 
   def clear(_options = nil)
     @memory.clear
+    return unless @dir
+
     FileUtils.rm_rf(@dir)
     FileUtils.mkdir_p(@dir)
   rescue StandardError
