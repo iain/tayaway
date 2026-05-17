@@ -1,0 +1,112 @@
+# Builds the backend and edge images from the unified containers/Containerfile
+# and pushes them to GHCR tagged by git SHA. Deploys later in the migration
+# pin those SHAs, so every push to main needs to produce a fresh pair.
+#
+# The two targets pull disjoint internal stages out of the same Containerfile
+# (backend via gem-build, edge via frontend-build), so building them as two
+# steps does not duplicate work. Registry layer cache via :buildcache keeps
+# the common-path build at ~30s.
+#
+# PRs build without pushing — catches Containerfile breakage at review time
+# without giving forked-PR runs write access to GHCR. The containerised e2e
+# job that exercises the full quadlet stack lands in a later phase.
+
+name: App images
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "containers/**"
+      - "backend/**"
+      - "frontend/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - ".mise/tasks/toolchain/**"
+      - "mise.lock"
+      - "**/mise.lock"
+      - ".github/workflows/images.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: images-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      # The tag script is plain bash + git, so it does not need a mise
+      # install to run. Matches the computation in toolchain.yml exactly.
+      - name: Compute toolchain tag
+        id: toolchain
+        run: echo "tag=$(./.mise/tasks/toolchain/tag)" >> "$GITHUB_OUTPUT"
+
+      - name: Install skopeo
+        run: sudo apt-get update && sudo apt-get install -y skopeo
+
+      # When mise.lock changes, toolchain.yml is racing this workflow to
+      # publish the new toolchain tag. Wait up to ten minutes for it to
+      # appear before kicking off buildkit. In the common case (lockfile
+      # unchanged) the first probe returns immediately. The toolchain image
+      # is a public package, so anonymous inspect is enough.
+      - name: Wait for toolchain image
+        env:
+          OWNER: ${{ github.repository_owner }}
+          TAG: ${{ steps.toolchain.outputs.tag }}
+        run: |
+          for i in $(seq 1 60); do
+            if skopeo inspect "docker://ghcr.io/${OWNER}/tayaway-toolchain:${TAG}" >/dev/null 2>&1; then
+              echo "toolchain ${TAG} present"
+              exit 0
+            fi
+            echo "waiting for toolchain ${TAG} (${i}/60)"
+            sleep 10
+          done
+          echo "toolchain ${TAG} never appeared — check the toolchain workflow"
+          exit 1
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: containers/Containerfile
+          target: backend
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ghcr.io/${{ github.repository_owner }}/tayaway-backend:${{ github.sha }}
+          build-args: |
+            TOOLCHAIN_IMAGE=ghcr.io/${{ github.repository_owner }}/tayaway-toolchain:${{ steps.toolchain.outputs.tag }}
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/tayaway-backend:buildcache
+          cache-to: ${{ github.event_name != 'pull_request' && format('type=registry,ref=ghcr.io/{0}/tayaway-backend:buildcache,mode=max', github.repository_owner) || '' }}
+
+      - name: Build and push edge
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: containers/Containerfile
+          target: edge
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ghcr.io/${{ github.repository_owner }}/tayaway-edge:${{ github.sha }}
+          build-args: |
+            TOOLCHAIN_IMAGE=ghcr.io/${{ github.repository_owner }}/tayaway-toolchain:${{ steps.toolchain.outputs.tag }}
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/tayaway-edge:buildcache
+          cache-to: ${{ github.event_name != 'pull_request' && format('type=registry,ref=ghcr.io/{0}/tayaway-edge:buildcache,mode=max', github.repository_owner) || '' }}
