@@ -1,0 +1,112 @@
+# Drift detection for ops/*.tf. Fails the run if `tofu plan` against the
+# committed config doesn't match what OVH actually has. Catches "someone
+# clicked something in the OVH console" before it becomes invisible state.
+#
+# Triggers:
+#   - PRs touching ops/** so config changes get planned at review time.
+#   - Weekly schedule (Mondays 06:00 UTC) so out-of-band changes surface
+#     within a week even on quiet PR weeks.
+#
+# Credentials:
+#   - OVH_RO_*           — a read-only OVH API credential. Use the OVH API
+#                          token generator with the GET-only scopes the
+#                          provider needs (cloud/project/{id}, domain/*).
+#   - OPS_STATE_S3_*     — S3 access for the tayaway-tfstate bucket so the
+#                          backend can pull state. Different keypair from
+#                          WAL-G's so blast radius stays minimal.
+#
+# Both live as repo (not environment) secrets — this job needs no
+# write access and never sees production runtime secrets. The job uses
+# only secrets and repo vars; no PR-author-controlled text ever reaches
+# a shell or a script step (the PR comment body is read from a file
+# written by `tofu plan`, not from `github.event.*`).
+
+name: ops drift
+
+on:
+  pull_request:
+    paths:
+      - "ops/**"
+      - ".github/workflows/ops-drift.yml"
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ops-drift-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ops
+    env:
+      OVH_ENDPOINT: ovh-eu
+      OVH_APPLICATION_KEY: ${{ secrets.OVH_RO_APPLICATION_KEY }}
+      OVH_APPLICATION_SECRET: ${{ secrets.OVH_RO_APPLICATION_SECRET }}
+      OVH_CONSUMER_KEY: ${{ secrets.OVH_RO_CONSUMER_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.OPS_STATE_S3_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.OPS_STATE_S3_SECRET_ACCESS_KEY }}
+      TF_VAR_service_name: ${{ vars.OVH_PROJECT_ID }}
+      TF_VAR_vm_flavor_id: ${{ vars.OVH_VM_FLAVOR_ID }}
+      TF_VAR_vm_image_id: ${{ vars.OVH_VM_IMAGE_ID }}
+      TF_VAR_ssh_public_key: ${{ vars.OPS_SSH_PUBLIC_KEY }}
+      TF_VAR_age_recipient: ${{ vars.OPS_AGE_RECIPIENT }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.8.0
+          tofu_wrapper: false
+
+      - name: tofu init
+        run: tofu init -input=false -lockfile=readonly
+
+      # -detailed-exitcode: 0 = no changes, 1 = error, 2 = drift. Capture
+      # the code first so the PR-comment step can still run, then re-fail.
+      - name: tofu plan
+        id: plan
+        run: |
+          set +e
+          tofu plan -input=false -detailed-exitcode -no-color -out=tfplan | tee plan.txt
+          code=${PIPESTATUS[0]}
+          echo "exitcode=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Comment plan on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('ops/plan.txt', 'utf8');
+            const truncated = plan.length > 50000
+              ? plan.slice(0, 50000) + '\n…(truncated)'
+              : plan;
+            const body = '### `tofu plan` (ops/)\n\n```\n' + truncated + '\n```';
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+      - name: Fail on drift
+        env:
+          EXIT_CODE: ${{ steps.plan.outputs.exitcode }}
+        run: |
+          if [ "$EXIT_CODE" = "2" ]; then
+            echo "::error::tofu plan reports drift — either commit the change or revert it in OVH."
+            exit 1
+          elif [ "$EXIT_CODE" != "0" ]; then
+            echo "::error::tofu plan failed."
+            exit 1
+          fi
