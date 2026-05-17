@@ -10,20 +10,29 @@ ARG TOOLCHAIN_IMAGE=ghcr.io/iain/tayaway-toolchain:latest
 
 # ── frontend-build ──────────────────────────────────────────────────────────
 # Emits frontend/dist. Consumed by the `edge` stage.
+#
+# mise oci push installs tools at /mise/installs/<tool>/<version>/bin without
+# touching PATH. SHELL would route every RUN through `mise exec` but isn't
+# honored by podman's default OCI image format — so each RUN that needs a
+# mise-managed tool is prefixed explicitly. node's prebuilt binary depends
+# on libatomic1, which the slim toolchain base does not include.
 FROM ${TOOLCHAIN_IMAGE} AS frontend-build
 
-# mise oci push installs tools at /mise/installs/<tool>/<version>/bin but does
-# not modify PATH. SHELL routes every RUN through `mise exec`, so tool
-# versions stay coupled to mise.lock without hard-coded paths here.
-SHELL ["mise", "exec", "--", "bash", "-c"]
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libatomic1 \
+    && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /build/frontend
+WORKDIR /build
 
-COPY frontend/package.json frontend/pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+# pnpm-lock.yaml + pnpm-workspace.yaml live at the repo root (frontend and
+# e2e are workspace members), so resolve from there and filter the install
+# down to frontend's transitive deps.
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY frontend/package.json ./frontend/
+RUN mise exec -- pnpm install --frozen-lockfile --filter frontend...
 
-COPY frontend/ ./
-RUN pnpm run build
+COPY frontend/ ./frontend/
+RUN mise exec -- pnpm --filter frontend run build
 
 # ── gem-build ───────────────────────────────────────────────────────────────
 # Compiles native gem extensions. build-essential and the -dev headers live
@@ -39,14 +48,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       libyaml-dev \
     && rm -rf /var/lib/apt/lists/*
 
-SHELL ["mise", "exec", "--", "bash", "-c"]
-
 WORKDIR /app/backend
 
 COPY backend/Gemfile backend/Gemfile.lock ./
-RUN bundle config set --local deployment 'true' \
- && bundle config set --local without 'development test' \
- && bundle install --jobs 4 --retry 3
+RUN mise exec -- bundle config set --local deployment 'true' \
+ && mise exec -- bundle config set --local without 'development test' \
+ && mise exec -- bundle install --jobs 4 --retry 3
 
 # ── backend ─────────────────────────────────────────────────────────────────
 # Runtime-only Falcon image. Production quadlet mounts this ReadOnly=true
@@ -78,8 +85,6 @@ ENV MISE_ENV=production \
 
 EXPOSE 9292
 
-# ENTRYPOINT in exec-form bypasses SHELL, so wrap the runtime command in
-# `mise exec` explicitly. CMD args are the bundle subcommand.
 ENTRYPOINT ["mise", "exec", "--"]
 CMD ["bundle", "exec", "falcon-host", "falcon.rb"]
 
