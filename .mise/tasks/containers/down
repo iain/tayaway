@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+#MISE description="Tear down the local podman/compose stack and drop its volumes"
+#USAGE flag "--keep-data" help="Preserve the db and geoip volumes"
+
+set -euo pipefail
+
+if [[ "${usage_keep_data:-false}" == "true" ]]; then
+  exec podman compose down
+else
+  exec podman compose down -v
+fi
