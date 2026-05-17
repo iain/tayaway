@@ -47,6 +47,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # Compute the tag before any `mise install`. `mise install` can rewrite
+      # mise.lock lazily on first install for a platform, which would change
+      # the hash from what's checked into git. The script is plain bash + git
+      # so it doesn't need mise to run.
+      - name: Compute toolchain tag
+        id: tag
+        run: echo "tag=$(./.mise/tasks/toolchain/tag)" >> "$GITHUB_OUTPUT"
+
       - uses: jdx/mise-action@v4
         with:
           install: true
@@ -56,10 +64,6 @@ jobs:
       # ubuntu-latest runners by default.
       - name: Install skopeo
         run: sudo apt-get update && sudo apt-get install -y skopeo
-
-      - name: Compute toolchain tag
-        id: tag
-        run: echo "tag=$(mise run toolchain:tag)" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GHCR
         env:
