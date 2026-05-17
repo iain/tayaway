@@ -34,7 +34,12 @@
 	@assets path /assets/*
 	header @assets Cache-Control "public, immutable, max-age=31536000"
 
+	# Static files first — including SPA index resolution for directory
+	# paths. `try_files` rewrites `/` (and any path that hits a dir) to
+	# `/index.html`, matching the implicit `index` behavior the legacy
+	# nginx config relied on.
 	root * /srv/dist
+	try_files {path} {path}/index.html
 	@spa_file file
 	handle @spa_file {
 		file_server
