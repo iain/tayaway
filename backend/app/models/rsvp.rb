@@ -2,6 +2,10 @@
 
 # Read-only RSVP model.
 class Rsvp < Data.define(:id, :event_id, :user_id, :created_by_user_id, :attending, :start_date, :end_date, :created_at, :updated_at)
+  include PoolSerializable
+
+  pool_object client_type: "rsvp"
+
   class << self
     def find(id)
       dataset.where(id: id).first

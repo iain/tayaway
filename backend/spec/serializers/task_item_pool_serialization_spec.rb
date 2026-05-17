@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-RSpec.describe TaskItemSerializer do
+RSpec.describe TaskItem do
   let(:workspace) { TestFactories.workspace }
   let(:user) { TestFactories.user }
 
@@ -12,7 +12,7 @@ RSpec.describe TaskItemSerializer do
 
       let(:task_list_row) { TestFactories.task_list(workspace: workspace, user: user) }
       let(:task_item_row) { TestFactories.task_item(task_list: task_list_row, user: user) }
-      let(:pool_object) { described_class.serialize_batch([TaskItem.find(task_item_row[:id])], pool: nil).first }
+      let(:pool_object) { described_class.serialize_batch([described_class.find(task_item_row[:id])], pool: nil).first }
 
       it_behaves_like "a pool object with createdAt", "taskItem"
     end
@@ -22,7 +22,7 @@ RSpec.describe TaskItemSerializer do
       task_item_row = TestFactories.task_item(
         task_list: task_list, user: user, content: "Buy cake", position: 1
       )
-      task_item = TaskItem.find(task_item_row[:id])
+      task_item = described_class.find(task_item_row[:id])
 
       result = described_class.serialize_batch([task_item], pool: nil).first
 

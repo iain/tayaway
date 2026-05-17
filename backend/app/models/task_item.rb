@@ -2,6 +2,10 @@
 
 # Read-only TaskItem model.
 class TaskItem < Data.define(:id, :task_list_id, :user_id, :content, :completed_at, :position, :created_at, :updated_at)
+  include PoolSerializable
+
+  pool_object client_type: "taskItem"
+
   class << self
     include Findable
 

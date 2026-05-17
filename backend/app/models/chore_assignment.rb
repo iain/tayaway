@@ -2,6 +2,10 @@
 
 # Read-only ChoreAssignment model.
 class ChoreAssignment < Data.define(:id, :chore_id, :user_id, :date, :pinned, :note, :created_at, :updated_at)
+  include PoolSerializable
+
+  pool_object client_type: "choreAssignment"
+
   class << self
     include Findable
 

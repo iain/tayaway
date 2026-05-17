@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-RSpec.describe ChoreAssignmentSerializer do
+RSpec.describe ChoreAssignment do
   let(:workspace) { TestFactories.workspace }
   let(:user) { TestFactories.user }
 
@@ -14,7 +14,7 @@ RSpec.describe ChoreAssignmentSerializer do
       let(:roster_row) { TestFactories.chore_roster(event: event_row, user: user) }
       let(:chore_row) { TestFactories.chore(chore_roster: roster_row) }
       let(:assignment_row) { TestFactories.chore_assignment(chore: chore_row, user: user, date: Date.today) }
-      let(:pool_object) { described_class.serialize_batch([ChoreAssignment.find(assignment_row[:id])], pool: nil).first }
+      let(:pool_object) { described_class.serialize_batch([described_class.find(assignment_row[:id])], pool: nil).first }
 
       it_behaves_like "a pool object with createdAt", "choreAssignment"
     end
@@ -24,7 +24,7 @@ RSpec.describe ChoreAssignmentSerializer do
       roster = TestFactories.chore_roster(event: event, user: user)
       chore = TestFactories.chore(chore_roster: roster, name: "Wash up")
       assignment = TestFactories.chore_assignment(chore: chore, user: user, date: Date.today, pinned: true, note: "dish soap")
-      assignment_model = ChoreAssignment.find(assignment[:id])
+      assignment_model = described_class.find(assignment[:id])
 
       result = described_class.serialize_batch([assignment_model], pool: nil).first
 

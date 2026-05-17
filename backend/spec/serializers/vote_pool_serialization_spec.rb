@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-RSpec.describe VoteSerializer do
+RSpec.describe Vote do
   let(:workspace) { TestFactories.workspace }
   let(:user) { TestFactories.user }
 
@@ -16,7 +16,7 @@ RSpec.describe VoteSerializer do
       let(:poll_row) { TestFactories.date_poll(event: event_row) }
       let(:range_row) { TestFactories.date_range(date_poll: poll_row) }
       let(:vote_row) { TestFactories.vote(date_range: range_row, user: user) }
-      let(:pool_object) { described_class.serialize_batch([Vote.find(vote_row[:id])], pool: nil).first }
+      let(:pool_object) { described_class.serialize_batch([described_class.find(vote_row[:id])], pool: nil).first }
 
       it_behaves_like "a pool object with createdAt", "vote"
     end
@@ -30,7 +30,7 @@ RSpec.describe VoteSerializer do
       poll = TestFactories.date_poll(event: event)
       range = TestFactories.date_range(date_poll: poll)
       vote_row = TestFactories.vote(date_range: range, user: user, response: "yes", comment: "sure")
-      vote = Vote.find(vote_row[:id])
+      vote = described_class.find(vote_row[:id])
 
       result = described_class.serialize_batch([vote], pool: nil).first
 

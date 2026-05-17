@@ -86,7 +86,7 @@ module ObjectRegistry
                 [Topic.workspace(ws_id)]
               }
     ),
-    Entry.new(key: "vote", model: "Vote", client_type: "vote", tracks_user: true, policy: "VotePolicy", serializer_class: VoteSerializer,
+    Entry.new(key: "vote", model: "Vote", client_type: "vote", tracks_user: true, policy: "VotePolicy", serializer_class: Vote,
               topics: ->(vote) {
                 ws_id = DB[:date_ranges]
                         .join(:date_polls, id: :date_poll_id)
@@ -96,14 +96,14 @@ module ObjectRegistry
                 [Topic.workspace(ws_id)]
               }
     ),
-    Entry.new(key: "rsvp", model: "Rsvp", client_type: "rsvp", tracks_user: true, policy: "RsvpPolicy", serializer_class: RsvpSerializer,
+    Entry.new(key: "rsvp", model: "Rsvp", client_type: "rsvp", tracks_user: true, policy: "RsvpPolicy", serializer_class: Rsvp,
               topics: ->(rsvp) {
                 ws_id = DB[:events].where(id: rsvp.event_id).get(:workspace_id)
                 [Topic.workspace(ws_id)]
               }
     ),
     Entry.new(key: "task_list", model: "TaskList", client_type: "taskList", tracks_user: true, policy: "TaskListPolicy", serializer_class: TaskListSerializer),
-    Entry.new(key: "task_item", model: "TaskItem", client_type: "taskItem", tracks_user: true, policy: "TaskItemPolicy", serializer_class: TaskItemSerializer,
+    Entry.new(key: "task_item", model: "TaskItem", client_type: "taskItem", tracks_user: true, policy: "TaskItemPolicy", serializer_class: TaskItem,
               topics: ->(item) {
                 ws_id = DB[:task_lists].where(id: item.task_list_id).get(:workspace_id)
                 [Topic.workspace(ws_id)]
@@ -145,7 +145,7 @@ module ObjectRegistry
                 [Topic.workspace(ws_id)]
               }
     ),
-    Entry.new(key: "chore_assignment", model: "ChoreAssignment", client_type: "choreAssignment", tracks_user: true, policy: "ChoreAssignmentPolicy", serializer_class: ChoreAssignmentSerializer,
+    Entry.new(key: "chore_assignment", model: "ChoreAssignment", client_type: "choreAssignment", tracks_user: true, policy: "ChoreAssignmentPolicy", serializer_class: ChoreAssignment,
               topics: ->(assignment) {
                 ws_id = DB[:chores]
                         .join(:chore_rosters, id: :chore_roster_id)
@@ -155,8 +155,8 @@ module ObjectRegistry
                 [Topic.workspace(ws_id)]
               }
     ),
-    Entry.new(key: "workspace_invite", model: "WorkspaceInvite", client_type: "workspaceInvite", tracks_user: false, policy: "WorkspaceInvitePolicy", serializer_class: WorkspaceInviteSerializer),
-    Entry.new(key: "expense_participant", model: "ExpenseParticipant", client_type: "expenseParticipant", tracks_user: true, policy: "ExpenseParticipantPolicy", serializer_class: ExpenseParticipantSerializer,
+    Entry.new(key: "workspace_invite", model: "WorkspaceInvite", client_type: "workspaceInvite", tracks_user: false, policy: "WorkspaceInvitePolicy", serializer_class: WorkspaceInvite),
+    Entry.new(key: "expense_participant", model: "ExpenseParticipant", client_type: "expenseParticipant", tracks_user: true, policy: "ExpenseParticipantPolicy", serializer_class: ExpenseParticipant,
               topics: ->(participant) {
                 ws_id = DB[:expenses]
                         .join(:events, id: :event_id)

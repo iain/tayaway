@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-RSpec.describe WorkspaceInviteSerializer do
+RSpec.describe WorkspaceInvite do
   let(:workspace) { TestFactories.workspace }
   let(:inviter) { TestFactories.user }
 
@@ -11,7 +11,7 @@ RSpec.describe WorkspaceInviteSerializer do
       subject { pool_object }
 
       let(:invite_row) { TestFactories.workspace_invite(workspace: workspace, invited_by: inviter) }
-      let(:pool_object) { described_class.serialize_batch([WorkspaceInvite.find(invite_row[:id])], pool: nil).first }
+      let(:pool_object) { described_class.serialize_batch([described_class.find(invite_row[:id])], pool: nil).first }
 
       it_behaves_like "a pool object with createdAt", "workspaceInvite"
     end
@@ -20,7 +20,7 @@ RSpec.describe WorkspaceInviteSerializer do
       invite_row = TestFactories.workspace_invite(
         workspace: workspace, invited_by: inviter, email: "new@example.com", name: "Newbie"
       )
-      invite = WorkspaceInvite.find(invite_row[:id])
+      invite = described_class.find(invite_row[:id])
 
       result = described_class.serialize_batch([invite], pool: nil).first
 

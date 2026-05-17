@@ -2,6 +2,12 @@
 
 # Read-only workspace invite model.
 class WorkspaceInvite < Data.define(:id, :workspace_id, :invited_by, :email, :name, :token, :expires_at, :accepted_at, :last_reminded_at, :created_at, :updated_at)
+  include PoolSerializable
+
+  pool_object client_type: "workspaceInvite"
+  # `token` is the bearer secret the invitee uses to accept — never goes on the wire.
+  pool_skip :token
+
   EXPIRY_HOURS = 24
 
   class << self

@@ -2,6 +2,10 @@
 
 # Read-only vote model.
 class Vote < Data.define(:id, :date_range_id, :user_id, :response, :comment, :created_at, :updated_at)
+  include PoolSerializable
+
+  pool_object client_type: "vote"
+
   class << self
     def find(id)
       dataset.where(id: id).first

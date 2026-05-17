@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-RSpec.describe ExpenseParticipantSerializer do
+RSpec.describe ExpenseParticipant do
   let(:workspace) { TestFactories.workspace }
   let(:user) { TestFactories.user }
 
@@ -23,7 +23,7 @@ RSpec.describe ExpenseParticipantSerializer do
         DB[:expense_participants].insert(
           id: participant_id, expense_id: expense_id, user_id: user[:id], created_at: now
         )
-        described_class.serialize_batch([ExpenseParticipant.find(participant_id)], pool: nil).first
+        described_class.serialize_batch([described_class.find(participant_id)], pool: nil).first
       end
 
       it_behaves_like "a pool object with createdAt", "expenseParticipant"
@@ -42,7 +42,7 @@ RSpec.describe ExpenseParticipantSerializer do
       DB[:expense_participants].insert(
         id: participant_id, expense_id: expense_id, user_id: user[:id], created_at: now
       )
-      participant = ExpenseParticipant.find(participant_id)
+      participant = described_class.find(participant_id)
 
       result = described_class.serialize_batch([participant], pool: nil).first
 
@@ -67,7 +67,7 @@ RSpec.describe ExpenseParticipantSerializer do
         id: participant_id, expense_id: expense_id, user_id: user[:id],
         created_at: created, updated_at: updated
       )
-      participant = ExpenseParticipant.find(participant_id)
+      participant = described_class.find(participant_id)
 
       result = described_class.serialize_batch([participant], pool: nil).first
 
@@ -88,7 +88,7 @@ RSpec.describe ExpenseParticipantSerializer do
         id: participant_id, expense_id: expense_id, user_id: user[:id],
         factor: 2.5, created_at: now
       )
-      participant = ExpenseParticipant.find(participant_id)
+      participant = described_class.find(participant_id)
 
       result = described_class.serialize_batch([participant], pool: nil).first
 

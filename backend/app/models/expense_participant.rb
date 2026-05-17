@@ -2,6 +2,10 @@
 
 # Read-only ExpenseParticipant model.
 class ExpenseParticipant < Data.define(:id, :expense_id, :user_id, :factor, :created_at, :updated_at)
+  include PoolSerializable
+
+  pool_object client_type: "expenseParticipant"
+
   class << self
     include Findable
 
