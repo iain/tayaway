@@ -9,10 +9,13 @@
 ARG TOOLCHAIN_IMAGE=ghcr.io/iain/tayaway-toolchain:latest
 
 # ── frontend-build ──────────────────────────────────────────────────────────
-# Emits frontend/dist. Shared by `backend` (no-op consumer) and `edge` via
-# buildkit's layer cache, so `pnpm build` runs once per CI even though both
-# images are built.
+# Emits frontend/dist. Consumed by the `edge` stage.
 FROM ${TOOLCHAIN_IMAGE} AS frontend-build
+
+# mise oci push installs tools at /mise/installs/<tool>/<version>/bin but does
+# not modify PATH. SHELL routes every RUN through `mise exec`, so tool
+# versions stay coupled to mise.lock without hard-coded paths here.
+SHELL ["mise", "exec", "--", "bash", "-c"]
 
 WORKDIR /build/frontend
 
@@ -22,10 +25,21 @@ RUN pnpm install --frozen-lockfile
 COPY frontend/ ./
 RUN pnpm run build
 
-# ── backend ─────────────────────────────────────────────────────────────────
-# Falcon app server. Production quadlet mounts this ReadOnly=true with a tmpfs
-# on /tmp; nothing in this stage writes outside /tmp at runtime.
-FROM ${TOOLCHAIN_IMAGE} AS backend
+# ── gem-build ───────────────────────────────────────────────────────────────
+# Compiles native gem extensions. build-essential and the -dev headers live
+# only here; the runtime `backend` stage below imports vendor/bundle and
+# ships only the matching .so packages, saving ~300 MB off the final image.
+FROM ${TOOLCHAIN_IMAGE} AS gem-build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      build-essential \
+      libmaxminddb-dev \
+      libpq-dev \
+      libsodium-dev \
+      libyaml-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+SHELL ["mise", "exec", "--", "bash", "-c"]
 
 WORKDIR /app/backend
 
@@ -34,14 +48,39 @@ RUN bundle config set --local deployment 'true' \
  && bundle config set --local without 'development test' \
  && bundle install --jobs 4 --retry 3
 
+# ── backend ─────────────────────────────────────────────────────────────────
+# Runtime-only Falcon image. Production quadlet mounts this ReadOnly=true
+# with a tmpfs on /tmp; nothing in this stage writes outside /tmp at runtime.
+FROM ${TOOLCHAIN_IMAGE} AS backend
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libmaxminddb0 \
+      libpq5 \
+      libsodium23 \
+      libyaml-0-2 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app/backend
+
+COPY --from=gem-build /app/backend/vendor ./vendor
 COPY backend/ ./
 
+# Bundler config via env (not .bundle/config) so the runtime knobs are
+# explicit and survive any future COPY ordering surprises.
 ENV MISE_ENV=production \
     RACK_ENV=production \
-    FALCON_URL=http://0.0.0.0:9292
+    FALCON_URL=http://0.0.0.0:9292 \
+    MISE_TRUSTED_CONFIG_PATHS=/app \
+    BUNDLE_DEPLOYMENT=true \
+    BUNDLE_FROZEN=true \
+    BUNDLE_PATH=vendor/bundle \
+    BUNDLE_WITHOUT=development:test
 
 EXPOSE 9292
 
+# ENTRYPOINT in exec-form bypasses SHELL, so wrap the runtime command in
+# `mise exec` explicitly. CMD args are the bundle subcommand.
+ENTRYPOINT ["mise", "exec", "--"]
 CMD ["bundle", "exec", "falcon-host", "falcon.rb"]
 
 # ── edge ────────────────────────────────────────────────────────────────────
