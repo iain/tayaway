@@ -14,18 +14,22 @@
 #   3. Per-run: verify age key, sync quadlets, daemon-reload, pre-pull.
 #
 # Usage:
-#   # First run, immediately after ordering the VPS — OVH only gives you
-#   # root. The script creates `tayaway` and mirrors the authorized_keys.
-#   mise run vm:provision root@vps123456.vps.ovh.net
+#   # First run, immediately after ordering the VPS. Connect as whatever
+#   # user the OVH image exposes — `ubuntu` on Ubuntu cloud images,
+#   # `debian` on Debian, `root` on the generic VPS image. The script
+#   # uses $SUDO_USER on the remote side to find the right
+#   # authorized_keys and mirrors them to a freshly-created tayaway user.
+#   mise run vm:provision ubuntu@<ip-or-hostname>
 #
-#   # Every run after that, including all Phase-4+ deploys.
+#   # Every run after that, including all Phase-4+ deploys. Direct root
+#   # ssh is locked after first-run setup, so connect as tayaway here.
 #   mise run vm:provision tayaway@new.tayaway.nl
 
 set -euo pipefail
 
 if [ $# -lt 1 ]; then
   echo "usage: $0 <ssh-target>" >&2
-  echo "  first run:  $0 root@vps123456.vps.ovh.net" >&2
+  echo "  first run:  $0 ubuntu@<ip>   # or root@, debian@ — whatever the image exposes" >&2
   echo "  later runs: $0 tayaway@new.tayaway.nl" >&2
   exit 2
 fi
@@ -98,16 +102,20 @@ install -m 0440 /dev/stdin /etc/sudoers.d/tayaway <<'SUDOERS'
 tayaway ALL=(ALL) NOPASSWD:ALL
 SUDOERS
 
-# Mirror root's authorized_keys onto tayaway so `ssh tayaway@host` works
-# immediately on the second run. Skip if root has none (someone ordered
-# with a password, not an ssh key — error out so they fix it before we
-# create a passwordless sudoer with no keys).
-if [ ! -s /root/.ssh/authorized_keys ]; then
-  echo "ERROR: /root/.ssh/authorized_keys is empty — re-order the VPS with an ssh key attached, or scp your key into /root/.ssh/authorized_keys first." >&2
+# Mirror the connecting user's authorized_keys onto tayaway so
+# `ssh tayaway@host` works on the second run. The connecting user is
+# whoever invoked sudo — `ubuntu` on Ubuntu cloud images, `debian` on
+# Debian, `root` on the generic VPS image. SUDO_USER unwraps that
+# without us having to thread the username through ssh.
+SRC_USER="${SUDO_USER:-root}"
+SRC_HOME="$(getent passwd "$SRC_USER" | cut -d: -f6)"
+SRC_KEYS="$SRC_HOME/.ssh/authorized_keys"
+if [ ! -s "$SRC_KEYS" ]; then
+  echo "ERROR: $SRC_KEYS is empty or missing — drop your ssh key in $SRC_KEYS before retrying so we have something to mirror to tayaway." >&2
   exit 1
 fi
 install -d -m 0700 -o tayaway -g tayaway /home/tayaway/.ssh
-install -m 0600 -o tayaway -g tayaway /root/.ssh/authorized_keys /home/tayaway/.ssh/authorized_keys
+install -m 0600 -o tayaway -g tayaway "$SRC_KEYS" /home/tayaway/.ssh/authorized_keys
 
 # Tayaway state dir — age private key lands here (operator hand-drops
 # it after this script's first run completes).
@@ -170,6 +178,32 @@ table inet filter {
 NFT
 systemctl enable --now nftables
 
+# SSH hardening — what cloud-init's `ssh_pwauth: false` + `disable_root: true`
+# used to do. We're invoked over ssh-with-key already, so disabling
+# password auth and locking root is safe on the connected session:
+#   * PasswordAuthentication no → leaked passwords can't be used remotely
+#   * passwd -l root             → root account cannot authenticate
+#                                  even if PermitRootLogin is later
+#                                  flipped back on by mistake
+#   * PermitRootLogin no         → no direct root ssh at all
+# Idempotent: sed-with-fallback re-writes the line if it already exists
+# in any form, or appends a fresh one. `systemctl reload` on Ubuntu uses
+# `ssh.service`; `sshd.service` on some Debian setups — try both.
+sshd_set() {
+  local key="$1" value="$2"
+  if grep -qE "^[[:space:]]*${key}[[:space:]]+" /etc/ssh/sshd_config; then
+    sed -i "s/^[[:space:]]*${key}[[:space:]].*/${key} ${value}/" /etc/ssh/sshd_config
+  else
+    printf '%s %s\n' "$key" "$value" >> /etc/ssh/sshd_config
+  fi
+}
+sshd_set PasswordAuthentication no
+sshd_set PermitRootLogin no
+sshd_set ChallengeResponseAuthentication no
+sshd_set KbdInteractiveAuthentication no
+passwd -l root >/dev/null
+systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || true
+
 touch /etc/tayaway/bootstrap.done
 echo "OS bootstrap complete."
 EOF
@@ -210,18 +244,18 @@ fi
 # required on `tayaway@` runs.
 
 case "$TARGET" in
-  root@*)
-    step "Skipping age-key check (running as root@ — first-time setup; drop the key and re-run as tayaway@)"
-    ;;
-  *)
+  tayaway@*)
     step "Verifying /etc/tayaway/age.key exists"
     if ! ssh_run 'sudo test -f /etc/tayaway/age.key'; then
       echo "ERROR: /etc/tayaway/age.key not found on $TARGET." >&2
-      echo "  Drop it as root, then re-run:" >&2
+      echo "  Drop it as tayaway, then re-run:" >&2
       echo "    scp ~/.config/sops/age/keys.txt $TARGET:/tmp/age.key" >&2
       echo "    ssh $TARGET 'sudo install -m 0400 -o root -g root /tmp/age.key /etc/tayaway/age.key && rm /tmp/age.key'" >&2
       exit 1
     fi
+    ;;
+  *)
+    step "Skipping age-key check (connected as non-tayaway — first-run setup; drop the key and re-run as tayaway@)"
     ;;
 esac
 

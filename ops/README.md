@@ -87,13 +87,19 @@ mise x opentofu -- tofu apply \
 
 ### 4. Bootstrap the OS
 
-First run goes in as `root@` — `provision.sh` creates the `tayaway`
-user, mirrors the authorized_keys, installs packages, writes the OS
-configs, and reboots once if a kernel update came in.
+First run connects as whatever user the VPS image exposes — `ubuntu` on
+the Ubuntu cloud image (most common), `debian` on Debian, `root` on
+the generic VPS image. `provision.sh` creates the `tayaway` user from
+that user's `authorized_keys`, installs packages, writes the OS
+configs, hardens sshd (disables password auth, locks root login),
+and reboots once if a kernel update came in.
 
 ```fish
-mise run vm:provision root@<vps-hostname>
+mise run vm:provision ubuntu@<vps-ip-or-hostname>
 ```
+
+After this run, **only `tayaway@` will be able to ssh in** — root
+login is locked and password auth is off across the board.
 
 ### 5. Hand-drop the age private key
 
@@ -128,7 +134,8 @@ The whole VPS is gone or unrecoverable.
 3. `tofu apply -var "vps_ipv4=<new-ip>" …` to repoint `new.tayaway.nl`
    and recreate the WAL-G credentials.
 4. scp the age key (step 5).
-5. `mise run vm:provision` twice — `root@` then `tayaway@` (steps 4 + 6).
+5. `mise run vm:provision` twice — first as the image's default user
+   (`ubuntu@`/`debian@`/`root@`), then as `tayaway@` (steps 4 + 6).
 6. WAL-G restore (see `doc/operations/walg.md` — landing in Phase 5).
 
 ~20 min, four or five commands of human work plus the OVH-manager
