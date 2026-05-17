@@ -4,6 +4,14 @@
 {$SITE_ADDRESS:http://:8080} {
 	encode zstd gzip
 
+	# Structured access log to stdout — quadlet routes it to journald, so
+	# `journalctl -u tayaway-edge` shows per-request JSON without needing a
+	# separate logfile. Filter noisy paths via `log_skip` later if needed.
+	log {
+		output stdout
+		format json
+	}
+
 	header {
 		Strict-Transport-Security "max-age=63072000; includeSubDomains"
 		X-Content-Type-Options "nosniff"
