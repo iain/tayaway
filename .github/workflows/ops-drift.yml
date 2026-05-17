@@ -55,10 +55,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.OPS_STATE_S3_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.OPS_STATE_S3_SECRET_ACCESS_KEY }}
       TF_VAR_service_name: ${{ vars.OVH_PROJECT_ID }}
-      TF_VAR_vm_flavor_id: ${{ vars.OVH_VM_FLAVOR_ID }}
-      TF_VAR_vm_image_id: ${{ vars.OVH_VM_IMAGE_ID }}
-      TF_VAR_ssh_public_key: ${{ vars.OPS_SSH_PUBLIC_KEY }}
-      TF_VAR_age_recipient: ${{ vars.OPS_AGE_RECIPIENT }}
+      TF_VAR_vps_ipv4: ${{ vars.OPS_VPS_IPV4 }}
 
     steps:
       - uses: actions/checkout@v6
