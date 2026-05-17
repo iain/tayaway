@@ -43,35 +43,40 @@
 	}
 
 	# Everything else: the SPA. Wrapped in handle to keep it mutually
-	# exclusive with the API/WS blocks above.
+	# exclusive with the API/WS blocks above. `route` inside forces the
+	# directives to run in declaration order so the asset Cache-Control
+	# wins over the SPA-shell default (without route, Caddy sorts header
+	# directives canonically and the unconditional default overwrites
+	# the matched one).
 	handle {
 		root * /srv/dist
+		route {
+			# Vite emits content-hashed filenames under /assets — safe to
+			# mark immutable. /assets/* always exists on disk, so try_files
+			# never rewrites; this matcher fires reliably at request time.
+			@assets path /assets/*
+			header @assets Cache-Control "public, immutable, max-age=31536000"
 
-		# Vite emits content-hashed filenames under /assets — safe to mark
-		# immutable for a year. Matcher is evaluated against the request
-		# URI; since /assets/* files always exist on disk, try_files leaves
-		# the URI unchanged for these.
-		@assets path /assets/*
-		header @assets Cache-Control "public, immutable, max-age=31536000"
+			# Everything else gets no-cache. `?` means "set only if absent",
+			# so the @assets directive above isn't overwritten. This also
+			# applies to /index.html after try_files rewrites unknown
+			# client-side routes (e.g. /events/<id>) — sidesteps Caddy's
+			# request-phase matcher evaluation, which would see the
+			# original URI, not /index.html.
+			header ?Cache-Control "no-cache"
 
-		# The SPA shell gets no-cache so a deploy is picked up on next
-		# navigation. The matcher fires against the URI *after* try_files
-		# rewrites unknown client-side routes to /index.html.
-		@spa_shell path /index.html
-		header @spa_shell Cache-Control "no-cache"
+			# Real file → fall back to /index.html so client-side routes
+			# still serve the Vue shell (frontend uses createWebHistory).
+			# Canonical SPA pattern from the Caddy docs.
+			try_files {path} /index.html
 
-		# Real file → fall back to /index.html so client-side routes like
-		# /events/<id> still serve the Vue shell (frontend uses
-		# createWebHistory). Canonical SPA pattern from the Caddy docs.
-		try_files {path} /index.html
-
-		# Serve the precompressed .br / .gz siblings that vite-plugin-
-		# compression2 emits during `pnpm build`. Brotli first, gzip
-		# fallback for older clients. If a sibling is missing, Caddy
-		# transparently falls back to the original and `encode` above
-		# compresses on the fly.
-		file_server {
-			precompressed br gzip
+			# Serve the precompressed .br / .gz siblings emitted by
+			# vite-plugin-compression2. Brotli first, gzip fallback. If a
+			# sibling is missing, Caddy falls back to the original and the
+			# `encode` directive at the top compresses on the fly.
+			file_server {
+				precompressed br gzip
+			}
 		}
 	}
 }
