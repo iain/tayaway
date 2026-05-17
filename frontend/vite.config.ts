@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { compression } from 'vite-plugin-compression2'
 import { fileURLToPath, URL } from 'node:url'
 
 const port = parseInt(process.env.FRONTEND_PORT || '5173', 10)
@@ -25,6 +26,12 @@ export default defineConfig({
   plugins: [
     vue(),
     tailwindcss(),
+    // Emit dist/assets/*.{br,gz} siblings alongside the originals so the
+    // edge (Caddy `file_server { precompressed }`) can serve already-
+    // compressed bytes without per-request CPU. The legacy nginx ignores
+    // the siblings — they're just unused files on disk until cutover.
+    // 1 KB threshold skips files where HTTP overhead would dominate.
+    compression({ algorithms: ['brotliCompress', 'gzip'], threshold: 1024 }),
     VitePWA({
       registerType: 'prompt',
       manifest: {

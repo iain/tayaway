@@ -64,6 +64,14 @@
 		# /events/<id> still serve the Vue shell (frontend uses
 		# createWebHistory). Canonical SPA pattern from the Caddy docs.
 		try_files {path} /index.html
-		file_server
+
+		# Serve the precompressed .br / .gz siblings that vite-plugin-
+		# compression2 emits during `pnpm build`. Brotli first, gzip
+		# fallback for older clients. If a sibling is missing, Caddy
+		# transparently falls back to the original and `encode` above
+		# compresses on the fly.
+		file_server {
+			precompressed br gzip
+		}
 	}
 }
