@@ -15,6 +15,9 @@
 module GeoIP
   MMDB_PATH = File.expand_path("../data/dbip-city-lite.mmdb", __dir__)
 
+  @db = nil
+  @db_mtime = nil
+
   class << self
     # Returns { city: "Amsterdam", country: "Netherlands" } or nil.
     def lookup(ip)

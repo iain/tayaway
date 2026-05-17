@@ -4,16 +4,18 @@
 # the same `containers/Containerfile` and the same toolchain image SHA that
 # CI publishes — no fork between local and prod.
 #
-# Usage:
-#   TOOLCHAIN_TAG=$(./.mise/tasks/toolchain/tag) podman compose up --build
+# Usage: run via `mise run containers:up`, which exports TOOLCHAIN_TAG from
+# the toolchain/tag script. TOOLCHAIN_TAG is required — compose substitution
+# fails fast (`?err`) instead of pulling a stale image.
 #
-# The TOOLCHAIN_TAG default falls back to `latest`, which won't resolve until
-# CI's first push. Always pass the explicit tag locally so you build against
-# the same toolchain image CI uses.
+# Secrets below (APP_SECRET, postgres user/password) are stub values for the
+# local stack only. Production values come from sops-managed env files, not
+# this file.
 
 services:
   db:
     image: postgres:18
+    # Local-only credentials; production uses sops-managed values.
     environment:
       POSTGRES_USER: tayaway
       POSTGRES_PASSWORD: tayaway
@@ -45,15 +47,15 @@ services:
       dockerfile: containers/Containerfile
       target: backend
       args:
-        TOOLCHAIN_IMAGE: ghcr.io/iain/tayaway-toolchain:${TOOLCHAIN_TAG:-latest}
+        TOOLCHAIN_IMAGE: ghcr.io/iain/tayaway-toolchain:${TOOLCHAIN_TAG:?TOOLCHAIN_TAG must be set — run via mise run containers:up}
     depends_on:
       db:
         condition: service_healthy
+    # APP_SECRET decodes to "local-dev-only-not-a-real-secret"; throwaway.
     environment:
       DATABASE_URL: postgres://tayaway:tayaway@db:5432/tayaway
-      APP_SECRET: dGVzdHNlY3JldHRlc3RzZWNyZXR0ZXN0c2VjcmV0dGU=
+      APP_SECRET: bG9jYWwtZGV2LW9ubHktbm90LWEtcmVhbC1zZWNyZXQ=
       FRONTEND_URL: http://localhost:8080
-      MISE_ENV: production
     command: ["bundle", "exec", "rake", "config:validate", "db:migrate"]
     restart: "no"
 
@@ -63,7 +65,7 @@ services:
       dockerfile: containers/Containerfile
       target: backend
       args:
-        TOOLCHAIN_IMAGE: ghcr.io/iain/tayaway-toolchain:${TOOLCHAIN_TAG:-latest}
+        TOOLCHAIN_IMAGE: ghcr.io/iain/tayaway-toolchain:${TOOLCHAIN_TAG:?TOOLCHAIN_TAG must be set — run via mise run containers:up}
     depends_on:
       db:
         condition: service_healthy
@@ -71,12 +73,11 @@ services:
         condition: service_completed_successfully
       geoip:
         condition: service_completed_successfully
+    # APP_SECRET decodes to "local-dev-only-not-a-real-secret"; throwaway.
     environment:
       DATABASE_URL: postgres://tayaway:tayaway@db:5432/tayaway
-      APP_SECRET: dGVzdHNlY3JldHRlc3RzZWNyZXR0ZXN0c2VjcmV0dGU=
+      APP_SECRET: bG9jYWwtZGV2LW9ubHktbm90LWEtcmVhbC1zZWNyZXQ=
       FRONTEND_URL: http://localhost:8080
-      MISE_ENV: production
-      FALCON_URL: http://0.0.0.0:9292
     # Phase 1 verification target: the rootfs is read-only and /tmp is the
     # only writable surface. Falcon's socket dir, ERB compile cache, and any
     # other in-process scratch land in /tmp; nothing writes outside it.
@@ -94,7 +95,7 @@ services:
       dockerfile: containers/Containerfile
       target: edge
       args:
-        TOOLCHAIN_IMAGE: ghcr.io/iain/tayaway-toolchain:${TOOLCHAIN_TAG:-latest}
+        TOOLCHAIN_IMAGE: ghcr.io/iain/tayaway-toolchain:${TOOLCHAIN_TAG:?TOOLCHAIN_TAG must be set — run via mise run containers:up}
     depends_on:
       web:
         condition: service_started

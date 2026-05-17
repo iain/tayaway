@@ -10,18 +10,23 @@
 		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Permissions-Policy "camera=(), microphone=(), geolocation=(self)"
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' wss://tayaway.nl https://photon.komoot.io; img-src 'self' data: blob: https://*.tile.openstreetmap.org; font-src 'self'; object-src 'none'; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+		# EXTRA_CONNECT_SRC lets staging / preview environments append their
+		# own backend origin to connect-src (e.g. " wss://staging.tayaway.nl"
+		# — note the leading space) without forking this config. Empty when
+		# unset, so production's CSP matches the legacy nginx one.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' wss://tayaway.nl https://photon.komoot.io{$EXTRA_CONNECT_SRC}; img-src 'self' data: blob: https://*.tile.openstreetmap.org; font-src 'self'; object-src 'none'; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
 	}
 
-	# WebSocket upgrade. Long read/write timeouts match the 86400s the
-	# legacy nginx config used so idle subscriptions don't get culled.
+	# WebSocket upgrade. reverse_proxy auto-detects the Upgrade header; we
+	# just need to keep the stream open. `stream_timeout` is the documented
+	# knob for long-lived WebSocket connections (replaces the nginx 86400s
+	# read/write timeouts). `stream_close_delay` lets Caddy reloads finish
+	# without killing live subscriptions mid-message.
 	@ws path /ws /ws/*
 	handle @ws {
 		reverse_proxy {$BACKEND_UPSTREAM:web:9292} {
-			transport http {
-				read_timeout 86400s
-				write_timeout 86400s
-			}
+			stream_timeout 24h
+			stream_close_delay 5m
 		}
 	}
 
@@ -29,25 +34,28 @@
 		reverse_proxy {$BACKEND_UPSTREAM:web:9292}
 	}
 
-	# Vite emits content-hashed filenames under /assets — safe to mark
-	# immutable for a year.
-	@assets path /assets/*
-	header @assets Cache-Control "public, immutable, max-age=31536000"
-
-	# Static files first — including SPA index resolution for directory
-	# paths. `try_files` rewrites `/` (and any path that hits a dir) to
-	# `/index.html`, matching the implicit `index` behavior the legacy
-	# nginx config relied on.
-	root * /srv/dist
-	try_files {path} {path}/index.html
-	@spa_file file
-	handle @spa_file {
-		file_server
-	}
-	# Everything else falls through to the backend (server-rendered routes,
-	# the 404 page). Caddy adds no-cache so the SPA shell isn't ever stale.
+	# Everything else: the SPA. Wrapped in handle to keep it mutually
+	# exclusive with the API/WS blocks above.
 	handle {
-		header Cache-Control "no-cache"
-		reverse_proxy {$BACKEND_UPSTREAM:web:9292}
+		root * /srv/dist
+
+		# Vite emits content-hashed filenames under /assets — safe to mark
+		# immutable for a year. Matcher is evaluated against the request
+		# URI; since /assets/* files always exist on disk, try_files leaves
+		# the URI unchanged for these.
+		@assets path /assets/*
+		header @assets Cache-Control "public, immutable, max-age=31536000"
+
+		# The SPA shell gets no-cache so a deploy is picked up on next
+		# navigation. The matcher fires against the URI *after* try_files
+		# rewrites unknown client-side routes to /index.html.
+		@spa_shell path /index.html
+		header @spa_shell Cache-Control "no-cache"
+
+		# Real file → fall back to /index.html so client-side routes like
+		# /events/<id> still serve the Vue shell (frontend uses
+		# createWebHistory). Canonical SPA pattern from the Caddy docs.
+		try_files {path} /index.html
+		file_server
 	}
 }

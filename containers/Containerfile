@@ -2,11 +2,12 @@
 
 # The toolchain image is built and pushed by CI from the three mise.toml files
 # (`mise oci push ghcr.io/iain/tayaway-toolchain:<sha>`); each tool sits on its
-# own layer so a pnpm bump does not invalidate the Ruby layer. For local dev
-# before that CI job lands, push a toolchain image to a registry of your
-# choice — `mise oci push <registry>/tayaway-toolchain:dev` — and override
-# this ARG when building.
-ARG TOOLCHAIN_IMAGE=ghcr.io/iain/tayaway-toolchain:latest
+# own layer so a pnpm bump does not invalidate the Ruby layer. The ARG is
+# required — no default — so a forgotten `--build-arg` fails loudly instead
+# of silently pulling a stale `:latest`. For local dev before CI's first
+# push, run `mise oci push <registry>/tayaway-toolchain:dev` and pass
+# `--build-arg TOOLCHAIN_IMAGE=<registry>/tayaway-toolchain:dev`.
+ARG TOOLCHAIN_IMAGE
 
 # ── frontend-build ──────────────────────────────────────────────────────────
 # Emits frontend/dist. Consumed by the `edge` stage.
@@ -21,6 +22,10 @@ FROM ${TOOLCHAIN_IMAGE} AS frontend-build
 RUN apt-get update && apt-get install -y --no-install-recommends \
       libatomic1 \
     && rm -rf /var/lib/apt/lists/*
+
+# Trust mise.toml files copied in from the repo so `mise exec` doesn't
+# prompt or refuse to load them mid-build.
+ENV MISE_TRUSTED_CONFIG_PATHS=/build
 
 WORKDIR /build
 
@@ -48,12 +53,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       libyaml-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# BUNDLE_DEPLOYMENT is documented as "Equivalent to setting `frozen` to
+# `true` and `path` to `vendor/bundle`" (Bundler 4 docs), so frozen and
+# path don't need separate vars. Env vars are the single source of truth
+# for bundler — no `.bundle/config` is written, so the runtime stage sees
+# the same knobs without any state copied from the build.
+ENV BUNDLE_DEPLOYMENT=true \
+    BUNDLE_WITHOUT=development:test \
+    MISE_TRUSTED_CONFIG_PATHS=/app
+
 WORKDIR /app/backend
 
 COPY backend/Gemfile backend/Gemfile.lock ./
-RUN mise exec -- bundle config set --local deployment 'true' \
- && mise exec -- bundle config set --local without 'development test' \
- && mise exec -- bundle install --jobs 4 --retry 3
+RUN mise exec -- bundle install --jobs 4 --retry 3
 
 # ── backend ─────────────────────────────────────────────────────────────────
 # Runtime-only Falcon image. Production quadlet mounts this ReadOnly=true
@@ -72,15 +84,15 @@ WORKDIR /app/backend
 COPY --from=gem-build /app/backend/vendor ./vendor
 COPY backend/ ./
 
-# Bundler config via env (not .bundle/config) so the runtime knobs are
-# explicit and survive any future COPY ordering surprises.
+# Bundler 4 treats BUNDLE_DEPLOYMENT=true as equivalent to frozen + path
+# vendor/bundle, so those don't need separate vars. Env vars (not
+# .bundle/config) keep the runtime knobs explicit and independent of any
+# state from the gem-build stage.
 ENV MISE_ENV=production \
     RACK_ENV=production \
     FALCON_URL=http://0.0.0.0:9292 \
     MISE_TRUSTED_CONFIG_PATHS=/app \
     BUNDLE_DEPLOYMENT=true \
-    BUNDLE_FROZEN=true \
-    BUNDLE_PATH=vendor/bundle \
     BUNDLE_WITHOUT=development:test
 
 EXPOSE 9292

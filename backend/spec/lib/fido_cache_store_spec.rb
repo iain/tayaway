@@ -13,38 +13,25 @@ RSpec.describe FidoCacheStore do
       end
     end
 
-    it "falls back to memory-only mode when the parent is read-only" do
-      Dir.mktmpdir do |tmp|
-        File.chmod(0o555, tmp)
-        store = described_class.new(dir: File.join(tmp, "fido"))
+    it "falls back to memory-only mode when the dir is on a read-only filesystem" do
+      # Stub rather than chmod: on Linux CI containers running as root, file
+      # permissions don't bite — the production scenario is a ReadOnly=true
+      # mount, which surfaces as EROFS regardless of uid.
+      allow(FileUtils).to receive(:mkdir_p).and_raise(Errno::EROFS)
+      store = described_class.new(dir: "/anywhere/fido")
 
-        store.write("key", "value")
-        expect(store.read("key")).to eq("value")
-        File.chmod(0o755, tmp)
-      end
-    end
-  end
+      store.write("alpha", { foo: 1 })
+      store.write("beta", "bar")
 
-  describe "round trips through the memory cache when disk is unusable" do
-    it "still serves writes via the in-memory hash" do
-      Dir.mktmpdir do |tmp|
-        File.chmod(0o555, tmp)
-        store = described_class.new(dir: File.join(tmp, "fido"))
+      expect(store.read("alpha")).to eq({ foo: 1 })
+      expect(store.read("beta")).to eq("bar")
+      expect(store.read("missing")).to be_nil
 
-        store.write("alpha", { foo: 1 })
-        store.write("beta", "bar")
+      store.delete("alpha")
+      expect(store.read("alpha")).to be_nil
 
-        expect(store.read("alpha")).to eq({ foo: 1 })
-        expect(store.read("beta")).to eq("bar")
-        expect(store.read("missing")).to be_nil
-
-        store.delete("alpha")
-        expect(store.read("alpha")).to be_nil
-
-        store.clear
-        expect(store.read("beta")).to be_nil
-        File.chmod(0o755, tmp)
-      end
+      store.clear
+      expect(store.read("beta")).to be_nil
     end
   end
 end

@@ -9,7 +9,10 @@
 # silently regenerating against a stale tag.
 #
 # `git ls-files` discovers subproject lockfiles automatically — no script
-# edit needed when the monorepo grows.
+# edit needed when the monorepo grows. It also only sees tracked content,
+# so uncommitted lockfile edits don't move the tag locally; commit (or
+# stage) before running containers:up if you want the new versions baked
+# into the image.
 #
 # 12 hex chars = 48 bits of uniqueness — astronomically safe for our scale
 # and short enough to read in a `podman pull` line.
