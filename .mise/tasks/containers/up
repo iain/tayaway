@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+#MISE description="Build and start the local podman/compose stack against the current toolchain image"
+
+# Pins the build to the toolchain hash for the current working tree, so the
+# stack is byte-identical to what CI would publish for this SHA. The web
+# container runs ReadOnly=true with a tmpfs on /tmp — same constraints as
+# the production quadlet.
+#
+# First run cold-builds the gem layer (~3 min on Apple Silicon under x86_64
+# emulation); subsequent runs hit the buildkit cache and rebuild only the
+# stages whose inputs changed.
+
+set -euo pipefail
+
+TAG=$(./.mise/tasks/toolchain/tag)
+echo "[containers:up] toolchain tag: ${TAG}"
+
+export TOOLCHAIN_TAG="${TAG}"
+exec podman compose up --build "$@"

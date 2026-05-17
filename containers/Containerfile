@@ -1,0 +1,112 @@
+# syntax=docker/dockerfile:1.7
+
+# The toolchain image is built and pushed by CI from the three mise.toml files
+# (`mise oci push ghcr.io/iain/tayaway-toolchain:<sha>`); each tool sits on its
+# own layer so a pnpm bump does not invalidate the Ruby layer. The ARG is
+# required — no default — so a forgotten `--build-arg` fails loudly instead
+# of silently pulling a stale `:latest`. For local dev before CI's first
+# push, run `mise oci push <registry>/tayaway-toolchain:dev` and pass
+# `--build-arg TOOLCHAIN_IMAGE=<registry>/tayaway-toolchain:dev`.
+ARG TOOLCHAIN_IMAGE
+
+# ── frontend-build ──────────────────────────────────────────────────────────
+# Emits frontend/dist. Consumed by the `edge` stage.
+#
+# mise oci push installs tools at /mise/installs/<tool>/<version>/bin without
+# touching PATH. SHELL would route every RUN through `mise exec` but isn't
+# honored by podman's default OCI image format — so each RUN that needs a
+# mise-managed tool is prefixed explicitly. node's prebuilt binary depends
+# on libatomic1, which the slim toolchain base does not include.
+FROM ${TOOLCHAIN_IMAGE} AS frontend-build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libatomic1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Trust mise.toml files copied in from the repo so `mise exec` doesn't
+# prompt or refuse to load them mid-build.
+ENV MISE_TRUSTED_CONFIG_PATHS=/build
+
+WORKDIR /build
+
+# pnpm-lock.yaml + pnpm-workspace.yaml live at the repo root (frontend and
+# e2e are workspace members), so resolve from there and filter the install
+# down to frontend's transitive deps.
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY frontend/package.json ./frontend/
+RUN mise exec -- pnpm install --frozen-lockfile --filter frontend...
+
+COPY frontend/ ./frontend/
+RUN mise exec -- pnpm --filter frontend run build
+
+# ── gem-build ───────────────────────────────────────────────────────────────
+# Compiles native gem extensions. build-essential and the -dev headers live
+# only here; the runtime `backend` stage below imports vendor/bundle and
+# ships only the matching .so packages, saving ~300 MB off the final image.
+FROM ${TOOLCHAIN_IMAGE} AS gem-build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      build-essential \
+      libmaxminddb-dev \
+      libpq-dev \
+      libsodium-dev \
+      libyaml-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# BUNDLE_DEPLOYMENT is documented as "Equivalent to setting `frozen` to
+# `true` and `path` to `vendor/bundle`" (Bundler 4 docs), so frozen and
+# path don't need separate vars. Env vars are the single source of truth
+# for bundler — no `.bundle/config` is written, so the runtime stage sees
+# the same knobs without any state copied from the build.
+ENV BUNDLE_DEPLOYMENT=true \
+    BUNDLE_WITHOUT=development:test \
+    MISE_TRUSTED_CONFIG_PATHS=/app
+
+WORKDIR /app/backend
+
+COPY backend/Gemfile backend/Gemfile.lock ./
+RUN mise exec -- bundle install --jobs 4 --retry 3
+
+# ── backend ─────────────────────────────────────────────────────────────────
+# Runtime-only Falcon image. Production quadlet mounts this ReadOnly=true
+# with a tmpfs on /tmp; nothing in this stage writes outside /tmp at runtime.
+FROM ${TOOLCHAIN_IMAGE} AS backend
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libmaxminddb0 \
+      libpq5 \
+      libsodium23 \
+      libyaml-0-2 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app/backend
+
+COPY --from=gem-build /app/backend/vendor ./vendor
+COPY backend/ ./
+
+# Bundler 4 treats BUNDLE_DEPLOYMENT=true as equivalent to frozen + path
+# vendor/bundle, so those don't need separate vars. Env vars (not
+# .bundle/config) keep the runtime knobs explicit and independent of any
+# state from the gem-build stage.
+ENV MISE_ENV=production \
+    RACK_ENV=production \
+    FALCON_URL=http://0.0.0.0:9292 \
+    MISE_TRUSTED_CONFIG_PATHS=/app \
+    BUNDLE_DEPLOYMENT=true \
+    BUNDLE_WITHOUT=development:test
+
+EXPOSE 9292
+
+ENTRYPOINT ["mise", "exec", "--"]
+CMD ["bundle", "exec", "falcon-host", "falcon.rb"]
+
+# ── edge ────────────────────────────────────────────────────────────────────
+# Caddy fronts the stack: serves the built SPA, reverse-proxies /api and /ws
+# to the backend container, terminates TLS via ACME in production.
+FROM caddy:2-alpine AS edge
+
+COPY containers/Caddyfile /etc/caddy/Caddyfile
+COPY --from=frontend-build /build/frontend/dist /srv/dist
+
+EXPOSE 8080
+EXPOSE 8443

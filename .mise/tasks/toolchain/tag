@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+#MISE description="Print the content hash of the toolchain inputs — used as the GHCR tag"
+
+# The toolchain image is rebuilt iff any tracked mise.lock changes — the
+# lockfile is the resolved source of truth for tool versions + checksums.
+# We don't hash mise.toml files: the only one with a [tools] section is
+# the root, and any [tools] change forces a lockfile change. CI sets
+# MISE_LOCKED=1 so a drifted lockfile fails the workflow instead of
+# silently regenerating against a stale tag.
+#
+# `git ls-files` discovers subproject lockfiles automatically — no script
+# edit needed when the monorepo grows. It also only sees tracked content,
+# so uncommitted lockfile edits don't move the tag locally; commit (or
+# stage) before running containers:up if you want the new versions baked
+# into the image.
+#
+# 12 hex chars = 48 bits of uniqueness — astronomically safe for our scale
+# and short enough to read in a `podman pull` line.
+
+set -euo pipefail
+
+git ls-files 'mise.lock' '**/mise.lock' \
+  | sort \
+  | xargs sha256sum \
+  | sha256sum \
+  | cut -c1-12

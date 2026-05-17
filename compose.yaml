@@ -1,0 +1,110 @@
+# Local-stack equivalent of the production podman/quadlet setup. Mirrors the
+# unit shape (db, migrate, geoip, web, edge) so phase 1 verification exercises
+# the same ordering, volume layout, and read-only/tmpfs constraints. Drives
+# the same `containers/Containerfile` and the same toolchain image SHA that
+# CI publishes — no fork between local and prod.
+#
+# Usage: run via `mise run containers:up`, which exports TOOLCHAIN_TAG from
+# the toolchain/tag script. TOOLCHAIN_TAG is required — compose substitution
+# fails fast (`?err`) instead of pulling a stale image.
+#
+# Secrets below (APP_SECRET, postgres user/password) are stub values for the
+# local stack only. Production values come from sops-managed env files, not
+# this file.
+
+services:
+  db:
+    image: postgres:18
+    # Local-only credentials; production uses sops-managed values.
+    environment:
+      POSTGRES_USER: tayaway
+      POSTGRES_PASSWORD: tayaway
+      POSTGRES_DB: tayaway
+    volumes:
+      # Postgres 18 expects a mount at /var/lib/postgresql (data lives in a
+      # major-version subdir below, so pg_upgrade --link can move between
+      # versions on the same filesystem).
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tayaway"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  geoip:
+    build:
+      context: .
+      dockerfile: containers/Containerfile.geoip
+    volumes:
+      - geoip-data:/data
+    # Oneshot; podman compose treats `restart: no` as run-once. The web
+    # service waits for `service_completed_successfully` below.
+    restart: "no"
+
+  migrate:
+    build:
+      context: .
+      dockerfile: containers/Containerfile
+      target: backend
+      args:
+        TOOLCHAIN_IMAGE: ghcr.io/iain/tayaway-toolchain:${TOOLCHAIN_TAG:?TOOLCHAIN_TAG must be set — run via mise run containers:up}
+    depends_on:
+      db:
+        condition: service_healthy
+    # APP_SECRET decodes to "local-dev-only-not-a-real-secret"; throwaway.
+    environment:
+      DATABASE_URL: postgres://tayaway:tayaway@db:5432/tayaway
+      APP_SECRET: bG9jYWwtZGV2LW9ubHktbm90LWEtcmVhbC1zZWNyZXQ=
+      FRONTEND_URL: http://localhost:8080
+    command: ["bundle", "exec", "rake", "config:validate", "db:migrate"]
+    restart: "no"
+
+  web:
+    build:
+      context: .
+      dockerfile: containers/Containerfile
+      target: backend
+      args:
+        TOOLCHAIN_IMAGE: ghcr.io/iain/tayaway-toolchain:${TOOLCHAIN_TAG:?TOOLCHAIN_TAG must be set — run via mise run containers:up}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      geoip:
+        condition: service_completed_successfully
+    # APP_SECRET decodes to "local-dev-only-not-a-real-secret"; throwaway.
+    environment:
+      DATABASE_URL: postgres://tayaway:tayaway@db:5432/tayaway
+      APP_SECRET: bG9jYWwtZGV2LW9ubHktbm90LWEtcmVhbC1zZWNyZXQ=
+      FRONTEND_URL: http://localhost:8080
+    # Phase 1 verification target: the rootfs is read-only and /tmp is the
+    # only writable surface. Falcon's socket dir, ERB compile cache, and any
+    # other in-process scratch land in /tmp; nothing writes outside it.
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - geoip-data:/app/backend/data:ro
+    ports:
+      - "9292:9292"
+
+  edge:
+    build:
+      context: .
+      dockerfile: containers/Containerfile
+      target: edge
+      args:
+        TOOLCHAIN_IMAGE: ghcr.io/iain/tayaway-toolchain:${TOOLCHAIN_TAG:?TOOLCHAIN_TAG must be set — run via mise run containers:up}
+    depends_on:
+      web:
+        condition: service_started
+    environment:
+      SITE_ADDRESS: ":8080"
+      BACKEND_UPSTREAM: web:9292
+    ports:
+      - "8080:8080"
+
+volumes:
+  db-data:
+  geoip-data:
