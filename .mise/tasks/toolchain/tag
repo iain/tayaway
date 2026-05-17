@@ -1,21 +1,22 @@
 #!/usr/bin/env bash
 #MISE description="Print the content hash of the toolchain inputs — used as the GHCR tag"
 
-# The toolchain image is rebuilt iff any tracked mise.toml or mise.lock
-# changes. `git ls-files` is the source of truth (rather than a hard-coded
-# list) so a new subproject's mise.toml gets picked up automatically without
-# editing this script.
+# The toolchain image is rebuilt iff any tracked mise.lock changes — the
+# lockfile is the resolved source of truth for tool versions + checksums.
+# We don't hash mise.toml files: the only one with a [tools] section is
+# the root, and any [tools] change forces a lockfile change. CI sets
+# MISE_LOCKED=1 so a drifted lockfile fails the workflow instead of
+# silently regenerating against a stale tag.
+#
+# `git ls-files` discovers subproject lockfiles automatically — no script
+# edit needed when the monorepo grows.
 #
 # 12 hex chars = 48 bits of uniqueness — astronomically safe for our scale
 # and short enough to read in a `podman pull` line.
 
 set -euo pipefail
 
-git ls-files \
-  '.mise.toml' \
-  '**/mise.toml' \
-  'mise.lock' \
-  '**/mise.lock' \
+git ls-files 'mise.lock' '**/mise.lock' \
   | sort \
   | xargs sha256sum \
   | sha256sum \

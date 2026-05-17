@@ -16,16 +16,12 @@ on:
   push:
     branches: [main]
     paths:
-      - .mise.toml
-      - "**/mise.toml"
       - mise.lock
       - "**/mise.lock"
       - .mise/tasks/toolchain/**
       - .github/workflows/toolchain.yml
   pull_request:
     paths:
-      - .mise.toml
-      - "**/mise.toml"
       - mise.lock
       - "**/mise.lock"
       - .mise/tasks/toolchain/**
@@ -55,7 +51,13 @@ jobs:
         id: tag
         run: echo "tag=$(./.mise/tasks/toolchain/tag)" >> "$GITHUB_OUTPUT"
 
+      # MISE_LOCKED makes `mise install` fail if the lockfile doesn't
+      # already cover the resolved versions for this platform — so an
+      # out-of-date mise.lock can't silently regenerate on the runner and
+      # publish under a tag that no longer matches what's committed.
       - uses: jdx/mise-action@v4
+        env:
+          MISE_LOCKED: "1"
         with:
           install: true
           cache: true
