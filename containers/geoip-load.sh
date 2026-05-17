@@ -25,11 +25,15 @@ echo "[geoip-load] downloading ${URL}"
 curl --fail --silent --show-error --location --retry 3 --retry-delay 5 \
   "$URL" | gunzip -c > "$TMP"
 
-# Sanity-check: MaxMind DB files end with a metadata block prefixed by the
-# fixed marker "\xab\xcd\xefMaxMind.com". A truncated or HTML-error-page
-# download will not contain this.
-if ! tail -c 4096 "$TMP" | grep -aq 'MaxMind.com'; then
-  echo "[geoip-load] downloaded file missing MaxMind metadata marker — refusing to install" >&2
+# Sanity-check the size. A real DB-IP city-lite mmdb is ~120 MB after
+# decompression; an HTML error page or a truncated download is orders of
+# magnitude smaller. 10 MB is a comfortable lower bound that still catches
+# bad responses without coupling to the exact size of a given month's
+# release.
+MIN_BYTES=$((10 * 1024 * 1024))
+SIZE=$(stat -c '%s' "$TMP")
+if [ "$SIZE" -lt "$MIN_BYTES" ]; then
+  echo "[geoip-load] downloaded file is only ${SIZE} bytes — refusing to install" >&2
   rm -f "$TMP"
   exit 1
 fi
