@@ -19,7 +19,10 @@ services:
       POSTGRES_PASSWORD: tayaway
       POSTGRES_DB: tayaway
     volumes:
-      - db-data:/var/lib/postgresql/data
+      # Postgres 18 expects a mount at /var/lib/postgresql (data lives in a
+      # major-version subdir below, so pg_upgrade --link can move between
+      # versions on the same filesystem).
+      - db-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U tayaway"]
       interval: 5s
