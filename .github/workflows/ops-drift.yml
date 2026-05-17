@@ -82,22 +82,32 @@ jobs:
           echo "exitcode=$code" >> "$GITHUB_OUTPUT"
           exit 0
 
-      - name: Comment plan on PR
+      # Truncate to ~50k chars so we stay well under GitHub's 65536-char
+      # comment ceiling. Sticky-PR-comment then upserts a single comment
+      # keyed by the `header` field, so iterating on a PR doesn't pile up
+      # stale plan dumps. Input is plan.txt (written by `tofu plan`); no
+      # PR-author-controlled text ever reaches a shell here.
+      - name: Prepare plan body
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v8
+        run: |
+          {
+            echo '### `tofu plan` (ops/)'
+            echo
+            echo '```'
+            head -c 50000 plan.txt
+            if [ "$(wc -c < plan.txt)" -gt 50000 ]; then
+              echo
+              echo '…(truncated)'
+            fi
+            echo '```'
+          } > plan-comment.md
+
+      - name: Upsert plan comment
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
         with:
-          script: |
-            const fs = require('fs');
-            const plan = fs.readFileSync('ops/plan.txt', 'utf8');
-            const truncated = plan.length > 50000
-              ? plan.slice(0, 50000) + '\n…(truncated)'
-              : plan;
-            const body = '### `tofu plan` (ops/)\n\n```\n' + truncated + '\n```';
-            await github.rest.issues.createComment({
-              ...context.repo,
-              issue_number: context.issue.number,
-              body,
-            });
+          header: ops-drift-plan
+          path: ops/plan-comment.md
 
       - name: Fail on drift
         env:

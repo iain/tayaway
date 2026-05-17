@@ -24,6 +24,13 @@ users:
     shell: /bin/bash
     groups: [systemd-journal]
 
+# bootcmd runs before write_files, so creating /etc/tayaway here means
+# the next section's write_files for /etc/tayaway/age.recipient lands in
+# a directory with the perms/ownership we actually want — rather than
+# the 0755 root:root cloud-init auto-creates if the parent is missing.
+bootcmd:
+  - install -d -m 0755 -o root -g root /etc/tayaway
+
 # Cap journald growth. Without this, weeks of falcon + caddy access logs
 # eat the whole boot disk on a busy day. Apt's unattended-upgrades file
 # uses cloud-init's own template syntax — `$${distro_id}` survives
@@ -107,24 +114,20 @@ packages:
   - ca-certificates
   - gnupg
 
-# bootcmd runs before write_files; runcmd runs after. Each fires exactly
-# once across cloud-init's lifetime (per-instance), which is what we want
-# for this bootstrap.
+# runcmd fires once across cloud-init's lifetime (per-instance), which is
+# what we want for this bootstrap. provision.sh waits for cloud-init's own
+# `status --wait` to settle across the reboot below, so no sentinel file
+# is needed here.
 runcmd:
   # The tayaway user's authorized_keys is empty out of the gate; mirror
   # OVH's injected key from root so `ssh tayaway@host` works immediately.
   - install -d -m 0700 -o tayaway -g tayaway /home/tayaway/.ssh
   - install -m 0600 -o tayaway -g tayaway /root/.ssh/authorized_keys /home/tayaway/.ssh/authorized_keys
   - install -d -m 0755 /etc/containers/systemd
-  - install -d -m 0700 -o tayaway -g tayaway /etc/tayaway
-  - chown root:root /etc/tayaway/age.recipient
   # Pick up the journald config we just wrote.
   - systemctl restart systemd-journald
   # Apply the nftables baseline and survive reboots.
   - systemctl enable --now nftables
-  # Sentinel — provision.sh greps for this before doing anything, so it
-  # never races against a half-bootstrapped VM.
-  - touch /etc/tayaway/cloud-init.done
 
 # Reboot at the end of cloud-init to pick up the kernel from
 # package_upgrade (often a fresh image is one or two security releases

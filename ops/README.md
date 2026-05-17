@@ -40,6 +40,10 @@ tofu apply -var "service_name=<project-id>"
 
 # 2. Capture the credentials it printed and use them for the main
 #    config's S3 backend. Both vars go into your shell, not into git.
+#    Note: if you overrode `bucket_name` or `region_name` in step 1, also
+#    update `bucket` / `region` / `endpoints.s3` in ops/providers.tf —
+#    Terraform backends can't read variables, so those names are
+#    hardcoded.
 export AWS_ACCESS_KEY_ID=$(tofu output -raw state_access_key_id)
 export AWS_SECRET_ACCESS_KEY=$(tofu output -raw state_secret_access_key)
 

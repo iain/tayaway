@@ -10,10 +10,10 @@
 #   mise run vm:provision tayaway@new.tayaway.nl # explicit
 #
 # Required on the local end: ssh access to the target as a sudoer.
-# Required on the remote end: cloud-init has finished. The first thing
-# this script does is grep for /etc/tayaway/cloud-init.done — if it's
-# missing, we bail with a clear message instead of pushing config onto a
-# half-built VM.
+# Required on the remote end: cloud-init has finished AND the first-boot
+# reboot it schedules via power_state has completed. The first thing this
+# script does is poll `cloud-init status --wait` across that reboot — see
+# the "Wait for cloud-init" step below.
 
 set -euo pipefail
 
@@ -24,7 +24,6 @@ if [ $# -lt 1 ]; then
 fi
 
 TARGET="$1"
-shift || true
 
 # All paths are expressed relative to this script. Lets you invoke it
 # from anywhere (mise tasks, CI, a fresh checkout) without cd'ing first.
@@ -45,24 +44,34 @@ step() {
 }
 
 # ── 1. Wait for cloud-init ──────────────────────────────────────────────────
-# If the VM was created in the same minute as this invocation, cloud-init
-# may still be running. The reboot at the end of cloud-init can drop the
-# ssh session, so retry the sentinel check a handful of times before
-# giving up.
+# cloud-init.yaml schedules a reboot via `power_state` at the end of
+# first-boot to pick up the upgraded kernel. We need to be on the *second*
+# boot before pushing config, otherwise the reboot can cut a sync mid-flight.
+#
+# `cloud-init status --wait` blocks until cloud-init reports `done` and
+# returns 0/1/2 for ok/crashed/recoverable-errors. On first boot it
+# returns 0 right before the reboot fires; on second boot it returns 0
+# again, this time stably. We poll twice with a sleep in between — if the
+# second poll still works over the same TCP path, no reboot is in flight,
+# so we are post-reboot.
 
-step "Waiting for cloud-init to finish on $TARGET"
-for attempt in 1 2 3 4 5 6 7 8 9 10; do
-  if ssh_run 'test -f /etc/tayaway/cloud-init.done' 2>/dev/null; then
-    echo "  cloud-init done"
-    break
+step "Waiting for cloud-init to finish on $TARGET (across the first-boot reboot)"
+deadline=$(($(date +%s) + 600))
+while :; do
+  if ssh_run 'sudo cloud-init status --wait >/dev/null' 2>/dev/null; then
+    sleep 15
+    if ssh_run 'sudo cloud-init status' 2>/dev/null | grep -qE '^status: (done|disabled)$'; then
+      echo "  cloud-init done"
+      break
+    fi
   fi
-  echo "  attempt $attempt/10 — not yet, sleeping 15s"
-  sleep 15
-  if [ "$attempt" = "10" ]; then
-    echo "ERROR: cloud-init never produced /etc/tayaway/cloud-init.done." >&2
-    echo "  ssh in manually and check 'cloud-init status' + journalctl -u cloud-final." >&2
+  if [ "$(date +%s)" -ge "$deadline" ]; then
+    echo "ERROR: cloud-init did not reach a stable done state within 10 minutes." >&2
+    echo "  ssh in manually and check 'sudo cloud-init status --long' + journalctl -u cloud-final." >&2
     exit 1
   fi
+  echo "  not yet — reboot likely still in flight, retrying in 10s"
+  sleep 10
 done
 
 # ── 2. Confirm the age key is in place ──────────────────────────────────────
@@ -82,13 +91,14 @@ fi
 # Phase 3 lands the directory; Phase 4 fills it in. Tolerate an empty
 # quadlet dir so this script doesn't fail on the recipe alone — the only
 # thing it should never do is silently skip files when they DO exist.
+#
+# The repo is the source of truth: `--delete-after` will remove any unit
+# in /etc/containers/systemd/ that isn't in the repo. Don't hand-drop
+# experimental units on the VM and expect them to survive a provision.
 
 step "Syncing quadlet units to /etc/containers/systemd/"
 if compgen -G "$QUADLET_DIR"/* >/dev/null; then
-  # --delete-after keeps stale .container files from haunting the box
-  # after they're removed from the repo. Sync via the tayaway user, then
-  # `sudo install`-style rsync with the root user is overkill — system
-  # quadlets must be root-owned, so we stage to /tmp and move.
+  # Sync via the tayaway user, then `sudo rsync` to root-owned destination.
   rsync -az --delete-after \
     -e 'ssh -o StrictHostKeyChecking=accept-new' \
     "$QUADLET_DIR/" "$TARGET:/tmp/tayaway-quadlet/"

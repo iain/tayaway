@@ -37,6 +37,16 @@ resource "ovh_cloud_project_instance" "web" {
   user_data = templatefile("${path.module}/cloud-init.yaml", {
     age_recipient = var.age_recipient
   })
+
+  # Fail loudly during apply if the provider returns no IPv4 — better
+  # than the bare `[0]` below tripping over an empty list with an
+  # opaque "index out of range" message.
+  lifecycle {
+    postcondition {
+      condition     = length([for a in self.addresses : a if tostring(a.version) == "4"]) > 0
+      error_message = "OVH instance returned no IPv4 address. Check the OVH manager and `tofu state show ovh_cloud_project_instance.web`."
+    }
+  }
 }
 
 # The instance returns several addresses (IPv4 + IPv6 public, and any
