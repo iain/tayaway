@@ -59,6 +59,13 @@ resource "ovh_cloud_project_user_s3_policy" "tfstate" {
   service_name = var.service_name
   user_id      = ovh_cloud_project_user.tfstate.id
 
+  # Versioning is on at the bucket level for recovery from a corrupt
+  # state push, but OVH's IAM grammar doesn't yet accept the
+  # per-version actions (`s3:GetObjectVersion`, `s3:DeleteObjectVersion`)
+  # — recovery goes through the OVH manager / AWS CLI as a human-driven
+  # step, not via this credential. The credential needs `ListBucketVersions`
+  # so a human running `aws s3api list-object-versions` from the laptop can
+  # find the version id to restore.
   policy = jsonencode({
     Statement = [{
       Sid    = "TfStateBucketRW"
@@ -70,8 +77,6 @@ resource "ovh_cloud_project_user_s3_policy" "tfstate" {
         "s3:ListBucket",
         "s3:GetBucketLocation",
         "s3:ListBucketVersions",
-        "s3:GetObjectVersion",
-        "s3:DeleteObjectVersion",
       ]
       Resource = [
         "arn:aws:s3:::${var.bucket_name}",
