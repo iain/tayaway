@@ -86,6 +86,7 @@ apt-get install -y --no-install-recommends \
   skopeo \
   nftables \
   unattended-upgrades \
+  fail2ban \
   rsync \
   curl \
   ca-certificates \
@@ -163,7 +164,9 @@ table inet filter {
     iifname "lo" accept
     ip protocol icmp accept
     ip6 nexthdr icmpv6 accept
-    tcp dport 22 accept
+    # ssh on 50022 — matches the legacy prod VPS so cutover-time ssh
+    # config doesn't need a per-host mental switch.
+    tcp dport 50022 accept
     tcp dport { 80, 443 } accept
   }
 
@@ -201,7 +204,17 @@ sshd_set PasswordAuthentication no
 sshd_set PermitRootLogin no
 sshd_set ChallengeResponseAuthentication no
 sshd_set KbdInteractiveAuthentication no
+# Match the legacy prod VPS — port 50022 reduces drive-by-scanner noise
+# in journald and means the operator's ~/.ssh/config can use a single
+# Port line for both old and new hosts during cutover.
+sshd_set Port 50022
+# Belt-and-braces: even if a future apt-installed service creates a
+# user, only tayaway can ever ssh in. Cheap insurance against
+# misconfiguration far down the line.
+sshd_set AllowUsers tayaway
 passwd -l root >/dev/null
+# sshd reload doesn't drop active sessions — our connection (on port
+# 22) survives. New connections come in on 50022 only.
 systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || true
 
 touch /etc/tayaway/bootstrap.done

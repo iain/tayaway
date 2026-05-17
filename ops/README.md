@@ -89,19 +89,42 @@ mise x opentofu -- tofu apply \
 
 First run connects as whatever user the VPS image exposes — `ubuntu` on
 the Ubuntu cloud image (most common), `debian` on Debian, `root` on
-the generic VPS image. `provision.sh` creates the `tayaway` user from
-that user's `authorized_keys`, installs packages, writes the OS
-configs, hardens sshd (disables password auth, locks root login),
-and reboots once if a kernel update came in.
+the generic VPS image, on port **22**. `provision.sh` creates the
+`tayaway` user from that user's `authorized_keys`, installs packages
+(including `fail2ban`), writes the OS configs, hardens sshd (disables
+password auth, locks root login, moves the ssh port to **50022**,
+restricts logins to `tayaway`), updates nftables to match, and reboots
+once if a kernel update came in.
 
 ```fish
 mise run vm:provision ubuntu@<vps-ip-or-hostname>
 ```
 
-After this run, **only `tayaway@` will be able to ssh in** — root
-login is locked and password auth is off across the board.
+After this run:
 
-### 5. Hand-drop the age private key
+- **Only `tayaway@` over port 50022** can ssh in. Root login is
+  locked; password auth is off; nftables blocks 22 from outside.
+- Your active ssh session survives the change (sshd reload + nftables
+  reload don't kill established connections), but any *new* connection
+  must use the new port + user.
+
+### 5. Wire the new host into `~/.ssh/config`
+
+So every subsequent `mise run vm:provision` (and any one-off `ssh`)
+uses the right port without per-command flags. Append to `~/.ssh/config`:
+
+```
+Host new.tayaway.nl
+  Port 50022
+  User tayaway
+  IdentityFile ~/.ssh/id_ed25519
+```
+
+Then `ssh new.tayaway.nl` works directly. If you need to reach the
+box by IP rather than hostname during commissioning, add a second
+`Host 51.178.47.84` block with the same body.
+
+### 6. Hand-drop the age private key
 
 Only manual secret-handling step in the whole recipe.
 
@@ -110,7 +133,7 @@ scp ~/.config/sops/age/keys.txt tayaway@new.tayaway.nl:/tmp/age.key
 ssh tayaway@new.tayaway.nl 'sudo install -m 0400 -o root -g root /tmp/age.key /etc/tayaway/age.key && rm /tmp/age.key'
 ```
 
-### 6. Re-run provision as tayaway
+### 7. Re-run provision as tayaway
 
 Verifies the age key is in place, syncs `quadlet/` (empty during Phase
 3), reloads systemd. Idempotent — re-run any time you change anything
@@ -120,9 +143,9 @@ under `ops/`.
 mise run vm:provision tayaway@new.tayaway.nl
 ```
 
-### 7. (Phase 4 onward)
+### 8. (Phase 4 onward)
 
-Once `quadlet/` has units in it, step 6 brings the stack alive. Cutover
+Once `quadlet/` has units in it, step 7 brings the stack alive. Cutover
 to the apex is a separate Phase 7 PR.
 
 ## Total-loss recovery
@@ -133,9 +156,11 @@ The whole VPS is gone or unrecoverable.
 2. Order a new VPS-1 in the OVH manager (step 2 above).
 3. `tofu apply -var "vps_ipv4=<new-ip>" …` to repoint `new.tayaway.nl`
    and recreate the WAL-G credentials.
-4. scp the age key (step 5).
-5. `mise run vm:provision` twice — first as the image's default user
-   (`ubuntu@`/`debian@`/`root@`), then as `tayaway@` (steps 4 + 6).
+4. Append the new host to `~/.ssh/config` (step 5).
+5. `mise run vm:provision` as the image's default user on port 22
+   (step 4).
+6. scp the age key (step 6).
+7. `mise run vm:provision tayaway@new.tayaway.nl` (step 7).
 6. WAL-G restore (see `doc/operations/walg.md` — landing in Phase 5).
 
 ~20 min, four or five commands of human work plus the OVH-manager
