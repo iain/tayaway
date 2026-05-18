@@ -20,6 +20,13 @@
 # only secrets and repo vars; no PR-author-controlled text ever reaches
 # a shell or a script step (the PR comment body is read from a file
 # written by `tofu plan`, not from `github.event.*`).
+#
+# Missing credentials are handled gracefully: a single "secrets check"
+# step at the top sets a `skip` output if anything isn't configured, and
+# the rest of the job is gated on it. That way a fresh PR (or a
+# fork-PR with no secret access) gets an annotation rather than a red
+# X — the workflow still runs but reports "not configured" instead of
+# pretending drift detection is happening when it isn't.
 
 name: ops drift
 
@@ -60,18 +67,44 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # Without this, missing secrets surface deep inside `tofu init` as
+      # "No valid credential sources found", which is opaque and red-Xs
+      # any PR opened before someone's done the GitHub repo setup.
+      - id: secrets
+        name: Check required GitHub secrets and vars
+        run: |
+          missing=()
+          [ -z "$OVH_APPLICATION_KEY" ]    && missing+=("secret OVH_RO_APPLICATION_KEY")
+          [ -z "$OVH_APPLICATION_SECRET" ] && missing+=("secret OVH_RO_APPLICATION_SECRET")
+          [ -z "$OVH_CONSUMER_KEY" ]       && missing+=("secret OVH_RO_CONSUMER_KEY")
+          [ -z "$AWS_ACCESS_KEY_ID" ]      && missing+=("secret OPS_STATE_S3_ACCESS_KEY_ID")
+          [ -z "$AWS_SECRET_ACCESS_KEY" ]  && missing+=("secret OPS_STATE_S3_SECRET_ACCESS_KEY")
+          [ -z "$TF_VAR_service_name" ]    && missing+=("variable OVH_PROJECT_ID")
+          [ -z "$TF_VAR_vps_ipv4" ]        && missing+=("variable OPS_VPS_IPV4")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::warning::Drift detection skipped — required GitHub repo configuration not set:"
+            for m in "${missing[@]}"; do
+              echo "::warning::  - $m"
+            done
+            echo "::warning::See ops/README.md 'Drift detection' for the full setup."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: opentofu/setup-opentofu@v1
+        if: steps.secrets.outputs.skip != 'true'
         with:
           tofu_version: 1.8.0
           tofu_wrapper: false
 
       - name: tofu init
+        if: steps.secrets.outputs.skip != 'true'
         run: tofu init -input=false -lockfile=readonly
 
       # -detailed-exitcode: 0 = no changes, 1 = error, 2 = drift. Capture
       # the code first so the PR-comment step can still run, then re-fail.
       - name: tofu plan
         id: plan
+        if: steps.secrets.outputs.skip != 'true'
         run: |
           set +e
           tofu plan -input=false -detailed-exitcode -no-color -out=tfplan | tee plan.txt
@@ -85,7 +118,7 @@ jobs:
       # stale plan dumps. Input is plan.txt (written by `tofu plan`); no
       # PR-author-controlled text ever reaches a shell here.
       - name: Prepare plan body
-        if: github.event_name == 'pull_request'
+        if: steps.secrets.outputs.skip != 'true' && github.event_name == 'pull_request'
         run: |
           {
             echo '### `tofu plan` (ops/)'
@@ -100,13 +133,14 @@ jobs:
           } > plan-comment.md
 
       - name: Upsert plan comment
-        if: github.event_name == 'pull_request'
+        if: steps.secrets.outputs.skip != 'true' && github.event_name == 'pull_request'
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: ops-drift-plan
           path: ops/plan-comment.md
 
       - name: Fail on drift
+        if: steps.secrets.outputs.skip != 'true'
         env:
           EXIT_CODE: ${{ steps.plan.outputs.exitcode }}
         run: |
