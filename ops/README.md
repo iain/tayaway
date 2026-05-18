@@ -129,6 +129,12 @@ The dropin sorts alphabetically before cloud-init's
 across the restart; only the master sshd is killed, per-connection
 children survive.
 
+> **Keep an ssh session open in a separate terminal** through this
+> step. The hardening is well-tested but the failure mode if something
+> goes wrong (sshd doesn't bind 50022, nftables already blocks 22) is
+> hard total-lockout. Your live session is the cheapest recovery path
+> — OVH's rescue mode is the fallback.
+
 ```fish
 mise run vm:provision tayaway@<vps-ip>
 ```

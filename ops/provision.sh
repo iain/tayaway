@@ -365,18 +365,23 @@ systemctl reload nftables
 
 # Write all sshd hardening to a single dropin that loads BEFORE
 # cloud-init's /etc/ssh/sshd_config.d/50-cloud-init.conf. The Include
-# directive in the main sshd_config reads dropins in alphabetical
-# order, and sshd's rule for most directives (PasswordAuthentication,
+# directive in the main sshd_config reads dropins in lexical order
+# (per sshd_config(5): "expanded and processed in lexical order"), and
+# sshd's rule for most directives (PasswordAuthentication,
 # PermitRootLogin, Port, KbdInteractiveAuthentication) is "first
-# occurrence wins". OVH's image ships 50-cloud-init.conf with
-# `PasswordAuthentication yes`; if we appended to the main file
-# instead, our `no` would lose to cloud-init's `yes` because cloud-init
-# is processed by the Include before sshd reaches the bottom of the
-# main file. 00- sorts before 50-, so this file wins.
+# occurrence wins" (per sshd_config(5): "Unless noted otherwise, for
+# each keyword, the first obtained value will be used"). OVH's image
+# ships 50-cloud-init.conf with `PasswordAuthentication yes`; if we
+# appended to the main file instead, our `no` would lose to
+# cloud-init's `yes`. 00- sorts before 50-, so this file wins.
 #
 # AllowUsers is a list directive (multiple entries accumulate), but
 # keeping it in the same dropin keeps the whole hardening posture in
 # one greppable place.
+#
+# Ubuntu 24.04 ships /etc/ssh/sshd_config.d/, but mkdir -p makes the
+# script robust to custom images that don't.
+mkdir -p /etc/ssh/sshd_config.d
 cat > /etc/ssh/sshd_config.d/00-tayaway-hardening.conf <<'SSHDCONF'
 Port 50022
 PasswordAuthentication no
@@ -430,18 +435,27 @@ else
 fi
 
 # Verify sshd actually bound 50022 before declaring success. Without
-# this, a future operator could be locked out of a half-hardened VPS
-# the same way I locked iain out the first time around: nftables on
-# 50022, nothing listening, sentinel set, script exits 0.
-for _ in 1 2 3 4 5; do
-  if ss -tlnp | grep -qE '[: ]50022[[:space:]]'; then
+# this, a half-hardened VPS — nftables on 50022, nothing listening,
+# sentinel set, script exits 0 — locks out the next ssh attempt with
+# no signal that anything went wrong. ss's native filter is more
+# precise than a regex over its tabular output.
+#
+# Poll for up to 10s. Restart-to-listen on modern systemd is typically
+# sub-second, but `Type=notify` ssh.service can occasionally lag if
+# the host is under load (first boot, apt activity, etc.).
+listening=
+for _ in $(seq 1 10); do
+  if ss -tln 'sport = :50022' | grep -q LISTEN; then
+    listening=1
     break
   fi
   sleep 1
 done
-if ! ss -tlnp | grep -qE '[: ]50022[[:space:]]'; then
-  echo "ERROR: sshd did not bind 50022 after restart — refusing to set sshd-hardened sentinel." >&2
-  echo "  Recover via OVH manager console or a live pre-hardening ssh session." >&2
+if [ -z "$listening" ]; then
+  echo "ERROR: sshd did not bind 50022 within 10s of restart." >&2
+  echo "  Sentinel NOT touched — re-run the script after fixing the issue." >&2
+  echo "  Debug: systemctl status ssh.service ssh.socket; journalctl -u ssh.service -n 50" >&2
+  echo "  Recover via the still-open ssh session, OVH manager console, or rescue mode." >&2
   exit 1
 fi
 
