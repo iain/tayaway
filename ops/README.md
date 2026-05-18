@@ -116,11 +116,11 @@ ssh tayaway@<vps-ip> 'sudo install -m 0400 -o root -g root /tmp/age.key /etc/tay
 
 This run does the deploy-side work (age key check, quadlet sync,
 daemon-reload, image pre-pull) and then hardens sshd as its **last**
-step: port → **50022**, `AllowUsers tayaway`, password auth off, root
-account locked, ssh.socket → ssh.service, nftables flips 22 → 50022.
-Your live session survives (sshd reload + nftables reload preserve
-established connections), but any new connection has to use the new
-port + user.
+step: port → **50022**, `AllowUsers tayaway ubuntu` (ubuntu kept as
+emergency fallback), password auth off, root account locked,
+ssh.socket → ssh.service, nftables flips 22 → 50022. Your live session
+survives (sshd reload + nftables reload preserve established
+connections), but any new connection has to use the new port.
 
 ```fish
 mise run vm:provision tayaway@<vps-ip>

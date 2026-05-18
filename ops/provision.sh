@@ -374,7 +374,11 @@ sshd_set PermitRootLogin no
 sshd_set ChallengeResponseAuthentication no
 sshd_set KbdInteractiveAuthentication no
 sshd_set Port 50022
-sshd_set AllowUsers tayaway
+# tayaway is the deploy user; ubuntu is kept as a fallback so the
+# operator has a way back in if tayaway's key ever goes sideways.
+# ubuntu's authorized_keys is untouched by this script — only the
+# mirror-to-tayaway step reads it — so the operator's key still works.
+sshd_set AllowUsers "tayaway ubuntu"
 
 # Lock the root account password — combined with PermitRootLogin no
 # above, root cannot authenticate at all.
@@ -402,16 +406,19 @@ EOF
   cat <<NOTICE
 
 ──────────────────────────────────────────────────────────────────────
-  SSH is now on port 50022 and only the 'tayaway' user can connect.
-  Update ~/.ssh/config so subsequent runs find the new port:
+  SSH is now on port 50022. AllowUsers permits 'tayaway' and 'ubuntu'
+  (ubuntu kept as fallback). Update ~/.ssh/config so subsequent runs
+  find the new port:
 
     Host new.tayaway.nl
       Port 50022
       User tayaway
       IdentityFile ~/.ssh/id_ed25519
 
+  For the ubuntu fallback: ssh ubuntu@<host> -p 50022 still works.
+
   Your CURRENT ssh session is still alive (sshd reload preserved it),
-  but ANY NEW ssh attempt without the Port 50022 line will fail.
+  but ANY NEW ssh attempt without the new port will fail.
 ──────────────────────────────────────────────────────────────────────
 NOTICE
 fi
