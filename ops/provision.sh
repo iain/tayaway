@@ -10,13 +10,17 @@
 # Two sentinel files gate the once-only work:
 #   /etc/tayaway/bootstrap.done       → apt + user + OS configs + nftables
 #                                       on port 22. Set during section 1.
-#   /etc/tayaway/sshd-hardened.done   → port flipped to 50022, AllowUsers
-#                                       tayaway, ssh.socket → ssh.service,
-#                                       nftables rewritten. Set during
-#                                       section 7. Only runs on tayaway@
-#                                       so the first ubuntu@:22 run stays
-#                                       reachable for the kernel-reboot
-#                                       reconnect.
+#   /etc/tayaway/sshd-hardened.done   → /etc/ssh/sshd_config.d/00-tayaway-
+#                                       hardening.conf written (Port 50022,
+#                                       AllowUsers tayaway ubuntu, password
+#                                       auth off, kbd-interactive off),
+#                                       nftables rewritten to 50022,
+#                                       ssh.service restarted, root account
+#                                       locked. Set during section 7 ONLY
+#                                       after verifying sshd actually bound
+#                                       50022, so a future operator can't
+#                                       be locked out of a half-hardened
+#                                       VPS. Runs only on tayaway@.
 #
 # Per-run work (sections 2–6) happens every invocation: kernel-reboot
 # check, age-key check (tayaway@ only), quadlet sync, daemon-reload,
@@ -324,7 +328,7 @@ elif ssh_run 'sudo test -f /etc/tayaway/sshd-hardened.done' 2>/dev/null; then
   echo
   echo "→ ssh already hardened (sshd-hardened.done present) — skipping"
 else
-  step "Hardening sshd (port 50022, AllowUsers tayaway, password auth off, root locked)"
+  step "Hardening sshd (port 50022, AllowUsers tayaway ubuntu, password auth off, root locked)"
   ssh_sudo_script <<'EOF'
 set -euo pipefail
 
@@ -359,48 +363,90 @@ table inet filter {
 NFT
 systemctl reload nftables
 
-# sshd_config tweaks. Idempotent sed-with-fallback: rewrite the line if
-# present in any form, otherwise append.
-sshd_set() {
-  local key="$1" value="$2"
-  if grep -qE "^[[:space:]]*${key}[[:space:]]+" /etc/ssh/sshd_config; then
-    sed -i "s/^[[:space:]]*${key}[[:space:]].*/${key} ${value}/" /etc/ssh/sshd_config
-  else
-    printf '%s %s\n' "$key" "$value" >> /etc/ssh/sshd_config
-  fi
-}
-sshd_set PasswordAuthentication no
-sshd_set PermitRootLogin no
-sshd_set ChallengeResponseAuthentication no
-sshd_set KbdInteractiveAuthentication no
-sshd_set Port 50022
+# Write all sshd hardening to a single dropin that loads BEFORE
+# cloud-init's /etc/ssh/sshd_config.d/50-cloud-init.conf. The Include
+# directive in the main sshd_config reads dropins in alphabetical
+# order, and sshd's rule for most directives (PasswordAuthentication,
+# PermitRootLogin, Port, KbdInteractiveAuthentication) is "first
+# occurrence wins". OVH's image ships 50-cloud-init.conf with
+# `PasswordAuthentication yes`; if we appended to the main file
+# instead, our `no` would lose to cloud-init's `yes` because cloud-init
+# is processed by the Include before sshd reaches the bottom of the
+# main file. 00- sorts before 50-, so this file wins.
+#
+# AllowUsers is a list directive (multiple entries accumulate), but
+# keeping it in the same dropin keeps the whole hardening posture in
+# one greppable place.
+cat > /etc/ssh/sshd_config.d/00-tayaway-hardening.conf <<'SSHDCONF'
+Port 50022
+PasswordAuthentication no
+PermitRootLogin no
+KbdInteractiveAuthentication no
 # tayaway is the deploy user; ubuntu is kept as a fallback so the
 # operator has a way back in if tayaway's key ever goes sideways.
 # ubuntu's authorized_keys is untouched by this script — only the
-# mirror-to-tayaway step reads it — so the operator's key still works.
-sshd_set AllowUsers "tayaway ubuntu"
+# mirror-to-tayaway step reads it once — so the operator's key still
+# works for the fallback login.
+AllowUsers tayaway ubuntu
+SSHDCONF
+
+# Validate the config before restarting — `sshd -t` is exactly what
+# ssh.service's ExecStartPre runs, so a syntax error here is the
+# same syntax error that would prevent restart. Bail loudly with the
+# old sshd still running rather than restarting into a broken state.
+sshd -t
 
 # Lock the root account password — combined with PermitRootLogin no
 # above, root cannot authenticate at all.
 passwd -l root >/dev/null
 
-# Ubuntu 22.04+ ships ssh.socket enabled; the Port in sshd_config is
-# silently ignored under socket activation. Switch to direct
-# ssh.service so Port 50022 takes effect. The active ssh session is in
-# sshd@<id>.service (a template instance spawned by the socket), which
-# is independent of both ssh.socket and ssh.service — disabling the
-# socket and starting the service doesn't kill it.
+# Apply by full restart, not reload. SIGHUP-based reload was observed
+# to not pick up the new port cleanly on OVH's Ubuntu 24.04 image
+# (sshd re-execed but kept binding the old port — the running sshd's
+# `Server listening on port 22` log line contradicted what `sshd -T`
+# said the effective config was). Full restart works. KillMode=process
+# in ssh.service means only the master sshd is killed; per-connection
+# child sshds (including our own ssh session) survive untouched.
+#
+# Socket-activation case: ssh.socket is the listener and the Port
+# directive in sshd_config is ignored entirely. Override the socket's
+# ListenStream to match.
 if systemctl is-active --quiet ssh.socket 2>/dev/null; then
-  systemctl disable --now ssh.socket
-  systemctl enable --now ssh.service
+  mkdir -p /etc/systemd/system/ssh.socket.d
+  cat > /etc/systemd/system/ssh.socket.d/listen.conf <<'SOCKCONF'
+[Socket]
+ListenStream=
+ListenStream=50022
+SOCKCONF
+  systemctl daemon-reload
+  systemctl restart ssh.socket
+elif systemctl is-active --quiet ssh.service 2>/dev/null; then
+  systemctl restart ssh.service
+elif systemctl is-active --quiet sshd.service 2>/dev/null; then
+  systemctl restart sshd.service
 else
-  # No socket activation — direct service. Reload keeps connections;
-  # `ssh` is the Ubuntu unit name, `sshd` is Debian's older convention.
-  systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || true
+  echo "ERROR: neither ssh.socket nor ssh.service nor sshd.service is active — can't apply Port 50022." >&2
+  exit 1
+fi
+
+# Verify sshd actually bound 50022 before declaring success. Without
+# this, a future operator could be locked out of a half-hardened VPS
+# the same way I locked iain out the first time around: nftables on
+# 50022, nothing listening, sentinel set, script exits 0.
+for _ in 1 2 3 4 5; do
+  if ss -tlnp | grep -qE '[: ]50022[[:space:]]'; then
+    break
+  fi
+  sleep 1
+done
+if ! ss -tlnp | grep -qE '[: ]50022[[:space:]]'; then
+  echo "ERROR: sshd did not bind 50022 after restart — refusing to set sshd-hardened sentinel." >&2
+  echo "  Recover via OVH manager console or a live pre-hardening ssh session." >&2
+  exit 1
 fi
 
 touch /etc/tayaway/sshd-hardened.done
-echo "ssh hardening complete — port 50022, AllowUsers tayaway."
+echo "ssh hardening complete — port 50022, AllowUsers tayaway ubuntu."
 EOF
 
   cat <<NOTICE

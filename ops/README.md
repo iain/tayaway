@@ -116,11 +116,18 @@ ssh tayaway@<vps-ip> 'sudo install -m 0400 -o root -g root /tmp/age.key /etc/tay
 
 This run does the deploy-side work (age key check, quadlet sync,
 daemon-reload, image pre-pull) and then hardens sshd as its **last**
-step: port → **50022**, `AllowUsers tayaway ubuntu` (ubuntu kept as
-emergency fallback), password auth off, root account locked,
-ssh.socket → ssh.service, nftables flips 22 → 50022. Your live session
-survives (sshd reload + nftables reload preserve established
-connections), but any new connection has to use the new port.
+step: writes `/etc/ssh/sshd_config.d/00-tayaway-hardening.conf` (port
+50022, `AllowUsers tayaway ubuntu` — ubuntu kept as emergency fallback,
+password auth off, kbd-interactive off, `PermitRootLogin no`), locks
+the root account, rewrites nftables to 22 → 50022, restarts
+`ssh.service` (or `ssh.socket` when socket activation is in play), and
+**verifies sshd actually bound 50022 before touching the sentinel**.
+The dropin sorts alphabetically before cloud-init's
+`50-cloud-init.conf`, so its directives beat cloud-init's defaults
+(notably OVH's image sets `PasswordAuthentication yes` there).
+`KillMode=process` in `ssh.service` keeps your live session alive
+across the restart; only the master sshd is killed, per-connection
+children survive.
 
 ```fish
 mise run vm:provision tayaway@<vps-ip>
