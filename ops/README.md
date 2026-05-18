@@ -85,33 +85,53 @@ mise x opentofu -- tofu apply \
   -var "vps_ipv4=<from step 2>"
 ```
 
-### 4. Bootstrap the OS
+### 4. First provision — OS bootstrap
 
-First run connects as whatever user the VPS image exposes — `ubuntu` on
-the Ubuntu cloud image (most common), `debian` on Debian, `root` on
-the generic VPS image, on port **22**. `provision.sh` creates the
-`tayaway` user from that user's `authorized_keys`, installs packages
-(including `fail2ban`), writes the OS configs, hardens sshd (disables
-password auth, locks root login, moves the ssh port to **50022**,
-restricts logins to `tayaway`), updates nftables to match, and reboots
-once if a kernel update came in.
+Connect as whatever user the VPS image exposes — `ubuntu` on the
+Ubuntu cloud image (most common), `debian` on Debian, `root` on the
+generic VPS image — on the default port **22**. `provision.sh` creates
+the `tayaway` user from that user's `authorized_keys`, installs
+packages (including `fail2ban`), writes journald + nftables + apt
+configs, and reboots once if a kernel update came in. It does **not**
+touch sshd this run — port 22 stays open and the connecting user keeps
+working so the reboot reconnect lands cleanly.
 
 ```fish
-mise run vm:provision ubuntu@<vps-ip-or-hostname>
+mise run vm:provision ubuntu@<vps-ip>
 ```
 
-After this run:
+After it exits, both `ssh ubuntu@<ip>` and `ssh tayaway@<ip>` on port
+22 work.
 
-- **Only `tayaway@` over port 50022** can ssh in. Root login is
-  locked; password auth is off; nftables blocks 22 from outside.
-- Your active ssh session survives the change (sshd reload + nftables
-  reload don't kill established connections), but any *new* connection
-  must use the new port + user.
+### 5. Hand-drop the age private key
 
-### 5. Wire the new host into `~/.ssh/config`
+Only manual secret-handling step in the whole recipe.
 
-So every subsequent `mise run vm:provision` (and any one-off `ssh`)
-uses the right port without per-command flags. Append to `~/.ssh/config`:
+```fish
+scp ~/.config/sops/age/keys.txt tayaway@<vps-ip>:/tmp/age.key
+ssh tayaway@<vps-ip> 'sudo install -m 0400 -o root -g root /tmp/age.key /etc/tayaway/age.key && rm /tmp/age.key'
+```
+
+### 6. Second provision — quadlets + ssh hardening
+
+This run does the deploy-side work (age key check, quadlet sync,
+daemon-reload, image pre-pull) and then hardens sshd as its **last**
+step: port → **50022**, `AllowUsers tayaway`, password auth off, root
+account locked, ssh.socket → ssh.service, nftables flips 22 → 50022.
+Your live session survives (sshd reload + nftables reload preserve
+established connections), but any new connection has to use the new
+port + user.
+
+```fish
+mise run vm:provision tayaway@<vps-ip>
+```
+
+The script prints a banner at the end with the `~/.ssh/config` block
+to add. Do it now so future runs find the new port without flags.
+
+### 7. Wire the new host into `~/.ssh/config`
+
+Append the block the script printed:
 
 ```
 Host new.tayaway.nl
@@ -120,33 +140,16 @@ Host new.tayaway.nl
   IdentityFile ~/.ssh/id_ed25519
 ```
 
-Then `ssh new.tayaway.nl` works directly. If you need to reach the
-box by IP rather than hostname during commissioning, add a second
-`Host 51.178.47.84` block with the same body.
-
-### 6. Hand-drop the age private key
-
-Only manual secret-handling step in the whole recipe.
-
-```fish
-scp ~/.config/sops/age/keys.txt tayaway@new.tayaway.nl:/tmp/age.key
-ssh tayaway@new.tayaway.nl 'sudo install -m 0400 -o root -g root /tmp/age.key /etc/tayaway/age.key && rm /tmp/age.key'
-```
-
-### 7. Re-run provision as tayaway
-
-Verifies the age key is in place, syncs `quadlet/` (empty during Phase
-3), reloads systemd. Idempotent — re-run any time you change anything
-under `ops/`.
-
-```fish
-mise run vm:provision tayaway@new.tayaway.nl
-```
+`ssh new.tayaway.nl` should now connect on 50022 as tayaway. If you
+need to reach it by IP during commissioning, add a second
+`Host <vps-ip>` block with the same body.
 
 ### 8. (Phase 4 onward)
 
-Once `quadlet/` has units in it, step 7 brings the stack alive. Cutover
-to the apex is a separate Phase 7 PR.
+Future `mise run vm:provision tayaway@new.tayaway.nl` runs are
+idempotent — both sentinels are set, all per-run steps are no-ops or
+converge. Once `quadlet/` has units in it, this is what brings the
+stack alive. Cutover to the apex is a separate Phase 7 PR.
 
 ## Total-loss recovery
 
@@ -156,11 +159,12 @@ The whole VPS is gone or unrecoverable.
 2. Order a new VPS-1 in the OVH manager (step 2 above).
 3. `tofu apply -var "vps_ipv4=<new-ip>" …` to repoint `new.tayaway.nl`
    and recreate the WAL-G credentials.
-4. Append the new host to `~/.ssh/config` (step 5).
-5. `mise run vm:provision` as the image's default user on port 22
+4. `mise run vm:provision` as the image's default user on port 22
    (step 4).
-6. scp the age key (step 6).
-7. `mise run vm:provision tayaway@new.tayaway.nl` (step 7).
+5. scp the age key (step 5).
+6. `mise run vm:provision tayaway@<ip>` — does quadlets + ssh
+   hardening (step 6).
+7. Update `~/.ssh/config` with the printed Port 50022 block (step 7).
 6. WAL-G restore (see `doc/operations/walg.md` — landing in Phase 5).
 
 ~20 min, four or five commands of human work plus the OVH-manager

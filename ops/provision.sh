@@ -7,11 +7,27 @@
 # tweak land here. Safe to re-execute: every step is either a no-op or
 # converges.
 #
-# Order of operations (numbered sections below):
-#   1. Bootstrap once: apt packages, tayaway user, OS configs, nftables.
-#      Guarded by /etc/tayaway/bootstrap.done so it never runs twice.
-#   2. Reboot if a kernel update landed.
-#   3. Per-run: verify age key, sync quadlets, daemon-reload, pre-pull.
+# Two sentinel files gate the once-only work:
+#   /etc/tayaway/bootstrap.done       → apt + user + OS configs + nftables
+#                                       on port 22. Set during section 1.
+#   /etc/tayaway/sshd-hardened.done   → port flipped to 50022, AllowUsers
+#                                       tayaway, ssh.socket → ssh.service,
+#                                       nftables rewritten. Set during
+#                                       section 7. Only runs on tayaway@
+#                                       so the first ubuntu@:22 run stays
+#                                       reachable for the kernel-reboot
+#                                       reconnect.
+#
+# Per-run work (sections 2–6) happens every invocation: kernel-reboot
+# check, age-key check (tayaway@ only), quadlet sync, daemon-reload,
+# image pre-pull. Each is a no-op when there's nothing to do.
+#
+# Net first-time-bring-up flow for the operator:
+#   provision ubuntu@<ip>      → bootstrap, reboot if needed, exit
+#   scp age key, ssh tayaway   → drop /etc/tayaway/age.key
+#   provision tayaway@<ip>     → age check, quadlets, harden ssh, exit
+#   update ~/.ssh/config       → Port 50022 / User tayaway
+#   provision tayaway@<host>   → idempotent re-runs from here on out
 #
 # Usage:
 #   # First run, immediately after ordering the VPS. Connect as whatever
@@ -164,9 +180,10 @@ table inet filter {
     iifname "lo" accept
     ip protocol icmp accept
     ip6 nexthdr icmpv6 accept
-    # ssh on 50022 — matches the legacy prod VPS so cutover-time ssh
-    # config doesn't need a per-host mental switch.
-    tcp dport 50022 accept
+    # ssh on 22 during bootstrap so the first-run connection (and any
+    # kernel-update reboot reconnect) keeps working. The hardening
+    # section at the end of the script rewrites this to dport 50022.
+    tcp dport 22 accept
     tcp dport { 80, 443 } accept
   }
 
@@ -180,42 +197,6 @@ table inet filter {
 }
 NFT
 systemctl enable --now nftables
-
-# SSH hardening — what cloud-init's `ssh_pwauth: false` + `disable_root: true`
-# used to do. We're invoked over ssh-with-key already, so disabling
-# password auth and locking root is safe on the connected session:
-#   * PasswordAuthentication no → leaked passwords can't be used remotely
-#   * passwd -l root             → root account cannot authenticate
-#                                  even if PermitRootLogin is later
-#                                  flipped back on by mistake
-#   * PermitRootLogin no         → no direct root ssh at all
-# Idempotent: sed-with-fallback re-writes the line if it already exists
-# in any form, or appends a fresh one. `systemctl reload` on Ubuntu uses
-# `ssh.service`; `sshd.service` on some Debian setups — try both.
-sshd_set() {
-  local key="$1" value="$2"
-  if grep -qE "^[[:space:]]*${key}[[:space:]]+" /etc/ssh/sshd_config; then
-    sed -i "s/^[[:space:]]*${key}[[:space:]].*/${key} ${value}/" /etc/ssh/sshd_config
-  else
-    printf '%s %s\n' "$key" "$value" >> /etc/ssh/sshd_config
-  fi
-}
-sshd_set PasswordAuthentication no
-sshd_set PermitRootLogin no
-sshd_set ChallengeResponseAuthentication no
-sshd_set KbdInteractiveAuthentication no
-# Match the legacy prod VPS — port 50022 reduces drive-by-scanner noise
-# in journald and means the operator's ~/.ssh/config can use a single
-# Port line for both old and new hosts during cutover.
-sshd_set Port 50022
-# Belt-and-braces: even if a future apt-installed service creates a
-# user, only tayaway can ever ssh in. Cheap insurance against
-# misconfiguration far down the line.
-sshd_set AllowUsers tayaway
-passwd -l root >/dev/null
-# sshd reload doesn't drop active sessions — our connection (on port
-# 22) survives. New connections come in on 50022 only.
-systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || true
 
 touch /etc/tayaway/bootstrap.done
 echo "OS bootstrap complete."
@@ -315,6 +296,124 @@ if [ -f "$OPS_DIR/images.txt" ]; then
   done < "$OPS_DIR/images.txt"
 else
   echo "→ ops/images.txt absent — skipping pre-pull (filled in during Phase 4)"
+fi
+
+# ── 7. SSH hardening (only runs on the second-ever provision) ───────────────
+# Restricted to tayaway@ invocations and gated by /etc/tayaway/sshd-hardened.done
+# so it runs exactly once, on the operator's second provision after they've
+# dropped the age key. Sequence matters:
+#
+#   1. We're connected as tayaway@ on port 22 (still allowed); existing
+#      session survives the changes below because:
+#        * nftables uses `ct state established,related accept` — the
+#          flushed-and-reloaded ruleset keeps this connection alive.
+#        * sshd reload sends SIGHUP to the master; per-connection sshd
+#          children (which own our session) are unaffected.
+#   2. Disabling ssh.socket + enabling ssh.service is necessary on
+#      Ubuntu 22.04+ because socket activation overrides the Port
+#      directive in sshd_config. With the socket gone, sshd.service
+#      reads the new Port and binds 50022.
+#   3. We do this LAST so no further `ssh_run` calls need to reconnect
+#      on the new port. Once the script exits, the operator updates
+#      `~/.ssh/config` to Port 50022 for future runs.
+
+if [[ "$TARGET" != tayaway@* ]]; then
+  echo
+  echo "→ Skipping ssh hardening (connected as non-tayaway — re-run as tayaway@ to harden)"
+elif ssh_run 'sudo test -f /etc/tayaway/sshd-hardened.done' 2>/dev/null; then
+  echo
+  echo "→ ssh already hardened (sshd-hardened.done present) — skipping"
+else
+  step "Hardening sshd (port 50022, AllowUsers tayaway, password auth off, root locked)"
+  ssh_sudo_script <<'EOF'
+set -euo pipefail
+
+# Rewrite nftables to drop port 22 and accept 50022 instead. Reload
+# preserves established connections, so this script's own ssh keeps
+# working until the script exits.
+cat > /etc/nftables.conf <<'NFT'
+#!/usr/sbin/nft -f
+flush ruleset
+
+table inet filter {
+  chain input {
+    type filter hook input priority 0; policy drop;
+    ct state established,related accept
+    iifname "lo" accept
+    ip protocol icmp accept
+    ip6 nexthdr icmpv6 accept
+    # ssh on 50022 — matches the legacy prod VPS so cutover-time ssh
+    # config doesn't need a per-host mental switch.
+    tcp dport 50022 accept
+    tcp dport { 80, 443 } accept
+  }
+
+  chain forward {
+    type filter hook forward priority 0; policy accept;
+  }
+
+  chain output {
+    type filter hook output priority 0; policy accept;
+  }
+}
+NFT
+systemctl reload nftables
+
+# sshd_config tweaks. Idempotent sed-with-fallback: rewrite the line if
+# present in any form, otherwise append.
+sshd_set() {
+  local key="$1" value="$2"
+  if grep -qE "^[[:space:]]*${key}[[:space:]]+" /etc/ssh/sshd_config; then
+    sed -i "s/^[[:space:]]*${key}[[:space:]].*/${key} ${value}/" /etc/ssh/sshd_config
+  else
+    printf '%s %s\n' "$key" "$value" >> /etc/ssh/sshd_config
+  fi
+}
+sshd_set PasswordAuthentication no
+sshd_set PermitRootLogin no
+sshd_set ChallengeResponseAuthentication no
+sshd_set KbdInteractiveAuthentication no
+sshd_set Port 50022
+sshd_set AllowUsers tayaway
+
+# Lock the root account password — combined with PermitRootLogin no
+# above, root cannot authenticate at all.
+passwd -l root >/dev/null
+
+# Ubuntu 22.04+ ships ssh.socket enabled; the Port in sshd_config is
+# silently ignored under socket activation. Switch to direct
+# ssh.service so Port 50022 takes effect. The active ssh session is in
+# sshd@<id>.service (a template instance spawned by the socket), which
+# is independent of both ssh.socket and ssh.service — disabling the
+# socket and starting the service doesn't kill it.
+if systemctl is-active --quiet ssh.socket 2>/dev/null; then
+  systemctl disable --now ssh.socket
+  systemctl enable --now ssh.service
+else
+  # No socket activation — direct service. Reload keeps connections;
+  # `ssh` is the Ubuntu unit name, `sshd` is Debian's older convention.
+  systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || true
+fi
+
+touch /etc/tayaway/sshd-hardened.done
+echo "ssh hardening complete — port 50022, AllowUsers tayaway."
+EOF
+
+  cat <<NOTICE
+
+──────────────────────────────────────────────────────────────────────
+  SSH is now on port 50022 and only the 'tayaway' user can connect.
+  Update ~/.ssh/config so subsequent runs find the new port:
+
+    Host new.tayaway.nl
+      Port 50022
+      User tayaway
+      IdentityFile ~/.ssh/id_ed25519
+
+  Your CURRENT ssh session is still alive (sshd reload preserved it),
+  but ANY NEW ssh attempt without the Port 50022 line will fail.
+──────────────────────────────────────────────────────────────────────
+NOTICE
 fi
 
 echo
