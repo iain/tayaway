@@ -190,13 +190,25 @@ touches `ops/**` and on a weekly schedule. A non-empty plan fails the
 job. Catches "someone clicked something in the OVH console" before it
 becomes invisible state.
 
-The job uses a read-only OVH credential (`secrets.OVH_RO_*`), the
-state-bucket S3 credentials (`secrets.OPS_STATE_S3_*`), and the
-non-sensitive vars `OVH_PROJECT_ID` + `OPS_VPS_IPV4`. None of these
-overlap with the production secrets the app reads at runtime — those
-live only on the VPS in the sops-encrypted
-`backend/.env.production.yaml` decrypted via the age key at
-`/etc/tayaway/age.key`.
+The job uses the **same OVH API credential the operator uses
+locally** (`secrets.OVH_APPLICATION_KEY/SECRET`,
+`secrets.OVH_CONSUMER_KEY`), the state-bucket S3 credentials
+(`secrets.OPS_STATE_S3_*`), and the non-sensitive vars
+`OVH_PROJECT_ID` + `OPS_VPS_IPV4`. None of these overlap with the
+production secrets the app reads at runtime — those live only on the
+VPS in the sops-encrypted `backend/.env.production.yaml` decrypted via
+the age key at `/etc/tayaway/age.key`.
+
+The original design called for a separate read-only OVH token. In
+practice, OVH's API rejects `GET` on
+`/cloud/project/{id}/user/{uid}/s3Credentials/{key}` for any
+read-only-scope token regardless of how broad `GET /*` is —
+undocumented "endpoints that ever return secrets require non-readonly"
+behavior. The drift workflow needs to refresh that resource, so it
+needs full-token. The risk is bounded by the workflow itself: only
+`tofu plan -detailed-exitcode` ever runs; there is no `apply`
+codepath, so the write capability of the token is present but never
+exercised.
 
 ## Why not annual provisioning drills
 
