@@ -5,7 +5,10 @@ provider "registry.opentofu.org/ovh/ovh" {
   version     = "2.13.1"
   constraints = "~> 2.0"
   hashes = [
+    "h1:+fNUfSFsSaMRXwD8coYbviVPy3YYgQum5rUf2Dc34Mg=",
     "h1:5+GNM1C0OeCnCjtywy5XIrBIAkIrwDC3HbhirdWRF9o=",
+    "h1:MRS0Q/n7RkBEgt4xr3qIT6FjHC2y5zJJCt+PwV/zjKo=",
+    "h1:a2+aWyagZ+UokwoPsAyYDLHT5M+MFGhKMOeMQDK4jGw=",
     "zh:1bae41534b6e16fdfb5e01a545cac1531c89f070f2c73203d078bca781111974",
     "zh:45620e5e8acb295d175891bca1bf47a707072b6922a6c9bbe161da3eb59810b6",
     "zh:498a8708a7553113c065e34dcc844aef7163ffb02c90da22350ed74f35de194d",
