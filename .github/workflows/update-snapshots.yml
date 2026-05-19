@@ -134,7 +134,7 @@ jobs:
       # through env into `process.env` inside the script — never inlined
       # into the mutation string or any shell command.
       - name: Commit refreshed baselines (signed via GraphQL)
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           TARGET_REF: ${{ github.ref_name }}
         with:
