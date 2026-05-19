@@ -8,32 +8,30 @@
 #     within a week even on quiet PR weeks.
 #
 # Credentials:
-#   - OVH_*              — the same OVH API credential the operator uses
-#                          locally (full read-write). The original intent
-#                          was a separate read-only token, but OVH's API
-#                          rejects GET on /cloud/project/{id}/user/{uid}/
-#                          s3Credentials/{key} for any read-only-scope
-#                          token (regardless of how broad `GET /*` is) —
-#                          undocumented security feature or IAM bug,
-#                          either way not fixable from our end. Drift
-#                          detection runs strictly `tofu plan
-#                          -detailed-exitcode`, no `apply` codepath
-#                          exists, so the practical write-capability
-#                          isn't exercised even though it's in the token.
-#   - OPS_STATE_S3_*     — S3 access for the tayaway-tfstate bucket so
-#                          the backend can pull state. Different keypair
-#                          from WAL-G's so blast radius stays minimal.
+#   - SOPS_AGE_KEY — CI's age private key. Decrypts ops/secrets.yaml,
+#                    which holds the OVH API triple (full read-write —
+#                    OVH's API rejects GET on the s3Credentials endpoint
+#                    for any read-only-scope token, regardless of how
+#                    broad `GET /*` is) and the state-bucket S3 keypair.
+#                    Drift detection runs strictly `tofu plan
+#                    -detailed-exitcode`, no `apply` codepath exists,
+#                    so the practical write-capability isn't exercised
+#                    even though it's in the token.
 #
-# Both live as repo (not environment) secrets — the job uses only
-# secrets and repo vars; no PR-author-controlled text ever reaches a
-# shell or a script step (the PR comment body is read from a file
-# written by `tofu plan`, not from `github.event.*`).
+# The CI recipient is only added to ops/secrets.yaml.
+# backend/.env.production.yaml is encrypted to operator + production
+# only — CI cannot decrypt it. That's the structural reason production
+# runtime secrets never reach a GitHub runner.
 #
-# Missing credentials are handled gracefully: a single "secrets check"
-# step at the top sets a `skip` output if anything isn't configured, and
-# the rest of the job is gated on it. That way a fresh PR (or a
-# fork-PR with no secret access) gets an annotation rather than a red
-# X — the workflow still runs but reports "not configured" instead of
+# No PR-author-controlled text ever reaches a shell or script step
+# (the PR comment body is read from a file written by `tofu plan`,
+# not from `github.event.*`).
+#
+# Missing the secret is handled gracefully: a single "secrets check"
+# step at the top sets a `skip` output if it isn't configured, and the
+# rest of the job is gated on it. That way a fresh PR (or a fork PR
+# with no secret access) gets an annotation rather than a red X — the
+# workflow still runs but reports "not configured" instead of
 # pretending drift detection is happening when it isn't.
 
 name: ops drift
@@ -42,6 +40,7 @@ on:
   pull_request:
     paths:
       - "ops/**"
+      - ".sops.yaml"
       - ".github/workflows/ops-drift.yml"
   schedule:
     - cron: "0 6 * * 1"
@@ -63,40 +62,44 @@ jobs:
       run:
         working-directory: ops
     env:
-      OVH_ENDPOINT: ovh-eu
-      OVH_APPLICATION_KEY: ${{ secrets.OVH_APPLICATION_KEY }}
-      OVH_APPLICATION_SECRET: ${{ secrets.OVH_APPLICATION_SECRET }}
-      OVH_CONSUMER_KEY: ${{ secrets.OVH_CONSUMER_KEY }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.OPS_STATE_S3_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.OPS_STATE_S3_SECRET_ACCESS_KEY }}
-      TF_VAR_service_name: ${{ vars.OVH_PROJECT_ID }}
-      TF_VAR_vps_ipv4: ${{ vars.OPS_VPS_IPV4 }}
+      CI_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 
     steps:
       - uses: actions/checkout@v6
 
-      # Without this, missing secrets surface deep inside `tofu init` as
-      # "No valid credential sources found", which is opaque and red-Xs
-      # any PR opened before someone's done the GitHub repo setup.
+      # Without this, missing SOPS_AGE_KEY surfaces deep inside mise as
+      # "failed to decrypt", which is opaque and red-Xs any PR opened
+      # before someone's done the GitHub repo setup.
       - id: secrets
-        name: Check required GitHub secrets and vars
+        name: Check required GitHub secret
         run: |
-          missing=()
-          [ -z "$OVH_APPLICATION_KEY" ]    && missing+=("secret OVH_APPLICATION_KEY")
-          [ -z "$OVH_APPLICATION_SECRET" ] && missing+=("secret OVH_APPLICATION_SECRET")
-          [ -z "$OVH_CONSUMER_KEY" ]       && missing+=("secret OVH_CONSUMER_KEY")
-          [ -z "$AWS_ACCESS_KEY_ID" ]      && missing+=("secret OPS_STATE_S3_ACCESS_KEY_ID")
-          [ -z "$AWS_SECRET_ACCESS_KEY" ]  && missing+=("secret OPS_STATE_S3_SECRET_ACCESS_KEY")
-          [ -z "$TF_VAR_service_name" ]    && missing+=("variable OVH_PROJECT_ID")
-          [ -z "$TF_VAR_vps_ipv4" ]        && missing+=("variable OPS_VPS_IPV4")
-          if [ ${#missing[@]} -gt 0 ]; then
-            echo "::warning::Drift detection skipped — required GitHub repo configuration not set:"
-            for m in "${missing[@]}"; do
-              echo "::warning::  - $m"
-            done
-            echo "::warning::See ops/README.md 'Drift detection' for the full setup."
+          if [ -z "$CI_AGE_KEY" ]; then
+            echo "::warning::Drift detection skipped — SOPS_AGE_KEY secret is not configured."
+            echo "::warning::See ops/README.md 'Drift detection' for setup."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
+
+      # Materialize the age key to a file rather than relying on the
+      # SOPS_AGE_KEY env var directly. age-keygen's output includes
+      # comment lines (# created: …, # public key: …) above the secret
+      # key, which is valid in a file but not as a one-line env value
+      # (rops fails with "invalid Bech32 encoding" on the first comment
+      # line). File-based loading accepts both shapes, so an operator
+      # piping the unedited age-keygen output via `gh secret set` works
+      # without remembering to strip headers.
+      - name: Materialize CI age key
+        if: steps.secrets.outputs.skip != 'true'
+        run: |
+          install -d -m 0700 "$HOME/.config/sops/age"
+          umask 077
+          printf '%s\n' "$CI_AGE_KEY" > "$HOME/.config/sops/age/keys.txt"
+          echo "SOPS_AGE_KEY_FILE=$HOME/.config/sops/age/keys.txt" >> "$GITHUB_ENV"
+
+      - uses: jdx/mise-action@v4
+        if: steps.secrets.outputs.skip != 'true'
+        with:
+          install: true
+          cache: true
 
       - uses: opentofu/setup-opentofu@v1
         if: steps.secrets.outputs.skip != 'true'
@@ -104,9 +107,13 @@ jobs:
           tofu_version: 1.8.0
           tofu_wrapper: false
 
+      # `mise exec --` loads ops/mise.toml's [env] block (including the
+      # sops-decrypted secrets.yaml) into tofu's process env only. The
+      # decrypted values never enter $GITHUB_ENV — keeps them out of any
+      # subsequent step's logs.
       - name: tofu init
         if: steps.secrets.outputs.skip != 'true'
-        run: tofu init -input=false -lockfile=readonly
+        run: mise exec -- tofu init -input=false -lockfile=readonly
 
       # -detailed-exitcode: 0 = no changes, 1 = error, 2 = drift. Capture
       # the code first so the PR-comment step can still run, then re-fail.
@@ -115,7 +122,7 @@ jobs:
         if: steps.secrets.outputs.skip != 'true'
         run: |
           set +e
-          tofu plan -input=false -detailed-exitcode -no-color -out=tfplan | tee plan.txt
+          mise exec -- tofu plan -input=false -detailed-exitcode -no-color -out=tfplan | tee plan.txt
           code=${PIPESTATUS[0]}
           echo "exitcode=$code" >> "$GITHUB_OUTPUT"
           exit 0

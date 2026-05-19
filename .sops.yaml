@@ -1,0 +1,17 @@
+# sops creation rules — used when `sops encrypt` is invoked without an
+# explicit recipient list. `sops updatekeys` reads this file too and
+# re-keys committed files to whatever the rule resolves to today, so
+# rotating a recipient is "edit this file, sops updatekeys, commit".
+#
+# Recipients:
+#   - operator: laptop key at ~/.config/sops/age/keys.txt
+#   - ci:       lives only in the GitHub Secret SOPS_AGE_KEY
+#
+# The production recipient gets added to backend/.env.production.yaml's
+# rule when Phase 4 generates the VM key (issue #440, Task 3).
+creation_rules:
+  - path_regex: ops/secrets\.yaml$
+    key_groups:
+      - age:
+          - age14mluckpnn92uzc8u8gsjl8kn8yns38lpzfaawc8wyr9a7czsvycq972xr7
+          - age1fqjzdsu60yxremxlyp80wf4vlj2jphxauzxyuwq3trgkqn5y9q6swtdwz8
