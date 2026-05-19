@@ -11,7 +11,17 @@ OBJC_DISABLE_INITIALIZE_FORK_SAFETY = "YES"
 # fresh `mise run` from a shell without MISE_ENV set still works.
 # RACK_ENV is mirrored for Rack itself and any gem that still keys off
 # it; the Config schema reads MISE_ENV directly.
-_.file = ".env.{{env.MISE_ENV | default(value='development')}}"
+#
+# Production loads two files: the plain dotenv (non-secret config, in
+# git, readable) and a sops-encrypted yaml (DATABASE_URL, APP_SECRET,
+# VAPID_PRIVATE_KEY, etc.). For dev/test/e2e the `.yaml` half doesn't
+# exist and mise silently skips it. Decryption happens via the age key
+# at $SOPS_AGE_KEY_FILE (laptop) or /etc/tayaway/age.key on the VPS
+# (set via MISE_SOPS_AGE_KEY_FILE in the production quadlets).
+_.file = [
+  ".env.{{env.MISE_ENV | default(value='development')}}",
+  ".env.{{env.MISE_ENV | default(value='development')}}.yaml",
+]
 RACK_ENV = "{{env.MISE_ENV | default(value='development')}}"
 
 # ── Dev ──────────────────────────────────────────────────────────────────────
