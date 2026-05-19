@@ -1,0 +1,12 @@
+# Local-only state for the chicken-and-egg bootstrap. Back this up
+# out-of-band (e.g. encrypted to the laptop's backup) — losing it
+# means manually importing the state bucket on the next apply, but it
+# contains no secrets the OVH manager can't otherwise re-issue.
+#
+# .terraform.lock.hcl is deliberately *not* ignored — pinning the OVH
+# provider version is exactly the kind of reproducibility this dir needs
+# (the main config alongside ops/.terraform.lock.hcl follows the same
+# rule).
+terraform.tfstate
+terraform.tfstate.backup
+.terraform/

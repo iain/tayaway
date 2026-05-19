@@ -229,6 +229,19 @@ description = "Deploy to production"
 confirm = "Deploy to PRODUCTION. Continue?"
 run = "bundle exec cap production deploy"
 
+# ── Ops / VM lifecycle ───────────────────────────────────────────────────────
+
+[tasks."vm:provision"]
+description = "Idempotent app-side provisioning on a freshly-cloud-inited VM — drops quadlet units, daemon-reloads, pre-pulls images"
+# `arg "<host>"` declares the positional; mise exposes its value as
+# $usage_host at run time. The Tera `{{arg()}}` template form is
+# deprecated as of 2026.5 and goes away in 2027.5.
+usage = '''
+arg "<host>" help="ssh target, e.g. tayaway@new.tayaway.nl"
+'''
+shell = "bash -c"
+run = 'ops/provision.sh "$usage_host"'
+
 # ── Setup ────────────────────────────────────────────────────────────────────
 
 [tasks.setup]

@@ -74,3 +74,13 @@ backend/data/
 .cache/
 
 tmp/
+
+# Terraform / OpenTofu — provider binaries and crash logs are local; the
+# lockfile (.terraform.lock.hcl) IS committed for reproducibility.
+ops/**/.terraform/
+ops/**/*.tfplan
+ops/**/crash.log
+ops/**/crash.*.log
+# Local-only state for ops/bootstrap (see ops/bootstrap/.gitignore for why).
+ops/bootstrap/terraform.tfstate
+ops/bootstrap/terraform.tfstate.backup

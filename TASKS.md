@@ -51,6 +51,24 @@ Wipe local daemon/cache/DB state, then run full CI
 
 Open a Ruby console with the app loaded
 
+## `containers:down`
+
+- **Usage**: `containers:down [--keep-data]`
+
+Tear down the local podman/compose stack and drop its volumes
+
+### Flags
+
+#### `--keep-data`
+
+Preserve the db and geoip volumes
+
+## `containers:up`
+
+- **Usage**: `containers:up`
+
+Build and start the local podman/compose stack against the current toolchain image
+
 ## `db:backup`
 
 - Depends: //backend:db:backup
@@ -231,6 +249,12 @@ Install the git pre-commit hook
 
 Run unit and integration tests
 
+## `toolchain:tag`
+
+- **Usage**: `toolchain:tag`
+
+Print the content hash of the toolchain inputs — used as the GHCR tag
+
 ## `tools:upgrade`
 
 - **Usage**: `tools:upgrade`
@@ -244,3 +268,15 @@ Bump every config_root's tool versions to the latest available
 - **Usage**: `typecheck`
 
 Run all type checkers
+
+## `vm:provision`
+
+- **Usage**: `vm:provision <host>`
+
+Idempotent app-side provisioning on a freshly-cloud-inited VM — drops quadlet units, daemon-reloads, pre-pulls images
+
+### Arguments
+
+#### `<host>`
+
+ssh target, e.g. tayaway@new.tayaway.nl
