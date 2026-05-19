@@ -31,8 +31,23 @@ being commissioned. Cutover imports it explicitly.
 
 ## First-time bring-up
 
-You need: OVH API credentials (set in `ops/mise.local.toml` so they
-don't enter your shell history), an age keypair, and an ssh public key.
+You need: an age private key matching one of the recipients in
+`../.sops.yaml` (yours, on a laptop that's been onboarded), and an ssh
+public key.
+
+Operator credentials — the OVH API triple and the state-bucket S3
+keypair — live sops-encrypted in `ops/secrets.yaml` and are decrypted
+into tofu's process env by mise on every `tofu` invocation from `ops/`
+or below. mise picks the age key up from `$SOPS_AGE_KEY_FILE`; export
+it once in your shell config:
+
+```fish
+set -gx SOPS_AGE_KEY_FILE ~/.config/sops/age/keys.txt
+```
+
+(`~/.config/sops/age/keys.txt` is sops's standard location. mise's own
+default is `~/.config/mise/age.txt` — pick whichever; the env var
+just makes it explicit.)
 
 ### 1. Bootstrap the state bucket
 
@@ -42,7 +57,7 @@ laptop secrets live. Only re-run this if the bucket itself is gone.
 ```fish
 cd ops/bootstrap
 mise x opentofu -- tofu init
-mise x opentofu -- tofu apply -var "service_name=<project-id>"
+mise x opentofu -- tofu apply
 ```
 
 Capture the credentials it printed so the main config's S3 backend can
@@ -54,6 +69,18 @@ if you overrode `bucket_name` or `region_name` in this step, update
 set -gx AWS_ACCESS_KEY_ID (mise x opentofu -- tofu output -raw state_access_key_id)
 set -gx AWS_SECRET_ACCESS_KEY (mise x opentofu -- tofu output -raw state_secret_access_key)
 ```
+
+Once the bucket exists, the keypair these printed is the one that
+should live in `ops/secrets.yaml`. Edit and re-encrypt with:
+
+```fish
+mise x sops -- sops ops/secrets.yaml          # opens $EDITOR on the cleartext, re-encrypts on save
+```
+
+(If `ops/secrets.yaml` is missing entirely — true total-loss with no
+git — the chicken-and-egg path is: pass the OVH triple via `OVH_*`
+env vars for this single `tofu apply`, then create `secrets.yaml`
+from scratch and `sops encrypt -i` it.)
 
 ### 2. Order the VPS
 
@@ -74,15 +101,15 @@ in the manager.
 
 ### 3. Add the DNS record + S3 bucket
 
-`vps_ipv4` is the address from the previous step. This creates
+`TF_VAR_vps_ipv4` (committed in `ops/mise.toml`) needs to point at the
+address from the previous step before the apply — update it and commit
+the change, or override on the command line for a one-off. This creates
 `new.tayaway.nl` and the WAL-G bucket + S3 user.
 
 ```fish
 cd ..
 mise x opentofu -- tofu init
-mise x opentofu -- tofu apply \
-  -var "service_name=<project-id>" \
-  -var "vps_ipv4=<from step 2>"
+mise x opentofu -- tofu apply
 ```
 
 ### 4. First provision — OS bootstrap
@@ -190,25 +217,33 @@ touches `ops/**` and on a weekly schedule. A non-empty plan fails the
 job. Catches "someone clicked something in the OVH console" before it
 becomes invisible state.
 
-The job uses the **same OVH API credential the operator uses
-locally** (`secrets.OVH_APPLICATION_KEY/SECRET`,
-`secrets.OVH_CONSUMER_KEY`), the state-bucket S3 credentials
-(`secrets.OPS_STATE_S3_*`), and the non-sensitive vars
-`OVH_PROJECT_ID` + `OPS_VPS_IPV4`. None of these overlap with the
-production secrets the app reads at runtime — those live only on the
-VPS in the sops-encrypted `backend/.env.production.yaml` decrypted via
-the age key at `/etc/tayaway/age.key`.
+The job decrypts `ops/secrets.yaml` with the CI age private key —
+exactly the same path the laptop uses, just with a different age
+recipient. Setup is a single GitHub secret:
 
-The original design called for a separate read-only OVH token. In
-practice, OVH's API rejects `GET` on
-`/cloud/project/{id}/user/{uid}/s3Credentials/{key}` for any
+```fish
+mise x age -- age-keygen -o /tmp/ci-age.key
+mise x age -- age-keygen -y /tmp/ci-age.key   # public recipient — add to ../.sops.yaml and sops updatekeys
+gh secret set SOPS_AGE_KEY < /tmp/ci-age.key
+rm /tmp/ci-age.key
+```
+
+The CI recipient is added to `ops/secrets.yaml` only — not to
+`backend/.env.production.yaml`. A compromised CI run can therefore
+leak operator credentials (recoverable: rotate the OVH triple), but
+not the database password or any other runtime secret. That's the
+structural reason production runtime secrets never reach a GitHub
+runner.
+
+The OVH triple in `secrets.yaml` is full read-write. The original
+design called for a separate read-only token, but OVH's API rejects
+`GET` on `/cloud/project/{id}/user/{uid}/s3Credentials/{key}` for any
 read-only-scope token regardless of how broad `GET /*` is —
 undocumented "endpoints that ever return secrets require non-readonly"
 behavior. The drift workflow needs to refresh that resource, so it
-needs full-token. The risk is bounded by the workflow itself: only
+needs the full token. The risk is bounded by the workflow itself: only
 `tofu plan -detailed-exitcode` ever runs; there is no `apply`
-codepath, so the write capability of the token is present but never
-exercised.
+codepath, so the write capability is present but never exercised.
 
 ## Why not annual provisioning drills
 
