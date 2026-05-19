@@ -132,11 +132,22 @@ After it exits, both `ssh ubuntu@<ip>` and `ssh tayaway@<ip>` on port
 
 ### 5. Hand-drop the age private key
 
-Only manual secret-handling step in the whole recipe.
+Only manual secret-handling step in the whole recipe. The VPS gets the
+**production** age key — distinct from the operator's laptop key. Both
+are listed as recipients on `backend/.env.production.yaml` in
+`../.sops.yaml`; the VPS uses its own key at runtime so that compromise
+of any single laptop doesn't widen the production key's surface.
+
+Store the production private key in your password manager between
+generations. Total-loss recovery either restores it from there to the
+new VPS, or generates a fresh key, updates `../.sops.yaml`, runs `sops
+updatekeys backend/.env.production.yaml`, and commits.
 
 ```fish
-scp ~/.config/sops/age/keys.txt tayaway@<vps-ip>:/tmp/age.key
+# fetch the production key from your password manager into a temp file first
+scp /tmp/prod-age.key tayaway@<vps-ip>:/tmp/age.key
 ssh tayaway@<vps-ip> 'sudo install -m 0400 -o root -g root /tmp/age.key /etc/tayaway/age.key && rm /tmp/age.key'
+rm /tmp/prod-age.key
 ```
 
 ### 6. Second provision — quadlets + ssh hardening
