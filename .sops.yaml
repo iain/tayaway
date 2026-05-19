@@ -4,14 +4,24 @@
 # rotating a recipient is "edit this file, sops updatekeys, commit".
 #
 # Recipients:
-#   - operator: laptop key at ~/.config/sops/age/keys.txt
-#   - ci:       lives only in the GitHub Secret SOPS_AGE_KEY
+#   - operator:   laptop key at ~/.config/sops/age/keys.txt
+#   - ci:         lives only in the GitHub Secret SOPS_AGE_KEY
+#   - production: lives only on the VPS at /etc/tayaway/age.key (0400 root:root)
 #
-# The production recipient gets added to backend/.env.production.yaml's
-# rule when Phase 4 generates the VM key (issue #440, Task 3).
+# The CI recipient is deliberately scoped to ops/secrets.yaml only. A
+# compromised CI runner can leak operator credentials (OVH API +
+# state-bucket S3 keypair), but cannot decrypt runtime secrets. That's
+# the structural reason production runtime secrets never reach a
+# GitHub runner — it's not a workflow-discipline rule, it's a
+# recipient-list one.
 creation_rules:
   - path_regex: ops/secrets\.yaml$
     key_groups:
       - age:
           - age14mluckpnn92uzc8u8gsjl8kn8yns38lpzfaawc8wyr9a7czsvycq972xr7
           - age1fqjzdsu60yxremxlyp80wf4vlj2jphxauzxyuwq3trgkqn5y9q6swtdwz8
+  - path_regex: backend/\.env\.production\.yaml$
+    key_groups:
+      - age:
+          - age14mluckpnn92uzc8u8gsjl8kn8yns38lpzfaawc8wyr9a7czsvycq972xr7
+          - age1z3eh5d37waa2rejl6uy45v0f45hx0mn60e9pm5k54d42al05mcss90hy02
