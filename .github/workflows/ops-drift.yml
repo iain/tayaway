@@ -62,7 +62,7 @@ jobs:
       run:
         working-directory: ops
     env:
-      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+      CI_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 
     steps:
       - uses: actions/checkout@v6
@@ -73,11 +73,27 @@ jobs:
       - id: secrets
         name: Check required GitHub secret
         run: |
-          if [ -z "$SOPS_AGE_KEY" ]; then
+          if [ -z "$CI_AGE_KEY" ]; then
             echo "::warning::Drift detection skipped — SOPS_AGE_KEY secret is not configured."
             echo "::warning::See ops/README.md 'Drift detection' for setup."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
+
+      # Materialize the age key to a file rather than relying on the
+      # SOPS_AGE_KEY env var directly. age-keygen's output includes
+      # comment lines (# created: …, # public key: …) above the secret
+      # key, which is valid in a file but not as a one-line env value
+      # (rops fails with "invalid Bech32 encoding" on the first comment
+      # line). File-based loading accepts both shapes, so an operator
+      # piping the unedited age-keygen output via `gh secret set` works
+      # without remembering to strip headers.
+      - name: Materialize CI age key
+        if: steps.secrets.outputs.skip != 'true'
+        run: |
+          install -d -m 0700 "$HOME/.config/sops/age"
+          umask 077
+          printf '%s\n' "$CI_AGE_KEY" > "$HOME/.config/sops/age/keys.txt"
+          echo "SOPS_AGE_KEY_FILE=$HOME/.config/sops/age/keys.txt" >> "$GITHUB_ENV"
 
       - uses: jdx/mise-action@v4
         if: steps.secrets.outputs.skip != 'true'
