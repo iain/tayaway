@@ -99,5 +99,5 @@ Don't push to `main` without asking first.
 ## Environment
 
 - Required env vars: `DATABASE_URL`, `APP_SECRET`, `FRONTEND_URL`
-- Config loaded from `backend/.env.{development,test,e2e,production}` by mise (`_.file` in `backend/mise.toml`), keyed off `MISE_ENV`. Tasks that need a non-default env wrap themselves with `mise --env=<env> exec -- …`. Production: systemd sets `MISE_ENV=production`; `ExecStart` goes through `mise exec`. No dotenv at runtime.
+- Config loaded from `backend/.env.{development,test,e2e,production}` by mise (`_.file` in `backend/mise.toml`), keyed off `MISE_ENV`. Production additionally loads `backend/.env.production.yaml` (sops-encrypted, recipients in `.sops.yaml`) for secrets; mise silently skips the yaml in non-prod envs. Tasks that need a non-default env wrap themselves with `mise --env=<env> exec -- …`. Production: systemd sets `MISE_ENV=production`; `ExecStart` goes through `mise exec`. No dotenv at runtime.
 - Three databases: `tayaway_development`, `tayaway_test`, `tayaway_e2e`

@@ -49,6 +49,25 @@ set -gx SOPS_AGE_KEY_FILE ~/.config/sops/age/keys.txt
 default is `~/.config/mise/age.txt` — pick whichever; the env var
 just makes it explicit.)
 
+### 0. Populate `backend/.env.production.yaml` (one-time)
+
+The committed file ships with `PLACEHOLDER_REPLACE_BEFORE_DEPLOY`
+values for `POSTGRES_PASSWORD`, `DATABASE_URL`, `APP_SECRET`, and
+`VAPID_PRIVATE_KEY`. Open it via sops and fill in real values:
+
+```fish
+mise x sops -- sops ../backend/.env.production.yaml
+```
+
+`migrate.container` runs `rake config:validate` before any migration,
+so a deploy attempted with unfilled placeholders fails at the
+validation step (invalid base64, missing required value) before `web`
+ever sees traffic — but better to catch it here than at deploy time.
+
+Pair this with the non-secret half (`backend/.env.production`):
+`VAPID_PUBLIC_KEY` must be set there alongside the private key, or the
+push feature stays disabled.
+
 ### 1. Bootstrap the state bucket
 
 Local `terraform.tfstate` is gitignored — back it up to wherever your
