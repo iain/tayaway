@@ -1,0 +1,18 @@
+# One-shot loader for dbip-city-lite.mmdb. Downloads + checksums into the
+# geoip volume, atomically renaming over the target. No [Install] — it is
+# not started at boot; provision.sh runs it once to seed the volume, and
+# geoip.timer fires it monthly thereafter. web mounts the same volume
+# read-only and stat()s the file per-lookup, so a refresh needs no web
+# restart.
+[Unit]
+Description=Tayaway GeoIP database loader
+
+[Container]
+ContainerName=geoip
+Image=ghcr.io/iain/tayaway-geoip:e921ea33cf82465b8d459c2a85e4cea85827f159
+Volume=tayaway-geoip.volume:/data
+Pull=missing
+
+[Service]
+Type=oneshot
+TimeoutStartSec=300

@@ -1,0 +1,8 @@
+# Caddy's /data — ACME account key and issued Let's Encrypt certs.
+# Persisting this across restarts is what keeps Caddy from re-requesting
+# certs on every deploy and tripping LE rate limits.
+[Unit]
+Description=Tayaway Caddy state volume
+
+[Volume]
+Label=app=tayaway

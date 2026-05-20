@@ -1,0 +1,9 @@
+# Internal bridge network for the stack. podman runs a DNS resolver on
+# it, so containers reach each other by ContainerName — db:5432 (from
+# DATABASE_URL) and web:9292 (from the Caddyfile's BACKEND_UPSTREAM).
+# Nothing is published here; only edge.container maps host 80/443.
+[Unit]
+Description=Tayaway internal container network
+
+[Network]
+Label=app=tayaway

@@ -1,0 +1,4 @@
+# /run/tayaway holds the decrypted DB password (tmpfs, root-only,
+# regenerated each boot by tayaway-db-secret.service). Declaring it here
+# means the directory exists with the right mode before any unit writes.
+d /run/tayaway 0700 root root -

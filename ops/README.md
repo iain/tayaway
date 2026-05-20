@@ -214,12 +214,43 @@ Host new.tayaway.nl
 need to reach it by IP during commissioning, add a second
 `Host <vps-ip>` block with the same body.
 
-### 8. (Phase 4 onward)
+### 8. Bring up the quadlet stack
 
 Future `mise run vm:provision tayaway@new.tayaway.nl` runs are
-idempotent — both sentinels are set, all per-run steps are no-ops or
-converge. Once `quadlet/` has units in it, this is what brings the
-stack alive. Cutover to the apex is a separate Phase 7 PR.
+idempotent — both sentinels are set, all per-run steps converge. From
+Phase 4 on, this is also what delivers the stack: it syncs
+`quadlet/*` to `/etc/containers/systemd/`, delivers the env files to
+`/etc/tayaway/env/`, installs `sops`, the `tayaway-db-secret` host
+oneshot, and the monthly `geoip.timer`, daemon-reloads, and pre-pulls
+the images in `images.txt`.
+
+Two one-time prerequisites the provision can't do for you:
+
+- **GHCR login** — `backend`/`edge` are private packages. Log the VPS
+  in once with a `read:packages` PAT (rootful podman, so as root):
+
+  ```fish
+  ssh new.tayaway.nl 'sudo podman login ghcr.io -u <github-user>'
+  ```
+
+- **Bump the image SHAs** in `images.txt` and `quadlet/*.container` to
+  this stack's built SHA. The committed value must be a commit for
+  which CI published all three images (`backend`, `edge`, `geoip`).
+
+Then provision and start the stack. The units have an [Install] section
+so they auto-start on boot; the first time, start them by hand. Starting
+`edge` pulls in `web → migrate → db → tayaway-db-secret` via
+dependencies; `geoip` is one-shot and seeds the volume:
+
+```fish
+mise run vm:provision tayaway@new.tayaway.nl
+ssh new.tayaway.nl 'sudo systemctl start geoip.service edge.service'
+ssh new.tayaway.nl 'systemctl status web edge db --no-pager'
+```
+
+Caddy provisions a real Let's Encrypt cert for `new.tayaway.nl` on
+first start (`SITE_ADDRESS` in `edge.container`). Watch it land with
+`journalctl -u edge -f`. Cutover to the apex is a separate Phase 7 PR.
 
 ## Total-loss recovery
 
@@ -235,7 +266,9 @@ The whole VPS is gone or unrecoverable.
 6. `mise run vm:provision tayaway@<ip>` — does quadlets + ssh
    hardening (step 6).
 7. Update `~/.ssh/config` with the printed Port 50022 block (step 7).
-6. WAL-G restore (see `doc/operations/walg.md` — landing in Phase 5).
+8. `sudo podman login ghcr.io`, then `systemctl start geoip edge`
+   (step 8).
+9. WAL-G restore (see `doc/operations/walg.md` — landing in Phase 5).
 
 ~20 min, four or five commands of human work plus the OVH-manager
 order.

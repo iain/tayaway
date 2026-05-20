@@ -1,0 +1,37 @@
+# PostgreSQL. Stock image — no mise/sops inside — so POSTGRES_PASSWORD
+# arrives via EnvironmentFile from the host-side decrypt oneshot
+# (tayaway-db-secret.service writes /run/tayaway/db.env on tmpfs). The
+# password only matters at first-init: postgres bakes it into the role
+# on an empty data dir and ignores the env on later starts. POSTGRES_USER
+# and POSTGRES_DB are non-secret, so they sit here in the clear.
+#
+# Reachable as db:5432 on tayaway.network. No host port published — the
+# database is never exposed off-box.
+[Unit]
+Description=Tayaway PostgreSQL
+Requires=tayaway-db-secret.service
+After=tayaway-db-secret.service
+
+[Container]
+ContainerName=db
+Image=docker.io/library/postgres:18
+Network=tayaway.network
+Volume=tayaway-db.volume:/var/lib/postgresql/data
+EnvironmentFile=/run/tayaway/db.env
+Environment=POSTGRES_USER=tayaway
+Environment=POSTGRES_DB=tayaway
+# Dependents order off this. Container "started" != accepting
+# connections, so migrate/web also wait on the port (see migrate's
+# wait loop) — but the healthcheck makes `systemctl status` honest.
+HealthCmd=pg_isready -U tayaway -d tayaway
+HealthInterval=5s
+HealthRetries=10
+HealthStartPeriod=30s
+
+[Service]
+Restart=on-failure
+StartLimitBurst=3
+StartLimitIntervalSec=60
+
+[Install]
+WantedBy=multi-user.target

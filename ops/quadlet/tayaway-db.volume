@@ -1,0 +1,8 @@
+# PostgreSQL data directory. Survives container restarts and image
+# bumps; only an explicit `podman volume rm` destroys it. WAL-G (phase
+# 5) is what makes this recoverable off-host.
+[Unit]
+Description=Tayaway PostgreSQL data volume
+
+[Volume]
+Label=app=tayaway

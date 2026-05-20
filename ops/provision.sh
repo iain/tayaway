@@ -59,7 +59,15 @@ TARGET="$1"
 # All paths relative to this script. Lets you invoke it from anywhere
 # (mise task, CI, a fresh checkout) without cd'ing first.
 OPS_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$OPS_DIR/.." && pwd)"
 QUADLET_DIR="$OPS_DIR/quadlet"
+HOST_DIR="$OPS_DIR/host"
+
+# sops on the host decrypts only POSTGRES_PASSWORD for the stock postgres
+# container (web/migrate decrypt in-container via mise). Pinned + checksum
+# -verified; bump both together. linux amd64 — the VPS arch.
+SOPS_VERSION=3.13.1
+SOPS_SHA256=620a9d7e3352ababeca6908cea24a6e8b14ce89a448ddbd3f94f1ef3398f470a
 
 ssh_run() {
   # -T disables pseudo-tty (cleaner output, exit codes reliable).
@@ -257,6 +265,72 @@ case "$TARGET" in
     ;;
 esac
 
+# ── 3b. Deliver production env files ─────────────────────────────────────────
+# The encrypted yaml + plaintext dotenv are bind-mounted into web/migrate
+# (mise decrypts the yaml in-process) and read by the host db-secret
+# oneshot. Committed in the repo; the VPS gets a copy at /etc/tayaway/env.
+# .containerignore keeps them out of the images, which is what makes
+# secret rotation "edit + restart" instead of "rebuild".
+
+step "Delivering production env files to /etc/tayaway/env/"
+rsync -az -e 'ssh -o StrictHostKeyChecking=accept-new' \
+  "$REPO_ROOT/backend/.env.production" \
+  "$REPO_ROOT/backend/.env.production.yaml" \
+  "$TARGET:/tmp/tayaway-env/"
+ssh_sudo_script <<'EOF'
+set -euo pipefail
+install -d -m 0750 -o root -g root /etc/tayaway/env
+# Plaintext config 0444; encrypted yaml 0440. Both owned by root —
+# containers run as root and read them through read-only bind mounts.
+install -m 0444 -o root -g root /tmp/tayaway-env/.env.production /etc/tayaway/env/.env.production
+install -m 0440 -o root -g root /tmp/tayaway-env/.env.production.yaml /etc/tayaway/env/.env.production.yaml
+rm -rf /tmp/tayaway-env
+EOF
+
+# ── 3c. Install sops (host-side DB-password decryption) ──────────────────────
+# Pinned + checksum-verified; re-installs only when the version differs.
+
+step "Ensuring sops $SOPS_VERSION is installed"
+ssh_sudo_script <<EOF
+set -euo pipefail
+if [ "\$(/usr/local/bin/sops --version 2>/dev/null | awk '{print \$2}')" = "$SOPS_VERSION" ]; then
+  echo "  sops $SOPS_VERSION already present"
+else
+  tmp=\$(mktemp)
+  curl -fsSL -o "\$tmp" "https://github.com/getsops/sops/releases/download/v$SOPS_VERSION/sops-v$SOPS_VERSION.linux.amd64"
+  echo "$SOPS_SHA256  \$tmp" | sha256sum -c -
+  install -m 0755 "\$tmp" /usr/local/bin/sops
+  rm -f "\$tmp"
+  echo "  installed sops $SOPS_VERSION"
+fi
+EOF
+
+# ── 3d. Install host units (DB-secret oneshot + tmpfiles) ────────────────────
+# The decrypt script, its systemd unit, and the /run/tayaway tmpfiles rule.
+# db.container depends on tayaway-db-secret.service; enabling it here wires
+# the boot ordering. It only actually runs once the age key + env yaml are
+# present (ConditionPathExists in the unit), so this is safe on first runs.
+
+step "Installing host units (tayaway-db-secret, geoip.timer)"
+rsync -az -e 'ssh -o StrictHostKeyChecking=accept-new' \
+  "$HOST_DIR/" "$TARGET:/tmp/tayaway-host/"
+ssh_sudo_script <<'EOF'
+set -euo pipefail
+install -m 0755 -o root -g root /tmp/tayaway-host/tayaway-db-secret.sh /usr/local/bin/tayaway-db-secret
+install -m 0644 -o root -g root /tmp/tayaway-host/tayaway-db-secret.service /etc/systemd/system/tayaway-db-secret.service
+install -m 0644 -o root -g root /tmp/tayaway-host/geoip.timer /etc/systemd/system/geoip.timer
+install -m 0644 -o root -g root /tmp/tayaway-host/tayaway.tmpfiles /etc/tmpfiles.d/tayaway.conf
+systemd-tmpfiles --create /etc/tmpfiles.d/tayaway.conf
+systemctl daemon-reload
+systemctl enable tayaway-db-secret.service
+# The timer enables now; its target geoip.service is generated from the
+# quadlet at the daemon-reload in the next step, so enabling the timer
+# here (before that reload) is fine — it only needs geoip.service to
+# exist when it fires, not when it's enabled.
+systemctl enable geoip.timer
+rm -rf /tmp/tayaway-host
+EOF
+
 # ── 4. Push quadlet units ───────────────────────────────────────────────────
 # Phase 3 lands the directory; Phase 4 fills it in. The repo is the source
 # of truth: `--delete-after` will remove any unit in /etc/containers/systemd/
@@ -292,14 +366,24 @@ ssh_run 'sudo systemctl daemon-reload'
 
 if [ -f "$OPS_DIR/images.txt" ]; then
   step "Pre-pulling images listed in ops/images.txt"
+  pull_failed=0
   while IFS= read -r image; do
     [ -z "$image" ] && continue
     case "$image" in \#*) continue ;; esac
     echo "  pulling $image"
-    ssh_run "sudo podman pull '$image'"
+    # Non-fatal: backend/edge are private GHCR packages, so a fresh box
+    # needs `sudo podman login ghcr.io` first. Pull=missing in the
+    # quadlets retries at service start anyway, so a failed pre-pull
+    # shouldn't abort the whole (otherwise idempotent) provision.
+    ssh_run "sudo podman pull '$image'" || pull_failed=1
   done < "$OPS_DIR/images.txt"
+  if [ "$pull_failed" = "1" ]; then
+    echo "  ⚠ one or more pulls failed — if these are the private GHCR images," >&2
+    echo "    log the VPS in once (read:packages PAT) and re-run:" >&2
+    echo "    ssh $TARGET 'sudo podman login ghcr.io -u <github-user>'" >&2
+  fi
 else
-  echo "→ ops/images.txt absent — skipping pre-pull (filled in during Phase 4)"
+  echo "→ ops/images.txt absent — skipping pre-pull"
 fi
 
 # ── 7. SSH hardening (only runs on the second-ever provision) ───────────────

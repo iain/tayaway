@@ -1,6 +1,7 @@
-# Builds the backend and edge images from the unified containers/Containerfile
-# and pushes them to GHCR tagged by git SHA. Deploys later in the migration
-# pin those SHAs, so every push to main needs to produce a fresh pair.
+# Builds the backend and edge images from the unified containers/Containerfile,
+# plus the standalone geoip-loader from containers/Containerfile.geoip, and
+# pushes them to GHCR tagged by git SHA. Deploys later in the migration pin
+# those SHAs, so every push to main needs to produce a fresh set.
 #
 # The two targets pull disjoint internal stages out of the same Containerfile
 # (backend via gem-build, edge via frontend-build), so building them as two
@@ -114,3 +115,17 @@ jobs:
             TOOLCHAIN_IMAGE=ghcr.io/${{ github.repository_owner }}/tayaway-toolchain:${{ steps.toolchain.outputs.tag }}
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/tayaway-edge:buildcache
           cache-to: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && format('type=registry,ref=ghcr.io/{0}/tayaway-edge:buildcache,mode=max', github.repository_owner) || '' }}
+
+      # Standalone single-stage image (FROM alpine, no toolchain dependency),
+      # so no build-args and no toolchain wait. Shares the per-commit SHA with
+      # the app images, though the geoip volume refreshes on its own monthly
+      # timer rather than per deploy.
+      - name: Build and push geoip loader
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: containers/Containerfile.geoip
+          push: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+          tags: ghcr.io/${{ github.repository_owner }}/tayaway-geoip:${{ github.sha }}
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/tayaway-geoip:buildcache
+          cache-to: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && format('type=registry,ref=ghcr.io/{0}/tayaway-geoip:buildcache,mode=max', github.repository_owner) || '' }}
