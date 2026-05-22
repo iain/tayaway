@@ -1,0 +1,9 @@
+# Holds dbip-city-lite.mmdb. geoip.container writes it; web mounts the
+# same volume read-only at /app/backend/data. Decoupled from app
+# deploys so the monthly refresh carries no app code and a deploy
+# carries no 125 MB GeoIP blob.
+[Unit]
+Description=Tayaway GeoIP data volume
+
+[Volume]
+Label=app=tayaway

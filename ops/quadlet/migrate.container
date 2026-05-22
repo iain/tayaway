@@ -1,0 +1,33 @@
+# One-shot: validate config, then run migrations. Preserves the legacy
+# ordering — env validation → migrate → start — all before traffic.
+# Runs the backend image, so mise decrypts .env.production.yaml in-process
+# via the mounted age key, exactly like web.
+#
+# The image ENTRYPOINT is `mise exec --`, so the Exec below runs under a
+# fully-loaded env. We then wait on db:5432 (container "started" doesn't
+# mean postgres accepts connections yet) before migrating. /dev/tcp is a
+# bash builtin; the debian-slim backend image ships bash.
+[Unit]
+Description=Tayaway DB migrate + config validate
+Requires=db.service
+After=db.service
+Before=web.service
+
+[Container]
+ContainerName=migrate
+Image=ghcr.io/iain/tayaway-backend:e921ea33cf82465b8d459c2a85e4cea85827f159
+Network=tayaway.network
+Volume=/etc/tayaway/env/.env.production:/app/backend/.env.production:ro
+Volume=/etc/tayaway/env/.env.production.yaml:/app/backend/.env.production.yaml:ro
+Volume=/etc/tayaway/age.key:/etc/tayaway/age.key:ro
+Environment=MISE_SOPS_AGE_KEY_FILE=/etc/tayaway/age.key
+Pull=missing
+Exec=bash -c 'until (exec 3<>/dev/tcp/db/5432) 2>/dev/null; do echo "waiting for db"; sleep 1; done; bundle exec rake config:validate db:migrate'
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target
