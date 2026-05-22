@@ -6,10 +6,6 @@
 # backend + edge are private GHCR packages — the VPS needs
 # `sudo podman login ghcr.io` once before these pull. geoip is built from
 # containers/Containerfile.geoip and shares the same per-commit SHA.
-#
-# NOTE: bump all three to the SHA of this PR's merge commit before
-# bringing the stack up — that's the first SHA for which CI builds the
-# geoip image (added in this PR).
-ghcr.io/iain/tayaway-backend:e921ea33cf82465b8d459c2a85e4cea85827f159
-ghcr.io/iain/tayaway-edge:e921ea33cf82465b8d459c2a85e4cea85827f159
-ghcr.io/iain/tayaway-geoip:e921ea33cf82465b8d459c2a85e4cea85827f159
+ghcr.io/iain/tayaway-backend:943a6579d0b03b6d24dc8686fd3a88ff0884517d
+ghcr.io/iain/tayaway-edge:943a6579d0b03b6d24dc8686fd3a88ff0884517d
+ghcr.io/iain/tayaway-geoip:943a6579d0b03b6d24dc8686fd3a88ff0884517d
