@@ -190,6 +190,11 @@ table inet filter {
     type filter hook input priority 0; policy drop;
     ct state established,related accept
     iifname "lo" accept
+    # Containers reach aardvark-dns on the podman bridge gateway (:53) for
+    # container-name resolution. Without this, the default-drop input
+    # silently eats those queries and every in-container lookup (db, web)
+    # times out. The podman* bridges carry only our own containers.
+    iifname "podman*" accept
     ip protocol icmp accept
     ip6 nexthdr icmpv6 accept
     # ssh on 22 during bootstrap so the first-run connection (and any
@@ -480,6 +485,11 @@ table inet filter {
     type filter hook input priority 0; policy drop;
     ct state established,related accept
     iifname "lo" accept
+    # Containers reach aardvark-dns on the podman bridge gateway (:53) for
+    # container-name resolution. Without this, the default-drop input
+    # silently eats those queries and every in-container lookup (db, web)
+    # times out. The podman* bridges carry only our own containers.
+    iifname "podman*" accept
     ip protocol icmp accept
     ip6 nexthdr icmpv6 accept
     # ssh on 50022 — matches the legacy prod VPS so cutover-time ssh
