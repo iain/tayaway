@@ -383,6 +383,26 @@ systemctl enable geoip.timer
 rm -rf /tmp/tayaway-host
 EOF
 
+# ── 3e. GHCR login for private image pulls ───────────────────────────────────
+# backend/edge are private packages. Decrypt a read:packages token from
+# ops/secrets.yaml *locally* (operator key) and pipe it to the VPS's
+# `podman login` over ssh stdin — so the token only ever lands in the box's
+# auth.json, never in a container env or a VM-readable file. Re-run on every
+# provision (and thus every deploy), which is when pulls actually happen;
+# the auth lives in tmpfs and is lost on reboot, but reboots don't pull
+# (images persist on disk). Skipped cleanly if the keys aren't set yet.
+
+step "Logging the VPS in to GHCR (if a pull token is configured)"
+ghcr_user=$(mise x sops -- sops decrypt --extract '["GHCR_USER"]' "$OPS_DIR/secrets.yaml" 2>/dev/null || true)
+ghcr_token=$(mise x sops -- sops decrypt --extract '["GHCR_PULL_TOKEN"]' "$OPS_DIR/secrets.yaml" 2>/dev/null || true)
+if [ -n "$ghcr_user" ] && [ -n "$ghcr_token" ]; then
+  printf '%s' "$ghcr_token" | ssh_run "sudo podman login ghcr.io -u '$ghcr_user' --password-stdin"
+  echo "  logged in to ghcr.io as $ghcr_user"
+else
+  echo "  no GHCR_USER/GHCR_PULL_TOKEN in ops/secrets.yaml — skipping"
+  echo "  (private-image pulls will need a one-time 'sudo podman login ghcr.io' on the VPS)"
+fi
+
 # ── 4. Push quadlet units ───────────────────────────────────────────────────
 # Phase 3 lands the directory; Phase 4 fills it in. The repo is the source
 # of truth: `--delete-after` will remove any unit in /etc/containers/systemd/

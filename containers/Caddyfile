@@ -42,6 +42,14 @@
 		reverse_proxy {$BACKEND_UPSTREAM:web:9292}
 	}
 
+	# Backend health probe (does a real DB ping, 503 on failure). Proxied
+	# explicitly because it lives at /health, not under /api — without this
+	# it would fall through to the SPA and always look "200 OK" regardless
+	# of backend state. The deploy smoke-test + uptime monitoring rely on it.
+	handle /health {
+		reverse_proxy {$BACKEND_UPSTREAM:web:9292}
+	}
+
 	# Everything else: the SPA. Wrapped in handle to keep it mutually
 	# exclusive with the API/WS blocks above. `route` inside forces the
 	# directives to run in declaration order so the asset Cache-Control
