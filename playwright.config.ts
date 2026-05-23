@@ -1,7 +1,15 @@
 import { defineConfig, devices } from '@playwright/test'
 
+// When PLAYWRIGHT_BASE_URL is set we're testing a deployed stack (the edge
+// container on new.tayaway.nl, or the containerised-e2e CI stack) rather than
+// the local dev servers: point at it, and skip both the webServer block (no
+// localhost processes to spawn) and globalSetup (the /api/test/reset it POSTs
+// to is disabled in production). Only smoke.spec.ts is meant to run in this
+// mode — the data-driven specs need the test-only routes.
+const remoteBaseURL = process.env.PLAYWRIGHT_BASE_URL
+
 export default defineConfig({
-  globalSetup: './e2e/global-setup.ts',
+  globalSetup: remoteBaseURL ? undefined : './e2e/global-setup.ts',
   testDir: './e2e/tests',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
@@ -12,7 +20,7 @@ export default defineConfig({
     timeout: 5_000,
   },
   use: {
-    baseURL: 'http://localhost:5174',
+    baseURL: remoteBaseURL ?? 'http://localhost:5174',
     locale: 'en-US',
     trace: 'on-first-retry',
     extraHTTPHeaders: {
@@ -25,7 +33,9 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  webServer: [
+  webServer: remoteBaseURL
+    ? undefined
+    : [
     {
       command: 'mise run //backend:dev:e2e',
       url: 'http://localhost:9293/health',
