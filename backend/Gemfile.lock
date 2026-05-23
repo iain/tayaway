@@ -26,18 +26,18 @@ GEM
       async-http (~> 0.56)
     async-pool (0.11.2)
       async (>= 2.0)
-    async-service (0.22.0)
+    async-service (0.23.0)
       async
       async-container (~> 0.34)
       string-format (~> 0.2)
-    async-utilization (0.3.2)
+    async-utilization (0.4.0)
       console (~> 1.0)
     async-websocket (0.30.0)
       async-http (~> 0.76)
       protocol-http (~> 0.34)
       protocol-rack (~> 0.7)
       protocol-websocket (~> 0.17)
-    bake (0.24.1)
+    bake (0.25.0)
       bigdecimal
       samovar (~> 2.1)
     base64 (0.3.0)
@@ -53,7 +53,7 @@ GEM
     concurrent-ruby (1.3.6)
     concurrent-ruby-ext (1.3.6)
       concurrent-ruby (= 1.3.6)
-    console (1.34.3)
+    console (1.35.1)
       fiber-annotation
       fiber-local (~> 1.1)
       json
@@ -285,7 +285,7 @@ GEM
       openssl (>= 2.2)
       safety_net_attestation (~> 0.5.0)
       tpm-key_attestation (~> 0.14.0)
-    zeitwerk (2.7.5)
+    zeitwerk (2.8.1)
 
 PLATFORMS
   aarch64-linux
@@ -341,10 +341,10 @@ CHECKSUMS
   async-http (0.95.1) sha256=0c3dd458c204c06d5c4b20b01bbec4794a1203db627fb2ce536e1799ec14786c
   async-http-cache (0.4.6) sha256=2038d1f093182f16b50b4db271c25085e3938da10bfcfc2904cadb0530fddfd6
   async-pool (0.11.2) sha256=0a43a17b02b04d9c451b7d12fafa9a50e55dc6dd00d4369aca00433f16a7e3ed
-  async-service (0.22.0) sha256=84616488145654d42f994c2097eef39811a21548bf0da18d20a7b61813e63b61
-  async-utilization (0.3.2) sha256=201a27e0948fe23fc14a01a0ecbe5e420e27cebae3a51f36e56fc45fb31df3b4
+  async-service (0.23.0) sha256=317dd847ac88f186feaeb1d02fce16833a5a94a91b65dfc7633ca151ff20f2ce
+  async-utilization (0.4.0) sha256=4da53cb1733a12c9cf70ff22bd37d29c10fa9162a03ddb10f34e12acd171fe32
   async-websocket (0.30.0) sha256=55739954528ad8f87f7792d0452e1268d1ef2aa5b3719f79400a05a1a6202cdf
-  bake (0.24.1) sha256=8bfac7e61514b17720e3b13cf6a5e122243f43123c6802707b150904bec5f4c7
+  bake (0.25.0) sha256=a47bdc6a26addc048827debc36fe27bb4d5d71ac2958ad910b5386e9baf49869
   base64 (0.3.0) sha256=27337aeabad6ffae05c265c450490628ef3ebd4b67be58257393227588f5a97b
   bigdecimal (4.1.2) sha256=53d217666027eab4280346fba98e7d5b66baaae1b9c3c1c0ffe89d48188a3fbd
   bindata (2.5.1) sha256=53186a1ec2da943d4cb413583d680644eb810aacbf8902497aac8f191fad9e58
@@ -355,7 +355,7 @@ CHECKSUMS
   coderay (1.1.3) sha256=dc530018a4684512f8f38143cd2a096c9f02a1fc2459edcfe534787a7fc77d4b
   concurrent-ruby (1.3.6) sha256=6b56837e1e7e5292f9864f34b69c5a2cbc75c0cf5338f1ce9903d10fa762d5ab
   concurrent-ruby-ext (1.3.6) sha256=ec8bcbb14bbd98eabdb08f76bf0b203b9657255d69eaa51a6751c33b4b174443
-  console (1.34.3) sha256=869fbd74697efc4c606f102d2812b0b008e4e7fd738a91c591e8577140ec0dcc
+  console (1.35.1) sha256=6d2bfdd0bc7e57830540a6c0ce3bc83fff471844db44be89a38aef9f95df296a
   cose (1.3.1) sha256=d5d4dbcd6b035d513edc4e1ab9bc10e9ce13b4011c96e3d1b8fe5e6413fd6de5
   database_cleaner-core (2.0.1) sha256=8646574c32162e59ed7b5258a97a208d3c44551b854e510994f24683865d846c
   database_cleaner-sequel (2.0.2) sha256=f1e6566a1a34d7425ff94b447e2c16181bc215555aff3dfe463b7977b621d4bf
@@ -462,7 +462,7 @@ CHECKSUMS
   unicode-emoji (4.2.0) sha256=519e69150f75652e40bf736106cfbc8f0f73aa3fb6a65afe62fefa7f80b0f80f
   web-push (3.1.0) sha256=501ab00340c58fb70dabda59f28a86b3cccb0930c6f1f30721b2a5b24de7187d
   webauthn (3.4.3) sha256=9be6f5f838f3405b0226e560aa40b67cc8c15ec9154509b997caa7ec9a05e1fc
-  zeitwerk (2.7.5) sha256=d8da92128c09ea6ec62c949011b00ed4a20242b255293dd66bf41545398f73dd
+  zeitwerk (2.8.1) sha256=1c85e0f28954d68cd16e575da37f26846f609b68d80b5942ccfd31030c2449d5
 
 RUBY VERSION
   ruby 4.0.0
