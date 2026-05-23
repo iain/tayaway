@@ -19,7 +19,7 @@ StartLimitIntervalSec=60
 
 [Container]
 ContainerName=web
-Image=ghcr.io/iain/tayaway-backend:943a6579d0b03b6d24dc8686fd3a88ff0884517d
+Image=ghcr.io/iain/tayaway-backend:3ce61b0fb4a209ad386f7cb1925e6f3e6dce9b03
 Network=tayaway.network
 Volume=/etc/tayaway/env/.env.production:/app/backend/.env.production:ro
 Volume=/etc/tayaway/env/.env.production.yaml:/app/backend/.env.production.yaml:ro

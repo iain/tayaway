@@ -21,7 +21,7 @@ StartLimitIntervalSec=60
 
 [Container]
 ContainerName=edge
-Image=ghcr.io/iain/tayaway-edge:943a6579d0b03b6d24dc8686fd3a88ff0884517d
+Image=ghcr.io/iain/tayaway-edge:3ce61b0fb4a209ad386f7cb1925e6f3e6dce9b03
 Network=tayaway.network
 PublishPort=80:80
 PublishPort=443:443

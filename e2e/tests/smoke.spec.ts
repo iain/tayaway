@@ -60,6 +60,16 @@ test.describe('edge stack smoke', () => {
     expect(res.status()).toBe(404)
   })
 
+  test('serves the real backend health check at /health', async ({ request }) => {
+    // Caddy proxies /health to the backend (it lives at /health, not under
+    // /api), so this is the DB-checked status as JSON — not the SPA shell
+    // that any unproxied path would return.
+    const res = await request.get('/health')
+    expect(res.status()).toBe(200)
+    expect(res.headers()['content-type'] ?? '').toContain('application/json')
+    expect(await res.json()).toMatchObject({ status: 'healthy' })
+  })
+
   test('routes /ws to the backend rather than the SPA fallthrough', async ({ request }) => {
     // A plain GET to /ws (no Upgrade header) reaches the backend's ws route,
     // which rejects it as unauthenticated JSON — not the SPA HTML shell.
