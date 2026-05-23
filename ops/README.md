@@ -224,10 +224,14 @@ Phase 4 on, this is also what delivers the stack: it syncs
 oneshot, and the monthly `geoip.timer`, daemon-reloads, and pre-pulls
 the images in `images.txt`.
 
-Two one-time prerequisites the provision can't do for you:
+One prerequisite the provision can't do for you:
 
-- **GHCR login** — `backend`/`edge` are private packages. Log the VPS
-  in once with a `read:packages` PAT (rootful podman, so as root):
+- **GHCR login** — `backend`/`edge` are private packages. Put a
+  `read:packages` PAT in `ops/secrets.yaml` (`sops ops/secrets.yaml`,
+  add `GHCR_USER` and `GHCR_PULL_TOKEN`) and `vm:provision` logs the VPS
+  in for you on every run — no manual step, and it re-establishes after
+  a reboot's next deploy. Without those keys, log in by hand once
+  (rootful podman, so as root):
 
   ```fish
   ssh new.tayaway.nl 'sudo podman login ghcr.io -u <github-user>'
