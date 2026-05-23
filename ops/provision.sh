@@ -265,6 +265,32 @@ case "$TARGET" in
     ;;
 esac
 
+# ── 3a. Ensure container-runtime packages ────────────────────────────────────
+# The first-boot apt install uses --no-install-recommends, which skips
+# aardvark-dns (only a *Recommends* of podman). Without it, containers get
+# IPs but can't resolve each other by name — db:5432 never resolves and
+# migrate spins forever. netavark is the network backend; uidmap lets the
+# tayaway user run rootless podman for debugging. Idempotent and self-
+# healing: installs only what's missing, so it fixes already-bootstrapped
+# boxes on re-provision (the one-shot bootstrap above won't re-run).
+
+step "Ensuring container-runtime packages (aardvark-dns, netavark, uidmap)"
+ssh_sudo_script <<'EOF'
+set -euo pipefail
+missing=()
+for pkg in aardvark-dns netavark uidmap; do
+  dpkg -s "$pkg" >/dev/null 2>&1 || missing+=("$pkg")
+done
+if [ ${#missing[@]} -gt 0 ]; then
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get update
+  apt-get install -y --no-install-recommends "${missing[@]}"
+  echo "  installed: ${missing[*]} — restart running containers to pick up DNS"
+else
+  echo "  all present"
+fi
+EOF
+
 # ── 3b. Deliver production env files ─────────────────────────────────────────
 # The encrypted yaml + plaintext dotenv are bind-mounted into web/migrate
 # (mise decrypts the yaml in-process) and read by the host db-secret
