@@ -16,7 +16,7 @@ After=db.service migrate.service
 
 [Container]
 ContainerName=web
-Image=ghcr.io/iain/tayaway-backend:e921ea33cf82465b8d459c2a85e4cea85827f159
+Image=ghcr.io/iain/tayaway-backend:943a6579d0b03b6d24dc8686fd3a88ff0884517d
 Network=tayaway.network
 Volume=/etc/tayaway/env/.env.production:/app/backend/.env.production:ro
 Volume=/etc/tayaway/env/.env.production.yaml:/app/backend/.env.production.yaml:ro

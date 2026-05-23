@@ -18,7 +18,7 @@ After=web.service
 
 [Container]
 ContainerName=edge
-Image=ghcr.io/iain/tayaway-edge:e921ea33cf82465b8d459c2a85e4cea85827f159
+Image=ghcr.io/iain/tayaway-edge:943a6579d0b03b6d24dc8686fd3a88ff0884517d
 Network=tayaway.network
 PublishPort=80:80
 PublishPort=443:443

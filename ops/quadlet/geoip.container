@@ -9,7 +9,7 @@ Description=Tayaway GeoIP database loader
 
 [Container]
 ContainerName=geoip
-Image=ghcr.io/iain/tayaway-geoip:e921ea33cf82465b8d459c2a85e4cea85827f159
+Image=ghcr.io/iain/tayaway-geoip:943a6579d0b03b6d24dc8686fd3a88ff0884517d
 Volume=tayaway-geoip.volume:/data
 Pull=missing
 
