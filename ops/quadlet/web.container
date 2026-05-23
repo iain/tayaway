@@ -13,6 +13,9 @@
 Description=Tayaway Falcon backend
 Requires=db.service migrate.service
 After=db.service migrate.service
+# StartLimit* are [Unit] keys — systemd ignores them in [Service].
+StartLimitBurst=3
+StartLimitIntervalSec=60
 
 [Container]
 ContainerName=web
@@ -34,8 +37,6 @@ Pull=missing
 [Service]
 LimitNOFILE=65536
 Restart=on-failure
-StartLimitBurst=3
-StartLimitIntervalSec=60
 
 [Install]
 WantedBy=multi-user.target

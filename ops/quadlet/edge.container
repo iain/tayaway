@@ -15,6 +15,9 @@
 Description=Tayaway Caddy edge
 Wants=web.service
 After=web.service
+# StartLimit* are [Unit] keys — systemd ignores them in [Service].
+StartLimitBurst=3
+StartLimitIntervalSec=60
 
 [Container]
 ContainerName=edge
@@ -32,8 +35,6 @@ Pull=missing
 
 [Service]
 Restart=on-failure
-StartLimitBurst=3
-StartLimitIntervalSec=60
 
 [Install]
 WantedBy=multi-user.target

@@ -11,12 +11,18 @@
 Description=Tayaway PostgreSQL
 Requires=tayaway-db-secret.service
 After=tayaway-db-secret.service
+# StartLimit* are [Unit] keys — systemd ignores them in [Service].
+StartLimitBurst=3
+StartLimitIntervalSec=60
 
 [Container]
 ContainerName=db
 Image=docker.io/library/postgres:18
 Network=tayaway.network
-Volume=tayaway-db.volume:/var/lib/postgresql/data
+# postgres:18 stores data in a version subdir and refuses a volume mounted
+# at .../data (it treats it as an unused mount and exits 1). Mount the
+# parent; the image puts the cluster under /var/lib/postgresql/<ver>/docker.
+Volume=tayaway-db.volume:/var/lib/postgresql
 EnvironmentFile=/run/tayaway/db.env
 Environment=POSTGRES_USER=tayaway
 Environment=POSTGRES_DB=tayaway
@@ -30,8 +36,6 @@ HealthStartPeriod=30s
 
 [Service]
 Restart=on-failure
-StartLimitBurst=3
-StartLimitIntervalSec=60
 
 [Install]
 WantedBy=multi-user.target
