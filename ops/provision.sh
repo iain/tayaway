@@ -291,6 +291,32 @@ else
 fi
 EOF
 
+# ── 3a′. podman network config (netavark + working DNS) ──────────────────────
+# Two drop-ins, both load-bearing on Ubuntu:
+#   - network_backend=netavark. podman picks its backend once and caches it;
+#     if netavark was missing at first run it falls back to CNI (whose name
+#     resolution needs a separate dnsname plugin and yields DNSEnabled=false).
+#     Pinning it here keeps a rebuild off CNI regardless of install ordering.
+#   - dns_servers. The host resolv.conf is systemd-resolved's 127.0.0.53
+#     stub, which is unreachable from a container netns — so containers (and
+#     aardvark-dns's upstream forwarding) can't resolve external hosts like
+#     download.db-ip.com or the ACME endpoints. Point them at real resolvers.
+# Drop-ins, so we never clobber a hand-edited containers.conf.
+
+step "Writing podman network config (netavark + dns_servers)"
+ssh_sudo_script <<'EOF'
+set -euo pipefail
+install -d -m 0755 /etc/containers/containers.conf.d
+cat > /etc/containers/containers.conf.d/01-tayaway-netavark.conf <<'CONF'
+[network]
+network_backend = "netavark"
+CONF
+cat > /etc/containers/containers.conf.d/02-tayaway-dns.conf <<'CONF'
+[containers]
+dns_servers = ["1.1.1.1", "8.8.8.8"]
+CONF
+EOF
+
 # ── 3b. Deliver production env files ─────────────────────────────────────────
 # The encrypted yaml + plaintext dotenv are bind-mounted into web/migrate
 # (mise decrypts the yaml in-process) and read by the host db-secret
