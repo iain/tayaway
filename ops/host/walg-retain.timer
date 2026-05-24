@@ -1,0 +1,12 @@
+# Weekly WAL-G retention prune (Mondays). Runs after a few daily backups
+# have accumulated; Persistent catches a miss while the box was down.
+[Unit]
+Description=Weekly Tayaway WAL-G retention prune
+
+[Timer]
+OnCalendar=Mon *-*-* 04:00:00
+Persistent=true
+RandomizedDelaySec=30m
+
+[Install]
+WantedBy=timers.target
