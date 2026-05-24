@@ -129,3 +129,17 @@ jobs:
           tags: ghcr.io/${{ github.repository_owner }}/tayaway-geoip:${{ github.sha }}
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/tayaway-geoip:buildcache
           cache-to: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && format('type=registry,ref=ghcr.io/{0}/tayaway-geoip:buildcache,mode=max', github.repository_owner) || '' }}
+
+      # Custom Postgres image: postgres:18 + wal-g compiled from source with
+      # libsodium (the prebuilt wal-g binaries omit it). No toolchain dep; the
+      # cgo build of libsodium/brotli is the slow part, so the registry cache
+      # matters here. Shares the per-commit SHA with the app images.
+      - name: Build and push db
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: containers/Containerfile.db
+          push: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+          tags: ghcr.io/${{ github.repository_owner }}/tayaway-db:${{ github.sha }}
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/tayaway-db:buildcache
+          cache-to: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && format('type=registry,ref=ghcr.io/{0}/tayaway-db:buildcache,mode=max', github.repository_owner) || '' }}

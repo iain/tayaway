@@ -1,0 +1,36 @@
+# syntax=docker/dockerfile:1.7
+#
+# Postgres for the stack: stock postgres:18 plus a wal-g binary built from
+# source WITH libsodium. The prebuilt wal-g release binaries omit libsodium
+# (verified: no cgo link), and WALG_LIBSODIUM_KEY needs it for client-side
+# backup encryption — so we compile it here. Postgres runs `wal-g wal-push`
+# as its archive_command, and the backup / retention / restore-drill timers
+# `podman exec` this same binary.
+ARG WALG_VERSION=v3.0.8
+
+# ── wal-g build ───────────────────────────────────────────────────────────────
+# wal-g links libsodium and brotli via cgo, so the build needs their -dev
+# headers + a C toolchain + cmake (brotli is built from a vendored checkout
+# by `make deps`). USE_LIBSODIUM flips on the libsodium build tag + link.
+FROM docker.io/library/golang:1.25-bookworm AS walg-build
+ARG WALG_VERSION
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      git make cmake gcc libc6-dev pkg-config libsodium-dev ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+RUN git clone --depth 1 --branch "${WALG_VERSION}" https://github.com/wal-g/wal-g /src
+WORKDIR /src
+ENV USE_LIBSODIUM=1
+# wal-g v3.0.8 imports encoding/json/v2, which Go 1.25 gates behind this
+# experiment. Split deps (slow C builds of brotli + libsodium) from the
+# Go build so iterating on the build doesn't recompile them.
+ENV GOEXPERIMENT=jsonv2
+RUN make deps
+RUN make pg_build
+RUN echo "=== ldd ===" && ldd main/pg/wal-g || true; ./main/pg/wal-g --version
+RUN install -D -m 0755 main/pg/wal-g /out/wal-g
+
+# ── runtime ───────────────────────────────────────────────────────────────────
+# libsodium links statically into wal-g (confirmed: ldd shows only libc), so
+# the runtime needs no extra packages — just the binary on top of postgres:18.
+FROM docker.io/library/postgres:18
+COPY --from=walg-build /out/wal-g /usr/local/bin/wal-g
