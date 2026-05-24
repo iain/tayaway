@@ -1,12 +1,11 @@
-# PostgreSQL. Stock image — no mise/sops inside — so POSTGRES_PASSWORD
-# arrives via EnvironmentFile from the host-side decrypt oneshot
-# (tayaway-db-secret.service writes /run/tayaway/db.env on tmpfs). The
-# password only matters at first-init: postgres bakes it into the role
-# on an empty data dir and ignores the env on later starts. POSTGRES_USER
-# and POSTGRES_DB are non-secret, so they sit here in the clear.
+# PostgreSQL on the custom tayaway-db image (postgres:18 + wal-g built with
+# libsodium). Secrets — POSTGRES_PASSWORD plus the WAL-G S3 keypair and
+# libsodium key — arrive via EnvironmentFile from the host decrypt oneshot
+# (tayaway-db-secret.service, on tmpfs); non-secret WAL-G config sits in the
+# clear below. archive_command ships WAL continuously to OVH Object Storage;
+# the walg-backup / walg-retain timers podman-exec this same wal-g binary.
 #
-# Reachable as db:5432 on tayaway.network. No host port published — the
-# database is never exposed off-box.
+# Reachable as db:5432 on tayaway.network. No host port published.
 [Unit]
 Description=Tayaway PostgreSQL
 Requires=tayaway-db-secret.service
@@ -17,18 +16,38 @@ StartLimitIntervalSec=60
 
 [Container]
 ContainerName=db
-Image=docker.io/library/postgres:18
+Image=ghcr.io/iain/tayaway-db:909b0a25048063b2a1e6f4574bdc4452a77282d4
 Network=tayaway.network
 # postgres:18 stores data in a version subdir and refuses a volume mounted
 # at .../data (it treats it as an unused mount and exits 1). Mount the
 # parent; the image puts the cluster under /var/lib/postgresql/<ver>/docker.
 Volume=tayaway-db.volume:/var/lib/postgresql
+Pull=missing
 EnvironmentFile=/run/tayaway/db.env
 Environment=POSTGRES_USER=tayaway
 Environment=POSTGRES_DB=tayaway
-# Dependents order off this. Container "started" != accepting
-# connections, so migrate/web also wait on the port (see migrate's
-# wait loop) — but the healthcheck makes `systemctl status` honest.
+# WAL-G target + behaviour (non-secret; the S3 keypair + libsodium key come
+# from the EnvironmentFile above). OVH's S3 endpoint uses virtual-hosted
+# addressing (path-style 400s and the root 307-redirects, which wal-g loops
+# on), so we leave AWS_S3_FORCE_PATH_STYLE off. zstd because this wal-g build
+# ships [lz4 lzma none zstd] (brotli needs a separate build tag).
+# DELTA_MAX_STEPS=6 gives the daily backup timer a weekly full + six deltas.
+Environment=WALG_S3_PREFIX=s3://tayaway-walg
+Environment=AWS_ENDPOINT=https://s3.gra.io.cloud.ovh.net
+Environment=AWS_REGION=gra
+Environment=WALG_COMPRESSION_METHOD=zstd
+Environment=WALG_DELTA_MAX_STEPS=6
+Environment=WALG_LIBSODIUM_KEY_TRANSFORM=hex
+# backup-push (via the timers) connects back over the local socket.
+Environment=PGHOST=/var/run/postgresql
+Environment=PGUSER=tayaway
+Environment=PGDATABASE=tayaway
+# Continuous WAL archiving. %%p escapes systemd's %-specifier so postgres
+# receives a literal %p (the WAL path). docker-entrypoint.sh forwards these
+# -c flags to postgres after any first-init.
+Exec=postgres -c archive_mode=on -c "archive_command=wal-g wal-push %%p" -c wal_level=replica -c archive_timeout=120
+# Container "started" != accepting connections, so migrate/web also wait on
+# the port — but the healthcheck makes `systemctl status` honest.
 HealthCmd=pg_isready -U tayaway -d tayaway
 HealthInterval=5s
 HealthRetries=10

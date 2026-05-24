@@ -30,7 +30,12 @@ RUN echo "=== ldd ===" && ldd main/pg/wal-g || true; ./main/pg/wal-g --version
 RUN install -D -m 0755 main/pg/wal-g /out/wal-g
 
 # ── runtime ───────────────────────────────────────────────────────────────────
-# libsodium links statically into wal-g (confirmed: ldd shows only libc), so
-# the runtime needs no extra packages — just the binary on top of postgres:18.
+# libsodium links statically into wal-g (ldd shows only libc), but wal-g still
+# needs a CA bundle to verify TLS to OVH Object Storage — postgres:18 ships
+# none, and without it wal-g's Go client silently retries the handshake
+# forever. ca-certificates is the only runtime add.
 FROM docker.io/library/postgres:18
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=walg-build /out/wal-g /usr/local/bin/wal-g

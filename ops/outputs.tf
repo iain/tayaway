@@ -24,12 +24,12 @@ output "walg_endpoint" {
 }
 
 output "walg_access_key_id" {
-  description = "S3 access key id for WAL-G. Encrypt with sops into backend/.env.production.yaml as AWS_ACCESS_KEY_ID."
+  description = "S3 access key id for WAL-G. sops it into backend/.env.production.yaml as WALG_S3_ACCESS_KEY_ID (the db-secret oneshot maps it to AWS_ACCESS_KEY_ID inside the db container, keeping it out of the web app's env)."
   value       = ovh_cloud_project_user_s3_credential.walg.access_key_id
 }
 
 output "walg_secret_access_key" {
-  description = "S3 secret key for WAL-G. Read with `tofu output -raw walg_secret_access_key`, then `sops` it into backend/.env.production.yaml as AWS_SECRET_ACCESS_KEY."
+  description = "S3 secret key for WAL-G. Read with `tofu output -raw walg_secret_access_key`, then `sops` it into backend/.env.production.yaml as WALG_S3_SECRET_ACCESS_KEY."
   value       = ovh_cloud_project_user_s3_credential.walg.secret_access_key
   sensitive   = true
 }

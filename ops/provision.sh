@@ -362,29 +362,33 @@ else
 fi
 EOF
 
-# ── 3d. Install host units (DB-secret oneshot + tmpfiles) ────────────────────
-# The decrypt script, its systemd unit, and the /run/tayaway tmpfiles rule.
-# db.container depends on tayaway-db-secret.service; enabling it here wires
-# the boot ordering. It only actually runs once the age key + env yaml are
-# present (ConditionPathExists in the unit), so this is safe on first runs.
+# ── 3d. Install host units ───────────────────────────────────────────────────
+# Everything under ops/host/, installed by extension: *.sh → /usr/local/bin
+# (suffix stripped), *.service/*.timer → /etc/systemd/system, *.tmpfiles →
+# /etc/tmpfiles.d. Then enable the boot-time unit (tayaway-db-secret) and the
+# timers (geoip + the WAL-G backup/retention). The oneshot .service units for
+# the WAL-G jobs aren't enabled directly — their timers pull them in. Units
+# gate on ConditionPathExists, so this is safe on a half-provisioned box.
 
-step "Installing host units (tayaway-db-secret, geoip.timer)"
+step "Installing host units (db-secret, geoip + WAL-G timers)"
 rsync -az -e 'ssh -o StrictHostKeyChecking=accept-new' \
   "$HOST_DIR/" "$TARGET:/tmp/tayaway-host/"
 ssh_sudo_script <<'EOF'
 set -euo pipefail
-install -m 0755 -o root -g root /tmp/tayaway-host/tayaway-db-secret.sh /usr/local/bin/tayaway-db-secret
-install -m 0644 -o root -g root /tmp/tayaway-host/tayaway-db-secret.service /etc/systemd/system/tayaway-db-secret.service
-install -m 0644 -o root -g root /tmp/tayaway-host/geoip.timer /etc/systemd/system/geoip.timer
-install -m 0644 -o root -g root /tmp/tayaway-host/tayaway.tmpfiles /etc/tmpfiles.d/tayaway.conf
+for f in /tmp/tayaway-host/*; do
+  base=$(basename "$f")
+  case "$base" in
+    *.sh)              install -m 0755 -o root -g root "$f" "/usr/local/bin/${base%.sh}" ;;
+    *.service|*.timer) install -m 0644 -o root -g root "$f" "/etc/systemd/system/$base" ;;
+    *.tmpfiles)        install -m 0644 -o root -g root "$f" "/etc/tmpfiles.d/${base%.tmpfiles}.conf" ;;
+  esac
+done
 systemd-tmpfiles --create /etc/tmpfiles.d/tayaway.conf
 systemctl daemon-reload
-systemctl enable tayaway-db-secret.service
-# The timer enables now; its target geoip.service is generated from the
-# quadlet at the daemon-reload in the next step, so enabling the timer
-# here (before that reload) is fine — it only needs geoip.service to
-# exist when it fires, not when it's enabled.
-systemctl enable geoip.timer
+# Timers' target .service units are quadlet-generated; they only need to
+# exist when the timer fires (after the section-5 daemon-reload), not at
+# enable time.
+systemctl enable tayaway-db-secret.service geoip.timer walg-backup.timer walg-retain.timer
 rm -rf /tmp/tayaway-host
 EOF
 
