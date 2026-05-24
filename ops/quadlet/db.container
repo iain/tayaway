@@ -22,6 +22,7 @@ Network=tayaway.network
 # at .../data (it treats it as an unused mount and exits 1). Mount the
 # parent; the image puts the cluster under /var/lib/postgresql/<ver>/docker.
 Volume=tayaway-db.volume:/var/lib/postgresql
+Pull=missing
 EnvironmentFile=/run/tayaway/db.env
 Environment=POSTGRES_USER=tayaway
 Environment=POSTGRES_DB=tayaway
