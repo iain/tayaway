@@ -16,7 +16,7 @@ StartLimitIntervalSec=60
 
 [Container]
 ContainerName=db
-Image=ghcr.io/iain/tayaway-db:909b0a25048063b2a1e6f4574bdc4452a77282d4
+Image=ghcr.io/iain/tayaway-db:a6b512245a37d573f43e441e6f617878c8be749f
 Network=tayaway.network
 # postgres:18 stores data in a version subdir and refuses a volume mounted
 # at .../data (it treats it as an unused mount and exits 1). Mount the
