@@ -12,4 +12,4 @@ ghcr.io/iain/tayaway-geoip:3ce61b0fb4a209ad386f7cb1925e6f3e6dce9b03
 # db has its own image lifecycle (postgres+wal-g, rebuilt only when the
 # Containerfile.db or wal-g version changes), so its SHA tracks separately
 # from the app images above.
-ghcr.io/iain/tayaway-db:909b0a25048063b2a1e6f4574bdc4452a77282d4
+ghcr.io/iain/tayaway-db:a6b512245a37d573f43e441e6f617878c8be749f
