@@ -5,8 +5,7 @@
 #
 # Hardening carried over from the legacy systemd unit: read-only rootfs
 # with /tmp on tmpfs (Falcon + ERB need a writable temp dir), all
-# capabilities dropped bar CAP_KILL (see below; Falcon binds the
-# unprivileged 9292), NOFILE
+# capabilities dropped (Falcon binds the unprivileged 9292), NOFILE
 # raised for the WebSocket fd + Sequel pool load, and StartLimit so a
 # crash loop gives up instead of spinning. HOME and MISE_CACHE_DIR point at
 # the tmpfs so bundler and mise have somewhere writable under the read-only
@@ -39,16 +38,16 @@ Environment=HOME=/tmp
 Notify=true
 ReadOnly=true
 Tmpfs=/tmp
-NoNewPrivileges=true
-# Drop everything, then add back only CAP_KILL: falcon-host (pid 1) forks
-# the web + jobs workers and signals them on shutdown via Process.kill.
-# With CAP_KILL stripped, even a same-uid kill returns EACCES (verified on
-# the box), so a restart can't gracefully stop workers and podman falls
-# back to SIGKILL — interrupting in-flight jobs. CAP_KILL only permits
-# sending signals (to this container's own pids), so the hardening cost is
-# minimal.
+# Deliberately NOT NoNewPrivileges=true. With podman's containers-default
+# AppArmor profile, no_new_privs makes AppArmor deny falcon-host (pid 1)
+# signalling its own forked web/jobs workers on shutdown — Process.kill
+# returns EACCES (verified on the box: cap-drop=all alone is fine, adding
+# no-new-privileges reproduces it, and CAP_KILL does not rescue it). The
+# result is podman SIGKILLing workers instead of a graceful stop. Dropping
+# no_new_privs is low-risk here: DropCapability=all leaves an empty bounding
+# set, so the setuid-based privilege escalation no_new_privs guards against
+# is already neutered.
 DropCapability=all
-AddCapability=CAP_KILL
 Pull=missing
 
 [Service]
