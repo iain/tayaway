@@ -12,6 +12,8 @@ Description=Tayaway DB migrate + config validate
 Requires=db.service
 After=db.service
 Before=web.service
+# A failed migrate blocks the deploy — page rather than fail silently.
+OnFailure=notify@%n.service
 
 [Container]
 ContainerName=migrate

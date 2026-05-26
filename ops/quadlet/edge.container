@@ -18,6 +18,8 @@ After=web.service
 # StartLimit* are [Unit] keys — systemd ignores them in [Service].
 StartLimitBurst=3
 StartLimitIntervalSec=60
+# Page on failure once the crash loop gives up (pairs with StartLimitBurst).
+OnFailure=notify@%n.service
 
 [Container]
 ContainerName=edge
