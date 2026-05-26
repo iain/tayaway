@@ -366,11 +366,12 @@ EOF
 # Everything under ops/host/, installed by extension: *.sh → /usr/local/bin
 # (suffix stripped), *.service/*.timer → /etc/systemd/system, *.tmpfiles →
 # /etc/tmpfiles.d. Then enable the boot-time unit (tayaway-db-secret) and the
-# timers (geoip + the WAL-G backup/retention). The oneshot .service units for
-# the WAL-G jobs aren't enabled directly — their timers pull them in. Units
-# gate on ConditionPathExists, so this is safe on a half-provisioned box.
+# timers (geoip + the WAL-G backup/retention/restore-drill). The oneshot
+# .service units behind the timers aren't enabled directly — their timers
+# pull them in; notify@.service is a template invoked only via OnFailure=.
+# Units gate on ConditionPathExists, so this is safe on a half-provisioned box.
 
-step "Installing host units (db-secret, geoip + WAL-G timers)"
+step "Installing host units (db-secret, notify, geoip + WAL-G timers)"
 rsync -az -e 'ssh -o StrictHostKeyChecking=accept-new' \
   "$HOST_DIR/" "$TARGET:/tmp/tayaway-host/"
 ssh_sudo_script <<'EOF'
@@ -388,7 +389,17 @@ systemctl daemon-reload
 # Timers' target .service units are quadlet-generated; they only need to
 # exist when the timer fires (after the section-5 daemon-reload), not at
 # enable time.
-systemctl enable tayaway-db-secret.service geoip.timer walg-backup.timer walg-retain.timer
+#
+# `enable --now` (not bare `enable`): a plain enable only arms the timer at
+# the *next* boot, so a freshly-added timer sits inactive until a reboot
+# that may be months away — which is exactly how the WAL-G timers ended up
+# never firing. --now starts them immediately, and `restart` below makes a
+# re-provision pick up any edited schedule in an already-running timer
+# (enable --now is a no-op on one that's already active). The db-secret
+# oneshot is RemainAfterExit, so enable --now just (re)runs it idempotently.
+timers="geoip.timer walg-backup.timer walg-retain.timer walg-restore-drill.timer"
+systemctl enable --now tayaway-db-secret.service $timers
+systemctl restart $timers
 rm -rf /tmp/tayaway-host
 EOF
 

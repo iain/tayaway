@@ -272,7 +272,7 @@ The whole VPS is gone or unrecoverable.
 7. Update `~/.ssh/config` with the printed Port 50022 block (step 7).
 8. `sudo podman login ghcr.io`, then `systemctl start geoip edge`
    (step 8).
-9. WAL-G restore (see `doc/operations/walg.md` — landing in Phase 5).
+9. WAL-G restore — see **Restore from backup** in [`RUNBOOK.md`](RUNBOOK.md).
 
 ~20 min, four or five commands of human work plus the OVH-manager
 order.

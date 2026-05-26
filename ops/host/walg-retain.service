@@ -6,6 +6,7 @@ Description=Tayaway WAL-G retention prune
 Requires=db.service
 After=db.service
 ConditionPathExists=/run/tayaway/db.env
+OnFailure=notify@%n.service
 
 [Service]
 Type=oneshot

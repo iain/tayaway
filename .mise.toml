@@ -225,9 +225,14 @@ depends = ["//backend:dev:reset"]
 # ── Deploy ───────────────────────────────────────────────────────────────────
 
 [tasks.deploy]
-description = "Deploy to production"
+description = "Deploy a git SHA to a host: pull images, restart, smoke-test /health, auto-rollback"
 confirm = "Deploy to PRODUCTION. Continue?"
-run = "bundle exec cap production deploy"
+shell = "bash -c"
+usage = '''
+arg "<host>" help="ssh target, e.g. tayaway@new.tayaway.nl"
+arg "[sha]" help="git SHA to deploy (default: HEAD)"
+'''
+run = 'ops/deploy.sh "$usage_host" "${usage_sha:-}"'
 
 # ── Ops / VM lifecycle ───────────────────────────────────────────────────────
 
