@@ -8,8 +8,9 @@
 # capabilities dropped bar CAP_KILL (see below; Falcon binds the
 # unprivileged 9292), NOFILE
 # raised for the WebSocket fd + Sequel pool load, and StartLimit so a
-# crash loop gives up instead of spinning. MISE_CACHE_DIR points at the
-# tmpfs so mise has somewhere writable under the read-only rootfs.
+# crash loop gives up instead of spinning. HOME and MISE_CACHE_DIR point at
+# the tmpfs so bundler and mise have somewhere writable under the read-only
+# rootfs.
 [Unit]
 Description=Tayaway Falcon backend
 Requires=db.service migrate.service
@@ -30,6 +31,11 @@ Volume=/etc/tayaway/age.key:/etc/tayaway/age.key:ro
 Volume=tayaway-geoip.volume:/app/backend/data:ro
 Environment=MISE_SOPS_AGE_KEY_FILE=/etc/tayaway/age.key
 Environment=MISE_CACHE_DIR=/tmp/mise-cache
+# HOME defaults to /root, which isn't writable under ReadOnly=true — bundler
+# logs "/root is not writable" and falls back to a temp dir, and mise warns it
+# can't write ~/.local/state. Point HOME at the tmpfs so both get a writable
+# home and start cleanly.
+Environment=HOME=/tmp
 Notify=true
 ReadOnly=true
 Tmpfs=/tmp
