@@ -54,8 +54,8 @@ variable "apex_ipv6" {
 
 variable "apex_ttl" {
   type        = number
-  description = "Apex record TTL. 3600 matches the live records (keeps drift green); lower to 300 ~24h before cutover so the flip propagates in minutes."
-  default     = 3600
+  description = "Apex record TTL. 0 = OVH zone default (resolves to 3600) and matches the imported live records, keeping drift green. Lower to 300 ~24h before cutover so the flip propagates in minutes."
+  default     = 0
 }
 
 # DNS — we only manage records we are adding. The existing apex A record

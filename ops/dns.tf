@@ -38,16 +38,18 @@ resource "ovh_domain_zone_record" "new_aaaa" {
 #        mise exec -- bash -c 'source <(...) ...'   # or via the OVH API:
 #        GET /domain/zone/tayaway.nl/record?fieldType=A&subDomain=
 #        GET /domain/zone/tayaway.nl/record?fieldType=AAAA&subDomain=
-#   2. Import each (OVH import id is "<zone>/<recordID>"):
-#        mise exec -- tofu import ovh_domain_zone_record.apex_a    tayaway.nl/<ID_A>
-#        mise exec -- tofu import ovh_domain_zone_record.apex_aaaa tayaway.nl/<ID_AAAA>
-#   3. `tofu plan` now shows the diff between the live records (old box,
-#      TTL 3600) and the desired state below (new box, TTL 300) — i.e. the
-#      cutover itself. Nothing is applied until you choose to.
+#   2. Import each. The OVH provider's import id is "<recordID>.<zone>"
+#      (record id first, dotted — NOT "<zone>/<recordID>"):
+#        mise exec -- tofu import ovh_domain_zone_record.apex_a    <ID_A>.tayaway.nl
+#        mise exec -- tofu import ovh_domain_zone_record.apex_aaaa <ID_AAAA>.tayaway.nl
+#   3. `tofu plan` is then empty — the adopted records match the config below.
 #
-# Targets default to the OLD box (var.apex_ipv4/apex_ipv6) and TTL to 3600,
-# matching the live records — so once imported the plan is empty and the
-# drift check stays green right up to cutover.
+# (Already imported as of the 2026-05-26 cutover-prep session; this is the
+# recipe for a rebuild.)
+#
+# Targets default to the OLD box (var.apex_ipv4/apex_ipv6) and apex_ttl to 0
+# (OVH's "zone default", what the live records store — resolves to 3600), so
+# the plan stays empty and the drift check stays green right up to cutover.
 #
 # Cutover sequence:
 #   ~24h before:  set apex_ttl = 300, apply   # TTL only; still points at old
