@@ -72,7 +72,13 @@ RUN mise exec -- bundle install --jobs 4 --retry 3
 # with a tmpfs on /tmp; nothing in this stage writes outside /tmp at runtime.
 FROM ${TOOLCHAIN_IMAGE} AS backend
 
+# ca-certificates is load-bearing, not cosmetic: the slim toolchain base ships
+# no CA bundle, so Ruby's OpenSSL can't verify TLS peers — outbound SMTP
+# submission (login-link emails, :465 implicit TLS) and Web Push to the push
+# services both fail with "certificate verify failed". node bundles its own CA
+# store so the frontend build doesn't need this, which is why it went unnoticed.
 RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates \
       libmaxminddb0 \
       libpq5 \
       libsodium23 \
