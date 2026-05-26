@@ -135,9 +135,19 @@ Populate the development database with rich sample data
 
 ## `deploy`
 
-- **Usage**: `deploy`
+- **Usage**: `deploy <host> [sha]`
 
-Deploy to production
+Deploy a git SHA to a host: pull images, restart, smoke-test /health, auto-rollback
+
+### Arguments
+
+#### `<host>`
+
+ssh target, e.g. tayaway@new.tayaway.nl
+
+#### `[sha]`
+
+git SHA to deploy (default: HEAD)
 
 ## `dev`
 
