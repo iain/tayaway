@@ -5,7 +5,8 @@
 #
 # Hardening carried over from the legacy systemd unit: read-only rootfs
 # with /tmp on tmpfs (Falcon + ERB need a writable temp dir), all
-# capabilities dropped (Falcon binds the unprivileged 9292), NOFILE
+# capabilities dropped bar CAP_KILL (see below; Falcon binds the
+# unprivileged 9292), NOFILE
 # raised for the WebSocket fd + Sequel pool load, and StartLimit so a
 # crash loop gives up instead of spinning. MISE_CACHE_DIR points at the
 # tmpfs so mise has somewhere writable under the read-only rootfs.
@@ -21,7 +22,7 @@ OnFailure=notify@%n.service
 
 [Container]
 ContainerName=web
-Image=ghcr.io/iain/tayaway-backend:3ce61b0fb4a209ad386f7cb1925e6f3e6dce9b03
+Image=ghcr.io/iain/tayaway-backend:75ecb264a6acbe1eca41064dcad99ff3c38b737b
 Network=tayaway.network
 Volume=/etc/tayaway/env/.env.production:/app/backend/.env.production:ro
 Volume=/etc/tayaway/env/.env.production.yaml:/app/backend/.env.production.yaml:ro
@@ -33,7 +34,15 @@ Notify=true
 ReadOnly=true
 Tmpfs=/tmp
 NoNewPrivileges=true
+# Drop everything, then add back only CAP_KILL: falcon-host (pid 1) forks
+# the web + jobs workers and signals them on shutdown via Process.kill.
+# With CAP_KILL stripped, even a same-uid kill returns EACCES (verified on
+# the box), so a restart can't gracefully stop workers and podman falls
+# back to SIGKILL — interrupting in-flight jobs. CAP_KILL only permits
+# sending signals (to this container's own pids), so the hardening cost is
+# minimal.
 DropCapability=all
+AddCapability=CAP_KILL
 Pull=missing
 
 [Service]
