@@ -8,7 +8,7 @@ class App
   hash_branch "api" do |r|
     r.on "health" do
       r.get do
-        { status: "healthy" }
+        { status: "healthy", version: APP_CONFIG.git_sha }
       end
     end
 

@@ -47,6 +47,15 @@ if ! printf '%s' "$SHA" | grep -Eq '^[0-9a-f]{7,40}$'; then
   exit 2
 fi
 
+# jq parses the /health version in the post-deploy check. `mise run deploy`
+# provides it (see [tasks.deploy].tools in .mise.toml); direct invocations rely
+# on an ambient jq (CI runners and Homebrew ship it). Fail fast rather than
+# silently mis-verifying later.
+if ! command -v jq >/dev/null 2>&1; then
+  echo "ERROR: jq not found. Run via 'mise run deploy', or install jq." >&2
+  exit 2
+fi
+
 OPS_DIR="$(cd "$(dirname "$0")" && pwd)"
 QUADLET_DIR="$OPS_DIR/quadlet"
 # Files that pin the app SHA. db.container is intentionally excluded.
@@ -110,6 +119,27 @@ smoke_test() {
   return 1
 }
 
+# A 200 only proves *something* healthy answered — not that the restart
+# actually swapped to the new image (a container that failed to recreate would
+# keep serving the old code on a 200). /health reports APP_CONFIG.git_sha, so
+# confirm it's the SHA we just deployed. Compare on the 7-char short form to
+# tolerate full-vs-short. An empty version means a pre-version-feature image is
+# answering: warn but don't fail, so rolling back to an old SHA still works.
+verify_version() {
+  local served
+  served=$(curl -fsS -m 10 "$HEALTH_URL" 2>/dev/null | jq -r '.version // ""')
+  if [ -z "$served" ]; then
+    echo "  version → none reported (pre-version image?) — skipping version check"
+    return 0
+  elif [ "${served:0:7}" = "${SHA:0:7}" ]; then
+    echo "  version → $served (matches deployed SHA)"
+    return 0
+  else
+    echo "  version → $served, expected ${SHA:0:7}* — restart did not swap the container" >&2
+    return 1
+  fi
+}
+
 rollback() {
   step "Rolling back to the previously-deployed SHA"
   restore_files
@@ -170,7 +200,7 @@ restart_stack
 
 # ── 4. Smoke-test, roll back if unhealthy ─────────────────────────────────────
 step "Smoke-testing $HEALTH_URL"
-if smoke_test; then
+if smoke_test && verify_version; then
   trap - ERR
   clear_baks
   echo
@@ -179,7 +209,7 @@ if smoke_test; then
   echo "  working tree and the box already agree)."
 else
   trap - ERR
-  echo "✗ /health did not go green within 45s — rolling back." >&2
+  echo "✗ Deploy did not verify (health or version) — rolling back." >&2
   rollback
   clear_baks
   exit 1

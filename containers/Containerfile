@@ -101,6 +101,14 @@ ENV MISE_ENV=production \
     BUNDLE_DEPLOYMENT=true \
     BUNDLE_WITHOUT=development:test
 
+# The container has no .git and the podman deploy writes no REVISION file, so
+# the git_sha fallback chain in config/environment.rb would resolve to empty.
+# Bake the build's commit SHA in (passed by the App-images workflow);
+# APP_CONFIG.git_sha then surfaces it on /health and the WS pong. Declared here,
+# late in the stage, so a new SHA only busts this layer — not the apt/gem layers.
+ARG GIT_SHA=""
+ENV GIT_SHA=${GIT_SHA}
+
 EXPOSE 9292
 
 ENTRYPOINT ["mise", "exec", "--"]

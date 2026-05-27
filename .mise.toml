@@ -227,6 +227,11 @@ depends = ["//backend:dev:reset"]
 [tasks.deploy]
 description = "Deploy a git SHA to a host: pull images, restart, smoke-test /health, auto-rollback"
 confirm = "Deploy to PRODUCTION. Continue?"
+# jq parses the /health version in the post-deploy verification. Scoped to this
+# task (not the root [tools]) so it doesn't end up in the toolchain — and hence
+# runtime — image. Direct `ops/deploy.sh` runs (CI, confirm-bypass) rely on an
+# ambient jq; the script fails fast with a clear message if it's missing.
+tools = { jq = "latest" }
 shell = "bash -c"
 usage = '''
 arg "<host>" help="ssh target, e.g. tayaway@new.tayaway.nl"

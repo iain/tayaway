@@ -100,6 +100,7 @@ jobs:
           tags: ghcr.io/${{ github.repository_owner }}/tayaway-backend:${{ github.sha }}
           build-args: |
             TOOLCHAIN_IMAGE=ghcr.io/${{ github.repository_owner }}/tayaway-toolchain:${{ steps.toolchain.outputs.tag }}
+            GIT_SHA=${{ github.sha }}
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/tayaway-backend:buildcache
           cache-to: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && format('type=registry,ref=ghcr.io/{0}/tayaway-backend:buildcache,mode=max', github.repository_owner) || '' }}
 
