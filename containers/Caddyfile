@@ -1,6 +1,15 @@
 # Caddy config for the edge container. SITE_ADDRESS pins the listener; in
 # production it's the public hostname so Caddy provisions Let's Encrypt
 # certs automatically. Locally it defaults to plain http on :8080.
+
+# Co-hosted side projects drop their own site blocks in /etc/caddy/sites/
+# (mounted from the host — see ops/co-hosting.md). Each file is a full site
+# block for its own domain and gets its own cert. The glob matches nothing in
+# production until a tenant is added, which Caddy treats as a no-op. A broken
+# snippet fails the whole config load, so tenant deploys must `caddy validate`
+# before reloading.
+import /etc/caddy/sites/*.caddy
+
 {$SITE_ADDRESS:http://:8080} {
 	encode zstd gzip
 
