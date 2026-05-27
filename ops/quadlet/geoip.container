@@ -9,7 +9,7 @@ Description=Tayaway GeoIP database loader
 
 [Container]
 ContainerName=geoip
-Image=ghcr.io/iain/tayaway-geoip:75ecb264a6acbe1eca41064dcad99ff3c38b737b
+Image=ghcr.io/iain/tayaway-geoip:dbf726c58ed90ea71ff8ee3f0f0f910eed779d7e
 # Join tayaway.network for working egress + DNS (aardvark forwards to the
 # dns_servers). The default podman network's NAT is unreliable here, so a
 # loader left on it can't resolve download.db-ip.com.

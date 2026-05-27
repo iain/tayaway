@@ -22,7 +22,7 @@ OnFailure=notify@%n.service
 
 [Container]
 ContainerName=web
-Image=ghcr.io/iain/tayaway-backend:75ecb264a6acbe1eca41064dcad99ff3c38b737b
+Image=ghcr.io/iain/tayaway-backend:dbf726c58ed90ea71ff8ee3f0f0f910eed779d7e
 Network=tayaway.network
 Volume=/etc/tayaway/env/.env.production:/app/backend/.env.production:ro
 Volume=/etc/tayaway/env/.env.production.yaml:/app/backend/.env.production.yaml:ro
