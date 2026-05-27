@@ -8,7 +8,13 @@ RSpec.describe "Health endpoint" do
       get "/health"
 
       expect(last_response.status).to eq(200)
-      expect(JSON.parse(last_response.body)).to eq("status" => "healthy")
+      expect(JSON.parse(last_response.body)).to include("status" => "healthy")
+    end
+
+    it "reports the deployed build version" do
+      get "/health"
+
+      expect(JSON.parse(last_response.body)["version"]).to eq(APP_CONFIG.git_sha)
     end
 
     it "returns 503 when database is unreachable" do
@@ -28,7 +34,13 @@ RSpec.describe "Health endpoint" do
       get "/api/health"
 
       expect(last_response.status).to eq(200)
-      expect(JSON.parse(last_response.body)).to eq("status" => "healthy")
+      expect(JSON.parse(last_response.body)).to include("status" => "healthy")
+    end
+
+    it "reports the deployed build version" do
+      get "/api/health"
+
+      expect(JSON.parse(last_response.body)["version"]).to eq(APP_CONFIG.git_sha)
     end
   end
 end
