@@ -415,3 +415,115 @@ wal-g version changes).
 **Won't restart the app:** `vm:provision` syncs + reloads but deliberately
 leaves running containers alone. **Will restart the app:** `deploy` (migrate →
 web → edge) and any explicit `systemctl restart`.
+
+---
+
+## 7. Cutover (old box → new box, the one-time apex flip)
+
+Moving production `tayaway.nl` off the old Capistrano VPS (`51.195.43.146`)
+onto the new podman box (`new.tayaway.nl` = `51.178.47.84` / `…:2460`). It is
+**more than the DNS flip** — three things move together: the database, the
+apex A/AAAA records, and the edge's `SITE_ADDRESS` (which is what makes Caddy
+get the apex TLS cert). Do them in the order below; the ordering around TLS is
+not optional.
+
+Run everything from your laptop in `ops/` (tofu reads creds from
+`secrets.yaml`). Expect **~10–15 min of downtime** for the final DB copy +
+propagation.
+
+### Preconditions (all done as of 2026-05-27)
+
+- Apex TTL is **300** (lowered ≥24 h earlier so the flip propagates in minutes;
+  see §3 "Apply an ops/config change" + `ops/dns.tf`). Confirm it has aged out:
+  `dig +short tayaway.nl @ns14.ovh.net` and check the TTL is 300, not 3600.
+- New box verified: `/health` 200, **IPv6 serving** (`curl -6
+  https://new.tayaway.nl/health` → 200), WAL-G archiving healthy
+  (`failed_count = 0`), restore drill green, login email delivers (jobs worker).
+- Backend needs **no** config change: `FRONTEND_URL` is already
+  `https://tayaway.nl`, so email links, WebAuthn `rp_id`, and CSP origins are
+  all apex-keyed. Passkeys and login-link click-through only work *after*
+  cutover (they're bound to the apex), so don't be alarmed they fail on
+  `new.tayaway.nl` beforehand.
+
+### The cutover
+
+```bash
+# 1. Stop the OLD box's app so no new writes land and any queued emails/push
+#    freeze in its async_jobs table (they'll send exactly once from the new
+#    box after the restore — not zero, not twice). Old DB keeps running for
+#    the dump. Adjust unit names to the old box's Capistrano/systemd setup.
+ssh tayaway.nl 'sudo systemctl stop <old-web> <old-worker>'   # site now down
+
+# 2. Final dump of the old prod DB → restore into the new box's db container.
+#    Rehearsed 2026-05-26: both sides are PG 18.3, DB ~11 MB. Peer auth on the
+#    old box, role `tayaway` on the new cluster (no `postgres` role there).
+ssh tayaway.nl 'sudo -u postgres pg_dump -Fc tayaway_production' > /tmp/prod.dump
+#    Recreate the target so the new box's commissioning/test data is gone:
+ssh new.tayaway.nl 'sudo podman exec -i db psql -U tayaway -d postgres' <<'SQL'
+DROP DATABASE IF EXISTS tayaway;
+CREATE DATABASE tayaway OWNER tayaway;
+SQL
+ssh new.tayaway.nl 'sudo podman exec -i db pg_restore -U tayaway -d tayaway \
+  --no-owner --no-privileges' < /tmp/prod.dump
+
+# 3. Re-run migrate + restart web so it binds the restored DB and the jobs
+#    worker starts draining the imported async_jobs (queued emails go out now).
+ssh new.tayaway.nl 'sudo systemctl restart migrate web'
+ssh new.tayaway.nl 'sudo podman exec db psql -U tayaway -d tayaway -tAc \
+  "select count(*) from users;"'   # sanity: row counts match old prod
+
+# 4. Fresh base backup — recovery/restore starts a new baseline.
+ssh new.tayaway.nl 'sudo systemctl start walg-backup.service'
+
+# 5. Flip the apex DNS to the new box. Edit ops/variables.tf defaults:
+#      apex_ipv4 = "51.178.47.84"
+#      apex_ipv6 = "2001:41d0:404:200::2460"
+#    (keeping config = live keeps the drift check green), then:
+mise exec -- tofu apply        # review: only apex_a + apex_aaaa target changes
+dig +short tayaway.nl @ns14.ovh.net          # poll until it shows the new IP
+
+# 6. ONLY after the apex resolves to the new box: flip the edge so Caddy
+#    serves tayaway.nl and provisions its LE cert (it can't until DNS points
+#    here — HTTP-01/TLS-ALPN). In ops/quadlet/edge.container set
+#      SITE_ADDRESS=https://tayaway.nl
+#    and delete the EXTRA_CONNECT_SRC line, then:
+mise run vm:provision tayaway@new.tayaway.nl
+ssh new.tayaway.nl 'sudo systemctl restart edge'
+ssh new.tayaway.nl 'sudo journalctl -u edge -f'   # watch for the cert, then ^C
+```
+
+### Verify
+
+```bash
+curl -sS https://tayaway.nl/health                       # 200, valid apex cert
+curl -6 -sS https://tayaway.nl/health                    # 200 over IPv6
+```
+
+Then in a browser on `tayaway.nl`: log in via email link (full click-through
+now works), and confirm an existing **passkey** authenticates (proves the
+migrated WebAuthn credentials + apex origin line up). There may be a sub-minute
+TLS blip on step 6 while Caddy fetches the cert — normal.
+
+### Rollback (apex back to the old box, ~5 min at TTL 300)
+
+If anything's wrong, revert the apex targets and re-apply — the old box is
+untouched and still serving:
+
+```bash
+git checkout ops/variables.tf      # restore apex_ipv4/apex_ipv6 to the old box
+mise exec -- tofu apply
+ssh tayaway.nl 'sudo systemctl start <old-web> <old-worker>'   # if you stopped it
+```
+
+Caveat: any writes made on the new box after cutover won't be on the old box.
+Rolling back is clean only in the first minutes, before real traffic lands.
+
+### After it's settled (keep the old box warm ~1 week, then)
+
+- Remove the `new.tayaway.nl` A/AAAA records (`ovh_domain_zone_record.new_a` /
+  `new_aaaa` in `ops/dns.tf`) — `tofu apply`.
+- Drop `EXTRA_CONNECT_SRC` for good (already removed from the env at step 6;
+  delete the dangling reference/comment in `edge.container` if any remains).
+- Optionally raise `apex_ttl` back to `0` (zone default 3600) now the flip is
+  done — `tofu apply`.
+- Decommission the old VPS.
