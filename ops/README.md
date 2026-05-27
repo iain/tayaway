@@ -329,3 +329,11 @@ dance." Two files (`provision.sh`, `*.tf`) plus the quadlet units fits
 in one head and reads in one sitting; pulling in a configuration-
 management framework would obscure that for a one-VPS deployment
 whose configuration is already trivially declarative.
+
+## Co-hosting other projects on this box
+
+The VPS has spare capacity for small, unrelated side projects. How to run
+them as isolated tenants (rootful shared edge, rootless per-tenant) without
+coupling them to tayaway — plus a copy-paste issue/AI-prompt template for
+taking a side project to production — is in
+[`co-hosting.md`](co-hosting.md).
