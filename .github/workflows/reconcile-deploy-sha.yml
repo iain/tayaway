@@ -1,0 +1,79 @@
+# Keeps main's committed image-SHA pins in sync with what's actually running.
+#
+# Deploys are pull-based and don't touch git (ops/host/self-deploy.sh), so the
+# box drifts ahead of the pinned SHAs in ops/quadlet/*.container + images.txt.
+# That drift is only cosmetic — the box self-heals to :main regardless — but
+# left unbounded it makes a from-scratch `vm:provision` build a stale baseline.
+# This reads the live SHA off the public /health (no box access) and, when it
+# differs from the pin, opens a PR to bump it. Silent when in sync. The
+# operator merges it occasionally — the "bump every once in a while".
+name: Reconcile deployed image SHA
+
+on:
+  schedule:
+    - cron: "0 7 * * 1" # Mondays 07:00 UTC (after ops-drift's 06:00)
+  workflow_dispatch:
+
+# Only the latest matters; a queued older run would just reopen the same PR.
+concurrency:
+  group: reconcile-sha
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  # Public health endpoint to read the live build SHA from. Flip to
+  # https://tayaway.nl/health at cutover.
+  HEALTH_URL: https://new.tayaway.nl/health
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Reconcile pinned SHA with the live build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          # Live SHA the box reports it's serving. jq is preinstalled on the runner.
+          live=$(curl -fsS -m 15 "$HEALTH_URL" | jq -r '.version // ""')
+          if ! printf '%s' "$live" | grep -Eq '^[0-9a-f]{7,40}$'; then
+            echo "::error::/health did not return a valid version SHA (got '${live:-}')"
+            exit 1
+          fi
+
+          # Currently-pinned SHA in the repo (backend line of images.txt).
+          pinned=$(grep -oE 'tayaway-backend:[0-9a-f]{7,40}' ops/images.txt | head -1 | cut -d: -f2)
+          echo "live=$live pinned=${pinned:-none}"
+
+          if [ "$live" = "$pinned" ]; then
+            echo "In sync — nothing to reconcile."
+            exit 0
+          fi
+
+          # Same rewrite ops/deploy.sh uses; db is intentionally untouched.
+          sed -E -i \
+            "s#(ghcr\.io/iain/tayaway-(backend|edge|geoip):)[0-9a-f]{7,40}#\1${live}#g" \
+            ops/quadlet/web.container ops/quadlet/migrate.container \
+            ops/quadlet/edge.container ops/quadlet/geoip.container ops/images.txt
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git switch -C ci/reconcile-sha
+          git commit -aqm "Reconcile deployed image SHA → ${live}"
+          git push -f origin ci/reconcile-sha
+
+          # Force-push updates an existing PR; only create one if absent. CI
+          # checks don't run on a GITHUB_TOKEN-authored PR, which is fine for a
+          # pure tag bump (no code change).
+          if ! gh pr view ci/reconcile-sha >/dev/null 2>&1; then
+            gh pr create --base main --head ci/reconcile-sha \
+              --title "Reconcile deployed image SHA → ${live}" \
+              --body "The box is running \`${live}\` (per /health) but main pins \`${pinned:-none}\`. Pull-based deploys don't commit, so this catches the pinned SHA up so a fresh \`vm:provision\` builds the right baseline. Tag bump only; db untouched."
+          fi
