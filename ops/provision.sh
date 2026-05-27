@@ -429,6 +429,13 @@ fi
 # that isn't in the repo. Don't hand-drop experimental units on the VPS
 # and expect them to survive a provision.
 
+# edge.container bind-mounts /etc/caddy/sites (read-only) for co-hosted tenant
+# site config — see ops/co-hosting.md. Ensure it exists before edge starts;
+# podman would otherwise create the source as a root dir on first mount, but
+# making it explicit keeps the mode predictable. Empty until a tenant lands.
+step "Ensuring /etc/caddy/sites exists (co-hosted tenant site config)"
+ssh_run 'sudo install -d -m 0755 -o root -g root /etc/caddy/sites'
+
 step "Syncing quadlet units to /etc/containers/systemd/"
 if compgen -G "$QUADLET_DIR"/* >/dev/null; then
   # rsync to /tmp first, then `sudo rsync` to the root-owned destination

@@ -29,6 +29,10 @@ PublishPort=80:80
 PublishPort=443:443
 PublishPort=443:443/udp
 Volume=tayaway-caddy.volume:/data
+# Site config for co-hosted side projects, dropped on the host (see
+# ops/co-hosting.md). The baked Caddyfile imports /etc/caddy/sites/*.caddy;
+# read-only so a tenant can't rewrite the edge's own config.
+Volume=/etc/caddy/sites:/etc/caddy/sites:ro
 Environment=SITE_ADDRESS=https://new.tayaway.nl
 Environment=BACKEND_UPSTREAM=web:9292
 Environment="EXTRA_CONNECT_SRC= wss://new.tayaway.nl"
