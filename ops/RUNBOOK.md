@@ -451,8 +451,10 @@ propagation.
 # 1. Stop the OLD box's app so no new writes land and any queued emails/push
 #    freeze in its async_jobs table (they'll send exactly once from the new
 #    box after the restore — not zero, not twice). Old DB keeps running for
-#    the dump. Adjust unit names to the old box's Capistrano/systemd setup.
-ssh tayaway.nl 'sudo systemctl stop <old-web> <old-worker>'   # site now down
+#    the dump. The old box runs a single `tayaway-falcon.service` (web + the
+#    in-process jobs worker — no separate worker unit), fronted by nginx;
+#    stopping it freezes writes and any queued async_jobs.
+ssh tayaway.nl 'sudo systemctl stop tayaway-falcon'   # site now 502s via nginx
 
 # 2. Final dump of the old prod DB → restore into the new box's db container.
 #    Rehearsed 2026-05-26: both sides are PG 18.3, DB ~11 MB. Peer auth on the
@@ -512,7 +514,7 @@ untouched and still serving:
 ```bash
 git checkout ops/variables.tf      # restore apex_ipv4/apex_ipv6 to the old box
 mise exec -- tofu apply
-ssh tayaway.nl 'sudo systemctl start <old-web> <old-worker>'   # if you stopped it
+ssh tayaway.nl 'sudo systemctl start tayaway-falcon'   # if you stopped it
 ```
 
 Caveat: any writes made on the new box after cutover won't be on the old box.
