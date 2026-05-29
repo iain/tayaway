@@ -69,14 +69,6 @@ Preserve the db and geoip volumes
 
 Build and start the local podman/compose stack against the current toolchain image
 
-## `db:backup`
-
-- Depends: //backend:db:backup
-
-- **Usage**: `db:backup`
-
-Trigger a database backup on the production server
-
 ## `db:create`
 
 - Depends: //backend:db:create

@@ -208,10 +208,6 @@ depends = ["//backend:db:seed"]
 description = "Populate the development database with rich sample data"
 depends = ["//backend:db:seed-dev"]
 
-[tasks."db:backup"]
-description = "Trigger a database backup on the production server"
-depends = ["//backend:db:backup"]
-
 [tasks.console]
 description = "Open a Ruby console with the app loaded"
 depends = ["//backend:console"]
@@ -268,10 +264,7 @@ description = "Install root dependencies (Playwright, prettier)"
 # --with-deps; on Linux it shells out to apt and wants sudo, which is fine
 # in CI / the devcontainer but a friction point for a local dev setup. If
 # you hit a missing system lib, run it manually with --with-deps.
-run = [
-  "pnpm install",
-  "pnpm exec playwright install chromium",
-]
+run = ["pnpm install", "pnpm exec playwright install chromium"]
 
 [tasks."setup:db"]
 description = "Create and migrate the development, test, and e2e databases"
