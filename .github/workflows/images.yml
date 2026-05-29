@@ -1,7 +1,10 @@
 # Builds the backend and edge images from the unified containers/Containerfile,
 # plus the standalone geoip-loader from containers/Containerfile.geoip, and
-# pushes them to GHCR tagged by git SHA. Deploys later in the migration pin
-# those SHAs, so every push to main needs to produce a fresh set.
+# pushes them to GHCR tagged by git SHA on a main push.
+#
+# It publishes ONLY the per-commit :<sha> — never :main. The box's pull-based
+# self-deploy follows :main, and promote-main.yml moves :main to the :<sha>
+# after CI passes on main, so a built-but-test-failing commit can't deploy.
 #
 # The two targets pull disjoint internal stages out of the same Containerfile
 # (backend via gem-build, edge via frontend-build), so building them as two
@@ -9,8 +12,8 @@
 # the common-path build at ~30s.
 #
 # PRs build without pushing — catches Containerfile breakage at review time
-# without giving forked-PR runs write access to GHCR. The containerised e2e
-# job that exercises the full quadlet stack lands in a later phase.
+# without giving forked-PR runs write access to GHCR. On PRs the images are
+# loaded locally for the Trivy scan and the containerised-e2e job below.
 
 name: App images
 
@@ -108,13 +111,11 @@ jobs:
           # (nothing is pushed on PRs). push and load are mutually exclusive but
           # never overlap — push is main-only, load is PR-only.
           load: ${{ github.event_name == 'pull_request' }}
-          # The `:main` tag is the moving pointer the box's pull-based self-deploy
-          # follows; the revision label lets it resolve `:main` → the SHA to pull.
-          # Both only reach GHCR on a main push (push gated above), so a PR can't
-          # move `:main`. See ops/host/self-deploy.sh.
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/tayaway-backend:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/tayaway-backend:main
+          # Publish only the per-commit :<sha>. The moving :main tag the box's
+          # pull-based self-deploy follows is advanced separately by
+          # promote-main.yml, and only after CI passes on main — so a successful
+          # build here cannot by itself deploy a red commit.
+          tags: ghcr.io/${{ github.repository_owner }}/tayaway-backend:${{ github.sha }}
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
           build-args: |
@@ -134,9 +135,8 @@ jobs:
           # (nothing is pushed on PRs). push and load are mutually exclusive but
           # never overlap — push is main-only, load is PR-only.
           load: ${{ github.event_name == 'pull_request' }}
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/tayaway-edge:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/tayaway-edge:main
+          # Only :<sha> here; :main is moved by promote-main.yml after CI.
+          tags: ghcr.io/${{ github.repository_owner }}/tayaway-edge:${{ github.sha }}
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
           build-args: |
@@ -158,9 +158,8 @@ jobs:
           # (nothing is pushed on PRs). push and load are mutually exclusive but
           # never overlap — push is main-only, load is PR-only.
           load: ${{ github.event_name == 'pull_request' }}
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/tayaway-geoip:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/tayaway-geoip:main
+          # Only :<sha> here; :main is moved by promote-main.yml after CI.
+          tags: ghcr.io/${{ github.repository_owner }}/tayaway-geoip:${{ github.sha }}
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/tayaway-geoip:buildcache
