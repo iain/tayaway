@@ -29,3 +29,17 @@ updates:
         update-types:
           - "minor"
           - "patch"
+
+  # Containerfile base images (caddy, postgres, golang, alpine). Dependabot's
+  # docker file finder matches /dockerfile|containerfile/i, so the one
+  # directory covers Containerfile, Containerfile.db, and Containerfile.geoip.
+  # The ${TOOLCHAIN_IMAGE} ARG base is our own image and isn't tracked here.
+  - package-ecosystem: "docker"
+    directory: "/containers"
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
