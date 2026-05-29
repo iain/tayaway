@@ -178,11 +178,18 @@ jobs:
           cache-to: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && format('type=registry,ref=ghcr.io/{0}/tayaway-db:buildcache,mode=max', github.repository_owner) || '' }}
 
       # Scan the freshly built images for known, fixable CVEs. PR-only: the
-      # steps above load the images into the local daemon on PRs, so a base-
-      # image bump (often a Dependabot PR) is gated at review time, before the
-      # SHA is ever pushed or self-deployed. --ignore-unfixed keeps the gate
-      # actionable — it fails only on vulns with a fix available. Accepted
-      # dormant findings (ruby default gems) are listed in .trivyignore.
+      # steps above load the images into the local daemon on PRs, so a finding
+      # surfaces at review time, before the SHA is pushed or self-deployed.
+      # --ignore-unfixed keeps it actionable (fails only on vulns with a fix).
+      #
+      # Two tiers. The images we author (backend, geoip) hard-gate on
+      # HIGH/CRITICAL — that's our code and base layers, which we can patch.
+      # The upstream-binary-heavy images (edge=Caddy, db=postgres+wal-g) are
+      # report-only: their findings live inside third-party Go binaries (gosu's
+      # stdlib, Caddy/wal-g module deps) whose fix is an upstream release, which
+      # Dependabot base-image / WALG_VERSION bumps pick up. Gating them would
+      # mean ignoring stdlib CVEs by ID — too broad, it'd mask them everywhere.
+      # Accepted dormant findings in the gated images are listed in .trivyignore.
       - name: Install Trivy
         if: github.event_name == 'pull_request'
         uses: aquasecurity/setup-trivy@v0.2.6
@@ -194,7 +201,7 @@ jobs:
           SHA: ${{ github.sha }}
         run: |
           status=0
-          for img in tayaway-backend tayaway-edge tayaway-geoip tayaway-db; do
+          for img in tayaway-backend tayaway-geoip; do
             ref="ghcr.io/${OWNER}/${img}:${SHA}"
             echo "::group::${img} — HIGH/CRITICAL (gating)"
             trivy image --severity HIGH,CRITICAL --ignore-unfixed \
@@ -202,6 +209,13 @@ jobs:
             echo "::endgroup::"
             echo "::group::${img} — MEDIUM (report only)"
             trivy image --severity MEDIUM --ignore-unfixed \
+              --exit-code 0 --no-progress "$ref"
+            echo "::endgroup::"
+          done
+          for img in tayaway-edge tayaway-db; do
+            ref="ghcr.io/${OWNER}/${img}:${SHA}"
+            echo "::group::${img} — all severities (report only, upstream binaries)"
+            trivy image --severity HIGH,CRITICAL,MEDIUM --ignore-unfixed \
               --exit-code 0 --no-progress "$ref"
             echo "::endgroup::"
           done
