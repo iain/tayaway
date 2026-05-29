@@ -14,8 +14,8 @@ import { test, expect } from '@playwright/test'
 // production) — those belong to the containerised-e2e CI job that brings the
 // stack up in MISE_ENV=e2e.
 test.skip(
-  !process.env.PLAYWRIGHT_BASE_URL,
-  'edge smoke runs only against a deployed stack (set PLAYWRIGHT_BASE_URL)',
+  !process.env.PLAYWRIGHT_BASE_URL || !!process.env.E2E_CONTAINERISED,
+  'edge smoke runs only against a real deployed stack with trusted TLS — not the local containerised-e2e stack, which serves plain http',
 )
 
 test.describe('edge stack smoke', () => {

@@ -2,14 +2,20 @@ import { defineConfig, devices } from '@playwright/test'
 
 // When PLAYWRIGHT_BASE_URL is set we're testing a deployed stack (the edge
 // container on new.tayaway.nl, or the containerised-e2e CI stack) rather than
-// the local dev servers: point at it, and skip both the webServer block (no
-// localhost processes to spawn) and globalSetup (the /api/test/reset it POSTs
-// to is disabled in production). Only smoke.spec.ts is meant to run in this
-// mode — the data-driven specs need the test-only routes.
+// the local dev servers: point at it and skip the webServer block (no
+// localhost processes to spawn).
+//
+// globalSetup POSTs /api/test/reset, which only exists when the backend runs
+// under_test (test/e2e). Against a *production* target those routes are 404,
+// so skip it there. The containerised-e2e CI stack runs in MISE_ENV=e2e, so
+// the routes ARE live — E2E_CONTAINERISED flags that case so globalSetup (and
+// the data-driven specs) run. smoke.spec.ts inverts the same flag: it asserts
+// real LetsEncrypt TLS, so it runs only against the prod target, not CI.
 const remoteBaseURL = process.env.PLAYWRIGHT_BASE_URL
+const containerised = !!process.env.E2E_CONTAINERISED
 
 export default defineConfig({
-  globalSetup: remoteBaseURL ? undefined : './e2e/global-setup.ts',
+  globalSetup: remoteBaseURL && !containerised ? undefined : './e2e/global-setup.ts',
   testDir: './e2e/tests',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
