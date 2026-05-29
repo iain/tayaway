@@ -28,6 +28,10 @@ on:
       - ".mise/tasks/toolchain/**"
       - "**/mise.lock"
       - ".github/workflows/images.yml"
+      # Containerised-e2e (below) reuses the images this workflow builds, so a
+      # change to the e2e harness needs to start it here too.
+      - "e2e/**"
+      - "playwright.config.ts"
   workflow_dispatch:
 
 # Push runs must not cancel each other: every main SHA needs to produce its
@@ -220,3 +224,108 @@ jobs:
             echo "::endgroup::"
           done
           exit "$status"
+
+      # ── Containerised e2e ────────────────────────────────────────────────────
+      # Run the Playwright suite against the real stack, reusing the images the
+      # build steps already loaded into the daemon — no second build. PR-only,
+      # and only when the container surface changed (see the filter): a generic
+      # backend/frontend code PR builds + scans but skips this, the accepted
+      # coverage trade. The stack mimics the web.container quadlet (read-only
+      # rootfs, MISE_ENV=e2e); see e2e/containerised-up.sh.
+      - name: Detect container-stack changes
+        if: github.event_name == 'pull_request'
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            e2e:
+              - 'containers/**'
+              - 'backend/Gemfile.lock'
+              - 'pnpm-lock.yaml'
+              - 'backend/lib/geo_ip.rb'
+              - 'playwright.config.ts'
+              - 'e2e/**'
+              - '.github/workflows/images.yml'
+
+      # node + pnpm only. The backend runs in a container, so skip the mise
+      # postinstall hook (MISE_NO_HOOKS) that would otherwise bundle install the
+      # backend gems on the runner — wasted work here.
+      - name: Set up node toolchain
+        if: github.event_name == 'pull_request' && steps.changes.outputs.e2e == 'true'
+        uses: jdx/mise-action@v4
+        with:
+          install: true
+          cache: true
+        env:
+          MISE_NO_HOOKS: "1"
+
+      - name: Cache frontend node_modules
+        if: github.event_name == 'pull_request' && steps.changes.outputs.e2e == 'true'
+        uses: actions/cache@v5
+        with:
+          path: |
+            node_modules
+            frontend/node_modules
+          key: node-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: node-${{ runner.os }}-
+
+      - name: Cache Playwright browsers
+        if: github.event_name == 'pull_request' && steps.changes.outputs.e2e == 'true'
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: playwright-${{ runner.os }}-
+
+      - name: Install JS deps + Playwright
+        if: github.event_name == 'pull_request' && steps.changes.outputs.e2e == 'true'
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install chromium --with-deps
+
+      # localhost addressing works because the containers share one netns;
+      # FRONTEND_URL is the edge origin so backend-side origin / WebAuthn line up.
+      - name: Write e2e dotenv
+        if: github.event_name == 'pull_request' && steps.changes.outputs.e2e == 'true'
+        run: |
+          cat > backend/.env.e2e <<'EOF'
+          DATABASE_URL=postgres://postgres:postgres@localhost:5432/tayaway_e2e
+          APP_SECRET=dGVzdHNlY3JldHRlc3RzZWNyZXR0ZXN0c2VjcmV0dGU=
+          FRONTEND_URL=http://localhost:8080
+          VAPID_PUBLIC_KEY=BPDZXyMZhyzQ-lmi5MAm-djBp5kecbgrlVGSZ6TsE8yUEOX_cEid5TxdYbBv3YoA2OiwjIHiilvTwA9-vCWeQpE=
+          VAPID_PRIVATE_KEY=CofJgcTG6lqV_HszPSpDw_oE3s8fhbQEsBZJ1Ne9t_k=
+          VAPID_SUBJECT=mailto:noreply@tayaway.nl
+          EOF
+
+      - name: Bring up the container stack
+        if: github.event_name == 'pull_request' && steps.changes.outputs.e2e == 'true'
+        env:
+          BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/tayaway-backend:${{ github.sha }}
+          EDGE_IMAGE: ghcr.io/${{ github.repository_owner }}/tayaway-edge:${{ github.sha }}
+          DB_IMAGE: ghcr.io/${{ github.repository_owner }}/tayaway-db:${{ github.sha }}
+          ENV_FILE: ${{ github.workspace }}/backend/.env.e2e
+        run: bash e2e/containerised-up.sh
+
+      - name: Run Playwright against the stack
+        if: github.event_name == 'pull_request' && steps.changes.outputs.e2e == 'true'
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:8080
+          E2E_CONTAINERISED: "1"
+        run: pnpm exec playwright test
+
+      - name: Dump container logs
+        if: failure() && github.event_name == 'pull_request' && steps.changes.outputs.e2e == 'true'
+        run: |
+          for c in tayaway-e2e-db tayaway-e2e-web tayaway-e2e-edge; do
+            echo "::group::logs $c"
+            docker logs "$c" 2>&1 | tail -200 || true
+            echo "::endgroup::"
+          done
+
+      - name: Upload Playwright report
+        if: failure() && github.event_name == 'pull_request' && steps.changes.outputs.e2e == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: containerised-e2e-report
+          path: playwright-report/
+          retention-days: 7
