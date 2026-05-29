@@ -17,17 +17,20 @@ const containerised = !!process.env.E2E_CONTAINERISED
 export default defineConfig({
   globalSetup: remoteBaseURL && !containerised ? undefined : './e2e/global-setup.ts',
   testDir: './e2e/tests',
-  // Three specs can't run against the containerised stack and are covered by
-  // the normal e2e job instead: design-system asserts a pixel snapshot tied to
-  // the dev render path; notifications-push delivers to a receiver the test
-  // opens on the *runner's* localhost, which the backend's separate netns can't
-  // reach; offline-cold-launch drives the vite preview server (:5175), which
-  // this stack replaces with Caddy.
-  testIgnore: containerised
+  // Containerised mode runs only a stack-smoke subset — the specs that exercise
+  // integration points the dev-server e2e can't: the Caddy /api proxy + DB
+  // round-trip (events), the /ws upgrade + LISTEN/NOTIFY realtime path (voting's
+  // "appears via WebSocket"), session cookies through the proxy while Falcon
+  // runs read-only (auth), and CSRF semantics (csrf). The remaining specs are
+  // app-logic the normal e2e already covers in full — re-running all of them
+  // through Caddy is cost without signal. Widen this list if a new spec starts
+  // depending on stack behaviour.
+  testMatch: containerised
     ? [
-        '**/design-system.spec.ts',
-        '**/notifications-push.spec.ts',
-        '**/offline-cold-launch.spec.ts',
+        '**/auth.spec.ts',
+        '**/events.spec.ts',
+        '**/voting.spec.ts',
+        '**/csrf.spec.ts',
       ]
     : undefined,
   fullyParallel: true,
