@@ -24,11 +24,11 @@ ENV USE_LIBSODIUM=1
 # experiment. Split deps (slow C builds of brotli + libsodium) from the
 # Go build so iterating on the build doesn't recompile them.
 ENV GOEXPERIMENT=jsonv2
-# wal-g's go.mod pins an old toolchain (go1.24.6, with known stdlib CVEs the
-# image scan gates on). GOTOOLCHAIN=local forces the build to use THIS image's
-# Go instead, so the binary carries the patched stdlib. Bump golang:1.25-* as
-# new Go patch releases land.
-ENV GOTOOLCHAIN=local
+# wal-g's go.mod pins an old toolchain (go1.24.6) whose stdlib carries CVEs the
+# image scan gates on, and the golang:1.25 base ships that same 1.24.6. Pin a
+# patched toolchain explicitly: Go downloads it at build time (the +auto suffix
+# still allows a newer one if go.mod ever needs it). Bump as new patches land.
+ENV GOTOOLCHAIN=go1.25.7+auto
 RUN make deps
 RUN make pg_build
 RUN echo "=== ldd ===" && ldd main/pg/wal-g || true; ./main/pg/wal-g --version
