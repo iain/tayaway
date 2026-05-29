@@ -42,14 +42,14 @@ variable "vps_ipv6" {
 # (var.vps_ipv4 / var.vps_ipv6) and lowers apex_ttl — see dns.tf.
 variable "apex_ipv4" {
   type        = string
-  description = "Current apex A target. Old box until cutover; flip to the new VPS IPv4 to redirect production."
-  default     = "51.195.43.146"
+  description = "Current apex A target. New box as of the 2026-05-29 cutover."
+  default     = "51.178.47.84"
 }
 
 variable "apex_ipv6" {
   type        = string
-  description = "Current apex AAAA target. Old box until cutover; flip to the new VPS IPv6 to redirect production."
-  default     = "2001:41d0:701:1100::79e"
+  description = "Current apex AAAA target. New box as of the 2026-05-29 cutover."
+  default     = "2001:41d0:404:200::2460"
 }
 
 variable "apex_ttl" {

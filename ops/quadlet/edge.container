@@ -4,10 +4,7 @@
 # SITE_ADDRESS is the public hostname, which makes Caddy bind :80 + :443
 # and provision a real LE cert automatically — so we publish the standard
 # host ports straight through (not the 8080/8443 the Containerfile EXPOSEs
-# for the local http default). During commissioning the frontend talks to
-# wss://new.tayaway.nl, which isn't in the Caddyfile's baked connect-src
-# (that has wss://tayaway.nl for post-cutover), so EXTRA_CONNECT_SRC
-# appends it — note the leading space. Drop EXTRA_CONNECT_SRC at cutover.
+# for the local http default).
 #
 # The caddy volume persists the ACME account + issued certs so a restart
 # doesn't re-request from LE and trip rate limits.
@@ -33,9 +30,8 @@ Volume=tayaway-caddy.volume:/data
 # ops/co-hosting.md). The baked Caddyfile imports /etc/caddy/sites/*.caddy;
 # read-only so a tenant can't rewrite the edge's own config.
 Volume=/etc/caddy/sites:/etc/caddy/sites:ro
-Environment=SITE_ADDRESS=https://new.tayaway.nl
+Environment=SITE_ADDRESS=https://tayaway.nl
 Environment=BACKEND_UPSTREAM=web:9292
-Environment="EXTRA_CONNECT_SRC= wss://new.tayaway.nl"
 NoNewPrivileges=true
 Pull=missing
 
