@@ -18,12 +18,10 @@ Object.include Dry::Monads[:result]
 # starts — see backend/mise.toml. In production the same file is loaded
 # via mise from the systemd unit's ExecStart wrapper. No dotenv at runtime.
 
-# GIT_SHA can come from three places in priority order — env, the REVISION
-# file written by Capistrano, or `git rev-parse` on a working tree. Resolve
-# the fallback chain *before* APP_CONFIG.load! so Config sees a single source.
-ENV["GIT_SHA"] ||=
-  (File.read("#{APP_DIR}/REVISION").strip[0, 7] if File.exist?("#{APP_DIR}/REVISION")) ||
-  `git rev-parse --short HEAD 2>/dev/null`.strip
+# GIT_SHA comes from env (set at image build via the Containerfile's GIT_SHA
+# arg) or, in a dev working tree, falls back to `git rev-parse`. Resolve it
+# *before* APP_CONFIG.load! so Config sees a single source.
+ENV["GIT_SHA"] ||= `git rev-parse --short HEAD 2>/dev/null`.strip
 
 require_relative "../lib/config"
 APP_CONFIG.load!

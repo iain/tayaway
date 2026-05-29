@@ -40,7 +40,5 @@ backend/coverage
 e2e/test-results
 e2e/playwright-report
 
-# Devcontainer scaffolding and Capistrano deploy bits — replaced by the
-# podman/quadlet stack.
+# Devcontainer scaffolding — not part of the image build.
 .devcontainer
-config/deploy

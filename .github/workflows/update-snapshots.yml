@@ -77,8 +77,8 @@ jobs:
       # The VAPID keys are test-only material generated for the push smoke
       # test; the frontend gates the subscribe flow on a non-empty public
       # key, so the test fails without them. Safe to commit because they
-      # grant nothing — real deploys carry production keys via Capistrano
-      # env, never CI.
+      # grant nothing — production keys live in sops-encrypted
+      # .env.production.yaml decrypted on the box, never in CI.
       - name: Write CI dotenv files
         run: |
           cat > backend/.env.test <<'EOF'

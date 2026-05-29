@@ -33,11 +33,9 @@ github_attestations = true
 slsa = true
 
 # Tools that every subproject (and root scripts: prettier, Playwright)
-# needs. Ruby is here rather than in backend/mise.toml because Capistrano
-# runs from the repo root during deploy and needs to resolve Ruby via
-# mise exec — monorepo inheritance flows root → subproject, not the
-# other way. The frontend-only-dev cost of installing Ruby is small
-# compared to duplicating tool resolution into the deploy pipeline.
+# needs. Ruby is here rather than in backend/mise.toml so it inherits
+# root → subproject (backend/mise.toml declares no Ruby and relies on
+# this); the frontend-only-dev cost of installing Ruby is small.
 [tools]
 node = "26"
 ruby = "4"
@@ -264,16 +262,13 @@ description = "Install all dependencies"
 depends = ["//...:setup:deps", "setup:deps-root"]
 
 [tasks."setup:deps-root"]
-description = "Install root dependencies (Capistrano, Playwright, prettier)"
+description = "Install root dependencies (Playwright, prettier)"
 # `playwright install` is idempotent — it skips browsers already present in
 # ~/Library/Caches/ms-playwright, so re-running setup is cheap. Skip
 # --with-deps; on Linux it shells out to apt and wants sudo, which is fine
 # in CI / the devcontainer but a friction point for a local dev setup. If
 # you hit a missing system lib, run it manually with --with-deps.
-# `bundle install` covers the root Gemfile (Capistrano + ssh deps) that
-# `mise run deploy` resolves from the repo root.
 run = [
-  "bundle install",
   "pnpm install",
   "pnpm exec playwright install chromium",
 ]

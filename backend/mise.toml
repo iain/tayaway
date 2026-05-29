@@ -126,11 +126,6 @@ description = "Create and migrate the test database"
 shell = "bash -c"
 run = 'MISE_ENV=test mise exec -- bundle exec rake db:create db:migrate'
 
-[tasks."db:backup"]
-description = "Trigger a database backup on the production server"
-confirm = "Trigger a backup on PRODUCTION. Continue?"
-run = "ssh -p 50022 ubuntu@tayaway.nl '/var/www/tayaway/current/config/deploy/backup-db.sh'"
-
 # ── Setup ────────────────────────────────────────────────────────────────────
 
 [tasks."setup:deps"]
