@@ -30,7 +30,7 @@ A real-time collaborative event planning app. Create events, propose date ranges
 | Database  | PostgreSQL 18 (LISTEN/NOTIFY for real-time)          |
 | WebSocket | roda-websockets, Falcon                              |
 | Testing   | Vitest (frontend), RSpec (backend), Playwright (e2e) |
-| Deploy    | Capistrano, Nginx, systemd                           |
+| Deploy    | podman + Quadlet, Caddy, systemd                     |
 | Tooling   | mise, pnpm 11, ESLint, RuboCop, Prettier             |
 
 ## Getting Started
@@ -62,7 +62,7 @@ tayaway/
 │
 ├── e2e/                   Playwright end-to-end tests
 ├── doc/                   Architecture docs (backend-sync, offline-support, authorization, falcon-architecture, database-migrations, connectivity-guidelines)
-└── config/                Capistrano deployment configuration
+└── ops/                   Deployment recipe — OpenTofu, Quadlet units, provisioning, runbook
 ```
 
 ### Real-Time Sync
@@ -96,4 +96,4 @@ Users belong to workspaces through memberships (owner/admin/member roles). All d
 
 ### Deployment
 
-Production deploys via Capistrano over SSH. Falcon runs as a systemd service behind Nginx, which serves static frontend assets and proxies API/WebSocket requests.
+Production runs as podman Quadlet containers supervised by systemd on a single OVH VPS: Falcon (`web`), PostgreSQL (`db`), and a Caddy `edge` that serves the built frontend and reverse-proxies API/WebSocket requests. Images are built by CI and tagged by git SHA; the box pulls and self-deploys the `main` tag with a health gate and auto-rollback. The full recipe — OpenTofu for cloud state, Quadlet units, provisioning, and the cutover runbook — lives in [`ops/`](ops/).

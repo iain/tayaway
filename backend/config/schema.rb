@@ -35,7 +35,7 @@ APP_CONFIG = Config.define do |c|
   c.optional :webauthn_extra_origins, type: :csv, default: [],
              description: "Extra WebAuthn origins (CSV)"
   c.optional :git_sha,
-             description: "Build SHA — env, REVISION file, or git rev-parse"
+             description: "Build SHA — env (set at image build) or git rev-parse"
 
   c.feature :push, requires: %i[vapid_public_key vapid_private_key],
             description: "Web push notifications" do |f|

@@ -170,20 +170,20 @@ SIGHUP.
 
 ## Deployment
 
-`config/deploy/tayaway-falcon.service.erb` is a systemd unit whose
-`ExecStart` calls `mise run serve`, which `exec`s
-`bundle exec falcon-host falcon.rb` so the falcon-host process sits
-directly under systemd. `Restart=on-failure` covers crashes;
-`ExecReload=/bin/kill -HUP $MAINPID` is wired for graceful worker
-reloads. Capistrano's post-publish step today is a `systemctl restart`,
-so deploys take the few-second 502 blip while the new process binds.
+In production Falcon runs as the `web` Quadlet container
+(`ops/quadlet/web.container`) supervised by systemd: `falcon-host` is
+pid 1 in the container, and `Notify=true` makes podman wait for its
+`sd_notify READY=1` before the unit reports started — so a restart
+doesn't complete until workers accept connections. `Restart=on-failure`
+covers crashes; `StartLimitBurst` gives up on a crash loop and pages via
+`OnFailure=`.
 
-Genuine zero-downtime requires the host to re-exec against the new
-release (SIGHUP only re-forks workers, which inherit the host's stale
-require cache via copy-on-write — a `systemctl reload` after the symlink
-swap would re-fork against the _previous_ release). When we need it,
-the simplest path is two systemd units on different ports with nginx
-upstream failover and a `falcon:flip` rake task.
+Deploys are an image-SHA swap plus a `systemctl restart web.service` —
+there is no in-process reload path in production (the old SIGHUP /
+`ExecReload` graceful-worker-reload went away with the release-symlink
+model it depended on). The Caddy `edge` holds inbound connections during
+the sub-second restart while the new container binds, so the swap is
+effectively seamless without any upstream-failover machinery.
 
 ## Testing
 
