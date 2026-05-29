@@ -1,0 +1,59 @@
+# Prunes old GHCR image versions so the per-commit :<sha> tags don't pile up
+# forever. Every push to main publishes a fresh :<sha> for each image; this
+# keeps the most recent N tagged versions and removes older ones.
+#
+# Never touched (exclude-tags): :main, the moving pointer the box's pull-based
+# self-deploy follows, and :buildcache, the registry layer cache. keep-n-tagged
+# leaves a generous run of recent SHAs so ops/host/self-deploy.sh always has a
+# rollback target. The toolchain package has neither :main nor :buildcache, so
+# the same excludes are simply no-ops there.
+#
+# Runs weekly. Trigger it by hand first with dry_run=true to preview exactly
+# what would be deleted before trusting the schedule.
+name: Prune GHCR images
+
+on:
+  schedule:
+    - cron: "30 6 * * 1" # Mondays 06:30 UTC
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Preview deletions without removing anything"
+        type: boolean
+        default: true
+
+permissions:
+  packages: write
+
+# A prune and a concurrent run would race over the same versions; never cancel
+# a real deletion mid-flight.
+concurrency:
+  group: prune-ghcr
+  cancel-in-progress: false
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - tayaway-backend
+          - tayaway-edge
+          - tayaway-geoip
+          - tayaway-db
+          - tayaway-toolchain
+    steps:
+      - name: Prune ${{ matrix.package }}
+        uses: dataaxiom/ghcr-cleanup-action@v1.2.1
+        with:
+          package: ${{ matrix.package }}
+          owner: ${{ github.repository_owner }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          exclude-tags: main,buildcache
+          keep-n-tagged: 20
+          delete-untagged: true
+          # Verify multi-arch / referrer integrity after pruning so a deleted
+          # child manifest can't leave a kept image unpullable.
+          validate: true
+          dry-run: ${{ inputs.dry_run || false }}
