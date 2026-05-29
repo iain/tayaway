@@ -24,6 +24,11 @@ ENV USE_LIBSODIUM=1
 # experiment. Split deps (slow C builds of brotli + libsodium) from the
 # Go build so iterating on the build doesn't recompile them.
 ENV GOEXPERIMENT=jsonv2
+# wal-g's go.mod pins an old toolchain (go1.24.6) whose stdlib carries CVEs the
+# image scan gates on, and the golang:1.25 base ships that same 1.24.6. Pin a
+# patched toolchain explicitly: Go downloads it at build time (the +auto suffix
+# still allows a newer one if go.mod ever needs it). Bump as new patches land.
+ENV GOTOOLCHAIN=go1.25.7+auto
 RUN make deps
 RUN make pg_build
 RUN echo "=== ldd ===" && ldd main/pg/wal-g || true; ./main/pg/wal-g --version
@@ -35,7 +40,9 @@ RUN install -D -m 0755 main/pg/wal-g /out/wal-g
 # none, and without it wal-g's Go client silently retries the handshake
 # forever. ca-certificates is the only runtime add.
 FROM docker.io/library/postgres:18
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# apt-get upgrade pulls debian security fixes for the postgres base packages
+# the image scan gates on; ca-certificates is wal-g's only functional add.
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
       ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=walg-build /out/wal-g /usr/local/bin/wal-g
