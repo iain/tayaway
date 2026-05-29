@@ -41,10 +41,12 @@ valid_sha() { printf '%s' "$1" | grep -Eq '^[0-9a-f]{40}$'; }
 restore_baks() { for f in "${FILES[@]}"; do [ -f "$f.bak" ] && mv -f "$f.bak" "$f"; done; }
 clear_baks()   { for f in "${FILES[@]}"; do rm -f "$f.bak"; done; }
 
+# One `systemctl restart` invocation, not three: web has Requires=migrate, so a
+# standalone `restart migrate` already bounces web — a separate `restart web`
+# then lands mid-boot and kills it (exit 1 → OnFailure page) before it recovers.
+# One transaction coalesces it into a single web restart. See ops/deploy.sh.
 restart_stack() {
-  systemctl restart migrate.service
-  systemctl restart web.service
-  systemctl restart edge.service
+  systemctl restart migrate.service web.service edge.service
 }
 
 # Hit /health through the edge exactly as an external client would, but pinned

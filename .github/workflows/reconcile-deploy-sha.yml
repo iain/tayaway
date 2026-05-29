@@ -24,9 +24,8 @@ permissions:
   pull-requests: write
 
 env:
-  # Public health endpoint to read the live build SHA from. Flip to
-  # https://tayaway.nl/health at cutover.
-  HEALTH_URL: https://new.tayaway.nl/health
+  # Public health endpoint to read the live build SHA from (apex, post-cutover).
+  HEALTH_URL: https://tayaway.nl/health
 
 jobs:
   reconcile:
