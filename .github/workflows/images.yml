@@ -97,7 +97,15 @@ jobs:
           file: containers/Containerfile
           target: backend
           push: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
-          tags: ghcr.io/${{ github.repository_owner }}/tayaway-backend:${{ github.sha }}
+          # The `:main` tag is the moving pointer the box's pull-based self-deploy
+          # follows; the revision label lets it resolve `:main` → the SHA to pull.
+          # Both only reach GHCR on a main push (push gated above), so a PR can't
+          # move `:main`. See ops/host/self-deploy.sh.
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/tayaway-backend:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/tayaway-backend:main
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
           build-args: |
             TOOLCHAIN_IMAGE=ghcr.io/${{ github.repository_owner }}/tayaway-toolchain:${{ steps.toolchain.outputs.tag }}
             GIT_SHA=${{ github.sha }}
@@ -111,7 +119,11 @@ jobs:
           file: containers/Containerfile
           target: edge
           push: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
-          tags: ghcr.io/${{ github.repository_owner }}/tayaway-edge:${{ github.sha }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/tayaway-edge:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/tayaway-edge:main
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
           build-args: |
             TOOLCHAIN_IMAGE=ghcr.io/${{ github.repository_owner }}/tayaway-toolchain:${{ steps.toolchain.outputs.tag }}
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/tayaway-edge:buildcache
@@ -127,7 +139,11 @@ jobs:
           context: .
           file: containers/Containerfile.geoip
           push: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
-          tags: ghcr.io/${{ github.repository_owner }}/tayaway-geoip:${{ github.sha }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/tayaway-geoip:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/tayaway-geoip:main
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/tayaway-geoip:buildcache
           cache-to: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && format('type=registry,ref=ghcr.io/{0}/tayaway-geoip:buildcache,mode=max', github.repository_owner) || '' }}
 

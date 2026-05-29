@@ -104,6 +104,47 @@ Safe because all migrations are additive (see `doc/database-migrations.md`) —
 old code runs against the newer schema. If that rule is ever broken, SHA
 rollback is no longer safe.
 
+### Continuous deployment (pull-based)
+
+Merges to `main` deploy themselves — **no human step, and GitHub has no access
+to the box**. `images.yml` builds and pushes a moving `:main` tag; on the box,
+`self-deploy.timer` runs `self-deploy.sh` every ~3 min, which resolves `:main`
+→ its commit SHA (via the image's `revision` label), and if it's newer than
+what's running, pulls + restarts migrate→web→edge + smoke-tests `/health` +
+confirms the new image is live — **rolling back on any failure**. So expect a
+few minutes' lag from merge to live.
+
+```bash
+# Force a check now (don't wait for the timer):
+ssh new.tayaway.nl 'sudo systemctl start self-deploy.service'
+ssh new.tayaway.nl 'sudo journalctl -u self-deploy -n 50 --no-pager'
+
+# Pause / resume CD (e.g. before a manual pin, or during an incident):
+ssh new.tayaway.nl 'sudo systemctl stop --now self-deploy.timer'   # pause
+ssh new.tayaway.nl 'sudo systemctl start self-deploy.timer'        # resume
+```
+
+A failed self-deploy rolls back and writes the bad SHA to
+`/var/lib/tayaway/self-deploy-last-bad`, so the timer won't re-attempt it — it
+sits on the last-good image until a **new** SHA appears (a fix-forward commit
+clears it automatically). It also pages via ntfy (`OnFailure=`).
+
+**Manual deploy / rollback overrides CD only if you pause the timer first** —
+otherwise the next tick re-advances the box to `:main`. To pin an older SHA:
+
+```bash
+ssh new.tayaway.nl 'sudo systemctl stop --now self-deploy.timer'
+mise run deploy tayaway@new.tayaway.nl <last-good-sha>
+# resume CD once main is fixed-forward past the bad SHA
+```
+
+`main`'s committed SHA pins drift behind the live box (pull-based deploys don't
+commit). That's cosmetic — the box self-heals to `:main` even after a
+`vm:provision` — and the weekly **Reconcile deployed image SHA** workflow opens
+a PR to catch the pins up; merge it when convenient. If the box's GHCR login
+lapses (e.g. after a rebuild), self-deploy can't pull and pages — re-run
+`vm:provision` to re-establish it.
+
 ### Apply an ops/config change (quadlets, host units, env, firewall)
 
 Edit under `ops/`, then re-run the idempotent provisioner from your laptop:
