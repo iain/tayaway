@@ -7,9 +7,10 @@
 # (pull → rewrite quadlet pins → restart migrate→web→edge → smoke-test →
 # roll back on failure) but runs locally as root with no ssh.
 #
-# Trust model: deploys whatever `:main` resolves to. PR builds don't push
-# (images.yml gates push to main only), so a PR can't move `:main`. Hardening
-# to verify build provenance before deploy is a planned follow-up.
+# Trust model: deploys whatever `:main` resolves to. images.yml publishes only
+# per-commit :<sha>; `:main` is moved solely by promote-main.yml, and only
+# after CI passes on main — so a PR or a test-failing commit can't move it.
+# Hardening to verify build provenance before deploy is a planned follow-up.
 #
 # Idempotent and safe to run on every tick: a no-op when already current, and
 # a failed deploy records the bad SHA so the timer can't thrash on it — it
