@@ -44,6 +44,9 @@ concurrency:
 permissions:
   contents: read
   packages: write
+  # dorny/paths-filter reads the PR's changed-file list to decide whether to
+  # run the containerised e2e below.
+  pull-requests: read
 
 jobs:
   build:
