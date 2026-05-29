@@ -9,3 +9,12 @@ CVE-2026-42245
 CVE-2026-42246
 CVE-2026-42257
 CVE-2026-42258
+
+# Transitive deps compiled into third-party binaries we don't author. No fix
+# in a released Caddy / wal-g, so not actionable here — the fix path is an
+# upstream release picked up via a Dependabot base-image / WALG_VERSION bump.
+# Revisit each when its upstream ships. Tracked in #485.
+CVE-2026-34986   # go-jose/v3 in the Caddy (edge) binary — fixed in go-jose 3.0.5
+CVE-2026-33816   # jackc/pgx in the wal-g (db) binary — wal-g dep, fixed in pgx 5.9.0
+CVE-2026-33186   # google.golang.org/grpc in the wal-g binary — wal-g dep, fixed in grpc 1.79.3
+CVE-2021-38599   # wal-g self: false positive — we build v3.0.8 but the binary embeds a v0.0.0 pseudo-version
