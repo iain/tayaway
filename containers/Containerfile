@@ -77,7 +77,10 @@ FROM ${TOOLCHAIN_IMAGE} AS backend
 # submission (login-link emails, :465 implicit TLS) and Web Push to the push
 # services both fail with "certificate verify failed". node bundles its own CA
 # store so the frontend build doesn't need this, which is why it went unnoticed.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# `apt-get upgrade` pulls security fixes for the debian base packages the
+# toolchain image inherits (e.g. libgnutls30, libcap2) — the image scan gates
+# on those, so refresh them here rather than wait for a toolchain rebuild.
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
       ca-certificates \
       libmaxminddb0 \
       libpq5 \
@@ -118,6 +121,9 @@ CMD ["bundle", "exec", "falcon-host", "falcon.rb"]
 # Caddy fronts the stack: serves the built SPA, reverse-proxies /api and /ws
 # to the backend container, terminates TLS via ACME in production.
 FROM caddy:2-alpine AS edge
+
+# Pull alpine security fixes for the base packages the image scan gates on.
+RUN apk upgrade --no-cache
 
 COPY containers/Caddyfile /etc/caddy/Caddyfile
 COPY --from=frontend-build /build/frontend/dist /srv/dist

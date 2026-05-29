@@ -35,7 +35,9 @@ RUN install -D -m 0755 main/pg/wal-g /out/wal-g
 # none, and without it wal-g's Go client silently retries the handshake
 # forever. ca-certificates is the only runtime add.
 FROM docker.io/library/postgres:18
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# apt-get upgrade pulls debian security fixes for the postgres base packages
+# the image scan gates on; ca-certificates is wal-g's only functional add.
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
       ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=walg-build /out/wal-g /usr/local/bin/wal-g

@@ -1,0 +1,11 @@
+# Ruby ships json and net-imap as DEFAULT gems; the toolchain image's ruby
+# (4.0.4) bundles json 2.18.0 / net-imap 0.6.2 under /mise/installs/ruby. The
+# app does NOT load those — it runs the patched vendored copies pinned in
+# backend/Gemfile.lock (json 2.19.5, net-imap 0.6.4) under BUNDLE_DEPLOYMENT.
+# The default gemspecs are dormant files, but the scanner still flags them.
+# Remove these once the ruby toolchain ships fixed defaults. Tracked in #485.
+CVE-2026-33210
+CVE-2026-42245
+CVE-2026-42246
+CVE-2026-42257
+CVE-2026-42258
