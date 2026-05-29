@@ -17,6 +17,19 @@ const containerised = !!process.env.E2E_CONTAINERISED
 export default defineConfig({
   globalSetup: remoteBaseURL && !containerised ? undefined : './e2e/global-setup.ts',
   testDir: './e2e/tests',
+  // Three specs can't run against the containerised stack and are covered by
+  // the normal e2e job instead: design-system asserts a pixel snapshot tied to
+  // the dev render path; notifications-push delivers to a receiver the test
+  // opens on the *runner's* localhost, which the backend's separate netns can't
+  // reach; offline-cold-launch drives the vite preview server (:5175), which
+  // this stack replaces with Caddy.
+  testIgnore: containerised
+    ? [
+        '**/design-system.spec.ts',
+        '**/notifications-push.spec.ts',
+        '**/offline-cold-launch.spec.ts',
+      ]
+    : undefined,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1,
