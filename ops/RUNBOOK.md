@@ -457,16 +457,22 @@ propagation.
 ssh tayaway.nl 'sudo systemctl stop tayaway-falcon'   # site now 502s via nginx
 
 # 2. Final dump of the old prod DB → restore into the new box's db container.
-#    Rehearsed 2026-05-26: both sides are PG 18.3, DB ~11 MB. Peer auth on the
-#    old box, role `tayaway` on the new cluster (no `postgres` role there).
-ssh tayaway.nl 'sudo -u postgres pg_dump -Fc tayaway_production' > /tmp/prod.dump
-#    Recreate the target so the new box's commissioning/test data is gone:
+#    Both sides are PG 18.3, DB ~11 MB. Dump AS the `tayaway` ssh user via peer
+#    auth — NOT `sudo -u postgres` (the old box only grants `tayaway` NOPASSWD
+#    sudo for the `tayaway-falcon` unit, so `sudo -u postgres` is refused). The
+#    app's DATABASE_URL is a unix-socket peer-auth conn, so plain pg_dump works.
+#    New cluster uses role `tayaway` (no `postgres` role there).
+ssh tayaway.nl 'pg_dump -Fc tayaway_production' > /tmp/prod.dump
+#    Recreate the target so the new box's commissioning/test data is gone. Stop
+#    web first so the DB has no app connections; WITH (FORCE) drops any leftover.
+ssh new.tayaway.nl 'sudo systemctl stop web'
 ssh new.tayaway.nl 'sudo podman exec -i db psql -U tayaway -d postgres' <<'SQL'
-DROP DATABASE IF EXISTS tayaway;
+DROP DATABASE IF EXISTS tayaway WITH (FORCE);
 CREATE DATABASE tayaway OWNER tayaway;
 SQL
 ssh new.tayaway.nl 'sudo podman exec -i db pg_restore -U tayaway -d tayaway \
   --no-owner --no-privileges' < /tmp/prod.dump
+#    (step 3's `restart migrate web` brings web back up on the restored DB)
 
 # 3. Re-run migrate + restart web so it binds the restored DB and the jobs
 #    worker starts draining the imported async_jobs (queued emails go out now).
