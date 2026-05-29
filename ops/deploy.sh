@@ -93,14 +93,20 @@ sync_quadlets() {
   ssh_run 'sudo systemctl daemon-reload'
 }
 
-# Restart in dependency order. migrate is a oneshot (re-runs config:validate +
-# db:migrate against the new image); web's Notify=true blocks until Falcon
-# accepts connections; edge last. A non-zero here (failed migration, web never
-# ready) propagates out and triggers rollback.
+# Restart the whole stack in ONE transaction so systemd coalesces it into a
+# single restart job per unit, in dependency order (migrate oneshot re-runs
+# config:validate + db:migrate against the new image; web's Notify=true blocks
+# until Falcon accepts connections; edge last). A non-zero here (failed
+# migration, web never ready) propagates out and triggers rollback.
+#
+# Must be a single `systemctl restart` invocation, not three: web has
+# Requires=migrate.service, so a standalone `restart migrate` already bounces
+# web. Issuing a separate `restart web` right after then lands while that
+# bounced web is still mid-boot and kills it (exit 1 → OnFailure page) before
+# Restart=on-failure brings it back ~100ms later — a ~50/50 spurious failure.
+# One transaction merges both into a single web restart, so there's no overlap.
 restart_stack() {
-  ssh_run 'sudo systemctl restart migrate.service'
-  ssh_run 'sudo systemctl restart web.service'
-  ssh_run 'sudo systemctl restart edge.service'
+  ssh_run 'sudo systemctl restart migrate.service web.service edge.service'
 }
 
 # Poll /health from here (exercises the real DNS → Caddy → web → db path, not
