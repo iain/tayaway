@@ -1,17 +1,17 @@
 # DNS records this config owns.
 #
-# During commissioning we own only the `new.tayaway.nl` A/AAAA records, so a
-# stray `tofu apply` cannot redirect production. The apex (`tayaway.nl`)
-# resources below are defined for the Phase-7 cutover but are NOT in state
-# until explicitly imported (see the apex block) — until then tofu neither
-# manages nor can disturb them.
+# Post-cutover (2026-05-29): the apex (`tayaway.nl`) A/AAAA are imported into
+# state and point at the new box — they serve production. The `new.tayaway.nl`
+# A/AAAA below are a now-redundant commissioning leftover, still live; they get
+# dropped in the post-cutover DNS cleanup (a `tofu apply`, not just a config
+# edit, so the drift check stays green).
 
 # ── Commissioning host: new.tayaway.nl ───────────────────────────────────────
 # Public hostname for Caddy's ACME cert and the e2e suite during
 # commissioning. Both A and AAAA so the box is reachable over IPv4 and IPv6
 # (Caddy answers on both; a v6-only client otherwise can't reach it). 5-minute
-# TTL so the records can be torn down quickly after cutover. Removed in the
-# cutover PR once the apex is live.
+# TTL so the records can be torn down quickly after cutover. Redundant now that
+# the apex serves production — pending removal in the post-cutover DNS cleanup.
 resource "ovh_domain_zone_record" "new_a" {
   zone      = var.domain
   subdomain = var.new_subdomain
@@ -47,9 +47,10 @@ resource "ovh_domain_zone_record" "new_aaaa" {
 # (Already imported as of the 2026-05-26 cutover-prep session; this is the
 # recipe for a rebuild.)
 #
-# Targets default to the OLD box (var.apex_ipv4/apex_ipv6) and apex_ttl to 0
-# (OVH's "zone default", what the live records store — resolves to 3600), so
-# the plan stays empty and the drift check stays green right up to cutover.
+# Post-cutover, var.apex_ipv4/apex_ipv6 default to the NEW box and apex_ttl is
+# 300 (see variables.tf), matching the live records — so the plan stays empty
+# and the drift check green. Before cutover these defaulted to the old box; the
+# sequence below is kept as the rebuild recipe.
 #
 # Cutover sequence:
 #   ~24h before:  set apex_ttl = 300, apply   # TTL only; still points at old

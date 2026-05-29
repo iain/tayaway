@@ -567,12 +567,32 @@ ssh tayaway.nl 'sudo systemctl start tayaway-falcon'   # if you stopped it
 Caveat: any writes made on the new box after cutover won't be on the old box.
 Rolling back is clean only in the first minutes, before real traffic lands.
 
-### After it's settled (keep the old box warm ~1 week, then)
+### After it's settled (keep the old box warm ~1 week, then decommission)
+
+**DNS cleanup** — one coordinated `tofu apply` so the drift check stays green:
 
 - Remove the `new.tayaway.nl` A/AAAA records (`ovh_domain_zone_record.new_a` /
-  `new_aaaa` in `ops/dns.tf`) — `tofu apply`.
-- Drop `EXTRA_CONNECT_SRC` for good (already removed from the env at step 6;
-  delete the dangling reference/comment in `edge.container` if any remains).
+  `new_aaaa` in `ops/dns.tf`).
+- Repoint or drop **`www.tayaway.nl`**. It is NOT tofu-managed and still points
+  at the OLD box (`A → 51.195.43.146`), so it breaks when the box dies. Either
+  bring it into `ops/dns.tf` aimed at the new box **and** add a `www`→apex
+  redirect block to the edge Caddyfile, or delete the record if www is unused.
 - Optionally raise `apex_ttl` back to `0` (zone default 3600) now the flip is
-  done — `tofu apply`.
-- Decommission the old VPS.
+  done.
+- Drop `EXTRA_CONNECT_SRC` for good (already removed from the env at step 6;
+  delete any dangling reference/comment in `edge.container`).
+
+**Decommission the old VPS:**
+
+- Confirm nothing else points at it. Repo, CI, and Terraform are clean (the VPS
+  isn't in tofu); the only OVH-zone straggler is the `www` record above. Re-list
+  the zone read-only with an OVH-API `GET /domain/zone/tayaway.nl/record` (ops
+  creds, signed) or eyeball it in the manager.
+- Optional insurance: a final cold `pg_dump` off the old box — `ssh
+  tayaway@51.195.43.146 -p 50022`, peer-auth `pg_dump -Fc tayaway_production` —
+  stashed off-box, since the disk is unrecoverable once the VPS is cancelled.
+- Check the old box's nginx logs for residual stale-DNS traffic; wait for ~zero.
+- **Terminate** the VPS in the OVH manager. It is NOT in Terraform (ordered
+  through the manager), so there is no `tofu destroy`. A fixed monthly VPS keeps
+  billing when merely powered off — you must *cancel/terminate the subscription*
+  to stop the charge.
