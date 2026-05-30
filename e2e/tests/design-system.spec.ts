@@ -6,7 +6,7 @@ import { test, expect } from '@playwright/test'
 // test and shows up as a diff in the Playwright report.
 //
 // Baselines live in design-system.spec.ts-snapshots/ next to this file. Run
-// `pnpm exec playwright test design-system --update-snapshots` to refresh
+// `aube exec playwright test design-system --update-snapshots` to refresh
 // after intentional design changes.
 test.describe('Design system gallery', () => {
   test('renders every primitive in both modes without visual drift', async ({

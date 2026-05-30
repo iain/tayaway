@@ -2,14 +2,14 @@
 
 ## Prerequisites
 
-- [mise](https://mise.jdx.dev/) — manages Ruby, Node.js, and pnpm versions
+- [mise](https://mise.jdx.dev/) — manages Ruby, Node.js, and aube versions
 - PostgreSQL 18+
 - `libmaxminddb` — needed to build the `mmdb` gem's native extension (`brew install libmaxminddb` on macOS)
 
 ## Setup
 
 ```bash
-# Install runtimes (Ruby 4, Node 26, pnpm 11)
+# Install runtimes (Ruby 4, Node 26, aube)
 mise install
 ```
 
@@ -24,7 +24,7 @@ createuser --createdb tayaway
 mise run setup
 ```
 
-This installs frontend (pnpm) and backend (bundler) dependencies, generates `backend/.env.development` (and `.env.test`) from `backend/.env.example` with a fresh `APP_SECRET`, then creates and migrates all three databases (development, test, e2e). Edit `backend/.env.development` afterwards if you need non-default settings (custom DB URL, SMTP for outgoing email, etc.) — uncommented lines are required, commented lines show optional overrides with their defaults.
+This installs frontend (aube) and backend (bundler) dependencies, generates `backend/.env.development` (and `.env.test`) from `backend/.env.example` with a fresh `APP_SECRET`, then creates and migrates all three databases (development, test, e2e). Edit `backend/.env.development` afterwards if you need non-default settings (custom DB URL, SMTP for outgoing email, etc.) — uncommented lines are required, commented lines show optional overrides with their defaults.
 
 If the `mmdb` gem fails to build with `'maxminddb.h' file not found`, Homebrew's `libmaxminddb` is keg-installed and isn't on mkmf's default search path. Point bundler at it once:
 
@@ -71,7 +71,7 @@ Run a single test:
 
 ```bash
 cd backend && bundle exec rspec spec/path/to/spec.rb
-cd frontend && pnpm exec vitest run src/path/to/file.spec.ts
+cd frontend && aube exec vitest run src/path/to/file.spec.ts
 ```
 
 ### Visual snapshot tests

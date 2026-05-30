@@ -31,7 +31,7 @@ A real-time collaborative event planning app. Create events, propose date ranges
 | WebSocket | roda-websockets, Falcon                              |
 | Testing   | Vitest (frontend), RSpec (backend), Playwright (e2e) |
 | Deploy    | podman + Quadlet, Caddy, systemd                     |
-| Tooling   | mise, pnpm 11, ESLint, RuboCop, Prettier             |
+| Tooling   | mise, aube, ESLint, RuboCop, Prettier             |
 
 ## Getting Started
 
@@ -41,7 +41,7 @@ See [`GETTING_STARTED.md`](GETTING_STARTED.md) for local setup instructions.
 
 ```
 tayaway/
-├── frontend/              Vue 3 SPA (pnpm workspace)
+├── frontend/              Vue 3 SPA (aube workspace)
 │   └── src/
 │       ├── api/           Fetch-based HTTP client + IndexedDB persistence
 │       ├── pages/         Route components (Home, Events, Tasks, Profile, Members, ...)

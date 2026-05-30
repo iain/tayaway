@@ -22,7 +22,7 @@ exclude = List(
 
 // Git hooks run in a bare environment with no mise shell activation, so each
 // project linter is wrapped in `mise exec --` to provision its toolchain
-// (ruby+bundler for rubocop, node+pnpm for eslint). hk runs steps from the
+// (ruby+bundler for rubocop, node+aube for eslint). hk runs steps from the
 // repo root and does not honour `dir` for workspace templating, so each
 // command `cd`s into its {{workspace}} (the dir of the matched indicator)
 // where {{workspace_files}} are relative and the tool finds its config + deps.
@@ -45,8 +45,8 @@ local linters = new Mapping<String, Step> {
     glob = List("frontend/src/**/*.ts", "frontend/src/**/*.vue", "frontend/src/**/*.js", "frontend/src/**/*.mts")
     workspace_indicator = "package.json"
     check_first = true
-    check = "cd {{workspace}} && mise exec -- pnpm exec eslint {{workspace_files}}"
-    fix = "cd {{workspace}} && mise exec -- pnpm exec eslint --fix {{workspace_files}}"
+    check = "cd {{workspace}} && mise exec -- aube exec eslint {{workspace_files}}"
+    fix = "cd {{workspace}} && mise exec -- aube exec eslint --fix {{workspace_files}}"
   }
   // Canonical mise.toml formatting. Whole-repo formatter rather than per-file,
   // so it runs once (exclusive) and ignores {{files}}; the glob only decides

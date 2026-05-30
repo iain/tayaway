@@ -1,0 +1,12 @@
+packages:
+  - frontend
+  - e2e
+
+# Lifecycle-script allowlist. esbuild needs its native binary fetched at
+# install time. puppeteer is explicitly disabled (false = reviewed, don't
+# build, don't warn): it's a transitive dev-only dep and this project drives
+# browsers via Playwright, so its bundled-Chrome download is unused — and aube
+# auto-installs before every task, so a failed download would block everything.
+allowBuilds:
+  esbuild: true
+  puppeteer: false
