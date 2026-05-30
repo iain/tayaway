@@ -34,6 +34,7 @@ WORKDIR /build
 # down to frontend's transitive deps.
 COPY aube-lock.yaml aube-workspace.yaml package.json ./
 COPY frontend/package.json ./frontend/
+COPY e2e/package.json ./e2e/
 RUN mise exec -- aube install --frozen-lockfile --filter frontend...
 
 COPY frontend/ ./frontend/

@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-.aube-store/
 
 # Build outputs
 dist/
