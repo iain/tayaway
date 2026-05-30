@@ -35,10 +35,10 @@ WORKDIR /build
 COPY aube-lock.yaml aube-workspace.yaml package.json ./
 COPY frontend/package.json ./frontend/
 COPY e2e/package.json ./e2e/
-RUN mise exec -- aube install --frozen-lockfile --filter frontend...
+RUN mise exec -- aube install --frozen-lockfile --filter @tayaway/frontend...
 
 COPY frontend/ ./frontend/
-RUN mise exec -- aube run --filter frontend build
+RUN mise exec -- aube run --filter @tayaway/frontend build
 
 # ── gem-build ───────────────────────────────────────────────────────────────
 # Compiles native gem extensions. build-essential and the -dev headers live
