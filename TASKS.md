@@ -143,12 +143,10 @@ git SHA to deploy (default: HEAD)
 
 ## `dev`
 
-- Depends: //backend:dev, //frontend:dev
-
 - **Usage**: `dev`
 - **Aliases**: `d`
 
-Start frontend + backend dev servers
+Start frontend + backend dev servers (managed by pitchfork)
 
 ## `dev:reset`
 

@@ -8,6 +8,10 @@ import { fileURLToPath, URL } from 'node:url'
 const port = parseInt(process.env.FRONTEND_PORT || '5173', 10)
 const previewPort = parseInt(process.env.FRONTEND_PREVIEW_PORT || '5175', 10)
 const apiPort = process.env.API_PORT || '9292'
+// Undefined by default → vite's default `localhost` bind (IPv6 ::1 on macOS).
+// Set FRONTEND_HOST=127.0.0.1 when fronting vite with a reverse proxy that
+// dials 127.0.0.1 (e.g. pitchfork), which otherwise can't reach an IPv6-only bind.
+const host = process.env.FRONTEND_HOST || undefined
 
 const apiProxy = {
   '/api': {
@@ -117,6 +121,7 @@ export default defineConfig({
     },
   },
   server: {
+    host,
     port,
     proxy: apiProxy,
   },

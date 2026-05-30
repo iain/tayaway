@@ -40,6 +40,7 @@ slsa = true
 node = "26"
 ruby = "4"
 pnpm = "11.5.0"
+pitchfork = "latest"
 
 # ── Workflows ────────────────────────────────────────────────────────────────
 #
@@ -49,11 +50,13 @@ pnpm = "11.5.0"
 #
 
 [tasks.dev]
-description = "Start frontend + backend dev servers"
+description = "Start frontend + backend dev servers (managed by pitchfork)"
 alias = "d"
-depends = ["//backend:dev", "//frontend:dev"]
-wait_for = ["//backend:dev"]
-run = "echo 'Dev servers started'"
+# Hand the long-running servers to pitchfork rather than spawning them as
+# foreground children. `-l` starts every daemon in pitchfork.toml (backend +
+# frontend), ordered by their `depends`, and waits for readiness before
+# returning. Follow logs with `pitchfork logs -f` or watch via `pitchfork tui`.
+run = "pitchfork start -l"
 
 [tasks.check]
 description = "Full local validation: lint, typecheck, test, audit, cache-version (no e2e)"
