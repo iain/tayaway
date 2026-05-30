@@ -32,6 +32,14 @@ If the `mmdb` gem fails to build with `'maxminddb.h' file not found`, Homebrew's
 cd backend && bundle config set build.mmdb --with-opt-dir=$(brew --prefix libmaxminddb)
 ```
 
+### Git hooks
+
+Pre-commit linting is managed by [hk](https://hk.jdx.dev) (config in `hk.pkl`). `mise run setup` installs hooks for this clone automatically. The recommended once-per-machine setup is to install hooks globally so every repo picks them up (repos without an `hk.pkl` are a no-op):
+
+```bash
+hk install --global   # requires Git 2.54+
+```
+
 ## Development
 
 ```bash
@@ -46,13 +54,13 @@ The frontend dev server proxies `/api/*` requests to the backend. Login link URL
 ## Useful Commands
 
 ```bash
-mise run fix              # All CI checks, auto-fixing lint issues where possible
-mise run ci               # All CI checks without auto-fix
+mise run check            # Lint (autofix), typecheck, test, audit — no e2e
+mise run ci               # check + Playwright e2e
 mise run test             # Frontend + backend tests
 mise run test:frontend    # Vitest only
 mise run test:backend     # RSpec only
 mise run test:e2e         # Playwright e2e tests
-mise run lint             # ESLint + RuboCop
+mise run lint             # hk: RuboCop, ESLint, mise fmt, cache-version
 mise run typecheck        # vue-tsc + Sorbet
 mise run console          # Ruby console with app loaded
 mise run db:migrate       # Run pending migrations
@@ -79,7 +87,7 @@ An alternative to local setup — a devcontainer with all dependencies pre-confi
 .devcontainer/claude.sh
 
 # Run any command
-.devcontainer/exec.sh mise run fix
+.devcontainer/exec.sh mise run check
 .devcontainer/exec.sh mise run dev
 .devcontainer/exec.sh bash
 ```

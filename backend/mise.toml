@@ -55,21 +55,9 @@ run = "exec bundle exec falcon-host falcon.rb"
 
 # ── Lint / Test / Audit ──────────────────────────────────────────────────────
 
-[tasks.lint]
-description = "RuboCop (autofix locally; report-only when $CI is set)"
-# `--no-server` avoids RuboCop's long-lived daemon, which can wedge
-# itself onto the wrong working directory and report a clean run on
-# files CI then catches. Costs ~0.5 s per invocation; cheap insurance.
-usage = '''
-flag "--no-fix" help="Report offenses without autofixing — also the default when $CI is set"
-'''
-shell = "bash -c"
-run = """
-args=( -f q --no-server )
-no_fix="${usage_no_fix:-${CI:+true}}"
-[ "$no_fix" = "true" ] || args+=( -A )
-bundle exec rubocop "${args[@]}"
-"""
+# Linting (RuboCop) is owned by hk at the repo root — see hk.pkl and the root
+# `lint` task. Run just this project's linter with `hk fix backend/` (autofix)
+# or `hk check backend/` (report-only), or a single step via `--step rubocop`.
 
 [tasks.test]
 description = "RSpec — extra args pass through to rspec"
