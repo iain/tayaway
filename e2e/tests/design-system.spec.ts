@@ -20,6 +20,20 @@ test.describe('Design system gallery', () => {
     // The gallery has no async data, but give Vue a tick to settle.
     await expect(page.getByText('Design system').first()).toBeVisible()
 
+    // Guard against silent web-font fallback. `document.fonts.ready` resolves
+    // even when Inter Variable *fails* to load — Chromium then falls back to a
+    // wider system sans, every text block reflows taller, and the full-page
+    // snapshot drifts in a way that's easy to misread as an intentional change
+    // (and to wrongly rebaseline). Assert the font is actually loaded so the
+    // failure is explicit and points at the font, not the pixels.
+    const interLoaded = await page.evaluate(() =>
+      document.fonts.check('16px "Inter Variable"'),
+    )
+    expect(
+      interLoaded,
+      'Inter Variable web font must be loaded before the visual snapshot',
+    ).toBe(true)
+
     await expect(page).toHaveScreenshot('design-gallery.png', {
       fullPage: true,
       // Animations like the modal entrance are non-deterministic; freeze them.
