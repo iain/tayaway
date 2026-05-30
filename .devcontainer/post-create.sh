@@ -15,14 +15,14 @@ bundle install
 
 echo "Installing frontend dependencies..."
 cd /workspace/frontend
-pnpm install --force
+aube install
 
 echo "Installing root dependencies (Playwright)..."
 cd /workspace
-pnpm install --force
+aube install
 
 echo "Installing Playwright browsers..."
-pnpm exec playwright install --with-deps chromium
+aube exec playwright install --with-deps chromium
 
 echo "Waiting for PostgreSQL..."
 for i in $(seq 1 30); do

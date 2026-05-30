@@ -60,14 +60,14 @@ jobs:
           path: |
             node_modules
             frontend/node_modules
-          key: node-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          key: node-${{ runner.os }}-${{ hashFiles('aube-lock.yaml') }}
           restore-keys: node-${{ runner.os }}-
 
       - name: Cache Playwright browsers
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('aube-lock.yaml') }}
           restore-keys: playwright-${{ runner.os }}-
 
       - uses: jdx/mise-action@v4
@@ -76,7 +76,7 @@ jobs:
           cache: true
 
       - name: Install Playwright browsers
-        run: pnpm exec playwright install chromium --with-deps
+        run: aube exec playwright install chromium --with-deps
 
       # mise owns env loading via `_.file = ".env.{{env.MISE_ENV | ... }}"`
       # in backend/mise.toml — every CI-only value belongs in the dotenv

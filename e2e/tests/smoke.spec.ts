@@ -8,7 +8,7 @@ import { test, expect } from '@playwright/test'
 //
 // Run it with:
 //   PLAYWRIGHT_BASE_URL=https://new.tayaway.nl \
-//     pnpm exec playwright test e2e/tests/smoke.spec.ts
+//     aube exec playwright test e2e/tests/smoke.spec.ts
 //
 // The data-driven specs can't run here (they need /api/test/*, disabled in
 // production) — those belong to the containerised-e2e CI job that brings the

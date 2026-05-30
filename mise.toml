@@ -23,7 +23,7 @@ experimental = true
 
 # Pin resolved tool versions + checksums into mise.lock so installs are
 # reproducible across the team and CI. Equivalent to Gemfile.lock /
-# pnpm-lock.yaml but for the toolchain itself.
+# aube-lock.yaml but for the toolchain itself.
 lockfile = true
 
 # Supply-chain verification at install time. Both are no-ops for backends
@@ -39,7 +39,6 @@ slsa = true
 [tools]
 node = "26"
 ruby = "4"
-pnpm = "11.5.0"
 pitchfork = "latest"
 # Git hook manager. hk parses its hk.pkl config through the pkl CLI, so pkl
 # is a hard runtime dep — hk panics without it. Hooks are installed once per
@@ -48,6 +47,7 @@ pitchfork = "latest"
 # and the binary must match that schema, so bump both together.
 hk = "1.46.0"
 pkl = "latest"
+aube = "1.16.1"
 
 # ── Workflows ────────────────────────────────────────────────────────────────
 #
@@ -124,7 +124,7 @@ depends = ["//backend:db:setup-e2e"]
 # on Node 22+ that emits DEP0205. Silence only that code so real deprecation
 # warnings stay visible. Drop once Playwright migrates to registerHooks().
 env = { NODE_OPTIONS = "--disable-warning=DEP0205" }
-run = 'pnpm exec playwright test "$@"'
+run = 'aube exec playwright test "$@"'
 
 # Visual-regression baselines (the `*-snapshots/` directories next to specs)
 # are environment-dependent — font rendering and antialiasing differ between
@@ -243,7 +243,7 @@ description = "Install root dependencies (Playwright, prettier)"
 # --with-deps; on Linux it shells out to apt and wants sudo, which is fine
 # in CI / the devcontainer but a friction point for a local dev setup. If
 # you hit a missing system lib, run it manually with --with-deps.
-run = ["pnpm install", "pnpm exec playwright install chromium"]
+run = ["aube install", "aube exec playwright install chromium"]
 
 [tasks."setup:db"]
 description = "Create and migrate the development, test, and e2e databases"

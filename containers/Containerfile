@@ -2,7 +2,7 @@
 
 # The toolchain image is built and pushed by CI from the three mise.toml files
 # (`mise oci push ghcr.io/iain/tayaway-toolchain:<sha>`); each tool sits on its
-# own layer so a pnpm bump does not invalidate the Ruby layer. The ARG is
+# own layer so an aube bump does not invalidate the Ruby layer. The ARG is
 # required — no default — so a forgotten `--build-arg` fails loudly instead
 # of silently pulling a stale `:latest`. For local dev before CI's first
 # push, run `mise oci push <registry>/tayaway-toolchain:dev` and pass
@@ -29,15 +29,16 @@ ENV MISE_TRUSTED_CONFIG_PATHS=/build
 
 WORKDIR /build
 
-# pnpm-lock.yaml + pnpm-workspace.yaml live at the repo root (frontend and
+# aube-lock.yaml + aube-workspace.yaml live at the repo root (frontend and
 # e2e are workspace members), so resolve from there and filter the install
 # down to frontend's transitive deps.
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY aube-lock.yaml aube-workspace.yaml package.json ./
 COPY frontend/package.json ./frontend/
-RUN mise exec -- pnpm install --frozen-lockfile --filter frontend...
+COPY e2e/package.json ./e2e/
+RUN mise exec -- aube install --frozen-lockfile --filter @tayaway/frontend...
 
 COPY frontend/ ./frontend/
-RUN mise exec -- pnpm --filter frontend run build
+RUN mise exec -- aube run --filter @tayaway/frontend build
 
 # ── gem-build ───────────────────────────────────────────────────────────────
 # Compiles native gem extensions. build-essential and the -dev headers live

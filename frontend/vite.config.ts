@@ -124,6 +124,17 @@ export default defineConfig({
     host,
     port,
     proxy: apiProxy,
+    fs: {
+      // aube's isolated node_modules symlinks dependencies into the repo-root
+      // `node_modules/.aube` store, which sits ABOVE this frontend/ project
+      // root. Under pnpm, Vite auto-detected the workspace root via
+      // pnpm-workspace.yaml and served from it; aube-workspace.yaml isn't a
+      // marker Vite recognises, so without this the dev server 403s assets that
+      // resolve through those symlinks — notably the bundled Inter web font,
+      // whose absence silently falls back to a wider system sans and bloats the
+      // design-system visual snapshot. Allow the repo root to restore access.
+      allow: [fileURLToPath(new URL('..', import.meta.url))],
+    },
   },
   preview: {
     port: previewPort,

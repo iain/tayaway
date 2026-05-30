@@ -25,8 +25,8 @@ on:
       - "containers/**"
       - "backend/**"
       - "frontend/**"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
+      - "aube-lock.yaml"
+      - "aube-workspace.yaml"
       - "package.json"
       - ".mise/tasks/toolchain/**"
       - "**/mise.lock"
@@ -243,13 +243,13 @@ jobs:
             e2e:
               - 'containers/**'
               - 'backend/Gemfile.lock'
-              - 'pnpm-lock.yaml'
+              - 'aube-lock.yaml'
               - 'backend/lib/geo_ip.rb'
               - 'playwright.config.ts'
               - 'e2e/**'
               - '.github/workflows/images.yml'
 
-      # node + pnpm only. The backend runs in a container, so skip the mise
+      # node + aube only. The backend runs in a container, so skip the mise
       # postinstall hook (MISE_NO_HOOKS) that would otherwise bundle install the
       # backend gems on the runner — wasted work here.
       - name: Set up node toolchain
@@ -268,7 +268,7 @@ jobs:
           path: |
             node_modules
             frontend/node_modules
-          key: node-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          key: node-${{ runner.os }}-${{ hashFiles('aube-lock.yaml') }}
           restore-keys: node-${{ runner.os }}-
 
       - name: Cache Playwright browsers
@@ -276,14 +276,14 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('aube-lock.yaml') }}
           restore-keys: playwright-${{ runner.os }}-
 
       - name: Install JS deps + Playwright
         if: github.event_name == 'pull_request' && steps.changes.outputs.e2e == 'true'
         run: |
-          pnpm install --frozen-lockfile
-          pnpm exec playwright install chromium --with-deps
+          aube ci
+          aube exec playwright install chromium --with-deps
 
       # localhost addressing works because the containers share one netns;
       # FRONTEND_URL is the edge origin so backend-side origin / WebAuthn line up.
@@ -313,7 +313,7 @@ jobs:
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:8080
           E2E_CONTAINERISED: "1"
-        run: pnpm exec playwright test
+        run: aube exec playwright test
 
       - name: Dump container logs
         if: failure() && github.event_name == 'pull_request' && steps.changes.outputs.e2e == 'true'
