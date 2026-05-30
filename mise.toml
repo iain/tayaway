@@ -41,6 +41,13 @@ node = "26"
 ruby = "4"
 pnpm = "11.5.0"
 pitchfork = "latest"
+# Git hook manager. hk parses its hk.pkl config through the pkl CLI, so pkl
+# is a hard runtime dep — hk panics without it. Hooks are installed once per
+# machine with `hk install --global` (see setup:hooks for the per-repo fallback).
+# hk is pinned (not "latest"): hk.pkl's `amends` URL hard-codes the same version
+# and the binary must match that schema, so bump both together.
+hk = "1.46.0"
+pkl = "latest"
 
 # ── Workflows ────────────────────────────────────────────────────────────────
 #
@@ -59,25 +66,12 @@ alias = "d"
 run = "pitchfork start -l"
 
 [tasks.check]
-description = "Full local validation: lint, typecheck, test, audit, cache-version (no e2e)"
+description = "Full local validation: lint, typecheck, test, audit (no e2e)"
 alias = "c"
-depends = [
-  "//...:lint",
-  "//...:typecheck",
-  "//...:test",
-  "//...:audit",
-  "check:cache-version",
-]
-
-[tasks.precommit]
-description = "Pre-commit hook: fast formatters only (lint + cache-version). Full validation lives in `check` and CI."
-depends = ["lint", "check:cache-version"]
-
-[tasks."check:cache-version"]
-description = "Verify CACHE_VERSION is bumped when pool-cache schema changes"
-run = "./scripts/check-cache-version.sh"
-sources = ["frontend/src/api/poolDb.ts", "scripts/check-cache-version.sh"]
-outputs = { auto = true }
+# `lint` runs the hk pipeline (rubocop, eslint, mise fmt, cache-version);
+# typecheck/test/audit still fan out per-subproject. The pre-commit hook is
+# managed by hk (hk.pkl), not a mise task — see setup:hooks.
+depends = ["lint", "//...:typecheck", "//...:test", "//...:audit"]
 
 [tasks.ci]
 description = "Full CI: check + e2e"
@@ -85,42 +79,24 @@ depends = ["check", "e2e"]
 
 # ── Aggregate task wildcards ─────────────────────────────────────────────────
 #
-# These collapse `lint:backend + lint:frontend` etc. into a single root task.
-# Subproject definitions are the source of truth; root just fans out.
+# typecheck/test/audit collapse the per-subproject tasks into one root task;
+# the subproject definitions are the source of truth and root just fans out.
+# `lint` is the exception — linting is a repo-global concern owned by hk
+# (hk.pkl), so it delegates there rather than fanning out to subproject tasks.
 
 [tasks.lint]
-description = "Lint all code (autofix locally; report-only when $CI is set)"
-depends = ["//...:lint", "lint:config", "docs:tasks"]
-
-[tasks."lint:config"]
-description = "Canonically format all mise.toml files"
-run = "mise fmt"
-sources = [".mise.toml", "backend/mise.toml", "frontend/mise.toml"]
-outputs = { auto = true }
-
-[tasks."docs:tasks"]
-description = "Regenerate TASKS.md from mise task descriptions and usage specs"
-# Pinned in lint so the checked-in reference can't drift from the source
-# of truth. In pre-commit context (MISE_PRE_COMMIT=1, set by the generated
-# hook), also stage the regenerated file so it lands in the in-flight
-# commit — without this, a task-definition change would leave TASKS.md
-# modified in the working tree and require a second commit. Outside
-# pre-commit, the regen runs but staging is left alone.
+description = "Lint via hk: rubocop, eslint, mise fmt, cache-version (autofix locally; report-only when $CI is set)"
+# hk's `fix` hook autofixes the whole tree; its `check` hook is report-only.
+# CI sets $CI and must not mutate files, so it gets the check hook. hk is a
+# mise tool, so it's on PATH here; its steps re-enter mise for ruby/node.
+shell = "bash -c"
 run = """
-mise generate task-docs --output TASKS.md
-if [ -n "${MISE_PRE_COMMIT:-}" ]; then
-  git add TASKS.md
+if [ -n "${CI:-}" ]; then
+  hk check --all
+else
+  hk fix --all
 fi
 """
-sources = [
-  ".mise.toml",
-  "backend/mise.toml",
-  "frontend/mise.toml",
-  ".mise/tasks/**",
-  "backend/.mise/tasks/**",
-  "frontend/.mise/tasks/**",
-]
-outputs = ["TASKS.md"]
 
 [tasks.typecheck]
 description = "Run all type checkers"
@@ -289,13 +265,14 @@ done
 """
 
 [tasks."setup:hooks"]
-description = "Install the git pre-commit hook"
-# Writes .git/hooks/pre-commit that runs `mise run precommit` on commit
-# (fast formatters only — full validation runs in CI and via `mise run check`).
-# Each clone needs this once; rerunning is harmless. The unset clears the
-# leftover `core.hooksPath = .husky/_` from clones that pre-date the husky
-# removal.
+description = "Install git hooks for this repo (fallback for devs without `hk install --global`)"
+# Hooks are managed by hk (hk.pkl). The recommended one-time machine setup is
+# `hk install --global`, which writes config-based hooks to ~/.gitconfig so
+# every repo picks them up. This per-repo `hk install` is a fallback: when
+# global hooks already exist it's a no-op (and prunes stale local hooks);
+# otherwise it installs hooks for this clone. The unset clears leftover
+# core.hooksPath from clones that pre-date the husky removal.
 run = """
 git config --unset core.hooksPath 2>/dev/null || true
-mise generate git-pre-commit --task precommit --write
+hk install
 """

@@ -117,9 +117,9 @@ jobs:
 
       # `mise run ci` runs check (lint, typecheck, test, audit) and e2e
       # in parallel, mirroring `mise run ci` on a developer machine.
-      # Lint is CI-aware: with $CI set, `//...:lint` defaults to no-fix,
-      # so we don't need a separate gate to prevent autofix from silently
-      # masking offenses in the ephemeral workspace.
+      # Lint is CI-aware: with $CI set, the root `lint` task runs hk's
+      # report-only `check` hook instead of `fix`, so autofix can't silently
+      # mask offenses in the ephemeral workspace.
       - name: Run CI
         run: mise run ci
 

@@ -1,0 +1,104 @@
+// hk — git hook manager (https://hk.jdx.dev). Owns the pre-commit pipeline.
+// Installed once per machine with `hk install --global`; `mise run setup:hooks`
+// is a per-repo fallback. Requires the pkl CLI (see root mise.toml [tools]).
+//
+// The amends URL hard-codes the hk version, which is why `hk` is pinned (not
+// "latest") in mise.toml — the binary and this schema must move together. To
+// upgrade, bump both in one commit (re-run `hk init` in a scratch dir to see
+// the current URL); a binary reading a stale Config.pkl can fail to parse.
+amends "package://github.com/jdx/hk/releases/download/v1.46.0/hk@1.46.0#/Config.pkl"
+
+// Skip vendored, generated, and binary-baseline paths across every step —
+// unions with per-step excludes. Mainly keeps the repo-wide `hk util` guards
+// below off lockfiles' neighbours and committed Playwright snapshot images.
+exclude = List(
+  "node_modules/**",
+  "backend/vendor/**",
+  "frontend/dist/**",
+  "playwright-report/**",
+  "test-results/**",
+  "**/*-snapshots/**",
+)
+
+// Git hooks run in a bare environment with no mise shell activation, so each
+// project linter is wrapped in `mise exec --` to provision its toolchain
+// (ruby+bundler for rubocop, node+pnpm for eslint). hk runs steps from the
+// repo root and does not honour `dir` for workspace templating, so each
+// command `cd`s into its {{workspace}} (the dir of the matched indicator)
+// where {{workspace_files}} are relative and the tool finds its config + deps.
+local linters = new Mapping<String, Step> {
+  // RuboCop — backend Ruby. `workspace_indicator = "Gemfile"` anchors at
+  // backend/ (the only Gemfile). --no-server matches the old mise task (the
+  // daemon could wedge onto a stale cwd and pass files CI then rejected).
+  ["rubocop"] {
+    glob = List("backend/**/*.rb", "backend/**/*.rake", "backend/Rakefile", "backend/config.ru")
+    exclude = "backend/vendor/**"
+    workspace_indicator = "Gemfile"
+    // Run the read-only check first; only shell the slow `-A` autofix when a
+    // file is actually dirty (the common clean commit skips it and the write-lock).
+    check_first = true
+    check = "cd {{workspace}} && mise exec -- bundle exec rubocop --no-server -f q {{workspace_files}}"
+    fix = "cd {{workspace}} && mise exec -- bundle exec rubocop --no-server -f q -A {{workspace_files}}"
+  }
+  // ESLint — frontend. package.json anchors at frontend/.
+  ["eslint"] {
+    glob = List("frontend/src/**/*.ts", "frontend/src/**/*.vue", "frontend/src/**/*.js", "frontend/src/**/*.mts")
+    workspace_indicator = "package.json"
+    check_first = true
+    check = "cd {{workspace}} && mise exec -- pnpm exec eslint {{workspace_files}}"
+    fix = "cd {{workspace}} && mise exec -- pnpm exec eslint --fix {{workspace_files}}"
+  }
+  // Canonical mise.toml formatting. Whole-repo formatter rather than per-file,
+  // so it runs once (exclusive) and ignores {{files}}; the glob only decides
+  // whether it fires at all.
+  ["mise-fmt"] {
+    glob = List("mise.toml", "backend/mise.toml", "frontend/mise.toml", ".mise/**/*", "backend/.mise/**/*", "frontend/.mise/**/*")
+    exclusive = true
+    check = "mise fmt --check"
+    fix = "mise fmt"
+  }
+  // CACHE_VERSION guard. Self-contained: diffs poolDb.ts/pool.ts against the
+  // base branch and self-skips when neither changed. Check-only, no fix.
+  ["cache-version"] {
+    glob = List("frontend/src/api/poolDb.ts", "frontend/src/types/pool.ts", "scripts/check-cache-version.sh")
+    check = "./scripts/check-cache-version.sh"
+  }
+  // Rust-native guards shipped in the hk binary — no toolchain, so they're
+  // invoked via `mise exec -- hk` (hk is itself a mise tool, not on PATH in a
+  // bare hook). All check-only; they never modify files. Run repo-wide, scoped
+  // by the top-level `exclude`.
+  ["merge-conflict"] {
+    glob = "**/*"
+    check = "mise exec -- hk util check-merge-conflict {{files}}"
+  }
+  ["private-key"] {
+    glob = "**/*"
+    check = "mise exec -- hk util detect-private-key {{files}}"
+  }
+  ["large-files"] {
+    glob = "**/*"
+    check = "mise exec -- hk util check-added-large-files --maxkb 500 {{files}}"
+  }
+}
+
+hooks {
+  // Runs on commit against staged files: stash unstaged changes, autofix,
+  // restage what was fixed.
+  ["pre-commit"] {
+    fix = true
+    stash = "git"
+    steps = linters
+  }
+  // `hk check` / `mise run lint` under CI — report-only, no writes.
+  ["check"] {
+    steps = linters
+  }
+  // `hk fix` / `mise run lint` locally — autofix the whole tree. Unlike the
+  // pre-commit hook, this leaves fixes unstaged (stage = false) so running the
+  // linter doesn't silently stage files, matching the old `rubocop -A` task.
+  ["fix"] {
+    fix = true
+    stage = false
+    steps = linters
+  }
+}
