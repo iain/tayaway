@@ -5,7 +5,6 @@ mise = true
 run = "mise run dev"
 dir = "backend"
 port = 9292
-auto = [ "start", "stop" ]
 env = { FRONTEND_URL = "https://tayaway.localhost" }
 
 [daemons.frontend]
@@ -13,5 +12,4 @@ run = "mise run dev"
 dir = "frontend"
 depends = [ "backend" ]
 port = 5173
-auto = [ "start", "stop" ]
 env = { FRONTEND_HOST = "127.0.0.1" }
