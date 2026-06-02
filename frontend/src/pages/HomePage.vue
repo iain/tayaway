@@ -4,6 +4,7 @@ import { CheckCircleIcon } from '@heroicons/vue/24/solid'
 import { HomeIcon } from '@heroicons/vue/24/outline'
 import { usePollsNeedingAttention } from '@/composables/usePollsNeedingAttention'
 import { useEventsNeedingRsvp } from '@/composables/useEventsNeedingRsvp'
+import { useUpcomingEvents } from '@/composables/useUpcomingEvents'
 import { useEventsList } from '@/composables/useEventsList'
 import { storeToRefs } from 'pinia'
 import {
@@ -21,7 +22,7 @@ import OpenSettlementsSection from '@/components/home/OpenSettlementsSection.vue
 import HappeningNowSection from '@/components/home/HappeningNowSection.vue'
 import PastEventsOpenExpenses from '@/components/home/PastEventsOpenExpenses.vue'
 import PollsNeedingAttention from '@/components/home/PollsNeedingAttention.vue'
-import EventsNeedingRsvp from '@/components/home/EventsNeedingRsvp.vue'
+import UpcomingEventsSection from '@/components/home/UpcomingEventsSection.vue'
 import WelcomeSection from '@/components/home/WelcomeSection.vue'
 import CreateEventWizard from '@/components/events/CreateEventWizard.vue'
 
@@ -30,7 +31,14 @@ const authStore = useAuthStore()
 const workspaceStore = useWorkspaceStore()
 const { pollsNeedingAttention } = usePollsNeedingAttention()
 const { eventsNeedingRsvp } = useEventsNeedingRsvp()
+const { upcomingEvents } = useUpcomingEvents()
 const { currentEvents, pastEvents, hasEvents } = useEventsList()
+
+// Set of event ids the current user still owes an RSVP — surfaced as a badge
+// on both happening-now and upcoming event cards.
+const eventIdsNeedingRsvp = computed(
+  () => new Set(eventsNeedingRsvp.value.map((e) => e.eventId))
+)
 
 const currentUserId = computed(() => authStore.currentUserId)
 const { user } = storeToRefs(authStore)
@@ -167,9 +175,9 @@ const allCaughtUp = computed(
     !hasBirthdays.value &&
     myUnpaidTransfers.value.length === 0 &&
     currentEvents.value.length === 0 &&
+    upcomingEvents.value.length === 0 &&
     pastEventsWithOpenExpenses.value.length === 0 &&
-    pollsNeedingAttention.value.length === 0 &&
-    eventsNeedingRsvp.value.length === 0
+    pollsNeedingAttention.value.length === 0
 )
 </script>
 
@@ -218,6 +226,12 @@ const allCaughtUp = computed(
         :events="currentEvents"
         :attendee-count-by-event="attendeeCountByEvent"
         :unpaid-transfer-count-by-event="unpaidTransferCountByEvent"
+        :event-ids-needing-rsvp="eventIdsNeedingRsvp"
+      />
+
+      <UpcomingEventsSection
+        v-if="upcomingEvents.length > 0"
+        :events="upcomingEvents"
       />
 
       <PastEventsOpenExpenses
@@ -230,11 +244,6 @@ const allCaughtUp = computed(
       <PollsNeedingAttention
         v-if="pollsNeedingAttention.length > 0"
         :polls="pollsNeedingAttention"
-      />
-
-      <EventsNeedingRsvp
-        v-if="eventsNeedingRsvp.length > 0"
-        :events="eventsNeedingRsvp"
       />
     </div>
 
