@@ -113,9 +113,30 @@ export async function createBareEvent(
   return event!.id
 }
 
+export interface DateRangeInput {
+  start_date: string
+  end_date: string
+}
+
+/** ISO `yyyy-mm-dd` for `days` from today (UTC). Use for date-relative
+ *  fixtures so they don't rot as wall-clock time passes the literal. */
+export function offsetDate(days: number): string {
+  return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10)
+}
+
+// Default poll options. The winning range (index 0) is in the past, which most
+// callers don't care about — but tests that exercise reopen/started-event
+// behaviour must pass future ranges instead (see `offsetDate`), or the event
+// counts as already-started and the poll can't be reopened.
+const DEFAULT_POLL_RANGES: DateRangeInput[] = [
+  { start_date: '2026-06-01', end_date: '2026-06-07' },
+  { start_date: '2026-06-15', end_date: '2026-06-20' },
+]
+
 export async function createEventWithPoll(
   request: APIRequestContext,
-  name = 'Test Event'
+  name = 'Test Event',
+  ranges: DateRangeInput[] = DEFAULT_POLL_RANGES
 ): Promise<{
   eventId: string
   dateRangeIds: string[]
@@ -134,25 +155,22 @@ export async function createEventWithPoll(
     data: { deadline },
   })
 
-  const [dr1Response, dr2Response] = await Promise.all([
-    request.post(`${API_BASE}/api/events/${eventId}/poll/date-ranges`, {
-      data: { start_date: '2026-06-01', end_date: '2026-06-07' },
-    }),
-    request.post(`${API_BASE}/api/events/${eventId}/poll/date-ranges`, {
-      data: { start_date: '2026-06-15', end_date: '2026-06-20' },
-    }),
-  ])
-  const [dr1Body, dr2Body] = await Promise.all([
-    dr1Response.json(),
-    dr2Response.json(),
-  ])
-  const dr1 = getObjectByType(dr1Body.objects, 'dateRange')
-  const dr2 = getObjectByType(dr2Body.objects, 'dateRange')
+  const responses = await Promise.all(
+    ranges.map((data) =>
+      request.post(`${API_BASE}/api/events/${eventId}/poll/date-ranges`, {
+        data,
+      })
+    )
+  )
+  const bodies = await Promise.all(responses.map((res) => res.json()))
+  const dateRangeIds = bodies.map(
+    (body) => getObjectByType(body.objects, 'dateRange')!.id
+  )
 
   return {
     eventId,
-    dateRangeIds: [dr1!.id, dr2!.id],
-    dateRangeId: dr1!.id,
+    dateRangeIds,
+    dateRangeId: dateRangeIds[0]!,
     workspaceId: event!.workspaceId as string,
   }
 }
@@ -210,9 +228,14 @@ export async function addMemberToWorkspace(
 
 export async function createResolvedEvent(
   request: APIRequestContext,
-  name = 'Test Event'
+  name = 'Test Event',
+  ranges?: DateRangeInput[]
 ): Promise<{ eventId: string; winnerDateRangeId: string }> {
-  const { eventId, dateRangeIds } = await createEventWithPoll(request, name)
+  const { eventId, dateRangeIds } = await createEventWithPoll(
+    request,
+    name,
+    ranges
+  )
 
   await request.post(`${API_BASE}/api/events/${eventId}/votes`, {
     data: { date_range_id: dateRangeIds[0], response: 'yes' },
