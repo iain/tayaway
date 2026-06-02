@@ -112,7 +112,7 @@ restart_stack() {
 # Poll /health from here (exercises the real DNS → Caddy → web → db path, not
 # just the container). Returns 0 on the first 200.
 smoke_test() {
-  local deadline=$(( $(date +%s) + 45 )) code
+  local deadline=$(($(date +%s) + 45)) code
   while [ "$(date +%s)" -lt "$deadline" ]; do
     code=$(curl -fsS -o /dev/null -w '%{http_code}' -m 10 "$HEALTH_URL" 2>/dev/null || true)
     if [ "$code" = "200" ]; then

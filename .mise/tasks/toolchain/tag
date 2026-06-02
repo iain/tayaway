@@ -19,8 +19,8 @@
 
 set -euo pipefail
 
-git ls-files 'mise.lock' '**/mise.lock' \
-  | sort \
-  | xargs sha256sum \
-  | sha256sum \
-  | cut -c1-12
+git ls-files 'mise.lock' '**/mise.lock' |
+  sort |
+  xargs sha256sum |
+  sha256sum |
+  cut -c1-12

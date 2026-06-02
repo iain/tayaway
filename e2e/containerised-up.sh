@@ -27,8 +27,9 @@ NETNS="container:${DB}"
 log() { echo "▸ $*"; }
 
 wait_for() { # <description> <command...>
-  local desc="$1"; shift
-  for i in $(seq 1 45); do
+  local desc="$1"
+  shift
+  for _ in $(seq 1 45); do
     if "$@" >/dev/null 2>&1; then
       log "$desc ready"
       return 0

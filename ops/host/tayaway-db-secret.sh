@@ -28,7 +28,10 @@ extract() { # key -> value on stdout, empty if the key is absent
 install -d -m 0700 /run/tayaway
 
 pw=$(extract POSTGRES_PASSWORD)
-[ -n "$pw" ] || { echo "POSTGRES_PASSWORD missing from $ENV_YAML" >&2; exit 1; }
+[ -n "$pw" ] || {
+  echo "POSTGRES_PASSWORD missing from $ENV_YAML" >&2
+  exit 1
+}
 
 # WAL-G secrets are optional: absent just means archiving/backups aren't
 # configured yet, which degrades gracefully (postgres keeps WAL and retries)
@@ -40,9 +43,9 @@ walg_key=$(extract WALG_LIBSODIUM_KEY)
 umask 077
 {
   printf 'POSTGRES_PASSWORD=%s\n' "$pw"
-  [ -n "$walg_ak" ]  && printf 'AWS_ACCESS_KEY_ID=%s\n' "$walg_ak"
-  [ -n "$walg_sk" ]  && printf 'AWS_SECRET_ACCESS_KEY=%s\n' "$walg_sk"
+  [ -n "$walg_ak" ] && printf 'AWS_ACCESS_KEY_ID=%s\n' "$walg_ak"
+  [ -n "$walg_sk" ] && printf 'AWS_SECRET_ACCESS_KEY=%s\n' "$walg_sk"
   [ -n "$walg_key" ] && printf 'WALG_LIBSODIUM_KEY=%s\n' "$walg_key"
-} > "$OUT"
+} >"$OUT"
 
 echo "wrote db.env: POSTGRES_PASSWORD${walg_ak:+ + WAL-G S3 creds}${walg_key:+ + libsodium key}"

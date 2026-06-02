@@ -23,6 +23,6 @@ URL="https://download.db-ip.com/free/dbip-city-lite-${MONTH}.mmdb.gz"
 mkdir -p data
 echo "Downloading DB-IP Lite city database (${MONTH})..."
 curl -fSL -o /tmp/dbip-city-lite.mmdb.gz "$URL"
-gunzip -c /tmp/dbip-city-lite.mmdb.gz > data/dbip-city-lite.mmdb
+gunzip -c /tmp/dbip-city-lite.mmdb.gz >data/dbip-city-lite.mmdb
 rm /tmp/dbip-city-lite.mmdb.gz
 echo "Saved to backend/data/dbip-city-lite.mmdb"

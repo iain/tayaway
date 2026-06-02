@@ -31,7 +31,7 @@ try_download() {
 
   echo "[geoip-load] trying ${url}"
   if ! curl --fail --silent --show-error --location --retry 3 --retry-delay 5 \
-       "$url" | gunzip -c > "$TMP"; then
+    "$url" | gunzip -c >"$TMP"; then
     rm -f "$TMP"
     return 1
   fi

@@ -20,7 +20,7 @@ SCHEMA_FILES='^frontend/src/(api/poolDb|types/pool)\.ts$'
 # Skip entirely if the base branch is missing (shallow clones, first build,
 # rebase in progress). Better to be silent than to fail noisily when we
 # can't compare.
-if ! git rev-parse --verify --quiet "${BASE}" > /dev/null; then
+if ! git rev-parse --verify --quiet "${BASE}" >/dev/null; then
   exit 0
 fi
 

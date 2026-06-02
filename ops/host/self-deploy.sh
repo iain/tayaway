@@ -40,7 +40,7 @@ log() { printf '[self-deploy] %s\n' "$*"; }
 valid_sha() { printf '%s' "$1" | grep -Eq '^[0-9a-f]{40}$'; }
 
 restore_baks() { for f in "${FILES[@]}"; do [ -f "$f.bak" ] && mv -f "$f.bak" "$f"; done; }
-clear_baks()   { for f in "${FILES[@]}"; do rm -f "$f.bak"; done; }
+clear_baks() { for f in "${FILES[@]}"; do rm -f "$f.bak"; done; }
 
 # One `systemctl restart` invocation, not three: web has Requires=migrate, so a
 # standalone `restart migrate` already bounces web — a separate `restart web`
@@ -58,7 +58,7 @@ restart_stack() {
 smoke_test() {
   local site deadline code
   site=$(grep -oP 'SITE_ADDRESS=https?://\K[^/ ]+' "$QUADLET_DIR/edge.container")
-  deadline=$(( $(date +%s) + 45 ))
+  deadline=$(($(date +%s) + 45))
   while [ "$(date +%s)" -lt "$deadline" ]; do
     code=$(curl -fsS -k -o /dev/null -w '%{http_code}' -m 10 \
       --resolve "$site:443:127.0.0.1" "https://$site/health" 2>/dev/null || true)
@@ -134,5 +134,5 @@ else
 fi
 # Remember the bad SHA so the next tick doesn't redeploy + re-fail it; a
 # fix-forward commit changes :main to a new SHA and clears this naturally.
-printf '%s\n' "$target" > "$LAST_BAD"
+printf '%s\n' "$target" >"$LAST_BAD"
 exit 1

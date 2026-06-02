@@ -255,19 +255,19 @@ fi
 # required on `tayaway@` runs.
 
 case "$TARGET" in
-  tayaway@*)
-    step "Verifying /etc/tayaway/age.key exists"
-    if ! ssh_run 'sudo test -f /etc/tayaway/age.key'; then
-      echo "ERROR: /etc/tayaway/age.key not found on $TARGET." >&2
-      echo "  Drop it as tayaway, then re-run:" >&2
-      echo "    scp ~/.config/sops/age/keys.txt $TARGET:/tmp/age.key" >&2
-      echo "    ssh $TARGET 'sudo install -m 0400 -o root -g root /tmp/age.key /etc/tayaway/age.key && rm /tmp/age.key'" >&2
-      exit 1
-    fi
-    ;;
-  *)
-    step "Skipping age-key check (connected as non-tayaway — first-run setup; drop the key and re-run as tayaway@)"
-    ;;
+tayaway@*)
+  step "Verifying /etc/tayaway/age.key exists"
+  if ! ssh_run 'sudo test -f /etc/tayaway/age.key'; then
+    echo "ERROR: /etc/tayaway/age.key not found on $TARGET." >&2
+    echo "  Drop it as tayaway, then re-run:" >&2
+    echo "    scp ~/.config/sops/age/keys.txt $TARGET:/tmp/age.key" >&2
+    echo "    ssh $TARGET 'sudo install -m 0400 -o root -g root /tmp/age.key /etc/tayaway/age.key && rm /tmp/age.key'" >&2
+    exit 1
+  fi
+  ;;
+*)
+  step "Skipping age-key check (connected as non-tayaway — first-run setup; drop the key and re-run as tayaway@)"
+  ;;
 esac
 
 # ── 3a. Ensure container-runtime packages ────────────────────────────────────
@@ -476,7 +476,7 @@ if [ -f "$OPS_DIR/images.txt" ]; then
     # quadlets retries at service start anyway, so a failed pre-pull
     # shouldn't abort the whole (otherwise idempotent) provision.
     ssh_run "sudo podman pull '$image'" || pull_failed=1
-  done < "$OPS_DIR/images.txt"
+  done <"$OPS_DIR/images.txt"
   if [ "$pull_failed" = "1" ]; then
     echo "  ⚠ one or more pulls failed — if these are the private GHCR images," >&2
     echo "    log the VPS in once (read:packages PAT) and re-run:" >&2

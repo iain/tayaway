@@ -11,12 +11,12 @@ set -euo pipefail
 if [[ ! -f .env.development ]]; then
   echo "Generating .env.development from .env.example..."
   app_secret=$(ruby -rsecurerandom -e "puts SecureRandom.base64(32)")
-  sed "s|^APP_SECRET=.*|APP_SECRET=$app_secret|" .env.example > .env.development
+  sed "s|^APP_SECRET=.*|APP_SECRET=$app_secret|" .env.example >.env.development
 fi
 
 if [[ ! -f .env.test ]]; then
   echo "Generating .env.test from .env.development..."
-  sed '/^DATABASE_URL=/s|/tayaway_development|/tayaway_test|' .env.development > .env.test
+  sed '/^DATABASE_URL=/s|/tayaway_development|/tayaway_test|' .env.development >.env.test
 fi
 
 for env in development test e2e; do

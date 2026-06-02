@@ -5,7 +5,7 @@ echo "Installing Claude Code..."
 curl -fsSL https://claude.ai/install.sh | bash
 
 # Mark onboarding complete so claude skips the interactive setup wizard
-cat > /home/ubuntu/.claude.json <<'JSON'
+cat >/home/ubuntu/.claude.json <<'JSON'
 {"hasCompletedOnboarding":true,"autoUpdates":false}
 JSON
 
@@ -41,7 +41,7 @@ secret=$(ruby -e "require 'securerandom'; puts SecureRandom.base64(32)")
 # Write env files pointing to the 'db' container service.
 # These are gitignored and will be overwritten on each container creation.
 for env in development test e2e; do
-  cat > ".env.${env}" <<ENVFILE
+  cat >".env.${env}" <<ENVFILE
 DATABASE_URL=postgres://tayaway:tayaway@db:5432/tayaway_${env}
 PORT=9292
 FRONTEND_URL=http://localhost:5173
@@ -56,8 +56,8 @@ ENVFILE
 done
 
 echo "Setting up databases..."
-MISE_ENV=development mise exec -- bundle exec rake db:migrate
-MISE_ENV=test mise exec -- bundle exec rake db:migrate
-MISE_ENV=e2e mise exec -- bundle exec rake db:migrate
+MISE_ENV="development" mise exec -- bundle exec rake db:migrate
+MISE_ENV="test" mise exec -- bundle exec rake db:migrate
+MISE_ENV="e2e" mise exec -- bundle exec rake db:migrate
 
 echo "Setup complete! Run 'mise run serve' to start the development server."
