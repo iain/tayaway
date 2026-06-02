@@ -135,6 +135,7 @@ jobs:
       - name: Prepare plan body
         if: steps.secrets.outputs.skip != 'true' && github.event_name == 'pull_request'
         run: |
+          # shellcheck disable=SC2016  # literal backticks/markdown, not shell expansion
           {
             echo '### `tofu plan` (ops/)'
             echo

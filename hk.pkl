@@ -48,14 +48,57 @@ local linters = new Mapping<String, Step> {
     check = "cd {{workspace}} && mise exec -- aube exec eslint {{workspace_files}}"
     fix = "cd {{workspace}} && mise exec -- aube exec eslint --fix {{workspace_files}}"
   }
-  // Canonical mise.toml formatting. Whole-repo formatter rather than per-file,
-  // so it runs once (exclusive) and ignores {{files}}; the glob only decides
-  // whether it fires at all.
-  ["mise-fmt"] {
-    glob = List("mise.toml", "backend/mise.toml", "frontend/mise.toml", ".mise/**/*", "backend/.mise/**/*", "frontend/.mise/**/*")
-    exclusive = true
-    check = "mise fmt --check"
-    fix = "mise fmt"
+  // Prettier — frontend formatting. ESLint owns code correctness and (via
+  // eslint-config-prettier) defers all stylistic rules to Prettier, but nothing
+  // actually ran Prettier before this step, so formatting went unenforced. Same
+  // file set as ESLint. `depends` serialises it after ESLint so the two never
+  // race on the same file (ESLint --fix first, then Prettier formats the result).
+  // Run from the repo root: prettier + prettier.config.js live in the root
+  // package, not frontend/, so `aube exec` resolves them there.
+  ["prettier"] {
+    glob = List("frontend/src/**/*.ts", "frontend/src/**/*.vue", "frontend/src/**/*.js", "frontend/src/**/*.mts")
+    depends = List("eslint")
+    check_first = true
+    check = "mise exec -- aube exec -- prettier --check {{files}}"
+    fix = "mise exec -- aube exec -- prettier --write {{files}}"
+  }
+  // TOML formatting with taplo (the standard TOML formatter), modelled on hk's
+  // `taplo-format` builtin. Replaces the old `mise fmt` step, which was a
+  // whole-repo, exclusive formatter that ignored the staged {{files}} and
+  // reformatted the tree on every commit — against pre-commit's "act only on
+  // what's staged" grain. taplo formats each staged .toml in place. Like the
+  // other linters it's wrapped in `mise exec` (taplo is a mise tool, absent
+  // from the bare hook PATH); RUST_LOG=warn mutes taplo's per-run INFO line so
+  // clean commits stay silent.
+  ["taplo"] {
+    glob = "**/*.toml"
+    check_first = true
+    check = "RUST_LOG=warn mise exec -- taplo format --check --diff {{files}}"
+    fix = "RUST_LOG=warn mise exec -- taplo format {{files}}"
+  }
+  // ShellCheck — shell scripts (incl. the extension-less mise task scripts,
+  // which carry bash shebangs ShellCheck detects). Check-only; findings need a
+  // human, so a clean autofix isn't on offer.
+  ["shellcheck"] {
+    glob = List("**/*.sh", "**/*.bash", ".mise/tasks/**/*", "backend/.mise/tasks/**/*")
+    check = "mise exec -- shellcheck {{files}}"
+  }
+  // shfmt — shell formatting for the same file set. `-i 2` matches the repo's
+  // existing two-space indentation (shfmt defaults to tabs, which would churn
+  // every script).
+  ["shfmt"] {
+    glob = List("**/*.sh", "**/*.bash", ".mise/tasks/**/*", "backend/.mise/tasks/**/*")
+    check_first = true
+    check = "mise exec -- shfmt -i 2 --diff {{files}}"
+    fix = "mise exec -- shfmt -i 2 -w {{files}}"
+  }
+  // actionlint — GitHub Actions workflow validation. Shells out to ShellCheck
+  // (also a mise tool, on the same mise-provided PATH) to lint `run:` blocks.
+  // Check-only. The glob mirrors actionlint's own scope so it never fires on
+  // unrelated YAML (e.g. the sops-encrypted secrets files).
+  ["actionlint"] {
+    glob = List(".github/workflows/*.yml", ".github/workflows/*.yaml")
+    check = "mise exec -- actionlint {{files}}"
   }
   // CACHE_VERSION guard. Self-contained: diffs poolDb.ts/pool.ts against the
   // base branch and self-skips when neither changed. Check-only, no fix.
@@ -65,8 +108,8 @@ local linters = new Mapping<String, Step> {
   }
   // Rust-native guards shipped in the hk binary — no toolchain, so they're
   // invoked via `mise exec -- hk` (hk is itself a mise tool, not on PATH in a
-  // bare hook). All check-only; they never modify files. Run repo-wide, scoped
-  // by the top-level `exclude`.
+  // bare hook). Run repo-wide, scoped by the top-level `exclude`; all of them
+  // detect and skip binary files by content, so the `**/*` glob is safe.
   ["merge-conflict"] {
     glob = "**/*"
     check = "mise exec -- hk util check-merge-conflict {{files}}"
@@ -78,6 +121,27 @@ local linters = new Mapping<String, Step> {
   ["large-files"] {
     glob = "**/*"
     check = "mise exec -- hk util check-added-large-files --maxkb 500 {{files}}"
+  }
+  // Whitespace hygiene fixers. check-first so a clean commit skips the write;
+  // --diff reports, --fix rewrites (trailing whitespace removed, mixed CRLF/CR
+  // normalised to LF, exactly one trailing newline).
+  ["trailing-whitespace"] {
+    glob = "**/*"
+    check_first = true
+    check = "mise exec -- hk util trailing-whitespace --diff {{files}}"
+    fix = "mise exec -- hk util trailing-whitespace --fix {{files}}"
+  }
+  ["mixed-line-ending"] {
+    glob = "**/*"
+    check_first = true
+    check = "mise exec -- hk util mixed-line-ending --diff {{files}}"
+    fix = "mise exec -- hk util mixed-line-ending --fix {{files}}"
+  }
+  ["end-of-file-fixer"] {
+    glob = "**/*"
+    check_first = true
+    check = "mise exec -- hk util end-of-file-fixer --diff {{files}}"
+    fix = "mise exec -- hk util end-of-file-fixer --fix {{files}}"
   }
 }
 

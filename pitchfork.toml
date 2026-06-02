@@ -10,6 +10,6 @@ env = { FRONTEND_URL = "https://tayaway.localhost" }
 [daemons.frontend]
 run = "mise run dev"
 dir = "frontend"
-depends = [ "backend" ]
+depends = ["backend"]
 port = 5173
 env = { FRONTEND_HOST = "127.0.0.1" }

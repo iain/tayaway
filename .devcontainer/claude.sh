@@ -3,6 +3,7 @@
 # Usage: .devcontainer/claude.sh [args...]
 set -e
 
+# shellcheck disable=SC1091
 source "$(dirname "$0")/start.sh"
 
 devcontainer exec --workspace-folder "$WORKSPACE" \

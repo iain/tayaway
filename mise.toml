@@ -48,6 +48,10 @@ pitchfork = "latest"
 hk = "1.46.0"
 pkl = "latest"
 aube = "1.16.1"
+taplo = "latest"
+shellcheck = "latest"
+shfmt = "latest"
+actionlint = "latest"
 
 # ── Workflows ────────────────────────────────────────────────────────────────
 #
@@ -68,7 +72,8 @@ run = "pitchfork start -l"
 [tasks.check]
 description = "Full local validation: lint, typecheck, test, audit (no e2e)"
 alias = "c"
-# `lint` runs the hk pipeline (rubocop, eslint, mise fmt, cache-version);
+# `lint` runs the hk pipeline (rubocop, eslint, prettier, taplo, shellcheck,
+# shfmt, actionlint, cache-version, plus whitespace/merge/secret guards);
 # typecheck/test/audit still fan out per-subproject. The pre-commit hook is
 # managed by hk (hk.pkl), not a mise task — see setup:hooks.
 depends = ["lint", "//...:typecheck", "//...:test", "//...:audit"]
@@ -85,7 +90,7 @@ depends = ["check", "e2e"]
 # (hk.pkl), so it delegates there rather than fanning out to subproject tasks.
 
 [tasks.lint]
-description = "Lint via hk: rubocop, eslint, mise fmt, cache-version (autofix locally; report-only when $CI is set)"
+description = "Lint via hk: rubocop, eslint, prettier, taplo, shellcheck, shfmt, actionlint (autofix locally; report-only when $CI is set)"
 # hk's `fix` hook autofixes the whole tree; its `check` hook is report-only.
 # CI sets $CI and must not mutate files, so it gets the check hook. hk is a
 # mise tool, so it's on PATH here; its steps re-enter mise for ruby/node.

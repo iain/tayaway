@@ -3,6 +3,7 @@
 # Usage: .devcontainer/exec.sh [command] [args...]
 set -e
 
+# shellcheck disable=SC1091
 source "$(dirname "$0")/start.sh"
 
 if [ $# -eq 0 ]; then
