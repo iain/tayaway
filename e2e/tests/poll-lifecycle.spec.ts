@@ -9,6 +9,7 @@ import {
   PAGE_LOAD_TIMEOUT,
   newApiContext,
   offsetDate,
+  futureCalendarDate,
 } from '../helpers'
 
 // Reopening a poll is only allowed while the event hasn't started, so these
@@ -104,16 +105,22 @@ test.describe('Poll Lifecycle UI', () => {
       await page.getByRole('button', { name: 'Add Date Range' }).click()
       await expect(page.getByRole('dialog')).toBeVisible()
 
-      // The calendar is preselected around late June (7 days after Jun 15-20),
-      // showing June (left) and July (right) side-by-side. The June calendar's
-      // overflow grid extends into early July, so pick late-July dates that
-      // only appear in the July calendar.
-      await page.getByTestId('calendar-day-2026-07-15').click()
+      // Pick a fresh range a few months out, navigating forward to its month
+      // first (the calendar opens around the existing ranges).
+      const rangeStart = futureCalendarDate(3, 10)
+      const rangeEnd = futureCalendarDate(3, 14)
+      while (!(await page.getByText(rangeStart.monthLabel).isVisible())) {
+        await page
+          .getByRole('dialog')
+          .getByRole('button', { name: /next/i })
+          .click()
+      }
+      await page.getByTestId(`calendar-day-${rangeStart.iso}`).first().click()
       // Selection text should update
       await expect(page.getByText(/Select end date/)).toBeVisible()
 
       // Select end date — auto-saves and closes
-      await page.getByTestId('calendar-day-2026-07-20').click()
+      await page.getByTestId(`calendar-day-${rangeEnd.iso}`).first().click()
 
       // Modal should auto-close after selecting the range
       await expect(page.getByRole('dialog')).not.toBeVisible()

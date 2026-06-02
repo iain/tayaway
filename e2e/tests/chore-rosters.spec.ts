@@ -8,13 +8,15 @@ import {
   createResolvedEvent,
   PAGE_LOAD_TIMEOUT,
   newApiContext,
+  offsetDate,
+  RESOLVED_EVENT_START,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-chores@example.com'
 const TEST_NAME = 'E2E Chores User'
 
-// Resolved events use date range 2026-06-01 to 2026-06-07
-const DEFAULT_START = '2026-06-01'
+// Resolved events land on the shared upcoming window (see helpers).
+const DEFAULT_START = RESOLVED_EVENT_START
 
 /**
  * Creates a chore roster for the given event and returns the roster ID.
@@ -299,7 +301,7 @@ test.describe('Chore Rosters Feature', () => {
           data: {
             chore_id: choreId,
             user_id: userId,
-            date: '2026-12-25', // way outside event range
+            date: offsetDate(200), // way outside event range
           },
         }
       )

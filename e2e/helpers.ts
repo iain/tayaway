@@ -124,13 +124,47 @@ export function offsetDate(days: number): string {
   return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10)
 }
 
-// Default poll options. The winning range (index 0) is in the past, which most
-// callers don't care about — but tests that exercise reopen/started-event
-// behaviour must pass future ranges instead (see `offsetDate`), or the event
-// counts as already-started and the poll can't be reopened.
+/** A future date `monthsAhead` out on day-of-month `day`, with the pieces a
+ *  calendar-picker test needs: the ISO id for the `calendar-day-…` testid, the
+ *  "Month YYYY" header to navigate to, and the "Mon D" text the app renders.
+ *  Built from local Date parts to match the app's TZ-safe date parsing
+ *  (new Date(y, m-1, d)), so the rendered short date is exact. Pick mid-month
+ *  days to keep a multi-day range inside a single month. */
+export function futureCalendarDate(monthsAhead: number, day: number) {
+  const base = new Date()
+  const d = new Date(base.getFullYear(), base.getMonth() + monthsAhead, day)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return {
+    iso: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+    monthLabel: d.toLocaleDateString('en-US', {
+      month: 'long',
+      year: 'numeric',
+    }),
+    shortDate: d.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    }),
+  }
+}
+
+// Default options for an *open* poll. Fixed dates are fine: an open poll's
+// state is gated by its deadline (always set in the future), not by where its
+// candidate ranges fall, and the one test that closes onto these and asserts
+// the resulting "Jun" display is deterministic regardless of today.
 const DEFAULT_POLL_RANGES: DateRangeInput[] = [
   { start_date: '2026-06-01', end_date: '2026-06-07' },
   { start_date: '2026-06-15', end_date: '2026-06-20' },
+]
+
+// The window a resolved event lands on. Relative to today so the event is
+// always upcoming — some UI gates on whether the event has started (e.g.
+// reopening a poll), and downstream fixtures (expenses, RSVPs, chores) hang
+// their own dates off this window. Callers needing specific dates pass them in.
+export const RESOLVED_EVENT_START = offsetDate(14)
+export const RESOLVED_EVENT_END = offsetDate(20)
+
+const RESOLVED_POLL_RANGES: DateRangeInput[] = [
+  { start_date: RESOLVED_EVENT_START, end_date: RESOLVED_EVENT_END },
 ]
 
 export async function createEventWithPoll(
@@ -229,7 +263,7 @@ export async function addMemberToWorkspace(
 export async function createResolvedEvent(
   request: APIRequestContext,
   name = 'Test Event',
-  ranges?: DateRangeInput[]
+  ranges: DateRangeInput[] = RESOLVED_POLL_RANGES
 ): Promise<{ eventId: string; winnerDateRangeId: string }> {
   const { eventId, dateRangeIds } = await createEventWithPoll(
     request,

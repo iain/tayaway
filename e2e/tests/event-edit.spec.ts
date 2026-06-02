@@ -7,6 +7,8 @@ import {
   createBareEvent,
   PAGE_LOAD_TIMEOUT,
   newApiContext,
+  offsetDate,
+  futureCalendarDate,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-event-edit@example.com'
@@ -71,24 +73,24 @@ test.describe('Event Edit', () => {
         {
           data: {
             name: 'API Dates Event',
-            start_date: '2026-06-15',
-            end_date: '2026-06-20',
+            start_date: offsetDate(30),
+            end_date: offsetDate(35),
           },
         }
       )
       expect(response.ok()).toBeTruthy()
       const body = await response.json()
       const event = getObjectByType(body.objects, 'event')
-      expect(event?.startDate).toBe('2026-06-15')
-      expect(event?.endDate).toBe('2026-06-20')
+      expect(event?.startDate).toBe(offsetDate(30))
+      expect(event?.endDate).toBe(offsetDate(35))
     })
 
     test('PUT /api/events/:id can clear dates', async () => {
       const createResponse = await apiContext.post(`${API_BASE}/api/events`, {
         data: {
           name: 'API Clear Dates',
-          start_date: '2026-06-15',
-          end_date: '2026-06-20',
+          start_date: offsetDate(30),
+          end_date: offsetDate(35),
         },
       })
       const createBody = await createResponse.json()
@@ -172,42 +174,43 @@ test.describe('Event Edit', () => {
       page.getByRole('dialog').getByRole('heading', { name: 'Event dates' })
     ).toBeVisible()
 
-    // Can set start and end dates by clicking calendar days
-    // Navigate to September 2026 if needed
-    while (!(await page.getByText('September 2026').isVisible())) {
+    // Can set start and end dates by clicking calendar days (a few months out)
+    const start = futureCalendarDate(3, 10)
+    const end = futureCalendarDate(3, 14)
+    while (!(await page.getByText(start.monthLabel).isVisible())) {
       await page
         .getByRole('dialog')
         .getByRole('button', { name: /next/i })
         .click()
     }
-    await page.getByTestId('calendar-day-2026-09-01').first().click()
-    await page.getByTestId('calendar-day-2026-09-05').first().click()
+    await page.getByTestId(`calendar-day-${start.iso}`).first().click()
+    await page.getByTestId(`calendar-day-${end.iso}`).first().click()
     await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
     await expect(page.getByRole('dialog')).not.toBeVisible()
 
     await expect(page.getByTestId('event-dates')).toBeVisible()
-    await expect(page.getByTestId('event-dates')).toContainText(/Sep 1/)
-    await expect(page.getByTestId('event-dates')).toContainText(/Sep 5/)
+    await expect(page.getByTestId('event-dates')).toContainText(start.shortDate)
+    await expect(page.getByTestId('event-dates')).toContainText(end.shortDate)
 
     // Can update to a single-day date
     await page.getByTestId('edit-dates-button').locator('..').hover()
     await page.getByTestId('edit-dates-button').click()
     await expect(page.getByRole('dialog')).toBeVisible()
-    // Navigate to December 2026
-    while (!(await page.getByText('December 2026').isVisible())) {
+    const single = futureCalendarDate(5, 20)
+    while (!(await page.getByText(single.monthLabel).isVisible())) {
       await page
         .getByRole('dialog')
         .getByRole('button', { name: /next/i })
         .click()
     }
     // Click same day twice for single-day event
-    await page.getByTestId('calendar-day-2026-12-25').first().click()
-    await page.getByTestId('calendar-day-2026-12-25').first().click()
+    await page.getByTestId(`calendar-day-${single.iso}`).first().click()
+    await page.getByTestId(`calendar-day-${single.iso}`).first().click()
     await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
     await expect(page.getByRole('dialog')).not.toBeVisible()
 
     await expect(page.getByTestId('event-dates')).toBeVisible()
-    await expect(page.getByTestId('event-dates')).toContainText(/Dec 25/)
+    await expect(page.getByTestId('event-dates')).toContainText(single.shortDate)
   })
 
   test('location set via API is displayed on event page', async ({ page }) => {
@@ -237,8 +240,8 @@ test.describe('Event Edit', () => {
     const response = await apiContext.post(`${API_BASE}/api/events`, {
       data: {
         name: 'Pre-dated Event',
-        start_date: '2026-08-01',
-        end_date: '2026-08-07',
+        start_date: futureCalendarDate(2, 1).iso,
+        end_date: futureCalendarDate(2, 7).iso,
       },
     })
     const body = await response.json()
@@ -258,21 +261,25 @@ test.describe('Event Edit', () => {
       page.getByRole('dialog').getByRole('heading', { name: 'Event dates' })
     ).toBeVisible()
 
-    // Pick new dates (clicking a new start clears the existing selection)
-    // Navigate to October 2026
-    while (!(await page.getByText('October 2026').isVisible())) {
+    // Pick new dates (clicking a new start clears the existing selection),
+    // a couple of months past the pre-existing ones.
+    const newStart = futureCalendarDate(4, 15)
+    const newEnd = futureCalendarDate(4, 20)
+    while (!(await page.getByText(newStart.monthLabel).isVisible())) {
       await page
         .getByRole('dialog')
         .getByRole('button', { name: /next/i })
         .click()
     }
-    await page.getByTestId('calendar-day-2026-10-15').first().click()
-    await page.getByTestId('calendar-day-2026-10-20').first().click()
+    await page.getByTestId(`calendar-day-${newStart.iso}`).first().click()
+    await page.getByTestId(`calendar-day-${newEnd.iso}`).first().click()
     await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
     await expect(page.getByRole('dialog')).not.toBeVisible()
 
     await expect(page.getByTestId('event-dates')).toBeVisible()
-    await expect(page.getByTestId('event-dates')).toContainText(/Oct 15/)
-    await expect(page.getByTestId('event-dates')).toContainText(/Oct 20/)
+    await expect(page.getByTestId('event-dates')).toContainText(
+      newStart.shortDate
+    )
+    await expect(page.getByTestId('event-dates')).toContainText(newEnd.shortDate)
   })
 })

@@ -11,14 +11,19 @@ import {
   getWorkspaceId,
   PAGE_LOAD_TIMEOUT,
   newApiContext,
+  offsetDate,
+  RESOLVED_EVENT_START,
+  RESOLVED_EVENT_END,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-expenses@example.com'
 const TEST_NAME = 'E2E Expenses User'
 
-// Resolved events use date range 2026-06-01 to 2026-06-07
-const DEFAULT_START = '2026-06-01'
-const DEFAULT_END = '2026-06-07'
+// Resolved events land on the shared upcoming window (see helpers). Dates
+// below hang off it via offsetDate so within-/outside-window checks hold:
+// day N == offsetDate(13 + N) (the old "Jun N"); window is day 1 … day 7.
+const DEFAULT_START = RESOLVED_EVENT_START
+const DEFAULT_END = RESOLVED_EVENT_END
 
 test.describe('Expenses Feature', () => {
   test.describe('Expenses API - Unauthenticated', () => {
@@ -97,8 +102,8 @@ test.describe('Expenses Feature', () => {
         data: {
           event_id: eventId,
           amount: 10,
-          start_date: '2026-01-01',
-          end_date: '2026-01-02',
+          start_date: offsetDate(15),
+          end_date: offsetDate(16),
         },
       })
       expect(response.status()).toBe(400)
@@ -112,8 +117,8 @@ test.describe('Expenses Feature', () => {
           data: {
             event_id: eventId,
             description: 'Dinner',
-            start_date: '2026-01-01',
-            end_date: '2026-01-02',
+            start_date: offsetDate(15),
+            end_date: offsetDate(16),
           },
         }),
         apiContext.post(`${API_BASE}/api/expenses`, {
@@ -121,8 +126,8 @@ test.describe('Expenses Feature', () => {
             event_id: eventId,
             description: 'Dinner',
             amount: 0,
-            start_date: '2026-01-01',
-            end_date: '2026-01-02',
+            start_date: offsetDate(15),
+            end_date: offsetDate(16),
           },
         }),
         apiContext.post(`${API_BASE}/api/expenses`, {
@@ -130,8 +135,8 @@ test.describe('Expenses Feature', () => {
             event_id: eventId,
             description: 'Dinner',
             amount: -5,
-            start_date: '2026-01-01',
-            end_date: '2026-01-02',
+            start_date: offsetDate(15),
+            end_date: offsetDate(16),
           },
         }),
       ])
@@ -160,8 +165,8 @@ test.describe('Expenses Feature', () => {
           event_id: eventId,
           description: 'Team dinner',
           amount: 120.5,
-          start_date: '2026-06-02',
-          end_date: '2026-06-04',
+          start_date: offsetDate(15),
+          end_date: offsetDate(17),
         },
       })
       expect(createResponse.status()).toBe(201)
@@ -171,8 +176,8 @@ test.describe('Expenses Feature', () => {
       expect(created?.description).toBe('Team dinner')
       expect(created?.amount).toBeCloseTo(120.5)
       expect(created).toHaveProperty('eventId', eventId)
-      expect(created).toHaveProperty('startDate', '2026-06-02')
-      expect(created).toHaveProperty('endDate', '2026-06-04')
+      expect(created).toHaveProperty('startDate', offsetDate(15))
+      expect(created).toHaveProperty('endDate', offsetDate(17))
       const expenseId = created!.id
 
       // Read — appears in event GET
@@ -207,13 +212,13 @@ test.describe('Expenses Feature', () => {
       // Update dates
       const updateDatesResponse = await apiContext.put(
         `${API_BASE}/api/expenses/${expenseId}`,
-        { data: { start_date: '2026-06-03', end_date: '2026-06-05' } }
+        { data: { start_date: offsetDate(16), end_date: offsetDate(18) } }
       )
       expect(updateDatesResponse.ok()).toBeTruthy()
       const updateDatesBody = await updateDatesResponse.json()
       const updatedDates = getObjectByType(updateDatesBody.objects, 'expense')
-      expect(updatedDates).toHaveProperty('startDate', '2026-06-03')
-      expect(updatedDates).toHaveProperty('endDate', '2026-06-05')
+      expect(updatedDates).toHaveProperty('startDate', offsetDate(16))
+      expect(updatedDates).toHaveProperty('endDate', offsetDate(18))
 
       // Delete
       const deleteResponse = await apiContext.delete(
@@ -265,44 +270,44 @@ test.describe('Expenses Feature', () => {
     })
 
     test('expense dates must fall within event date range', async () => {
-      // Create a resolved event with dates 2026-06-01 to 2026-06-07
+      // Resolved event spans days 1–7 (offsetDate 14–20)
       const { eventId: resolvedEventId } = await createResolvedEvent(
         apiContext,
         'Date Validation Event'
       )
 
-      // Expense before event start
+      // Expense starting before event start (day -1 … day 2)
       const beforeResp = await apiContext.post(`${API_BASE}/api/expenses`, {
         data: {
           event_id: resolvedEventId,
           description: 'Too early',
           amount: 10,
-          start_date: '2026-05-30',
-          end_date: '2026-06-02',
+          start_date: offsetDate(12),
+          end_date: offsetDate(15),
         },
       })
       expect(beforeResp.status()).toBe(400)
 
-      // Expense after event end
+      // Expense ending after event end (day 5 … day 10)
       const afterResp = await apiContext.post(`${API_BASE}/api/expenses`, {
         data: {
           event_id: resolvedEventId,
           description: 'Too late',
           amount: 10,
-          start_date: '2026-06-05',
-          end_date: '2026-06-10',
+          start_date: offsetDate(18),
+          end_date: offsetDate(23),
         },
       })
       expect(afterResp.status()).toBe(400)
 
-      // Expense within event range — should succeed
+      // Expense within event range — should succeed (day 2 … day 5)
       const withinResp = await apiContext.post(`${API_BASE}/api/expenses`, {
         data: {
           event_id: resolvedEventId,
           description: 'Just right',
           amount: 10,
-          start_date: '2026-06-02',
-          end_date: '2026-06-05',
+          start_date: offsetDate(15),
+          end_date: offsetDate(18),
         },
       })
       expect(withinResp.status()).toBe(201)
@@ -615,16 +620,16 @@ test.describe('Expenses Feature', () => {
 
       await addMemberToWorkspace(apiContextA, workspace.id, SPLIT_USER_B_EMAIL)
 
-      // User B RSVPs with partial dates: only 2026-06-05 to 2026-06-07
+      // User B RSVPs with partial dates: only days 5–7
       await apiContextB.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
         data: {
           attending: true,
-          start_date: '2026-06-05',
-          end_date: '2026-06-07',
+          start_date: offsetDate(18),
+          end_date: offsetDate(20),
         },
       })
 
-      // Expense covering only first 4 days: 2026-06-01 to 2026-06-04
+      // Expense covering only the first 4 days (days 1–4).
       // User A attends all 4 days, User B attends 0 days of this expense
       // So User A should bear 100% of this expense
       await apiContextA.post(`${API_BASE}/api/expenses`, {
@@ -632,8 +637,8 @@ test.describe('Expenses Feature', () => {
           event_id: eventId,
           description: 'Early dinner',
           amount: 60,
-          start_date: '2026-06-01',
-          end_date: '2026-06-04',
+          start_date: offsetDate(14),
+          end_date: offsetDate(17),
         },
       })
 
@@ -896,9 +901,10 @@ test.describe('Expenses Feature', () => {
       await amountInput.fill('42.00')
       await page.getByTestId('submit-button').click()
 
-      // Step 2: Change dates via calendar (click start, then end)
-      await page.getByTestId('calendar-day-2026-06-03').click()
-      await page.getByTestId('calendar-day-2026-06-05').click()
+      // Step 2: Change dates via calendar (click start, then end). Dates sit
+      // inside the event window (days 3 and 5) so the picker opens on them.
+      await page.getByTestId(`calendar-day-${offsetDate(16)}`).click()
+      await page.getByTestId(`calendar-day-${offsetDate(18)}`).click()
       await page.getByTestId('submit-button').click()
 
       // Step 3: People (keep default)
