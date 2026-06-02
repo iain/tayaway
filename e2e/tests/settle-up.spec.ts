@@ -9,11 +9,13 @@ import {
   addMemberToWorkspace,
   getWorkspaceId,
   newApiContext,
+  RESOLVED_EVENT_START,
+  RESOLVED_EVENT_END,
 } from '../helpers'
 
-// Resolved events use date range 2026-06-01 to 2026-06-07
-const DEFAULT_START = '2026-06-01'
-const DEFAULT_END = '2026-06-07'
+// Resolved events land on the shared upcoming window (see helpers).
+const DEFAULT_START = RESOLVED_EVENT_START
+const DEFAULT_END = RESOLVED_EVENT_END
 
 // Builds a fully-settled event between Alice and Bob for a single expense
 // paid by `payer`. Returns the per-event transfer ids so the caller can

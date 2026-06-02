@@ -10,14 +10,20 @@ import {
   addMemberToWorkspace,
   getWorkspaceId,
   newApiContext,
+  offsetDate,
+  RESOLVED_EVENT_START,
+  RESOLVED_EVENT_END,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-settlements@example.com'
 const TEST_NAME = 'E2E Settlements User'
 
-// Resolved events use date range 2026-06-01 to 2026-06-07
-const DEFAULT_START = '2026-06-01'
-const DEFAULT_END = '2026-06-07'
+// Resolved events land on the shared upcoming window (see helpers). Partial
+// attendance windows below hang off it via offsetDate so day-overlap maths
+// (which expense covers whom) is preserved: day N == offsetDate(13 + N), i.e.
+// the old "Jun N". Window spans day 1 (start) … day 7 (end).
+const DEFAULT_START = RESOLVED_EVENT_START
+const DEFAULT_END = RESOLVED_EVENT_END
 
 test.describe('Settlements Feature', () => {
   test.describe('Settlements API - Unauthenticated', () => {
@@ -378,16 +384,16 @@ test.describe('Settlements Feature', () => {
   // -------------------------------------------------------------------
   // Mixed expense types: overlap, partial overlap, and explicit participants
   // -------------------------------------------------------------------
-  // Event: Jun 1–7. Three users with different attendance:
-  //   Alice (creator): full trip (Jun 1–7)
-  //   Bob:             partial (Jun 1–4)
-  //   Carol:           partial (Jun 3–7)
+  // Event: a 7-day window (days 1–7). Three users with different attendance:
+  //   Alice (creator): full trip (days 1–7)
+  //   Bob:             partial (days 1–4)
+  //   Carol:           partial (days 3–7)
   //
   // Expenses:
-  //   1. Alice pays €70 groceries, Jun 1–7, everyone (RSVP overlap split)
+  //   1. Alice pays €70 groceries, days 1–7, everyone (RSVP overlap split)
   //      Overlap days: Alice 7, Bob 4, Carol 5 → total 16
   //      Shares: Alice 70*7/16=30.625, Bob 70*4/16=17.50, Carol 70*5/16=21.875
-  //   2. Bob pays €30 taxi, Jun 2 only, everyone (overlap split — only Alice+Bob present)
+  //   2. Bob pays €30 taxi, day 2 only, everyone (overlap split — only Alice+Bob present)
   //      Overlap: Alice 1 day, Bob 1 day, Carol 0 → shares: 15 each
   //   3. Alice pays €45 dinner, specific people: [Bob, Carol] (equal split)
   //      Shares: Bob 22.50, Carol 22.50
@@ -431,8 +437,8 @@ test.describe('Settlements Feature', () => {
       await bobContext.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
         data: {
           attending: true,
-          start_date: '2026-06-01',
-          end_date: '2026-06-04',
+          start_date: offsetDate(14),
+          end_date: offsetDate(17),
         },
       })
 
@@ -450,8 +456,8 @@ test.describe('Settlements Feature', () => {
       await carolContext.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
         data: {
           attending: true,
-          start_date: '2026-06-03',
-          end_date: '2026-06-07',
+          start_date: offsetDate(16),
+          end_date: offsetDate(20),
         },
       })
 
@@ -466,14 +472,14 @@ test.describe('Settlements Feature', () => {
         },
       })
 
-      // Expense 2: Bob pays €30 taxi on Jun 2 for everyone (only Alice+Bob overlap)
+      // Expense 2: Bob pays €30 taxi on day 2 for everyone (only Alice+Bob overlap)
       await bobContext.post(`${API_BASE}/api/expenses`, {
         data: {
           event_id: eventId,
           description: 'Taxi',
           amount: 30,
-          start_date: '2026-06-02',
-          end_date: '2026-06-02',
+          start_date: offsetDate(15),
+          end_date: offsetDate(15),
         },
       })
 
@@ -483,8 +489,8 @@ test.describe('Settlements Feature', () => {
           event_id: eventId,
           description: 'Dinner',
           amount: 45,
-          start_date: '2026-06-03',
-          end_date: '2026-06-03',
+          start_date: offsetDate(16),
+          end_date: offsetDate(16),
           participant_ids: [bobId, carolId],
         },
       })

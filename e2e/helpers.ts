@@ -113,9 +113,64 @@ export async function createBareEvent(
   return event!.id
 }
 
+export interface DateRangeInput {
+  start_date: string
+  end_date: string
+}
+
+/** ISO `yyyy-mm-dd` for `days` from today (UTC). Use for date-relative
+ *  fixtures so they don't rot as wall-clock time passes the literal. */
+export function offsetDate(days: number): string {
+  return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10)
+}
+
+/** A future date `monthsAhead` out on day-of-month `day`, with the pieces a
+ *  calendar-picker test needs: the ISO id for the `calendar-day-…` testid, the
+ *  "Month YYYY" header to navigate to, and the "Mon D" text the app renders.
+ *  Built from local Date parts to match the app's TZ-safe date parsing
+ *  (new Date(y, m-1, d)), so the rendered short date is exact. Pick mid-month
+ *  days to keep a multi-day range inside a single month. */
+export function futureCalendarDate(monthsAhead: number, day: number) {
+  const base = new Date()
+  const d = new Date(base.getFullYear(), base.getMonth() + monthsAhead, day)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return {
+    iso: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+    monthLabel: d.toLocaleDateString('en-US', {
+      month: 'long',
+      year: 'numeric',
+    }),
+    shortDate: d.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    }),
+  }
+}
+
+// Default options for an *open* poll. Fixed dates are fine: an open poll's
+// state is gated by its deadline (always set in the future), not by where its
+// candidate ranges fall, and the one test that closes onto these and asserts
+// the resulting "Jun" display is deterministic regardless of today.
+const DEFAULT_POLL_RANGES: DateRangeInput[] = [
+  { start_date: '2026-06-01', end_date: '2026-06-07' },
+  { start_date: '2026-06-15', end_date: '2026-06-20' },
+]
+
+// The window a resolved event lands on. Relative to today so the event is
+// always upcoming — some UI gates on whether the event has started (e.g.
+// reopening a poll), and downstream fixtures (expenses, RSVPs, chores) hang
+// their own dates off this window. Callers needing specific dates pass them in.
+export const RESOLVED_EVENT_START = offsetDate(14)
+export const RESOLVED_EVENT_END = offsetDate(20)
+
+const RESOLVED_POLL_RANGES: DateRangeInput[] = [
+  { start_date: RESOLVED_EVENT_START, end_date: RESOLVED_EVENT_END },
+]
+
 export async function createEventWithPoll(
   request: APIRequestContext,
-  name = 'Test Event'
+  name = 'Test Event',
+  ranges: DateRangeInput[] = DEFAULT_POLL_RANGES
 ): Promise<{
   eventId: string
   dateRangeIds: string[]
@@ -134,25 +189,22 @@ export async function createEventWithPoll(
     data: { deadline },
   })
 
-  const [dr1Response, dr2Response] = await Promise.all([
-    request.post(`${API_BASE}/api/events/${eventId}/poll/date-ranges`, {
-      data: { start_date: '2026-06-01', end_date: '2026-06-07' },
-    }),
-    request.post(`${API_BASE}/api/events/${eventId}/poll/date-ranges`, {
-      data: { start_date: '2026-06-15', end_date: '2026-06-20' },
-    }),
-  ])
-  const [dr1Body, dr2Body] = await Promise.all([
-    dr1Response.json(),
-    dr2Response.json(),
-  ])
-  const dr1 = getObjectByType(dr1Body.objects, 'dateRange')
-  const dr2 = getObjectByType(dr2Body.objects, 'dateRange')
+  const responses = await Promise.all(
+    ranges.map((data) =>
+      request.post(`${API_BASE}/api/events/${eventId}/poll/date-ranges`, {
+        data,
+      })
+    )
+  )
+  const bodies = await Promise.all(responses.map((res) => res.json()))
+  const dateRangeIds = bodies.map(
+    (body) => getObjectByType(body.objects, 'dateRange')!.id
+  )
 
   return {
     eventId,
-    dateRangeIds: [dr1!.id, dr2!.id],
-    dateRangeId: dr1!.id,
+    dateRangeIds,
+    dateRangeId: dateRangeIds[0]!,
     workspaceId: event!.workspaceId as string,
   }
 }
@@ -210,9 +262,14 @@ export async function addMemberToWorkspace(
 
 export async function createResolvedEvent(
   request: APIRequestContext,
-  name = 'Test Event'
+  name = 'Test Event',
+  ranges: DateRangeInput[] = RESOLVED_POLL_RANGES
 ): Promise<{ eventId: string; winnerDateRangeId: string }> {
-  const { eventId, dateRangeIds } = await createEventWithPoll(request, name)
+  const { eventId, dateRangeIds } = await createEventWithPoll(
+    request,
+    name,
+    ranges
+  )
 
   await request.post(`${API_BASE}/api/events/${eventId}/votes`, {
     data: { date_range_id: dateRangeIds[0], response: 'yes' },

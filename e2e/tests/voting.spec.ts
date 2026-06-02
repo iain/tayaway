@@ -9,6 +9,7 @@ import {
   addMemberToWorkspace,
   PAGE_LOAD_TIMEOUT,
   newApiContext,
+  offsetDate,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-voting@example.com'
@@ -363,7 +364,7 @@ test.describe('Voting Feature', () => {
       // Add a date range so we can close with a winner
       const drResponse = await apiContext.post(
         `${API_BASE}/api/events/${event!.id}/poll/date-ranges`,
-        { data: { start_date: '2026-06-01', end_date: '2026-06-07' } }
+        { data: { start_date: offsetDate(14), end_date: offsetDate(20) } }
       )
       const drBody = await drResponse.json()
       const dateRange = getObjectByType(drBody.objects, 'dateRange')

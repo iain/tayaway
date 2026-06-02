@@ -8,7 +8,17 @@ import {
   createResolvedEvent,
   PAGE_LOAD_TIMEOUT,
   newApiContext,
+  offsetDate,
+  futureCalendarDate,
 } from '../helpers'
+
+// Reopening a poll is only allowed while the event hasn't started, so these
+// fixtures need a winning range in the future — a hardcoded date would start
+// "already started" once wall-clock time passes it.
+const FUTURE_RANGES = [
+  { start_date: offsetDate(30), end_date: offsetDate(36) },
+  { start_date: offsetDate(45), end_date: offsetDate(50) },
+]
 
 const TEST_EMAIL = 'e2e-poll@example.com'
 const TEST_NAME = 'E2E Poll User'
@@ -95,16 +105,22 @@ test.describe('Poll Lifecycle UI', () => {
       await page.getByRole('button', { name: 'Add Date Range' }).click()
       await expect(page.getByRole('dialog')).toBeVisible()
 
-      // The calendar is preselected around late June (7 days after Jun 15-20),
-      // showing June (left) and July (right) side-by-side. The June calendar's
-      // overflow grid extends into early July, so pick late-July dates that
-      // only appear in the July calendar.
-      await page.getByTestId('calendar-day-2026-07-15').click()
+      // Pick a fresh range a few months out, navigating forward to its month
+      // first (the calendar opens around the existing ranges).
+      const rangeStart = futureCalendarDate(3, 10)
+      const rangeEnd = futureCalendarDate(3, 14)
+      while (!(await page.getByText(rangeStart.monthLabel).isVisible())) {
+        await page
+          .getByRole('dialog')
+          .getByRole('button', { name: /next/i })
+          .click()
+      }
+      await page.getByTestId(`calendar-day-${rangeStart.iso}`).first().click()
       // Selection text should update
       await expect(page.getByText(/Select end date/)).toBeVisible()
 
       // Select end date — auto-saves and closes
-      await page.getByTestId('calendar-day-2026-07-20').click()
+      await page.getByTestId(`calendar-day-${rangeEnd.iso}`).first().click()
 
       // Modal should auto-close after selecting the range
       await expect(page.getByRole('dialog')).not.toBeVisible()
@@ -142,7 +158,11 @@ test.describe('Poll Lifecycle UI', () => {
     test.beforeAll(async () => {
       const { eventId: eid1 } = await createEventWithPoll(apiContext)
       openEventId = eid1
-      const { eventId: eid2 } = await createResolvedEvent(apiContext)
+      const { eventId: eid2 } = await createResolvedEvent(
+        apiContext,
+        'Test Event',
+        FUTURE_RANGES
+      )
       resolvedEventId = eid2
     })
 
@@ -211,7 +231,11 @@ test.describe('Poll Lifecycle UI', () => {
 
   test.describe('Reopening a poll', () => {
     test('can reopen a resolved poll', async ({ page }) => {
-      const { eventId } = await createResolvedEvent(apiContext)
+      const { eventId } = await createResolvedEvent(
+        apiContext,
+        'Test Event',
+        FUTURE_RANGES
+      )
       await setupAuthenticatedPage(page, sessionToken)
 
       await page.goto(`/events/${eventId}/planning`)
@@ -252,7 +276,11 @@ test.describe('Poll Lifecycle UI', () => {
     })
 
     test('reopening a poll clears event dates', async ({ page }) => {
-      const { eventId } = await createResolvedEvent(apiContext)
+      const { eventId } = await createResolvedEvent(
+        apiContext,
+        'Test Event',
+        FUTURE_RANGES
+      )
       await setupAuthenticatedPage(page, sessionToken)
 
       await page.goto(`/events/${eventId}/planning`)
@@ -260,9 +288,9 @@ test.describe('Poll Lifecycle UI', () => {
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
-      // Resolved event should show dates from winning date range (Jun 1-7)
+      // Resolved event should show dates from the winning date range
       await expect(page.getByTestId('event-dates')).toBeVisible()
-      await expect(page.getByTestId('event-dates')).toContainText(/Jun/)
+      await expect(page.getByTestId('event-dates')).not.toBeEmpty()
 
       // Reopen the poll
       await page.getByRole('button', { name: 'Reopen Poll' }).click()

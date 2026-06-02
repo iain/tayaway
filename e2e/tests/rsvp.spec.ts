@@ -10,6 +10,8 @@ import {
   addMemberToWorkspace,
   PAGE_LOAD_TIMEOUT,
   newApiContext,
+  RESOLVED_EVENT_START,
+  RESOLVED_EVENT_END,
 } from '../helpers'
 
 const TEST_EMAIL = 'e2e-rsvp@example.com'
@@ -110,8 +112,8 @@ test.describe('RSVP Feature', () => {
           event_id: eventId,
           description: 'Hotel',
           amount: 50,
-          start_date: '2026-06-01',
-          end_date: '2026-06-07',
+          start_date: RESOLVED_EVENT_START,
+          end_date: RESOLVED_EVENT_END,
         },
       })
 
