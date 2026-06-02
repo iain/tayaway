@@ -1,22 +1,19 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import {
-  BanknotesIcon,
-  BoltIcon,
   CalendarDaysIcon,
   ChevronRightIcon,
   UserGroupIcon,
 } from '@heroicons/vue/24/outline'
+import {
+  formatEventDateRange,
+  type UpcomingEventItem,
+} from '@/composables/useUpcomingEvents'
 import BaseCard from '@/components/common/BaseCard.vue'
-import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
-import type { PoolEvent } from '@/types/pool'
 
 defineProps<{
-  events: PoolEvent[]
-  attendeeCountByEvent: Map<string, number>
-  unpaidTransferCountByEvent: Map<string, number>
-  eventIdsNeedingRsvp: Set<string>
+  events: UpcomingEventItem[]
 }>()
 
 const router = useRouter()
@@ -27,13 +24,13 @@ function navigateToEventPage(eventId: string): void {
 </script>
 
 <template>
-  <section data-testid="happening-now-section">
-    <SectionHeading :icon="BoltIcon" title="Happening now" />
+  <section data-testid="upcoming-events-section">
+    <SectionHeading :icon="CalendarDaysIcon" title="Upcoming events" />
 
     <ul class="space-y-3">
       <BaseCard
-        v-for="event in events"
-        :key="event.id"
+        v-for="item in events"
+        :key="item.eventId"
         as="li"
         class="overflow-hidden"
       >
@@ -42,23 +39,20 @@ function navigateToEventPage(eventId: string): void {
             class="flex cursor-pointer items-center gap-3 transition-all active:scale-[0.99] active:brightness-95 dark:active:brightness-110"
             role="button"
             tabindex="0"
-            @click="navigateToEventPage(event.id)"
-            @keydown.enter="navigateToEventPage(event.id)"
-            @keydown.space.prevent="navigateToEventPage(event.id)"
+            @click="navigateToEventPage(item.eventId)"
+            @keydown.enter="navigateToEventPage(item.eventId)"
+            @keydown.space.prevent="navigateToEventPage(item.eventId)"
           >
             <div class="min-w-0 flex-1">
               <h3 class="text-ink truncate text-base font-semibold">
-                {{ event.name }}
+                {{ item.eventName }}
               </h3>
               <div class="mt-1 flex flex-wrap items-center gap-3 text-sm">
                 <span class="text-ink-muted inline-flex items-center gap-1">
                   <CalendarDaysIcon
                     class="size-4 text-amber-600 dark:text-amber-400"
                   />
-                  <DateRangeDisplay
-                    :start-date="event.startDate!"
-                    :end-date="event.endDate!"
-                  />
+                  {{ formatEventDateRange(item.startDate, item.endDate) }}
                 </span>
               </div>
             </div>
@@ -69,8 +63,8 @@ function navigateToEventPage(eventId: string): void {
           </div>
           <div class="mt-3 flex flex-wrap gap-2">
             <router-link
-              v-if="eventIdsNeedingRsvp.has(event.id)"
-              :to="`/events/${event.id}/rsvp`"
+              v-if="item.needsRsvp"
+              :to="`/events/${item.eventId}/rsvp`"
               class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50"
             >
               <UserGroupIcon class="size-4" />
@@ -78,19 +72,11 @@ function navigateToEventPage(eventId: string): void {
             </router-link>
             <router-link
               v-else
-              :to="`/events/${event.id}/rsvp`"
+              :to="`/events/${item.eventId}/rsvp`"
               class="bg-btn-secondary-fill text-btn-secondary-ink inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition-colors hover:bg-rose-100 hover:text-rose-700 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
             >
               <UserGroupIcon class="size-4" />
-              {{ attendeeCountByEvent.get(event.id) ?? 0 }} attending
-            </router-link>
-            <router-link
-              v-if="(unpaidTransferCountByEvent.get(event.id) ?? 0) > 0"
-              :to="`/events/${event.id}/expenses`"
-              class="bg-btn-secondary-fill text-btn-secondary-ink inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition-colors hover:bg-rose-100 hover:text-rose-700 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
-            >
-              <BanknotesIcon class="size-4" />
-              {{ unpaidTransferCountByEvent.get(event.id) ?? 0 }} unpaid
+              {{ item.attendeeCount }} attending
             </router-link>
           </div>
         </div>
