@@ -1,11 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  BanknotesIcon,
-  QrCodeIcon,
-  ScaleIcon,
-} from '@heroicons/vue/24/outline'
+import { BanknotesIcon, QrCodeIcon, ScaleIcon } from '@heroicons/vue/24/outline'
 import { useObjectPoolStore } from '@/stores'
 import { useSettlementsStore } from '@/stores/settlements'
 import { getMemberName } from '@/utils/member'
@@ -72,7 +68,7 @@ function getEventIdForTransfer(
 <template>
   <section>
     <SectionHeading :icon="ScaleIcon" title="Open settlements" />
-    <p class="text-ink-muted mb-4 -mt-2 text-sm">
+    <p class="text-ink-muted -mt-2 mb-4 text-sm">
       Mark a transfer as paid once you've received the payment.
     </p>
 
@@ -87,7 +83,7 @@ function getEventIdForTransfer(
       </p>
       <button
         type="button"
-        class="mt-1 cursor-pointer text-sm font-medium text-amber-700 underline transition-colors hover:text-amber-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:text-amber-400 dark:hover:text-amber-200"
+        class="focus-visible:outline-focus mt-1 cursor-pointer text-sm font-medium text-amber-700 underline transition-colors hover:text-amber-900 focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-amber-400 dark:hover:text-amber-200"
         @click="router.push('/settings/payment')"
       >
         Add IBAN in settings

@@ -262,7 +262,7 @@ defineExpose({
             v-model="renameValue"
             type="text"
             data-testid="rename-list-input"
-            class="flex-1 rounded-md bg-surface-sunken px-2 py-1 text-sm font-semibold text-ink outline-1 -outline-offset-1 outline-line focus:outline-2 focus:outline-offset-2 focus:outline-focus"
+            class="bg-surface-sunken text-ink outline-line focus:outline-focus flex-1 rounded-md px-2 py-1 text-sm font-semibold outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
             @keyup.enter="commitRename"
             @keyup.escape="isRenaming = false"
             @blur="commitRename"
@@ -270,7 +270,7 @@ defineExpose({
         </div>
         <h2
           v-else
-          class="min-w-0 flex-1 truncate text-base font-semibold text-ink"
+          class="text-ink min-w-0 flex-1 truncate text-base font-semibold"
           :title="taskList.name"
         >
           {{ taskList.name }}
@@ -309,7 +309,7 @@ defineExpose({
         v-model="itemsLocal"
         tag="ul"
         data-testid="task-items-list"
-        class="divide-y divide-line-faint"
+        class="divide-line-faint divide-y"
         :class="{ 'min-h-8': items.length === 0 }"
         group="task-items"
         handle=".item-drag-handle"
@@ -336,7 +336,7 @@ defineExpose({
           v-model="newItemContent"
           type="text"
           placeholder="Add an item..."
-          class="flex-1 rounded-md bg-surface-sunken px-3 py-1.5 text-sm text-ink outline-1 -outline-offset-1 outline-line placeholder:text-ink-placeholder focus:outline-2 focus:outline-offset-2 focus:outline-focus"
+          class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus flex-1 rounded-md px-3 py-1.5 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
           :disabled="isAddingItem"
           @keyup.enter="handleAddItem"
           @keyup.escape="newItemInput?.blur()"

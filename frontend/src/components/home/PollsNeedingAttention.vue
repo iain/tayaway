@@ -50,9 +50,7 @@ function navigateToEvent(eventId: string): void {
         <div class="px-4 py-4 sm:px-6">
           <div class="flex items-center justify-between gap-3">
             <div class="min-w-0 flex-1">
-              <h3
-                class="truncate text-base font-semibold text-ink"
-              >
+              <h3 class="text-ink truncate text-base font-semibold">
                 {{ item.eventName }}
               </h3>
               <div class="mt-1 flex flex-wrap items-center gap-3 text-sm">
@@ -69,9 +67,7 @@ function navigateToEvent(eventId: string): void {
                   <ClockIcon class="size-4" />
                   {{ formatDeadline(item.deadline) }}
                 </span>
-                <span
-                  class="text-ink-muted inline-flex items-center gap-1"
-                >
+                <span class="text-ink-muted inline-flex items-center gap-1">
                   <InboxIcon class="size-4" />
                   Voted on {{ item.votedCount }} of {{ item.totalCount }} date
                   {{ item.totalCount === 1 ? 'option' : 'options' }}

@@ -273,296 +273,297 @@ const partialPickerRsvp = computed(() => {
   <section data-testid="rsvp-section">
     <BaseCard padded>
       <!-- Current user RSVP toggle -->
-    <div class="mb-6">
-      <p class="mb-2 text-sm font-medium text-ink">Your response</p>
+      <div class="mb-6">
+        <p class="text-ink mb-2 text-sm font-medium">Your response</p>
 
-      <div class="flex gap-2">
-        <button
-          type="button"
-          data-testid="rsvp-attend"
-          :aria-pressed="currentUserRsvp?.attending ? 'true' : 'false'"
-          class="inline-flex cursor-pointer items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-          :class="
-            currentUserRsvp?.attending
-              ? 'bg-green-600 text-white'
-              : 'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-btn-secondary-fill-hover'
-          "
-          @click="handleAttend"
-        >
-          <CheckCircleIcon class="size-4" aria-hidden="true" />
-          Attending
-        </button>
-        <button
-          type="button"
-          data-testid="rsvp-decline"
-          :aria-pressed="
-            currentUserRsvp && !currentUserRsvp.attending ? 'true' : 'false'
-          "
-          class="inline-flex cursor-pointer items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-          :class="
-            currentUserRsvp && !currentUserRsvp.attending
-              ? 'bg-red-600 text-white'
-              : 'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-btn-secondary-fill-hover'
-          "
-          @click="handleDecline"
-        >
-          <XCircleIcon class="size-4" aria-hidden="true" />
-          Not Attending
-        </button>
-      </div>
-
-      <!-- Partial attendance -->
-      <div v-if="currentUserRsvp?.attending" class="mt-4">
-        <div
-          v-if="currentUserRsvp.startDate && currentUserRsvp.endDate"
-          class="mb-2 flex items-center gap-1.5 text-sm text-ink-muted"
-        >
-          <CalendarDaysIcon class="size-4 shrink-0" />
-          <DateRangeDisplay
-            :start-date="currentUserRsvp.startDate"
-            :end-date="currentUserRsvp.endDate"
-          />
-          <span class="text-ink-muted">(partial)</span>
+        <div class="flex gap-2">
+          <button
+            type="button"
+            data-testid="rsvp-attend"
+            :aria-pressed="currentUserRsvp?.attending ? 'true' : 'false'"
+            class="focus-visible:outline-focus inline-flex cursor-pointer items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+            :class="
+              currentUserRsvp?.attending
+                ? 'bg-green-600 text-white'
+                : 'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-btn-secondary-fill-hover'
+            "
+            @click="handleAttend"
+          >
+            <CheckCircleIcon class="size-4" aria-hidden="true" />
+            Attending
+          </button>
+          <button
+            type="button"
+            data-testid="rsvp-decline"
+            :aria-pressed="
+              currentUserRsvp && !currentUserRsvp.attending ? 'true' : 'false'
+            "
+            class="focus-visible:outline-focus inline-flex cursor-pointer items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+            :class="
+              currentUserRsvp && !currentUserRsvp.attending
+                ? 'bg-red-600 text-white'
+                : 'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-btn-secondary-fill-hover'
+            "
+            @click="handleDecline"
+          >
+            <XCircleIcon class="size-4" aria-hidden="true" />
+            Not Attending
+          </button>
         </div>
-        <TextButton
-          v-if="!showPartialPicker"
-          data-testid="rsvp-change-dates"
-          @click="openPartialPicker"
-        >
-          {{ currentUserRsvp.startDate ? 'Change dates' : 'Set partial dates' }}
-        </TextButton>
-      </div>
-    </div>
 
-    <!-- Partial date picker modal — shared by self-RSVP and on-behalf flows -->
-    <BaseModal
-      :open="showPartialPicker"
-      :title="partialPickerTitle"
-      size="sm"
-      @close="showPartialPicker = false"
-    >
-      <div class="mb-4 text-sm text-ink-muted">
-        {{ partialSelectionText }}
-      </div>
-
-      <div class="mb-4 flex items-center justify-between">
-        <IconButton label="Previous month" @click="navigatePrev">
-          <ChevronLeftIcon class="size-5" />
-        </IconButton>
-        <IconButton label="Next month" @click="navigateNext">
-          <ChevronRightIcon class="size-5" />
-        </IconButton>
-      </div>
-
-      <CalendarMonth
-        :year="calYear"
-        :month="calMonth"
-        :selected-start="partialStartDate"
-        :selected-end="partialEndDate"
-        :hover-date="hoverDate"
-        :min-date="event.startDate ?? undefined"
-        :max-date="event.endDate ?? undefined"
-        @select="handleCalendarSelect"
-        @hover="hoverDate = $event"
-      />
-
-      <div class="mt-6 flex items-center justify-between">
-        <div>
+        <!-- Partial attendance -->
+        <div v-if="currentUserRsvp?.attending" class="mt-4">
+          <div
+            v-if="currentUserRsvp.startDate && currentUserRsvp.endDate"
+            class="text-ink-muted mb-2 flex items-center gap-1.5 text-sm"
+          >
+            <CalendarDaysIcon class="size-4 shrink-0" />
+            <DateRangeDisplay
+              :start-date="currentUserRsvp.startDate"
+              :end-date="currentUserRsvp.endDate"
+            />
+            <span class="text-ink-muted">(partial)</span>
+          </div>
           <TextButton
-            v-if="partialPickerRsvp?.startDate"
-            variant="secondary"
-            @click="handleClearPartialDates"
+            v-if="!showPartialPicker"
+            data-testid="rsvp-change-dates"
+            @click="openPartialPicker"
           >
-            Attend full event
+            {{
+              currentUserRsvp.startDate ? 'Change dates' : 'Set partial dates'
+            }}
           </TextButton>
-        </div>
-        <div class="flex items-center gap-3">
-          <TextButton variant="secondary" @click="showPartialPicker = false">
-            Cancel
-          </TextButton>
-          <AppButton
-            :disabled="!canSavePartial"
-            @click="handleSavePartialDates"
-          >
-            Save
-          </AppButton>
         </div>
       </div>
-    </BaseModal>
 
-    <!-- Attendee lists -->
-    <div class="space-y-4">
-      <!-- Attending -->
-      <div v-if="attending.length > 0">
-        <h3 class="mb-2 text-sm font-medium text-green-600 dark:text-green-400">
-          Attending ({{ attending.length }})
-        </h3>
-        <ul class="space-y-2">
-          <li
-            v-for="rsvp in attending"
-            :key="rsvp.id"
-            class="flex items-center gap-3 rounded-md bg-green-50 px-3 py-2 dark:bg-green-900/20"
-          >
-            <div
-              class="flex size-8 items-center justify-center rounded-full bg-green-200 dark:bg-green-800"
+      <!-- Partial date picker modal — shared by self-RSVP and on-behalf flows -->
+      <BaseModal
+        :open="showPartialPicker"
+        :title="partialPickerTitle"
+        size="sm"
+        @close="showPartialPicker = false"
+      >
+        <div class="text-ink-muted mb-4 text-sm">
+          {{ partialSelectionText }}
+        </div>
+
+        <div class="mb-4 flex items-center justify-between">
+          <IconButton label="Previous month" @click="navigatePrev">
+            <ChevronLeftIcon class="size-5" />
+          </IconButton>
+          <IconButton label="Next month" @click="navigateNext">
+            <ChevronRightIcon class="size-5" />
+          </IconButton>
+        </div>
+
+        <CalendarMonth
+          :year="calYear"
+          :month="calMonth"
+          :selected-start="partialStartDate"
+          :selected-end="partialEndDate"
+          :hover-date="hoverDate"
+          :min-date="event.startDate ?? undefined"
+          :max-date="event.endDate ?? undefined"
+          @select="handleCalendarSelect"
+          @hover="hoverDate = $event"
+        />
+
+        <div class="mt-6 flex items-center justify-between">
+          <div>
+            <TextButton
+              v-if="partialPickerRsvp?.startDate"
+              variant="secondary"
+              @click="handleClearPartialDates"
             >
-              <CheckCircleIcon
-                class="size-4 text-green-600 dark:text-green-400"
+              Attend full event
+            </TextButton>
+          </div>
+          <div class="flex items-center gap-3">
+            <TextButton variant="secondary" @click="showPartialPicker = false">
+              Cancel
+            </TextButton>
+            <AppButton
+              :disabled="!canSavePartial"
+              @click="handleSavePartialDates"
+            >
+              Save
+            </AppButton>
+          </div>
+        </div>
+      </BaseModal>
+
+      <!-- Attendee lists -->
+      <div class="space-y-4">
+        <!-- Attending -->
+        <div v-if="attending.length > 0">
+          <h3
+            class="mb-2 text-sm font-medium text-green-600 dark:text-green-400"
+          >
+            Attending ({{ attending.length }})
+          </h3>
+          <ul class="space-y-2">
+            <li
+              v-for="rsvp in attending"
+              :key="rsvp.id"
+              class="flex items-center gap-3 rounded-md bg-green-50 px-3 py-2 dark:bg-green-900/20"
+            >
+              <div
+                class="flex size-8 items-center justify-center rounded-full bg-green-200 dark:bg-green-800"
+              >
+                <CheckCircleIcon
+                  class="size-4 text-green-600 dark:text-green-400"
+                />
+              </div>
+              <div class="min-w-0 flex-1">
+                <span class="text-ink">
+                  {{ rsvp.member?.name || rsvp.member?.email || 'Unknown' }}
+                  <span
+                    v-if="rsvp.userId === currentUserId"
+                    class="text-sm text-green-600 dark:text-green-400"
+                  >
+                    (you)
+                  </span>
+                  <span
+                    v-if="filedByLabel(rsvp)"
+                    class="text-ink-muted text-sm"
+                    data-testid="rsvp-filed-by"
+                  >
+                    (RSVP'd by {{ filedByLabel(rsvp) }})
+                  </span>
+                </span>
+                <p
+                  v-if="rsvp.startDate && rsvp.endDate"
+                  class="text-ink-muted text-xs"
+                >
+                  <DateRangeDisplay
+                    :start-date="rsvp.startDate"
+                    :end-date="rsvp.endDate"
+                  />
+                </p>
+              </div>
+              <RsvpActionsMenu
+                v-if="rsvp.userId !== currentUserId"
+                :menu-label="`Manage RSVP for ${rsvp.member?.name ?? 'member'}`"
+                :actions="actionsFor(rsvp)"
+                @pick="handlePick(rsvp.userId, $event)"
               />
-            </div>
-            <div class="min-w-0 flex-1">
-              <span class="text-ink">
+            </li>
+          </ul>
+        </div>
+
+        <!-- Not attending -->
+        <div v-if="notAttending.length > 0">
+          <h3 class="mb-2 text-sm font-medium text-red-600 dark:text-red-400">
+            Not Attending ({{ notAttending.length }})
+          </h3>
+          <ul class="space-y-2">
+            <li
+              v-for="rsvp in notAttending"
+              :key="rsvp.id"
+              class="flex items-center gap-3 rounded-md bg-red-50 px-3 py-2 dark:bg-red-900/20"
+            >
+              <div
+                class="flex size-8 items-center justify-center rounded-full bg-red-200 dark:bg-red-800"
+              >
+                <XCircleIcon class="size-4 text-red-600 dark:text-red-400" />
+              </div>
+              <span class="text-ink min-w-0 flex-1">
                 {{ rsvp.member?.name || rsvp.member?.email || 'Unknown' }}
                 <span
                   v-if="rsvp.userId === currentUserId"
-                  class="text-sm text-green-600 dark:text-green-400"
+                  class="text-sm text-red-600 dark:text-red-400"
                 >
                   (you)
                 </span>
                 <span
                   v-if="filedByLabel(rsvp)"
-                  class="text-sm text-ink-muted"
+                  class="text-ink-muted text-sm"
                   data-testid="rsvp-filed-by"
                 >
                   (RSVP'd by {{ filedByLabel(rsvp) }})
                 </span>
               </span>
-              <p
-                v-if="rsvp.startDate && rsvp.endDate"
-                class="text-xs text-ink-muted"
-              >
-                <DateRangeDisplay
-                  :start-date="rsvp.startDate"
-                  :end-date="rsvp.endDate"
-                />
-              </p>
-            </div>
-            <RsvpActionsMenu
-              v-if="rsvp.userId !== currentUserId"
-              :menu-label="`Manage RSVP for ${rsvp.member?.name ?? 'member'}`"
-              :actions="actionsFor(rsvp)"
-              @pick="handlePick(rsvp.userId, $event)"
-            />
-          </li>
-        </ul>
-      </div>
+              <RsvpActionsMenu
+                v-if="rsvp.userId !== currentUserId"
+                :menu-label="`Manage RSVP for ${rsvp.member?.name ?? 'member'}`"
+                :actions="actionsFor(rsvp)"
+                @pick="handlePick(rsvp.userId, $event)"
+              />
+            </li>
+          </ul>
+        </div>
 
-      <!-- Not attending -->
-      <div v-if="notAttending.length > 0">
-        <h3 class="mb-2 text-sm font-medium text-red-600 dark:text-red-400">
-          Not Attending ({{ notAttending.length }})
-        </h3>
-        <ul class="space-y-2">
-          <li
-            v-for="rsvp in notAttending"
-            :key="rsvp.id"
-            class="flex items-center gap-3 rounded-md bg-red-50 px-3 py-2 dark:bg-red-900/20"
-          >
-            <div
-              class="flex size-8 items-center justify-center rounded-full bg-red-200 dark:bg-red-800"
+        <!-- No response -->
+        <div v-if="noResponse.length > 0">
+          <h3 class="text-ink-muted mb-2 text-sm font-medium">
+            No Response ({{ noResponse.length }})
+          </h3>
+          <ul class="space-y-2">
+            <li
+              v-for="member in noResponse"
+              :key="member.id"
+              class="bg-surface-sunken flex items-center gap-3 rounded-md px-3 py-2"
             >
-              <XCircleIcon class="size-4 text-red-600 dark:text-red-400" />
-            </div>
-            <span class="min-w-0 flex-1 text-ink">
-              {{ rsvp.member?.name || rsvp.member?.email || 'Unknown' }}
-              <span
-                v-if="rsvp.userId === currentUserId"
-                class="text-sm text-red-600 dark:text-red-400"
+              <div
+                class="bg-line flex size-8 items-center justify-center rounded-full"
               >
-                (you)
+                <UserIcon class="text-ink-muted size-4" />
+              </div>
+              <span class="text-ink min-w-0 flex-1">
+                {{ member.name || member.email || 'Unknown' }}
+                <span
+                  v-if="member.userId === currentUserId"
+                  class="text-sm text-amber-600 dark:text-amber-400"
+                >
+                  (you)
+                </span>
               </span>
-              <span
-                v-if="filedByLabel(rsvp)"
-                class="text-sm text-ink-muted"
-                data-testid="rsvp-filed-by"
-              >
-                (RSVP'd by {{ filedByLabel(rsvp) }})
-              </span>
-            </span>
-            <RsvpActionsMenu
-              v-if="rsvp.userId !== currentUserId"
-              :menu-label="`Manage RSVP for ${rsvp.member?.name ?? 'member'}`"
-              :actions="actionsFor(rsvp)"
-              @pick="handlePick(rsvp.userId, $event)"
-            />
-          </li>
-        </ul>
+              <RsvpActionsMenu
+                v-if="member.userId !== currentUserId"
+                :menu-label="`Manage RSVP for ${member.name ?? 'member'}`"
+                :actions="actionsFor(null)"
+                @pick="handlePick(member.userId, $event)"
+              />
+            </li>
+          </ul>
+        </div>
+
+        <!-- Summary -->
+        <p v-if="event.rsvps.length > 0" class="text-ink-muted text-sm">
+          {{ attending.length }} attending, {{ notAttending.length }} not
+          attending, {{ noResponse.length }} pending
+        </p>
       </div>
 
-      <!-- No response -->
-      <div v-if="noResponse.length > 0">
-        <h3 class="mb-2 text-sm font-medium text-ink-muted">
-          No Response ({{ noResponse.length }})
-        </h3>
-        <ul class="space-y-2">
-          <li
-            v-for="member in noResponse"
-            :key="member.id"
-            class="flex items-center gap-3 rounded-md bg-surface-sunken px-3 py-2"
-          >
-            <div
-              class="flex size-8 items-center justify-center rounded-full bg-line"
-            >
-              <UserIcon class="size-4 text-ink-muted" />
-            </div>
-            <span class="min-w-0 flex-1 text-ink">
-              {{ member.name || member.email || 'Unknown' }}
-              <span
-                v-if="member.userId === currentUserId"
-                class="text-sm text-amber-600 dark:text-amber-400"
-              >
-                (you)
-              </span>
-            </span>
-            <RsvpActionsMenu
-              v-if="member.userId !== currentUserId"
-              :menu-label="`Manage RSVP for ${member.name ?? 'member'}`"
-              :actions="actionsFor(null)"
-              @pick="handlePick(member.userId, $event)"
-            />
-          </li>
-        </ul>
-      </div>
-
-      <!-- Summary -->
-      <p
-        v-if="event.rsvps.length > 0"
-        class="text-sm text-ink-muted"
+      <BaseModal
+        :open="declineBlocked !== null"
+        title="Cannot decline"
+        size="sm"
+        @close="declineBlocked = null"
       >
-        {{ attending.length }} attending, {{ notAttending.length }} not
-        attending, {{ noResponse.length }} pending
-      </p>
-    </div>
-
-    <BaseModal
-      :open="declineBlocked !== null"
-      title="Cannot decline"
-      size="sm"
-      @close="declineBlocked = null"
-    >
-      <p class="text-sm text-ink-muted">
-        <template v-if="declineBlocked?.type === 'self'">
-          You have expenses on this event. Delete your expenses before changing
-          your RSVP to not attending.
-        </template>
-        <template v-else-if="declineBlocked?.type === 'other'">
-          {{ declineBlocked.name }} has expenses on this event. Delete those
-          expenses before marking them as not attending.
-        </template>
-      </p>
-      <div class="mt-6 flex justify-end gap-3">
-        <TextButton variant="secondary" @click="declineBlocked = null">
-          Cancel
-        </TextButton>
-        <AppButton
-          :to="`/events/${event.id}/expenses`"
-          autofocus
-          @click="declineBlocked = null"
-        >
-          Go to Expenses
-        </AppButton>
-      </div>
-    </BaseModal>
+        <p class="text-ink-muted text-sm">
+          <template v-if="declineBlocked?.type === 'self'">
+            You have expenses on this event. Delete your expenses before
+            changing your RSVP to not attending.
+          </template>
+          <template v-else-if="declineBlocked?.type === 'other'">
+            {{ declineBlocked.name }} has expenses on this event. Delete those
+            expenses before marking them as not attending.
+          </template>
+        </p>
+        <div class="mt-6 flex justify-end gap-3">
+          <TextButton variant="secondary" @click="declineBlocked = null">
+            Cancel
+          </TextButton>
+          <AppButton
+            :to="`/events/${event.id}/expenses`"
+            autofocus
+            @click="declineBlocked = null"
+          >
+            Go to Expenses
+          </AppButton>
+        </div>
+      </BaseModal>
     </BaseCard>
   </section>
 </template>

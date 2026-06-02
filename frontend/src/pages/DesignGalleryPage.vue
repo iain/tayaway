@@ -136,7 +136,11 @@ const tocItems: TOCItem[] = [
   { group: 'Rules', id: 'rule-one-action', label: 'One-Action' },
   { group: 'Rules', id: 'rule-list-row', label: 'List-Row' },
   { group: 'Rules', id: 'rule-dual-coding', label: 'Dual-Coding' },
-  { group: 'Rules', id: 'rule-state-not-decoration', label: 'State, not decoration' },
+  {
+    group: 'Rules',
+    id: 'rule-state-not-decoration',
+    label: 'State, not decoration',
+  },
   { group: 'Rules', id: 'rule-quiet-surface', label: 'Quiet-Surface' },
   { group: 'Rules', id: 'rule-amber-icon', label: 'Amber-Icon' },
 ]
@@ -180,15 +184,19 @@ function openModal(size: ModalSize): void {
       <PageHeader title="Design system" :icon="SwatchIcon">
         <template #subtitle>
           Every visual primitive in its meaningful states, and the named rules
-          that govern how they compose. The gallery is the system made
-          visible — anything that drifts here drifts in production.
+          that govern how they compose. The gallery is the system made visible —
+          anything that drifts here drifts in production.
         </template>
         <div class="text-meta flex flex-wrap items-center gap-x-4 gap-y-1">
-          <TextButton href="https://github.com/iain/tayaway/blob/main/DESIGN.md">
+          <TextButton
+            href="https://github.com/iain/tayaway/blob/main/DESIGN.md"
+          >
             DESIGN.md
             <ArrowTopRightOnSquareIcon class="size-3.5" aria-hidden="true" />
           </TextButton>
-          <TextButton href="https://github.com/iain/tayaway/blob/main/PRODUCT.md">
+          <TextButton
+            href="https://github.com/iain/tayaway/blob/main/PRODUCT.md"
+          >
             PRODUCT.md
             <ArrowTopRightOnSquareIcon class="size-3.5" aria-hidden="true" />
           </TextButton>
@@ -266,13 +274,15 @@ function openModal(size: ModalSize): void {
                        interact with the row to see them. Visual regression
                        captures resting + disabled + loading across variants. -->
                   <div class="space-y-3">
-                    <p
-                      class="text-ink-faint mb-1 text-eyebrow"
-                    >
+                    <p class="text-ink-faint text-eyebrow mb-1">
                       States — interact for hover and focus
                     </p>
                     <div
-                      v-for="state in ['primary', 'secondary', 'danger'] as const"
+                      v-for="state in [
+                        'primary',
+                        'secondary',
+                        'danger',
+                      ] as const"
                       :key="state"
                       class="flex flex-wrap items-center gap-2"
                     >
@@ -316,8 +326,8 @@ function openModal(size: ModalSize): void {
                 <BaseCard padded>
                   <p class="text-ink font-semibold">Lock in dates</p>
                   <p class="text-ink-muted text-sm">
-                    The group has agreed on the 4th and 5th of October.
-                    Confirm to send the calendar invite.
+                    The group has agreed on the 4th and 5th of October. Confirm
+                    to send the calendar invite.
                   </p>
                   <div class="mt-4 flex items-center gap-3">
                     <AppButton variant="primary">Send invite</AppButton>
@@ -337,9 +347,24 @@ function openModal(size: ModalSize): void {
                 >
                   <li
                     v-for="row in [
-                      { name: 'Daisy', amount: 24.5, action: 'inflow' as const, label: 'Mark received' },
-                      { name: 'Iain', amount: 9.25, action: 'outflow' as const, label: 'Pay via QR' },
-                      { name: 'Joep', amount: 18, action: 'inflow' as const, label: 'Mark received' },
+                      {
+                        name: 'Daisy',
+                        amount: 24.5,
+                        action: 'inflow' as const,
+                        label: 'Mark received',
+                      },
+                      {
+                        name: 'Iain',
+                        amount: 9.25,
+                        action: 'outflow' as const,
+                        label: 'Pay via QR',
+                      },
+                      {
+                        name: 'Joep',
+                        amount: 18,
+                        action: 'inflow' as const,
+                        label: 'Mark received',
+                      },
                     ]"
                     :key="row.name"
                     class="flex items-center gap-3 px-4 py-3"
@@ -440,9 +465,7 @@ function openModal(size: ModalSize): void {
                        separators, decimal style, and currency placement are
                        visible side-by-side. -->
                   <div>
-                    <p
-                      class="text-ink-faint mb-2 text-eyebrow"
-                    >
+                    <p class="text-ink-faint text-eyebrow mb-2">
                       Same amount, four locales
                     </p>
                     <div class="grid max-w-md grid-cols-2 gap-x-6 gap-y-1">
@@ -533,9 +556,7 @@ function openModal(size: ModalSize): void {
               <BaseCard padded>
                 <div class="text-meta space-y-4">
                   <div class="text-ink-muted">
-                    <p class="text-ink-faint text-eyebrow">
-                      Tiers
-                    </p>
+                    <p class="text-ink-faint text-eyebrow">Tiers</p>
                     <div class="mt-2 grid grid-cols-2 gap-x-6 gap-y-1">
                       <span>under a minute</span>
                       <TimeAnchor :at="justNowTs" />
@@ -583,7 +604,9 @@ function openModal(size: ModalSize): void {
               <BaseCard padded>
                 <ul class="text-ink space-y-2">
                   <li>
-                    <span class="text-ink-muted text-meta mr-2">Single day</span>
+                    <span class="text-ink-muted text-meta mr-2"
+                      >Single day</span
+                    >
                     <DateRangeDisplay
                       :start-date="sameDayIso"
                       :end-date="sameDayIso"
@@ -821,8 +844,8 @@ function openModal(size: ModalSize): void {
                   <p class="text-ink font-semibold">Interactive</p>
                   <p class="text-ink-muted text-sm">
                     Hover deepens the hairline to a 2px neutral ring — no
-                    saturation, so a card hover and a button focus never read
-                    as the same signal.
+                    saturation, so a card hover and a button focus never read as
+                    the same signal.
                   </p>
                 </BaseCard>
               </div>
@@ -933,10 +956,21 @@ function openModal(size: ModalSize): void {
                   </template>
                   <AppButton variant="secondary">Edit trip</AppButton>
                 </PageHeader>
-                <div class="text-ink-muted text-meta -mt-2 ml-9 flex flex-wrap gap-x-4">
-                  <span><span class="font-mono">text-page-title</span> · 30/700</span>
-                  <span>icon <span class="font-mono">size-7</span> · <span class="font-mono">text-amber-600</span></span>
-                  <span>subtitle <span class="font-mono">text-meta</span> · <span class="font-mono">text-ink-muted</span></span>
+                <div
+                  class="text-ink-muted text-meta -mt-2 ml-9 flex flex-wrap gap-x-4"
+                >
+                  <span
+                    ><span class="font-mono">text-page-title</span> ·
+                    30/700</span
+                  >
+                  <span
+                    >icon <span class="font-mono">size-7</span> ·
+                    <span class="font-mono">text-amber-600</span></span
+                  >
+                  <span
+                    >subtitle <span class="font-mono">text-meta</span> ·
+                    <span class="font-mono">text-ink-muted</span></span
+                  >
                 </div>
               </BaseCard>
 
@@ -970,10 +1004,21 @@ function openModal(size: ModalSize): void {
                 >
                   <TextButton>View all</TextButton>
                 </SectionHeading>
-                <div class="text-ink-muted text-meta -mt-2 ml-7 flex flex-wrap gap-x-4">
-                  <span><span class="font-mono">text-section-heading</span> · 18/600</span>
-                  <span>icon <span class="font-mono">size-5</span> · <span class="font-mono">text-amber-600</span></span>
-                  <span>right slot · usually a <span class="font-mono">TextButton</span> or count</span>
+                <div
+                  class="text-ink-muted text-meta -mt-2 ml-7 flex flex-wrap gap-x-4"
+                >
+                  <span
+                    ><span class="font-mono">text-section-heading</span> ·
+                    18/600</span
+                  >
+                  <span
+                    >icon <span class="font-mono">size-5</span> ·
+                    <span class="font-mono">text-amber-600</span></span
+                  >
+                  <span
+                    >right slot · usually a
+                    <span class="font-mono">TextButton</span> or count</span
+                  >
                 </div>
               </BaseCard>
             </GallerySection>
@@ -994,11 +1039,7 @@ function openModal(size: ModalSize): void {
               <BaseCard padded>
                 <div class="space-y-4">
                   <div>
-                    <p
-                      class="text-ink-faint mb-2 text-eyebrow"
-                    >
-                      Widths
-                    </p>
+                    <p class="text-ink-faint text-eyebrow mb-2">Widths</p>
                     <div class="flex flex-wrap items-center gap-2">
                       <AppButton
                         v-for="size in ['sm', 'md', 'lg', 'xl', '2xl'] as const"
@@ -1011,11 +1052,7 @@ function openModal(size: ModalSize): void {
                     </div>
                   </div>
                   <div>
-                    <p
-                      class="text-ink-faint mb-2 text-eyebrow"
-                    >
-                      Compositions
-                    </p>
+                    <p class="text-ink-faint text-eyebrow mb-2">Compositions</p>
                     <div class="flex flex-wrap items-center gap-2">
                       <AppButton @click="confirmOpen = true"
                         >Open modal</AppButton
@@ -1060,9 +1097,10 @@ function openModal(size: ModalSize): void {
             >
               <SectionHeading :icon="ArrowPathIcon" title="UpdatePill" />
               <BaseCard padded>
-                <p class="text-ink-muted text-sm mb-3">
-                  Live render uses <span class="font-mono">position: fixed</span>;
-                  shown here in flow so the gallery layout stays legible.
+                <p class="text-ink-muted mb-3 text-sm">
+                  Live render uses
+                  <span class="font-mono">position: fixed</span>; shown here in
+                  flow so the gallery layout stays legible.
                 </p>
                 <div class="flex justify-center">
                   <button
@@ -1080,10 +1118,9 @@ function openModal(size: ModalSize): void {
           <section class="border-line border-t pt-6">
             <p class="text-ink-faint text-meta">
               <span class="text-ink font-medium">Not in gallery:</span>
-              CommandPalette, NotificationBell, and StaticMap render only
-              inside the app shell — they bind to live stores or load Leaflet
-              over the network. Their coverage lives in feature tests, not on
-              this page.
+              CommandPalette, NotificationBell, and StaticMap render only inside
+              the app shell — they bind to live stores or load Leaflet over the
+              network. Their coverage lives in feature tests, not on this page.
             </p>
           </section>
         </div>
@@ -1091,7 +1128,7 @@ function openModal(size: ModalSize): void {
     </main>
 
     <BaseModal
-      v-for="size in (['sm', 'md', 'lg', 'xl', '2xl'] as const)"
+      v-for="size in ['sm', 'md', 'lg', 'xl', '2xl'] as const"
       :key="size"
       :open="openModalSize === size"
       :size="size"

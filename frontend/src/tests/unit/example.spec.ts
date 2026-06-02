@@ -123,12 +123,20 @@ describe('attendeeCountByEvent aggregation', () => {
 
   it('counts attending rsvps per event, ignoring non-attending', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
-      makeRsvp({ id: 'r1', eventId: 'evt-1', userId: 'u1', attending: true }),
-      makeRsvp({ id: 'r2', eventId: 'evt-1', userId: 'u2', attending: true }),
-      makeRsvp({ id: 'r3', eventId: 'evt-1', userId: 'u3', attending: false }),
-      makeRsvp({ id: 'r4', eventId: 'evt-2', userId: 'u1', attending: true }),
-    ], { scope: Scope.workspace("test") })
+    pool.importObjects(
+      [
+        makeRsvp({ id: 'r1', eventId: 'evt-1', userId: 'u1', attending: true }),
+        makeRsvp({ id: 'r2', eventId: 'evt-1', userId: 'u2', attending: true }),
+        makeRsvp({
+          id: 'r3',
+          eventId: 'evt-1',
+          userId: 'u3',
+          attending: false,
+        }),
+        makeRsvp({ id: 'r4', eventId: 'evt-2', userId: 'u1', attending: true }),
+      ],
+      { scope: Scope.workspace('test') }
+    )
 
     const counts = new Map<string, number>()
     for (const r of pool.getAll('rsvp')) {
@@ -141,9 +149,10 @@ describe('attendeeCountByEvent aggregation', () => {
 
   it('returns no entry for events with only non-attending rsvps', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
-      makeRsvp({ id: 'r1', eventId: 'evt-1', attending: false }),
-    ], { scope: Scope.workspace("test") })
+    pool.importObjects(
+      [makeRsvp({ id: 'r1', eventId: 'evt-1', attending: false })],
+      { scope: Scope.workspace('test') }
+    )
 
     const counts = new Map<string, number>()
     for (const r of pool.getAll('rsvp')) {
@@ -161,16 +170,19 @@ describe('unsettledExpenseCountByEvent aggregation', () => {
 
   it('counts expenses without a settlement per event', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
-      makeExpense({ id: 'e1', eventId: 'evt-1', settlementId: null }),
-      makeExpense({
-        id: 'e2',
-        eventId: 'evt-1',
-        settlementId: 'settlement-1',
-      }),
-      makeExpense({ id: 'e3', eventId: 'evt-2', settlementId: null }),
-      makeExpense({ id: 'e4', eventId: 'evt-2', settlementId: null }),
-    ], { scope: Scope.workspace("test") })
+    pool.importObjects(
+      [
+        makeExpense({ id: 'e1', eventId: 'evt-1', settlementId: null }),
+        makeExpense({
+          id: 'e2',
+          eventId: 'evt-1',
+          settlementId: 'settlement-1',
+        }),
+        makeExpense({ id: 'e3', eventId: 'evt-2', settlementId: null }),
+        makeExpense({ id: 'e4', eventId: 'evt-2', settlementId: null }),
+      ],
+      { scope: Scope.workspace('test') }
+    )
 
     const counts = new Map<string, number>()
     for (const e of pool.getAll('expense')) {
@@ -184,9 +196,16 @@ describe('unsettledExpenseCountByEvent aggregation', () => {
 
   it('returns no entry when all expenses are settled', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
-      makeExpense({ id: 'e1', eventId: 'evt-1', settlementId: 'settlement-1' }),
-    ], { scope: Scope.workspace("test") })
+    pool.importObjects(
+      [
+        makeExpense({
+          id: 'e1',
+          eventId: 'evt-1',
+          settlementId: 'settlement-1',
+        }),
+      ],
+      { scope: Scope.workspace('test') }
+    )
 
     const counts = new Map<string, number>()
     for (const e of pool.getAll('expense')) {
@@ -205,17 +224,20 @@ describe('unpaidTransferCountByEvent aggregation', () => {
 
   it('resolves transfers to events via settlements and counts unpaid', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
-      makeSettlement({ id: 's1', eventId: 'evt-1' }),
-      makeSettlement({ id: 's2', eventId: 'evt-2' }),
-      makeTransfer({ id: 't1', settlementId: 's1', paidAt: null }),
-      makeTransfer({
-        id: 't2',
-        settlementId: 's1',
-        paidAt: '2026-01-02T00:00:00.000Z',
-      }),
-      makeTransfer({ id: 't3', settlementId: 's2', paidAt: null }),
-    ], { scope: Scope.workspace("test") })
+    pool.importObjects(
+      [
+        makeSettlement({ id: 's1', eventId: 'evt-1' }),
+        makeSettlement({ id: 's2', eventId: 'evt-2' }),
+        makeTransfer({ id: 't1', settlementId: 's1', paidAt: null }),
+        makeTransfer({
+          id: 't2',
+          settlementId: 's1',
+          paidAt: '2026-01-02T00:00:00.000Z',
+        }),
+        makeTransfer({ id: 't3', settlementId: 's2', paidAt: null }),
+      ],
+      { scope: Scope.workspace('test') }
+    )
 
     const eventBySettlement = new Map<string, string>()
     for (const s of pool.getAll('settlement')) {
@@ -235,14 +257,17 @@ describe('unpaidTransferCountByEvent aggregation', () => {
 
   it('returns no entry when all transfers are paid', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
-      makeSettlement({ id: 's1', eventId: 'evt-1' }),
-      makeTransfer({
-        id: 't1',
-        settlementId: 's1',
-        paidAt: '2026-03-01T00:00:00.000Z',
-      }),
-    ], { scope: Scope.workspace("test") })
+    pool.importObjects(
+      [
+        makeSettlement({ id: 's1', eventId: 'evt-1' }),
+        makeTransfer({
+          id: 't1',
+          settlementId: 's1',
+          paidAt: '2026-03-01T00:00:00.000Z',
+        }),
+      ],
+      { scope: Scope.workspace('test') }
+    )
 
     const eventBySettlement = new Map<string, string>()
     for (const s of pool.getAll('settlement')) {

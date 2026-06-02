@@ -16,7 +16,7 @@ defineProps<{
 
 <template>
   <header class="mb-card flex items-start justify-between gap-4">
-    <div class="min-w-0 flex-1 flex items-center gap-3">
+    <div class="flex min-w-0 flex-1 items-center gap-3">
       <component
         :is="icon"
         v-if="icon"

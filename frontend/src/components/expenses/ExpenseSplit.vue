@@ -124,7 +124,7 @@ function formatDays(days: number): string {
   <div v-if="event.startDate && event.endDate" class="mt-8">
     <SectionHeading :icon="CalculatorIcon" title="Fair shares" />
 
-    <p v-if="rows.length === 0" class="text-sm text-ink-muted">
+    <p v-if="rows.length === 0" class="text-ink-muted text-sm">
       No attendees yet.
     </p>
 
@@ -132,7 +132,7 @@ function formatDays(days: number): string {
       <table class="w-full text-sm">
         <thead>
           <tr
-            class="border-b border-line text-left text-xs font-medium tracking-wide text-ink-muted uppercase"
+            class="border-line text-ink-muted border-b text-left text-xs font-medium tracking-wide uppercase"
           >
             <th class="pt-3 pr-4 pb-2 pl-4">Name</th>
             <th class="hidden pt-3 pr-4 pb-2 sm:table-cell">Days</th>
@@ -143,23 +143,17 @@ function formatDays(days: number): string {
             <th class="pt-3 pr-4 pb-2 text-right whitespace-nowrap">Balance</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-line-faint">
-          <tr
-            v-for="row in rows"
-            :key="row.userId"
-            class="text-ink"
-          >
+        <tbody class="divide-line-faint divide-y">
+          <tr v-for="row in rows" :key="row.userId" class="text-ink">
             <td
               class="max-w-[8rem] truncate py-2 pr-4 pl-4 font-medium sm:max-w-none"
             >
               {{ row.name }}
             </td>
-            <td class="hidden py-2 pr-4 text-ink-muted sm:table-cell">
+            <td class="text-ink-muted hidden py-2 pr-4 sm:table-cell">
               {{ formatDays(row.days) }}
             </td>
-            <td
-              class="text-ink-muted py-2 pr-4 text-right whitespace-nowrap"
-            >
+            <td class="text-ink-muted py-2 pr-4 text-right whitespace-nowrap">
               <LedgerAmount :amount="row.paid" />
             </td>
             <td
@@ -186,11 +180,9 @@ function formatDays(days: number): string {
           </tr>
         </tbody>
         <tfoot>
-          <tr class="border-t border-line font-semibold text-ink">
+          <tr class="border-line text-ink border-t font-semibold">
             <td class="pt-2 pr-4 pb-3 pl-4">Total</td>
-            <td
-              class="hidden pt-2 pr-4 pb-3 text-ink-muted sm:table-cell"
-            >
+            <td class="text-ink-muted hidden pt-2 pr-4 pb-3 sm:table-cell">
               {{ formatDays(totalDays) }}
             </td>
             <td class="text-ink-muted pt-2 pr-4 pb-3 text-right">

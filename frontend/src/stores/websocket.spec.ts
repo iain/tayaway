@@ -304,7 +304,9 @@ describe('websocket store — cascade delete', () => {
 
   it('deleting an event cascades to rsvp', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([makeEvent(), makeRsvp()], { scope: Scope.workspace("test") })
+    pool.importObjects([makeEvent(), makeRsvp()], {
+      scope: Scope.workspace('test'),
+    })
 
     sendDeleteBroadcast('event', 'evt-1')
 
@@ -314,7 +316,9 @@ describe('websocket store — cascade delete', () => {
 
   it('deleting an event cascades to expense', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([makeEvent(), makeExpense()], { scope: Scope.workspace("test") })
+    pool.importObjects([makeEvent(), makeExpense()], {
+      scope: Scope.workspace('test'),
+    })
 
     sendDeleteBroadcast('event', 'evt-1')
 
@@ -324,11 +328,10 @@ describe('websocket store — cascade delete', () => {
 
   it('deleting an event cascades to settlement and its transfers', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
-      makeEvent(),
-      makeSettlement(),
-      makeSettlementTransfer(),
-    ], { scope: Scope.workspace("test") })
+    pool.importObjects(
+      [makeEvent(), makeSettlement(), makeSettlementTransfer()],
+      { scope: Scope.workspace('test') }
+    )
 
     sendDeleteBroadcast('event', 'evt-1')
 
@@ -339,12 +342,10 @@ describe('websocket store — cascade delete', () => {
 
   it('deleting an event cascades to choreRoster, chore, and choreAssignment', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
-      makeEvent(),
-      makeChoreRoster(),
-      makeChore(),
-      makeChoreAssignment(),
-    ], { scope: Scope.workspace("test") })
+    pool.importObjects(
+      [makeEvent(), makeChoreRoster(), makeChore(), makeChoreAssignment()],
+      { scope: Scope.workspace('test') }
+    )
 
     sendDeleteBroadcast('event', 'evt-1')
 
@@ -356,7 +357,9 @@ describe('websocket store — cascade delete', () => {
 
   it('deleting a settlement cascades to settlementTransfer', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([makeSettlement(), makeSettlementTransfer()], { scope: Scope.workspace("test") })
+    pool.importObjects([makeSettlement(), makeSettlementTransfer()], {
+      scope: Scope.workspace('test'),
+    })
 
     sendDeleteBroadcast('settlement', 'settle-1')
 
@@ -366,7 +369,10 @@ describe('websocket store — cascade delete', () => {
 
   it('deleting a choreRoster cascades to chore and choreAssignment', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([makeChoreRoster(), makeChore(), makeChoreAssignment()], { scope: Scope.workspace("test") })
+    pool.importObjects(
+      [makeChoreRoster(), makeChore(), makeChoreAssignment()],
+      { scope: Scope.workspace('test') }
+    )
 
     sendDeleteBroadcast('choreRoster', 'roster-1')
 
@@ -377,7 +383,9 @@ describe('websocket store — cascade delete', () => {
 
   it('deleting a chore cascades to choreAssignment', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([makeChore(), makeChoreAssignment()], { scope: Scope.workspace("test") })
+    pool.importObjects([makeChore(), makeChoreAssignment()], {
+      scope: Scope.workspace('test'),
+    })
 
     sendDeleteBroadcast('chore', 'chore-1')
 
@@ -387,12 +395,15 @@ describe('websocket store — cascade delete', () => {
 
   it('only removes children that belong to the deleted parent', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([
-      makeEvent({ id: 'evt-1' }),
-      makeEvent({ id: 'evt-2' }),
-      makeRsvp({ id: 'rsvp-1', eventId: 'evt-1' }),
-      makeRsvp({ id: 'rsvp-2', eventId: 'evt-2' }),
-    ], { scope: Scope.workspace("test") })
+    pool.importObjects(
+      [
+        makeEvent({ id: 'evt-1' }),
+        makeEvent({ id: 'evt-2' }),
+        makeRsvp({ id: 'rsvp-1', eventId: 'evt-1' }),
+        makeRsvp({ id: 'rsvp-2', eventId: 'evt-2' }),
+      ],
+      { scope: Scope.workspace('test') }
+    )
 
     sendDeleteBroadcast('event', 'evt-1')
 
@@ -404,7 +415,7 @@ describe('websocket store — cascade delete', () => {
 
   it('handles cascade delete when there are no children', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([makeEvent()], { scope: Scope.workspace("test") })
+    pool.importObjects([makeEvent()], { scope: Scope.workspace('test') })
 
     expect(() => sendDeleteBroadcast('event', 'evt-1')).not.toThrow()
     expect(pool.get('event', 'evt-1')).toBeUndefined()
@@ -414,14 +425,17 @@ describe('websocket store — cascade delete', () => {
     const pool = useObjectPoolStore()
 
     // Build: 1 event → 1 datePoll → 1 dateRange → 3 votes (6 total objects)
-    pool.importObjects([
-      makeEvent(),
-      makeDatePoll(),
-      makeDateRange(),
-      makeVote({ id: 'vote-1', dateRangeId: 'dr-1' }),
-      makeVote({ id: 'vote-2', dateRangeId: 'dr-1' }),
-      makeVote({ id: 'vote-3', dateRangeId: 'dr-1' }),
-    ], { scope: Scope.workspace("test") })
+    pool.importObjects(
+      [
+        makeEvent(),
+        makeDatePoll(),
+        makeDateRange(),
+        makeVote({ id: 'vote-1', dateRangeId: 'dr-1' }),
+        makeVote({ id: 'vote-2', dateRangeId: 'dr-1' }),
+        makeVote({ id: 'vote-3', dateRangeId: 'dr-1' }),
+      ],
+      { scope: Scope.workspace('test') }
+    )
 
     const voteVersionBefore = pool.getVersion('vote')
     // Type not involved should not change

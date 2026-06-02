@@ -53,9 +53,7 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
 
 <template>
   <div>
-    <div v-if="!event" class="text-ink-muted">
-      Event not found
-    </div>
+    <div v-if="!event" class="text-ink-muted">Event not found</div>
 
     <div v-else>
       <PageHeader title="Vote on dates" size="sm" :icon="HandRaisedIcon">

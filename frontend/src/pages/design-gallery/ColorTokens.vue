@@ -163,9 +163,7 @@ const avatars: { name: string; fill: string; ink: string }[] = [
 <template>
   <div class="space-y-6">
     <div>
-      <p class="text-ink-faint mb-3 text-eyebrow">
-        Surfaces
-      </p>
+      <p class="text-ink-faint text-eyebrow mb-3">Surfaces</p>
       <ul class="space-y-2">
         <li
           v-for="token in surfaces"
@@ -185,9 +183,7 @@ const avatars: { name: string; fill: string; ink: string }[] = [
     </div>
 
     <div>
-      <p class="text-ink-faint mb-3 text-eyebrow">
-        Ink
-      </p>
+      <p class="text-ink-faint text-eyebrow mb-3">Ink</p>
       <ul class="space-y-2">
         <li
           v-for="token in inks"
@@ -208,9 +204,7 @@ const avatars: { name: string; fill: string; ink: string }[] = [
     </div>
 
     <div>
-      <p class="text-ink-faint mb-3 text-eyebrow">
-        Lines &amp; rings
-      </p>
+      <p class="text-ink-faint text-eyebrow mb-3">Lines &amp; rings</p>
       <ul class="space-y-2">
         <li
           v-for="token in lines"
@@ -230,12 +224,10 @@ const avatars: { name: string; fill: string; ink: string }[] = [
     </div>
 
     <div>
-      <p class="text-ink-faint mb-3 text-eyebrow">
-        Focus
-      </p>
+      <p class="text-ink-faint text-eyebrow mb-3">Focus</p>
       <p class="text-ink-muted text-meta mb-2">
-        One ring for every interactive element — buttons, inputs, cards,
-        modals. Tab into anything to see it live.
+        One ring for every interactive element — buttons, inputs, cards, modals.
+        Tab into anything to see it live.
       </p>
       <div class="flex items-center gap-3">
         <button
@@ -251,9 +243,7 @@ const avatars: { name: string; fill: string; ink: string }[] = [
     </div>
 
     <div>
-      <p class="text-ink-faint mb-3 text-eyebrow">
-        State (fill + ink)
-      </p>
+      <p class="text-ink-faint text-eyebrow mb-3">State (fill + ink)</p>
       <ul class="space-y-2">
         <li
           v-for="token in states"
@@ -273,9 +263,7 @@ const avatars: { name: string; fill: string; ink: string }[] = [
     </div>
 
     <div>
-      <p class="text-ink-faint mb-3 text-eyebrow">
-        Soft buttons
-      </p>
+      <p class="text-ink-faint text-eyebrow mb-3">Soft buttons</p>
       <ul class="space-y-2">
         <li
           v-for="token in buttonSoft"
@@ -295,9 +283,7 @@ const avatars: { name: string; fill: string; ink: string }[] = [
     </div>
 
     <div>
-      <p class="text-ink-faint mb-3 text-eyebrow">
-        Avatars
-      </p>
+      <p class="text-ink-faint text-eyebrow mb-3">Avatars</p>
       <ul class="space-y-2">
         <li
           v-for="token in avatars"
@@ -317,10 +303,10 @@ const avatars: { name: string; fill: string; ink: string }[] = [
     </div>
 
     <div>
-      <p class="text-ink-faint mb-3 text-eyebrow">
-        Nav
-      </p>
-      <div class="bg-nav text-nav-text flex items-center gap-3 rounded-md px-4 py-3">
+      <p class="text-ink-faint text-eyebrow mb-3">Nav</p>
+      <div
+        class="bg-nav text-nav-text flex items-center gap-3 rounded-md px-4 py-3"
+      >
         <span class="text-sm font-bold">Workspace</span>
         <span class="text-nav-text-muted text-sm">Events</span>
         <span class="bg-nav-active rounded px-2 py-0.5 text-sm font-medium">

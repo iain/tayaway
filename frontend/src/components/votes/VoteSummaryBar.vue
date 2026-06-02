@@ -22,10 +22,7 @@ const percentages = computed(() => {
 
 <template>
   <div>
-    <div
-      v-if="hasVotes"
-      class="flex h-2 overflow-hidden rounded-full bg-line"
-    >
+    <div v-if="hasVotes" class="bg-line flex h-2 overflow-hidden rounded-full">
       <div
         v-if="percentages.yes > 0"
         class="vote-bar bg-green-500"
@@ -42,8 +39,8 @@ const percentages = computed(() => {
         :style="{ flexBasis: `${percentages.no}%` }"
       />
     </div>
-    <div v-else class="h-2 rounded-full bg-line" />
-    <div class="mt-1 text-xs text-ink-muted" data-testid="vote-summary">
+    <div v-else class="bg-line h-2 rounded-full" />
+    <div class="text-ink-muted mt-1 text-xs" data-testid="vote-summary">
       <span v-if="hasVotes">
         {{ summary.yes }} yes, {{ summary.preferably_not }} preferably not,
         {{ summary.no }} no

@@ -1,13 +1,7 @@
 <script setup lang="ts">
 const props = withDefaults(
   defineProps<{
-    variant?:
-      | 'success'
-      | 'danger'
-      | 'warning'
-      | 'pending'
-      | 'info'
-      | 'neutral'
+    variant?: 'success' | 'danger' | 'warning' | 'pending' | 'info' | 'neutral'
     size?: 'xs' | 'sm'
   }>(),
   {

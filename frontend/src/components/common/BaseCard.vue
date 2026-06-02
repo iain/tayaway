@@ -27,7 +27,7 @@ function handleKeydown(event: KeyboardEvent) {
     :class="[
       {
         'p-card': padded,
-        'cursor-pointer transition-[box-shadow,transform,filter] hover:ring-2 hover:ring-ring-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus active:scale-[0.99] active:brightness-95 dark:active:brightness-110':
+        'hover:ring-ring-hover focus-visible:outline-focus cursor-pointer transition-[box-shadow,transform,filter] hover:ring-2 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-[0.99] active:brightness-95 dark:active:brightness-110':
           interactive,
       },
       variant === 'urgent'

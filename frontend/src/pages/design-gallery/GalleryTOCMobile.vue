@@ -32,8 +32,15 @@ watch(activeId, (id) => {
   if (!chip) return
   const containerRect = scroller.value.getBoundingClientRect()
   const chipRect = chip.getBoundingClientRect()
-  if (chipRect.left < containerRect.left || chipRect.right > containerRect.right) {
-    chip.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+  if (
+    chipRect.left < containerRect.left ||
+    chipRect.right > containerRect.right
+  ) {
+    chip.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+      inline: 'center',
+    })
   }
 })
 </script>

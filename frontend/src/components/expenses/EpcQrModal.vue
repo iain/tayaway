@@ -209,13 +209,13 @@ async function copyIban() {
       <dl class="space-y-2 text-sm">
         <div class="flex justify-between">
           <dt class="text-ink-muted">To</dt>
-          <dd class="font-medium text-ink">
+          <dd class="text-ink font-medium">
             {{ recipientName }}
           </dd>
         </div>
         <div class="flex justify-between">
           <dt class="text-ink-muted">Amount</dt>
-          <dd class="font-mono font-medium text-ink">
+          <dd class="text-ink font-mono font-medium">
             &euro;{{ amount?.toFixed(2) }}
           </dd>
         </div>
@@ -277,10 +277,8 @@ async function copyIban() {
             class="size-12 text-emerald-500 dark:text-emerald-400"
             aria-hidden="true"
           />
-          <p class="text-base font-medium text-ink">
-            Marked as paid.
-          </p>
-          <p class="text-sm text-ink-muted">
+          <p class="text-ink text-base font-medium">Marked as paid.</p>
+          <p class="text-ink-muted text-sm">
             {{ recipientName }} will see this update next time they open
             Tayaway.
           </p>
@@ -320,27 +318,18 @@ async function copyIban() {
               />
             </div>
 
-            <p
-              v-else
-              class="text-center text-sm text-ink-muted"
-            >
+            <p v-else class="text-ink-muted text-center text-sm">
               QR code unavailable for this transfer &mdash; copy the IBAN below
               to pay manually.
             </p>
 
-            <p
-              v-if="details.qrPng"
-              class="text-center text-xs text-ink-muted"
-            >
+            <p v-if="details.qrPng" class="text-ink-muted text-center text-xs">
               Scan with your banking app to pre-fill the transfer, or copy the
               IBAN below to pay manually.
             </p>
 
             <div class="space-y-1">
-              <label
-                for="payment-iban"
-                class="block text-xs text-ink-muted"
-              >
+              <label for="payment-iban" class="text-ink-muted block text-xs">
                 IBAN
               </label>
               <div class="flex items-stretch gap-2">
@@ -349,7 +338,7 @@ async function copyIban() {
                   data-testid="payment-iban"
                   :value="details.iban"
                   readonly
-                  class="min-w-0 flex-1 rounded-md border border-line bg-surface-sunken px-2.5 py-1.5 font-mono text-sm text-ink select-all focus:outline-none"
+                  class="border-line bg-surface-sunken text-ink min-w-0 flex-1 rounded-md border px-2.5 py-1.5 font-mono text-sm select-all focus:outline-none"
                   @focus="($event.target as HTMLInputElement).select()"
                 />
                 <button
@@ -373,7 +362,7 @@ async function copyIban() {
             </div>
           </template>
 
-          <div class="border-t border-line pt-4">
+          <div class="border-line border-t pt-4">
             <button
               type="button"
               data-testid="attest-paid"
@@ -388,9 +377,7 @@ async function copyIban() {
                   : "I've paid — mark as paid"
               }}
             </button>
-            <p
-              class="mt-2 text-center text-xs text-ink-muted"
-            >
+            <p class="text-ink-muted mt-2 text-center text-xs">
               Click after you've completed the bank transfer.
               {{ recipientName }}
               can flip this back if it didn't actually arrive.

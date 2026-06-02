@@ -64,65 +64,65 @@ const sessionsRef = ref<InstanceType<typeof SessionsList> | null>(null)
       <SectionHeading :icon="EnvelopeIcon" title="Email" />
       <BaseCard padded>
         <dl class="divide-line divide-y">
-        <DefinitionRow
-          label="Email"
-          value-class="truncate"
-          edit-label="Edit email"
-          edit-testid="edit-email-button"
-          :editing="editingEmail"
-          @edit="openEmailEditor"
-        >
-          {{ user?.email }}
-          <template #editor>
-            <div>
-              <p class="text-ink-muted mb-2 text-xs">
-                We'll send a verification link to confirm the new address.
-              </p>
-              <form
-                class="flex flex-wrap items-center gap-2"
-                :aria-busy="sending"
-                @submit.prevent="sendVerification"
-              >
-                <input
-                  ref="editInputRef"
-                  v-model="newEmail"
-                  type="email"
-                  aria-label="New email address"
-                  autocomplete="email"
-                  placeholder="new@example.com"
-                  required
-                  :disabled="sending"
-                  class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder min-w-0 flex-1 rounded-md px-3 py-1.5 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 focus:outline-focus sm:text-sm/6"
-                  @keyup.escape="cancelEmailEdit"
-                />
-                <AppButton
-                  type="submit"
-                  size="sm"
-                  :disabled="!newEmail.trim()"
-                  :loading="sending"
-                  loading-label="Sending…"
+          <DefinitionRow
+            label="Email"
+            value-class="truncate"
+            edit-label="Edit email"
+            edit-testid="edit-email-button"
+            :editing="editingEmail"
+            @edit="openEmailEditor"
+          >
+            {{ user?.email }}
+            <template #editor>
+              <div>
+                <p class="text-ink-muted mb-2 text-xs">
+                  We'll send a verification link to confirm the new address.
+                </p>
+                <form
+                  class="flex flex-wrap items-center gap-2"
+                  :aria-busy="sending"
+                  @submit.prevent="sendVerification"
                 >
-                  Send link
-                </AppButton>
-                <TextButton
-                  variant="secondary"
-                  :disabled="sending"
-                  @click="cancelEmailEdit"
+                  <input
+                    ref="editInputRef"
+                    v-model="newEmail"
+                    type="email"
+                    aria-label="New email address"
+                    autocomplete="email"
+                    placeholder="new@example.com"
+                    required
+                    :disabled="sending"
+                    class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus min-w-0 flex-1 rounded-md px-3 py-1.5 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 sm:text-sm/6"
+                    @keyup.escape="cancelEmailEdit"
+                  />
+                  <AppButton
+                    type="submit"
+                    size="sm"
+                    :disabled="!newEmail.trim()"
+                    :loading="sending"
+                    loading-label="Sending…"
+                  >
+                    Send link
+                  </AppButton>
+                  <TextButton
+                    variant="secondary"
+                    :disabled="sending"
+                    @click="cancelEmailEdit"
+                  >
+                    Cancel
+                  </TextButton>
+                </form>
+                <p
+                  v-if="error"
+                  role="alert"
+                  class="mt-2 text-sm text-red-600 dark:text-red-400"
                 >
-                  Cancel
-                </TextButton>
-              </form>
-              <p
-                v-if="error"
-                role="alert"
-                class="mt-2 text-sm text-red-600 dark:text-red-400"
-              >
-                {{ error }}
-              </p>
-            </div>
-          </template>
-        </DefinitionRow>
-      </dl>
+                  {{ error }}
+                </p>
+              </div>
+            </template>
+          </DefinitionRow>
+        </dl>
 
         <AlertBox
           v-if="successMessage"

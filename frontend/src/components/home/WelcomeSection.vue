@@ -42,9 +42,7 @@ function navigateToTasks(): void {
     <div
       class="rounded-xl border border-amber-200 bg-amber-50/50 p-6 sm:p-8 dark:border-amber-800/40 dark:bg-amber-950/20"
     >
-      <h2
-        class="text-xl font-semibold tracking-tight text-ink"
-      >
+      <h2 class="text-ink text-xl font-semibold tracking-tight">
         {{ greeting }}
       </h2>
       <p class="text-ink-muted mt-1 text-sm">
@@ -62,7 +60,7 @@ function navigateToTasks(): void {
     <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
       <button
         type="button"
-        class="text-ink-muted group inline-flex cursor-pointer items-center gap-2 rounded py-2 text-sm transition-colors hover:text-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:hover:text-amber-400"
+        class="text-ink-muted group focus-visible:outline-focus inline-flex cursor-pointer items-center gap-2 rounded py-2 text-sm transition-colors hover:text-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:text-amber-400"
         @click="navigateToMembers"
       >
         <UserGroupIcon class="size-4 shrink-0" />
@@ -79,7 +77,7 @@ function navigateToTasks(): void {
       </button>
       <button
         type="button"
-        class="text-ink-muted group inline-flex cursor-pointer items-center gap-2 rounded py-2 text-sm transition-colors hover:text-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:hover:text-amber-400"
+        class="text-ink-muted group focus-visible:outline-focus inline-flex cursor-pointer items-center gap-2 rounded py-2 text-sm transition-colors hover:text-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:text-amber-400"
         @click="navigateToTasks"
       >
         <ClipboardDocumentListIcon class="size-4 shrink-0" />

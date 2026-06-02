@@ -41,9 +41,7 @@ const parts = computed<Intl.NumberFormatPart[]>(() => {
   return formatter.formatToParts(value)
 })
 
-function classForPart(
-  type: Intl.NumberFormatPartTypes
-): string | undefined {
+function classForPart(type: Intl.NumberFormatPartTypes): string | undefined {
   if (type === 'currency' || type === 'literal') return 'text-ink-faint'
   if (type === 'plusSign') return 'text-btn-inflow-ink'
   if (type === 'minusSign') return 'text-btn-outflow-ink'
@@ -59,7 +57,7 @@ function valueForPart(part: Intl.NumberFormatPart): string {
 </script>
 
 <template>
-  <span class="tabular-nums whitespace-nowrap">
+  <span class="whitespace-nowrap tabular-nums">
     <span
       v-for="(part, i) in parts"
       :key="i"

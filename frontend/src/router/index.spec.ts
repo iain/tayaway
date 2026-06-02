@@ -67,13 +67,21 @@ describe('chunk reload guard', () => {
   })
 
   it('reloads on first chunk load error', () => {
-    runGuard(new TypeError('Failed to fetch dynamically imported module: https://example.com/chunk.js'))
+    runGuard(
+      new TypeError(
+        'Failed to fetch dynamically imported module: https://example.com/chunk.js'
+      )
+    )
     expect(reloadSpy).toHaveBeenCalledOnce()
   })
 
   it('does not reload a second time when guard key is already set', () => {
     sessionStorage.setItem(reloadKey, '1')
-    runGuard(new TypeError('Failed to fetch dynamically imported module: https://example.com/chunk.js'))
+    runGuard(
+      new TypeError(
+        'Failed to fetch dynamically imported module: https://example.com/chunk.js'
+      )
+    )
     expect(reloadSpy).not.toHaveBeenCalled()
   })
 

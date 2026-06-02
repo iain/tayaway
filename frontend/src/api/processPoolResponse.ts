@@ -36,7 +36,10 @@ export function processPoolResponse(data: unknown, scope?: Scope): void {
   const pool = useObjectPoolStore()
   const resolvedScope = scope ?? defaultScope()
 
-  if ('objects' in data && Array.isArray((data as { objects: unknown }).objects)) {
+  if (
+    'objects' in data &&
+    Array.isArray((data as { objects: unknown }).objects)
+  ) {
     const objects = (data as { objects: PoolObject[] }).objects
     if (resolvedScope) {
       pool.importObjects(objects, { scope: resolvedScope })

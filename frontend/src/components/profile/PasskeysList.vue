@@ -234,10 +234,7 @@ onUnmounted(() => {
     </div>
 
     <template v-else>
-      <ul
-        v-if="passkeys.length > 0"
-        class="divide-line divide-y"
-      >
+      <ul v-if="passkeys.length > 0" class="divide-line divide-y">
         <li
           v-for="passkey in passkeys"
           :key="passkey.id"
@@ -258,7 +255,7 @@ onUnmounted(() => {
                 type="text"
                 maxlength="100"
                 placeholder="Enter a name"
-                class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder block min-w-0 flex-1 rounded-md px-2 py-1 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 focus:outline-focus"
+                class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus block min-w-0 flex-1 rounded-md px-2 py-1 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
                 @keydown.escape="cancelEdit"
               />
               <AppButton type="submit" size="sm"> Save </AppButton>
@@ -268,9 +265,7 @@ onUnmounted(() => {
             </form>
 
             <template v-else>
-              <p
-                class="truncate text-sm font-medium text-ink"
-              >
+              <p class="text-ink truncate text-sm font-medium">
                 {{ passkey.name || 'Unnamed passkey' }}
               </p>
               <p class="text-ink-muted mt-0.5 text-xs">
@@ -333,9 +328,7 @@ onUnmounted(() => {
         v-else-if="registerStep === 'ceremony'"
         class="flex flex-col items-center gap-4 py-6"
       >
-        <ArrowPathIcon
-          class="text-ink-muted size-8 animate-spin"
-        />
+        <ArrowPathIcon class="text-ink-muted size-8 animate-spin" />
         <p class="text-ink-muted text-sm">
           Follow your browser's prompt to create a passkey...
         </p>

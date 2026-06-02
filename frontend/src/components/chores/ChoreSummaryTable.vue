@@ -61,7 +61,7 @@ const rows = computed<SummaryRow[]>(() => {
       <table class="min-w-full text-sm">
         <thead>
           <tr
-            class="border-b border-line text-left text-xs font-medium tracking-wide text-ink-muted uppercase"
+            class="border-line text-ink-muted border-b text-left text-xs font-medium tracking-wide uppercase"
           >
             <th class="pt-3 pr-4 pb-2 pl-4">Name</th>
             <th

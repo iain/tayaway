@@ -708,7 +708,8 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   // was on. Pool persistence is updated once per (entry, scope) pair.
   function restore(entries: RemovedEntry[]): void {
     for (const entry of entries) {
-      const scopes = entry.scopes.length > 0 ? entry.scopes : [deriveScope(entry.object)]
+      const scopes =
+        entry.scopes.length > 0 ? entry.scopes : [deriveScope(entry.object)]
       for (const scope of scopes) {
         set(entry.object, { scope })
       }

@@ -39,15 +39,11 @@ function navigateToEventPage(eventId: string): void {
         <div class="px-4 py-4 sm:px-6">
           <div class="flex items-center gap-3">
             <div class="min-w-0 flex-1">
-              <h3
-                class="truncate text-base font-semibold text-ink"
-              >
+              <h3 class="text-ink truncate text-base font-semibold">
                 {{ item.eventName }}
               </h3>
               <div class="mt-1 flex flex-wrap items-center gap-3 text-sm">
-                <span
-                  class="text-ink-muted inline-flex items-center gap-1"
-                >
+                <span class="text-ink-muted inline-flex items-center gap-1">
                   <CalendarDaysIcon
                     class="size-4 text-amber-600 dark:text-amber-400"
                   />

@@ -176,7 +176,7 @@ async function clearAddress(): Promise<void> {
                   placeholder="Your name"
                   :maxlength="255"
                   :disabled="savingFields.has('name')"
-                  class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder min-w-0 flex-1 rounded-md px-3 py-1.5 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 focus:outline-focus sm:text-sm/6"
+                  class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus min-w-0 flex-1 rounded-md px-3 py-1.5 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 sm:text-sm/6"
                   @keyup.escape="cancelEdit('name')"
                 />
                 <AppButton
@@ -229,7 +229,7 @@ async function clearAddress(): Promise<void> {
                   autocomplete="tel"
                   placeholder="Phone number"
                   :disabled="savingFields.has('phone')"
-                  class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder min-w-0 flex-1 rounded-md px-3 py-1.5 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 focus:outline-focus sm:text-sm/6"
+                  class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus min-w-0 flex-1 rounded-md px-3 py-1.5 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 sm:text-sm/6"
                   @keyup.escape="cancelEdit('phone')"
                 />
                 <AppButton
@@ -290,7 +290,7 @@ async function clearAddress(): Promise<void> {
                   type="date"
                   :max="todayIso"
                   :disabled="savingFields.has('birthday')"
-                  class="bg-surface-sunken text-ink outline-line min-w-0 flex-1 rounded-md px-3 py-1.5 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 focus:outline-focus sm:text-sm/6 dark:[color-scheme:dark]"
+                  class="bg-surface-sunken text-ink outline-line focus:outline-focus min-w-0 flex-1 rounded-md px-3 py-1.5 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 sm:text-sm/6 dark:[color-scheme:dark]"
                   @keyup.escape="cancelEdit('birthday')"
                 />
                 <AppButton

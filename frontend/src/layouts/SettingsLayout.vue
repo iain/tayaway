@@ -84,7 +84,7 @@ watch(() => route.name, redirectIfDesktopIndex)
     <RouterLink
       v-if="currentSection"
       to="/settings"
-      class="mb-2 -ml-2 inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm text-ink-muted hover:bg-surface-sunken lg:hidden"
+      class="text-ink-muted hover:bg-surface-sunken mb-2 -ml-2 inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm lg:hidden"
     >
       <ChevronLeftIcon class="size-4" aria-hidden="true" />
       Settings
@@ -118,7 +118,7 @@ watch(() => route.name, redirectIfDesktopIndex)
             />
             <span class="flex-1">{{ section.label }}</span>
             <ChevronRightIcon
-              class="size-4 text-ink-muted lg:hidden"
+              class="text-ink-muted size-4 lg:hidden"
               aria-hidden="true"
             />
           </RouterLink>

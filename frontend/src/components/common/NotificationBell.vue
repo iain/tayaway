@@ -82,7 +82,6 @@ function silence(notification: InboxNotification): void {
     notification.id
   )
 }
-
 </script>
 
 <template>
@@ -111,14 +110,12 @@ function silence(notification: InboxNotification): void {
     >
       <PopoverPanel
         v-slot="{ close }"
-        class="absolute right-0 z-20 mt-2 w-80 origin-top-right overflow-hidden rounded-md bg-surface shadow-lg ring-1 ring-ring-hairline focus:outline-hidden"
+        class="bg-surface ring-ring-hairline absolute right-0 z-20 mt-2 w-80 origin-top-right overflow-hidden rounded-md shadow-lg ring-1 focus:outline-hidden"
       >
         <div
-          class="flex items-center justify-between border-b border-line px-4 py-2"
+          class="border-line flex items-center justify-between border-b px-4 py-2"
         >
-          <span class="text-sm font-medium text-ink">
-            Notifications
-          </span>
+          <span class="text-ink text-sm font-medium"> Notifications </span>
           <button
             v-if="unreadCount > 0"
             type="button"
@@ -131,7 +128,7 @@ function silence(notification: InboxNotification): void {
 
         <div
           v-if="loading && notifications.length === 0"
-          class="px-4 py-6 text-center text-sm text-ink-muted"
+          class="text-ink-muted px-4 py-6 text-center text-sm"
         >
           Loading…
         </div>
@@ -157,27 +154,27 @@ function silence(notification: InboxNotification): void {
           >
             <button
               type="button"
-              class="flex w-full items-start gap-3 px-4 py-3 pr-12 text-left hover:bg-surface-sunken"
+              class="hover:bg-surface-sunken flex w-full items-start gap-3 px-4 py-3 pr-12 text-left"
               @click="activate(notification, close)"
             >
               <component
                 :is="iconForKind(notification.kind)"
-                class="mt-0.5 size-5 shrink-0 text-ink-muted"
+                class="text-ink-muted mt-0.5 size-5 shrink-0"
                 aria-hidden="true"
               />
               <div class="min-w-0 flex-1">
                 <div class="flex items-start justify-between gap-2">
-                  <p class="text-sm font-medium text-ink">
+                  <p class="text-ink text-sm font-medium">
                     {{ notification.data.title ?? 'Notification' }}
                   </p>
                   <TimeAnchor
                     :at="notification.createdAt"
-                    class="shrink-0 text-xs text-ink-muted"
+                    class="text-ink-muted shrink-0 text-xs"
                   />
                 </div>
                 <p
                   v-if="notification.data.body"
-                  class="mt-1 text-sm text-ink-muted"
+                  class="text-ink-muted mt-1 text-sm"
                 >
                   {{ notification.data.body }}
                 </p>
@@ -187,7 +184,7 @@ function silence(notification: InboxNotification): void {
             <Menu as="div" class="absolute top-2 right-2">
               <MenuButton
                 aria-label="More actions"
-                class="flex size-8 cursor-pointer items-center justify-center rounded-md text-ink-muted transition-opacity hover:bg-black/5 hover:text-gray-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus max-md:opacity-100 md:opacity-0 md:group-focus-within/row:opacity-100 md:group-hover/row:opacity-100 dark:hover:bg-white/10 dark:hover:text-stone-300"
+                class="text-ink-muted focus-visible:outline-focus flex size-8 cursor-pointer items-center justify-center rounded-md transition-opacity hover:bg-black/5 hover:text-gray-600 focus-visible:outline-2 focus-visible:outline-offset-2 max-md:opacity-100 md:opacity-0 md:group-focus-within/row:opacity-100 md:group-hover/row:opacity-100 dark:hover:bg-white/10 dark:hover:text-stone-300"
               >
                 <EllipsisHorizontalIcon class="size-5" aria-hidden="true" />
               </MenuButton>
@@ -200,7 +197,7 @@ function silence(notification: InboxNotification): void {
                 leave-to-class="transform opacity-0 scale-95"
               >
                 <MenuItems
-                  class="absolute right-0 z-30 mt-1 w-52 origin-top-right rounded-md bg-surface py-1 shadow-lg ring-1 ring-ring-hairline focus:outline-hidden"
+                  class="bg-surface ring-ring-hairline absolute right-0 z-30 mt-1 w-52 origin-top-right rounded-md py-1 shadow-lg ring-1 focus:outline-hidden"
                 >
                   <MenuItem
                     v-if="notification.readAt === null"
@@ -210,7 +207,7 @@ function silence(notification: InboxNotification): void {
                       type="button"
                       :class="[
                         active ? 'bg-btn-secondary-fill' : '',
-                        'block w-full px-4 py-2 text-left text-sm text-ink',
+                        'text-ink block w-full px-4 py-2 text-left text-sm',
                       ]"
                       @click="inbox.markRead(notification.id)"
                     >
@@ -222,7 +219,7 @@ function silence(notification: InboxNotification): void {
                       type="button"
                       :class="[
                         active ? 'bg-btn-secondary-fill' : '',
-                        'block w-full px-4 py-2 text-left text-sm text-ink',
+                        'text-ink block w-full px-4 py-2 text-left text-sm',
                       ]"
                       @click="silence(notification)"
                     >

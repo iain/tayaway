@@ -92,12 +92,15 @@ describe('HomePage computed maps', () => {
   describe('attendeeCountByEvent', () => {
     it('counts attending RSVPs per event, excluding non-attending', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
-        makeRsvp({ id: 'r1', eventId: 'evt-1', attending: true }),
-        makeRsvp({ id: 'r2', eventId: 'evt-1', attending: true }),
-        makeRsvp({ id: 'r3', eventId: 'evt-1', attending: false }),
-        makeRsvp({ id: 'r4', eventId: 'evt-2', attending: true }),
-      ], { scope: Scope.workspace("test") })
+      pool.importObjects(
+        [
+          makeRsvp({ id: 'r1', eventId: 'evt-1', attending: true }),
+          makeRsvp({ id: 'r2', eventId: 'evt-1', attending: true }),
+          makeRsvp({ id: 'r3', eventId: 'evt-1', attending: false }),
+          makeRsvp({ id: 'r4', eventId: 'evt-2', attending: true }),
+        ],
+        { scope: Scope.workspace('test') }
+      )
 
       // Replicate the HomePage attendeeCountByEvent logic
       const counts = new Map<string, number>()
@@ -116,16 +119,19 @@ describe('HomePage computed maps', () => {
   describe('unsettledExpenseCountByEvent', () => {
     it('counts expenses without a settlement, keyed by event', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
-        makeExpense({ id: 'exp-1', eventId: 'evt-1', settlementId: null }),
-        makeExpense({ id: 'exp-2', eventId: 'evt-1', settlementId: null }),
-        makeExpense({
-          id: 'exp-3',
-          eventId: 'evt-1',
-          settlementId: 'settlement-1',
-        }),
-        makeExpense({ id: 'exp-4', eventId: 'evt-2', settlementId: null }),
-      ], { scope: Scope.workspace("test") })
+      pool.importObjects(
+        [
+          makeExpense({ id: 'exp-1', eventId: 'evt-1', settlementId: null }),
+          makeExpense({ id: 'exp-2', eventId: 'evt-1', settlementId: null }),
+          makeExpense({
+            id: 'exp-3',
+            eventId: 'evt-1',
+            settlementId: 'settlement-1',
+          }),
+          makeExpense({ id: 'exp-4', eventId: 'evt-2', settlementId: null }),
+        ],
+        { scope: Scope.workspace('test') }
+      )
 
       const counts = new Map<string, number>()
       for (const e of pool.getAll('expense')) {
@@ -143,31 +149,34 @@ describe('HomePage computed maps', () => {
   describe('unpaidTransferCountByEvent', () => {
     it('counts unpaid, non-superseded transfers per event via settlement join', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
-        makeSettlement({ id: 's1', eventId: 'evt-1' }),
-        makeSettlement({ id: 's2', eventId: 'evt-2' }),
-        makeTransfer({
-          id: 't1',
-          settlementId: 's1',
-          paidAt: null,
-        }),
-        makeTransfer({
-          id: 't2',
-          settlementId: 's1',
-          paidAt: '2026-01-02T00:00:00.000Z',
-        }),
-        makeTransfer({
-          id: 't3',
-          settlementId: 's2',
-          paidAt: null,
-        }),
-        makeTransfer({
-          id: 't4',
-          settlementId: 's2',
-          paidAt: null,
-          supersededAt: '2026-01-03T00:00:00.000Z',
-        }),
-      ], { scope: Scope.workspace("test") })
+      pool.importObjects(
+        [
+          makeSettlement({ id: 's1', eventId: 'evt-1' }),
+          makeSettlement({ id: 's2', eventId: 'evt-2' }),
+          makeTransfer({
+            id: 't1',
+            settlementId: 's1',
+            paidAt: null,
+          }),
+          makeTransfer({
+            id: 't2',
+            settlementId: 's1',
+            paidAt: '2026-01-02T00:00:00.000Z',
+          }),
+          makeTransfer({
+            id: 't3',
+            settlementId: 's2',
+            paidAt: null,
+          }),
+          makeTransfer({
+            id: 't4',
+            settlementId: 's2',
+            paidAt: null,
+            supersededAt: '2026-01-03T00:00:00.000Z',
+          }),
+        ],
+        { scope: Scope.workspace('test') }
+      )
 
       const eventBySettlement = new Map<string, string>()
       for (const s of pool.getAll('settlement')) {
@@ -190,9 +199,10 @@ describe('HomePage computed maps', () => {
 
     it('ignores transfers whose settlement is not in the pool', () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
-        makeTransfer({ id: 't1', settlementId: 'missing-settlement' }),
-      ], { scope: Scope.workspace("test") })
+      pool.importObjects(
+        [makeTransfer({ id: 't1', settlementId: 'missing-settlement' })],
+        { scope: Scope.workspace('test') }
+      )
 
       const eventBySettlement = new Map<string, string>()
       for (const s of pool.getAll('settlement')) {

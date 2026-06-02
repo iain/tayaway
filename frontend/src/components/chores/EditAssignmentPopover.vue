@@ -70,19 +70,19 @@ onBeforeUnmount(() => {
 <template>
   <div
     ref="popoverRef"
-    class="fixed z-50 w-64 rounded-lg border border-line bg-surface p-3 shadow-lg"
+    class="border-line bg-surface fixed z-50 w-64 rounded-lg border p-3 shadow-lg"
     :style="{
       top: `${anchorEl.getBoundingClientRect().bottom + 4}px`,
       left: `${anchorEl.getBoundingClientRect().left}px`,
     }"
   >
     <div class="mb-2 flex items-center justify-between">
-      <p class="text-xs font-medium text-ink-muted">
+      <p class="text-ink-muted text-xs font-medium">
         {{ getMemberNameFromMap(assignment.userId, memberMap) }}
       </p>
       <button
         type="button"
-        class="cursor-pointer rounded p-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        class="focus-visible:outline-focus cursor-pointer rounded p-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
         :class="
           assignment.pinned
             ? 'text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/30 dark:hover:text-amber-300'
@@ -99,14 +99,12 @@ onBeforeUnmount(() => {
       v-model="note"
       type="text"
       placeholder="Note (optional)"
-      class="mb-3 block w-full rounded-md bg-surface-sunken px-2 py-1 text-sm text-ink outline-1 -outline-offset-1 outline-line placeholder:text-ink-placeholder focus:outline-2 focus:outline-offset-2 focus:outline-focus"
+      class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus mb-3 block w-full rounded-md px-2 py-1 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
       @keydown.enter="handleSaveNote"
     />
 
     <div class="flex items-center justify-between">
-      <TextButton variant="danger" @click="handleRemove">
-        Remove
-      </TextButton>
+      <TextButton variant="danger" @click="handleRemove"> Remove </TextButton>
       <AppButton size="sm" @click="handleSaveNote"> Save </AppButton>
     </div>
   </div>

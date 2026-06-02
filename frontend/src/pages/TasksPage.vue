@@ -253,7 +253,7 @@ function handleNewListBlur(): void {
           placeholder="List name"
           aria-label="List name"
           data-testid="new-list-name-input"
-          class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder flex-1 rounded-md px-3 py-2 text-sm font-semibold outline-1 -outline-offset-1 placeholder:font-normal focus:outline-2 focus:outline-offset-2 focus:outline-focus"
+          class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus flex-1 rounded-md px-3 py-2 text-sm font-semibold outline-1 -outline-offset-1 placeholder:font-normal focus:outline-2 focus:outline-offset-2"
           :disabled="isSubmitting"
           @keyup.escape="cancelNewList"
           @blur="handleNewListBlur"

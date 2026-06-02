@@ -179,10 +179,7 @@ onUnmounted(() => {
 
         <template v-else>
           <ul
-            :class="[
-              'divide-line divide-y',
-              !bare && 'border-line border-t',
-            ]"
+            :class="['divide-line divide-y', !bare && 'border-line border-t']"
           >
             <li
               v-for="session in sessions"
@@ -191,9 +188,7 @@ onUnmounted(() => {
             >
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2">
-                  <p
-                    class="truncate text-sm font-medium text-ink"
-                  >
+                  <p class="text-ink truncate text-sm font-medium">
                     {{ sessionContext(session) || 'Unknown device' }}
                   </p>
                   <AppBadge
@@ -226,10 +221,7 @@ onUnmounted(() => {
           </ul>
         </template>
 
-        <p
-          v-if="hasGeolocation"
-          class="text-ink-muted text-xs"
-        >
+        <p v-if="hasGeolocation" class="text-ink-muted text-xs">
           IP Geolocation by
           <a
             href="https://db-ip.com"

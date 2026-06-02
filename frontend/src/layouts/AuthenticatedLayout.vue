@@ -201,15 +201,13 @@ async function handleSignOut() {
   <!-- Loading screen while waiting for initial sync -->
   <div
     v-if="!hasSynced && !hasCachedData && !connectionFailed"
-    class="flex min-h-screen flex-col items-center justify-center bg-surface-page"
+    class="bg-surface-page flex min-h-screen flex-col items-center justify-center"
   >
     <div class="text-center">
       <div
         class="inline-block h-12 w-12 animate-spin rounded-full border-4 border-amber-600 border-t-transparent"
       />
-      <p class="mt-4 text-lg font-medium text-ink">
-        Loading...
-      </p>
+      <p class="text-ink mt-4 text-lg font-medium">Loading...</p>
     </div>
   </div>
 
@@ -286,7 +284,7 @@ async function handleSignOut() {
                     leave-to-class="transform opacity-0 scale-95"
                   >
                     <MenuItems
-                      class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md bg-surface py-1 shadow-lg ring-1 ring-ring-hairline focus:outline-hidden"
+                      class="bg-surface ring-ring-hairline absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md py-1 shadow-lg ring-1 focus:outline-hidden"
                     >
                       <MenuItem
                         v-for="ws in otherWorkspaces"
@@ -299,7 +297,7 @@ async function handleSignOut() {
                           :data-workspace-id="ws.id"
                           :class="[
                             active ? 'bg-btn-secondary-fill' : '',
-                            'flex w-full items-center justify-between px-4 py-2 text-left text-sm text-ink',
+                            'text-ink flex w-full items-center justify-between px-4 py-2 text-left text-sm',
                           ]"
                           @click="workspaceStore.switchWorkspace(ws.id)"
                         >
@@ -339,7 +337,7 @@ async function handleSignOut() {
               <TimeAnchor
                 v-if="showLastSynced && lastSyncedAt"
                 :at="lastSyncedAt"
-                class="mr-3 text-xs text-ink-muted"
+                class="text-ink-muted mr-3 text-xs"
                 >Last synced</TimeAnchor
               >
 
@@ -394,10 +392,10 @@ async function handleSignOut() {
                   leave-to-class="transform opacity-0 scale-95"
                 >
                   <MenuItems
-                    class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-surface py-1 shadow-lg ring-1 ring-ring-hairline focus:outline-hidden"
+                    class="bg-surface ring-ring-hairline absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md py-1 shadow-lg ring-1 focus:outline-hidden"
                   >
                     <div
-                      class="truncate border-b border-line px-4 py-2 text-sm text-ink"
+                      class="border-line text-ink truncate border-b px-4 py-2 text-sm"
                     >
                       {{ user?.email }}
                     </div>
@@ -410,7 +408,7 @@ async function handleSignOut() {
                         type="button"
                         :class="[
                           active ? 'bg-btn-secondary-fill' : '',
-                          'block w-full px-4 py-2 text-left text-sm text-ink',
+                          'text-ink block w-full px-4 py-2 text-left text-sm',
                         ]"
                         @click="
                           () => {
@@ -428,7 +426,7 @@ async function handleSignOut() {
                         data-testid="log-out-button"
                         :class="[
                           active ? 'bg-btn-secondary-fill' : '',
-                          'block w-full px-4 py-2 text-left text-sm text-ink',
+                          'text-ink block w-full px-4 py-2 text-left text-sm',
                         ]"
                         @click="handleSignOut"
                       >
@@ -532,7 +530,7 @@ async function handleSignOut() {
               <TimeAnchor
                 v-if="showLastSynced && lastSyncedAt"
                 :at="lastSyncedAt"
-                class="block text-xs text-ink-muted"
+                class="text-ink-muted block text-xs"
                 >Last synced</TimeAnchor
               >
             </div>

@@ -93,19 +93,19 @@ onBeforeUnmount(() => {
 <template>
   <div
     ref="popoverRef"
-    class="fixed z-50 w-64 rounded-lg border border-line bg-surface p-3 shadow-lg"
+    class="border-line bg-surface fixed z-50 w-64 rounded-lg border p-3 shadow-lg"
     :style="{
       top: `${anchorEl.getBoundingClientRect().bottom + 4}px`,
       left: `${anchorEl.getBoundingClientRect().left}px`,
     }"
   >
-    <p class="mb-2 text-xs font-medium text-ink-muted">Assign member</p>
+    <p class="text-ink-muted mb-2 text-xs font-medium">Assign member</p>
 
     <input
       v-model="note"
       type="text"
       placeholder="Note (optional)"
-      class="mb-2 block w-full rounded-md bg-surface-sunken px-2 py-1 text-sm text-ink outline-1 -outline-offset-1 outline-line placeholder:text-ink-placeholder focus:outline-2 focus:outline-offset-2 focus:outline-focus"
+      class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus mb-2 block w-full rounded-md px-2 py-1 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
     />
 
     <div class="max-h-48 overflow-y-auto">
@@ -113,14 +113,14 @@ onBeforeUnmount(() => {
         v-for="member in availableMembers"
         :key="member.id"
         type="button"
-        class="flex w-full cursor-pointer items-center rounded-md px-2 py-1.5 text-left text-sm text-ink transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:hover:bg-stone-700"
+        class="text-ink focus-visible:outline-focus flex w-full cursor-pointer items-center rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:bg-stone-700"
         @click="handleSelect(member.userId)"
       >
         {{ getMemberDisplayName(member) }}
       </button>
       <p
         v-if="availableMembers.length === 0"
-        class="py-2 text-center text-xs text-ink-muted"
+        class="text-ink-muted py-2 text-center text-xs"
       >
         No available members
       </p>

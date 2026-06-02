@@ -8,10 +8,7 @@
  * Vue components should pass `useLocale().value` so a future user choice
  * propagates everywhere.
  */
-export function formatAmount(
-  amount: number,
-  locale: string = 'en-US'
-): string {
+export function formatAmount(amount: number, locale: string = 'en-US'): string {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: 'EUR',

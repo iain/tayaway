@@ -17,10 +17,10 @@ defineProps<{
       :class="iconClass ?? 'text-amber-500 dark:text-amber-400'"
       aria-hidden="true"
     />
-    <h3 class="mt-2 text-sm font-semibold text-ink">
+    <h3 class="text-ink mt-2 text-sm font-semibold">
       {{ heading }}
     </h3>
-    <p class="mt-1 text-base text-ink-muted">
+    <p class="text-ink-muted mt-1 text-base">
       {{ description }}
     </p>
     <div v-if="$slots.default" class="mt-6">

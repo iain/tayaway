@@ -73,7 +73,9 @@ describe('datePolls store', () => {
   describe('closePoll', () => {
     it('optimistically updates the poll status to resolved', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeDatePoll({ status: 'open' })], { scope: Scope.workspace("test") })
+      pool.importObjects([makeDatePoll({ status: 'open' })], {
+        scope: Scope.workspace('test'),
+      })
       const store = useDatePollsStore()
 
       let statusDuringCall: string | undefined
@@ -89,7 +91,9 @@ describe('datePolls store', () => {
 
     it('optimistically sets the selectedDateRangeId', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeDatePoll({ selectedDateRangeId: null })], { scope: Scope.workspace("test") })
+      pool.importObjects([makeDatePoll({ selectedDateRangeId: null })], {
+        scope: Scope.workspace('test'),
+      })
       const store = useDatePollsStore()
 
       let selectedDuringCall: string | null | undefined
@@ -113,9 +117,10 @@ describe('datePolls store', () => {
 
     it('rolls back the optimistic update on server error', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
-        makeDatePoll({ status: 'open', selectedDateRangeId: null }),
-      ], { scope: Scope.workspace("test") })
+      pool.importObjects(
+        [makeDatePoll({ status: 'open', selectedDateRangeId: null })],
+        { scope: Scope.workspace('test') }
+      )
       const store = useDatePollsStore()
 
       enqueueImpl = async () => {
@@ -132,13 +137,16 @@ describe('datePolls store', () => {
   describe('reopenPoll', () => {
     it('optimistically updates the poll status back to open', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
-        makeDatePoll({
-          status: 'resolved',
-          selectedDateRangeId: 'dr-1',
-          closedAt: '2026-01-15T00:00:00.000Z',
-        }),
-      ], { scope: Scope.workspace("test") })
+      pool.importObjects(
+        [
+          makeDatePoll({
+            status: 'resolved',
+            selectedDateRangeId: 'dr-1',
+            closedAt: '2026-01-15T00:00:00.000Z',
+          }),
+        ],
+        { scope: Scope.workspace('test') }
+      )
       const store = useDatePollsStore()
 
       let statusDuringCall: string | undefined
@@ -154,13 +162,16 @@ describe('datePolls store', () => {
 
     it('clears selectedDateRangeId and closedAt on reopen', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
-        makeDatePoll({
-          status: 'resolved',
-          selectedDateRangeId: 'dr-1',
-          closedAt: '2026-01-15T00:00:00.000Z',
-        }),
-      ], { scope: Scope.workspace("test") })
+      pool.importObjects(
+        [
+          makeDatePoll({
+            status: 'resolved',
+            selectedDateRangeId: 'dr-1',
+            closedAt: '2026-01-15T00:00:00.000Z',
+          }),
+        ],
+        { scope: Scope.workspace('test') }
+      )
       const store = useDatePollsStore()
 
       let pollDuringCall: ObjectTypeMap['datePoll'] | undefined
@@ -187,7 +198,9 @@ describe('datePolls store', () => {
   describe('addDateRange', () => {
     it('inserts a temp date range and updates poll.dateRangeIds optimistically', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeDatePoll({ dateRangeIds: [] })], { scope: Scope.workspace("test") })
+      pool.importObjects([makeDatePoll({ dateRangeIds: [] })], {
+        scope: Scope.workspace('test'),
+      })
       const store = useDatePollsStore()
 
       let dateRangesDuringCall: ObjectTypeMap['dateRange'][] | undefined
@@ -208,7 +221,9 @@ describe('datePolls store', () => {
 
     it('rolls back both temp date range and poll pending update on server error', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeDatePoll({ dateRangeIds: [] })], { scope: Scope.workspace("test") })
+      pool.importObjects([makeDatePoll({ dateRangeIds: [] })], {
+        scope: Scope.workspace('test'),
+      })
       const store = useDatePollsStore()
 
       enqueueImpl = async () => {
@@ -227,7 +242,9 @@ describe('datePolls store', () => {
 
     it('keeps the optimistic state when request is queued offline', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeDatePoll({ dateRangeIds: [] })], { scope: Scope.workspace("test") })
+      pool.importObjects([makeDatePoll({ dateRangeIds: [] })], {
+        scope: Scope.workspace('test'),
+      })
       const store = useDatePollsStore()
 
       enqueueImpl = async () => {
@@ -252,10 +269,10 @@ describe('datePolls store', () => {
   describe('removeDateRange', () => {
     it('removes the date range and updates poll.dateRangeIds optimistically', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
-        makeDatePoll({ dateRangeIds: ['dr-1'] }),
-        makeDateRange(),
-      ], { scope: Scope.workspace("test") })
+      pool.importObjects(
+        [makeDatePoll({ dateRangeIds: ['dr-1'] }), makeDateRange()],
+        { scope: Scope.workspace('test') }
+      )
       const store = useDatePollsStore()
 
       let dateRangesDuringCall: ObjectTypeMap['dateRange'][] | undefined
@@ -274,10 +291,10 @@ describe('datePolls store', () => {
 
     it('restores the date range and poll ids on server error', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
-        makeDatePoll({ dateRangeIds: ['dr-1'] }),
-        makeDateRange(),
-      ], { scope: Scope.workspace("test") })
+      pool.importObjects(
+        [makeDatePoll({ dateRangeIds: ['dr-1'] }), makeDateRange()],
+        { scope: Scope.workspace('test') }
+      )
       const store = useDatePollsStore()
 
       enqueueImpl = async () => {
@@ -296,10 +313,10 @@ describe('datePolls store', () => {
 
     it('keeps the optimistic removal when request is queued offline', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([
-        makeDatePoll({ dateRangeIds: ['dr-1'] }),
-        makeDateRange(),
-      ], { scope: Scope.workspace("test") })
+      pool.importObjects(
+        [makeDatePoll({ dateRangeIds: ['dr-1'] }), makeDateRange()],
+        { scope: Scope.workspace('test') }
+      )
       const store = useDatePollsStore()
 
       enqueueImpl = async () => {
@@ -324,7 +341,7 @@ describe('datePolls store', () => {
   describe('$reset', () => {
     it('clears loading and error state', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeDatePoll()], { scope: Scope.workspace("test") })
+      pool.importObjects([makeDatePoll()], { scope: Scope.workspace('test') })
       const store = useDatePollsStore()
 
       enqueueImpl = async () => {

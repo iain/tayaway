@@ -158,7 +158,7 @@ function removeHolderName(): Promise<void> {
                   :maxlength="42"
                   :disabled="savingFields.has('iban')"
                   :aria-invalid="ibanError !== null"
-                  class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder min-w-0 flex-1 rounded-md px-3 py-1.5 font-mono text-base outline-1 -outline-offset-1 placeholder:font-mono focus:outline-2 focus:outline-offset-2 focus:outline-focus sm:text-sm/6"
+                  class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus min-w-0 flex-1 rounded-md px-3 py-1.5 font-mono text-base outline-1 -outline-offset-1 placeholder:font-mono focus:outline-2 focus:outline-offset-2 sm:text-sm/6"
                   @input="onIbanInput"
                   @keyup.escape="cancelEdit('iban')"
                 />
@@ -238,7 +238,7 @@ function removeHolderName(): Promise<void> {
                   placeholder="Exactly as on your bank account"
                   :maxlength="70"
                   :disabled="savingFields.has('holderName')"
-                  class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder min-w-0 flex-1 rounded-md px-3 py-1.5 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 focus:outline-focus sm:text-sm/6"
+                  class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus min-w-0 flex-1 rounded-md px-3 py-1.5 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 sm:text-sm/6"
                   @keyup.escape="cancelEdit('holderName')"
                 />
                 <AppButton

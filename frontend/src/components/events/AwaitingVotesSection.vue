@@ -74,11 +74,11 @@ const awaitingVotesCount = computed(() =>
   <section data-testid="awaiting-votes-section">
     <SectionHeading :icon="UserIcon" title="Votes" />
     <BaseCard padded>
-      <div v-if="!event.workspace" class="py-4 text-center text-ink-muted">
+      <div v-if="!event.workspace" class="text-ink-muted py-4 text-center">
         Loading workspace members...
       </div>
 
-      <div v-else-if="!event.datePoll" class="py-4 text-center text-ink-muted">
+      <div v-else-if="!event.datePoll" class="text-ink-muted py-4 text-center">
         Open a date poll to start collecting votes.
       </div>
 
@@ -149,7 +149,7 @@ const awaitingVotesCount = computed(() =>
           </ul>
         </div>
 
-        <p class="text-sm text-ink-muted">
+        <p class="text-ink-muted text-sm">
           {{ awaitingVotesCount }}
           {{ awaitingVotesCount === 1 ? "person hasn't" : "people haven't" }}
           fully voted yet

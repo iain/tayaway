@@ -125,7 +125,9 @@ describe('useMutation', () => {
       await create('fail', temp, async () => okResponse({ id: 'real-1' }))
 
       // Simulate a full sync that replaces all objects without the temp ID
-      pool.replaceScope(Scope.workspace('test'), [makeEvent({ id: 'other-1', name: 'Server Event' })])
+      pool.replaceScope(Scope.workspace('test'), [
+        makeEvent({ id: 'other-1', name: 'Server Event' }),
+      ])
 
       // Temp object must survive the sync because it was flagged as isTemp
       expect(pool.get('event', 'temp-1')?.name).toBe('Queued Event')
@@ -164,7 +166,9 @@ describe('useMutation', () => {
   describe('update', () => {
     it('adds pending update and returns data on success', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent({ name: 'Original' })], { scope: Scope.workspace("test") })
+      pool.importObjects([makeEvent({ name: 'Original' })], {
+        scope: Scope.workspace('test'),
+      })
       const { update } = useMutation()
 
       // During the API call the pending update should be visible
@@ -186,7 +190,9 @@ describe('useMutation', () => {
 
     it('keeps pending update on CommandQueuedError', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent({ name: 'Original' })], { scope: Scope.workspace("test") })
+      pool.importObjects([makeEvent({ name: 'Original' })], {
+        scope: Scope.workspace('test'),
+      })
       const { update } = useMutation()
 
       await update('fail', 'event', 'evt-1', { name: 'Pending' }, async () => {
@@ -199,7 +205,9 @@ describe('useMutation', () => {
 
     it('rolls back pending update on server error', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent({ name: 'Original' })], { scope: Scope.workspace("test") })
+      pool.importObjects([makeEvent({ name: 'Original' })], {
+        scope: Scope.workspace('test'),
+      })
       const { update } = useMutation()
 
       await expect(
@@ -216,7 +224,7 @@ describe('useMutation', () => {
   describe('destroy', () => {
     it('removes object from pool and returns data on success', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent()], { scope: Scope.workspace("test") })
+      pool.importObjects([makeEvent()], { scope: Scope.workspace('test') })
       const { destroy } = useMutation()
 
       const result = await destroy('fail', 'event', 'evt-1', async () =>
@@ -229,7 +237,7 @@ describe('useMutation', () => {
 
     it('keeps object removed on CommandQueuedError', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent()], { scope: Scope.workspace("test") })
+      pool.importObjects([makeEvent()], { scope: Scope.workspace('test') })
       const { destroy } = useMutation()
 
       await destroy('fail', 'event', 'evt-1', async () => {
@@ -241,7 +249,9 @@ describe('useMutation', () => {
 
     it('restores object on server error', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent({ name: 'Keep Me' })], { scope: Scope.workspace("test") })
+      pool.importObjects([makeEvent({ name: 'Keep Me' })], {
+        scope: Scope.workspace('test'),
+      })
       const { destroy } = useMutation()
 
       await expect(
@@ -304,11 +314,14 @@ describe('useMutation', () => {
 
       it('removes child objects from the pool before the API call', async () => {
         const pool = useObjectPoolStore()
-        pool.importObjects([
-          makeTaskList(),
-          makeTaskItem({ id: 'item-1', taskListId: 'list-1' }),
-          makeTaskItem({ id: 'item-2', taskListId: 'list-1' }),
-        ], { scope: Scope.workspace("test") })
+        pool.importObjects(
+          [
+            makeTaskList(),
+            makeTaskItem({ id: 'item-1', taskListId: 'list-1' }),
+            makeTaskItem({ id: 'item-2', taskListId: 'list-1' }),
+          ],
+          { scope: Scope.workspace('test') }
+        )
         const { destroy } = useMutation()
 
         let item1DuringCall: boolean | undefined
@@ -327,12 +340,15 @@ describe('useMutation', () => {
 
       it('does not remove child objects belonging to a different parent', async () => {
         const pool = useObjectPoolStore()
-        pool.importObjects([
-          makeTaskList({ id: 'list-1' }),
-          makeTaskList({ id: 'list-2' }),
-          makeTaskItem({ id: 'item-1', taskListId: 'list-1' }),
-          makeTaskItem({ id: 'item-2', taskListId: 'list-2' }),
-        ], { scope: Scope.workspace("test") })
+        pool.importObjects(
+          [
+            makeTaskList({ id: 'list-1' }),
+            makeTaskList({ id: 'list-2' }),
+            makeTaskItem({ id: 'item-1', taskListId: 'list-1' }),
+            makeTaskItem({ id: 'item-2', taskListId: 'list-2' }),
+          ],
+          { scope: Scope.workspace('test') }
+        )
         const { destroy } = useMutation()
 
         await destroy('fail', 'taskList', 'list-1', async () =>
@@ -345,11 +361,14 @@ describe('useMutation', () => {
 
       it('restores all children on server error', async () => {
         const pool = useObjectPoolStore()
-        pool.importObjects([
-          makeTaskList(),
-          makeTaskItem({ id: 'item-1', taskListId: 'list-1' }),
-          makeTaskItem({ id: 'item-2', taskListId: 'list-1' }),
-        ], { scope: Scope.workspace("test") })
+        pool.importObjects(
+          [
+            makeTaskList(),
+            makeTaskItem({ id: 'item-1', taskListId: 'list-1' }),
+            makeTaskItem({ id: 'item-2', taskListId: 'list-1' }),
+          ],
+          { scope: Scope.workspace('test') }
+        )
         const { destroy } = useMutation()
 
         await expect(
@@ -365,20 +384,18 @@ describe('useMutation', () => {
 
       it('keeps children removed when queued offline', async () => {
         const pool = useObjectPoolStore()
-        pool.importObjects([
-          makeTaskList(),
-          makeTaskItem({ id: 'item-1', taskListId: 'list-1' }),
-        ], { scope: Scope.workspace("test") })
+        pool.importObjects(
+          [
+            makeTaskList(),
+            makeTaskItem({ id: 'item-1', taskListId: 'list-1' }),
+          ],
+          { scope: Scope.workspace('test') }
+        )
         const { destroy } = useMutation()
 
-        const result = await destroy(
-          'fail',
-          'taskList',
-          'list-1',
-          async () => {
-            throw new CommandQueuedError()
-          }
-        )
+        const result = await destroy('fail', 'taskList', 'list-1', async () => {
+          throw new CommandQueuedError()
+        })
 
         expect(result).toEqual({ queued: true })
         expect(pool.get('taskList', 'list-1')).toBeUndefined()

@@ -47,14 +47,14 @@ function handleRemove(index: number): void {
 <template>
   <div>
     <div class="mb-3 flex items-center justify-between">
-      <label class="block text-sm/6 font-medium text-ink">Date Ranges</label>
+      <label class="text-ink block text-sm/6 font-medium">Date Ranges</label>
       <TextButton data-testid="add-date-range-button" @click="handleAdd">
         <PlusIcon class="size-4" />
         Add Range
       </TextButton>
     </div>
 
-    <div v-if="sortedRanges.length === 0" class="text-sm text-ink-muted italic">
+    <div v-if="sortedRanges.length === 0" class="text-ink-muted text-sm italic">
       No date ranges added yet. Click "Add Range" to add potential dates.
     </div>
 
@@ -64,7 +64,7 @@ function handleRemove(index: number): void {
         :key="`${range.start_date}-${range.end_date}`"
         class="flex items-center justify-between rounded-md bg-gray-50 px-3 py-2 dark:bg-white/5"
       >
-        <span class="text-sm text-ink">
+        <span class="text-ink text-sm">
           {{ formatDateDisplay(range.start_date) }} -
           {{ formatDateDisplay(range.end_date) }}
         </span>

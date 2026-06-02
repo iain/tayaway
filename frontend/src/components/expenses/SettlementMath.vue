@@ -38,10 +38,8 @@ const showDrift = computed(
 </script>
 
 <template>
-  <div class="rounded-md border border-line bg-surface-sunken p-3">
-    <p
-      class="mb-2 text-xs font-medium tracking-wide text-ink-muted uppercase"
-    >
+  <div class="border-line bg-surface-sunken rounded-md border p-3">
+    <p class="text-ink-muted mb-2 text-xs font-medium tracking-wide uppercase">
       Net balances
     </p>
     <div class="mb-3 space-y-1">
@@ -51,14 +49,16 @@ const showDrift = computed(
         data-testid="math-balance-row"
         class="flex items-center justify-between text-sm"
       >
-        <span class="truncate text-ink">
+        <span class="text-ink truncate">
           {{ row.name }}
         </span>
         <span>
           <template v-if="row.amount < 0">
             is owed <LedgerAmount :amount="-row.amount" />
           </template>
-          <template v-else> owes <LedgerAmount :amount="row.amount" /> </template>
+          <template v-else>
+            owes <LedgerAmount :amount="row.amount" />
+          </template>
         </span>
       </div>
       <div
@@ -70,15 +70,13 @@ const showDrift = computed(
       </div>
     </div>
 
-    <p
-      class="mb-1 text-xs font-medium tracking-wide text-ink-muted uppercase"
-    >
+    <p class="text-ink-muted mb-1 text-xs font-medium tracking-wide uppercase">
       Transfers
     </p>
     <ul class="space-y-1">
       <li v-for="(t, i) in transfers" :key="i" class="text-sm">
         <div class="flex items-center justify-between">
-          <span class="truncate text-ink">
+          <span class="text-ink truncate">
             {{ t.fromUserId ? nameFor(t.fromUserId) : 'Unknown' }}
             <span class="text-ink-muted"> → </span>
             {{ t.toUserId ? nameFor(t.toUserId) : 'Unknown' }}
@@ -89,7 +87,7 @@ const showDrift = computed(
         </div>
         <div
           data-testid="math-transfer-annotation"
-          class="mt-0.5 text-xs text-ink-muted"
+          class="text-ink-muted mt-0.5 text-xs"
         >
           {{ t.annotation }}
         </div>

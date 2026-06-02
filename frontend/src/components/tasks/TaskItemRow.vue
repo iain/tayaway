@@ -51,11 +51,7 @@ const emit = defineEmits<{
       />
       <span
         class="flex-1 text-base"
-        :class="
-          item.completedAt
-            ? 'text-ink-muted line-through'
-            : 'text-ink'
-        "
+        :class="item.completedAt ? 'text-ink-muted line-through' : 'text-ink'"
         :data-completed="item.completedAt ? 'true' : undefined"
       >
         {{ item.content }}

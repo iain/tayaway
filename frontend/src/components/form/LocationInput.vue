@@ -179,7 +179,7 @@ defineExpose({
         :disabled="disabled"
         placeholder="Search for a location..."
         autocomplete="off"
-        class="bg-surface-sunken text-ink placeholder:text-ink-placeholder block w-full rounded-md py-1.5 pr-9 pl-9 text-base outline-1 -outline-offset-1 outline-line focus:outline-2 focus:outline-offset-2 focus:outline-focus disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm/6"
+        class="bg-surface-sunken text-ink placeholder:text-ink-placeholder outline-line focus:outline-focus block w-full rounded-md py-1.5 pr-9 pl-9 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm/6"
         @input="handleInput"
         @keydown="handleKeydown"
         @focus="showDropdown = suggestions.length > 0"

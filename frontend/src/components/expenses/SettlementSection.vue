@@ -346,9 +346,9 @@ async function handlePaidClick(
 
     <div
       v-if="settlements.length === 0 && !hasExpenses"
-      class="rounded-lg border border-line bg-surface-sunken p-4"
+      class="border-line bg-surface-sunken rounded-lg border p-4"
     >
-      <p class="mb-3 text-sm font-medium text-ink">How settling up works</p>
+      <p class="text-ink mb-3 text-sm font-medium">How settling up works</p>
       <ol class="space-y-3">
         <li class="flex items-start gap-3">
           <span
@@ -356,10 +356,8 @@ async function handlePaidClick(
           >
             <CurrencyEuroIcon class="size-3.5" />
           </span>
-          <span class="text-sm text-ink-muted">
-            <span class="font-medium text-ink"
-              >Log expenses</span
-            >
+          <span class="text-ink-muted text-sm">
+            <span class="text-ink font-medium">Log expenses</span>
             &mdash; everyone adds what they paid for. Costs are split per day
             among attendees.
           </span>
@@ -370,10 +368,8 @@ async function handlePaidClick(
           >
             <CalculatorIcon class="size-3.5 text-white" />
           </span>
-          <span class="text-sm text-ink-muted">
-            <span class="font-medium text-ink"
-              >Start settlement</span
-            >
+          <span class="text-ink-muted text-sm">
+            <span class="text-ink font-medium">Start settlement</span>
             &mdash; see who owes whom, then lock it in. Locked expenses can no
             longer be edited.
           </span>
@@ -384,10 +380,8 @@ async function handlePaidClick(
           >
             <BanknotesIcon class="size-3.5 text-white" />
           </span>
-          <span class="text-sm text-ink-muted">
-            <span class="font-medium text-ink"
-              >Pay up</span
-            >
+          <span class="text-ink-muted text-sm">
+            <span class="text-ink font-medium">Pay up</span>
             &mdash; transfer money via your banking app. When someone you owe
             has added their IBAN in
             <router-link
@@ -404,10 +398,8 @@ async function handlePaidClick(
           >
             <CheckCircleIcon class="size-3.5 text-white" />
           </span>
-          <span class="text-sm text-ink-muted">
-            <span class="font-medium text-ink"
-              >Mark as paid</span
-            >
+          <span class="text-ink-muted text-sm">
+            <span class="text-ink font-medium">Mark as paid</span>
             &mdash; once the money arrives, the recipient marks the transfer as
             paid so everyone can see what&rsquo;s left.
           </span>
@@ -424,7 +416,7 @@ async function handlePaidClick(
         class="flex flex-wrap items-center justify-between gap-y-1 border-b border-gray-100 px-3 py-2 dark:border-stone-700/50"
       >
         <div class="flex min-w-0 items-center gap-2">
-          <span class="text-xs text-ink-muted">
+          <span class="text-ink-muted text-xs">
             <span v-if="settlement.previousSettlementId">Top-up</span>
             <span v-else>Settled</span>
             by {{ getMemberName(settlement.userId, pool) }}
@@ -452,7 +444,7 @@ async function handlePaidClick(
       >
         <button
           type="button"
-          class="flex w-full cursor-pointer items-center justify-between rounded-md px-1.5 py-1 text-xs text-ink-muted transition-colors hover:bg-btn-secondary-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          class="text-ink-muted hover:bg-btn-secondary-fill focus-visible:outline-focus flex w-full cursor-pointer items-center justify-between rounded-md px-1.5 py-1 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
           :data-testid="`settlement-math-toggle-${settlement.id}`"
           :aria-expanded="isSettlementMathOpen(settlement.id)"
           :aria-controls="`settlement-math-panel-${settlement.id}`"
@@ -484,7 +476,7 @@ async function handlePaidClick(
         </div>
       </div>
 
-      <div class="divide-y divide-line-faint">
+      <div class="divide-line-faint divide-y">
         <div
           v-for="transfer in transfersForSettlement(settlement.id)"
           :key="transfer.id"
@@ -495,22 +487,20 @@ async function handlePaidClick(
         >
           <div class="flex min-w-0 items-center gap-2">
             <span
-              class="truncate text-sm text-ink"
+              class="text-ink truncate text-sm"
               :class="{ 'line-through': transfer.supersededAt }"
             >
               {{ getMemberName(transfer.fromUserId, pool) }}
             </span>
-            <span class="shrink-0 text-xs text-ink-muted">
-              &rarr;
-            </span>
+            <span class="text-ink-muted shrink-0 text-xs"> &rarr; </span>
             <span
-              class="truncate text-sm text-ink"
+              class="text-ink truncate text-sm"
               :class="{ 'line-through': transfer.supersededAt }"
             >
               {{ getMemberName(transfer.toUserId, pool) }}
             </span>
             <span
-              class="shrink-0 text-sm font-semibold text-ink"
+              class="text-ink shrink-0 text-sm font-semibold"
               :class="{ 'line-through': transfer.supersededAt }"
             >
               <LedgerAmount :amount="transfer.amount" />
@@ -556,20 +546,17 @@ async function handlePaidClick(
       size="md"
       @close="showPreviewModal = false"
     >
-      <p class="mb-4 flex items-center gap-2 text-sm text-ink-muted">
+      <p class="text-ink-muted mb-4 flex items-center gap-2 text-sm">
         <AppBadge variant="neutral">Preview</AppBadge>
         Nothing has been settled yet.
       </p>
 
-      <p
-        v-if="unsettledExpenseCount > 0"
-        class="mb-3 text-sm text-ink-muted"
-      >
+      <p v-if="unsettledExpenseCount > 0" class="text-ink-muted mb-3 text-sm">
         {{ unsettledExpenseCount }}
         expense{{ unsettledExpenseCount === 1 ? '' : 's' }} will be locked to
         this settlement.
       </p>
-      <p v-else-if="hasTip" class="mb-3 text-sm text-ink-muted">
+      <p v-else-if="hasTip" class="text-ink-muted mb-3 text-sm">
         This top-up covers the drift since the last settlement — no new expenses
         are being locked.
       </p>
@@ -577,7 +564,7 @@ async function handlePaidClick(
       <div v-if="previewTransfers.length > 0" class="mb-3">
         <button
           type="button"
-          class="flex w-full cursor-pointer items-center justify-between rounded-md px-2 py-1 text-sm text-ink-muted transition-colors hover:bg-btn-secondary-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          class="text-ink-muted hover:bg-btn-secondary-fill focus-visible:outline-focus flex w-full cursor-pointer items-center justify-between rounded-md px-2 py-1 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
           data-testid="preview-math-toggle"
           :aria-expanded="previewMathOpen"
           aria-controls="preview-math-panel"
@@ -603,26 +590,22 @@ async function handlePaidClick(
 
       <div
         v-if="previewTransfers.length > 0 && !previewMathOpen"
-        class="overflow-hidden rounded-lg border border-dashed border-line"
+        class="border-line overflow-hidden rounded-lg border border-dashed"
       >
-        <div class="divide-y divide-line-faint">
+        <div class="divide-line-faint divide-y">
           <div
             v-for="(transfer, i) in previewTransfers"
             :key="i"
             class="flex items-center gap-2 px-3 py-2"
           >
-            <span class="truncate text-sm text-ink">
+            <span class="text-ink truncate text-sm">
               {{ getMemberName(transfer.fromUserId, pool) }}
             </span>
-            <span class="shrink-0 text-xs text-ink-muted">
-              &rarr;
-            </span>
-            <span class="truncate text-sm text-ink">
+            <span class="text-ink-muted shrink-0 text-xs"> &rarr; </span>
+            <span class="text-ink truncate text-sm">
               {{ getMemberName(transfer.toUserId, pool) }}
             </span>
-            <span
-              class="ml-auto shrink-0 text-sm font-medium text-ink"
-            >
+            <span class="text-ink ml-auto shrink-0 text-sm font-medium">
               <LedgerAmount :amount="transfer.amount" />
             </span>
           </div>
@@ -631,7 +614,7 @@ async function handlePaidClick(
 
       <p
         v-else-if="previewTransfers.length === 0"
-        class="text-sm text-ink-muted"
+        class="text-ink-muted text-sm"
       >
         All balances are settled &mdash; no transfers needed.
       </p>
@@ -662,7 +645,7 @@ async function handlePaidClick(
       size="sm"
       @close="showBlockedActionModal = false"
     >
-      <p class="text-sm text-ink-muted">
+      <p class="text-ink-muted text-sm">
         {{ blockedActionMessage }}
       </p>
       <div class="mt-6 flex justify-end">
@@ -683,7 +666,7 @@ async function handlePaidClick(
       data-testid="delete-settlement-confirm"
       @close="settlementToDelete = null"
     >
-      <p class="text-sm text-ink-muted">
+      <p class="text-ink-muted text-sm">
         Its transfers will disappear and the expenses it covered will become
         editable again. Anything paid against it will need to be re-recorded.
       </p>

@@ -74,7 +74,6 @@ const total = computed(() =>
   expenses.value.reduce((sum, e) => sum + e.amount, 0)
 )
 
-
 const hasAttendees = computed(() =>
   pool.getAll('rsvp').some((r) => r.eventId === eventId.value && r.attending)
 )
@@ -90,9 +89,7 @@ onMounted(async () => {
 
 <template>
   <div>
-    <div v-if="!event" class="text-ink-muted">
-      Event not found
-    </div>
+    <div v-if="!event" class="text-ink-muted">Event not found</div>
 
     <div v-else>
       <PageHeader title="Expenses" size="sm" :icon="BanknotesIcon">
@@ -139,10 +136,7 @@ onMounted(async () => {
         size="sm"
         @close="showRsvpDialog = false"
       >
-        <p
-          data-testid="rsvp-required-dialog"
-          class="text-ink-muted text-sm"
-        >
+        <p data-testid="rsvp-required-dialog" class="text-ink-muted text-sm">
           Nobody has RSVP'd as attending yet. Costs are split among attendees
           only, so at least one person needs to RSVP first.
         </p>

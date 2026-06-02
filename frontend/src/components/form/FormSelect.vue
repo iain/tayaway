@@ -68,7 +68,11 @@ const shell = computed(() =>
         aria-hidden="true"
       />
     </div>
-    <p v-if="hasError" :id="errorId" class="text-state-danger-ink text-meta mt-1">
+    <p
+      v-if="hasError"
+      :id="errorId"
+      class="text-state-danger-ink text-meta mt-1"
+    >
       {{ error }}
     </p>
   </div>

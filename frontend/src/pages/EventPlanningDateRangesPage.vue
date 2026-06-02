@@ -103,20 +103,14 @@ async function deleteRange(dateRangeId: string): Promise<void> {
 
 <template>
   <div>
-    <div v-if="!event" class="text-ink-muted">
-      Event not found
-    </div>
+    <div v-if="!event" class="text-ink-muted">Event not found</div>
 
     <div v-else-if="!event.datePoll" class="text-ink-muted">
       No date poll found for this event.
     </div>
 
     <div v-else>
-      <PageHeader
-        title="Edit Date Ranges"
-        size="sm"
-        :icon="CalendarDaysIcon"
-      >
+      <PageHeader title="Edit Date Ranges" size="sm" :icon="CalendarDaysIcon">
         <AppButton
           v-if="canManageDateRanges && dateRanges.length > 0"
           :disabled="datePollsStore.loading"

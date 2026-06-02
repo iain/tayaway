@@ -330,9 +330,11 @@ describe('poolPersistence — multi-workspace scope routing', () => {
     vi.useFakeTimers()
     installIdlePolyfill()
     capturedHandler = null
-    vi.mocked(onPoolChange).mockReset().mockImplementation((h) => {
-      capturedHandler = h
-    })
+    vi.mocked(onPoolChange)
+      .mockReset()
+      .mockImplementation((h) => {
+        capturedHandler = h
+      })
     vi.mocked(poolDb.saveObjects).mockReset().mockResolvedValue(undefined)
     vi.mocked(poolDb.replaceScope).mockReset().mockResolvedValue(undefined)
     vi.mocked(poolDb.clearAll).mockReset().mockResolvedValue(undefined)
@@ -414,10 +416,14 @@ describe('poolPersistence — progressive cache loading', () => {
     installIdlePolyfill()
     localStorage.setItem('current_workspace_id', 'ws-1')
 
-    vi.mocked(poolDb.loadMeta).mockReset().mockResolvedValue({
-      cacheVersion: 11,
-      syncedAt: new Map([[Scope.workspace('ws-1'), new Date().toISOString()]]),
-    })
+    vi.mocked(poolDb.loadMeta)
+      .mockReset()
+      .mockResolvedValue({
+        cacheVersion: 11,
+        syncedAt: new Map([
+          [Scope.workspace('ws-1'), new Date().toISOString()],
+        ]),
+      })
     vi.mocked(poolDb.loadObjectsByType).mockReset().mockResolvedValue([])
     vi.mocked(poolDb.loadPendingUpdatesFromDb)
       .mockReset()
@@ -456,11 +462,15 @@ describe('poolPersistence — progressive cache loading', () => {
       updatedAt: '2026-01-01T00:00:00.000Z',
     } as PoolObject
 
-    vi.mocked(poolDb.loadObjectsByType).mockImplementation(async (scope, type) => {
-      if (scope === Scope.workspace('ws-1') && type === 'member') return [memberObj]
-      if (scope === Scope.workspace('ws-1') && type === 'event') return [eventObj]
-      return []
-    })
+    vi.mocked(poolDb.loadObjectsByType).mockImplementation(
+      async (scope, type) => {
+        if (scope === Scope.workspace('ws-1') && type === 'member')
+          return [memberObj]
+        if (scope === Scope.workspace('ws-1') && type === 'event')
+          return [eventObj]
+        return []
+      }
+    )
 
     const pool = useObjectPoolStore()
     const { loadFromCache } = poolPersistence
@@ -471,15 +481,30 @@ describe('poolPersistence — progressive cache loading', () => {
     await loadPromise
 
     expect(poolDb.loadMeta).toHaveBeenCalledTimes(1)
-    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith(Scope.personal(), 'member')
-    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith(Scope.workspace('ws-1'), 'member')
-    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith(Scope.workspace('ws-1'), 'event')
-    expect(pool.importObjects).toHaveBeenCalledWith([memberObj], { scope: Scope.workspace('ws-1') })
-    expect(pool.importObjects).toHaveBeenCalledWith([eventObj], { scope: Scope.workspace('ws-1') })
+    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith(
+      Scope.personal(),
+      'member'
+    )
+    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith(
+      Scope.workspace('ws-1'),
+      'member'
+    )
+    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith(
+      Scope.workspace('ws-1'),
+      'event'
+    )
+    expect(pool.importObjects).toHaveBeenCalledWith([memberObj], {
+      scope: Scope.workspace('ws-1'),
+    })
+    expect(pool.importObjects).toHaveBeenCalledWith([eventObj], {
+      scope: Scope.workspace('ws-1'),
+    })
   })
 
   it('clears the workspace scope and returns when its cache is too stale', async () => {
-    const oldDate = new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString()
+    const oldDate = new Date(
+      Date.now() - 1000 * 60 * 60 * 24 * 30
+    ).toISOString()
     vi.mocked(poolDb.loadMeta).mockResolvedValue({
       cacheVersion: 11,
       syncedAt: new Map([[Scope.workspace('ws-1'), oldDate]]),
@@ -512,16 +537,18 @@ describe('poolPersistence — progressive cache loading', () => {
     const wsStore = useWebSocketStore()
 
     let memberCallCount = 0
-    vi.mocked(poolDb.loadObjectsByType).mockImplementation(async (_scope, type) => {
-      if (type === 'member') {
-        memberCallCount++
-        // Simulate server sync arriving while loading members
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ;(wsStore as any).hasSynced = true
+    vi.mocked(poolDb.loadObjectsByType).mockImplementation(
+      async (_scope, type) => {
+        if (type === 'member') {
+          memberCallCount++
+          // Simulate server sync arriving while loading members
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ;(wsStore as any).hasSynced = true
+          return []
+        }
         return []
       }
-      return []
-    })
+    )
 
     const pool = useObjectPoolStore()
     const { loadFromCache } = poolPersistence
@@ -534,7 +561,10 @@ describe('poolPersistence — progressive cache loading', () => {
     // and workspace), then the next type ('workspace') sees hasSynced=true
     // and returns. The 'event' bucket is never touched.
     expect(memberCallCount).toBe(2)
-    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith(Scope.personal(), 'member')
+    expect(poolDb.loadObjectsByType).toHaveBeenCalledWith(
+      Scope.personal(),
+      'member'
+    )
     expect(poolDb.loadObjectsByType).toHaveBeenCalledWith(
       Scope.workspace('ws-1'),
       'member'
@@ -566,18 +596,20 @@ describe('poolPersistence — progressive cache loading', () => {
         ReturnType<typeof poolDb.loadPendingUpdatesFromDb>
       >
     )
-    vi.mocked(poolDb.loadObjectsByType).mockImplementation(async (scope, type) => {
-      if (scope === Scope.workspace('ws-1') && type === 'member') {
-        return [
-          {
-            id: 'm-1',
-            objectType: 'member',
-            updatedAt: '2026-01-01T00:00:00.000Z',
-          } as PoolObject,
-        ]
+    vi.mocked(poolDb.loadObjectsByType).mockImplementation(
+      async (scope, type) => {
+        if (scope === Scope.workspace('ws-1') && type === 'member') {
+          return [
+            {
+              id: 'm-1',
+              objectType: 'member',
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            } as PoolObject,
+          ]
+        }
+        return []
       }
-      return []
-    })
+    )
 
     const pool = useObjectPoolStore()
     const { loadFromCache } = poolPersistence

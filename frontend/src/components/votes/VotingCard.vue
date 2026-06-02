@@ -102,7 +102,7 @@ function toggleCommentInput() {
     <div class="flex flex-col md:flex-row md:gap-6">
       <!-- Left side: Date range info and stats -->
       <div class="mb-4 flex-1 md:mb-0">
-        <h3 class="mb-3 text-sm font-medium text-ink">
+        <h3 class="text-ink mb-3 text-sm font-medium">
           <DateRangeDisplay
             :start-date="dateRange.startDate"
             :end-date="dateRange.endDate"
@@ -113,7 +113,7 @@ function toggleCommentInput() {
         <VoteSummaryBar :summary="dateRange.voteSummary" />
 
         <!-- Voters List Toggle -->
-        <div class="mt-3 border-t border-line pt-3">
+        <div class="border-line mt-3 border-t pt-3">
           <TextButton @click="showVoters = !showVoters">
             <component
               :is="showVoters ? ChevronUpIcon : ChevronDownIcon"
@@ -130,14 +130,14 @@ function toggleCommentInput() {
       </div>
 
       <!-- Right side: Voting elements -->
-      <div class="flex-1 md:border-l md:border-line md:pl-6">
+      <div class="md:border-line flex-1 md:border-l md:pl-6">
         <!-- Vote Buttons -->
         <div class="mb-4 flex flex-col gap-2 sm:flex-row">
           <button
             type="button"
             :disabled="loading"
             :aria-pressed="isSelected('yes') ? 'true' : 'false'"
-            class="flex-1 cursor-pointer rounded-md px-3 py-2 text-center text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-50"
+            class="focus-visible:outline-focus flex-1 cursor-pointer rounded-md px-3 py-2 text-center text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             :class="[
               isSelected('yes')
                 ? 'bg-green-600 text-white'
@@ -151,7 +151,7 @@ function toggleCommentInput() {
             type="button"
             :disabled="loading"
             :aria-pressed="isSelected('preferably_not') ? 'true' : 'false'"
-            class="flex-1 cursor-pointer rounded-md px-3 py-2 text-center text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-50"
+            class="focus-visible:outline-focus flex-1 cursor-pointer rounded-md px-3 py-2 text-center text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             :class="[
               isSelected('preferably_not')
                 ? 'bg-yellow-500 text-white'
@@ -165,7 +165,7 @@ function toggleCommentInput() {
             type="button"
             :disabled="loading"
             :aria-pressed="isSelected('no') ? 'true' : 'false'"
-            class="flex-1 cursor-pointer rounded-md px-3 py-2 text-center text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-50"
+            class="focus-visible:outline-focus flex-1 cursor-pointer rounded-md px-3 py-2 text-center text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             :class="[
               isSelected('no')
                 ? 'bg-red-600 text-white'

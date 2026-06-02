@@ -110,19 +110,19 @@ function getAssignments(choreId: string, date: string): PoolChoreAssignment[] {
 </script>
 
 <template>
-  <div class="overflow-x-auto rounded-lg border border-line">
-    <table class="min-w-full divide-y divide-line">
+  <div class="border-line overflow-x-auto rounded-lg border">
+    <table class="divide-line min-w-full divide-y">
       <thead>
         <tr ref="headerRow" class="bg-surface-sunken">
           <th
-            class="sticky left-0 z-10 bg-surface-sunken px-3 py-2 text-left text-xs font-medium tracking-wider text-ink-muted uppercase"
+            class="bg-surface-sunken text-ink-muted sticky left-0 z-10 px-3 py-2 text-left text-xs font-medium tracking-wider uppercase"
           >
             Date
           </th>
           <th
             v-for="chore in choresSorted"
             :key="chore.id"
-            class="chore-col px-3 py-2 text-center text-xs font-medium tracking-wider whitespace-nowrap text-ink-muted uppercase"
+            class="chore-col text-ink-muted px-3 py-2 text-center text-xs font-medium tracking-wider whitespace-nowrap uppercase"
           >
             <div class="group inline-flex items-center gap-1">
               <Bars3Icon
@@ -141,19 +141,17 @@ function getAssignments(choreId: string, date: string): PoolChoreAssignment[] {
             </div>
             <div
               v-if="chore.peoplePerDay > 1"
-              class="text-[10px] font-normal tracking-normal text-ink-muted normal-case"
+              class="text-ink-muted text-[10px] font-normal tracking-normal normal-case"
             >
               {{ chore.peoplePerDay }}/day
             </div>
           </th>
         </tr>
       </thead>
-      <tbody
-        class="divide-y divide-line bg-surface"
-      >
+      <tbody class="divide-line bg-surface divide-y">
         <tr v-for="date in dates" :key="date">
           <td
-            class="sticky left-0 z-10 bg-white px-3 py-2 text-sm font-medium whitespace-nowrap text-ink dark:bg-stone-900"
+            class="text-ink sticky left-0 z-10 bg-white px-3 py-2 text-sm font-medium whitespace-nowrap dark:bg-stone-900"
           >
             {{ formatDayHeader(date) }}
           </td>

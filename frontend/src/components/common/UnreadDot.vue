@@ -7,7 +7,10 @@ const props = defineProps<Props>()
 
 <template>
   <span v-if="props.count > 0" class="ml-2 inline-flex items-center">
-    <span aria-hidden="true" class="inline-flex h-2 w-2 rounded-full bg-brand" />
+    <span
+      aria-hidden="true"
+      class="bg-brand inline-flex h-2 w-2 rounded-full"
+    />
     <span class="sr-only">{{ props.count }} unread</span>
   </span>
 </template>

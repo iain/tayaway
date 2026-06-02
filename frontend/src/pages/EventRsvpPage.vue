@@ -90,9 +90,7 @@ function handleDownloadIcs(): void {
 
 <template>
   <div>
-    <div v-if="!event" class="text-ink-muted">
-      Event not found
-    </div>
+    <div v-if="!event" class="text-ink-muted">Event not found</div>
 
     <div v-else>
       <PageHeader title="RSVP" size="sm" :icon="UserGroupIcon" />
@@ -154,7 +152,7 @@ function handleDownloadIcs(): void {
                   v-model="editStartDate"
                   type="date"
                   :disabled="loading"
-                  class="bg-surface-sunken text-ink outline-line rounded-md px-3 py-1.5 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 focus:outline-focus dark:[color-scheme:dark]"
+                  class="bg-surface-sunken text-ink outline-line focus:outline-focus rounded-md px-3 py-1.5 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 dark:[color-scheme:dark]"
                 />
               </div>
               <div>
@@ -169,7 +167,7 @@ function handleDownloadIcs(): void {
                   v-model="editEndDate"
                   type="date"
                   :disabled="loading"
-                  class="bg-surface-sunken text-ink outline-line rounded-md px-3 py-1.5 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 focus:outline-focus dark:[color-scheme:dark]"
+                  class="bg-surface-sunken text-ink outline-line focus:outline-focus rounded-md px-3 py-1.5 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 dark:[color-scheme:dark]"
                 />
               </div>
               <AppButton type="submit" size="sm" :loading="loading">

@@ -325,9 +325,7 @@ function handleDownloadIcs(): void {
 </script>
 
 <template>
-  <div v-if="!event" class="text-ink-muted">
-    Event not found
-  </div>
+  <div v-if="!event" class="text-ink-muted">Event not found</div>
 
   <div v-else class="flex flex-col lg:flex-row lg:gap-8">
     <!-- Left column: event details -->
@@ -344,7 +342,7 @@ function handleDownloadIcs(): void {
             :maxlength="255"
             :disabled="loading"
             data-testid="edit-name-input"
-            class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder min-w-0 flex-1 rounded-md px-3 py-2 text-2xl font-bold tracking-tight outline-1 -outline-offset-1 placeholder:font-normal focus:outline-2 focus:outline-offset-2 focus:outline-focus sm:text-3xl"
+            class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus min-w-0 flex-1 rounded-md px-3 py-2 text-2xl font-bold tracking-tight outline-1 -outline-offset-1 placeholder:font-normal focus:outline-2 focus:outline-offset-2 sm:text-3xl"
             @keyup.escape="cancelEdit"
           />
           <AppButton
@@ -393,7 +391,7 @@ function handleDownloadIcs(): void {
             rows="3"
             :disabled="loading"
             data-testid="edit-description-input"
-            class="bg-surface-sunken outline-line placeholder:text-ink-placeholder w-full rounded-md px-3 py-2 text-xl text-gray-600 outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 focus:outline-focus dark:text-stone-300"
+            class="bg-surface-sunken outline-line placeholder:text-ink-placeholder focus:outline-focus w-full rounded-md px-3 py-2 text-xl text-gray-600 outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 dark:text-stone-300"
             @keyup.escape="cancelEdit"
           />
           <div class="mt-2 flex items-center gap-2">
@@ -417,10 +415,7 @@ function handleDownloadIcs(): void {
         >
           {{ event.description }}
         </p>
-        <p
-          v-else-if="canEdit"
-          class="text-ink-muted text-xl italic"
-        >
+        <p v-else-if="canEdit" class="text-ink-muted text-xl italic">
           No description
         </p>
         <IconButton
@@ -500,10 +495,7 @@ function handleDownloadIcs(): void {
             :end-date="event.endDate!"
           />
         </div>
-        <div
-          v-else-if="canEdit"
-          class="text-ink-muted flex items-center gap-2"
-        >
+        <div v-else-if="canEdit" class="text-ink-muted flex items-center gap-2">
           <CalendarDaysIcon class="size-5" />
           <span class="italic">No dates set</span>
         </div>
@@ -553,7 +545,7 @@ function handleDownloadIcs(): void {
           class="text-ink-muted flex items-center gap-2"
           :class="
             mapsUrl &&
-            'rounded hover:text-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:hover:text-amber-400'
+            'focus-visible:outline-focus rounded hover:text-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:text-amber-400'
           "
         >
           <MapPinIcon
@@ -561,10 +553,7 @@ function handleDownloadIcs(): void {
           />
           <span>{{ event.locationName }}</span>
         </component>
-        <div
-          v-else-if="canEdit"
-          class="text-ink-muted flex items-center gap-2"
-        >
+        <div v-else-if="canEdit" class="text-ink-muted flex items-center gap-2">
           <MapPinIcon class="size-5" />
           <span class="italic">No location set</span>
         </div>
@@ -613,10 +602,7 @@ function handleDownloadIcs(): void {
   </div>
 
   <!-- Delete (owner only, below the two-column layout) -->
-  <div
-    v-if="event && canEdit"
-    class="border-line mt-12 border-t pt-6"
-  >
+  <div v-if="event && canEdit" class="border-line mt-12 border-t pt-6">
     <TextButton variant="danger" @click="showDeleteConfirm = true">
       <TrashIcon class="size-4" />
       Delete event
@@ -684,15 +670,10 @@ function handleDownloadIcs(): void {
       <template v-else>
         <p class="text-ink-muted text-sm">
           Permanently delete
-          <strong class="text-ink">{{
-            event?.name
-          }}</strong
+          <strong class="text-ink">{{ event?.name }}</strong
           >? This can't be undone.
         </p>
-        <p
-          v-if="deleteSummary.length > 0"
-          class="text-ink-muted mt-2 text-sm"
-        >
+        <p v-if="deleteSummary.length > 0" class="text-ink-muted mt-2 text-sm">
           This will also delete {{ deleteSummary.join(', ') }}.
         </p>
         <div class="mt-6 flex justify-end gap-3">

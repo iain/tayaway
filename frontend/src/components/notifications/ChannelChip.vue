@@ -33,7 +33,7 @@ const stateClasses = computed(() => {
 <template>
   <button
     type="button"
-    class="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-sm font-medium ring-1 transition-colors ring-inset focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+    class="focus-visible:outline-focus inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-sm font-medium ring-1 transition-colors ring-inset focus-visible:outline-2 focus-visible:outline-offset-2"
     :class="[stateClasses, saving && 'animate-pulse']"
     :aria-pressed="state === 'on' || state === 'forced'"
     :aria-disabled="state === 'forced' ? true : undefined"

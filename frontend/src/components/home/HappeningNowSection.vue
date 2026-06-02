@@ -46,15 +46,11 @@ function navigateToEventPage(eventId: string): void {
             @keydown.space.prevent="navigateToEventPage(event.id)"
           >
             <div class="min-w-0 flex-1">
-              <h3
-                class="truncate text-base font-semibold text-ink"
-              >
+              <h3 class="text-ink truncate text-base font-semibold">
                 {{ event.name }}
               </h3>
               <div class="mt-1 flex flex-wrap items-center gap-3 text-sm">
-                <span
-                  class="text-ink-muted inline-flex items-center gap-1"
-                >
+                <span class="text-ink-muted inline-flex items-center gap-1">
                   <CalendarDaysIcon
                     class="size-4 text-amber-600 dark:text-amber-400"
                   />
@@ -73,7 +69,7 @@ function navigateToEventPage(eventId: string): void {
           <div class="mt-3 flex flex-wrap gap-2">
             <router-link
               :to="`/events/${event.id}/rsvp`"
-              class="inline-flex items-center gap-1.5 rounded-full bg-btn-secondary-fill text-btn-secondary-ink px-3 py-1 text-sm font-medium transition-colors hover:bg-rose-100 hover:text-rose-700 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
+              class="bg-btn-secondary-fill text-btn-secondary-ink inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition-colors hover:bg-rose-100 hover:text-rose-700 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
             >
               <UserGroupIcon class="size-4" />
               {{ attendeeCountByEvent.get(event.id) ?? 0 }} attending
@@ -81,7 +77,7 @@ function navigateToEventPage(eventId: string): void {
             <router-link
               v-if="(unpaidTransferCountByEvent.get(event.id) ?? 0) > 0"
               :to="`/events/${event.id}/expenses`"
-              class="inline-flex items-center gap-1.5 rounded-full bg-btn-secondary-fill text-btn-secondary-ink px-3 py-1 text-sm font-medium transition-colors hover:bg-rose-100 hover:text-rose-700 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
+              class="bg-btn-secondary-fill text-btn-secondary-ink inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition-colors hover:bg-rose-100 hover:text-rose-700 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
             >
               <BanknotesIcon class="size-4" />
               {{ unpaidTransferCountByEvent.get(event.id) ?? 0 }} unpaid

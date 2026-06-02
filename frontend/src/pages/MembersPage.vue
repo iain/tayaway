@@ -196,11 +196,7 @@ onMounted(() => {
 
 <template>
   <div>
-    <PageHeader
-      title="Members"
-      :icon="UsersIcon"
-      data-testid="page-title"
-    >
+    <PageHeader title="Members" :icon="UsersIcon" data-testid="page-title">
       <AppButton
         v-if="canInvite"
         data-testid="invite-member-button"
@@ -243,7 +239,7 @@ onMounted(() => {
                 <EnvelopeIcon class="mr-3 size-8 shrink-0 text-gray-400" />
                 <div class="min-w-0 flex-1">
                   <p
-                    class="truncate text-sm font-medium text-ink"
+                    class="text-ink truncate text-sm font-medium"
                     data-testid="invite-email"
                     :title="
                       invite.name
@@ -372,7 +368,7 @@ onMounted(() => {
             <div class="flex items-center gap-2">
               <h2
                 data-testid="member-name"
-                class="truncate text-lg font-semibold text-ink"
+                class="text-ink truncate text-lg font-semibold"
               >
                 {{ member.name || 'No name' }}
               </h2>
@@ -380,7 +376,7 @@ onMounted(() => {
                 v-if="canChangeRole(member)"
                 data-testid="member-role-select"
                 :value="member.role"
-                class="inline-flex shrink-0 cursor-pointer items-center rounded-full border-0 px-2 py-0.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                class="focus-visible:outline-focus inline-flex shrink-0 cursor-pointer items-center rounded-full border-0 px-2 py-0.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2"
                 :class="{
                   'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400':
                     member.role === 'owner',
@@ -441,12 +437,10 @@ onMounted(() => {
         </div>
 
         <!-- Bottom section: action buttons -->
-        <div
-          class="border-line flex items-center gap-1 border-t px-5 py-3"
-        >
+        <div class="border-line flex items-center gap-1 border-t px-5 py-3">
           <a
             :href="`mailto:${member.email}`"
-            class="text-ink inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:bg-btn-secondary-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            class="text-ink hover:bg-btn-secondary-fill focus-visible:outline-focus inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             <EnvelopeIcon class="size-4" />
             Email
@@ -454,14 +448,14 @@ onMounted(() => {
           <a
             v-if="member.phoneNumber"
             :href="`tel:${member.phoneNumber}`"
-            class="text-ink inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:bg-btn-secondary-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            class="text-ink hover:bg-btn-secondary-fill focus-visible:outline-focus inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             <PhoneIcon class="size-4" />
             Call
           </a>
           <button
             data-testid="download-vcard-button"
-            class="text-ink ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:bg-btn-secondary-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            class="text-ink hover:bg-btn-secondary-fill focus-visible:outline-focus ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
             title="Download contact card"
             @click="handleDownloadVCard(member)"
           >

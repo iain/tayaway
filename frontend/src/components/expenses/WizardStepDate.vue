@@ -124,14 +124,14 @@ function toggleMode(): void {
 <template>
   <div>
     <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-      <p class="text-sm font-medium text-ink">Expense period</p>
+      <p class="text-ink text-sm font-medium">Expense period</p>
       <div
-        class="inline-flex gap-0.5 rounded-lg bg-btn-secondary-fill p-0.5"
+        class="bg-btn-secondary-fill inline-flex gap-0.5 rounded-lg p-0.5"
         data-testid="toggle-date-mode"
       >
         <button
           type="button"
-          class="cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          class="focus-visible:outline-focus cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
           :class="
             singleDate
               ? 'bg-amber-100 text-amber-800 shadow-sm dark:bg-amber-900/40 dark:text-amber-300'
@@ -143,7 +143,7 @@ function toggleMode(): void {
         </button>
         <button
           type="button"
-          class="cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          class="focus-visible:outline-focus cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
           :class="
             !singleDate
               ? 'bg-amber-100 text-amber-800 shadow-sm dark:bg-amber-900/40 dark:text-amber-300'
@@ -156,7 +156,7 @@ function toggleMode(): void {
       </div>
     </div>
 
-    <div class="rounded-xl border border-line bg-surface-sunken p-4">
+    <div class="border-line bg-surface-sunken rounded-xl border p-4">
       <div class="mb-2 flex items-center justify-between">
         <IconButton
           label="Previous month"
@@ -166,7 +166,7 @@ function toggleMode(): void {
         >
           <ChevronLeftIcon class="size-5" />
         </IconButton>
-        <span class="text-sm font-semibold text-ink">
+        <span class="text-ink text-sm font-semibold">
           {{ monthLabel }}
         </span>
         <IconButton
@@ -192,7 +192,7 @@ function toggleMode(): void {
         @hover="handleHover"
       />
 
-      <div class="mt-2 text-center text-sm text-ink-muted">
+      <div class="text-ink-muted mt-2 text-center text-sm">
         {{ selectionText }}
       </div>
     </div>

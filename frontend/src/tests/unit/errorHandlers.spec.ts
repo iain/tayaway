@@ -6,7 +6,7 @@ import type { ComponentPublicInstance } from 'vue'
 function vueErrorHandler(
   err: unknown,
   instance: ComponentPublicInstance | null,
-  info: string,
+  info: string
 ): void {
   const componentName = instance?.$options?.name ?? 'anonymous'
   const props = instance?.$props ?? {}
@@ -39,8 +39,12 @@ describe('vueErrorHandler', () => {
 
     expect(errorSpy).toHaveBeenCalledWith(
       '[Vue error]',
-      { info: 'mounted hook', componentName: 'MyComponent', props: { eventId: 'evt-1', label: 'Test' } },
-      err,
+      {
+        info: 'mounted hook',
+        componentName: 'MyComponent',
+        props: { eventId: 'evt-1', label: 'Test' },
+      },
+      err
     )
   })
 
@@ -52,7 +56,7 @@ describe('vueErrorHandler', () => {
     expect(errorSpy).toHaveBeenCalledWith(
       '[Vue error]',
       { info: 'render function', componentName: 'anonymous', props: {} },
-      err,
+      err
     )
   })
 
@@ -68,7 +72,7 @@ describe('vueErrorHandler', () => {
     expect(errorSpy).toHaveBeenCalledWith(
       '[Vue error]',
       { info: 'setup()', componentName: 'anonymous', props: { foo: 'bar' } },
-      err,
+      err
     )
   })
 
@@ -83,7 +87,7 @@ describe('vueErrorHandler', () => {
     expect(errorSpy).toHaveBeenCalledWith(
       '[Vue error]',
       { info: 'watcher', componentName: 'Bare', props: {} },
-      err,
+      err
     )
   })
 })

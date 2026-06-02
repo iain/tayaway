@@ -25,7 +25,7 @@ const emit = defineEmits<{
     <MenuButton
       :aria-label="menuLabel"
       data-testid="rsvp-other-menu"
-      class="flex size-8 cursor-pointer items-center justify-center rounded-md text-ink-muted hover:bg-black/5 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:hover:bg-white/10 dark:hover:text-stone-200"
+      class="text-ink-muted focus-visible:outline-focus flex size-8 cursor-pointer items-center justify-center rounded-md hover:bg-black/5 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:bg-white/10 dark:hover:text-stone-200"
     >
       <EllipsisVerticalIcon class="size-5" aria-hidden="true" />
     </MenuButton>
@@ -38,7 +38,7 @@ const emit = defineEmits<{
       leave-to-class="transform opacity-0 scale-95"
     >
       <MenuItems
-        class="absolute right-0 z-10 mt-1 w-48 origin-top-right rounded-md bg-surface py-1 shadow-lg ring-1 ring-ring-hairline focus:outline-hidden"
+        class="bg-surface ring-ring-hairline absolute right-0 z-10 mt-1 w-48 origin-top-right rounded-md py-1 shadow-lg ring-1 focus:outline-hidden"
       >
         <MenuItem
           v-for="action in actions"
@@ -49,9 +49,7 @@ const emit = defineEmits<{
             type="button"
             :class="[
               active ? 'bg-btn-secondary-fill' : '',
-              action.danger
-                ? 'text-red-600 dark:text-red-400'
-                : 'text-ink',
+              action.danger ? 'text-red-600 dark:text-red-400' : 'text-ink',
               'block w-full px-4 py-2 text-left text-sm',
             ]"
             @click="emit('pick', action.kind)"

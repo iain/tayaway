@@ -56,7 +56,9 @@ describe('choreRosters store — updateAssignment', () => {
 
   it('optimistically applies changes to the pool during the API call', async () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([makeAssignment({ note: null })], { scope: Scope.workspace("test") })
+    pool.importObjects([makeAssignment({ note: null })], {
+      scope: Scope.workspace('test'),
+    })
     const store = useChoreRostersStore()
 
     let noteDuringCall: string | null | undefined
@@ -74,7 +76,9 @@ describe('choreRosters store — updateAssignment', () => {
 
   it('rolls back the optimistic update when the API call fails', async () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([makeAssignment({ note: 'original note' })], { scope: Scope.workspace("test") })
+    pool.importObjects([makeAssignment({ note: 'original note' })], {
+      scope: Scope.workspace('test'),
+    })
     const store = useChoreRostersStore()
 
     enqueueImpl = async () => {
@@ -91,7 +95,9 @@ describe('choreRosters store — updateAssignment', () => {
 
   it('keeps pending update when the request is queued offline', async () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([makeAssignment({ note: null })], { scope: Scope.workspace("test") })
+    pool.importObjects([makeAssignment({ note: null })], {
+      scope: Scope.workspace('test'),
+    })
     const store = useChoreRostersStore()
 
     enqueueImpl = async () => {

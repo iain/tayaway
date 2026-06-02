@@ -299,45 +299,45 @@ onMounted(() => {
         <div
           class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
         >
-        <p class="text-ink-muted">
-          <template v-if="pushSubscribed">
-            Push is on for this device.
-          </template>
-          <template v-else-if="push.permission.value === 'denied'">
-            Notifications are blocked in your browser. {{ denyHelpHint() }}
-          </template>
-          <template v-else>
-            Get alerts on this device when something time-sensitive happens.
-          </template>
-        </p>
-        <div class="flex shrink-0 flex-wrap items-center gap-2">
-          <AppButton
-            v-if="pushSubscribed"
-            variant="secondary"
-            size="sm"
-            :disabled="sendingTest"
-            @click="sendTestPush"
-          >
-            {{ sendingTest ? 'Sending…' : 'Send a test' }}
-          </AppButton>
-          <AppButton
-            v-if="pushSubscribed"
-            variant="secondary"
-            size="sm"
-            @click="disablePush"
-          >
-            Disable
-          </AppButton>
-          <AppButton
-            v-else
-            size="sm"
-            :disabled="
-              push.subscribing.value || push.permission.value === 'denied'
-            "
-            @click="enablePush"
-          >
-            {{ push.subscribing.value ? 'Enabling…' : 'Enable' }}
-          </AppButton>
+          <p class="text-ink-muted">
+            <template v-if="pushSubscribed">
+              Push is on for this device.
+            </template>
+            <template v-else-if="push.permission.value === 'denied'">
+              Notifications are blocked in your browser. {{ denyHelpHint() }}
+            </template>
+            <template v-else>
+              Get alerts on this device when something time-sensitive happens.
+            </template>
+          </p>
+          <div class="flex shrink-0 flex-wrap items-center gap-2">
+            <AppButton
+              v-if="pushSubscribed"
+              variant="secondary"
+              size="sm"
+              :disabled="sendingTest"
+              @click="sendTestPush"
+            >
+              {{ sendingTest ? 'Sending…' : 'Send a test' }}
+            </AppButton>
+            <AppButton
+              v-if="pushSubscribed"
+              variant="secondary"
+              size="sm"
+              @click="disablePush"
+            >
+              Disable
+            </AppButton>
+            <AppButton
+              v-else
+              size="sm"
+              :disabled="
+                push.subscribing.value || push.permission.value === 'denied'
+              "
+              @click="enablePush"
+            >
+              {{ push.subscribing.value ? 'Enabling…' : 'Enable' }}
+            </AppButton>
           </div>
         </div>
       </BaseCard>
@@ -435,10 +435,7 @@ onMounted(() => {
         </ul>
       </BaseCard>
 
-      <p
-        v-if="forcedFooterParts.length > 0"
-        class="text-ink-muted text-sm"
-      >
+      <p v-if="forcedFooterParts.length > 0" class="text-ink-muted text-sm">
         {{ forcedFooterParts.join(' ') }}
       </p>
     </template>

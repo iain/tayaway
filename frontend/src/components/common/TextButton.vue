@@ -39,7 +39,7 @@ const tag = computed(() => (props.href ? 'a' : 'button'))
         ? { href, target: '_blank', rel: 'noopener' }
         : { type: 'button', disabled }
     "
-    class="inline-flex cursor-pointer items-center gap-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-50"
+    class="focus-visible:outline-focus inline-flex cursor-pointer items-center gap-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
     :class="variantClass"
     @click="$emit('click')"
   >

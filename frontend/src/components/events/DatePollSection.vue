@@ -91,133 +91,138 @@ function handleVote(): void {
     <SectionHeading :icon="CalendarIcon" title="Date Poll" />
     <BaseCard padded>
       <template v-if="poll">
-      <!-- Status bar -->
-      <div
-        class="mb-4 flex items-center justify-between rounded-md px-3 py-2"
-        :class="{
-          'bg-green-50 dark:bg-green-900/20': isPollOpen(poll),
-          'bg-amber-50 dark:bg-amber-900/20': isPollExpired(poll),
-          'bg-blue-50 dark:bg-blue-900/20': isPollResolved(poll),
-        }"
-      >
-        <div class="flex items-center gap-2">
-          <ClockIcon
-            v-if="isPollOpen(poll)"
-            class="size-4 text-green-600 dark:text-green-400"
-          />
-          <ClockIcon
-            v-else-if="isPollExpired(poll)"
-            class="size-4 text-amber-600 dark:text-amber-400"
-          />
-          <CheckCircleSolidIcon
-            v-else
-            class="size-4 text-blue-600 dark:text-blue-400"
-          />
-          <span
-            class="text-sm font-medium"
-            :class="{
-              'text-green-700 dark:text-green-300': isPollOpen(poll),
-              'text-amber-700 dark:text-amber-300': isPollExpired(poll),
-              'text-blue-700 dark:text-blue-300': isPollResolved(poll),
-            }"
-          >
-            <template v-if="isPollOpen(poll)">
-              {{ deadlineText }}
-            </template>
-            <template v-else-if="isPollExpired(poll)">
-              Deadline passed - awaiting winner selection
-            </template>
-            <template v-else> Winner selected </template>
-          </span>
-        </div>
-      </div>
-
-      <!-- Vote CTA (when poll is open and has date ranges) -->
-      <div v-if="isPollOpen(poll) && rankedDateRanges.length > 0" class="mb-4">
-        <AppButton size="lg" class="w-full sm:w-auto" @click="handleVote">
-          <HandThumbUpIcon class="size-6" />
-          Vote on Dates
-        </AppButton>
-        <p
-          v-if="currentUserVoteStatus.total > 0"
-          class="mt-2 text-sm text-ink-muted"
-        >
-          <template
-            v-if="currentUserVoteStatus.voted === currentUserVoteStatus.total"
-          >
-            <CheckCircleSolidIcon class="inline size-4 text-green-500" />
-            You've voted on all {{ currentUserVoteStatus.total }} date options
-          </template>
-          <template v-else>
-            You've voted on {{ currentUserVoteStatus.voted }} of
-            {{ currentUserVoteStatus.total }} date options
-          </template>
-        </p>
-      </div>
-
-      <!-- Date ranges list -->
-      <div v-if="rankedDateRanges.length === 0" class="py-4 text-center">
-        <p class="text-ink-muted">No date ranges have been added yet.</p>
-      </div>
-
-      <div v-else class="space-y-3">
+        <!-- Status bar -->
         <div
-          v-for="(dateRange, index) in rankedDateRanges"
-          :key="dateRange.id"
-          class="rounded-md border p-4"
+          class="mb-4 flex items-center justify-between rounded-md px-3 py-2"
           :class="{
-            'border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/20':
-              isPollResolved(poll) && dateRange.id === poll.selectedDateRangeId,
-            'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-900/20':
-              !isPollResolved(poll) &&
-              index === 0 &&
-              dateRange.voteSummary.yes > 0,
-            'border-line': !isPollResolved(poll)
-              ? index !== 0 || dateRange.voteSummary.yes === 0
-              : dateRange.id !== poll.selectedDateRangeId,
-            'opacity-50':
-              isPollResolved(poll) && dateRange.id !== poll.selectedDateRangeId,
+            'bg-green-50 dark:bg-green-900/20': isPollOpen(poll),
+            'bg-amber-50 dark:bg-amber-900/20': isPollExpired(poll),
+            'bg-blue-50 dark:bg-blue-900/20': isPollResolved(poll),
           }"
         >
-          <div class="mb-2 flex items-center justify-between">
-            <span class="font-medium text-ink">
-              <span
-                v-if="
-                  isPollResolved(poll) &&
-                  dateRange.id === poll.selectedDateRangeId
-                "
-                class="mr-2 text-blue-600 dark:text-blue-400"
-              >
-                Winner
-              </span>
-              <span
-                v-else-if="index === 0 && dateRange.voteSummary.yes > 0"
-                class="mr-2 text-green-600 dark:text-green-400"
-              >
-                #1
-              </span>
-              <DateRangeDisplay
-                :start-date="dateRange.startDate"
-                :end-date="dateRange.endDate"
-              />
-            </span>
-            <span class="text-sm text-ink-muted">
-              {{ dateRange.voteSummary.total }}
-              {{ dateRange.voteSummary.total === 1 ? 'vote' : 'votes' }}
+          <div class="flex items-center gap-2">
+            <ClockIcon
+              v-if="isPollOpen(poll)"
+              class="size-4 text-green-600 dark:text-green-400"
+            />
+            <ClockIcon
+              v-else-if="isPollExpired(poll)"
+              class="size-4 text-amber-600 dark:text-amber-400"
+            />
+            <CheckCircleSolidIcon
+              v-else
+              class="size-4 text-blue-600 dark:text-blue-400"
+            />
+            <span
+              class="text-sm font-medium"
+              :class="{
+                'text-green-700 dark:text-green-300': isPollOpen(poll),
+                'text-amber-700 dark:text-amber-300': isPollExpired(poll),
+                'text-blue-700 dark:text-blue-300': isPollResolved(poll),
+              }"
+            >
+              <template v-if="isPollOpen(poll)">
+                {{ deadlineText }}
+              </template>
+              <template v-else-if="isPollExpired(poll)">
+                Deadline passed - awaiting winner selection
+              </template>
+              <template v-else> Winner selected </template>
             </span>
           </div>
-          <VoteSummaryBar :summary="dateRange.voteSummary" />
         </div>
-      </div>
 
-      <!-- Owner actions -->
-      <div
-        v-if="isOwner && canClosePoll(poll, rankedDateRanges.length)"
-        class="mt-4"
-      >
-        <AppButton @click="handleClosePoll">Select Winner</AppButton>
-      </div>
-    </template>
+        <!-- Vote CTA (when poll is open and has date ranges) -->
+        <div
+          v-if="isPollOpen(poll) && rankedDateRanges.length > 0"
+          class="mb-4"
+        >
+          <AppButton size="lg" class="w-full sm:w-auto" @click="handleVote">
+            <HandThumbUpIcon class="size-6" />
+            Vote on Dates
+          </AppButton>
+          <p
+            v-if="currentUserVoteStatus.total > 0"
+            class="text-ink-muted mt-2 text-sm"
+          >
+            <template
+              v-if="currentUserVoteStatus.voted === currentUserVoteStatus.total"
+            >
+              <CheckCircleSolidIcon class="inline size-4 text-green-500" />
+              You've voted on all {{ currentUserVoteStatus.total }} date options
+            </template>
+            <template v-else>
+              You've voted on {{ currentUserVoteStatus.voted }} of
+              {{ currentUserVoteStatus.total }} date options
+            </template>
+          </p>
+        </div>
+
+        <!-- Date ranges list -->
+        <div v-if="rankedDateRanges.length === 0" class="py-4 text-center">
+          <p class="text-ink-muted">No date ranges have been added yet.</p>
+        </div>
+
+        <div v-else class="space-y-3">
+          <div
+            v-for="(dateRange, index) in rankedDateRanges"
+            :key="dateRange.id"
+            class="rounded-md border p-4"
+            :class="{
+              'border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/20':
+                isPollResolved(poll) &&
+                dateRange.id === poll.selectedDateRangeId,
+              'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-900/20':
+                !isPollResolved(poll) &&
+                index === 0 &&
+                dateRange.voteSummary.yes > 0,
+              'border-line': !isPollResolved(poll)
+                ? index !== 0 || dateRange.voteSummary.yes === 0
+                : dateRange.id !== poll.selectedDateRangeId,
+              'opacity-50':
+                isPollResolved(poll) &&
+                dateRange.id !== poll.selectedDateRangeId,
+            }"
+          >
+            <div class="mb-2 flex items-center justify-between">
+              <span class="text-ink font-medium">
+                <span
+                  v-if="
+                    isPollResolved(poll) &&
+                    dateRange.id === poll.selectedDateRangeId
+                  "
+                  class="mr-2 text-blue-600 dark:text-blue-400"
+                >
+                  Winner
+                </span>
+                <span
+                  v-else-if="index === 0 && dateRange.voteSummary.yes > 0"
+                  class="mr-2 text-green-600 dark:text-green-400"
+                >
+                  #1
+                </span>
+                <DateRangeDisplay
+                  :start-date="dateRange.startDate"
+                  :end-date="dateRange.endDate"
+                />
+              </span>
+              <span class="text-ink-muted text-sm">
+                {{ dateRange.voteSummary.total }}
+                {{ dateRange.voteSummary.total === 1 ? 'vote' : 'votes' }}
+              </span>
+            </div>
+            <VoteSummaryBar :summary="dateRange.voteSummary" />
+          </div>
+        </div>
+
+        <!-- Owner actions -->
+        <div
+          v-if="isOwner && canClosePoll(poll, rankedDateRanges.length)"
+          class="mt-4"
+        >
+          <AppButton @click="handleClosePoll">Select Winner</AppButton>
+        </div>
+      </template>
 
       <!-- Modals -->
       <ClosePollModal

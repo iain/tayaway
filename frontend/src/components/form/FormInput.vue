@@ -56,9 +56,7 @@ const inputShell = computed(() =>
         class="relative flex items-center rounded-md pl-3"
         :class="wrapperShell"
       >
-        <div
-          class="text-ink-muted shrink-0 text-base select-none sm:text-sm/6"
-        >
+        <div class="text-ink-muted shrink-0 text-base select-none sm:text-sm/6">
           {{ prefix }}
         </div>
         <input
@@ -106,7 +104,10 @@ const inputShell = computed(() =>
           class="text-ink placeholder:text-ink-placeholder block w-full rounded-md py-1.5 pl-3 text-base disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm/6"
           :class="[inputShell, hasError ? 'pr-10' : 'pr-3']"
           @input="
-            $emit('update:modelValue', ($event.target as HTMLInputElement).value)
+            $emit(
+              'update:modelValue',
+              ($event.target as HTMLInputElement).value
+            )
           "
         />
         <span
@@ -118,7 +119,11 @@ const inputShell = computed(() =>
         </span>
       </div>
     </div>
-    <p v-if="hasError" :id="errorId" class="text-state-danger-ink text-meta mt-1">
+    <p
+      v-if="hasError"
+      :id="errorId"
+      class="text-state-danger-ink text-meta mt-1"
+    >
       {{ error }}
     </p>
   </div>

@@ -181,7 +181,9 @@ describe('api.get workspace-scope snapshot', () => {
     await inFlight
 
     expect(mockProcessPoolResponse).toHaveBeenCalledOnce()
-    expect(mockProcessPoolResponse.mock.calls[0]![1]).toBe(Scope.workspace('ws-A'))
+    expect(mockProcessPoolResponse.mock.calls[0]![1]).toBe(
+      Scope.workspace('ws-A')
+    )
   })
 
   it('passes undefined scope when no workspace is active', async () => {

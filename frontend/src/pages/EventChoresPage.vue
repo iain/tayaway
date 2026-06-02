@@ -276,9 +276,7 @@ onMounted(async () => {
 
 <template>
   <div>
-    <div v-if="!event" class="text-ink-muted">
-      Event not found
-    </div>
+    <div v-if="!event" class="text-ink-muted">Event not found</div>
 
     <div v-else-if="!eventHasDates">
       <EmptyState
@@ -303,11 +301,7 @@ onMounted(async () => {
     </div>
 
     <div v-else>
-      <PageHeader
-        title="Chores"
-        size="sm"
-        :icon="ClipboardDocumentListIcon"
-      >
+      <PageHeader title="Chores" size="sm" :icon="ClipboardDocumentListIcon">
         <ChoreRosterToolbar
           :can-delete="canDeleteRoster"
           @add-chore="openAddChore"
@@ -366,7 +360,7 @@ onMounted(async () => {
               v-model="newChoreName"
               type="text"
               placeholder="e.g. Cooking, Washing up"
-              class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder w-full rounded-md px-3 py-2 text-sm font-semibold outline-1 -outline-offset-1 placeholder:font-normal focus:outline-2 focus:outline-offset-2 focus:outline-focus"
+              class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus w-full rounded-md px-3 py-2 text-sm font-semibold outline-1 -outline-offset-1 placeholder:font-normal focus:outline-2 focus:outline-offset-2"
               :maxlength="255"
               :disabled="addChoreSubmitting"
               @keyup.escape="cancelAddChore"
@@ -386,7 +380,7 @@ onMounted(async () => {
               type="number"
               min="1"
               max="50"
-              class="bg-surface-sunken text-ink outline-line w-full rounded-md px-3 py-2 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 focus:outline-focus"
+              class="bg-surface-sunken text-ink outline-line focus:outline-focus w-full rounded-md px-3 py-2 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
               :disabled="addChoreSubmitting"
               @keyup.escape="cancelAddChore"
             />

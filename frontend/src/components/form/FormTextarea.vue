@@ -67,7 +67,11 @@ const shell = computed(() =>
         <ExclamationCircleIcon class="size-5" aria-hidden="true" />
       </span>
     </div>
-    <p v-if="hasError" :id="errorId" class="text-state-danger-ink text-meta mt-1">
+    <p
+      v-if="hasError"
+      :id="errorId"
+      class="text-state-danger-ink text-meta mt-1"
+    >
       {{ error }}
     </p>
     <p v-else-if="hint" class="text-ink-muted text-meta mt-3">

@@ -7,11 +7,11 @@
 <template>
   <div class="space-y-6">
     <div>
-      <p class="text-ink-faint mb-2 text-eyebrow">
-        p-card · m-card — 24px
-      </p>
+      <p class="text-ink-faint text-eyebrow mb-2">p-card · m-card — 24px</p>
       <div class="bg-surface ring-ring-hairline p-card rounded-md ring-1">
-        <div class="border-line bg-surface-page rounded border border-dashed p-2">
+        <div
+          class="border-line bg-surface-page rounded border border-dashed p-2"
+        >
           <p class="text-ink-muted text-meta text-center">Content</p>
         </div>
       </div>
@@ -22,27 +22,25 @@
     </div>
 
     <div>
-      <p class="text-ink-faint mb-2 text-eyebrow">
-        mt-section — 32px
-      </p>
+      <p class="text-ink-faint text-eyebrow mb-2">mt-section — 32px</p>
       <div class="space-y-0">
         <div class="bg-surface ring-ring-hairline rounded-md px-3 py-2 ring-1">
           <p class="text-ink text-meta">First named region</p>
         </div>
-        <div class="mt-section bg-surface ring-ring-hairline rounded-md px-3 py-2 ring-1">
+        <div
+          class="mt-section bg-surface ring-ring-hairline rounded-md px-3 py-2 ring-1"
+        >
           <p class="text-ink text-meta">Second named region</p>
         </div>
       </div>
       <p class="text-ink-muted text-meta mt-2">
-        Gap between named regions on a page — typically the distance between
-        two SectionHeading blocks.
+        Gap between named regions on a page — typically the distance between two
+        SectionHeading blocks.
       </p>
     </div>
 
     <div>
-      <p class="text-ink-faint mb-2 text-eyebrow">
-        mb-heading — 16px
-      </p>
+      <p class="text-ink-faint text-eyebrow mb-2">mb-heading — 16px</p>
       <div>
         <h4 class="text-section-heading text-ink mb-heading">A region title</h4>
         <div class="bg-surface ring-ring-hairline rounded-md px-3 py-2 ring-1">

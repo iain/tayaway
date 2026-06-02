@@ -25,9 +25,7 @@ defineProps<{
             🎂
           </div>
           <div class="min-w-0 flex-1">
-            <h3
-              class="truncate text-base font-semibold text-ink"
-            >
+            <h3 class="text-ink truncate text-base font-semibold">
               {{ member.name || member.email }}
             </h3>
             <p class="birthday-shimmer text-sm font-bold">

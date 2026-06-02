@@ -29,9 +29,7 @@ const grouped = computed(() => {
   <nav aria-label="Design gallery sections" class="text-meta">
     <ol class="space-y-6">
       <li v-for="group in grouped" :key="group.group">
-        <p
-          class="text-ink-faint mb-2 text-eyebrow"
-        >
+        <p class="text-ink-faint text-eyebrow mb-2">
           {{ group.group }}
         </p>
         <ul class="space-y-0.5">

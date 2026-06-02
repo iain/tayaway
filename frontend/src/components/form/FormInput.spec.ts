@@ -64,9 +64,9 @@ describe('FormInput', () => {
       expect(cls).toContain('focus:outline-focus')
       expect(cls).not.toContain('focus:outline-state-danger-outline')
 
-      expect(wrapper.find('[data-testid="form-input-error-icon"]').exists()).toBe(
-        true
-      )
+      expect(
+        wrapper.find('[data-testid="form-input-error-icon"]').exists()
+      ).toBe(true)
     })
 
     it('still wires the error state when a prefix is shown', () => {
@@ -80,18 +80,18 @@ describe('FormInput', () => {
         'focus-within:outline-state-danger-outline'
       )
       expect(wrapper.get('input').attributes('aria-invalid')).toBe('true')
-      expect(wrapper.find('[data-testid="form-input-error-icon"]').exists()).toBe(
-        true
-      )
+      expect(
+        wrapper.find('[data-testid="form-input-error-icon"]').exists()
+      ).toBe(true)
     })
   })
 
   describe('icon visibility', () => {
     it('does not render the error icon for healthy fields', () => {
       const wrapper = mount(FormInput, { props: baseProps })
-      expect(wrapper.find('[data-testid="form-input-error-icon"]').exists()).toBe(
-        false
-      )
+      expect(
+        wrapper.find('[data-testid="form-input-error-icon"]').exists()
+      ).toBe(false)
     })
   })
 })

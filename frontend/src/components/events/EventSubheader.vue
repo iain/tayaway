@@ -39,28 +39,26 @@ function tabClass(active: boolean): string {
 
 <template>
   <!-- Event subheader: name, dates, and tab navigation -->
-  <div class="border-b border-line bg-surface">
+  <div class="border-line bg-surface border-b">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div
         class="flex flex-col py-3 sm:flex-row sm:items-center sm:justify-between"
       >
         <div class="min-w-0">
-          <p
-            class="text-xs font-medium tracking-wide text-ink-muted uppercase"
-          >
+          <p class="text-ink-muted text-xs font-medium tracking-wide uppercase">
             Event
           </p>
           <router-link
             :to="`/events/${eventId}`"
             data-testid="event-name"
-            class="block truncate rounded text-lg font-semibold text-ink hover:text-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:hover:text-amber-400"
+            class="text-ink focus-visible:outline-focus block truncate rounded text-lg font-semibold hover:text-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:text-amber-400"
           >
             {{ event.name }}
           </router-link>
           <p
             v-if="eventHasDates(props.event)"
             data-testid="event-dates"
-            class="hidden items-center gap-1 text-xs text-ink-muted sm:flex"
+            class="text-ink-muted hidden items-center gap-1 text-xs sm:flex"
           >
             <CalendarDaysIcon class="size-3.5" />
             <DateRangeDisplay

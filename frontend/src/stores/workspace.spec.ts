@@ -57,10 +57,13 @@ describe('workspace store — switchWorkspace', () => {
       updatedAt: '2026-01-01T00:00:00.000Z',
     } as unknown as PoolObject
 
-    vi.mocked(poolDb.loadObjectsByType).mockImplementation(async (scope, type) => {
-      if (scope === Scope.workspace('ws-2') && type === 'event') return [cached]
-      return []
-    })
+    vi.mocked(poolDb.loadObjectsByType).mockImplementation(
+      async (scope, type) => {
+        if (scope === Scope.workspace('ws-2') && type === 'event')
+          return [cached]
+        return []
+      }
+    )
 
     const store = useWorkspaceStore()
     store.initialize(['ws-1', 'ws-2'])
@@ -73,7 +76,6 @@ describe('workspace store — switchWorkspace', () => {
       expect(pool.get('event', 'evt-cached')).toBeDefined()
     })
   })
-
 })
 
 describe('workspace store — removed from current workspace', () => {
@@ -101,7 +103,7 @@ describe('workspace store — removed from current workspace', () => {
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
     } as unknown as PoolObject
-    pool.importObjects([wsA, wsB], { scope: Scope.workspace("test") })
+    pool.importObjects([wsA, wsB], { scope: Scope.workspace('test') })
 
     const store = useWorkspaceStore()
     store.initialize(['ws-A', 'ws-B'])
@@ -125,7 +127,7 @@ describe('workspace store — removed from current workspace', () => {
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
     } as unknown as PoolObject
-    pool.importObjects([ws], { scope: Scope.workspace("test") })
+    pool.importObjects([ws], { scope: Scope.workspace('test') })
 
     const store = useWorkspaceStore()
     store.initialize(['ws-only'])

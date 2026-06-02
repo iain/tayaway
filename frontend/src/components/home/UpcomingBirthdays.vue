@@ -46,14 +46,10 @@ function formatBirthdayDate(member: PoolMember): string {
         <div class="flex items-center gap-4 px-4 py-4 sm:px-6">
           <AppAvatar :initials="getInitials(member)" />
           <div class="min-w-0 flex-1">
-            <h3
-              class="truncate text-base font-semibold text-ink"
-            >
+            <h3 class="text-ink truncate text-base font-semibold">
               {{ member.name || member.email }}
             </h3>
-            <div
-              class="text-ink-muted mt-0.5 flex items-center gap-1 text-sm"
-            >
+            <div class="text-ink-muted mt-0.5 flex items-center gap-1 text-sm">
               <CakeIcon class="size-4" />
               {{ formatBirthdayDate(member) }}
             </div>

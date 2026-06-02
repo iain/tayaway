@@ -13,7 +13,7 @@ defineEmits<{
 
 <template>
   <div
-    class="bg-surface-sunken focus-within:outline-focus flex items-center rounded-md px-3 outline-1 -outline-offset-1 outline-line focus-within:outline-2 focus-within:outline-offset-2"
+    class="bg-surface-sunken focus-within:outline-focus outline-line flex items-center rounded-md px-3 outline-1 -outline-offset-1 focus-within:outline-2 focus-within:outline-offset-2"
   >
     <div class="text-ink-muted shrink-0 text-sm/6 select-none">€</div>
     <input

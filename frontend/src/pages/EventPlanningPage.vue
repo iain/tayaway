@@ -76,9 +76,7 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
 
 <template>
   <div>
-    <div v-if="!event" class="text-ink-muted">
-      Event not found
-    </div>
+    <div v-if="!event" class="text-ink-muted">Event not found</div>
 
     <div v-else>
       <PageHeader title="Planning" size="sm" :icon="CalendarDaysIcon" />

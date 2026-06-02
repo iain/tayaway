@@ -155,11 +155,7 @@ async function handleUnmark(net: RecentSettlement) {
 
 <template>
   <div>
-    <PageHeader
-      title="Settle up"
-      :icon="ScaleIcon"
-      data-testid="page-title"
-    >
+    <PageHeader title="Settle up" :icon="ScaleIcon" data-testid="page-title">
       <template #subtitle>
         Net balances across every event in this workspace, so you only transfer
         what's actually owed.
@@ -200,19 +196,13 @@ async function handleUnmark(net: RecentSettlement) {
       <div
         v-for="i in 2"
         :key="i"
-        class="bg-surface flex items-center justify-between gap-4 rounded-lg px-4 py-3 shadow ring-1 ring-ring-hairline sm:px-6"
+        class="bg-surface ring-ring-hairline flex items-center justify-between gap-4 rounded-lg px-4 py-3 shadow ring-1 sm:px-6"
       >
         <div class="flex-1 space-y-2">
-          <div
-            class="bg-btn-secondary-fill h-4 w-2/3 animate-pulse rounded"
-          />
-          <div
-            class="bg-btn-secondary-fill h-3 w-1/3 animate-pulse rounded"
-          />
+          <div class="bg-btn-secondary-fill h-4 w-2/3 animate-pulse rounded" />
+          <div class="bg-btn-secondary-fill h-3 w-1/3 animate-pulse rounded" />
         </div>
-        <div
-          class="bg-btn-secondary-fill h-9 w-28 animate-pulse rounded-md"
-        />
+        <div class="bg-btn-secondary-fill h-9 w-28 animate-pulse rounded-md" />
       </div>
     </div>
 
@@ -253,7 +243,7 @@ async function handleUnmark(net: RecentSettlement) {
                 </p>
                 <button
                   type="button"
-                  class="text-ink-muted -mx-1 mt-0.5 inline-flex min-h-[44px] items-center gap-1 rounded-sm px-1 text-xs hover:text-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0 dark:hover:text-rose-400"
+                  class="text-ink-muted focus-visible:outline-focus -mx-1 mt-0.5 inline-flex min-h-[44px] items-center gap-1 rounded-sm px-1 text-xs hover:text-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 sm:min-h-0 dark:hover:text-rose-400"
                   :aria-expanded="isExpanded(net.id)"
                   @click="toggleExpanded(net.id)"
                 >
@@ -288,14 +278,11 @@ async function handleUnmark(net: RecentSettlement) {
                   <router-link
                     v-if="b.event?.id"
                     :to="`/events/${b.event.id}/expenses`"
-                    class="text-ink -mx-1 truncate rounded-sm px-1 hover:text-rose-600 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:hover:text-rose-400"
+                    class="text-ink focus-visible:outline-focus -mx-1 truncate rounded-sm px-1 hover:text-rose-600 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:text-rose-400"
                   >
                     {{ eventNameFor(b.event?.id) }}
                   </router-link>
-                  <span
-                    v-else
-                    class="text-ink truncate"
-                  >
+                  <span v-else class="text-ink truncate">
                     {{ eventNameFor(b.event?.id) }}
                   </span>
                   <span class="shrink-0">
@@ -343,7 +330,7 @@ async function handleUnmark(net: RecentSettlement) {
                 </p>
                 <button
                   type="button"
-                  class="text-ink-muted -mx-1 mt-0.5 inline-flex min-h-[44px] items-center gap-1 rounded-sm px-1 text-xs hover:text-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0 dark:hover:text-rose-400"
+                  class="text-ink-muted focus-visible:outline-focus -mx-1 mt-0.5 inline-flex min-h-[44px] items-center gap-1 rounded-sm px-1 text-xs hover:text-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 sm:min-h-0 dark:hover:text-rose-400"
                   :aria-expanded="isExpanded(net.id)"
                   @click="toggleExpanded(net.id)"
                 >
@@ -373,14 +360,11 @@ async function handleUnmark(net: RecentSettlement) {
                   <router-link
                     v-if="b.event?.id"
                     :to="`/events/${b.event.id}/expenses`"
-                    class="text-ink -mx-1 truncate rounded-sm px-1 hover:text-rose-600 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:hover:text-rose-400"
+                    class="text-ink focus-visible:outline-focus -mx-1 truncate rounded-sm px-1 hover:text-rose-600 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:text-rose-400"
                   >
                     {{ eventNameFor(b.event?.id) }}
                   </router-link>
-                  <span
-                    v-else
-                    class="text-ink truncate"
-                  >
+                  <span v-else class="text-ink truncate">
                     {{ eventNameFor(b.event?.id) }}
                   </span>
                   <span class="shrink-0">
@@ -444,7 +428,7 @@ async function handleUnmark(net: RecentSettlement) {
                 </p>
                 <button
                   type="button"
-                  class="text-ink-muted -mx-1 mt-0.5 inline-flex min-h-[44px] items-center gap-1 rounded-sm px-1 text-xs hover:text-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0 dark:hover:text-rose-400"
+                  class="text-ink-muted focus-visible:outline-focus -mx-1 mt-0.5 inline-flex min-h-[44px] items-center gap-1 rounded-sm px-1 text-xs hover:text-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 sm:min-h-0 dark:hover:text-rose-400"
                   :aria-expanded="isExpanded(net.id)"
                   @click="toggleExpanded(net.id)"
                 >
@@ -479,14 +463,11 @@ async function handleUnmark(net: RecentSettlement) {
                   <router-link
                     v-if="b.event?.id"
                     :to="`/events/${b.event.id}/expenses`"
-                    class="text-ink -mx-1 truncate rounded-sm px-1 hover:text-rose-600 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:hover:text-rose-400"
+                    class="text-ink focus-visible:outline-focus -mx-1 truncate rounded-sm px-1 hover:text-rose-600 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:text-rose-400"
                   >
                     {{ eventNameFor(b.event?.id) }}
                   </router-link>
-                  <span
-                    v-else
-                    class="text-ink truncate"
-                  >
+                  <span v-else class="text-ink truncate">
                     {{ eventNameFor(b.event?.id) }}
                   </span>
                   <span

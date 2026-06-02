@@ -52,7 +52,7 @@ function getResponseLabel(response: string) {
 
 <template>
   <div>
-    <div v-if="votes.length === 0" class="text-sm text-ink-muted italic">
+    <div v-if="votes.length === 0" class="text-ink-muted text-sm italic">
       No votes yet
     </div>
     <ul v-else class="space-y-2">
@@ -67,13 +67,13 @@ function getResponseLabel(response: string) {
           :class="getResponseColor(vote.response)"
         />
         <div class="min-w-0 flex-1">
-          <div class="text-sm text-ink">
+          <div class="text-ink text-sm">
             {{ vote.member?.name || vote.member?.email || 'Unknown member' }}
             <span class="text-ink-muted">
               - {{ getResponseLabel(vote.response) }}
             </span>
           </div>
-          <div v-if="vote.comment" class="mt-0.5 text-xs text-ink-muted">
+          <div v-if="vote.comment" class="text-ink-muted mt-0.5 text-xs">
             "{{ vote.comment }}"
           </div>
         </div>

@@ -36,10 +36,7 @@ describe('TimeAnchor', () => {
   })
 
   it('renders the verb slot before the relative time', () => {
-    const wrapper = render(
-      { at: '2026-05-13T09:00:00Z' },
-      { default: 'Sent' }
-    )
+    const wrapper = render({ at: '2026-05-13T09:00:00Z' }, { default: 'Sent' })
     expect(wrapper.text()).toContain('Sent')
     expect(wrapper.text()).toMatch(/Sent\s+3h ago/)
   })

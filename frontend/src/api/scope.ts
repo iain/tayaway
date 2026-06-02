@@ -35,7 +35,10 @@ export const Scope = {
   // the known shapes — keeps the parser honest about its contract.
   parse(raw: string): Scope | null {
     if (raw === PERSONAL) return raw as Scope
-    if (raw.startsWith(WORKSPACE_PREFIX) && raw.length > WORKSPACE_PREFIX.length) {
+    if (
+      raw.startsWith(WORKSPACE_PREFIX) &&
+      raw.length > WORKSPACE_PREFIX.length
+    ) {
       return raw as Scope
     }
     return null

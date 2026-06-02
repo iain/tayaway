@@ -259,13 +259,13 @@ function handleDelete(e: Event) {
       <div class="min-w-0 flex-1">
         <p
           :class="[
-            'truncate text-base text-ink',
+            'text-ink truncate text-base',
             hasBeenReverted ? 'line-through' : '',
           ]"
         >
           {{ expense.description }}
         </p>
-        <p class="mt-0.5 truncate text-xs text-ink-muted">
+        <p class="text-ink-muted mt-0.5 truncate text-xs">
           <span
             v-if="isRevert"
             class="mr-1 font-medium text-amber-700 dark:text-amber-400"
@@ -285,7 +285,7 @@ function handleDelete(e: Event) {
           {{ displayName }}
           <span
             v-if="filedOnBehalf"
-            class="ml-1 text-ink-muted"
+            class="text-ink-muted ml-1"
             data-testid="filed-by"
           >
             (filed by {{ filedByName }})
@@ -302,13 +302,13 @@ function handleDelete(e: Event) {
         </p>
       </div>
       <div class="flex items-center gap-3">
-        <span class="text-sm font-medium whitespace-nowrap text-ink">
+        <span class="text-ink text-sm font-medium whitespace-nowrap">
           <LedgerAmount :amount="expense.amount" />
         </span>
         <div class="flex items-center gap-1">
           <LockClosedIcon
             v-if="isSettled"
-            class="size-4 text-ink-muted"
+            class="text-ink-muted size-4"
             title="Part of a settlement"
           />
           <IconButton
@@ -350,7 +350,7 @@ function handleDelete(e: Event) {
             </IconButton>
           </span>
           <ChevronDownIcon
-            class="size-4 text-ink-muted transition-transform duration-200"
+            class="text-ink-muted size-4 transition-transform duration-200"
             :class="{ 'rotate-180': expanded }"
           />
         </div>
@@ -362,19 +362,19 @@ function handleDelete(e: Event) {
       data-testid="expense-detail"
       class="border-t border-gray-100 px-4 pt-3 pb-3 dark:border-stone-700"
     >
-      <p v-if="payers.length === 0" class="text-xs text-ink-muted">
+      <p v-if="payers.length === 0" class="text-ink-muted text-xs">
         No one was attending on these dates.
       </p>
       <template v-else>
         <p
           v-if="hasParticipants"
-          class="mb-1.5 text-xs font-medium text-ink-muted"
+          class="text-ink-muted mb-1.5 text-xs font-medium"
         >
           {{ participantsHeading }}
         </p>
         <table class="w-full text-xs">
           <thead>
-            <tr class="text-left text-ink-muted uppercase">
+            <tr class="text-ink-muted text-left uppercase">
               <th class="pr-2 pb-1">Person</th>
               <th v-if="!hasParticipants" class="pr-2 pb-1">Days</th>
               <th class="pb-1 text-right">Share</th>
@@ -389,7 +389,7 @@ function handleDelete(e: Event) {
                 {{ payer.name }}
                 <span
                   v-if="payer.factor != null && payer.factor !== 1"
-                  class="ml-1 text-ink-muted"
+                  class="text-ink-muted ml-1"
                 >
                   {{ formatFactor(payer.factor) }}
                 </span>
@@ -413,12 +413,11 @@ function handleDelete(e: Event) {
     size="sm"
     @close="closeRevertModal"
   >
-    <p class="text-sm text-ink-muted">
+    <p class="text-ink-muted text-sm">
       This adds a mirror-image entry of
       <LedgerAmount :amount="expense.amount" /> that offsets the original. The
-      reverted expense stays visible for history. If
-      you want to re-enter it with different details, add a new expense
-      afterwards.
+      reverted expense stays visible for history. If you want to re-enter it
+      with different details, add a new expense afterwards.
     </p>
     <p
       v-if="revertError"
@@ -455,7 +454,7 @@ function handleDelete(e: Event) {
     data-testid="expense-blocked-modal"
     @close="showBlockedActionModal = false"
   >
-    <p class="text-sm text-ink-muted">
+    <p class="text-ink-muted text-sm">
       {{ blockedActionMessage }}
     </p>
     <div class="mt-6 flex justify-end">

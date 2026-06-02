@@ -146,15 +146,12 @@ function handleMouseLeave(): void {
 
 <template>
   <div class="w-full">
-    <div
-      v-if="!hideHeader"
-      class="mb-4 text-center font-semibold text-ink"
-    >
+    <div v-if="!hideHeader" class="text-ink mb-4 text-center font-semibold">
       {{ monthName }} {{ year }}
     </div>
 
     <div
-      class="mb-1 grid grid-cols-7 text-center text-xs font-medium text-ink-muted"
+      class="text-ink-muted mb-1 grid grid-cols-7 text-center text-xs font-medium"
     >
       <div v-for="day in weekDays" :key="day" class="py-1.5">
         {{ day }}
@@ -167,11 +164,9 @@ function handleMouseLeave(): void {
         :key="day.dateString"
         :data-testid="`calendar-day-${day.dateString}`"
         type="button"
-        class="relative aspect-square text-sm transition-colors duration-100 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        class="focus-visible:outline-focus relative aspect-square text-sm transition-colors duration-100 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-2"
         :class="[
-          day.isCurrentMonth
-            ? 'text-ink'
-            : 'text-gray-400 dark:text-gray-600',
+          day.isCurrentMonth ? 'text-ink' : 'text-gray-400 dark:text-gray-600',
           getDayClasses(day.dateString),
         ]"
         @click="handleClick(day)"
