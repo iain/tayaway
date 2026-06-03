@@ -43,14 +43,14 @@
 #
 #   # Every run after that, including all Phase-4+ deploys. Direct root
 #   # ssh is locked after first-run setup, so connect as tayaway here.
-#   mise run vm:provision tayaway@new.tayaway.nl
+#   mise run vm:provision tayaway@tayaway.nl
 
 set -euo pipefail
 
 if [ $# -lt 1 ]; then
   echo "usage: $0 <ssh-target>" >&2
   echo "  first run:  $0 ubuntu@<ip>   # or root@, debian@ — whatever the image exposes" >&2
-  echo "  later runs: $0 tayaway@new.tayaway.nl" >&2
+  echo "  later runs: $0 tayaway@tayaway.nl   # or tayaway@<ip> while commissioning a fresh box" >&2
   exit 2
 fi
 
@@ -659,7 +659,7 @@ EOF
   (ubuntu kept as fallback). Update ~/.ssh/config so subsequent runs
   find the new port:
 
-    Host new.tayaway.nl
+    Host tayaway.nl
       Port 50022
       User tayaway
       IdentityFile ~/.ssh/id_ed25519

@@ -14,8 +14,8 @@
 # and is never touched here.
 #
 # Usage:
-#   mise run deploy tayaway@new.tayaway.nl            # deploy HEAD
-#   mise run deploy tayaway@new.tayaway.nl <git-sha>  # deploy a specific SHA
+#   mise run deploy tayaway@tayaway.nl            # deploy HEAD
+#   mise run deploy tayaway@tayaway.nl <git-sha>  # deploy a specific SHA
 #
 # Env overrides:
 #   DEPLOY_HEALTH_URL   health endpoint to poll (default https://<host>/health,
@@ -31,7 +31,7 @@ set -euo pipefail
 
 if [ $# -lt 1 ]; then
   echo "usage: $0 <ssh-target> [git-sha]" >&2
-  echo "  e.g. $0 tayaway@new.tayaway.nl" >&2
+  echo "  e.g. $0 tayaway@tayaway.nl" >&2
   exit 2
 fi
 

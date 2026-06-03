@@ -10,6 +10,14 @@
 # before reloading.
 import /etc/caddy/sites/*.caddy
 
+# www → apex redirect. In production WWW_SITE_ADDRESS is https://www.tayaway.nl,
+# so Caddy provisions an LE cert for www and 301s every request to the apex
+# (canonical host). Unset locally / in e2e, it falls back to a localhost label
+# that never triggers ACME and doesn't collide with the main :8080 block.
+{$WWW_SITE_ADDRESS:http://localhost:8081} {
+	redir https://tayaway.nl{uri} permanent
+}
+
 {$SITE_ADDRESS:http://:8080} {
 	encode zstd gzip
 

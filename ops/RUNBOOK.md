@@ -8,8 +8,8 @@ stack already exists and you need to operate or repair it.
 Conventions:
 
 - **From your laptop** (in the repo): `mise run deploy …`, `mise run vm:provision …`, `tofu …`.
-- **On the box**: everything else. SSH in with `ssh new.tayaway.nl` (port 50022, user `tayaway`, set up in `~/.ssh/config` — see README step 7). Almost everything needs `sudo` (rootful podman + system units).
-- `$HOST` below means the box's public name — `new.tayaway.nl` during commissioning, `tayaway.nl` after cutover.
+- **On the box**: everything else. SSH in with `ssh tayaway.nl` (port 50022, user `tayaway`, set up in `~/.ssh/config` — see README step 7). Almost everything needs `sudo` (rootful podman + system units).
+- The box's public name is `tayaway.nl`. (§7 below is the historical one-time cutover, when the new box was reached at `new.tayaway.nl` while `tayaway.nl` still pointed at the old box — that subdomain has since been removed.)
 
 ---
 
@@ -81,8 +81,8 @@ From your laptop, after the App-images workflow has built the SHA (push to
 `main` triggers it):
 
 ```bash
-mise run deploy tayaway@new.tayaway.nl            # deploys HEAD
-mise run deploy tayaway@new.tayaway.nl <git-sha>  # or a specific SHA
+mise run deploy tayaway@tayaway.nl            # deploys HEAD
+mise run deploy tayaway@tayaway.nl <git-sha>  # or a specific SHA
 ```
 
 This pulls the `backend`/`edge`/`geoip` images, rewrites their tags in the
@@ -97,7 +97,7 @@ The deploy auto-rolls-back on a failed `/health`. To roll back *after* a
 deploy that went green but is misbehaving, just deploy the last-good SHA:
 
 ```bash
-mise run deploy tayaway@new.tayaway.nl <last-good-sha>
+mise run deploy tayaway@tayaway.nl <last-good-sha>
 ```
 
 Safe because all migrations are additive (see `doc/database-migrations.md`) —
@@ -116,12 +116,12 @@ few minutes' lag from merge to live.
 
 ```bash
 # Force a check now (don't wait for the timer):
-ssh new.tayaway.nl 'sudo systemctl start self-deploy.service'
-ssh new.tayaway.nl 'sudo journalctl -u self-deploy -n 50 --no-pager'
+ssh tayaway.nl 'sudo systemctl start self-deploy.service'
+ssh tayaway.nl 'sudo journalctl -u self-deploy -n 50 --no-pager'
 
 # Pause / resume CD (e.g. before a manual pin, or during an incident):
-ssh new.tayaway.nl 'sudo systemctl stop --now self-deploy.timer'   # pause
-ssh new.tayaway.nl 'sudo systemctl start self-deploy.timer'        # resume
+ssh tayaway.nl 'sudo systemctl stop --now self-deploy.timer'   # pause
+ssh tayaway.nl 'sudo systemctl start self-deploy.timer'        # resume
 ```
 
 A failed self-deploy rolls back and writes the bad SHA to
@@ -133,8 +133,8 @@ clears it automatically). It also pages via ntfy (`OnFailure=`).
 otherwise the next tick re-advances the box to `:main`. To pin an older SHA:
 
 ```bash
-ssh new.tayaway.nl 'sudo systemctl stop --now self-deploy.timer'
-mise run deploy tayaway@new.tayaway.nl <last-good-sha>
+ssh tayaway.nl 'sudo systemctl stop --now self-deploy.timer'
+mise run deploy tayaway@tayaway.nl <last-good-sha>
 # resume CD once main is fixed-forward past the bad SHA
 ```
 
@@ -150,7 +150,7 @@ lapses (e.g. after a rebuild), self-deploy can't pull and pages — re-run
 Edit under `ops/`, then re-run the idempotent provisioner from your laptop:
 
 ```bash
-mise run vm:provision tayaway@new.tayaway.nl
+mise run vm:provision tayaway@tayaway.nl
 ```
 
 It syncs `ops/quadlet/` and `ops/host/`, delivers the env files,
@@ -159,63 +159,63 @@ It syncs `ops/quadlet/` and `ops/host/`, delivers the env files,
 changed:
 
 ```bash
-ssh new.tayaway.nl 'sudo systemctl restart web edge'
+ssh tayaway.nl 'sudo systemctl restart web edge'
 ```
 
 ### Restart / stop / start a service
 
 ```bash
-ssh new.tayaway.nl 'sudo systemctl restart web'      # one service
-ssh new.tayaway.nl 'sudo systemctl stop edge web'    # take the site offline
-ssh new.tayaway.nl 'sudo systemctl start edge'       # pulls web→migrate→db via deps
+ssh tayaway.nl 'sudo systemctl restart web'      # one service
+ssh tayaway.nl 'sudo systemctl stop edge web'    # take the site offline
+ssh tayaway.nl 'sudo systemctl start edge'       # pulls web→migrate→db via deps
 ```
 
 After a service hits its crash-loop limit (`StartLimitBurst=3` in 60s) systemd
 refuses to start it until you clear the failure:
 
 ```bash
-ssh new.tayaway.nl 'sudo systemctl reset-failed web && sudo systemctl start web'
+ssh tayaway.nl 'sudo systemctl reset-failed web && sudo systemctl start web'
 ```
 
 ### Logs
 
 ```bash
-ssh new.tayaway.nl 'sudo journalctl -u web -n 200 --no-pager'   # recent
-ssh new.tayaway.nl 'sudo journalctl -u web -f'                  # follow
-ssh new.tayaway.nl 'sudo journalctl -u edge -f'                 # Caddy access log (JSON)
-ssh new.tayaway.nl 'sudo journalctl -u db --since "30 min ago"'
+ssh tayaway.nl 'sudo journalctl -u web -n 200 --no-pager'   # recent
+ssh tayaway.nl 'sudo journalctl -u web -f'                  # follow
+ssh tayaway.nl 'sudo journalctl -u edge -f'                 # Caddy access log (JSON)
+ssh tayaway.nl 'sudo journalctl -u db --since "30 min ago"'
 ```
 
 ### Database console
 
 ```bash
-ssh new.tayaway.nl 'sudo podman exec -it db psql -U tayaway -d tayaway'
+ssh tayaway.nl 'sudo podman exec -it db psql -U tayaway -d tayaway'
 ```
 
 ### Backups
 
 ```bash
 # List what's in the bucket:
-ssh new.tayaway.nl 'sudo podman exec db wal-g backup-list'
+ssh tayaway.nl 'sudo podman exec db wal-g backup-list'
 
 # Take a backup right now (also re-arms confidence after a manual change):
-ssh new.tayaway.nl 'sudo systemctl start walg-backup.service'
+ssh tayaway.nl 'sudo systemctl start walg-backup.service'
 
 # Prove a backup is actually restorable, on demand (throwaway container,
 # touches nothing in prod):
-ssh new.tayaway.nl 'sudo systemctl start walg-restore-drill.service'
-ssh new.tayaway.nl 'sudo journalctl -u walg-restore-drill -n 20 --no-pager'
+ssh tayaway.nl 'sudo systemctl start walg-restore-drill.service'
+ssh tayaway.nl 'sudo journalctl -u walg-restore-drill -n 20 --no-pager'
 #   → "[drill] recovered cluster exposes N public tables" / "restore drill passed"
 
 # Is continuous WAL archiving healthy? (failed should be 0)
-ssh new.tayaway.nl "sudo podman exec db psql -U tayaway -d tayaway -tAc \
+ssh tayaway.nl "sudo podman exec db psql -U tayaway -d tayaway -tAc \
   'SELECT archived_count, failed_count, last_archived_time FROM pg_stat_archiver;'"
 ```
 
 ### Refresh GeoIP now
 
 ```bash
-ssh new.tayaway.nl 'sudo systemctl start geoip.service'
+ssh tayaway.nl 'sudo systemctl start geoip.service'
 # web picks up the new file on its next lookup (mtime cache) — no restart.
 ```
 
@@ -227,8 +227,8 @@ playbook in issue #440 (Phase 10). The general shape:
 
 ```bash
 mise x sops -- sops backend/.env.production.yaml   # edit + re-encrypt on save
-mise run vm:provision tayaway@new.tayaway.nl       # redeliver to /etc/tayaway/env
-ssh new.tayaway.nl 'sudo systemctl restart tayaway-db-secret web migrate'
+mise run vm:provision tayaway@tayaway.nl       # redeliver to /etc/tayaway/env
+ssh tayaway.nl 'sudo systemctl restart tayaway-db-secret web migrate'
 ```
 
 ---
@@ -434,7 +434,7 @@ to that topic in the ntfy app/web to receive alerts.
 Test the path (will itself be rate-limited if you hammer it):
 
 ```bash
-ssh new.tayaway.nl 'sudo systemctl start notify@manual-test.service'
+ssh tayaway.nl 'sudo systemctl start notify@manual-test.service'
 ```
 
 ---
@@ -459,7 +459,15 @@ web → edge) and any explicit `systemctl restart`.
 
 ---
 
-## 7. Cutover (old box → new box, the one-time apex flip)
+## 7. Cutover (old box → new box, the one-time apex flip) — *completed 2026-05-29*
+
+> **Historical record, kept for a future rebuild-of-cutover.** Done on
+> 2026-05-29; the old box is decommissioned and `new.tayaway.nl` removed. The
+> apex (and `www`) are now managed directly in `ops/dns.tf` against
+> `var.vps_ipv4` / `var.vps_ipv6` — the `apex_ipv4` / `apex_ipv6` variables
+> referenced below no longer exist. For a from-scratch rebuild (old box gone),
+> point the apex straight at the new box per `README.md` rather than running
+> this two-box dance.
 
 Moving production `tayaway.nl` off the old Capistrano VPS (`51.195.43.146`)
 onto the new podman box (`new.tayaway.nl` = `51.178.47.84` / `…:2460`). It is
@@ -567,20 +575,19 @@ ssh tayaway.nl 'sudo systemctl start tayaway-falcon'   # if you stopped it
 Caveat: any writes made on the new box after cutover won't be on the old box.
 Rolling back is clean only in the first minutes, before real traffic lands.
 
-### After it's settled (keep the old box warm ~1 week, then decommission)
+### After it's settled — *done*
 
-**DNS cleanup** — one coordinated `tofu apply` so the drift check stays green:
+Post-cutover DNS cleanup, all landed:
 
-- Remove the `new.tayaway.nl` A/AAAA records (`ovh_domain_zone_record.new_a` /
-  `new_aaaa` in `ops/dns.tf`).
-- Repoint or drop **`www.tayaway.nl`**. It is NOT tofu-managed and still points
-  at the OLD box (`A → 51.195.43.146`), so it breaks when the box dies. Either
-  bring it into `ops/dns.tf` aimed at the new box **and** add a `www`→apex
-  redirect block to the edge Caddyfile, or delete the record if www is unused.
-- Optionally raise `apex_ttl` back to `0` (zone default 3600) now the flip is
-  done.
-- Drop `EXTRA_CONNECT_SRC` for good (already removed from the env at step 6;
-  delete any dangling reference/comment in `edge.container`).
+- **`new.tayaway.nl` A/AAAA removed** from `ops/dns.tf` and the zone.
+- **`www.tayaway.nl` adopted** into `ops/dns.tf`, repointed at the box
+  (dual-stack A/AAAA), with a `www`→apex 301 redirect in `containers/Caddyfile`
+  (gated by `WWW_SITE_ADDRESS` on `edge.container`).
+- **OVH-email records adopted** (MX, SPF, DKIM selectors, DMARC, autodiscover
+  SRV) so the mail config is in tofu. OVH's auto-generated zone records (NS, the
+  `ftp` CNAME, the `N|…` web-redirection TXTs) are deliberately left unmanaged.
+- `apex_ttl` left at 300 (harmless; keeps future flips quick).
+- `EXTRA_CONNECT_SRC` dropped from the edge env at cutover.
 
 **Decommission the old VPS:**
 

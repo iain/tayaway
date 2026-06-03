@@ -118,12 +118,15 @@ Wait for the order to provision (5–10 minutes); OVH emails the
 hostname and IP when ready. Both also show under **My services → VPS**
 in the manager.
 
-### 3. Add the DNS record + S3 bucket
+### 3. Point DNS at the box + create the S3 bucket
 
-`TF_VAR_vps_ipv4` (committed in `ops/mise.toml`) needs to point at the
-address from the previous step before the apply — update it and commit
-the change, or override on the command line for a one-off. This creates
-`new.tayaway.nl` and the WAL-G bucket + S3 user.
+`TF_VAR_vps_ipv4` / `TF_VAR_vps_ipv6` (committed in `ops/mise.toml`) need
+to point at the addresses from the previous step before the apply —
+update them and commit, or override on the command line for a one-off.
+This points the apex + `www` A/AAAA at the box and creates the WAL-G
+bucket + S3 user. (Recovering into a box that runs alongside a still-live
+one instead? Reach the new box by IP during commissioning and hold the
+apply until you're ready to flip the apex.)
 
 ```fish
 cd ..
@@ -204,19 +207,19 @@ to add. Do it now so future runs find the new port without flags.
 Append the block the script printed:
 
 ```
-Host new.tayaway.nl
+Host tayaway.nl
   Port 50022
   User tayaway
   IdentityFile ~/.ssh/id_ed25519
 ```
 
-`ssh new.tayaway.nl` should now connect on 50022 as tayaway. If you
-need to reach it by IP during commissioning, add a second
-`Host <vps-ip>` block with the same body.
+`ssh tayaway.nl` connects on 50022 as tayaway once the apex points at
+the box (step 3). Before that — or for a fresh box ordered alongside a
+live one — reach it by IP: add a `Host <vps-ip>` block with the same body.
 
 ### 8. Bring up the quadlet stack
 
-Future `mise run vm:provision tayaway@new.tayaway.nl` runs are
+Future `mise run vm:provision tayaway@tayaway.nl` runs are
 idempotent — both sentinels are set, all per-run steps converge. From
 Phase 4 on, this is also what delivers the stack: it syncs
 `quadlet/*` to `/etc/containers/systemd/`, delivers the env files to
@@ -234,7 +237,7 @@ One prerequisite the provision can't do for you:
   (rootful podman, so as root):
 
   ```fish
-  ssh new.tayaway.nl 'sudo podman login ghcr.io -u <github-user>'
+  ssh tayaway.nl 'sudo podman login ghcr.io -u <github-user>'
   ```
 
 - **Bump the image SHAs** in `images.txt` and `quadlet/*.container` to
@@ -247,14 +250,14 @@ so they auto-start on boot; the first time, start them by hand. Starting
 dependencies; `geoip` is one-shot and seeds the volume:
 
 ```fish
-mise run vm:provision tayaway@new.tayaway.nl
-ssh new.tayaway.nl 'sudo systemctl start geoip.service edge.service'
-ssh new.tayaway.nl 'systemctl status web edge db --no-pager'
+mise run vm:provision tayaway@tayaway.nl
+ssh tayaway.nl 'sudo systemctl start geoip.service edge.service'
+ssh tayaway.nl 'systemctl status web edge db --no-pager'
 ```
 
-Caddy provisions a real Let's Encrypt cert for `new.tayaway.nl` on
-first start (`SITE_ADDRESS` in `edge.container`). Watch it land with
-`journalctl -u edge -f`. Cutover to the apex is a separate Phase 7 PR.
+Caddy provisions real Let's Encrypt certs for `tayaway.nl` and
+`www.tayaway.nl` on first start (`SITE_ADDRESS` / `WWW_SITE_ADDRESS` in
+`edge.container`). Watch them land with `journalctl -u edge -f`.
 
 ## Total-loss recovery
 
@@ -262,8 +265,8 @@ The whole VPS is gone or unrecoverable.
 
 1. **State bucket also gone:** `cd ops/bootstrap && tofu apply` — rare.
 2. Order a new VPS-1 in the OVH manager (step 2 above).
-3. `tofu apply -var "vps_ipv4=<new-ip>" …` to repoint `new.tayaway.nl`
-   and recreate the WAL-G credentials.
+3. `tofu apply -var "vps_ipv4=<new-ip>" …` to point the apex + `www` at
+   the new box and recreate the WAL-G credentials.
 4. `mise run vm:provision` as the image's default user on port 22
    (step 4).
 5. scp the age key (step 5).
