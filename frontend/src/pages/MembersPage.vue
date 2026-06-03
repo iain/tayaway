@@ -479,33 +479,33 @@ onMounted(() => {
 .birthday-card {
   background: linear-gradient(
     135deg,
-    #fef3c7 0%,
-    #fce7f3 25%,
-    #ede9fe 50%,
-    #dbeafe 75%,
-    #fef3c7 100%
+    var(--color-amber-100) 0%,
+    var(--color-pink-100) 25%,
+    var(--color-violet-100) 50%,
+    var(--color-blue-100) 75%,
+    var(--color-amber-100) 100%
   );
   background-size: 300% 300%;
   animation: birthday-gradient 4s ease infinite;
   box-shadow:
-    0 0 15px rgba(251, 191, 36, 0.4),
-    0 0 30px rgba(244, 114, 182, 0.2);
+    0 0 15px color-mix(in oklab, var(--color-amber-400) 40%, transparent),
+    0 0 30px color-mix(in oklab, var(--color-pink-400) 20%, transparent);
 }
 
 :where(.dark) .birthday-card {
   background: linear-gradient(
     135deg,
-    #78350f 0%,
-    #831843 25%,
-    #4c1d95 50%,
-    #1e3a5f 75%,
-    #78350f 100%
+    var(--color-amber-900) 0%,
+    var(--color-pink-900) 25%,
+    var(--color-violet-950) 50%,
+    var(--color-blue-950) 75%,
+    var(--color-amber-900) 100%
   );
   background-size: 300% 300%;
   animation: birthday-gradient 4s ease infinite;
   box-shadow:
-    0 0 15px rgba(251, 191, 36, 0.3),
-    0 0 30px rgba(244, 114, 182, 0.15);
+    0 0 15px color-mix(in oklab, var(--color-amber-400) 30%, transparent),
+    0 0 30px color-mix(in oklab, var(--color-pink-400) 15%, transparent);
 }
 
 @keyframes birthday-gradient {
@@ -535,11 +535,11 @@ onMounted(() => {
 .birthday-shimmer {
   background: linear-gradient(
     90deg,
-    #f59e0b,
-    #ec4899,
-    #8b5cf6,
-    #f59e0b,
-    #ec4899
+    var(--color-amber-500),
+    var(--color-pink-500),
+    var(--color-violet-500),
+    var(--color-amber-500),
+    var(--color-pink-500)
   );
   background-size: 200% auto;
   background-clip: text;
