@@ -198,7 +198,7 @@ jobs:
       # Accepted dormant findings in the gated images are listed in .trivyignore.
       - name: Install Trivy
         if: github.event_name == 'pull_request'
-        uses: aquasecurity/setup-trivy@v0.2.6
+        uses: aquasecurity/setup-trivy@v0.3.0
 
       - name: Scan images for CVEs
         if: github.event_name == 'pull_request'
