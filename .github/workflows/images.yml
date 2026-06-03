@@ -237,7 +237,7 @@ jobs:
       - name: Detect container-stack changes
         if: github.event_name == 'pull_request'
         id: changes
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           filters: |
             e2e:
