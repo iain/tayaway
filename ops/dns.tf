@@ -1,69 +1,29 @@
 # DNS records this config owns.
 #
-# Post-cutover (2026-05-29): the apex (`tayaway.nl`) A/AAAA are imported into
-# state and point at the new box — they serve production. The `new.tayaway.nl`
-# A/AAAA below are a now-redundant commissioning leftover, still live; they get
-# dropped in the post-cutover DNS cleanup (a `tofu apply`, not just a config
-# edit, so the drift check stays green).
+# We deliberately leave OVH's auto-generated zone infrastructure UNMANAGED, so a
+# stray `tofu apply` can't touch it:
+#   - the apex NS records (dns14/ns14.ovh.net)
+#   - the default `ftp` CNAME
+#   - OVH's web-redirection marker TXTs (`1|…` at the apex, `3|welcome` at www)
+#
+# Everything meaningful is adopted below: the apex + www A/AAAA pointing at our
+# box, and the OVH-email cluster (MX, SPF, DKIM, DMARC, autodiscover SRV).
+#
+# Records that already exist in the zone must be `tofu import`ed before the
+# first apply that declares them, or tofu will try to create duplicates. The
+# OVH provider's import id is "<recordID>.<zone>" (record id first, dotted — NOT
+# "<zone>/<recordID>"). Find ids via the OVH API:
+#   GET /domain/zone/tayaway.nl/record           # all ids
+#   GET /domain/zone/tayaway.nl/record/<id>      # one record
+# See ops/README.md for the full recipe.
 
-# ── Commissioning host: new.tayaway.nl ───────────────────────────────────────
-# Public hostname for Caddy's ACME cert and the e2e suite during
-# commissioning. Both A and AAAA so the box is reachable over IPv4 and IPv6
-# (Caddy answers on both; a v6-only client otherwise can't reach it). 5-minute
-# TTL so the records can be torn down quickly after cutover. Redundant now that
-# the apex serves production — pending removal in the post-cutover DNS cleanup.
-resource "ovh_domain_zone_record" "new_a" {
-  zone      = var.domain
-  subdomain = var.new_subdomain
-  fieldtype = "A"
-  ttl       = 300
-  target    = var.vps_ipv4
-}
-
-resource "ovh_domain_zone_record" "new_aaaa" {
-  zone      = var.domain
-  subdomain = var.new_subdomain
-  fieldtype = "AAAA"
-  ttl       = 300
-  target    = var.vps_ipv6
-}
-
-# ── Apex cutover (Phase 7) ────────────────────────────────────────────────────
-# tayaway.nl A + AAAA already exist in OVH pointing at the OLD box. These
-# resources ADOPT them — so before the first apply that includes them they
-# MUST be imported, or tofu will try to create duplicates:
-#
-#   1. Find the existing record IDs (same OVH creds tofu uses, loaded by
-#      ops/mise.toml). The apex is the empty subdomain:
-#        mise exec -- bash -c 'source <(...) ...'   # or via the OVH API:
-#        GET /domain/zone/tayaway.nl/record?fieldType=A&subDomain=
-#        GET /domain/zone/tayaway.nl/record?fieldType=AAAA&subDomain=
-#   2. Import each. The OVH provider's import id is "<recordID>.<zone>"
-#      (record id first, dotted — NOT "<zone>/<recordID>"):
-#        mise exec -- tofu import ovh_domain_zone_record.apex_a    <ID_A>.tayaway.nl
-#        mise exec -- tofu import ovh_domain_zone_record.apex_aaaa <ID_AAAA>.tayaway.nl
-#   3. `tofu plan` is then empty — the adopted records match the config below.
-#
-# (Already imported as of the 2026-05-26 cutover-prep session; this is the
-# recipe for a rebuild.)
-#
-# Post-cutover, var.apex_ipv4/apex_ipv6 default to the NEW box and apex_ttl is
-# 300 (see variables.tf), matching the live records — so the plan stays empty
-# and the drift check green. Before cutover these defaulted to the old box; the
-# sequence below is kept as the rebuild recipe.
-#
-# Cutover sequence:
-#   ~24h before:  set apex_ttl = 300, apply   # TTL only; still points at old
-#   at cutover:   set apex_ipv4 = var.vps_ipv4 value, apex_ipv6 = var.vps_ipv6
-#                 value, apply                 # flips apex A+AAAA to the new box
-# then watch resolvers pick it up, keep the old box warm a week, and remove
-# the new.tayaway.nl records above in a follow-up.
+# ── Apex: tayaway.nl → our box ────────────────────────────────────────────────
 resource "ovh_domain_zone_record" "apex_a" {
   zone      = var.domain
   subdomain = ""
   fieldtype = "A"
   ttl       = var.apex_ttl
-  target    = var.apex_ipv4
+  target    = var.vps_ipv4
 }
 
 resource "ovh_domain_zone_record" "apex_aaaa" {
@@ -71,5 +31,81 @@ resource "ovh_domain_zone_record" "apex_aaaa" {
   subdomain = ""
   fieldtype = "AAAA"
   ttl       = var.apex_ttl
-  target    = var.apex_ipv6
+  target    = var.vps_ipv6
+}
+
+# ── www.tayaway.nl → our box ──────────────────────────────────────────────────
+# The edge Caddy serves www and 301-redirects it to the apex (see the
+# www-redirect block in containers/Caddyfile, switched on by WWW_SITE_ADDRESS on
+# edge.container). Dual-stack to match the apex, so a v6-only client can reach
+# the redirect too.
+resource "ovh_domain_zone_record" "www_a" {
+  zone      = var.domain
+  subdomain = "www"
+  fieldtype = "A"
+  ttl       = 0
+  target    = var.vps_ipv4
+}
+
+resource "ovh_domain_zone_record" "www_aaaa" {
+  zone      = var.domain
+  subdomain = "www"
+  fieldtype = "AAAA"
+  ttl       = 0
+  target    = var.vps_ipv6
+}
+
+# ── OVH-hosted email ──────────────────────────────────────────────────────────
+# MX + SPF + DKIM selectors + DMARC + autodiscover SRV for the OVH mailbox on
+# tayaway.nl. Adopted so the mail config is reviewable and rebuildable; the
+# targets are OVH's and don't change. ttl = 0 means "OVH zone default" (3600),
+# matching how OVH created them.
+resource "ovh_domain_zone_record" "mx" {
+  for_each = {
+    mx0 = "1 mx0.mail.ovh.net."
+    mx1 = "5 mx1.mail.ovh.net."
+    mx2 = "50 mx2.mail.ovh.net."
+    mx3 = "100 mx3.mail.ovh.net."
+  }
+  zone      = var.domain
+  subdomain = ""
+  fieldtype = "MX"
+  ttl       = 0
+  target    = each.value
+}
+
+resource "ovh_domain_zone_record" "spf" {
+  zone      = var.domain
+  subdomain = ""
+  fieldtype = "SPF"
+  ttl       = 0
+  target    = "v=spf1 include:mx.ovh.com ~all"
+}
+
+resource "ovh_domain_zone_record" "dkim" {
+  for_each = {
+    "ovhmo-selector-1._domainkey" = "ovhmo-selector-1._domainkey.4465666.hs.dkim.mail.ovh.net."
+    "ovhmo-selector-2._domainkey" = "ovhmo-selector-2._domainkey.4465667.hs.dkim.mail.ovh.net."
+  }
+  zone      = var.domain
+  subdomain = each.key
+  fieldtype = "CNAME"
+  ttl       = 0
+  target    = each.value
+}
+
+resource "ovh_domain_zone_record" "dmarc" {
+  zone      = var.domain
+  subdomain = "_dmarc"
+  fieldtype = "DMARC"
+  ttl       = 0
+  target    = "v=DMARC1; p=none; rua=mailto:noreply@tayaway.nl; sp=none; aspf=r"
+}
+
+resource "ovh_domain_zone_record" "autodiscover" {
+  zone      = var.domain
+  subdomain = "_autodiscover._tcp"
+  fieldtype = "SRV"
+  ttl       = 0
+  target    = "0 0 443 zimbra1.mail.ovh.net."
 }

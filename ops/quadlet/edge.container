@@ -31,6 +31,9 @@ Volume=tayaway-caddy.volume:/data
 # read-only so a tenant can't rewrite the edge's own config.
 Volume=/etc/caddy/sites:/etc/caddy/sites:ro
 Environment=SITE_ADDRESS=https://tayaway.nl
+# Serve www.tayaway.nl too (LE cert + 301 to the apex). Needs the www DNS
+# records pointing here first, which ops/dns.tf manages.
+Environment=WWW_SITE_ADDRESS=https://www.tayaway.nl
 Environment=BACKEND_UPSTREAM=web:9292
 NoNewPrivileges=true
 Pull=missing

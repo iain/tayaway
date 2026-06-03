@@ -4,13 +4,13 @@
 # summary.
 
 output "vps_ipv4" {
-  description = "Public IPv4 of the new VPS — echoed back so the operator can confirm the right value made it into the DNS record."
+  description = "Public IPv4 of the VPS — echoed back so the operator can confirm the right value made it into the DNS records."
   value       = var.vps_ipv4
 }
 
 output "vps_hostname" {
-  description = "Temporary public hostname for the new VPS. Caddy provisions an ACME cert for this name during commissioning."
-  value       = "${var.new_subdomain}.${var.domain}"
+  description = "Public hostname the VPS serves. Caddy provisions ACME certs for this name (and www)."
+  value       = var.domain
 }
 
 output "walg_bucket" {
