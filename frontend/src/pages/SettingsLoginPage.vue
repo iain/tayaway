@@ -115,7 +115,7 @@ const sessionsRef = ref<InstanceType<typeof SessionsList> | null>(null)
                 <p
                   v-if="error"
                   role="alert"
-                  class="mt-2 text-sm text-red-600 dark:text-red-400"
+                  class="text-state-danger-ink mt-2 text-sm"
                 >
                   {{ error }}
                 </p>

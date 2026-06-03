@@ -239,7 +239,7 @@ defineExpose({
       <!-- Header -->
       <div class="mb-3 flex items-center justify-between gap-2">
         <span
-          class="list-drag-handle cursor-grab touch-none text-gray-300 hover:text-gray-400 dark:text-stone-600 dark:hover:text-stone-400"
+          class="list-drag-handle text-ink-muted hover:text-ink cursor-grab touch-none"
           data-testid="task-list-drag-handle"
         >
           <svg

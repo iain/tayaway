@@ -172,7 +172,7 @@ onUnmounted(() => {
         <div
           v-else-if="error"
           role="alert"
-          class="py-4 text-sm text-red-600 dark:text-red-400"
+          class="text-state-danger-ink py-4 text-sm"
         >
           {{ error }}
         </div>
@@ -228,7 +228,7 @@ onUnmounted(() => {
             target="_blank"
             rel="noopener noreferrer"
             aria-label="DB-IP (opens in new tab)"
-            class="underline hover:text-gray-600 dark:hover:text-stone-300"
+            class="hover:text-ink-muted underline"
             >DB-IP</a
           >
         </p>

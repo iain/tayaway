@@ -32,12 +32,14 @@ async function handleSignIn() {
 </script>
 
 <template>
-  <main class="dark flex min-h-screen items-center justify-center bg-stone-900">
+  <main
+    class="bg-surface-page dark flex min-h-screen items-center justify-center"
+  >
     <div class="w-full max-w-md px-6 text-center">
       <img :src="appIcon" alt="Tayaway" class="mx-auto mb-8 size-16" />
       <div v-if="!error">
-        <h1 class="mb-2 text-2xl font-bold text-white">Log in to Tayaway</h1>
-        <p class="mb-8 text-sm/6 text-stone-400">
+        <h1 class="text-ink mb-2 text-2xl font-bold">Log in to Tayaway</h1>
+        <p class="text-ink-muted mb-8 text-sm/6">
           Click the button below to complete login.
         </p>
         <AppButton
@@ -53,7 +55,7 @@ async function handleSignIn() {
       </div>
 
       <div v-else>
-        <h1 class="mb-4 text-2xl font-bold text-white">Verification Failed</h1>
+        <h1 class="text-ink mb-4 text-2xl font-bold">Verification Failed</h1>
         <p data-testid="verify-error" class="mb-6 text-sm text-red-400">
           {{ error }}
         </p>

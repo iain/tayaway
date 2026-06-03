@@ -89,21 +89,21 @@ onUnmounted(() => {
 
 <template>
   <main
-    class="dark flex min-h-screen flex-col items-center justify-center bg-stone-900 px-4"
+    class="dark bg-surface-page flex min-h-screen flex-col items-center justify-center px-4"
   >
     <div class="w-full max-w-md">
       <img :src="appIcon" alt="Tayaway" class="mx-auto mb-8 size-16" />
     </div>
     <div
-      class="w-full max-w-md rounded-xl border border-stone-800 bg-stone-800/40 p-8 shadow-xl sm:p-10"
+      class="border-line w-full max-w-md rounded-xl border bg-stone-800/40 p-8 shadow-xl sm:p-10"
     >
       <h1
         data-testid="login-title"
-        class="mb-2 text-center text-2xl font-bold text-white"
+        class="text-ink mb-2 text-center text-2xl font-bold"
       >
         Log in to Tayaway
       </h1>
-      <p class="mb-8 text-center text-sm/6 text-stone-400">
+      <p class="text-ink-muted mb-8 text-center text-sm/6">
         We'll send you a login link. No password needed.
       </p>
 
@@ -146,7 +146,7 @@ onUnmounted(() => {
       <div v-if="passkeyAvailable" class="mt-4">
         <div class="my-4 flex items-center gap-3">
           <div class="h-px flex-1 bg-stone-700" />
-          <span class="text-sm text-stone-300">or</span>
+          <span class="text-ink-muted text-sm">or</span>
           <div class="h-px flex-1 bg-stone-700" />
         </div>
 

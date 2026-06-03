@@ -267,7 +267,7 @@ async function handleUnmark(net: RecentSettlement) {
             </div>
             <div
               v-if="isExpanded(net.id)"
-              class="border-t border-gray-100 bg-gray-50 px-4 py-3 sm:px-6 dark:border-stone-700 dark:bg-stone-900/50"
+              class="border-line-faint bg-surface-sunken border-t px-4 py-3 sm:px-6"
             >
               <ul class="space-y-1 text-xs">
                 <li
@@ -397,7 +397,7 @@ async function handleUnmark(net: RecentSettlement) {
             v-for="net in recentSettlements"
             :key="net.id"
             as="li"
-            class="overflow-hidden bg-gray-50 shadow-none ring-0 dark:bg-stone-900/60"
+            class="bg-surface-sunken overflow-hidden shadow-none ring-0"
           >
             <div
               class="flex flex-wrap items-center justify-between gap-y-2 px-4 py-3 sm:px-6"

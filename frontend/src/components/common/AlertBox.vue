@@ -14,17 +14,17 @@ const props = withDefaults(
 
 const variantClasses: Record<string, string> = {
   error:
-    'border border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-400',
+    'border border-state-danger-fill bg-state-danger-fill text-state-danger-ink',
   warning:
-    'border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300',
+    'border border-state-warning-fill bg-state-warning-fill text-state-warning-ink',
   success:
-    'border border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400',
+    'border border-state-success-fill bg-state-success-fill text-state-success-ink',
 }
 
 const iconClasses: Record<string, string> = {
-  error: 'text-red-600 dark:text-red-400',
-  warning: 'text-amber-600 dark:text-amber-400',
-  success: 'text-green-600 dark:text-green-400',
+  error: 'text-state-danger-ink',
+  warning: 'text-state-warning-ink',
+  success: 'text-state-success-ink',
 }
 
 // Errors interrupt with `role="alert"`; success and warning queue politely

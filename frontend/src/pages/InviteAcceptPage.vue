@@ -53,18 +53,20 @@ async function handleAccept() {
 </script>
 
 <template>
-  <main class="dark flex min-h-screen items-center justify-center bg-stone-900">
+  <main
+    class="bg-surface-page dark flex min-h-screen items-center justify-center"
+  >
     <div class="w-full max-w-md px-6 text-center">
       <img :src="appIcon" alt="Tayaway" class="mx-auto mb-8 size-16" />
 
       <!-- Loading state -->
       <div v-if="loading">
-        <p class="text-stone-400">Loading invitation...</p>
+        <p class="text-ink-muted">Loading invitation...</p>
       </div>
 
       <!-- Error state -->
       <div v-else-if="error">
-        <h1 class="mb-4 text-2xl font-bold text-white">Invitation Invalid</h1>
+        <h1 class="text-ink mb-4 text-2xl font-bold">Invitation Invalid</h1>
         <p class="mb-6 text-sm text-red-400">
           {{ error }}
         </p>
@@ -73,10 +75,10 @@ async function handleAccept() {
 
       <!-- Accepted state -->
       <div v-else-if="accepted">
-        <h1 class="mb-2 text-2xl font-bold text-white">
+        <h1 class="text-ink mb-2 text-2xl font-bold">
           You've joined {{ workspaceName }}
         </h1>
-        <p class="mb-6 text-sm/6 text-stone-400">
+        <p class="text-ink-muted mb-6 text-sm/6">
           Check your email for a login link.
         </p>
         <AppButton variant="amber" to="/login">Go to login</AppButton>
@@ -84,7 +86,7 @@ async function handleAccept() {
 
       <!-- Accept invitation state -->
       <div v-else>
-        <h1 class="mb-8 text-2xl font-bold text-white">
+        <h1 class="text-ink mb-8 text-2xl font-bold">
           Join {{ workspaceName }}
         </h1>
         <AppButton

@@ -85,8 +85,8 @@ onBeforeUnmount(() => {
         class="focus-visible:outline-focus cursor-pointer rounded p-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
         :class="
           assignment.pinned
-            ? 'text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/30 dark:hover:text-amber-300'
-            : 'text-ink-muted hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-stone-700 dark:hover:text-stone-300'
+            ? 'text-state-warning-ink hover:bg-state-warning-fill'
+            : 'text-ink-muted hover:bg-surface-sunken hover:text-ink'
         "
         :title="assignment.pinned ? 'Unpin' : 'Pin'"
         @click="handleTogglePin"

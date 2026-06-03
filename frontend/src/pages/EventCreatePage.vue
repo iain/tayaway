@@ -48,7 +48,7 @@ function handleCancel(): void {
 
     <BaseCard>
       <div class="px-4 py-5 sm:p-6">
-        <div v-if="formError" class="mb-4 text-red-600 dark:text-red-400">
+        <div v-if="formError" class="text-state-danger-ink mb-4">
           {{ formError }}
         </div>
 

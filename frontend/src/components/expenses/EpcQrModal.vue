@@ -238,7 +238,7 @@ async function copyIban() {
           aria-live="polite"
         >
           <span
-            class="inline-block size-8 animate-spin rounded-full border-2 border-gray-300 border-t-cyan-600 dark:border-stone-600 dark:border-t-cyan-400"
+            class="border-line inline-block size-8 animate-spin rounded-full border-2 border-t-cyan-600 dark:border-t-cyan-400"
             aria-hidden="true"
           />
           <span class="sr-only">Loading payment details</span>
@@ -248,12 +248,12 @@ async function copyIban() {
           v-else-if="driftError"
           key="drift"
           data-testid="payment-drift"
-          class="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+          class="bg-state-warning-fill text-state-warning-ink rounded-md border border-amber-300 p-3 text-sm dark:border-amber-700"
         >
           <p class="font-medium">
             The balance has changed since this page loaded.
           </p>
-          <p class="mt-1 text-amber-700 dark:text-amber-400">
+          <p class="text-state-warning-ink mt-1">
             Close this dialog and refresh the page to see the up-to-date amount
             before paying.
           </p>
@@ -262,7 +262,7 @@ async function copyIban() {
         <p
           v-else-if="detailsError"
           key="error"
-          class="text-center text-sm text-red-600 dark:text-red-400"
+          class="text-state-danger-ink text-center text-sm"
         >
           Could not load payment details.
         </p>
@@ -295,10 +295,10 @@ async function copyIban() {
           <div
             v-if="!details.iban"
             data-testid="recipient-no-iban"
-            class="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+            class="bg-state-warning-fill text-state-warning-ink rounded-md border border-amber-300 p-3 text-sm dark:border-amber-700"
           >
             <p class="font-medium">No IBAN on file for {{ recipientName }}.</p>
-            <p class="mt-1 text-amber-700 dark:text-amber-400">
+            <p class="text-state-warning-ink mt-1">
               Ask them to add it on their profile page so the QR code and
               copy-paste IBAN can show up here. In the meantime, settle up with
               a payment request &mdash; a Tikkie, a PayPal link, or whatever the
@@ -352,10 +352,7 @@ async function copyIban() {
                   {{ copied ? 'Copied' : 'Copy' }}
                 </button>
               </div>
-              <p
-                v-if="copyError"
-                class="text-xs text-red-600 dark:text-red-400"
-              >
+              <p v-if="copyError" class="text-state-danger-ink text-xs">
                 Couldn&rsquo;t copy &mdash; select the IBAN and copy it
                 manually.
               </p>
@@ -385,7 +382,7 @@ async function copyIban() {
             <p
               v-if="attestState === 'error' && attestErrorMessage"
               data-testid="attest-error"
-              class="mt-2 text-center text-xs text-red-600 dark:text-red-400"
+              class="text-state-danger-ink mt-2 text-center text-xs"
             >
               {{ attestErrorMessage }}
             </p>

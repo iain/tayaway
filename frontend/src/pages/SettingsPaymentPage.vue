@@ -191,14 +191,14 @@ function removeHolderName(): Promise<void> {
               <p
                 v-if="ibanError"
                 aria-live="polite"
-                class="mt-1 text-sm text-red-600 dark:text-red-400"
+                class="text-state-danger-ink mt-1 text-sm"
               >
                 {{ ibanError }}
               </p>
               <p
                 v-if="saveErrors.get('iban')"
                 role="alert"
-                class="mt-1 text-sm text-red-600 dark:text-red-400"
+                class="text-state-danger-ink mt-1 text-sm"
               >
                 {{ saveErrors.get('iban') }}
               </p>
@@ -270,7 +270,7 @@ function removeHolderName(): Promise<void> {
               <p
                 v-if="saveErrors.get('holderName')"
                 role="alert"
-                class="mt-1 text-sm text-red-600 dark:text-red-400"
+                class="text-state-danger-ink mt-1 text-sm"
               >
                 {{ saveErrors.get('holderName') }}
               </p>

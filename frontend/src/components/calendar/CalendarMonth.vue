@@ -166,7 +166,7 @@ function handleMouseLeave(): void {
         type="button"
         class="focus-visible:outline-focus relative aspect-square text-sm transition-colors duration-100 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-2"
         :class="[
-          day.isCurrentMonth ? 'text-ink' : 'text-gray-400 dark:text-gray-600',
+          day.isCurrentMonth ? 'text-ink' : 'text-ink-muted',
           getDayClasses(day.dateString),
         ]"
         @click="handleClick(day)"

@@ -58,7 +58,7 @@ function formatAmount(): void {
         :disabled="disabled"
         @blur="formatAmount"
       />
-      <p v-if="amountError" class="mt-1 text-xs text-red-600 dark:text-red-400">
+      <p v-if="amountError" class="text-state-danger-ink mt-1 text-xs">
         {{ amountError }}
       </p>
     </div>

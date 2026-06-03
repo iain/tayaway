@@ -333,12 +333,12 @@ async function handlePaidClick(
     <div
       v-if="hasDrift && unsettledExpenseCount === 0"
       data-testid="settlement-drift-banner"
-      class="mb-4 rounded-md border-2 border-dashed border-amber-400 bg-amber-50 px-3 py-2 dark:border-amber-600 dark:bg-amber-950/30"
+      class="bg-state-warning-fill mb-4 rounded-md border-2 border-dashed border-amber-400 px-3 py-2 dark:border-amber-600"
     >
-      <p class="text-sm font-medium text-amber-800 dark:text-amber-300">
+      <p class="text-state-warning-ink text-sm font-medium">
         The split no longer matches the latest settlement.
       </p>
-      <p class="mt-1 text-xs text-amber-700 dark:text-amber-400">
+      <p class="text-state-warning-ink mt-1 text-xs">
         RSVPs or expenses have changed since it was locked in. Settle the
         difference to bring everyone back to even.
       </p>
@@ -413,7 +413,7 @@ async function handlePaidClick(
       class="mb-4 overflow-hidden"
     >
       <div
-        class="flex flex-wrap items-center justify-between gap-y-1 border-b border-gray-100 px-3 py-2 dark:border-stone-700/50"
+        class="border-line-faint flex flex-wrap items-center justify-between gap-y-1 border-b px-3 py-2"
       >
         <div class="flex min-w-0 items-center gap-2">
           <span class="text-ink-muted text-xs">
@@ -440,7 +440,7 @@ async function handlePaidClick(
 
       <div
         v-if="transfersForSettlement(settlement.id).length > 0"
-        class="border-b border-gray-100 px-3 py-1.5 dark:border-stone-700/50"
+        class="border-line-faint border-b px-3 py-1.5"
       >
         <button
           type="button"
@@ -527,8 +527,8 @@ async function handlePaidClick(
               class="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 sm:min-h-0"
               :class="
                 transfer.paidAt
-                  ? 'bg-green-100 text-green-700 hover:bg-green-200 focus-visible:outline-green-500 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
-                  : 'bg-rose-600 text-white shadow-sm hover:bg-rose-700 focus-visible:outline-rose-600 dark:bg-rose-700 dark:hover:bg-rose-600'
+                  ? 'bg-state-success-fill text-state-success-ink hover:bg-green-200 focus-visible:outline-green-500 dark:hover:bg-green-900/50'
+                  : 'bg-primary text-primary-ink hover:bg-primary-hover shadow-sm focus-visible:outline-rose-600'
               "
               @click="handlePaidClick(transfer, !!transfer.paidAt)"
             >

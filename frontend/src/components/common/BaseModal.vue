@@ -62,7 +62,7 @@ const sizeClasses: Record<string, string> = {
     ref="dialogRef"
     :aria-labelledby="titleId"
     :class="[
-      'modal-dialog bg-surface m-auto rounded-lg p-4 text-left shadow-xl ring-1 ring-black/10 backdrop:bg-gray-500/85 sm:w-full sm:p-6 dark:ring-white/10 dark:backdrop:bg-stone-900/80',
+      'modal-dialog bg-surface ring-line m-auto rounded-lg p-4 text-left shadow-xl ring-1 backdrop:bg-gray-500/85 sm:w-full sm:p-6 dark:backdrop:bg-stone-900/80',
       sizeClasses[size ?? 'md'],
     ]"
     @close="handleClose"

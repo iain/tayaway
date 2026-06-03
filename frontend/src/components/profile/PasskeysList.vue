@@ -228,7 +228,7 @@ onUnmounted(() => {
     <div
       v-else-if="error"
       role="alert"
-      class="py-4 text-sm text-red-600 dark:text-red-400"
+      class="text-state-danger-ink py-4 text-sm"
     >
       {{ error }}
     </div>
@@ -354,7 +354,7 @@ onUnmounted(() => {
           :disabled="registerSaving"
         />
 
-        <p v-if="registerError" class="text-sm text-red-600 dark:text-red-400">
+        <p v-if="registerError" class="text-state-danger-ink text-sm">
           {{ registerError }}
         </p>
 
@@ -368,7 +368,7 @@ onUnmounted(() => {
 
       <!-- Error during ceremony -->
       <div v-else-if="registerStep === 'error'" class="space-y-4">
-        <p class="text-sm text-red-600 dark:text-red-400">
+        <p class="text-state-danger-ink text-sm">
           {{ registerError }}
         </p>
         <div class="flex justify-end">

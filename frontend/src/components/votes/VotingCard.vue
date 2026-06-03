@@ -141,7 +141,7 @@ function toggleCommentInput() {
             :class="[
               isSelected('yes')
                 ? 'bg-green-600 text-white'
-                : 'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900/30 dark:hover:text-green-400',
+                : 'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-state-success-fill hover:text-state-success-ink',
             ]"
             @click="handleVote('yes')"
           >
@@ -155,7 +155,7 @@ function toggleCommentInput() {
             :class="[
               isSelected('preferably_not')
                 ? 'bg-yellow-500 text-white'
-                : 'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-yellow-100 hover:text-yellow-700 dark:hover:bg-yellow-900/30 dark:hover:text-yellow-400',
+                : 'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-state-warning-fill hover:text-state-warning-ink',
             ]"
             @click="handleVote('preferably_not')"
           >
@@ -169,7 +169,7 @@ function toggleCommentInput() {
             :class="[
               isSelected('no')
                 ? 'bg-red-600 text-white'
-                : 'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-900/30 dark:hover:text-red-400',
+                : 'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-state-danger-fill hover:text-state-danger-ink',
             ]"
             @click="handleVote('no')"
           >

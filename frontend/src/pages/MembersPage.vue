@@ -236,7 +236,7 @@ onMounted(() => {
           <div class="px-4 py-3 sm:px-6">
             <div class="flex items-center justify-between">
               <div class="flex min-w-0 items-center">
-                <EnvelopeIcon class="mr-3 size-8 shrink-0 text-gray-400" />
+                <EnvelopeIcon class="text-ink-muted mr-3 size-8 shrink-0" />
                 <div class="min-w-0 flex-1">
                   <p
                     class="text-ink truncate text-sm font-medium"
@@ -378,11 +378,11 @@ onMounted(() => {
                 :value="member.role"
                 class="focus-visible:outline-focus inline-flex shrink-0 cursor-pointer items-center rounded-full border-0 px-2 py-0.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2"
                 :class="{
-                  'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400':
+                  'bg-btn-outflow-fill text-btn-outflow-ink':
                     member.role === 'owner',
-                  'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400':
+                  'bg-state-info-fill text-state-info-ink':
                     member.role === 'admin',
-                  'bg-gray-100 text-gray-600 dark:bg-stone-700 dark:text-stone-300':
+                  'bg-state-neutral-fill text-state-neutral-ink':
                     member.role === 'member',
                 }"
                 @change="

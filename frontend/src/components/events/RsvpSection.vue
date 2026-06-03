@@ -396,30 +396,26 @@ const partialPickerRsvp = computed(() => {
       <div class="space-y-4">
         <!-- Attending -->
         <div v-if="attending.length > 0">
-          <h3
-            class="mb-2 text-sm font-medium text-green-600 dark:text-green-400"
-          >
+          <h3 class="text-state-success-ink mb-2 text-sm font-medium">
             Attending ({{ attending.length }})
           </h3>
           <ul class="space-y-2">
             <li
               v-for="rsvp in attending"
               :key="rsvp.id"
-              class="flex items-center gap-3 rounded-md bg-green-50 px-3 py-2 dark:bg-green-900/20"
+              class="bg-state-success-fill flex items-center gap-3 rounded-md px-3 py-2"
             >
               <div
                 class="flex size-8 items-center justify-center rounded-full bg-green-200 dark:bg-green-800"
               >
-                <CheckCircleIcon
-                  class="size-4 text-green-600 dark:text-green-400"
-                />
+                <CheckCircleIcon class="text-state-success-ink size-4" />
               </div>
               <div class="min-w-0 flex-1">
                 <span class="text-ink">
                   {{ rsvp.member?.name || rsvp.member?.email || 'Unknown' }}
                   <span
                     v-if="rsvp.userId === currentUserId"
-                    class="text-sm text-green-600 dark:text-green-400"
+                    class="text-state-success-ink text-sm"
                   >
                     (you)
                   </span>
@@ -453,25 +449,25 @@ const partialPickerRsvp = computed(() => {
 
         <!-- Not attending -->
         <div v-if="notAttending.length > 0">
-          <h3 class="mb-2 text-sm font-medium text-red-600 dark:text-red-400">
+          <h3 class="text-state-danger-ink mb-2 text-sm font-medium">
             Not Attending ({{ notAttending.length }})
           </h3>
           <ul class="space-y-2">
             <li
               v-for="rsvp in notAttending"
               :key="rsvp.id"
-              class="flex items-center gap-3 rounded-md bg-red-50 px-3 py-2 dark:bg-red-900/20"
+              class="bg-state-danger-fill flex items-center gap-3 rounded-md px-3 py-2"
             >
               <div
                 class="flex size-8 items-center justify-center rounded-full bg-red-200 dark:bg-red-800"
               >
-                <XCircleIcon class="size-4 text-red-600 dark:text-red-400" />
+                <XCircleIcon class="text-state-danger-ink size-4" />
               </div>
               <span class="text-ink min-w-0 flex-1">
                 {{ rsvp.member?.name || rsvp.member?.email || 'Unknown' }}
                 <span
                   v-if="rsvp.userId === currentUserId"
-                  class="text-sm text-red-600 dark:text-red-400"
+                  class="text-state-danger-ink text-sm"
                 >
                   (you)
                 </span>

@@ -31,7 +31,7 @@ defineEmits<{
         type="button"
         :aria-label="editLabel"
         :data-testid="editTestid"
-        class="focus-visible:outline-focus -mx-2 flex w-[calc(100%+1rem)] cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-left transition-colors hover:bg-gray-100 focus-visible:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:bg-white/[0.04] dark:focus-visible:bg-white/[0.04]"
+        class="focus-visible:outline-focus hover:bg-surface-sunken focus-visible:bg-surface-sunken -mx-2 flex w-[calc(100%+1rem)] cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
         @click="$emit('edit')"
       >
         <span class="text-ink min-w-0 flex-1 text-sm" :class="valueClass">
