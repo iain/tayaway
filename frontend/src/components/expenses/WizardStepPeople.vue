@@ -143,7 +143,7 @@ const previewRows = computed(() => {
           :class="
             everyone
               ? 'bg-amber-100 text-amber-800 shadow-sm dark:bg-amber-900/40 dark:text-amber-300'
-              : 'text-ink-muted hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-stone-600 dark:hover:text-stone-200'
+              : 'text-ink-muted hover:bg-btn-secondary-fill-hover hover:text-ink'
           "
           @click="!everyone && toggleEveryone()"
         >
@@ -155,7 +155,7 @@ const previewRows = computed(() => {
           :class="
             !everyone
               ? 'bg-amber-100 text-amber-800 shadow-sm dark:bg-amber-900/40 dark:text-amber-300'
-              : 'text-ink-muted hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-stone-600 dark:hover:text-stone-200'
+              : 'text-ink-muted hover:bg-btn-secondary-fill-hover hover:text-ink'
           "
           @click="everyone && toggleEveryone()"
         >
@@ -196,12 +196,12 @@ const previewRows = computed(() => {
           <label
             v-for="m in overlappingMembers"
             :key="m.userId"
-            class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors focus-within:bg-gray-100 hover:bg-gray-100 dark:focus-within:bg-white/5 dark:hover:bg-white/5"
+            class="focus-within:bg-surface-sunken hover:bg-surface-sunken flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors"
             :data-testid="`participant-${m.userId}`"
           >
             <input
               type="checkbox"
-              class="border-line size-4 rounded text-rose-500 focus:ring-rose-500 dark:bg-stone-800"
+              class="border-line bg-surface size-4 rounded text-rose-500 focus:ring-rose-500"
               :checked="selectedUserIds.includes(m.userId)"
               @change="toggleUser(m.userId)"
             />
@@ -215,7 +215,7 @@ const previewRows = computed(() => {
             >
               <button
                 type="button"
-                class="focus-visible:outline-focus flex size-8 cursor-pointer items-center justify-center rounded-md bg-gray-200 text-gray-700 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 enabled:hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-stone-700 dark:text-stone-200 dark:enabled:hover:bg-stone-600"
+                class="bg-btn-secondary-fill text-btn-secondary-ink enabled:hover:bg-btn-secondary-fill-hover focus-visible:outline-focus flex size-8 cursor-pointer items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
                 :disabled="!canDecrement(m.userId)"
                 :aria-label="`Decrease factor for ${m.name}`"
                 @click.prevent="adjustFactor(m.userId, -FACTOR_STEP)"
@@ -230,7 +230,7 @@ const previewRows = computed(() => {
               </span>
               <button
                 type="button"
-                class="focus-visible:outline-focus flex size-8 cursor-pointer items-center justify-center rounded-md bg-gray-200 text-gray-700 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 enabled:hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-stone-700 dark:text-stone-200 dark:enabled:hover:bg-stone-600"
+                class="bg-btn-secondary-fill text-btn-secondary-ink enabled:hover:bg-btn-secondary-fill-hover focus-visible:outline-focus flex size-8 cursor-pointer items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
                 :disabled="!canIncrement(m.userId)"
                 :aria-label="`Increase factor for ${m.name}`"
                 @click.prevent="adjustFactor(m.userId, FACTOR_STEP)"

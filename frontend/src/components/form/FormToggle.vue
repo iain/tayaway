@@ -17,7 +17,7 @@ defineEmits<{
 <template>
   <div :class="['flex gap-3', { 'opacity-50': disabled }]">
     <div
-      class="group outline-focus relative inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-gray-200 p-0.5 inset-ring inset-ring-gray-900/5 outline-offset-2 transition-colors duration-200 ease-in-out has-checked:bg-rose-500 has-focus-visible:outline-2 has-disabled:cursor-not-allowed dark:bg-white/5 dark:inset-ring-white/10"
+      class="group outline-focus bg-surface-sunken has-checked:bg-primary relative inline-flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 inset-ring inset-ring-gray-900/5 outline-offset-2 transition-colors duration-200 ease-in-out has-focus-visible:outline-2 has-disabled:cursor-not-allowed dark:inset-ring-white/10"
     >
       <span
         class="relative size-5 rounded-full bg-white shadow-xs ring-1 ring-gray-900/5 transition-transform duration-200 ease-in-out group-has-checked:translate-x-5"

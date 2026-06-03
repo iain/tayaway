@@ -149,7 +149,7 @@ function silence(notification: InboxNotification): void {
               notification.readAt === null
                 ? 'bg-rose-50/50 dark:bg-rose-500/5'
                 : '',
-              'group/row relative border-b border-gray-100 last:border-b-0 dark:border-stone-700',
+              'group/row border-line relative border-b last:border-b-0',
             ]"
           >
             <button
@@ -184,7 +184,7 @@ function silence(notification: InboxNotification): void {
             <Menu as="div" class="absolute top-2 right-2">
               <MenuButton
                 aria-label="More actions"
-                class="text-ink-muted focus-visible:outline-focus flex size-8 cursor-pointer items-center justify-center rounded-md transition-opacity hover:bg-black/5 hover:text-gray-600 focus-visible:outline-2 focus-visible:outline-offset-2 max-md:opacity-100 md:opacity-0 md:group-focus-within/row:opacity-100 md:group-hover/row:opacity-100 dark:hover:bg-white/10 dark:hover:text-stone-300"
+                class="text-ink-muted focus-visible:outline-focus hover:text-ink flex size-8 cursor-pointer items-center justify-center rounded-md transition-opacity hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-2 max-md:opacity-100 md:opacity-0 md:group-focus-within/row:opacity-100 md:group-hover/row:opacity-100 dark:hover:bg-white/10"
               >
                 <EllipsisHorizontalIcon class="size-5" aria-hidden="true" />
               </MenuButton>

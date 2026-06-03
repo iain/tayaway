@@ -33,7 +33,7 @@ defineEmits<{
 }>()
 
 const variantClasses: Record<string, string> = {
-  primary: 'bg-rose-600 text-white hover:bg-rose-500',
+  primary: 'bg-primary text-primary-ink hover:bg-primary-hover',
   secondary:
     'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-btn-secondary-fill-hover',
   amber: 'bg-amber-700 text-white hover:bg-amber-800',
@@ -41,7 +41,7 @@ const variantClasses: Record<string, string> = {
     'bg-btn-inflow-fill text-btn-inflow-ink hover:bg-btn-inflow-fill-hover',
   outflow:
     'bg-btn-outflow-fill text-btn-outflow-ink hover:bg-btn-outflow-fill-hover',
-  danger: 'bg-red-700 text-white hover:bg-red-600',
+  danger: 'bg-danger text-danger-ink hover:bg-danger-hover',
 }
 
 const sizeClasses: Record<string, string> = {

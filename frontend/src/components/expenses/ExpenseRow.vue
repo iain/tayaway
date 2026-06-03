@@ -291,9 +291,7 @@ function handleDelete(e: Event) {
             (filed by {{ filedByName }})
           </span>
           <template v-if="event.startDate && event.endDate">
-            <span aria-hidden="true" class="text-gray-300 dark:text-stone-600">
-              ·
-            </span>
+            <span aria-hidden="true" class="text-ink-muted">·</span>
             <DateRangeDisplay
               :start-date="expense.startDate"
               :end-date="expense.endDate"
@@ -360,7 +358,7 @@ function handleDelete(e: Event) {
     <div
       v-if="expanded"
       data-testid="expense-detail"
-      class="border-t border-gray-100 px-4 pt-3 pb-3 dark:border-stone-700"
+      class="border-line-faint border-t px-4 pt-3 pb-3"
     >
       <p v-if="payers.length === 0" class="text-ink-muted text-xs">
         No one was attending on these dates.
@@ -422,7 +420,7 @@ function handleDelete(e: Event) {
     <p
       v-if="revertError"
       role="alert"
-      class="mt-3 text-sm text-red-600 dark:text-red-400"
+      class="text-state-danger-ink mt-3 text-sm"
     >
       {{ revertError }}
     </p>

@@ -29,7 +29,7 @@ onMounted(async () => {
     <div
       class="inline-block h-10 w-10 animate-spin rounded-full border-4 border-amber-600 border-t-transparent"
     />
-    <p class="mt-3 text-sm text-gray-500 dark:text-stone-400">Loading...</p>
+    <p class="text-ink-placeholder mt-3 text-sm">Loading...</p>
   </div>
   <ToastContainer />
 </template>

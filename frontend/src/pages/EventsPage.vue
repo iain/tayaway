@@ -69,7 +69,7 @@ function formatDateRangeSummary(
       </AppButton>
     </PageHeader>
 
-    <div v-if="error" class="text-red-600 dark:text-red-400">
+    <div v-if="error" class="text-state-danger-ink">
       {{ error }}
     </div>
 

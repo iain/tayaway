@@ -62,7 +62,7 @@ function handleRemove(index: number): void {
       <li
         v-for="(range, index) in sortedRanges"
         :key="`${range.start_date}-${range.end_date}`"
-        class="flex items-center justify-between rounded-md bg-gray-50 px-3 py-2 dark:bg-white/5"
+        class="bg-surface-sunken flex items-center justify-between rounded-md px-3 py-2"
       >
         <span class="text-ink text-sm">
           {{ formatDateDisplay(range.start_date) }} -

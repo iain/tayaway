@@ -64,7 +64,7 @@ const showDrift = computed(
       <div
         v-if="showDrift"
         data-testid="math-drift"
-        class="mt-1 text-xs text-amber-700 dark:text-amber-400"
+        class="text-state-warning-ink mt-1 text-xs"
       >
         ⚠ Rounding drift <LedgerAmount :amount="Math.abs(roundingDrift ?? 0)" />
       </div>

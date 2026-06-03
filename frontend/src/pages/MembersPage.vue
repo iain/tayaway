@@ -236,7 +236,7 @@ onMounted(() => {
           <div class="px-4 py-3 sm:px-6">
             <div class="flex items-center justify-between">
               <div class="flex min-w-0 items-center">
-                <EnvelopeIcon class="mr-3 size-8 shrink-0 text-gray-400" />
+                <EnvelopeIcon class="text-ink-muted mr-3 size-8 shrink-0" />
                 <div class="min-w-0 flex-1">
                   <p
                     class="text-ink truncate text-sm font-medium"
@@ -378,11 +378,11 @@ onMounted(() => {
                 :value="member.role"
                 class="focus-visible:outline-focus inline-flex shrink-0 cursor-pointer items-center rounded-full border-0 px-2 py-0.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2"
                 :class="{
-                  'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400':
+                  'bg-btn-outflow-fill text-btn-outflow-ink':
                     member.role === 'owner',
-                  'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400':
+                  'bg-state-info-fill text-state-info-ink':
                     member.role === 'admin',
-                  'bg-gray-100 text-gray-600 dark:bg-stone-700 dark:text-stone-300':
+                  'bg-state-neutral-fill text-state-neutral-ink':
                     member.role === 'member',
                 }"
                 @change="
@@ -479,33 +479,33 @@ onMounted(() => {
 .birthday-card {
   background: linear-gradient(
     135deg,
-    #fef3c7 0%,
-    #fce7f3 25%,
-    #ede9fe 50%,
-    #dbeafe 75%,
-    #fef3c7 100%
+    var(--color-amber-100) 0%,
+    var(--color-pink-100) 25%,
+    var(--color-violet-100) 50%,
+    var(--color-blue-100) 75%,
+    var(--color-amber-100) 100%
   );
   background-size: 300% 300%;
   animation: birthday-gradient 4s ease infinite;
   box-shadow:
-    0 0 15px rgba(251, 191, 36, 0.4),
-    0 0 30px rgba(244, 114, 182, 0.2);
+    0 0 15px color-mix(in oklab, var(--color-amber-400) 40%, transparent),
+    0 0 30px color-mix(in oklab, var(--color-pink-400) 20%, transparent);
 }
 
 :where(.dark) .birthday-card {
   background: linear-gradient(
     135deg,
-    #78350f 0%,
-    #831843 25%,
-    #4c1d95 50%,
-    #1e3a5f 75%,
-    #78350f 100%
+    var(--color-amber-900) 0%,
+    var(--color-pink-900) 25%,
+    var(--color-violet-950) 50%,
+    var(--color-blue-950) 75%,
+    var(--color-amber-900) 100%
   );
   background-size: 300% 300%;
   animation: birthday-gradient 4s ease infinite;
   box-shadow:
-    0 0 15px rgba(251, 191, 36, 0.3),
-    0 0 30px rgba(244, 114, 182, 0.15);
+    0 0 15px color-mix(in oklab, var(--color-amber-400) 30%, transparent),
+    0 0 30px color-mix(in oklab, var(--color-pink-400) 15%, transparent);
 }
 
 @keyframes birthday-gradient {
@@ -535,11 +535,11 @@ onMounted(() => {
 .birthday-shimmer {
   background: linear-gradient(
     90deg,
-    #f59e0b,
-    #ec4899,
-    #8b5cf6,
-    #f59e0b,
-    #ec4899
+    var(--color-amber-500),
+    var(--color-pink-500),
+    var(--color-violet-500),
+    var(--color-amber-500),
+    var(--color-pink-500)
   );
   background-size: 200% auto;
   background-clip: text;

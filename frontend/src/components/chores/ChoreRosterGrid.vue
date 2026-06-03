@@ -127,7 +127,7 @@ function getAssignments(choreId: string, date: string): PoolChoreAssignment[] {
             <div class="group inline-flex items-center gap-1">
               <Bars3Icon
                 aria-hidden="true"
-                class="chore-drag-handle size-3.5 shrink-0 cursor-grab text-gray-300 opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing dark:text-stone-600"
+                class="chore-drag-handle text-ink-muted size-3.5 shrink-0 cursor-grab opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing"
               />
               <span>{{ chore.name }}</span>
               <IconButton
@@ -151,7 +151,7 @@ function getAssignments(choreId: string, date: string): PoolChoreAssignment[] {
       <tbody class="divide-line bg-surface divide-y">
         <tr v-for="date in dates" :key="date">
           <td
-            class="text-ink sticky left-0 z-10 bg-white px-3 py-2 text-sm font-medium whitespace-nowrap dark:bg-stone-900"
+            class="text-ink bg-surface-page sticky left-0 z-10 px-3 py-2 text-sm font-medium whitespace-nowrap"
           >
             {{ formatDayHeader(date) }}
           </td>

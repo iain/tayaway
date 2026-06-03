@@ -92,9 +92,7 @@ const awaitingVotesCount = computed(() =>
           <h3
             class="mb-2 text-sm font-medium"
             :class="
-              group.completed
-                ? 'text-green-600 dark:text-green-400'
-                : 'text-ink-muted'
+              group.completed ? 'text-state-success-ink' : 'text-ink-muted'
             "
           >
             {{ group.label }}
@@ -106,7 +104,7 @@ const awaitingVotesCount = computed(() =>
               class="flex items-center gap-3 rounded-md px-3 py-2"
               :class="
                 group.completed
-                  ? 'bg-green-50 dark:bg-green-900/20'
+                  ? 'bg-state-success-fill'
                   : member.userId === currentUserId
                     ? 'bg-amber-50 ring-1 ring-amber-200 dark:bg-amber-900/20 dark:ring-amber-800'
                     : 'bg-surface-sunken'
@@ -124,7 +122,7 @@ const awaitingVotesCount = computed(() =>
               >
                 <CheckCircleIcon
                   v-if="group.completed"
-                  class="size-4 text-green-600 dark:text-green-400"
+                  class="text-state-success-ink size-4"
                 />
                 <UserIcon
                   v-else

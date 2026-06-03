@@ -391,7 +391,7 @@ function handleDownloadIcs(): void {
             rows="3"
             :disabled="loading"
             data-testid="edit-description-input"
-            class="bg-surface-sunken outline-line placeholder:text-ink-placeholder focus:outline-focus w-full rounded-md px-3 py-2 text-xl text-gray-600 outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 dark:text-stone-300"
+            class="bg-surface-sunken outline-line placeholder:text-ink-placeholder focus:outline-focus text-ink-muted w-full rounded-md px-3 py-2 text-xl outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
             @keyup.escape="cancelEdit"
           />
           <div class="mt-2 flex items-center gap-2">
@@ -409,10 +409,7 @@ function handleDownloadIcs(): void {
         </form>
       </div>
       <div v-else class="group mt-3 flex items-start gap-0.5">
-        <p
-          v-if="event.description"
-          class="text-xl text-gray-600 dark:text-stone-300"
-        >
+        <p v-if="event.description" class="text-ink-muted text-xl">
           {{ event.description }}
         </p>
         <p v-else-if="canEdit" class="text-ink-muted text-xl italic">
@@ -615,7 +612,7 @@ function handleDownloadIcs(): void {
       title="Can't change dates"
       @close="datesBlockedOpen = false"
     >
-      <p class="text-gray-600 dark:text-stone-300">
+      <p class="text-ink-muted">
         This event has expenses that are tied to the current date range.
         Changing the dates could make those expenses fall outside the event
         period.

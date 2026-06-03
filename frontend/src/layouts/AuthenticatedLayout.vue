@@ -223,7 +223,7 @@ async function handleSignOut() {
     >
       <div
         v-if="showWarningBanner"
-        class="relative flex items-center justify-between gap-x-4 bg-amber-500 px-4 py-2 text-sm font-medium text-white sm:px-6 dark:bg-amber-700"
+        class="bg-state-warning-fill text-state-warning-ink relative flex items-center justify-between gap-x-4 px-4 py-2 text-sm font-medium sm:px-6"
         role="alert"
       >
         <p>
@@ -233,7 +233,7 @@ async function handleSignOut() {
         </p>
         <button
           type="button"
-          class="-mr-1 shrink-0 rounded p-1 hover:bg-amber-400 dark:hover:bg-amber-600"
+          class="-mr-1 shrink-0 rounded p-1 hover:bg-black/5 dark:hover:bg-white/10"
           aria-label="Dismiss"
           @click="warningBannerDismissed = true"
         >
@@ -614,7 +614,7 @@ async function handleSignOut() {
       class="fixed bottom-20 left-1/2 z-50 -translate-x-1/2"
     >
       <div
-        class="flex items-center gap-2 rounded-full bg-amber-600 px-4 py-2 text-sm font-medium text-white shadow-lg dark:bg-amber-700"
+        class="bg-primary text-primary-ink flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-lg"
       >
         {{ pendingCount }} pending change{{ pendingCount === 1 ? '' : 's' }}
       </div>

@@ -67,7 +67,7 @@ function handleClose(): void {
           :class="
             selectedId === dateRange.id
               ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20'
-              : 'border-line hover:border-gray-300 dark:hover:border-stone-600'
+              : 'border-line hover:border-line'
           "
           @click="selectedId = dateRange.id"
         >

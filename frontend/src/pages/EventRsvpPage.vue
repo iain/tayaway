@@ -193,7 +193,7 @@ function handleDownloadIcs(): void {
         title="Can't change dates"
         @close="datesBlockedOpen = false"
       >
-        <p class="text-gray-600 dark:text-stone-300">
+        <p class="text-ink-muted">
           This event has expenses tied to the current dates. Delete or adjust
           the expenses first, then you can change the event dates.
         </p>

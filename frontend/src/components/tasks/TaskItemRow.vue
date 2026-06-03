@@ -25,7 +25,7 @@ const emit = defineEmits<{
     @mouseenter="emit('highlight', item)"
   >
     <span
-      class="item-drag-handle cursor-grab touch-none text-gray-300 hover:text-gray-400 dark:text-stone-600 dark:hover:text-stone-400"
+      class="item-drag-handle text-ink-muted hover:text-ink cursor-grab touch-none"
       data-testid="task-item-drag-handle"
     >
       <svg

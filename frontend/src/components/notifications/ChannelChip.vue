@@ -26,7 +26,7 @@ const stateClasses = computed(() => {
   if (props.state === 'on') {
     return 'bg-amber-100 text-amber-900 ring-amber-200 hover:bg-amber-200/80 hover:ring-amber-300 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-700/40 dark:hover:bg-amber-900/50 dark:hover:ring-amber-700/60'
   }
-  return 'bg-transparent text-ink-muted ring-ring-hairline hover:bg-gray-50 hover:text-gray-700 hover:ring-gray-400 dark:hover:bg-stone-700/50 dark:hover:text-stone-200 dark:hover:ring-stone-500'
+  return 'bg-transparent text-ink-muted ring-ring-hairline hover:bg-surface-sunken hover:text-ink hover:ring-line'
 })
 </script>
 

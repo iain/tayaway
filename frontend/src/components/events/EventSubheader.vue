@@ -32,7 +32,7 @@ function tabClass(active: boolean): string {
     'shrink-0 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
     active
       ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
-      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-stone-400 dark:hover:bg-stone-700 dark:hover:text-stone-100',
+      : 'text-ink-muted hover:bg-surface-page hover:text-ink',
   ].join(' ')
 }
 </script>

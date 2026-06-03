@@ -198,7 +198,7 @@ async function clearAddress(): Promise<void> {
               <p
                 v-if="saveErrors.get('name')"
                 role="alert"
-                class="mt-1 text-sm text-red-600 dark:text-red-400"
+                class="text-state-danger-ink mt-1 text-sm"
               >
                 {{ saveErrors.get('name') }}
               </p>
@@ -260,7 +260,7 @@ async function clearAddress(): Promise<void> {
               <p
                 v-if="saveErrors.get('phone')"
                 role="alert"
-                class="mt-1 text-sm text-red-600 dark:text-red-400"
+                class="text-state-danger-ink mt-1 text-sm"
               >
                 {{ saveErrors.get('phone') }}
               </p>
@@ -321,7 +321,7 @@ async function clearAddress(): Promise<void> {
               <p
                 v-if="saveErrors.get('birthday')"
                 role="alert"
-                class="mt-1 text-sm text-red-600 dark:text-red-400"
+                class="text-state-danger-ink mt-1 text-sm"
               >
                 {{ saveErrors.get('birthday') }}
               </p>
@@ -379,7 +379,7 @@ async function clearAddress(): Promise<void> {
               <p
                 v-if="saveErrors.get('address')"
                 role="alert"
-                class="mt-1 text-sm text-red-600 dark:text-red-400"
+                class="text-state-danger-ink mt-1 text-sm"
               >
                 {{ saveErrors.get('address') }}
               </p>

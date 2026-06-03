@@ -361,17 +361,17 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
           leave-to="opacity-0 scale-95"
         >
           <DialogPanel
-            class="divide-line mx-auto max-w-2xl transform divide-y overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-gray-200 transition-all dark:bg-stone-900 dark:ring-white/10"
+            class="divide-line bg-surface ring-line mx-auto max-w-2xl transform divide-y overflow-hidden rounded-xl shadow-2xl ring-1 transition-all"
           >
             <Combobox @update:model-value="onSelect">
               <div class="grid grid-cols-1">
                 <ComboboxInput
-                  class="text-ink col-start-1 row-start-1 h-12 w-full bg-transparent pr-4 pl-11 text-base outline-hidden placeholder:text-gray-400 sm:text-sm"
+                  class="text-ink placeholder:text-ink-placeholder col-start-1 row-start-1 h-12 w-full bg-transparent pr-4 pl-11 text-base outline-hidden sm:text-sm"
                   placeholder="Search..."
                   @change="query = ($event.target as HTMLInputElement).value"
                 />
                 <MagnifyingGlassIcon
-                  class="pointer-events-none col-start-1 row-start-1 ml-4 size-5 self-center text-gray-400"
+                  class="text-ink-muted pointer-events-none col-start-1 row-start-1 ml-4 size-5 self-center"
                   aria-hidden="true"
                 />
               </div>
@@ -380,7 +380,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
                 v-if="query === '' || hasResults"
                 static
                 as="ul"
-                class="max-h-80 scroll-py-2 divide-y divide-gray-100 overflow-y-auto dark:divide-white/5"
+                class="divide-line-faint max-h-80 scroll-py-2 divide-y overflow-y-auto"
               >
                 <!-- Context groups (shown when query is empty) -->
                 <template v-if="query === ''">
@@ -389,12 +389,10 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
                     :key="group.label"
                     class="p-2"
                   >
-                    <h2
-                      class="mb-2 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400"
-                    >
+                    <h2 class="text-ink-muted mb-2 px-3 text-xs font-semibold">
                       {{ group.label }}
                     </h2>
-                    <ul class="text-sm text-gray-700 dark:text-gray-300">
+                    <ul class="text-ink-muted text-sm">
                       <ComboboxOption
                         v-for="action in group.actions"
                         :key="action.id"
@@ -413,9 +411,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
                             :is="action.icon"
                             :class="[
                               'size-5 flex-none',
-                              active
-                                ? 'text-white'
-                                : 'text-gray-400 dark:text-gray-500',
+                              active ? 'text-white' : 'text-ink-muted',
                             ]"
                             aria-hidden="true"
                           />
@@ -430,12 +426,10 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
 
                 <!-- Navigation (shown when query is empty) -->
                 <li v-if="query === ''" class="p-2">
-                  <h2
-                    class="mb-2 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400"
-                  >
+                  <h2 class="text-ink-muted mb-2 px-3 text-xs font-semibold">
                     Navigation
                   </h2>
-                  <ul class="text-sm text-gray-700 dark:text-gray-300">
+                  <ul class="text-ink-muted text-sm">
                     <ComboboxOption
                       v-for="action in quickActions"
                       :key="action.id"
@@ -453,9 +447,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
                           :is="action.icon"
                           :class="[
                             'size-5 flex-none',
-                            active
-                              ? 'text-white'
-                              : 'text-gray-400 dark:text-gray-500',
+                            active ? 'text-white' : 'text-ink-muted',
                           ]"
                           aria-hidden="true"
                         />
@@ -474,12 +466,10 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
                     :key="group.label"
                     class="p-2"
                   >
-                    <h2
-                      class="mb-2 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400"
-                    >
+                    <h2 class="text-ink-muted mb-2 px-3 text-xs font-semibold">
                       {{ group.label }}
                     </h2>
-                    <ul class="text-sm text-gray-700 dark:text-gray-300">
+                    <ul class="text-ink-muted text-sm">
                       <ComboboxOption
                         v-for="action in group.actions"
                         :key="action.id"
@@ -498,9 +488,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
                             :is="action.icon"
                             :class="[
                               'size-5 flex-none',
-                              active
-                                ? 'text-white'
-                                : 'text-gray-400 dark:text-gray-500',
+                              active ? 'text-white' : 'text-ink-muted',
                             ]"
                             aria-hidden="true"
                           />
@@ -513,12 +501,10 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
                   </li>
 
                   <li v-if="filteredEvents.length > 0" class="p-2">
-                    <h2
-                      class="mb-2 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400"
-                    >
+                    <h2 class="text-ink-muted mb-2 px-3 text-xs font-semibold">
                       Events
                     </h2>
-                    <ul class="text-sm text-gray-700 dark:text-gray-300">
+                    <ul class="text-ink-muted text-sm">
                       <ComboboxOption
                         v-for="event in filteredEvents"
                         :key="event.id"
@@ -536,9 +522,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
                           <CalendarDaysIcon
                             :class="[
                               'size-5 flex-none',
-                              active
-                                ? 'text-white'
-                                : 'text-gray-400 dark:text-gray-500',
+                              active ? 'text-white' : 'text-ink-muted',
                             ]"
                             aria-hidden="true"
                           />
@@ -549,7 +533,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
                             v-if="active"
                             :class="[
                               'ml-3 flex-none text-xs',
-                              active ? 'text-amber-100' : 'text-gray-400',
+                              active ? 'text-amber-100' : 'text-ink-muted',
                             ]"
                           >
                             Jump to...
@@ -560,12 +544,10 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
                   </li>
 
                   <li v-if="filteredTaskLists.length > 0" class="p-2">
-                    <h2
-                      class="mb-2 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400"
-                    >
+                    <h2 class="text-ink-muted mb-2 px-3 text-xs font-semibold">
                       Task Lists
                     </h2>
-                    <ul class="text-sm text-gray-700 dark:text-gray-300">
+                    <ul class="text-ink-muted text-sm">
                       <ComboboxOption
                         v-for="list in filteredTaskLists"
                         :key="list.id"
@@ -583,9 +565,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
                           <ClipboardDocumentListIcon
                             :class="[
                               'size-5 flex-none',
-                              active
-                                ? 'text-white'
-                                : 'text-gray-400 dark:text-gray-500',
+                              active ? 'text-white' : 'text-ink-muted',
                             ]"
                             aria-hidden="true"
                           />
@@ -604,12 +584,10 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
                   </li>
 
                   <li v-if="filteredTaskItems.length > 0" class="p-2">
-                    <h2
-                      class="mb-2 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400"
-                    >
+                    <h2 class="text-ink-muted mb-2 px-3 text-xs font-semibold">
                       Task Items
                     </h2>
-                    <ul class="text-sm text-gray-700 dark:text-gray-300">
+                    <ul class="text-ink-muted text-sm">
                       <ComboboxOption
                         v-for="item in filteredTaskItems"
                         :key="item.id"
@@ -627,9 +605,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
                           <CheckCircleIcon
                             :class="[
                               'size-5 flex-none',
-                              active
-                                ? 'text-white'
-                                : 'text-gray-400 dark:text-gray-500',
+                              active ? 'text-white' : 'text-ink-muted',
                             ]"
                             aria-hidden="true"
                           />
@@ -639,9 +615,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
                           <span
                             :class="[
                               'ml-3 flex-none truncate text-xs',
-                              active
-                                ? 'text-amber-100'
-                                : 'text-gray-400 dark:text-gray-500',
+                              active ? 'text-amber-100' : 'text-ink-muted',
                             ]"
                           >
                             {{ item.listName }}
@@ -652,12 +626,10 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
                   </li>
 
                   <li v-if="filteredActions.length > 0" class="p-2">
-                    <h2
-                      class="mb-2 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400"
-                    >
+                    <h2 class="text-ink-muted mb-2 px-3 text-xs font-semibold">
                       Navigation
                     </h2>
-                    <ul class="text-sm text-gray-700 dark:text-gray-300">
+                    <ul class="text-ink-muted text-sm">
                       <ComboboxOption
                         v-for="action in filteredActions"
                         :key="action.id"
@@ -676,9 +648,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
                             :is="action.icon"
                             :class="[
                               'size-5 flex-none',
-                              active
-                                ? 'text-white'
-                                : 'text-gray-400 dark:text-gray-500',
+                              active ? 'text-white' : 'text-ink-muted',
                             ]"
                             aria-hidden="true"
                           />
@@ -697,10 +667,10 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
                 class="px-6 py-14 text-center sm:px-14"
               >
                 <ClipboardDocumentListIcon
-                  class="mx-auto size-6 text-gray-400 dark:text-gray-500"
+                  class="text-ink-muted mx-auto size-6"
                   aria-hidden="true"
                 />
-                <p class="mt-4 text-sm text-gray-600 dark:text-gray-400">
+                <p class="text-ink-muted mt-4 text-sm">
                   No results for "{{ query }}". Try searching for an event,
                   task, or page name.
                 </p>

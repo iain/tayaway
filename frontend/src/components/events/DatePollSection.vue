@@ -95,30 +95,27 @@ function handleVote(): void {
         <div
           class="mb-4 flex items-center justify-between rounded-md px-3 py-2"
           :class="{
-            'bg-green-50 dark:bg-green-900/20': isPollOpen(poll),
-            'bg-amber-50 dark:bg-amber-900/20': isPollExpired(poll),
-            'bg-blue-50 dark:bg-blue-900/20': isPollResolved(poll),
+            'bg-state-success-fill': isPollOpen(poll),
+            'bg-state-warning-fill': isPollExpired(poll),
+            'bg-state-info-fill': isPollResolved(poll),
           }"
         >
           <div class="flex items-center gap-2">
             <ClockIcon
               v-if="isPollOpen(poll)"
-              class="size-4 text-green-600 dark:text-green-400"
+              class="text-state-success-ink size-4"
             />
             <ClockIcon
               v-else-if="isPollExpired(poll)"
-              class="size-4 text-amber-600 dark:text-amber-400"
+              class="text-state-warning-ink size-4"
             />
-            <CheckCircleSolidIcon
-              v-else
-              class="size-4 text-blue-600 dark:text-blue-400"
-            />
+            <CheckCircleSolidIcon v-else class="text-state-info-ink size-4" />
             <span
               class="text-sm font-medium"
               :class="{
-                'text-green-700 dark:text-green-300': isPollOpen(poll),
-                'text-amber-700 dark:text-amber-300': isPollExpired(poll),
-                'text-blue-700 dark:text-blue-300': isPollResolved(poll),
+                'text-state-success-ink': isPollOpen(poll),
+                'text-state-warning-ink': isPollExpired(poll),
+                'text-state-info-ink': isPollResolved(poll),
               }"
             >
               <template v-if="isPollOpen(poll)">
@@ -169,10 +166,10 @@ function handleVote(): void {
             :key="dateRange.id"
             class="rounded-md border p-4"
             :class="{
-              'border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/20':
+              'bg-state-info-fill border-blue-300 dark:border-blue-700':
                 isPollResolved(poll) &&
                 dateRange.id === poll.selectedDateRangeId,
-              'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-900/20':
+              'bg-state-success-fill border-green-300 dark:border-green-700':
                 !isPollResolved(poll) &&
                 index === 0 &&
                 dateRange.voteSummary.yes > 0,
@@ -191,13 +188,13 @@ function handleVote(): void {
                     isPollResolved(poll) &&
                     dateRange.id === poll.selectedDateRangeId
                   "
-                  class="mr-2 text-blue-600 dark:text-blue-400"
+                  class="text-state-info-ink mr-2"
                 >
                   Winner
                 </span>
                 <span
                   v-else-if="index === 0 && dateRange.voteSummary.yes > 0"
-                  class="mr-2 text-green-600 dark:text-green-400"
+                  class="text-state-success-ink mr-2"
                 >
                   #1
                 </span>

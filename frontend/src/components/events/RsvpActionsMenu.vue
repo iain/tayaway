@@ -25,7 +25,7 @@ const emit = defineEmits<{
     <MenuButton
       :aria-label="menuLabel"
       data-testid="rsvp-other-menu"
-      class="text-ink-muted focus-visible:outline-focus flex size-8 cursor-pointer items-center justify-center rounded-md hover:bg-black/5 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:bg-white/10 dark:hover:text-stone-200"
+      class="text-ink-muted focus-visible:outline-focus hover:text-ink flex size-8 cursor-pointer items-center justify-center rounded-md hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:bg-white/10"
     >
       <EllipsisVerticalIcon class="size-5" aria-hidden="true" />
     </MenuButton>
@@ -49,7 +49,7 @@ const emit = defineEmits<{
             type="button"
             :class="[
               active ? 'bg-btn-secondary-fill' : '',
-              action.danger ? 'text-red-600 dark:text-red-400' : 'text-ink',
+              action.danger ? 'text-state-danger-ink' : 'text-ink',
               'block w-full px-4 py-2 text-left text-sm',
             ]"
             @click="emit('pick', action.kind)"

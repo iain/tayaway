@@ -29,19 +29,21 @@ async function handleVerify() {
 </script>
 
 <template>
-  <main class="dark flex min-h-screen items-center justify-center bg-stone-900">
+  <main
+    class="bg-surface-page dark flex min-h-screen items-center justify-center"
+  >
     <div class="w-full max-w-md px-6 text-center">
       <div v-if="success" data-testid="email-change-success">
-        <h1 class="mb-2 text-2xl font-bold text-white">Email updated</h1>
-        <p class="mb-8 text-sm/6 text-stone-400">
+        <h1 class="text-ink mb-2 text-2xl font-bold">Email updated</h1>
+        <p class="text-ink-muted mb-8 text-sm/6">
           Your email address has been changed successfully.
         </p>
         <AppButton to="/login">Go to login</AppButton>
       </div>
 
       <div v-else-if="!error">
-        <h1 class="mb-2 text-2xl font-bold text-white">Confirm email change</h1>
-        <p class="mb-8 text-sm/6 text-stone-400">
+        <h1 class="text-ink mb-2 text-2xl font-bold">Confirm email change</h1>
+        <p class="text-ink-muted mb-8 text-sm/6">
           Click the button below to confirm your new email address.
         </p>
         <AppButton
@@ -56,7 +58,7 @@ async function handleVerify() {
       </div>
 
       <div v-else data-testid="email-change-error">
-        <h1 class="mb-4 text-2xl font-bold text-white">Verification Failed</h1>
+        <h1 class="text-ink mb-4 text-2xl font-bold">Verification Failed</h1>
         <p data-testid="error-message" class="mb-6 text-sm text-red-400">
           {{ error }}
         </p>

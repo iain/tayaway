@@ -154,14 +154,14 @@ const selectionText = computed(() => {
     <div class="mb-4 flex items-center justify-between">
       <IconButton
         label="Previous month"
-        class="rounded-md p-2 hover:bg-gray-100 dark:hover:bg-white/10"
+        class="hover:bg-surface-sunken rounded-md p-2"
         @click="navigatePrev"
       >
         <ChevronLeftIcon class="size-5" />
       </IconButton>
       <IconButton
         label="Next month"
-        class="rounded-md p-2 hover:bg-gray-100 dark:hover:bg-white/10"
+        class="hover:bg-surface-sunken rounded-md p-2"
         @click="navigateNext"
       >
         <ChevronRightIcon class="size-5" />
