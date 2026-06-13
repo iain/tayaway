@@ -32,6 +32,9 @@ lockfile = true
 github_attestations = true
 slsa = true
 
+[settings.ruby]
+compile = false
+
 # Tools that every subproject (and root scripts: prettier, Playwright)
 # needs. Ruby is here rather than in backend/mise.toml so it inherits
 # root → subproject (backend/mise.toml declares no Ruby and relies on
@@ -45,9 +48,9 @@ pitchfork = "latest"
 # machine with `hk install --global` (see setup:hooks for the per-repo fallback).
 # hk is pinned (not "latest"): hk.pkl's `amends` URL hard-codes the same version
 # and the binary must match that schema, so bump both together.
-hk = "1.46.0"
+hk = "latest"
 pkl = "latest"
-aube = "1.16.1"
+aube = "latest"
 taplo = "latest"
 shellcheck = "latest"
 shfmt = "latest"
