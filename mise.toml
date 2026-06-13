@@ -55,6 +55,9 @@ taplo = "latest"
 shellcheck = "latest"
 shfmt = "latest"
 actionlint = "latest"
+# Changelog generator. Reads Conventional Commits from git history and renders
+# CHANGELOG.md per cliff.toml. Run via `mise run changelog`.
+git-cliff = "latest"
 
 # ── Workflows ────────────────────────────────────────────────────────────────
 #
@@ -122,6 +125,12 @@ depends = ["//...:audit"]
 [tasks.build]
 description = "Build production frontend assets"
 depends = ["//frontend:build"]
+
+[tasks.changelog]
+description = "Regenerate CHANGELOG.md from Conventional Commits (git-cliff, config in cliff.toml)"
+# git-cliff is a root [tools] entry, so `git cliff` is on PATH here; it resolves
+# the `git-cliff` binary as a git subcommand. Output path is set in cliff.toml.
+run = "git cliff"
 
 # ── E2E (standalone — not part of test:*) ────────────────────────────────────
 

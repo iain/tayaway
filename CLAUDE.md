@@ -92,7 +92,9 @@ Migrations run **before** the app restarts during deploy — old code is still s
 
 ## Commits and PRs
 
-We squash-merge to `main`, so a PR's title and body should read as the commit message they'll become.
+This repo uses **Conventional Commits**: the subject starts with a type — `feat:`, `fix:`, `docs:`, `perf:`, `refactor:`, `chore:`, `ci:`, etc. — optionally scoped (`feat(dashboard): …`), with a trailing `!` or a `BREAKING CHANGE:` footer for breaking changes. This **overrides the global "no conventional-commit prefixes" preference** for this repo, because `CHANGELOG.md` is generated from commit history by git-cliff (`mise run changelog`; grouping and skip rules live in `cliff.toml`). The rest of the global commit conventions still hold — imperative subject, a body only to explain *why*, no trailers.
+
+We squash-merge to `main`, so the **PR title** becomes the squashed commit subject and must itself be a valid Conventional Commit; the body should read as that commit's body.
 
 Don't push to `main` without asking first.
 
