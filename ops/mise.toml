@@ -12,6 +12,9 @@
 # Non-secret values stay in plaintext below — committing them in git
 # is fine, the OVH project id and the new VPS IPv4 are public-facing.
 
+[settings.sops]
+age_key_file = "{{env.HOME}}/.config/sops/age/keys.txt"
+
 [env]
 _.file = { path = "secrets.yaml", redact = true }
 
