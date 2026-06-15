@@ -110,7 +110,7 @@ GEM
       prism (>= 1.3.0)
       rdoc (>= 4.0.0)
       reline (>= 0.4.2)
-    json (2.19.7)
+    json (2.19.9)
     jwt (3.2.0)
       base64
     language_server-protocol (3.17.0.5)
@@ -200,7 +200,7 @@ GEM
     regexp_parser (2.12.0)
     reline (0.6.3)
       io-console (~> 0.5)
-    roda (3.104.0)
+    roda (3.105.0)
       rack
     roda-websockets (0.1.0)
       async-websocket (~> 0.12)
@@ -244,9 +244,10 @@ GEM
     rubocop-rake (0.7.1)
       lint_roller (~> 1.1)
       rubocop (>= 1.72.1)
-    rubocop-rspec (3.9.0)
+    rubocop-rspec (3.10.2)
       lint_roller (~> 1.1)
-      rubocop (~> 1.81)
+      regexp_parser (>= 2.0)
+      rubocop (~> 1.86, >= 1.86.2)
     rubocop-sequel (0.4.1)
       lint_roller (~> 1.1)
       rubocop (>= 1.72.1, < 2)
@@ -318,7 +319,7 @@ DEPENDENCIES
   rack-test
   rake
   rbnacl
-  roda (~> 3.98)
+  roda (~> 3.105)
   roda-websockets
   rqrcode
   rspec
