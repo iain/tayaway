@@ -86,7 +86,7 @@ module Votes
           return Failure(ServiceError.validation("Comment is too long (maximum 1000 characters)"))
         end
 
-        clean_comment = comment&.empty? ? nil : comment
+        clean_comment = comment && comment.empty? ? nil : comment
 
         row = nil
         DB.transaction do

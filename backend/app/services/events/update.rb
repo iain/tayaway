@@ -79,7 +79,7 @@ module Events
       end
 
       def check_no_resolved_poll_when_clearing(event, dates)
-        return Success(nil) unless dates&.empty?
+        return Success(nil) unless dates && dates.empty?
 
         poll = DatePoll.find_by_event(event.id)
         if poll&.closed_at
@@ -97,7 +97,7 @@ module Events
         DB.transaction do
           update_data = {
             name: name,
-            description: description&.empty? ? nil : description,
+            description: description && description.empty? ? nil : description,
             updated_at: Time.now
           }
 

@@ -29,7 +29,7 @@ RSpec.describe "Auth logout endpoint" do
       set_cookie_header = last_response.headers["set-cookie"] || last_response.headers["Set-Cookie"]
       expect(set_cookie_header).not_to be_nil
 
-      expect(set_cookie_header).to match(/session_token=;/)
+      expect(set_cookie_header).to include("session_token=;")
       expect(set_cookie_header).to match(/path=\//i)
       expect(set_cookie_header).to match(/httponly/i)
       expect(set_cookie_header).to match(/samesite=lax/i)

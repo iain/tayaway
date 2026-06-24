@@ -81,7 +81,7 @@ module Events
           workspace_id: workspace_id,
           user_id: membership.user_id,
           name: name,
-          description: description&.empty? ? nil : description,
+          description: description && description.empty? ? nil : description,
           created_at: now,
           updated_at: now
         }
