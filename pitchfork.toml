@@ -5,6 +5,13 @@ mise = true
 run = "mise run dev"
 dir = "backend"
 port = 9292
+# `port` only does pre-start availability + $PORT injection; it is NOT a
+# readiness check. Without a ready_* field pitchfork falls back to a blind 3s
+# delay and assumes ready, so `depends` consumers could race a not-yet-listening
+# server. ready_port blocks `start -l` until falcon is actually accepting on
+# 9292 (i.e. after `dev`'s db:seed + boot), which is what makes the frontend's
+# `depends = ["backend"]` ordering meaningful.
+ready_port = 9292
 env = { FRONTEND_URL = "https://tayaway.localhost" }
 
 [daemons.frontend]
@@ -12,4 +19,5 @@ run = "mise run dev"
 dir = "frontend"
 depends = ["backend"]
 port = 5173
+ready_port = 5173
 env = { FRONTEND_HOST = "127.0.0.1" }
