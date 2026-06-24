@@ -10,7 +10,9 @@ module ChoreRosters
   # Timezone: the app stores dates and times without a zone, so the
   # reminder is built in the server's local time — correct for a
   # single-region deployment. Introducing per-event timezones would mean
-  # combining the moment here against that zone instead.
+  # combining the moment here against that zone instead. Known edge: a time
+  # inside the spring-forward DST gap (e.g. 02:30 where the clock jumps
+  # 02:00→03:00) is normalized by Ruby to the adjacent valid instant.
   module ScheduleReminder
     JOB_CLASS = "ChoreRosters::SendReminder::Job"
 

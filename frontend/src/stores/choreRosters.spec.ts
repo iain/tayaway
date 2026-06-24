@@ -151,7 +151,6 @@ describe('choreRosters store — addChore', () => {
   })
 
   it('omits the time when none is given', async () => {
-    setActivePinia(createPinia())
     const store = useChoreRostersStore()
 
     let body: Record<string, unknown> | undefined
@@ -163,5 +162,19 @@ describe('choreRosters store — addChore', () => {
     await store.addChore('roster-1', 'Cooking', 1)
 
     expect(body?.time).toBeUndefined()
+  })
+
+  it('sends midnight (a falsy-looking but valid time)', async () => {
+    const store = useChoreRostersStore()
+
+    let body: Record<string, unknown> | undefined
+    enqueueImpl = async (...args: unknown[]) => {
+      body = args[2] as Record<string, unknown>
+      return okResponse({})
+    }
+
+    await store.addChore('roster-1', 'Cooking', 1, '00:00')
+
+    expect(body?.time).toBe('00:00')
   })
 })

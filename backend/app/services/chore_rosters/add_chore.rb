@@ -38,21 +38,13 @@ module ChoreRosters
           return Failure(ServiceError.validation("People per day must be between 1 and #{ValidationLimits::PEOPLE_PER_DAY_MAX}"))
         end
 
-        normalized_time = normalize_time(time)
-        if normalized_time == :invalid
+        # Blank means "no reminder time"; anything else must be HH:MM.
+        time = nil if time.nil? || time.empty?
+        if time && !time.match?(TIME_FORMAT)
           return Failure(ServiceError.validation("Time must be a 24-hour time like 09:30"))
         end
 
-        Success({ name: name, people_per_day: ppd, time: normalized_time })
-      end
-
-      # Accepts a "HH:MM" 24-hour string or blank/nil (no reminder time).
-      # Returns the normalized string, nil, or :invalid.
-      def normalize_time(time)
-        return nil if time.nil? || time.empty?
-        return :invalid unless time.match?(TIME_FORMAT)
-
-        time
+        Success({ name: name, people_per_day: ppd, time: time })
       end
 
       def enforce_policy(roster_id, membership, valid)

@@ -40,7 +40,8 @@ interface PoolCacheDB {
 // Bump this when the sync protocol changes to invalidate stale caches.
 // Bumped to 11 when the cache became multi-workspace; old caches lack the
 // scope field and must be wiped on upgrade.
-const CACHE_VERSION = 11
+// Bumped to 12 when chores gained a `time` field; old cached chores lack it.
+const CACHE_VERSION = 12
 
 const CACHE_VERSION_META_KEY = 'cacheVersion'
 const SYNCED_AT_META_PREFIX = 'syncedAt:'

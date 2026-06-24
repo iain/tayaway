@@ -348,7 +348,7 @@ onMounted(async () => {
       <!-- Inline add chore form -->
       <div v-if="showAddChoreForm" class="mt-4">
         <form
-          class="flex items-end gap-3"
+          class="flex flex-wrap items-end gap-3"
           @submit.prevent="handleAddChoreSubmit"
         >
           <div class="min-w-0 flex-1">
