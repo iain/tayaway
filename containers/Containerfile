@@ -35,7 +35,13 @@ WORKDIR /build
 COPY aube-lock.yaml aube-workspace.yaml package.json ./
 COPY frontend/package.json ./frontend/
 COPY e2e/package.json ./e2e/
-RUN mise exec -- aube install --frozen-lockfile --filter @tayaway/frontend...
+# --node-linker hoisted: this throwaway build stage only needs a node_modules
+# vite can build against, and the default `isolated` linker's dense symlink-tree
+# materializer intermittently races on parallel builds (EEXIST creating nested
+# links, e.g. @types/estree under @rollup/pluginutils). The flat hoisted layout
+# sidesteps that path; same resolved versions, disk-neutral, image unaffected
+# (this stage is discarded). Strict isolation stays on for local dev and CI.
+RUN mise exec -- aube install --frozen-lockfile --node-linker hoisted --filter @tayaway/frontend...
 
 COPY frontend/ ./frontend/
 RUN mise exec -- aube run --filter @tayaway/frontend build
