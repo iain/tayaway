@@ -34,7 +34,7 @@ RSpec.describe Auth::CreateLoginLink do
     end
 
     login_link_log = logged_messages.find { |m| m.include?("LOGIN LINK") }
-    expect(login_link_log).to match(/auth\/verify\?token=eyJ/)
+    expect(login_link_log).to include("auth/verify?token=eyJ")
   end
 
   it "returns success without creating token for non-existent user" do

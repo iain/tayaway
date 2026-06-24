@@ -157,7 +157,7 @@ RSpec.describe Jobs::Worker do
       described_class.drain
 
       row = DB[Jobs::Queue::TABLE].first
-      expect(row[:last_error]).to match(/Refusing to run/)
+      expect(row[:last_error]).to include("Refusing to run")
     end
   end
 
