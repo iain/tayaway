@@ -1,13 +1,14 @@
-# Fail fast on older mise binaries — monorepo mode and several of the
-# settings below didn't exist before this release.
-min_version = "2026.5.5"
+# Fail fast on older mise binaries — the `monorepo_root` key (and several of
+# the settings below) didn't exist before this release. Bumped from 2026.5.5
+# when monorepo mode shed its `experimental_` prefix.
+min_version = "2026.6.11"
 
 # Marks this file as the root of a mise monorepo. Subproject mise.toml files
 # (listed below under [monorepo]) get their own tools, env, and tasks, and
 # inherit from this root. Cross-subproject task references use //path:task
-# (and //...:task wildcards). Gated on the `experimental = true` setting
-# below — no env var needed.
-experimental_monorepo_root = true
+# (and //...:task wildcards). Monorepo mode is stable as of 2026.6 — the key
+# dropped its `experimental_` prefix and no longer requires `experimental = true`.
+monorepo_root = true
 
 [monorepo]
 config_roots = ["backend", "frontend"]
@@ -43,13 +44,13 @@ compile = false
 node = "26"
 ruby = "4"
 pitchfork = "latest"
-# Git hook manager. hk parses its hk.pkl config through the pkl CLI, so pkl
-# is a hard runtime dep — hk panics without it. Hooks are installed once per
-# machine with `hk install --global` (see setup:hooks for the per-repo fallback).
-# hk is pinned (not "latest"): hk.pkl's `amends` URL hard-codes the same version
-# and the binary must match that schema, so bump both together.
-hk = "latest"
-pkl = "latest"
+# Git hook manager. Hooks are installed once per machine with `hk install
+# --global` (see setup:hooks for the per-repo fallback). hk is pinned (not
+# "latest"): hk.pkl's `amends` URL hard-codes the same version and the binary
+# must match that schema, so bump both together (in lockstep — currently
+# 1.48.0). hk embeds its own pkl evaluator (pklr) since 1.47, so no separate
+# pkl CLI tool is needed to parse hk.pkl.
+hk = "1.48.0"
 aube = "latest"
 taplo = "latest"
 shellcheck = "latest"

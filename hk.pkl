@@ -6,7 +6,7 @@
 // "latest") in mise.toml — the binary and this schema must move together. To
 // upgrade, bump both in one commit (re-run `hk init` in a scratch dir to see
 // the current URL); a binary reading a stale Config.pkl can fail to parse.
-amends "package://github.com/jdx/hk/releases/download/v1.46.0/hk@1.46.0#/Config.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Config.pkl"
 
 // Skip vendored, generated, and binary-baseline paths across every step —
 // unions with per-step excludes. Mainly keeps the repo-wide `hk util` guards
