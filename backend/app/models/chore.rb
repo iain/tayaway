@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Read-only Chore model.
-class Chore < Data.define(:id, :chore_roster_id, :name, :people_per_day, :position, :created_at, :updated_at)
+class Chore < Data.define(:id, :chore_roster_id, :name, :people_per_day, :position, :time, :created_at, :updated_at)
   class << self
     include Findable
 
@@ -50,6 +50,7 @@ class Chore < Data.define(:id, :chore_roster_id, :name, :people_per_day, :positi
         name: row[:name],
         people_per_day: row[:people_per_day],
         position: row[:position].to_f,
+        time: row[:time],
         created_at: row[:created_at],
         updated_at: row[:updated_at]
       )

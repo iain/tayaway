@@ -88,6 +88,7 @@ const eventDates = computed(() => {
 const showAddChoreForm = ref(false)
 const newChoreName = ref('')
 const newChorePpd = ref('1')
+const newChoreTime = ref('')
 const addChoreInput = ref<HTMLInputElement | null>(null)
 const addChoreSubmitting = ref(false)
 const showRsvpDialog = ref(false)
@@ -141,6 +142,7 @@ async function openAddChore() {
   }
   newChoreName.value = ''
   newChorePpd.value = '1'
+  newChoreTime.value = ''
   showAddChoreForm.value = true
   await nextTick()
   addChoreInput.value?.focus()
@@ -160,10 +162,12 @@ async function handleAddChoreSubmit() {
     await choreRostersStore.addChore(
       roster.value.id,
       name,
-      parseInt(newChorePpd.value, 10) || 1
+      parseInt(newChorePpd.value, 10) || 1,
+      newChoreTime.value || null
     )
     newChoreName.value = ''
     newChorePpd.value = '1'
+    newChoreTime.value = ''
     showAddChoreForm.value = false
   } finally {
     addChoreSubmitting.value = false
@@ -380,6 +384,22 @@ onMounted(async () => {
               type="number"
               min="1"
               max="50"
+              class="bg-surface-sunken text-ink outline-line focus:outline-focus w-full rounded-md px-3 py-2 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
+              :disabled="addChoreSubmitting"
+              @keyup.escape="cancelAddChore"
+            />
+          </div>
+          <div class="w-28 shrink-0">
+            <label
+              for="new-chore-time"
+              class="text-ink-muted mb-1 block text-xs font-medium"
+            >
+              Time (optional)
+            </label>
+            <input
+              id="new-chore-time"
+              v-model="newChoreTime"
+              type="time"
               class="bg-surface-sunken text-ink outline-line focus:outline-focus w-full rounded-md px-3 py-2 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
               :disabled="addChoreSubmitting"
               @keyup.escape="cancelAddChore"

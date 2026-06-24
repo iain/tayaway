@@ -63,6 +63,25 @@ RSpec.describe ChoreRosters::Autofill do
     end
   end
 
+  it "schedules a reminder for each autofilled assignment of a timed chore" do
+    allow(Jobs::Queue).to receive(:enqueue)
+    future = TestFactories.event(workspace: workspace, user: user_a)
+    DB[:events].where(id: future[:id]).update(start_date: Date.new(2099, 5, 1), end_date: Date.new(2099, 5, 2))
+    future = DB[:events].where(id: future[:id]).first
+    future_roster = TestFactories.chore_roster(event: future, user: user_a)
+    TestFactories.rsvp(event: future, user: user_a, attending: true, start_date: nil, end_date: nil)
+    TestFactories.chore(chore_roster: future_roster, name: "Cooking", people_per_day: 1, time: "08:00")
+
+    result = described_class.call(roster_id: future_roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
+    expect(result.success?).to be true
+
+    created = DB[:chore_assignments].join(:chores, id: :chore_id)
+                                    .where(Sequel[:chores][:chore_roster_id] => future_roster[:id]).count
+    expect(created).to eq(2)
+    expect(Jobs::Queue).to have_received(:enqueue)
+      .with(hash_including(job_class: "ChoreRosters::SendReminder::Job")).twice
+  end
+
   it "preserves pinned assignments" do
     create_rsvp(user_a)
     create_rsvp(user_b)

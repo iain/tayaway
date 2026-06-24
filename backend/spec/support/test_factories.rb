@@ -171,7 +171,7 @@ module TestFactories
       DB[:chore_rosters].where(id: id).first
     end
 
-    def chore(chore_roster: nil, name: nil, people_per_day: 1, position: nil, id: SecureRandom.uuid)
+    def chore(chore_roster: nil, name: nil, people_per_day: 1, position: nil, time: nil, id: SecureRandom.uuid)
       chore_roster ||= self.chore_roster
       name ||= "Chore #{next_sequence(:chore)}"
       position ||= (DB[:chores].where(chore_roster_id: chore_roster[:id]).max(:position) || 0.0) + 1.0
@@ -182,6 +182,7 @@ module TestFactories
         name: name,
         people_per_day: people_per_day,
         position: position,
+        time: time,
         created_at: now,
         updated_at: now
       )

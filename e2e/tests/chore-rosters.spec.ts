@@ -273,6 +273,20 @@ test.describe('Chore Rosters Feature', () => {
       expect(pinned[0]?.date).toBe(DEFAULT_START)
     })
 
+    test('a chore can carry an optional time', async () => {
+      const { eventId } = await createResolvedEvent(apiContext, 'Timed Chore Event')
+      const rosterId = await createRoster(apiContext, eventId)
+
+      const resp = await apiContext.post(
+        `${API_BASE}/api/chore-rosters/${rosterId}/chores`,
+        { data: { name: 'Cooking', people_per_day: 1, time: '18:30' } }
+      )
+      expect(resp.status()).toBe(201)
+      const body = await resp.json()
+      const chore = getObjectByType(body.objects, 'chore')
+      expect(chore?.time).toBe('18:30')
+    })
+
     test('chore validation rejects empty name', async () => {
       const { eventId } = await createResolvedEvent(
         apiContext,
@@ -472,6 +486,7 @@ test.describe('Chore Rosters Feature', () => {
       // Fill in the inline form
       await page.getByLabel('Chore name').fill('Cooking')
       await page.getByLabel('People/day').fill('2')
+      await page.getByLabel('Time (optional)').fill('18:30')
 
       // Submit via the Add button
       const [addResp] = await Promise.all([
@@ -483,9 +498,10 @@ test.describe('Chore Rosters Feature', () => {
       ])
       expect(addResp.status()).toBe(201)
 
-      // Chore should appear in the grid
+      // Chore should appear in the grid, with its people/day and time
       await expect(page.getByText('Cooking')).toBeVisible()
       await expect(page.getByText('2/day')).toBeVisible()
+      await expect(page.getByText('at 18:30')).toBeVisible()
     })
 
     test('can run autofill and see assignments in grid', async ({ page }) => {

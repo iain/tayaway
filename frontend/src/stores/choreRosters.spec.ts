@@ -28,9 +28,11 @@ function okResponse<T>(data: T): ApiResponse<T> {
   return { data, status: 200 }
 }
 
-// Mutable handler so individual tests can swap out behaviour.
-let enqueueImpl: () => Promise<ApiResponse<unknown>> = async () =>
-  okResponse({})
+// Mutable handler so individual tests can swap out behaviour. Receives the
+// enqueue arguments (method, path, body) so tests can assert the request.
+let enqueueImpl: (
+  ...args: unknown[]
+) => Promise<ApiResponse<unknown>> = async () => okResponse({})
 
 vi.mock('@/stores/commandQueue', async () => {
   const actual = await vi.importActual<typeof import('@/stores/commandQueue')>(
@@ -39,13 +41,19 @@ vi.mock('@/stores/commandQueue', async () => {
   return {
     ...actual,
     useCommandQueueStore: () => ({
-      enqueue: vi.fn().mockImplementation(() => enqueueImpl()),
+      enqueue: vi
+        .fn()
+        .mockImplementation((...args: unknown[]) => enqueueImpl(...args)),
     }),
   }
 })
 
 vi.mock('@/stores/auth', () => ({
   useAuthStore: () => ({ currentUserId: 'user-1' }),
+}))
+
+vi.mock('@/stores/workspace', () => ({
+  useWorkspaceStore: () => ({ currentWorkspaceId: 'ws-1' }),
 }))
 
 describe('choreRosters store — updateAssignment', () => {
@@ -110,5 +118,50 @@ describe('choreRosters store — updateAssignment', () => {
 
     expect(pool.get('choreAssignment', 'assign-1')?.note).toBe('offline note')
     expect(pool.hasPending('choreAssignment', 'assign-1')).toBe(true)
+  })
+})
+
+describe('choreRosters store — addChore', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    enqueueImpl = async () => okResponse({})
+  })
+
+  it('sends the time in the request body and the optimistic chore', async () => {
+    const pool = useObjectPoolStore()
+    const store = useChoreRostersStore()
+
+    let body: Record<string, unknown> | undefined
+    let timeDuringCall: string | null | undefined
+    enqueueImpl = async (...args: unknown[]) => {
+      body = args[2] as Record<string, unknown>
+      timeDuringCall = (body.id &&
+        pool.get('chore', body.id as string)?.time) as string | null
+      return okResponse({})
+    }
+
+    await store.addChore('roster-1', 'Cooking', 2, '18:00')
+
+    expect(body).toMatchObject({
+      name: 'Cooking',
+      people_per_day: 2,
+      time: '18:00',
+    })
+    expect(timeDuringCall).toBe('18:00')
+  })
+
+  it('omits the time when none is given', async () => {
+    setActivePinia(createPinia())
+    const store = useChoreRostersStore()
+
+    let body: Record<string, unknown> | undefined
+    enqueueImpl = async (...args: unknown[]) => {
+      body = args[2] as Record<string, unknown>
+      return okResponse({})
+    }
+
+    await store.addChore('roster-1', 'Cooking', 1)
+
+    expect(body?.time).toBeUndefined()
   })
 })

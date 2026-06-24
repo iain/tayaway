@@ -173,6 +173,7 @@ class App
             membership: current_membership,
             name: r.params["name"]&.strip,
             people_per_day: ppd,
+            time: r.params["time"]&.strip,
             id: r.params["id"]
           )
           handle_result(result, success_status: 201)

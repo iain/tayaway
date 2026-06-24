@@ -18,6 +18,7 @@ const CATEGORY_OF_KIND: Record<string, string> = {
   event_canceled: 'events',
   event_details_changed: 'events',
   poll_closed: 'events',
+  chore_reminder: 'events',
   settlement_created: 'money',
   payment_status_changed: 'money',
   expense_added: 'money',

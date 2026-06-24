@@ -37,6 +37,46 @@ RSpec.describe ChoreRosters::CreateAssignment do
     expect(assignment[:userId]).to eq(assignee[:id].to_s)
   end
 
+  it "schedules a reminder when the chore has a time" do
+    allow(Jobs::Queue).to receive(:enqueue)
+    future_event = TestFactories.event(workspace: workspace, user: user)
+    DB[:events].where(id: future_event[:id]).update(start_date: Date.new(2099, 5, 1), end_date: Date.new(2099, 5, 7))
+    future_roster = TestFactories.chore_roster(event: future_event, user: user)
+    timed_chore = TestFactories.chore(chore_roster: future_roster, name: "Cooking", time: "18:00")
+    assignment_id = SecureRandom.uuid
+
+    described_class.call(
+      roster_id: future_roster[:id],
+      workspace_id: workspace[:id],
+      membership: membership_for(user),
+      chore_id: timed_chore[:id].to_s,
+      user_id: assignee[:id].to_s,
+      date: "2099-05-02",
+      id: assignment_id
+    )
+
+    expect(Jobs::Queue).to have_received(:enqueue).with(
+      job_class: "ChoreRosters::SendReminder::Job",
+      args: { chore_assignment_id: assignment_id },
+      scheduled_at: Time.new(2099, 5, 2, 18, 0, 0)
+    )
+  end
+
+  it "does not schedule a reminder for a timeless chore" do
+    allow(Jobs::Queue).to receive(:enqueue)
+
+    described_class.call(
+      roster_id: roster[:id],
+      workspace_id: workspace[:id],
+      membership: membership_for(user),
+      chore_id: chore[:id].to_s,
+      user_id: assignee[:id].to_s,
+      date: "2026-03-02"
+    )
+
+    expect(Jobs::Queue).not_to have_received(:enqueue)
+  end
+
   it "fails when date is outside event range" do
     result = described_class.call(
       roster_id: roster[:id],

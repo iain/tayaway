@@ -145,6 +145,12 @@ function getAssignments(choreId: string, date: string): PoolChoreAssignment[] {
             >
               {{ chore.peoplePerDay }}/day
             </div>
+            <div
+              v-if="chore.time"
+              class="text-ink-muted text-[10px] font-normal tracking-normal normal-case"
+            >
+              at {{ chore.time }}
+            </div>
           </th>
         </tr>
       </thead>

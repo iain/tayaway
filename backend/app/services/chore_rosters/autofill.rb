@@ -156,11 +156,27 @@ module ChoreRosters
           Broadcaster.object_changed("chore_roster", roster.id)
         end
 
+        schedule_reminders(roster, chores)
+
         # Serialize full roster state
         roster = ChoreRoster.find(roster.id)
         pool.add(:chore_roster, [roster])
 
         Success({ objects: pool.to_a, deleted: deleted })
+      end
+
+      # Post-commit: every freshly autofilled (unpinned) assignment gets a
+      # reminder if its chore is timed and the moment is still ahead.
+      # Pinned assignments kept their reminder from when they were created.
+      # Isolated like other notification work so a scheduling hiccup can't
+      # roll back the autofill the user just ran.
+      def schedule_reminders(roster, chores)
+        chores_by_id = chores.to_h { |c| [c.id.to_s, c] }
+        Notifications::Safely.deliver(context: "ChoreRosters::Autofill#reminders") do
+          ChoreAssignment.for_roster(roster.id).reject(&:pinned).each do |assignment|
+            ScheduleReminder.call(assignment: assignment, chore: chores_by_id[assignment.chore_id.to_s])
+          end
+        end
       end
 
       def build_availability(dates, rsvps, event_start, event_end)

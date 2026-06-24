@@ -166,6 +166,8 @@ export interface ObjectTypeMap {
     name: string
     peoplePerDay: number
     position: number
+    // Optional wall-clock "HH:MM" time the chore is due; drives reminders.
+    time: string | null
     assignmentIds: string[]
     createdAt: string
   }

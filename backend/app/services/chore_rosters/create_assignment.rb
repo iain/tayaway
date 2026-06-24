@@ -107,6 +107,13 @@ module ChoreRosters
         chore = Chore.find(valid[:chore_id])
         pool.add(:chore, [chore])
 
+        # Post-commit side effect: a failure here must not undo the
+        # already-saved assignment, so it's isolated like other
+        # notification work.
+        Notifications::Safely.deliver(context: "ChoreRosters::CreateAssignment#reminder") do
+          ScheduleReminder.call(assignment: assignment, chore: chore)
+        end
+
         Success({ objects: pool.to_a })
       end
     end

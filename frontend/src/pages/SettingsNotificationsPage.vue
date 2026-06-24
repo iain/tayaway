@@ -62,13 +62,14 @@ const GROUPS: Group[] = [
     key: 'events',
     title: 'Events',
     blurb:
-      'New events, cancellations, date or location changes, and polls closing.',
+      'New events, cancellations, date or location changes, polls closing, and chore reminders.',
     icon: CalendarDaysIcon,
     kinds: [
       'event_created',
       'event_canceled',
       'event_details_changed',
       'poll_closed',
+      'chore_reminder',
     ],
     forcedReason: {},
   },

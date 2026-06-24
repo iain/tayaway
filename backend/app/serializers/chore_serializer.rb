@@ -21,6 +21,7 @@ class ChoreSerializer
           name: chore.name,
           peoplePerDay: chore.people_per_day,
           position: chore.position,
+          time: chore.time&.strftime("%H:%M"),
           assignmentIds: assignments.map { |a| a.id.to_s },
           createdAt: chore.created_at.iso8601(3),
           updatedAt: chore.updated_at.iso8601(3)

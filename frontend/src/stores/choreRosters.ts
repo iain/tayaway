@@ -39,7 +39,8 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
   async function addChore(
     rosterId: string,
     name: string,
-    peoplePerDay: number
+    peoplePerDay: number,
+    time: string | null = null
   ) {
     const choreId = crypto.randomUUID()
     const now = new Date().toISOString()
@@ -50,10 +51,18 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
       name,
       peoplePerDay,
       position: Date.now(),
+      time: time || null,
       assignmentIds: [],
       createdAt: now,
       updatedAt: now,
     }
+
+    const body: Record<string, unknown> = {
+      name,
+      people_per_day: peoplePerDay,
+      id: choreId,
+    }
+    if (time) body.time = time
 
     const result = await create(
       'Failed to add chore',
@@ -62,11 +71,7 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
         commandQueue.enqueue<PoolApiResponse>(
           'POST',
           `/chore-rosters/${rosterId}/chores`,
-          {
-            name,
-            people_per_day: peoplePerDay,
-            id: choreId,
-          }
+          body
         )
     )
     return { choreId, queued: result.queued }
