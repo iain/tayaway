@@ -24,9 +24,12 @@ module ChoreRosters
         remind_at = combine(assignment.date, chore.time)
         return if remind_at <= Time.now
 
+        # Stamp the time this job is for. If the chore's time is later edited,
+        # SendReminder sees the mismatch and this job no-ops while a freshly
+        # scheduled one fires — no need to find and cancel the old job.
         Jobs::Queue.enqueue(
           job_class: JOB_CLASS,
-          args: { chore_assignment_id: assignment.id.to_s },
+          args: { chore_assignment_id: assignment.id.to_s, expected_time: chore.time.strftime("%H:%M") },
           scheduled_at: remind_at
         )
       end

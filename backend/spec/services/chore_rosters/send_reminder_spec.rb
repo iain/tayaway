@@ -36,6 +36,25 @@ RSpec.describe ChoreRosters::SendReminder do
 
       expect(DB[:notifications].count).to eq(0)
     end
+
+    it "no-ops when the chore time was edited since the job was scheduled" do
+      # chore.time is 18:00; this job was scheduled for the old 09:00
+      described_class.call(chore_assignment_id: assignment[:id], expected_time: "09:00")
+
+      expect(DB[:notifications].count).to eq(0)
+    end
+
+    it "delivers when the expected time still matches" do
+      described_class.call(chore_assignment_id: assignment[:id], expected_time: "18:00")
+
+      expect(DB[:notifications].where(user_id: user[:id]).count).to eq(1)
+    end
+
+    it "delivers for a legacy job with no expected time" do
+      described_class.call(chore_assignment_id: assignment[:id])
+
+      expect(DB[:notifications].where(user_id: user[:id]).count).to eq(1)
+    end
   end
 
   describe "via the scheduled job" do

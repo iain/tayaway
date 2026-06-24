@@ -80,13 +80,20 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
   async function updateChore(
     rosterId: string,
     choreId: string,
-    changes: { name?: string; peoplePerDay?: number; position?: number }
+    changes: {
+      name?: string
+      peoplePerDay?: number
+      position?: number
+      time?: string | null
+    }
   ) {
     const apiChanges: Record<string, unknown> = {}
     if (changes.name !== undefined) apiChanges.name = changes.name
     if (changes.peoplePerDay !== undefined)
       apiChanges.people_per_day = changes.peoplePerDay
     if (changes.position !== undefined) apiChanges.position = changes.position
+    // null clears the time; the server reads a blank string as "clear".
+    if (changes.time !== undefined) apiChanges.time = changes.time ?? ''
 
     await update(
       'Failed to update chore',

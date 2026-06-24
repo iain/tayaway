@@ -3,9 +3,6 @@
 module ChoreRosters
   # Service to add a chore to a roster.
   module AddChore
-    # 24-hour "HH:MM" wall-clock time, e.g. 09:30 or 18:00.
-    TIME_FORMAT = /\A([01]\d|2[0-3]):[0-5]\d\z/
-
     class << self
       def call(roster_id:, workspace_id:, membership:, name:, people_per_day:, time: nil, id: nil)
         Auditable.around(
@@ -38,13 +35,9 @@ module ChoreRosters
           return Failure(ServiceError.validation("People per day must be between 1 and #{ValidationLimits::PEOPLE_PER_DAY_MAX}"))
         end
 
-        # Blank means "no reminder time"; anything else must be HH:MM.
-        time = nil if time.nil? || time.empty?
-        if time && !time.match?(TIME_FORMAT)
-          return Failure(ServiceError.validation("Time must be a 24-hour time like 09:30"))
+        ChoreTime.normalize(time).fmap do |normalized_time|
+          { name: name, people_per_day: ppd, time: normalized_time }
         end
-
-        Success({ name: name, people_per_day: ppd, time: time })
       end
 
       def enforce_policy(roster_id, membership, valid)

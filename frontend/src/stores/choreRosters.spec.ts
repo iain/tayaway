@@ -6,6 +6,7 @@ import { useObjectPoolStore } from './objectPool'
 import { CommandQueuedError } from '@/stores/commandQueue'
 import type { ObjectTypeMap } from '@/types/pool'
 import type { ApiResponse } from '@/api/client'
+import { makeChore } from '@/test/factories'
 
 function makeAssignment(
   overrides: Partial<ObjectTypeMap['choreAssignment']> = {}
@@ -176,5 +177,72 @@ describe('choreRosters store — addChore', () => {
     await store.addChore('roster-1', 'Cooking', 1, '00:00')
 
     expect(body?.time).toBe('00:00')
+  })
+})
+
+describe('choreRosters store — updateChore time', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    enqueueImpl = async () => okResponse({})
+  })
+
+  it('sends a new time and applies it optimistically', async () => {
+    const pool = useObjectPoolStore()
+    pool.importObjects([makeChore({ id: 'chore-1', time: null })], {
+      scope: Scope.workspace('test'),
+    })
+    const store = useChoreRostersStore()
+
+    let body: Record<string, unknown> | undefined
+    let timeDuringCall: string | null | undefined
+    enqueueImpl = async (...args: unknown[]) => {
+      body = args[2] as Record<string, unknown>
+      timeDuringCall = pool.get('chore', 'chore-1')?.time
+      return okResponse({})
+    }
+
+    await store.updateChore('roster-1', 'chore-1', { time: '09:00' })
+
+    expect(body).toMatchObject({ time: '09:00' })
+    expect(timeDuringCall).toBe('09:00')
+  })
+
+  it('clears the time by sending blank', async () => {
+    const pool = useObjectPoolStore()
+    pool.importObjects([makeChore({ id: 'chore-1', time: '18:00' })], {
+      scope: Scope.workspace('test'),
+    })
+    const store = useChoreRostersStore()
+
+    let body: Record<string, unknown> | undefined
+    let timeDuringCall: string | null | undefined
+    enqueueImpl = async (...args: unknown[]) => {
+      body = args[2] as Record<string, unknown>
+      timeDuringCall = pool.get('chore', 'chore-1')?.time
+      return okResponse({})
+    }
+
+    await store.updateChore('roster-1', 'chore-1', { time: null })
+
+    expect(body).toMatchObject({ time: '' })
+    expect(timeDuringCall).toBeNull()
+  })
+
+  it('omits time from the request when only other fields change', async () => {
+    const pool = useObjectPoolStore()
+    pool.importObjects([makeChore({ id: 'chore-1', time: '18:00' })], {
+      scope: Scope.workspace('test'),
+    })
+    const store = useChoreRostersStore()
+
+    let body: Record<string, unknown> | undefined
+    enqueueImpl = async (...args: unknown[]) => {
+      body = args[2] as Record<string, unknown>
+      return okResponse({})
+    }
+
+    await store.updateChore('roster-1', 'chore-1', { name: 'Renamed' })
+
+    expect(body).not.toHaveProperty('time')
   })
 })

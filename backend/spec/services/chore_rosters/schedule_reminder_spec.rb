@@ -20,7 +20,7 @@ RSpec.describe ChoreRosters::ScheduleReminder do
 
     expect(Jobs::Queue).to have_received(:enqueue).with(
       job_class: "ChoreRosters::SendReminder::Job",
-      args: { chore_assignment_id: assignment.id.to_s },
+      args: { chore_assignment_id: assignment.id.to_s, expected_time: "07:30" },
       scheduled_at: Time.new(2099, 5, 4, 7, 30, 0)
     )
   end

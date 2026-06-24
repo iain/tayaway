@@ -2,7 +2,7 @@
 import { computed, ref, watchEffect } from 'vue'
 import { useDraggable } from 'vue-draggable-plus'
 import type { SortableEvent } from 'vue-draggable-plus'
-import { Bars3Icon, TrashIcon } from '@heroicons/vue/24/outline'
+import { Bars3Icon, ClockIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import IconButton from '@/components/common/IconButton.vue'
 import ChoreCell from '@/components/chores/ChoreCell.vue'
 import { positionBetween } from '@/utils/position'
@@ -27,6 +27,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   assign: [choreId: string, date: string, anchorEl: HTMLElement]
   editAssignment: [assignment: PoolChoreAssignment, anchorEl: HTMLElement]
+  editChoreTime: [chore: PoolChore, anchorEl: HTMLElement]
   deleteChore: [choreId: string]
 }>()
 
@@ -130,6 +131,17 @@ function getAssignments(choreId: string, date: string): PoolChoreAssignment[] {
                 class="chore-drag-handle text-ink-muted size-3.5 shrink-0 cursor-grab opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing"
               />
               <span>{{ chore.name }}</span>
+              <IconButton
+                hover-reveal
+                label="Edit reminder time"
+                class="shrink-0"
+                @click="
+                  (e: MouseEvent) =>
+                    emit('editChoreTime', chore, e.currentTarget as HTMLElement)
+                "
+              >
+                <ClockIcon class="size-3.5" />
+              </IconButton>
               <IconButton
                 hover-reveal
                 label="Delete chore"

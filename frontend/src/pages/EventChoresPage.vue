@@ -11,6 +11,7 @@ import ChoreSummaryTable from '@/components/chores/ChoreSummaryTable.vue'
 import ChoreRosterToolbar from '@/components/chores/ChoreRosterToolbar.vue'
 import AssignMemberPopover from '@/components/chores/AssignMemberPopover.vue'
 import EditAssignmentPopover from '@/components/chores/EditAssignmentPopover.vue'
+import EditChoreTimePopover from '@/components/chores/EditChoreTimePopover.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -19,6 +20,7 @@ import TextButton from '@/components/common/TextButton.vue'
 import { ClipboardDocumentListIcon } from '@heroicons/vue/24/outline'
 import type {
   PoolApiResponse,
+  PoolChore,
   PoolChoreAssignment,
   PoolMember,
 } from '@/types/pool'
@@ -100,6 +102,10 @@ const assignPopover = ref<{
 
 const editPopover = ref<{
   assignment: PoolChoreAssignment
+  anchorEl: HTMLElement
+} | null>(null)
+const choreTimePopover = ref<{
+  chore: PoolChore
   anchorEl: HTMLElement
 } | null>(null)
 const confirmDeleteChoreId = ref<string | null>(null)
@@ -205,6 +211,18 @@ function openEditAssignment(
 
 function closeEditAssignment() {
   editPopover.value = null
+}
+
+function openEditChoreTime(chore: PoolChore, anchorEl: HTMLElement) {
+  if (!userIsAttending.value) {
+    showRsvpDialog.value = true
+    return
+  }
+  choreTimePopover.value = { chore, anchorEl }
+}
+
+function closeEditChoreTime() {
+  choreTimePopover.value = null
 }
 
 function handleDeleteChore(choreId: string) {
@@ -325,6 +343,7 @@ onMounted(async () => {
           :current-user-id="currentUserId"
           @assign="openAssign"
           @edit-assignment="openEditAssignment"
+          @edit-chore-time="openEditChoreTime"
           @delete-chore="handleDeleteChore"
         />
 
@@ -437,6 +456,14 @@ onMounted(async () => {
         :roster-id="roster.id"
         :member-map="memberMap"
         @close="closeEditAssignment"
+      />
+
+      <EditChoreTimePopover
+        v-if="choreTimePopover"
+        :chore="choreTimePopover.chore"
+        :anchor-el="choreTimePopover.anchorEl"
+        :roster-id="roster.id"
+        @close="closeEditChoreTime"
       />
     </div>
 

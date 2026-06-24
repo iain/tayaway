@@ -145,7 +145,10 @@ class App
               membership: current_membership,
               name: r.params["name"]&.strip,
               people_per_day: ppd,
-              position: pos
+              position: pos,
+              # Tri-state: absent leaves the time alone; present (incl. blank,
+              # which clears) edits it.
+              time: r.params.key?("time") ? r.params["time"]&.strip : :unset
             )
             handle_result(result)
           end
