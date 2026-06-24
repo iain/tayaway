@@ -12,6 +12,16 @@ allowBuilds:
   puppeteer: false
 enableGlobalVirtualStore: false
 
+# Serialize the linker. aube 1.23's materializer races at link-concurrency's
+# linux default of 16 — parallel tasks collide creating the same nested symlink
+# (EEXIST, e.g. @types/estree under @rollup/pluginutils), failing container and
+# CI installs intermittently while macOS (default 4) never trips. Forcing 1
+# avoids the race at its source and keeps the isolated linker (and its strict
+# phantom-dependency checks) everywhere. Cost is serial linking — a few seconds
+# on a full clean install, negligible on incremental ones. Revisit when aube
+# fixes the race upstream.
+linkConcurrency: 1
+
 # Trust-policy exception (reviewed false positive). workbox-build@7.4.1 — the
 # official googlechrome/workbox package, same maintainers/publisher as 7.4.0 —
 # swapped the unmaintained @surma/rollup-plugin-off-main-thread for the
