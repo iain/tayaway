@@ -17,6 +17,26 @@ require "falcon/environment/rack"
 require "async/service/managed/service"
 require "async/service/managed/environment"
 
+# Mixed into both services below to relax the supervisor's liveness guard in
+# development. async-container SIGKILLs and re-forks any worker that misses its
+# health-check heartbeat for `health_check_timeout` seconds (default 30). On a
+# dev laptop a sleep — or App Nap / memory pressure — freezes the worker for
+# minutes, so on wake the supervisor immediately kills and re-forks it: live
+# websocket connections thrash, and if the controller itself is torn down
+# mid-thrash its forked workers reparent to PID 1 and keep holding the port,
+# blocking the next start. Returning nil disables the health check (see
+# Async::Service::Managed::HealthChecker); production falls through to `super`
+# and keeps the 30s guard so a genuinely wedged worker is still recycled.
+module DevHealthCheckTimeout
+  def health_check_timeout
+    if ENV.fetch("MISE_ENV", "development") == "development"
+      nil
+    else
+      super
+    end
+  end
+end
+
 # Service class that boots the durable Postgres-backed job worker. The
 # `run` hook fires inside each forked container, so we lazy-load the app
 # environment here — by the time it executes, we're past the fork that
@@ -40,6 +60,7 @@ end
 
 module JobsServiceEnvironment
   include Async::Service::Managed::Environment
+  include DevHealthCheckTimeout
 
   def name
     "jobs"
@@ -125,6 +146,7 @@ end
 
 service "web" do
   include Falcon::Environment::Rack
+  include DevHealthCheckTimeout
 
   # Defaults to one container until the production readiness handshake
   # is verified under falcon-host's forked-container model — see

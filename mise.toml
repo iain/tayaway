@@ -210,8 +210,8 @@ description = "Open a Ruby console with the app loaded"
 depends = ["//backend:console"]
 
 [tasks."dev:reset"]
-description = "Kill any falcon-host / fsevent_watch processes left holding the dev backend port"
-depends = ["//backend:dev:reset"]
+description = "Free the dev ports — kill anything left holding the backend (:9292) or frontend (:5173) dev server"
+depends = ["//backend:dev:reset", "//frontend:dev:reset"]
 
 # ── Deploy ───────────────────────────────────────────────────────────────────
 
