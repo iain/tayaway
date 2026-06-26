@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+#MISE description="Kill any vite process left holding the dev frontend port"
+
+set -euo pipefail
+
+if pids=$(lsof -ti :5173 2>/dev/null) && [ -n "$pids" ]; then
+  count=$(echo "$pids" | wc -w | tr -d ' ')
+  echo "Killing $count process(es) on :5173"
+  # shellcheck disable=SC2086  # word splitting intentional — kill takes multiple pids
+  kill -KILL $pids 2>/dev/null || true
+fi
+
+echo "Dev frontend port is free."
