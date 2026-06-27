@@ -71,7 +71,7 @@ For big new features, drive development with a failing Playwright test that capt
 
 ## Code conventions
 
-- **`if/elsif/else` over guard clauses**: Express branching with regular `if/elsif/else` blocks. Reserve early-return guard clauses for actual input-invariant guards at the top of a method (e.g. a nil-check on a required argument). Don't reach for guard clauses just to flatten a method — explicit branches read better and keep all outcomes visible together.
+- **`if/elsif/else` over guard clauses**: Express branching with regular `if/elsif/else` blocks. Reserve early-return guard clauses for actual input-invariant guards at the top of a method (e.g. a nil-check on a required argument). Don't reach for guard clauses just to flatten a method — explicit branches read better and keep all outcomes visible together. When a method grows into a *longer run of fallible steps* (a sequence of lookups, a check, then the work), that's no longer a guard situation — express it as a `Result` chain (backend; see **`Result` chains** below) rather than a stack of `return unless`/`return if`.
 
 ### Backend
 
@@ -85,6 +85,8 @@ For big new features, drive development with a failing Playwright test that capt
     .bind { |foo| FooPolicy.enforce(:do_thing, foo, membership: membership) }
     .bind { |foo| do_thing(foo) }
   ```
+
+  **When to reach for one** (the long-form counterpart to the guard-clause rule above): any method that threads through several fallible steps. A growing stack of `return unless`/`return if` over required lookups is the smell — lift it into a chain, one `Model.find_result(id)` per lookup and a `.bind` returning `Success`/`Failure` per predicate. Carry state forward in the bound value (a small hash when a later step needs more than one earlier result). This holds even for fire-and-forget flows whose result is discarded — a background job that only needs to no-op — since the discarded `Failure` *is* the early-out (see `ChoreRosters::SendReminder`).
 
 ## Migration Safety
 
