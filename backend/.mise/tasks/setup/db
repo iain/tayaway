@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="Create and migrate the development, test, and e2e databases"
+#MISE description="Create and migrate the dev/test/e2e databases, then seed development"
 #MISE depends=["//backend:setup:env"]
 
 set -euo pipefail
@@ -10,5 +10,10 @@ for env in development test e2e; do
   echo "Setting up $env database..."
   MISE_ENV="$env" mise exec -- bundle exec rake db:create db:migrate
 done
+
+# Seed only development with the sample workspace/user — test and e2e build
+# their own data via factories. db:seed upserts, so re-running setup is safe.
+echo "Seeding development database..."
+MISE_ENV=development mise exec -- bundle exec rake db:seed
 
 echo "All databases ready"
