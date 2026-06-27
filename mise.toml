@@ -137,7 +137,11 @@ run = "git cliff"
 
 [tasks.e2e]
 description = "Playwright end-to-end tests — extra args pass through to playwright"
-depends = ["//backend:db:setup-e2e"]
+# e2e:reset frees the e2e ports first — Playwright's reuseExistingServer=false
+# means a server orphaned by a prior interrupted run would otherwise block
+# startup for the full 120s webServer timeout (notably under `mise run ci`,
+# where check + e2e run concurrently and an earlier crash can leave stragglers).
+depends = ["//backend:db:setup-e2e", "//:e2e:reset"]
 # Playwright still calls `module.register()` to install its TS ESM loader;
 # on Node 22+ that emits DEP0205. Silence only that code so real deprecation
 # warnings stay visible. Drop once Playwright migrates to registerHooks().

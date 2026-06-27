@@ -1,24 +1,46 @@
 #!/usr/bin/env bash
-#MISE description="Kill any falcon / vite / fsevent_watch processes left holding the e2e ports"
+#MISE description="Free the e2e ports (9293/5174/5175), killing only the e2e servers — never dev or other repos"
 
-# Playwright's webServer.reuseExistingServer is false, so a stuck server from a
-# previous crashed run blocks the next e2e invocation entirely. Mirrors
-# dev:reset, but for the three ports the e2e suite owns: 9293 (falcon backend),
-# 5174 (vite dev), 5175 (vite preview).
+# Playwright runs with webServer.reuseExistingServer=false, so any server left
+# on an e2e port by a crashed or interrupted run blocks the next `mise run e2e`
+# (and `mise run ci`) for the full 120s webServer timeout. This frees them, and
+# is wired in as an `e2e` dependency so the suite self-heals before Playwright
+# tries to bind.
+#
+# Scoped strictly to e2e: it only touches the three e2e ports and the exact
+# `mise run //…:e2e` wrappers Playwright spawns. Dev servers (9292/5173,
+# pitchfork-managed) and unrelated processes are never touched. Killing by
+# process GROUP takes a falcon-host supervisor, its forked workers, and their
+# fsevent_watch children down together — so no broad `pkill fsevent_watch`
+# (which would also kill dev's file watcher) is needed.
 
 set -euo pipefail
 
+self_pgid=$(ps -o pgid= -p "$$" 2>/dev/null | tr -d ' ' || true)
+freed=0
+
 for port in 9293 5174 5175; do
-  if pids=$(lsof -ti :"$port" 2>/dev/null) && [ -n "$pids" ]; then
-    count=$(echo "$pids" | wc -w | tr -d ' ')
-    echo "Killing $count process(es) on :$port"
-    # shellcheck disable=SC2086  # word splitting intentional — kill takes multiple pids
-    kill -KILL $pids 2>/dev/null || true
-  fi
+  for pid in $(lsof -ti :"$port" 2>/dev/null || true); do
+    # `|| true`: a group-kill on one listener takes its siblings down too, so a
+    # later pid in this list may already be gone — a failed lookup must not
+    # abort the script (mise would fail e2e and SIGTERM the parallel db setup).
+    pgid=$(ps -o pgid= -p "$pid" 2>/dev/null | tr -d ' ' || true)
+    [ -z "$pgid" ] && continue
+    [ "$pgid" = "$self_pgid" ] && continue # never kill our own run
+    kill -KILL "-$pgid" 2>/dev/null || true
+    freed=1
+  done
 done
 
-if pkill -KILL -f fsevent_watch 2>/dev/null; then
-  echo "Killed orphaned fsevent_watch"
-fi
+# A `mise run //…:e2e` wrapper orphaned by an interrupted run can outlive a
+# port-kill and respawn its server. Match only those exact invocations — never
+# `mise run e2e` / `mise run ci`, which don't contain the `//…:e2e` task path.
+for task in //backend:dev:e2e //frontend:dev:e2e //frontend:preview:e2e; do
+  pkill -KILL -f "mise run $task" 2>/dev/null && freed=1 || true
+done
 
-echo "E2E ports are free."
+if [ "$freed" -eq 1 ]; then
+  echo "Freed e2e ports (9293/5174/5175)."
+else
+  echo "e2e ports already free."
+fi
