@@ -60,6 +60,24 @@ describe('ChoreRosterGrid keyboard reorder', () => {
     expect(updateChoreSpy).not.toHaveBeenCalled()
   })
 
+  it('keeps the chore name out of the reorder handle so getByText stays unique', () => {
+    // The visible column header already shows the name; embedding it in the
+    // handle's sr-only label duplicated e.g. "Cooking" in the DOM and broke the
+    // e2e `getByText('Cooking')` grid-ready checks with a strict-mode match.
+    const wrapper = mount(ChoreRosterGrid, {
+      props: {
+        chores: [makeChore({ id: 'a', name: 'Cooking', position: 1 })],
+        assignments: [],
+        dates: ['2026-01-01'],
+        members: [],
+        rsvps: [],
+        rosterId: 'roster-1',
+        currentUserId: null,
+      },
+    })
+    expect(wrapper.get('.chore-drag-handle').text()).not.toContain('Cooking')
+  })
+
   it('announces the new position in a live region', async () => {
     const wrapper = mountGrid()
     await wrapper

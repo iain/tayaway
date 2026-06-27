@@ -178,7 +178,7 @@ function onHandleKeydown(event: KeyboardEvent, chore: PoolChore) {
               <IconButton
                 hover-reveal
                 class="chore-drag-handle shrink-0 cursor-grab active:cursor-grabbing"
-                :label="`Reorder ${chore.name}`"
+                label="Reorder chore"
                 aria-keyshortcuts="ArrowLeft ArrowRight"
                 @keydown="(e: KeyboardEvent) => onHandleKeydown(e, chore)"
               >
