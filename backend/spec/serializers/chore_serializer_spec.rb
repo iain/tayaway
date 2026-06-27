@@ -35,5 +35,25 @@ RSpec.describe ChoreSerializer do
       expect(result[:position]).to eq(0)
       expect(result[:assignmentIds]).to include(assignment[:id].to_s)
     end
+
+    it "serializes the chore time as HH:MM" do
+      roster = TestFactories.chore_roster(user: user)
+      chore_row = TestFactories.chore(chore_roster: roster, time: "09:30")
+      chore = Chore.find(chore_row[:id])
+
+      result = described_class.serialize_batch([chore], pool: PoolSerializer.new(workspace_id: workspace[:id])).first
+
+      expect(result[:time]).to eq("09:30")
+    end
+
+    it "serializes a missing time as nil" do
+      roster = TestFactories.chore_roster(user: user)
+      chore_row = TestFactories.chore(chore_roster: roster)
+      chore = Chore.find(chore_row[:id])
+
+      result = described_class.serialize_batch([chore], pool: PoolSerializer.new(workspace_id: workspace[:id])).first
+
+      expect(result[:time]).to be_nil
+    end
   end
 end

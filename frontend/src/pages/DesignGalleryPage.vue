@@ -131,6 +131,11 @@ const tocItems: TOCItem[] = [
   { group: 'Landmarks', id: 'landmarks-page', label: 'Page header' },
   { group: 'Landmarks', id: 'landmarks-section', label: 'Section heading' },
   { group: 'Overlays', id: 'overlays-modal', label: 'Modal' },
+  {
+    group: 'Overlays',
+    id: 'overlays-anchoredpopover',
+    label: 'Anchored popover',
+  },
   { group: 'Overlays', id: 'overlays-toast', label: 'Toast' },
   { group: 'Overlays', id: 'overlays-updatepill', label: 'Update pill' },
   { group: 'Rules', id: 'rule-one-action', label: 'One-Action' },
@@ -1066,6 +1071,44 @@ function openModal(size: ModalSize): void {
                   </div>
                 </div>
               </BaseCard>
+            </GallerySection>
+
+            <GallerySection
+              id="overlays-anchoredpopover"
+              title="Anchored popover"
+              description="Non-modal popover pinned to a trigger elsewhere on the page. Owns viewport-clamped positioning (flips above when there's no room below), Escape and outside-click close, and moving focus into the content on open."
+              motion="None — appears instantly at the anchor. Repositions on scroll/resize, coalesced into one requestAnimationFrame tick."
+            >
+              <SectionHeading :icon="WindowIcon" title="AnchoredPopover" />
+              <p class="text-ink-muted mb-3 text-sm">
+                Live render is anchored to its trigger with
+                <span class="font-mono">position: fixed</span> and clamped to
+                the viewport; shown here in flow so the gallery layout stays
+                legible.
+              </p>
+              <div
+                class="border-line bg-surface w-64 max-w-full rounded-lg border p-3 shadow-xl"
+              >
+                <p class="text-ink-muted mb-2 text-xs font-medium">
+                  Assign member
+                </p>
+                <input
+                  type="text"
+                  placeholder="Note (optional)"
+                  aria-label="Note (optional)"
+                  class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus mb-2 block w-full rounded-md px-2 py-1 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 sm:text-sm"
+                />
+                <div class="space-y-0.5">
+                  <button
+                    v-for="name in ['Alice', 'Daisy']"
+                    :key="name"
+                    type="button"
+                    class="text-ink focus-visible:outline-focus hover:bg-surface-sunken flex w-full cursor-pointer items-center rounded-md px-2 py-1.5 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+                  >
+                    {{ name }}
+                  </button>
+                </div>
+              </div>
             </GallerySection>
 
             <GallerySection

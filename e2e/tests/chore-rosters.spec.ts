@@ -273,6 +273,43 @@ test.describe('Chore Rosters Feature', () => {
       expect(pinned[0]?.date).toBe(DEFAULT_START)
     })
 
+    test('a chore can carry an optional time', async () => {
+      const { eventId } = await createResolvedEvent(apiContext, 'Timed Chore Event')
+      const rosterId = await createRoster(apiContext, eventId)
+
+      const resp = await apiContext.post(
+        `${API_BASE}/api/chore-rosters/${rosterId}/chores`,
+        { data: { name: 'Cooking', people_per_day: 1, time: '18:30' } }
+      )
+      expect(resp.status()).toBe(201)
+      const body = await resp.json()
+      const chore = getObjectByType(body.objects, 'chore')
+      expect(chore?.time).toBe('18:30')
+    })
+
+    test('a chore time can be edited and cleared', async () => {
+      const { eventId } = await createResolvedEvent(apiContext, 'Edit Time Event')
+      const rosterId = await createRoster(apiContext, eventId)
+      const createResp = await apiContext.post(
+        `${API_BASE}/api/chore-rosters/${rosterId}/chores`,
+        { data: { name: 'Cooking', time: '18:30' } }
+      )
+      const choreId = getObjectByType((await createResp.json()).objects, 'chore')!.id
+
+      const editResp = await apiContext.put(
+        `${API_BASE}/api/chore-rosters/${rosterId}/chores/${choreId}`,
+        { data: { time: '07:15' } }
+      )
+      expect(editResp.ok()).toBeTruthy()
+      expect(getObjectByType((await editResp.json()).objects, 'chore')!.time).toBe('07:15')
+
+      const clearResp = await apiContext.put(
+        `${API_BASE}/api/chore-rosters/${rosterId}/chores/${choreId}`,
+        { data: { time: '' } }
+      )
+      expect(getObjectByType((await clearResp.json()).objects, 'chore')!.time).toBeNull()
+    })
+
     test('chore validation rejects empty name', async () => {
       const { eventId } = await createResolvedEvent(
         apiContext,
@@ -472,6 +509,7 @@ test.describe('Chore Rosters Feature', () => {
       // Fill in the inline form
       await page.getByLabel('Chore name').fill('Cooking')
       await page.getByLabel('People/day').fill('2')
+      await page.getByLabel('Time (optional)').fill('18:30')
 
       // Submit via the Add button
       const [addResp] = await Promise.all([
@@ -483,9 +521,49 @@ test.describe('Chore Rosters Feature', () => {
       ])
       expect(addResp.status()).toBe(201)
 
-      // Chore should appear in the grid
+      // Chore should appear in the grid, with its people/day and time
       await expect(page.getByText('Cooking')).toBeVisible()
       await expect(page.getByText('2/day')).toBeVisible()
+      await expect(page.getByText('at 18:30')).toBeVisible()
+    })
+
+    test('can edit a chore time via the clock popover', async ({ page }) => {
+      const { eventId } = await createResolvedEvent(
+        apiContext,
+        `Edit Time UI ${uid}`
+      )
+      const rosterId = await createRoster(apiContext, eventId)
+      await apiContext.post(`${API_BASE}/api/chore-rosters/${rosterId}/chores`, {
+        data: { name: 'Cooking', time: '18:30' },
+      })
+
+      await setupAuthenticatedPage(page, sessionToken)
+      await page.goto(`/events/${eventId}/chores`)
+
+      await expect(page.getByText('Cooking')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+      await expect(page.getByText('at 18:30')).toBeVisible()
+
+      // Open the edit-time popover (hover-reveal button, force the click)
+      const header = page.locator('th').filter({ hasText: 'Cooking' })
+      await header
+        .getByRole('button', { name: 'Edit reminder time' })
+        .click({ force: true })
+
+      // Change the time and save
+      await page.getByLabel('Reminder time for Cooking').fill('07:15')
+      const [resp] = await Promise.all([
+        page.waitForResponse(
+          (r) =>
+            r.url().includes('/chores/') && r.request().method() === 'PUT'
+        ),
+        page.getByRole('button', { name: 'Save' }).click(),
+      ])
+      expect(resp.ok()).toBeTruthy()
+
+      await expect(page.getByText('at 07:15')).toBeVisible()
+      await expect(page.getByText('at 18:30')).not.toBeVisible()
     })
 
     test('can run autofill and see assignments in grid', async ({ page }) => {

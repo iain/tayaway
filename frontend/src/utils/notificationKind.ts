@@ -3,6 +3,7 @@ import {
   BanknotesIcon,
   BellIcon,
   CalendarDaysIcon,
+  ClipboardDocumentListIcon,
   ShieldCheckIcon,
   UserGroupIcon,
 } from '@heroicons/vue/24/outline'
@@ -18,6 +19,7 @@ const CATEGORY_OF_KIND: Record<string, string> = {
   event_canceled: 'events',
   event_details_changed: 'events',
   poll_closed: 'events',
+  chore_reminder: 'chores',
   settlement_created: 'money',
   payment_status_changed: 'money',
   expense_added: 'money',
@@ -27,6 +29,7 @@ const CATEGORY_ICON: Record<string, Component> = {
   security: ShieldCheckIcon,
   workspaces: UserGroupIcon,
   events: CalendarDaysIcon,
+  chores: ClipboardDocumentListIcon,
   money: BanknotesIcon,
 }
 

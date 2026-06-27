@@ -39,7 +39,8 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
   async function addChore(
     rosterId: string,
     name: string,
-    peoplePerDay: number
+    peoplePerDay: number,
+    time: string | null = null
   ) {
     const choreId = crypto.randomUUID()
     const now = new Date().toISOString()
@@ -50,10 +51,18 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
       name,
       peoplePerDay,
       position: Date.now(),
+      time: time || null,
       assignmentIds: [],
       createdAt: now,
       updatedAt: now,
     }
+
+    const body: Record<string, unknown> = {
+      name,
+      people_per_day: peoplePerDay,
+      id: choreId,
+    }
+    if (time) body.time = time
 
     const result = await create(
       'Failed to add chore',
@@ -62,11 +71,7 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
         commandQueue.enqueue<PoolApiResponse>(
           'POST',
           `/chore-rosters/${rosterId}/chores`,
-          {
-            name,
-            people_per_day: peoplePerDay,
-            id: choreId,
-          }
+          body
         )
     )
     return { choreId, queued: result.queued }
@@ -75,13 +80,20 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
   async function updateChore(
     rosterId: string,
     choreId: string,
-    changes: { name?: string; peoplePerDay?: number; position?: number }
+    changes: {
+      name?: string
+      peoplePerDay?: number
+      position?: number
+      time?: string | null
+    }
   ) {
     const apiChanges: Record<string, unknown> = {}
     if (changes.name !== undefined) apiChanges.name = changes.name
     if (changes.peoplePerDay !== undefined)
       apiChanges.people_per_day = changes.peoplePerDay
     if (changes.position !== undefined) apiChanges.position = changes.position
+    // null clears the time; the server reads a blank string as "clear".
+    if (changes.time !== undefined) apiChanges.time = changes.time ?? ''
 
     await update(
       'Failed to update chore',

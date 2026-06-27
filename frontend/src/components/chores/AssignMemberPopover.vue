@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed } from 'vue'
 import { useChoreRostersStore } from '@/stores/choreRosters'
+import AnchoredPopover from '@/components/common/AnchoredPopover.vue'
 import type {
   PoolMember,
   PoolRsvp,
@@ -25,7 +26,6 @@ const emit = defineEmits<{
 
 const choreRostersStore = useChoreRostersStore()
 const note = ref('')
-const popoverRef = ref<HTMLDivElement | null>(null)
 
 // Users available on this date (attending RSVP covering this date)
 const availableMembers = computed(() => {
@@ -74,30 +74,13 @@ async function handleSelect(userId: string) {
   )
   emit('close')
 }
-
-function handleClickOutside(event: MouseEvent) {
-  if (popoverRef.value && !popoverRef.value.contains(event.target as Node)) {
-    emit('close')
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('mousedown', handleClickOutside)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('mousedown', handleClickOutside)
-})
 </script>
 
 <template>
-  <div
-    ref="popoverRef"
-    class="border-line bg-surface fixed z-50 w-64 rounded-lg border p-3 shadow-lg"
-    :style="{
-      top: `${anchorEl.getBoundingClientRect().bottom + 4}px`,
-      left: `${anchorEl.getBoundingClientRect().left}px`,
-    }"
+  <AnchoredPopover
+    :anchor-el="anchorEl"
+    aria-label="Assign member"
+    @close="emit('close')"
   >
     <p class="text-ink-muted mb-2 text-xs font-medium">Assign member</p>
 
@@ -105,7 +88,8 @@ onBeforeUnmount(() => {
       v-model="note"
       type="text"
       placeholder="Note (optional)"
-      class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus mb-2 block w-full rounded-md px-2 py-1 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
+      aria-label="Note (optional)"
+      class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus mb-2 block w-full rounded-md px-2 py-1 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 sm:text-sm"
     />
 
     <div class="max-h-48 overflow-y-auto">
@@ -113,7 +97,7 @@ onBeforeUnmount(() => {
         v-for="member in availableMembers"
         :key="member.id"
         type="button"
-        class="text-ink focus-visible:outline-focus flex w-full cursor-pointer items-center rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:bg-stone-700"
+        class="text-ink focus-visible:outline-focus hover:bg-surface-sunken flex w-full cursor-pointer items-center rounded-md px-2 py-1.5 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
         @click="handleSelect(member.userId)"
       >
         {{ getMemberDisplayName(member) }}
@@ -125,5 +109,5 @@ onBeforeUnmount(() => {
         No available members
       </p>
     </div>
-  </div>
+  </AnchoredPopover>
 </template>

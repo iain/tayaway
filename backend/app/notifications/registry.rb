@@ -23,7 +23,8 @@ module Notifications
       event_details_changed: Kinds::EventDetailsChanged,
       settlement_created: Kinds::SettlementCreated,
       payment_status_changed: Kinds::PaymentStatusChanged,
-      expense_added: Kinds::ExpenseAdded
+      expense_added: Kinds::ExpenseAdded,
+      chore_reminder: Kinds::ChoreReminder
     }.freeze
 
     class << self

@@ -1,0 +1,77 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useChoreRostersStore } from '@/stores/choreRosters'
+import type { PoolChore } from '@/types/pool'
+import AnchoredPopover from '@/components/common/AnchoredPopover.vue'
+import TextButton from '@/components/common/TextButton.vue'
+import AppButton from '@/components/common/AppButton.vue'
+
+const props = defineProps<{
+  chore: PoolChore
+  anchorEl: HTMLElement
+  rosterId: string
+}>()
+
+const emit = defineEmits<{
+  close: []
+}>()
+
+const choreRostersStore = useChoreRostersStore()
+const time = ref(props.chore.time ?? '')
+const inputRef = ref<HTMLInputElement | null>(null)
+
+async function handleSave() {
+  // Firefox commits a partially-typed minute (a lone "0", which it still
+  // shows as "00") to the time input only on blur, firing 'change' rather
+  // than the 'input' event v-model listens to — so the bound ref can read ''
+  // mid-edit and we'd silently save nothing. Blur to force the commit, then
+  // read the element itself rather than the lagging ref.
+  inputRef.value?.blur()
+  const next = inputRef.value?.value || time.value || null
+  if (next !== (props.chore.time ?? null)) {
+    await choreRostersStore.updateChore(props.rosterId, props.chore.id, {
+      time: next,
+    })
+  }
+  emit('close')
+}
+
+async function handleClear() {
+  await choreRostersStore.updateChore(props.rosterId, props.chore.id, {
+    time: null,
+  })
+  emit('close')
+}
+</script>
+
+<template>
+  <AnchoredPopover
+    :anchor-el="anchorEl"
+    aria-label="Edit reminder time"
+    @close="emit('close')"
+  >
+    <label
+      :for="`chore-time-${chore.id}`"
+      class="text-ink-muted mb-2 block text-xs font-medium"
+    >
+      Reminder time for {{ chore.name }}
+    </label>
+
+    <input
+      :id="`chore-time-${chore.id}`"
+      ref="inputRef"
+      v-model="time"
+      type="time"
+      class="bg-surface-sunken text-ink outline-line focus:outline-focus mb-3 block w-full rounded-md px-2 py-1 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 sm:text-sm"
+      @keydown.enter="handleSave"
+    />
+
+    <div class="flex items-center justify-between">
+      <TextButton v-if="chore.time" variant="danger" @click="handleClear">
+        Clear
+      </TextButton>
+      <span v-else />
+      <AppButton size="sm" @click="handleSave"> Save </AppButton>
+    </div>
+  </AnchoredPopover>
+</template>

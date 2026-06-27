@@ -76,4 +76,94 @@ RSpec.describe ChoreRosters::UpdateChore do
     expect(result.failure?).to be true
     expect(result.failure.http_status).to eq(404)
   end
+
+  describe "editing the time" do
+    before { allow(Jobs::Queue).to receive(:enqueue) }
+
+    # A roster on a future event so rescheduled reminders land in the future
+    # (and are actually enqueued rather than skipped as past).
+    let(:future_event) do
+      e = TestFactories.event(workspace: workspace, user: user)
+      DB[:events].where(id: e[:id]).update(start_date: Date.new(2099, 5, 1), end_date: Date.new(2099, 5, 7))
+      DB[:events].where(id: e[:id]).first
+    end
+    let(:future_roster) { TestFactories.chore_roster(event: future_event, user: user) }
+
+    it "sets a time on a previously timeless chore" do
+      result = described_class.call(chore_id: chore[:id], workspace_id: workspace[:id], membership: membership_for(user), time: "09:00")
+
+      expect(result.success?).to be true
+      updated = result.value![:objects].find { |o| o[:objectType] == "chore" }
+      expect(updated[:time]).to eq("09:00")
+    end
+
+    it "clears the time" do
+      timed = TestFactories.chore(chore_roster: roster, name: "Cooking", time: "18:00")
+
+      result = described_class.call(chore_id: timed[:id], workspace_id: workspace[:id], membership: membership_for(user), time: "")
+
+      expect(result.success?).to be true
+      updated = result.value![:objects].find { |o| o[:objectType] == "chore" }
+      expect(updated[:time]).to be_nil
+    end
+
+    it "rejects a malformed time" do
+      result = described_class.call(chore_id: chore[:id], workspace_id: workspace[:id], membership: membership_for(user), time: "9am")
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to include("time")
+    end
+
+    it "leaves the time untouched and does not reschedule when time is omitted" do
+      timed = TestFactories.chore(chore_roster: future_roster, name: "Cooking", time: "18:00")
+      TestFactories.chore_assignment(chore: timed, user: user, date: Date.new(2099, 5, 2))
+
+      result = described_class.call(chore_id: timed[:id], workspace_id: workspace[:id], membership: membership_for(user), name: "Renamed")
+
+      expect(result.success?).to be true
+      updated = result.value![:objects].find { |o| o[:objectType] == "chore" }
+      expect(updated[:time]).to eq("18:00")
+      expect(Jobs::Queue).not_to have_received(:enqueue)
+    end
+
+    it "reschedules reminders for the chore's future assignments when the time changes" do
+      timed = TestFactories.chore(chore_roster: future_roster, name: "Cooking", time: "18:00")
+      assignment = TestFactories.chore_assignment(chore: timed, user: user, date: Date.new(2099, 5, 2))
+
+      described_class.call(chore_id: timed[:id], workspace_id: workspace[:id], membership: membership_for(user), time: "09:00")
+
+      expect(Jobs::Queue).to have_received(:enqueue).with(
+        job_class: "ChoreRosters::SendReminder::Job",
+        args: { chore_assignment_id: assignment[:id].to_s, expected_time: "09:00" },
+        scheduled_at: Time.new(2099, 5, 2, 9, 0, 0)
+      )
+    end
+
+    it "does not reschedule when the submitted time matches the current one" do
+      timed = TestFactories.chore(chore_roster: future_roster, name: "Cooking", time: "18:00")
+      TestFactories.chore_assignment(chore: timed, user: user, date: Date.new(2099, 5, 2))
+
+      described_class.call(chore_id: timed[:id], workspace_id: workspace[:id], membership: membership_for(user), name: "Renamed", time: "18:00")
+
+      expect(Jobs::Queue).not_to have_received(:enqueue)
+    end
+
+    # Without cancellation, editing the time back to an earlier value would
+    # leave the original job queued — its expected_time matches again and it
+    # fires alongside the fresh one, duplicating the reminder.
+    it "cancels reminders already queued for the chore before rescheduling" do
+      timed = TestFactories.chore(chore_roster: future_roster, name: "Cooking", time: "18:00")
+      assignment = TestFactories.chore_assignment(chore: timed, user: user, date: Date.new(2099, 5, 2))
+      DB[Jobs::Queue::TABLE].insert(
+        job_class: "ChoreRosters::SendReminder::Job",
+        args: Sequel.pg_jsonb({ chore_assignment_id: assignment[:id].to_s, expected_time: "18:00" }),
+        scheduled_at: Time.new(2099, 5, 2, 18, 0, 0)
+      )
+
+      described_class.call(chore_id: timed[:id], workspace_id: workspace[:id], membership: membership_for(user), time: "09:00")
+
+      stale = DB[Jobs::Queue::TABLE].where(Sequel.lit("args ->> 'expected_time' = ?", "18:00"))
+      expect(stale.count).to eq(0)
+    end
+  end
 end

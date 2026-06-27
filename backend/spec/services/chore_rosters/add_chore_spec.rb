@@ -45,6 +45,35 @@ RSpec.describe ChoreRosters::AddChore do
     expect(result.failure.message).to include("Name")
   end
 
+  it "stores an optional time of day" do
+    result = described_class.call(
+      roster_id: roster[:id],
+      workspace_id: workspace[:id],
+      membership: membership_for(user),
+      name: "Cooking",
+      people_per_day: 1,
+      time: "18:00"
+    )
+
+    expect(result.success?).to be true
+    chore = result.value![:objects].find { |o| o[:objectType] == "chore" }
+    expect(chore[:time]).to eq("18:00")
+  end
+
+  it "rejects a malformed time" do
+    result = described_class.call(
+      roster_id: roster[:id],
+      workspace_id: workspace[:id],
+      membership: membership_for(user),
+      name: "Cooking",
+      people_per_day: 1,
+      time: "25:99"
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to include("time")
+  end
+
   it "is idempotent with client ID" do
     chore_id = SecureRandom.uuid
 

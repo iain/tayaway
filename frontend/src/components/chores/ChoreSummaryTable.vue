@@ -59,19 +59,23 @@ const rows = computed<SummaryRow[]>(() => {
 
     <BaseCard class="overflow-x-auto">
       <table class="min-w-full text-sm">
+        <caption class="sr-only">
+          Workload summary: how many chore-days each person is assigned.
+        </caption>
         <thead>
           <tr
             class="border-line text-ink-muted border-b text-left text-xs font-medium tracking-wide uppercase"
           >
-            <th class="pt-3 pr-4 pb-2 pl-4">Name</th>
+            <th scope="col" class="pt-3 pr-4 pb-2 pl-4">Name</th>
             <th
               v-for="chore in chores"
               :key="chore.id"
+              scope="col"
               class="pt-3 pr-4 pb-2 text-right whitespace-nowrap"
             >
               {{ chore.name }}
             </th>
-            <th class="pt-3 pr-4 pb-2 text-right">Total</th>
+            <th scope="col" class="pt-3 pr-4 pb-2 text-right">Total</th>
           </tr>
         </thead>
         <tbody>
@@ -81,19 +85,20 @@ const rows = computed<SummaryRow[]>(() => {
             class="text-ink"
             :class="i % 2 === 0 ? 'bg-surface-sunken' : ''"
           >
-            <td
-              class="max-w-[8rem] truncate py-2 pr-4 pl-4 font-medium sm:max-w-none"
+            <th
+              scope="row"
+              class="max-w-[8rem] truncate py-2 pr-4 pl-4 text-left font-medium sm:max-w-none"
             >
               {{ row.name }}
-            </td>
+            </th>
             <td
               v-for="chore in chores"
               :key="chore.id"
-              class="py-2 pr-4 text-right font-mono"
+              class="py-2 pr-4 text-right tabular-nums"
             >
               {{ row.counts.get(chore.id) ?? 0 }}
             </td>
-            <td class="py-2 pr-4 text-right font-mono font-semibold">
+            <td class="py-2 pr-4 text-right font-semibold tabular-nums">
               {{ row.total }}
             </td>
           </tr>

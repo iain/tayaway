@@ -149,6 +149,18 @@ RSpec.describe "Chore rosters endpoints" do
       chore = body["objects"].find { |o| o["objectType"] == "chore" }
       expect(chore["name"]).to eq("Cooking")
     end
+
+    it "stores an optional time" do
+      roster = TestFactories.chore_roster(event: event, user: user)
+
+      post "/api/chore-rosters/#{roster[:id]}/chores",
+           { name: "Cooking", time: "18:30" }.to_json,
+           auth_headers.merge("CONTENT_TYPE" => "application/json")
+
+      expect(last_response.status).to eq(201)
+      chore = JSON.parse(last_response.body)["objects"].find { |o| o["objectType"] == "chore" }
+      expect(chore["time"]).to eq("18:30")
+    end
   end
 
   describe "PUT /api/chore-rosters/:id/chores/:cid" do
@@ -164,6 +176,42 @@ RSpec.describe "Chore rosters endpoints" do
       body = JSON.parse(last_response.body)
       updated = body["objects"].find { |o| o["objectType"] == "chore" }
       expect(updated["name"]).to eq("New Name")
+    end
+
+    it "edits the time" do
+      roster = TestFactories.chore_roster(event: event, user: user)
+      chore = TestFactories.chore(chore_roster: roster, time: "18:00")
+
+      put "/api/chore-rosters/#{roster[:id]}/chores/#{chore[:id]}",
+          { time: "07:15" }.to_json,
+          auth_headers.merge("CONTENT_TYPE" => "application/json")
+
+      updated = JSON.parse(last_response.body)["objects"].find { |o| o["objectType"] == "chore" }
+      expect(updated["time"]).to eq("07:15")
+    end
+
+    it "clears the time when sent blank" do
+      roster = TestFactories.chore_roster(event: event, user: user)
+      chore = TestFactories.chore(chore_roster: roster, time: "18:00")
+
+      put "/api/chore-rosters/#{roster[:id]}/chores/#{chore[:id]}",
+          { time: "" }.to_json,
+          auth_headers.merge("CONTENT_TYPE" => "application/json")
+
+      updated = JSON.parse(last_response.body)["objects"].find { |o| o["objectType"] == "chore" }
+      expect(updated["time"]).to be_nil
+    end
+
+    it "leaves the time untouched when the key is omitted" do
+      roster = TestFactories.chore_roster(event: event, user: user)
+      chore = TestFactories.chore(chore_roster: roster, time: "18:00")
+
+      put "/api/chore-rosters/#{roster[:id]}/chores/#{chore[:id]}",
+          { name: "Renamed" }.to_json,
+          auth_headers.merge("CONTENT_TYPE" => "application/json")
+
+      updated = JSON.parse(last_response.body)["objects"].find { |o| o["objectType"] == "chore" }
+      expect(updated["time"]).to eq("18:00")
     end
   end
 
