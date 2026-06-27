@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref } from 'vue'
 import { useChoreRostersStore } from '@/stores/choreRosters'
 import type { PoolChore } from '@/types/pool'
+import AnchoredPopover from '@/components/common/AnchoredPopover.vue'
 import TextButton from '@/components/common/TextButton.vue'
 import AppButton from '@/components/common/AppButton.vue'
 
@@ -17,7 +18,6 @@ const emit = defineEmits<{
 
 const choreRostersStore = useChoreRostersStore()
 const time = ref(props.chore.time ?? '')
-const popoverRef = ref<HTMLDivElement | null>(null)
 const inputRef = ref<HTMLInputElement | null>(null)
 
 async function handleSave() {
@@ -42,30 +42,13 @@ async function handleClear() {
   })
   emit('close')
 }
-
-function handleClickOutside(event: MouseEvent) {
-  if (popoverRef.value && !popoverRef.value.contains(event.target as Node)) {
-    emit('close')
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('mousedown', handleClickOutside)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('mousedown', handleClickOutside)
-})
 </script>
 
 <template>
-  <div
-    ref="popoverRef"
-    class="border-line bg-surface fixed z-50 w-64 rounded-lg border p-3 shadow-lg"
-    :style="{
-      top: `${anchorEl.getBoundingClientRect().bottom + 4}px`,
-      left: `${anchorEl.getBoundingClientRect().left}px`,
-    }"
+  <AnchoredPopover
+    :anchor-el="anchorEl"
+    :aria-label="`Reminder time for ${chore.name}`"
+    @close="emit('close')"
   >
     <label
       :for="`chore-time-${chore.id}`"
@@ -79,7 +62,7 @@ onBeforeUnmount(() => {
       ref="inputRef"
       v-model="time"
       type="time"
-      class="bg-surface-sunken text-ink outline-line focus:outline-focus mb-3 block w-full rounded-md px-2 py-1 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
+      class="bg-surface-sunken text-ink outline-line focus:outline-focus mb-3 block w-full rounded-md px-2 py-1 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 sm:text-sm"
       @keydown.enter="handleSave"
     />
 
@@ -90,5 +73,5 @@ onBeforeUnmount(() => {
       <span v-else />
       <AppButton size="sm" @click="handleSave"> Save </AppButton>
     </div>
-  </div>
+  </AnchoredPopover>
 </template>
