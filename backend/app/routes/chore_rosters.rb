@@ -138,6 +138,14 @@ class App
             ppd = ppd_param ? ppd_param.to_i : nil
             pos_param = r.params["position"]
             pos = pos_param ? pos_param.to_f : nil
+            # Tri-state: absent leaves the time alone; present (incl. blank,
+            # which clears) edits it.
+            time =
+              if r.params.key?("time")
+                r.params["time"]&.strip
+              else
+                :unset
+              end
 
             result = ChoreRosters::UpdateChore.call(
               chore_id: cid,
@@ -146,9 +154,7 @@ class App
               name: r.params["name"]&.strip,
               people_per_day: ppd,
               position: pos,
-              # Tri-state: absent leaves the time alone; present (incl. blank,
-              # which clears) edits it.
-              time: r.params.key?("time") ? r.params["time"]&.strip : :unset
+              time: time
             )
             handle_result(result)
           end

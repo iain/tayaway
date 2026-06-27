@@ -9,30 +9,63 @@ module ChoreRosters
   # has since left the workspace. Time edits cancel the pending job up front;
   # this re-check keeps harmless any job that slipped through (in flight, or
   # left behind by a re-autofill).
+  #
+  # The re-checks read as a Result chain: each link looks up the next piece
+  # of state the reminder needs, and any link that comes up empty short-
+  # circuits to a Failure. Nobody reads that Failure — the worker only
+  # retries on a raised exception — so a job whose world has changed simply
+  # stops partway and sends nothing.
   module SendReminder
     class << self
       # @param expected_time [String, nil] the "HH:MM" this job was scheduled
       #   for; nil for legacy jobs queued before this argument existed, which
       #   skip the staleness check and fire on the chore's current time.
       def call(chore_assignment_id:, expected_time: nil)
-        assignment = ChoreAssignment.find(chore_assignment_id)
-        return unless assignment
+        Success()
+          .bind { ChoreAssignment.find_result(chore_assignment_id) }
+          .bind { |assignment| current_chore(assignment, expected_time) }
+          .bind { |ctx| add_event(ctx) }
+          .bind { |ctx| ensure_member(ctx) }
+          .bind { |ctx| deliver(ctx) }
+      end
 
+      private
+
+      # The chore must still exist, still be timed, and still hold the time
+      # this job was scheduled for — an edit since then makes the job stale.
+      def current_chore(assignment, expected_time)
         chore = Chore.find(assignment.chore_id)
-        return unless chore&.time
-        return if expected_time && chore.time.strftime("%H:%M") != expected_time
+        if chore.nil? || chore.time.nil?
+          Failure(:no_time)
+        elsif expected_time && chore.time.strftime("%H:%M") != expected_time
+          Failure(:stale_time)
+        else
+          Success({ assignment: assignment, chore: chore })
+        end
+      end
 
-        roster = ChoreRoster.find(chore.chore_roster_id)
-        return unless roster
+      def add_event(ctx)
+        ChoreRoster.find_result(ctx[:chore].chore_roster_id)
+                   .bind { |roster| Event.find_result(roster.event_id) }
+                   .fmap { |event| ctx.merge(event: event) }
+      end
 
-        event = Event.find(roster.event_id)
-        return unless event
+      # Don't nag someone who has since left the workspace — an assignment
+      # row can outlive its assignee's membership (a pinned one survives
+      # member removal), and a reminder to a non-member is just noise.
+      def ensure_member(ctx)
+        member = WorkspaceMembership.find_by_workspace_and_user(
+          ctx[:event].workspace_id, ctx[:assignment].user_id
+        )
+        if member
+          Success(ctx)
+        else
+          Failure(:not_a_member)
+        end
+      end
 
-        # Don't nag someone who has since left the workspace — an assignment
-        # row can outlive its assignee's membership (a pinned one survives
-        # member removal), and a reminder to a non-member is just noise.
-        return unless WorkspaceMembership.find_by_workspace_and_user(event.workspace_id, assignment.user_id)
-
+      def deliver(ctx)
+        assignment, chore, event = ctx.values_at(:assignment, :chore, :event)
         Notifications::Safely.deliver(context: "ChoreRosters::SendReminder") do
           Notifications::Dispatch.call(
             kind: :chore_reminder,
@@ -45,6 +78,7 @@ module ChoreRosters
             }
           )
         end
+        Success()
       end
     end
 

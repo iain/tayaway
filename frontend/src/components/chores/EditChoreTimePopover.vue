@@ -28,13 +28,11 @@ async function handleSave() {
   // read the element itself rather than the lagging ref.
   inputRef.value?.blur()
   const next = inputRef.value?.value || time.value || null
-  if (next === (props.chore.time ?? null)) {
-    emit('close')
-    return
+  if (next !== (props.chore.time ?? null)) {
+    await choreRostersStore.updateChore(props.rosterId, props.chore.id, {
+      time: next,
+    })
   }
-  await choreRostersStore.updateChore(props.rosterId, props.chore.id, {
-    time: next,
-  })
   emit('close')
 }
 
