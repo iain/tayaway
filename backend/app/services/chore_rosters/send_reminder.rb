@@ -4,10 +4,11 @@ module ChoreRosters
   # Delivers the "it's your turn" reminder for a single chore assignment.
   # Runs from a job scheduled at the chore's time (see ScheduleReminder),
   # so it re-reads current state and quietly no-ops if the world moved on:
-  # the assignment was deleted, the chore was removed, its time cleared, or
-  # its time edited (the job's `expected_time` no longer matches). That keeps
-  # a stale scheduled job harmless instead of needing the scheduler to chase
-  # down and cancel jobs on every edit.
+  # the assignment was deleted, the chore was removed, its time cleared or
+  # edited (the job's `expected_time` no longer matches), or the assignee
+  # has since left the workspace. Time edits cancel the pending job up front;
+  # this re-check keeps harmless any job that slipped through (in flight, or
+  # left behind by a re-autofill).
   module SendReminder
     class << self
       # @param expected_time [String, nil] the "HH:MM" this job was scheduled
@@ -26,6 +27,11 @@ module ChoreRosters
 
         event = Event.find(roster.event_id)
         return unless event
+
+        # Don't nag someone who has since left the workspace — an assignment
+        # row can outlive its assignee's membership (a pinned one survives
+        # member removal), and a reminder to a non-member is just noise.
+        return unless WorkspaceMembership.find_by_workspace_and_user(event.workspace_id, assignment.user_id)
 
         Notifications::Safely.deliver(context: "ChoreRosters::SendReminder") do
           Notifications::Dispatch.call(

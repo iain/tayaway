@@ -10,6 +10,8 @@ RSpec.describe ChoreRosters::SendReminder do
   let(:chore) { TestFactories.chore(chore_roster: roster, name: "Cooking", time: "18:00") }
   let(:assignment) { TestFactories.chore_assignment(chore: chore, user: user, date: Date.new(2026, 7, 1)) }
 
+  before { TestFactories.workspace_membership(workspace: workspace, user: user) }
+
   describe ".call" do
     it "delivers a chore_reminder in-app notification to the assigned user" do
       described_class.call(chore_assignment_id: assignment[:id])
@@ -26,6 +28,15 @@ RSpec.describe ChoreRosters::SendReminder do
       described_class.call(chore_assignment_id: SecureRandom.uuid)
 
       expect(DB[:notifications].count).to eq(0)
+    end
+
+    it "no-ops when the assigned user is no longer a workspace member" do
+      stranger = TestFactories.user
+      a = TestFactories.chore_assignment(chore: chore, user: stranger, date: Date.new(2026, 7, 1))
+
+      described_class.call(chore_assignment_id: a[:id])
+
+      expect(DB[:notifications].where(user_id: stranger[:id]).count).to eq(0)
     end
 
     it "no-ops when the chore has no time" do

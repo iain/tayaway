@@ -147,5 +147,23 @@ RSpec.describe ChoreRosters::UpdateChore do
 
       expect(Jobs::Queue).not_to have_received(:enqueue)
     end
+
+    # Without cancellation, editing the time back to an earlier value would
+    # leave the original job queued — its expected_time matches again and it
+    # fires alongside the fresh one, duplicating the reminder.
+    it "cancels reminders already queued for the chore before rescheduling" do
+      timed = TestFactories.chore(chore_roster: future_roster, name: "Cooking", time: "18:00")
+      assignment = TestFactories.chore_assignment(chore: timed, user: user, date: Date.new(2099, 5, 2))
+      DB[Jobs::Queue::TABLE].insert(
+        job_class: "ChoreRosters::SendReminder::Job",
+        args: Sequel.pg_jsonb({ chore_assignment_id: assignment[:id].to_s, expected_time: "18:00" }),
+        scheduled_at: Time.new(2099, 5, 2, 18, 0, 0)
+      )
+
+      described_class.call(chore_id: timed[:id], workspace_id: workspace[:id], membership: membership_for(user), time: "09:00")
+
+      stale = DB[Jobs::Queue::TABLE].where(Sequel.lit("args ->> 'expected_time' = ?", "18:00"))
+      expect(stale.count).to eq(0)
+    end
   end
 end

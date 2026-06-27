@@ -24,14 +24,29 @@ module ChoreRosters
         remind_at = combine(assignment.date, chore.time)
         return if remind_at <= Time.now
 
-        # Stamp the time this job is for. If the chore's time is later edited,
-        # SendReminder sees the mismatch and this job no-ops while a freshly
-        # scheduled one fires — no need to find and cancel the old job.
+        # Stamp the time this job is for. Editing the time cancels the pending
+        # job and reschedules (see UpdateChore#reschedule_reminders); this
+        # stamp is the backstop for a job we couldn't cancel — one already in
+        # flight, or left over from a re-autofill — which SendReminder no-ops
+        # when the stamp no longer matches the chore's current time.
         Jobs::Queue.enqueue(
           job_class: JOB_CLASS,
           args: { chore_assignment_id: assignment.id.to_s, expected_time: chore.time.strftime("%H:%M") },
           scheduled_at: remind_at
         )
+      end
+
+      # Drops any still-pending reminder for this assignment, so rescheduling
+      # to a new time can't leave the old job behind. A job already in flight
+      # (locked by a worker) is left alone — SendReminder's stamp/existence
+      # checks keep it harmless. Editing the time back to an earlier value
+      # would otherwise resurrect that earlier job, since its stamp matches
+      # the chore's time once more and nothing else removes it.
+      def cancel(assignment:)
+        DB[Jobs::Queue::TABLE]
+          .where(job_class: JOB_CLASS, locked_at: nil)
+          .where(Sequel.lit("args ->> 'chore_assignment_id' = ?", assignment.id.to_s))
+          .delete
       end
 
       private

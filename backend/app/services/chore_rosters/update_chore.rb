@@ -81,13 +81,16 @@ module ChoreRosters
       end
 
       # A changed time invalidates every reminder already queued for this
-      # chore's assignments (their `expected_time` no longer matches), so
-      # queue fresh ones — clearing the time queues nothing and lets the old
-      # jobs no-op. Isolated like other notification work so a scheduling
-      # failure can't roll back the saved edit.
+      # chore's assignments. Cancel those still-pending jobs and queue fresh
+      # ones — cancelling (rather than relying on the stale-job no-op) is what
+      # stops a duplicate when the time is edited back to an earlier value, as
+      # that old job's stamp would otherwise match again. Clearing the time
+      # cancels and queues nothing. Isolated like other notification work so a
+      # scheduling failure can't roll back the saved edit.
       def reschedule_reminders(chore)
         Notifications::Safely.deliver(context: "ChoreRosters::UpdateChore#reminders") do
           ChoreAssignment.for_chore(chore.id).each do |assignment|
+            ScheduleReminder.cancel(assignment: assignment)
             ScheduleReminder.call(assignment: assignment, chore: chore)
           end
         end
