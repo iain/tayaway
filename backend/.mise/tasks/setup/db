@@ -1,42 +1,11 @@
 #!/usr/bin/env bash
-#MISE description="Generate per-env dotenv files (if missing) and create/migrate the development, test, and e2e databases"
+#MISE description="Create and migrate the development, test, and e2e databases"
+#MISE depends=["//backend:setup:env"]
 
 set -euo pipefail
 
-# Dotenv files are gitignored — devs and CI generate their own. Auto-create
-# what's missing so a fresh clone goes from `mise run setup` to a working
-# DB without hand-editing. .env.example is the schema-derived template
-# (regenerate with `mise run config:example`); APP_SECRET is the one
-# required-but-blank field, so fill it with fresh randomness.
-if [[ ! -f .env.development ]]; then
-  echo "Generating .env.development from .env.example..."
-  app_secret=$(ruby -rsecurerandom -e "puts SecureRandom.base64(32)")
-  # Fresh per-machine web-push VAPID keypair so push works in dev out of the
-  # box. Like APP_SECRET these grant nothing — production keys live in the
-  # sops-encrypted .env.production.yaml — so they belong in the gitignored dev
-  # env, never the repo. The frontend reads the public key from the backend at
-  # runtime, so a per-machine pair needs no further coordination.
-  vapid=$(bundle exec ruby -rweb_push -e 'k = WebPush.generate_key; print "#{k.public_key} #{k.private_key}"')
-  sed -e "s|^APP_SECRET=.*|APP_SECRET=$app_secret|" \
-    -e "s|^# *VAPID_PUBLIC_KEY=.*|VAPID_PUBLIC_KEY=${vapid%% *}|" \
-    -e "s|^# *VAPID_PRIVATE_KEY=.*|VAPID_PRIVATE_KEY=${vapid##* }|" \
-    .env.example >.env.development
-fi
-
-if [[ ! -f .env.test ]]; then
-  echo "Generating .env.test from .env.development..."
-  sed '/^DATABASE_URL=/s|/tayaway_development|/tayaway_test|' .env.development >.env.test
-fi
-
-if [[ ! -f .env.e2e ]]; then
-  echo "Generating .env.e2e from .env.development..."
-  # e2e points at its own DB and the e2e frontend (port 5174), inheriting the
-  # generated APP_SECRET and VAPID keypair so the push e2e spec has real keys.
-  sed -e '/^DATABASE_URL=/s|/tayaway_development|/tayaway_e2e|' \
-    -e '/^FRONTEND_URL=/s|:5173|:5174|' \
-    .env.development >.env.e2e
-fi
-
+# setup:env (a dependency) has generated the per-env dotenv files, so each
+# env's DATABASE_URL is in place before we connect.
 for env in development test e2e; do
   echo "Setting up $env database..."
   MISE_ENV="$env" mise exec -- bundle exec rake db:create db:migrate

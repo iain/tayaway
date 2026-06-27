@@ -3,6 +3,7 @@
 require "bundler/setup"
 require "sequel"
 require_relative "lib/config"
+require_relative "lib/dotenv_template"
 APP_CONFIG.load!
 
 namespace :db do
@@ -176,33 +177,7 @@ namespace :config do
 
   desc "Regenerate backend/.env.example from the Config schema"
   task :example do
-    # Dev-machine prefills supplement the schema for the empty-clone
-    # bootstrap path. They live here rather than in schema.rb so APP_CONFIG
-    # stays focused on validation, not setup ergonomics.
-    prefills = {
-      database_url: "postgres://tayaway@localhost:5432/tayaway_development",
-    }
-
-    render_value = lambda do |spec|
-      raw = prefills.fetch(spec.key) { spec.dev_default || spec.default }
-      case raw
-      when nil then ""
-      when Array then raw.join(",")
-      else raw.to_s
-      end
-    end
-
-    format_spec = lambda do |spec|
-      lines = []
-      lines << "# #{spec.description}" unless spec.description.to_s.empty?
-      lines << "# Generate with: ruby -e \"require 'securerandom'; puts SecureRandom.base64(32)\"" if spec.key == :app_secret
-      uncommented = spec.required == true || spec.required == :production_only
-      prefix = uncommented ? "" : "# "
-      lines << "#{prefix}#{spec.env}=#{render_value.call(spec)}"
-      lines
-    end
-
-    out = [
+    banner = [
       "# Auto-generated from backend/config/schema.rb by `bundle exec rake config:example`.",
       "# Re-run after editing the schema; don't edit this file by hand.",
       "#",
@@ -210,25 +185,15 @@ namespace :config do
       "",
     ]
 
-    APP_CONFIG.entries.each do |spec|
-      next if spec.key == :app_env # set via MISE_ENV outside the dotenv file
+    # The one prefill the schema can't supply: DATABASE_URL is a required
+    # secret with no default, so seed the example with a dev-machine value.
+    out = DotenvTemplate.render(
+      APP_CONFIG,
+      overrides: { database_url: "postgres://tayaway@localhost:5432/tayaway_development" },
+      banner: banner
+    )
 
-      out.concat(format_spec.call(spec))
-      out << ""
-    end
-
-    APP_CONFIG.features.each do |feature|
-      required_envs = feature.requires.map { |k| APP_CONFIG.all_specs.find { _1.key == k }.env }
-      out << "# ── Feature: #{feature.description} ──"
-      out << "# Enabled when all of #{required_envs.join(", ")} are set."
-      out << ""
-      APP_CONFIG.feature_entries.fetch(feature.name).each do |spec|
-        out.concat(format_spec.call(spec))
-        out << ""
-      end
-    end
-
-    File.write(".env.example", out.join("\n").chomp + "\n")
+    File.write(".env.example", out)
     puts "Wrote backend/.env.example"
   end
 end
