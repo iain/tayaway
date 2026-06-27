@@ -5,6 +5,7 @@ import {
   BanknotesIcon,
   BellIcon,
   CalendarDaysIcon,
+  ClipboardDocumentListIcon,
   ShieldCheckIcon,
   UserGroupIcon,
 } from '@heroicons/vue/24/outline'
@@ -62,15 +63,22 @@ const GROUPS: Group[] = [
     key: 'events',
     title: 'Events',
     blurb:
-      'New events, cancellations, date or location changes, polls closing, and chore reminders.',
+      'New events, cancellations, date or location changes, and polls closing.',
     icon: CalendarDaysIcon,
     kinds: [
       'event_created',
       'event_canceled',
       'event_details_changed',
       'poll_closed',
-      'chore_reminder',
     ],
+    forcedReason: {},
+  },
+  {
+    key: 'chores',
+    title: 'Chores',
+    blurb: "Reminders when it's your turn for a chore you've been assigned.",
+    icon: ClipboardDocumentListIcon,
+    kinds: ['chore_reminder'],
     forcedReason: {},
   },
   {
