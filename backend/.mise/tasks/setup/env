@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Generate per-env backend dotenv files (development/test/e2e) from config/schema.rb, if missing"
+# Needs the bundle installed — the generator shells out to `bundle exec ruby`
+# (web_push). Depending on setup:deps keeps this runnable on its own and avoids
+# the fresh-clone race where setup:deps would otherwise run in parallel.
+#MISE depends=["//backend:setup:deps"]
 
 set -euo pipefail
 

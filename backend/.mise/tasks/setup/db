@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Create and migrate the dev/test/e2e databases, then seed development"
-#MISE depends=["//backend:setup:env"]
+# setup:env generates the dotenvs (DATABASE_URLs); setup:deps installs the
+# bundle that rake needs. Declaring both keeps `mise run setup:db` self-
+# contained and orders them ahead of the parallel fan-out under `setup`.
+#MISE depends=["//backend:setup:env", "//backend:setup:deps"]
 
 set -euo pipefail
 
