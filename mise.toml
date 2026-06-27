@@ -137,7 +137,11 @@ run = "git cliff"
 
 [tasks.e2e]
 description = "Playwright end-to-end tests — extra args pass through to playwright"
-depends = ["//backend:db:setup-e2e"]
+# e2e:reset frees the e2e ports first — Playwright's reuseExistingServer=false
+# means a server orphaned by a prior interrupted run would otherwise block
+# startup for the full 120s webServer timeout (notably under `mise run ci`,
+# where check + e2e run concurrently and an earlier crash can leave stragglers).
+depends = ["//backend:db:setup-e2e", "//:e2e:reset"]
 # Playwright still calls `module.register()` to install its TS ESM loader;
 # on Node 22+ that emits DEP0205. Silence only that code so real deprecation
 # warnings stay visible. Drop once Playwright migrates to registerHooks().
@@ -263,8 +267,14 @@ description = "Install root dependencies (Playwright, prettier)"
 # you hit a missing system lib, run it manually with --with-deps.
 run = ["aube install", "aube exec playwright install chromium"]
 
+[tasks."setup:env"]
+description = "Generate per-env backend dotenv files from the Config schema (if missing)"
+depends = ["//backend:setup:env"]
+
 [tasks."setup:db"]
 description = "Create and migrate the development, test, and e2e databases"
+# //backend:setup:db depends on //backend:setup:env, so the dotenv files (and
+# their DATABASE_URLs) are in place before any DB work runs.
 depends = ["//backend:setup:db"]
 
 [tasks."tools:upgrade"]
