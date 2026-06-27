@@ -18,9 +18,16 @@ const emit = defineEmits<{
 const choreRostersStore = useChoreRostersStore()
 const time = ref(props.chore.time ?? '')
 const popoverRef = ref<HTMLDivElement | null>(null)
+const inputRef = ref<HTMLInputElement | null>(null)
 
 async function handleSave() {
-  const next = time.value || null
+  // Firefox commits a partially-typed minute (a lone "0", which it still
+  // shows as "00") to the time input only on blur, firing 'change' rather
+  // than the 'input' event v-model listens to — so the bound ref can read ''
+  // mid-edit and we'd silently save nothing. Blur to force the commit, then
+  // read the element itself rather than the lagging ref.
+  inputRef.value?.blur()
+  const next = inputRef.value?.value || time.value || null
   if (next === (props.chore.time ?? null)) {
     emit('close')
     return
@@ -71,6 +78,7 @@ onBeforeUnmount(() => {
 
     <input
       :id="`chore-time-${chore.id}`"
+      ref="inputRef"
       v-model="time"
       type="time"
       class="bg-surface-sunken text-ink outline-line focus:outline-focus mb-3 block w-full rounded-md px-2 py-1 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
