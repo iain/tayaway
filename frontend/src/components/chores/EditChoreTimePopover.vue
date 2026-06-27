@@ -47,7 +47,7 @@ async function handleClear() {
 <template>
   <AnchoredPopover
     :anchor-el="anchorEl"
-    :aria-label="`Reminder time for ${chore.name}`"
+    aria-label="Edit reminder time"
     @close="emit('close')"
   >
     <label
