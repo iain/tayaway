@@ -267,8 +267,14 @@ description = "Install root dependencies (Playwright, prettier)"
 # you hit a missing system lib, run it manually with --with-deps.
 run = ["aube install", "aube exec playwright install chromium"]
 
+[tasks."setup:env"]
+description = "Generate per-env backend dotenv files from the Config schema (if missing)"
+depends = ["//backend:setup:env"]
+
 [tasks."setup:db"]
 description = "Create and migrate the development, test, and e2e databases"
+# //backend:setup:db depends on //backend:setup:env, so the dotenv files (and
+# their DATABASE_URLs) are in place before any DB work runs.
 depends = ["//backend:setup:db"]
 
 [tasks."tools:upgrade"]

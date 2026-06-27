@@ -1,27 +1,22 @@
 #!/usr/bin/env bash
-#MISE description="Generate per-env dotenv files (if missing) and create/migrate the development, test, and e2e databases"
+#MISE description="Create and migrate the dev/test/e2e databases, then seed development"
+# setup:env generates the dotenvs (DATABASE_URLs); setup:deps installs the
+# bundle that rake needs. Declaring both keeps `mise run setup:db` self-
+# contained and orders them ahead of the parallel fan-out under `setup`.
+#MISE depends=["//backend:setup:env", "//backend:setup:deps"]
 
 set -euo pipefail
 
-# Dotenv files are gitignored — devs and CI generate their own. Auto-create
-# what's missing so a fresh clone goes from `mise run setup` to a working
-# DB without hand-editing. .env.example is the schema-derived template
-# (regenerate with `mise run config:example`); APP_SECRET is the one
-# required-but-blank field, so fill it with fresh randomness.
-if [[ ! -f .env.development ]]; then
-  echo "Generating .env.development from .env.example..."
-  app_secret=$(ruby -rsecurerandom -e "puts SecureRandom.base64(32)")
-  sed "s|^APP_SECRET=.*|APP_SECRET=$app_secret|" .env.example >.env.development
-fi
-
-if [[ ! -f .env.test ]]; then
-  echo "Generating .env.test from .env.development..."
-  sed '/^DATABASE_URL=/s|/tayaway_development|/tayaway_test|' .env.development >.env.test
-fi
-
+# setup:env (a dependency) has generated the per-env dotenv files, so each
+# env's DATABASE_URL is in place before we connect.
 for env in development test e2e; do
   echo "Setting up $env database..."
   MISE_ENV="$env" mise exec -- bundle exec rake db:create db:migrate
 done
+
+# Seed only development with the sample workspace/user — test and e2e build
+# their own data via factories. db:seed upserts, so re-running setup is safe.
+echo "Seeding development database..."
+MISE_ENV=development mise exec -- bundle exec rake db:seed
 
 echo "All databases ready"
