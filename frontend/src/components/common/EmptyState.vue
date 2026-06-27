@@ -13,7 +13,7 @@ const props = withDefaults(
     iconClass?: string
     headingLevel?: 2 | 3
   }>(),
-  { headingLevel: 3 }
+  { headingLevel: 3, iconClass: 'text-amber-500 dark:text-amber-400' }
 )
 
 const headingTag = computed(() => `h${props.headingLevel}`)
@@ -24,7 +24,7 @@ const headingTag = computed(() => `h${props.headingLevel}`)
     <component
       :is="icon"
       class="mx-auto size-12"
-      :class="iconClass ?? 'text-amber-500 dark:text-amber-400'"
+      :class="iconClass"
       aria-hidden="true"
     />
     <component :is="headingTag" class="text-ink mt-2 text-sm font-semibold">
