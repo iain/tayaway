@@ -26,5 +26,15 @@ module Events
 
       Success(true)
     end
+
+    # A blank timezone means "use the default" (create) or "no change"
+    # (update); anything else must be a known IANA identifier.
+    def validate_timezone(timezone)
+      if timezone.nil? || timezone.empty? || Timezones.valid?(timezone)
+        Success(true)
+      else
+        Failure(ServiceError.validation("Unknown timezone"))
+      end
+    end
   end
 end

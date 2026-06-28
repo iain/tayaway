@@ -12,24 +12,38 @@ RSpec.describe ChoreRosters::ScheduleReminder do
     ChoreAssignment.find(TestFactories.chore_assignment(chore: chore, user: user, date: date)[:id])
   end
 
-  it "enqueues a reminder job at the chore's time on the assignment date" do
+  it "enqueues a reminder at the chore's time, read in the given zone" do
     chore = TestFactories.chore(chore_roster: roster, time: "07:30")
     assignment = assignment_for(chore, Date.new(2099, 5, 4))
 
-    described_class.call(assignment: assignment)
+    described_class.call(assignment: assignment, timezone: "Europe/Amsterdam")
 
     expect(Jobs::Queue).to have_received(:enqueue).with(
       job_class: "ChoreRosters::SendReminder::Job",
       args: { chore_assignment_id: assignment.id.to_s, expected_time: "07:30" },
-      scheduled_at: Time.new(2099, 5, 4, 7, 30, 0)
+      # The instant is the chore's wall-clock time read in the event's zone —
+      # whatever offset that zone has on the date.
+      scheduled_at: Timezones.resolve(date: Date.new(2099, 5, 4), hour: 7, min: 30, zone: "Europe/Amsterdam")
     )
+  end
+
+  it "reads the same wall-clock time differently in another zone" do
+    chore = TestFactories.chore(chore_roster: roster, time: "07:30")
+    assignment = assignment_for(chore, Date.new(2099, 5, 4))
+
+    described_class.call(assignment: assignment, timezone: "America/New_York")
+
+    ny = Timezones.resolve(date: Date.new(2099, 5, 4), hour: 7, min: 30, zone: "America/New_York")
+    ams = Timezones.resolve(date: Date.new(2099, 5, 4), hour: 7, min: 30, zone: "Europe/Amsterdam")
+    expect(Jobs::Queue).to have_received(:enqueue).with(hash_including(scheduled_at: ny))
+    expect(ny).not_to eq(ams)
   end
 
   it "does not enqueue when the chore has no time" do
     chore = TestFactories.chore(chore_roster: roster)
     assignment = assignment_for(chore, Date.new(2099, 5, 4))
 
-    described_class.call(assignment: assignment)
+    described_class.call(assignment: assignment, timezone: "Europe/Amsterdam")
 
     expect(Jobs::Queue).not_to have_received(:enqueue)
   end
@@ -38,7 +52,7 @@ RSpec.describe ChoreRosters::ScheduleReminder do
     chore = TestFactories.chore(chore_roster: roster, time: "07:30")
     assignment = assignment_for(chore, Date.new(2000, 1, 1))
 
-    described_class.call(assignment: assignment)
+    described_class.call(assignment: assignment, timezone: "Europe/Amsterdam")
 
     expect(Jobs::Queue).not_to have_received(:enqueue)
   end

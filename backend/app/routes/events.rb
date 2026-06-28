@@ -58,7 +58,8 @@ class App
           end_date: r.params["end_date"]&.strip,
           location_name: r.params["location_name"]&.strip,
           latitude: ValidationLimits.parse_coordinate(r.params["latitude"]),
-          longitude: ValidationLimits.parse_coordinate(r.params["longitude"])
+          longitude: ValidationLimits.parse_coordinate(r.params["longitude"]),
+          timezone: r.params["timezone"]&.strip
         )
         handle_result(result, success_status: 201)
       end
@@ -99,7 +100,8 @@ class App
             end_date: r.params["end_date"]&.strip,
             location_name: r.params["location_name"]&.strip,
             latitude: ValidationLimits.parse_coordinate(r.params["latitude"]),
-            longitude: ValidationLimits.parse_coordinate(r.params["longitude"])
+            longitude: ValidationLimits.parse_coordinate(r.params["longitude"]),
+            timezone: r.params["timezone"]&.strip
           )
           handle_result(result)
         end

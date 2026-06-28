@@ -16,7 +16,7 @@ module Events
       include Events::Validators
 
       def call(workspace_id:, membership:, name:, description:, id: nil, start_date: nil, end_date: nil,
-               location_name: nil, latitude: nil, longitude: nil)
+               location_name: nil, latitude: nil, longitude: nil, timezone: nil)
         Auditable.around(
           service: "Events::Create",
           actor: membership,
@@ -30,12 +30,13 @@ module Events
             .bind { validate_name(name) }
             .bind { |valid_name| validate_text_lengths(description, location_name).fmap { valid_name } }
             .bind { |valid_name| validate_coordinates(latitude, longitude).fmap { valid_name } }
+            .bind { |valid_name| validate_timezone(timezone).fmap { valid_name } }
             .bind { |valid_name| validate_dates(start_date, end_date).fmap { |dates| [valid_name, dates] } }
             .bind do |(valid_name, dates)|
               create_event(
                 workspace_id: workspace_id, membership: membership, name: valid_name,
                 description: description, id: id, dates: dates,
-                location_name: location_name, latitude: latitude, longitude: longitude
+                location_name: location_name, latitude: latitude, longitude: longitude, timezone: timezone
               )
             end
         end
@@ -72,9 +73,14 @@ module Events
         Failure(ServiceError.validation("Invalid date format"))
       end
 
-      def create_event(workspace_id:, membership:, name:, description:, id:, dates:, location_name:, latitude:, longitude:)
+      def create_event(workspace_id:, membership:, name:, description:, id:, dates:, location_name:, latitude:, longitude:, timezone:)
         now = Time.now
         event_id = id || SecureRandom.uuid
+
+        # The client derives the zone from the event's location; when it can't
+        # (no location), fall back to the workspace's default zone.
+        chosen_timezone = timezone unless timezone.nil? || timezone.empty?
+        chosen_timezone ||= Workspace.find(workspace_id).timezone
 
         insert_data = {
           id: event_id,
@@ -82,6 +88,7 @@ module Events
           user_id: membership.user_id,
           name: name,
           description: description && description.empty? ? nil : description,
+          timezone: chosen_timezone,
           created_at: now,
           updated_at: now
         }

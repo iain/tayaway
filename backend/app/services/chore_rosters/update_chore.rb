@@ -89,9 +89,10 @@ module ChoreRosters
       # scheduling failure can't roll back the saved edit.
       def reschedule_reminders(chore)
         Notifications::Safely.deliver(context: "ChoreRosters::UpdateChore#reminders") do
+          timezone = ScheduleReminder.timezone_for_roster(chore.chore_roster_id)
           ChoreAssignment.for_chore(chore.id).each do |assignment|
             ScheduleReminder.cancel(assignment: assignment)
-            ScheduleReminder.call(assignment: assignment, chore: chore)
+            ScheduleReminder.call(assignment: assignment, chore: chore, timezone: timezone)
           end
         end
       end

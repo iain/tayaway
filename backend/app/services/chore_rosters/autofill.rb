@@ -179,8 +179,11 @@ module ChoreRosters
       def schedule_reminders(roster, chores)
         chores_by_id = chores.to_h { |c| [c.id.to_s, c] }
         Notifications::Safely.deliver(context: "ChoreRosters::Autofill#reminders") do
+          timezone = ScheduleReminder.timezone_for_roster(roster.id)
           ChoreAssignment.for_roster(roster.id).reject(&:pinned).each do |assignment|
-            ScheduleReminder.call(assignment: assignment, chore: chores_by_id[assignment.chore_id.to_s])
+            ScheduleReminder.call(
+              assignment: assignment, chore: chores_by_id[assignment.chore_id.to_s], timezone: timezone
+            )
           end
         end
       end

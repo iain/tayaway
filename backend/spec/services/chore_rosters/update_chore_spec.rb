@@ -135,7 +135,7 @@ RSpec.describe ChoreRosters::UpdateChore do
       expect(Jobs::Queue).to have_received(:enqueue).with(
         job_class: "ChoreRosters::SendReminder::Job",
         args: { chore_assignment_id: assignment[:id].to_s, expected_time: "09:00" },
-        scheduled_at: Time.new(2099, 5, 2, 9, 0, 0)
+        scheduled_at: Timezones.resolve(date: Date.new(2099, 5, 2), hour: 9, min: 0, zone: "Europe/Amsterdam")
       )
     end
 

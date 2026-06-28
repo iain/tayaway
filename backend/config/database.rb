@@ -2,6 +2,13 @@
 
 require "sequel"
 
+# Treat every Time as an absolute instant in UTC: Times are converted to UTC on
+# the way into the database and read back as UTC. Reminder instants are computed
+# zone-aware (see Timezones), so the database layer never needs to guess what a
+# naive wall-clock means — the host's local zone stops mattering.
+Sequel.application_timezone = :utc
+Sequel.database_timezone = :utc
+
 # Falcon runs concurrent request fibers on the same thread. Sequel's default
 # pool keys connections by Thread.current, so fibers would share connections
 # and corrupt each other's query results. This extension keys by Fiber.current.
@@ -25,7 +32,9 @@ DB = Sequel.connect(
   max_connections: APP_CONFIG.database_pool_size,
   pool_timeout: 5,
   connect_timeout: 5,
-  after_connect: proc { |conn| conn.exec("SET statement_timeout = '30s'") }
+  # UTC session so naive literals and NOW() agree with Sequel's :utc timezones
+  # above — the database layer is UTC end to end.
+  after_connect: proc { |conn| conn.exec("SET statement_timeout = '30s'; SET TIME ZONE 'UTC'") }
 )
 
 DB.extension :pg_json

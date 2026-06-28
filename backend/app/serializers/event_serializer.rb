@@ -27,6 +27,7 @@ class EventSerializer
           locationName: event.location_name,
           latitude: event.location_coordinates&.[](1),
           longitude: event.location_coordinates&.[](0),
+          timezone: event.timezone,
           workspaceId: event.workspace_id.to_s,
           userId: event.user_id.to_s,
           datePollId: date_poll&.id&.to_s,

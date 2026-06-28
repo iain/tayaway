@@ -7,21 +7,21 @@ module ChoreRosters
   # time, so a chore that never gets a time, or a date already past,
   # simply schedules nothing.
   #
-  # Timezone: the app stores dates and times without a zone, so the
-  # reminder is built in the server's local time — correct for a
-  # single-region deployment. Introducing per-event timezones would mean
-  # combining the moment here against that zone instead. Known edge: a time
-  # inside the spring-forward DST gap (e.g. 02:30 where the clock jumps
-  # 02:00→03:00) is normalized by Ruby to the adjacent valid instant.
+  # Timezone: the moment is the chore's wall-clock time on the assignment's
+  # date, read in the event's zone (see Timezones.resolve), so it fires at the
+  # right local time even across a DST change mid-event. Callers pass the zone
+  # in — they already hold the roster/event — via timezone_for_roster.
   module ScheduleReminder
     JOB_CLASS = "ChoreRosters::SendReminder::Job"
 
     class << self
-      def call(assignment:, chore: nil)
+      def call(assignment:, timezone:, chore: nil)
         chore ||= Chore.find(assignment.chore_id)
         return unless chore&.time
 
-        remind_at = combine(assignment.date, chore.time)
+        remind_at = Timezones.resolve(
+          date: assignment.date, hour: chore.time.hour, min: chore.time.min, zone: timezone
+        )
         if remind_at > Time.now
           # Stamp the time this job is for. Editing the time cancels the pending
           # job and reschedules (see UpdateChore#reschedule_reminders); this
@@ -49,10 +49,25 @@ module ChoreRosters
           .delete
       end
 
-      private
+      # The IANA zone a roster's reminders fire in: its event's timezone.
+      # Resolved once per scheduling pass and passed into .call.
+      def timezone_for_roster(roster_id)
+        Event.find(ChoreRoster.find(roster_id).event_id).timezone
+      end
 
-      def combine(date, time)
-        Time.new(date.year, date.month, date.day, time.hour, time.min, 0)
+      # Re-queues every pending reminder for an event's chores in the event's
+      # (just-changed) zone. Cancelling first stops the old instant lingering;
+      # .call no-ops for an untimed chore or a moment now past.
+      def reschedule_for_event(event)
+        roster = ChoreRoster.find_by_event(event.id)
+        return unless roster
+
+        Chore.for_roster(roster.id).each do |chore|
+          ChoreAssignment.for_chore(chore.id).each do |assignment|
+            cancel(assignment: assignment)
+            call(assignment: assignment, chore: chore, timezone: event.timezone)
+          end
+        end
       end
     end
   end

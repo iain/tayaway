@@ -17,7 +17,7 @@ module Events
       include Events::Validators
 
       def call(event_id:, membership:, name:, description:, start_date: nil, end_date: nil,
-               location_name: nil, latitude: nil, longitude: nil)
+               location_name: nil, latitude: nil, longitude: nil, timezone: nil)
         Auditable.around(
           service: "Events::Update",
           actor: membership,
@@ -31,12 +31,13 @@ module Events
             .bind { |event| validate_name_with_event(name, event) }
             .bind { |event| validate_text_lengths(description, location_name).fmap { event } }
             .bind { |event| validate_coordinates(latitude, longitude).fmap { event } }
+            .bind { |event| validate_timezone(timezone).fmap { event } }
             .bind { |event| validate_dates(start_date, end_date).fmap { |dates| [event, dates] } }
             .bind { |(event, dates)| check_no_resolved_poll_when_clearing(event, dates).fmap { [event, dates] } }
             .bind do |(event, dates)|
               update_event(
                 event: event, membership: membership, name: name, description: description, dates: dates,
-                location_name: location_name, latitude: latitude, longitude: longitude
+                location_name: location_name, latitude: latitude, longitude: longitude, timezone: timezone
               )
             end
         end
@@ -89,7 +90,7 @@ module Events
         end
       end
 
-      def update_event(event:, membership:, name:, description:, dates:, location_name:, latitude:, longitude:)
+      def update_event(event:, membership:, name:, description:, dates:, location_name:, latitude:, longitude:, timezone:)
         event_id = event.id
         workspace_id = event.workspace_id
         before = event
@@ -100,6 +101,10 @@ module Events
             description: description && description.empty? ? nil : description,
             updated_at: Time.now
           }
+
+          # Blank means "no change"; a new zone is honoured as sent (the client
+          # re-derives it from a changed location, or the user overrode it).
+          update_data[:timezone] = timezone unless timezone.nil? || timezone.empty?
 
           if dates
             if dates.empty?
@@ -133,6 +138,15 @@ module Events
 
         after = Event.find(event_id)
         Events::OnDetailsChanged.call(before: before, after: after, actor_user_id: membership.user_id) if after
+
+        # A changed zone moves every chore reminder for this event. Isolated
+        # like other notification work so a scheduling hiccup can't undo the
+        # saved edit.
+        if after && before.timezone != after.timezone
+          Notifications::Safely.deliver(context: "Events::Update#reschedule_reminders") do
+            ChoreRosters::ScheduleReminder.reschedule_for_event(after)
+          end
+        end
 
         pool = PoolSerializer.new(membership: membership)
         pool.add(:event, [after]) if after

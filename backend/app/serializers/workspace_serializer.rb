@@ -13,6 +13,7 @@ class WorkspaceSerializer
           id: workspace.id.to_s,
           objectType: "workspace",
           name: workspace.name,
+          timezone: workspace.timezone,
           memberIds: member_ids_by_workspace[workspace.id.to_s] || [],
           createdAt: workspace.created_at.iso8601(3),
           updatedAt: workspace.updated_at.iso8601(3)
