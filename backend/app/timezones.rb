@@ -15,10 +15,12 @@ module Timezones
   class << self
     # True when `name` is a known IANA identifier (e.g. "Europe/Amsterdam").
     def valid?(name)
-      return false if name.nil? || name.empty?
-
-      TZInfo::Timezone.get(name)
-      true
+      if name.nil? || name.empty?
+        false
+      else
+        TZInfo::Timezone.get(name)
+        true
+      end
     rescue TZInfo::InvalidTimezoneIdentifier
       false
     end

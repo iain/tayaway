@@ -79,8 +79,12 @@ module Events
 
         # The client derives the zone from the event's location; when it can't
         # (no location), fall back to the workspace's default zone.
-        chosen_timezone = timezone unless timezone.nil? || timezone.empty?
-        chosen_timezone ||= Workspace.find(workspace_id).timezone
+        chosen_timezone =
+          if timezone.nil? || timezone.empty?
+            Workspace.find(workspace_id).timezone
+          else
+            timezone
+          end
 
         insert_data = {
           id: event_id,

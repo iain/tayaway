@@ -104,7 +104,9 @@ module Events
 
           # Blank means "no change"; a new zone is honoured as sent (the client
           # re-derives it from a changed location, or the user overrode it).
-          update_data[:timezone] = timezone unless timezone.nil? || timezone.empty?
+          if timezone && !timezone.empty?
+            update_data[:timezone] = timezone
+          end
 
           if dates
             if dates.empty?

@@ -140,9 +140,7 @@ module Users
 
       def validate_timezone(timezone, user)
         # nil means "don't change", blank means "clear" (follow the device)
-        return Success(user) if timezone.nil? || timezone.strip.empty?
-
-        if Timezones.valid?(timezone)
+        if timezone.nil? || timezone.strip.empty? || Timezones.valid?(timezone)
           Success(user)
         else
           Failure(ServiceError.validation("Unknown timezone"))
