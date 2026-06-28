@@ -7,6 +7,7 @@ import {
   CalendarDaysIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  GlobeAltIcon,
   MapPinIcon,
   PencilIcon,
   TrashIcon,
@@ -22,7 +23,9 @@ import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import StaticMap from '@/components/common/StaticMap.vue'
 import LocationInput from '@/components/form/LocationInput.vue'
-import { useEventsStore } from '@/stores'
+import TimezoneSelect from '@/components/form/TimezoneSelect.vue'
+import { useEventsStore, useWorkspaceStore } from '@/stores'
+import { timezoneForCoordinates } from '@/utils/geoTimezone'
 import type { UpdateEventRequest } from '@/types'
 import { useRsvpsStore } from '@/stores/rsvps'
 import { useObjectPoolStore } from '@/stores/objectPool'
@@ -54,7 +57,7 @@ const mapsUrl = computed(() => {
 
 const rsvpsStore = useRsvpsStore()
 
-type EditField = 'name' | 'description' | 'dates' | 'location'
+type EditField = 'name' | 'description' | 'dates' | 'location' | 'timezone'
 const editField = ref<EditField | null>(null)
 const datesBlockedOpen = ref(false)
 const showRsvpWarning = ref(false)
@@ -130,6 +133,17 @@ const hoverDate = ref<string | null>(null)
 const editLocationName = ref('')
 const editLatitude = ref<number | null>(null)
 const editLongitude = ref<number | null>(null)
+const editTimezone = ref('')
+
+// The zone the event would derive from its current location, shown as the hint
+// behind the "Automatic" option.
+const workspaceStore = useWorkspaceStore()
+const editEffectiveTimezone = computed(
+  () =>
+    timezoneForCoordinates(event.value?.latitude, event.value?.longitude) ??
+    workspaceStore.currentWorkspace?.timezone ??
+    null
+)
 
 const editInputRef = ref<HTMLInputElement | HTMLTextAreaElement | null>(null)
 
@@ -224,6 +238,9 @@ async function openEdit(field: EditField): Promise<void> {
       editLatitude.value = event.value?.latitude ?? null
       editLongitude.value = event.value?.longitude ?? null
       break
+    case 'timezone':
+      editTimezone.value = event.value?.timezone ?? ''
+      break
   }
   await nextTick()
   editInputRef.value?.focus()
@@ -283,6 +300,17 @@ async function commitEdit(): Promise<void> {
       data.locationName = editLocationName.value || undefined
       data.latitude = editLatitude.value ?? undefined
       data.longitude = editLongitude.value ?? undefined
+      // A new location moves the zone with it (no change if we can't derive one).
+      data.timezone =
+        timezoneForCoordinates(editLatitude.value, editLongitude.value) ??
+        undefined
+      break
+    case 'timezone':
+      // Explicit pick, or "Automatic" => re-derive from the current location.
+      data.timezone =
+        editTimezone.value ||
+        timezoneForCoordinates(event.value.latitude, event.value.longitude) ||
+        undefined
       break
   }
 
@@ -561,6 +589,48 @@ function handleDownloadIcs(): void {
           data-testid="edit-location-button"
           class="-my-2 shrink-0 sm:my-0"
           @click="openEdit('location')"
+        >
+          <PencilIcon class="size-4" />
+        </IconButton>
+      </div>
+
+      <!-- Time zone -->
+      <div v-if="editField === 'timezone'" class="mt-4">
+        <TimezoneSelect
+          id="event-edit-timezone"
+          v-model="editTimezone"
+          label="Time zone"
+          auto-label="Automatic (from location)"
+          :effective-zone="editEffectiveTimezone"
+          :disabled="loading"
+        />
+        <div class="mt-2 flex items-center gap-2">
+          <AppButton size="sm" :loading="loading" @click="saveEdit">
+            Save
+          </AppButton>
+          <TextButton
+            variant="secondary"
+            :disabled="loading"
+            @click="cancelEdit"
+          >
+            Cancel
+          </TextButton>
+        </div>
+      </div>
+      <div v-else class="group mt-4 flex items-center gap-0.5">
+        <div class="text-ink-muted flex items-center gap-2">
+          <GlobeAltIcon
+            class="size-5 shrink-0 text-amber-600 dark:text-amber-400"
+          />
+          <span>{{ event.timezone }}</span>
+        </div>
+        <IconButton
+          v-if="canEdit"
+          hover-reveal
+          label="Edit time zone"
+          data-testid="edit-timezone-button"
+          class="-my-2 shrink-0 sm:my-0"
+          @click="openEdit('timezone')"
         >
           <PencilIcon class="size-4" />
         </IconButton>
