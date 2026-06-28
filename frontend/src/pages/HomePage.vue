@@ -5,6 +5,7 @@ import { HomeIcon } from '@heroicons/vue/24/outline'
 import { usePollsNeedingAttention } from '@/composables/usePollsNeedingAttention'
 import { useEventsNeedingRsvp } from '@/composables/useEventsNeedingRsvp'
 import { useUpcomingEvents } from '@/composables/useUpcomingEvents'
+import { useUpcomingChores } from '@/composables/useUpcomingChores'
 import { useEventsList } from '@/composables/useEventsList'
 import { storeToRefs } from 'pinia'
 import {
@@ -20,6 +21,7 @@ import TodayBirthdays from '@/components/home/TodayBirthdays.vue'
 import UpcomingBirthdays from '@/components/home/UpcomingBirthdays.vue'
 import OpenSettlementsSection from '@/components/home/OpenSettlementsSection.vue'
 import HappeningNowSection from '@/components/home/HappeningNowSection.vue'
+import UpcomingChoresSection from '@/components/home/UpcomingChoresSection.vue'
 import PastEventsOpenExpenses from '@/components/home/PastEventsOpenExpenses.vue'
 import PollsNeedingAttention from '@/components/home/PollsNeedingAttention.vue'
 import UpcomingEventsSection from '@/components/home/UpcomingEventsSection.vue'
@@ -32,6 +34,11 @@ const workspaceStore = useWorkspaceStore()
 const { pollsNeedingAttention } = usePollsNeedingAttention()
 const { eventsNeedingRsvp } = useEventsNeedingRsvp()
 const { upcomingEvents } = useUpcomingEvents()
+const {
+  upcomingChores,
+  visibleChores,
+  hiddenCount: choresHiddenCount,
+} = useUpcomingChores()
 const { currentEvents, pastEvents, hasEvents } = useEventsList()
 
 // Set of event ids the current user still owes an RSVP — surfaced as a badge
@@ -175,6 +182,7 @@ const allCaughtUp = computed(
     !hasBirthdays.value &&
     myUnpaidTransfers.value.length === 0 &&
     currentEvents.value.length === 0 &&
+    upcomingChores.value.length === 0 &&
     upcomingEvents.value.length === 0 &&
     pastEventsWithOpenExpenses.value.length === 0 &&
     pollsNeedingAttention.value.length === 0
@@ -227,6 +235,12 @@ const allCaughtUp = computed(
         :attendee-count-by-event="attendeeCountByEvent"
         :unpaid-transfer-count-by-event="unpaidTransferCountByEvent"
         :event-ids-needing-rsvp="eventIdsNeedingRsvp"
+      />
+
+      <UpcomingChoresSection
+        v-if="upcomingChores.length > 0"
+        :chores="visibleChores"
+        :hidden-count="choresHiddenCount"
       />
 
       <UpcomingEventsSection
