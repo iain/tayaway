@@ -84,6 +84,7 @@ function mkEvent(rsvps: HydratedRsvp[]): HydratedEvent {
     locationName: null,
     latitude: null,
     longitude: null,
+    timezone: 'Europe/Amsterdam',
     workspaceId: 'ws-1',
     userId: 'user-alice',
     datePollId: null,
@@ -189,6 +190,7 @@ describe('RsvpSection on-behalf actions', () => {
       id: 'ws-1',
       objectType: 'workspace' as const,
       name: 'Test',
+      timezone: 'Europe/Amsterdam',
       ownerUserId: 'user-alice',
       memberIds: ['member-bob'],
       members: [

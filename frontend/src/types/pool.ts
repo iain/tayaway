@@ -69,6 +69,10 @@ export interface ObjectTypeMap {
     locationName: string | null
     latitude: number | null
     longitude: number | null
+    // IANA zone the event happens in (e.g. "Europe/Amsterdam"). Authoritative
+    // for chore times and reminders. Derived from the location, falling back to
+    // the workspace default.
+    timezone: string
     workspaceId: string
     userId: string
     datePollId: string | null
@@ -107,6 +111,8 @@ export interface ObjectTypeMap {
   }
   workspace: PoolObjectBase<'workspace'> & {
     name: string
+    // The group's default IANA zone; events fall back to it.
+    timezone: string
     memberIds: string[]
     createdAt: string
   }

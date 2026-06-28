@@ -49,6 +49,7 @@ function mkEvent(overrides: Partial<PoolEvent> = {}): PoolEvent {
     locationName: null,
     latitude: null,
     longitude: null,
+    timezone: 'Europe/Amsterdam',
     workspaceId: 'ws-1',
     userId: 'member-1',
     datePollId: null,

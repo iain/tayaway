@@ -21,6 +21,7 @@ function signIn(userId: string): void {
     longitude: null,
     iban: null,
     ibanHolderName: null,
+    timezone: null,
   }
 }
 

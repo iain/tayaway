@@ -26,6 +26,8 @@ export interface MeResponse {
   longitude: number | null
   iban: string | null
   ibanHolderName: string | null
+  // The user's display-zone preference. null means "follow this device".
+  timezone: string | null
 }
 
 // Simple user type for auth responses (outside the object pool)
@@ -40,6 +42,8 @@ export interface AuthUser {
   longitude: number | null
   iban: string | null
   ibanHolderName: string | null
+  // Display-zone preference; null means "follow this device".
+  timezone: string | null
 }
 
 export interface LogoutResponse {
@@ -80,6 +84,8 @@ export interface CreateEventRequest {
   locationName?: string
   latitude?: number
   longitude?: number
+  // IANA zone, derived from the location (blank => workspace default).
+  timezone?: string
 }
 
 export interface UpdateEventRequest {
@@ -90,6 +96,8 @@ export interface UpdateEventRequest {
   locationName?: string
   latitude?: number
   longitude?: number
+  // IANA zone; omit/blank to leave unchanged.
+  timezone?: string
 }
 
 // Invite types

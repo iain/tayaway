@@ -20,6 +20,7 @@ function makeEvent(
     locationName: null,
     latitude: null,
     longitude: null,
+    timezone: 'Europe/Amsterdam',
     workspaceId: 'ws-1',
     userId: 'user-1',
     datePollId: null,

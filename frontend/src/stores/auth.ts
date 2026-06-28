@@ -48,6 +48,7 @@ function cacheUser(u: AuthUser): void {
       locationName: u.locationName,
       latitude: u.latitude,
       longitude: u.longitude,
+      timezone: u.timezone,
     },
     cachedAt: Date.now(),
   }
@@ -89,6 +90,7 @@ function mapMeResponseToAuthUser(data: MeResponse): AuthUser {
     longitude: data.longitude ?? null,
     iban: data.iban ?? null,
     ibanHolderName: data.ibanHolderName ?? null,
+    timezone: data.timezone ?? null,
   }
 }
 
@@ -262,6 +264,7 @@ export const useAuthStore = defineStore('auth', () => {
     longitude?: number | null
     iban?: string | null
     ibanHolderName?: string | null
+    timezone?: string | null
   }
 
   async function updateProfile(fields: ProfileFields): Promise<void> {
@@ -290,6 +293,8 @@ export const useAuthStore = defineStore('auth', () => {
       user.value.iban = fields.iban ? maskIban(fields.iban) : null
     if (fields.ibanHolderName !== undefined)
       user.value.ibanHolderName = blankToNull(fields.ibanHolderName)
+    if (fields.timezone !== undefined)
+      user.value.timezone = blankToNull(fields.timezone)
 
     try {
       const apiCall = (commandQueue: ReturnType<typeof useCommandQueueStore>) =>

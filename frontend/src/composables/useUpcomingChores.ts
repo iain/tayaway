@@ -3,6 +3,7 @@ import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { useObjectPoolStore } from '@/stores'
 import { useMinuteTicker } from './useMinuteTicker'
+import { zonedDateString, wallClockToEpoch, addDays } from '@/utils/timezone'
 
 export interface UpcomingChoreItem {
   assignmentId: string
@@ -12,6 +13,8 @@ export interface UpcomingChoreItem {
   eventName: string
   date: string // YYYY-MM-DD
   time: string | null // "HH:MM" wall-clock, or null for an all-day chore
+  // The event's IANA zone — the chore's time and day are reckoned in it.
+  timezone: string
   day: 'today' | 'tomorrow'
   note: string | null
 }
@@ -24,45 +27,19 @@ export interface UpcomingChoreItem {
  */
 export const MAX_VISIBLE_CHORES = 4
 
-// A timed chore is treated as done one hour after its time; an untimed chore
-// at the end of its day. No manual check-off — these windows stand in for it.
+// A timed chore is treated as done an hour after its time; an untimed chore at
+// the end of its day. No manual check-off — these windows stand in for it.
 const DONE_GRACE_MS = 60 * 60 * 1000
-
-function pad(n: number): string {
-  return String(n).padStart(2, '0')
-}
-
-function isoDate(d: Date): string {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
-
-// The chore's nominal start as a local moment: its time on its date, or the
-// start of the day when untimed. Drives chronological ordering.
-function momentOf(date: string, time: string | null): number {
-  const [y, m, d] = date.split('-').map(Number) as [number, number, number]
-  if (time == null) return new Date(y, m - 1, d).getTime()
-  const [hh, mm] = time.split(':').map(Number) as [number, number]
-  return new Date(y, m - 1, d, hh, mm).getTime()
-}
-
-// The moment a chore counts as done (and drops off the list): an hour after a
-// timed chore, or the next midnight for an untimed one.
-function doneAt(date: string, time: string | null): number {
-  if (time == null) {
-    const [y, m, d] = date.split('-').map(Number) as [number, number, number]
-    return new Date(y, m - 1, d + 1).getTime()
-  }
-  return momentOf(date, time) + DONE_GRACE_MS
-}
 
 /**
  * The current user's chores due today or tomorrow, across every event — what
- * the homepage surfaces during an event. Each item links back to its event's
- * chore roster.
+ * the homepage surfaces during an event. "Today"/"tomorrow" and the done-window
+ * are reckoned in each event's own zone, so a traveller (or a chore in another
+ * region) is bucketed by the event's local day, not the device's. Each item
+ * links back to its event's roster.
  *
  * `now` is injectable for testing; in the app it's the shared minute ticker so
- * a timed chore drops off live, roughly an hour after it was due, without a
- * page refresh.
+ * a timed chore drops off live, roughly an hour after it was due.
  */
 export function useUpcomingChores(now: Ref<number> = useMinuteTicker().now) {
   const pool = useObjectPoolStore()
@@ -73,52 +50,66 @@ export function useUpcomingChores(now: Ref<number> = useMinuteTicker().now) {
     if (!userId) return []
 
     const nowMs = now.value
-    const nowDate = new Date(nowMs)
-    const today = isoDate(nowDate)
-    const tomorrow = isoDate(
-      new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate() + 1)
-    )
-
-    // Index the join targets once.
     const choresById = new Map(pool.getAll('chore').map((c) => [c.id, c]))
     const rostersById = new Map(
       pool.getAll('choreRoster').map((r) => [r.id, r])
     )
     const eventsById = new Map(pool.getAll('event').map((e) => [e.id, e]))
 
-    const items: UpcomingChoreItem[] = []
+    // "today"/"tomorrow" depend on the event's zone; memoise per zone.
+    const windowByZone = new Map<string, { today: string; tomorrow: string }>()
+    const windowFor = (zone: string) => {
+      let w = windowByZone.get(zone)
+      if (!w) {
+        const today = zonedDateString(nowMs, zone)
+        w = { today, tomorrow: addDays(today, 1) }
+        windowByZone.set(zone, w)
+      }
+      return w
+    }
+
+    const rows: { item: UpcomingChoreItem; sort: number }[] = []
     for (const a of pool.getAll('choreAssignment')) {
       if (a.userId !== userId) continue
-      if (a.date !== today && a.date !== tomorrow) continue
 
       const chore = choresById.get(a.choreId)
       if (!chore) continue
-      if (nowMs >= doneAt(a.date, chore.time)) continue // already done
-
       const roster = rostersById.get(chore.choreRosterId)
       if (!roster) continue
       const event = eventsById.get(roster.eventId)
       if (!event) continue
 
-      items.push({
-        assignmentId: a.id,
-        choreId: chore.id,
-        choreName: chore.name,
-        eventId: event.id,
-        eventName: event.name,
-        date: a.date,
-        time: chore.time,
-        day: a.date === today ? 'today' : 'tomorrow',
-        note: a.note,
+      const zone = event.timezone
+      const { today, tomorrow } = windowFor(zone)
+      if (a.date !== today && a.date !== tomorrow) continue
+
+      const doneAt = chore.time
+        ? wallClockToEpoch(a.date, chore.time, zone) + DONE_GRACE_MS
+        : wallClockToEpoch(addDays(a.date, 1), null, zone) // next local midnight
+      if (nowMs >= doneAt) continue // already done
+
+      rows.push({
+        item: {
+          assignmentId: a.id,
+          choreId: chore.id,
+          choreName: chore.name,
+          eventId: event.id,
+          eventName: event.name,
+          date: a.date,
+          time: chore.time,
+          timezone: zone,
+          day: a.date === today ? 'today' : 'tomorrow',
+          note: a.note,
+        },
+        sort: wallClockToEpoch(a.date, chore.time, zone),
       })
     }
 
-    items.sort(
+    rows.sort(
       (x, y) =>
-        momentOf(x.date, x.time) - momentOf(y.date, y.time) ||
-        x.choreName.localeCompare(y.choreName)
+        x.sort - y.sort || x.item.choreName.localeCompare(y.item.choreName)
     )
-    return items
+    return rows.map((r) => r.item)
   })
 
   const visibleChores = computed(() =>

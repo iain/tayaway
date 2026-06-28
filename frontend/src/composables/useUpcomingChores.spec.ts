@@ -18,11 +18,11 @@ const TOMORROW = '2026-06-16'
 const YESTERDAY = '2026-06-14'
 const DAY_AFTER_TOMORROW = '2026-06-17'
 
-// A `now` ref pinned to a wall-clock moment on TODAY (local time). Injecting it
-// makes the "done 1h after" / day-boundary rules deterministic regardless of
-// the test runner's timezone.
-function nowAt(hour = 12, minute = 0): Ref<number> {
-  return ref(new Date(2026, 5, 15, hour, minute, 0).getTime())
+// A `now` ref pinned to a UTC instant on TODAY. The default event zone in these
+// tests is "UTC", so the wall-clock equals UTC and the windows read cleanly;
+// one test below uses a real zone to prove the event-zone reckoning.
+function nowUtc(hour = 12, minute = 0): Ref<number> {
+  return ref(Date.UTC(2026, 5, 15, hour, minute, 0))
 }
 
 function signIn(userId = 'user-1'): void {
@@ -37,6 +37,7 @@ function signIn(userId = 'user-1'): void {
     longitude: null,
     iban: null,
     ibanHolderName: null,
+    timezone: null,
   }
 }
 
@@ -46,7 +47,7 @@ function seed(objects: PoolObject[]): void {
   })
 }
 
-// One event → roster → chore → assignment chain, with the bits a test cares
+// One event -> roster -> chore -> assignment chain, with the bits a test cares
 // about overridable. Distinct assignmentIds get distinct chores by default.
 function choreChain(opts: {
   assignmentId: string
@@ -56,6 +57,7 @@ function choreChain(opts: {
   choreName?: string
   eventId?: string
   eventName?: string
+  zone?: string
 }): PoolObject[] {
   const eventId = opts.eventId ?? 'evt-1'
   const rosterId = `roster-${eventId}`
@@ -66,6 +68,7 @@ function choreChain(opts: {
       name: opts.eventName ?? 'Lake House',
       startDate: '2026-06-10',
       endDate: '2026-06-25',
+      timezone: opts.zone ?? 'UTC',
     }),
     makeChoreRoster({ id: rosterId, eventId }),
     makeChore({
@@ -99,7 +102,7 @@ describe('useUpcomingChores', () => {
       })
     )
 
-    const { upcomingChores } = useUpcomingChores(nowAt())
+    const { upcomingChores } = useUpcomingChores(nowUtc())
 
     expect(upcomingChores.value).toHaveLength(1)
     expect(upcomingChores.value[0]).toMatchObject({
@@ -109,6 +112,7 @@ describe('useUpcomingChores', () => {
       eventName: 'Mountain Cabin',
       date: TODAY,
       time: null,
+      timezone: 'UTC',
       day: 'today',
     })
   })
@@ -116,7 +120,7 @@ describe('useUpcomingChores', () => {
   it('excludes chores assigned to other people', () => {
     seed(choreChain({ assignmentId: 'a1', date: TODAY, userId: 'user-2' }))
 
-    const { upcomingChores } = useUpcomingChores(nowAt())
+    const { upcomingChores } = useUpcomingChores(nowUtc())
 
     expect(upcomingChores.value).toHaveLength(0)
   })
@@ -124,7 +128,7 @@ describe('useUpcomingChores', () => {
   it("includes tomorrow's chores, labelled as such", () => {
     seed(choreChain({ assignmentId: 'a1', date: TOMORROW }))
 
-    const { upcomingChores } = useUpcomingChores(nowAt())
+    const { upcomingChores } = useUpcomingChores(nowUtc())
 
     expect(upcomingChores.value).toHaveLength(1)
     expect(upcomingChores.value[0]!.day).toBe('tomorrow')
@@ -133,7 +137,7 @@ describe('useUpcomingChores', () => {
   it('excludes chores beyond tomorrow', () => {
     seed(choreChain({ assignmentId: 'a1', date: DAY_AFTER_TOMORROW }))
 
-    const { upcomingChores } = useUpcomingChores(nowAt())
+    const { upcomingChores } = useUpcomingChores(nowUtc())
 
     expect(upcomingChores.value).toHaveLength(0)
   })
@@ -141,7 +145,7 @@ describe('useUpcomingChores', () => {
   it('excludes past days', () => {
     seed(choreChain({ assignmentId: 'a1', date: YESTERDAY }))
 
-    const { upcomingChores } = useUpcomingChores(nowAt())
+    const { upcomingChores } = useUpcomingChores(nowUtc())
 
     expect(upcomingChores.value).toHaveLength(0)
   })
@@ -150,7 +154,7 @@ describe('useUpcomingChores', () => {
     seed(choreChain({ assignmentId: 'a1', date: TODAY, time: '12:00' }))
 
     // 12:30 — within the hour after 12:00, still due.
-    const { upcomingChores } = useUpcomingChores(nowAt(12, 30))
+    const { upcomingChores } = useUpcomingChores(nowUtc(12, 30))
 
     expect(upcomingChores.value).toHaveLength(1)
   })
@@ -159,7 +163,7 @@ describe('useUpcomingChores', () => {
     seed(choreChain({ assignmentId: 'a1', date: TODAY, time: '12:00' }))
 
     // 13:01 — past 12:00 + 1h, considered done.
-    const { upcomingChores } = useUpcomingChores(nowAt(13, 1))
+    const { upcomingChores } = useUpcomingChores(nowUtc(13, 1))
 
     expect(upcomingChores.value).toHaveLength(0)
   })
@@ -168,7 +172,7 @@ describe('useUpcomingChores', () => {
     seed(choreChain({ assignmentId: 'a1', date: TODAY, time: null }))
 
     // Late evening — an untimed chore is only "done" at end of day.
-    const { upcomingChores } = useUpcomingChores(nowAt(23, 30))
+    const { upcomingChores } = useUpcomingChores(nowUtc(23, 30))
 
     expect(upcomingChores.value).toHaveLength(1)
   })
@@ -194,7 +198,7 @@ describe('useUpcomingChores', () => {
     ])
 
     // 06:00 so none of today's timed chores have lapsed yet.
-    const { upcomingChores } = useUpcomingChores(nowAt(6, 0))
+    const { upcomingChores } = useUpcomingChores(nowUtc(6, 0))
 
     expect(upcomingChores.value.map((c) => c.assignmentId)).toEqual([
       'today-allday',
@@ -215,12 +219,11 @@ describe('useUpcomingChores', () => {
     ])
 
     const { upcomingChores, visibleChores, hiddenCount } = useUpcomingChores(
-      nowAt(5, 0)
+      nowUtc(5, 0)
     )
 
     expect(upcomingChores.value).toHaveLength(6)
     expect(visibleChores.value).toHaveLength(MAX_VISIBLE_CHORES)
-    // Today fills every visible slot; tomorrow's chore is pushed into the overflow.
     expect(visibleChores.value.every((c) => c.day === 'today')).toBe(true)
     expect(hiddenCount.value).toBe(6 - MAX_VISIBLE_CHORES)
   })
@@ -241,7 +244,7 @@ describe('useUpcomingChores', () => {
       }),
     ])
 
-    const { upcomingChores } = useUpcomingChores(nowAt())
+    const { upcomingChores } = useUpcomingChores(nowUtc())
 
     expect(upcomingChores.value.map((c) => c.eventName).sort()).toEqual([
       'Lake House',
@@ -249,11 +252,37 @@ describe('useUpcomingChores', () => {
     ])
   })
 
+  it("buckets a chore by the event's zone, not the device's", () => {
+    // 20:00 UTC is already 2026-06-16 in Tokyo (+09:00) but still 2026-06-15 in
+    // UTC. A chore dated the 16th is therefore "today" for a Tokyo event and
+    // "tomorrow" for a UTC event.
+    seed([
+      ...choreChain({
+        assignmentId: 'tokyo',
+        date: TOMORROW,
+        eventId: 'evt-tokyo',
+        zone: 'Asia/Tokyo',
+      }),
+      ...choreChain({
+        assignmentId: 'utc',
+        date: TOMORROW,
+        eventId: 'evt-utc',
+        zone: 'UTC',
+      }),
+    ])
+
+    const { upcomingChores } = useUpcomingChores(nowUtc(20, 0))
+    const byId = new Map(upcomingChores.value.map((c) => [c.assignmentId, c]))
+
+    expect(byId.get('tokyo')!.day).toBe('today')
+    expect(byId.get('utc')!.day).toBe('tomorrow')
+  })
+
   it('returns nothing when no one is signed in', () => {
     useAuthStore().user = null
     seed(choreChain({ assignmentId: 'a1', date: TODAY }))
 
-    const { upcomingChores } = useUpcomingChores(nowAt())
+    const { upcomingChores } = useUpcomingChores(nowUtc())
 
     expect(upcomingChores.value).toHaveLength(0)
   })
@@ -261,12 +290,12 @@ describe('useUpcomingChores', () => {
   it('reacts to the clock: a timed chore drops off as its hour passes', () => {
     seed(choreChain({ assignmentId: 'a1', date: TODAY, time: '12:00' }))
 
-    const now = nowAt(12, 30)
+    const now = nowUtc(12, 30)
     const { upcomingChores } = useUpcomingChores(now)
     expect(upcomingChores.value).toHaveLength(1)
 
     // Advance past 12:00 + 1h.
-    now.value = new Date(2026, 5, 15, 13, 30, 0).getTime()
+    now.value = Date.UTC(2026, 5, 15, 13, 30, 0)
     expect(upcomingChores.value).toHaveLength(0)
   })
 })
