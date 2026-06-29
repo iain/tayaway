@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest'
 import {
   zonedDateString,
   wallClockToEpoch,
-  addDays,
   deviceTimezone,
   formatTimeInZone,
   formatZoneAbbrev,
@@ -44,14 +43,6 @@ describe('wallClockToEpoch', () => {
     expect(wallClockToEpoch('2026-06-15', '12:00', 'UTC')).toBe(
       Date.UTC(2026, 5, 15, 12, 0)
     )
-  })
-})
-
-describe('addDays', () => {
-  it('advances a calendar date, crossing month and year boundaries', () => {
-    expect(addDays('2026-06-15', 1)).toBe('2026-06-16')
-    expect(addDays('2026-06-30', 1)).toBe('2026-07-01')
-    expect(addDays('2026-12-31', 1)).toBe('2027-01-01')
   })
 })
 

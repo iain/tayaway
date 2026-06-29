@@ -5,6 +5,7 @@ export interface CalendarDay {
 }
 
 import {
+  addDays,
   formatDateDisplay as _formatDateDisplay,
   getMonthName as _getMonthName,
 } from '@/utils/date'
@@ -100,12 +101,6 @@ export function useCalendar() {
     const dayOfWeek = date.getDay()
     const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7 || 7
     date.setDate(date.getDate() + daysUntilMonday)
-    return formatDate(date)
-  }
-
-  function addDays(dateString: string, days: number): string {
-    const date = parseDate(dateString)
-    date.setDate(date.getDate() + days)
     return formatDate(date)
   }
 

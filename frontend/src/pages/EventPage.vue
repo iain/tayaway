@@ -25,7 +25,7 @@ import StaticMap from '@/components/common/StaticMap.vue'
 import LocationInput from '@/components/form/LocationInput.vue'
 import TimezoneSelect from '@/components/form/TimezoneSelect.vue'
 import { useEventsStore, useWorkspaceStore } from '@/stores'
-import { timezoneForCoordinates } from '@/utils/geoTimezone'
+import { timezoneForCoordinates, effectiveEventZone } from '@/utils/geoTimezone'
 import type { UpdateEventRequest } from '@/types'
 import { useRsvpsStore } from '@/stores/rsvps'
 import { useObjectPoolStore } from '@/stores/objectPool'
@@ -138,11 +138,12 @@ const editTimezone = ref('')
 // The zone the event would derive from its current location, shown as the hint
 // behind the "Automatic" option.
 const workspaceStore = useWorkspaceStore()
-const editEffectiveTimezone = computed(
-  () =>
-    timezoneForCoordinates(event.value?.latitude, event.value?.longitude) ??
-    workspaceStore.currentWorkspace?.timezone ??
-    null
+const editEffectiveTimezone = computed(() =>
+  effectiveEventZone(
+    event.value?.latitude,
+    event.value?.longitude,
+    workspaceStore.currentWorkspace?.timezone
+  )
 )
 
 const editInputRef = ref<HTMLInputElement | HTMLTextAreaElement | null>(null)

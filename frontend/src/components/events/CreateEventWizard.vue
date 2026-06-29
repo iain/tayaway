@@ -23,7 +23,7 @@ import {
   useWorkspaceStore,
 } from '@/stores'
 import { useCalendar } from '@/composables/useCalendar'
-import { timezoneForCoordinates } from '@/utils/geoTimezone'
+import { timezoneForCoordinates, effectiveEventZone } from '@/utils/geoTimezone'
 
 const props = defineProps<{
   open: boolean
@@ -54,12 +54,12 @@ const timezone = ref('')
 
 // The zone the event will land in while "auto" is selected — derived from the
 // chosen location, else the workspace default — shown as a hint.
-const derivedTimezone = computed(() =>
-  timezoneForCoordinates(latitude.value, longitude.value)
-)
-const effectiveTimezone = computed(
-  () =>
-    derivedTimezone.value ?? workspaceStore.currentWorkspace?.timezone ?? null
+const effectiveTimezone = computed(() =>
+  effectiveEventZone(
+    latitude.value,
+    longitude.value,
+    workspaceStore.currentWorkspace?.timezone
+  )
 )
 
 // Step 2: Dates
@@ -235,7 +235,10 @@ async function handleSubmit(): Promise<void> {
       longitude: longitude.value ?? undefined,
       // Explicit override, else the location-derived zone; undefined lets the
       // server fall back to the workspace default.
-      timezone: timezone.value || derivedTimezone.value || undefined,
+      timezone:
+        timezone.value ||
+        timezoneForCoordinates(latitude.value, longitude.value) ||
+        undefined,
     })
 
     if (queued) {

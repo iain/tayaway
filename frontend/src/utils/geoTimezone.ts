@@ -17,3 +17,17 @@ export function timezoneForCoordinates(
     return null
   }
 }
+
+/**
+ * The zone an event lands in for a location, by the same precedence the server
+ * applies: the location-derived zone, else the workspace default, else null
+ * (nothing resolvable yet). Drives the "Times shown in …" hint behind the
+ * Automatic option in both the create wizard and the event page.
+ */
+export function effectiveEventZone(
+  lat: number | null | undefined,
+  lng: number | null | undefined,
+  workspaceZone: string | null | undefined
+): string | null {
+  return timezoneForCoordinates(lat, lng) ?? workspaceZone ?? null
+}

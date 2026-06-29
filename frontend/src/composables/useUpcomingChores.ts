@@ -3,7 +3,8 @@ import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { useObjectPoolStore } from '@/stores'
 import { useMinuteTicker } from './useMinuteTicker'
-import { zonedDateString, wallClockToEpoch, addDays } from '@/utils/timezone'
+import { zonedDateString, wallClockToEpoch } from '@/utils/timezone'
+import { addDays } from '@/utils/date'
 
 export interface UpcomingChoreItem {
   assignmentId: string

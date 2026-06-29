@@ -114,10 +114,3 @@ export function formatZoneAbbrev(epochMs: number, zone: string): string {
   }).formatToParts(new Date(epochMs))
   return parts.find((p) => p.type === 'timeZoneName')?.value ?? ''
 }
-
-/** Calendar arithmetic on a "YYYY-MM-DD" string (zone-independent). */
-export function addDays(date: string, days: number): string {
-  const [y, mo, d] = date.split('-').map(Number) as [number, number, number]
-  const t = new Date(Date.UTC(y, mo - 1, d + days))
-  return `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`
-}
