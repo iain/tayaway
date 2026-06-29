@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
+  ArrowLeftIcon,
   CalendarDaysIcon,
   PlusIcon,
   TrashIcon,
@@ -110,6 +111,14 @@ async function deleteRange(dateRangeId: string): Promise<void> {
     </div>
 
     <div v-else>
+      <router-link
+        :to="`/events/${eventId}/planning`"
+        class="text-ink-muted hover:text-ink mb-3 inline-flex items-center gap-1.5 text-sm"
+      >
+        <ArrowLeftIcon class="size-4" />
+        Back to poll
+      </router-link>
+
       <PageHeader title="Edit Date Ranges" size="sm" :icon="CalendarDaysIcon">
         <AppButton
           v-if="canManageDateRanges && dateRanges.length > 0"

@@ -95,6 +95,13 @@ test.describe('Poll Lifecycle UI', () => {
       await expect(
         page.getByRole('button', { name: 'Add Date Range' }).first()
       ).toBeVisible()
+
+      // And the editor links back to the poll.
+      await page.getByRole('link', { name: 'Back to poll' }).click()
+      await expect(page).toHaveURL(`/events/${eventId}/planning`)
+      await expect(
+        page.getByRole('button', { name: 'Add date options' })
+      ).toBeVisible()
     })
   })
 

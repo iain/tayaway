@@ -239,23 +239,28 @@ function handleEditRanges(): void {
           </div>
         </div>
 
-        <!-- Add or remove options while the poll is open -->
+        <!-- Manage the poll while it's open -->
         <div
-          v-if="canEditDateOptions && rankedDateRanges.length > 0"
-          class="mt-4"
+          v-if="
+            (canEditDateOptions && rankedDateRanges.length > 0) ||
+            (isOwner && canClosePoll(poll, rankedDateRanges.length))
+          "
+          class="mt-4 flex flex-wrap gap-3"
         >
-          <AppButton variant="secondary" @click="handleEditRanges">
+          <AppButton
+            v-if="canEditDateOptions && rankedDateRanges.length > 0"
+            variant="secondary"
+            @click="handleEditRanges"
+          >
             <PencilSquareIcon class="size-4" />
             Edit date options
           </AppButton>
-        </div>
-
-        <!-- Owner actions -->
-        <div
-          v-if="isOwner && canClosePoll(poll, rankedDateRanges.length)"
-          class="mt-4"
-        >
-          <AppButton @click="handleClosePoll">Select Winner</AppButton>
+          <AppButton
+            v-if="isOwner && canClosePoll(poll, rankedDateRanges.length)"
+            @click="handleClosePoll"
+          >
+            Select Winner
+          </AppButton>
         </div>
       </template>
 

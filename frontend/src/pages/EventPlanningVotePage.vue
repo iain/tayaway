@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 import {
+  ArrowLeftIcon,
   ArrowPathIcon,
   CalendarDaysIcon,
   CheckCircleIcon,
@@ -56,6 +57,14 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
     <div v-if="!event" class="text-ink-muted">Event not found</div>
 
     <div v-else>
+      <router-link
+        :to="`/events/${eventId}/planning`"
+        class="text-ink-muted hover:text-ink mb-3 inline-flex items-center gap-1.5 text-sm"
+      >
+        <ArrowLeftIcon class="size-4" />
+        Back to poll
+      </router-link>
+
       <PageHeader title="Vote on dates" size="sm" :icon="HandRaisedIcon">
         <router-link
           v-if="canManagePoll && event.datePoll && pollOpen"
