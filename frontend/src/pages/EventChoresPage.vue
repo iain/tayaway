@@ -520,7 +520,7 @@ onMounted(async () => {
           Cancel
         </TextButton>
         <AppButton
-          :to="`/events/${eventId}/rsvp`"
+          :to="`/events/${eventId}/planning`"
           autofocus
           @click="showRsvpDialog = false"
         >

@@ -20,8 +20,7 @@ const activeTab = computed(() => {
     name === 'event-planning-vote' ||
     name === 'event-planning-date-ranges'
   )
-    return 'planning'
-  if (name === 'event-rsvp') return 'rsvp'
+    return 'dates'
   if (name === 'event-expenses') return 'expenses'
   if (name === 'event-chores') return 'chores'
   return null
@@ -72,15 +71,9 @@ function tabClass(active: boolean): string {
         >
           <router-link
             :to="`/events/${eventId}/planning`"
-            :class="tabClass(activeTab === 'planning')"
+            :class="tabClass(activeTab === 'dates')"
           >
-            Planning
-          </router-link>
-          <router-link
-            :to="`/events/${eventId}/rsvp`"
-            :class="tabClass(activeTab === 'rsvp')"
-          >
-            RSVP
+            Dates
           </router-link>
           <router-link
             :to="`/events/${eventId}/expenses`"

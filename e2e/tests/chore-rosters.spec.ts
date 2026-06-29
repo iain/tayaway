@@ -1029,9 +1029,9 @@ test.describe('Chore Rosters Feature', () => {
       await expect(page.getByText('RSVP required')).toBeVisible()
       await expect(page.getByRole('link', { name: 'Go to RSVP' })).toBeVisible()
 
-      // Link should navigate to RSVP page
+      // Link should navigate to the Dates tab where RSVPs are collected
       await page.getByRole('link', { name: 'Go to RSVP' }).click()
-      await expect(page).toHaveURL(`/events/${eventId}/rsvp`)
+      await expect(page).toHaveURL(`/events/${eventId}/planning`)
     })
   })
 })

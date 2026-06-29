@@ -16,7 +16,6 @@ const EventPlanningPage = () => import('@/pages/EventPlanningPage.vue')
 const EventPlanningVotePage = () => import('@/pages/EventPlanningVotePage.vue')
 const EventPlanningDateRangesPage = () =>
   import('@/pages/EventPlanningDateRangesPage.vue')
-const EventRsvpPage = () => import('@/pages/EventRsvpPage.vue')
 const MembersPage = () => import('@/pages/MembersPage.vue')
 const TasksPage = () => import('@/pages/TasksPage.vue')
 const EventExpensesPage = () => import('@/pages/EventExpensesPage.vue')
@@ -103,9 +102,13 @@ const router = createRouter({
           component: EventPlanningDateRangesPage,
         },
         {
+          // Planning and RSVP were merged into the planning hub; keep the old
+          // path working for bookmarks and shared links.
           path: 'events/:id/rsvp',
-          name: 'event-rsvp',
-          component: EventRsvpPage,
+          redirect: (to) => ({
+            name: 'event-planning',
+            params: { id: to.params.id },
+          }),
         },
         {
           path: 'events/:id/expenses',

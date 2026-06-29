@@ -70,7 +70,7 @@ function navigateToEventPage(eventId: string): void {
           <div class="mt-3 flex flex-wrap gap-2">
             <router-link
               v-if="eventIdsNeedingRsvp.has(event.id)"
-              :to="`/events/${event.id}/rsvp`"
+              :to="`/events/${event.id}/planning`"
               class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50"
             >
               <UserGroupIcon class="size-4" />
@@ -78,7 +78,7 @@ function navigateToEventPage(eventId: string): void {
             </router-link>
             <router-link
               v-else
-              :to="`/events/${event.id}/rsvp`"
+              :to="`/events/${event.id}/planning`"
               class="bg-btn-secondary-fill text-btn-secondary-ink inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition-colors hover:bg-rose-100 hover:text-rose-700 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
             >
               <UserGroupIcon class="size-4" />

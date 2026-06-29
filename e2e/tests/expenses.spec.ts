@@ -743,9 +743,9 @@ test.describe('Expenses Feature', () => {
       await expect(page.getByTestId('rsvp-required-dialog')).toBeVisible()
       await expect(page.getByRole('link', { name: 'Go to RSVP' })).toBeVisible()
 
-      // Link should point to the RSVP page
+      // Link should point to the Dates tab where RSVPs are collected
       await page.getByRole('link', { name: 'Go to RSVP' }).click()
-      await expect(page).toHaveURL(`/events/${eventId}/rsvp`)
+      await expect(page).toHaveURL(`/events/${eventId}/planning`)
     })
   })
 

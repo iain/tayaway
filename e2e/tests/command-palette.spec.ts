@@ -58,7 +58,7 @@ test.describe('Command Palette', () => {
       await expect(dialog.getByText('Events')).toBeVisible()
 
       // No event context group on non-event pages
-      await expect(dialog.getByText('Go to Planning')).not.toBeVisible()
+      await expect(dialog.getByText('Go to Dates')).not.toBeVisible()
     })
 
     test('closes with Escape', async ({ page }) => {
@@ -132,8 +132,7 @@ test.describe('Command Palette', () => {
       const dialog = page.getByRole('dialog')
 
       // Shows navigation commands for other sections
-      await expect(dialog.getByText('Go to Planning')).toBeVisible()
-      await expect(dialog.getByText('Go to RSVP')).toBeVisible()
+      await expect(dialog.getByText('Go to Dates')).toBeVisible()
       await expect(dialog.getByText('Go to Expenses')).toBeVisible()
 
       // Does NOT show "Go to <event name>" since we're on the overview
@@ -146,23 +145,24 @@ test.describe('Command Palette', () => {
       const eventId = await createBareEvent(apiContext, 'Palette Exclude Event')
 
       await setupAuthenticatedPage(page, sessionToken)
-      await page.goto(`/events/${eventId}/rsvp`)
+      await page.goto(`/events/${eventId}/planning`)
 
-      await expect(page.getByRole('link', { name: 'RSVP' })).toBeVisible({
+      await expect(
+        page.getByRole('link', { name: 'Dates', exact: true })
+      ).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
       await openPalette(page)
       const dialog = page.getByRole('dialog')
 
-      // On RSVP page, so "Go to RSVP" should be excluded
-      await expect(dialog.getByText('Go to RSVP')).not.toBeVisible()
+      // On the Dates page, so "Go to Dates" should be excluded
+      await expect(dialog.getByText('Go to Dates')).not.toBeVisible()
 
       // But other commands should show
       await expect(
         dialog.getByText('Go to Palette Exclude Event')
       ).toBeVisible()
-      await expect(dialog.getByText('Go to Planning')).toBeVisible()
       await expect(dialog.getByText('Go to Expenses')).toBeVisible()
     })
 
@@ -238,8 +238,7 @@ test.describe('Command Palette', () => {
       await expect(dialog.getByText('Vote on dates')).toBeVisible()
 
       // Non-matching context commands are hidden
-      await expect(dialog.getByText('Go to Planning')).not.toBeVisible()
-      await expect(dialog.getByText('Go to RSVP')).not.toBeVisible()
+      await expect(dialog.getByText('Go to Dates')).not.toBeVisible()
     })
 
     test('selecting a contextual command navigates to the correct page', async ({
@@ -258,10 +257,10 @@ test.describe('Command Palette', () => {
       })
 
       await openPalette(page)
-      await page.getByRole('dialog').getByText('Go to RSVP').click()
+      await page.getByRole('dialog').getByText('Go to Dates').click()
 
       await expect(page.getByPlaceholder('Search...')).not.toBeVisible()
-      await expect(page).toHaveURL(`/events/${eventId}/rsvp`)
+      await expect(page).toHaveURL(`/events/${eventId}/planning`)
     })
 
     test('context commands disappear when navigating away from event', async ({
@@ -282,7 +281,7 @@ test.describe('Command Palette', () => {
       // Verify context commands exist on event page
       await openPalette(page)
       await expect(
-        page.getByRole('dialog').getByText('Go to Planning')
+        page.getByRole('dialog').getByText('Go to Dates')
       ).toBeVisible()
       await page.keyboard.press('Escape')
       await expect(page.getByPlaceholder('Search...')).not.toBeVisible()
@@ -296,7 +295,7 @@ test.describe('Command Palette', () => {
       // Open palette again — context commands should be gone
       await openPalette(page)
       await expect(
-        page.getByRole('dialog').getByText('Go to Planning')
+        page.getByRole('dialog').getByText('Go to Dates')
       ).not.toBeVisible()
       await expect(
         page.getByRole('dialog').getByText('Navigation', { exact: true })
