@@ -11,8 +11,10 @@ import AppButton from '@/components/common/AppButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import TextButton from '@/components/common/TextButton.vue'
 import LocationInput from '@/components/form/LocationInput.vue'
+import TimezoneSelect from '@/components/form/TimezoneSelect.vue'
+import { deviceTimezone } from '@/utils/timezone'
 
-type ProfileField = 'name' | 'phone' | 'birthday' | 'address'
+type ProfileField = 'name' | 'phone' | 'birthday' | 'address' | 'timezone'
 
 interface ProfileFieldValues {
   name?: string
@@ -21,6 +23,7 @@ interface ProfileFieldValues {
   locationName?: string
   latitude?: number | null
   longitude?: number | null
+  timezone?: string | null
 }
 
 const authStore = useAuthStore()
@@ -39,6 +42,14 @@ const editBirthday = ref('')
 const editLocationName = ref('')
 const editLatitude = ref<number | null>(null)
 const editLongitude = ref<number | null>(null)
+// "" = follow this device.
+const editTimezone = ref('')
+
+// How the display zone reads when no explicit preference is set.
+const deviceZone = computed(() => deviceTimezone())
+const timezoneDisplay = computed(() =>
+  user.value?.timezone ? user.value.timezone : `Automatic (${deviceZone.value})`
+)
 
 // The native picker honours `max` and disables future dates; the backend
 // enforces the same in update_profile so the keyboard-typed path is covered too.
@@ -67,6 +78,9 @@ async function openField(field: ProfileField): Promise<void> {
       editLocationName.value = user.value?.locationName ?? ''
       editLatitude.value = user.value?.latitude ?? null
       editLongitude.value = user.value?.longitude ?? null
+      break
+    case 'timezone':
+      editTimezone.value = user.value?.timezone ?? ''
       break
   }
   editingFields.value.add(field)
@@ -127,6 +141,9 @@ async function saveField(field: ProfileField): Promise<void> {
         latitude: editLocationName.value.trim() ? editLatitude.value : null,
         longitude: editLocationName.value.trim() ? editLongitude.value : null,
       })
+    case 'timezone':
+      // "" clears to NULL on the server, i.e. follow the device.
+      return persist(field, { timezone: editTimezone.value })
   }
 }
 
@@ -382,6 +399,52 @@ async function clearAddress(): Promise<void> {
                 class="text-state-danger-ink mt-1 text-sm"
               >
                 {{ saveErrors.get('address') }}
+              </p>
+            </div>
+          </template>
+        </DefinitionRow>
+
+        <DefinitionRow
+          label="Time zone"
+          value-class="truncate"
+          edit-label="Edit time zone"
+          edit-testid="edit-timezone-button"
+          :editing="editingFields.has('timezone')"
+          @edit="openField('timezone')"
+        >
+          {{ timezoneDisplay }}
+          <template #editor>
+            <div :aria-busy="savingFields.has('timezone')">
+              <TimezoneSelect
+                id="profile-timezone"
+                v-model="editTimezone"
+                label="Time zone"
+                auto-label="Automatic (follow this device)"
+                :effective-zone="deviceZone"
+                :disabled="savingFields.has('timezone')"
+              />
+              <div class="mt-2 flex flex-wrap items-center gap-2">
+                <AppButton
+                  size="sm"
+                  :loading="savingFields.has('timezone')"
+                  @click="saveField('timezone')"
+                >
+                  Save
+                </AppButton>
+                <TextButton
+                  variant="secondary"
+                  :disabled="savingFields.has('timezone')"
+                  @click="cancelEdit('timezone')"
+                >
+                  Cancel
+                </TextButton>
+              </div>
+              <p
+                v-if="saveErrors.get('timezone')"
+                role="alert"
+                class="text-state-danger-ink mt-1 text-sm"
+              >
+                {{ saveErrors.get('timezone') }}
               </p>
             </div>
           </template>

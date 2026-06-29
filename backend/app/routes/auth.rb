@@ -201,7 +201,8 @@ class App
         latitude: user.location_coordinates&.[](1),
         longitude: user.location_coordinates&.[](0),
         iban: mask_iban(user.iban),
-        ibanHolderName: user.iban_holder_name
+        ibanHolderName: user.iban_holder_name,
+        timezone: user.timezone
       }
     end
   end

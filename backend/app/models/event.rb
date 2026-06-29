@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Read-only event model.
-class Event < Data.define(:id, :workspace_id, :user_id, :name, :description, :start_date, :end_date, :location_name, :location_coordinates, :created_at, :updated_at)
+class Event < Data.define(:id, :workspace_id, :user_id, :name, :description, :start_date, :end_date, :location_name, :location_coordinates, :timezone, :created_at, :updated_at)
   class << self
     include Findable
 
@@ -46,6 +46,7 @@ class Event < Data.define(:id, :workspace_id, :user_id, :name, :description, :st
         end_date: row[:end_date],
         location_name: row[:location_name],
         location_coordinates: PointParser.parse(row[:location_coordinates]),
+        timezone: row[:timezone],
         created_at: row[:created_at],
         updated_at: row[:updated_at]
       )

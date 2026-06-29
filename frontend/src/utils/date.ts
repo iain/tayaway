@@ -7,6 +7,21 @@ function parseDate(dateString: string): Date {
   return new Date(year, month - 1, day)
 }
 
+/**
+ * Add (or subtract, with a negative `days`) whole days to a "YYYY-MM-DD"
+ * string, returning the same format. Pure calendar arithmetic — zone-
+ * independent — and the single home for it (used by useCalendar and the
+ * timezone-aware chore reckoning alike).
+ */
+export function addDays(dateString: string, days: number): string {
+  const date = parseDate(dateString)
+  date.setDate(date.getDate() + days)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 /** "Mon, Jan 1, 2024" — full display date (weekday + month + day + year) */
 export function formatDateDisplay(dateString: string): string {
   const date = parseDate(dateString)

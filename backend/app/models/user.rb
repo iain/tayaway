@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Read-only user model.
-class User < Data.define(:id, :email, :name, :phone_number, :birthday, :location_name, :location_coordinates, :iban, :iban_holder_name, :created_at, :updated_at)
+class User < Data.define(:id, :email, :name, :phone_number, :birthday, :location_name, :location_coordinates, :iban, :iban_holder_name, :timezone, :created_at, :updated_at)
   # Serializes the user for API responses. IBAN is deliberately excluded —
   # it must only appear (masked) in the authenticated /api/auth/me response.
   # The sender of an unpaid transfer can fetch the recipient's full IBAN via
@@ -65,6 +65,7 @@ class User < Data.define(:id, :email, :name, :phone_number, :birthday, :location
         location_coordinates: PointParser.parse(row[:location_coordinates]),
         iban: decrypt_field(row[:iban], user_id: user_id),
         iban_holder_name: decrypt_field(row[:iban_holder_name], user_id: user_id),
+        timezone: row[:timezone],
         created_at: row[:created_at],
         updated_at: row[:updated_at]
       )

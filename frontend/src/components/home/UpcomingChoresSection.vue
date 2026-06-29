@@ -8,6 +8,7 @@ import {
 import type { UpcomingChoreItem } from '@/composables/useUpcomingChores'
 import BaseCard from '@/components/common/BaseCard.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
+import WallClockTime from '@/components/common/WallClockTime.vue'
 
 defineProps<{
   chores: UpcomingChoreItem[]
@@ -20,9 +21,8 @@ function navigateToRoster(eventId: string): void {
   router.push(`/events/${eventId}/chores`)
 }
 
-function whenLabel(item: UpcomingChoreItem): string {
-  const day = item.day === 'today' ? 'Today' : 'Tomorrow'
-  return item.time ? `${day} · ${item.time}` : `${day} · All day`
+function dayLabel(item: UpcomingChoreItem): string {
+  return item.day === 'today' ? 'Today' : 'Tomorrow'
 }
 </script>
 
@@ -54,7 +54,12 @@ function whenLabel(item: UpcomingChoreItem): string {
             >
               <span class="text-ink-muted inline-flex items-center gap-1">
                 <ClockIcon class="size-4 text-amber-600 dark:text-amber-400" />
-                {{ whenLabel(item) }}
+                {{ dayLabel(item) }} ·
+                <WallClockTime
+                  :date="item.date"
+                  :time="item.time"
+                  :zone="item.timezone"
+                />
               </span>
               <span class="text-ink-muted truncate">{{ item.eventName }}</span>
             </div>

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Read-only workspace model.
-class Workspace < Data.define(:id, :name, :created_at, :updated_at)
+class Workspace < Data.define(:id, :name, :timezone, :created_at, :updated_at)
   class << self
     include Findable
 
@@ -30,6 +30,7 @@ class Workspace < Data.define(:id, :name, :created_at, :updated_at)
       new(
         id: UUID.new(row[:id]),
         name: row[:name],
+        timezone: row[:timezone],
         created_at: row[:created_at],
         updated_at: row[:updated_at]
       )

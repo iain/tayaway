@@ -11,6 +11,7 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import FormInput from '@/components/form/FormInput.vue'
 import FormTextarea from '@/components/form/FormTextarea.vue'
 import LocationInput from '@/components/form/LocationInput.vue'
+import TimezoneSelect from '@/components/form/TimezoneSelect.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import TextButton from '@/components/common/TextButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
@@ -19,8 +20,10 @@ import {
   useEventsStore,
   useDatePollsStore,
   useNotificationsStore,
+  useWorkspaceStore,
 } from '@/stores'
 import { useCalendar } from '@/composables/useCalendar'
+import { timezoneForCoordinates, effectiveEventZone } from '@/utils/geoTimezone'
 
 const props = defineProps<{
   open: boolean
@@ -33,6 +36,7 @@ const emit = defineEmits<{
 const router = useRouter()
 const eventsStore = useEventsStore()
 const datePollsStore = useDatePollsStore()
+const workspaceStore = useWorkspaceStore()
 const { formatDateDisplay } = useCalendar()
 
 // Wizard step
@@ -45,6 +49,18 @@ const description = ref('')
 const locationName = ref('')
 const latitude = ref<number | null>(null)
 const longitude = ref<number | null>(null)
+// "" = derive from location (or fall back to the workspace zone on the server).
+const timezone = ref('')
+
+// The zone the event will land in while "auto" is selected — derived from the
+// chosen location, else the workspace default — shown as a hint.
+const effectiveTimezone = computed(() =>
+  effectiveEventZone(
+    latitude.value,
+    longitude.value,
+    workspaceStore.currentWorkspace?.timezone
+  )
+)
 
 // Step 2: Dates
 type DateMode = null | 'known' | 'poll'
@@ -79,6 +95,7 @@ watch(
       locationName.value = ''
       latitude.value = null
       longitude.value = null
+      timezone.value = ''
       dateMode.value = null
       selectedStart.value = null
       selectedEnd.value = null
@@ -216,6 +233,12 @@ async function handleSubmit(): Promise<void> {
       locationName: locationName.value || undefined,
       latitude: latitude.value ?? undefined,
       longitude: longitude.value ?? undefined,
+      // Explicit override, else the location-derived zone; undefined lets the
+      // server fall back to the workspace default.
+      timezone:
+        timezone.value ||
+        timezoneForCoordinates(latitude.value, longitude.value) ||
+        undefined,
     })
 
     if (queued) {
@@ -293,6 +316,14 @@ const submitLabel = computed(() => {
           v-model:latitude="latitude"
           v-model:longitude="longitude"
           label="Location (optional)"
+          :disabled="submitting"
+        />
+        <TimezoneSelect
+          id="event-timezone"
+          v-model="timezone"
+          label="Time zone"
+          auto-label="Automatic (from location)"
+          :effective-zone="effectiveTimezone"
           :disabled="submitting"
         />
 

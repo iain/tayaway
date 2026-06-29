@@ -67,6 +67,9 @@ importers:
       terser:
         specifier: ^5.16.0
         version: 5.48.0
+      tz-lookup:
+        specifier: ^6.1.25
+        version: 6.1.25
       vue:
         specifier: ^3.5.35
         version: 3.5.38(typescript@6.0.3)
@@ -3053,6 +3056,9 @@ packages:
     resolution: {integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==}
     engines: {node: '>=14.17'}
     hasBin: true
+
+  tz-lookup@6.1.25:
+    resolution: {integrity: sha512-fFewT9o1uDzsW1QnUU1ValqaihFnwiUiiHr1S79/fxOzKXYYvX+EHeRnpvQJ9B3Qg67wPXT6QF2Esc4pFOrvLg==}
 
   ufo@1.6.4:
     resolution: {integrity: sha512-JFNbkD1Svwe0KvGi8GOeLcP4kAWQ609twvCdcHxq1oSL8svv39ZuSvajcD8B+5D0eL4+s1Is2D/O6KN3qcTeRA==}
@@ -6544,6 +6550,8 @@ snapshots:
       - supports-color
 
   typescript@6.0.3: {}
+
+  tz-lookup@6.1.25: {}
 
   ufo@1.6.4: {}
 

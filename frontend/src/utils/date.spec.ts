@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import {
+  addDays,
   formatDateDisplay,
   formatDateShort,
   formatDateRange,
@@ -9,6 +10,18 @@ import {
   formatDeadline,
   getMonthName,
 } from './date'
+
+describe('addDays', () => {
+  it('advances a calendar date, crossing month and year boundaries', () => {
+    expect(addDays('2026-06-15', 1)).toBe('2026-06-16')
+    expect(addDays('2026-06-30', 1)).toBe('2026-07-01')
+    expect(addDays('2026-12-31', 1)).toBe('2027-01-01')
+  })
+
+  it('subtracts with a negative delta', () => {
+    expect(addDays('2026-01-01', -1)).toBe('2025-12-31')
+  })
+})
 
 describe('formatDateDisplay', () => {
   it('returns a non-empty string containing the year', () => {

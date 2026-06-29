@@ -19,7 +19,8 @@ module Users
   module UpdateProfile
     class << self
       def call(user_id:, current_user_id:, name:, phone_number: nil, birthday: nil,
-               location_name: nil, latitude: nil, longitude: nil, iban: nil, iban_holder_name: nil)
+               location_name: nil, latitude: nil, longitude: nil, iban: nil, iban_holder_name: nil,
+               timezone: nil)
         Auditable.around(
           service: "Users::UpdateProfile",
           actor: nil,
@@ -36,7 +37,8 @@ module Users
             .bind { |user| validate_coordinates(latitude, longitude, user) }
             .bind { |user| validate_iban(iban, user) }
             .bind { |user| validate_text_lengths(phone_number, location_name, iban_holder_name, user) }
-            .bind { |user| update_profile(user, name, phone_number, birthday, location_name, latitude, longitude, iban, iban_holder_name) }
+            .bind { |user| validate_timezone(timezone, user) }
+            .bind { |user| update_profile(user, name, phone_number, birthday, location_name, latitude, longitude, iban, iban_holder_name, timezone) }
         end
       end
 
@@ -136,7 +138,17 @@ module Users
         Success(user)
       end
 
-      def update_profile(user, name, phone_number, birthday, location_name, latitude, longitude, iban, iban_holder_name)
+      def validate_timezone(timezone, user)
+        # nil means "don't change", blank means "clear" (follow the device);
+        # anything else must be a known IANA identifier.
+        if Timezones.blank_or_valid?(timezone)
+          Success(user)
+        else
+          Failure(ServiceError.validation("Unknown timezone"))
+        end
+      end
+
+      def update_profile(user, name, phone_number, birthday, location_name, latitude, longitude, iban, iban_holder_name, timezone)
         user_id = user.id
 
         DB.transaction do
@@ -169,6 +181,12 @@ module Users
           unless iban_holder_name.nil?
             stripped = iban_holder_name.strip
             update_data[:iban_holder_name] = stripped.empty? ? nil : Encryption.encrypt(stripped, user_id: user_id)
+          end
+
+          # Timezone: nil -> no change, blank -> clear (follow device), else set
+          unless timezone.nil?
+            stripped = timezone.strip
+            update_data[:timezone] = stripped.empty? ? nil : stripped
           end
 
           # Location: blank -> clear both, otherwise set both

@@ -111,7 +111,8 @@ module ChoreRosters
         # already-saved assignment, so it's isolated like other
         # notification work.
         Notifications::Safely.deliver(context: "ChoreRosters::CreateAssignment#reminder") do
-          ScheduleReminder.call(assignment: assignment, chore: chore)
+          timezone = ScheduleReminder.timezone_for_roster(chore.chore_roster_id)
+          ScheduleReminder.call(assignment: assignment, chore: chore, timezone: timezone)
         end
 
         Success({ objects: pool.to_a })

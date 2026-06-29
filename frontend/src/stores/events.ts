@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { useMutation } from '@/composables/useMutation'
 import { useAuthStore } from './auth'
 import { useWorkspaceStore } from './workspace'
+import { deviceTimezone } from '@/utils/timezone'
 import type { CreateEventRequest, UpdateEventRequest } from '@/types'
 import type { PoolApiResponse, PoolEvent } from '@/types/pool'
 
@@ -21,6 +22,13 @@ export const useEventsStore = defineStore('events', () => {
       locationName: data.locationName ?? null,
       latitude: data.latitude ?? null,
       longitude: data.longitude ?? null,
+      // Optimistic only — the server resolves the authoritative zone and the
+      // pool merge replaces this. Best guess: derived zone, else the
+      // workspace default, else this device.
+      timezone:
+        data.timezone ??
+        useWorkspaceStore().currentWorkspace?.timezone ??
+        deviceTimezone(),
       workspaceId: useWorkspaceStore().currentWorkspaceId!,
       userId: useAuthStore().currentUserId!,
       datePollId: null,
@@ -41,6 +49,7 @@ export const useEventsStore = defineStore('events', () => {
           location_name: data.locationName,
           latitude: data.latitude,
           longitude: data.longitude,
+          timezone: data.timezone,
           id: eventId,
           workspace_id: useWorkspaceStore().currentWorkspaceId,
         })
@@ -58,6 +67,7 @@ export const useEventsStore = defineStore('events', () => {
         location_name: data.locationName,
         latitude: data.latitude,
         longitude: data.longitude,
+        timezone: data.timezone,
       })
     )
   }

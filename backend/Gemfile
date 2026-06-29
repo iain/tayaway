@@ -41,6 +41,11 @@ gem "mmdb"
 # Monads
 gem "dry-monads"
 
+# Timezones — zone math (DST-aware) plus the bundled IANA database, so we
+# don't depend on the host OS having tzdata installed.
+gem "tzinfo"
+gem "tzinfo-data"
+
 # Autoloading
 gem "zeitwerk"
 
