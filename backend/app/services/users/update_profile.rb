@@ -139,8 +139,9 @@ module Users
       end
 
       def validate_timezone(timezone, user)
-        # nil means "don't change", blank means "clear" (follow the device)
-        if timezone.nil? || timezone.strip.empty? || Timezones.valid?(timezone)
+        # nil means "don't change", blank means "clear" (follow the device);
+        # anything else must be a known IANA identifier.
+        if Timezones.blank_or_valid?(timezone)
           Success(user)
         else
           Failure(ServiceError.validation("Unknown timezone"))

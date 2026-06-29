@@ -15,6 +15,23 @@ RSpec.describe Timezones do
     end
   end
 
+  describe ".blank_or_valid?" do
+    it "treats blank as valid (use the default / no change)" do
+      expect(described_class.blank_or_valid?(nil)).to be(true)
+      expect(described_class.blank_or_valid?("")).to be(true)
+      expect(described_class.blank_or_valid?("   ")).to be(true)
+    end
+
+    it "accepts a known identifier, even with surrounding whitespace" do
+      expect(described_class.blank_or_valid?("Europe/Amsterdam")).to be(true)
+      expect(described_class.blank_or_valid?("  Europe/Amsterdam  ")).to be(true)
+    end
+
+    it "rejects an unknown identifier" do
+      expect(described_class.blank_or_valid?("Mars/Olympus_Mons")).to be(false)
+    end
+  end
+
   describe ".resolve" do
     def resolve(date, hour, min, zone)
       described_class.resolve(date: date, hour: hour, min: min, zone: zone)

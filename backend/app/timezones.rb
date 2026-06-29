@@ -25,6 +25,15 @@ module Timezones
       false
     end
 
+    # Validity rule for a timezone form field: blank (nil or whitespace-only)
+    # means "use the default / leave unchanged", otherwise it must be a known
+    # IANA identifier. Stripped before checking so a padded-but-real zone passes
+    # — matching how the services persist it (stripped). The single predicate
+    # both Events and Users validation share.
+    def blank_or_valid?(name)
+      name.nil? || name.strip.empty? || valid?(name.strip)
+    end
+
     # Resolve a wall-clock time in `zone` to an absolute UTC Time.
     #
     # `date` is a Date; `hour`/`min` are the chore's wall-clock fields. Two DST
