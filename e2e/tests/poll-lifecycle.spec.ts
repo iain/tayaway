@@ -66,6 +66,38 @@ test.describe('Poll Lifecycle UI', () => {
     })
   })
 
+  test.describe('Recovering the date-options editor', () => {
+    test('an open poll with no options links back to the editor', async ({
+      page,
+    }) => {
+      // Reproduce the trap: open a poll, then leave before adding any options.
+      const eventId = await createBareEvent(apiContext, 'Empty Poll Recovery')
+      const deadline = new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000
+      ).toISOString()
+      await apiContext.post(`${API_BASE}/api/events/${eventId}/poll`, {
+        data: { deadline },
+      })
+
+      await setupAuthenticatedPage(page, sessionToken)
+      await page.goto(`/events/${eventId}/planning`)
+      await expect(page.getByTestId('event-name')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+
+      // The open-but-empty poll card must offer a way back to the editor.
+      await expect(
+        page.getByText('No date ranges have been added yet.')
+      ).toBeVisible()
+      await page.getByRole('button', { name: 'Add date options' }).click()
+
+      await expect(page).toHaveURL(`/events/${eventId}/planning/date-ranges`)
+      await expect(
+        page.getByRole('button', { name: 'Add Date Range' }).first()
+      ).toBeVisible()
+    })
+  })
+
   test.describe('Adding date ranges', () => {
     test('clicking "Add Date Range" opens calendar modal', async ({ page }) => {
       const { eventId } = await createEventWithPoll(apiContext)

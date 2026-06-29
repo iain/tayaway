@@ -5,7 +5,11 @@ import {
   ClockIcon,
   CheckCircleIcon as CheckCircleSolidIcon,
 } from '@heroicons/vue/24/solid'
-import { HandThumbUpIcon } from '@heroicons/vue/24/outline'
+import {
+  HandThumbUpIcon,
+  PencilSquareIcon,
+  PlusIcon,
+} from '@heroicons/vue/24/outline'
 import { useDatePollsStore } from '@/stores/datePolls'
 import type { HydratedEvent } from '@/composables/useHydratedEvent'
 import {
@@ -21,6 +25,7 @@ import SectionHeading from '@/components/common/SectionHeading.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import AppButton from '@/components/common/AppButton.vue'
+import { can } from '@/composables/usePermission'
 
 const props = defineProps<{
   event: HydratedEvent
@@ -30,6 +35,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   vote: []
+  editRanges: []
 }>()
 
 const datePollsStore = useDatePollsStore()
@@ -37,6 +43,15 @@ const datePollsStore = useDatePollsStore()
 const showClosePollModal = ref(false)
 
 const poll = computed(() => props.event.datePoll)
+
+// Authorized via the poll's own policy action, not a role check. Date options
+// can only be changed while the poll is still open.
+const canEditDateOptions = computed(
+  () =>
+    can(poll.value?.permissions, 'create_date_range') &&
+    !!poll.value &&
+    isPollOpen(poll.value)
+)
 
 const rankedDateRanges = computed(() => {
   if (!poll.value) return []
@@ -83,6 +98,10 @@ async function handleClosePollConfirm(dateRangeId: string): Promise<void> {
 
 function handleVote(): void {
   emit('vote')
+}
+
+function handleEditRanges(): void {
+  emit('editRanges')
 }
 </script>
 
@@ -158,6 +177,14 @@ function handleVote(): void {
         <!-- Date ranges list -->
         <div v-if="rankedDateRanges.length === 0" class="py-4 text-center">
           <p class="text-ink-muted">No date ranges have been added yet.</p>
+          <AppButton
+            v-if="canEditDateOptions"
+            class="mt-3"
+            @click="handleEditRanges"
+          >
+            <PlusIcon class="size-4" />
+            Add date options
+          </AppButton>
         </div>
 
         <div v-else class="space-y-3">
@@ -210,6 +237,17 @@ function handleVote(): void {
             </div>
             <VoteSummaryBar :summary="dateRange.voteSummary" />
           </div>
+        </div>
+
+        <!-- Add or remove options while the poll is open -->
+        <div
+          v-if="canEditDateOptions && rankedDateRanges.length > 0"
+          class="mt-4"
+        >
+          <AppButton variant="secondary" @click="handleEditRanges">
+            <PencilSquareIcon class="size-4" />
+            Edit date options
+          </AppButton>
         </div>
 
         <!-- Owner actions -->

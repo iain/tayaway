@@ -79,6 +79,10 @@ function handleVote(): void {
   router.push(`/events/${eventId.value}/planning/vote`)
 }
 
+function handleEditRanges(): void {
+  router.push(`/events/${eventId.value}/planning/date-ranges`)
+}
+
 function handleOpenPoll(): void {
   pollModalMode.value = 'open'
   showPollModal.value = true
@@ -168,6 +172,7 @@ function handleDownloadIcs(): void {
           :is-owner="canCreatePoll"
           :current-user-id="currentUserId"
           @vote="handleVote"
+          @edit-ranges="handleEditRanges"
         />
         <AwaitingVotesSection
           v-if="event.datePoll!.dateRanges.length > 0"
