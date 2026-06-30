@@ -4,21 +4,10 @@ import {
   getObjectByType,
   getTestSession,
   newApiContext,
+  offsetDate,
   setupAuthenticatedPage,
   PAGE_LOAD_TIMEOUT,
 } from '../helpers'
-
-/**
- * Local-time ISO date (YYYY-MM-DD) offset by `days`. The homepage chore window
- * reckons "today"/"tomorrow" in the viewer's local zone (chore times are local
- * wall-clock), so fixtures must build their dates from local parts too.
- */
-function localDate(days: number): string {
-  const d = new Date()
-  d.setDate(d.getDate() + days)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
 
 test.describe('Homepage upcoming chores', () => {
   test('surfaces a chore during an event and links to the roster', async ({
@@ -35,14 +24,17 @@ test.describe('Homepage upcoming chores', () => {
       'Home Chores User'
     )
 
-    // A current event spanning today. The range is deliberately wide so the
-    // event is "current" under both the UTC reckoning the events list uses and
-    // the local reckoning the chore window uses.
+    // A current event spanning today. Pin the zone to UTC and build the
+    // fixture dates in UTC too (offsetDate), so the chore window — which the
+    // homepage reckons in the event's zone — lines up with the assignment date
+    // regardless of the runner's timezone. (Default-zone events flake in the
+    // CI/event-zone date-boundary window; this keeps both sides on UTC.)
     const eventResp = await apiContext.post(`${API_BASE}/api/events`, {
       data: {
         name: `Lake House ${uid}`,
-        start_date: localDate(-1),
-        end_date: localDate(2),
+        start_date: offsetDate(-1),
+        end_date: offsetDate(2),
+        timezone: 'UTC',
       },
     })
     const eventId = getObjectByType((await eventResp.json()).objects, 'event')!
@@ -72,7 +64,7 @@ test.describe('Homepage upcoming chores', () => {
 
     const assignResp = await apiContext.post(
       `${API_BASE}/api/chore-rosters/${rosterId}/assignments`,
-      { data: { chore_id: choreId, user_id: userId, date: localDate(0) } }
+      { data: { chore_id: choreId, user_id: userId, date: offsetDate(0) } }
     )
     expect(assignResp.status()).toBe(201)
 
