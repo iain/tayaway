@@ -28,7 +28,7 @@ test.describe('Merged Dates tab', () => {
     await apiContext.dispose()
   })
 
-  test('subheader has a single "Dates" tab, not Planning/RSVP', async ({
+  test('the single tab reads "Planning" while picking dates', async ({
     page,
   }) => {
     const { eventId } = await createEventWithPoll(apiContext)
@@ -39,14 +39,31 @@ test.describe('Merged Dates tab', () => {
       timeout: PAGE_LOAD_TIMEOUT,
     })
 
+    // One phase-named tab — "Planning" before dates, and never both tabs.
     await expect(
-      page.getByRole('link', { name: 'Dates', exact: true })
+      page.getByRole('link', { name: 'Planning', exact: true })
+    ).toBeVisible()
+    await expect(
+      page.getByRole('link', { name: 'RSVP', exact: true })
+    ).toHaveCount(0)
+  })
+
+  test('the single tab reads "RSVP" once dates are confirmed', async ({
+    page,
+  }) => {
+    const { eventId } = await createResolvedEvent(apiContext)
+    await setupAuthenticatedPage(page, sessionToken)
+
+    await page.goto(`/events/${eventId}/planning`)
+    await expect(page.getByTestId('event-name')).toBeVisible({
+      timeout: PAGE_LOAD_TIMEOUT,
+    })
+
+    await expect(
+      page.getByRole('link', { name: 'RSVP', exact: true })
     ).toBeVisible()
     await expect(
       page.getByRole('link', { name: 'Planning', exact: true })
-    ).toHaveCount(0)
-    await expect(
-      page.getByRole('link', { name: 'RSVP', exact: true })
     ).toHaveCount(0)
   })
 

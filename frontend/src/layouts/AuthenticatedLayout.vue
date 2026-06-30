@@ -37,6 +37,7 @@ import {
 } from '@/composables/useStaleness'
 import TimeAnchor from '@/components/common/TimeAnchor.vue'
 import { getInitials } from '@/utils/member'
+import { eventHasDates } from '@/utils/event'
 import AppAvatar from '@/components/common/AppAvatar.vue'
 import CommandPalette from '@/components/common/CommandPalette.vue'
 import NotificationBell from '@/components/common/NotificationBell.vue'
@@ -156,7 +157,7 @@ const routeTitleMap: Record<string, string> = {
   events: 'Events',
   'events-new': 'New Event',
   event: '',
-  'event-planning': 'Dates',
+  'event-planning': 'Planning',
   'event-planning-vote': 'Vote',
   'event-planning-date-ranges': 'Date Ranges',
   'event-expenses': 'Expenses',
@@ -168,7 +169,11 @@ const routeTitleMap: Record<string, string> = {
 watchEffect(() => {
   const parts: string[] = []
   const routeName = route.name as string
-  const pageTitle = routeTitleMap[routeName]
+  // The merged planning/RSVP hub names itself for the phase it's in.
+  let pageTitle = routeTitleMap[routeName]
+  if (routeName === 'event-planning' && currentEvent.value) {
+    pageTitle = eventHasDates(currentEvent.value) ? 'RSVP' : 'Planning'
+  }
   if (pageTitle !== undefined) {
     if (eventDetailRoutes.has(routeName)) {
       if (pageTitle) parts.push(pageTitle)

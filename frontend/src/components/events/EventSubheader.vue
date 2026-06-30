@@ -26,6 +26,11 @@ const activeTab = computed(() => {
   return null
 })
 
+// One tab, named for the phase it's in: picking dates vs collecting RSVPs.
+const datesTabLabel = computed(() =>
+  eventHasDates(props.event) ? 'RSVP' : 'Planning'
+)
+
 function tabClass(active: boolean): string {
   return [
     'shrink-0 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
@@ -73,7 +78,7 @@ function tabClass(active: boolean): string {
             :to="`/events/${eventId}/planning`"
             :class="tabClass(activeTab === 'dates')"
           >
-            Dates
+            {{ datesTabLabel }}
           </router-link>
           <router-link
             :to="`/events/${eventId}/expenses`"

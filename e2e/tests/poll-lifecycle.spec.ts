@@ -453,7 +453,7 @@ test.describe('Poll Lifecycle UI', () => {
       await expect(dateRangeItems).toHaveCount(2)
 
       // 5. Navigate to planning, then to vote page
-      await page.getByRole('link', { name: 'Dates' }).click()
+      await page.getByRole('link', { name: 'Planning' }).click()
       await expect(page).toHaveURL(`/events/${eventId}/planning`)
       await page.getByRole('button', { name: 'Vote on Dates' }).click()
       await expect(page).toHaveURL(`/events/${eventId}/planning/vote`)
@@ -466,7 +466,7 @@ test.describe('Poll Lifecycle UI', () => {
       ).toHaveAttribute('aria-pressed', 'true')
 
       // 6. Go back to planning and close the poll
-      await page.getByRole('link', { name: 'Dates' }).click()
+      await page.getByRole('link', { name: 'Planning' }).click()
       await expect(page).toHaveURL(`/events/${eventId}/planning`)
       await page.getByRole('button', { name: 'Select Winner' }).click()
       await expect(page.getByRole('dialog')).toBeVisible()

@@ -66,13 +66,10 @@ const hasDates = computed(() =>
   event.value ? eventHasDates(event.value) : false
 )
 
-const headerTitle = computed(() => {
-  if (pollActive.value) return 'Date poll'
-  else if (hasDates.value) return 'RSVP'
-  else return 'Dates'
-})
+// Title tracks the phase: "Planning" while picking dates, "RSVP" once set.
+const headerTitle = computed(() => (hasDates.value ? 'RSVP' : 'Planning'))
 const headerIcon = computed(() =>
-  !pollActive.value && hasDates.value ? UserGroupIcon : CalendarDaysIcon
+  hasDates.value ? UserGroupIcon : CalendarDaysIcon
 )
 
 function handleVote(): void {

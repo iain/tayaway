@@ -148,7 +148,7 @@ test.describe('Command Palette', () => {
       await page.goto(`/events/${eventId}/planning`)
 
       await expect(
-        page.getByRole('link', { name: 'Dates', exact: true })
+        page.getByRole('link', { name: 'Planning', exact: true })
       ).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
