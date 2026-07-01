@@ -9,11 +9,12 @@ class EventPolicy
   def initialize(event, membership:, has_expenses: false, **)
     @event = event
     @owner = event.user_id == membership.user_id
+    @admin_or_owner = %w[admin owner].include?(membership.role)
     @has_expenses = has_expenses
   end
 
   def edit
-    if @owner
+    if @owner || @admin_or_owner
       Success()
     else
       Failure(:not_owner)
@@ -21,7 +22,7 @@ class EventPolicy
   end
 
   def delete
-    if !@owner
+    if !(@owner || @admin_or_owner)
       Failure(:not_owner)
     elsif @has_expenses
       Failure(:has_expenses)

@@ -22,6 +22,18 @@ RSpec.describe EventPolicy do
       expect(policy.edit).to be_failure
       expect(policy.edit.failure).to eq(:not_owner)
     end
+
+    it "allows a workspace admin who isn't the event owner" do
+      admin_membership = TestFactories.workspace_membership(workspace: workspace, user: other_user, role: "admin")
+      policy = described_class.new(event, membership: WorkspaceMembership.find(admin_membership[:id]))
+      expect(policy.edit).to be_success
+    end
+
+    it "allows a workspace owner who isn't the event owner" do
+      workspace_owner_membership = TestFactories.workspace_membership(workspace: workspace, user: other_user, role: "owner")
+      policy = described_class.new(event, membership: WorkspaceMembership.find(workspace_owner_membership[:id]))
+      expect(policy.edit).to be_success
+    end
   end
 
   describe "#delete" do
@@ -38,6 +50,19 @@ RSpec.describe EventPolicy do
 
     it "rejects when event has expenses" do
       policy = described_class.new(event, membership: WorkspaceMembership.find(owner_membership[:id]), has_expenses: true)
+      expect(policy.delete).to be_failure
+      expect(policy.delete.failure).to eq(:has_expenses)
+    end
+
+    it "allows a workspace admin who isn't the event owner" do
+      admin_membership = TestFactories.workspace_membership(workspace: workspace, user: other_user, role: "admin")
+      policy = described_class.new(event, membership: WorkspaceMembership.find(admin_membership[:id]))
+      expect(policy.delete).to be_success
+    end
+
+    it "still rejects a workspace admin when the event has expenses" do
+      admin_membership = TestFactories.workspace_membership(workspace: workspace, user: other_user, role: "admin")
+      policy = described_class.new(event, membership: WorkspaceMembership.find(admin_membership[:id]), has_expenses: true)
       expect(policy.delete).to be_failure
       expect(policy.delete.failure).to eq(:has_expenses)
     end
