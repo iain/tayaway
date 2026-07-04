@@ -70,9 +70,15 @@
   --color-stone-950: oklch(0.15 0.0045 85);
 
   /* Accents — spectral's wheel, in one equiluminant band. */
+  /* amber/yellow/green are perceptually light, so the generator clamped their
+     top steps to near-white — 50/100/200 all landed on the same L≈0.995. That
+     flattened every soft amber fill (the outflow "Pay via QR" button, the home
+     chips, warning badges) to invisible in light mode. 100/200 are regraded
+     here to real soft tints that sit at the ~L0.94 weight the other hues' fills
+     use, still lighter than 300 so the ramp stays monotonic. */
   --color-amber-50: oklch(0.995 0.004 75);
-  --color-amber-100: oklch(0.995 0.004 75);
-  --color-amber-200: oklch(0.995 0.004 75);
+  --color-amber-100: oklch(0.965 0.033 75);
+  --color-amber-200: oklch(0.945 0.055 75);
   --color-amber-300: oklch(0.93 0.0574 75);
   --color-amber-400: oklch(0.84 0.1386 75);
   --color-amber-500: oklch(0.76 0.1603 75);
@@ -83,8 +89,8 @@
   --color-amber-950: oklch(0.3 0.0633 75);
 
   --color-yellow-50: oklch(0.995 0.0097 98);
-  --color-yellow-100: oklch(0.995 0.0097 98);
-  --color-yellow-200: oklch(0.995 0.0097 98);
+  --color-yellow-100: oklch(0.97 0.05 98);
+  --color-yellow-200: oklch(0.94 0.09 98);
   --color-yellow-300: oklch(0.98 0.0383 98);
   --color-yellow-400: oklch(0.89 0.1628 98);
   --color-yellow-500: oklch(0.81 0.1674 98);
@@ -239,8 +245,8 @@
   --color-emerald-950: oklch(0.3 0.0742 155);
 
   --color-green-50: oklch(0.995 0.0095 135);
-  --color-green-100: oklch(0.995 0.0095 135);
-  --color-green-200: oklch(0.995 0.0095 135);
+  --color-green-100: oklch(0.98 0.028 135);
+  --color-green-200: oklch(0.965 0.05 135);
   --color-green-300: oklch(0.95 0.1052 135);
   --color-green-400: oklch(0.86 0.1767 135);
   --color-green-500: oklch(0.78 0.19 135);

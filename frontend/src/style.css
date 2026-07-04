@@ -145,8 +145,11 @@
      error state, and any future state surface. `-ink` is for text inside the
      fill; `-outline` is the dedicated outline / focus-ring colour, one step
      deeper than the ink so it carries on its own without a fill behind it. */
+  /* green-100 collapsed to near-white in the spectral ramp (see
+     spectral-ramps.css); green-200 is regraded there to a pale mint that reads
+     as a fill without crowding the green-700 success ink on top of it. */
   --color-state-success-fill: light-dark(
-    var(--color-green-100),
+    var(--color-green-200),
     var(--color-green-900)
   );
   --color-state-success-ink: light-dark(
