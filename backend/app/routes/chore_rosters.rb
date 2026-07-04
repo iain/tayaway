@@ -93,7 +93,7 @@ class App
               roster_id: roster.id,
               workspace_id: workspace_id,
               membership: current_membership,
-              note: r.params["note"],
+              note: r.params["note"]&.strip,
               user_id: r.params["user_id"],
               pinned: pinned
             )
@@ -121,7 +121,7 @@ class App
             chore_id: r.params["chore_id"],
             user_id: r.params["user_id"],
             date: r.params["date"],
-            note: r.params["note"],
+            note: r.params["note"]&.strip,
             id: r.params["id"]
           )
           handle_result(result, success_status: 201)

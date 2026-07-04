@@ -7,6 +7,7 @@ import { useVotesStore } from '@/stores/votes'
 import VoteSummaryBar from './VoteSummaryBar.vue'
 import VotersList from './VotersList.vue'
 import FormTextarea from '@/components/form/FormTextarea.vue'
+import { TEXT_LIMITS } from '@/constants/limits'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
@@ -195,6 +196,8 @@ function toggleCommentInput() {
               label="Comment"
               placeholder="Optional comment..."
               :rows="2"
+              :maxlength="TEXT_LIMITS.comment"
+              show-count
             />
             <AppButton
               :disabled="!hasCommentChanges"

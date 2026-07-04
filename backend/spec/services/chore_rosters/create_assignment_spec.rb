@@ -37,6 +37,22 @@ RSpec.describe ChoreRosters::CreateAssignment do
     expect(assignment[:userId]).to eq(assignee[:id].to_s)
   end
 
+  it "fails when the note is too long" do
+    result = described_class.call(
+      roster_id: roster[:id],
+      workspace_id: workspace[:id],
+      membership: membership_for(user),
+      chore_id: chore[:id].to_s,
+      user_id: assignee[:id].to_s,
+      date: "2026-03-02",
+      note: "a" * 501
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Note is too long (maximum 500 characters)")
+    expect(result.failure.http_status).to eq(400)
+  end
+
   it "schedules a reminder when the chore has a time" do
     allow(Jobs::Queue).to receive(:enqueue)
     future_event = TestFactories.event(workspace: workspace, user: user)

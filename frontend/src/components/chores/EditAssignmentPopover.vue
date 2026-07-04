@@ -5,6 +5,7 @@ import PushPinIcon from '@/components/icons/PushPinIcon.vue'
 import AnchoredPopover from '@/components/common/AnchoredPopover.vue'
 import type { PoolChoreAssignment, PoolMember } from '@/types/pool'
 import { getMemberNameFromMap } from '@/utils/member'
+import { TEXT_LIMITS } from '@/constants/limits'
 import TextButton from '@/components/common/TextButton.vue'
 import AppButton from '@/components/common/AppButton.vue'
 
@@ -83,6 +84,7 @@ async function handleRemove() {
       type="text"
       placeholder="Note (optional)"
       aria-label="Note (optional)"
+      :maxlength="TEXT_LIMITS.shortText"
       class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus mb-3 block w-full rounded-md px-2 py-1 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 sm:text-sm"
       @keydown.enter="handleSaveNote"
     />

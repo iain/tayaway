@@ -4,6 +4,8 @@ module TaskLists
   # Service to add an item to a task list.
   module AddItem
     class << self
+      include LengthValidation
+
       def call(task_list_id:, membership:, content:, id: nil)
         Auditable.around(
           service: "TaskLists::AddItem",
@@ -22,13 +24,7 @@ module TaskLists
       private
 
       def validate_content(content)
-        if content.nil? || content.empty?
-          Failure(ServiceError.validation("Content is required"))
-        elsif content.length > ValidationLimits::LONG_TEXT
-          Failure(ServiceError.validation("Content is too long (maximum 5000 characters)"))
-        else
-          Success(content)
-        end
+        validate_length(content, max: ValidationLimits::MEDIUM_TEXT, field: "Content", required: true)
       end
 
       def add_item(task_list, membership, content, id)

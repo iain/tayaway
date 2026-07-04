@@ -4,6 +4,8 @@ module TaskLists
   # Service to create a new task list.
   module Create
     class << self
+      include LengthValidation
+
       def call(workspace_id:, membership:, name:, id: nil)
         Auditable.around(
           service: "TaskLists::Create",
@@ -24,13 +26,7 @@ module TaskLists
       private
 
       def validate_name(name)
-        if name.nil? || name.empty?
-          Failure(ServiceError.validation("Name is required"))
-        elsif name.length > ValidationLimits::SHORT_STRING
-          Failure(ServiceError.validation("Name is too long (maximum 255 characters)"))
-        else
-          Success(name)
-        end
+        validate_length(name, max: ValidationLimits::SHORT_STRING, field: "Name", required: true)
       end
 
       def create_task_list(workspace_id, membership, name, id)

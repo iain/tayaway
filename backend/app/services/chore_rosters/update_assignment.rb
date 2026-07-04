@@ -4,6 +4,8 @@ module ChoreRosters
   # Service to update a chore assignment (note, user_id).
   module UpdateAssignment
     class << self
+      include LengthValidation
+
       def call(assignment_id:, roster_id:, workspace_id:, membership:, note: nil, user_id: nil, pinned: nil)
         Auditable.around(
           service: "ChoreRosters::UpdateAssignment",
@@ -12,6 +14,7 @@ module ChoreRosters
           subject_id: assignment_id
         ) do
           Success()
+            .bind { validate_length(note, max: ValidationLimits::MEDIUM_TEXT, field: "Note") }
             .bind { ChoreAssignment.find_result(assignment_id) }
             .bind { |assignment| validate_belongs_to_roster(assignment, roster_id) }
             .bind { |assignment| ChoreAssignmentPolicy.enforce(:edit, assignment, membership: membership) }

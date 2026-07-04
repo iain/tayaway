@@ -94,4 +94,29 @@ describe('FormInput', () => {
       ).toBe(false)
     })
   })
+
+  describe('character counter', () => {
+    it('is hidden unless showCount and a maxlength are both set', () => {
+      const wrapper = mount(FormInput, {
+        props: { ...baseProps, maxlength: 255 },
+      })
+      expect(wrapper.find('[data-testid="form-input-count"]').exists()).toBe(
+        false
+      )
+    })
+
+    it('renders the current length against the limit and colours near the cap', () => {
+      const wrapper = mount(FormInput, {
+        props: {
+          ...baseProps,
+          modelValue: 'a'.repeat(255),
+          maxlength: 255,
+          showCount: true,
+        },
+      })
+      const count = wrapper.get('[data-testid="form-input-count"]')
+      expect(count.text()).toBe('255/255')
+      expect(count.classes()).toContain('text-state-danger-ink')
+    })
+  })
 })

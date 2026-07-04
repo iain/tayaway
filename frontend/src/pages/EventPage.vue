@@ -32,6 +32,7 @@ import { useObjectPoolStore } from '@/stores/objectPool'
 import { useCalendar } from '@/composables/useCalendar'
 import { generateIcs, downloadIcs } from '@/utils/ics'
 import { can } from '@/composables/usePermission'
+import { TEXT_LIMITS } from '@/constants/limits'
 
 const route = useRoute()
 const router = useRouter()
@@ -368,7 +369,7 @@ function handleDownloadIcs(): void {
             type="text"
             aria-label="Event name"
             placeholder="Event name"
-            :maxlength="255"
+            :maxlength="TEXT_LIMITS.name"
             :disabled="loading"
             data-testid="edit-name-input"
             class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus min-w-0 flex-1 rounded-md px-3 py-2 text-2xl font-bold tracking-tight outline-1 -outline-offset-1 placeholder:font-normal focus:outline-2 focus:outline-offset-2 sm:text-3xl"
@@ -418,6 +419,7 @@ function handleDownloadIcs(): void {
             aria-label="Description"
             placeholder="Add a description..."
             rows="3"
+            :maxlength="TEXT_LIMITS.longText"
             :disabled="loading"
             data-testid="edit-description-input"
             class="bg-surface-sunken outline-line placeholder:text-ink-placeholder focus:outline-focus text-ink-muted w-full rounded-md px-3 py-2 text-xl outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
@@ -544,6 +546,7 @@ function handleDownloadIcs(): void {
           aria-label="Location"
           :latitude="editLatitude"
           :longitude="editLongitude"
+          :maxlength="TEXT_LIMITS.name"
           :disabled="loading"
           @update:latitude="editLatitude = $event"
           @update:longitude="editLongitude = $event"

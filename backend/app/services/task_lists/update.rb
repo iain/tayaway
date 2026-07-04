@@ -4,6 +4,8 @@ module TaskLists
   # Service to update a task list (rename and/or reposition).
   module Update
     class << self
+      include LengthValidation
+
       def call(task_list_id:, name:, position: nil, membership:)
         Auditable.around(
           service: "TaskLists::Update",
@@ -23,11 +25,11 @@ module TaskLists
       private
 
       def validate_update(name, position)
-        has_name = name && !name.empty?
+        has_name = name && !name.strip.empty?
         if !has_name && position.nil?
           Failure(ServiceError.validation("Name or position is required"))
-        elsif has_name && name.length > ValidationLimits::SHORT_STRING
-          Failure(ServiceError.validation("Name is too long (maximum 255 characters)"))
+        elsif has_name
+          validate_length(name, max: ValidationLimits::SHORT_STRING, field: "Name")
         else
           Success(true)
         end

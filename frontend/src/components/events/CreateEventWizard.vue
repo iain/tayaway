@@ -14,6 +14,7 @@ import LocationInput from '@/components/form/LocationInput.vue'
 import TimezoneSelect from '@/components/form/TimezoneSelect.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import TextButton from '@/components/common/TextButton.vue'
+import { TEXT_LIMITS } from '@/constants/limits'
 import IconButton from '@/components/common/IconButton.vue'
 import CalendarMonth from '@/components/calendar/CalendarMonth.vue'
 import {
@@ -300,7 +301,7 @@ const submitLabel = computed(() => {
           autocomplete="off"
           autofocus
           required
-          :maxlength="255"
+          :maxlength="TEXT_LIMITS.name"
           :disabled="submitting"
         />
         <FormTextarea
@@ -309,6 +310,8 @@ const submitLabel = computed(() => {
           label="Description (optional)"
           placeholder="What's the plan?"
           :rows="2"
+          :maxlength="TEXT_LIMITS.longText"
+          show-count
           :disabled="submitting"
         />
         <LocationInput
@@ -316,6 +319,7 @@ const submitLabel = computed(() => {
           v-model:latitude="latitude"
           v-model:longitude="longitude"
           label="Location (optional)"
+          :maxlength="TEXT_LIMITS.name"
           :disabled="submitting"
         />
         <TimezoneSelect

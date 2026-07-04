@@ -18,6 +18,7 @@ import PageHeader from '@/components/common/PageHeader.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import TextButton from '@/components/common/TextButton.vue'
 import FormInput from '@/components/form/FormInput.vue'
+import { TEXT_LIMITS } from '@/constants/limits'
 import { ClipboardDocumentListIcon } from '@heroicons/vue/24/outline'
 import type {
   PoolApiResponse,
@@ -382,7 +383,7 @@ onMounted(async () => {
               v-model="newChoreName"
               label="Chore name"
               placeholder="e.g. Cooking, Washing up"
-              :maxlength="255"
+              :maxlength="TEXT_LIMITS.name"
               :disabled="addChoreSubmitting"
               @blur="handleAddChoreBlur"
             />

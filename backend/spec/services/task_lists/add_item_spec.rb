@@ -16,6 +16,20 @@ RSpec.describe TaskLists::AddItem do
     expect(result.failure.message).to eq("Content is required")
   end
 
+  it "returns failure when content is too long" do
+    workspace = TestFactories.workspace
+    user = TestFactories.user
+    membership_row = TestFactories.workspace_membership(workspace: workspace, user: user)
+    membership = WorkspaceMembership.find(membership_row[:id])
+    list = TestFactories.task_list(workspace: workspace, user: user)
+
+    result = described_class.call(task_list_id: list[:id], membership: membership, content: "a" * 501)
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Content is too long (maximum 500 characters)")
+    expect(result.failure.http_status).to eq(400)
+  end
+
   it "returns failure when task list not found" do
     workspace = TestFactories.workspace
     user = TestFactories.user

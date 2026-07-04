@@ -4,6 +4,8 @@ module ChoreRosters
   # Service to pin an assignment (always pinned=true).
   module CreateAssignment
     class << self
+      include LengthValidation
+
       def call(roster_id:, workspace_id:, membership:, chore_id:, user_id:, date:, note: nil, id: nil)
         Auditable.around(
           service: "ChoreRosters::CreateAssignment",
@@ -13,6 +15,7 @@ module ChoreRosters
         ) do
           Success()
             .bind { validate(chore_id, user_id, date) }
+            .bind { |valid| validate_length(note, max: ValidationLimits::MEDIUM_TEXT, field: "Note").fmap { valid } }
             .bind { |valid| enforce_policy(roster_id, membership, valid) }
             .bind { |valid| validate_chore_belongs(valid, roster_id) }
             .bind { |valid| validate_date_in_range(valid, roster_id) }

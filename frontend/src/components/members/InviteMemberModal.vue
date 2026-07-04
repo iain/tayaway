@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import FormInput from '@/components/form/FormInput.vue'
 import FormActions from '@/components/form/FormActions.vue'
+import { TEXT_LIMITS } from '@/constants/limits'
 
 const props = defineProps<{
   open: boolean
@@ -54,6 +55,7 @@ function handleClose(): void {
         placeholder="Enter their name"
         autocomplete="name"
         autofocus
+        :maxlength="TEXT_LIMITS.name"
         :disabled="loading"
       />
 
@@ -65,6 +67,7 @@ function handleClose(): void {
         placeholder="Enter email address"
         autocomplete="email"
         required
+        :maxlength="TEXT_LIMITS.name"
         :disabled="loading"
       />
 

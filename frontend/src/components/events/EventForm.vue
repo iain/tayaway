@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { FormInput, FormTextarea, FormActions } from '@/components/form'
 import LocationInput from '@/components/form/LocationInput.vue'
+import { TEXT_LIMITS } from '@/constants/limits'
 
 export interface EventFormData {
   name: string
@@ -87,7 +88,7 @@ function handleCancel(): void {
         label="Event Name"
         placeholder="Enter event name"
         required
-        :maxlength="255"
+        :maxlength="TEXT_LIMITS.name"
         data-testid="event-name-input"
       />
 
@@ -97,6 +98,8 @@ function handleCancel(): void {
         label="Description (optional)"
         placeholder="Enter event description"
         :rows="3"
+        :maxlength="TEXT_LIMITS.longText"
+        show-count
         data-testid="event-description-input"
       />
 
@@ -105,6 +108,7 @@ function handleCancel(): void {
         v-model:latitude="latitude"
         v-model:longitude="longitude"
         label="Location (optional)"
+        :maxlength="TEXT_LIMITS.name"
       />
 
       <div>

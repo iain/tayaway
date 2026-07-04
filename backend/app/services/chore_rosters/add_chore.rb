@@ -4,6 +4,8 @@ module ChoreRosters
   # Service to add a chore to a roster.
   module AddChore
     class << self
+      include LengthValidation
+
       def call(roster_id:, workspace_id:, membership:, name:, people_per_day:, time: nil, id: nil)
         Auditable.around(
           service: "ChoreRosters::AddChore",
@@ -22,13 +24,8 @@ module ChoreRosters
       private
 
       def validate(name, people_per_day, time)
-        if name.nil? || name.empty?
-          return Failure(ServiceError.validation("Name is required"))
-        end
-
-        if name.length > ValidationLimits::SHORT_STRING
-          return Failure(ServiceError.validation("Name is too long (maximum #{ValidationLimits::SHORT_STRING} characters)"))
-        end
+        name_check = validate_length(name, max: ValidationLimits::SHORT_STRING, field: "Name", required: true)
+        return name_check if name_check.failure?
 
         ppd = people_per_day || 1
         if ppd < 1 || ppd > ValidationLimits::PEOPLE_PER_DAY_MAX

@@ -15,6 +15,7 @@ import { useObjectPoolStore } from '@/stores/objectPool'
 import { useUndoDelete } from '@/composables/useUndoDelete'
 import TaskItemRow from './TaskItemRow.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
+import { TEXT_LIMITS } from '@/constants/limits'
 import type { PoolTaskList, PoolTaskItem } from '@/types/pool'
 
 const props = defineProps<{
@@ -36,6 +37,17 @@ const isAddingItem = ref(false)
 const newItemInput = ref<HTMLInputElement | null>(null)
 const isRenaming = ref(false)
 const renameValue = ref('')
+
+// The add box hard-caps at TEXT_LIMITS.shortText; only surface a counter once
+// someone pushes past ~80% so the compact input stays clean in normal use.
+const showAddCount = computed(
+  () => newItemContent.value.length >= TEXT_LIMITS.shortText * 0.8
+)
+const addCountColor = computed(() =>
+  newItemContent.value.length >= TEXT_LIMITS.shortText
+    ? 'text-state-danger-ink'
+    : 'text-state-warning-ink'
+)
 
 // IDs optimistically hidden after "clear completed" — survives pool re-imports
 // caused by concurrent in-flight addItem/updateItem responses arriving as microtasks
@@ -262,6 +274,7 @@ defineExpose({
             v-model="renameValue"
             type="text"
             data-testid="rename-list-input"
+            :maxlength="TEXT_LIMITS.name"
             class="bg-surface-sunken text-ink outline-line focus:outline-focus flex-1 rounded-md px-2 py-1 text-sm font-semibold outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
             @keyup.enter="commitRename"
             @keyup.escape="isRenaming = false"
@@ -330,24 +343,34 @@ defineExpose({
       </VueDraggable>
 
       <!-- Add item input -->
-      <div class="mt-3 flex items-center gap-2">
-        <input
-          ref="newItemInput"
-          v-model="newItemContent"
-          type="text"
-          placeholder="Add an item..."
-          class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus flex-1 rounded-md px-3 py-1.5 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
-          :disabled="isAddingItem"
-          @keyup.enter="handleAddItem"
-          @keyup.escape="newItemInput?.blur()"
-        />
-        <AppButton
-          size="sm"
-          :disabled="!newItemContent.trim() || isAddingItem"
-          @click="handleAddItem"
+      <div class="mt-3">
+        <div class="flex items-center gap-2">
+          <input
+            ref="newItemInput"
+            v-model="newItemContent"
+            type="text"
+            placeholder="Add an item..."
+            :maxlength="TEXT_LIMITS.shortText"
+            class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus flex-1 rounded-md px-3 py-1.5 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
+            :disabled="isAddingItem"
+            @keyup.enter="handleAddItem"
+            @keyup.escape="newItemInput?.blur()"
+          />
+          <AppButton
+            size="sm"
+            :disabled="!newItemContent.trim() || isAddingItem"
+            @click="handleAddItem"
+          >
+            Add
+          </AppButton>
+        </div>
+        <p
+          v-if="showAddCount"
+          class="text-meta mt-1 text-right tabular-nums"
+          :class="addCountColor"
         >
-          Add
-        </AppButton>
+          {{ newItemContent.length }}/{{ TEXT_LIMITS.shortText }}
+        </p>
       </div>
     </div>
   </BaseCard>
