@@ -9,13 +9,15 @@ const memberMap = new Map<string, PoolMember>([
 ])
 
 function mountCell(
-  assignment: Partial<ReturnType<typeof makeChoreAssignment>>
+  assignment: Partial<ReturnType<typeof makeChoreAssignment>>,
+  currentUserId: string | null = null
 ) {
   return mount(ChoreCell, {
     props: {
       assignments: [makeChoreAssignment({ userId: 'user-1', ...assignment })],
       peoplePerDay: 1,
       memberMap,
+      currentUserId,
     },
   })
 }
@@ -36,5 +38,15 @@ describe('ChoreCell assignment chip', () => {
   it('keeps the note in the title for the hover tooltip', () => {
     const chip = mountCell({ note: 'deep clean' }).get('button')
     expect(chip.attributes('title')).toContain('deep clean')
+  })
+
+  it("folds 'you' into the accessible name for the current user's own chip", () => {
+    const chip = mountCell({}, 'user-1').get('button')
+    expect(chip.attributes('aria-label')).toBe('Alice, you')
+  })
+
+  it("does not mark someone else's chip as the current user", () => {
+    const chip = mountCell({}, 'user-2').get('button')
+    expect(chip.attributes('aria-label')).toBe('Alice')
   })
 })

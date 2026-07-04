@@ -237,6 +237,7 @@ function onHandleKeydown(event: KeyboardEvent, chore: PoolChore) {
               :assignments="getAssignments(chore.id, date)"
               :people-per-day="chore.peoplePerDay"
               :member-map="memberMap"
+              :current-user-id="currentUserId"
               @assign="(el: HTMLElement) => emit('assign', chore.id, date, el)"
               @edit-assignment="(a, el) => emit('editAssignment', a, el)"
             />
