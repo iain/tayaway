@@ -9,6 +9,7 @@ const props = defineProps<{
   assignments: PoolChoreAssignment[]
   peoplePerDay: number
   memberMap: Map<string, PoolMember>
+  currentUserId: string | null
 }>()
 
 const emit = defineEmits<{
@@ -20,11 +21,18 @@ const hasEmptySlots = computed(
   () => props.assignments.length < props.peoplePerDay
 )
 
+function isCurrentUser(a: PoolChoreAssignment): boolean {
+  return props.currentUserId !== null && a.userId === props.currentUserId
+}
+
 // The chip shows the name and dual-codes pinned/note state with icons; this
 // folds the same information into one accessible name so screen-reader users
 // hear what sighted users see (the note otherwise lived only in `title`).
+// "you" is likewise dual-coded — the amber fill that marks your own chips is
+// invisible to a screen reader without it.
 function chipLabel(a: PoolChoreAssignment): string {
   const parts = [getMemberNameFromMap(a.userId, props.memberMap)]
+  if (isCurrentUser(a)) parts.push('you')
   if (a.pinned) parts.push('pinned')
   if (a.note) parts.push(`note: ${a.note}`)
   return parts.join(', ')
@@ -43,8 +51,8 @@ function handleAddClick(event: MouseEvent) {
       type="button"
       class="group/cell focus-visible:outline-focus hover:ring-line relative inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-0.5 rounded px-1.5 py-1 text-xs transition-shadow hover:ring-1 focus-visible:outline-2 focus-visible:outline-offset-2 sm:min-h-0"
       :class="
-        a.pinned
-          ? 'bg-state-warning-fill text-state-warning-ink'
+        isCurrentUser(a)
+          ? 'bg-amber-300 text-amber-900 dark:bg-amber-400/20 dark:text-amber-100'
           : 'bg-btn-secondary-fill text-btn-secondary-ink'
       "
       :title="

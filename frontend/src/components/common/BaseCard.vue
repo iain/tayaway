@@ -5,7 +5,7 @@ const props = defineProps<{
   padded?: boolean
   as?: string
   interactive?: boolean
-  variant?: 'default' | 'action' | 'urgent'
+  variant?: 'default' | 'action' | 'urgent' | 'self'
 }>()
 
 const root = useTemplateRef<HTMLElement>('root')
@@ -34,7 +34,9 @@ function handleKeydown(event: KeyboardEvent) {
         ? 'bg-surface-urgent ring-ring-urgent ring-2'
         : variant === 'action'
           ? 'bg-surface-action ring-ring-action ring-2'
-          : 'bg-surface ring-ring-hairline ring-1 dark:shadow-[0_2px_8px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.06)]',
+          : variant === 'self'
+            ? 'bg-amber-300/30 ring-1 ring-amber-400/60 dark:bg-amber-400/15 dark:shadow-[0_2px_8px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.06)] dark:ring-amber-500/40'
+            : 'bg-surface ring-ring-hairline ring-1 dark:shadow-[0_2px_8px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.06)]',
     ]"
     :tabindex="interactive ? 0 : undefined"
     :role="interactive ? 'button' : undefined"

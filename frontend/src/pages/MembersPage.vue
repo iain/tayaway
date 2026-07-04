@@ -48,12 +48,6 @@ const remindingInviteId = ref<string | null>(null)
 const formError = ref<string | null>(null)
 const roleError = ref<string | null>(null)
 
-const currentMember = computed((): PoolMember | null => {
-  const userId = authStore.currentUserId
-  if (!userId) return null
-  return pool.findBy('member', 'userId', userId) ?? null
-})
-
 function canChangeRole(member: PoolMember): boolean {
   return can(member.permissions, 'change_role')
 }
@@ -333,13 +327,13 @@ onMounted(() => {
         v-for="member in members"
         :key="member.id"
         :data-testid="`member-item-${member.id}`"
+        :variant="
+          member.userId === authStore.currentUserId && !isBirthday(member)
+            ? 'self'
+            : 'default'
+        "
         class="row-span-2 grid grid-rows-subgrid"
-        :class="[
-          currentMember?.id === member.id &&
-            !isBirthday(member) &&
-            'ring-2 ring-rose-300 dark:ring-rose-700',
-          isBirthday(member) && 'birthday-card',
-        ]"
+        :class="isBirthday(member) && 'birthday-card'"
       >
         <!-- Top section: avatar + identity -->
         <div class="relative flex items-start gap-4 p-5">
