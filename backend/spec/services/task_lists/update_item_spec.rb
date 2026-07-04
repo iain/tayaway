@@ -61,6 +61,21 @@ RSpec.describe TaskLists::UpdateItem do
     expect(updated_item[:completedAt]).to be_nil
   end
 
+  it "returns failure when content is too long" do
+    workspace = TestFactories.workspace
+    user = TestFactories.user
+    membership_row = TestFactories.workspace_membership(workspace: workspace, user: user)
+    membership = WorkspaceMembership.find(membership_row[:id])
+    list = TestFactories.task_list(workspace: workspace, user: user)
+    item = TestFactories.task_item(task_list: list, user: user, content: "Old content")
+
+    result = described_class.call(task_list_id: list[:id], task_item_id: item[:id], membership: membership, content: "a" * 501)
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Content is too long (maximum 500 characters)")
+    expect(result.failure.http_status).to eq(400)
+  end
+
   it "updates item content" do
     workspace = TestFactories.workspace
     user = TestFactories.user

@@ -21,6 +21,7 @@ import AppButton from '@/components/common/AppButton.vue'
 import AlertBox from '@/components/common/AlertBox.vue'
 import TaskListCard from '@/components/tasks/TaskListCard.vue'
 import { useTaskActions } from '@/composables/useTaskActions'
+import { TEXT_LIMITS } from '@/constants/limits'
 import type { PoolTaskList, PoolTaskItem } from '@/types/pool'
 
 const taskListsStore = useTaskListsStore()
@@ -253,6 +254,7 @@ function handleNewListBlur(): void {
           placeholder="List name"
           aria-label="List name"
           data-testid="new-list-name-input"
+          :maxlength="TEXT_LIMITS.name"
           class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus flex-1 rounded-md px-3 py-2 text-sm font-semibold outline-1 -outline-offset-1 placeholder:font-normal focus:outline-2 focus:outline-offset-2"
           :disabled="isSubmitting"
           @keyup.escape="cancelNewList"

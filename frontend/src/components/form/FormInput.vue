@@ -18,6 +18,7 @@ const props = defineProps<{
   autocomplete?: string
   prefix?: string
   error?: string
+  showCount?: boolean
 }>()
 
 defineEmits<{
@@ -28,6 +29,21 @@ const attrs = useAttrs()
 
 const hasError = computed(() => Boolean(props.error))
 const errorId = computed(() => `${props.id}-error`)
+
+// A soft nudge as the value approaches the (hard) maxlength cap: muted
+// normally, amber past 90%, danger once it hits the limit.
+const showCounter = computed(() => Boolean(props.showCount && props.maxlength))
+const countColor = computed(() => {
+  const max = props.maxlength ?? 0
+  const length = props.modelValue.length
+  if (length >= max) {
+    return 'text-state-danger-ink'
+  } else if (length >= max * 0.9) {
+    return 'text-state-warning-ink'
+  } else {
+    return 'text-ink-muted'
+  }
+})
 
 // Error state is carried by fill + icon + a 1px red edge — orthogonal to
 // focus, which keeps its system-wide outset rose ring on top. The healthy
@@ -126,5 +142,14 @@ const inputShell = computed(() =>
     >
       {{ error }}
     </p>
+    <div v-if="showCounter" class="mt-1 text-right">
+      <span
+        data-testid="form-input-count"
+        class="text-meta tabular-nums"
+        :class="countColor"
+      >
+        {{ modelValue.length }}/{{ maxlength }}
+      </span>
+    </div>
   </div>
 </template>

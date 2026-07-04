@@ -5,7 +5,11 @@ module ValidationLimits
   # Maximum length for short strings (names, descriptions of items, locations).
   SHORT_STRING = 255
 
-  # Maximum length for long free-text fields (event descriptions, task content).
+  # Maximum length for medium one-line free text (task item content, chore
+  # notes). Kept short so list rows stay readable and can't be flooded.
+  MEDIUM_TEXT = 500
+
+  # Maximum length for long free-text fields (event descriptions).
   LONG_TEXT = 5_000
 
   # Maximum length for vote comments.

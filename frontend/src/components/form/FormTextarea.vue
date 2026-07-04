@@ -16,6 +16,8 @@ const props = defineProps<{
   rows?: number
   hint?: string
   error?: string
+  maxlength?: number
+  showCount?: boolean
 }>()
 
 defineEmits<{
@@ -26,6 +28,21 @@ const attrs = useAttrs()
 
 const hasError = computed(() => Boolean(props.error))
 const errorId = computed(() => `${props.id}-error`)
+
+// The counter is a soft nudge as free text approaches the (hard) maxlength cap:
+// muted normally, amber past 90%, danger once it hits the limit.
+const showCounter = computed(() => Boolean(props.showCount && props.maxlength))
+const countColor = computed(() => {
+  const max = props.maxlength ?? 0
+  const length = props.modelValue.length
+  if (length >= max) {
+    return 'text-state-danger-ink'
+  } else if (length >= max * 0.9) {
+    return 'text-state-warning-ink'
+  } else {
+    return 'text-ink-muted'
+  }
+})
 
 const shell = computed(() =>
   hasError.value
@@ -47,6 +64,7 @@ const shell = computed(() =>
         :required="required"
         :disabled="disabled"
         :rows="rows ?? 3"
+        :maxlength="maxlength"
         :aria-invalid="hasError || undefined"
         :aria-describedby="hasError ? errorId : undefined"
         v-bind="attrs"
@@ -77,5 +95,14 @@ const shell = computed(() =>
     <p v-else-if="hint" class="text-ink-muted text-meta mt-3">
       {{ hint }}
     </p>
+    <div v-if="showCounter" class="mt-1 text-right">
+      <span
+        data-testid="form-textarea-count"
+        class="text-meta tabular-nums"
+        :class="countColor"
+      >
+        {{ modelValue.length }}/{{ maxlength }}
+      </span>
+    </div>
   </div>
 </template>

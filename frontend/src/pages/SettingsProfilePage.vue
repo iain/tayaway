@@ -13,6 +13,7 @@ import TextButton from '@/components/common/TextButton.vue'
 import LocationInput from '@/components/form/LocationInput.vue'
 import TimezoneSelect from '@/components/form/TimezoneSelect.vue'
 import { deviceTimezone } from '@/utils/timezone'
+import { TEXT_LIMITS } from '@/constants/limits'
 
 type ProfileField = 'name' | 'phone' | 'birthday' | 'address' | 'timezone'
 
@@ -191,7 +192,7 @@ async function clearAddress(): Promise<void> {
                   aria-label="Name"
                   autocomplete="name"
                   placeholder="Your name"
-                  :maxlength="255"
+                  :maxlength="TEXT_LIMITS.name"
                   :disabled="savingFields.has('name')"
                   class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus min-w-0 flex-1 rounded-md px-3 py-1.5 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 sm:text-sm/6"
                   @keyup.escape="cancelEdit('name')"
@@ -245,6 +246,7 @@ async function clearAddress(): Promise<void> {
                   aria-label="Phone"
                   autocomplete="tel"
                   placeholder="Phone number"
+                  :maxlength="TEXT_LIMITS.phone"
                   :disabled="savingFields.has('phone')"
                   class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus min-w-0 flex-1 rounded-md px-3 py-1.5 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 sm:text-sm/6"
                   @keyup.escape="cancelEdit('phone')"
@@ -363,6 +365,7 @@ async function clearAddress(): Promise<void> {
                 aria-label="Address"
                 :latitude="editLatitude"
                 :longitude="editLongitude"
+                :maxlength="TEXT_LIMITS.name"
                 :disabled="savingFields.has('address')"
                 @update:latitude="editLatitude = $event"
                 @update:longitude="editLongitude = $event"

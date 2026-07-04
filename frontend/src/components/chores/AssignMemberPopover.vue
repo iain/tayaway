@@ -8,6 +8,7 @@ import type {
   PoolChoreAssignment,
   PoolEvent,
 } from '@/types/pool'
+import { TEXT_LIMITS } from '@/constants/limits'
 
 const props = defineProps<{
   choreId: string
@@ -89,6 +90,7 @@ async function handleSelect(userId: string) {
       type="text"
       placeholder="Note (optional)"
       aria-label="Note (optional)"
+      :maxlength="TEXT_LIMITS.shortText"
       class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus mb-2 block w-full rounded-md px-2 py-1 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 sm:text-sm"
     />
 

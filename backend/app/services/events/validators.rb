@@ -3,16 +3,12 @@
 module Events
   # Shared validators for Events services.
   module Validators
+    include LengthValidation
+
     def validate_text_lengths(description, location_name)
-      if description && description.length > ValidationLimits::LONG_TEXT
-        return Failure(ServiceError.validation("Description is too long (maximum 5000 characters)"))
-      end
-
-      if location_name && location_name.length > ValidationLimits::SHORT_STRING
-        return Failure(ServiceError.validation("Location name is too long (maximum 255 characters)"))
-      end
-
-      Success(true)
+      validate_length(description, max: ValidationLimits::LONG_TEXT, field: "Description")
+        .bind { validate_length(location_name, max: ValidationLimits::SHORT_STRING, field: "Location name") }
+        .fmap { true }
     end
 
     def validate_coordinates(latitude, longitude)

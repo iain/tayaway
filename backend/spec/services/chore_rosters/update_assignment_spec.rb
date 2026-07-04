@@ -77,6 +77,20 @@ RSpec.describe ChoreRosters::UpdateAssignment do
     expect(updated[:note]).to eq("")
   end
 
+  it "fails when the note is too long" do
+    result = described_class.call(
+      assignment_id: assignment[:id],
+      roster_id: roster[:id],
+      workspace_id: workspace[:id],
+      membership: membership_for(user),
+      note: "a" * 501
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Note is too long (maximum 500 characters)")
+    expect(result.failure.http_status).to eq(400)
+  end
+
   it "fails when no changes provided" do
     result = described_class.call(
       assignment_id: assignment[:id],

@@ -46,13 +46,7 @@ module Events
       private
 
       def validate_name_with_event(name, event)
-        if name.nil? || name.empty?
-          Failure(ServiceError.validation("Name is required"))
-        elsif name.length > ValidationLimits::SHORT_STRING
-          Failure(ServiceError.validation("Name is too long (maximum 255 characters)"))
-        else
-          Success(event)
-        end
+        validate_length(name, max: ValidationLimits::SHORT_STRING, field: "Name", required: true).fmap { event }
       end
 
       def validate_dates(start_date, end_date)
