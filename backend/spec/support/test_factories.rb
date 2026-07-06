@@ -105,7 +105,7 @@ module TestFactories
       DB[:votes].where(id: id).first
     end
 
-    def rsvp(event: nil, user: nil, attending: true, start_date: nil, end_date: nil, id: SecureRandom.uuid)
+    def rsvp(event: nil, user: nil, attending: true, attendance: nil, start_date: nil, end_date: nil, id: SecureRandom.uuid)
       event ||= self.event
       user ||= self.user
       now = Time.now
@@ -114,6 +114,7 @@ module TestFactories
         event_id: event[:id],
         user_id: user[:id],
         attending: attending,
+        attendance: attendance && Sequel.pg_jsonb(attendance.map { |d| d.is_a?(Date) ? d.iso8601 : d }),
         start_date: start_date,
         end_date: end_date,
         created_at: now,

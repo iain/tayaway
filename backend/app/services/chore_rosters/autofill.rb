@@ -38,7 +38,7 @@ module ChoreRosters
 
         # Build availability map from attending RSVPs
         rsvps = Rsvp.for_event(event.id).select(&:attending)
-        availability = build_availability(dates, rsvps, event_start, event_end)
+        availability = build_availability(dates, rsvps, event)
 
         chores = Chore.for_roster(roster.id)
 
@@ -192,16 +192,14 @@ module ChoreRosters
         end
       end
 
-      def build_availability(dates, rsvps, event_start, event_end)
+      def build_availability(dates, rsvps, event)
         availability = {}
         dates.each { |d| availability[d] = Set.new }
 
         rsvps.each do |rsvp|
-          rsvp_start = rsvp.start_date || event_start
-          rsvp_end = rsvp.end_date || event_end
-
+          attended = rsvp.effective_dates(event).to_set
           dates.each do |d|
-            availability[d] << rsvp.user_id.to_s if d >= rsvp_start && d <= rsvp_end
+            availability[d] << rsvp.user_id.to_s if attended.include?(d)
           end
         end
 

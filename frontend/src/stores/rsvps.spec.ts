@@ -18,6 +18,7 @@ function makeRsvp(
     userId: 'user-1',
     createdByUserId: null,
     attending: true,
+    attendance: null,
     startDate: null,
     endDate: null,
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -177,21 +178,28 @@ describe('rsvps store', () => {
       expect(result.queued).toBe(false)
     })
 
-    it('optimistically updates the date fields', async () => {
+    it('optimistically updates the attendance day set and hull', async () => {
       const pool = useObjectPoolStore()
-      pool.importObjects([makeRsvp({ startDate: null, endDate: null })], {
-        scope: Scope.workspace('test'),
-      })
+      pool.importObjects(
+        [makeRsvp({ attendance: null, startDate: null, endDate: null })],
+        { scope: Scope.workspace('test') }
+      )
       const store = useRsvpsStore()
 
+      let attendanceDuringCall: string[] | null | undefined
       let startDuringCall: string | null | undefined
       enqueueImpl = async () => {
+        attendanceDuringCall = pool.get('rsvp', 'rsvp-1')?.attendance
         startDuringCall = pool.get('rsvp', 'rsvp-1')?.startDate
         return okResponse({ objects: [] })
       }
 
-      await store.submitRsvp('evt-1', true, '2026-03-01', '2026-03-05')
+      await store.submitRsvp('evt-1', true, {
+        attendance: ['2026-03-03', '2026-03-01'],
+      })
 
+      // Sorted day set, with the contiguous hull mirrored onto startDate.
+      expect(attendanceDuringCall).toEqual(['2026-03-01', '2026-03-03'])
       expect(startDuringCall).toBe('2026-03-01')
     })
 

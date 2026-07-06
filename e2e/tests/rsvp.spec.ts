@@ -14,6 +14,13 @@ import {
   RESOLVED_EVENT_END,
 } from '../helpers'
 
+// Add whole days to an ISO date, UTC-anchored to stay DST-proof.
+function isoAddDays(iso: string, days: number): string {
+  const date = new Date(`${iso}T00:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
+}
+
 const TEST_EMAIL = 'e2e-rsvp@example.com'
 const TEST_NAME = 'E2E RSVP User'
 
@@ -93,6 +100,106 @@ test.describe('RSVP Feature', () => {
         'aria-pressed',
         'false'
       )
+    })
+  })
+
+  test.describe('Come-and-go attendance', () => {
+    test('picking specific days stores a partial attendance set', async ({
+      page,
+    }) => {
+      // Creator is auto-RSVPed as attending the whole event.
+      const { eventId } = await createResolvedEvent(apiContext, 'Come and go')
+      await setupAuthenticatedPage(page, sessionToken)
+      await page.goto(`/events/${eventId}/rsvp`)
+      await expect(page.getByTestId('rsvp-section')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+
+      // Open the day picker (preset to every day) and drop the last day so the
+      // selection becomes non-whole-event "come and go".
+      await page.getByTestId('rsvp-change-dates').click()
+      await page.getByTestId(`calendar-day-${RESOLVED_EVENT_END}`).click()
+
+      const [postResponse] = await Promise.all([
+        page.waitForResponse(
+          (resp) =>
+            resp.url().includes(`/api/events/${eventId}/rsvps`) &&
+            resp.request().method() === 'POST'
+        ),
+        page.getByRole('button', { name: 'Save' }).click(),
+      ])
+      expect(postResponse.ok()).toBeTruthy()
+
+      // The attendee card now shows a partial-days summary.
+      await expect(page.getByTestId('rsvp-attendance-days')).toBeVisible()
+
+      // Backend stored the explicit day set (every day but the last).
+      const rsvpsResp = await apiContext.get(
+        `${API_BASE}/api/events/${eventId}/rsvps`
+      )
+      const rsvpsBody = await rsvpsResp.json()
+      const rsvps = getObjectsByType(rsvpsBody.objects, 'rsvp') as Array<{
+        attending: boolean
+        attendance: string[] | null
+      }>
+      expect(rsvps.length).toBe(1)
+      expect(rsvps[0]!.attending).toBe(true)
+      expect(rsvps[0]!.attendance).not.toBeNull()
+      expect(rsvps[0]!.attendance).not.toContain(RESOLVED_EVENT_END)
+      expect(rsvps[0]!.attendance!.length).toBe(6)
+    })
+
+    test('shift-click selects a range, re-adding the days in between', async ({
+      page,
+    }) => {
+      const { eventId } = await createResolvedEvent(apiContext, 'Shift range')
+      await setupAuthenticatedPage(page, sessionToken)
+      await page.goto(`/events/${eventId}/rsvp`)
+      await expect(page.getByTestId('rsvp-section')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+
+      const dayCell = (iso: string) => page.getByTestId(`calendar-day-${iso}`)
+      const d = (offset: number) => isoAddDays(RESOLVED_EVENT_START, offset)
+
+      await page.getByTestId('rsvp-change-dates').click()
+
+      // Every day starts selected. Drop the last day (so the set never
+      // normalises to "whole event") plus two interior days, leaving gaps —
+      // each click also moves the range anchor to that day.
+      await dayCell(RESOLVED_EVENT_END).click()
+      await dayCell(d(2)).click()
+      await dayCell(d(4)).click() // anchor is now day+4
+
+      // Shift-click back to day+1 selects the whole day+1..day+4 range, which
+      // re-adds the two interior days we just removed.
+      await dayCell(d(1)).click({ modifiers: ['Shift'] })
+
+      const [postResponse] = await Promise.all([
+        page.waitForResponse(
+          (resp) =>
+            resp.url().includes(`/api/events/${eventId}/rsvps`) &&
+            resp.request().method() === 'POST'
+        ),
+        page.getByRole('button', { name: 'Save' }).click(),
+      ])
+      expect(postResponse.ok()).toBeTruthy()
+
+      const rsvpsResp = await apiContext.get(
+        `${API_BASE}/api/events/${eventId}/rsvps`
+      )
+      const rsvps = getObjectsByType(
+        (await rsvpsResp.json()).objects,
+        'rsvp'
+      ) as Array<{ attendance: string[] | null }>
+      expect(rsvps.length).toBe(1)
+      // day..day+5 attended (6 days); the last day stays dropped, and the two
+      // interior days the shift-range crossed are back.
+      expect(rsvps[0]!.attendance).not.toBeNull()
+      expect(rsvps[0]!.attendance).toContain(d(2))
+      expect(rsvps[0]!.attendance).toContain(d(4))
+      expect(rsvps[0]!.attendance).not.toContain(RESOLVED_EVENT_END)
+      expect(rsvps[0]!.attendance!.length).toBe(6)
     })
   })
 

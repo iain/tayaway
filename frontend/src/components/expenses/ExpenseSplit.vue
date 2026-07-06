@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { CalculatorIcon } from '@heroicons/vue/24/outline'
 import { useObjectPoolStore } from '@/stores/objectPool'
-import { countDays } from '@/utils/event'
+import { attendedDates } from '@/utils/event'
 import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
@@ -33,8 +33,6 @@ const rows = computed((): SplitRow[] => {
 
   if (attendingRsvps.length === 0) return []
 
-  const eventDays = countDays(props.event.startDate, props.event.endDate)
-
   const expenses = pool
     .getAll('expense')
     .filter((e) => e.eventId === props.event.id)
@@ -42,16 +40,16 @@ const rows = computed((): SplitRow[] => {
   // Per-expense splitting: compute each person's share across all expenses
   const shareByUser = new Map<string, number>()
 
-  // Pre-compute each RSVP's effective dates
-  const rsvpDates = attendingRsvps.map((rsvp) => ({
-    rsvp,
-    start: rsvp.startDate ?? props.event.startDate!,
-    end: rsvp.endDate ?? props.event.endDate!,
-    days:
-      rsvp.startDate && rsvp.endDate
-        ? countDays(rsvp.startDate, rsvp.endDate)
-        : eventDays,
-  }))
+  // Pre-compute each RSVP's attended day set. `days` is their total attended
+  // days across the event (the Days column); overlap is counted per expense.
+  const rsvpDaySets = attendingRsvps.map((rsvp) => {
+    const dates = attendedDates(
+      rsvp,
+      props.event.startDate!,
+      props.event.endDate!
+    )
+    return { rsvp, dates, days: dates.length }
+  })
 
   // For each expense, compute overlap and distribute cost
   for (const expense of expenses) {
@@ -72,16 +70,13 @@ const rows = computed((): SplitRow[] => {
       continue
     }
 
-    // Default: RSVP overlap logic
+    // Default: proportional to attended days within the expense window
     const overlaps: { userId: string; overlapDays: number }[] = []
 
-    for (const { rsvp, start, end } of rsvpDates) {
-      const overlapStart = expense.startDate > start ? expense.startDate : start
-      const overlapEnd = expense.endDate < end ? expense.endDate : end
-
-      if (overlapStart > overlapEnd) continue
-
-      const overlapDays = countDays(overlapStart, overlapEnd)
+    for (const { rsvp, dates } of rsvpDaySets) {
+      const overlapDays = dates.filter(
+        (d) => d >= expense.startDate && d <= expense.endDate
+      ).length
       if (overlapDays > 0) {
         overlaps.push({ userId: rsvp.userId, overlapDays })
       }
@@ -96,7 +91,7 @@ const rows = computed((): SplitRow[] => {
     }
   }
 
-  return rsvpDates.map(({ rsvp, days }) => {
+  return rsvpDaySets.map(({ rsvp, days }) => {
     const member = pool.findBy('member', 'userId', rsvp.userId)
     const share = shareByUser.get(rsvp.userId) ?? 0
     const paid = expenses

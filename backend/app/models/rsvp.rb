@@ -1,7 +1,21 @@
 # frozen_string_literal: true
 
 # Read-only RSVP model.
-class Rsvp < Data.define(:id, :event_id, :user_id, :created_by_user_id, :attending, :start_date, :end_date, :created_at, :updated_at)
+class Rsvp < Data.define(:id, :event_id, :user_id, :created_by_user_id, :attending, :attendance, :start_date, :end_date, :created_at, :updated_at)
+  # The concrete set of days this RSVP covers, resolved against its event.
+  # `attendance` (an explicit "come and go" day set) wins; otherwise the legacy
+  # contiguous start_date..end_date window; otherwise the whole event. Returns
+  # an Array<Date>.
+  def effective_dates(event)
+    if attendance
+      attendance
+    elsif start_date && end_date
+      (start_date..end_date).to_a
+    else
+      (event.start_date..event.end_date).to_a
+    end
+  end
+
   class << self
     def find(id)
       dataset.where(id: id).first
@@ -50,11 +64,30 @@ class Rsvp < Data.define(:id, :event_id, :user_id, :created_by_user_id, :attendi
         user_id: UUID.new(row[:user_id]),
         created_by_user_id: row[:created_by_user_id] ? UUID.new(row[:created_by_user_id]) : nil,
         attending: row[:attending],
+        attendance: parse_attendance(row[:attendance]),
         start_date: row[:start_date],
         end_date: row[:end_date],
         created_at: row[:created_at],
         updated_at: row[:updated_at]
       )
+    end
+
+    # Parse the JSONB `attendance` array into sorted Array<Date>, or nil for
+    # "whole event". An empty array is treated as nil (no restriction).
+    def parse_attendance(value)
+      return nil if value.nil?
+
+      array =
+        if value.is_a?(String)
+          JSON.parse(value)
+        elsif value.respond_to?(:to_a)
+          value.to_a
+        else
+          value
+        end
+      return nil unless array.is_a?(Array) && array.any?
+
+      array.map { |d| d.is_a?(Date) ? d : Date.parse(d.to_s) }.sort
     end
   end
 end

@@ -282,4 +282,62 @@ RSpec.describe Rsvps::Upsert do
     expect(DB[:rsvps].where(id: existing_id).get(:attending)).to be false
     expect(DB[:rsvps].count).to eq(1)
   end
+
+  it "creates an RSVP with a come-and-go day set and keeps the contiguous hull" do
+    DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
+    days = [Date.today + 1, Date.today + 3, Date.today + 4]
+
+    result = described_class.call(
+      event_id: event[:id], membership: membership_for(user), user_id: user[:id],
+      attending: true, attendance: days.map(&:iso8601), rsvp_id: SecureRandom.uuid
+    )
+
+    expect(result.success?).to be true
+    rsvp = Rsvp.find(result.value![:rsvp_id])
+    expect(rsvp.attendance).to eq(days)
+    expect(rsvp.start_date).to eq(Date.today + 1)
+    expect(rsvp.end_date).to eq(Date.today + 4)
+  end
+
+  it "rejects a come-and-go day set with dates outside the event range" do
+    DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
+
+    result = described_class.call(
+      event_id: event[:id], membership: membership_for(user), user_id: user[:id],
+      attending: true, attendance: [(Date.today + 1).iso8601, (Date.today + 9).iso8601], rsvp_id: SecureRandom.uuid
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Attendance dates must fall within the event date range")
+  end
+
+  it "normalizes a full-event day set to a whole-event RSVP (nil attendance)" do
+    DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 2)
+    all_days = [Date.today, Date.today + 1, Date.today + 2].map(&:iso8601)
+
+    result = described_class.call(
+      event_id: event[:id], membership: membership_for(user), user_id: user[:id],
+      attending: true, attendance: all_days, rsvp_id: SecureRandom.uuid
+    )
+
+    expect(result.success?).to be true
+    rsvp = Rsvp.find(result.value![:rsvp_id])
+    expect(rsvp.attendance).to be_nil
+    expect(rsvp.start_date).to be_nil
+    expect(rsvp.end_date).to be_nil
+  end
+
+  it "clears the day set when not attending" do
+    DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
+
+    result = described_class.call(
+      event_id: event[:id], membership: membership_for(user), user_id: user[:id],
+      attending: false, attendance: [(Date.today + 1).iso8601], rsvp_id: SecureRandom.uuid
+    )
+
+    expect(result.success?).to be true
+    rsvp = Rsvp.find(result.value![:rsvp_id])
+    expect(rsvp.attending).to be false
+    expect(rsvp.attendance).to be_nil
+  end
 end

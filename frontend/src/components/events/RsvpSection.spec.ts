@@ -61,6 +61,7 @@ function mkRsvp(overrides: Partial<HydratedRsvp>): HydratedRsvp {
     userId: 'user-alice',
     createdByUserId: 'user-alice',
     attending: true,
+    attendance: null,
     startDate: null,
     endDate: null,
     member: mkMember({
@@ -209,13 +210,9 @@ describe('RsvpSection on-behalf actions', () => {
     const wrapper = mountSection([], workspace)
     await openMenuAndClick(wrapper, 'Mark as attending')
 
-    expect(submitRsvpSpy).toHaveBeenCalledWith(
-      'event-1',
-      true,
-      null,
-      null,
-      'user-bob'
-    )
+    expect(submitRsvpSpy).toHaveBeenCalledWith('event-1', true, {
+      onBehalfOfUserId: 'user-bob',
+    })
   })
 
   it("flips another member's RSVP from attending to declined", async () => {
@@ -229,13 +226,9 @@ describe('RsvpSection on-behalf actions', () => {
     const wrapper = mountSection([rsvp])
     await openMenuAndClick(wrapper, 'Mark as not attending')
 
-    expect(submitRsvpSpy).toHaveBeenCalledWith(
-      'event-1',
-      false,
-      null,
-      null,
-      'user-bob'
-    )
+    expect(submitRsvpSpy).toHaveBeenCalledWith('event-1', false, {
+      onBehalfOfUserId: 'user-bob',
+    })
   })
 
   it('blocks declining another member who has expenses and names them in the dialog', async () => {

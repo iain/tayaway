@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   countNights,
+  enumerateDates,
+  attendedDates,
   eventHasDates,
   eventIsPlanning,
   eventIsCurrent,
@@ -27,6 +29,88 @@ describe('countNights', () => {
 
   it('counts nights for a full week', () => {
     expect(countNights('2026-06-01', '2026-06-07')).toBe(6)
+  })
+})
+
+describe('enumerateDates', () => {
+  it('lists an inclusive range', () => {
+    expect(enumerateDates('2026-07-01', '2026-07-04')).toEqual([
+      '2026-07-01',
+      '2026-07-02',
+      '2026-07-03',
+      '2026-07-04',
+    ])
+  })
+
+  it('returns a single day for equal start and end', () => {
+    expect(enumerateDates('2026-07-01', '2026-07-01')).toEqual(['2026-07-01'])
+  })
+
+  it('crosses a month boundary', () => {
+    expect(enumerateDates('2026-06-29', '2026-07-02')).toEqual([
+      '2026-06-29',
+      '2026-06-30',
+      '2026-07-01',
+      '2026-07-02',
+    ])
+  })
+
+  it('steps in whole days across a DST transition (UTC-anchored)', () => {
+    // Europe springs forward on 2026-03-29; UTC anchoring keeps the count exact.
+    expect(enumerateDates('2026-03-28', '2026-03-30')).toEqual([
+      '2026-03-28',
+      '2026-03-29',
+      '2026-03-30',
+    ])
+  })
+})
+
+describe('attendedDates', () => {
+  const eventStart = '2026-07-01'
+  const eventEnd = '2026-07-04'
+
+  it('expands a whole-event RSVP to every event day', () => {
+    expect(
+      attendedDates(
+        { attendance: null, startDate: null, endDate: null },
+        eventStart,
+        eventEnd
+      )
+    ).toEqual(['2026-07-01', '2026-07-02', '2026-07-03', '2026-07-04'])
+  })
+
+  it('returns the explicit come-and-go day set when present', () => {
+    expect(
+      attendedDates(
+        {
+          attendance: ['2026-07-01', '2026-07-03'],
+          startDate: '2026-07-01',
+          endDate: '2026-07-03',
+        },
+        eventStart,
+        eventEnd
+      )
+    ).toEqual(['2026-07-01', '2026-07-03'])
+  })
+
+  it('enumerates a legacy contiguous range when there is no day set', () => {
+    expect(
+      attendedDates(
+        { attendance: null, startDate: '2026-07-02', endDate: '2026-07-03' },
+        eventStart,
+        eventEnd
+      )
+    ).toEqual(['2026-07-02', '2026-07-03'])
+  })
+
+  it('treats an empty attendance array as the whole event', () => {
+    expect(
+      attendedDates(
+        { attendance: [], startDate: null, endDate: null },
+        eventStart,
+        eventEnd
+      )
+    ).toEqual(['2026-07-01', '2026-07-02', '2026-07-03', '2026-07-04'])
   })
 })
 
