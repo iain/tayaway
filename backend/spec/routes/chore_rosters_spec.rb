@@ -126,6 +126,22 @@ RSpec.describe "Chore rosters endpoints" do
 
       expect(last_response.status).to eq(403)
     end
+
+    it "deletes the roster when user is a workspace owner but not the creator or event owner" do
+      creator = TestFactories.user
+      TestFactories.workspace_membership(workspace: workspace, user: creator)
+      roster = TestFactories.chore_roster(event: event, user: creator)
+
+      owner_user = TestFactories.user
+      TestFactories.workspace_membership(workspace: workspace, user: owner_user, role: "owner")
+      owner_session = TestFactories.session(user: owner_user)
+      owner_auth = { "HTTP_COOKIE" => "session_token=#{owner_session[:token]}" }.merge(csrf_header)
+
+      delete "/api/chore-rosters/#{roster[:id]}", {}, owner_auth
+
+      expect(last_response.status).to eq(200)
+      expect(DB[:chore_rosters].where(id: roster[:id]).count).to eq(0)
+    end
   end
 
   describe "POST /api/chore-rosters/:id/chores" do

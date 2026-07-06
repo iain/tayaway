@@ -99,7 +99,7 @@ RSpec.describe ObjectRegistry do
   # here as a load-bearing acknowledgement; if a serializer loses its
   # prefetch (or grows one accidentally), this spec catches the drift.
   describe "policy_context_batch opt-in" do
-    opt_ins = %w[event date_poll date_range expense settlement settlement_transfer].freeze
+    opt_ins = %w[event date_poll date_range expense settlement settlement_transfer chore_roster].freeze
 
     ObjectRegistry::TYPES.each do |entry|
       context "when the entry is #{entry.key}" do
