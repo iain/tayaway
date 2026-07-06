@@ -215,6 +215,15 @@ function toggleDay(dateString: string): void {
   selectedDays.value = [...set].sort()
 }
 
+// Shift-click range: add every day between the two clicks (inclusive), still
+// stored as individual days.
+function selectDayRange(from: string, to: string): void {
+  const [start, end] = from <= to ? [from, to] : [to, from]
+  const set = new Set(selectedDays.value)
+  for (const d of enumerateDates(start, end)) set.add(d)
+  selectedDays.value = [...set].sort()
+}
+
 function selectWholeEvent(): void {
   selectedDays.value = [...eventDays.value]
 }
@@ -354,7 +363,8 @@ async function handleSaveDays(): Promise<void> {
         @close="showDayPicker = false"
       >
         <div class="text-ink-muted mb-4 text-sm">
-          Tap the days you'll be here. {{ daySelectionText }}.
+          Tap the days you'll be here, or shift-click for a range.
+          {{ daySelectionText }}.
         </div>
 
         <div class="mb-4 flex items-center justify-between">
@@ -376,6 +386,7 @@ async function handleSaveDays(): Promise<void> {
           :min-date="event.startDate ?? undefined"
           :max-date="event.endDate ?? undefined"
           @select="toggleDay"
+          @select-range="selectDayRange"
         />
 
         <div class="mt-6 flex items-center justify-between">

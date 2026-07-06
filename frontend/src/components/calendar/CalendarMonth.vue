@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useCalendar, type CalendarDay } from '@/composables/useCalendar'
+import { addDays } from '@/utils/date'
 import type { DateRangeItem } from '@/components/events/DateRangeList.vue'
 
 const props = defineProps<{
@@ -23,8 +24,37 @@ const isMultiSelect = computed(() => props.selectedDates !== undefined)
 
 const emit = defineEmits<{
   select: [date: string]
+  selectRange: [from: string, to: string]
   hover: [date: string | null]
 }>()
+
+// Multi-select state (RSVP day picker). `anchor` is the last clicked day;
+// shift-clicking selects the whole range from the anchor to the clicked day
+// (still stored as individual days). Hover with shift held previews that range.
+const selectedSet = computed(() => new Set(props.selectedDates ?? []))
+const anchor = ref<string | null>(null)
+const internalHover = ref<string | null>(null)
+const internalHoverShift = ref(false)
+
+const shiftPreviewBounds = computed<{ start: string; end: string } | null>(
+  () => {
+    if (
+      !isMultiSelect.value ||
+      !internalHoverShift.value ||
+      !anchor.value ||
+      !internalHover.value
+    )
+      return null
+    const a = anchor.value
+    const h = internalHover.value
+    return a <= h ? { start: a, end: h } : { start: h, end: a }
+  }
+)
+
+function isInShiftPreview(dateString: string): boolean {
+  const b = shiftPreviewBounds.value
+  return b !== null && dateString >= b.start && dateString <= b.end
+}
 
 const { getDaysInMonth, getMonthName, isDateInRange, isDateInHoverRange } =
   useCalendar()
@@ -93,10 +123,28 @@ function getDayClasses(dateString: string): string[] {
     return ['opacity-30', 'cursor-default']
   }
 
-  // Multi-select mode: each chosen day is an independent filled circle.
+  // Multi-select mode (RSVP day picker): selected days fill their cell and
+  // merge with adjacent selected days into a continuous pill; a shift-drag
+  // shows a lighter range preview of what would be added.
   if (isMultiSelect.value) {
-    if (props.selectedDates!.includes(dateString)) {
-      return ['bg-rose-500', 'font-semibold', 'text-white', 'rounded-full']
+    if (selectedSet.value.has(dateString)) {
+      const prevSelected = selectedSet.value.has(addDays(dateString, -1))
+      const nextSelected = selectedSet.value.has(addDays(dateString, 1))
+      const classes = ['bg-rose-500', 'font-semibold', 'text-white']
+      if (!prevSelected && !nextSelected) {
+        classes.push('rounded-full')
+      } else {
+        if (!prevSelected) classes.push('rounded-l-full')
+        if (!nextSelected) classes.push('rounded-r-full')
+      }
+      return classes
+    }
+    if (isInShiftPreview(dateString)) {
+      const bounds = shiftPreviewBounds.value!
+      const classes = ['bg-rose-400/60', 'text-white']
+      if (dateString === bounds.start) classes.push('rounded-l-full')
+      if (dateString === bounds.end) classes.push('rounded-r-full')
+      return classes
     }
     return ['hover:bg-white/10']
   }
@@ -143,18 +191,28 @@ function getDayClasses(dateString: string): string[] {
   return ['hover:bg-white/10']
 }
 
-function handleClick(day: CalendarDay): void {
+function handleClick(day: CalendarDay, event: MouseEvent): void {
   if (isDisabled(day.dateString)) return
-  emit('select', day.dateString)
+  if (isMultiSelect.value && event.shiftKey && anchor.value) {
+    emit('selectRange', anchor.value, day.dateString)
+  } else {
+    emit('select', day.dateString)
+  }
+  anchor.value = day.dateString
 }
 
-function handleMouseEnter(day: CalendarDay): void {
+function handleMouseEnter(day: CalendarDay, event: MouseEvent): void {
   if (isDisabled(day.dateString)) return
   emit('hover', day.dateString)
+  if (isMultiSelect.value) {
+    internalHover.value = day.dateString
+    internalHoverShift.value = event.shiftKey
+  }
 }
 
 function handleMouseLeave(): void {
   emit('hover', null)
+  internalHover.value = null
 }
 </script>
 
@@ -183,8 +241,8 @@ function handleMouseLeave(): void {
           day.isCurrentMonth ? 'text-ink' : 'text-ink-muted',
           getDayClasses(day.dateString),
         ]"
-        @click="handleClick(day)"
-        @mouseenter="handleMouseEnter(day)"
+        @click="handleClick(day, $event)"
+        @mouseenter="handleMouseEnter(day, $event)"
         @mouseleave="handleMouseLeave"
       >
         {{ day.date.getDate() }}
