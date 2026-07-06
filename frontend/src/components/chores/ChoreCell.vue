@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { PlusIcon, ChatBubbleLeftIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon } from '@heroicons/vue/24/outline'
+import { ChatBubbleLeftIcon } from '@heroicons/vue/24/solid'
 import PushPinIcon from '@/components/icons/PushPinIcon.vue'
 import type { PoolChoreAssignment, PoolMember } from '@/types/pool'
 import { getMemberNameFromMap } from '@/utils/member'
@@ -49,7 +50,7 @@ function handleAddClick(event: MouseEvent) {
       v-for="a in assignments"
       :key="a.id"
       type="button"
-      class="group/cell focus-visible:outline-focus hover:ring-line relative inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-0.5 rounded px-1.5 py-1 text-xs transition-shadow hover:ring-1 focus-visible:outline-2 focus-visible:outline-offset-2 sm:min-h-0"
+      class="group/cell focus-visible:outline-focus hover:ring-line relative inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-1 rounded px-1.5 py-1 text-xs transition-shadow hover:ring-1 focus-visible:outline-2 focus-visible:outline-offset-2 sm:min-h-0"
       :class="
         isCurrentUser(a)
           ? 'bg-amber-300 text-amber-900 dark:bg-amber-400/20 dark:text-amber-100'
@@ -63,14 +64,17 @@ function handleAddClick(event: MouseEvent) {
       :aria-label="chipLabel(a)"
       @click="emit('editAssignment', a, $event.currentTarget as HTMLElement)"
     >
-      <PushPinIcon v-if="a.pinned" class="size-3 shrink-0" />
+      <PushPinIcon
+        v-if="a.pinned"
+        class="size-3 shrink-0 text-amber-600 dark:text-amber-400"
+      />
       <span class="truncate">{{
         getMemberNameFromMap(a.userId, memberMap)
       }}</span>
       <ChatBubbleLeftIcon
         v-if="a.note"
         aria-hidden="true"
-        class="text-ink-muted size-3 shrink-0"
+        class="size-3 shrink-0 text-amber-600 dark:text-amber-400"
       />
     </button>
     <button
