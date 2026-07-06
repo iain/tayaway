@@ -52,3 +52,41 @@ describe('CalendarMonth multi-select', () => {
     expect(w.emitted('select')?.[0]).toEqual(['2026-07-03'])
   })
 })
+
+describe('CalendarMonth multi-select — merged pills', () => {
+  it('rounds only the ends of a run of adjacent days, and isolates single days', () => {
+    // A 3-day run (Jul 3-5) plus an isolated day (Jul 7, gap on Jul 6).
+    const w = mountMonth([
+      '2026-07-03',
+      '2026-07-04',
+      '2026-07-05',
+      '2026-07-07',
+    ])
+    const classesFor = (iso: string) => w.get(day(iso)).classes()
+
+    // Run start: rounded on the left only.
+    expect(classesFor('2026-07-03')).toContain('rounded-l-full')
+    expect(classesFor('2026-07-03')).not.toContain('rounded-r-full')
+    expect(classesFor('2026-07-03')).not.toContain('rounded-full')
+
+    // Run middle: flat, so it merges with both neighbours.
+    expect(classesFor('2026-07-04')).not.toContain('rounded-l-full')
+    expect(classesFor('2026-07-04')).not.toContain('rounded-r-full')
+    expect(classesFor('2026-07-04')).not.toContain('rounded-full')
+
+    // Run end: rounded on the right only.
+    expect(classesFor('2026-07-05')).toContain('rounded-r-full')
+    expect(classesFor('2026-07-05')).not.toContain('rounded-l-full')
+
+    // Isolated day: a full circle.
+    expect(classesFor('2026-07-07')).toContain('rounded-full')
+  })
+
+  it('fills every selected day regardless of position in the run', () => {
+    const w = mountMonth(['2026-07-03', '2026-07-04'])
+    expect(w.get(day('2026-07-03')).classes()).toContain('bg-rose-500')
+    expect(w.get(day('2026-07-04')).classes()).toContain('bg-rose-500')
+    // An unselected day is not filled.
+    expect(w.get(day('2026-07-06')).classes()).not.toContain('bg-rose-500')
+  })
+})
