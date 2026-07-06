@@ -19,6 +19,7 @@ import AppButton from '@/components/common/AppButton.vue'
 import TextButton from '@/components/common/TextButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import CalendarMonth from '@/components/calendar/CalendarMonth.vue'
+import { attendedDates, enumerateDates } from '@/utils/event'
 
 const props = defineProps<{
   event: HydratedEvent
@@ -44,14 +45,11 @@ function memberName(userId: string): string {
   return m?.name || m?.email || 'Unknown'
 }
 
-const showPartialPicker = ref(false)
-const partialStartDate = ref<string | null>(null)
-const partialEndDate = ref<string | null>(null)
-const hoverDate = ref<string | null>(null)
-// Subject of the partial-date picker. `null` means current user (the
-// existing self-RSVP flow); set to another user id when an admin is filing
-// partial dates on someone else's behalf.
-const partialPickerUserId = ref<string | null>(null)
+const showDayPicker = ref(false)
+const selectedDays = ref<string[]>([])
+// Subject of the day picker. `null` means current user (the existing self-RSVP
+// flow); set to another user id when an admin edits someone else's attendance.
+const dayPickerUserId = ref<string | null>(null)
 // Whose decline got blocked by existing expenses. `null` when nobody is
 // blocked (modal closed). The discriminated union prevents a member named
 // "self" from colliding with the self-decline sentinel.
@@ -78,6 +76,39 @@ const noResponse = computed(() => {
   const rsvpUserIds = new Set(props.event.rsvps.map((r) => r.userId))
   return props.event.workspace.members.filter((m) => !rsvpUserIds.has(m.userId))
 })
+
+const eventDays = computed(() =>
+  props.event.startDate && props.event.endDate
+    ? enumerateDates(props.event.startDate, props.event.endDate)
+    : []
+)
+
+type AttendanceLike = {
+  attendance: string[] | null
+  startDate: string | null
+  endDate: string | null
+}
+
+// The concrete set of ISO days an RSVP covers, resolved against the event.
+function daysForRsvp(rsvp: AttendanceLike): string[] {
+  if (!props.event.startDate || !props.event.endDate) return []
+  return attendedDates(rsvp, props.event.startDate, props.event.endDate)
+}
+
+// True when the RSVP covers a subset of the event (come-and-go or legacy range)
+// rather than the whole event.
+function isPartialRsvp(rsvp: {
+  attendance: string[] | null
+  startDate: string | null
+}): boolean {
+  return rsvp.attendance != null || rsvp.startDate != null
+}
+
+function attendanceSummary(rsvp: AttendanceLike): string {
+  return daysForRsvp(rsvp)
+    .map((d) => formatDateDisplay(d))
+    .join(', ')
+}
 
 async function handleAttend(): Promise<void> {
   try {
@@ -107,13 +138,9 @@ async function setRsvpFor(userId: string, attending: boolean): Promise<void> {
     return
   }
   try {
-    await rsvpsStore.submitRsvp(
-      props.event.id,
-      attending,
-      null,
-      null,
-      userId === props.currentUserId ? undefined : userId
-    )
+    await rsvpsStore.submitRsvp(props.event.id, attending, {
+      onBehalfOfUserId: userId === props.currentUserId ? undefined : userId,
+    })
   } catch {
     // Error handled by store
   }
@@ -132,7 +159,11 @@ interface RsvpAction {
 }
 
 function actionsFor(
-  rsvp: { attending: boolean; startDate: string | null } | null
+  rsvp: {
+    attending: boolean
+    attendance: string[] | null
+    startDate: string | null
+  } | null
 ): RsvpAction[] {
   if (rsvp == null) {
     return [
@@ -142,9 +173,9 @@ function actionsFor(
   }
   if (rsvp.attending) {
     return [
-      rsvp.startDate
-        ? { kind: 'change-dates', label: 'Change dates' }
-        : { kind: 'set-dates', label: 'Set partial dates' },
+      isPartialRsvp(rsvp)
+        ? { kind: 'change-dates', label: 'Change days' }
+        : { kind: 'set-dates', label: 'Choose days' },
       { kind: 'decline', label: 'Mark as not attending', danger: true },
     ]
   }
@@ -154,17 +185,16 @@ function actionsFor(
 function handlePick(userId: string, kind: RsvpActionKind): void {
   if (kind === 'attend') setRsvpFor(userId, true)
   else if (kind === 'decline') setRsvpFor(userId, false)
-  else openPartialPicker(userId)
+  else openDayPicker(userId)
 }
 
-function openPartialPicker(forUserId?: string): void {
+function openDayPicker(forUserId?: string): void {
   const targetUserId = forUserId ?? props.currentUserId ?? null
-  partialPickerUserId.value =
+  dayPickerUserId.value =
     targetUserId === props.currentUserId ? null : targetUserId
   const rsvp = targetUserId == null ? undefined : findRsvpFor(targetUserId)
-  partialStartDate.value = rsvp?.startDate ?? null
-  partialEndDate.value = rsvp?.endDate ?? null
-  hoverDate.value = null
+  // Preset to their current days; a whole-event RSVP starts with every day on.
+  selectedDays.value = rsvp ? daysForRsvp(rsvp) : [...eventDays.value]
 
   // Navigate to the month of the event start
   if (props.event.startDate) {
@@ -175,23 +205,18 @@ function openPartialPicker(forUserId?: string): void {
     calYear.value = y
     calMonth.value = m - 1
   }
-  showPartialPicker.value = true
+  showDayPicker.value = true
 }
 
-function handleCalendarSelect(dateString: string): void {
-  if (!partialStartDate.value || partialEndDate.value) {
-    partialStartDate.value = dateString
-    partialEndDate.value = null
-  } else {
-    let start = partialStartDate.value
-    let end = dateString
-    if (dateString < partialStartDate.value) {
-      start = dateString
-      end = partialStartDate.value
-    }
-    partialStartDate.value = start
-    partialEndDate.value = end
-  }
+function toggleDay(dateString: string): void {
+  const set = new Set(selectedDays.value)
+  if (set.has(dateString)) set.delete(dateString)
+  else set.add(dateString)
+  selectedDays.value = [...set].sort()
+}
+
+function selectWholeEvent(): void {
+  selectedDays.value = [...eventDays.value]
 }
 
 function navigatePrev(): void {
@@ -212,61 +237,37 @@ function navigateNext(): void {
   }
 }
 
-const partialSelectionText = computed(() => {
-  if (partialStartDate.value && partialEndDate.value) {
-    return `${formatDateDisplay(partialStartDate.value)} — ${formatDateDisplay(partialEndDate.value)}`
-  }
-  if (partialStartDate.value) {
-    return `${formatDateDisplay(partialStartDate.value)} — pick end date`
-  }
-  return 'Pick your first day'
+const daySelectionText = computed(() => {
+  const n = selectedDays.value.length
+  const total = eventDays.value.length
+  if (n === 0) return 'Pick at least one day'
+  if (n === total) return `Whole event (${total} days)`
+  return `${n} of ${total} days`
 })
 
-const canSavePartial = computed(
-  () => !!partialStartDate.value && !!partialEndDate.value
+const canSaveDays = computed(() => selectedDays.value.length > 0)
+
+const dayPickerTitle = computed(() =>
+  dayPickerUserId.value == null
+    ? 'Your attendance days'
+    : `Attendance days for ${memberName(dayPickerUserId.value)}`
 )
 
-const partialPickerTitle = computed(() =>
-  partialPickerUserId.value == null
-    ? 'Your attendance dates'
-    : `Attendance dates for ${memberName(partialPickerUserId.value)}`
-)
-
-async function handleSavePartialDates(): Promise<void> {
-  if (!partialStartDate.value || !partialEndDate.value) return
+async function handleSaveDays(): Promise<void> {
+  if (selectedDays.value.length === 0) return
+  // Selecting every day is just "the whole event" — send null so it's stored
+  // canonically, matching the server's normalization.
+  const isWholeEvent = selectedDays.value.length === eventDays.value.length
   try {
-    await rsvpsStore.submitRsvp(
-      props.event.id,
-      true,
-      partialStartDate.value,
-      partialEndDate.value,
-      partialPickerUserId.value ?? undefined
-    )
-    showPartialPicker.value = false
+    await rsvpsStore.submitRsvp(props.event.id, true, {
+      attendance: isWholeEvent ? null : selectedDays.value,
+      onBehalfOfUserId: dayPickerUserId.value ?? undefined,
+    })
+    showDayPicker.value = false
   } catch {
     // Error handled by store
   }
 }
-
-async function handleClearPartialDates(): Promise<void> {
-  try {
-    await rsvpsStore.submitRsvp(
-      props.event.id,
-      true,
-      null,
-      null,
-      partialPickerUserId.value ?? undefined
-    )
-    showPartialPicker.value = false
-  } catch {
-    // Error handled by store
-  }
-}
-
-const partialPickerRsvp = computed(() => {
-  if (partialPickerUserId.value == null) return currentUserRsvp.value
-  return findRsvpFor(partialPickerUserId.value)
-})
 </script>
 
 <template>
@@ -314,7 +315,18 @@ const partialPickerRsvp = computed(() => {
         <!-- Partial attendance -->
         <div v-if="currentUserRsvp?.attending" class="mt-4">
           <div
-            v-if="currentUserRsvp.startDate && currentUserRsvp.endDate"
+            v-if="currentUserRsvp.attendance"
+            class="text-ink-muted mb-2 flex items-start gap-1.5 text-sm"
+            data-testid="rsvp-attendance-days"
+          >
+            <CalendarDaysIcon class="mt-0.5 size-4 shrink-0" />
+            <span>
+              {{ attendanceSummary(currentUserRsvp) }}
+              <span class="text-ink-muted">(partial)</span>
+            </span>
+          </div>
+          <div
+            v-else-if="currentUserRsvp.startDate && currentUserRsvp.endDate"
             class="text-ink-muted mb-2 flex items-center gap-1.5 text-sm"
           >
             <CalendarDaysIcon class="size-4 shrink-0" />
@@ -325,26 +337,24 @@ const partialPickerRsvp = computed(() => {
             <span class="text-ink-muted">(partial)</span>
           </div>
           <TextButton
-            v-if="!showPartialPicker"
+            v-if="!showDayPicker"
             data-testid="rsvp-change-dates"
-            @click="openPartialPicker"
+            @click="openDayPicker"
           >
-            {{
-              currentUserRsvp.startDate ? 'Change dates' : 'Set partial dates'
-            }}
+            {{ isPartialRsvp(currentUserRsvp) ? 'Change days' : 'Choose days' }}
           </TextButton>
         </div>
       </div>
 
-      <!-- Partial date picker modal — shared by self-RSVP and on-behalf flows -->
+      <!-- Day picker modal — shared by self-RSVP and on-behalf flows -->
       <BaseModal
-        :open="showPartialPicker"
-        :title="partialPickerTitle"
+        :open="showDayPicker"
+        :title="dayPickerTitle"
         size="sm"
-        @close="showPartialPicker = false"
+        @close="showDayPicker = false"
       >
         <div class="text-ink-muted mb-4 text-sm">
-          {{ partialSelectionText }}
+          Tap the days you'll be here. {{ daySelectionText }}.
         </div>
 
         <div class="mb-4 flex items-center justify-between">
@@ -359,33 +369,26 @@ const partialPickerRsvp = computed(() => {
         <CalendarMonth
           :year="calYear"
           :month="calMonth"
-          :selected-start="partialStartDate"
-          :selected-end="partialEndDate"
-          :hover-date="hoverDate"
+          :selected-start="null"
+          :selected-end="null"
+          :hover-date="null"
+          :selected-dates="selectedDays"
           :min-date="event.startDate ?? undefined"
           :max-date="event.endDate ?? undefined"
-          @select="handleCalendarSelect"
-          @hover="hoverDate = $event"
+          @select="toggleDay"
         />
 
         <div class="mt-6 flex items-center justify-between">
           <div>
-            <TextButton
-              v-if="partialPickerRsvp?.startDate"
-              variant="secondary"
-              @click="handleClearPartialDates"
-            >
-              Attend full event
+            <TextButton variant="secondary" @click="selectWholeEvent">
+              Whole event
             </TextButton>
           </div>
           <div class="flex items-center gap-3">
-            <TextButton variant="secondary" @click="showPartialPicker = false">
+            <TextButton variant="secondary" @click="showDayPicker = false">
               Cancel
             </TextButton>
-            <AppButton
-              :disabled="!canSavePartial"
-              @click="handleSavePartialDates"
-            >
+            <AppButton :disabled="!canSaveDays" @click="handleSaveDays">
               Save
             </AppButton>
           </div>
@@ -427,8 +430,11 @@ const partialPickerRsvp = computed(() => {
                     (RSVP'd by {{ filedByLabel(rsvp) }})
                   </span>
                 </span>
+                <p v-if="rsvp.attendance" class="text-ink-muted text-xs">
+                  {{ attendanceSummary(rsvp) }}
+                </p>
                 <p
-                  v-if="rsvp.startDate && rsvp.endDate"
+                  v-else-if="rsvp.startDate && rsvp.endDate"
                   class="text-ink-muted text-xs"
                 >
                   <DateRangeDisplay

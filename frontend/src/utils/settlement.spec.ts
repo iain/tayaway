@@ -67,6 +67,32 @@ describe('computeBalances', () => {
     expect(balances.get('bob')).toBe(20)
   })
 
+  it('splits proportionally for a non-contiguous come-and-go attendee', () => {
+    // Event Jul 1-4. Alice whole event (4 days); Bob comes and goes on Jul 1
+    // and Jul 3 only (2 days, skipping Jul 2) — same day count, but the
+    // attendance set is what counts, not the contiguous hull.
+    const start = '2026-07-01'
+    const end = '2026-07-04'
+    const expenses = [
+      { userId: 'alice', startDate: start, endDate: end, amount: 60 },
+    ]
+    const rsvps = [
+      { userId: 'alice', attendance: null, startDate: null, endDate: null },
+      {
+        userId: 'bob',
+        attendance: ['2026-07-01', '2026-07-03'],
+        startDate: '2026-07-01',
+        endDate: '2026-07-03',
+      },
+    ]
+
+    const balances = computeBalances(expenses, rsvps, start, end)
+    // Total attended days in window: 4 + 2 = 6.
+    // Alice 4/6·60 = 40, paid 60 → -20. Bob 2/6·60 = 20 → owes 20.
+    expect(balances.get('alice')).toBe(-20)
+    expect(balances.get('bob')).toBe(20)
+  })
+
   it('ignores expenses with no RSVP overlap', () => {
     const expenses = [
       {

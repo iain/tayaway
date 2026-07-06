@@ -7,19 +7,34 @@ import type { PoolApiResponse, PoolRsvp } from '@/types/pool'
 export const useRsvpsStore = defineStore('rsvps', () => {
   const { loading, error, create, update, destroy } = useMutation()
 
+  /**
+   * Create or update the subject's RSVP. `attendance` is the explicit
+   * "come and go" day set (ISO YYYY-MM-DD); null/empty/omitted means the whole
+   * event. The contiguous hull is mirrored onto startDate/endDate to match how
+   * the server stores it and to keep legacy readers working.
+   */
   async function submitRsvp(
     eventId: string,
     attending: boolean,
-    startDate?: string | null,
-    endDate?: string | null,
-    onBehalfOfUserId?: string
+    options: { attendance?: string[] | null; onBehalfOfUserId?: string } = {}
   ) {
+    const { onBehalfOfUserId } = options
     const pool = useObjectPoolStore()
     const actorUserId = useAuthStore().currentUserId!
     const userId = onBehalfOfUserId ?? actorUserId
-    const body: Record<string, unknown> = { attending, user_id: userId }
-    if (startDate !== undefined) body.start_date = startDate
-    if (endDate !== undefined) body.end_date = endDate
+
+    const days =
+      attending && options.attendance && options.attendance.length > 0
+        ? [...options.attendance].sort()
+        : null
+    const startDate = days ? days[0]! : null
+    const endDate = days ? days[days.length - 1]! : null
+
+    const body: Record<string, unknown> = {
+      attending,
+      user_id: userId,
+      attendance: days,
+    }
 
     // Check for existing RSVP by the subject user on this event
     const existingRsvp = pool
@@ -31,7 +46,7 @@ export const useRsvpsStore = defineStore('rsvps', () => {
         'Failed to submit RSVP',
         'rsvp',
         existingRsvp.id,
-        { attending, startDate: startDate ?? null, endDate: endDate ?? null },
+        { attending, attendance: days, startDate, endDate },
         (commandQueue) =>
           commandQueue.enqueue<PoolApiResponse>(
             'POST',
@@ -50,8 +65,9 @@ export const useRsvpsStore = defineStore('rsvps', () => {
         userId,
         createdByUserId: actorUserId,
         attending,
-        startDate: startDate ?? null,
-        endDate: endDate ?? null,
+        attendance: days,
+        startDate,
+        endDate,
         createdAt: now,
         updatedAt: now,
       }

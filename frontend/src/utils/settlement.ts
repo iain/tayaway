@@ -1,4 +1,4 @@
-import { countDays } from '@/utils/event'
+import { attendedDates } from '@/utils/event'
 
 export interface PreviewTransfer {
   fromUserId: string
@@ -16,6 +16,7 @@ interface ExpenseLike {
 
 interface RsvpLike {
   userId: string
+  attendance?: string[] | null
   startDate: string | null
   endDate: string | null
 }
@@ -43,10 +44,9 @@ export function computeBalances(
   const shareByUser = new Map<string, number>()
   const paidByUser = new Map<string, number>()
 
-  const rsvpDates = rsvps.map((rsvp) => ({
+  const rsvpDaySets = rsvps.map((rsvp) => ({
     userId: rsvp.userId,
-    startDate: rsvp.startDate ?? eventStartDate,
-    endDate: rsvp.endDate ?? eventEndDate,
+    dates: attendedDates(rsvp, eventStartDate, eventEndDate),
   }))
 
   for (const expense of expenses) {
@@ -77,18 +77,14 @@ export function computeBalances(
       }
     }
 
-    // RSVP overlap logic (default path)
+    // RSVP overlap logic (default path). Each attendee's share is proportional
+    // to how many of their attended days fall within the expense's own window.
     const overlaps: { userId: string; days: number }[] = []
 
-    for (const rd of rsvpDates) {
-      const overlapStart =
-        expense.startDate > rd.startDate ? expense.startDate : rd.startDate
-      const overlapEnd =
-        expense.endDate < rd.endDate ? expense.endDate : rd.endDate
-
-      if (overlapStart > overlapEnd) continue
-
-      const days = countDays(overlapStart, overlapEnd)
+    for (const rd of rsvpDaySets) {
+      const days = rd.dates.filter(
+        (d) => d >= expense.startDate && d <= expense.endDate
+      ).length
       if (days > 0) {
         overlaps.push({ userId: rd.userId, days })
       }

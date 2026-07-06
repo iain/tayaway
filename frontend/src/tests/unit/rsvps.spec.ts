@@ -53,42 +53,38 @@ describe('useRsvpsStore — submitRsvp body building', () => {
     enqueueMock.mockClear()
   })
 
-  it('includes null startDate and endDate in the request body when clearing dates', async () => {
-    const store = useRsvpsStore()
-
-    await store.submitRsvp('evt-1', true, null, null)
-
-    expect(enqueueMock).toHaveBeenCalledOnce()
-    const [, , body] = enqueueMock.mock.calls[0]
-    expect(body).toMatchObject({
-      attending: true,
-      start_date: null,
-      end_date: null,
-    })
-  })
-
-  it('omits startDate and endDate from the body when not provided', async () => {
+  it('sends null attendance when attending the whole event', async () => {
     const store = useRsvpsStore()
 
     await store.submitRsvp('evt-1', true)
 
     expect(enqueueMock).toHaveBeenCalledOnce()
     const [, , body] = enqueueMock.mock.calls[0]
-    expect(body).not.toHaveProperty('start_date')
-    expect(body).not.toHaveProperty('end_date')
+    expect(body).toMatchObject({ attending: true, attendance: null })
   })
 
-  it('includes non-null dates in the request body', async () => {
+  it('sends the sorted attendance day set in the request body', async () => {
     const store = useRsvpsStore()
 
-    await store.submitRsvp('evt-1', true, '2026-03-10', '2026-03-12')
+    await store.submitRsvp('evt-1', true, {
+      attendance: ['2026-03-12', '2026-03-10'],
+    })
 
     expect(enqueueMock).toHaveBeenCalledOnce()
     const [, , body] = enqueueMock.mock.calls[0]
     expect(body).toMatchObject({
       attending: true,
-      start_date: '2026-03-10',
-      end_date: '2026-03-12',
+      attendance: ['2026-03-10', '2026-03-12'],
     })
+  })
+
+  it('sends null attendance when declining', async () => {
+    const store = useRsvpsStore()
+
+    await store.submitRsvp('evt-1', false, { attendance: ['2026-03-10'] })
+
+    expect(enqueueMock).toHaveBeenCalledOnce()
+    const [, , body] = enqueueMock.mock.calls[0]
+    expect(body).toMatchObject({ attending: false, attendance: null })
   })
 })

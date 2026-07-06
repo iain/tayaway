@@ -67,6 +67,7 @@ function mkRsvp(overrides: Partial<PoolRsvp> = {}): PoolRsvp {
     userId: 'member-1',
     createdByUserId: null,
     attending: true,
+    attendance: null,
     startDate: null,
     endDate: null,
     ...overrides,

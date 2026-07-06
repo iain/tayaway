@@ -96,6 +96,53 @@ test.describe('RSVP Feature', () => {
     })
   })
 
+  test.describe('Come-and-go attendance', () => {
+    test('picking specific days stores a partial attendance set', async ({
+      page,
+    }) => {
+      // Creator is auto-RSVPed as attending the whole event.
+      const { eventId } = await createResolvedEvent(apiContext, 'Come and go')
+      await setupAuthenticatedPage(page, sessionToken)
+      await page.goto(`/events/${eventId}/rsvp`)
+      await expect(page.getByTestId('rsvp-section')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+
+      // Open the day picker (preset to every day) and drop the last day so the
+      // selection becomes non-whole-event "come and go".
+      await page.getByTestId('rsvp-change-dates').click()
+      await page.getByTestId(`calendar-day-${RESOLVED_EVENT_END}`).click()
+
+      const [postResponse] = await Promise.all([
+        page.waitForResponse(
+          (resp) =>
+            resp.url().includes(`/api/events/${eventId}/rsvps`) &&
+            resp.request().method() === 'POST'
+        ),
+        page.getByRole('button', { name: 'Save' }).click(),
+      ])
+      expect(postResponse.ok()).toBeTruthy()
+
+      // The attendee card now shows a partial-days summary.
+      await expect(page.getByTestId('rsvp-attendance-days')).toBeVisible()
+
+      // Backend stored the explicit day set (every day but the last).
+      const rsvpsResp = await apiContext.get(
+        `${API_BASE}/api/events/${eventId}/rsvps`
+      )
+      const rsvpsBody = await rsvpsResp.json()
+      const rsvps = getObjectsByType(rsvpsBody.objects, 'rsvp') as Array<{
+        attending: boolean
+        attendance: string[] | null
+      }>
+      expect(rsvps.length).toBe(1)
+      expect(rsvps[0]!.attending).toBe(true)
+      expect(rsvps[0]!.attendance).not.toBeNull()
+      expect(rsvps[0]!.attendance).not.toContain(RESOLVED_EVENT_END)
+      expect(rsvps[0]!.attendance!.length).toBe(6)
+    })
+  })
+
   test.describe('Cannot decline with expenses', () => {
     test('shows dialog when declining RSVP with expenses on the event', async ({
       page,

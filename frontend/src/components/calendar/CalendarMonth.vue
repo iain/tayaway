@@ -13,7 +13,13 @@ const props = defineProps<{
   minDate?: string
   maxDate?: string
   hideHeader?: boolean
+  // When provided, the calendar switches to multi-select mode: each listed day
+  // is highlighted and clicking a day toggles it (the parent owns the set).
+  // Range/hover selection is bypassed in this mode.
+  selectedDates?: string[]
 }>()
+
+const isMultiSelect = computed(() => props.selectedDates !== undefined)
 
 const emit = defineEmits<{
   select: [date: string]
@@ -85,6 +91,14 @@ function isDisabled(dateString: string): boolean {
 function getDayClasses(dateString: string): string[] {
   if (isDisabled(dateString)) {
     return ['opacity-30', 'cursor-default']
+  }
+
+  // Multi-select mode: each chosen day is an independent filled circle.
+  if (isMultiSelect.value) {
+    if (props.selectedDates!.includes(dateString)) {
+      return ['bg-rose-500', 'font-semibold', 'text-white', 'rounded-full']
+    }
+    return ['hover:bg-white/10']
   }
 
   // Selected range (both start and end chosen)

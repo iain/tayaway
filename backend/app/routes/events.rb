@@ -201,6 +201,7 @@ class App
               membership: current_membership,
               user_id: r.params["user_id"] || current_membership.user_id,
               attending: r.params["attending"],
+              attendance: r.params["attendance"],
               start_date: r.params["start_date"]&.strip,
               end_date: r.params["end_date"]&.strip,
               rsvp_id: r.params["id"]

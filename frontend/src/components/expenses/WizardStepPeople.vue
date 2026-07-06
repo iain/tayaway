@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
-import { countDays } from '@/utils/event'
+import { attendedDates } from '@/utils/event'
 import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import type { PoolEvent, PoolMember } from '@/types/pool'
 
@@ -38,6 +38,9 @@ interface SelectableMember {
 
 const overlappingMembers = computed((): SelectableMember[] => {
   if (!props.startDate || !props.endDate) return []
+  const eventStart = props.event.startDate
+  const eventEnd = props.event.endDate
+  if (!eventStart || !eventEnd) return []
 
   const attendingRsvps = pool
     .getAll('rsvp')
@@ -45,16 +48,11 @@ const overlappingMembers = computed((): SelectableMember[] => {
 
   return attendingRsvps
     .map((rsvp) => {
-      const rsvpStart = rsvp.startDate ?? props.event.startDate
-      const rsvpEnd = rsvp.endDate ?? props.event.endDate
-      if (!rsvpStart || !rsvpEnd) return null
-
-      const overlapStart =
-        props.startDate > rsvpStart ? props.startDate : rsvpStart
-      const overlapEnd = props.endDate < rsvpEnd ? props.endDate : rsvpEnd
-
-      if (overlapStart > overlapEnd) return null
-      if (countDays(overlapStart, overlapEnd) <= 0) return null
+      const attended = attendedDates(rsvp, eventStart, eventEnd)
+      const overlaps = attended.some(
+        (d) => d >= props.startDate && d <= props.endDate
+      )
+      if (!overlaps) return null
 
       const member = pool.findBy('member', 'userId', rsvp.userId)
       if (!member) return null

@@ -105,6 +105,9 @@ export interface ObjectTypeMap {
     userId: string
     createdByUserId: string | null
     attending: boolean
+    // Explicit "come and go" day set (ISO YYYY-MM-DD). null means "whole event";
+    // startDate/endDate carry the contiguous hull for legacy readers.
+    attendance: string[] | null
     startDate: string | null
     endDate: string | null
     createdAt: string

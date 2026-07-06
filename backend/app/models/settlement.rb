@@ -86,8 +86,14 @@ class Settlement < Data.define(:id, :event_id, :user_id, :previous_settlement_id
 
       rsvps = parsed["rsvps"]
       raise "rsvp_snapshot missing 'rsvps' array" unless rsvps.is_a?(Array)
+      # New snapshots carry an explicit `dates` day set; older ones carry a
+      # single start_date/end_date range. Accept either so historical
+      # settlements stay readable.
       rsvps.each do |entry|
-        if !entry.is_a?(Hash) || entry["user_id"].nil? || entry["start_date"].nil? || entry["end_date"].nil?
+        has_user = entry.is_a?(Hash) && !entry["user_id"].nil?
+        has_dates = entry.is_a?(Hash) && entry["dates"].is_a?(Array)
+        has_range = entry.is_a?(Hash) && !entry["start_date"].nil? && !entry["end_date"].nil?
+        unless has_user && (has_dates || has_range)
           raise "rsvp_snapshot entry is malformed: #{entry.inspect}"
         end
       end
