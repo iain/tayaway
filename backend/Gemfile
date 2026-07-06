@@ -18,7 +18,7 @@ gem "json"
 gem "jwt"
 
 # Email
-gem "mail", "~> 2.8"
+gem "mail", "~> 2.9"
 
 # Web push notifications
 gem "web-push", "~> 3.1"
