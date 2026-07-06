@@ -41,11 +41,18 @@ module Settlements
       share_by_user = Hash.new(0.0)
       paid_by_user = Hash.new(0.0)
 
+      # Parse each attendee's day set to Date once up front — accumulate_shares
+      # runs per expense and would otherwise re-parse the same strings on every
+      # pass.
+      parsed_snapshot = current_snapshot.map do |rd|
+        { "user_id" => rd["user_id"], "dates" => Array(rd["dates"]).map { |value| date_from(value) } }
+      end
+
       expenses.each do |expense|
         if expense[:user_id]
           paid_by_user[expense[:user_id].to_s] += expense[:amount].to_f
         end
-        accumulate_shares(share_by_user, expense, participants_by_expense, current_snapshot)
+        accumulate_shares(share_by_user, expense, participants_by_expense, parsed_snapshot)
       end
 
       transfer_net = Hash.new(0.0)
@@ -92,15 +99,13 @@ module Settlements
 
       # Each attendee's share is proportional to the number of their attended
       # days that fall within the expense's own date window. `dates` is the
-      # explicit day set for the attendee (whole-event RSVPs are expanded to the
-      # full event span upstream in snapshot_rsvps), so non-contiguous "come and
-      # go" attendance is just a smaller set — the proportional math is unchanged.
+      # attendee's day set as Date objects (parsed once in compute_balances;
+      # whole-event RSVPs are expanded to the full event span upstream in
+      # snapshot_rsvps), so non-contiguous "come and go" attendance is just a
+      # smaller set — the proportional math is unchanged.
       overlaps = []
       rsvp_snapshot.each do |rd|
-        overlap_days = rd["dates"].count do |value|
-          date = date_from(value)
-          date >= expense_start && date <= expense_end
-        end
+        overlap_days = rd["dates"].count { |date| date >= expense_start && date <= expense_end }
         next if overlap_days <= 0
 
         overlaps << { user_id: rd["user_id"], days: overlap_days }

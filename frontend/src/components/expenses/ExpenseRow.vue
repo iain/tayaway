@@ -11,7 +11,7 @@ import IconButton from '@/components/common/IconButton.vue'
 import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useExpensesStore } from '@/stores/expenses'
-import { countDays } from '@/utils/event'
+import { attendedDates } from '@/utils/event'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import type { PoolExpense, PoolEvent } from '@/types/pool'
 import BaseCard from '@/components/common/BaseCard.vue'
@@ -139,24 +139,25 @@ const payers = computed((): ExpensePayer[] => {
     .getAll('rsvp')
     .filter((r) => r.eventId === props.event.id && r.attending)
 
-  if (attendingRsvps.length === 0) return []
+  if (
+    attendingRsvps.length === 0 ||
+    !props.event.startDate ||
+    !props.event.endDate
+  )
+    return []
 
   const withOverlap = attendingRsvps
     .map((rsvp) => {
-      const rsvpStart = rsvp.startDate ?? props.event.startDate
-      const rsvpEnd = rsvp.endDate ?? props.event.endDate
-      if (!rsvpStart || !rsvpEnd) return null
-
-      const overlapStart =
-        props.expense.startDate > rsvpStart
-          ? props.expense.startDate
-          : rsvpStart
-      const overlapEnd =
-        props.expense.endDate < rsvpEnd ? props.expense.endDate : rsvpEnd
-
-      if (overlapStart > overlapEnd) return null
-
-      const overlapDays = countDays(overlapStart, overlapEnd)
+      // Count the attendee's actual attended days inside the expense window,
+      // so come-and-go gaps aren't billed (matches ExpenseSplit / settlement).
+      const dates = attendedDates(
+        rsvp,
+        props.event.startDate!,
+        props.event.endDate!
+      )
+      const overlapDays = dates.filter(
+        (d) => d >= props.expense.startDate && d <= props.expense.endDate
+      ).length
       if (overlapDays <= 0) return null
 
       const m = pool.findBy('member', 'userId', rsvp.userId)

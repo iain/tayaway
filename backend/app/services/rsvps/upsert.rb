@@ -86,16 +86,23 @@ module Rsvps
       # authoritative; `start_date`/`end_date` remain a legacy contiguous-range
       # path. Either way we also persist the contiguous hull on start/end so old
       # code still reading the range keeps working during the deploy.
-      def resolve_attendance(event, attending, attendance, start_date, end_date)
-        return Success([event, { attendance: nil, start_date: nil, end_date: nil }]) unless attending
+      # The canonical "attends the whole event" storage: no explicit day set and
+      # no partial range.
+      def whole_event
+        { attendance: nil, start_date: nil, end_date: nil }
+      end
 
-        if attendance && !(attendance.respond_to?(:empty?) && attendance.empty?)
+      def resolve_attendance(event, attending, attendance, start_date, end_date)
+        return Success([event, whole_event]) unless attending
+
+        # Any non-nil `attendance` (including `[]`) is a day-set request; let
+        # resolve_day_set own the array/emptiness validation.
+        if attendance
           resolve_day_set(event, attendance)
         elsif start_date || end_date
           resolve_legacy_range(event, start_date, end_date)
         else
-          # Whole event.
-          Success([event, { attendance: nil, start_date: nil, end_date: nil }])
+          Success([event, whole_event])
         end
       end
 
@@ -108,20 +115,17 @@ module Rsvps
           return Failure(ServiceError.validation("Invalid date format"))
         end
 
-        # Empty after cleaning means no restriction — treat as the whole event.
-        return Success([event, { attendance: nil, start_date: nil, end_date: nil }]) if dates.empty?
-
-        if dates.first < event.start_date || dates.last > event.end_date
-          return Failure(ServiceError.validation("Attendance dates must fall within the event date range"))
+        if dates.empty? || dates == (event.start_date..event.end_date).to_a
+          # No restriction, or every day selected — store "whole event"
+          # canonically as NULL so counts and displays treat it like a full RSVP.
+          Success([event, whole_event])
+        elsif dates.first < event.start_date || dates.last > event.end_date
+          Failure(ServiceError.validation("Attendance dates must fall within the event date range"))
+        else
+          # `attendance` is the authoritative day set; keep the contiguous hull
+          # on start/end for legacy readers.
+          Success([event, { attendance: dates, start_date: dates.first, end_date: dates.last }])
         end
-
-        # Attending every day is just "the whole event" — store it canonically as
-        # NULL so counts and displays treat it the same as a plain full RSVP.
-        if dates == (event.start_date..event.end_date).to_a
-          return Success([event, { attendance: nil, start_date: nil, end_date: nil }])
-        end
-
-        Success([event, { attendance: dates, start_date: dates.first, end_date: dates.last }])
       end
 
       def resolve_legacy_range(event, start_date, end_date)
@@ -137,14 +141,12 @@ module Rsvps
         end
 
         if parsed_start > parsed_end
-          return Failure(ServiceError.validation("start_date must be before or equal to end_date"))
+          Failure(ServiceError.validation("start_date must be before or equal to end_date"))
+        elsif parsed_start < event.start_date || parsed_end > event.end_date
+          Failure(ServiceError.validation("Partial dates must fall within the event date range"))
+        else
+          Success([event, { attendance: nil, start_date: parsed_start, end_date: parsed_end }])
         end
-
-        if parsed_start < event.start_date || parsed_end > event.end_date
-          return Failure(ServiceError.validation("Partial dates must fall within the event date range"))
-        end
-
-        Success([event, { attendance: nil, start_date: parsed_start, end_date: parsed_end }])
       end
 
       def upsert_rsvp(event, user_id, attending, resolved, rsvp_id, actor_user_id)

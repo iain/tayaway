@@ -9,6 +9,7 @@ import type {
   PoolEvent,
 } from '@/types/pool'
 import { TEXT_LIMITS } from '@/constants/limits'
+import { attendedDates } from '@/utils/event'
 
 const props = defineProps<{
   choreId: string
@@ -35,11 +36,13 @@ const availableMembers = computed(() => {
   const dateVal = props.date
 
   const attendingUserIds = new Set<string>()
-  for (const rsvp of props.rsvps) {
-    const rsvpStart = rsvp.startDate ?? eventStart
-    const rsvpEnd = rsvp.endDate ?? eventEnd
-    if (rsvpStart && rsvpEnd && dateVal >= rsvpStart && dateVal <= rsvpEnd) {
-      attendingUserIds.add(rsvp.userId)
+  if (eventStart && eventEnd) {
+    for (const rsvp of props.rsvps) {
+      // Use the attendee's actual day set so come-and-go gap days aren't
+      // offered — matches the backend autofill availability.
+      if (attendedDates(rsvp, eventStart, eventEnd).includes(dateVal)) {
+        attendingUserIds.add(rsvp.userId)
+      }
     }
   }
 

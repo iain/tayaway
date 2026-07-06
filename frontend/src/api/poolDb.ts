@@ -42,7 +42,8 @@ interface PoolCacheDB {
 // scope field and must be wiped on upgrade.
 // Bumped to 12 when chores gained a `time` field; old cached chores lack it.
 // Bumped to 13 when events and workspaces gained a `timezone` field.
-const CACHE_VERSION = 13
+// Bumped to 14 when rsvps gained an `attendance` day-set field.
+const CACHE_VERSION = 14
 
 const CACHE_VERSION_META_KEY = 'cacheVersion'
 const SYNCED_AT_META_PREFIX = 'syncedAt:'
