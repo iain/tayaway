@@ -117,13 +117,17 @@ module ChoreRosters
 
                 break if eligible.empty?
 
-                # Pick person with fewest assignments on THIS chore (variety), then
-                # lowest overall load/available_days ratio (fairness), then fewest available days
+                # Pick person with the lowest overall load/available_days ratio
+                # (fairness), breaking ties toward the person who has done THIS
+                # chore least (variety), then fewest available days. Fairness
+                # leads so someone already pinned to their fair share isn't
+                # handed extra work just because they haven't rotated through a
+                # given chore yet — pinned assignments already count in load_count.
                 chosen = eligible.min_by do |uid|
                   user_available = available_days[uid] || 1
                   [
-                    chore_load[[uid, chore.id.to_s]],
                     load_count[uid].to_f / user_available,
+                    chore_load[[uid, chore.id.to_s]],
                     user_available
                   ]
                 end

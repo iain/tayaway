@@ -235,6 +235,34 @@ RSpec.describe ChoreRosters::Autofill do
     end
   end
 
+  it "does not pile extra chores onto someone already pinned to their fair share" do
+    # 6-day event, three people all available every day.
+    DB[:events].where(id: event[:id]).update(end_date: event_start + 5)
+    create_rsvp(user_a) # the "chef"
+    create_rsvp(user_b)
+    create_rsvp(user_c)
+
+    koken = TestFactories.chore(chore_roster: roster, name: "Koken", people_per_day: 1)
+    TestFactories.chore(chore_roster: roster, name: "Schoonmaak", people_per_day: 1)
+
+    # Chef is pinned to Koken on the first four days (their standing role). That
+    # leaves 8 open slots (2 Koken + 6 Schoonmaak) and, with 12 slots over 3
+    # people, a fair share of 4 each — the chef is already there on pins alone.
+    (0..3).each do |offset|
+      TestFactories.chore_assignment(chore: koken, user: user_a, date: event_start + offset, pinned: true)
+    end
+
+    described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
+
+    # Autofill should hand the already-loaded chef no additional work...
+    chef_extra = non_pinned_assignments.count { |a| a[:user_id] == user_a[:id] }
+    expect(chef_extra).to eq(0)
+
+    # ...and the remaining work should spread evenly across the other two.
+    totals = all_assignments.group_by { |a| a[:user_id] }.transform_values(&:length)
+    expect(totals.values.max - totals.values.min).to be <= 1
+  end
+
   it "keeps pinned-only state when all assignments are pinned" do
     create_rsvp(user_a)
     chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
