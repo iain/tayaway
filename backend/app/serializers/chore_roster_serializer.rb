@@ -25,5 +25,16 @@ class ChoreRosterSerializer
         }
       end
     end
+
+    def policy_context_batch(rosters)
+      return {} if rosters.empty?
+
+      event_ids = rosters.map { |r| r.event_id.to_s }.uniq
+      events_by_id = Event.for_ids(event_ids).each_with_object({}) { |e, h| h[e.id.to_s] = e }
+
+      rosters.each_with_object({}) do |roster, h|
+        h[roster.id.to_s] = { event: events_by_id[roster.event_id.to_s] }
+      end
+    end
   end
 end
