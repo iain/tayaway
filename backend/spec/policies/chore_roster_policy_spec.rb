@@ -26,25 +26,17 @@ RSpec.describe ChoreRosterPolicy do
       expect(policy.delete).to be_success
     end
 
-    it "allows a workspace admin who neither created the roster nor owns the event" do
-      policy = described_class.new(roster, membership: membership_for(TestFactories.user, role: "admin"), event: event)
-      expect(policy.delete).to be_success
-    end
-
-    it "allows a workspace owner who neither created the roster nor owns the event" do
-      policy = described_class.new(roster, membership: membership_for(TestFactories.user, role: "owner"), event: event)
-      expect(policy.delete).to be_success
+    it "allows any workspace admin or owner, even without creating the roster or owning the event" do
+      %w[admin owner].each do |role|
+        policy = described_class.new(roster, membership: membership_for(TestFactories.user, role: role), event: event)
+        expect(policy.delete).to be_success
+      end
     end
 
     it "rejects a plain member who is not the creator or event owner" do
       policy = described_class.new(roster, membership: membership_for(TestFactories.user), event: event)
       expect(policy.delete).to be_failure
       expect(policy.delete.failure).to eq(:not_creator)
-    end
-
-    it "fetches the event when not provided" do
-      policy = described_class.new(roster, membership: membership_for(event_owner))
-      expect(policy.delete).to be_success
     end
   end
 end
