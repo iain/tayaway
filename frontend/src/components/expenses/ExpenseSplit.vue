@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { CalculatorIcon } from '@heroicons/vue/24/outline'
 import { useObjectPoolStore } from '@/stores/objectPool'
-import { attendedDates } from '@/utils/event'
+import { attendedDays } from '@/utils/event'
 import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
@@ -19,6 +19,7 @@ interface SplitRow {
   userId: string
   name: string
   days: number
+  guests: number
   share: number
   paid: number
   balance: number
@@ -41,14 +42,20 @@ const rows = computed((): SplitRow[] => {
   const shareByUser = new Map<string, number>()
 
   // Pre-compute each RSVP's attended day set. `days` is their total attended
-  // days across the event (the Days column); overlap is counted per expense.
+  // days (the Days column) and `guests` their total plus-ones across the event;
+  // per-expense overlap is counted in head-days below.
   const rsvpDaySets = attendingRsvps.map((rsvp) => {
-    const dates = attendedDates(
+    const days = attendedDays(
       rsvp,
       props.event.startDate!,
       props.event.endDate!
     )
-    return { rsvp, dates, days: dates.length }
+    return {
+      rsvp,
+      days,
+      dayCount: days.length,
+      guests: days.reduce((sum, d) => sum + d.plusOnes, 0),
+    }
   })
 
   // For each expense, compute overlap and distribute cost
@@ -70,28 +77,29 @@ const rows = computed((): SplitRow[] => {
       continue
     }
 
-    // Default: proportional to attended days within the expense window
-    const overlaps: { userId: string; overlapDays: number }[] = []
+    // Default: proportional to head-days within the expense window, where a day
+    // is worth `1 + plusOnes` heads (the attendee plus their guests).
+    const overlaps: { userId: string; heads: number }[] = []
 
-    for (const { rsvp, dates } of rsvpDaySets) {
-      const overlapDays = dates.filter(
-        (d) => d >= expense.startDate && d <= expense.endDate
-      ).length
-      if (overlapDays > 0) {
-        overlaps.push({ userId: rsvp.userId, overlapDays })
+    for (const { rsvp, days } of rsvpDaySets) {
+      const heads = days
+        .filter((d) => d.date >= expense.startDate && d.date <= expense.endDate)
+        .reduce((sum, d) => sum + 1 + d.plusOnes, 0)
+      if (heads > 0) {
+        overlaps.push({ userId: rsvp.userId, heads })
       }
     }
 
-    const totalOverlapDays = overlaps.reduce((sum, o) => sum + o.overlapDays, 0)
-    if (totalOverlapDays === 0) continue
+    const totalHeads = overlaps.reduce((sum, o) => sum + o.heads, 0)
+    if (totalHeads === 0) continue
 
-    for (const { userId, overlapDays } of overlaps) {
-      const share = (overlapDays / totalOverlapDays) * expense.amount
+    for (const { userId, heads } of overlaps) {
+      const share = (heads / totalHeads) * expense.amount
       shareByUser.set(userId, (shareByUser.get(userId) ?? 0) + share)
     }
   }
 
-  return rsvpDaySets.map(({ rsvp, days }) => {
+  return rsvpDaySets.map(({ rsvp, dayCount, guests }) => {
     const member = pool.findBy('member', 'userId', rsvp.userId)
     const share = shareByUser.get(rsvp.userId) ?? 0
     const paid = expenses
@@ -100,7 +108,8 @@ const rows = computed((): SplitRow[] => {
     return {
       userId: rsvp.userId,
       name: member?.name ?? member?.email ?? 'Unknown',
-      days,
+      days: dayCount,
+      guests,
       share,
       paid,
       balance: share - paid,
@@ -109,9 +118,16 @@ const rows = computed((): SplitRow[] => {
 })
 
 const totalDays = computed(() => rows.value.reduce((sum, r) => sum + r.days, 0))
+const totalGuests = computed(() =>
+  rows.value.reduce((sum, r) => sum + r.guests, 0)
+)
 
 function formatDays(days: number): string {
   return `${days} day${days === 1 ? '' : 's'}`
+}
+
+function formatGuests(guests: number): string {
+  return `+${guests} guest${guests === 1 ? '' : 's'}`
 }
 </script>
 
@@ -147,6 +163,9 @@ function formatDays(days: number): string {
             </td>
             <td class="text-ink-muted hidden py-2 pr-4 sm:table-cell">
               {{ formatDays(row.days) }}
+              <span v-if="row.guests > 0" class="text-ink-faint">
+                · {{ formatGuests(row.guests) }}
+              </span>
             </td>
             <td class="text-ink-muted py-2 pr-4 text-right whitespace-nowrap">
               <LedgerAmount :amount="row.paid" />
@@ -179,6 +198,9 @@ function formatDays(days: number): string {
             <td class="pt-2 pr-4 pb-3 pl-4">Total</td>
             <td class="text-ink-muted hidden pt-2 pr-4 pb-3 sm:table-cell">
               {{ formatDays(totalDays) }}
+              <span v-if="totalGuests > 0" class="text-ink-faint">
+                · {{ formatGuests(totalGuests) }}
+              </span>
             </td>
             <td class="text-ink-muted pt-2 pr-4 pb-3 text-right">
               <LedgerAmount :amount="total" />

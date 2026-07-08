@@ -294,9 +294,71 @@ RSpec.describe Rsvps::Upsert do
 
     expect(result.success?).to be true
     rsvp = Rsvp.find(result.value![:rsvp_id])
-    expect(rsvp.attendance).to eq(days)
+    expect(rsvp.attendance.map { |day| day[:date] }).to eq(days)
+    expect(rsvp.attendance.map { |day| day[:plus_ones] }).to all(eq(0))
     expect(rsvp.start_date).to eq(Date.today + 1)
     expect(rsvp.end_date).to eq(Date.today + 4)
+  end
+
+  it "stores per-day plus-ones from an object day set" do
+    DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
+    attendance = [
+      { "date" => (Date.today + 1).iso8601, "plusOnes" => 2 },
+      { "date" => (Date.today + 2).iso8601, "plusOnes" => 0 }
+    ]
+
+    result = described_class.call(
+      event_id: event[:id], membership: membership_for(user), user_id: user[:id],
+      attending: true, attendance: attendance, rsvp_id: SecureRandom.uuid
+    )
+
+    expect(result.success?).to be true
+    rsvp = Rsvp.find(result.value![:rsvp_id])
+    expect(rsvp.attendance).to eq(
+      [{ date: Date.today + 1, plus_ones: 2 }, { date: Date.today + 2, plus_ones: 0 }]
+    )
+    # Hull still spans the day set for legacy readers.
+    expect(rsvp.start_date).to eq(Date.today + 1)
+    expect(rsvp.end_date).to eq(Date.today + 2)
+  end
+
+  it "keeps a full-event day set that carries guests rather than collapsing to whole-event" do
+    DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 2)
+    attendance = [Date.today, Date.today + 1, Date.today + 2].map.with_index do |date, i|
+      { "date" => date.iso8601, "plusOnes" => i.zero? ? 1 : 0 }
+    end
+
+    result = described_class.call(
+      event_id: event[:id], membership: membership_for(user), user_id: user[:id],
+      attending: true, attendance: attendance, rsvp_id: SecureRandom.uuid
+    )
+
+    expect(result.success?).to be true
+    rsvp = Rsvp.find(result.value![:rsvp_id])
+    # All days are selected, but the guest means it can't reduce to nil.
+    expect(rsvp.attendance).not_to be_nil
+    expect(rsvp.attendance.sum { |day| day[:plus_ones] }).to eq(1)
+  end
+
+  it "rejects a plus-one count outside the allowed range" do
+    DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
+    membership = membership_for(user)
+
+    over_cap = described_class.call(
+      event_id: event[:id], membership: membership, user_id: user[:id], attending: true,
+      attendance: [{ "date" => (Date.today + 1).iso8601, "plusOnes" => ValidationLimits::PLUS_ONES_PER_DAY_MAX + 1 }],
+      rsvp_id: SecureRandom.uuid
+    )
+    expect(over_cap.failure?).to be true
+    expect(over_cap.failure.message).to match(/guest/i)
+
+    negative = described_class.call(
+      event_id: event[:id], membership: membership, user_id: user[:id], attending: true,
+      attendance: [{ "date" => (Date.today + 1).iso8601, "plusOnes" => -1 }],
+      rsvp_id: SecureRandom.uuid
+    )
+    expect(negative.failure?).to be true
+    expect(negative.failure.message).to match(/guest/i)
   end
 
   it "rejects a come-and-go day set with dates outside the event range" do

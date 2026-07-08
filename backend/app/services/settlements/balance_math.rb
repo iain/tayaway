@@ -21,7 +21,9 @@ module Settlements
       rsvps.map do |rsvp|
         {
           "user_id" => rsvp.user_id.to_s,
-          "dates" => rsvp.effective_dates(event).map(&:to_s)
+          "days" => rsvp.effective_attendance(event).map do |day|
+            { "date" => day[:date].to_s, "plus_ones" => day[:plus_ones] }
+          end
         }
       end
     end
@@ -41,11 +43,12 @@ module Settlements
       share_by_user = Hash.new(0.0)
       paid_by_user = Hash.new(0.0)
 
-      # Parse each attendee's day set to Date once up front — accumulate_shares
-      # runs per expense and would otherwise re-parse the same strings on every
-      # pass.
+      # Parse each attendee's day set once up front — accumulate_shares runs per
+      # expense and would otherwise re-parse the same strings on every pass. Each
+      # day resolves to a head count (`1 + plus_ones`); guests are extra heads
+      # absorbed by their host.
       parsed_snapshot = current_snapshot.map do |rd|
-        { "user_id" => rd["user_id"], "dates" => Array(rd["dates"]).map { |value| date_from(value) } }
+        { "user_id" => rd["user_id"], "days" => parse_snapshot_days(rd) }
       end
 
       expenses.each do |expense|
@@ -97,26 +100,38 @@ module Settlements
       expense_start = expense[:start_date]
       expense_end = expense[:end_date]
 
-      # Each attendee's share is proportional to the number of their attended
-      # days that fall within the expense's own date window. `dates` is the
-      # attendee's day set as Date objects (parsed once in compute_balances;
-      # whole-event RSVPs are expanded to the full event span upstream in
-      # snapshot_rsvps), so non-contiguous "come and go" attendance is just a
-      # smaller set — the proportional math is unchanged.
+      # Each attendee's share is proportional to their head-days that fall within
+      # the expense's own date window. A head-day is one attended day weighted by
+      # `1 + plus_ones` — the attendee plus any guests they bring that day
+      # (parsed once in compute_balances; whole-event RSVPs are expanded to the
+      # full event span, guest-free, upstream in snapshot_rsvps). So both "come
+      # and go" partial attendance and per-day plus-ones fall out of the same
+      # proportional math.
       overlaps = []
       rsvp_snapshot.each do |rd|
-        overlap_days = rd["dates"].count { |date| date >= expense_start && date <= expense_end }
-        next if overlap_days <= 0
+        heads = rd["days"].sum { |day| day[:date] >= expense_start && day[:date] <= expense_end ? day[:heads] : 0 }
+        next if heads <= 0
 
-        overlaps << { user_id: rd["user_id"], days: overlap_days }
+        overlaps << { user_id: rd["user_id"], heads: heads }
       end
 
-      total = overlaps.sum { |o| o[:days] }
+      total = overlaps.sum { |o| o[:heads] }
       return if total == 0
 
       overlaps.each do |o|
-        share = (o[:days].to_f / total) * amount
+        share = (o[:heads].to_f / total) * amount
         share_by_user[o[:user_id]] += share
+      end
+    end
+
+    # Normalize a snapshot entry's day set into `[{ date: Date, heads: Integer }]`.
+    # Accepts the current `days` shape (`[{date, plus_ones}]`) and the legacy flat
+    # `dates` shape (`[iso_string]`), which carries exactly one head per day.
+    def parse_snapshot_days(entry)
+      if entry["days"]
+        entry["days"].map { |day| { date: date_from(day["date"]), heads: 1 + day["plus_ones"].to_i } }
+      else
+        Array(entry["dates"]).map { |value| { date: date_from(value), heads: 1 } }
       end
     end
 

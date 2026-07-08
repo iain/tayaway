@@ -106,25 +106,66 @@ module Rsvps
         end
       end
 
+      # A day set entry is either a bare ISO date string ("come and go", no
+      # guests) or an object `{ "date" => iso, "plusOnes" => n }` carrying that
+      # day's guest count. Normalize both into `[{ date: Date, plus_ones: Int }]`,
+      # deduped by date (largest guest count wins) and sorted.
       def resolve_day_set(event, attendance)
         return Failure(ServiceError.validation("attendance must be a list of dates")) unless attendance.is_a?(Array)
 
         begin
-          dates = attendance.map { |value| Date.parse(value.to_s) }.uniq.sort
-        rescue Date::Error, TypeError
+          # ArgumentError covers both Date.parse and Integer() failures
+          # (Date::Error is a subclass of ArgumentError).
+          days = attendance.map { |entry| parse_attendance_day(entry) }
+        rescue ArgumentError, TypeError
           return Failure(ServiceError.validation("Invalid date format"))
         end
 
-        if dates.empty? || dates == (event.start_date..event.end_date).to_a
-          # No restriction, or every day selected — store "whole event"
-          # canonically as NULL so counts and displays treat it like a full RSVP.
+        days = days
+               .group_by { |day| day[:date] }
+               .map { |date, group| { date: date, plus_ones: group.map { |g| g[:plus_ones] }.max } }
+               .sort_by { |day| day[:date] }
+
+        if days.any? { |day| day[:plus_ones].negative? || day[:plus_ones] > ValidationLimits::PLUS_ONES_PER_DAY_MAX }
+          return Failure(
+            ServiceError.validation("Guests per day must be between 0 and #{ValidationLimits::PLUS_ONES_PER_DAY_MAX}")
+          )
+        end
+
+        dates = days.map { |day| day[:date] }
+        has_guests = days.any? { |day| day[:plus_ones].positive? }
+
+        if dates.empty? || (dates == (event.start_date..event.end_date).to_a && !has_guests)
+          # No restriction, or every day selected with no guests — store "whole
+          # event" canonically as NULL so counts and displays treat it like a
+          # full RSVP. A guest-bearing full set stays materialized: NULL can't
+          # carry per-day guest counts.
           Success([event, whole_event])
         elsif dates.first < event.start_date || dates.last > event.end_date
           Failure(ServiceError.validation("Attendance dates must fall within the event date range"))
         else
           # `attendance` is the authoritative day set; keep the contiguous hull
           # on start/end for legacy readers.
-          Success([event, { attendance: dates, start_date: dates.first, end_date: dates.last }])
+          Success([event, { attendance: days, start_date: dates.first, end_date: dates.last }])
+        end
+      end
+
+      def parse_attendance_day(entry)
+        if entry.is_a?(Hash)
+          { date: Date.parse((entry["date"] || entry[:date]).to_s), plus_ones: Integer(entry["plusOnes"] || entry[:plusOnes] || 0) }
+        else
+          { date: Date.parse(entry.to_s), plus_ones: 0 }
+        end
+      end
+
+      # Store a day guest-free as a bare ISO string (unchanged from the original
+      # come-and-go shape) and only reach for the `{date, plusOnes}` object when
+      # there are guests — keeps existing rows and old clients untouched.
+      def serialize_attendance_day(day)
+        if day[:plus_ones].positive?
+          { "date" => day[:date].iso8601, "plusOnes" => day[:plus_ones] }
+        else
+          day[:date].iso8601
         end
       end
 
@@ -153,7 +194,7 @@ module Rsvps
         attendance = resolved[:attendance]
         start_date = resolved[:start_date]
         end_date = resolved[:end_date]
-        attendance_json = attendance ? Sequel.pg_jsonb(attendance.map(&:iso8601)) : nil
+        attendance_json = attendance ? Sequel.pg_jsonb(attendance.map { |day| serialize_attendance_day(day) }) : nil
 
         row = nil
         DB.transaction do

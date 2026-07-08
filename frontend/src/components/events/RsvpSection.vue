@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/vue/24/solid'
 import {
   UserIcon,
+  UserPlusIcon,
   CalendarDaysIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -19,7 +20,15 @@ import AppButton from '@/components/common/AppButton.vue'
 import TextButton from '@/components/common/TextButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import CalendarMonth from '@/components/calendar/CalendarMonth.vue'
-import { attendedDates, enumerateDates } from '@/utils/event'
+import {
+  attendedDates,
+  attendedDays,
+  enumerateDates,
+  type AttendanceEntry,
+} from '@/utils/event'
+
+// Mirrors backend ValidationLimits::PLUS_ONES_PER_DAY_MAX.
+const PLUS_ONES_MAX = 20
 
 const props = defineProps<{
   event: HydratedEvent
@@ -46,7 +55,10 @@ function memberName(userId: string): string {
 }
 
 const showDayPicker = ref(false)
-const selectedDays = ref<string[]>([])
+// Source of truth while the picker is open: selected day → guest count for that
+// day. The calendar's selected-day set is just the keys.
+const dayGuests = ref<Map<string, number>>(new Map())
+const selectedDays = computed(() => [...dayGuests.value.keys()].sort())
 // Subject of the day picker. `null` means current user (the existing self-RSVP
 // flow); set to another user id when an admin edits someone else's attendance.
 const dayPickerUserId = ref<string | null>(null)
@@ -84,7 +96,7 @@ const eventDays = computed(() =>
 )
 
 type AttendanceLike = {
-  attendance: string[] | null
+  attendance: AttendanceEntry[] | null
   startDate: string | null
   endDate: string | null
 }
@@ -95,13 +107,28 @@ function daysForRsvp(rsvp: AttendanceLike): string[] {
   return attendedDates(rsvp, props.event.startDate, props.event.endDate)
 }
 
+// Total guests ("+1"s) across all the RSVP's attended days.
+function guestCountFor(rsvp: AttendanceLike): number {
+  if (!props.event.startDate || !props.event.endDate) return 0
+  return attendedDays(rsvp, props.event.startDate, props.event.endDate).reduce(
+    (sum, d) => sum + d.plusOnes,
+    0
+  )
+}
+
 // True when the RSVP covers a subset of the event (come-and-go or legacy range)
 // rather than the whole event.
 function isPartialRsvp(rsvp: {
-  attendance: string[] | null
+  attendance: AttendanceEntry[] | null
   startDate: string | null
 }): boolean {
   return rsvp.attendance != null || rsvp.startDate != null
+}
+
+// True when the day set is a real subset of the event — used for the "(partial)"
+// label, which a whole-event-with-guests RSVP should not get.
+function isPartialDays(rsvp: AttendanceLike): boolean {
+  return daysForRsvp(rsvp).length < eventDays.value.length
 }
 
 function attendanceSummary(rsvp: AttendanceLike): string {
@@ -109,6 +136,17 @@ function attendanceSummary(rsvp: AttendanceLike): string {
     .map((d) => formatDateDisplay(d))
     .join(', ')
 }
+
+function guestSummary(rsvp: AttendanceLike): string {
+  const guests = guestCountFor(rsvp)
+  return `+${guests} guest${guests === 1 ? '' : 's'}`
+}
+
+// Guests brought by everyone currently marked attending — folded into the
+// headcount summary.
+const totalAttendingGuests = computed(() =>
+  attending.value.reduce((sum, rsvp) => sum + guestCountFor(rsvp), 0)
+)
 
 async function handleAttend(): Promise<void> {
   try {
@@ -161,7 +199,7 @@ interface RsvpAction {
 function actionsFor(
   rsvp: {
     attending: boolean
-    attendance: string[] | null
+    attendance: AttendanceEntry[] | null
     startDate: string | null
   } | null
 ): RsvpAction[] {
@@ -193,8 +231,13 @@ function openDayPicker(forUserId?: string): void {
   dayPickerUserId.value =
     targetUserId === props.currentUserId ? null : targetUserId
   const rsvp = targetUserId == null ? undefined : findRsvpFor(targetUserId)
-  // Preset to their current days; a whole-event RSVP starts with every day on.
-  selectedDays.value = rsvp ? daysForRsvp(rsvp) : [...eventDays.value]
+  // Preset to their current days and guest counts; a whole-event or new RSVP
+  // starts with every day selected and no guests.
+  const preset =
+    rsvp && props.event.startDate && props.event.endDate
+      ? attendedDays(rsvp, props.event.startDate, props.event.endDate)
+      : eventDays.value.map((date) => ({ date, plusOnes: 0 }))
+  dayGuests.value = new Map(preset.map((d) => [d.date, d.plusOnes]))
 
   // Navigate to the month of the event start
   if (props.event.startDate) {
@@ -209,24 +252,62 @@ function openDayPicker(forUserId?: string): void {
 }
 
 function toggleDay(dateString: string): void {
-  const set = new Set(selectedDays.value)
-  if (set.has(dateString)) set.delete(dateString)
-  else set.add(dateString)
-  selectedDays.value = [...set].sort()
+  const next = new Map(dayGuests.value)
+  if (next.has(dateString)) next.delete(dateString)
+  else next.set(dateString, 0)
+  dayGuests.value = next
 }
 
-// Shift-click range: add every day between the two clicks (inclusive), still
-// stored as individual days.
+// Shift-click range: add every day between the two clicks (inclusive), keeping
+// any guest counts already set. Days are still stored individually.
 function selectDayRange(from: string, to: string): void {
   const [start, end] = from <= to ? [from, to] : [to, from]
-  const set = new Set(selectedDays.value)
-  for (const d of enumerateDates(start, end)) set.add(d)
-  selectedDays.value = [...set].sort()
+  const next = new Map(dayGuests.value)
+  for (const d of enumerateDates(start, end)) if (!next.has(d)) next.set(d, 0)
+  dayGuests.value = next
 }
 
 function selectWholeEvent(): void {
-  selectedDays.value = [...eventDays.value]
+  const next = new Map(dayGuests.value)
+  for (const d of eventDays.value) if (!next.has(d)) next.set(d, 0)
+  dayGuests.value = next
 }
+
+const clampGuests = (n: number): number =>
+  Math.max(0, Math.min(PLUS_ONES_MAX, n))
+
+function setDayGuests(date: string, count: number): void {
+  if (!dayGuests.value.has(date)) return
+  const next = new Map(dayGuests.value)
+  next.set(date, clampGuests(count))
+  dayGuests.value = next
+}
+
+function adjustDayGuests(date: string, delta: number): void {
+  setDayGuests(date, (dayGuests.value.get(date) ?? 0) + delta)
+}
+
+// Quick-set: nudge the guest count on every selected day at once.
+function adjustAllGuests(delta: number): void {
+  const next = new Map<string, number>()
+  for (const [date, count] of dayGuests.value) {
+    next.set(date, clampGuests(count + delta))
+  }
+  dayGuests.value = next
+}
+
+// Rows for the per-day guest steppers, in date order.
+const guestRows = computed(() =>
+  selectedDays.value.map((date) => ({
+    date,
+    label: formatDateDisplay(date),
+    guests: dayGuests.value.get(date) ?? 0,
+  }))
+)
+
+const totalPickerGuests = computed(() =>
+  [...dayGuests.value.values()].reduce((sum, n) => sum + n, 0)
+)
 
 function navigatePrev(): void {
   if (calMonth.value === 0) {
@@ -263,13 +344,22 @@ const dayPickerTitle = computed(() =>
 )
 
 async function handleSaveDays(): Promise<void> {
-  if (selectedDays.value.length === 0) return
-  // Selecting every day is just "the whole event" — send null so it's stored
-  // canonically, matching the server's normalization.
-  const isWholeEvent = selectedDays.value.length === eventDays.value.length
+  const days = selectedDays.value
+  if (days.length === 0) return
+  // Selecting every day with no guests is just "the whole event" — send null so
+  // it's stored canonically, matching the server's normalization. A guest on
+  // any day keeps the day set materialized (null can't carry guest counts).
+  const isWholeEvent =
+    days.length === eventDays.value.length && totalPickerGuests.value === 0
+  const attendance: AttendanceEntry[] | null = isWholeEvent
+    ? null
+    : days.map((date) => {
+        const guests = dayGuests.value.get(date) ?? 0
+        return guests > 0 ? { date, plusOnes: guests } : date
+      })
   try {
     await rsvpsStore.submitRsvp(props.event.id, true, {
-      attendance: isWholeEvent ? null : selectedDays.value,
+      attendance,
       onBehalfOfUserId: dayPickerUserId.value ?? undefined,
     })
     showDayPicker.value = false
@@ -324,7 +414,7 @@ async function handleSaveDays(): Promise<void> {
         <!-- Partial attendance -->
         <div v-if="currentUserRsvp?.attending" class="mt-4">
           <div
-            v-if="currentUserRsvp.attendance"
+            v-if="currentUserRsvp.attendance && isPartialDays(currentUserRsvp)"
             class="text-ink-muted mb-2 flex items-start gap-1.5 text-sm"
             data-testid="rsvp-attendance-days"
           >
@@ -335,7 +425,11 @@ async function handleSaveDays(): Promise<void> {
             </span>
           </div>
           <div
-            v-else-if="currentUserRsvp.startDate && currentUserRsvp.endDate"
+            v-else-if="
+              !currentUserRsvp.attendance &&
+              currentUserRsvp.startDate &&
+              currentUserRsvp.endDate
+            "
             class="text-ink-muted mb-2 flex items-center gap-1.5 text-sm"
           >
             <CalendarDaysIcon class="size-4 shrink-0" />
@@ -344,6 +438,14 @@ async function handleSaveDays(): Promise<void> {
               :end-date="currentUserRsvp.endDate"
             />
             <span class="text-ink-muted">(partial)</span>
+          </div>
+          <div
+            v-if="guestCountFor(currentUserRsvp) > 0"
+            class="text-ink-muted mb-2 flex items-center gap-1.5 text-sm"
+            data-testid="rsvp-attendance-guests"
+          >
+            <UserPlusIcon class="size-4 shrink-0" />
+            <span>{{ guestSummary(currentUserRsvp) }}</span>
           </div>
           <TextButton
             v-if="!showDayPicker"
@@ -388,6 +490,74 @@ async function handleSaveDays(): Promise<void> {
           @select="toggleDay"
           @select-range="selectDayRange"
         />
+
+        <!-- Per-day guests -->
+        <div v-if="selectedDays.length > 0" class="mt-5">
+          <div class="mb-2 flex items-center justify-between">
+            <span class="text-ink text-sm font-medium">Guests per day</span>
+            <div class="flex items-center gap-1">
+              <button
+                type="button"
+                data-testid="rsvp-guests-all-decrement"
+                class="bg-btn-secondary-fill text-btn-secondary-ink hover:bg-btn-secondary-fill-hover focus-visible:outline-focus flex size-8 cursor-pointer items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+                aria-label="Fewer guests on all days"
+                @click="adjustAllGuests(-1)"
+              >
+                −
+              </button>
+              <span class="text-ink-muted px-1 text-xs">all days</span>
+              <button
+                type="button"
+                data-testid="rsvp-guests-all-increment"
+                class="bg-btn-secondary-fill text-btn-secondary-ink hover:bg-btn-secondary-fill-hover focus-visible:outline-focus flex size-8 cursor-pointer items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+                aria-label="More guests on all days"
+                @click="adjustAllGuests(1)"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <ul class="divide-line-faint max-h-44 divide-y overflow-y-auto">
+            <li
+              v-for="row in guestRows"
+              :key="row.date"
+              class="flex items-center justify-between py-1.5 text-sm"
+            >
+              <span class="text-ink-muted">{{ row.label }}</span>
+              <div
+                class="flex items-center gap-1"
+                :data-testid="`rsvp-day-guests-${row.date}`"
+              >
+                <button
+                  type="button"
+                  :data-testid="`rsvp-guest-decrement-${row.date}`"
+                  class="bg-btn-secondary-fill text-btn-secondary-ink enabled:hover:bg-btn-secondary-fill-hover focus-visible:outline-focus flex size-8 cursor-pointer items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
+                  :disabled="row.guests === 0"
+                  :aria-label="`Fewer guests on ${row.label}`"
+                  @click="adjustDayGuests(row.date, -1)"
+                >
+                  −
+                </button>
+                <span
+                  class="text-ink min-w-[2.25rem] text-center font-mono tabular-nums"
+                  :data-testid="`rsvp-guest-count-${row.date}`"
+                >
+                  +{{ row.guests }}
+                </span>
+                <button
+                  type="button"
+                  :data-testid="`rsvp-guest-increment-${row.date}`"
+                  class="bg-btn-secondary-fill text-btn-secondary-ink enabled:hover:bg-btn-secondary-fill-hover focus-visible:outline-focus flex size-8 cursor-pointer items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
+                  :disabled="row.guests >= PLUS_ONES_MAX"
+                  :aria-label="`More guests on ${row.label}`"
+                  @click="adjustDayGuests(row.date, 1)"
+                >
+                  +
+                </button>
+              </div>
+            </li>
+          </ul>
+        </div>
 
         <div class="mt-6 flex items-center justify-between">
           <div>
@@ -441,17 +611,27 @@ async function handleSaveDays(): Promise<void> {
                     (RSVP'd by {{ filedByLabel(rsvp) }})
                   </span>
                 </span>
-                <p v-if="rsvp.attendance" class="text-ink-muted text-xs">
+                <p
+                  v-if="rsvp.attendance && isPartialDays(rsvp)"
+                  class="text-ink-muted text-xs"
+                >
                   {{ attendanceSummary(rsvp) }}
                 </p>
                 <p
-                  v-else-if="rsvp.startDate && rsvp.endDate"
+                  v-else-if="!rsvp.attendance && rsvp.startDate && rsvp.endDate"
                   class="text-ink-muted text-xs"
                 >
                   <DateRangeDisplay
                     :start-date="rsvp.startDate"
                     :end-date="rsvp.endDate"
                   />
+                </p>
+                <p
+                  v-if="guestCountFor(rsvp) > 0"
+                  class="text-ink-muted text-xs"
+                  data-testid="rsvp-attendee-guests"
+                >
+                  {{ guestSummary(rsvp) }}
                 </p>
               </div>
               <RsvpActionsMenu
@@ -543,8 +723,12 @@ async function handleSaveDays(): Promise<void> {
 
         <!-- Summary -->
         <p v-if="event.rsvps.length > 0" class="text-ink-muted text-sm">
-          {{ attending.length }} attending, {{ notAttending.length }} not
-          attending, {{ noResponse.length }} pending
+          {{ attending.length }} attending<span v-if="totalAttendingGuests > 0">
+            (+{{ totalAttendingGuests }} guest{{
+              totalAttendingGuests === 1 ? '' : 's'
+            }})</span
+          >, {{ notAttending.length }} not attending, {{ noResponse.length }}
+          pending
         </p>
       </div>
 
