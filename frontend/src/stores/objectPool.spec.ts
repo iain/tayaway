@@ -68,6 +68,43 @@ describe('objectPool store', () => {
       expect(pool.get('event', 'evt-1')?.name).toBe('Newer')
     })
 
+    it('prefers a permissioned copy over a permissionless one at the same version', () => {
+      const pool = useObjectPoolStore()
+      // Personal sync delivers the workspace without permissions; the
+      // workspace sync delivers the same version WITH permissions. They share
+      // an updatedAt, so the permissioned copy must not lose the tie.
+      const bare = makeWorkspace({ updatedAt: '2026-01-01T00:00:00.000Z' })
+      const permissioned = makeWorkspace({
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        permissions: { invite: { allowed: true } },
+      })
+
+      pool.importObjects([bare], { scope: Scope.personal() })
+      pool.importObjects([permissioned], { scope: Scope.workspace('ws-1') })
+
+      expect(pool.get('workspace', 'ws-1')?.permissions?.invite).toEqual({
+        allowed: true,
+      })
+    })
+
+    it('keeps permissions when a permissionless copy arrives at the same version', () => {
+      const pool = useObjectPoolStore()
+      // Reverse arrival order: the permissioned copy is already in the pool
+      // when a bare copy of the same version lands. It must not be stripped.
+      const permissioned = makeWorkspace({
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        permissions: { invite: { allowed: true } },
+      })
+      const bare = makeWorkspace({ updatedAt: '2026-01-01T00:00:00.000Z' })
+
+      pool.importObjects([permissioned], { scope: Scope.workspace('ws-1') })
+      pool.importObjects([bare], { scope: Scope.personal() })
+
+      expect(pool.get('workspace', 'ws-1')?.permissions?.invite).toEqual({
+        allowed: true,
+      })
+    })
+
     it('imports multiple objects of different types', () => {
       const pool = useObjectPoolStore()
       const event = makeEvent()
