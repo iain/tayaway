@@ -6,12 +6,20 @@ import PushPinIcon from '@/components/icons/PushPinIcon.vue'
 import type { PoolChoreAssignment, PoolMember } from '@/types/pool'
 import { getMemberNameFromMap } from '@/utils/member'
 
-const props = defineProps<{
-  assignments: PoolChoreAssignment[]
-  peoplePerDay: number
-  memberMap: Map<string, PoolMember>
-  currentUserId: string | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    assignments: PoolChoreAssignment[]
+    peoplePerDay: number
+    memberMap: Map<string, PoolMember>
+    currentUserId: string | null
+    // `stack` is the desktop grid cell: chips stacked and centered in a narrow
+    // column, tap targets tightening to `sm`. `row` is the mobile day list:
+    // chips flow left-aligned and wrap, holding a 44px tap target at every
+    // width because that layout is only ever shown on touch.
+    orientation?: 'stack' | 'row'
+  }>(),
+  { orientation: 'stack' }
+)
 
 const emit = defineEmits<{
   assign: [anchorEl: HTMLElement]
@@ -20,6 +28,20 @@ const emit = defineEmits<{
 
 const hasEmptySlots = computed(
   () => props.assignments.length < props.peoplePerDay
+)
+
+const containerClass = computed(() =>
+  props.orientation === 'row'
+    ? 'flex min-h-[2rem] flex-row flex-wrap items-center gap-1'
+    : 'flex min-h-[2rem] flex-col items-center gap-0.5'
+)
+
+const chipSizeClass = computed(() =>
+  props.orientation === 'row' ? 'min-h-[44px]' : 'min-h-[44px] sm:min-h-0'
+)
+
+const addSizeClass = computed(() =>
+  props.orientation === 'row' ? 'size-11' : 'size-11 sm:size-5'
 )
 
 function isCurrentUser(a: PoolChoreAssignment): boolean {
@@ -45,17 +67,18 @@ function handleAddClick(event: MouseEvent) {
 </script>
 
 <template>
-  <div class="flex min-h-[2rem] flex-col items-center gap-0.5">
+  <div :class="containerClass">
     <button
       v-for="a in assignments"
       :key="a.id"
       type="button"
-      class="group/cell focus-visible:outline-focus hover:ring-line relative inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-1 rounded px-1.5 py-1 text-xs transition-shadow hover:ring-1 focus-visible:outline-2 focus-visible:outline-offset-2 sm:min-h-0"
-      :class="
+      class="group/cell focus-visible:outline-focus hover:ring-line relative inline-flex cursor-pointer items-center justify-center gap-1 rounded px-1.5 py-1 text-xs transition-shadow hover:ring-1 focus-visible:outline-2 focus-visible:outline-offset-2"
+      :class="[
+        chipSizeClass,
         isCurrentUser(a)
           ? 'bg-amber-300 text-amber-900 dark:bg-amber-400/20 dark:text-amber-100'
-          : 'bg-btn-secondary-fill text-btn-secondary-ink'
-      "
+          : 'bg-btn-secondary-fill text-btn-secondary-ink',
+      ]"
       :title="
         a.note
           ? `${getMemberNameFromMap(a.userId, memberMap)}: ${a.note}`
@@ -80,7 +103,8 @@ function handleAddClick(event: MouseEvent) {
     <button
       v-if="hasEmptySlots"
       type="button"
-      class="text-ink-muted focus-visible:outline-focus hover:bg-surface-sunken hover:text-ink inline-flex size-11 items-center justify-center rounded transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 sm:size-5"
+      class="text-ink-muted focus-visible:outline-focus hover:bg-surface-sunken hover:text-ink inline-flex items-center justify-center rounded transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+      :class="addSizeClass"
       title="Assign member"
       aria-label="Assign member"
       @click="handleAddClick"

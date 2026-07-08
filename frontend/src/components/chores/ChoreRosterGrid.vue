@@ -5,7 +5,7 @@ import type { SortableEvent } from 'vue-draggable-plus'
 import { Bars3Icon, ClockIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import IconButton from '@/components/common/IconButton.vue'
 import ChoreCell from '@/components/chores/ChoreCell.vue'
-import { positionBetween } from '@/utils/position'
+import { positionBetween, positionForReorder } from '@/utils/position'
 import { useChoreRostersStore } from '@/stores/choreRosters'
 import type {
   PoolChore,
@@ -123,17 +123,12 @@ function moveChore(chore: PoolChore, direction: 'left' | 'right') {
   const target = direction === 'left' ? i - 1 : i + 1
   if (target < 0 || target >= list.length) return
 
-  const before =
-    direction === 'left'
-      ? (list[i - 2]?.position ?? null)
-      : list[i + 1]!.position
-  const after =
-    direction === 'left'
-      ? list[i - 1]!.position
-      : (list[i + 2]?.position ?? null)
-
   choreRostersStore.updateChore(props.rosterId, chore.id, {
-    position: positionBetween(before, after),
+    position: positionForReorder(
+      list.map((c) => c.position),
+      i,
+      direction === 'left' ? 'up' : 'down'
+    ),
   })
   reorderAnnouncement.value = `${chore.name} moved to position ${target + 1} of ${list.length}`
 }
