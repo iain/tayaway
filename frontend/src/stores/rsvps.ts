@@ -3,6 +3,10 @@ import { useMutation } from '@/composables/useMutation'
 import { useAuthStore } from './auth'
 import { useObjectPoolStore } from './objectPool'
 import type { PoolApiResponse, PoolRsvp } from '@/types/pool'
+import type { AttendanceEntry } from '@/utils/event'
+
+const entryDate = (entry: AttendanceEntry): string =>
+  typeof entry === 'string' ? entry : entry.date
 
 export const useRsvpsStore = defineStore('rsvps', () => {
   const { loading, error, create, update, destroy } = useMutation()
@@ -16,7 +20,10 @@ export const useRsvpsStore = defineStore('rsvps', () => {
   async function submitRsvp(
     eventId: string,
     attending: boolean,
-    options: { attendance?: string[] | null; onBehalfOfUserId?: string } = {}
+    options: {
+      attendance?: AttendanceEntry[] | null
+      onBehalfOfUserId?: string
+    } = {}
   ) {
     const { onBehalfOfUserId } = options
     const pool = useObjectPoolStore()
@@ -25,10 +32,12 @@ export const useRsvpsStore = defineStore('rsvps', () => {
 
     const days =
       attending && options.attendance && options.attendance.length > 0
-        ? [...options.attendance].sort()
+        ? [...options.attendance].sort((a, b) =>
+            entryDate(a).localeCompare(entryDate(b))
+          )
         : null
-    const startDate = days ? days[0]! : null
-    const endDate = days ? days[days.length - 1]! : null
+    const startDate = days ? entryDate(days[0]!) : null
+    const endDate = days ? entryDate(days[days.length - 1]!) : null
 
     const body: Record<string, unknown> = {
       attending,

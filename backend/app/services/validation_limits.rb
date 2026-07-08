@@ -21,6 +21,10 @@ module ValidationLimits
   # Maximum people per day for chore assignments.
   PEOPLE_PER_DAY_MAX = 50
 
+  # Maximum guests ("+N") an attendee may bring on a single day. Bounded to keep
+  # a day's head count — and thus one person's expense share — sane.
+  PLUS_ONES_PER_DAY_MAX = 20
+
   # Maximum expense amount in euros.
   EXPENSE_AMOUNT_MAX = 1_000_000
 

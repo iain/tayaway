@@ -1,4 +1,4 @@
-import { attendedDates } from '@/utils/event'
+import { attendedDays, type AttendanceEntry } from '@/utils/event'
 
 export interface PreviewTransfer {
   fromUserId: string
@@ -16,7 +16,7 @@ interface ExpenseLike {
 
 interface RsvpLike {
   userId: string
-  attendance?: string[] | null
+  attendance?: AttendanceEntry[] | null
   startDate: string | null
   endDate: string | null
 }
@@ -46,7 +46,7 @@ export function computeBalances(
 
   const rsvpDaySets = rsvps.map((rsvp) => ({
     userId: rsvp.userId,
-    dates: attendedDates(rsvp, eventStartDate, eventEndDate),
+    days: attendedDays(rsvp, eventStartDate, eventEndDate),
   }))
 
   for (const expense of expenses) {
@@ -78,23 +78,25 @@ export function computeBalances(
     }
 
     // RSVP overlap logic (default path). Each attendee's share is proportional
-    // to how many of their attended days fall within the expense's own window.
-    const overlaps: { userId: string; days: number }[] = []
+    // to their head-days within the expense's own window: one attended day is
+    // worth `1 + plusOnes` heads (the attendee plus any guests they bring that
+    // day, absorbed by their host).
+    const overlaps: { userId: string; heads: number }[] = []
 
     for (const rd of rsvpDaySets) {
-      const days = rd.dates.filter(
-        (d) => d >= expense.startDate && d <= expense.endDate
-      ).length
-      if (days > 0) {
-        overlaps.push({ userId: rd.userId, days })
+      const heads = rd.days
+        .filter((d) => d.date >= expense.startDate && d.date <= expense.endDate)
+        .reduce((sum, d) => sum + 1 + d.plusOnes, 0)
+      if (heads > 0) {
+        overlaps.push({ userId: rd.userId, heads })
       }
     }
 
-    const totalOverlapDays = overlaps.reduce((sum, o) => sum + o.days, 0)
-    if (totalOverlapDays === 0) continue
+    const totalHeads = overlaps.reduce((sum, o) => sum + o.heads, 0)
+    if (totalHeads === 0) continue
 
-    for (const { userId, days } of overlaps) {
-      const share = (days / totalOverlapDays) * expense.amount
+    for (const { userId, heads } of overlaps) {
+      const share = (heads / totalHeads) * expense.amount
       shareByUser.set(userId, (shareByUser.get(userId) ?? 0) + share)
     }
   }

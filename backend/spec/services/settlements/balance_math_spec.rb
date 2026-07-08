@@ -54,4 +54,70 @@ RSpec.describe Settlements::BalanceMath do
       expect(balances).to eq({})
     end
   end
+
+  describe ".compute_balances (per-day plus-ones)" do
+    let(:d) { Date.new(2026, 3, 1) }
+
+    # New snapshot shape: each day carries its own guest count. A guest is an
+    # extra head on that day, absorbed by the host — guests hold no balance.
+    def day(date, plus_ones = 0)
+      { "date" => date.to_s, "plus_ones" => plus_ones }
+    end
+
+    def snapshot_days(user_id, days)
+      { "user_id" => user_id, "days" => days }
+    end
+
+    def snapshot_dates(user_id, dates)
+      { "user_id" => user_id, "dates" => dates.map(&:to_s) }
+    end
+
+    it "counts a guest as an extra head on the host's own share" do
+      # €210 over 2 days. Alice present both days with a +1 each day; Bob present
+      # both days alone. Head-days: Alice 4, Bob 2, total 6 → €35/head-day.
+      expense = { id: "e1", user_id: "bob", amount: 210.0, start_date: d, end_date: d + 1 }
+      snap = [
+        snapshot_days("alice", [day(d, 1), day(d + 1, 1)]),
+        snapshot_days("bob", [day(d), day(d + 1)])
+      ]
+
+      balances = described_class.compute_balances(
+        expenses: [expense], current_snapshot: snap, participants_by_expense: {}
+      )
+
+      expect(balances["alice"]).to eq(140.0)
+      expect(balances["bob"]).to eq(-140.0)
+    end
+
+    it "ignores guests on days outside the expense window" do
+      # Expense covers day 1 only. Alice's +1 lands on day 2, so it adds no head
+      # to the split — day 1 is an even 1-for-1 between Alice and Bob.
+      expense = { id: "e1", user_id: "bob", amount: 100.0, start_date: d, end_date: d }
+      snap = [
+        snapshot_days("alice", [day(d, 0), day(d + 1, 5)]),
+        snapshot_days("bob", [day(d)])
+      ]
+
+      balances = described_class.compute_balances(
+        expenses: [expense], current_snapshot: snap, participants_by_expense: {}
+      )
+
+      # 2 heads on day 1 → €50 each; Bob paid 100 → −50, Alice owes 50.
+      expect(balances["alice"]).to eq(50.0)
+      expect(balances["bob"]).to eq(-50.0)
+    end
+
+    it "still reads the legacy flat `dates` snapshot as one head per day" do
+      expense = { id: "e1", user_id: "alice", amount: 100.0, start_date: d, end_date: d + 1 }
+      snap = [snapshot_dates("alice", [d, d + 1]), snapshot_dates("bob", [d])]
+
+      balances = described_class.compute_balances(
+        expenses: [expense], current_snapshot: snap, participants_by_expense: {}
+      )
+
+      # Same as the historical proportional-days split: total 3 head-days.
+      expect(balances["bob"]).to eq(33.33)
+      expect(balances["alice"]).to eq(-33.33)
+    end
+  end
 end

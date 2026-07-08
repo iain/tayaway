@@ -3,6 +3,7 @@ import {
   countNights,
   enumerateDates,
   attendedDates,
+  attendedDays,
   eventHasDates,
   eventIsPlanning,
   eventIsCurrent,
@@ -111,6 +112,43 @@ describe('attendedDates', () => {
         eventEnd
       )
     ).toEqual(['2026-07-01', '2026-07-02', '2026-07-03', '2026-07-04'])
+  })
+})
+
+describe('attendedDays', () => {
+  const eventStart = '2026-07-01'
+  const eventEnd = '2026-07-04'
+
+  it('carries per-day plus-ones and defaults legacy string entries to zero', () => {
+    expect(
+      attendedDays(
+        {
+          attendance: ['2026-07-01', { date: '2026-07-03', plusOnes: 2 }],
+          startDate: '2026-07-01',
+          endDate: '2026-07-03',
+        },
+        eventStart,
+        eventEnd
+      )
+    ).toEqual([
+      { date: '2026-07-01', plusOnes: 0 },
+      { date: '2026-07-03', plusOnes: 2 },
+    ])
+  })
+
+  it('expands a whole-event RSVP to guest-free days', () => {
+    expect(
+      attendedDays(
+        { attendance: null, startDate: null, endDate: null },
+        eventStart,
+        eventEnd
+      )
+    ).toEqual([
+      { date: '2026-07-01', plusOnes: 0 },
+      { date: '2026-07-02', plusOnes: 0 },
+      { date: '2026-07-03', plusOnes: 0 },
+      { date: '2026-07-04', plusOnes: 0 },
+    ])
   })
 })
 

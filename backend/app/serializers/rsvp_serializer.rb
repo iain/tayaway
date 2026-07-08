@@ -11,7 +11,7 @@ class RsvpSerializer
           userId: rsvp.user_id.to_s,
           createdByUserId: rsvp.created_by_user_id&.to_s,
           attending: rsvp.attending,
-          attendance: rsvp.attendance&.map(&:iso8601),
+          attendance: rsvp.attendance&.map { |day| Rsvp.wire_attendance_day(day) },
           startDate: rsvp.start_date&.iso8601,
           endDate: rsvp.end_date&.iso8601,
           createdAt: rsvp.created_at.iso8601(3),

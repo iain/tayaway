@@ -43,7 +43,8 @@ interface PoolCacheDB {
 // Bumped to 12 when chores gained a `time` field; old cached chores lack it.
 // Bumped to 13 when events and workspaces gained a `timezone` field.
 // Bumped to 14 when rsvps gained an `attendance` day-set field.
-const CACHE_VERSION = 14
+// Bumped to 15 when attendance entries gained per-day `{date, plusOnes}` guests.
+const CACHE_VERSION = 15
 
 const CACHE_VERSION_META_KEY = 'cacheVersion'
 const SYNCED_AT_META_PREFIX = 'syncedAt:'

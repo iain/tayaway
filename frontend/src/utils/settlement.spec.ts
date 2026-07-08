@@ -93,6 +93,61 @@ describe('computeBalances', () => {
     expect(balances.get('bob')).toBe(20)
   })
 
+  it('counts a per-day +1 as an extra head absorbed by the host', () => {
+    // Event Jul 1-2. Bob pays €210. Alice attends both days with a +1 each day;
+    // Bob attends both days alone. Head-days: Alice 4, Bob 2, total 6.
+    const start = '2026-07-01'
+    const end = '2026-07-02'
+    const expenses = [
+      { userId: 'bob', startDate: start, endDate: end, amount: 210 },
+    ]
+    const rsvps = [
+      {
+        userId: 'alice',
+        attendance: [
+          { date: '2026-07-01', plusOnes: 1 },
+          { date: '2026-07-02', plusOnes: 1 },
+        ],
+        startDate: start,
+        endDate: end,
+      },
+      { userId: 'bob', attendance: null, startDate: null, endDate: null },
+    ]
+
+    const balances = computeBalances(expenses, rsvps, start, end)
+    // Alice 4/6·210 = 140 owed; Bob 2/6·210 = 70 − 210 paid = −140.
+    expect(balances.get('alice')).toBe(140)
+    expect(balances.get('bob')).toBe(-140)
+  })
+
+  it('ignores a +1 on a day outside the expense window', () => {
+    // Expense covers Jul 1 only. Alice's guest lands on Jul 2, so day 1 is a
+    // plain 1-for-1 split between Alice and Bob.
+    const start = '2026-07-01'
+    const end = '2026-07-02'
+    const expenses = [
+      { userId: 'bob', startDate: start, endDate: start, amount: 100 },
+    ]
+    const rsvps = [
+      {
+        userId: 'alice',
+        attendance: ['2026-07-01', { date: '2026-07-02', plusOnes: 5 }],
+        startDate: start,
+        endDate: end,
+      },
+      {
+        userId: 'bob',
+        attendance: ['2026-07-01'],
+        startDate: start,
+        endDate: start,
+      },
+    ]
+
+    const balances = computeBalances(expenses, rsvps, start, end)
+    expect(balances.get('alice')).toBe(50)
+    expect(balances.get('bob')).toBe(-50)
+  })
+
   it('ignores expenses with no RSVP overlap', () => {
     const expenses = [
       {

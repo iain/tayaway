@@ -5,6 +5,8 @@
 // 2. Add the interface to ObjectTypeMap
 // That's it! PoolObject and ObjectType are derived automatically.
 
+import type { AttendanceEntry } from '@/utils/event'
+
 export type VoteResponse = 'yes' | 'no' | 'preferably_not'
 
 export interface Permission {
@@ -105,9 +107,10 @@ export interface ObjectTypeMap {
     userId: string
     createdByUserId: string | null
     attending: boolean
-    // Explicit "come and go" day set (ISO YYYY-MM-DD). null means "whole event";
-    // startDate/endDate carry the contiguous hull for legacy readers.
-    attendance: string[] | null
+    // Explicit "come and go" day set. null means "whole event"; startDate/endDate
+    // carry the contiguous hull for legacy readers. Each entry is a bare ISO date
+    // string (guest-free day) or `{ date, plusOnes }` when guests come that day.
+    attendance: AttendanceEntry[] | null
     startDate: string | null
     endDate: string | null
     createdAt: string

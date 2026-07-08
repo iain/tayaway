@@ -418,4 +418,116 @@ test.describe('RSVP Feature', () => {
       expect(rsvpsAfter.length).toBe(0)
     })
   })
+
+  test.describe('Per-day plus-ones', () => {
+    test('a +1 on attended days shifts the settlement so the host absorbs the guest', async ({
+      page,
+      playwright,
+    }) => {
+      // Alice (the creator) is auto-RSVPed as attending the whole 7-day event.
+      const { eventId } = await createResolvedEvent(
+        apiContext,
+        'Plus one settlement'
+      )
+      const aliceId = await currentUserId(apiContext)
+
+      // Bob joins the workspace and RSVPs for the whole event, no guests.
+      const bobEmail = 'e2e-rsvp-plusone-b@example.com'
+      const bobContext = await newApiContext(playwright)
+      const { userId: bobId } = await getTestSession(
+        bobContext,
+        bobEmail,
+        'Plus One Bob'
+      )
+      const workspaceId = await getWorkspaceId(apiContext)
+      await addMemberToWorkspace(apiContext, workspaceId, bobEmail)
+      await bobContext.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
+        data: { attending: true },
+      })
+
+      // Alice adds a +1 for every day via the RSVP day picker's "all days"
+      // quick-set. Every event day is preselected, so this materialises the
+      // whole-event set with one guest per day.
+      await setupAuthenticatedPage(page, sessionToken)
+      await page.goto(`/events/${eventId}/rsvp`)
+      await expect(page.getByTestId('rsvp-section')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+
+      await page.getByTestId('rsvp-change-dates').click()
+      // Guests are collapsed by default — expand, then +1 for every day.
+      await expect(
+        page.getByTestId('rsvp-guests-all-increment')
+      ).not.toBeVisible()
+      await page.getByTestId('rsvp-toggle-guests').click()
+      await page.getByTestId('rsvp-guests-all-increment').click()
+
+      const [postResponse] = await Promise.all([
+        page.waitForResponse(
+          (resp) =>
+            resp.url().includes(`/api/events/${eventId}/rsvps`) &&
+            resp.request().method() === 'POST'
+        ),
+        page.getByRole('button', { name: 'Save' }).click(),
+      ])
+      expect(postResponse.ok()).toBeTruthy()
+
+      // Alice's card advertises the guests.
+      await expect(page.getByTestId('rsvp-attendance-guests')).toBeVisible()
+
+      // Backend stored the per-day plus-ones as objects on the day set.
+      const rsvpsResp = await apiContext.get(
+        `${API_BASE}/api/events/${eventId}/rsvps`
+      )
+      const rsvps = getObjectsByType(
+        (await rsvpsResp.json()).objects,
+        'rsvp'
+      ) as Array<{
+        userId: string
+        attendance: Array<string | { date: string; plusOnes: number }> | null
+      }>
+      const aliceRsvp = rsvps.find((r) => r.userId === aliceId)!
+      expect(aliceRsvp.attendance).not.toBeNull()
+      expect(aliceRsvp.attendance!.length).toBe(7)
+      expect(
+        aliceRsvp.attendance!.every(
+          (d) => typeof d === 'object' && d.plusOnes === 1
+        )
+      ).toBe(true)
+
+      // Bob pays a €210 expense covering the whole 7-day event.
+      await bobContext.post(`${API_BASE}/api/expenses`, {
+        data: {
+          event_id: eventId,
+          description: 'Group house',
+          amount: 210,
+          start_date: RESOLVED_EVENT_START,
+          end_date: RESOLVED_EVENT_END,
+        },
+      })
+
+      // Settle. Head-days: Alice 7×(1+1)=14, Bob 7×1=7, total 21. Alice's
+      // share is 14/21·210 = €140 (not the €105 an even, guest-less split
+      // would give), so she owes Bob €140.
+      const settleResp = await apiContext.post(`${API_BASE}/api/settlements`, {
+        data: { event_id: eventId },
+      })
+      expect(settleResp.status()).toBe(201)
+      const transfers = getObjectsByType(
+        (await settleResp.json()).objects,
+        'settlementTransfer'
+      ) as Array<{ fromUserId: string; toUserId: string; amount: number }>
+      expect(transfers.length).toBe(1)
+      expect(transfers[0]!.fromUserId).toBe(aliceId)
+      expect(transfers[0]!.toUserId).toBe(bobId)
+      expect(transfers[0]!.amount).toBeCloseTo(140, 2)
+
+      await bobContext.dispose()
+    })
+  })
 })
+
+async function currentUserId(ctx: APIRequestContext): Promise<string> {
+  const resp = await ctx.get(`${API_BASE}/api/auth/me`)
+  return (await resp.json()).user_id
+}

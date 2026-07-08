@@ -11,7 +11,7 @@ import IconButton from '@/components/common/IconButton.vue'
 import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useExpensesStore } from '@/stores/expenses'
-import { attendedDates } from '@/utils/event'
+import { attendedDays } from '@/utils/event'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import type { PoolExpense, PoolEvent } from '@/types/pool'
 import BaseCard from '@/components/common/BaseCard.vue'
@@ -106,6 +106,7 @@ function formatFactor(factor: number): string {
 interface ExpensePayer {
   name: string
   overlapDays: number
+  guests?: number
   share: number
   factor?: number
 }
@@ -150,33 +151,45 @@ const payers = computed((): ExpensePayer[] => {
     .map((rsvp) => {
       // Count the attendee's actual attended days inside the expense window,
       // so come-and-go gaps aren't billed (matches ExpenseSplit / settlement).
-      const dates = attendedDates(
+      // A day is worth `1 + plusOnes` heads; guests ride on their host's share.
+      const inWindow = attendedDays(
         rsvp,
         props.event.startDate!,
         props.event.endDate!
+      ).filter(
+        (d) =>
+          d.date >= props.expense.startDate && d.date <= props.expense.endDate
       )
-      const overlapDays = dates.filter(
-        (d) => d >= props.expense.startDate && d <= props.expense.endDate
-      ).length
-      if (overlapDays <= 0) return null
+      if (inWindow.length === 0) return null
 
       const m = pool.findBy('member', 'userId', rsvp.userId)
+      const guests = inWindow.reduce((sum, d) => sum + d.plusOnes, 0)
       return {
         name: m?.name ?? m?.email ?? 'Unknown',
-        overlapDays,
+        overlapDays: inWindow.length,
+        guests,
+        heads: inWindow.length + guests,
       }
     })
-    .filter((p): p is { name: string; overlapDays: number } => p !== null)
+    .filter(
+      (
+        p
+      ): p is {
+        name: string
+        overlapDays: number
+        guests: number
+        heads: number
+      } => p !== null
+    )
 
-  const totalOverlapDays = withOverlap.reduce(
-    (sum, p) => sum + p.overlapDays,
-    0
-  )
-  if (totalOverlapDays === 0) return []
+  const totalHeads = withOverlap.reduce((sum, p) => sum + p.heads, 0)
+  if (totalHeads === 0) return []
 
-  return withOverlap.map((p) => ({
-    ...p,
-    share: (p.overlapDays / totalOverlapDays) * props.expense.amount,
+  return withOverlap.map(({ name, overlapDays, guests, heads }) => ({
+    name,
+    overlapDays,
+    guests,
+    share: (heads / totalHeads) * props.expense.amount,
   }))
 })
 
@@ -395,6 +408,9 @@ function handleDelete(e: Event) {
               </td>
               <td v-if="!hasParticipants" class="py-0.5 pr-2">
                 {{ payer.overlapDays }}
+                <span v-if="payer.guests" class="text-ink-faint">
+                  +{{ payer.guests }}
+                </span>
               </td>
               <td class="py-0.5 text-right">
                 <LedgerAmount :amount="payer.share" />

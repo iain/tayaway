@@ -7,6 +7,7 @@ import { useWorkspaceStore } from './workspace'
 import { CommandQueuedError } from '@/stores/commandQueue'
 import type { ObjectTypeMap } from '@/types/pool'
 import type { ApiResponse } from '@/api/client'
+import type { AttendanceEntry } from '@/utils/event'
 
 function makeRsvp(
   overrides: Partial<ObjectTypeMap['rsvp']> = {}
@@ -186,7 +187,7 @@ describe('rsvps store', () => {
       )
       const store = useRsvpsStore()
 
-      let attendanceDuringCall: string[] | null | undefined
+      let attendanceDuringCall: AttendanceEntry[] | null | undefined
       let startDuringCall: string | null | undefined
       enqueueImpl = async () => {
         attendanceDuringCall = pool.get('rsvp', 'rsvp-1')?.attendance
@@ -201,6 +202,33 @@ describe('rsvps store', () => {
       // Sorted day set, with the contiguous hull mirrored onto startDate.
       expect(attendanceDuringCall).toEqual(['2026-03-01', '2026-03-03'])
       expect(startDuringCall).toBe('2026-03-01')
+    })
+
+    it('sorts a guest-bearing day set by date and derives the hull', async () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects(
+        [makeRsvp({ attendance: null, startDate: null, endDate: null })],
+        { scope: Scope.workspace('test') }
+      )
+      const store = useRsvpsStore()
+
+      let attendanceDuringCall: AttendanceEntry[] | null | undefined
+      let endDuringCall: string | null | undefined
+      enqueueImpl = async () => {
+        attendanceDuringCall = pool.get('rsvp', 'rsvp-1')?.attendance
+        endDuringCall = pool.get('rsvp', 'rsvp-1')?.endDate
+        return okResponse({ objects: [] })
+      }
+
+      await store.submitRsvp('evt-1', true, {
+        attendance: [{ date: '2026-03-03', plusOnes: 2 }, '2026-03-01'],
+      })
+
+      expect(attendanceDuringCall).toEqual([
+        '2026-03-01',
+        { date: '2026-03-03', plusOnes: 2 },
+      ])
+      expect(endDuringCall).toBe('2026-03-03')
     })
 
     it('keeps pending update when queued offline', async () => {

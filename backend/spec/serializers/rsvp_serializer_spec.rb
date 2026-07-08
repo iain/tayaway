@@ -38,6 +38,24 @@ RSpec.describe RsvpSerializer do
       expect(result[:endDate]).to eq((Date.today + 2).iso8601)
     end
 
+    it "serializes a guest-bearing day as an object and a guest-free day as a bare string" do
+      event_row = TestFactories.event(workspace: workspace, user: user)
+      DB[:events].where(id: event_row[:id]).update(start_date: Date.today, end_date: Date.today + 2)
+      rsvp_row = TestFactories.rsvp(
+        event: event_row, user: user, attending: true,
+        attendance: [Date.today, { "date" => (Date.today + 1).iso8601, "plusOnes" => 2 }]
+      )
+      rsvp = Rsvp.find(rsvp_row[:id])
+
+      result = described_class.serialize_batch([rsvp], pool: nil).first
+
+      expect(result[:attendance]).to eq([
+                                          Date.today.iso8601,
+                                          { date: (Date.today + 1).iso8601, plusOnes: 2 }
+                                        ]
+                                       )
+    end
+
     it "handles nil dates" do
       event_row = TestFactories.event(workspace: workspace, user: user)
       rsvp_row = TestFactories.rsvp(event: event_row, user: user, attending: false)
