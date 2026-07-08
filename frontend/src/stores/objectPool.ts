@@ -19,6 +19,24 @@ function isNewer(a: string, b: string): boolean {
   return a > b
 }
 
+// A copy carrying viewer-scoped `permissions` is strictly more complete than
+// one without, even at the same version. The personal and workspace syncs
+// serialize the same workspace/member row without and with permissions
+// respectively (permissions depend on the viewer's membership, which only the
+// workspace-scoped path attaches), and both share the row's updatedAt. Without
+// this, whichever copy lands first wins the tie and the permissioned one can be
+// dropped — hiding permission-gated UI like the Invite Members button.
+function upgradesPermissions(
+  incoming: PoolObject,
+  existing: PoolObject
+): boolean {
+  return (
+    incoming.updatedAt === existing.updatedAt &&
+    incoming.permissions != null &&
+    existing.permissions == null
+  )
+}
+
 // Maximum objects inserted per synchronous chunk in replaceScope().
 // The first chunk is always processed synchronously (in the same call frame
 // as the clear) so consumers never observe an empty pool. Subsequent chunks
@@ -464,8 +482,13 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
 
       addObjectScope(obj.id, scope)
 
-      // Update pool object if newer or doesn't exist
-      if (!existing || isNewer(obj.updatedAt, existing.updatedAt)) {
+      // Update pool object if newer, doesn't exist, or the incoming copy adds
+      // permissions the existing same-version copy lacks (see upgradesPermissions)
+      if (
+        !existing ||
+        isNewer(obj.updatedAt, existing.updatedAt) ||
+        upgradesPermissions(obj, existing)
+      ) {
         // Update reverse index: remove old FK entry (if any), add new one
         if (existing) reverseIndexRemove(cascadeIndex, existing)
         reverseIndexAdd(cascadeIndex, obj)
