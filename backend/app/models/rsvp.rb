@@ -26,6 +26,20 @@ class Rsvp < Data.define(:id, :event_id, :user_id, :created_by_user_id, :attendi
   end
 
   class << self
+    # The wire/JSONB shape for one attendance day (`{ date:, plus_ones: }`): a
+    # bare ISO string when guest-free — unchanged from the original come-and-go
+    # shape, so existing rows and pre-plus-ones clients keep reading it — and the
+    # `{ date, plusOnes }` object only when guests come that day. Defined once
+    # here so the serializer (API payload) and Rsvps::Upsert (JSONB persistence)
+    # can't drift out of sync.
+    def wire_attendance_day(day)
+      if day[:plus_ones].positive?
+        { date: day[:date].iso8601, plusOnes: day[:plus_ones] }
+      else
+        day[:date].iso8601
+      end
+    end
+
     def find(id)
       dataset.where(id: id).first
     end

@@ -359,6 +359,15 @@ RSpec.describe Rsvps::Upsert do
     )
     expect(negative.failure?).to be true
     expect(negative.failure.message).to match(/guest/i)
+
+    # A non-integer guest count is a guest problem, not a date-format one.
+    non_integer = described_class.call(
+      event_id: event[:id], membership: membership, user_id: user[:id], attending: true,
+      attendance: [{ "date" => (Date.today + 1).iso8601, "plusOnes" => "abc" }],
+      rsvp_id: SecureRandom.uuid
+    )
+    expect(non_integer.failure?).to be true
+    expect(non_integer.failure.message).to match(/guest/i)
   end
 
   it "rejects a come-and-go day set with dates outside the event range" do

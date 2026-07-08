@@ -27,6 +27,7 @@ import {
   enumerateDates,
   type AttendanceEntry,
 } from '@/utils/event'
+import { formatGuestCount } from '@/utils/format'
 
 // Mirrors backend ValidationLimits::PLUS_ONES_PER_DAY_MAX.
 const PLUS_ONES_MAX = 20
@@ -142,8 +143,7 @@ function attendanceSummary(rsvp: AttendanceLike): string {
 }
 
 function guestSummary(rsvp: AttendanceLike): string {
-  const guests = guestCountFor(rsvp)
-  return `+${guests} guest${guests === 1 ? '' : 's'}`
+  return formatGuestCount(guestCountFor(rsvp))
 }
 
 // Guests brought by everyone currently marked attending — folded into the
@@ -749,9 +749,7 @@ async function handleSaveDays(): Promise<void> {
         <!-- Summary -->
         <p v-if="event.rsvps.length > 0" class="text-ink-muted text-sm">
           {{ attending.length }} attending<span v-if="totalAttendingGuests > 0">
-            (+{{ totalAttendingGuests }} guest{{
-              totalAttendingGuests === 1 ? '' : 's'
-            }})</span
+            ({{ formatGuestCount(totalAttendingGuests) }})</span
           >, {{ notAttending.length }} not attending, {{ noResponse.length }}
           pending
         </p>

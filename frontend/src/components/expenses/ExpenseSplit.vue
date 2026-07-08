@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { CalculatorIcon } from '@heroicons/vue/24/outline'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { attendedDays } from '@/utils/event'
+import { formatGuestCount } from '@/utils/format'
 import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
@@ -125,10 +126,6 @@ const totalGuests = computed(() =>
 function formatDays(days: number): string {
   return `${days} day${days === 1 ? '' : 's'}`
 }
-
-function formatGuests(guests: number): string {
-  return `+${guests} guest${guests === 1 ? '' : 's'}`
-}
 </script>
 
 <template>
@@ -164,7 +161,7 @@ function formatGuests(guests: number): string {
             <td class="text-ink-muted hidden py-2 pr-4 sm:table-cell">
               {{ formatDays(row.days) }}
               <span v-if="row.guests > 0" class="text-ink-faint">
-                · {{ formatGuests(row.guests) }}
+                · {{ formatGuestCount(row.guests) }}
               </span>
             </td>
             <td class="text-ink-muted py-2 pr-4 text-right whitespace-nowrap">
@@ -199,7 +196,7 @@ function formatGuests(guests: number): string {
             <td class="text-ink-muted hidden pt-2 pr-4 pb-3 sm:table-cell">
               {{ formatDays(totalDays) }}
               <span v-if="totalGuests > 0" class="text-ink-faint">
-                · {{ formatGuests(totalGuests) }}
+                · {{ formatGuestCount(totalGuests) }}
               </span>
             </td>
             <td class="text-ink-muted pt-2 pr-4 pb-3 text-right">

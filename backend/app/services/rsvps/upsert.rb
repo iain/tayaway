@@ -114,11 +114,13 @@ module Rsvps
         return Failure(ServiceError.validation("attendance must be a list of dates")) unless attendance.is_a?(Array)
 
         begin
-          # ArgumentError covers both Date.parse and Integer() failures
-          # (Date::Error is a subclass of ArgumentError).
           days = attendance.map { |entry| parse_attendance_day(entry) }
-        rescue ArgumentError, TypeError
+        rescue Date::Error, TypeError
           return Failure(ServiceError.validation("Invalid date format"))
+        rescue ArgumentError
+          # A date failure raises Date::Error (caught above), so a bare
+          # ArgumentError here is `Integer()` choking on a non-numeric plusOnes.
+          return Failure(ServiceError.validation(guest_range_message))
         end
 
         days = days
@@ -127,9 +129,7 @@ module Rsvps
                .sort_by { |day| day[:date] }
 
         if days.any? { |day| day[:plus_ones].negative? || day[:plus_ones] > ValidationLimits::PLUS_ONES_PER_DAY_MAX }
-          return Failure(
-            ServiceError.validation("Guests per day must be between 0 and #{ValidationLimits::PLUS_ONES_PER_DAY_MAX}")
-          )
+          return Failure(ServiceError.validation(guest_range_message))
         end
 
         dates = days.map { |day| day[:date] }
@@ -158,15 +158,8 @@ module Rsvps
         end
       end
 
-      # Store a day guest-free as a bare ISO string (unchanged from the original
-      # come-and-go shape) and only reach for the `{date, plusOnes}` object when
-      # there are guests — keeps existing rows and old clients untouched.
-      def serialize_attendance_day(day)
-        if day[:plus_ones].positive?
-          { "date" => day[:date].iso8601, "plusOnes" => day[:plus_ones] }
-        else
-          day[:date].iso8601
-        end
+      def guest_range_message
+        "Guests per day must be between 0 and #{ValidationLimits::PLUS_ONES_PER_DAY_MAX}"
       end
 
       def resolve_legacy_range(event, start_date, end_date)
@@ -194,7 +187,7 @@ module Rsvps
         attendance = resolved[:attendance]
         start_date = resolved[:start_date]
         end_date = resolved[:end_date]
-        attendance_json = attendance ? Sequel.pg_jsonb(attendance.map { |day| serialize_attendance_day(day) }) : nil
+        attendance_json = attendance ? Sequel.pg_jsonb(attendance.map { |day| Rsvp.wire_attendance_day(day) }) : nil
 
         row = nil
         DB.transaction do
