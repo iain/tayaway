@@ -455,6 +455,11 @@ test.describe('RSVP Feature', () => {
       })
 
       await page.getByTestId('rsvp-change-dates').click()
+      // Guests are collapsed by default — expand, then +1 for every day.
+      await expect(
+        page.getByTestId('rsvp-guests-all-increment')
+      ).not.toBeVisible()
+      await page.getByTestId('rsvp-toggle-guests').click()
       await page.getByTestId('rsvp-guests-all-increment').click()
 
       const [postResponse] = await Promise.all([

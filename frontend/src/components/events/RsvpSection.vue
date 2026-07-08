@@ -5,6 +5,7 @@ import {
   UserIcon,
   UserPlusIcon,
   CalendarDaysIcon,
+  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
 } from '@heroicons/vue/24/outline'
@@ -59,6 +60,9 @@ const showDayPicker = ref(false)
 // day. The calendar's selected-day set is just the keys.
 const dayGuests = ref<Map<string, number>>(new Map())
 const selectedDays = computed(() => [...dayGuests.value.keys()].sort())
+// The per-day guest steppers stay collapsed by default — bringing a +1 is the
+// exception — and auto-expand when the RSVP already has guests.
+const showGuests = ref(false)
 // Subject of the day picker. `null` means current user (the existing self-RSVP
 // flow); set to another user id when an admin edits someone else's attendance.
 const dayPickerUserId = ref<string | null>(null)
@@ -238,6 +242,7 @@ function openDayPicker(forUserId?: string): void {
       ? attendedDays(rsvp, props.event.startDate, props.event.endDate)
       : eventDays.value.map((date) => ({ date, plusOnes: 0 }))
   dayGuests.value = new Map(preset.map((d) => [d.date, d.plusOnes]))
+  showGuests.value = preset.some((d) => d.plusOnes > 0)
 
   // Navigate to the month of the event start
   if (props.event.startDate) {
@@ -491,10 +496,30 @@ async function handleSaveDays(): Promise<void> {
           @select-range="selectDayRange"
         />
 
-        <!-- Per-day guests -->
+        <!-- Per-day guests — collapsed by default, since a +1 is the exception -->
         <div v-if="selectedDays.length > 0" class="mt-5">
-          <div class="mb-2 flex items-center justify-between">
-            <span class="text-ink text-sm font-medium">Guests per day</span>
+          <button
+            type="button"
+            data-testid="rsvp-toggle-guests"
+            :aria-expanded="showGuests"
+            class="text-ink hover:text-ink focus-visible:outline-focus flex w-full cursor-pointer items-center justify-between rounded text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2"
+            @click="showGuests = !showGuests"
+          >
+            <span>
+              Guests
+              <span v-if="totalPickerGuests > 0" class="text-ink-muted">
+                (+{{ totalPickerGuests }})
+              </span>
+            </span>
+            <ChevronDownIcon
+              class="size-4 transition-transform"
+              :class="showGuests ? 'rotate-180' : ''"
+            />
+          </button>
+        </div>
+
+        <div v-if="showGuests && selectedDays.length > 0" class="mt-3">
+          <div class="mb-2 flex items-center justify-end">
             <div class="flex items-center gap-1">
               <button
                 type="button"
