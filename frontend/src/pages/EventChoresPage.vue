@@ -7,8 +7,10 @@ import { useObjectPoolStore } from '@/stores/objectPool'
 import { useChoreRostersStore } from '@/stores/choreRosters'
 import { api } from '@/api/client'
 import ChoreRosterGrid from '@/components/chores/ChoreRosterGrid.vue'
+import ChoreRosterDayList from '@/components/chores/ChoreRosterDayList.vue'
 import ChoreSummaryTable from '@/components/chores/ChoreSummaryTable.vue'
 import ChoreRosterToolbar from '@/components/chores/ChoreRosterToolbar.vue'
+import ManageChoresSheet from '@/components/chores/ManageChoresSheet.vue'
 import AssignMemberPopover from '@/components/chores/AssignMemberPopover.vue'
 import EditAssignmentPopover from '@/components/chores/EditAssignmentPopover.vue'
 import EditChoreTimePopover from '@/components/chores/EditChoreTimePopover.vue'
@@ -19,6 +21,7 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import TextButton from '@/components/common/TextButton.vue'
 import FormInput from '@/components/form/FormInput.vue'
 import { TEXT_LIMITS } from '@/constants/limits'
+import { useMediaQuery } from '@/composables/useMediaQuery'
 import { ClipboardDocumentListIcon } from '@heroicons/vue/24/outline'
 import type {
   PoolApiResponse,
@@ -112,6 +115,11 @@ const choreTimePopover = ref<{
 const confirmDeleteChoreId = ref<string | null>(null)
 const confirmAutofill = ref(false)
 const showDeleteActions = ref(false)
+const showManageChores = ref(false)
+
+// The roster is a dates x chores matrix on desktop and a day-first stack on the
+// phone. Rendering exactly one keeps the two from ever colliding in the DOM.
+const isDesktop = useMediaQuery('(min-width: 768px)')
 
 const memberMap = computed(() => {
   const map = new Map<string, PoolMember>()
@@ -266,6 +274,14 @@ function handleDeleteRoster() {
   showDeleteActions.value = true
 }
 
+function handleManageChores() {
+  if (!userIsAttending.value) {
+    showRsvpDialog.value = true
+    return
+  }
+  showManageChores.value = true
+}
+
 async function handleClearUnpinned() {
   if (!roster.value) return
   await choreRostersStore.clearUnpinned(roster.value.id)
@@ -334,11 +350,13 @@ onMounted(async () => {
           @add-chore="openAddChore"
           @autofill="handleAutofillClick"
           @delete-roster="handleDeleteRoster"
+          @manage-chores="handleManageChores"
         />
       </PageHeader>
 
       <div v-if="chores.length > 0">
         <ChoreRosterGrid
+          v-if="isDesktop"
           :chores="chores"
           :assignments="assignments"
           :dates="eventDates"
@@ -350,6 +368,16 @@ onMounted(async () => {
           @edit-assignment="openEditAssignment"
           @edit-chore-time="openEditChoreTime"
           @delete-chore="handleDeleteChore"
+        />
+        <ChoreRosterDayList
+          v-else
+          :chores="chores"
+          :assignments="assignments"
+          :dates="eventDates"
+          :members="members"
+          :current-user-id="currentUserId"
+          @assign="openAssign"
+          @edit-assignment="openEditAssignment"
         />
 
         <ChoreSummaryTable
@@ -373,11 +401,11 @@ onMounted(async () => {
       <!-- Inline add chore form -->
       <div v-if="showAddChoreForm" class="mt-4">
         <form
-          class="flex flex-wrap items-end gap-3"
+          class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end"
           @submit.prevent="handleAddChoreSubmit"
           @keyup.escape="cancelAddChore"
         >
-          <div class="min-w-0 flex-1">
+          <div class="min-w-0 sm:flex-1">
             <FormInput
               id="new-chore-name"
               v-model="newChoreName"
@@ -388,29 +416,31 @@ onMounted(async () => {
               @blur="handleAddChoreBlur"
             />
           </div>
-          <div class="w-20 shrink-0">
-            <FormInput
-              id="new-chore-ppd"
-              v-model="newChorePpd"
-              label="People/day"
-              type="number"
-              min="1"
-              max="50"
-              :disabled="addChoreSubmitting"
-            />
-          </div>
-          <div class="w-28 shrink-0">
-            <FormInput
-              id="new-chore-time"
-              v-model="newChoreTime"
-              label="Time (optional)"
-              type="time"
-              :disabled="addChoreSubmitting"
-            />
+          <div class="flex gap-3">
+            <div class="w-20 shrink-0">
+              <FormInput
+                id="new-chore-ppd"
+                v-model="newChorePpd"
+                label="People/day"
+                type="number"
+                min="1"
+                max="50"
+                :disabled="addChoreSubmitting"
+              />
+            </div>
+            <div class="w-28 shrink-0">
+              <FormInput
+                id="new-chore-time"
+                v-model="newChoreTime"
+                label="Time (optional)"
+                type="time"
+                :disabled="addChoreSubmitting"
+              />
+            </div>
           </div>
           <AppButton
             type="submit"
-            size="sm"
+            class="w-full sm:w-auto"
             :disabled="!newChoreName.trim()"
             :loading="addChoreSubmitting"
             loading-label="Adding..."
@@ -448,6 +478,14 @@ onMounted(async () => {
         :anchor-el="choreTimePopover.anchorEl"
         :roster-id="roster.id"
         @close="closeEditChoreTime"
+      />
+
+      <ManageChoresSheet
+        v-if="showManageChores"
+        :open="showManageChores"
+        :chores="chores"
+        :roster-id="roster.id"
+        @close="showManageChores = false"
       />
     </div>
 

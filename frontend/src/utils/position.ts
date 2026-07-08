@@ -11,3 +11,21 @@ export function positionBetween(
   if (after === null) return before + 1.0
   return (before + after) / 2
 }
+
+/**
+ * Computes the position that moves the item at `index` one step in `direction`,
+ * hopping it past its immediate neighbour. `positions` is the current ordering.
+ * Returns the item's existing position (a no-op) when it's already at that end.
+ */
+export function positionForReorder(
+  positions: number[],
+  index: number,
+  direction: 'up' | 'down'
+): number {
+  if (direction === 'up') {
+    if (index <= 0) return positions[index]!
+    return positionBetween(positions[index - 2] ?? null, positions[index - 1]!)
+  }
+  if (index >= positions.length - 1) return positions[index]!
+  return positionBetween(positions[index + 1]!, positions[index + 2] ?? null)
+}
