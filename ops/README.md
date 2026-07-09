@@ -232,12 +232,14 @@ One prerequisite the provision can't do for you:
 - **GHCR login** — `backend`/`edge` are private packages. Put a
   `read:packages` PAT in `ops/secrets.yaml` (`sops ops/secrets.yaml`,
   add `GHCR_USER` and `GHCR_PULL_TOKEN`) and `vm:provision` logs the VPS
-  in for you on every run — no manual step, and it re-establishes after
-  a reboot's next deploy. Without those keys, log in by hand once
-  (rootful podman, so as root):
+  in for you on every run — no manual step. The token is written to a
+  persistent, root-only authfile (`/var/lib/tayaway/ghcr-auth.json`) so
+  the pull-based self-deploy keeps authenticating after a reboot instead
+  of paging until the next deploy. Without those keys, log in by hand
+  once (rootful podman, so as root) — pointing at that same authfile:
 
   ```fish
-  ssh tayaway.nl 'sudo podman login ghcr.io -u <github-user>'
+  ssh tayaway.nl 'sudo podman login ghcr.io -u <github-user> --authfile /var/lib/tayaway/ghcr-auth.json'
   ```
 
 - **Bump the image SHAs** in `images.txt` and `quadlet/*.container` to
@@ -273,8 +275,8 @@ The whole VPS is gone or unrecoverable.
 6. `mise run vm:provision tayaway@<ip>` — does quadlets + ssh
    hardening (step 6).
 7. Update `~/.ssh/config` with the printed Port 50022 block (step 7).
-8. `sudo podman login ghcr.io`, then `systemctl start geoip edge`
-   (step 8).
+8. `sudo podman login ghcr.io --authfile /var/lib/tayaway/ghcr-auth.json`,
+   then `systemctl start geoip edge` (step 8).
 9. WAL-G restore — see **Restore from backup** in [`RUNBOOK.md`](RUNBOOK.md).
 
 ~20 min, four or five commands of human work plus the OVH-manager
