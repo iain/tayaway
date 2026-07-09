@@ -23,6 +23,16 @@ QUADLET_DIR=/etc/containers/systemd
 STATE_DIR=/var/lib/tayaway
 LAST_BAD="$STATE_DIR/self-deploy-last-bad"
 
+# Persistent GHCR pull credential. provision.sh/deploy.sh write it here with
+# `podman login --authfile`; pointing skopeo/podman at it — instead of the
+# rootful default under tmpfs (/run/containers/0/auth.json) — is what lets
+# unattended CD survive a reboot. The tmpfs auth is wiped on every boot, and
+# nothing re-logs-in until an operator re-runs deploy.sh, so the timer would
+# otherwise fail to resolve :main and page every few minutes until then.
+# Exported so both `skopeo inspect` and `podman pull` below pick it up, and a
+# manual run of this script behaves identically to the timer.
+export REGISTRY_AUTH_FILE="$STATE_DIR/ghcr-auth.json"
+
 # Image-pinned quadlets this rewrites. db is excluded — it has its own SHA
 # lifecycle, exactly as in ops/deploy.sh.
 FILES=(
@@ -81,7 +91,7 @@ mkdir -p "$STATE_DIR"
 
 # ── Resolve what main wants ───────────────────────────────────────────────────
 # skopeo --format avoids parsing JSON (no jq on this box); the revision label
-# is stamped by images.yml. Uses the box's persistent GHCR login.
+# is stamped by images.yml. Authenticates via $REGISTRY_AUTH_FILE (see top).
 target=$(skopeo inspect --format '{{ index .Labels "org.opencontainers.image.revision" }}' \
   "docker://$REGISTRY/tayaway-backend:$TARGET_TAG" 2>/dev/null || true)
 if ! valid_sha "$target"; then

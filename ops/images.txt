@@ -4,8 +4,9 @@
 # units. (The smoke-test + auto-rollback deploy script is a later phase.)
 #
 # backend + edge are private GHCR packages — the VPS needs
-# `sudo podman login ghcr.io` once before these pull. geoip is built from
-# containers/Containerfile.geoip and shares the same per-commit SHA.
+# `sudo podman login ghcr.io --authfile /var/lib/tayaway/ghcr-auth.json` once
+# before these pull. geoip is built from containers/Containerfile.geoip and
+# shares the same per-commit SHA.
 ghcr.io/iain/tayaway-backend:e70495c3637da5b0a33a88e6079e03e30ad23bea
 ghcr.io/iain/tayaway-edge:e70495c3637da5b0a33a88e6079e03e30ad23bea
 ghcr.io/iain/tayaway-geoip:e70495c3637da5b0a33a88e6079e03e30ad23bea

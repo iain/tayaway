@@ -408,20 +408,21 @@ EOF
 # backend/edge are private packages. Decrypt a read:packages token from
 # ops/secrets.yaml *locally* (operator key) and pipe it to the VPS's
 # `podman login` over ssh stdin — so the token only ever lands in the box's
-# auth.json, never in a container env or a VM-readable file. Re-run on every
-# provision (and thus every deploy), which is when pulls actually happen;
-# the auth lives in tmpfs and is lost on reboot, but reboots don't pull
-# (images persist on disk). Skipped cleanly if the keys aren't set yet.
+# auth.json, never in a container env or a world-readable file. Write it to a
+# persistent, root-only authfile (--authfile, mode 0600) rather than podman's
+# rootful tmpfs default: self-deploy's timer polls GHCR every few minutes, so
+# the auth has to outlive a reboot or the pull-based CD fails every tick and
+# pages until an operator redeploys. Skipped cleanly if the keys aren't set.
 
 step "Logging the VPS in to GHCR (if a pull token is configured)"
 ghcr_user=$(mise x sops -- sops decrypt --extract '["GHCR_USER"]' "$OPS_DIR/secrets.yaml" 2>/dev/null || true)
 ghcr_token=$(mise x sops -- sops decrypt --extract '["GHCR_PULL_TOKEN"]' "$OPS_DIR/secrets.yaml" 2>/dev/null || true)
 if [ -n "$ghcr_user" ] && [ -n "$ghcr_token" ]; then
-  printf '%s' "$ghcr_token" | ssh_run "sudo podman login ghcr.io -u '$ghcr_user' --password-stdin"
+  printf '%s' "$ghcr_token" | ssh_run "sudo podman login ghcr.io -u '$ghcr_user' --password-stdin --authfile /var/lib/tayaway/ghcr-auth.json"
   echo "  logged in to ghcr.io as $ghcr_user"
 else
   echo "  no GHCR_USER/GHCR_PULL_TOKEN in ops/secrets.yaml — skipping"
-  echo "  (private-image pulls will need a one-time 'sudo podman login ghcr.io' on the VPS)"
+  echo "  (private-image pulls will need a one-time 'sudo podman login ghcr.io --authfile /var/lib/tayaway/ghcr-auth.json' on the VPS)"
 fi
 
 # ── 4. Push quadlet units ───────────────────────────────────────────────────
@@ -472,15 +473,15 @@ if [ -f "$OPS_DIR/images.txt" ]; then
     case "$image" in \#*) continue ;; esac
     echo "  pulling $image"
     # Non-fatal: backend/edge are private GHCR packages, so a fresh box
-    # needs `sudo podman login ghcr.io` first. Pull=missing in the
-    # quadlets retries at service start anyway, so a failed pre-pull
+    # needs the persistent authfile written by step 3e above. Pull=missing
+    # in the quadlets retries at service start anyway, so a failed pre-pull
     # shouldn't abort the whole (otherwise idempotent) provision.
-    ssh_run "sudo podman pull '$image'" || pull_failed=1
+    ssh_run "sudo podman pull --authfile /var/lib/tayaway/ghcr-auth.json '$image'" || pull_failed=1
   done <"$OPS_DIR/images.txt"
   if [ "$pull_failed" = "1" ]; then
     echo "  ⚠ one or more pulls failed — if these are the private GHCR images," >&2
     echo "    log the VPS in once (read:packages PAT) and re-run:" >&2
-    echo "    ssh $TARGET 'sudo podman login ghcr.io -u <github-user>'" >&2
+    echo "    ssh $TARGET 'sudo podman login ghcr.io -u <github-user> --authfile /var/lib/tayaway/ghcr-auth.json'" >&2
   fi
 else
   echo "→ ops/images.txt absent — skipping pre-pull"

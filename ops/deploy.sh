@@ -162,13 +162,14 @@ rollback() {
 }
 
 # ── 1. Pre-flight: pull the target images (fail before touching the stack) ────
-# Re-login to GHCR first (the auth lives in tmpfs and is lost on reboot);
-# best-effort, mirroring provision.sh — the box is usually already logged in.
+# Refresh the persistent GHCR authfile (/var/lib/tayaway/ghcr-auth.json, which
+# self-deploy also reads); best-effort, mirroring provision.sh — the box is
+# usually already logged in.
 step "Logging the box in to GHCR (if a pull token is configured)"
 ghcr_user=$(mise x sops -- sops decrypt --extract '["GHCR_USER"]' "$OPS_DIR/secrets.yaml" 2>/dev/null || true)
 ghcr_token=$(mise x sops -- sops decrypt --extract '["GHCR_PULL_TOKEN"]' "$OPS_DIR/secrets.yaml" 2>/dev/null || true)
 if [ -n "$ghcr_user" ] && [ -n "$ghcr_token" ]; then
-  printf '%s' "$ghcr_token" | ssh_run "sudo podman login ghcr.io -u '$ghcr_user' --password-stdin" >/dev/null
+  printf '%s' "$ghcr_token" | ssh_run "sudo podman login ghcr.io -u '$ghcr_user' --password-stdin --authfile /var/lib/tayaway/ghcr-auth.json" >/dev/null
   echo "  logged in as $ghcr_user"
 else
   echo "  no GHCR creds in ops/secrets.yaml — assuming the box is already logged in"
@@ -179,7 +180,7 @@ pull_ok=1
 for repo in tayaway-backend tayaway-edge tayaway-geoip; do
   image="ghcr.io/iain/$repo:$SHA"
   echo "  $image"
-  ssh_run "sudo podman pull '$image'" >/dev/null || pull_ok=0
+  ssh_run "sudo podman pull --authfile /var/lib/tayaway/ghcr-auth.json '$image'" >/dev/null || pull_ok=0
 done
 if [ "$pull_ok" != "1" ]; then
   echo "ERROR: one or more images for $SHA could not be pulled." >&2
