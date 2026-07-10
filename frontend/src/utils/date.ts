@@ -33,6 +33,16 @@ export function formatDateDisplay(dateString: string): string {
   })
 }
 
+/** "Sat, Mar 10" — weekday + date, the chore-roster day label */
+export function formatDayHeader(dateString: string): string {
+  const date = parseDate(dateString)
+  return date.toLocaleDateString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  })
+}
+
 /** "Jan 1, 2024" — date without weekday */
 export function formatDateShort(dateString: string): string {
   const date = parseDate(dateString)

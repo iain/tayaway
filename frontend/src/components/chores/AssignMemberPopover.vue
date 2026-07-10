@@ -1,18 +1,20 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
+import { CheckIcon } from '@heroicons/vue/20/solid'
 import { useChoreRostersStore } from '@/stores/choreRosters'
 import AnchoredPopover from '@/components/common/AnchoredPopover.vue'
 import type {
+  PoolChore,
   PoolMember,
   PoolRsvp,
   PoolChoreAssignment,
   PoolEvent,
 } from '@/types/pool'
-import { TEXT_LIMITS } from '@/constants/limits'
 import { attendedDates } from '@/utils/event'
+import { formatDayHeader } from '@/utils/date'
 
 const props = defineProps<{
-  choreId: string
+  chore: PoolChore
   date: string
   anchorEl: HTMLElement
   rosterId: string
@@ -27,36 +29,25 @@ const emit = defineEmits<{
 }>()
 
 const choreRostersStore = useChoreRostersStore()
-const note = ref('')
 
-// Users available on this date (attending RSVP covering this date)
-const availableMembers = computed(() => {
+// Members attending on this date (attending RSVP covering this date)
+const attendingMembers = computed(() => {
   const eventStart = props.event.startDate
   const eventEnd = props.event.endDate
-  const dateVal = props.date
 
   const attendingUserIds = new Set<string>()
   if (eventStart && eventEnd) {
     for (const rsvp of props.rsvps) {
       // Use the attendee's actual day set so come-and-go gap days aren't
       // offered — matches the backend autofill availability.
-      if (attendedDates(rsvp, eventStart, eventEnd).includes(dateVal)) {
+      if (attendedDates(rsvp, eventStart, eventEnd).includes(props.date)) {
         attendingUserIds.add(rsvp.userId)
       }
     }
   }
 
-  // Filter out already assigned to this chore on this date
-  const alreadyAssigned = new Set(
-    props.assignments
-      .filter((a) => a.choreId === props.choreId && a.date === props.date)
-      .map((a) => a.userId)
-  )
-
   return props.members
-    .filter(
-      (m) => attendingUserIds.has(m.userId) && !alreadyAssigned.has(m.userId)
-    )
+    .filter((m) => attendingUserIds.has(m.userId))
     .sort((a, b) => {
       const nameA = a.name ?? a.email
       const nameB = b.name ?? b.email
@@ -68,15 +59,38 @@ function getMemberDisplayName(member: PoolMember): string {
   return member.name ?? member.email.split('@')[0] ?? member.email
 }
 
-async function handleSelect(userId: string) {
-  await choreRostersStore.createAssignment(
-    props.rosterId,
-    props.choreId,
-    userId,
-    props.date,
-    note.value.trim() || undefined
-  )
-  emit('close')
+// This slot's assignments keyed by user, so a member row can flip between
+// "assign" and "remove" and show its check.
+const slotAssignments = computed(() => {
+  const map = new Map<string, PoolChoreAssignment>()
+  for (const a of props.assignments) {
+    if (a.choreId === props.chore.id && a.date === props.date) {
+      map.set(a.userId, a)
+    }
+  }
+  return map
+})
+
+const spotsLeft = computed(
+  () => props.chore.peoplePerDay - slotAssignments.value.size
+)
+
+async function handleToggle(userId: string) {
+  const existing = slotAssignments.value.get(userId)
+  if (existing) {
+    await choreRostersStore.deleteAssignment(props.rosterId, existing.id)
+  } else if (spotsLeft.value > 0) {
+    const wasLastSpot = spotsLeft.value === 1
+    await choreRostersStore.createAssignment(
+      props.rosterId,
+      props.chore.id,
+      userId,
+      props.date
+    )
+    if (wasLastSpot) {
+      emit('close')
+    }
+  }
 }
 </script>
 
@@ -86,32 +100,38 @@ async function handleSelect(userId: string) {
     aria-label="Assign member"
     @close="emit('close')"
   >
-    <p class="text-ink-muted mb-2 text-xs font-medium">Assign member</p>
+    <div class="mb-2">
+      <p class="text-ink text-sm font-medium">{{ chore.name }}</p>
+      <p class="text-ink-muted text-xs">
+        {{ formatDayHeader(date)
+        }}<template v-if="chore.peoplePerDay > 1">
+          · {{ spotsLeft }}
+          {{ spotsLeft === 1 ? 'spot' : 'spots' }} left</template
+        >
+      </p>
+    </div>
 
-    <input
-      v-model="note"
-      type="text"
-      placeholder="Note (optional)"
-      aria-label="Note (optional)"
-      :maxlength="TEXT_LIMITS.shortText"
-      class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus mb-2 block w-full rounded-md px-2 py-1 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2 sm:text-sm"
-    />
-
-    <div class="max-h-48 overflow-y-auto">
+    <div class="max-h-56 overflow-y-auto">
       <button
-        v-for="member in availableMembers"
+        v-for="member in attendingMembers"
         :key="member.id"
         type="button"
-        class="text-ink focus-visible:outline-focus hover:bg-surface-sunken flex w-full cursor-pointer items-center rounded-md px-2 py-1.5 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
-        @click="handleSelect(member.userId)"
+        class="text-ink focus-visible:outline-focus hover:bg-surface-sunken flex w-full cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+        :aria-label="`${slotAssignments.has(member.userId) ? 'Remove' : 'Assign'} ${getMemberDisplayName(member)}`"
+        @click="handleToggle(member.userId)"
       >
-        {{ getMemberDisplayName(member) }}
+        <span class="truncate">{{ getMemberDisplayName(member) }}</span>
+        <CheckIcon
+          v-if="slotAssignments.has(member.userId)"
+          class="text-state-success-ink size-4 shrink-0"
+          aria-hidden="true"
+        />
       </button>
       <p
-        v-if="availableMembers.length === 0"
+        v-if="attendingMembers.length === 0"
         class="text-ink-muted py-2 text-center text-xs"
       >
-        No available members
+        No one is attending this day
       </p>
     </div>
   </AnchoredPopover>

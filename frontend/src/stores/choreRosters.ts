@@ -122,8 +122,7 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
     rosterId: string,
     choreId: string,
     userId: string,
-    date: string,
-    note?: string
+    date: string
   ) {
     const assignmentId = crypto.randomUUID()
     const now = new Date().toISOString()
@@ -134,7 +133,7 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
       userId,
       date,
       pinned: true,
-      note: note ?? null,
+      note: null,
       createdAt: now,
       updatedAt: now,
     }
@@ -150,7 +149,6 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
             chore_id: choreId,
             user_id: userId,
             date,
-            note,
             id: assignmentId,
           }
         )

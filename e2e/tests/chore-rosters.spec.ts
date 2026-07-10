@@ -582,8 +582,9 @@ test.describe('Chore Rosters Feature', () => {
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
-      // Click Auto-fill — now requires confirmation
-      await page.getByRole('button', { name: 'Auto-fill' }).click()
+      // Click the toolbar Auto-fill (exact: the nudge card's "Auto-fill
+      // roster" button would substring-match) — now requires confirmation
+      await page.getByRole('button', { name: 'Auto-fill', exact: true }).click()
       const [autofillResp] = await Promise.all([
         page.waitForResponse(
           (resp) =>
@@ -620,25 +621,26 @@ test.describe('Chore Rosters Feature', () => {
       // Click a "+" button on the first empty slot
       await page.getByTitle('Assign member').first().click()
 
-      // Popover should appear with "Assign member" label
-      await expect(page.locator('text=Assign member').last()).toBeVisible()
+      // Popover header names the chore being assigned
+      await expect(
+        page.locator('.fixed.z-50').getByText('Cleaning')
+      ).toBeVisible()
 
-      // Add a note
-      await page.getByPlaceholder('Note (optional)').fill('Deep clean')
-
-      // Click the user's name to assign
+      // Tap the member to assign them
       const [assignResp] = await Promise.all([
         page.waitForResponse(
           (resp) =>
             resp.url().includes('/assignments') &&
             resp.request().method() === 'POST'
         ),
-        page.getByRole('button', { name: TEST_NAME }).click(),
+        page.getByRole('button', { name: `Assign ${TEST_NAME}` }).click(),
       ])
       expect(assignResp.status()).toBe(201)
 
-      // Assignment should appear in the grid with the note in the title
-      await expect(page.locator('[title*="Deep clean"]').first()).toBeVisible()
+      // Hand-picked assignments are pinned so autofill won't move them
+      await expect(
+        page.locator('button[aria-label*="pinned"]').first()
+      ).toBeVisible()
     })
 
     test('delete chore shows confirmation and removes from grid', async ({
@@ -704,8 +706,8 @@ test.describe('Chore Rosters Feature', () => {
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
-      // Click Auto-fill — should show confirmation
-      await page.getByRole('button', { name: 'Auto-fill' }).click()
+      // Click the toolbar Auto-fill — should show confirmation
+      await page.getByRole('button', { name: 'Auto-fill', exact: true }).click()
       await expect(
         page.getByText('clear all non-pinned assignments', { exact: false })
       ).toBeVisible()
@@ -726,6 +728,42 @@ test.describe('Chore Rosters Feature', () => {
 
       // Assignments should appear
       await expect(page.getByText(TEST_NAME).first()).toBeVisible()
+    })
+
+    test('autofill nudge on a sparse roster runs without confirmation', async ({
+      page,
+    }) => {
+      const { eventId } = await createResolvedEvent(
+        apiContext,
+        `Autofill Nudge ${uid}`
+      )
+      const rosterId = await createRoster(apiContext, eventId)
+      await addChore(apiContext, rosterId, 'Cooking')
+
+      await setupAuthenticatedPage(page, sessionToken)
+      await page.goto(`/events/${eventId}/chores`)
+
+      await expect(page.getByText('Cooking')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+
+      // An empty roster has nothing unpinned to clear, so the nudge's button
+      // runs autofill directly, without the confirm dialog
+      const [autofillResp] = await Promise.all([
+        page.waitForResponse(
+          (resp) =>
+            resp.url().includes('/autofill') &&
+            resp.request().method() === 'POST'
+        ),
+        page.getByRole('button', { name: 'Auto-fill roster' }).click(),
+      ])
+      expect(autofillResp.ok()).toBeTruthy()
+
+      await expect(page.getByText(TEST_NAME).first()).toBeVisible()
+      // The filled roster no longer needs the nudge
+      await expect(
+        page.getByRole('button', { name: 'Auto-fill roster' })
+      ).not.toBeVisible()
     })
 
     test('can edit assignment note via popover', async ({ page }) => {
