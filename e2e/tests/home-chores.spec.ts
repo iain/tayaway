@@ -9,15 +9,18 @@ import {
 } from '../helpers'
 
 /**
- * Local-time ISO date (YYYY-MM-DD) offset by `days`. The homepage chore window
- * reckons "today"/"tomorrow" in the viewer's local zone (chore times are local
- * wall-clock), so fixtures must build their dates from local parts too.
+ * ISO date (YYYY-MM-DD) offset by `days`, computed in UTC. The homepage chore
+ * window reckons "today"/"tomorrow" in the event's own zone, and the event below
+ * is pinned to UTC — so building fixtures in UTC keeps them on the same calendar
+ * day no matter when, or in which timezone, the suite runs. (Building them in the
+ * process-local zone disagreed with the event's zone whenever CI ran between
+ * 22:00–24:00 UTC — past midnight in CET/CEST — dropping the chore a day.)
  */
-function localDate(days: number): string {
+function utcDate(days: number): string {
   const d = new Date()
-  d.setDate(d.getDate() + days)
+  d.setUTCDate(d.getUTCDate() + days)
   const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`
 }
 
 test.describe('Homepage upcoming chores', () => {
@@ -35,14 +38,16 @@ test.describe('Homepage upcoming chores', () => {
       'Home Chores User'
     )
 
-    // A current event spanning today. The range is deliberately wide so the
-    // event is "current" under both the UTC reckoning the events list uses and
-    // the local reckoning the chore window uses.
+    // A current event spanning today, pinned to UTC so the chore window (which
+    // reckons "today" in the event's zone) agrees with the UTC fixture dates.
+    // The range is deliberately wide so the event is also "current" under the
+    // UTC reckoning the events list uses.
     const eventResp = await apiContext.post(`${API_BASE}/api/events`, {
       data: {
         name: `Lake House ${uid}`,
-        start_date: localDate(-1),
-        end_date: localDate(2),
+        start_date: utcDate(-1),
+        end_date: utcDate(2),
+        timezone: 'UTC',
       },
     })
     const eventId = getObjectByType((await eventResp.json()).objects, 'event')!
@@ -72,7 +77,7 @@ test.describe('Homepage upcoming chores', () => {
 
     const assignResp = await apiContext.post(
       `${API_BASE}/api/chore-rosters/${rosterId}/assignments`,
-      { data: { chore_id: choreId, user_id: userId, date: localDate(0) } }
+      { data: { chore_id: choreId, user_id: userId, date: utcDate(0) } }
     )
     expect(assignResp.status()).toBe(201)
 
