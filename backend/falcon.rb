@@ -53,6 +53,10 @@ class JobsServiceContainer < Async::Service::Managed::Service
     ENV["DATABASE_POOL_SIZE"] ||= "4"
     require_relative "config/environment"
     Async do
+      # Seed the recurring maintenance sweep before the worker starts draining,
+      # so a fresh deploy (or one whose prune chain died) always has a run
+      # queued. Idempotent — a no-op when one is already pending.
+      Maintenance::PruneExpired.ensure_scheduled
       Jobs::Worker.run
     end
   end
