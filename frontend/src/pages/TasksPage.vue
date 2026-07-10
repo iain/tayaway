@@ -255,7 +255,7 @@ function handleNewListBlur(): void {
           aria-label="List name"
           data-testid="new-list-name-input"
           :maxlength="TEXT_LIMITS.name"
-          class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus flex-1 rounded-md px-3 py-2 text-sm font-semibold outline-1 -outline-offset-1 placeholder:font-normal focus:outline-2 focus:outline-offset-2"
+          class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus min-w-0 flex-1 rounded-md px-3 py-2 text-base font-semibold outline-1 -outline-offset-1 placeholder:font-normal focus:outline-2 focus:outline-offset-2"
           :disabled="isSubmitting"
           @keyup.escape="cancelNewList"
           @blur="handleNewListBlur"
