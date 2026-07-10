@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import ChoreCell from '@/components/chores/ChoreCell.vue'
 import type { PoolChore, PoolChoreAssignment, PoolMember } from '@/types/pool'
+import { formatDayHeader } from '@/utils/date'
 
 // The mobile face of the chore roster. Where the desktop grid is a dates x
 // chores matrix, this stacks the same data day by day: the "what's on today?"
@@ -57,15 +58,6 @@ function assignmentsFor(choreId: string, date: string): PoolChoreAssignment[] {
 
 function isToday(date: string): boolean {
   return date === todayIso
-}
-
-function formatDayHeader(date: string): string {
-  const d = new Date(date + 'T12:00:00')
-  return d.toLocaleDateString(undefined, {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  })
 }
 
 function choreMeta(chore: PoolChore): string {

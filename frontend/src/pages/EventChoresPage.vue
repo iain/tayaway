@@ -15,6 +15,7 @@ import AssignMemberPopover from '@/components/chores/AssignMemberPopover.vue'
 import EditAssignmentPopover from '@/components/chores/EditAssignmentPopover.vue'
 import EditChoreTimePopover from '@/components/chores/EditChoreTimePopover.vue'
 import AppButton from '@/components/common/AppButton.vue'
+import BaseCard from '@/components/common/BaseCard.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
@@ -30,6 +31,7 @@ import type {
   PoolMember,
 } from '@/types/pool'
 import { can } from '@/composables/usePermission'
+import { shouldSuggestAutofill } from '@/utils/chores'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -128,6 +130,22 @@ const memberMap = computed(() => {
   }
   return map
 })
+
+// Resolved live from the pool so a popover held open across a remote change
+// (or a remote chore deletion) stays truthful.
+const assignPopoverChore = computed(() =>
+  assignPopover.value
+    ? chores.value.find((c) => c.id === assignPopover.value!.choreId)
+    : undefined
+)
+
+const suggestAutofill = computed(() =>
+  shouldSuggestAutofill(
+    chores.value,
+    eventDates.value.length,
+    assignments.value.length
+  )
+)
 
 const confirmDeleteChoreName = computed(() => {
   if (!confirmDeleteChoreId.value) return ''
@@ -266,6 +284,29 @@ async function confirmAutofillAction() {
   confirmAutofill.value = false
 }
 
+const autofillRunning = ref(false)
+
+// The nudge card's button. The confirm modal exists to protect existing
+// unpinned assignments from being cleared; when there are none, confirming
+// would only add friction, so run straight away.
+async function handleNudgeAutofill() {
+  if (!roster.value) return
+  if (!userIsAttending.value) {
+    showRsvpDialog.value = true
+    return
+  }
+  if (assignments.value.some((a) => !a.pinned)) {
+    confirmAutofill.value = true
+  } else {
+    autofillRunning.value = true
+    try {
+      await choreRostersStore.autofill(roster.value.id)
+    } finally {
+      autofillRunning.value = false
+    }
+  }
+}
+
 function handleDeleteRoster() {
   if (!userIsAttending.value) {
     showRsvpDialog.value = true
@@ -355,6 +396,26 @@ onMounted(async () => {
       </PageHeader>
 
       <div v-if="chores.length > 0">
+        <BaseCard v-if="suggestAutofill" variant="action" class="mb-4 p-4">
+          <div
+            class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <p class="text-ink text-sm">
+              Auto-fill shares the chores fairly among everyone attending.
+              Anything you assign by hand stays put.
+            </p>
+            <AppButton
+              variant="secondary"
+              class="shrink-0"
+              :loading="autofillRunning"
+              loading-label="Filling roster..."
+              @click="handleNudgeAutofill"
+            >
+              Auto-fill roster
+            </AppButton>
+          </div>
+        </BaseCard>
+
         <ChoreRosterGrid
           v-if="isDesktop"
           :chores="chores"
@@ -451,8 +512,8 @@ onMounted(async () => {
       </div>
 
       <AssignMemberPopover
-        v-if="assignPopover"
-        :chore-id="assignPopover.choreId"
+        v-if="assignPopover && assignPopoverChore"
+        :chore="assignPopoverChore"
         :date="assignPopover.date"
         :anchor-el="assignPopover.anchorEl"
         :roster-id="roster.id"
