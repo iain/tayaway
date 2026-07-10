@@ -349,6 +349,71 @@ test.describe('Tasks Feature', () => {
       await expect(clearBtn).not.toBeVisible()
     })
 
+    test('tap an item to edit its text', async ({ page }) => {
+      const listName = `Edit Items ${uid}`
+      const listId = await createTaskList(apiContext, workspaceId, listName)
+      await addTaskItem(apiContext, listId, 'Buy milk')
+
+      await setupAuthenticatedPage(page, sessionToken)
+      await page.goto('/tasks')
+
+      const card = page
+        .getByTestId('task-list-card')
+        .filter({ hasText: listName })
+      await expect(card.getByText('Buy milk')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+
+      // Tapping the text turns it into an inline editor. Scope the input lookup
+      // to the card, not a `hasText: 'Buy milk'` row filter — once editing
+      // starts the text lives in an input value, which `hasText` won't match.
+      await card.getByTestId('task-item-content').click()
+      const editInput = card.getByTestId('task-item-edit-input')
+      await expect(editInput).toBeVisible()
+      await editInput.fill('Buy oat milk')
+      await editInput.press('Enter')
+
+      await expect(card.getByText('Buy oat milk')).toBeVisible()
+      await expect(
+        card.getByText('Buy milk', { exact: true })
+      ).not.toBeVisible()
+    })
+
+    test('checking an item sinks it to the bottom after a short hold', async ({
+      page,
+    }) => {
+      const listName = `Order List ${uid}`
+      const listId = await createTaskList(apiContext, workspaceId, listName)
+      // Created in order → increasing positions: Apples, Milk, Bread
+      await addTaskItem(apiContext, listId, 'Apples')
+      await addTaskItem(apiContext, listId, 'Milk')
+      await addTaskItem(apiContext, listId, 'Bread')
+
+      await setupAuthenticatedPage(page, sessionToken)
+      await page.goto('/tasks')
+
+      const card = page
+        .getByTestId('task-list-card')
+        .filter({ hasText: listName })
+      const rows = card.getByTestId('task-item-row')
+      await expect(rows.first()).toContainText('Apples', {
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+
+      // Check the first item — it's marked done immediately...
+      const applesRow = rows.filter({ hasText: 'Apples' })
+      await applesRow.getByRole('checkbox').check()
+      await expect(applesRow.getByTestId('task-item-content')).toHaveAttribute(
+        'data-completed',
+        'true'
+      )
+
+      // ...and after the hold expires it sinks below the remaining to-dos.
+      // (Playwright retries the assertion, so it waits out the ~900ms hold.)
+      await expect(rows.last()).toContainText('Apples')
+      await expect(rows.first()).toContainText('Milk')
+    })
+
     test('rename and delete a task list', async ({ page }) => {
       const oldName = `Rename Me ${uid}`
       const newName = `Renamed ${uid}`
