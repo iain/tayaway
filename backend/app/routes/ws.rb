@@ -100,6 +100,11 @@ class App
         while (message = connection.read)
           Websocket::MessageHandler.handle(connection, connection_id, user_id, message.to_str)
         end
+      rescue IOError => e
+        # Expected when the server closes the connection itself (idle prune,
+        # session revocation, shutdown) — the parked read raises "closed
+        # stream". Not a client error, so keep it out of the error log.
+        APP_LOGGER.debug { "[WebSocket] Message loop ended: #{e.message}" }
       rescue StandardError => e
         APP_LOGGER.error { "[WebSocket] Error in message loop: #{e.message}" }
       ensure

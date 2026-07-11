@@ -610,6 +610,30 @@ RSpec.describe Websocket::ConnectionManager do
     end
   end
 
+  describe "#close_all" do
+    it "closes every websocket, empties the registry, and returns the count" do
+      ws1 = FakeWebsocket.new
+      ws2 = FakeWebsocket.new
+      manager.register(ws1, SecureRandom.uuid)
+      manager.register(ws2, SecureRandom.uuid)
+
+      expect(manager.close_all).to eq(2)
+      expect(ws1.closed?).to be true
+      expect(ws2.closed?).to be true
+      expect(manager.connection_count).to eq(0)
+    end
+
+    it "keeps closing when a connection raises" do
+      ok = FakeWebsocket.new
+      manager.register(BrokenWebsocket.new, SecureRandom.uuid)
+      manager.register(ok, SecureRandom.uuid)
+
+      expect { manager.close_all }.not_to raise_error
+      expect(ok.closed?).to be true
+      expect(manager.connection_count).to eq(0)
+    end
+  end
+
   describe "#connection_count" do
     it "returns 0 when no connections are registered" do
       expect(manager.connection_count).to eq(0)

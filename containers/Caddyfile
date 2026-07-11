@@ -2,6 +2,16 @@
 # production it's the public hostname so Caddy provisions Let's Encrypt
 # certs automatically. Locally it defaults to plain http on :8080.
 
+# Bound shutdown drain. Without a grace_period Caddy waits forever for
+# active connections ("shutting down with eternal grace period"), and live
+# WebSocket subscriptions never drain on their own — so a deploy-time stop
+# used to hang until podman's 10s SIGKILL, which systemd records as a unit
+# failure and pages. 5s lets real requests finish, then force-closes the
+# stragglers and exits cleanly, inside podman's 10s stop timeout.
+{
+	grace_period 5s
+}
+
 # Co-hosted side projects drop their own site blocks in /etc/caddy/sites/
 # (mounted from the host — see ops/co-hosting.md). Each file is a full site
 # block for its own domain and gets its own cert. The glob matches nothing in

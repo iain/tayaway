@@ -48,6 +48,13 @@ Tmpfs=/tmp
 # set, so the setuid-based privilege escalation no_new_privs guards against
 # is already neutered.
 DropCapability=all
+# falcon-host's own graceful-stop timeout is 10s — the same as podman's
+# default stop timeout — so a worker that failed to drain raced podman's
+# SIGKILL and recorded exit 137 (a paged unit failure). 15s lets
+# falcon-host's internal escalation (kill the stuck worker, exit cleanly)
+# win that race. Normal stops drain in <1s via Websocket::Shutdown; this
+# is only the backstop. (Quadlet's StopTimeout= needs podman 5; host runs 4.9.)
+PodmanArgs=--stop-timeout=15
 Pull=missing
 
 [Service]
