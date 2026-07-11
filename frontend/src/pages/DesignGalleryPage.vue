@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import {
-  ArrowPathIcon,
   ArrowTopRightOnSquareIcon,
   Bars3BottomLeftIcon,
   BanknotesIcon,
@@ -137,7 +136,6 @@ const tocItems: TOCItem[] = [
     label: 'Anchored popover',
   },
   { group: 'Overlays', id: 'overlays-toast', label: 'Toast' },
-  { group: 'Overlays', id: 'overlays-updatepill', label: 'Update pill' },
   { group: 'Rules', id: 'rule-one-action', label: 'One-Action' },
   { group: 'Rules', id: 'rule-list-row', label: 'List-Row' },
   { group: 'Rules', id: 'rule-dual-coding', label: 'Dual-Coding' },
@@ -169,15 +167,6 @@ const toastAction = {
     /* demo only */
   },
 }
-const updatePill = {
-  id: 'demo-update',
-  type: 'update' as const,
-  message: 'Tap to update',
-  action: () => {
-    /* demo only */
-  },
-}
-
 function openModal(size: ModalSize): void {
   openModalSize.value = size
 }
@@ -1131,30 +1120,6 @@ function openModal(size: ModalSize): void {
                   @dismiss="() => {}"
                 />
               </div>
-            </GallerySection>
-
-            <GallerySection
-              id="overlays-updatepill"
-              title="Update pill"
-              description="Bottom-centre pill that prompts a one-tap PWA refresh when a new service worker is ready."
-            >
-              <SectionHeading :icon="ArrowPathIcon" title="UpdatePill" />
-              <BaseCard padded>
-                <p class="text-ink-muted mb-3 text-sm">
-                  Live render uses
-                  <span class="font-mono">position: fixed</span>; shown here in
-                  flow so the gallery layout stays legible.
-                </p>
-                <div class="flex justify-center">
-                  <button
-                    type="button"
-                    class="flex items-center gap-2 rounded-full bg-amber-700 px-4 py-2 text-sm font-medium text-white shadow-lg dark:bg-amber-800"
-                  >
-                    <ArrowPathIcon class="size-4" aria-hidden="true" />
-                    {{ updatePill.message }}
-                  </button>
-                </div>
-              </BaseCard>
             </GallerySection>
           </GalleryGroup>
 

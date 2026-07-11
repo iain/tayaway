@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import type { RouteLocationNormalized } from 'vue-router'
 import { useAuthStore } from '@/stores'
+import { hasPendingUpdate, applyPendingUpdate } from '@/api/autoUpdate'
 import AuthenticatedLayout from '@/layouts/AuthenticatedLayout.vue'
 
 const HomePage = () => import('@/pages/HomePage.vue')
@@ -190,6 +192,20 @@ router.afterEach((to) => {
     document.title = title
   }
 })
+
+// A new app version waiting to activate turns the next in-app navigation
+// into a hard load of the target URL: the user was leaving the page anyway,
+// so this is a free quiet moment to pick up the update.
+export function pendingUpdateGuard(
+  to: Pick<RouteLocationNormalized, 'fullPath'>
+): false | undefined {
+  if (hasPendingUpdate()) {
+    applyPendingUpdate(router.resolve(to.fullPath).href)
+    return false
+  }
+}
+
+router.beforeEach(pendingUpdateGuard)
 
 router.beforeEach(async (to) => {
   const authStore = useAuthStore()

@@ -54,10 +54,6 @@ function installWebSocketMock() {
 }
 
 // hoisted so the vi.mock factory below can reference it
-const notificationsMocks = vi.hoisted(() => ({
-  showUpdate: vi.fn(),
-}))
-
 const registerSWMocks = vi.hoisted(() => ({
   checkForServiceWorkerUpdate: vi.fn(),
 }))
@@ -84,12 +80,6 @@ vi.mock('./workspace', () => ({
 
 vi.mock('./commandQueue', () => ({
   useCommandQueueStore: vi.fn(() => ({ processQueue: vi.fn() })),
-}))
-
-vi.mock('./notifications', () => ({
-  useNotificationsStore: vi.fn(() => ({
-    showUpdate: notificationsMocks.showUpdate,
-  })),
 }))
 
 vi.mock('@/api/swUpdate', () => ({
@@ -633,7 +623,6 @@ describe('useWebSocketStore — gitSha triggers SW update on version change', ()
     vi.spyOn(console, 'info').mockImplementation(() => {})
     vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    notificationsMocks.showUpdate.mockReset()
     registerSWMocks.checkForServiceWorkerUpdate.mockReset()
   })
 
@@ -681,27 +670,6 @@ describe('useWebSocketStore — gitSha triggers SW update on version change', ()
     await new Promise((resolve) => setTimeout(resolve, 0))
 
     expect(registerSWMocks.checkForServiceWorkerUpdate).not.toHaveBeenCalled()
-  })
-
-  it('does not show its own update notification from handlePong', async () => {
-    // The standard onNeedRefresh flow in registerSW.ts is responsible for
-    // surfacing the update notification once Workbox detects the new SW.
-    // handlePong should not duplicate it.
-    const { useWebSocketStore } = await import('./websocket')
-    const store = useWebSocketStore()
-    await store.connect()
-    lastSocket.onopen!(new Event('open'))
-
-    lastSocket.onmessage!({
-      data: JSON.stringify({ type: 'pong', gitSha: 'abc123' }),
-    } as MessageEvent)
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    lastSocket.onmessage!({
-      data: JSON.stringify({ type: 'pong', gitSha: 'def456' }),
-    } as MessageEvent)
-    await new Promise((resolve) => setTimeout(resolve, 0))
-
-    expect(notificationsMocks.showUpdate).not.toHaveBeenCalled()
   })
 })
 

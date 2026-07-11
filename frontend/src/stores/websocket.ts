@@ -237,8 +237,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
     if (previous !== null && previous !== message.gitSha) {
       // Server reports a different git SHA — there's a fresh deploy. Trigger
       // an immediate service worker update check; the standard onNeedRefresh
-      // flow in registerSW.ts will surface the update notification once the
-      // new SW finishes installing.
+      // flow in registerSW.ts schedules the auto-update once the new SW
+      // finishes installing.
       void checkForServiceWorkerUpdate()
     }
   }
