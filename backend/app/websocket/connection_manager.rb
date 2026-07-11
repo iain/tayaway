@@ -273,6 +273,24 @@ module Websocket
       APP_LOGGER.info { "[ConnectionManager] Closed #{targets.size} connection(s) for revoked sessions" } if targets.any?
     end
 
+    # Close every connection with a GOING_AWAY frame and empty the registry.
+    # Called when the worker begins shutting down (see config.ru): an open
+    # websocket parks its request fiber in `connection.read` forever, which
+    # async-http's defer_stop turns into a graceful-stop deadlock — the
+    # worker hangs until falcon-host / podman SIGKILL it. Closing here lets
+    # the read loops finish, the worker drain in milliseconds, and clients
+    # reconnect immediately instead of discovering a dead TCP connection
+    # later. Returns the number of connections closed.
+    def close_all
+      targets = @mutex.synchronize { @connections.values }
+      targets.each do |connection|
+        close_websocket(connection.websocket, "server shutting down")
+        unregister(connection.id)
+      end
+      APP_LOGGER.info { "[ConnectionManager] Closed #{targets.size} connection(s) for shutdown" } if targets.any?
+      targets.size
+    end
+
     def connection_count
       @mutex.synchronize { @connections.size }
     end
@@ -308,8 +326,8 @@ module Websocket
     end
 
     # Best-effort close with a close frame; the peer may already be gone.
-    def close_websocket(websocket)
-      websocket.close(Protocol::WebSocket::Error::GOING_AWAY, "idle timeout")
+    def close_websocket(websocket, reason = "idle timeout")
+      websocket.close(Protocol::WebSocket::Error::GOING_AWAY, reason)
     rescue StandardError
       nil
     end

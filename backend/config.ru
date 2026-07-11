@@ -19,6 +19,10 @@ unless APP_CONFIG.test?
   if parent
     parent.async(annotation: "websocket.listener")  { Websocket::Listener.run }
     parent.async(annotation: "websocket.keepalive") { Websocket::Keepalive.run }
+    # Close websockets before the reactor is interrupted on SIGINT/SIGTERM;
+    # otherwise a live connection wedges the graceful stop and the worker
+    # gets SIGKILLed after 10s (see Websocket::Shutdown).
+    Websocket::Shutdown.install(parent: parent)
   else
     APP_LOGGER.warn { "[config.ru] No active reactor; Listener/Keepalive not started" }
   end
