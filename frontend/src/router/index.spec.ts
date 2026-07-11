@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { isChunkLoadError } from './index'
+import router, { isChunkLoadError, pendingUpdateGuard } from './index'
+import { hasPendingUpdate, applyPendingUpdate } from '@/api/autoUpdate'
+
+vi.mock('@/api/autoUpdate', () => ({
+  hasPendingUpdate: vi.fn(() => false),
+  applyPendingUpdate: vi.fn(),
+}))
 
 describe('isChunkLoadError', () => {
   it('returns true for TypeError with a chunk-load message', () => {
@@ -41,6 +47,27 @@ describe('isChunkLoadError', () => {
     expect(isChunkLoadError(null)).toBe(false)
     expect(isChunkLoadError(undefined)).toBe(false)
     expect(isChunkLoadError(42)).toBe(false)
+  })
+})
+
+describe('pendingUpdateGuard', () => {
+  beforeEach(() => {
+    vi.mocked(hasPendingUpdate).mockReturnValue(false)
+    vi.mocked(applyPendingUpdate).mockClear()
+  })
+
+  it('lets navigation proceed when no update is pending', () => {
+    const to = router.resolve('/events/42')
+    expect(pendingUpdateGuard(to)).toBeUndefined()
+    expect(applyPendingUpdate).not.toHaveBeenCalled()
+  })
+
+  it('cancels navigation and hard-loads the target when an update is pending', () => {
+    vi.mocked(hasPendingUpdate).mockReturnValue(true)
+
+    const to = router.resolve('/events/42')
+    expect(pendingUpdateGuard(to)).toBe(false)
+    expect(applyPendingUpdate).toHaveBeenCalledExactlyOnceWith('/events/42')
   })
 })
 
