@@ -145,23 +145,35 @@ module Websocket
       end
     end
 
+    # Returns true when the connection is registered (and freshens its
+    # liveness timestamp), false when it is unknown — e.g. already pruned.
     def update_last_pong(connection_id)
       @mutex.synchronize do
         connection = @connections[connection_id]
-        connection&.last_pong_at = Time.now
+        if connection
+          connection.last_pong_at = Time.now
+          true
+        else
+          false
+        end
       end
     end
 
-    # Ping all connections and unregister those that have not responded within
-    # the idle timeout. Returns the number of connections pruned.
+    # Ping all connections and prune those that have not responded within
+    # the idle timeout. Pruning closes the websocket as well as
+    # unregistering it: unregistering alone leaves a live socket that is
+    # subscribed to nothing, so a client whose tab was merely frozen would
+    # keep pinging a connection that never syncs again. Closing makes the
+    # client's onclose fire and triggers a reconnect. Returns the number of
+    # connections pruned.
     def ping_all(idle_timeout:)
       deadline = Time.now - idle_timeout
-      stale_ids = []
+      stale = []
       fresh = []
 
       @mutex.synchronize { @connections.dup }.each do |connection_id, connection|
         if connection.last_pong_at < deadline
-          stale_ids << connection_id
+          stale << [connection_id, connection]
         else
           fresh << [connection_id, connection]
         end
@@ -172,15 +184,16 @@ module Websocket
         connection.websocket.flush
       rescue StandardError => e
         APP_LOGGER.error { "[ConnectionManager] Error pinging conn #{connection_id}: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
-        stale_ids << connection_id
+        stale << [connection_id, connection]
       end
 
-      stale_ids.each do |connection_id|
+      stale.each do |connection_id, connection|
         APP_LOGGER.info { "[ConnectionManager] Pruning stale connection #{connection_id}" }
+        close_websocket(connection.websocket)
         unregister(connection_id)
       end
 
-      stale_ids.size
+      stale.size
     end
 
     # Broadcast a message to every connection subscribed to the topic.
@@ -253,6 +266,7 @@ module Websocket
         rescue StandardError => e
           APP_LOGGER.error { "[ConnectionManager] Error sending session_revoked to conn #{connection.id}: #{e.class}: #{e.message}" }
         end
+        close_websocket(connection.websocket)
         unregister(connection.id)
       end
 
@@ -291,6 +305,13 @@ module Websocket
 
     def attach_permissions(message, membership, policy_context)
       PermissionAttacher.attach_to_message(message, membership, policy_context)
+    end
+
+    # Best-effort close with a close frame; the peer may already be gone.
+    def close_websocket(websocket)
+      websocket.close(Protocol::WebSocket::Error::GOING_AWAY, "idle timeout")
+    rescue StandardError
+      nil
     end
 
     def send_to_connection(connection, connection_id, json_message, topic)

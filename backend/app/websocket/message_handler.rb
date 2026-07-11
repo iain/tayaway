@@ -28,8 +28,16 @@ module Websocket
           # last_pong_at here the server prunes every connection roughly
           # 90 s after it opens, which silently breaks broadcast routing
           # while the WebSocket itself stays open.
-          Websocket::ConnectionManager.instance.update_last_pong(connection_id)
-          connection.write({ type: "pong", gitSha: APP_CONFIG.git_sha }.to_json)
+          if Websocket::ConnectionManager.instance.update_last_pong(connection_id)
+            connection.write({ type: "pong", gitSha: APP_CONFIG.git_sha }.to_json)
+          else
+            # A ping from a connection that is no longer registered means
+            # the keepalive pruned it while the socket survived (frozen tab,
+            # missed close). Ponging would let the client keep trusting a
+            # connection that receives no broadcasts — close it instead so
+            # the client reconnects and gets a fresh sync.
+            close_connection(connection)
+          end
         when "switch_workspace"
           switch_workspace(connection, user_id, data[:workspaceId], data[:since])
         else
@@ -43,6 +51,12 @@ module Websocket
       end
 
       private
+
+      def close_connection(connection)
+        connection.close(Protocol::WebSocket::Error::GOING_AWAY, "not registered")
+      rescue StandardError
+        nil
+      end
 
       # The connection is already subscribed to every workspace the user
       # belongs to (subscribed at auth), so switching is purely "send me a

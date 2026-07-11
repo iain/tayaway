@@ -11,6 +11,7 @@ class FakeWebsocket
   def initialize
     @written = []
     @flushed = false
+    @closed = false
   end
 
   def write(msg)
@@ -20,15 +21,27 @@ class FakeWebsocket
   def flush
     @flushed = true
   end
+
+  def close(_code = nil, _reason = nil)
+    @closed = true
+  end
+
+  def closed?
+    @closed
+  end
 end
 
-# A FakeWebsocket that raises on write, simulating a broken connection.
+# A FakeWebsocket that raises on write and close, simulating a broken connection.
 class BrokenWebsocket
   def write(_msg)
     raise StandardError, "broken pipe"
   end
 
   def flush; end
+
+  def close(_code = nil, _reason = nil)
+    raise StandardError, "already gone"
+  end
 end
 
 # A FakeWebsocket whose `write` parks until the supplied notification is
@@ -190,7 +203,7 @@ RSpec.describe Websocket::ConnectionManager do
   end
 
   describe "#update_last_pong" do
-    it "updates last_pong_at for the given connection" do
+    it "updates last_pong_at and returns true for a registered connection" do
       id = manager.register(FakeWebsocket.new, "user-1")
 
       # Backdate the timestamp via the prop setter
@@ -198,13 +211,12 @@ RSpec.describe Websocket::ConnectionManager do
       old_time = Time.now - 120
       connection.last_pong_at = old_time
 
-      manager.update_last_pong(id)
-
+      expect(manager.update_last_pong(id)).to be(true)
       expect(connection.last_pong_at).to be > old_time
     end
 
-    it "is a no-op for an unknown connection ID" do
-      expect { manager.update_last_pong("nonexistent-id") }.not_to raise_error
+    it "returns false for an unknown connection ID" do
+      expect(manager.update_last_pong("nonexistent-id")).to be(false)
     end
   end
 
@@ -227,6 +239,30 @@ RSpec.describe Websocket::ConnectionManager do
       # Backdate last_pong_at beyond the idle timeout
       connection = manager.instance_variable_get(:@connections)[id]
       connection.last_pong_at = Time.now - 120
+
+      pruned = manager.ping_all(idle_timeout: 90)
+
+      expect(pruned).to eq(1)
+      expect(manager.connection_count).to eq(0)
+    end
+
+    it "closes the websocket of a pruned connection so the client reconnects" do
+      # Unregistering alone leaves the socket open: the client keeps
+      # exchanging pings over a connection that is subscribed to nothing
+      # and silently stops syncing. Closing makes the client's onclose
+      # fire, which triggers a reconnect and a fresh sync.
+      ws = FakeWebsocket.new
+      id = manager.register(ws, "user-1")
+      manager.instance_variable_get(:@connections)[id].last_pong_at = Time.now - 120
+
+      manager.ping_all(idle_timeout: 90)
+
+      expect(ws.closed?).to be(true)
+    end
+
+    it "still prunes when closing the websocket raises" do
+      id = manager.register(BrokenWebsocket.new, "user-1")
+      manager.instance_variable_get(:@connections)[id].last_pong_at = Time.now - 120
 
       pruned = manager.ping_all(idle_timeout: 90)
 
@@ -517,7 +553,7 @@ RSpec.describe Websocket::ConnectionManager do
   end
 
   describe "#close_sessions" do
-    it "sends session_revoked and unregisters matching connections" do
+    it "sends session_revoked, closes the websocket, and unregisters matching connections" do
       session_id = SecureRandom.uuid
       ws = FakeWebsocket.new
       manager.register(ws, SecureRandom.uuid, session_id)
@@ -525,6 +561,7 @@ RSpec.describe Websocket::ConnectionManager do
       manager.close_sessions([session_id])
 
       expect(ws.written).to include({ type: "session_revoked" }.to_json)
+      expect(ws.closed?).to be(true)
       expect(manager.connection_count).to eq(0)
     end
 
