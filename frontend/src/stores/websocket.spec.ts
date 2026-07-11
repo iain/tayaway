@@ -750,6 +750,47 @@ describe('useWebSocketStore — pong timeout', () => {
     expect(closeSpy).toHaveBeenCalled()
   })
 
+  it('pings immediately when the tab becomes visible and reconnects if no pong follows', async () => {
+    // A tab that was frozen in the background can resume on a socket the
+    // server has already pruned. Waiting for the next 30s interval tick
+    // leaves the user staring at stale data — probe liveness right away.
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+    await store.connect()
+    lastSocket.onopen!(new Event('open'))
+    lastSocket.onmessage!({
+      data: JSON.stringify({
+        type: 'authenticated',
+        userId: 'u1',
+        workspaceIds: ['ws-1'],
+      }),
+    } as MessageEvent)
+    await vi.advanceTimersByTimeAsync(0)
+
+    const firstSocket = lastSocket
+    document.dispatchEvent(new Event('visibilitychange'))
+
+    expect(firstSocket.send).toHaveBeenCalledWith(
+      JSON.stringify({ type: 'ping' })
+    )
+
+    // No pong within the watchdog window → reconnect closes the socket
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(firstSocket.close).toHaveBeenCalled()
+  })
+
+  it('does not ping on visibility change unless authenticated', async () => {
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+    await store.connect()
+    // Socket is open but the server has not authenticated us yet
+    lastSocket.onopen!(new Event('open'))
+
+    document.dispatchEvent(new Event('visibilitychange'))
+
+    expect(lastSocket.send).not.toHaveBeenCalled()
+  })
+
   it('does not force a reconnect when a pong arrives before the timeout', async () => {
     const { useWebSocketStore } = await import('./websocket')
     const store = useWebSocketStore()

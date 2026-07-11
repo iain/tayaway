@@ -136,10 +136,12 @@ export const useWebSocketStore = defineStore('websocket', () => {
     state.value = 'connecting'
     connectionFailed.value = false
 
-    // Register online listener for this connection attempt.
+    // Register online + visibility listeners for this connection attempt.
     // removeEventListener before adding ensures idempotency across reconnect cycles.
     window.removeEventListener('online', onOnline)
     window.addEventListener('online', onOnline)
+    document.removeEventListener('visibilitychange', onVisibilityChange)
+    document.addEventListener('visibilitychange', onVisibilityChange)
 
     try {
       const url = await getWebSocketUrl()
@@ -271,17 +273,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     // Start ping interval to keep connection alive. Arm a pong timeout on
     // each ping so we detect half-open connections where the server is dead
     // but the browser still thinks the socket is OPEN.
-    pingInterval = setInterval(() => {
-      send({ type: 'ping' })
-      if (pongTimeout !== null) clearTimeout(pongTimeout)
-      pongTimeout = setTimeout(() => {
-        console.warn(
-          '[WebSocket] Pong timeout — connection looks half-open, reconnecting'
-        )
-        pongTimeout = null
-        reconnect()
-      }, PONG_TIMEOUT_MS)
-    }, 30000)
+    pingInterval = setInterval(sendPingWithWatchdog, 30000)
 
     // Process any queued commands on reconnect
     import('./commandQueue').then(({ useCommandQueueStore }) => {
@@ -363,6 +355,18 @@ export const useWebSocketStore = defineStore('websocket', () => {
     }
   }
 
+  function sendPingWithWatchdog(): void {
+    send({ type: 'ping' })
+    if (pongTimeout !== null) clearTimeout(pongTimeout)
+    pongTimeout = setTimeout(() => {
+      console.warn(
+        '[WebSocket] Pong timeout — connection looks half-open, reconnecting'
+      )
+      pongTimeout = null
+      reconnect()
+    }, PONG_TIMEOUT_MS)
+  }
+
   function cleanup(): void {
     if (pingInterval) {
       clearInterval(pingInterval)
@@ -436,8 +440,20 @@ export const useWebSocketStore = defineStore('websocket', () => {
     }
   }
 
+  // A tab that was frozen or throttled in the background may resume on a
+  // socket the server has already pruned (or that died without an onclose).
+  // Probe liveness immediately instead of waiting up to 30s for the next
+  // interval tick — the pong watchdog (or the server closing an
+  // unregistered connection) then forces a reconnect within seconds.
+  const onVisibilityChange = (): void => {
+    if (document.visibilityState !== 'visible') return
+    if (state.value !== 'authenticated') return
+    sendPingWithWatchdog()
+  }
+
   function disconnect(): void {
     window.removeEventListener('online', onOnline)
+    document.removeEventListener('visibilitychange', onVisibilityChange)
 
     if (reconnectTimeout) {
       clearTimeout(reconnectTimeout)

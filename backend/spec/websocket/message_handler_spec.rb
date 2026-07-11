@@ -9,10 +9,19 @@ class FakeWsConnection
 
   def initialize
     @written = []
+    @closed = false
   end
 
   def write(msg)
     @written << msg
+  end
+
+  def close(_code = nil, _reason = nil)
+    @closed = true
+  end
+
+  def closed?
+    @closed
   end
 end
 
@@ -24,6 +33,8 @@ RSpec.describe Websocket::MessageHandler do
   describe ".handle" do
     context "when message type is ping" do
       it "writes a pong response" do
+        allow(Websocket::ConnectionManager.instance).to receive(:update_last_pong).and_return(true)
+
         described_class.handle(connection, connection_id, user_id, { type: "ping" }.to_json)
 
         expect(connection.written).to include(include('"type":"pong"'))
@@ -34,11 +45,21 @@ RSpec.describe Websocket::MessageHandler do
         # server-side keepalive's freshness check has to update last_pong_at
         # on the inbound ping, otherwise every connection gets pruned ~90s
         # after it opens.
-        allow(Websocket::ConnectionManager.instance).to receive(:update_last_pong)
+        allow(Websocket::ConnectionManager.instance).to receive(:update_last_pong).and_return(true)
 
         described_class.handle(connection, connection_id, user_id, { type: "ping" }.to_json)
 
         expect(Websocket::ConnectionManager.instance).to have_received(:update_last_pong).with(connection_id)
+      end
+
+      it "closes the connection instead of ponging when it is no longer registered" do
+        # A pruned-but-still-open socket must not receive a pong: the client
+        # would keep trusting a connection that is subscribed to nothing and
+        # never syncs. Closing makes the client reconnect and resync.
+        described_class.handle(connection, connection_id, user_id, { type: "ping" }.to_json)
+
+        expect(connection.closed?).to be(true)
+        expect(connection.written).not_to include(include('"type":"pong"'))
       end
     end
 
