@@ -9,15 +9,22 @@ import {
   getPendingCommands,
   count as dbCount,
   clearAll,
+  type OptimisticRef,
 } from '@/api/commandDb'
 import { coalesceCommands } from '@/api/coalesceCommands'
 import { useWebSocketStore } from './websocket'
 import { useWorkspaceStore } from './workspace'
+import { useObjectPoolStore } from './objectPool'
 
 export class CommandQueuedError extends Error {
-  constructor() {
+  // Lets the caller (useMutation) attach optimistic-rollback linkage to the
+  // stored command after the fact — see commandDb.setOptimistic.
+  readonly commandId?: string
+
+  constructor(commandId?: string) {
     super('Command queued for later execution')
     this.name = 'CommandQueuedError'
+    this.commandId = commandId
   }
 }
 
@@ -58,10 +65,73 @@ function isAuthError(e: unknown): boolean {
   )
 }
 
+// Undo the optimistic state a permanently-failed replay left in the pool.
+// Without this the UI keeps showing a change the server rejected: temp
+// creates survive every full sync (tempObjectIds preserves them) and
+// "newer than server" overlays survive replaceScope and restarts.
+function rollbackOptimistic(ref: OptimisticRef): void {
+  const pool = useObjectPoolStore()
+  if (ref.kind === 'create') {
+    pool.cascadeRemove(ref.objectType, ref.objectId)
+  } else if (ref.kind === 'update') {
+    pool.removePending(ref.pendingId)
+  } else {
+    pool.restore(ref.removed)
+  }
+}
+
+function humanObjectType(type: string): string {
+  if (type === 'rsvp') {
+    return 'RSVP'
+  }
+  // camelCase → spaced lowercase: taskItem → "task item"
+  return type
+    .replace(/([A-Z])/g, ' $1')
+    .toLowerCase()
+    .trim()
+}
+
+// Human label for a failed command, from whatever rollback linkage it had.
+function labelForRefs(refs: OptimisticRef[]): string | null {
+  for (const ref of refs) {
+    if (ref.kind === 'destroy') {
+      const type = ref.removed[0]?.object.objectType
+      if (type) return humanObjectType(type)
+    } else {
+      return humanObjectType(ref.objectType)
+    }
+  }
+  return null
+}
+
+function replayFailureMessage(labels: (string | null)[]): string {
+  if (labels.length > 1) {
+    return `${labels.length} offline changes couldn't be saved and were undone.`
+  }
+  const label = labels[0]
+  if (label) {
+    return `Your offline ${label} change couldn't be saved and was undone.`
+  }
+  return "An offline change couldn't be saved."
+}
+
+// Backoff for replays that fail while the WebSocket stays healthy. Without
+// a self-scheduled retry, a command queued by a fetch blip too short to
+// drop the socket sits in IndexedDB until the next reconnect or app
+// restart — the only other processQueue triggers.
+const BASE_RETRY_DELAY_MS = 5_000
+const MAX_RETRY_DELAY_MS = 60_000
+
 export const useCommandQueueStore = defineStore('commandQueue', () => {
   const pendingCount = ref(0)
   const isProcessing = ref(false)
   const retryRequested = ref(false)
+  // True while a backoff retry is armed — surfaced so the pending-changes
+  // pill can show queued work even when the socket looks healthy.
+  const retryScheduled = ref(false)
+
+  let retryTimer: ReturnType<typeof setTimeout> | null = null
+  let retryDelayMs = BASE_RETRY_DELAY_MS
 
   // A working, authenticated WebSocket is the only reliable "we are online"
   // signal. navigator.onLine returns true on captive portals, dead WiFi, and
@@ -70,6 +140,30 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
   // store's handleAuthenticated callback, so we don't need separate online
   // listeners here.
   const isOnline = computed(() => useWebSocketStore().state === 'authenticated')
+
+  // Arm a retry for queued commands. Only while the socket is up — when it
+  // is down, the reconnect's processQueue trigger covers replay, and a
+  // timer would just burn failed fetches.
+  function scheduleRetry(): void {
+    if (retryTimer !== null) return
+    if (!isOnline.value) return
+    retryScheduled.value = true
+    retryTimer = setTimeout(() => {
+      retryTimer = null
+      retryScheduled.value = false
+      void processQueue()
+    }, retryDelayMs)
+    retryDelayMs = Math.min(retryDelayMs * 2, MAX_RETRY_DELAY_MS)
+  }
+
+  function clearRetry(): void {
+    if (retryTimer !== null) {
+      clearTimeout(retryTimer)
+      retryTimer = null
+    }
+    retryScheduled.value = false
+    retryDelayMs = BASE_RETRY_DELAY_MS
+  }
 
   async function initialize(): Promise<void> {
     pendingCount.value = await dbCount()
@@ -101,15 +195,17 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
       )
       await removeCommand(commandId)
       pendingCount.value--
+      retryDelayMs = BASE_RETRY_DELAY_MS
       return response
     } catch (e) {
       if (isRetryableError(e)) {
-        throw new CommandQueuedError()
+        scheduleRetry()
+        throw new CommandQueuedError(commandId)
       }
       if (isAuthError(e)) {
         // Session expired — keep command in queue for replay after re-auth
         await handleAuthError()
-        throw new CommandQueuedError()
+        throw new CommandQueuedError(commandId)
       }
       // Server error — remove from queue and rethrow
       try {
@@ -135,10 +231,18 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
     }
     isProcessing.value = true
 
+    // Human labels of permanently-failed commands, accumulated across the
+    // whole drain so the user gets one toast, not one per failure.
+    const failedLabels: (string | null)[] = []
+    // After a 401 the session is being torn down — arming a retry would
+    // just hammer the API with commands that keep 401ing.
+    let authFailed = false
+
     try {
       do {
         retryRequested.value = false
         const commands = await getPendingCommands()
+        const commandsById = new Map(commands.map((c) => [c.id, c]))
         const coalesced = coalesceCommands(commands)
 
         // Remove cancelled-out commands from IndexedDB immediately
@@ -169,9 +273,11 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
               await new Promise<void>((r) => setTimeout(r, 0))
             }
             pendingCount.value -= command.originalIds.length
+            retryDelayMs = BASE_RETRY_DELAY_MS
           } catch (e) {
             if (isAuthError(e)) {
               // Session expired — keep commands, redirect to login
+              authFailed = true
               await handleAuthError()
               break
             }
@@ -180,7 +286,16 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
               // processing; the queue replays on the next trigger.
               break
             }
-            // Server error — remove and notify, continue with next
+            // Permanent server rejection — undo whatever optimistic state
+            // the original commands registered, drop them, and record the
+            // failure for the combined toast below.
+            const refs = command.originalIds
+              .map((id) => commandsById.get(id)?.optimistic)
+              .filter((ref): ref is OptimisticRef => ref !== undefined)
+            for (const ref of refs) {
+              rollbackOptimistic(ref)
+            }
+            failedLabels.push(labelForRefs(refs))
             try {
               for (const id of command.originalIds) {
                 await removeCommand(id)
@@ -190,19 +305,29 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
             } catch {
               // removeCommand failed — count will be resynced in finally block
             }
-            const { useNotificationsStore } = await import('./notifications')
-            const notifications = useNotificationsStore()
-            notifications.showError(
-              "An offline change couldn't be saved. Please try again."
-            )
           }
         }
       } while (retryRequested.value)
+
+      if (failedLabels.length > 0) {
+        const { useNotificationsStore } = await import('./notifications')
+        const notifications = useNotificationsStore()
+        notifications.showError(replayFailureMessage(failedLabels))
+      }
     } catch {
       // Unexpected error escaped the inner loop — resync to avoid drift
     } finally {
       isProcessing.value = false
       await resyncPendingCount()
+      if (pendingCount.value === 0) {
+        // Fully drained — disarm any pending retry and reset the backoff
+        clearRetry()
+      } else if (!authFailed) {
+        // Commands remain (retryable break, or new enqueues mid-drain) —
+        // make sure a retry is armed; a no-op when the socket is down,
+        // since the reconnect trigger covers that case.
+        scheduleRetry()
+      }
     }
   }
 
@@ -210,17 +335,20 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
     await clearAll()
     pendingCount.value = 0
     isProcessing.value = false
+    clearRetry()
   }
 
   function $reset(): void {
     // Synchronous reset for Pinia — async cleanup handled by reset()
     pendingCount.value = 0
     isProcessing.value = false
+    clearRetry()
   }
 
   return {
     pendingCount,
     isProcessing,
+    retryScheduled,
     isOnline,
     initialize,
     enqueue,

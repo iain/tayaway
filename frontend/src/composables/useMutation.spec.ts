@@ -46,9 +46,18 @@ vi.mock('@/stores/commandQueue', async () => {
   }
 })
 
+// Mock commandDb — useMutation registers optimistic-rollback linkage on
+// queued commands
+vi.mock('@/api/commandDb', () => ({
+  setOptimistic: vi.fn(async () => {}),
+}))
+
+import { setOptimistic } from '@/api/commandDb'
+
 describe('useMutation', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    vi.mocked(setOptimistic).mockClear()
   })
 
   describe('mutate', () => {
@@ -249,6 +258,84 @@ describe('useMutation', () => {
 
       expect(pool.get('event', 'evt-1')?.name).toBe('Original')
       expect(pool.hasPending('event', 'evt-1')).toBe(false)
+    })
+  })
+
+  // When a command is queued, its optimistic state outlives this call — the
+  // queue needs to know what to undo if the replay permanently fails. The
+  // linkage is persisted on the stored command via setOptimistic.
+  describe('optimistic rollback linkage', () => {
+    it('links a queued create to its temp object', async () => {
+      const { create } = useMutation()
+      const temp = makeEvent({ id: 'temp-1' })
+
+      await create('fail', temp, async () => {
+        throw new CommandQueuedError('cmd-9')
+      })
+
+      expect(setOptimistic).toHaveBeenCalledWith('cmd-9', {
+        kind: 'create',
+        objectType: 'event',
+        objectId: 'temp-1',
+      })
+    })
+
+    it('links a queued update to its pending overlay', async () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeEvent({ name: 'Original' })], {
+        scope: Scope.workspace('test'),
+      })
+      const { update } = useMutation()
+
+      await update('fail', 'event', 'evt-1', { name: 'Pending' }, async () => {
+        throw new CommandQueuedError('cmd-9')
+      })
+
+      expect(setOptimistic).toHaveBeenCalledWith('cmd-9', {
+        kind: 'update',
+        objectType: 'event',
+        objectId: 'evt-1',
+        pendingId: expect.any(String),
+      })
+      // The linked pendingId is the live overlay: removing it rolls back
+      const { pendingId } = vi.mocked(setOptimistic).mock.calls[0]![1] as {
+        pendingId: string
+      }
+      pool.removePending(pendingId)
+      expect(pool.get('event', 'evt-1')?.name).toBe('Original')
+    })
+
+    it('links a queued destroy to the removed objects for restore', async () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeEvent({ name: 'Doomed' })], {
+        scope: Scope.workspace('test'),
+      })
+      const { destroy } = useMutation()
+
+      await destroy('fail', 'event', 'evt-1', async () => {
+        throw new CommandQueuedError('cmd-9')
+      })
+
+      expect(setOptimistic).toHaveBeenCalledWith('cmd-9', {
+        kind: 'destroy',
+        removed: [
+          expect.objectContaining({
+            object: expect.objectContaining({ id: 'evt-1', name: 'Doomed' }),
+          }),
+        ],
+      })
+    })
+
+    it('does not register a linkage for a direct (non-queued) failure', async () => {
+      const { create } = useMutation()
+
+      await expect(
+        create('fail', makeEvent({ id: 'temp-1' }), async () => {
+          throw new Error('Server error')
+        })
+      ).rejects.toThrow('Server error')
+
+      expect(setOptimistic).not.toHaveBeenCalled()
     })
   })
 

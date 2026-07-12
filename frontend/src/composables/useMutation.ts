@@ -1,8 +1,20 @@
 import { ref } from 'vue'
 import { useCommandQueueStore, CommandQueuedError } from '@/stores/commandQueue'
 import { useObjectPoolStore } from '@/stores/objectPool'
+import { setOptimistic, type OptimisticRef } from '@/api/commandDb'
 import type { ApiResponse } from '@/api/client'
 import type { ObjectType, ObjectTypeMap } from '@/types/pool'
+
+// Persist what a queued command's replay must undo if it permanently fails.
+// Awaited so the linkage is in place before the caller can trigger a replay.
+async function linkOptimistic(
+  e: CommandQueuedError,
+  ref: OptimisticRef
+): Promise<void> {
+  if (e.commandId) {
+    await setOptimistic(e.commandId, ref)
+  }
+}
 
 export type MutationResult<T> = { queued: false; data: T } | { queued: true }
 
@@ -64,6 +76,11 @@ export function useMutation() {
       return { queued: false, data: response.data }
     } catch (e) {
       if (e instanceof CommandQueuedError) {
+        await linkOptimistic(e, {
+          kind: 'create',
+          objectType: tempObject.objectType,
+          objectId: tempObject.id,
+        })
         return { queued: true }
       }
       pool.cascadeRemove(tempObject.objectType, tempObject.id)
@@ -106,6 +123,12 @@ export function useMutation() {
       return { queued: false, data: response.data }
     } catch (e) {
       if (e instanceof CommandQueuedError) {
+        await linkOptimistic(e, {
+          kind: 'update',
+          objectType,
+          objectId,
+          pendingId,
+        })
         return { queued: true }
       }
       pool.removePending(pendingId)
@@ -142,6 +165,7 @@ export function useMutation() {
       return { queued: false, data: response.data }
     } catch (e) {
       if (e instanceof CommandQueuedError) {
+        await linkOptimistic(e, { kind: 'destroy', removed: removedObjects })
         return { queued: true }
       }
       // Restore each removed object to every scope it came from. The pool
