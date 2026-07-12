@@ -793,6 +793,59 @@ describe('commandQueue store', () => {
     })
   })
 
+  // A 404 on DELETE means the object is already gone server-side (deleted
+  // by another device/user, or a local-only zombie). That's the outcome the
+  // delete wanted — treating it as failure restores/rolls back the removal
+  // and resurrects objects the user can then never get rid of.
+  describe('deleting an already-deleted object', () => {
+    it('treats a 404 on a direct DELETE as success', async () => {
+      const store = useCommandQueueStore()
+      mockedApi.delete.mockRejectedValueOnce({
+        status: 404,
+        message: 'Task item not found',
+      })
+
+      await expect(
+        store.enqueue('DELETE', '/api/task-items/x')
+      ).resolves.toMatchObject({ status: 404 })
+
+      expect(removeCommand).toHaveBeenCalled()
+      expect(store.pendingCount).toBe(0)
+    })
+
+    it('treats a 404 on a DELETE replay as success — no rollback, no toast', async () => {
+      const store = useCommandQueueStore()
+      const pool = useObjectPoolStore()
+      vi.mocked(getPendingCommands).mockResolvedValueOnce([
+        {
+          id: 'cmd-a',
+          method: 'DELETE' as const,
+          path: '/api/task-items/x',
+          createdAt: 1,
+          optimistic: {
+            kind: 'destroy' as const,
+            removed: [
+              {
+                object: makeEvent({ name: 'Already gone' }),
+                scopes: [Scope.workspace('ws-1')],
+              },
+            ],
+          },
+        },
+      ])
+      mockedApi.delete.mockRejectedValueOnce({
+        status: 404,
+        message: 'Task item not found',
+      })
+
+      await store.processQueue()
+
+      expect(pool.get('event', 'evt-1')).toBeUndefined()
+      expect(removeCommand).toHaveBeenCalledWith('cmd-a')
+      expect(notificationMocks.showError).not.toHaveBeenCalled()
+    })
+  })
+
   describe('in-flight direct requests', () => {
     // The command row is written before the direct request goes out, so a
     // concurrently-triggered drain could replay it — a duplicate request
