@@ -312,8 +312,12 @@ RSpec.describe "Chore rosters endpoints" do
     it "clears non-pinned assignments" do
       roster = TestFactories.chore_roster(event: event, user: user)
       chore = TestFactories.chore(chore_roster: roster)
-      unpinned = TestFactories.chore_assignment(chore: chore, user: user, date: Date.today, pinned: false)
-      pinned = TestFactories.chore_assignment(chore: chore, user: user, date: Date.today + 1, pinned: true)
+      # Clearly-future dates: the service clears from "today" in the
+      # *event's timezone*, while Date.today is the system zone (UTC on
+      # CI) — a Date.today fixture lands in the service's past during the
+      # nightly window where the event timezone is a day ahead of UTC.
+      unpinned = TestFactories.chore_assignment(chore: chore, user: user, date: Date.today + 2, pinned: false)
+      pinned = TestFactories.chore_assignment(chore: chore, user: user, date: Date.today + 3, pinned: true)
 
       post "/api/chore-rosters/#{roster[:id]}/clear-unpinned",
            {}.to_json,

@@ -44,10 +44,15 @@ interface PoolCacheDB {
 // Bumped to 13 when events and workspaces gained a `timezone` field.
 // Bumped to 14 when rsvps gained an `attendance` day-set field.
 // Bumped to 15 when attendance entries gained per-day `{date, plusOnes}` guests.
-const CACHE_VERSION = 15
+// Bumped to 16 when per-scope `fullSyncedAt` meta was added for the
+// reconciliation cadence (wipe → one full sync that records it).
+const CACHE_VERSION = 16
 
 const CACHE_VERSION_META_KEY = 'cacheVersion'
 const SYNCED_AT_META_PREFIX = 'syncedAt:'
+// Last *full* sync per scope — the reconciliation cadence only trusts the
+// partial-sync cursor while this is fresh.
+const FULL_SYNCED_AT_META_PREFIX = 'fullSyncedAt:'
 
 let dbPromise: Promise<IDBPDatabase<PoolCacheDB>> | null = null
 
@@ -157,7 +162,8 @@ export async function loadPendingUpdates(): Promise<
 export async function replaceScope(
   scope: Scope,
   objects: PoolObject[],
-  syncedAt?: string
+  syncedAt?: string,
+  fullSyncedAt?: string
 ): Promise<void> {
   const db = await getDb()
   const tx = db.transaction(['objects', 'meta'], 'readwrite')
@@ -190,6 +196,12 @@ export async function replaceScope(
       syncedAt,
     })
   }
+  if (fullSyncedAt) {
+    tx.objectStore('meta').put({
+      key: `${FULL_SYNCED_AT_META_PREFIX}${scope}`,
+      syncedAt: fullSyncedAt,
+    })
+  }
   await tx.done
 }
 
@@ -203,6 +215,7 @@ export async function clearScope(scope: Scope): Promise<void> {
     cursor = await cursor.continue()
   }
   tx.objectStore('meta').delete(`${SYNCED_AT_META_PREFIX}${scope}`)
+  tx.objectStore('meta').delete(`${FULL_SYNCED_AT_META_PREFIX}${scope}`)
   await tx.done
 }
 
@@ -217,21 +230,31 @@ export async function clearScope(scope: Scope): Promise<void> {
 export async function loadMeta(): Promise<{
   cacheVersion: number | null
   syncedAt: Map<Scope, string>
+  fullSyncedAt: Map<Scope, string>
 }> {
   const db = await getDb()
   const tx = db.transaction('meta', 'readonly')
   const all = await tx.store.getAll()
   let cacheVersion: number | null = null
   const syncedAt = new Map<Scope, string>()
+  const fullSyncedAt = new Map<Scope, string>()
   for (const entry of all) {
     if (entry.key === CACHE_VERSION_META_KEY) {
       cacheVersion = entry.cacheVersion ?? null
+    } else if (
+      entry.key.startsWith(FULL_SYNCED_AT_META_PREFIX) &&
+      entry.syncedAt
+    ) {
+      const scope = Scope.parse(
+        entry.key.slice(FULL_SYNCED_AT_META_PREFIX.length)
+      )
+      if (scope) fullSyncedAt.set(scope, entry.syncedAt)
     } else if (entry.key.startsWith(SYNCED_AT_META_PREFIX) && entry.syncedAt) {
       const scope = Scope.parse(entry.key.slice(SYNCED_AT_META_PREFIX.length))
       if (scope) syncedAt.set(scope, entry.syncedAt)
     }
   }
-  return { cacheVersion, syncedAt }
+  return { cacheVersion, syncedAt, fullSyncedAt }
 }
 
 /**

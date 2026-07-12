@@ -790,6 +790,43 @@ describe('objectPool store', () => {
     })
   })
 
+  describe('markTemp', () => {
+    // Cache-hydrated optimistic creates arrive unmarked (tempObjectIds is
+    // in-memory); re-marking them keeps reconciliation full syncs from
+    // dropping objects whose create command is still queued.
+    it('lets a cache-hydrated optimistic object survive replaceScope', async () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeEvent({ id: 'temp-1' })], {
+        scope: Scope.workspace('A'),
+      })
+
+      pool.markTemp('temp-1')
+      await pool.replaceScope(Scope.workspace('A'), [])
+
+      expect(pool.get('event', 'temp-1')).toBeDefined()
+    })
+
+    // importObjects treats an import as server confirmation and clears the
+    // temp mark — but cache hydration (startup, workspace switch-back) also
+    // goes through importObjects and is NOT confirmation.
+    it('keeps the temp mark when the import comes from the cache', async () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeEvent({ id: 'temp-1' })], {
+        scope: Scope.workspace('A'),
+      })
+      pool.markTemp('temp-1')
+
+      // Switch-back hydration re-imports the optimistic object from IDB
+      pool.importObjects([makeEvent({ id: 'temp-1' })], {
+        scope: Scope.workspace('A'),
+        fromCache: true,
+      })
+      await pool.replaceScope(Scope.workspace('A'), [])
+
+      expect(pool.get('event', 'temp-1')).toBeDefined()
+    })
+  })
+
   describe('restore', () => {
     // A queued delete can sit for hours (or across restarts) before its
     // replay is rejected; meanwhile the server may have re-delivered a newer

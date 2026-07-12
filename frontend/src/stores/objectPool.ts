@@ -450,10 +450,12 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   // Pass `opts.scope` from sync paths (WebSocket envelope, REST snapshot)
   // where the delivery channel is the authoritative scope. Omit it from
   // optimistic-create paths in stores; the pool will derive a scope from
-  // each object via `deriveScope`.
+  // each object via `deriveScope`. Pass `opts.fromCache` from IDB
+  // hydration paths — cache re-imports are not server confirmations and
+  // must not clear temp marks.
   function importObjects(
     poolObjects: PoolObject[],
-    opts?: { scope?: Scope }
+    opts?: { scope?: Scope; fromCache?: boolean }
   ): void {
     const explicitScope = opts?.scope
     let changed = false
@@ -487,8 +489,10 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
         }
       }
 
-      // Server has confirmed this object — it's no longer an unconfirmed temp object
-      if (tempObjectIds.has(obj.id)) {
+      // Server has confirmed this object — it's no longer an unconfirmed
+      // temp object. Cache hydration re-imports (startup, workspace
+      // switch-back) are not confirmations and keep the mark.
+      if (!opts?.fromCache && tempObjectIds.has(obj.id)) {
         tempObjectIds.delete(obj.id)
       }
 
@@ -735,6 +739,14 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     for (const scope of scopes) {
       notifyChange({ type: 'set', scope, object })
     }
+  }
+
+  // Mark an object id as an unconfirmed optimistic create so replaceScope
+  // preserves it. Used on startup: tempObjectIds is in-memory, so a queued
+  // create's object hydrated from the cache would otherwise be dropped by
+  // the next full sync while its command is still waiting to replay.
+  function markTemp(objectId: string): void {
+    tempObjectIds.add(objectId)
   }
 
   // Restore a batch of previously-removed entries to the pool. Each entry
@@ -1200,6 +1212,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     removePending,
     hasPending,
     set,
+    markTemp,
     restore,
     remove,
     removeMany,

@@ -171,7 +171,20 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
   }
 
   async function initialize(): Promise<void> {
-    pendingCount.value = await dbCount()
+    const commands = await getPendingCommands()
+    pendingCount.value = commands.length
+
+    // Re-mark queued creates as temp: tempObjectIds is in-memory, so after
+    // a restart the optimistic objects hydrated from the cache would be
+    // dropped by the next (reconciliation) full sync while their create
+    // commands are still waiting to replay.
+    const pool = useObjectPoolStore()
+    for (const command of commands) {
+      if (command.optimistic?.kind === 'create') {
+        pool.markTemp(command.optimistic.objectId)
+      }
+    }
+
     if (pendingCount.value > 0) {
       processQueue()
     }

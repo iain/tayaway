@@ -85,6 +85,14 @@ async function flushWrites(): Promise<void> {
     }
 
     if (writes.length > 0) await Promise.all(writes)
+
+    // Persist the sync cursor only after the objects it describes are
+    // written: cold starts trust it for partial syncs, and a cursor that
+    // ran ahead of the object flush (crash in the debounce window) would
+    // leave a cache claiming sync N while missing sync N's objects.
+    for (const scope of savesByScope.keys()) {
+      persistSyncedAtForScope(scope)
+    }
   } catch (e) {
     console.warn('Failed to persist pool objects to IndexedDB', e)
   }
@@ -130,15 +138,10 @@ function persistSyncedAtForScope(scope: Scope): void {
 }
 
 async function loadFromCache(): Promise<void> {
-  // Read from localStorage directly — the workspace store won't be initialized
-  // yet since that happens in the WS handleAuthenticated callback
-  const expectedWorkspaceId = localStorage.getItem(WORKSPACE_ID_STORAGE_KEY)
-  if (!expectedWorkspaceId) return
-
   try {
     // Phase 1: Read lightweight metadata only. This is fast on all devices
     // and lets us validate the cache identity before reading any objects.
-    const { cacheVersion, syncedAt } = await poolDb.loadMeta()
+    const { cacheVersion, syncedAt, fullSyncedAt } = await poolDb.loadMeta()
     if (cacheVersion !== CACHE_VERSION) {
       await poolDb.clearAll()
       return
@@ -146,10 +149,26 @@ async function loadFromCache(): Promise<void> {
 
     const pool = useObjectPoolStore()
     const wsStore = useWebSocketStore()
+
+    // Restore pending overlays before anything can abort the load: they
+    // represent commands still in the queue — the replay's rollback needs
+    // their ids registered, and the user's offline changes must be visible
+    // — regardless of how the object cache races the first sync.
+    const pendingUpdates = await poolDb.loadPendingUpdatesFromDb()
+    if (pendingUpdates.size > 0) {
+      pool.restorePendingUpdates(pendingUpdates)
+    }
+
+    // Read from localStorage directly — the workspace store won't be
+    // initialized yet since that happens in the WS handleAuthenticated
+    // callback
+    const expectedWorkspaceId = localStorage.getItem(WORKSPACE_ID_STORAGE_KEY)
+    if (!expectedWorkspaceId) return
     if (wsStore.hasSynced) return // Server already sent authoritative data
 
     const workspaceScopeKey = Scope.workspace(expectedWorkspaceId)
     const workspaceSyncedAt = syncedAt.get(workspaceScopeKey) ?? null
+    const workspaceFullSyncedAt = fullSyncedAt.get(workspaceScopeKey) ?? null
 
     // Check cache age and apply staleness policy. The staleness tier itself
     // is now derived reactively by AuthenticatedLayout from a ticking `now`
@@ -175,7 +194,7 @@ async function loadFromCache(): Promise<void> {
       for (const scope of scopesToLoad) {
         const objects = await poolDb.loadObjectsByType(scope, type)
         if (objects.length > 0) {
-          pool.importObjects(objects, { scope })
+          pool.importObjects(objects, { scope, fromCache: true })
           anyLoaded = true
         }
       }
@@ -189,19 +208,9 @@ async function loadFromCache(): Promise<void> {
       for (const scope of scopesToLoad) {
         const objects = await poolDb.loadObjectsByType(scope, type)
         if (objects.length > 0) {
-          pool.importObjects(objects, { scope })
+          pool.importObjects(objects, { scope, fromCache: true })
           anyLoaded = true
         }
-      }
-    }
-
-    // Phase 4: Restore pending updates regardless of whether cached objects
-    // were found — offline changes must survive app restarts even if the
-    // object cache was empty.
-    if (!wsStore.hasSynced) {
-      const pendingUpdates = await poolDb.loadPendingUpdatesFromDb()
-      if (pendingUpdates.size > 0) {
-        pool.restorePendingUpdates(pendingUpdates)
       }
     }
 
@@ -209,9 +218,17 @@ async function loadFromCache(): Promise<void> {
 
     wsStore.hasCachedData = true
 
-    // Restore syncedAt so the next sync can be partial
+    // Restore the cursors so the next sync can be partial. Only after a
+    // successful hydration: a partial sync is only sound against the cached
+    // baseline these cursors were saved with.
     if (workspaceSyncedAt) {
       wsStore.restoreSyncTimestamp(expectedWorkspaceId, workspaceSyncedAt)
+    }
+    if (workspaceFullSyncedAt) {
+      wsStore.restoreFullSyncTimestamp(
+        expectedWorkspaceId,
+        workspaceFullSyncedAt
+      )
     }
   } catch {
     // IndexedDB might be unavailable — proceed without cache
@@ -224,13 +241,20 @@ function persistReplaceScope(scope: Scope, objects: PoolObject[]): void {
   pendingSaves = pendingSaves.filter((s) => s.scope !== scope)
   pendingRemoves = pendingRemoves.filter((r) => r.scope !== scope)
 
+  // A replace comes from a full sync, whose timestamps the websocket store
+  // recorded before applying — persist them atomically with the objects so
+  // the cursors and the reconciliation cadence survive restarts.
+  let syncedAt: string | undefined
+  let fullSyncedAt: string | undefined
   const wsId = Scope.workspaceId(scope)
-  const syncedAt = wsId
-    ? (useWebSocketStore().getSyncedAt(wsId) ?? undefined)
-    : undefined
+  if (wsId) {
+    const wsStore = useWebSocketStore()
+    syncedAt = wsStore.getSyncedAt(wsId) ?? undefined
+    fullSyncedAt = wsStore.getFullSyncedAt(wsId) ?? undefined
+  }
 
   void poolDb
-    .replaceScope(scope, objects, syncedAt)
+    .replaceScope(scope, objects, syncedAt, fullSyncedAt)
     .catch((e) => console.warn('Failed to replace scope in IndexedDB', e))
 }
 
@@ -259,7 +283,6 @@ function startPersisting(): void {
       }
       scheduleFlush()
       schedulePendingFlush()
-      persistSyncedAtForScope(change.scope)
     } else if (change.type === 'set') {
       pendingSaves.push({ scope: change.scope, object: change.object })
       scheduleFlush()

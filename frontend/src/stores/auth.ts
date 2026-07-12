@@ -165,9 +165,10 @@ export const useAuthStore = defineStore('auth', () => {
       const valid = await fetchMe()
 
       if (valid === true) {
-        // fetchMe() already set user.value and cached the user
-        const ws = useWebSocketStore()
-        ws.connect()
+        // fetchMe() already set user.value and cached the user. The
+        // WebSocket connect happens in App.vue after cache hydration — the
+        // connect URL's partial-vs-full sync decision needs the restored
+        // cursors.
       } else if (valid === false) {
         // Session truly invalid — clear cache and require re-login
         user.value = null
@@ -185,18 +186,16 @@ export const useAuthStore = defineStore('auth', () => {
   /**
    * Re-validate the cached session against /api/auth/me in the background.
    * Called after a cache-hit in initialize() so the UI renders immediately
-   * while we confirm the session is still live.
+   * while we confirm the session is still live. The WebSocket connect
+   * happens in App.vue after cache hydration (the connect URL's
+   * partial-vs-full sync decision needs the restored cursors); the server
+   * rejects the ticket there if the session is invalid.
    *
-   * - 200: refresh user data and connect WebSocket
+   * - 200: refresh user data
    * - 401/403: clear state and redirect to /login
-   * - Network error / 5xx: keep the cached state, connect WebSocket optimistically
+   * - Network error / 5xx: keep the cached state optimistically
    */
   function validateInBackground(): void {
-    // Connect WebSocket optimistically — the server will reject the ticket
-    // if the session is invalid, at which point we'll redirect.
-    const ws = useWebSocketStore()
-    ws.connect()
-
     fetchMe()
       .then(async (valid) => {
         if (valid === true) {
