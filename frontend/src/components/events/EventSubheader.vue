@@ -68,6 +68,7 @@ function tabClass(active: boolean): string {
           </p>
         </div>
         <nav
+          data-testid="event-tabs"
           class="-mx-4 mt-1 flex items-center gap-1 overflow-x-auto px-4 sm:mx-0 sm:mt-0 sm:px-0"
         >
           <router-link

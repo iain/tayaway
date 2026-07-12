@@ -8,6 +8,20 @@ function parseDate(dateString: string): Date {
 }
 
 /**
+ * A Date's calendar day as "YYYY-MM-DD", read from its LOCAL parts — the day
+ * the user is actually living in. Not `toISOString().slice(0, 10)`, which is
+ * the UTC day and lands on the wrong side of midnight for anyone far from UTC
+ * (e.g. UTC+12 late in the evening). The single home for "today" everywhere
+ * events and chore rosters classify against the current day.
+ */
+export function localIsoDate(date: Date = new Date()): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+/**
  * Add (or subtract, with a negative `days`) whole days to a "YYYY-MM-DD"
  * string, returning the same format. Pure calendar arithmetic — zone-
  * independent — and the single home for it (used by useCalendar and the

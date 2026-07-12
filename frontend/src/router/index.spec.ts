@@ -117,3 +117,9 @@ describe('chunk reload guard', () => {
     expect(reloadSpy).not.toHaveBeenCalled()
   })
 })
+
+describe('routes', () => {
+  it('resolves /chores to the chores route', () => {
+    expect(router.resolve('/chores').name).toBe('chores')
+  })
+})

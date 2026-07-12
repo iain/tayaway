@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useAttrs } from 'vue'
+import { computed, useAttrs, useTemplateRef } from 'vue'
 import { ExclamationCircleIcon } from '@heroicons/vue/20/solid'
 
 defineOptions({
@@ -59,6 +59,14 @@ const inputShell = computed(() =>
     ? 'bg-state-danger-fill outline-1 -outline-offset-1 outline-state-danger-outline focus:outline-2 focus:outline-offset-2 focus:outline-focus'
     : 'bg-surface-sunken outline-1 -outline-offset-1 outline-line focus:outline-2 focus:outline-offset-2 focus:outline-focus'
 )
+
+// Exactly one <input> renders (prefix vs plain), so a shared ref resolves to
+// the live element and lets callers focus the field programmatically.
+const inputEl = useTemplateRef<HTMLInputElement>('inputEl')
+
+defineExpose({
+  focus: () => inputEl.value?.focus(),
+})
 </script>
 
 <template>
@@ -77,6 +85,7 @@ const inputShell = computed(() =>
         </div>
         <input
           :id="id"
+          ref="inputEl"
           :type="type ?? 'text'"
           :value="modelValue"
           :placeholder="placeholder"
@@ -107,6 +116,7 @@ const inputShell = computed(() =>
       <div v-else class="relative">
         <input
           :id="id"
+          ref="inputEl"
           :type="type ?? 'text'"
           :value="modelValue"
           :placeholder="placeholder"
