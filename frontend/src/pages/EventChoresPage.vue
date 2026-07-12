@@ -49,6 +49,9 @@ const roster = computed(() => {
 })
 
 const canDeleteRoster = computed(() => can(roster.value?.permissions, 'delete'))
+const canClearAssignments = computed(() =>
+  can(roster.value?.permissions, 'edit')
+)
 
 const chores = computed(() => {
   if (!roster.value) return []
@@ -111,6 +114,10 @@ const upcomingAssignments = computed(() =>
   assignments.value.filter((a) => a.date >= today.value)
 )
 
+const upcomingUnpinnedCount = computed(
+  () => upcomingAssignments.value.filter((a) => !a.pinned).length
+)
+
 const showAddChoreForm = ref(false)
 const newChoreName = ref('')
 const newChorePpd = ref('1')
@@ -133,7 +140,8 @@ const choreTimePopover = ref<{
 } | null>(null)
 const confirmDeleteChoreId = ref<string | null>(null)
 const confirmAutofill = ref(false)
-const showDeleteActions = ref(false)
+const confirmClearUpcoming = ref(false)
+const confirmDeleteRoster = ref(false)
 const showManageChores = ref(false)
 
 // The roster is a dates x chores matrix on desktop and a day-first stack on the
@@ -378,7 +386,15 @@ function handleDeleteRoster() {
     showRsvpDialog.value = true
     return
   }
-  showDeleteActions.value = true
+  confirmDeleteRoster.value = true
+}
+
+function handleClearUpcoming() {
+  if (!userIsAttending.value) {
+    showRsvpDialog.value = true
+    return
+  }
+  confirmClearUpcoming.value = true
 }
 
 function handleManageChores() {
@@ -389,16 +405,16 @@ function handleManageChores() {
   showManageChores.value = true
 }
 
-async function handleClearUnpinned() {
+async function handleClearUpcomingConfirm() {
   if (!roster.value) return
   await choreRostersStore.clearUnpinned(roster.value.id)
-  showDeleteActions.value = false
+  confirmClearUpcoming.value = false
 }
 
 async function handleDeleteRosterConfirm() {
   if (!roster.value) return
   await choreRostersStore.deleteRoster(roster.value.id)
-  showDeleteActions.value = false
+  confirmDeleteRoster.value = false
 }
 
 onMounted(async () => {
@@ -454,8 +470,10 @@ onMounted(async () => {
       <PageHeader title="Chores" size="sm" :icon="ClipboardDocumentListIcon">
         <ChoreRosterToolbar
           :can-delete="canDeleteRoster"
+          :can-clear="canClearAssignments"
           @add-chore="openAddChore"
           @autofill="handleAutofillClick"
+          @clear-upcoming="handleClearUpcoming"
           @delete-roster="handleDeleteRoster"
           @manage-chores="handleManageChores"
         />
@@ -683,17 +701,56 @@ onMounted(async () => {
     </BaseModal>
 
     <BaseModal
-      :open="showDeleteActions"
-      title="Manage roster"
+      :open="confirmClearUpcoming"
+      title="Clear upcoming assignments"
       size="sm"
-      @close="showDeleteActions = false"
+      @close="confirmClearUpcoming = false"
     >
-      <div class="flex flex-col gap-3">
-        <AppButton variant="secondary" @click="handleClearUnpinned">
-          Clear upcoming non-pinned assignments
+      <p class="text-ink-muted text-sm">
+        <template v-if="upcomingUnpinnedCount > 0">
+          This clears
+          {{ upcomingUnpinnedCount }} upcoming assignment{{
+            upcomingUnpinnedCount === 1 ? '' : 's'
+          }}. Days already past and pinned assignments stay as they are.
+        </template>
+        <template v-else>
+          There's nothing to clear — no upcoming assignments are unpinned.
+        </template>
+      </p>
+      <div class="mt-6 flex justify-end gap-3">
+        <TextButton variant="secondary" @click="confirmClearUpcoming = false">
+          Cancel
+        </TextButton>
+        <AppButton
+          :disabled="upcomingUnpinnedCount === 0"
+          autofocus
+          @click="handleClearUpcomingConfirm"
+        >
+          Clear
         </AppButton>
-        <AppButton variant="danger" @click="handleDeleteRosterConfirm">
-          Delete entire roster
+      </div>
+    </BaseModal>
+
+    <BaseModal
+      :open="confirmDeleteRoster"
+      title="Delete roster"
+      size="sm"
+      @close="confirmDeleteRoster = false"
+    >
+      <p class="text-ink-muted text-sm">
+        This deletes the whole roster — every chore and assignment, including
+        the record of days already done. This can't be undone.
+      </p>
+      <div class="mt-6 flex justify-end gap-3">
+        <TextButton variant="secondary" @click="confirmDeleteRoster = false">
+          Cancel
+        </TextButton>
+        <AppButton
+          variant="danger"
+          autofocus
+          @click="handleDeleteRosterConfirm"
+        >
+          Delete roster
         </AppButton>
       </div>
     </BaseModal>

@@ -911,17 +911,15 @@ test.describe('Chore Rosters Feature', () => {
         page.getByRole('button', { name: 'Add chore' }).first()
       ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
 
-      // Click delete roster button (opens action choice dialog)
-      await page.getByRole('button', { name: 'Delete roster' }).click()
+      // Deletion lives in the overflow menu, behind its own confirm dialog
+      await page.getByRole('button', { name: 'More roster actions' }).click()
+      await page.getByRole('menuitem', { name: 'Delete roster…' }).click()
 
-      // Action dialog should appear with options
       await expect(
-        page
-          .locator('dialog')
-          .getByRole('button', { name: 'Delete entire roster' })
+        page.locator('dialog').getByRole('button', { name: 'Delete roster' })
       ).toBeVisible()
 
-      // Click "Delete entire roster" in the dialog
+      // Confirm the deletion
       const [deleteResp] = await Promise.all([
         page.waitForResponse(
           (resp) =>
@@ -932,7 +930,7 @@ test.describe('Chore Rosters Feature', () => {
         ),
         page
           .locator('dialog')
-          .getByRole('button', { name: 'Delete entire roster' })
+          .getByRole('button', { name: 'Delete roster' })
           .click(),
       ])
       expect(deleteResp.ok()).toBeTruthy()
