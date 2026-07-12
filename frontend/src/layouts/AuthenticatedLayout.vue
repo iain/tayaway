@@ -61,9 +61,22 @@ const {
   hasCachedData,
   connectionFailed,
 } = storeToRefs(wsStore)
-const { pendingCount } = storeToRefs(commandQueueStore)
+const { pendingCount, isProcessing, retryScheduled } =
+  storeToRefs(commandQueueStore)
 
 const showConnectionBadge = computed(() => wsState.value !== 'authenticated')
+
+// Surface queued offline work whenever it exists: socket down, replay in
+// progress, or a backoff retry armed (fetch failed while the socket stayed
+// up). Direct in-flight mutations also bump pendingCount but match none of
+// these, so normal online clicks don't flash the pill.
+const showPendingPill = computed(
+  () =>
+    pendingCount.value > 0 &&
+    (wsState.value !== 'authenticated' ||
+      isProcessing.value ||
+      retryScheduled.value)
+)
 const { currentWorkspace, otherWorkspaces } = storeToRefs(workspaceStore)
 const inboxStore = useInboxStore()
 const { unreadCountByOtherWorkspace } = storeToRefs(inboxStore)
@@ -610,13 +623,19 @@ async function handleSignOut() {
     leave-to-class="translate-y-full opacity-0"
   >
     <div
-      v-if="pendingCount > 0 && wsState !== 'authenticated'"
+      v-if="showPendingPill"
+      data-testid="pending-changes-pill"
       class="fixed bottom-20 left-1/2 z-50 -translate-x-1/2"
     >
       <div
         class="bg-primary text-primary-ink flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-lg"
       >
-        {{ pendingCount }} pending change{{ pendingCount === 1 ? '' : 's' }}
+        <template v-if="isProcessing">
+          Syncing {{ pendingCount }} change{{ pendingCount === 1 ? '' : 's' }}…
+        </template>
+        <template v-else>
+          {{ pendingCount }} pending change{{ pendingCount === 1 ? '' : 's' }}
+        </template>
       </div>
     </div>
   </Transition>
