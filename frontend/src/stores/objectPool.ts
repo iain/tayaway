@@ -737,6 +737,14 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     }
   }
 
+  // Mark an object id as an unconfirmed optimistic create so replaceScope
+  // preserves it. Used on startup: tempObjectIds is in-memory, so a queued
+  // create's object hydrated from the cache would otherwise be dropped by
+  // the next full sync while its command is still waiting to replay.
+  function markTemp(objectId: string): void {
+    tempObjectIds.add(objectId)
+  }
+
   // Restore a batch of previously-removed entries to the pool. Each entry
   // re-enters every scope it came from (carried on RemovedEntry), so a
   // rollback for a multi-scope object restores it to every channel it
@@ -1200,6 +1208,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     removePending,
     hasPending,
     set,
+    markTemp,
     restore,
     remove,
     removeMany,

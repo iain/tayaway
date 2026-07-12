@@ -979,36 +979,76 @@ describe('commandQueue store', () => {
   })
 
   describe('initialize', () => {
+    function storedCommand(id: string) {
+      return {
+        id,
+        method: 'POST' as const,
+        path: '/api/events',
+        body: {},
+        createdAt: 1,
+      }
+    }
+
     it('loads pending count from db', async () => {
-      vi.mocked(dbCount).mockResolvedValueOnce(3)
-      vi.mocked(getPendingCommands).mockResolvedValueOnce([])
+      vi.mocked(getPendingCommands).mockResolvedValueOnce([
+        storedCommand('a'),
+        storedCommand('b'),
+        storedCommand('c'),
+      ])
       // processQueue (triggered by initialize) resyncs count at the end
       vi.mocked(dbCount).mockResolvedValueOnce(3)
 
       const store = useCommandQueueStore()
       await store.initialize()
+      // initialize fires processQueue un-awaited — settle it inside this
+      // test so its mock consumption can't leak into the next one
+      await vi.waitFor(() => expect(store.isProcessing).toBe(false))
 
       expect(store.pendingCount).toBe(3)
     })
 
     it('triggers processQueue when there are pending commands', async () => {
-      vi.mocked(dbCount).mockResolvedValueOnce(2)
+      vi.mocked(getPendingCommands).mockResolvedValueOnce([storedCommand('a')])
+
+      const store = useCommandQueueStore()
+      await store.initialize()
+      await vi.waitFor(() => expect(store.isProcessing).toBe(false))
+
+      // Once from initialize itself, once from the triggered processQueue
+      expect(getPendingCommands).toHaveBeenCalledTimes(2)
+    })
+
+    it('does not trigger processQueue when queue is empty', async () => {
       vi.mocked(getPendingCommands).mockResolvedValueOnce([])
 
       const store = useCommandQueueStore()
       await store.initialize()
 
-      // processQueue was called, which calls getPendingCommands
-      expect(getPendingCommands).toHaveBeenCalled()
+      expect(getPendingCommands).toHaveBeenCalledTimes(1)
     })
 
-    it('does not trigger processQueue when queue is empty', async () => {
-      vi.mocked(dbCount).mockResolvedValueOnce(0)
+    // tempObjectIds is in-memory: after a restart, the optimistic object of
+    // a still-queued create hydrates from the cache unmarked, and the next
+    // (reconciliation) full sync would silently drop it.
+    it('re-marks queued creates as temp so full syncs preserve them', async () => {
+      vi.mocked(getPendingCommands).mockResolvedValueOnce([
+        {
+          ...storedCommand('a'),
+          optimistic: {
+            kind: 'create' as const,
+            objectType: 'event' as const,
+            objectId: 'evt-1',
+          },
+        },
+      ])
+      const pool = useObjectPoolStore()
+      const markTemp = vi.spyOn(pool, 'markTemp')
 
       const store = useCommandQueueStore()
       await store.initialize()
+      await vi.waitFor(() => expect(store.isProcessing).toBe(false))
 
-      expect(getPendingCommands).not.toHaveBeenCalled()
+      expect(markTemp).toHaveBeenCalledWith('evt-1')
     })
   })
 
