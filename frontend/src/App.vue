@@ -13,9 +13,13 @@ const { initialized } = storeToRefs(authStore)
 onMounted(async () => {
   await authStore.initialize()
   if (authStore.isAuthenticated) {
-    await commandQueueStore.initialize()
+    // Cache hydration must complete before the command queue replays: a
+    // replay rejection rolls back pending overlays by id, which only works
+    // once loadFromCache has restored them, and the rollback only reaches
+    // the IDB cache once startPersisting is registered.
     await poolPersistence.loadFromCache()
     poolPersistence.startPersisting()
+    await commandQueueStore.initialize()
   }
 })
 </script>

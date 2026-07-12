@@ -146,6 +146,22 @@ describe('commandQueue store', () => {
       )
     })
 
+    it('persists the rollback linkage atomically with the command row', async () => {
+      const store = useCommandQueueStore()
+      mockedApi.post.mockResolvedValueOnce(okResponse(null))
+      const optimistic = {
+        kind: 'create' as const,
+        objectType: 'event' as const,
+        objectId: 'evt-1',
+      }
+
+      await store.enqueue('POST', '/api/events', { name: 'X' }, optimistic)
+
+      expect(addCommand).toHaveBeenCalledWith(
+        expect.objectContaining({ optimistic })
+      )
+    })
+
     it('persists command to db before executing', async () => {
       const store = useCommandQueueStore()
       mockedApi.put.mockResolvedValueOnce(okResponse(null))
@@ -690,7 +706,7 @@ describe('commandQueue store', () => {
       expect(pool.get('event', 'evt-1')?.name).toBe('Deleted offline')
     })
 
-    it('shows one combined toast when several replays fail', async () => {
+    it('shows one combined toast, without claiming unlinked changes were undone', async () => {
       const store = useCommandQueueStore()
       vi.mocked(getPendingCommands).mockResolvedValueOnce([
         {
@@ -712,9 +728,108 @@ describe('commandQueue store', () => {
 
       await store.processQueue()
 
+      // Neither command carried a rollback linkage — nothing was undone,
+      // so the toast must not say so.
       expect(notificationMocks.showError).toHaveBeenCalledExactlyOnceWith(
-        expect.stringMatching(/2 offline changes/)
+        "2 offline changes couldn't be saved."
       )
+    })
+
+    it('counts each rolled-back change when a coalesced command fails', async () => {
+      const store = useCommandQueueStore()
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeEvent({ name: 'Original' })], {
+        scope: Scope.workspace('ws-1'),
+      })
+      const p1 = pool.addPending('event', 'evt-1', { name: 'Edit one' })
+      const p2 = pool.addPending('event', 'evt-1', { name: 'Edit two' })
+      const commands = [
+        {
+          id: 'cmd-a',
+          method: 'PUT' as const,
+          path: '/api/events/evt-1',
+          body: { name: 'Edit one' },
+          createdAt: 1,
+          optimistic: {
+            kind: 'update' as const,
+            objectType: 'event' as const,
+            objectId: 'evt-1',
+            pendingId: p1,
+          },
+        },
+        {
+          id: 'cmd-b',
+          method: 'PUT' as const,
+          path: '/api/events/evt-1',
+          body: { name: 'Edit two' },
+          createdAt: 2,
+          optimistic: {
+            kind: 'update' as const,
+            objectType: 'event' as const,
+            objectId: 'evt-1',
+            pendingId: p2,
+          },
+        },
+      ]
+      vi.mocked(getPendingCommands).mockResolvedValueOnce(commands)
+      // Both edits coalesce into one PUT
+      const { coalesceCommands } = await import('@/api/coalesceCommands')
+      vi.mocked(coalesceCommands).mockReturnValueOnce([
+        {
+          method: 'PUT',
+          path: '/api/events/evt-1',
+          body: { name: 'Edit two' },
+          originalIds: ['cmd-a', 'cmd-b'],
+        },
+      ])
+      mockedApi.put.mockRejectedValueOnce({ status: 422, message: 'nope' })
+
+      await store.processQueue()
+
+      expect(pool.hasPending('event', 'evt-1')).toBe(false)
+      expect(notificationMocks.showError).toHaveBeenCalledExactlyOnceWith(
+        "2 offline changes couldn't be saved and were undone."
+      )
+    })
+  })
+
+  describe('in-flight direct requests', () => {
+    // The command row is written before the direct request goes out, so a
+    // concurrently-triggered drain could replay it — a duplicate request
+    // whose double success corrupts pendingCount.
+    it('does not replay a command whose direct request is still in flight', async () => {
+      const store = useCommandQueueStore()
+
+      let resolveDirect!: (v: ApiResponse<unknown>) => void
+      mockedApi.post.mockReturnValueOnce(
+        new Promise((r) => {
+          resolveDirect = r
+        })
+      )
+      const directRequest = store.enqueue('POST', '/api/events', {})
+      const commandId = (await vi.mocked(addCommand).mock.results[0]!
+        .value) as string
+
+      // A drain fires while the direct request is in flight and sees its row
+      vi.mocked(getPendingCommands).mockResolvedValueOnce([
+        {
+          id: commandId,
+          method: 'POST' as const,
+          path: '/api/events',
+          body: {},
+          createdAt: 1,
+        },
+      ])
+      // The end-of-drain resync still counts the in-flight row
+      vi.mocked(dbCount).mockResolvedValueOnce(1)
+      await store.processQueue()
+
+      // Only the direct request hit the API — no duplicate replay
+      expect(mockedApi.post).toHaveBeenCalledTimes(1)
+
+      resolveDirect(okResponse(null))
+      await directRequest
+      expect(store.pendingCount).toBe(0)
     })
   })
 

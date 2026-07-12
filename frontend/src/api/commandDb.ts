@@ -3,11 +3,13 @@ import type { RemovedEntry } from '@/stores/objectPool'
 import type { ObjectType } from '@/types/pool'
 
 // What to undo in the object pool if this command permanently fails on
-// replay. Registered by useMutation when a command gets queued (direct
-// success/error paths roll back inline and never register one); consumed
-// by processQueue's server-error path. Persisted on the command row so
-// rollback still works when the replay happens after an app restart —
-// pending overlays keep their ids across restarts via poolDb.
+// replay. Threaded into enqueue by useMutation and written atomically with
+// the command row (a linkage registered after the fact leaves a window
+// where a raced replay fails with nothing to roll back); consumed by
+// processQueue's server-error path. Persisted so rollback still works when
+// the replay happens after an app restart — pending overlays keep their
+// ids across restarts via poolDb. Must be structured-cloneable: no Vue
+// reactive proxies.
 export type OptimisticRef =
   | { kind: 'create'; objectType: ObjectType; objectId: string }
   | {
@@ -40,7 +42,7 @@ interface CommandQueueDB {
   commands: {
     key: string
     value: StoredCommand
-    indexes: { createdAt: number; workspaceId: string }
+    indexes: { workspaceId: string }
   }
 }
 
@@ -48,11 +50,10 @@ let dbPromise: Promise<IDBPDatabase<CommandQueueDB>> | null = null
 
 function getDb(): Promise<IDBPDatabase<CommandQueueDB>> {
   if (!dbPromise) {
-    dbPromise = openDB<CommandQueueDB>('tayaway-command-queue', 3, {
+    dbPromise = openDB<CommandQueueDB>('tayaway-command-queue', 4, {
       upgrade(db, oldVersion, _newVersion, transaction) {
         if (oldVersion < 1) {
-          const store = db.createObjectStore('commands', { keyPath: 'id' })
-          store.createIndex('createdAt', 'createdAt')
+          db.createObjectStore('commands', { keyPath: 'id' })
         }
         if (oldVersion >= 1 && oldVersion < 2) {
           const store = transaction.objectStore('commands')
@@ -64,6 +65,15 @@ function getDb(): Promise<IDBPDatabase<CommandQueueDB>> {
           const store = transaction.objectStore('commands')
           if (!store.indexNames.contains('workspaceId')) {
             store.createIndex('workspaceId', 'workspaceId')
+          }
+        }
+        if (oldVersion >= 1 && oldVersion < 4) {
+          // getPendingCommands sorts in memory via byQueueOrder now (the
+          // index couldn't express the seq tiebreak); drop the dead index
+          // so nobody reaches for it and reintroduces random-tie ordering.
+          const store = transaction.objectStore('commands')
+          if (store.indexNames.contains('createdAt')) {
+            store.deleteIndex('createdAt')
           }
         }
       },
@@ -98,23 +108,6 @@ export function byQueueOrder(a: StoredCommand, b: StoredCommand): number {
 export async function removeCommand(id: string): Promise<void> {
   const db = await getDb()
   await db.delete('commands', id)
-}
-
-// Attach rollback info to an already-stored command. Registered after the
-// fact (the command row is written before the request is attempted, but
-// only queued outcomes need rollback), so the row may already be gone if a
-// replay raced us — that's a no-op, matching today's behaviour.
-export async function setOptimistic(
-  id: string,
-  optimistic: OptimisticRef
-): Promise<void> {
-  const db = await getDb()
-  const tx = db.transaction('commands', 'readwrite')
-  const stored = await tx.store.get(id)
-  if (stored) {
-    await tx.store.put({ ...stored, optimistic })
-  }
-  await tx.done
 }
 
 export async function getPendingCommands(): Promise<StoredCommand[]> {

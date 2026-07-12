@@ -790,6 +790,51 @@ describe('objectPool store', () => {
     })
   })
 
+  describe('restore', () => {
+    // A queued delete can sit for hours (or across restarts) before its
+    // replay is rejected; meanwhile the server may have re-delivered a newer
+    // copy of the object. Rolling back must not clobber that with the stale
+    // pre-delete snapshot.
+    it('does not overwrite a newer copy with the restored snapshot', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects(
+        [
+          makeEvent({
+            name: 'Edited elsewhere',
+            updatedAt: '2026-02-01T00:00:00.000Z',
+          }),
+        ],
+        { scope: Scope.workspace('A') }
+      )
+
+      pool.restore([
+        {
+          object: makeEvent({
+            name: 'Stale snapshot',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          }),
+          scopes: [Scope.workspace('A')],
+        },
+      ])
+
+      expect(pool.get('event', 'evt-1')?.name).toBe('Edited elsewhere')
+    })
+
+    it('restores the snapshot when the object is absent', () => {
+      const pool = useObjectPoolStore()
+
+      pool.restore([
+        {
+          object: makeEvent({ name: 'Deleted offline' }),
+          scopes: [Scope.workspace('A')],
+        },
+      ])
+
+      expect(pool.get('event', 'evt-1')?.name).toBe('Deleted offline')
+      expect(pool.scopesOf('evt-1')).toEqual([Scope.workspace('A')])
+    })
+  })
+
   describe('restorePendingUpdates', () => {
     it('restores cached pending updates', () => {
       const pool = useObjectPoolStore()

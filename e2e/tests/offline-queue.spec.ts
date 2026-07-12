@@ -104,9 +104,10 @@ test.describe('Offline command queue', () => {
 
     await queueTaskListCreate(page, 'Doomed List')
 
-    // Swap the network failure for a permanent server rejection before the
-    // retry fires.
-    await page.unroute('**/api/**')
+    // Swap the network failure for a permanent server rejection. Register
+    // the 422 route BEFORE unrouting the blanket abort — routes match
+    // last-registered-first, so there is no gap in which the armed retry
+    // could slip through and create the list successfully.
     await page.route('**/api/task-lists', (route) =>
       route.request().method() === 'GET'
         ? route.fallback()
@@ -116,6 +117,7 @@ test.describe('Offline command queue', () => {
             body: JSON.stringify({ error: 'Validation failed' }),
           })
     )
+    await page.unroute('**/api/**')
 
     // The replay's 422 undoes the optimistic card and says what was lost.
     await expect(

@@ -741,8 +741,18 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   // re-enters every scope it came from (carried on RemovedEntry), so a
   // rollback for a multi-scope object restores it to every channel it
   // was on. Pool persistence is updated once per (entry, scope) pair.
+  //
+  // Entries can be stale: a queued delete's snapshot may be rolled back
+  // hours later (or after a restart), by which time the server may have
+  // re-delivered a newer copy. Same-or-newer existing copies win.
   function restore(entries: RemovedEntry[]): void {
     for (const entry of entries) {
+      const existing = objects.value
+        .get(entry.object.objectType)
+        ?.get(entry.object.id)
+      if (existing && !isNewer(entry.object.updatedAt, existing.updatedAt)) {
+        continue
+      }
       const scopes =
         entry.scopes.length > 0 ? entry.scopes : [deriveScope(entry.object)]
       for (const scope of scopes) {
@@ -835,7 +845,10 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
 
       const obj = typeMap.get(id)
       if (obj) {
-        removed.push({ object: obj, scopes: scopesOf(id) })
+        // toRaw because removed entries are persisted (rollback linkage in
+        // commandDb) and IDB structured-clones them — reactive proxies
+        // aren't cloneable.
+        removed.push({ object: toRaw(obj), scopes: scopesOf(id) })
         reverseIndexRemove(cascadeIndex, obj)
         typeMap.delete(id)
         dropObjectFromAllScopes(id)
