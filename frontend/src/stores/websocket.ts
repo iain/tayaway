@@ -67,6 +67,30 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
   // Track last sync timestamp per workspace for partial sync
   const syncTimestamps = new Map<string, string>()
+  // Last *full* sync per workspace. A full sync is the only authoritative
+  // repair for drift — missed broadcasts, lost tombstones, leftover zombies
+  // — so partial syncs are only trusted while the last full sync is fresh.
+  const fullSyncTimestamps = new Map<string, string>()
+
+  // How long a client may go without a full-sync reconciliation. Jitter
+  // spreads the resulting full syncs so a deploy that reconnects every
+  // client doesn't stampede the server with them.
+  const FULL_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000
+  const FULL_SYNC_JITTER_MS = 2 * 60 * 60 * 1000
+
+  // The `since` to put on the next sync request for a workspace: the
+  // partial-sync cursor while the last full sync is fresh, or null to
+  // request a full sync once the reconciliation interval has passed (or no
+  // full sync was ever recorded).
+  function reconcileCursor(workspaceId: string): string | null {
+    const since = syncTimestamps.get(workspaceId)
+    if (!since) return null
+    const lastFull = fullSyncTimestamps.get(workspaceId)
+    if (!lastFull) return null
+    const interval = FULL_SYNC_INTERVAL_MS - Math.random() * FULL_SYNC_JITTER_MS
+    if (Date.now() - new Date(lastFull).getTime() >= interval) return null
+    return since
+  }
 
   let socket: WebSocket | null = null
   let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
@@ -92,6 +116,17 @@ export const useWebSocketStore = defineStore('websocket', () => {
     syncTimestamps.set(workspaceId, syncedAt)
   }
 
+  function getFullSyncedAt(workspaceId: string): string | undefined {
+    return fullSyncTimestamps.get(workspaceId)
+  }
+
+  function restoreFullSyncTimestamp(
+    workspaceId: string,
+    syncedAt: string
+  ): void {
+    fullSyncTimestamps.set(workspaceId, syncedAt)
+  }
+
   async function getWebSocketUrl(): Promise<string> {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 5000)
@@ -113,11 +148,15 @@ export const useWebSocketStore = defineStore('websocket', () => {
     const host = window.location.host
     let url = `${protocol}//${host}/ws?ticket=${encodeURIComponent(data.ticket)}`
 
-    // Include current workspace so the server can sync it immediately
+    // Include current workspace so the server can sync it immediately.
+    // The cursor comes from reconcileCursor: partial while the last full
+    // sync is fresh, full otherwise. On cold starts the in-memory cursors
+    // were restored by loadFromCache — App.vue connects only after
+    // hydration, so a cursor here implies its cached baseline loaded.
     const storedWorkspaceId = localStorage.getItem(WORKSPACE_ID_STORAGE_KEY)
     if (storedWorkspaceId) {
       url += `&workspaceId=${encodeURIComponent(storedWorkspaceId)}`
-      const since = getSyncedAt(storedWorkspaceId)
+      const since = reconcileCursor(storedWorkspaceId)
       if (since) {
         url += `&since=${encodeURIComponent(since)}`
       }
@@ -258,6 +297,12 @@ export const useWebSocketStore = defineStore('websocket', () => {
     gitSha.value = null
     workspaceIds.value = message.workspaceIds
 
+    // No workspaces → no workspace sync will ever arrive; the personal
+    // sync is all there is, so don't hold the loading screen for more.
+    if (message.workspaceIds.length === 0) {
+      hasSynced.value = true
+    }
+
     // Initialize workspace selection and request data for it
     const workspaceStore = useWorkspaceStore()
     workspaceStore.initialize(message.workspaceIds)
@@ -306,6 +351,16 @@ export const useWebSocketStore = defineStore('websocket', () => {
         : null
     if (!scope) return
 
+    // Stamp cursors before applying: the persistence layer reads them when
+    // the replace/import events fire, and syncedAt was captured server-side
+    // before the query, so it is a valid cursor regardless of apply timing.
+    if (message.data?.syncedAt && !isPersonal && syncWorkspaceId) {
+      syncTimestamps.set(syncWorkspaceId, message.data.syncedAt)
+      if (message.data.syncType === 'full') {
+        fullSyncTimestamps.set(syncWorkspaceId, message.data.syncedAt)
+      }
+    }
+
     if (message.data?.syncType === 'full') {
       pool.applyUpdate(scope, {
         kind: 'replace',
@@ -319,11 +374,12 @@ export const useWebSocketStore = defineStore('websocket', () => {
       })
     }
 
-    if (message.data?.syncedAt && !isPersonal && syncWorkspaceId) {
-      syncTimestamps.set(syncWorkspaceId, message.data.syncedAt)
+    // The personal sync is a small always-first payload; flipping hasSynced
+    // on it aborted workspace cache hydration and skipped restoring pending
+    // overlays. Only a workspace sync means "the workspace has synced".
+    if (!isPersonal) {
+      hasSynced.value = true
     }
-
-    hasSynced.value = true
   }
 
   function handleBroadcast(message: BroadcastMessage): void {
@@ -347,8 +403,11 @@ export const useWebSocketStore = defineStore('websocket', () => {
     // notifications) is still in the pool, so the layout should keep
     // rendering during the switch; route-level skeletons handle the empty
     // new-workspace view until the sync arrives.
-    const since = getSyncedAt(workspaceId)
-    send({ type: 'switch_workspace', workspaceId, since: since ?? null })
+    send({
+      type: 'switch_workspace',
+      workspaceId,
+      since: reconcileCursor(workspaceId),
+    })
   }
 
   function send(data: object): void {
@@ -442,15 +501,38 @@ export const useWebSocketStore = defineStore('websocket', () => {
     }
   }
 
+  // Throttle for the visibility reconciliation below — visibility flips
+  // constantly on mobile, and each request costs the server a changed_since
+  // pass over every type.
+  const VISIBILITY_RECONCILE_MIN_INTERVAL_MS = 60_000
+  let lastVisibilityReconcileAt = 0
+
   // A tab that was frozen or throttled in the background may resume on a
   // socket the server has already pruned (or that died without an onclose).
   // Probe liveness immediately instead of waiting up to 30s for the next
   // interval tick — the pong watchdog (or the server closing an
   // unregistered connection) then forces a reconnect within seconds.
+  //
+  // Also request a reconciliation sync for the current workspace: NOTIFYs
+  // lost server-side (LISTEN reconnects) leave connected clients silently
+  // stale with nothing else to catch them up. switch_workspace is just
+  // "send me a sync" server-side — no subscription change.
   const onVisibilityChange = (): void => {
     if (document.visibilityState !== 'visible') return
     if (state.value !== 'authenticated') return
     sendPingWithWatchdog()
+
+    const now = Date.now()
+    if (now - lastVisibilityReconcileAt < VISIBILITY_RECONCILE_MIN_INTERVAL_MS)
+      return
+    const wsId = useWorkspaceStore().currentWorkspaceId
+    if (!wsId) return
+    lastVisibilityReconcileAt = now
+    send({
+      type: 'switch_workspace',
+      workspaceId: wsId,
+      since: reconcileCursor(wsId),
+    })
   }
 
   function disconnect(): void {
@@ -487,6 +569,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
   function $reset(): void {
     disconnect()
     syncTimestamps.clear()
+    fullSyncTimestamps.clear()
+    lastVisibilityReconcileAt = 0
   }
 
   return {
@@ -504,6 +588,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
     sendSwitchWorkspace,
     getSyncedAt,
     restoreSyncTimestamp,
+    getFullSyncedAt,
+    restoreFullSyncTimestamp,
     $reset,
   }
 })

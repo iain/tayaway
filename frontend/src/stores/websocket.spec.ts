@@ -19,6 +19,7 @@ import {
 // ---- WebSocket mock --------------------------------------------------------
 
 type MockSocket = {
+  url: string
   onopen: ((event: Event) => void) | null
   onmessage: ((event: MessageEvent) => void) | null
   onclose: ((event: CloseEvent) => void) | null
@@ -34,7 +35,8 @@ function installWebSocketMock() {
   // Must use a real constructor function — vi.fn().mockImplementation does not
   // work correctly as a `new` target in jsdom.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const MockWebSocket = function (this: any) {
+  const MockWebSocket = function (this: any, url: string) {
+    this.url = url
     this.onopen = null
     this.onmessage = null
     this.onclose = null
@@ -519,6 +521,144 @@ describe('useWebSocketStore — sync scope routing', () => {
 
     expect(pool.scopesOf('evt-legacy')).toEqual([Scope.workspace('ws-1')])
     expect(store.getSyncedAt('ws-1')).toBe('2026-07-12T10:00:00.000Z')
+  })
+
+  // hasSynced gates the loading screen, cache-hydration aborts, and the
+  // restore of persisted pending overlays. The tiny personal sync arriving
+  // first must not flip it — that aborted workspace hydration mid-way.
+  it('does not flip hasSynced on a personal sync, only on a workspace sync', () => {
+    sendSync({
+      syncType: 'personal',
+      syncedAt: '2026-07-12T10:00:00.000Z',
+      objects: [],
+    })
+    expect(store.hasSynced).toBe(false)
+
+    sendSync({
+      syncType: 'full',
+      syncedAt: '2026-07-12T10:00:00.000Z',
+      workspaceId: 'ws-1',
+      objects: [],
+    })
+    expect(store.hasSynced).toBe(true)
+  })
+
+  it('flips hasSynced on authentication when the user has no workspaces', () => {
+    lastSocket.onmessage!({
+      data: JSON.stringify({
+        type: 'authenticated',
+        userId: 'u1',
+        workspaceIds: [],
+      }),
+    } as MessageEvent)
+
+    expect(store.hasSynced).toBe(true)
+  })
+})
+
+// ---- reconciliation cursor tests --------------------------------------------
+
+describe('useWebSocketStore — reconciliation cursor', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let store: any
+
+  beforeEach(async () => {
+    installWebSocketMock()
+    setActivePinia(createPinia())
+    localStorage.setItem('current_workspace_id', 'ws-1')
+    const { useWebSocketStore } = await import('./websocket')
+    store = useWebSocketStore()
+  })
+
+  afterEach(() => {
+    localStorage.removeItem('current_workspace_id')
+    vi.restoreAllMocks()
+    vi.resetModules()
+  })
+
+  function hoursAgo(h: number): string {
+    return new Date(Date.now() - h * 60 * 60 * 1000).toISOString()
+  }
+
+  it('connects with the partial-sync cursor while the last full sync is fresh', async () => {
+    store.restoreSyncTimestamp('ws-1', hoursAgo(1))
+    store.restoreFullSyncTimestamp('ws-1', hoursAgo(2))
+
+    await store.connect()
+
+    expect(lastSocket.url).toContain('since=')
+  })
+
+  // A full sync is the only authoritative repair for drift (missed
+  // broadcasts, lost tombstones, zombies) — cap how long a client can go
+  // without one.
+  it('omits the cursor to request a full sync when the last one is older than the interval', async () => {
+    store.restoreSyncTimestamp('ws-1', hoursAgo(1))
+    store.restoreFullSyncTimestamp('ws-1', hoursAgo(48))
+
+    await store.connect()
+
+    expect(lastSocket.url).not.toContain('since=')
+  })
+
+  it('omits the cursor when no full sync has ever been recorded', async () => {
+    store.restoreSyncTimestamp('ws-1', hoursAgo(1))
+
+    await store.connect()
+
+    expect(lastSocket.url).not.toContain('since=')
+  })
+
+  it('records the full-sync timestamp from a full sync payload', async () => {
+    await store.connect()
+    lastSocket.onmessage!({
+      data: JSON.stringify({
+        type: 'sync',
+        data: {
+          syncType: 'full',
+          syncedAt: '2026-07-12T10:00:00.000Z',
+          workspaceId: 'ws-1',
+          objects: [],
+        },
+      }),
+    } as MessageEvent)
+
+    expect(store.getFullSyncedAt('ws-1')).toBe('2026-07-12T10:00:00.000Z')
+  })
+
+  it('requests a reconciliation sync when the tab becomes visible, throttled', async () => {
+    vi.useFakeTimers()
+    store.restoreSyncTimestamp('ws-1', hoursAgo(1))
+    store.restoreFullSyncTimestamp('ws-1', hoursAgo(2))
+    await store.connect()
+    lastSocket.onmessage!({
+      data: JSON.stringify({
+        type: 'authenticated',
+        userId: 'u1',
+        workspaceIds: ['ws-1'],
+        initialWorkspaceId: 'ws-1',
+      }),
+    } as MessageEvent)
+    await vi.advanceTimersByTimeAsync(0)
+    lastSocket.send.mockClear()
+
+    document.dispatchEvent(new Event('visibilitychange'))
+
+    const syncRequests = lastSocket.send.mock.calls
+      .map((call) => JSON.parse(call[0] as string))
+      .filter((m: { type: string }) => m.type === 'switch_workspace')
+    expect(syncRequests).toHaveLength(1)
+    expect(syncRequests[0]).toMatchObject({ workspaceId: 'ws-1' })
+    expect(typeof syncRequests[0].since).toBe('string')
+
+    // A second visibility flip right after must not fire another request
+    lastSocket.send.mockClear()
+    document.dispatchEvent(new Event('visibilitychange'))
+    const repeat = lastSocket.send.mock.calls
+      .map((call) => JSON.parse(call[0] as string))
+      .filter((m: { type: string }) => m.type === 'switch_workspace')
+    expect(repeat).toHaveLength(0)
+    vi.useRealTimers()
   })
 })
 

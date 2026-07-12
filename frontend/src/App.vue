@@ -3,6 +3,7 @@ import { onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { RouterView } from 'vue-router'
 import { useAuthStore, useCommandQueueStore } from '@/stores'
+import { useWebSocketStore } from '@/stores/websocket'
 import { poolPersistence } from '@/api/poolPersistence'
 import ToastContainer from '@/components/common/ToastContainer.vue'
 
@@ -19,6 +20,10 @@ onMounted(async () => {
     // the IDB cache once startPersisting is registered.
     await poolPersistence.loadFromCache()
     poolPersistence.startPersisting()
+    // Connect only after hydration: loadFromCache restores the sync
+    // cursors, and the partial-vs-full decision on the connect URL is only
+    // sound once the cached baseline those cursors describe is in the pool.
+    useWebSocketStore().connect()
     await commandQueueStore.initialize()
   }
 })

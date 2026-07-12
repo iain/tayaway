@@ -130,15 +130,10 @@ function persistSyncedAtForScope(scope: Scope): void {
 }
 
 async function loadFromCache(): Promise<void> {
-  // Read from localStorage directly — the workspace store won't be initialized
-  // yet since that happens in the WS handleAuthenticated callback
-  const expectedWorkspaceId = localStorage.getItem(WORKSPACE_ID_STORAGE_KEY)
-  if (!expectedWorkspaceId) return
-
   try {
     // Phase 1: Read lightweight metadata only. This is fast on all devices
     // and lets us validate the cache identity before reading any objects.
-    const { cacheVersion, syncedAt } = await poolDb.loadMeta()
+    const { cacheVersion, syncedAt, fullSyncedAt } = await poolDb.loadMeta()
     if (cacheVersion !== CACHE_VERSION) {
       await poolDb.clearAll()
       return
@@ -146,10 +141,26 @@ async function loadFromCache(): Promise<void> {
 
     const pool = useObjectPoolStore()
     const wsStore = useWebSocketStore()
+
+    // Restore pending overlays before anything can abort the load: they
+    // represent commands still in the queue — the replay's rollback needs
+    // their ids registered, and the user's offline changes must be visible
+    // — regardless of how the object cache races the first sync.
+    const pendingUpdates = await poolDb.loadPendingUpdatesFromDb()
+    if (pendingUpdates.size > 0) {
+      pool.restorePendingUpdates(pendingUpdates)
+    }
+
+    // Read from localStorage directly — the workspace store won't be
+    // initialized yet since that happens in the WS handleAuthenticated
+    // callback
+    const expectedWorkspaceId = localStorage.getItem(WORKSPACE_ID_STORAGE_KEY)
+    if (!expectedWorkspaceId) return
     if (wsStore.hasSynced) return // Server already sent authoritative data
 
     const workspaceScopeKey = Scope.workspace(expectedWorkspaceId)
     const workspaceSyncedAt = syncedAt.get(workspaceScopeKey) ?? null
+    const workspaceFullSyncedAt = fullSyncedAt.get(workspaceScopeKey) ?? null
 
     // Check cache age and apply staleness policy. The staleness tier itself
     // is now derived reactively by AuthenticatedLayout from a ticking `now`
@@ -195,23 +206,21 @@ async function loadFromCache(): Promise<void> {
       }
     }
 
-    // Phase 4: Restore pending updates regardless of whether cached objects
-    // were found — offline changes must survive app restarts even if the
-    // object cache was empty.
-    if (!wsStore.hasSynced) {
-      const pendingUpdates = await poolDb.loadPendingUpdatesFromDb()
-      if (pendingUpdates.size > 0) {
-        pool.restorePendingUpdates(pendingUpdates)
-      }
-    }
-
     if (!anyLoaded) return
 
     wsStore.hasCachedData = true
 
-    // Restore syncedAt so the next sync can be partial
+    // Restore the cursors so the next sync can be partial. Only after a
+    // successful hydration: a partial sync is only sound against the cached
+    // baseline these cursors were saved with.
     if (workspaceSyncedAt) {
       wsStore.restoreSyncTimestamp(expectedWorkspaceId, workspaceSyncedAt)
+    }
+    if (workspaceFullSyncedAt) {
+      wsStore.restoreFullSyncTimestamp(
+        expectedWorkspaceId,
+        workspaceFullSyncedAt
+      )
     }
   } catch {
     // IndexedDB might be unavailable — proceed without cache
@@ -225,12 +234,17 @@ function persistReplaceScope(scope: Scope, objects: PoolObject[]): void {
   pendingRemoves = pendingRemoves.filter((r) => r.scope !== scope)
 
   const wsId = Scope.workspaceId(scope)
-  const syncedAt = wsId
-    ? (useWebSocketStore().getSyncedAt(wsId) ?? undefined)
+  const wsStore = wsId ? useWebSocketStore() : null
+  const syncedAt = wsId ? (wsStore!.getSyncedAt(wsId) ?? undefined) : undefined
+  // A replace comes from a full sync, whose timestamp the websocket store
+  // recorded before applying — persist it so the reconciliation cadence
+  // survives restarts.
+  const fullSyncedAt = wsId
+    ? (wsStore!.getFullSyncedAt(wsId) ?? undefined)
     : undefined
 
   void poolDb
-    .replaceScope(scope, objects, syncedAt)
+    .replaceScope(scope, objects, syncedAt, fullSyncedAt)
     .catch((e) => console.warn('Failed to replace scope in IndexedDB', e))
 }
 

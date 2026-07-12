@@ -48,6 +48,7 @@ vi.mock('@/api/poolDb', () => ({
   loadMeta: vi.fn().mockResolvedValue({
     cacheVersion: 11,
     syncedAt: new Map(),
+    fullSyncedAt: new Map(),
   }),
   loadObjectsByType: vi.fn().mockResolvedValue([]),
   loadPendingUpdatesFromDb: vi.fn().mockResolvedValue(new Map()),
@@ -71,6 +72,8 @@ vi.mock('@/stores/websocket', () => ({
     hasCachedData: false,
     restoreSyncTimestamp: vi.fn(),
     getSyncedAt: vi.fn(() => null),
+    restoreFullSyncTimestamp: vi.fn(),
+    getFullSyncedAt: vi.fn(() => null),
   })),
 }))
 
@@ -403,6 +406,7 @@ describe('poolPersistence — multi-workspace scope routing', () => {
     expect(poolDb.replaceScope).toHaveBeenCalledWith(
       Scope.workspace('ws-1'),
       expect.arrayContaining([expect.objectContaining({ id: 'evt-A' })]),
+      undefined,
       undefined
     )
     expect(poolDb.clearAll).not.toHaveBeenCalled()
@@ -423,6 +427,7 @@ describe('poolPersistence — progressive cache loading', () => {
         syncedAt: new Map([
           [Scope.workspace('ws-1'), new Date().toISOString()],
         ]),
+        fullSyncedAt: new Map(),
       })
     vi.mocked(poolDb.loadObjectsByType).mockReset().mockResolvedValue([])
     vi.mocked(poolDb.loadPendingUpdatesFromDb)
@@ -441,6 +446,8 @@ describe('poolPersistence — progressive cache loading', () => {
       hasCachedData: false,
       restoreSyncTimestamp: vi.fn(),
       getSyncedAt: vi.fn(() => null),
+      restoreFullSyncTimestamp: vi.fn(),
+      getFullSyncedAt: vi.fn(() => null),
     } as unknown as ReturnType<typeof useWebSocketStore>)
   })
 
@@ -508,6 +515,7 @@ describe('poolPersistence — progressive cache loading', () => {
     vi.mocked(poolDb.loadMeta).mockResolvedValue({
       cacheVersion: 11,
       syncedAt: new Map([[Scope.workspace('ws-1'), oldDate]]),
+      fullSyncedAt: new Map(),
     })
 
     const pool = useObjectPoolStore()
@@ -523,6 +531,7 @@ describe('poolPersistence — progressive cache loading', () => {
     vi.mocked(poolDb.loadMeta).mockResolvedValue({
       cacheVersion: 1, // old version
       syncedAt: new Map(),
+      fullSyncedAt: new Map(),
     })
 
     const pool = useObjectPoolStore()
@@ -621,15 +630,58 @@ describe('poolPersistence — progressive cache loading', () => {
     expect(pool.restorePendingUpdates).toHaveBeenCalledWith(pendingMap)
   })
 
-  it('does not load pending updates when hasSynced is true before completion', async () => {
+  // Pending overlays represent commands still in the queue — the replay's
+  // rollback needs their ids restored, and the user needs to see their
+  // offline changes, no matter how the object cache races the first sync.
+  it('restores pending updates even when the server synced first', async () => {
     const wsStore = useWebSocketStore()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(wsStore as any).hasSynced = true
+    const pendingMap = new Map([['event:e-1', []]])
+    vi.mocked(poolDb.loadPendingUpdatesFromDb).mockResolvedValue(
+      pendingMap as unknown as Awaited<
+        ReturnType<typeof poolDb.loadPendingUpdatesFromDb>
+      >
+    )
 
+    const pool = useObjectPoolStore()
     const { loadFromCache } = poolPersistence
     await loadFromCache()
 
+    // Object loading is skipped (server data is authoritative), but the
+    // overlays are restored regardless
     expect(poolDb.loadObjectsByType).not.toHaveBeenCalled()
-    expect(poolDb.loadPendingUpdatesFromDb).not.toHaveBeenCalled()
+    expect(pool.restorePendingUpdates).toHaveBeenCalledWith(pendingMap)
+  })
+
+  // The reconnect cursor is only trusted when the last full sync is known —
+  // without restoring it, every cold start degrades to a full sync.
+  it('restores the full-sync timestamp alongside the cursor', async () => {
+    const syncedAt = new Date().toISOString()
+    const fullSyncedAt = new Date(Date.now() - 60_000).toISOString()
+    vi.mocked(poolDb.loadMeta).mockResolvedValue({
+      cacheVersion: 11,
+      syncedAt: new Map([[Scope.workspace('ws-1'), syncedAt]]),
+      fullSyncedAt: new Map([[Scope.workspace('ws-1'), fullSyncedAt]]),
+    })
+    vi.mocked(poolDb.loadObjectsByType).mockResolvedValue([
+      {
+        id: 'm-1',
+        objectType: 'member',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      } as PoolObject,
+    ])
+
+    const wsStore = useWebSocketStore()
+    const { loadFromCache } = poolPersistence
+    const loadPromise = loadFromCache()
+    await vi.runAllTimersAsync()
+    await loadPromise
+
+    expect(wsStore.restoreSyncTimestamp).toHaveBeenCalledWith('ws-1', syncedAt)
+    expect(wsStore.restoreFullSyncTimestamp).toHaveBeenCalledWith(
+      'ws-1',
+      fullSyncedAt
+    )
   })
 })
