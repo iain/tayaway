@@ -71,6 +71,52 @@ describe('sortTaskItems', () => {
     ])
   })
 
+  it('breaks position ties by createdAt so all clients agree', () => {
+    // Two clients adding concurrently can both get max_position + 1.
+    const items = [
+      mkItem({
+        id: 'later',
+        position: 2,
+        createdAt: '2026-01-01T00:00:05.000Z',
+      }),
+      mkItem({
+        id: 'earlier',
+        position: 2,
+        createdAt: '2026-01-01T00:00:01.000Z',
+      }),
+      mkItem({ id: 'first', position: 1 }),
+    ]
+    expect(sortTaskItems(items).map((i) => i.id)).toEqual([
+      'first',
+      'earlier',
+      'later',
+    ])
+  })
+
+  it('breaks position and createdAt ties by content, then id', () => {
+    const items = [
+      mkItem({ id: 'aaa', position: 1, content: 'bananas' }),
+      mkItem({ id: 'zzz', position: 1, content: 'apples' }),
+      mkItem({ id: 'bbb', position: 1, content: 'bananas' }),
+    ]
+    // 'apples' sorts first despite the highest id; equal contents fall
+    // back to id.
+    expect(sortTaskItems(items).map((i) => i.id)).toEqual(['zzz', 'aaa', 'bbb'])
+  })
+
+  it('produces the same order regardless of input order', () => {
+    // Pool insertion order differs per client; the result must not.
+    const items = [
+      mkItem({ id: 'bbb', position: 1 }),
+      mkItem({ id: 'aaa', position: 1 }),
+      mkItem({ id: 'ccc', position: 1, createdAt: '2025-12-31T00:00:00.000Z' }),
+    ]
+    const forward = sortTaskItems(items).map((i) => i.id)
+    const reversed = sortTaskItems([...items].reverse()).map((i) => i.id)
+    expect(forward).toEqual(['ccc', 'aaa', 'bbb'])
+    expect(reversed).toEqual(forward)
+  })
+
   it('does not mutate the input array', () => {
     const items = [
       mkItem({ id: 'b', position: 2 }),

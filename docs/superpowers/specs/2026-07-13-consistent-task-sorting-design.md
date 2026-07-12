@@ -33,13 +33,18 @@ Impose a deterministic total order on every sorting surface. Manual sorting is
 untouched — `position` remains the primary key of the order; ties simply
 resolve identically everywhere:
 
-- **Order key**: `(position, createdAt, id)`. `createdAt` keeps tied items in
-  intuitive creation order; `id` (UUID, lowercase hex — lexicographic string
-  order matches Postgres uuid byte order) guarantees the order is total.
+- **Order key**: `(position, createdAt, name, id)` — for items the label is
+  `content`, for lists `name`. `createdAt` keeps tied items in intuitive
+  creation order, the label keeps same-instant ties humanly scannable
+  (alphabetical), and `id` (UUID, lowercase hex — lexicographic string order
+  matches Postgres uuid byte order) guarantees the order is total even for
+  identical names.
 - **Backend**: `TaskItem.for_task_list`, `TaskItem.for_task_lists`, and
-  `TaskList.for_workspace` order by `position, created_at, id`.
+  `TaskList.for_workspace` order by `position, created_at, content, id` (items) and
+  `position, created_at, name, id` (lists).
 - **Frontend**:
-  - `sortTaskItems` tie-breaks `position` with `createdAt` then `id`.
+  - `sortTaskItems` tie-breaks `position` with `createdAt`, `content`, then
+    `id`.
   - The task-list sort moves out of `TasksPage.vue` into a
     `sortTaskLists` helper (mirroring `sortTaskItems`) with the same
     tie-break.
@@ -47,8 +52,13 @@ resolve identically everywhere:
 
 Timestamps are compared as ISO-8601 strings on the frontend (the serializer
 emits one uniform format, per the existing convention in `groupTaskItems`).
-All clients sort the same serialized data with the same comparator, so they
-converge to the same order regardless of arrival order.
+Names compare by code unit, not `localeCompare` — locale-aware collation
+differs between devices, which would reintroduce the divergence this change
+removes. (Postgres orders the name column with the database collation, which
+may disagree with the frontend on case for tied rows; that's harmless because
+clients always re-sort locally with the shared comparator.) All clients sort
+the same serialized data with the same comparator, so they converge to the
+same order regardless of arrival order.
 
 ## Alternatives considered
 
