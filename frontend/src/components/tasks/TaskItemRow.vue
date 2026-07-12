@@ -1,13 +1,19 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
-import { TrashIcon } from '@heroicons/vue/24/outline'
-import IconButton from '@/components/common/IconButton.vue'
+import ActionMenu from '@/components/common/ActionMenu.vue'
+import type { ActionMenuAction } from '@/components/common/ActionMenu.vue'
+import { useObjectPoolStore } from '@/stores/objectPool'
+import { useLocale } from '@/composables/useLocale'
+import { getMemberName } from '@/utils/member'
+import { formatDateTime } from '@/utils/date'
 import { TEXT_LIMITS } from '@/constants/limits'
 import type { PoolTaskItem } from '@/types/pool'
 
 const props = defineProps<{
   item: PoolTaskItem
   highlighted?: boolean
+  /** History rows aren't draggable — their order is completion time. */
+  inHistory?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -17,9 +23,38 @@ const emit = defineEmits<{
   highlight: [item: PoolTaskItem]
 }>()
 
+const pool = useObjectPoolStore()
+const { locale } = useLocale()
+
 const isEditing = ref(false)
 const editValue = ref('')
 const editInput = ref<HTMLInputElement | null>(null)
+
+const menuActions: ActionMenuAction[] = [
+  {
+    label: 'Delete item',
+    danger: true,
+    testid: 'delete-item-button',
+    onPick: () => emit('delete', props.item),
+  },
+]
+
+// Who added it and when, plus the completion moment for checked items —
+// surfaced in the overflow menu so the row itself stays a clean tap target.
+// A getter (not a computed bound into the row) so the member lookup and
+// date formatting only run once the menu is opened, not on every row render.
+function menuMeta(): string[] {
+  const lines = [
+    `Added by ${getMemberName(props.item.userId, pool)}`,
+    `Added ${formatDateTime(props.item.createdAt, locale.value)}`,
+  ]
+  if (props.item.completedAt) {
+    lines.push(
+      `Completed ${formatDateTime(props.item.completedAt, locale.value)}`
+    )
+  }
+  return lines
+}
 
 async function startEdit(): Promise<void> {
   editValue.value = props.item.content
@@ -55,6 +90,7 @@ function cancelEdit(): void {
     @mouseenter="emit('highlight', item)"
   >
     <span
+      v-if="!inHistory"
       class="item-drag-handle text-ink-muted hover:text-ink -m-1 shrink-0 cursor-grab touch-none p-1"
       data-testid="task-item-drag-handle"
     >
@@ -110,14 +146,16 @@ function cancelEdit(): void {
       {{ item.content }}
     </button>
 
-    <IconButton
-      variant="danger"
-      label="Delete"
-      class="shrink-0"
-      @mousedown="cancelEdit"
-      @click="emit('delete', item)"
-    >
-      <TrashIcon class="size-4" />
-    </IconButton>
+    <!-- @trigger-mousedown cancels an in-progress inline edit before the
+         input's blur can commit, so no spurious content update races the
+         action picked from the menu. -->
+    <ActionMenu
+      :label="`Options for ${item.content}`"
+      :title="item.content"
+      :actions="menuActions"
+      :meta="menuMeta"
+      trigger-testid="item-menu-button"
+      @trigger-mousedown="cancelEdit"
+    />
   </li>
 </template>

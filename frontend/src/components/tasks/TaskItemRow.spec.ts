@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import TaskItemRow from './TaskItemRow.vue'
+import { useObjectPoolStore } from '@/stores/objectPool'
+import { makeMember, seedPool } from '@/test/factories'
 import type { PoolTaskItem } from '@/types/pool'
 
 function mkItem(overrides: Partial<PoolTaskItem> = {}): PoolTaskItem {
@@ -114,19 +116,20 @@ describe('TaskItemRow', () => {
       expect(wrapper.emitted('edit')).toBeFalsy()
     })
 
-    it('cancels the edit instead of committing when Delete is pressed mid-edit', async () => {
+    it('cancels the edit instead of committing when the item menu opens mid-edit', async () => {
       const wrapper = mountRow()
       await wrapper.get('[data-testid="task-item-content"]').trigger('click')
 
       const input = wrapper.get('[data-testid="task-item-edit-input"]')
       await input.setValue('Buy oat milk')
 
-      // Pressing delete cancels the edit before the input's blur can commit,
-      // so no spurious content update races the deletion.
-      const deleteButton = wrapper.get('button')
-      await deleteButton.trigger('mousedown')
+      // Opening the menu cancels the edit before the input's blur can commit,
+      // so no spurious content update races the action picked from the menu.
+      const menuTrigger = wrapper.get('[data-testid="item-menu-button"]')
+      await menuTrigger.trigger('mousedown')
       await input.trigger('blur')
-      await deleteButton.trigger('click')
+      await menuTrigger.trigger('click')
+      await wrapper.get('[data-testid="delete-item-button"]').trigger('click')
 
       expect(wrapper.emitted('edit')).toBeFalsy()
       expect(wrapper.emitted('delete')).toBeTruthy()
@@ -159,6 +162,57 @@ describe('TaskItemRow', () => {
       expect(wrapper.get('[data-testid="task-item-content"]').text()).toBe(
         'Buy milk'
       )
+    })
+  })
+
+  describe('item menu', () => {
+    it('emits delete when Delete item is picked from the menu', async () => {
+      const wrapper = mountRow()
+      await wrapper.get('[data-testid="item-menu-button"]').trigger('click')
+      await wrapper.get('[data-testid="delete-item-button"]').trigger('click')
+
+      expect(wrapper.emitted('delete')).toBeTruthy()
+      expect(wrapper.emitted('delete')![0]).toEqual([
+        expect.objectContaining({ id: 'item-1' }),
+      ])
+    })
+
+    it('shows who added the item and when', async () => {
+      seedPool(
+        useObjectPoolStore(),
+        makeMember({ userId: 'user-1', name: 'Alice' })
+      )
+      const wrapper = mountRow(
+        mkItem({ createdAt: '2026-07-10T09:30:00.000Z' })
+      )
+      await wrapper.get('[data-testid="item-menu-button"]').trigger('click')
+
+      const meta = wrapper.get('[data-testid="action-menu-meta"]').text()
+      expect(meta).toContain('Added by Alice')
+      expect(meta).toMatch(/Added .*Jul/)
+      expect(meta).not.toContain('Completed')
+    })
+
+    it('adds the completion moment for completed items', async () => {
+      const wrapper = mountRow(
+        mkItem({ completedAt: '2026-07-11T14:05:00.000Z' })
+      )
+      await wrapper.get('[data-testid="item-menu-button"]').trigger('click')
+
+      const meta = wrapper.get('[data-testid="action-menu-meta"]').text()
+      expect(meta).toContain('Added by Unknown')
+      expect(meta).toMatch(/Completed .*Jul/)
+    })
+  })
+
+  describe('history rows', () => {
+    it('hides the drag handle when inHistory is set', () => {
+      const wrapper = mount(TaskItemRow, {
+        props: { item: mkItem(), inHistory: true },
+      })
+      expect(
+        wrapper.find('[data-testid="task-item-drag-handle"]').exists()
+      ).toBe(false)
     })
   })
 })

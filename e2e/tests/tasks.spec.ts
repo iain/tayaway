@@ -335,18 +335,25 @@ test.describe('Tasks Feature', () => {
         'true'
       )
 
-      // Clear completed: button appears, click it, only the checked item goes.
+      // Clear completed lives in the list's three-dots menu. Click it and
+      // only the checked item goes.
       // (An earlier version of this test also did an uncheck + re-check in
       // between, producing three overlapping PUT /items/:id requests and a
       // rare race under CI load. Uncheck is covered at the API level by the
       // "task item add, complete, update, and delete lifecycle" test above.)
+      await card.getByTestId('list-menu-button').click()
       const clearBtn = card.getByTestId('clear-completed-button')
       await expect(clearBtn).toBeVisible()
       await clearBtn.click()
 
       await expect(card.getByText('Mark done')).not.toBeVisible()
       await expect(card.getByText('Keep this')).toBeVisible()
-      await expect(clearBtn).not.toBeVisible()
+
+      // With nothing completed the action disappears from the menu
+      await card.getByTestId('list-menu-button').click()
+      await expect(card.getByTestId('rename-list-button')).toBeVisible()
+      await expect(card.getByTestId('clear-completed-button')).not.toBeVisible()
+      await page.keyboard.press('Escape')
     })
 
     test('tap an item to edit its text', async ({ page }) => {
@@ -425,12 +432,13 @@ test.describe('Tasks Feature', () => {
       await setupAuthenticatedPage(page, sessionToken)
       await page.goto('/tasks')
 
-      // Rename
+      // Rename — via the list's three-dots menu
       const renameCard = page
         .getByTestId('task-list-card')
         .filter({ hasText: oldName })
       await expect(renameCard).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
 
+      await renameCard.getByTestId('list-menu-button').click()
       await renameCard.getByTestId('rename-list-button').click()
 
       // After clicking rename, the h2 disappears (v-if) so the card text filter
@@ -441,15 +449,85 @@ test.describe('Tasks Feature', () => {
 
       await expect(page.getByText(newName)).toBeVisible()
 
-      // Delete
+      // Delete — via the list's three-dots menu
       const deleteCard = page
         .getByTestId('task-list-card')
         .filter({ hasText: deleteName })
       await expect(deleteCard).toBeVisible()
 
+      await deleteCard.getByTestId('list-menu-button').click()
       await deleteCard.getByTestId('delete-list-button').click()
 
       await expect(deleteCard).not.toBeVisible()
+    })
+
+    test('collapse a list and the state survives a reload', async ({
+      page,
+    }) => {
+      const listName = `Collapse Me ${uid}`
+      const listId = await createTaskList(apiContext, workspaceId, listName)
+      await addTaskItem(apiContext, listId, 'Hidden when collapsed')
+
+      await setupAuthenticatedPage(page, sessionToken)
+      await page.goto('/tasks')
+
+      const card = page
+        .getByTestId('task-list-card')
+        .filter({ hasText: listName })
+      await expect(card.getByText('Hidden when collapsed')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+
+      const toggle = card.getByTestId('collapse-list-button')
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+
+      // Collapse: items and the add box disappear, header stays
+      await toggle.click()
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      await expect(card.getByText('Hidden when collapsed')).not.toBeVisible()
+      await expect(card.getByPlaceholder('Add an item...')).not.toBeVisible()
+
+      // The choice is a persisted per-user preference
+      await page.reload()
+      const cardAfter = page
+        .getByTestId('task-list-card')
+        .filter({ hasText: listName })
+      const toggleAfter = cardAfter.getByTestId('collapse-list-button')
+      await expect(toggleAfter).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
+      await expect(toggleAfter).toHaveAttribute('aria-expanded', 'false')
+      await expect(
+        cardAfter.getByText('Hidden when collapsed')
+      ).not.toBeVisible()
+
+      // Expand again
+      await toggleAfter.click()
+      await expect(cardAfter.getByText('Hidden when collapsed')).toBeVisible()
+    })
+
+    test('item menu shows meta info and deletes the item', async ({ page }) => {
+      const listName = `Item Menu ${uid}`
+      const listId = await createTaskList(apiContext, workspaceId, listName)
+      await addTaskItem(apiContext, listId, 'Menu target')
+
+      await setupAuthenticatedPage(page, sessionToken)
+      await page.goto('/tasks')
+
+      const card = page
+        .getByTestId('task-list-card')
+        .filter({ hasText: listName })
+      const row = card
+        .getByTestId('task-item-row')
+        .filter({ hasText: 'Menu target' })
+      await expect(row).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
+
+      // The three-dots menu carries the delete action plus who/when meta
+      await row.getByTestId('item-menu-button').click()
+      const meta = row.getByTestId('action-menu-meta')
+      await expect(meta).toContainText('Added by')
+      await expect(meta).toContainText('Added ')
+
+      await row.getByTestId('delete-item-button').click()
+      await expect(card.getByText('Menu target')).not.toBeVisible()
     })
   })
 })
