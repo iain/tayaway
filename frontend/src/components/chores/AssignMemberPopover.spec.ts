@@ -34,10 +34,12 @@ describe('AssignMemberPopover', () => {
     chore = makeChore(),
     assignments = [],
     rsvps,
+    currentUserId = null,
   }: {
     chore?: PoolChore
     assignments?: PoolChoreAssignment[]
     rsvps?: PoolRsvp[]
+    currentUserId?: string | null
   } = {}) {
     return mount(AssignMemberPopover, {
       props: {
@@ -55,6 +57,7 @@ describe('AssignMemberPopover', () => {
         ],
         assignments,
         event: makeEvent({ startDate: '2026-03-10', endDate: '2026-03-12' }),
+        currentUserId,
       },
     })
   }
@@ -100,6 +103,16 @@ describe('AssignMemberPopover', () => {
     expect(deleteAssignmentSpy).toHaveBeenCalledWith('roster-1', 'assign-alice')
     expect(createAssignmentSpy).not.toHaveBeenCalled()
     expect(wrapper.emitted('close')).toBeUndefined()
+  })
+
+  it('puts the current user first, labeled "You"', () => {
+    // Alphabetically Bob comes after Alice; being the viewer moves him up.
+    const wrapper = mountPopover({ currentUserId: 'user-2' })
+
+    const labels = wrapper
+      .findAll('button[aria-label^="Assign"]')
+      .map((b) => b.attributes('aria-label'))
+    expect(labels).toEqual(['Assign You', 'Assign Alice'])
   })
 
   it('does not offer members who are away on this date', () => {

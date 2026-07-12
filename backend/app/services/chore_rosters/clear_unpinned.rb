@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 module ChoreRosters
-  # Deletes all non-pinned assignments for a roster.
+  # Deletes a roster's non-pinned assignments from today onward. Days already
+  # past (in the event's zone) are the record of who did what and stay put.
   module ClearUnpinned
     class << self
       def call(roster_id:, workspace_id:, membership:)
@@ -22,12 +23,14 @@ module ChoreRosters
 
       def clear_unpinned(roster, workspace_id)
         deleted = []
+        today = Timezones.today(Event.find(roster.event_id).timezone)
 
         DB.transaction do
           non_pinned_ids = DB[:chore_assignments]
                            .join(:chores, id: :chore_id)
                            .where(Sequel[:chores][:chore_roster_id] => roster.id)
                            .where(Sequel[:chore_assignments][:pinned] => false)
+                           .where { Sequel[:chore_assignments][:date] >= today }
                            .select_map(Sequel[:chore_assignments][:id])
 
           if non_pinned_ids.any?

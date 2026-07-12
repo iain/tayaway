@@ -34,6 +34,13 @@ module Timezones
       name.nil? || name.strip.empty? || valid?(name.strip)
     end
 
+    # The current civil date in `zone` — "today" as someone at the event
+    # experiences it, which is what date fences (e.g. the chore roster's
+    # past/upcoming split) must be reckoned against.
+    def today(zone)
+      TZInfo::Timezone.get(zone).to_local(Time.now).to_date
+    end
+
     # Resolve a wall-clock time in `zone` to an absolute UTC Time.
     #
     # `date` is a Date; `hour`/`min` are the chore's wall-clock fields. Two DST

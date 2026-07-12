@@ -32,6 +32,15 @@ RSpec.describe Timezones do
     end
   end
 
+  describe ".today" do
+    it "reads the current civil date in the given zone" do
+      # Etc/GMT-12 (UTC+12) runs a full day ahead of Etc/GMT+12 (UTC-12) at
+      # every instant, so their civil dates always differ by exactly one day —
+      # a clock-independent way to show the date is read in the asked-for zone.
+      expect(described_class.today("Etc/GMT-12") - described_class.today("Etc/GMT+12")).to eq(1)
+    end
+  end
+
   describe ".resolve" do
     def resolve(date, hour, min, zone)
       described_class.resolve(date: date, hour: hour, min: min, zone: zone)

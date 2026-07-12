@@ -31,7 +31,9 @@ import type {
   PoolMember,
 } from '@/types/pool'
 import { can } from '@/composables/usePermission'
-import { shouldSuggestAutofill } from '@/utils/chores'
+import { detectAttendanceDrift, shouldSuggestAutofill } from '@/utils/chores'
+import { getMemberNameFromMap } from '@/utils/member'
+import { zonedDateString } from '@/utils/timezone'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -47,6 +49,9 @@ const roster = computed(() => {
 })
 
 const canDeleteRoster = computed(() => can(roster.value?.permissions, 'delete'))
+const canClearAssignments = computed(() =>
+  can(roster.value?.permissions, 'edit')
+)
 
 const chores = computed(() => {
   if (!roster.value) return []
@@ -94,6 +99,25 @@ const eventDates = computed(() => {
   return dates
 })
 
+// The event-zone date — the same "today" the backend fences autofill and
+// clear-unpinned on, so everything this page mutes, flags, or offers to
+// re-fill agrees with what the server would actually touch.
+const today = computed(() =>
+  event.value ? zonedDateString(Date.now(), event.value.timezone) : ''
+)
+
+const eventOver = computed(
+  () => event.value?.endDate != null && event.value.endDate < today.value
+)
+
+const upcomingAssignments = computed(() =>
+  assignments.value.filter((a) => a.date >= today.value)
+)
+
+const upcomingUnpinnedCount = computed(
+  () => upcomingAssignments.value.filter((a) => !a.pinned).length
+)
+
 const showAddChoreForm = ref(false)
 const newChoreName = ref('')
 const newChorePpd = ref('1')
@@ -116,7 +140,8 @@ const choreTimePopover = ref<{
 } | null>(null)
 const confirmDeleteChoreId = ref<string | null>(null)
 const confirmAutofill = ref(false)
-const showDeleteActions = ref(false)
+const confirmClearUpcoming = ref(false)
+const confirmDeleteRoster = ref(false)
 const showManageChores = ref(false)
 
 // The roster is a dates x chores matrix on desktop and a day-first stack on the
@@ -139,12 +164,60 @@ const assignPopoverChore = computed(() =>
     : undefined
 )
 
-const suggestAutofill = computed(() =>
-  shouldSuggestAutofill(
-    chores.value,
-    eventDates.value.length,
-    assignments.value.length
+// Once the event is over there is nothing left to fill; mid-event, only the
+// remaining days and their assignments say how full the fillable part is.
+const suggestAutofill = computed(
+  () =>
+    !eventOver.value &&
+    shouldSuggestAutofill(
+      chores.value,
+      eventDates.value.filter((d) => d >= today.value).length,
+      upcomingAssignments.value.length
+    )
+)
+
+const drift = computed(() => {
+  if (!event.value?.startDate || !event.value?.endDate || eventOver.value) {
+    return { staleAssignmentIds: new Set<string>(), idleUserIds: [] }
+  }
+  return detectAttendanceDrift(
+    assignments.value,
+    rsvps.value,
+    { startDate: event.value.startDate, endDate: event.value.endDate },
+    today.value
   )
+})
+
+// One sentence per drift kind, joined for the nudge card.
+const driftMessage = computed(() => {
+  const parts: string[] = []
+  const stale = drift.value.staleAssignmentIds.size
+  if (stale > 0) {
+    parts.push(
+      stale === 1
+        ? '1 upcoming chore belongs to someone who isn’t there that day'
+        : `${stale} upcoming chores belong to people who aren’t there that day`
+    )
+  }
+  const idle = drift.value.idleUserIds.map((id) =>
+    getMemberNameFromMap(id, memberMap.value)
+  )
+  if (idle.length > 0) {
+    const names = new Intl.ListFormat('en', {
+      style: 'long',
+      type: 'conjunction',
+    }).format(idle)
+    parts.push(
+      idle.length === 1
+        ? `${names} has no upcoming chores`
+        : `${names} have no upcoming chores`
+    )
+  }
+  return parts.join(', and ')
+})
+
+const showDriftNudge = computed(
+  () => !suggestAutofill.value && driftMessage.value !== ''
 )
 
 const confirmDeleteChoreName = computed(() => {
@@ -154,6 +227,25 @@ const confirmDeleteChoreName = computed(() => {
 })
 
 const creatingRoster = ref(false)
+
+// One-tap starters for a fresh roster — the chores nearly every trip ends up
+// typing in by hand. Only offered while the roster is empty.
+const CHORE_TEMPLATES = ['Cooking', 'Dishes', 'Breakfast', 'Tidy up']
+const templateSubmitting = ref<string | null>(null)
+
+async function handleAddTemplate(name: string) {
+  if (!roster.value || templateSubmitting.value) return
+  if (!userIsAttending.value) {
+    showRsvpDialog.value = true
+    return
+  }
+  templateSubmitting.value = name
+  try {
+    await choreRostersStore.addChore(roster.value.id, name, 1, null)
+  } finally {
+    templateSubmitting.value = null
+  }
+}
 
 async function handleCreateRoster() {
   if (!userIsAttending.value) {
@@ -286,16 +378,17 @@ async function confirmAutofillAction() {
 
 const autofillRunning = ref(false)
 
-// The nudge card's button. The confirm modal exists to protect existing
-// unpinned assignments from being cleared; when there are none, confirming
-// would only add friction, so run straight away.
+// The nudge cards' button. The confirm modal exists to protect existing
+// unpinned assignments from being cleared; autofill only touches today
+// onward, so only those count — when there are none, confirming would just
+// add friction, so run straight away.
 async function handleNudgeAutofill() {
   if (!roster.value) return
   if (!userIsAttending.value) {
     showRsvpDialog.value = true
     return
   }
-  if (assignments.value.some((a) => !a.pinned)) {
+  if (upcomingAssignments.value.some((a) => !a.pinned)) {
     confirmAutofill.value = true
   } else {
     autofillRunning.value = true
@@ -312,7 +405,15 @@ function handleDeleteRoster() {
     showRsvpDialog.value = true
     return
   }
-  showDeleteActions.value = true
+  confirmDeleteRoster.value = true
+}
+
+function handleClearUpcoming() {
+  if (!userIsAttending.value) {
+    showRsvpDialog.value = true
+    return
+  }
+  confirmClearUpcoming.value = true
 }
 
 function handleManageChores() {
@@ -323,16 +424,16 @@ function handleManageChores() {
   showManageChores.value = true
 }
 
-async function handleClearUnpinned() {
+async function handleClearUpcomingConfirm() {
   if (!roster.value) return
   await choreRostersStore.clearUnpinned(roster.value.id)
-  showDeleteActions.value = false
+  confirmClearUpcoming.value = false
 }
 
 async function handleDeleteRosterConfirm() {
   if (!roster.value) return
   await choreRostersStore.deleteRoster(roster.value.id)
-  showDeleteActions.value = false
+  confirmDeleteRoster.value = false
 }
 
 onMounted(async () => {
@@ -388,8 +489,10 @@ onMounted(async () => {
       <PageHeader title="Chores" size="sm" :icon="ClipboardDocumentListIcon">
         <ChoreRosterToolbar
           :can-delete="canDeleteRoster"
+          :can-clear="canClearAssignments"
           @add-chore="openAddChore"
           @autofill="handleAutofillClick"
+          @clear-upcoming="handleClearUpcoming"
           @delete-roster="handleDeleteRoster"
           @manage-chores="handleManageChores"
         />
@@ -416,6 +519,27 @@ onMounted(async () => {
           </div>
         </BaseCard>
 
+        <BaseCard v-if="showDriftNudge" variant="action" class="mb-4 p-4">
+          <div
+            class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <p class="text-ink text-sm">
+              Attendance has changed: {{ driftMessage }}. Re-filling
+              redistributes the remaining days; past days and pinned assignments
+              stay put.
+            </p>
+            <AppButton
+              variant="secondary"
+              class="shrink-0"
+              :loading="autofillRunning"
+              loading-label="Re-filling..."
+              @click="handleNudgeAutofill"
+            >
+              Re-fill remaining days
+            </AppButton>
+          </div>
+        </BaseCard>
+
         <ChoreRosterGrid
           v-if="isDesktop"
           :chores="chores"
@@ -425,6 +549,8 @@ onMounted(async () => {
           :rsvps="rsvps"
           :roster-id="roster.id"
           :current-user-id="currentUserId"
+          :today="today"
+          :stale-assignment-ids="drift.staleAssignmentIds"
           @assign="openAssign"
           @edit-assignment="openEditAssignment"
           @edit-chore-time="openEditChoreTime"
@@ -437,6 +563,8 @@ onMounted(async () => {
           :dates="eventDates"
           :members="members"
           :current-user-id="currentUserId"
+          :today="today"
+          :stale-assignment-ids="drift.staleAssignmentIds"
           @assign="openAssign"
           @edit-assignment="openEditAssignment"
         />
@@ -446,6 +574,8 @@ onMounted(async () => {
           :chores="chores"
           :assignments="assignments"
           :members="members"
+          :rsvps="rsvps"
+          :event="event"
         />
       </div>
 
@@ -454,9 +584,20 @@ onMounted(async () => {
         :icon="ClipboardDocumentListIcon"
         :heading-level="2"
         heading="No chores yet"
-        description="Add your first chore to start building the roster."
+        description="Add the usual suspects with one tap, or start from scratch."
       >
-        <AppButton @click="openAddChore">Add chore</AppButton>
+        <div class="flex flex-wrap items-center justify-center gap-2">
+          <AppButton
+            v-for="name in CHORE_TEMPLATES"
+            :key="name"
+            variant="secondary"
+            :loading="templateSubmitting === name"
+            @click="handleAddTemplate(name)"
+          >
+            {{ name }}
+          </AppButton>
+          <AppButton @click="openAddChore">Add chore</AppButton>
+        </div>
       </EmptyState>
 
       <!-- Inline add chore form -->
@@ -521,6 +662,7 @@ onMounted(async () => {
         :rsvps="rsvps"
         :assignments="assignments"
         :event="event"
+        :current-user-id="currentUserId"
         @close="closeAssign"
       />
 
@@ -530,6 +672,9 @@ onMounted(async () => {
         :anchor-el="editPopover.anchorEl"
         :roster-id="roster.id"
         :member-map="memberMap"
+        :assignments="assignments"
+        :rsvps="rsvps"
+        :event="event"
         @close="closeEditAssignment"
       />
 
@@ -577,8 +722,9 @@ onMounted(async () => {
       @close="confirmAutofill = false"
     >
       <p class="text-ink-muted text-sm">
-        This will clear all non-pinned assignments and redistribute them fairly
-        among attendees. Pinned assignments stay as they are.
+        This will clear non-pinned assignments from today onward and
+        redistribute the remaining days fairly among attendees. Days already
+        past and pinned assignments stay as they are.
       </p>
       <div class="mt-6 flex justify-end gap-3">
         <TextButton variant="secondary" @click="confirmAutofill = false">
@@ -591,17 +737,56 @@ onMounted(async () => {
     </BaseModal>
 
     <BaseModal
-      :open="showDeleteActions"
-      title="Manage roster"
+      :open="confirmClearUpcoming"
+      title="Clear upcoming assignments"
       size="sm"
-      @close="showDeleteActions = false"
+      @close="confirmClearUpcoming = false"
     >
-      <div class="flex flex-col gap-3">
-        <AppButton variant="secondary" @click="handleClearUnpinned">
-          Clear non-pinned assignments
+      <p class="text-ink-muted text-sm">
+        <template v-if="upcomingUnpinnedCount > 0">
+          This clears
+          {{ upcomingUnpinnedCount }} upcoming assignment{{
+            upcomingUnpinnedCount === 1 ? '' : 's'
+          }}. Days already past and pinned assignments stay as they are.
+        </template>
+        <template v-else>
+          There's nothing to clear — no upcoming assignments are unpinned.
+        </template>
+      </p>
+      <div class="mt-6 flex justify-end gap-3">
+        <TextButton variant="secondary" @click="confirmClearUpcoming = false">
+          Cancel
+        </TextButton>
+        <AppButton
+          :disabled="upcomingUnpinnedCount === 0"
+          autofocus
+          @click="handleClearUpcomingConfirm"
+        >
+          Clear
         </AppButton>
-        <AppButton variant="danger" @click="handleDeleteRosterConfirm">
-          Delete entire roster
+      </div>
+    </BaseModal>
+
+    <BaseModal
+      :open="confirmDeleteRoster"
+      title="Delete roster"
+      size="sm"
+      @close="confirmDeleteRoster = false"
+    >
+      <p class="text-ink-muted text-sm">
+        This deletes the whole roster — every chore and assignment, including
+        the record of days already done. This can't be undone.
+      </p>
+      <div class="mt-6 flex justify-end gap-3">
+        <TextButton variant="secondary" @click="confirmDeleteRoster = false">
+          Cancel
+        </TextButton>
+        <AppButton
+          variant="danger"
+          autofocus
+          @click="handleDeleteRosterConfirm"
+        >
+          Delete roster
         </AppButton>
       </div>
     </BaseModal>

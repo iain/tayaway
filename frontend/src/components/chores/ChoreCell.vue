@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { PlusIcon } from '@heroicons/vue/24/outline'
-import { ChatBubbleLeftIcon } from '@heroicons/vue/24/solid'
+import {
+  ChatBubbleLeftIcon,
+  ExclamationTriangleIcon,
+} from '@heroicons/vue/24/solid'
 import PushPinIcon from '@/components/icons/PushPinIcon.vue'
 import type { PoolChoreAssignment, PoolMember } from '@/types/pool'
 import { getMemberNameFromMap } from '@/utils/member'
@@ -17,6 +20,9 @@ const props = withDefaults(
     // chips flow left-aligned and wrap, holding a 44px tap target at every
     // width because that layout is only ever shown on touch.
     orientation?: 'stack' | 'row'
+    // Assignments whose holder is no longer attending that day (see
+    // detectAttendanceDrift); their chips get a warning mark.
+    staleAssignmentIds?: Set<string>
   }>(),
   { orientation: 'stack' }
 )
@@ -48,6 +54,16 @@ function isCurrentUser(a: PoolChoreAssignment): boolean {
   return props.currentUserId !== null && a.userId === props.currentUserId
 }
 
+function isStale(a: PoolChoreAssignment): boolean {
+  return props.staleAssignmentIds?.has(a.id) ?? false
+}
+
+function chipTitle(a: PoolChoreAssignment): string {
+  const name = getMemberNameFromMap(a.userId, props.memberMap)
+  const base = a.note ? `${name}: ${a.note}` : name
+  return isStale(a) ? `${base} — not attending this day` : base
+}
+
 // The chip shows the name and dual-codes pinned/note state with icons; this
 // folds the same information into one accessible name so screen-reader users
 // hear what sighted users see (the note otherwise lived only in `title`).
@@ -58,6 +74,7 @@ function chipLabel(a: PoolChoreAssignment): string {
   if (isCurrentUser(a)) parts.push('you')
   if (a.pinned) parts.push('pinned')
   if (a.note) parts.push(`note: ${a.note}`)
+  if (isStale(a)) parts.push('not attending this day')
   return parts.join(', ')
 }
 
@@ -79,14 +96,15 @@ function handleAddClick(event: MouseEvent) {
           ? 'bg-amber-300 text-amber-900 dark:bg-amber-400/20 dark:text-amber-100'
           : 'bg-btn-secondary-fill text-btn-secondary-ink',
       ]"
-      :title="
-        a.note
-          ? `${getMemberNameFromMap(a.userId, memberMap)}: ${a.note}`
-          : getMemberNameFromMap(a.userId, memberMap)
-      "
+      :title="chipTitle(a)"
       :aria-label="chipLabel(a)"
       @click="emit('editAssignment', a, $event.currentTarget as HTMLElement)"
     >
+      <ExclamationTriangleIcon
+        v-if="isStale(a)"
+        aria-hidden="true"
+        class="text-state-warning-ink size-3 shrink-0"
+      />
       <PushPinIcon
         v-if="a.pinned"
         class="size-3 shrink-0 text-amber-600 dark:text-amber-400"

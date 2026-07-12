@@ -1,8 +1,14 @@
 # frozen_string_literal: true
 
 module ChoreRosters
-  # Autofill algorithm: deletes non-pinned assignments, then redistributes fairly.
-  # Respects RSVP availability, pinned assignments, and a one-chore-per-day soft rule.
+  # Autofill algorithm: deletes non-pinned assignments from today onward, then
+  # redistributes the remaining days fairly. Respects RSVP availability, pinned
+  # assignments, and a one-chore-per-day soft rule.
+  #
+  # Days already past (in the event's zone) are a record of who actually did
+  # what and are never rewritten — mid-event attendance changes are absorbed by
+  # re-running autofill, which rebalances only today onward while still
+  # counting past work in each person's load.
   module Autofill
     class << self
       def call(roster_id:, workspace_id:, membership:)
@@ -35,15 +41,23 @@ module ChoreRosters
         event_start = event.start_date
         event_end = event.end_date
         dates = (event_start..event_end).to_a
+        today = Timezones.today(event.timezone)
+        fill_dates = dates.select { |date| date >= today }
 
-        # Build availability map from attending RSVPs
+        if fill_dates.empty?
+          return Failure(ServiceError.validation("The event is over, so there are no days left to fill"))
+        end
+
+        # Build availability map from attending RSVPs. Past days stay in the
+        # map: they feed available_days below, so someone who already left
+        # still gets their whole stay counted when balancing what remains.
         rsvps = Rsvp.for_event(event.id).select(&:attending)
         availability = build_availability(dates, rsvps, event)
 
         chores = Chore.for_roster(roster.id)
 
         # Guard against pathological cases (e.g. 60-day event with 20 chores = 1200 rows)
-        max_slots = dates.length * chores.sum(&:people_per_day)
+        max_slots = fill_dates.length * chores.sum(&:people_per_day)
         if max_slots > 1000
           return Failure(ServiceError.validation("Too many assignments to autofill (#{max_slots} slots). Reduce the number of chores or shorten the event dates."))
         end
@@ -52,11 +66,13 @@ module ChoreRosters
         pool = PoolSerializer.new(membership: membership)
 
         DB.transaction do
-          # Delete all non-pinned assignments and track them
+          # Delete non-pinned assignments from today onward and track them.
+          # Earlier days are history and keep their rows.
           non_pinned_ids = DB[:chore_assignments]
                            .join(:chores, id: :chore_id)
                            .where(Sequel[:chores][:chore_roster_id] => roster.id)
                            .where(Sequel[:chore_assignments][:pinned] => false)
+                           .where { Sequel[:chore_assignments][:date] >= today }
                            .select_map(Sequel[:chore_assignments][:id])
 
           if non_pinned_ids.any?
@@ -65,11 +81,14 @@ module ChoreRosters
             DB[:chore_assignments].where(id: non_pinned_ids).delete
           end
 
-          # Compute load from pinned assignments
-          pinned = ChoreAssignment.for_roster(roster.id)
+          # Compute load from what survived the delete: pinned assignments plus
+          # the past-day record. Counting past work here is what keeps the
+          # remaining days fair — someone who already did two mornings isn't
+          # handed the same share of what's left as someone who just arrived.
+          kept = ChoreAssignment.for_roster(roster.id)
           load_count = Hash.new(0)
           chore_load = Hash.new(0) # key: [user_id, chore_id] => count
-          pinned.each do |a|
+          kept.each do |a|
             load_count[a.user_id.to_s] += 1
             chore_load[[a.user_id.to_s, a.chore_id.to_s]] += 1
           end
@@ -85,15 +104,15 @@ module ChoreRosters
           # Build per-chore-day tracker: [chore_id, date] -> Set<user_id>
           chore_day_assignments = Hash.new { |h, k| h[k] = Set.new }
 
-          pinned.each do |a|
+          kept.each do |a|
             day_assignments[a.date] << a.user_id.to_s
             chore_day_assignments[[a.chore_id.to_s, a.date]] << a.user_id.to_s
           end
 
-          # For each day (chronological), for each chore, fill empty slots
+          # For each remaining day (chronological), for each chore, fill empty slots
           now = Time.now
           new_rows = []
-          dates.each_with_index do |date, day_index|
+          fill_dates.each_with_index do |date, day_index|
             available_today = availability[date] || Set.new
 
             rotated_chores = chores.rotate(day_index)
@@ -160,7 +179,7 @@ module ChoreRosters
           Broadcaster.object_changed("chore_roster", roster.id)
         end
 
-        schedule_reminders(roster, chores)
+        schedule_reminders(roster, chores, today)
 
         # Serialize full roster state
         roster = ChoreRoster.find(roster.id)
@@ -169,9 +188,11 @@ module ChoreRosters
         Success({ objects: pool.to_a, deleted: deleted })
       end
 
-      # Post-commit: every freshly autofilled (unpinned) assignment gets a
-      # reminder if its chore is timed and the moment is still ahead.
-      # Pinned assignments kept their reminder from when they were created.
+      # Post-commit: every freshly autofilled (unpinned, today-onward)
+      # assignment gets a reminder if its chore is timed and the moment is
+      # still ahead. Pinned assignments kept their reminder from when they
+      # were created; unpinned rows on past days survived the refill as
+      # history and need none.
       # Isolated like other notification work so a scheduling hiccup can't
       # roll back the autofill the user just ran.
       #
@@ -180,11 +201,12 @@ module ChoreRosters
       # left to fire and no-op (SendReminder finds nothing) rather than being
       # hunted down — they sit outside the worker's runnable range until
       # their scheduled time, so they don't burden the hot path.
-      def schedule_reminders(roster, chores)
+      def schedule_reminders(roster, chores, today)
         chores_by_id = chores.to_h { |c| [c.id.to_s, c] }
         Notifications::Safely.deliver(context: "ChoreRosters::Autofill#reminders") do
           timezone = ScheduleReminder.timezone_for_roster(roster.id)
-          ChoreAssignment.for_roster(roster.id).reject(&:pinned).each do |assignment|
+          fresh = ChoreAssignment.for_roster(roster.id).reject(&:pinned).select { |a| a.date >= today }
+          fresh.each do |assignment|
             ScheduleReminder.call(
               assignment: assignment, chore: chores_by_id[assignment.chore_id.to_s], timezone: timezone
             )

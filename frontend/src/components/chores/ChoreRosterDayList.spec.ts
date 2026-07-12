@@ -3,10 +3,9 @@ import { mount } from '@vue/test-utils'
 import ChoreRosterDayList from './ChoreRosterDayList.vue'
 import { makeChore, makeChoreAssignment, makeMember } from '@/test/factories'
 
-const pad = (n: number) => String(n).padStart(2, '0')
-const now = new Date()
-const TODAY = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
-const NOT_TODAY = '2020-06-15'
+// "Today" is a prop (the event-zone date), so the fixture needs no real clock.
+const TODAY = '2026-06-16'
+const NOT_TODAY = '2026-06-15'
 
 function mountList(overrides = {}) {
   return mount(ChoreRosterDayList, {
@@ -25,6 +24,7 @@ function mountList(overrides = {}) {
       dates: [NOT_TODAY, TODAY],
       members: [makeMember({ userId: 'user-1', name: 'Alice' })],
       currentUserId: null,
+      today: TODAY,
       ...overrides,
     },
   })
@@ -53,6 +53,16 @@ describe('ChoreRosterDayList', () => {
     const list = mountList()
     expect(list.get(`[data-date="${TODAY}"]`).text()).toContain('Today')
     expect(list.get(`[data-date="${NOT_TODAY}"]`).text()).not.toContain('Today')
+  })
+
+  it('mutes days already past, leaving today and later at full strength', () => {
+    const list = mountList()
+    expect(list.get(`[data-date="${NOT_TODAY}"]`).classes()).toContain(
+      'opacity-60'
+    )
+    expect(list.get(`[data-date="${TODAY}"]`).classes()).not.toContain(
+      'opacity-60'
+    )
   })
 
   it('shows chore time and people-per-day as meta', () => {

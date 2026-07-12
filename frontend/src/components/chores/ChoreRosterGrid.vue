@@ -22,6 +22,10 @@ const props = defineProps<{
   rsvps: PoolRsvp[]
   rosterId: string
   currentUserId: string | null
+  // The event-zone date — the same "today" the backend fences autofill on,
+  // so the muted past matches exactly what a re-fill would leave alone.
+  today: string
+  staleAssignmentIds?: Set<string>
 }>()
 
 const emit = defineEmits<{
@@ -216,12 +220,25 @@ function onHandleKeydown(event: KeyboardEvent, chore: PoolChore) {
         </tr>
       </thead>
       <tbody class="divide-line bg-surface divide-y">
-        <tr v-for="date in dates" :key="date">
+        <!-- Past rows stay as the record of who did what, muted so the live
+             part of the roster reads apart from history. -->
+        <tr
+          v-for="date in dates"
+          :key="date"
+          :class="date < today ? 'opacity-60' : ''"
+        >
           <th
             scope="row"
-            class="text-ink bg-surface-page sticky left-0 z-10 px-3 py-2 text-left text-sm font-medium whitespace-nowrap"
+            class="text-ink bg-surface-page sticky left-0 z-10 px-3 py-2 text-left text-sm whitespace-nowrap"
+            :class="date === today ? 'font-semibold' : 'font-medium'"
           >
             {{ formatDayHeader(date) }}
+            <span
+              v-if="date === today"
+              class="bg-ink text-surface ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+            >
+              Today
+            </span>
           </th>
           <td
             v-for="chore in choresSorted"
@@ -233,6 +250,7 @@ function onHandleKeydown(event: KeyboardEvent, chore: PoolChore) {
               :people-per-day="chore.peoplePerDay"
               :member-map="memberMap"
               :current-user-id="currentUserId"
+              :stale-assignment-ids="staleAssignmentIds"
               @assign="(el: HTMLElement) => emit('assign', chore.id, date, el)"
               @edit-assignment="(a, el) => emit('editAssignment', a, el)"
             />
