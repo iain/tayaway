@@ -7,6 +7,8 @@ import { sortTaskItems } from './sortTaskItems'
 // doesn't silt up over days of use.
 export const HISTORY_AFTER_MS = 60 * 60 * 1000
 
+const EMPTY: ReadonlySet<string> = new Set()
+
 /**
  * An item belongs in History once it has been completed for more than
  * HISTORY_AFTER_MS. `now` is passed in (rather than read from the clock) so
@@ -32,27 +34,23 @@ export interface GroupedTaskItems {
  * active items by position, recently-completed items sunk to the bottom,
  * held items pinned in place. History is ordered by completion time, newest
  * first, so the top of History reads as "what just aged out".
- *
- * Held items never land in History — a hold means the user toggled the item
- * moments ago, so its completedAt is always well within the window; the
- * heldIds check is a guard against clock skew in the timestamp.
  */
 export function groupTaskItems(
   items: PoolTaskItem[],
-  heldIds: ReadonlySet<string>,
-  now: number
+  now: number,
+  heldIds: ReadonlySet<string> = EMPTY
 ): GroupedTaskItems {
   const current: PoolTaskItem[] = []
   const history: PoolTaskItem[] = []
   for (const item of items) {
-    if (isHistoryItem(item, now) && !heldIds.has(item.id)) {
+    if (isHistoryItem(item, now)) {
       history.push(item)
     } else {
       current.push(item)
     }
   }
-  history.sort(
-    (a, b) => Date.parse(b.completedAt!) - Date.parse(a.completedAt!)
-  )
+  // Serializer timestamps share one ISO-8601 format, so lexicographic order
+  // is chronological order — no need to re-parse inside the comparator.
+  history.sort((a, b) => (a.completedAt! < b.completedAt! ? 1 : -1))
   return { current: sortTaskItems(current, heldIds), history }
 }

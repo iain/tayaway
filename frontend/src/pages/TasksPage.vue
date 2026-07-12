@@ -20,7 +20,7 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import AlertBox from '@/components/common/AlertBox.vue'
 import TaskListCard from '@/components/tasks/TaskListCard.vue'
-import { isHistoryItem } from '@/components/tasks/groupTaskItems'
+import { groupTaskItems } from '@/components/tasks/groupTaskItems'
 import { useTaskActions } from '@/composables/useTaskActions'
 import { useMinuteTicker } from '@/composables/useMinuteTicker'
 import { useTaskListPrefs } from '@/composables/useTaskListPrefs'
@@ -76,23 +76,32 @@ function setCardRef(id: string, el: unknown): void {
   }
 }
 
-// Keyboard nav walks visible rows only: items inside a collapsed list and
-// items already aged into a (usually closed) History section are skipped so
-// j/k never highlights something the user can't see.
+// Keyboard nav walks visible rows only, in display order: items inside a
+// collapsed list and items aged into a (usually closed) History section are
+// skipped, and each list is ordered by the same `groupTaskItems` the cards
+// render from, so j/k tracks what's on screen. The cards' transient hold
+// state isn't shared here — during the sub-second sink hold, nav order and
+// display order may briefly differ, which is fine.
 const { isListCollapsed } = useTaskListPrefs()
 const { now } = useMinuteTicker()
 
 const allItems = computed(() => {
+  const byList = new Map<string, PoolTaskItem[]>()
+  for (const item of pool.getAll('taskItem')) {
+    const items = byList.get(item.taskListId)
+    if (items) {
+      items.push(item)
+    } else {
+      byList.set(item.taskListId, [item])
+    }
+  }
   const result: PoolTaskItem[] = []
   for (const list of taskListsLocal.value) {
     if (isListCollapsed(list.id)) continue
-    const listItems = pool
-      .getAll('taskItem')
-      .filter(
-        (item) => item.taskListId === list.id && !isHistoryItem(item, now.value)
-      )
-      .sort((a, b) => a.position - b.position)
-    result.push(...listItems)
+    const listItems = byList.get(list.id)
+    if (listItems) {
+      result.push(...groupTaskItems(listItems, now.value).current)
+    }
   }
   return result
 })

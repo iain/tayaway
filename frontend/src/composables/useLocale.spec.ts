@@ -48,4 +48,13 @@ describe('useLocale', () => {
     setLocale('nl-NL')
     expect(localStorage.getItem('tayaway:locale')).toBe('nl-NL')
   })
+
+  it('ignores setLocale with an invalid language tag', () => {
+    const { locale, setLocale } = useLocale()
+    setLocale('nl-NL')
+    setLocale('en-US@posix')
+
+    expect(locale.value).toBe('nl-NL')
+    expect(localStorage.getItem('tayaway:locale')).toBe('nl-NL')
+  })
 })

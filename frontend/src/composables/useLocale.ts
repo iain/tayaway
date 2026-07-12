@@ -52,6 +52,9 @@ export function useLocale(): {
   return {
     locale: readonly(activeLocale),
     setLocale(locale: string) {
+      // Same guard as detection: an invalid tag stored here would crash every
+      // downstream Intl call and re-poison startup after reload.
+      if (!isValidLocale(locale)) return
       activeLocale.value = locale
       if (typeof localStorage !== 'undefined') {
         try {

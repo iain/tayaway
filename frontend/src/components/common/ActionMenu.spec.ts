@@ -3,38 +3,32 @@ import { mount } from '@vue/test-utils'
 import ActionMenu from './ActionMenu.vue'
 import type { ActionMenuAction } from './ActionMenu.vue'
 
+// The global setup stubs matchMedia to always-false, so specs run against
+// the mobile bottom sheet by default; the desktop block stubs `matches: true`
+// to exercise the dropdown branch.
 const realMatchMedia = window.matchMedia
 
-// The global setup stubs matchMedia to always-false (mobile). Flip it per
-// test to exercise the desktop dropdown branch.
-function stubViewport(desktop: boolean): void {
+function stubDesktopViewport(): void {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-    matches: desktop,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
+    ...realMatchMedia(query),
+    matches: true,
   })) as unknown as typeof window.matchMedia
 }
 
-afterEach(() => {
-  window.matchMedia = realMatchMedia
-})
+const onRename = vi.fn()
+const onDelete = vi.fn()
 
 const actions: ActionMenuAction[] = [
-  { key: 'rename', label: 'Rename list', testid: 'rename-action' },
+  { label: 'Rename list', testid: 'rename-action', onPick: onRename },
   {
-    key: 'delete',
     label: 'Delete list',
     danger: true,
     testid: 'delete-action',
+    onPick: onDelete,
   },
 ]
 
-function mountMenu(meta?: string[]) {
+function mountMenu(meta?: string[] | (() => string[])) {
   return mount(ActionMenu, {
     props: {
       label: 'List options',
@@ -46,10 +40,13 @@ function mountMenu(meta?: string[]) {
   })
 }
 
+beforeEach(() => {
+  onRename.mockClear()
+  onDelete.mockClear()
+})
+
 describe('ActionMenu', () => {
   describe('mobile (bottom sheet)', () => {
-    beforeEach(() => stubViewport(false))
-
     it('renders a dialog-opening trigger with the accessible label', () => {
       const wrapper = mountMenu()
       const trigger = wrapper.get('[data-testid="menu-trigger"]')
@@ -59,7 +56,15 @@ describe('ActionMenu', () => {
       expect(trigger.attributes('aria-expanded')).toBe('false')
     })
 
-    it('opens the sheet on click and emits pick when an action is chosen', async () => {
+    it('defers rendering the sheet body until first opened', async () => {
+      const wrapper = mountMenu()
+      expect(wrapper.find('[data-testid="delete-action"]').exists()).toBe(false)
+
+      await wrapper.get('[data-testid="menu-trigger"]').trigger('click')
+      expect(wrapper.find('[data-testid="delete-action"]').exists()).toBe(true)
+    })
+
+    it('opens the sheet on click and runs the picked action', async () => {
       const wrapper = mountMenu()
       await wrapper.get('[data-testid="menu-trigger"]').trigger('click')
 
@@ -69,18 +74,19 @@ describe('ActionMenu', () => {
 
       await wrapper.get('[data-testid="delete-action"]').trigger('click')
 
-      expect(wrapper.emitted('pick')).toEqual([['delete']])
+      expect(onDelete).toHaveBeenCalledOnce()
       // Picking an action closes the sheet
       expect(sheet.attributes('open')).toBeUndefined()
     })
 
-    it('shows meta lines in the sheet', async () => {
-      const wrapper = mountMenu(['Added by Alice', 'Added Jan 1, 10:00'])
+    it('shows meta lines in the sheet, resolving getter-shaped meta', async () => {
+      const meta = vi.fn(() => ['Added by Alice', 'Added Jan 1, 10:00'])
+      const wrapper = mountMenu(meta)
       await wrapper.get('[data-testid="menu-trigger"]').trigger('click')
 
-      const meta = wrapper.get('[data-testid="action-menu-meta"]')
-      expect(meta.text()).toContain('Added by Alice')
-      expect(meta.text()).toContain('Added Jan 1, 10:00')
+      const block = wrapper.get('[data-testid="action-menu-meta"]')
+      expect(block.text()).toContain('Added by Alice')
+      expect(block.text()).toContain('Added Jan 1, 10:00')
     })
 
     it('emits triggerMousedown before opening', async () => {
@@ -92,9 +98,12 @@ describe('ActionMenu', () => {
   })
 
   describe('desktop (dropdown)', () => {
-    beforeEach(() => stubViewport(true))
+    beforeEach(() => stubDesktopViewport())
+    afterEach(() => {
+      window.matchMedia = realMatchMedia
+    })
 
-    it('opens a menu and emits pick when an action is chosen', async () => {
+    it('opens a menu and runs the picked action', async () => {
       const wrapper = mountMenu(['Added by Alice'])
       const trigger = wrapper.get('[data-testid="menu-trigger"]')
       expect(trigger.attributes('aria-haspopup')).toBe('menu')
@@ -109,7 +118,7 @@ describe('ActionMenu', () => {
       )
 
       await wrapper.get('[data-testid="delete-action"]').trigger('click')
-      expect(wrapper.emitted('pick')).toEqual([['delete']])
+      expect(onDelete).toHaveBeenCalledOnce()
     })
   })
 })

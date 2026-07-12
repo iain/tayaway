@@ -1,23 +1,25 @@
 <script lang="ts">
 export interface ActionMenuAction {
-  key: string
   label: string
+  onPick: () => void
   danger?: boolean
   testid?: string
 }
 </script>
 
 <script setup lang="ts">
-import { ref, useId, watch } from 'vue'
+import { ref, computed, useId, watch } from 'vue'
 import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue'
 import { EllipsisVerticalIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { useMediaQuery } from '@/composables/useMediaQuery'
 
 // The three-dots overflow menu: a Headless UI dropdown on desktop, a modal
 // bottom sheet on touch-sized viewports. One trigger API for both — the
-// consumer supplies actions plus optional read-only meta lines ("Added by
-// Daisy", "Completed Jan 3, 14:05") that render in a non-interactive block
-// under the actions.
+// consumer supplies actions (each carrying its own onPick handler) plus
+// optional read-only meta lines ("Added by Daisy", "Completed Jan 3, 14:05")
+// that render in a non-interactive block under the actions. Pass meta as a
+// getter when the lines are costly to compute — it's only invoked once the
+// menu is actually open.
 //
 // Accessibility notes:
 //   - Desktop: Headless UI's Menu carries the full menu-button contract
@@ -27,42 +29,53 @@ import { useMediaQuery } from '@/composables/useMediaQuery'
 //     always has a visible close button — swipe/scrim-only dismissal would
 //     exclude keyboard and switch users. Rows are 44px tall tap targets and
 //     the sheet pads itself past the home-indicator safe area.
-defineProps<{
+const props = defineProps<{
   /** Accessible name for the trigger, e.g. "Options for Milk". */
   label: string
   /** Heading shown on the mobile sheet. */
   title: string
   actions: ActionMenuAction[]
-  meta?: string[]
+  meta?: string[] | (() => string[])
   triggerTestid?: string
 }>()
 
 const emit = defineEmits<{
-  pick: [key: string]
   /** Fires on mousedown of the trigger, before any focus/blur — lets a
    consumer cancel inline editing before the menu opens. */
   triggerMousedown: []
 }>()
+
+// Only read from the open panel/sheet, so a getter-shaped `meta` costs
+// nothing until the menu is actually opened.
+const metaLines = computed(() =>
+  typeof props.meta === 'function' ? props.meta() : props.meta
+)
 
 // Tailwind `sm` — below it the dropdown would clip and fingers need bigger
 // targets, so the sheet takes over.
 const isDesktop = useMediaQuery('(min-width: 640px)')
 
 const sheetOpen = ref(false)
+// Latch that defers rendering the sheet's body until first open: one closed
+// sheet is cheap, but one per list item adds thousands of hidden DOM nodes
+// on exactly the viewports that can least afford them. Latched (not tied to
+// sheetOpen) so the body stays in place during the close animation.
+const hasOpened = ref(false)
 const sheetRef = ref<HTMLDialogElement | null>(null)
 const sheetTitleId = useId()
 
 watch(sheetOpen, (open) => {
   if (open) {
+    hasOpened.value = true
     sheetRef.value?.showModal()
   } else {
     sheetRef.value?.close()
   }
 })
 
-function pickFromSheet(key: string): void {
+function pickFromSheet(action: ActionMenuAction): void {
   sheetOpen.value = false
-  emit('pick', key)
+  action.onPick()
 }
 
 // Native <dialog> reports backdrop clicks as clicks on the dialog element
@@ -97,7 +110,7 @@ function handleSheetClick(event: MouseEvent): void {
       >
         <MenuItem
           v-for="action in actions"
-          :key="action.key"
+          :key="action.label"
           v-slot="{ active }"
         >
           <button
@@ -108,18 +121,18 @@ function handleSheetClick(event: MouseEvent): void {
               action.danger ? 'text-state-danger-ink' : 'text-ink',
               'block w-full px-4 py-2 text-left text-sm',
             ]"
-            @click="emit('pick', action.key)"
+            @click="action.onPick()"
           >
             {{ action.label }}
           </button>
         </MenuItem>
         <div
-          v-if="meta && meta.length > 0"
+          v-if="metaLines && metaLines.length > 0"
           class="border-line-faint mt-1 border-t px-4 pt-2 pb-1"
           data-testid="action-menu-meta"
         >
           <p
-            v-for="line in meta"
+            v-for="line in metaLines"
             :key="line"
             class="text-ink-muted py-0.5 text-xs"
           >
@@ -152,56 +165,58 @@ function handleSheetClick(event: MouseEvent): void {
       @close="sheetOpen = false"
       @click="handleSheetClick"
     >
-      <div
-        class="bg-line mx-auto mb-3 h-1 w-10 rounded-full"
-        aria-hidden="true"
-      />
-      <div class="mb-2 flex items-start justify-between gap-2">
-        <h3
-          :id="sheetTitleId"
-          class="text-ink min-w-0 flex-1 truncate text-base font-semibold"
-        >
-          {{ title }}
-        </h3>
-        <button
-          type="button"
-          class="text-ink-muted hover:text-ink focus-visible:outline-focus -m-2 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-2"
-          @click="sheetOpen = false"
-        >
-          <span class="sr-only">Close</span>
-          <XMarkIcon class="size-6" aria-hidden="true" />
-        </button>
-      </div>
+      <template v-if="hasOpened">
+        <div
+          class="bg-line mx-auto mb-3 h-1 w-10 rounded-full"
+          aria-hidden="true"
+        />
+        <div class="mb-2 flex items-start justify-between gap-2">
+          <h3
+            :id="sheetTitleId"
+            class="text-ink min-w-0 flex-1 truncate text-base font-semibold"
+          >
+            {{ title }}
+          </h3>
+          <button
+            type="button"
+            class="text-ink-muted hover:text-ink focus-visible:outline-focus -m-2 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-2"
+            @click="sheetOpen = false"
+          >
+            <span class="sr-only">Close</span>
+            <XMarkIcon class="size-6" aria-hidden="true" />
+          </button>
+        </div>
 
-      <div class="flex flex-col">
-        <button
-          v-for="action in actions"
-          :key="action.key"
-          type="button"
-          :data-testid="action.testid"
-          :class="[
-            action.danger ? 'text-state-danger-ink' : 'text-ink',
-            'hover:bg-btn-secondary-fill flex min-h-[44px] w-full items-center rounded-md px-3 text-left text-base',
-          ]"
-          @click="pickFromSheet(action.key)"
-        >
-          {{ action.label }}
-        </button>
-      </div>
+        <div class="flex flex-col">
+          <button
+            v-for="action in actions"
+            :key="action.label"
+            type="button"
+            :data-testid="action.testid"
+            :class="[
+              action.danger ? 'text-state-danger-ink' : 'text-ink',
+              'hover:bg-btn-secondary-fill flex min-h-[44px] w-full items-center rounded-md px-3 text-left text-base',
+            ]"
+            @click="pickFromSheet(action)"
+          >
+            {{ action.label }}
+          </button>
+        </div>
 
-      <div
-        v-if="meta && meta.length > 0"
-        class="border-line-faint mt-2 border-t px-3 pt-3"
-        data-testid="action-menu-meta"
-      >
-        <p
-          v-for="line in meta"
-          :key="line"
-          class="text-ink-muted py-0.5 text-sm"
+        <div
+          v-if="metaLines && metaLines.length > 0"
+          class="border-line-faint mt-2 border-t px-3 pt-3"
+          data-testid="action-menu-meta"
         >
-          {{ line }}
-        </p>
-      </div>
+          <p
+            v-for="line in metaLines"
+            :key="line"
+            class="text-ink-muted py-0.5 text-sm"
+          >
+            {{ line }}
+          </p>
+        </div>
+      </template>
     </dialog>
   </div>
 </template>

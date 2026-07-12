@@ -108,8 +108,8 @@ watchEffect(() => {
           item.taskListId === props.taskList.id &&
           !clearedIds.value.has(item.id)
       ),
-    heldIds.value,
-    now.value
+    now.value,
+    heldIds.value
   )
   itemsLocal.value = grouped.current
   historyItems.value = grouped.history
@@ -221,32 +221,26 @@ const listMenuActions = computed<ActionMenuAction[]>(() => {
   const actions: ActionMenuAction[] = []
   if (hasCompleted.value) {
     actions.push({
-      key: 'clear-completed',
       label: `Clear ${completedItems.value.length} completed`,
       testid: 'clear-completed-button',
+      onPick: () => void handleClearCompleted(),
     })
   }
   actions.push(
-    { key: 'rename', label: 'Rename list', testid: 'rename-list-button' },
     {
-      key: 'delete',
+      label: 'Rename list',
+      testid: 'rename-list-button',
+      onPick: () => void startRename(),
+    },
+    {
       label: 'Delete list',
       danger: true,
       testid: 'delete-list-button',
+      onPick: handleDeleteList,
     }
   )
   return actions
 })
-
-function handleListMenuPick(key: string): void {
-  if (key === 'clear-completed') {
-    void handleClearCompleted()
-  } else if (key === 'rename') {
-    void startRename()
-  } else if (key === 'delete') {
-    handleDeleteList()
-  }
-}
 
 // Handles same-list reorders. @end fires on the SOURCE, so skip cross-list drags here.
 async function handleItemDragEnd(event: SortableEvent) {
@@ -522,7 +516,6 @@ defineExpose({
             :title="taskList.name"
             :actions="listMenuActions"
             trigger-testid="list-menu-button"
-            @pick="handleListMenuPick"
           />
         </div>
       </div>

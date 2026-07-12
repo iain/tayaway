@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { nextTick } from 'vue'
 import { useTaskListPrefs } from './useTaskListPrefs'
 
 const STORAGE_KEY = 'tayaway:tasks:collapsed-lists'
@@ -31,24 +30,22 @@ describe('useTaskListPrefs', () => {
     expect(isListCollapsed('list-1')).toBe(false)
   })
 
-  it('persists collapsed lists to localStorage', async () => {
+  it('persists collapsed lists to localStorage', () => {
     const { setListCollapsed } = useTaskListPrefs()
 
     setListCollapsed('list-1', true)
-    await nextTick()
 
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!)).toEqual({
       'list-1': true,
     })
   })
 
-  it('prunes expanded lists from storage instead of storing false', async () => {
+  it('prunes expanded lists from storage instead of storing false', () => {
     const { setListCollapsed } = useTaskListPrefs()
 
     setListCollapsed('list-1', true)
     setListCollapsed('list-2', true)
     setListCollapsed('list-1', false)
-    await nextTick()
 
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!)).toEqual({
       'list-2': true,

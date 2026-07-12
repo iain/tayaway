@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
+import { ref, nextTick } from 'vue'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import type { ActionMenuAction } from '@/components/common/ActionMenu.vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
@@ -32,16 +32,18 @@ const editInput = ref<HTMLInputElement | null>(null)
 
 const menuActions: ActionMenuAction[] = [
   {
-    key: 'delete',
     label: 'Delete item',
     danger: true,
     testid: 'delete-item-button',
+    onPick: () => emit('delete', props.item),
   },
 ]
 
 // Who added it and when, plus the completion moment for checked items —
 // surfaced in the overflow menu so the row itself stays a clean tap target.
-const menuMeta = computed(() => {
+// A getter (not a computed bound into the row) so the member lookup and
+// date formatting only run once the menu is opened, not on every row render.
+function menuMeta(): string[] {
   const lines = [
     `Added by ${getMemberName(props.item.userId, pool)}`,
     `Added ${formatDateTime(props.item.createdAt, locale.value)}`,
@@ -52,12 +54,6 @@ const menuMeta = computed(() => {
     )
   }
   return lines
-})
-
-function handleMenuPick(key: string): void {
-  if (key === 'delete') {
-    emit('delete', props.item)
-  }
 }
 
 async function startEdit(): Promise<void> {
@@ -160,7 +156,6 @@ function cancelEdit(): void {
       :meta="menuMeta"
       trigger-testid="item-menu-button"
       @trigger-mousedown="cancelEdit"
-      @pick="handleMenuPick"
     />
   </li>
 </template>

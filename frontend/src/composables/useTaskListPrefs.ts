@@ -1,4 +1,4 @@
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 
 // Per-list collapsed state for the Tasks page accordion, persisted so the
 // lists you tucked away stay tucked away across visits. This is a personal
@@ -22,19 +22,15 @@ function load(): Record<string, true> {
   return {}
 }
 
-const collapsedLists = ref<Record<string, true>>(load())
+function save(value: Record<string, true>): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
+  } catch {
+    // Best effort — private mode or a full quota just loses persistence.
+  }
+}
 
-watch(
-  collapsedLists,
-  (value) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
-    } catch {
-      // Best effort — private mode or a full quota just loses persistence.
-    }
-  },
-  { deep: true }
-)
+const collapsedLists = ref<Record<string, true>>(load())
 
 export function useTaskListPrefs() {
   function isListCollapsed(listId: string): boolean {
@@ -49,6 +45,7 @@ export function useTaskListPrefs() {
     } else {
       delete collapsedLists.value[listId]
     }
+    save(collapsedLists.value)
   }
 
   function toggleListCollapsed(listId: string): void {
