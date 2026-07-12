@@ -167,7 +167,11 @@ class RawApiClient {
         `API ${method} ${url} failed: ${response.status} ${error.message}`
       )
 
-      if (!options?.silent) {
+      // A 404 on DELETE means the object is already gone server-side — the
+      // command queue treats that as success, so a "not found" toast here
+      // would contradict the outcome the user sees.
+      const alreadyDeleted = method === 'DELETE' && response.status === 404
+      if (!options?.silent && !alreadyDeleted) {
         const notificationsStore = useNotificationsStore()
         notificationsStore.showError(
           serverMessage || getErrorMessage(response.status)

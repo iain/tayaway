@@ -7,8 +7,10 @@ vi.mock('@/api/sessionExpired', () => ({
   handleSessionExpired: mockHandleSessionExpired,
 }))
 
+// Shared so tests can assert on toast behaviour across calls
+const mockShowError = vi.fn()
 vi.mock('@/stores', () => ({
-  useNotificationsStore: vi.fn(() => ({ showError: vi.fn() })),
+  useNotificationsStore: vi.fn(() => ({ showError: mockShowError })),
   useObjectPoolStore: vi.fn(() => ({
     importObjects: vi.fn(),
     remove: vi.fn(),
@@ -40,6 +42,42 @@ function mockFetchResponse(
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response))
   return { jsonFn }
 }
+
+describe('DELETE 404 toast suppression', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    mockShowError.mockClear()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  // A 404 on DELETE means the object is already gone server-side — the
+  // command queue treats it as success, so a "not found" toast would just
+  // confuse (and it fires before the queue can intervene).
+  it('does not toast a 404 on DELETE', async () => {
+    mockFetchResponse(404, { error: 'Task item not found' }, false)
+
+    await expect(rawApi.delete('/task-items/x')).rejects.toMatchObject({
+      status: 404,
+    })
+
+    expect(mockShowError).not.toHaveBeenCalled()
+  })
+
+  it('still toasts a 404 on other methods', async () => {
+    mockFetchResponse(404, { error: 'Task item not found' }, false)
+
+    await expect(rawApi.get('/task-items/x')).rejects.toMatchObject({
+      status: 404,
+    })
+
+    expect(mockShowError).toHaveBeenCalledWith('Task item not found')
+  })
+})
 
 describe('ApiClient console logging', () => {
   beforeEach(() => {

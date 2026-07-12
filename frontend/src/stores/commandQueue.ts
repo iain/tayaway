@@ -421,14 +421,35 @@ async function executeRequest<T>(
   workspaceId?: string | null
 ): Promise<ApiResponse<T>> {
   const opts = idempotencyKey ? { idempotencyKey } : undefined
-  const response =
-    method === 'POST'
-      ? await rawApi.post<T>(path, body, opts)
-      : method === 'PUT'
-        ? await rawApi.put<T>(path, body, opts)
-        : method === 'PATCH'
-          ? await rawApi.patch<T>(path, body, opts)
-          : await rawApi.delete<T>(path, opts)
+  let response: ApiResponse<T>
+  try {
+    response =
+      method === 'POST'
+        ? await rawApi.post<T>(path, body, opts)
+        : method === 'PUT'
+          ? await rawApi.put<T>(path, body, opts)
+          : method === 'PATCH'
+            ? await rawApi.patch<T>(path, body, opts)
+            : await rawApi.delete<T>(path, opts)
+  } catch (e) {
+    // A 404 on DELETE means the object is already gone server-side —
+    // deleted by another device/user, or a local-only zombie that never
+    // existed there. That's the outcome the delete wanted, so treat it as
+    // success: failing instead would restore/roll back the optimistic
+    // removal and resurrect an object the user can never get rid of.
+    // There is no response body to hydrate the pool from; the optimistic
+    // removal already took care of the local state.
+    if (
+      method === 'DELETE' &&
+      typeof e === 'object' &&
+      e !== null &&
+      'status' in e &&
+      (e as { status: number }).status === 404
+    ) {
+      return { data: null as T, status: 404 }
+    }
+    throw e
+  }
   // Successful mutations hydrate the pool explicitly here instead of as a
   // hidden side effect inside the HTTP client, so rawApi stays pure and
   // the coupling is visible at the only layer that actually needs it. The
