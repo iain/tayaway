@@ -217,11 +217,11 @@ export const useAuthStore = defineStore('auth', () => {
       })
   }
 
-  async function requestLoginLink(email: string): Promise<string> {
+  async function requestLoginLink(email: string): Promise<LoginLinkResponse> {
     const response = await rawApi.post<LoginLinkResponse>('/auth/login-link', {
       email,
     })
-    return response.data.message
+    return response.data
   }
 
   async function completeLogin(): Promise<AuthUser> {

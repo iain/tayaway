@@ -92,4 +92,22 @@ RSpec.describe Auth::CreateLoginLink do
 
     expect(Mailers::LoginLink).not_to have_received(:send_email)
   end
+
+  it "includes the login link in the response in development" do
+    TestFactories.user(email: "test@example.com")
+
+    result = APP_CONFIG.with(app_env: "development") do
+      described_class.call(email: "test@example.com")
+    end
+
+    expect(result.value![:loginLink]).to include("auth/verify?token=eyJ")
+  end
+
+  it "omits the login link outside development" do
+    TestFactories.user(email: "test@example.com")
+
+    result = described_class.call(email: "test@example.com")
+
+    expect(result.value!).not_to have_key(:loginLink)
+  end
 end
