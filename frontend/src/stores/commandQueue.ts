@@ -21,12 +21,32 @@ export class CommandQueuedError extends Error {
   }
 }
 
-function isNetworkError(e: unknown): boolean {
+// Failures where the command should stay queued for a later retry. Replays
+// carry an Idempotency-Key, so retrying is safe even when the original
+// request reached the server.
+function isRetryableError(e: unknown): boolean {
   // fetch() rejects with TypeError only for network failures per the fetch
   // spec, so instanceof alone is a complete and robust check. The previous
   // substring match on browser-specific wordings ("Failed to fetch", "Load
   // failed", "NetworkError…") would silently regress on any wording change.
-  return e instanceof TypeError
+  if (e instanceof TypeError) return true
+  // Timeouts surface as DOMExceptions ('TimeoutError' from the client's
+  // AbortSignal.timeout, 'AbortError' from a plain abort), not TypeErrors.
+  // Whether the request reached the server is unknown — don't drop it.
+  if (
+    e instanceof DOMException &&
+    (e.name === 'TimeoutError' || e.name === 'AbortError')
+  ) {
+    return true
+  }
+  // Gateway errors are what a deploy window looks like from the client —
+  // the backend is restarting behind the proxy and will be back shortly.
+  return (
+    typeof e === 'object' &&
+    e !== null &&
+    'status' in e &&
+    [502, 503, 504].includes((e as { status: number }).status)
+  )
 }
 
 function isAuthError(e: unknown): boolean {
@@ -83,7 +103,7 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
       pendingCount.value--
       return response
     } catch (e) {
-      if (isNetworkError(e)) {
+      if (isRetryableError(e)) {
         throw new CommandQueuedError()
       }
       if (isAuthError(e)) {
@@ -155,8 +175,9 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
               await handleAuthError()
               break
             }
-            if (isNetworkError(e)) {
-              // Still offline, stop processing
+            if (isRetryableError(e)) {
+              // Still offline (or the backend is mid-deploy) — stop
+              // processing; the queue replays on the next trigger.
               break
             }
             // Server error — remove and notify, continue with next
