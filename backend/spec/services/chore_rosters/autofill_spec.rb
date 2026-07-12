@@ -16,6 +16,10 @@ RSpec.describe ChoreRosters::Autofill do
   end
   let(:roster) { TestFactories.chore_roster(event: event, user: user_a) }
 
+  # Anchor "today" before the event so the long-standing specs keep describing
+  # a roster filled ahead of time; the mid-event block below moves it.
+  before { allow(Timezones).to receive(:today).and_return(Date.new(2026, 2, 1)) }
+
   def membership_for(usr)
     existing = DB[:workspace_memberships].where(workspace_id: workspace[:id], user_id: usr[:id]).first
     row = existing || TestFactories.workspace_membership(workspace: workspace, user: usr)
@@ -261,6 +265,61 @@ RSpec.describe ChoreRosters::Autofill do
     # ...and the remaining work should spread evenly across the other two.
     totals = all_assignments.group_by { |a| a[:user_id] }.transform_values(&:length)
     expect(totals.values.max - totals.values.min).to be <= 1
+  end
+
+  describe "mid-event" do
+    let(:event_end) { Date.new(2026, 3, 4) }
+
+    before { allow(Timezones).to receive(:today).and_return(Date.new(2026, 3, 3)) }
+
+    it "leaves days before today untouched and refills only from today onward" do
+      create_rsvp(user_a)
+      create_rsvp(user_b)
+      chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
+
+      past1 = TestFactories.chore_assignment(chore: chore, user: user_a, date: Date.new(2026, 3, 1), pinned: false)
+      past2 = TestFactories.chore_assignment(chore: chore, user: user_b, date: Date.new(2026, 3, 2), pinned: false)
+      stale_future = TestFactories.chore_assignment(chore: chore, user: user_a, date: Date.new(2026, 3, 3), pinned: false)
+
+      result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
+      expect(result.success?).to be true
+
+      # The record of days already gone keeps its exact rows.
+      expect(DB[:chore_assignments].where(id: [past1[:id], past2[:id]]).count).to eq(2)
+      # Today's old row was cleared and the remaining days are all filled.
+      expect(DB[:chore_assignments].where(id: stale_future[:id]).count).to eq(0)
+      expect(all_assignments.map { |a| a[:date] }.sort)
+        .to eq([Date.new(2026, 3, 1), Date.new(2026, 3, 2), Date.new(2026, 3, 3), Date.new(2026, 3, 4)])
+    end
+
+    it "counts past work when balancing the remaining days" do
+      # Alice covered the two days already gone; both are around all four days.
+      # The two remaining days should both fall to Bob (Alice 2/4 vs Bob 0/4).
+      create_rsvp(user_a)
+      create_rsvp(user_b)
+      chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
+      TestFactories.chore_assignment(chore: chore, user: user_a, date: Date.new(2026, 3, 1), pinned: false)
+      TestFactories.chore_assignment(chore: chore, user: user_a, date: Date.new(2026, 3, 2), pinned: false)
+
+      result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
+      expect(result.success?).to be true
+
+      remaining = all_assignments.select { |a| a[:date] >= Date.new(2026, 3, 3) }
+      expect(remaining.map { |a| a[:user_id] }).to eq([user_b[:id], user_b[:id]])
+    end
+
+    it "fails when the event is already over, leaving the roster untouched" do
+      allow(Timezones).to receive(:today).and_return(Date.new(2026, 3, 10))
+      create_rsvp(user_a)
+      chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
+      done = TestFactories.chore_assignment(chore: chore, user: user_a, date: Date.new(2026, 3, 2), pinned: false)
+
+      result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to match(/event is over/i)
+      expect(DB[:chore_assignments].where(id: done[:id]).count).to eq(1)
+    end
   end
 
   it "keeps pinned-only state when all assignments are pinned" do

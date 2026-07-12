@@ -3,6 +3,10 @@
 require "spec_helper"
 
 RSpec.describe ChoreRosters::ClearUnpinned do
+  # Pin the fence to the machine's date so the Date.today-based fixtures below
+  # can't drift across the event zone's midnight.
+  before { allow(Timezones).to receive(:today).and_return(Date.today) }
+
   def membership_for(workspace, usr)
     row = TestFactories.workspace_membership(workspace: workspace, user: usr)
     WorkspaceMembership.find(row[:id])
@@ -35,6 +39,24 @@ RSpec.describe ChoreRosters::ClearUnpinned do
     expect(DB[:chore_assignments].where(id: pinned[:id]).count).to eq(1)
     expect(DB[:chore_assignments].where(id: unpinned1[:id]).count).to eq(0)
     expect(DB[:chore_assignments].where(id: unpinned2[:id]).count).to eq(0)
+  end
+
+  it "clears only assignments from today onward, keeping the past-day record" do
+    workspace = TestFactories.workspace
+    user = TestFactories.user
+    event = TestFactories.event(workspace: workspace, user: user)
+    roster = TestFactories.chore_roster(event: event, user: user)
+    chore = TestFactories.chore(chore_roster: roster)
+
+    past = TestFactories.chore_assignment(chore: chore, user: user, date: Date.today - 1, pinned: false)
+    today_row = TestFactories.chore_assignment(chore: chore, user: user, date: Date.today, pinned: false)
+    future = TestFactories.chore_assignment(chore: chore, user: user, date: Date.today + 1, pinned: false)
+
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(workspace, user))
+
+    expect(result.success?).to be true
+    expect(result.value![:deleted].map { |d| d[:id] }).to contain_exactly(today_row[:id], future[:id])
+    expect(DB[:chore_assignments].where(id: past[:id]).count).to eq(1)
   end
 
   it "does nothing when no non-pinned assignments exist" do
