@@ -1,8 +1,34 @@
 import { ref } from 'vue'
 import { useCommandQueueStore, CommandQueuedError } from '@/stores/commandQueue'
 import { useObjectPoolStore } from '@/stores/objectPool'
+import type { OptimisticRef } from '@/api/commandDb'
 import type { ApiResponse } from '@/api/client'
 import type { ObjectType, ObjectTypeMap } from '@/types/pool'
+
+/**
+ * The slice of the command queue handed to mutation callbacks. create/
+ * update/destroy wrap the real store so enqueue carries the rollback
+ * linkage — persisting it atomically with the command row closes the
+ * window where a raced replay could permanently fail before a separately
+ * registered linkage landed, stranding the optimistic state forever.
+ */
+export interface CommandEnqueuer {
+  enqueue<T>(
+    method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
+    path: string,
+    body?: unknown
+  ): Promise<ApiResponse<T>>
+}
+
+function withOptimistic(
+  queue: ReturnType<typeof useCommandQueueStore>,
+  optimistic: OptimisticRef
+): CommandEnqueuer {
+  return {
+    enqueue: (method, path, body) =>
+      queue.enqueue(method, path, body, optimistic),
+  }
+}
 
 export type MutationResult<T> = { queued: false; data: T } | { queued: true }
 
@@ -19,9 +45,7 @@ export function useMutation() {
 
   async function mutate<T>(
     errorMessage: string,
-    fn: (
-      commandQueue: ReturnType<typeof useCommandQueueStore>
-    ) => Promise<ApiResponse<T>>
+    fn: (commandQueue: CommandEnqueuer) => Promise<ApiResponse<T>>
   ): Promise<MutationResult<T>> {
     loading.value = true
     error.value = null
@@ -49,9 +73,7 @@ export function useMutation() {
   async function create<T>(
     errorMessage: string,
     tempObject: ObjectTypeMap[ObjectType],
-    fn: (
-      commandQueue: ReturnType<typeof useCommandQueueStore>
-    ) => Promise<ApiResponse<T>>
+    fn: (commandQueue: CommandEnqueuer) => Promise<ApiResponse<T>>
   ): Promise<MutationResult<T>> {
     const pool = useObjectPoolStore()
     pool.set(tempObject, { isTemp: true })
@@ -60,7 +82,13 @@ export function useMutation() {
     error.value = null
     try {
       const commandQueue = useCommandQueueStore()
-      const response = await fn(commandQueue)
+      const response = await fn(
+        withOptimistic(commandQueue, {
+          kind: 'create',
+          objectType: tempObject.objectType,
+          objectId: tempObject.id,
+        })
+      )
       return { queued: false, data: response.data }
     } catch (e) {
       if (e instanceof CommandQueuedError) {
@@ -85,9 +113,7 @@ export function useMutation() {
     objectType: ObjectType,
     objectId: string,
     changes: Partial<ObjectTypeMap[typeof objectType]>,
-    fn: (
-      commandQueue: ReturnType<typeof useCommandQueueStore>
-    ) => Promise<ApiResponse<T>>
+    fn: (commandQueue: CommandEnqueuer) => Promise<ApiResponse<T>>
   ): Promise<MutationResult<T>> {
     const pool = useObjectPoolStore()
     const pendingId = pool.addPending(objectType, objectId, changes)
@@ -96,7 +122,14 @@ export function useMutation() {
     error.value = null
     try {
       const commandQueue = useCommandQueueStore()
-      const response = await fn(commandQueue)
+      const response = await fn(
+        withOptimistic(commandQueue, {
+          kind: 'update',
+          objectType,
+          objectId,
+          pendingId,
+        })
+      )
       // The response import (inside the command queue) only clears overlays
       // the server timestamp postdates — a client clock running ahead of the
       // server defeats that, leaving a stale overlay that masks other users'
@@ -126,9 +159,7 @@ export function useMutation() {
     errorMessage: string,
     objectType: ObjectType,
     objectId: string,
-    fn: (
-      commandQueue: ReturnType<typeof useCommandQueueStore>
-    ) => Promise<ApiResponse<T>>
+    fn: (commandQueue: CommandEnqueuer) => Promise<ApiResponse<T>>
   ): Promise<MutationResult<T>> {
     const pool = useObjectPoolStore()
     // Cascade-remove parent and all children, saving them for rollback
@@ -138,7 +169,12 @@ export function useMutation() {
     error.value = null
     try {
       const commandQueue = useCommandQueueStore()
-      const response = await fn(commandQueue)
+      const response = await fn(
+        withOptimistic(commandQueue, {
+          kind: 'destroy',
+          removed: removedObjects,
+        })
+      )
       return { queued: false, data: response.data }
     } catch (e) {
       if (e instanceof CommandQueuedError) {

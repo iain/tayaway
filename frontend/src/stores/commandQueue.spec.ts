@@ -1,6 +1,9 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useCommandQueueStore, CommandQueuedError } from './commandQueue'
+import { useObjectPoolStore } from './objectPool'
+import { Scope } from '@/api/scope'
+import { makeEvent } from '@/test/factories'
 import type { ApiResponse } from '@/api/client'
 
 // Mock commandDb
@@ -62,16 +65,27 @@ vi.mock('@/api/processPoolResponse', () => ({
   processPoolResponse: vi.fn(),
 }))
 
-// Mock notifications store
-vi.mock('./notifications', () => ({
-  useNotificationsStore: () => ({
-    showError: vi.fn(),
-  }),
+// Mock notifications store — hoisted and shared so tests can assert on
+// showError calls across the dynamic import in processQueue
+const notificationMocks = vi.hoisted(() => ({
+  showError: vi.fn(),
 }))
 
-// Mock other stores used in auth error handling
+vi.mock('./notifications', () => ({
+  useNotificationsStore: () => notificationMocks,
+}))
+
+// Mock other stores used in auth error handling and the isOnline signal.
+// `state` is hoisted and mutable so tests can simulate a healthy socket.
+const websocketMocks = vi.hoisted(() => ({
+  state: 'disconnected',
+}))
+
 vi.mock('./websocket', () => ({
   useWebSocketStore: () => ({
+    get state() {
+      return websocketMocks.state
+    },
     disconnect: vi.fn(),
   }),
 }))
@@ -112,6 +126,7 @@ describe('commandQueue store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    websocketMocks.state = 'disconnected'
   })
 
   describe('enqueue', () => {
@@ -128,6 +143,22 @@ describe('commandQueue store', () => {
         '/api/events',
         { name: 'Test' },
         { idempotencyKey: expect.any(String) }
+      )
+    })
+
+    it('persists the rollback linkage atomically with the command row', async () => {
+      const store = useCommandQueueStore()
+      mockedApi.post.mockResolvedValueOnce(okResponse(null))
+      const optimistic = {
+        kind: 'create' as const,
+        objectType: 'event' as const,
+        objectId: 'evt-1',
+      }
+
+      await store.enqueue('POST', '/api/events', { name: 'X' }, optimistic)
+
+      expect(addCommand).toHaveBeenCalledWith(
+        expect.objectContaining({ optimistic })
       )
     })
 
@@ -579,6 +610,318 @@ describe('commandQueue store', () => {
 
       // Command not removed from db — kept for retry after re-auth
       expect(store.pendingCount).toBe(1)
+    })
+  })
+
+  // A permanent server rejection during replay must undo the optimistic
+  // state the command left in the pool — otherwise the UI keeps showing a
+  // change the server never accepted (temp objects even survive full syncs).
+  describe('optimistic rollback on permanent replay failure', () => {
+    it('removes the temp object of a failed create and names it in the toast', async () => {
+      const store = useCommandQueueStore()
+      const pool = useObjectPoolStore()
+      pool.set(makeEvent({ id: 'evt-1' }), {
+        scope: Scope.workspace('ws-1'),
+        isTemp: true,
+      })
+      vi.mocked(getPendingCommands).mockResolvedValueOnce([
+        {
+          id: 'cmd-a',
+          method: 'POST' as const,
+          path: '/api/events',
+          body: {},
+          createdAt: 1,
+          optimistic: {
+            kind: 'create' as const,
+            objectType: 'event' as const,
+            objectId: 'evt-1',
+          },
+        },
+      ])
+      mockedApi.post.mockRejectedValueOnce({ status: 422, message: 'nope' })
+
+      await store.processQueue()
+
+      expect(pool.get('event', 'evt-1')).toBeUndefined()
+      expect(removeCommand).toHaveBeenCalledWith('cmd-a')
+      expect(notificationMocks.showError).toHaveBeenCalledExactlyOnceWith(
+        expect.stringMatching(/event.*undone/)
+      )
+    })
+
+    it('removes the pending overlay of a failed update', async () => {
+      const store = useCommandQueueStore()
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeEvent({ name: 'Original' })], {
+        scope: Scope.workspace('ws-1'),
+      })
+      const pendingId = pool.addPending('event', 'evt-1', { name: 'Pending' })
+      vi.mocked(getPendingCommands).mockResolvedValueOnce([
+        {
+          id: 'cmd-a',
+          method: 'PUT' as const,
+          path: '/api/events/evt-1',
+          body: { name: 'Pending' },
+          createdAt: 1,
+          optimistic: {
+            kind: 'update' as const,
+            objectType: 'event' as const,
+            objectId: 'evt-1',
+            pendingId,
+          },
+        },
+      ])
+      mockedApi.put.mockRejectedValueOnce({ status: 422, message: 'nope' })
+
+      await store.processQueue()
+
+      expect(pool.hasPending('event', 'evt-1')).toBe(false)
+      expect(pool.get('event', 'evt-1')?.name).toBe('Original')
+    })
+
+    it('restores the removed objects of a failed destroy', async () => {
+      const store = useCommandQueueStore()
+      const pool = useObjectPoolStore()
+      vi.mocked(getPendingCommands).mockResolvedValueOnce([
+        {
+          id: 'cmd-a',
+          method: 'DELETE' as const,
+          path: '/api/events/evt-1',
+          createdAt: 1,
+          optimistic: {
+            kind: 'destroy' as const,
+            removed: [
+              {
+                object: makeEvent({ name: 'Deleted offline' }),
+                scopes: [Scope.workspace('ws-1')],
+              },
+            ],
+          },
+        },
+      ])
+      mockedApi.delete.mockRejectedValueOnce({ status: 422, message: 'nope' })
+
+      await store.processQueue()
+
+      expect(pool.get('event', 'evt-1')?.name).toBe('Deleted offline')
+    })
+
+    it('shows one combined toast, without claiming unlinked changes were undone', async () => {
+      const store = useCommandQueueStore()
+      vi.mocked(getPendingCommands).mockResolvedValueOnce([
+        {
+          id: 'cmd-a',
+          method: 'POST' as const,
+          path: '/api/events',
+          body: {},
+          createdAt: 1,
+        },
+        {
+          id: 'cmd-b',
+          method: 'POST' as const,
+          path: '/api/task-lists',
+          body: {},
+          createdAt: 2,
+        },
+      ])
+      mockedApi.post.mockRejectedValue({ status: 422, message: 'nope' })
+
+      await store.processQueue()
+
+      // Neither command carried a rollback linkage — nothing was undone,
+      // so the toast must not say so.
+      expect(notificationMocks.showError).toHaveBeenCalledExactlyOnceWith(
+        "2 offline changes couldn't be saved."
+      )
+    })
+
+    it('counts each rolled-back change when a coalesced command fails', async () => {
+      const store = useCommandQueueStore()
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeEvent({ name: 'Original' })], {
+        scope: Scope.workspace('ws-1'),
+      })
+      const p1 = pool.addPending('event', 'evt-1', { name: 'Edit one' })
+      const p2 = pool.addPending('event', 'evt-1', { name: 'Edit two' })
+      const commands = [
+        {
+          id: 'cmd-a',
+          method: 'PUT' as const,
+          path: '/api/events/evt-1',
+          body: { name: 'Edit one' },
+          createdAt: 1,
+          optimistic: {
+            kind: 'update' as const,
+            objectType: 'event' as const,
+            objectId: 'evt-1',
+            pendingId: p1,
+          },
+        },
+        {
+          id: 'cmd-b',
+          method: 'PUT' as const,
+          path: '/api/events/evt-1',
+          body: { name: 'Edit two' },
+          createdAt: 2,
+          optimistic: {
+            kind: 'update' as const,
+            objectType: 'event' as const,
+            objectId: 'evt-1',
+            pendingId: p2,
+          },
+        },
+      ]
+      vi.mocked(getPendingCommands).mockResolvedValueOnce(commands)
+      // Both edits coalesce into one PUT
+      const { coalesceCommands } = await import('@/api/coalesceCommands')
+      vi.mocked(coalesceCommands).mockReturnValueOnce([
+        {
+          method: 'PUT',
+          path: '/api/events/evt-1',
+          body: { name: 'Edit two' },
+          originalIds: ['cmd-a', 'cmd-b'],
+        },
+      ])
+      mockedApi.put.mockRejectedValueOnce({ status: 422, message: 'nope' })
+
+      await store.processQueue()
+
+      expect(pool.hasPending('event', 'evt-1')).toBe(false)
+      expect(notificationMocks.showError).toHaveBeenCalledExactlyOnceWith(
+        "2 offline changes couldn't be saved and were undone."
+      )
+    })
+  })
+
+  describe('in-flight direct requests', () => {
+    // The command row is written before the direct request goes out, so a
+    // concurrently-triggered drain could replay it — a duplicate request
+    // whose double success corrupts pendingCount.
+    it('does not replay a command whose direct request is still in flight', async () => {
+      const store = useCommandQueueStore()
+
+      let resolveDirect!: (v: ApiResponse<unknown>) => void
+      mockedApi.post.mockReturnValueOnce(
+        new Promise((r) => {
+          resolveDirect = r
+        })
+      )
+      const directRequest = store.enqueue('POST', '/api/events', {})
+      const commandId = (await vi.mocked(addCommand).mock.results[0]!
+        .value) as string
+
+      // A drain fires while the direct request is in flight and sees its row
+      vi.mocked(getPendingCommands).mockResolvedValueOnce([
+        {
+          id: commandId,
+          method: 'POST' as const,
+          path: '/api/events',
+          body: {},
+          createdAt: 1,
+        },
+      ])
+      // The end-of-drain resync still counts the in-flight row
+      vi.mocked(dbCount).mockResolvedValueOnce(1)
+      await store.processQueue()
+
+      // Only the direct request hit the API — no duplicate replay
+      expect(mockedApi.post).toHaveBeenCalledTimes(1)
+
+      resolveDirect(okResponse(null))
+      await directRequest
+      expect(store.pendingCount).toBe(0)
+    })
+  })
+
+  // A fetch blip too short to drop the WebSocket queues a command that no
+  // reconnect will ever replay — the queue must retry on its own while the
+  // socket stays healthy.
+  describe('retry while the socket stays up', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('schedules a retry when a command is queued while online, and replays it', async () => {
+      vi.useFakeTimers()
+      websocketMocks.state = 'authenticated'
+      const store = useCommandQueueStore()
+
+      mockedApi.post.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      await expect(store.enqueue('POST', '/api/events', {})).rejects.toThrow(
+        CommandQueuedError
+      )
+      expect(store.retryScheduled).toBe(true)
+
+      // The retry replays the stored command successfully
+      vi.mocked(getPendingCommands).mockResolvedValueOnce([
+        {
+          id: 'cmd-0',
+          method: 'POST' as const,
+          path: '/api/events',
+          body: {},
+          createdAt: 1,
+        },
+      ])
+      mockedApi.post.mockResolvedValueOnce(okResponse(null))
+      await vi.runAllTimersAsync()
+
+      expect(removeCommand).toHaveBeenCalledWith('cmd-0')
+      expect(store.retryScheduled).toBe(false)
+    })
+
+    it('keeps retrying while replays keep failing', async () => {
+      vi.useFakeTimers()
+      websocketMocks.state = 'authenticated'
+      const store = useCommandQueueStore()
+
+      vi.mocked(getPendingCommands).mockResolvedValue([
+        {
+          id: 'cmd-0',
+          method: 'POST' as const,
+          path: '/api/events',
+          body: {},
+          createdAt: 1,
+        },
+      ])
+      vi.mocked(dbCount).mockResolvedValue(1)
+      mockedApi.post.mockRejectedValue(new TypeError('Failed to fetch'))
+
+      await expect(store.enqueue('POST', '/api/events', {})).rejects.toThrow(
+        CommandQueuedError
+      )
+      await vi.advanceTimersByTimeAsync(120_000)
+
+      // Initial attempt plus several retries, and another retry still armed
+      expect(mockedApi.post.mock.calls.length).toBeGreaterThanOrEqual(3)
+      expect(store.retryScheduled).toBe(true)
+    })
+
+    it('does not schedule a retry while the socket is down', async () => {
+      vi.useFakeTimers()
+      const store = useCommandQueueStore()
+
+      mockedApi.post.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      await expect(store.enqueue('POST', '/api/events', {})).rejects.toThrow(
+        CommandQueuedError
+      )
+
+      // WS reconnect already triggers processQueue; no timer needed
+      expect(store.retryScheduled).toBe(false)
+      expect(vi.getTimerCount()).toBe(0)
+    })
+
+    it('does not schedule a retry after an auth error', async () => {
+      vi.useFakeTimers()
+      websocketMocks.state = 'authenticated'
+      const store = useCommandQueueStore()
+
+      mockedApi.post.mockRejectedValueOnce({ status: 401 })
+      await expect(store.enqueue('POST', '/api/events', {})).rejects.toThrow(
+        CommandQueuedError
+      )
+
+      expect(store.retryScheduled).toBe(false)
+      expect(vi.getTimerCount()).toBe(0)
     })
   })
 

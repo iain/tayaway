@@ -9,10 +9,12 @@ import {
   getPendingCommands,
   count as dbCount,
   clearAll,
+  type OptimisticRef,
 } from '@/api/commandDb'
 import { coalesceCommands } from '@/api/coalesceCommands'
 import { useWebSocketStore } from './websocket'
 import { useWorkspaceStore } from './workspace'
+import { useObjectPoolStore } from './objectPool'
 
 export class CommandQueuedError extends Error {
   constructor() {
@@ -58,10 +60,83 @@ function isAuthError(e: unknown): boolean {
   )
 }
 
+// Undo the optimistic state a permanently-failed replay left in the pool.
+// Without this the UI keeps showing a change the server rejected: temp
+// creates survive every full sync (tempObjectIds preserves them) and
+// "newer than server" overlays survive replaceScope and restarts.
+function rollbackOptimistic(ref: OptimisticRef): void {
+  const pool = useObjectPoolStore()
+  if (ref.kind === 'create') {
+    pool.cascadeRemove(ref.objectType, ref.objectId)
+  } else if (ref.kind === 'update') {
+    pool.removePending(ref.pendingId)
+  } else {
+    pool.restore(ref.removed)
+  }
+}
+
+function humanObjectType(type: string): string {
+  if (type === 'rsvp') {
+    return 'RSVP'
+  }
+  // camelCase → spaced lowercase: taskItem → "task item"
+  return type
+    .replace(/([A-Z])/g, ' $1')
+    .toLowerCase()
+    .trim()
+}
+
+// Human label for one rolled-back ref.
+function labelForRef(ref: OptimisticRef): string | null {
+  const type =
+    ref.kind === 'destroy' ? ref.removed[0]?.object.objectType : ref.objectType
+  return type ? humanObjectType(type) : null
+}
+
+// Only claim "undone" for changes that actually had a rollback linkage —
+// commands enqueued outside useMutation manage their own optimistic state
+// and nothing here reconciles them.
+function replayFailureMessage(
+  rolledBack: (string | null)[],
+  unlinked: number
+): string {
+  const total = rolledBack.length + unlinked
+  if (unlinked === 0) {
+    if (total === 1) {
+      const label = rolledBack[0]
+      return label
+        ? `Your offline ${label} change couldn't be saved and was undone.`
+        : "An offline change couldn't be saved and was undone."
+    }
+    return `${total} offline changes couldn't be saved and were undone.`
+  }
+  if (rolledBack.length === 0) {
+    return total === 1
+      ? "An offline change couldn't be saved."
+      : `${total} offline changes couldn't be saved.`
+  }
+  return `${total} offline changes couldn't be saved; ${rolledBack.length} ${
+    rolledBack.length === 1 ? 'was' : 'were'
+  } undone.`
+}
+
+// Backoff for replays that fail while the WebSocket stays healthy. Without
+// a self-scheduled retry, a command queued by a fetch blip too short to
+// drop the socket sits in IndexedDB until the next reconnect or app
+// restart — the only other processQueue triggers.
+const BASE_RETRY_DELAY_MS = 5_000
+const MAX_RETRY_DELAY_MS = 60_000
+
 export const useCommandQueueStore = defineStore('commandQueue', () => {
   const pendingCount = ref(0)
   const isProcessing = ref(false)
   const retryRequested = ref(false)
+  // True while a backoff retry is armed — surfaced so the pending-changes
+  // pill can show queued work even when the socket looks healthy.
+  const retryScheduled = ref(false)
+
+  let retryTimer: ReturnType<typeof setTimeout> | null = null
+  let retryDelayMs = BASE_RETRY_DELAY_MS
 
   // A working, authenticated WebSocket is the only reliable "we are online"
   // signal. navigator.onLine returns true on captive portals, dead WiFi, and
@@ -70,6 +145,30 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
   // store's handleAuthenticated callback, so we don't need separate online
   // listeners here.
   const isOnline = computed(() => useWebSocketStore().state === 'authenticated')
+
+  // Arm a retry for queued commands. Only while the socket is up — when it
+  // is down, the reconnect's processQueue trigger covers replay, and a
+  // timer would just burn failed fetches.
+  function scheduleRetry(): void {
+    if (retryTimer !== null) return
+    if (!isOnline.value) return
+    retryScheduled.value = true
+    retryTimer = setTimeout(() => {
+      retryTimer = null
+      retryScheduled.value = false
+      void processQueue()
+    }, retryDelayMs)
+    retryDelayMs = Math.min(retryDelayMs * 2, MAX_RETRY_DELAY_MS)
+  }
+
+  function clearRetry(): void {
+    if (retryTimer !== null) {
+      clearTimeout(retryTimer)
+      retryTimer = null
+    }
+    retryScheduled.value = false
+    retryDelayMs = BASE_RETRY_DELAY_MS
+  }
 
   async function initialize(): Promise<void> {
     pendingCount.value = await dbCount()
@@ -82,14 +181,30 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
     pendingCount.value = await dbCount()
   }
 
+  // Rows whose direct request is still in flight. processQueue must skip
+  // them: replaying one duplicates the request and double-decrements
+  // pendingCount when both paths succeed.
+  const inFlightCommandIds = new Set<string>()
+
   async function enqueue<T>(
     method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     path: string,
-    body?: unknown
+    body?: unknown,
+    optimistic?: OptimisticRef
   ): Promise<ApiResponse<T>> {
     const workspaceId = useWorkspaceStore().currentWorkspaceId ?? null
-    const commandId = await addCommand({ method, path, body, workspaceId })
+    // The rollback linkage is written atomically with the row — a linkage
+    // registered after the fact leaves a window where a raced replay can
+    // permanently fail with nothing to roll back.
+    const commandId = await addCommand({
+      method,
+      path,
+      body,
+      workspaceId,
+      optimistic,
+    })
     pendingCount.value++
+    inFlightCommandIds.add(commandId)
 
     try {
       const response = await executeRequest<T>(
@@ -101,9 +216,11 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
       )
       await removeCommand(commandId)
       pendingCount.value--
+      retryDelayMs = BASE_RETRY_DELAY_MS
       return response
     } catch (e) {
       if (isRetryableError(e)) {
+        scheduleRetry()
         throw new CommandQueuedError()
       }
       if (isAuthError(e)) {
@@ -120,6 +237,8 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
         await resyncPendingCount()
       }
       throw e
+    } finally {
+      inFlightCommandIds.delete(commandId)
     }
   }
 
@@ -135,10 +254,26 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
     }
     isProcessing.value = true
 
+    // Human labels of rolled-back optimistic changes plus a count of failed
+    // commands that had no rollback linkage, accumulated across the whole
+    // drain so the user gets one honest toast, not one per failure.
+    const failedRollbacks: (string | null)[] = []
+    let unlinkedFailures = 0
+    // After a 401 the session is being torn down — arming a retry would
+    // just hammer the API with commands that keep 401ing.
+    let authFailed = false
+    // Only arm the self-retry when this drain actually hit a retryable
+    // failure; rows left behind for other reasons (in-flight direct
+    // requests) don't need one.
+    let sawRetryableFailure = false
+
     try {
       do {
         retryRequested.value = false
-        const commands = await getPendingCommands()
+        const commands = (await getPendingCommands()).filter(
+          (c) => !inFlightCommandIds.has(c.id)
+        )
+        const commandsById = new Map(commands.map((c) => [c.id, c]))
         const coalesced = coalesceCommands(commands)
 
         // Remove cancelled-out commands from IndexedDB immediately
@@ -169,18 +304,35 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
               await new Promise<void>((r) => setTimeout(r, 0))
             }
             pendingCount.value -= command.originalIds.length
+            retryDelayMs = BASE_RETRY_DELAY_MS
           } catch (e) {
             if (isAuthError(e)) {
               // Session expired — keep commands, redirect to login
+              authFailed = true
               await handleAuthError()
               break
             }
             if (isRetryableError(e)) {
               // Still offline (or the backend is mid-deploy) — stop
               // processing; the queue replays on the next trigger.
+              sawRetryableFailure = true
               break
             }
-            // Server error — remove and notify, continue with next
+            // Permanent server rejection — undo whatever optimistic state
+            // the original commands registered, drop them, and record each
+            // rolled-back change (not each coalesced group) for the
+            // combined toast below.
+            const refs = command.originalIds
+              .map((id) => commandsById.get(id)?.optimistic)
+              .filter((ref): ref is OptimisticRef => ref !== undefined)
+            if (refs.length > 0) {
+              for (const ref of refs) {
+                rollbackOptimistic(ref)
+                failedRollbacks.push(labelForRef(ref))
+              }
+            } else {
+              unlinkedFailures++
+            }
             try {
               for (const id of command.originalIds) {
                 await removeCommand(id)
@@ -190,19 +342,35 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
             } catch {
               // removeCommand failed — count will be resynced in finally block
             }
-            const { useNotificationsStore } = await import('./notifications')
-            const notifications = useNotificationsStore()
-            notifications.showError(
-              "An offline change couldn't be saved. Please try again."
-            )
           }
         }
       } while (retryRequested.value)
     } catch {
       // Unexpected error escaped the inner loop — resync to avoid drift
     } finally {
+      // Notify from the finally so an unexpected error later in the drain
+      // can't suppress the toast for rollbacks that already happened.
+      if (failedRollbacks.length > 0 || unlinkedFailures > 0) {
+        try {
+          const { useNotificationsStore } = await import('./notifications')
+          useNotificationsStore().showError(
+            replayFailureMessage(failedRollbacks, unlinkedFailures)
+          )
+        } catch {
+          // Notifying is best-effort — never mask the drain outcome
+        }
+      }
       isProcessing.value = false
       await resyncPendingCount()
+      if (pendingCount.value === 0) {
+        // Fully drained — disarm any pending retry and reset the backoff
+        clearRetry()
+      } else if (!authFailed && sawRetryableFailure) {
+        // A retryable failure left commands behind — make sure a retry is
+        // armed; a no-op when the socket is down, since the reconnect
+        // trigger covers that case.
+        scheduleRetry()
+      }
     }
   }
 
@@ -210,17 +378,20 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
     await clearAll()
     pendingCount.value = 0
     isProcessing.value = false
+    clearRetry()
   }
 
   function $reset(): void {
     // Synchronous reset for Pinia — async cleanup handled by reset()
     pendingCount.value = 0
     isProcessing.value = false
+    clearRetry()
   }
 
   return {
     pendingCount,
     isProcessing,
+    retryScheduled,
     isOnline,
     initialize,
     enqueue,

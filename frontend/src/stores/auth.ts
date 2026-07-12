@@ -4,7 +4,7 @@ import { rawApi } from '@/api/client'
 import { useCommandQueueStore } from './commandQueue'
 import { useObjectPoolStore } from './objectPool'
 import { useWebSocketStore } from './websocket'
-import { useMutation } from '@/composables/useMutation'
+import { useMutation, type CommandEnqueuer } from '@/composables/useMutation'
 
 import { teardownSession } from '@/api/teardownSession'
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
@@ -297,7 +297,7 @@ export const useAuthStore = defineStore('auth', () => {
       user.value.timezone = blankToNull(fields.timezone)
 
     try {
-      const apiCall = (commandQueue: ReturnType<typeof useCommandQueueStore>) =>
+      const apiCall = (commandQueue: CommandEnqueuer) =>
         commandQueue.enqueue<PoolApiResponse>('PUT', `/users/${userId}`, fields)
 
       // Build optimistic pool changes from provided fields. Same blank → null
