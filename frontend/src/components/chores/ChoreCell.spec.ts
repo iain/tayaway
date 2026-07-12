@@ -10,7 +10,8 @@ const memberMap = new Map<string, PoolMember>([
 
 function mountCell(
   assignment: Partial<ReturnType<typeof makeChoreAssignment>>,
-  currentUserId: string | null = null
+  currentUserId: string | null = null,
+  staleAssignmentIds?: Set<string>
 ) {
   return mount(ChoreCell, {
     props: {
@@ -18,6 +19,7 @@ function mountCell(
       peoplePerDay: 1,
       memberMap,
       currentUserId,
+      staleAssignmentIds,
     },
   })
 }
@@ -47,6 +49,17 @@ describe('ChoreCell assignment chip', () => {
 
   it("does not mark someone else's chip as the current user", () => {
     const chip = mountCell({}, 'user-2').get('button')
+    expect(chip.attributes('aria-label')).toBe('Alice')
+  })
+
+  it('marks a stale assignment in the accessible name and tooltip', () => {
+    const chip = mountCell({ id: 'a1' }, null, new Set(['a1'])).get('button')
+    expect(chip.attributes('aria-label')).toBe('Alice, not attending this day')
+    expect(chip.attributes('title')).toContain('not attending this day')
+  })
+
+  it('leaves chips alone when the stale set names another assignment', () => {
+    const chip = mountCell({ id: 'a1' }, null, new Set(['other'])).get('button')
     expect(chip.attributes('aria-label')).toBe('Alice')
   })
 })

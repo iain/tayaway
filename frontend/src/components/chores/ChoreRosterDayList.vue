@@ -15,21 +15,17 @@ const props = defineProps<{
   dates: string[]
   members: PoolMember[]
   currentUserId: string | null
+  // The event-zone date (see zonedDateString) — the same "today" the backend
+  // fences autofill on, so the emphasized row, the muted past, and what a
+  // re-fill would actually touch all agree, traveller or not.
+  today: string
+  staleAssignmentIds?: Set<string>
 }>()
 
 const emit = defineEmits<{
   assign: [choreId: string, date: string, anchorEl: HTMLElement]
   editAssignment: [assignment: PoolChoreAssignment, anchorEl: HTMLElement]
 }>()
-
-const pad = (n: number) => String(n).padStart(2, '0')
-
-// Local calendar date, formatted to match the ISO day strings the event
-// produces, so "today" lines up in the user's own timezone.
-const todayIso = (() => {
-  const n = new Date()
-  return `${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())}`
-})()
 
 const sortedChores = computed(() =>
   [...props.chores].sort((a, b) => a.position - b.position)
@@ -57,7 +53,7 @@ function assignmentsFor(choreId: string, date: string): PoolChoreAssignment[] {
 }
 
 function isToday(date: string): boolean {
-  return date === todayIso
+  return date === props.today
 }
 
 function choreMeta(chore: PoolChore): string {
@@ -73,7 +69,7 @@ const rootEl = ref<HTMLElement | null>(null)
 // it degrades to a no-op under jsdom and honors reduced-motion.
 onMounted(() => {
   const target = rootEl.value?.querySelector<HTMLElement>(
-    `[data-date="${todayIso}"]`
+    `[data-date="${props.today}"]`
   )
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   target?.scrollIntoView?.({
@@ -88,11 +84,14 @@ onMounted(() => {
     ref="rootEl"
     class="border-line bg-surface divide-line-faint divide-y overflow-hidden rounded-lg border"
   >
+    <!-- Past days stay on screen as the record of who did what, but muted so
+         the live part of the roster reads apart from history. -->
     <section
       v-for="date in dates"
       :key="date"
       :data-date="date"
       class="scroll-mt-20"
+      :class="date < today ? 'opacity-60' : ''"
     >
       <header
         class="bg-surface-sunken flex items-center justify-between gap-2 px-4 py-2"
@@ -133,6 +132,7 @@ onMounted(() => {
             :people-per-day="chore.peoplePerDay"
             :member-map="memberMap"
             :current-user-id="currentUserId"
+            :stale-assignment-ids="staleAssignmentIds"
             @assign="(el: HTMLElement) => emit('assign', chore.id, date, el)"
             @edit-assignment="(a, el) => emit('editAssignment', a, el)"
           />

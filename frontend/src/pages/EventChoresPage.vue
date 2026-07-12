@@ -31,7 +31,9 @@ import type {
   PoolMember,
 } from '@/types/pool'
 import { can } from '@/composables/usePermission'
-import { shouldSuggestAutofill } from '@/utils/chores'
+import { detectAttendanceDrift, shouldSuggestAutofill } from '@/utils/chores'
+import { getMemberNameFromMap } from '@/utils/member'
+import { zonedDateString } from '@/utils/timezone'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -94,6 +96,21 @@ const eventDates = computed(() => {
   return dates
 })
 
+// The event-zone date — the same "today" the backend fences autofill and
+// clear-unpinned on, so everything this page mutes, flags, or offers to
+// re-fill agrees with what the server would actually touch.
+const today = computed(() =>
+  event.value ? zonedDateString(Date.now(), event.value.timezone) : ''
+)
+
+const eventOver = computed(
+  () => event.value?.endDate != null && event.value.endDate < today.value
+)
+
+const upcomingAssignments = computed(() =>
+  assignments.value.filter((a) => a.date >= today.value)
+)
+
 const showAddChoreForm = ref(false)
 const newChoreName = ref('')
 const newChorePpd = ref('1')
@@ -139,12 +156,60 @@ const assignPopoverChore = computed(() =>
     : undefined
 )
 
-const suggestAutofill = computed(() =>
-  shouldSuggestAutofill(
-    chores.value,
-    eventDates.value.length,
-    assignments.value.length
+// Once the event is over there is nothing left to fill; mid-event, only the
+// remaining days and their assignments say how full the fillable part is.
+const suggestAutofill = computed(
+  () =>
+    !eventOver.value &&
+    shouldSuggestAutofill(
+      chores.value,
+      eventDates.value.filter((d) => d >= today.value).length,
+      upcomingAssignments.value.length
+    )
+)
+
+const drift = computed(() => {
+  if (!event.value?.startDate || !event.value?.endDate || eventOver.value) {
+    return { staleAssignmentIds: new Set<string>(), idleUserIds: [] }
+  }
+  return detectAttendanceDrift(
+    assignments.value,
+    rsvps.value,
+    { startDate: event.value.startDate, endDate: event.value.endDate },
+    today.value
   )
+})
+
+// One sentence per drift kind, joined for the nudge card.
+const driftMessage = computed(() => {
+  const parts: string[] = []
+  const stale = drift.value.staleAssignmentIds.size
+  if (stale > 0) {
+    parts.push(
+      stale === 1
+        ? '1 upcoming chore belongs to someone who isn’t there that day'
+        : `${stale} upcoming chores belong to people who aren’t there that day`
+    )
+  }
+  const idle = drift.value.idleUserIds.map((id) =>
+    getMemberNameFromMap(id, memberMap.value)
+  )
+  if (idle.length > 0) {
+    const names = new Intl.ListFormat('en', {
+      style: 'long',
+      type: 'conjunction',
+    }).format(idle)
+    parts.push(
+      idle.length === 1
+        ? `${names} has no upcoming chores`
+        : `${names} have no upcoming chores`
+    )
+  }
+  return parts.join(', and ')
+})
+
+const showDriftNudge = computed(
+  () => !suggestAutofill.value && driftMessage.value !== ''
 )
 
 const confirmDeleteChoreName = computed(() => {
@@ -286,16 +351,17 @@ async function confirmAutofillAction() {
 
 const autofillRunning = ref(false)
 
-// The nudge card's button. The confirm modal exists to protect existing
-// unpinned assignments from being cleared; when there are none, confirming
-// would only add friction, so run straight away.
+// The nudge cards' button. The confirm modal exists to protect existing
+// unpinned assignments from being cleared; autofill only touches today
+// onward, so only those count — when there are none, confirming would just
+// add friction, so run straight away.
 async function handleNudgeAutofill() {
   if (!roster.value) return
   if (!userIsAttending.value) {
     showRsvpDialog.value = true
     return
   }
-  if (assignments.value.some((a) => !a.pinned)) {
+  if (upcomingAssignments.value.some((a) => !a.pinned)) {
     confirmAutofill.value = true
   } else {
     autofillRunning.value = true
@@ -416,6 +482,27 @@ onMounted(async () => {
           </div>
         </BaseCard>
 
+        <BaseCard v-if="showDriftNudge" variant="action" class="mb-4 p-4">
+          <div
+            class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <p class="text-ink text-sm">
+              Attendance has changed: {{ driftMessage }}. Re-filling
+              redistributes the remaining days; past days and pinned assignments
+              stay put.
+            </p>
+            <AppButton
+              variant="secondary"
+              class="shrink-0"
+              :loading="autofillRunning"
+              loading-label="Re-filling..."
+              @click="handleNudgeAutofill"
+            >
+              Re-fill remaining days
+            </AppButton>
+          </div>
+        </BaseCard>
+
         <ChoreRosterGrid
           v-if="isDesktop"
           :chores="chores"
@@ -425,6 +512,8 @@ onMounted(async () => {
           :rsvps="rsvps"
           :roster-id="roster.id"
           :current-user-id="currentUserId"
+          :today="today"
+          :stale-assignment-ids="drift.staleAssignmentIds"
           @assign="openAssign"
           @edit-assignment="openEditAssignment"
           @edit-chore-time="openEditChoreTime"
@@ -437,6 +526,8 @@ onMounted(async () => {
           :dates="eventDates"
           :members="members"
           :current-user-id="currentUserId"
+          :today="today"
+          :stale-assignment-ids="drift.staleAssignmentIds"
           @assign="openAssign"
           @edit-assignment="openEditAssignment"
         />
@@ -577,8 +668,9 @@ onMounted(async () => {
       @close="confirmAutofill = false"
     >
       <p class="text-ink-muted text-sm">
-        This will clear all non-pinned assignments and redistribute them fairly
-        among attendees. Pinned assignments stay as they are.
+        This will clear non-pinned assignments from today onward and
+        redistribute the remaining days fairly among attendees. Days already
+        past and pinned assignments stay as they are.
       </p>
       <div class="mt-6 flex justify-end gap-3">
         <TextButton variant="secondary" @click="confirmAutofill = false">
@@ -598,7 +690,7 @@ onMounted(async () => {
     >
       <div class="flex flex-col gap-3">
         <AppButton variant="secondary" @click="handleClearUnpinned">
-          Clear non-pinned assignments
+          Clear upcoming non-pinned assignments
         </AppButton>
         <AppButton variant="danger" @click="handleDeleteRosterConfirm">
           Delete entire roster

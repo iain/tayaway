@@ -1,4 +1,5 @@
-import type { PoolChore } from '@/types/pool'
+import type { PoolChore, PoolChoreAssignment, PoolRsvp } from '@/types/pool'
+import { attendedDates } from '@/utils/event'
 
 /**
  * Whether the chores page should nudge the user toward auto-fill: the roster
@@ -6,6 +7,63 @@ import type { PoolChore } from '@/types/pool'
  * (auto-fill or by hand) make the nudge disappear on its own, so it needs no
  * dismissal state.
  */
+export interface AttendanceDrift {
+  /** Today-onward assignments whose assignee isn't attending that day. */
+  staleAssignmentIds: Set<string>
+  /** Attendees with remaining days but no upcoming assignment anywhere. */
+  idleUserIds: string[]
+}
+
+/**
+ * How far the roster has drifted from who is actually around: people who left
+ * but still hold upcoming slots, and people who arrived (or extended) with
+ * nothing to do. Both resolve with one re-run of auto-fill, which only touches
+ * today onward — the page uses this to nudge exactly then.
+ *
+ * Days before `today` are history and never drift. `rsvps` must be the
+ * attending ones only. Idle attendees are only reported while the roster has
+ * upcoming assignments at all — an empty or wound-down roster is the plain
+ * auto-fill nudge's territory, not drift.
+ */
+export function detectAttendanceDrift(
+  assignments: ReadonlyArray<
+    Pick<PoolChoreAssignment, 'id' | 'userId' | 'date'>
+  >,
+  rsvps: ReadonlyArray<
+    Pick<PoolRsvp, 'userId' | 'attendance' | 'startDate' | 'endDate'>
+  >,
+  event: { startDate: string; endDate: string },
+  today: string
+): AttendanceDrift {
+  const attendedByUser = new Map<string, string[]>()
+  for (const rsvp of rsvps) {
+    attendedByUser.set(
+      rsvp.userId,
+      attendedDates(rsvp, event.startDate, event.endDate)
+    )
+  }
+
+  const staleAssignmentIds = new Set<string>()
+  const upcomingAssignees = new Set<string>()
+  for (const a of assignments) {
+    if (a.date < today) continue
+    upcomingAssignees.add(a.userId)
+    if (!attendedByUser.get(a.userId)?.includes(a.date)) {
+      staleAssignmentIds.add(a.id)
+    }
+  }
+
+  const idleUserIds: string[] = []
+  if (upcomingAssignees.size > 0) {
+    for (const [userId, dates] of attendedByUser) {
+      if (upcomingAssignees.has(userId)) continue
+      if (dates.some((d) => d >= today)) idleUserIds.push(userId)
+    }
+  }
+
+  return { staleAssignmentIds, idleUserIds }
+}
+
 export function shouldSuggestAutofill(
   chores: ReadonlyArray<Pick<PoolChore, 'peoplePerDay'>>,
   dateCount: number,

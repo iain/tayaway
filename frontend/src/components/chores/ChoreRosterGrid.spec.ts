@@ -33,6 +33,7 @@ describe('ChoreRosterGrid keyboard reorder', () => {
         rsvps: [],
         rosterId: 'roster-1',
         currentUserId: null,
+        today: '2026-01-01',
       },
     })
   }
@@ -73,6 +74,7 @@ describe('ChoreRosterGrid keyboard reorder', () => {
         rsvps: [],
         rosterId: 'roster-1',
         currentUserId: null,
+        today: '2026-01-01',
       },
     })
     expect(wrapper.get('.chore-drag-handle').text()).not.toContain('Cooking')
