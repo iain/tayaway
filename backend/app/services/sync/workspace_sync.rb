@@ -11,16 +11,23 @@ module Sync
   #   Sync::WorkspaceSync.call(workspace_id: "uuid", since: Time.now - 60)
   module WorkspaceSync
     RETENTION_PERIOD = 7 * 24 * 60 * 60 # 7 days in seconds
+    # Rows are stamped with updated_at before COMMIT makes them visible, so a
+    # change can carry a timestamp older than a cursor the client already
+    # holds. Reaching back past `since` by this margin resends the recent
+    # past instead of losing such rows; the client merges duplicates
+    # idempotently (newer updatedAt wins, deletes are replayable).
+    OVERLAP = 60 # seconds
 
     class << self
       def call(workspace_id:, since: nil, membership: nil)
         cutoff = Time.now - RETENTION_PERIOD
-        full = since.nil? || since < cutoff
-        effective_since = full ? Time.at(0) : since
+        overlapped_since = since && (since - OVERLAP)
+        full = overlapped_since.nil? || overlapped_since < cutoff
+        effective_since = full ? Time.at(0) : overlapped_since
 
         synced_at = Time.now
         workspace = Workspace.find(workspace_id)
-        return empty_response(synced_at, full ? "full" : "partial") unless workspace
+        return empty_response(workspace_id, synced_at, full ? "full" : "partial") unless workspace
 
         pool = if membership
                  PoolSerializer.new(membership: membership)
@@ -58,6 +65,7 @@ module Sync
         {
           syncType: full ? "full" : "partial",
           syncedAt: synced_at.iso8601(3),
+          workspaceId: workspace_id.to_s,
           objects: pool.to_a,
           deleted: deleted
         }
@@ -65,10 +73,11 @@ module Sync
 
       private
 
-      def empty_response(synced_at, sync_type)
+      def empty_response(workspace_id, synced_at, sync_type)
         {
           syncType: sync_type,
           syncedAt: synced_at.iso8601(3),
+          workspaceId: workspace_id.to_s,
           objects: [],
           deleted: []
         }
