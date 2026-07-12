@@ -594,6 +594,75 @@ describe('objectPool store', () => {
 
       vi.useRealTimers()
     })
+
+    // Chunks after the first yield to the event loop, so broadcasts can merge
+    // into the pool mid-replace. A later chunk must not clobber those with the
+    // sync's (older) copy.
+    it('keeps a newer object merged by a broadcast during a chunked replace', async () => {
+      vi.useFakeTimers()
+      const pool = useObjectPoolStore()
+
+      const events = Array.from({ length: 250 }, (_, i) =>
+        makeEvent({ id: `evt-${i}`, name: `Event ${i}` })
+      )
+      const promise = pool.replaceScope(Scope.workspace('test'), events)
+
+      // evt-220 sits in the second chunk; a broadcast lands first with a
+      // newer copy
+      pool.importObjects(
+        [
+          makeEvent({
+            id: 'evt-220',
+            name: 'Renamed live',
+            updatedAt: '2026-01-02T00:00:00.000Z',
+          }),
+        ],
+        { scope: Scope.workspace('test') }
+      )
+
+      await vi.runAllTimersAsync()
+      await promise
+
+      expect(pool.get('event', 'evt-220')?.name).toBe('Renamed live')
+      vi.useRealTimers()
+    })
+
+    it('does not resurrect an object deleted during a chunked replace', async () => {
+      vi.useFakeTimers()
+      const pool = useObjectPoolStore()
+
+      const events = Array.from({ length: 250 }, (_, i) =>
+        makeEvent({ id: `evt-${i}`, name: `Event ${i}` })
+      )
+      const promise = pool.replaceScope(Scope.workspace('test'), events)
+
+      // A delete broadcast for an object in the second chunk lands mid-replace
+      pool.cascadeRemove('event', 'evt-220')
+
+      await vi.runAllTimersAsync()
+      await promise
+
+      expect(pool.get('event', 'evt-220')).toBeUndefined()
+      expect(pool.scopesOf('evt-220')).toEqual([])
+      vi.useRealTimers()
+    })
+
+    // The workspace sync's copy of a multi-scope object (own member row)
+    // carries viewer permissions the personal copy lacks, at the same
+    // updatedAt. The insert guard must let that copy through — same rule as
+    // importObjects' upgradesPermissions.
+    it('upgrades a same-version surviving object with permissions', async () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeMember()], { scope: Scope.personal() })
+
+      await pool.replaceScope(Scope.workspace('test'), [
+        makeMember({ permissions: { member: ['update'] } }),
+      ])
+
+      expect(pool.get('member', 'mem-1')?.permissions).toEqual({
+        member: ['update'],
+      })
+    })
   })
 
   describe('clearScope', () => {
