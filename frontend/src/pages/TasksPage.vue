@@ -20,7 +20,10 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import AlertBox from '@/components/common/AlertBox.vue'
 import TaskListCard from '@/components/tasks/TaskListCard.vue'
+import { isHistoryItem } from '@/components/tasks/groupTaskItems'
 import { useTaskActions } from '@/composables/useTaskActions'
+import { useMinuteTicker } from '@/composables/useMinuteTicker'
+import { useTaskListPrefs } from '@/composables/useTaskListPrefs'
 import { TEXT_LIMITS } from '@/constants/limits'
 import type { PoolTaskList, PoolTaskItem } from '@/types/pool'
 
@@ -73,12 +76,21 @@ function setCardRef(id: string, el: unknown): void {
   }
 }
 
+// Keyboard nav walks visible rows only: items inside a collapsed list and
+// items already aged into a (usually closed) History section are skipped so
+// j/k never highlights something the user can't see.
+const { isListCollapsed } = useTaskListPrefs()
+const { now } = useMinuteTicker()
+
 const allItems = computed(() => {
   const result: PoolTaskItem[] = []
   for (const list of taskListsLocal.value) {
+    if (isListCollapsed(list.id)) continue
     const listItems = pool
       .getAll('taskItem')
-      .filter((item) => item.taskListId === list.id)
+      .filter(
+        (item) => item.taskListId === list.id && !isHistoryItem(item, now.value)
+      )
       .sort((a, b) => a.position - b.position)
     result.push(...listItems)
   }
@@ -285,10 +297,14 @@ function handleNewListBlur(): void {
       </AppButton>
     </EmptyState>
 
+    <!-- Two columns on desktop, one on mobile. CSS grid (not CSS columns):
+         DOM order stays reading/tab order, and collapsing one card never
+         reflows items across columns. items-start lets each card size to
+         its own content instead of stretching to its row partner. -->
     <VueDraggable
       v-else-if="taskListsLocal.length > 0"
       v-model="taskListsLocal"
-      class="space-y-6"
+      class="grid grid-cols-1 items-start gap-6 lg:grid-cols-2"
       handle=".list-drag-handle"
       :animation="150"
       ghost-class="opacity-50"

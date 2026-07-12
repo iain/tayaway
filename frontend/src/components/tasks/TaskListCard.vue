@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, watchEffect, nextTick, onUnmounted } from 'vue'
-import { PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import { ref, computed, watchEffect, nextTick, onUnmounted, useId } from 'vue'
+import { ChevronDownIcon } from '@heroicons/vue/24/outline'
 import AppButton from '@/components/common/AppButton.vue'
-import IconButton from '@/components/common/IconButton.vue'
-import TextButton from '@/components/common/TextButton.vue'
+import ActionMenu from '@/components/common/ActionMenu.vue'
+import type { ActionMenuAction } from '@/components/common/ActionMenu.vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import type { SortableEvent } from 'vue-draggable-plus'
 import {
@@ -14,9 +14,11 @@ import {
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useUndoDelete } from '@/composables/useUndoDelete'
 import { useMediaQuery } from '@/composables/useMediaQuery'
+import { useMinuteTicker } from '@/composables/useMinuteTicker'
+import { useTaskListPrefs } from '@/composables/useTaskListPrefs'
 import TaskItemRow from './TaskItemRow.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
-import { sortTaskItems } from './sortTaskItems'
+import { groupTaskItems } from './groupTaskItems'
 import { TEXT_LIMITS } from '@/constants/limits'
 import type { PoolTaskList, PoolTaskItem } from '@/types/pool'
 
@@ -33,12 +35,27 @@ const taskListsStore = useTaskListsStore()
 const taskItemsStore = useTaskItemsStore()
 const pool = useObjectPoolStore()
 const { undoableDelete } = useUndoDelete()
+const { now } = useMinuteTicker()
+
+// Accordion state: persisted per user per list, so the lists you keep
+// collapsed stay collapsed on the next visit. The panel is v-show (not
+// v-if) so sink-animation timers and the FLIP wrapper survive a collapse.
+const { isListCollapsed, setListCollapsed, toggleListCollapsed } =
+  useTaskListPrefs()
+const collapsed = computed(() => isListCollapsed(props.taskList.id))
+const panelId = useId()
+
+// History disclosure (completed >1h ago): closed by default every visit —
+// it's an archive glance, not a working area.
+const historyOpen = ref(false)
+const historyPanelId = useId()
 
 const newItemContent = ref('')
 const isAddingItem = ref(false)
 const newItemInput = ref<HTMLInputElement | null>(null)
 const isRenaming = ref(false)
 const renameValue = ref('')
+const renameInput = ref<HTMLInputElement | null>(null)
 
 // The add box hard-caps at TEXT_LIMITS.shortText; only surface a counter once
 // someone pushes past ~80% so the compact input stays clean in normal use.
@@ -76,10 +93,14 @@ let flipRunId = 0
 
 // Local sorted list for drag-and-drop (synced from pool).
 // Uses watchEffect (not computed) because VueDraggable needs a writable v-model.
+// Items completed over an hour ago split off into the History section below
+// the list; `now` comes from the shared minute ticker so items age into
+// History live, without a reload.
 const itemsLocal = ref<PoolTaskItem[]>([])
+const historyItems = ref<PoolTaskItem[]>([])
 
 watchEffect(() => {
-  itemsLocal.value = sortTaskItems(
+  const grouped = groupTaskItems(
     pool
       .getAll('taskItem')
       .filter(
@@ -87,8 +108,11 @@ watchEffect(() => {
           item.taskListId === props.taskList.id &&
           !clearedIds.value.has(item.id)
       ),
-    heldIds.value
+    heldIds.value,
+    now.value
   )
+  itemsLocal.value = grouped.current
+  historyItems.value = grouped.history
 })
 
 // FLIP: run `mutate` (which reorders the list), then slide every row that moved
@@ -180,11 +204,49 @@ const items = itemsLocal
 // Held items are still displayed in the active zone during the ~900ms hold, so
 // they don't count toward the progress tally or the "Clear completed" sweep
 // until they've actually sunk — the counter and the visible list stay in sync.
-const completedItems = computed(() =>
-  items.value.filter((i) => i.completedAt !== null && !heldIds.value.has(i.id))
-)
+// History items are completed by definition, so they count toward both the
+// tally and the sweep.
+const completedItems = computed(() => [
+  ...items.value.filter(
+    (i) => i.completedAt !== null && !heldIds.value.has(i.id)
+  ),
+  ...historyItems.value,
+])
 const hasCompleted = computed(() => completedItems.value.length > 0)
-const totalCount = computed(() => items.value.length)
+const totalCount = computed(
+  () => items.value.length + historyItems.value.length
+)
+
+const listMenuActions = computed<ActionMenuAction[]>(() => {
+  const actions: ActionMenuAction[] = []
+  if (hasCompleted.value) {
+    actions.push({
+      key: 'clear-completed',
+      label: `Clear ${completedItems.value.length} completed`,
+      testid: 'clear-completed-button',
+    })
+  }
+  actions.push(
+    { key: 'rename', label: 'Rename list', testid: 'rename-list-button' },
+    {
+      key: 'delete',
+      label: 'Delete list',
+      danger: true,
+      testid: 'delete-list-button',
+    }
+  )
+  return actions
+})
+
+function handleListMenuPick(key: string): void {
+  if (key === 'clear-completed') {
+    void handleClearCompleted()
+  } else if (key === 'rename') {
+    void startRename()
+  } else if (key === 'delete') {
+    handleDeleteList()
+  }
+}
 
 // Handles same-list reorders. @end fires on the SOURCE, so skip cross-list drags here.
 async function handleItemDragEnd(event: SortableEvent) {
@@ -333,9 +395,15 @@ async function handleClearCompleted(): Promise<void> {
   }
 }
 
-function startRename(): void {
+// Focus explicitly: the rename action now arrives via the overflow menu,
+// which restores focus to its trigger on close — without this the input
+// would render unfocused.
+async function startRename(): Promise<void> {
   renameValue.value = props.taskList.name
   isRenaming.value = true
+  await nextTick()
+  renameInput.value?.focus()
+  renameInput.value?.select()
 }
 
 async function commitRename(): Promise<void> {
@@ -361,7 +429,14 @@ function handleDeleteList(): void {
 
 defineExpose({
   focusInput(): void {
-    newItemInput.value?.focus()
+    // A collapsed list has no visible input — expand it first ("i" shortcut
+    // and the post-create focus both land here).
+    if (collapsed.value) {
+      setListCollapsed(props.taskList.id, false)
+      void nextTick(() => newItemInput.value?.focus())
+    } else {
+      newItemInput.value?.focus()
+    }
   },
   toggleItem(item: PoolTaskItem): void {
     void handleToggle(item)
@@ -376,7 +451,10 @@ defineExpose({
   <BaseCard data-testid="task-list-card">
     <div class="px-4 py-4 sm:px-6">
       <!-- Header -->
-      <div class="mb-3 flex items-center justify-between gap-2">
+      <div
+        class="flex items-center justify-between gap-2"
+        :class="collapsed ? '' : 'mb-3'"
+      >
         <span
           class="list-drag-handle text-ink-muted hover:text-ink cursor-grab touch-none"
           data-testid="task-list-drag-handle"
@@ -398,6 +476,7 @@ defineExpose({
 
         <div v-if="isRenaming" class="flex flex-1 items-center gap-2">
           <input
+            ref="renameInput"
             v-model="renameValue"
             type="text"
             data-testid="rename-list-input"
@@ -408,12 +487,25 @@ defineExpose({
             @blur="commitRename"
           />
         </div>
-        <h2
-          v-else
-          class="text-ink min-w-0 flex-1 truncate text-base font-semibold"
-          :title="taskList.name"
-        >
-          {{ taskList.name }}
+        <!-- The heading doubles as the accordion toggle (disclosure pattern:
+             button with aria-expanded/aria-controls inside the heading). -->
+        <h2 v-else class="min-w-0 flex-1 text-base font-semibold">
+          <button
+            type="button"
+            data-testid="collapse-list-button"
+            class="text-ink focus-visible:outline-focus flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded text-left focus-visible:outline-2 focus-visible:outline-offset-2"
+            :aria-expanded="!collapsed"
+            :aria-controls="panelId"
+            :title="taskList.name"
+            @click="toggleListCollapsed(taskList.id)"
+          >
+            <ChevronDownIcon
+              class="text-ink-muted size-4 shrink-0 transition-transform"
+              :class="collapsed ? '-rotate-90' : ''"
+              aria-hidden="true"
+            />
+            <span class="min-w-0 truncate">{{ taskList.name }}</span>
+          </button>
         </h2>
 
         <div class="flex shrink-0 items-center gap-1">
@@ -425,95 +517,123 @@ defineExpose({
           >
             {{ completedItems.length }}/{{ totalCount }}
           </span>
-          <TextButton
-            v-if="hasCompleted"
-            variant="secondary"
-            data-testid="clear-completed-button"
-            class="text-xs"
-            @click="handleClearCompleted"
-          >
-            Clear {{ completedItems.length }} completed
-          </TextButton>
-          <IconButton
-            label="Rename list"
-            data-testid="rename-list-button"
-            @click="startRename"
-          >
-            <PencilIcon class="size-4" />
-          </IconButton>
-          <IconButton
-            variant="danger"
-            label="Delete list"
-            data-testid="delete-list-button"
-            @click="handleDeleteList"
-          >
-            <TrashIcon class="size-4" />
-          </IconButton>
+          <ActionMenu
+            label="List options"
+            :title="taskList.name"
+            :actions="listMenuActions"
+            trigger-testid="list-menu-button"
+            @pick="handleListMenuPick"
+          />
         </div>
       </div>
 
-      <!-- Items (always rendered so empty lists can receive cross-list drops).
-           The wrapper gives the sink FLIP a stable element to measure rows in. -->
-      <div ref="listWrap">
-        <VueDraggable
-          v-model="itemsLocal"
-          tag="ul"
-          data-testid="task-items-list"
-          class="divide-line-faint divide-y"
-          :class="{ 'min-h-8': items.length === 0 }"
-          group="task-items"
-          handle=".item-drag-handle"
-          :animation="150"
-          ghost-class="opacity-50"
-          @end="handleItemDragEnd"
-          @add="handleItemDragAdd"
-        >
-          <TaskItemRow
-            v-for="item in items"
-            :key="item.id"
-            :item="item"
-            :highlighted="item.id === highlightedItemId"
-            @toggle="handleToggle"
-            @delete="handleDeleteItem"
-            @edit="handleEditItem"
-            @highlight="emit('highlight', $event.id)"
-          />
-        </VueDraggable>
-      </div>
-
-      <!-- Add item input: sticky to the bottom of the card so it stays
-           thumb-reachable while scrolling a long list (shopping-trip flow).
-           The bg covers items scrolling underneath; 16px font stops iOS
-           from zooming the page on focus. -->
-      <div
-        class="bg-surface border-line-faint sticky bottom-0 z-10 -mx-4 mt-3 border-t px-4 pt-3 pb-1 sm:-mx-6 sm:px-6"
-      >
-        <div class="flex items-center gap-2">
-          <input
-            ref="newItemInput"
-            v-model="newItemContent"
-            type="text"
-            placeholder="Add an item..."
-            :maxlength="TEXT_LIMITS.shortText"
-            class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus min-w-0 flex-1 rounded-md px-3 py-2 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
-            :disabled="isAddingItem"
-            @keyup.enter="handleAddItem"
-            @keyup.escape="newItemInput?.blur()"
-          />
-          <AppButton
-            :disabled="!newItemContent.trim() || isAddingItem"
-            @click="handleAddItem"
+      <!-- Accordion panel. v-show (not v-if) keeps sink timers, drag state,
+           and the FLIP wrapper alive across a collapse. -->
+      <div v-show="!collapsed" :id="panelId">
+        <!-- Items (always rendered so empty lists can receive cross-list drops).
+             The wrapper gives the sink FLIP a stable element to measure rows in. -->
+        <div ref="listWrap">
+          <VueDraggable
+            v-model="itemsLocal"
+            tag="ul"
+            data-testid="task-items-list"
+            class="divide-line-faint divide-y"
+            :class="{ 'min-h-8': items.length === 0 }"
+            group="task-items"
+            handle=".item-drag-handle"
+            :animation="150"
+            ghost-class="opacity-50"
+            @end="handleItemDragEnd"
+            @add="handleItemDragAdd"
           >
-            Add
-          </AppButton>
+            <TaskItemRow
+              v-for="item in items"
+              :key="item.id"
+              :item="item"
+              :highlighted="item.id === highlightedItemId"
+              @toggle="handleToggle"
+              @delete="handleDeleteItem"
+              @edit="handleEditItem"
+              @highlight="emit('highlight', $event.id)"
+            />
+          </VueDraggable>
         </div>
-        <p
-          v-if="showAddCount"
-          class="text-meta mt-1 text-right tabular-nums"
-          :class="addCountColor"
+
+        <!-- Items checked off more than an hour ago live here, out of the way
+             of the active shopping flow but recoverable with one tap. -->
+        <div
+          v-if="historyItems.length > 0"
+          class="border-line-faint mt-2 border-t pt-1"
         >
-          {{ newItemContent.length }}/{{ TEXT_LIMITS.shortText }}
-        </p>
+          <button
+            type="button"
+            data-testid="history-toggle"
+            class="text-ink-muted hover:text-ink focus-visible:outline-focus flex min-h-[44px] w-full cursor-pointer items-center gap-1.5 rounded text-left text-sm focus-visible:outline-2 focus-visible:outline-offset-2"
+            :aria-expanded="historyOpen"
+            :aria-controls="historyPanelId"
+            @click="historyOpen = !historyOpen"
+          >
+            <ChevronDownIcon
+              class="size-4 shrink-0 transition-transform"
+              :class="historyOpen ? '' : '-rotate-90'"
+              aria-hidden="true"
+            />
+            History ({{ historyItems.length }})
+          </button>
+          <ul
+            v-show="historyOpen"
+            :id="historyPanelId"
+            data-testid="history-items-list"
+            class="divide-line-faint divide-y"
+          >
+            <TaskItemRow
+              v-for="item in historyItems"
+              :key="item.id"
+              :item="item"
+              in-history
+              :highlighted="item.id === highlightedItemId"
+              @toggle="handleToggle"
+              @delete="handleDeleteItem"
+              @edit="handleEditItem"
+              @highlight="emit('highlight', $event.id)"
+            />
+          </ul>
+        </div>
+
+        <!-- Add item input: sticky to the bottom of the card so it stays
+             thumb-reachable while scrolling a long list (shopping-trip flow).
+             The bg covers items scrolling underneath; 16px font stops iOS
+             from zooming the page on focus. -->
+        <div
+          class="bg-surface border-line-faint sticky bottom-0 z-10 -mx-4 mt-3 border-t px-4 pt-3 pb-1 sm:-mx-6 sm:px-6"
+        >
+          <div class="flex items-center gap-2">
+            <input
+              ref="newItemInput"
+              v-model="newItemContent"
+              type="text"
+              placeholder="Add an item..."
+              :maxlength="TEXT_LIMITS.shortText"
+              class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus min-w-0 flex-1 rounded-md px-3 py-2 text-base outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
+              :disabled="isAddingItem"
+              @keyup.enter="handleAddItem"
+              @keyup.escape="newItemInput?.blur()"
+            />
+            <AppButton
+              :disabled="!newItemContent.trim() || isAddingItem"
+              @click="handleAddItem"
+            >
+              Add
+            </AppButton>
+          </div>
+          <p
+            v-if="showAddCount"
+            class="text-meta mt-1 text-right tabular-nums"
+            :class="addCountColor"
+          >
+            {{ newItemContent.length }}/{{ TEXT_LIMITS.shortText }}
+          </p>
+        </div>
       </div>
     </div>
   </BaseCard>
