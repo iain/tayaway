@@ -9,12 +9,24 @@ RSpec.describe Sync::WorkspaceSync do
   before { TestFactories.workspace_membership(workspace: workspace, user: user) }
 
   it "returns empty response when workspace not found" do
-    result = described_class.call(workspace_id: SecureRandom.uuid)
+    missing_id = SecureRandom.uuid
+    result = described_class.call(workspace_id: missing_id)
 
     expect(result[:objects]).to eq([])
     expect(result[:deleted]).to eq([])
     expect(result[:syncType]).to eq("full")
     expect(result[:syncedAt]).not_to be_nil
+    expect(result[:workspaceId]).to eq(missing_id)
+  end
+
+  # The client routes each sync payload into a pool scope. Without the id on
+  # the envelope it has to guess from "current workspace at receive time",
+  # which misroutes syncs that land mid-switch or via the new-member
+  # bootstrap — a full sync then wipes the wrong scope.
+  it "tags the payload with the workspace id" do
+    result = described_class.call(workspace_id: workspace[:id])
+
+    expect(result[:workspaceId]).to eq(workspace[:id].to_s)
   end
 
   it "returns full sync with workspace object" do
@@ -77,6 +89,27 @@ RSpec.describe Sync::WorkspaceSync do
     result = described_class.call(workspace_id: workspace[:id], since: since)
 
     expect(result[:syncType]).to eq("partial")
+  end
+
+  # `updated_at` is stamped before COMMIT makes the row visible, so a row can
+  # be older than a cursor the client legitimately holds. The overlap window
+  # resends the recent past; the client merges duplicates idempotently.
+  it "resends changes and deletions from just before since (overlap window)" do
+    event = TestFactories.event(workspace: workspace, user: user)
+    since = Time.now
+    DB[:events].where(id: event[:id]).update(updated_at: since - 30)
+    DB[:deleted_items].insert(
+      workspace_id: workspace[:id],
+      object_type: "task_list",
+      object_id: SecureRandom.uuid,
+      deleted_at: since - 30
+    )
+
+    result = described_class.call(workspace_id: workspace[:id], since: since)
+
+    expect(result[:syncType]).to eq("partial")
+    expect(result[:objects].map { |o| o[:id] }).to include(event[:id].to_s)
+    expect(result[:deleted]).to include(hash_including(objectType: "task_list"))
   end
 
   # Behavioral guard for the registry-driven dispatch: every type in

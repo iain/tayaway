@@ -31,6 +31,9 @@ interface SyncMessage {
   data: {
     syncType?: 'full' | 'partial' | 'personal'
     syncedAt?: string
+    // The workspace this sync is for, tagged by the server. Absent on
+    // personal syncs (and on payloads from servers that predate the tag).
+    workspaceId?: string
     objects: PoolObject[]
     deleted?: DeletedObject[]
   }
@@ -286,14 +289,20 @@ export const useWebSocketStore = defineStore('websocket', () => {
     const pool = useObjectPoolStore()
     const workspaceStore = useWorkspaceStore()
 
-    // Personal syncs land in Scope.personal(); full and partial workspace
-    // syncs land in the current workspace's scope. There's no workspace
-    // context around a personal sync, so it has no cursor either.
+    // Personal syncs land in Scope.personal(); workspace syncs land in the
+    // scope of the workspace the server tagged on the payload. Routing by
+    // "current workspace at receive time" instead would misroute syncs that
+    // land mid-switch or via the new-member bootstrap — and a misrouted
+    // *full* sync replaces the wrong scope, wiping the workspace the user
+    // is looking at. The current workspace is only a fallback for servers
+    // that don't tag the payload yet.
     const isPersonal = message.data?.syncType === 'personal'
+    const syncWorkspaceId =
+      message.data?.workspaceId ?? workspaceStore.currentWorkspaceId
     const scope = isPersonal
       ? Scope.personal()
-      : workspaceStore.currentWorkspaceId
-        ? Scope.workspace(workspaceStore.currentWorkspaceId)
+      : syncWorkspaceId
+        ? Scope.workspace(syncWorkspaceId)
         : null
     if (!scope) return
 
@@ -310,15 +319,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
       })
     }
 
-    if (
-      message.data?.syncedAt &&
-      !isPersonal &&
-      workspaceStore.currentWorkspaceId
-    ) {
-      syncTimestamps.set(
-        workspaceStore.currentWorkspaceId,
-        message.data.syncedAt
-      )
+    if (message.data?.syncedAt && !isPersonal && syncWorkspaceId) {
+      syncTimestamps.set(syncWorkspaceId, message.data.syncedAt)
     }
 
     hasSynced.value = true

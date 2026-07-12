@@ -448,6 +448,80 @@ describe('websocket store — cascade delete', () => {
   })
 })
 
+// ---- sync scope routing tests -----------------------------------------------
+
+describe('useWebSocketStore — sync scope routing', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let store: any
+
+  beforeEach(async () => {
+    installWebSocketMock()
+    setActivePinia(createPinia())
+    const { useWebSocketStore } = await import('./websocket')
+    store = useWebSocketStore()
+    await store.connect()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.resetModules()
+  })
+
+  function sendSync(data: Record<string, unknown>): void {
+    lastSocket.onmessage!({
+      data: JSON.stringify({ type: 'sync', data }),
+    } as MessageEvent)
+  }
+
+  // A full sync that lands mid-switch (or via the new-member bootstrap) is
+  // for a workspace other than the one the user is looking at. Routing it
+  // by "current workspace at receive time" replaces the wrong scope.
+  it('routes a workspace sync by the workspaceId on the payload, not the current workspace', () => {
+    const pool = useObjectPoolStore()
+    // The mocked workspace store reports currentWorkspaceId 'ws-1'
+    pool.importObjects([makeEvent({ id: 'evt-current' })], {
+      scope: Scope.workspace('ws-1'),
+    })
+
+    sendSync({
+      syncType: 'full',
+      syncedAt: '2026-07-12T10:00:00.000Z',
+      workspaceId: 'ws-2',
+      objects: [makeEvent({ id: 'evt-other' })],
+    })
+
+    // ws-1's data survives; the sync landed in ws-2's scope
+    expect(pool.get('event', 'evt-current')).toBeDefined()
+    expect(pool.scopesOf('evt-current')).toEqual([Scope.workspace('ws-1')])
+    expect(pool.scopesOf('evt-other')).toEqual([Scope.workspace('ws-2')])
+  })
+
+  it('stamps the sync cursor for the workspace on the payload', () => {
+    sendSync({
+      syncType: 'full',
+      syncedAt: '2026-07-12T10:00:00.000Z',
+      workspaceId: 'ws-2',
+      objects: [],
+    })
+
+    expect(store.getSyncedAt('ws-2')).toBe('2026-07-12T10:00:00.000Z')
+    expect(store.getSyncedAt('ws-1')).toBeUndefined()
+  })
+
+  it('falls back to the current workspace when the payload has no workspaceId', () => {
+    const pool = useObjectPoolStore()
+
+    sendSync({
+      syncType: 'full',
+      syncedAt: '2026-07-12T10:00:00.000Z',
+      objects: [makeEvent({ id: 'evt-legacy' })],
+    })
+
+    expect(pool.scopesOf('evt-legacy')).toEqual([Scope.workspace('ws-1')])
+    expect(store.getSyncedAt('ws-1')).toBe('2026-07-12T10:00:00.000Z')
+  })
+})
+
 // ---- state reset after ticket failure tests --------------------------------
 
 describe('useWebSocketStore — state reset after ticket failure', () => {

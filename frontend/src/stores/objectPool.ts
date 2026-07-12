@@ -297,6 +297,18 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   // server.
   const tempObjectIds = new Set<string>()
 
+  // Ids removed while a chunked replaceScope() is yielding between chunks.
+  // remove/removeMany/cascadeRemove feed every in-flight replace's tracker
+  // so later chunks don't resurrect an object a delete broadcast (or an
+  // optimistic delete) removed mid-replace. Usually empty.
+  const replaceRemovalTrackers = new Set<Set<string>>()
+
+  function noteRemovalDuringReplace(id: string): void {
+    for (const tracker of replaceRemovalTrackers) {
+      tracker.add(id)
+    }
+  }
+
   // Tracks which scopes each object currently belongs to. The pool is a
   // multi-scope union: clearing a scope removes that scope from every
   // object's set; the object itself is only removed when its set is empty.
@@ -743,6 +755,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   // The emitted change carries those scopes so persistence can clean up
   // every IDB bucket the object lived in.
   function remove(objectType: ObjectType, objectId: string): void {
+    noteRemovalDuringReplace(objectId)
     const scopes = scopesOf(objectId)
     const typeMap = objects.value.get(objectType)
     if (typeMap) {
@@ -771,6 +784,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     const typeMap = objects.value.get(objectType)
     const removedScopes = new Map<string, Scope[]>()
     for (const objectId of objectIds) {
+      noteRemovalDuringReplace(objectId)
       removedScopes.set(objectId, scopesOf(objectId))
       if (typeMap) {
         const existing = typeMap.get(objectId)
@@ -813,6 +827,9 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     const typesChanged = new Set<ObjectType>()
 
     function removeRecursive(type: ObjectType, id: string): void {
+      // Track even when the object isn't in the pool (yet): a delete
+      // broadcast can land before a chunked replace inserts the object.
+      noteRemovalDuringReplace(id)
       const typeMap = objects.value.get(type)
       if (!typeMap) return
 
@@ -1031,17 +1048,37 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     // (re-tagged with `scope` since they were already in this scope).
     const allObjects: PoolObject[] = [...poolObjects, ...tempObjectsToPreserve]
 
-    const firstChunk = allObjects.slice(0, REPLACE_CHUNK_SIZE)
-    for (const obj of firstChunk) {
+    // Ids removed while this replace is in flight — later chunks skip them
+    // so a delete that lands between chunks isn't resurrected.
+    const removedDuringReplace = new Set<string>()
+
+    // Insert one payload object. The pool isn't frozen during a replace: a
+    // broadcast can merge a newer copy before this object's chunk runs, and
+    // multi-scope objects survive the clear above. Apply the same rule as
+    // importObjects — newer updatedAt wins, and a same-version copy still
+    // wins when it adds viewer permissions. Scope membership is recorded
+    // either way: the object is in this scope per the server.
+    function insertFromPayload(obj: PoolObject): void {
+      if (removedDuringReplace.has(obj.id)) return
       const typeMap = objects.value.get(obj.objectType)
-      if (typeMap) {
-        const existing = typeMap.get(obj.id)
+      if (!typeMap) return
+      const existing = typeMap.get(obj.id)
+      if (
+        !existing ||
+        isNewer(obj.updatedAt, existing.updatedAt) ||
+        upgradesPermissions(obj, existing)
+      ) {
         if (existing) reverseIndexRemove(cascadeIndex, existing)
         reverseIndexAdd(cascadeIndex, obj)
         typeMap.set(obj.id, obj)
-        addObjectScope(obj.id, scope)
         changedTypes.add(obj.objectType)
       }
+      addObjectScope(obj.id, scope)
+    }
+
+    const firstChunk = allObjects.slice(0, REPLACE_CHUNK_SIZE)
+    for (const obj of firstChunk) {
+      insertFromPayload(obj)
     }
 
     if (allObjects.length <= REPLACE_CHUNK_SIZE) {
@@ -1052,6 +1089,8 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       return Promise.resolve()
     }
 
+    replaceRemovalTrackers.add(removedDuringReplace)
+
     return new Promise<void>((resolve) => {
       let offset = REPLACE_CHUNK_SIZE
 
@@ -1060,20 +1099,13 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
         offset += REPLACE_CHUNK_SIZE
 
         for (const obj of chunk) {
-          const typeMap = objects.value.get(obj.objectType)
-          if (typeMap) {
-            const existing = typeMap.get(obj.id)
-            if (existing) reverseIndexRemove(cascadeIndex, existing)
-            reverseIndexAdd(cascadeIndex, obj)
-            typeMap.set(obj.id, obj)
-            addObjectScope(obj.id, scope)
-            changedTypes.add(obj.objectType)
-          }
+          insertFromPayload(obj)
         }
 
         if (offset < allObjects.length) {
           setTimeout(processNextChunk, 0)
         } else {
+          replaceRemovalTrackers.delete(removedDuringReplace)
           if (changedTypes.size > 0) bumpVersion(...changedTypes)
           triggerRef(objects)
           triggerRef(pendingUpdates)
@@ -1130,6 +1162,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     objectScopes.clear()
     scopeToIds.clear()
     getAllCache.clear()
+    replaceRemovalTrackers.clear()
     for (const parentMap of cascadeIndex.values()) {
       parentMap.clear()
     }

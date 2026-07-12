@@ -189,6 +189,36 @@ describe('useMutation', () => {
       expect(result).toEqual({ queued: false, data: null })
     })
 
+    // importObjects only clears overlays the server response postdates; a
+    // client clock running ahead of the server defeats that, and the stale
+    // overlay then masks other users' edits. A direct success IS the
+    // confirmation of this change, so the overlay is dropped explicitly.
+    it('clears the pending overlay on success even when the client clock is ahead of the server', async () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeEvent({ name: 'Original' })], {
+        scope: Scope.workspace('test'),
+      })
+      const { update } = useMutation()
+
+      await update('fail', 'event', 'evt-1', { name: 'Updated' }, async () => {
+        // The command queue imports the server confirmation before enqueue
+        // resolves; its updatedAt (server clock) trails the client's Date.now()
+        pool.importObjects(
+          [
+            makeEvent({
+              name: 'Updated',
+              updatedAt: '2026-01-02T00:00:00.000Z',
+            }),
+          ],
+          { scope: Scope.workspace('test') }
+        )
+        return okResponse(null)
+      })
+
+      expect(pool.hasPending('event', 'evt-1')).toBe(false)
+      expect(pool.get('event', 'evt-1')?.name).toBe('Updated')
+    })
+
     it('keeps pending update on CommandQueuedError', async () => {
       const pool = useObjectPoolStore()
       pool.importObjects([makeEvent({ name: 'Original' })], {

@@ -97,6 +97,12 @@ export function useMutation() {
     try {
       const commandQueue = useCommandQueueStore()
       const response = await fn(commandQueue)
+      // The response import (inside the command queue) only clears overlays
+      // the server timestamp postdates — a client clock running ahead of the
+      // server defeats that, leaving a stale overlay that masks other users'
+      // edits. A direct success IS the confirmation of this change, so drop
+      // the overlay explicitly. No-op when the import already cleared it.
+      pool.removePending(pendingId)
       return { queued: false, data: response.data }
     } catch (e) {
       if (e instanceof CommandQueuedError) {

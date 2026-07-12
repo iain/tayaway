@@ -227,6 +227,40 @@ describe('commandQueue store', () => {
       expect(store.pendingCount).toBe(1)
     })
 
+    // AbortSignal.timeout rejects fetch with a DOMException, not a
+    // TypeError. The request may have reached the server, so the command
+    // must stay queued — replays carry an Idempotency-Key, so retrying is
+    // safe either way. Dropping it here silently loses the change.
+    it('keeps command queued and throws CommandQueuedError on a fetch timeout', async () => {
+      const store = useCommandQueueStore()
+      const timeoutError = new DOMException('signal timed out', 'TimeoutError')
+      mockedApi.post.mockRejectedValueOnce(timeoutError)
+
+      await expect(store.enqueue('POST', '/api/events', {})).rejects.toThrow(
+        CommandQueuedError
+      )
+
+      expect(removeCommand).not.toHaveBeenCalled()
+      expect(store.pendingCount).toBe(1)
+    })
+
+    // Gateway errors are what a deploy window looks like from the client;
+    // the mutation will succeed once the backend is back.
+    it('keeps command queued and throws CommandQueuedError on a 503', async () => {
+      const store = useCommandQueueStore()
+      mockedApi.post.mockRejectedValueOnce({
+        status: 503,
+        message: 'Service Unavailable',
+      })
+
+      await expect(store.enqueue('POST', '/api/events', {})).rejects.toThrow(
+        CommandQueuedError
+      )
+
+      expect(removeCommand).not.toHaveBeenCalled()
+      expect(store.pendingCount).toBe(1)
+    })
+
     it('removes command from db and rethrows on server error', async () => {
       const store = useCommandQueueStore()
       const serverError = { status: 422, message: 'Validation failed' }
@@ -379,6 +413,32 @@ describe('commandQueue store', () => {
         configurable: true,
       })
       mockedApi.post.mockRejectedValueOnce(safariError)
+
+      await store.processQueue()
+
+      expect(removeCommand).not.toHaveBeenCalled()
+      expect(store.pendingCount).toBe(1)
+    })
+
+    it('stops processing on a fetch timeout and keeps commands', async () => {
+      const store = useCommandQueueStore()
+      store.pendingCount = 1
+
+      const commands = [
+        {
+          id: 'cmd-a',
+          method: 'POST' as const,
+          path: '/api/events',
+          body: {},
+          createdAt: 1,
+        },
+      ]
+      vi.mocked(getPendingCommands).mockResolvedValueOnce(commands)
+      vi.mocked(dbCount).mockResolvedValueOnce(1)
+
+      mockedApi.post.mockRejectedValueOnce(
+        new DOMException('signal timed out', 'TimeoutError')
+      )
 
       await store.processQueue()
 
