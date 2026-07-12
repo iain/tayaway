@@ -13,6 +13,7 @@ const authStore = useAuthStore()
 
 const email = ref('')
 const message = ref('')
+const devLoginLink = ref('')
 const error = ref('')
 const loading = ref(false)
 const passkeyLoading = ref(false)
@@ -28,11 +29,13 @@ async function handleSubmit() {
 
   error.value = ''
   message.value = ''
+  devLoginLink.value = ''
   loading.value = true
 
   try {
     const response = await authStore.requestLoginLink(email.value)
-    message.value = response
+    message.value = response.message
+    devLoginLink.value = response.loginLink ?? ''
     email.value = ''
   } catch {
     error.value =
@@ -171,6 +174,14 @@ onUnmounted(() => {
         <p class="text-sm text-green-400">
           {{ message }}
         </p>
+        <a
+          v-if="devLoginLink"
+          data-testid="dev-login-link"
+          :href="devLoginLink"
+          class="mt-3 block text-sm font-medium text-green-300 underline"
+        >
+          Open login link (dev) &rarr;
+        </a>
       </div>
 
       <div

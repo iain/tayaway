@@ -14,7 +14,8 @@ module Auth
       end
 
       # Create a login link token, build the login URL, and send the email.
-      # Shared by Auth::CreateLoginLink and Invites::Accept.
+      # Returns the login link. Shared by Auth::CreateLoginLink and
+      # Invites::Accept.
       def send_login_link(user)
         raw_token = create_token(user.id, user.email)
         jwt = Auth::Token.encode_login_link(token: raw_token, email: user.email.to_s)
@@ -28,6 +29,8 @@ module Auth
         APP_LOGGER.info { "[Auth::CreateLoginLink] Login link requested for user #{user.id}" }
         APP_LOGGER.info { "[Auth::CreateLoginLink] LOGIN LINK FOR #{email}: #{login_link}" } if APP_CONFIG.development?
         Mailers::LoginLink.send_email(email: email, login_link: login_link, workspace_name: workspace_name)
+
+        login_link
       end
 
       private
@@ -42,14 +45,19 @@ module Auth
 
       def generate_login_link(email)
         user = User.find_by_email(email)
+        response = { message: "If an account exists with this email, a login link has been sent." }
 
         if user
-          send_login_link(user)
+          login_link = send_login_link(user)
+          # Dev-only escape hatch: surface the link in the response so the
+          # login page can offer it directly instead of making you dig it out
+          # of the server logs. Never set outside development.
+          response[:loginLink] = login_link if APP_CONFIG.development?
         else
           APP_LOGGER.info { "[Auth::CreateLoginLink] Login link requested for unknown email" }
         end
 
-        Success({ message: "If an account exists with this email, a login link has been sent." })
+        Success(response)
       end
 
       def create_token(user_id, email)

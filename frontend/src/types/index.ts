@@ -8,6 +8,9 @@ import type {
 
 export interface LoginLinkResponse {
   message: string
+  /** Dev-only: the backend includes the link itself so the login page can
+   * offer it directly instead of requiring a dig through server logs. */
+  loginLink?: string
 }
 
 export interface VerifyResponse {
