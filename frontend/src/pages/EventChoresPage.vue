@@ -228,6 +228,25 @@ const confirmDeleteChoreName = computed(() => {
 
 const creatingRoster = ref(false)
 
+// One-tap starters for a fresh roster — the chores nearly every trip ends up
+// typing in by hand. Only offered while the roster is empty.
+const CHORE_TEMPLATES = ['Cooking', 'Dishes', 'Breakfast', 'Tidy up']
+const templateSubmitting = ref<string | null>(null)
+
+async function handleAddTemplate(name: string) {
+  if (!roster.value || templateSubmitting.value) return
+  if (!userIsAttending.value) {
+    showRsvpDialog.value = true
+    return
+  }
+  templateSubmitting.value = name
+  try {
+    await choreRostersStore.addChore(roster.value.id, name, 1, null)
+  } finally {
+    templateSubmitting.value = null
+  }
+}
+
 async function handleCreateRoster() {
   if (!userIsAttending.value) {
     showRsvpDialog.value = true
@@ -555,6 +574,8 @@ onMounted(async () => {
           :chores="chores"
           :assignments="assignments"
           :members="members"
+          :rsvps="rsvps"
+          :event="event"
         />
       </div>
 
@@ -563,9 +584,20 @@ onMounted(async () => {
         :icon="ClipboardDocumentListIcon"
         :heading-level="2"
         heading="No chores yet"
-        description="Add your first chore to start building the roster."
+        description="Add the usual suspects with one tap, or start from scratch."
       >
-        <AppButton @click="openAddChore">Add chore</AppButton>
+        <div class="flex flex-wrap items-center justify-center gap-2">
+          <AppButton
+            v-for="name in CHORE_TEMPLATES"
+            :key="name"
+            variant="secondary"
+            :loading="templateSubmitting === name"
+            @click="handleAddTemplate(name)"
+          >
+            {{ name }}
+          </AppButton>
+          <AppButton @click="openAddChore">Add chore</AppButton>
+        </div>
       </EmptyState>
 
       <!-- Inline add chore form -->
@@ -630,6 +662,7 @@ onMounted(async () => {
         :rsvps="rsvps"
         :assignments="assignments"
         :event="event"
+        :current-user-id="currentUserId"
         @close="closeAssign"
       />
 
@@ -639,6 +672,9 @@ onMounted(async () => {
         :anchor-el="editPopover.anchorEl"
         :roster-id="roster.id"
         :member-map="memberMap"
+        :assignments="assignments"
+        :rsvps="rsvps"
+        :event="event"
         @close="closeEditAssignment"
       />
 

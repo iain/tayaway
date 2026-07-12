@@ -7,6 +7,29 @@ import { attendedDates } from '@/utils/event'
  * (auto-fill or by hand) make the nudge disappear on its own, so it needs no
  * dismissal state.
  */
+/**
+ * The user ids attending on one specific day, per their attending RSVPs —
+ * the eligibility set for assigning (or reassigning) that day's chores.
+ * Mirrors the backend autofill's availability map for a single date.
+ */
+export function attendingUserIdsOn(
+  date: string,
+  rsvps: ReadonlyArray<
+    Pick<PoolRsvp, 'userId' | 'attendance' | 'startDate' | 'endDate'>
+  >,
+  event: { startDate: string | null; endDate: string | null }
+): Set<string> {
+  const userIds = new Set<string>()
+  if (event.startDate && event.endDate) {
+    for (const rsvp of rsvps) {
+      if (attendedDates(rsvp, event.startDate, event.endDate).includes(date)) {
+        userIds.add(rsvp.userId)
+      }
+    }
+  }
+  return userIds
+}
+
 export interface AttendanceDrift {
   /** Today-onward assignments whose assignee isn't attending that day. */
   staleAssignmentIds: Set<string>

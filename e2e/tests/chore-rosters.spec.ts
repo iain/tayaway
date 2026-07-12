@@ -626,14 +626,14 @@ test.describe('Chore Rosters Feature', () => {
         page.locator('.fixed.z-50').getByText('Cleaning')
       ).toBeVisible()
 
-      // Tap the member to assign them
+      // Tap yourself to claim the slot — the viewer is listed first as "You"
       const [assignResp] = await Promise.all([
         page.waitForResponse(
           (resp) =>
             resp.url().includes('/assignments') &&
             resp.request().method() === 'POST'
         ),
-        page.getByRole('button', { name: `Assign ${TEST_NAME}` }).click(),
+        page.getByRole('button', { name: 'Assign You', exact: true }).click(),
       ])
       expect(assignResp.status()).toBe(201)
 

@@ -10,7 +10,7 @@ import type {
   PoolChoreAssignment,
   PoolEvent,
 } from '@/types/pool'
-import { attendedDates } from '@/utils/event'
+import { attendingUserIdsOn } from '@/utils/chores'
 import { formatDayHeader } from '@/utils/date'
 
 const props = defineProps<{
@@ -22,6 +22,7 @@ const props = defineProps<{
   rsvps: PoolRsvp[]
   assignments: PoolChoreAssignment[]
   event: PoolEvent
+  currentUserId: string | null
 }>()
 
 const emit = defineEmits<{
@@ -30,25 +31,22 @@ const emit = defineEmits<{
 
 const choreRostersStore = useChoreRostersStore()
 
-// Members attending on this date (attending RSVP covering this date)
+// Members attending on this date (attending RSVP covering this date, so
+// come-and-go gap days aren't offered — matches the backend autofill
+// availability). The viewer sorts first: claiming a slot yourself is the
+// most common assignment by far.
 const attendingMembers = computed(() => {
-  const eventStart = props.event.startDate
-  const eventEnd = props.event.endDate
-
-  const attendingUserIds = new Set<string>()
-  if (eventStart && eventEnd) {
-    for (const rsvp of props.rsvps) {
-      // Use the attendee's actual day set so come-and-go gap days aren't
-      // offered — matches the backend autofill availability.
-      if (attendedDates(rsvp, eventStart, eventEnd).includes(props.date)) {
-        attendingUserIds.add(rsvp.userId)
-      }
-    }
-  }
+  const attendingUserIds = attendingUserIdsOn(
+    props.date,
+    props.rsvps,
+    props.event
+  )
 
   return props.members
     .filter((m) => attendingUserIds.has(m.userId))
     .sort((a, b) => {
+      if (a.userId === props.currentUserId) return -1
+      if (b.userId === props.currentUserId) return 1
       const nameA = a.name ?? a.email
       const nameB = b.name ?? b.email
       return nameA.localeCompare(nameB)
@@ -56,6 +54,9 @@ const attendingMembers = computed(() => {
 })
 
 function getMemberDisplayName(member: PoolMember): string {
+  if (member.userId === props.currentUserId) {
+    return 'You'
+  }
   return member.name ?? member.email.split('@')[0] ?? member.email
 }
 
@@ -120,7 +121,12 @@ async function handleToggle(userId: string) {
         :aria-label="`${slotAssignments.has(member.userId) ? 'Remove' : 'Assign'} ${getMemberDisplayName(member)}`"
         @click="handleToggle(member.userId)"
       >
-        <span class="truncate">{{ getMemberDisplayName(member) }}</span>
+        <span
+          class="truncate"
+          :class="member.userId === currentUserId ? 'font-medium' : ''"
+        >
+          {{ getMemberDisplayName(member) }}
+        </span>
         <CheckIcon
           v-if="slotAssignments.has(member.userId)"
           class="text-state-success-ink size-4 shrink-0"
