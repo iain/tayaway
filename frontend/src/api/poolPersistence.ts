@@ -85,6 +85,14 @@ async function flushWrites(): Promise<void> {
     }
 
     if (writes.length > 0) await Promise.all(writes)
+
+    // Persist the sync cursor only after the objects it describes are
+    // written: cold starts trust it for partial syncs, and a cursor that
+    // ran ahead of the object flush (crash in the debounce window) would
+    // leave a cache claiming sync N while missing sync N's objects.
+    for (const scope of savesByScope.keys()) {
+      persistSyncedAtForScope(scope)
+    }
   } catch (e) {
     console.warn('Failed to persist pool objects to IndexedDB', e)
   }
@@ -186,7 +194,7 @@ async function loadFromCache(): Promise<void> {
       for (const scope of scopesToLoad) {
         const objects = await poolDb.loadObjectsByType(scope, type)
         if (objects.length > 0) {
-          pool.importObjects(objects, { scope })
+          pool.importObjects(objects, { scope, fromCache: true })
           anyLoaded = true
         }
       }
@@ -200,7 +208,7 @@ async function loadFromCache(): Promise<void> {
       for (const scope of scopesToLoad) {
         const objects = await poolDb.loadObjectsByType(scope, type)
         if (objects.length > 0) {
-          pool.importObjects(objects, { scope })
+          pool.importObjects(objects, { scope, fromCache: true })
           anyLoaded = true
         }
       }
@@ -233,15 +241,17 @@ function persistReplaceScope(scope: Scope, objects: PoolObject[]): void {
   pendingSaves = pendingSaves.filter((s) => s.scope !== scope)
   pendingRemoves = pendingRemoves.filter((r) => r.scope !== scope)
 
+  // A replace comes from a full sync, whose timestamps the websocket store
+  // recorded before applying — persist them atomically with the objects so
+  // the cursors and the reconciliation cadence survive restarts.
+  let syncedAt: string | undefined
+  let fullSyncedAt: string | undefined
   const wsId = Scope.workspaceId(scope)
-  const wsStore = wsId ? useWebSocketStore() : null
-  const syncedAt = wsId ? (wsStore!.getSyncedAt(wsId) ?? undefined) : undefined
-  // A replace comes from a full sync, whose timestamp the websocket store
-  // recorded before applying — persist it so the reconciliation cadence
-  // survives restarts.
-  const fullSyncedAt = wsId
-    ? (wsStore!.getFullSyncedAt(wsId) ?? undefined)
-    : undefined
+  if (wsId) {
+    const wsStore = useWebSocketStore()
+    syncedAt = wsStore.getSyncedAt(wsId) ?? undefined
+    fullSyncedAt = wsStore.getFullSyncedAt(wsId) ?? undefined
+  }
 
   void poolDb
     .replaceScope(scope, objects, syncedAt, fullSyncedAt)
@@ -273,7 +283,6 @@ function startPersisting(): void {
       }
       scheduleFlush()
       schedulePendingFlush()
-      persistSyncedAtForScope(change.scope)
     } else if (change.type === 'set') {
       pendingSaves.push({ scope: change.scope, object: change.object })
       scheduleFlush()

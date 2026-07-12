@@ -805,6 +805,26 @@ describe('objectPool store', () => {
 
       expect(pool.get('event', 'temp-1')).toBeDefined()
     })
+
+    // importObjects treats an import as server confirmation and clears the
+    // temp mark — but cache hydration (startup, workspace switch-back) also
+    // goes through importObjects and is NOT confirmation.
+    it('keeps the temp mark when the import comes from the cache', async () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeEvent({ id: 'temp-1' })], {
+        scope: Scope.workspace('A'),
+      })
+      pool.markTemp('temp-1')
+
+      // Switch-back hydration re-imports the optimistic object from IDB
+      pool.importObjects([makeEvent({ id: 'temp-1' })], {
+        scope: Scope.workspace('A'),
+        fromCache: true,
+      })
+      await pool.replaceScope(Scope.workspace('A'), [])
+
+      expect(pool.get('event', 'temp-1')).toBeDefined()
+    })
   })
 
   describe('restore', () => {

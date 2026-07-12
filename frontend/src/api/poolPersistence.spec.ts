@@ -341,6 +341,16 @@ describe('poolPersistence — multi-workspace scope routing', () => {
     vi.mocked(poolDb.saveObjects).mockReset().mockResolvedValue(undefined)
     vi.mocked(poolDb.replaceScope).mockReset().mockResolvedValue(undefined)
     vi.mocked(poolDb.clearAll).mockReset().mockResolvedValue(undefined)
+    // Pin a stable websocket store instance so per-test overrides in this
+    // describe can't leak into each other
+    vi.mocked(useWebSocketStore).mockReturnValue({
+      hasSynced: false,
+      hasCachedData: false,
+      restoreSyncTimestamp: vi.fn(),
+      getSyncedAt: vi.fn(() => null),
+      restoreFullSyncTimestamp: vi.fn(),
+      getFullSyncedAt: vi.fn(() => null),
+    } as unknown as ReturnType<typeof useWebSocketStore>)
     poolPersistence.startPersisting()
   })
 
@@ -385,6 +395,47 @@ describe('poolPersistence — multi-workspace scope routing', () => {
     expect(poolDb.saveObjects).toHaveBeenCalledWith(Scope.workspace('ws-1'), [
       expect.objectContaining({ id: 'evt-A' }),
     ])
+  })
+
+  // The persisted cursor must never run ahead of the persisted objects:
+  // cold starts trust it for partial syncs, and a crash between an eager
+  // cursor write and the debounced object flush would leave a cache that
+  // claims sync N while missing sync N's objects.
+  it('persists the sync cursor with the object flush, not before it', async () => {
+    vi.mocked(useWebSocketStore).mockReturnValue({
+      hasSynced: false,
+      hasCachedData: false,
+      restoreSyncTimestamp: vi.fn(),
+      getSyncedAt: vi.fn(() => '2026-07-12T10:00:00.000Z'),
+      restoreFullSyncTimestamp: vi.fn(),
+      getFullSyncedAt: vi.fn(() => null),
+    } as unknown as ReturnType<typeof useWebSocketStore>)
+
+    capturedHandler!({
+      type: 'import',
+      scope: Scope.workspace('ws-1'),
+      objects: [
+        {
+          id: 'evt-A',
+          objectType: 'event',
+          workspaceId: 'ws-1',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        } as PoolObject,
+      ],
+    })
+
+    expect(poolDb.saveSyncedAt).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(500)
+    flushIdleCallbacks()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(poolDb.saveObjects).toHaveBeenCalled()
+    expect(poolDb.saveSyncedAt).toHaveBeenCalledWith(
+      Scope.workspace('ws-1'),
+      '2026-07-12T10:00:00.000Z'
+    )
   })
 
   it('replaces only the active workspace scope on a full sync — other workspaces survive', async () => {
@@ -500,11 +551,15 @@ describe('poolPersistence — progressive cache loading', () => {
       Scope.workspace('ws-1'),
       'event'
     )
+    // fromCache marks the import as hydration, not server confirmation —
+    // it must not clear temp marks on queued optimistic creates
     expect(pool.importObjects).toHaveBeenCalledWith([memberObj], {
       scope: Scope.workspace('ws-1'),
+      fromCache: true,
     })
     expect(pool.importObjects).toHaveBeenCalledWith([eventObj], {
       scope: Scope.workspace('ws-1'),
+      fromCache: true,
     })
   })
 

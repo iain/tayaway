@@ -69,7 +69,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       try {
         const cached: PoolObject[] = await loadObjectsByType(scope, type)
         if (cached.length > 0 && currentWorkspaceId.value === id) {
-          pool.importObjects(cached, { scope })
+          pool.importObjects(cached, { scope, fromCache: true })
           // Yield after a non-empty import so the browser can paint
           // between chunks. Empty buckets are cheap and don't need it.
           await new Promise<void>((resolve) => setTimeout(resolve, 0))

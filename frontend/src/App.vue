@@ -11,6 +11,12 @@ const authStore = useAuthStore()
 const commandQueueStore = useCommandQueueStore()
 const { initialized } = storeToRefs(authStore)
 
+// A wedged IndexedDB (e.g. a version-change open blocked forever by an old
+// tab) must not keep the app from ever connecting — proceed without the
+// cache after this long. Cursors won't be restored then, so the connect
+// falls back to a full sync: slower, but correct.
+const CACHE_HYDRATION_TIMEOUT_MS = 5_000
+
 onMounted(async () => {
   await authStore.initialize()
   if (authStore.isAuthenticated) {
@@ -18,13 +24,21 @@ onMounted(async () => {
     // replay rejection rolls back pending overlays by id, which only works
     // once loadFromCache has restored them, and the rollback only reaches
     // the IDB cache once startPersisting is registered.
-    await poolPersistence.loadFromCache()
+    await Promise.race([
+      poolPersistence.loadFromCache(),
+      new Promise<void>((resolve) =>
+        setTimeout(resolve, CACHE_HYDRATION_TIMEOUT_MS)
+      ),
+    ])
     poolPersistence.startPersisting()
-    // Connect only after hydration: loadFromCache restores the sync
-    // cursors, and the partial-vs-full decision on the connect URL is only
-    // sound once the cached baseline those cursors describe is in the pool.
-    useWebSocketStore().connect()
+    // The queue re-marks still-queued creates as temp before the socket
+    // connects — a reconciliation full sync arriving first would otherwise
+    // drop those optimistic objects.
     await commandQueueStore.initialize()
+    // Connect last: loadFromCache restored the sync cursors, so the
+    // partial-vs-full decision on the connect URL describes a cached
+    // baseline that is actually in the pool.
+    useWebSocketStore().connect()
   }
 })
 </script>

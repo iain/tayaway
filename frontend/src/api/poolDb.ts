@@ -44,7 +44,9 @@ interface PoolCacheDB {
 // Bumped to 13 when events and workspaces gained a `timezone` field.
 // Bumped to 14 when rsvps gained an `attendance` day-set field.
 // Bumped to 15 when attendance entries gained per-day `{date, plusOnes}` guests.
-const CACHE_VERSION = 15
+// Bumped to 16 when per-scope `fullSyncedAt` meta was added for the
+// reconciliation cadence (wipe → one full sync that records it).
+const CACHE_VERSION = 16
 
 const CACHE_VERSION_META_KEY = 'cacheVersion'
 const SYNCED_AT_META_PREFIX = 'syncedAt:'
