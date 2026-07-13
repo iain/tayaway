@@ -351,6 +351,27 @@ module TestFactories
       DB[:passkey_credentials].where(id: id).first
     end
 
+    def audit_log_entry(workspace: nil, actor_user: nil, service: "Events::Update", outcome: "success",
+                        subject_type: nil, subject_id: nil, error_code: nil, error_message: nil,
+                        action_params: {}, request_id: nil, created_at: Time.now, id: SecureRandom.uuid)
+      DB[:audit_log_entries].insert(
+        id: id,
+        actor_kind: actor_user ? "user" : "system",
+        actor_user_id: actor_user&.[](:id),
+        workspace_id: workspace&.[](:id),
+        service: service,
+        subject_type: subject_type,
+        subject_id: subject_id,
+        outcome: outcome,
+        error_code: error_code,
+        error_message: error_message,
+        action_params: Sequel.pg_jsonb(action_params),
+        request_id: request_id,
+        created_at: created_at
+      )
+      DB[:audit_log_entries].where(id: id).first
+    end
+
     def reset_sequences!
       @sequences = {}
     end

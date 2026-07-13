@@ -42,6 +42,17 @@ class App
           { objects: pool.to_a }
         end
       end
+
+      # GET /api/workspaces/:id/audit-log - Owner-only audit trail page.
+      # Deliberately not pool-shaped: audit rows never sync to clients.
+      r.get "audit-log" do
+        result = AuditLogs::ListForWorkspace.call(
+          workspace_id: workspace.id,
+          membership: membership,
+          cursor: r.params["cursor"]
+        )
+        handle_result(result)
+      end
     end
   end
 end
