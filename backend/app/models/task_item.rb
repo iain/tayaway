@@ -10,13 +10,13 @@ class TaskItem < Data.define(:id, :task_list_id, :user_id, :content, :completed_
     end
 
     def for_task_list(task_list_id)
-      dataset.where(task_list_id: task_list_id).order(:position).all
+      dataset.where(task_list_id: task_list_id).order(:position, :created_at, :content, :id).all
     end
 
     def for_task_lists(task_list_ids)
       return [] if task_list_ids.empty?
 
-      dataset.where(task_list_id: task_list_ids).order(:task_list_id, :position).all
+      dataset.where(task_list_id: task_list_ids).order(:task_list_id, :position, :created_at, :content, :id).all
     end
 
     def changed_since(workspace_id, since)

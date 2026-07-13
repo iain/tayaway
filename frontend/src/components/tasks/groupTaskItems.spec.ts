@@ -104,4 +104,20 @@ describe('groupTaskItems', () => {
 
     expect(history.map((i) => i.id)).toEqual(['b', 'a'])
   })
+
+  it('breaks history completedAt ties by id so all clients agree', () => {
+    // A bulk sync can stamp several completions with the same timestamp;
+    // without a tie-break the order falls back to per-client pool order.
+    const completedAt = completedAgo(2 * HISTORY_AFTER_MS)
+    const items = [
+      makeTaskItem({ id: 'bbb', position: 1, completedAt }),
+      makeTaskItem({ id: 'aaa', position: 2, completedAt }),
+    ]
+    const forward = groupTaskItems(items, NOW).history.map((i) => i.id)
+    const reversed = groupTaskItems([...items].reverse(), NOW).history.map(
+      (i) => i.id
+    )
+    expect(forward).toEqual(['aaa', 'bbb'])
+    expect(reversed).toEqual(forward)
+  })
 })

@@ -1,6 +1,9 @@
 import type { PoolTaskItem } from '@/types/pool'
+import { byPositionOrder } from './positionOrder'
 
 const EMPTY: ReadonlySet<string> = new Set()
+
+const byItemOrder = byPositionOrder<PoolTaskItem>((item) => item.content)
 
 /**
  * Order task items by position, with completed items sunk to the bottom so the
@@ -20,6 +23,6 @@ export function sortTaskItems(
 
   return [...items].sort((a, b) => {
     const diff = sunk(a) - sunk(b)
-    return diff !== 0 ? diff : a.position - b.position
+    return diff !== 0 ? diff : byItemOrder(a, b)
   })
 }
