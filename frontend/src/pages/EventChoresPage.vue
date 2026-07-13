@@ -23,6 +23,7 @@ import TextButton from '@/components/common/TextButton.vue'
 import FormInput from '@/components/form/FormInput.vue'
 import { TEXT_LIMITS } from '@/constants/limits'
 import { useMediaQuery } from '@/composables/useMediaQuery'
+import { useMinuteTicker } from '@/composables/useMinuteTicker'
 import { ClipboardDocumentListIcon } from '@heroicons/vue/24/outline'
 import type {
   PoolApiResponse,
@@ -31,7 +32,11 @@ import type {
   PoolMember,
 } from '@/types/pool'
 import { can } from '@/composables/usePermission'
-import { detectAttendanceDrift, shouldSuggestAutofill } from '@/utils/chores'
+import {
+  detectAttendanceDrift,
+  refillableAssignments,
+  shouldSuggestAutofill,
+} from '@/utils/chores'
 import { getMemberNameFromMap } from '@/utils/member'
 import { zonedDateString } from '@/utils/timezone'
 
@@ -101,9 +106,11 @@ const eventDates = computed(() => {
 
 // The event-zone date — the same "today" the backend fences autofill and
 // clear-unpinned on, so everything this page mutes, flags, or offers to
-// re-fill agrees with what the server would actually touch.
+// re-fill agrees with what the server would actually touch. On the shared
+// minute ticker so the fence tracks the clock while the page stays open.
+const { now } = useMinuteTicker()
 const today = computed(() =>
-  event.value ? zonedDateString(Date.now(), event.value.timezone) : ''
+  event.value ? zonedDateString(now.value, event.value.timezone) : ''
 )
 
 const eventOver = computed(
@@ -114,8 +121,22 @@ const upcomingAssignments = computed(() =>
   assignments.value.filter((a) => a.date >= today.value)
 )
 
+// Tighter than upcoming: what a re-fill or clear would actually delete —
+// today's already-started timed chores are history the server won't touch.
+const refillable = computed(() =>
+  event.value
+    ? refillableAssignments(
+        assignments.value,
+        chores.value,
+        today.value,
+        event.value.timezone,
+        now.value
+      )
+    : []
+)
+
 const upcomingUnpinnedCount = computed(
-  () => upcomingAssignments.value.filter((a) => !a.pinned).length
+  () => refillable.value.filter((a) => !a.pinned).length
 )
 
 const showAddChoreForm = ref(false)
@@ -180,8 +201,10 @@ const drift = computed(() => {
   if (!event.value?.startDate || !event.value?.endDate || eventOver.value) {
     return { staleAssignmentIds: new Set<string>(), idleUserIds: [] }
   }
+  // Drift only over what a re-fill can still change — a chore that already
+  // started today is history, so its holder having left isn't actionable.
   return detectAttendanceDrift(
-    assignments.value,
+    refillable.value,
     rsvps.value,
     { startDate: event.value.startDate, endDate: event.value.endDate },
     today.value
@@ -379,16 +402,16 @@ async function confirmAutofillAction() {
 const autofillRunning = ref(false)
 
 // The nudge cards' button. The confirm modal exists to protect existing
-// unpinned assignments from being cleared; autofill only touches today
-// onward, so only those count — when there are none, confirming would just
-// add friction, so run straight away.
+// unpinned assignments from being cleared; autofill only touches what's
+// still refillable, so only those count — when there are none, confirming
+// would just add friction, so run straight away.
 async function handleNudgeAutofill() {
   if (!roster.value) return
   if (!userIsAttending.value) {
     showRsvpDialog.value = true
     return
   }
-  if (upcomingAssignments.value.some((a) => !a.pinned)) {
+  if (refillable.value.some((a) => !a.pinned)) {
     confirmAutofill.value = true
   } else {
     autofillRunning.value = true
@@ -722,9 +745,9 @@ onMounted(async () => {
       @close="confirmAutofill = false"
     >
       <p class="text-ink-muted text-sm">
-        This will clear non-pinned assignments from today onward and
-        redistribute the remaining days fairly among attendees. Days already
-        past and pinned assignments stay as they are.
+        This will clear upcoming non-pinned assignments and redistribute what's
+        still ahead fairly among attendees. Days already past, chores that have
+        already started today, and pinned assignments stay as they are.
       </p>
       <div class="mt-6 flex justify-end gap-3">
         <TextButton variant="secondary" @click="confirmAutofill = false">
@@ -747,7 +770,8 @@ onMounted(async () => {
           This clears
           {{ upcomingUnpinnedCount }} upcoming assignment{{
             upcomingUnpinnedCount === 1 ? '' : 's'
-          }}. Days already past and pinned assignments stay as they are.
+          }}. Days already past, chores that have already started today, and
+          pinned assignments stay as they are.
         </template>
         <template v-else>
           There's nothing to clear — no upcoming assignments are unpinned.

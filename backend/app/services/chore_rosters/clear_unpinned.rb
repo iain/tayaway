@@ -2,7 +2,9 @@
 
 module ChoreRosters
   # Deletes a roster's non-pinned assignments from today onward. Days already
-  # past (in the event's zone) are the record of who did what and stay put.
+  # past (in the event's zone) are the record of who did what and stay put —
+  # as does today's occurrence of any timed chore that has already started
+  # (see ChoreTime.started_today).
   module ClearUnpinned
     class << self
       def call(roster_id:, workspace_id:, membership:)
@@ -23,7 +25,9 @@ module ChoreRosters
 
       def clear_unpinned(roster, workspace_id)
         deleted = []
-        today = Timezones.today(Event.find(roster.event_id).timezone)
+        timezone = Event.find(roster.event_id).timezone
+        today = Timezones.today(timezone)
+        started_today_chore_ids = ChoreTime.started_today(Chore.for_roster(roster.id), timezone).map(&:id)
 
         DB.transaction do
           non_pinned_ids = DB[:chore_assignments]
@@ -31,6 +35,10 @@ module ChoreRosters
                            .where(Sequel[:chores][:chore_roster_id] => roster.id)
                            .where(Sequel[:chore_assignments][:pinned] => false)
                            .where { Sequel[:chore_assignments][:date] >= today }
+                           .exclude(
+                             Sequel[:chore_assignments][:date] => today,
+                             Sequel[:chore_assignments][:chore_id] => started_today_chore_ids
+                           )
                            .select_map(Sequel[:chore_assignments][:id])
 
           if non_pinned_ids.any?

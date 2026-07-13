@@ -182,6 +182,20 @@ RSpec.describe ChoreRosters::Autofill do
     expect((first_ids & second_ids).length).to eq(0)
   end
 
+  it "broadcasts a deletion per removed assignment so connected clients drop the stale rows" do
+    create_rsvp(user_a)
+    chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
+    stale = TestFactories.chore_assignment(chore: chore, user: user_a, date: event_start, pinned: false)
+
+    allow(Broadcaster).to receive(:object_deleted)
+    allow(Broadcaster).to receive(:object_changed)
+
+    described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
+
+    expect(Broadcaster).to have_received(:object_deleted)
+      .with("chore_assignment", stale[:id], topics: [Topic.workspace(workspace[:id])])
+  end
+
   it "handles partial RSVP date ranges" do
     # Alice only available days 1–2, Charlie only day 3
     create_rsvp(user_a, start_date: event_start, end_date: event_start + 1)
@@ -290,6 +304,38 @@ RSpec.describe ChoreRosters::Autofill do
       expect(DB[:chore_assignments].where(id: stale_future[:id]).count).to eq(0)
       expect(all_assignments.map { |a| a[:date] }.sort)
         .to eq([Date.new(2026, 3, 1), Date.new(2026, 3, 2), Date.new(2026, 3, 3), Date.new(2026, 3, 4)])
+    end
+
+    it "leaves a timed chore already started today as the record of who did it" do
+      allow(Timezones).to receive(:now).and_return(Time.new(2026, 3, 3, 16, 0, 0))
+      create_rsvp(user_a)
+      create_rsvp(user_b)
+      morning = TestFactories.chore(chore_roster: roster, name: "Groceries", people_per_day: 1, time: "10:00")
+      done = TestFactories.chore_assignment(chore: morning, user: user_a, date: Date.new(2026, 3, 3), pinned: false)
+
+      result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
+      expect(result.success?).to be true
+
+      # The 10:00 run was already done by 16:00 — its exact row stays...
+      expect(DB[:chore_assignments].where(id: done[:id]).count).to eq(1)
+      # ...and only tomorrow gets a fresh slot for this chore.
+      rows = all_assignments.select { |a| a[:chore_id] == morning[:id] }
+      expect(rows.map { |a| a[:date] }).to contain_exactly(Date.new(2026, 3, 3), Date.new(2026, 3, 4))
+    end
+
+    it "still refills a timed chore that has not started yet today" do
+      allow(Timezones).to receive(:now).and_return(Time.new(2026, 3, 3, 16, 0, 0))
+      create_rsvp(user_a)
+      create_rsvp(user_b)
+      dinner = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1, time: "17:00")
+      stale = TestFactories.chore_assignment(chore: dinner, user: user_a, date: Date.new(2026, 3, 3), pinned: false)
+
+      result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
+      expect(result.success?).to be true
+
+      expect(DB[:chore_assignments].where(id: stale[:id]).count).to eq(0)
+      rows = all_assignments.select { |a| a[:chore_id] == dinner[:id] }
+      expect(rows.map { |a| a[:date] }).to contain_exactly(Date.new(2026, 3, 3), Date.new(2026, 3, 4))
     end
 
     it "counts past work when balancing the remaining days" do

@@ -8,7 +8,9 @@ module ChoreRosters
   # Days already past (in the event's zone) are a record of who actually did
   # what and are never rewritten — mid-event attendance changes are absorbed by
   # re-running autofill, which rebalances only today onward while still
-  # counting past work in each person's load.
+  # counting past work in each person's load. The same holds within today:
+  # a timed chore whose moment has already arrived keeps its rows and slots
+  # (see ChoreTime.started_today) — only what still lies ahead is refilled.
   module Autofill
     class << self
       def call(roster_id:, workspace_id:, membership:)
@@ -55,6 +57,7 @@ module ChoreRosters
         availability = build_availability(dates, rsvps, event)
 
         chores = Chore.for_roster(roster.id)
+        started_today_chore_ids = ChoreTime.started_today(chores, event.timezone).map(&:id)
 
         # Guard against pathological cases (e.g. 60-day event with 20 chores = 1200 rows)
         max_slots = fill_dates.length * chores.sum(&:people_per_day)
@@ -67,18 +70,30 @@ module ChoreRosters
 
         DB.transaction do
           # Delete non-pinned assignments from today onward and track them.
-          # Earlier days are history and keep their rows.
+          # Earlier days are history and keep their rows, as does today's
+          # occurrence of any chore that has already started.
           non_pinned_ids = DB[:chore_assignments]
                            .join(:chores, id: :chore_id)
                            .where(Sequel[:chores][:chore_roster_id] => roster.id)
                            .where(Sequel[:chore_assignments][:pinned] => false)
                            .where { Sequel[:chore_assignments][:date] >= today }
+                           .exclude(
+                             Sequel[:chore_assignments][:date] => today,
+                             Sequel[:chore_assignments][:chore_id] => started_today_chore_ids
+                           )
                            .select_map(Sequel[:chore_assignments][:id])
 
           if non_pinned_ids.any?
             DeletedItems.bulk_insert(workspace_id, "chore_assignment", non_pinned_ids)
             deleted = non_pinned_ids.map { |aid| { objectType: "choreAssignment", id: aid.to_s } }
             DB[:chore_assignments].where(id: non_pinned_ids).delete
+
+            # Broadcast one deletion signal per assignment so connected clients
+            # drop the rows (mirrors ClearUnpinned) — the roster broadcast below
+            # only adds and updates, it can't remove anything from their pools.
+            non_pinned_ids.each do |aid|
+              Broadcaster.object_deleted("chore_assignment", aid, topics: [Topic.workspace(workspace_id)])
+            end
           end
 
           # Compute load from what survived the delete: pinned assignments plus
@@ -117,6 +132,8 @@ module ChoreRosters
 
             rotated_chores = chores.rotate(day_index)
             rotated_chores.each do |chore|
+              next if date == today && started_today_chore_ids.include?(chore.id)
+
               existing_count = chore_day_assignments[[chore.id.to_s, date]].size
               slots_needed = chore.people_per_day - existing_count
 

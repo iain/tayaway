@@ -1,5 +1,31 @@
 import type { PoolChore, PoolChoreAssignment, PoolRsvp } from '@/types/pool'
 import { attendedDates } from '@/utils/event'
+import { wallClockToEpoch } from '@/utils/timezone'
+
+/**
+ * The subset of `assignments` a re-fill or clear-upcoming can actually touch:
+ * today onward, minus today's occurrence of any timed chore that has already
+ * started (in the event's zone). The server treats a started chore's rows as
+ * the record of who did it, exactly like a past day — counts and nudges built
+ * on this stay honest about what those actions would really change.
+ */
+export function refillableAssignments<
+  A extends Pick<PoolChoreAssignment, 'choreId' | 'date'>,
+>(
+  assignments: readonly A[],
+  chores: ReadonlyArray<Pick<PoolChore, 'id' | 'time'>>,
+  today: string,
+  zone: string,
+  nowMs: number
+): A[] {
+  const timeByChore = new Map(chores.map((c) => [c.id, c.time]))
+  return assignments.filter((a) => {
+    if (a.date < today) return false
+    if (a.date > today) return true
+    const time = timeByChore.get(a.choreId)
+    return !time || wallClockToEpoch(a.date, time, zone) > nowMs
+  })
+}
 
 /**
  * Whether the chores page should nudge the user toward auto-fill: the roster
