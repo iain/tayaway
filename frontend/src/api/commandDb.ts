@@ -35,7 +35,10 @@ export interface StoredCommand {
   // Session-scoped counter — across restarts createdAt always differs.
   // Absent on rows written before the field existed (sorts as 0).
   seq?: number
-  optimistic?: OptimisticRef
+  // One ref per pool mutation this command made optimistically. Multi-
+  // object flows (add date range = temp object + pending update on the
+  // poll) link an array; all of it rolls back as one user change.
+  optimistic?: OptimisticRef | OptimisticRef[]
 }
 
 interface CommandQueueDB {

@@ -97,7 +97,18 @@ export const useDatePollsStore = defineStore('datePolls', () => {
       await commandQueue.enqueue<PoolApiResponse>(
         'POST',
         `/events/${eventId}/poll/date-ranges`,
-        { id: dateRangeId, start_date: startDate, end_date: endDate }
+        { id: dateRangeId, start_date: startDate, end_date: endDate },
+        // Composite rollback: a permanently-failed replay must undo both
+        // optimistic pool mutations, mirroring the error path below.
+        [
+          { kind: 'create', objectType: 'dateRange', objectId: dateRangeId },
+          {
+            kind: 'update',
+            objectType: 'datePoll',
+            objectId: poll.id,
+            pendingId,
+          },
+        ]
       )
     } catch (e) {
       if (e instanceof CommandQueuedError) {
@@ -132,7 +143,17 @@ export const useDatePollsStore = defineStore('datePolls', () => {
     try {
       await commandQueue.enqueue<PoolApiResponse>(
         'DELETE',
-        `/events/${eventId}/poll/date-ranges/${dateRangeId}`
+        `/events/${eventId}/poll/date-ranges/${dateRangeId}`,
+        undefined,
+        [
+          { kind: 'destroy', removed },
+          {
+            kind: 'update',
+            objectType: 'datePoll',
+            objectId: poll.id,
+            pendingId,
+          },
+        ]
       )
     } catch (e) {
       if (e instanceof CommandQueuedError) {
