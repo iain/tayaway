@@ -110,10 +110,10 @@ GEM
       prism (>= 1.3.0)
       rdoc (>= 4.0.0)
       reline (>= 0.4.2)
-    json (2.20.0)
+    json (2.21.1)
     jwt (3.2.0)
       base64
-    language_server-protocol (3.17.0.5)
+    language_server-protocol (3.17.0.6)
     lint_roller (1.1.0)
     listen (3.10.0)
       logger
@@ -122,7 +122,7 @@ GEM
     localhost (1.8.0)
       bake
     logger (1.7.0)
-    mail (2.9.0)
+    mail (2.9.1)
       logger
       mini_mime (>= 0.1.1)
       net-imap
@@ -199,7 +199,7 @@ GEM
     regexp_parser (2.12.0)
     reline (0.6.3)
       io-console (~> 0.5)
-    roda (3.105.0)
+    roda (3.106.0)
       rack
     roda-websockets (0.1.0)
       async-websocket (~> 0.12)
@@ -222,7 +222,7 @@ GEM
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.13.0)
     rspec-support (3.13.7)
-    rubocop (1.88.0)
+    rubocop (1.88.2)
       json (~> 2.3)
       language_server-protocol (~> 3.17.0.2)
       lint_roller (~> 1.1.0)
@@ -233,7 +233,7 @@ GEM
       rubocop-ast (>= 1.49.0, < 2.0)
       ruby-progressbar (~> 1.7)
       unicode-display_width (>= 2.4.0, < 4.0)
-    rubocop-ast (1.49.1)
+    rubocop-ast (1.50.0)
       parser (>= 3.3.7.2)
       prism (~> 1.7)
     rubocop-performance (1.26.1)
@@ -255,7 +255,7 @@ GEM
       jwt (>= 2.0, < 4.0)
     samovar (2.5.1)
       console (~> 1.0)
-    sequel (5.105.0)
+    sequel (5.106.0)
       bigdecimal
     sequel_pg (1.19.0)
       pg (>= 0.18.0, != 1.2.0)
@@ -272,7 +272,7 @@ GEM
     tsort (0.2.0)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
-    tzinfo-data (1.2026.2)
+    tzinfo-data (1.2026.3)
       tzinfo (>= 1.0.0)
     unicode-display_width (3.2.0)
       unicode-emoji (~> 4.1)
@@ -313,7 +313,7 @@ DEPENDENCIES
   jwt
   listen
   logger
-  mail (~> 2.8)
+  mail (~> 2.9)
   mmdb
   pg
   pry
@@ -321,7 +321,7 @@ DEPENDENCIES
   rack-test
   rake
   rbnacl
-  roda (~> 3.98)
+  roda (~> 3.106)
   roda-websockets
   rqrcode
   rspec
