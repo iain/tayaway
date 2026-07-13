@@ -36,6 +36,7 @@ const HIDE_REASONS = new Set([
   'not_event_owner',
   'not_creator_or_event_owner',
   'not_admin_or_owner',
+  'not_workspace_owner',
   'not_sender',
   'cannot_change_own_role',
   'cannot_change_owner',

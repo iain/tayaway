@@ -88,6 +88,9 @@ RSpec.describe "Remaining policies" do
   end
 
   describe WorkspacePolicy do
+    let(:owner_user) { TestFactories.user }
+    let(:owner_membership) { WorkspaceMembership.find(TestFactories.workspace_membership(workspace: workspace, user: owner_user, role: "owner")[:id]) }
+
     it "allows any member to create events" do
       policy = described_class.new(workspace, membership: membership_a)
       expect(policy.create_event).to be_success
@@ -104,8 +107,21 @@ RSpec.describe "Remaining policies" do
       expect(policy.invite.failure).to eq(:not_admin_or_owner)
     end
 
+    it "allows only the owner to view the audit log" do
+      policy = described_class.new(workspace, membership: owner_membership)
+      expect(policy.view_audit_log).to be_success
+    end
+
+    it "rejects admins and members from viewing the audit log" do
+      [admin_membership, membership_a].each do |membership|
+        policy = described_class.new(workspace, membership: membership)
+        expect(policy.view_audit_log).to be_failure
+        expect(policy.view_audit_log.failure).to eq(:not_workspace_owner)
+      end
+    end
+
     it "has correct ACTIONS" do
-      expect(described_class::ACTIONS).to contain_exactly(:create_event, :create_task_list, :invite, :manage_members)
+      expect(described_class::ACTIONS).to contain_exactly(:create_event, :create_task_list, :invite, :manage_members, :view_audit_log)
     end
   end
 

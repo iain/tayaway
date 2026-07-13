@@ -47,6 +47,7 @@ them — it never computes permissions from user IDs.
 - `Failure(:not_creator)` — wrong person (object-level creator)
 - `Failure(:not_event_owner)` — wrong person (checked via parent event)
 - `Failure(:not_admin_or_owner)` — wrong workspace role
+- `Failure(:not_workspace_owner)` — owner-only workspace action (e.g. audit log)
 - `Failure(:settled)` — temporary state blocker
 - `Failure(:has_expenses)` — temporary state blocker
 - `Failure(:not_pair_member)` / `Failure(:not_sender)` — transfer-specific

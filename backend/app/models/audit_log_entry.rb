@@ -71,6 +71,17 @@ class AuditLogEntry < Data.define(
         .all
     end
 
+    # Keyset page, newest first. `before_*` come from the last row of the
+    # previous page; id breaks ties between rows sharing a created_at so
+    # no row is skipped or repeated across pages.
+    def page_for_workspace(workspace_id, limit:, before_created_at: nil, before_id: nil)
+      ds = dataset.where(workspace_id: workspace_id.to_s)
+      if before_created_at
+        ds = ds.where(Sequel.lit("(created_at, id) < (?, ?)", before_created_at, before_id))
+      end
+      ds.order(Sequel.desc(:created_at), Sequel.desc(:id)).limit(limit).all
+    end
+
     private
 
     # Cap the JSON payload so a misconfigured audit_context can't bloat the
