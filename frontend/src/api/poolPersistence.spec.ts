@@ -438,6 +438,54 @@ describe('poolPersistence — multi-workspace scope routing', () => {
     )
   })
 
+  // A broadcast merged during a chunked replace is dropped from the write
+  // buffer (it would race the authoritative replace), but the pool keeps
+  // the newer copy — the cache must converge to the pool afterwards.
+  it('re-buffers newer copies dropped by a replace so IDB converges to the pool', async () => {
+    const newer = {
+      id: 'evt-A',
+      objectType: 'event',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+    } as PoolObject
+    vi.mocked(useObjectPoolStore).mockReturnValue({
+      pendingUpdates: new Map(),
+      importObjects: vi.fn(),
+      restorePendingUpdates: vi.fn(),
+      getServer: vi.fn(() => newer),
+    } as unknown as ReturnType<typeof useObjectPoolStore>)
+
+    capturedHandler!({
+      type: 'set',
+      scope: Scope.workspace('ws-1'),
+      object: newer,
+    })
+    capturedHandler!({
+      type: 'replaceScope',
+      scope: Scope.workspace('ws-1'),
+      objects: [
+        {
+          id: 'evt-A',
+          objectType: 'event',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        } as PoolObject,
+      ],
+    })
+    await Promise.resolve()
+    await Promise.resolve()
+
+    await vi.advanceTimersByTimeAsync(500)
+    flushIdleCallbacks()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(poolDb.saveObjects).toHaveBeenCalledWith(Scope.workspace('ws-1'), [
+      expect.objectContaining({
+        id: 'evt-A',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+      }),
+    ])
+  })
+
   it('replaces only the active workspace scope on a full sync — other workspaces survive', async () => {
     capturedHandler!({
       type: 'replaceScope',

@@ -237,7 +237,10 @@ async function loadFromCache(): Promise<void> {
 
 function persistReplaceScope(scope: Scope, objects: PoolObject[]): void {
   // Drop any pending debounced writes for this scope — the replace is
-  // authoritative and would race with stale buffered saves/removes.
+  // authoritative and would race with stale buffered saves/removes. The
+  // dropped saves are reconciled against the pool after the replace lands
+  // (below), so a newer broadcast copy buffered mid-replace isn't lost.
+  const droppedSaves = pendingSaves.filter((s) => s.scope === scope)
   pendingSaves = pendingSaves.filter((s) => s.scope !== scope)
   pendingRemoves = pendingRemoves.filter((r) => r.scope !== scope)
 
@@ -255,6 +258,27 @@ function persistReplaceScope(scope: Scope, objects: PoolObject[]): void {
 
   void poolDb
     .replaceScope(scope, objects, syncedAt, fullSyncedAt)
+    .then(() => {
+      // Converge the cache to the pool for the saves dropped above: the
+      // pool kept the newest copy of each (its replace insert is
+      // newer-wins), so re-buffer whatever it holds now. Objects the
+      // replace dropped entirely are gone from the pool and stay gone.
+      const pool = useObjectPoolStore()
+      let reBuffered = false
+      for (const dropped of droppedSaves) {
+        const current = pool.getServer(
+          dropped.object.objectType,
+          dropped.object.id
+        )
+        if (current) {
+          pendingSaves.push({ scope, object: current })
+          reBuffered = true
+        }
+      }
+      if (reBuffered) {
+        scheduleFlush()
+      }
+    })
     .catch((e) => console.warn('Failed to replace scope in IndexedDB', e))
 }
 
