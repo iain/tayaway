@@ -19,6 +19,7 @@ const EventPlanningVotePage = () => import('@/pages/EventPlanningVotePage.vue')
 const EventPlanningDateRangesPage = () =>
   import('@/pages/EventPlanningDateRangesPage.vue')
 const EventRsvpPage = () => import('@/pages/EventRsvpPage.vue')
+const EventDaysPage = () => import('@/pages/EventDaysPage.vue')
 const MembersPage = () => import('@/pages/MembersPage.vue')
 const TasksPage = () => import('@/pages/TasksPage.vue')
 const ChoresPage = () => import('@/pages/ChoresPage.vue')
@@ -109,6 +110,11 @@ const router = createRouter({
           path: 'events/:id/rsvp',
           name: 'event-rsvp',
           component: EventRsvpPage,
+        },
+        {
+          path: 'events/:id/days',
+          name: 'event-days',
+          component: EventDaysPage,
         },
         {
           path: 'events/:id/expenses',
