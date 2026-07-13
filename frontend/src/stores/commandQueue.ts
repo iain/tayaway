@@ -11,7 +11,7 @@ import {
   clearAll,
   type OptimisticRef,
 } from '@/api/commandDb'
-import { coalesceCommands } from '@/api/coalesceCommands'
+import { coalesceCommands, getResourceKey } from '@/api/coalesceCommands'
 import { useWebSocketStore } from './websocket'
 import { useWorkspaceStore } from './workspace'
 import { useObjectPoolStore } from './objectPool'
@@ -110,6 +110,27 @@ function labelForRefs(refs: OptimisticRef[]): string | null {
   return null
 }
 
+// Ids of the objects a command's destroy refs removed. While the command is
+// queued, these are suppressed in the pool so full syncs can't resurrect
+// the deleted objects before the replay lands.
+function destroyedIdsOf(refs: OptimisticRef[]): string[] {
+  return refs
+    .filter(
+      (ref): ref is Extract<OptimisticRef, { kind: 'destroy' }> =>
+        ref.kind === 'destroy'
+    )
+    .flatMap((ref) => ref.removed.map((entry) => entry.object.id))
+}
+
+function clearPendingDestroysFor(
+  optimistic: OptimisticRef | OptimisticRef[] | undefined
+): void {
+  const ids = destroyedIdsOf(optimisticRefs(optimistic))
+  if (ids.length > 0) {
+    useObjectPoolStore().clearPendingDestroy(ids)
+  }
+}
+
 // Only claim "undone" for changes that actually had a rollback linkage —
 // commands enqueued outside useMutation manage their own optimistic state
 // and nothing here reconciles them.
@@ -200,6 +221,10 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
       for (const ref of optimisticRefs(command.optimistic)) {
         if (ref.kind === 'create') {
           pool.markTemp(ref.objectId)
+        } else if (ref.kind === 'destroy') {
+          // Suppress until the replay resolves, so a reconciliation full
+          // sync can't resurrect objects whose delete is still queued
+          pool.markPendingDestroy(ref.removed.map((entry) => entry.object.id))
         }
       }
     }
@@ -236,6 +261,34 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
       optimistic,
     })
     pendingCount.value++
+
+    // While a destroy is unresolved, suppress its objects in the pool so a
+    // full sync can't resurrect them; cleared on success or permanent
+    // failure below (and by the drain for queued outcomes).
+    const destroyedIds = destroyedIdsOf(optimisticRefs(optimistic))
+    if (destroyedIds.length > 0) {
+      useObjectPoolStore().markPendingDestroy(destroyedIds)
+    }
+
+    // Per-resource ordering: if an older command for the same resource is
+    // still queued (not in flight), executing this one directly could
+    // reach the server before the older write's replay — the stale write
+    // would land last and win. Queue this one behind it instead; the
+    // drain coalesces them and sends in order.
+    if (pendingCount.value > 1) {
+      const key = getResourceKey({
+        id: commandId,
+        method,
+        path,
+        body,
+        createdAt: 0,
+      })
+      if (key !== null && (await hasQueuedResourceConflict(key, commandId))) {
+        void processQueue()
+        throw new CommandQueuedError()
+      }
+    }
+
     inFlightCommandIds.add(commandId)
 
     try {
@@ -249,6 +302,7 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
       await removeCommand(commandId)
       pendingCount.value--
       retryDelayMs = BASE_RETRY_DELAY_MS
+      clearPendingDestroysFor(optimistic)
       return response
     } catch (e) {
       if (isRetryableError(e)) {
@@ -260,7 +314,9 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
         await handleAuthError()
         throw new CommandQueuedError()
       }
-      // Server error — remove from queue and rethrow
+      // Server error — remove from queue and rethrow; the caller rolls the
+      // optimistic state back, so the destroy suppression lifts too
+      clearPendingDestroysFor(optimistic)
       try {
         await removeCommand(commandId)
         pendingCount.value--
@@ -272,6 +328,21 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
     } finally {
       inFlightCommandIds.delete(commandId)
     }
+  }
+
+  // True when another queued (not in-flight) command targets the same
+  // resource as `key`.
+  async function hasQueuedResourceConflict(
+    key: string,
+    selfId: string
+  ): Promise<boolean> {
+    const commands = await getPendingCommands()
+    return commands.some(
+      (c) =>
+        c.id !== selfId &&
+        !inFlightCommandIds.has(c.id) &&
+        getResourceKey(c) === key
+    )
   }
 
   async function handleAuthError(): Promise<void> {
@@ -312,6 +383,9 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
         const survivingIds = new Set(coalesced.flatMap((c) => c.originalIds))
         for (const cmd of commands) {
           if (!survivingIds.has(cmd.id)) {
+            // Cancelled out (e.g. POST+DELETE) — nothing will replay, so
+            // lift any destroy suppression its refs held
+            clearPendingDestroysFor(cmd.optimistic)
             await removeCommand(cmd.id)
             pendingCount.value--
             await new Promise<void>((r) => setTimeout(r, 0))
@@ -332,6 +406,7 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
               command.workspaceId ?? null
             )
             for (const id of command.originalIds) {
+              clearPendingDestroysFor(commandsById.get(id)?.optimistic)
               await removeCommand(id)
               await new Promise<void>((r) => setTimeout(r, 0))
             }
@@ -361,6 +436,7 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
                 for (const ref of refs) {
                   rollbackOptimistic(ref)
                 }
+                clearPendingDestroysFor(refs)
                 failedRollbacks.push(labelForRefs(refs))
               } else {
                 unlinkedFailures++

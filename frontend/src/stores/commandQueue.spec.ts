@@ -33,19 +33,31 @@ vi.mock('@/api/commandDb', () => {
   }
 })
 
-// Mock coalesceCommands to pass through by default
-vi.mock('@/api/coalesceCommands', () => ({
-  coalesceCommands: vi.fn((commands) =>
-    commands.map(
-      (cmd: { id: string; method: string; path: string; body?: unknown }) => ({
-        method: cmd.method,
-        path: cmd.path,
-        body: cmd.body,
-        originalIds: [cmd.id],
-      })
-    )
-  ),
-}))
+// Mock coalesceCommands to pass through by default; the real getResourceKey
+// is kept because enqueue's per-resource conflict check uses it.
+vi.mock('@/api/coalesceCommands', async () => {
+  const actual = await vi.importActual<typeof import('@/api/coalesceCommands')>(
+    '@/api/coalesceCommands'
+  )
+  return {
+    getResourceKey: actual.getResourceKey,
+    coalesceCommands: vi.fn((commands) =>
+      commands.map(
+        (cmd: {
+          id: string
+          method: string
+          path: string
+          body?: unknown
+        }) => ({
+          method: cmd.method,
+          path: cmd.path,
+          body: cmd.body,
+          originalIds: [cmd.id],
+        })
+      )
+    ),
+  }
+})
 
 // Mock api client — commandQueue uses rawApi (the pure client) directly
 // and calls processPoolResponse itself on success. The mock below satisfies
@@ -890,6 +902,134 @@ describe('commandQueue store', () => {
       expect(pool.get('event', 'evt-1')).toBeUndefined()
       expect(removeCommand).toHaveBeenCalledWith('cmd-a')
       expect(notificationMocks.showError).not.toHaveBeenCalled()
+    })
+  })
+
+  // A queued destroy already removed the object locally — imports (a
+  // reconciliation full sync re-delivering the not-yet-deleted row) must
+  // not resurrect it while the delete is still waiting to replay.
+  describe('pending-destroy suppression', () => {
+    it('suppresses resurrection of a queued destroy until the replay lands', async () => {
+      vi.useFakeTimers()
+      websocketMocks.state = 'authenticated'
+      const store = useCommandQueueStore()
+      const pool = useObjectPoolStore()
+      const removed = [
+        {
+          object: makeEvent({ name: 'Doomed' }),
+          scopes: [Scope.workspace('ws-1')],
+        },
+      ]
+
+      mockedApi.delete.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      await expect(
+        store.enqueue('DELETE', '/api/events/evt-1', undefined, {
+          kind: 'destroy',
+          removed,
+        })
+      ).rejects.toThrow(CommandQueuedError)
+
+      // A full sync re-delivers the object the server hasn't deleted yet
+      pool.importObjects([makeEvent()], { scope: Scope.workspace('ws-1') })
+      expect(pool.get('event', 'evt-1')).toBeUndefined()
+
+      // The armed retry replays the delete successfully
+      const commandId = (await vi.mocked(addCommand).mock.results[0]!
+        .value) as string
+      vi.mocked(getPendingCommands).mockResolvedValue([
+        {
+          id: commandId,
+          method: 'DELETE' as const,
+          path: '/api/events/evt-1',
+          createdAt: 1,
+          optimistic: { kind: 'destroy' as const, removed },
+        },
+      ])
+      mockedApi.delete.mockResolvedValueOnce(okResponse(null))
+      await vi.runAllTimersAsync()
+
+      // Suppression lifted — a later import (recreated object) flows again
+      pool.importObjects([makeEvent()], { scope: Scope.workspace('ws-1') })
+      expect(pool.get('event', 'evt-1')).toBeDefined()
+      vi.useRealTimers()
+    })
+
+    it('re-marks queued destroys on startup', async () => {
+      const pool = useObjectPoolStore()
+      vi.mocked(getPendingCommands).mockResolvedValueOnce([
+        {
+          id: 'cmd-a',
+          method: 'DELETE' as const,
+          path: '/api/events/evt-1',
+          createdAt: 1,
+          optimistic: {
+            kind: 'destroy' as const,
+            removed: [
+              { object: makeEvent(), scopes: [Scope.workspace('ws-1')] },
+            ],
+          },
+        },
+      ])
+      // The triggered replay fails retryably, keeping the command queued
+      mockedApi.delete.mockRejectedValue(new TypeError('Failed to fetch'))
+
+      const store = useCommandQueueStore()
+      await store.initialize()
+      await vi.waitFor(() => expect(store.isProcessing).toBe(false))
+
+      pool.importObjects([makeEvent()], { scope: Scope.workspace('ws-1') })
+      expect(pool.get('event', 'evt-1')).toBeUndefined()
+    })
+  })
+
+  // A live mutation must not overtake an older queued write to the same
+  // resource: the direct request would reach the server first and then
+  // lose to the stale replay. Conflicting mutations queue behind it and
+  // ride the drain, which coalesces and sends them in order.
+  describe('per-resource ordering against the queue', () => {
+    it('queues a mutation when an older queued command targets the same resource', async () => {
+      vi.useFakeTimers()
+      websocketMocks.state = 'authenticated'
+      const store = useCommandQueueStore()
+      store.pendingCount = 1
+      vi.mocked(getPendingCommands).mockResolvedValue([
+        {
+          id: 'cmd-old',
+          method: 'PUT' as const,
+          path: '/api/events/1',
+          body: { name: 'Old edit' },
+          createdAt: 1,
+        },
+      ])
+
+      await expect(
+        store.enqueue('PUT', '/api/events/1', { name: 'New edit' })
+      ).rejects.toThrow(CommandQueuedError)
+
+      expect(mockedApi.put).not.toHaveBeenCalled()
+      vi.useRealTimers()
+    })
+
+    it('executes directly when queued commands target other resources', async () => {
+      vi.useFakeTimers()
+      websocketMocks.state = 'authenticated'
+      const store = useCommandQueueStore()
+      store.pendingCount = 1
+      vi.mocked(getPendingCommands).mockResolvedValue([
+        {
+          id: 'cmd-old',
+          method: 'PUT' as const,
+          path: '/api/events/2',
+          body: {},
+          createdAt: 1,
+        },
+      ])
+      mockedApi.put.mockResolvedValueOnce(okResponse(null))
+
+      await store.enqueue('PUT', '/api/events/1', { name: 'New edit' })
+
+      expect(mockedApi.put).toHaveBeenCalledTimes(1)
+      vi.useRealTimers()
     })
   })
 

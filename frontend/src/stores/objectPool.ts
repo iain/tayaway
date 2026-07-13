@@ -297,6 +297,26 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
   // server.
   const tempObjectIds = new Set<string>()
 
+  // Ids whose optimistic destroy is still queued for replay. Imports and
+  // replace re-inserts skip them: a reconciliation full sync re-delivers
+  // the not-yet-deleted row, and resurrecting it while its DELETE waits to
+  // replay flip-flops the UI. The command queue marks these around the
+  // destroy command's lifecycle (rollback restore() is unaffected — it
+  // goes through set()).
+  const pendingDestroyIds = new Set<string>()
+
+  function markPendingDestroy(objectIds: string[]): void {
+    for (const id of objectIds) {
+      pendingDestroyIds.add(id)
+    }
+  }
+
+  function clearPendingDestroy(objectIds: string[]): void {
+    for (const id of objectIds) {
+      pendingDestroyIds.delete(id)
+    }
+  }
+
   // Ids removed while a chunked replaceScope() is yielding between chunks.
   // remove/removeMany/cascadeRemove feed every in-flight replace's tracker
   // so later chunks don't resurrect an object a delete broadcast (or an
@@ -465,6 +485,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     for (const obj of poolObjects) {
       const typeMap = objects.value.get(obj.objectType)
       if (!typeMap) continue
+      if (pendingDestroyIds.has(obj.id)) continue
 
       const scope = explicitScope ?? deriveScope(obj)
       const existing = typeMap.get(obj.id)
@@ -1085,6 +1106,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     // either way: the object is in this scope per the server.
     function insertFromPayload(obj: PoolObject): void {
       if (removedDuringReplace.has(obj.id)) return
+      if (pendingDestroyIds.has(obj.id)) return
       const typeMap = objects.value.get(obj.objectType)
       if (!typeMap) return
       const existing = typeMap.get(obj.id)
@@ -1188,6 +1210,7 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     scopeToIds.clear()
     getAllCache.clear()
     replaceRemovalTrackers.clear()
+    pendingDestroyIds.clear()
     for (const parentMap of cascadeIndex.values()) {
       parentMap.clear()
     }
@@ -1213,6 +1236,8 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
     hasPending,
     set,
     markTemp,
+    markPendingDestroy,
+    clearPendingDestroy,
     restore,
     remove,
     removeMany,
