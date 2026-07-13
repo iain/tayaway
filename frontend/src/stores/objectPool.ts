@@ -874,7 +874,13 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       // broadcast can land before a chunked replace inserts the object.
       noteRemovalDuringReplace(id)
       const typeMap = objects.value.get(type)
-      if (!typeMap) return
+      if (!typeMap) {
+        // Storage pre-creates a map per known type, so a missing map means
+        // the server sent a type the pool can't resolve. Dropping such a
+        // deletion silently is how snake_case sync tombstones went unnoticed.
+        console.warn(`[pool] dropping deletion for unknown type "${type}"`)
+        return
+      }
 
       const obj = typeMap.get(id)
       if (obj) {

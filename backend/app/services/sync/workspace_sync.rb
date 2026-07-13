@@ -55,11 +55,18 @@ module Sync
         deleted = if full
                     []
                   else
+                    # Tombstones store the registry key (snake_case); the client
+                    # pool only knows client types (camelCase) and silently
+                    # drops deletions for types it can't resolve — map before
+                    # shipping, like the delete broadcast path does.
                     DB[:deleted_items]
                       .where(workspace_id: workspace_id)
                       .where(Sequel.lit("deleted_at > ?", effective_since))
                       .select(:object_type, :object_id)
-                      .map { |row| { objectType: row[:object_type], id: row[:object_id].to_s } }
+                      .map do |row|
+                        entry = ObjectRegistry::BY_KEY[row[:object_type]]
+                        { objectType: entry ? entry.client_type : row[:object_type], id: row[:object_id].to_s }
+                      end
                   end
 
         {

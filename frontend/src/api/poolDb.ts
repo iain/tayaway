@@ -46,7 +46,11 @@ interface PoolCacheDB {
 // Bumped to 15 when attendance entries gained per-day `{date, plusOnes}` guests.
 // Bumped to 16 when per-scope `fullSyncedAt` meta was added for the
 // reconciliation cadence (wipe → one full sync that records it).
-const CACHE_VERSION = 16
+// Bumped to 17 to purge pools poisoned by partial-sync tombstones that
+// shipped snake_case objectTypes: the client dropped those deletions, and
+// the tombstones are now behind every cursor, so only a wipe → full sync
+// removes the zombie rows.
+const CACHE_VERSION = 17
 
 const CACHE_VERSION_META_KEY = 'cacheVersion'
 const SYNCED_AT_META_PREFIX = 'syncedAt:'

@@ -56,22 +56,29 @@ RSpec.describe Sync::WorkspaceSync do
     expect(event_obj[:name]).to eq("Birthday Party")
   end
 
-  it "returns deleted items on partial sync" do
+  # Tombstones are stored with the registry key (snake_case) but the client
+  # pool is keyed by client types (camelCase) — cascadeRemove silently no-ops
+  # on an unknown type, so the payload must carry client types or multi-word
+  # deletions never prune.
+  it "returns deleted items on partial sync, typed for the client" do
     event = TestFactories.event(workspace: workspace, user: user)
     event_id = event[:id].to_s
+    assignment_id = SecureRandom.uuid
     since = Time.now - 60
 
-    DB[:deleted_items].insert(
-      workspace_id: workspace[:id],
-      object_type: "event",
-      object_id: event_id,
-      deleted_at: Time.now
-    )
+    DB[:deleted_items].multi_insert([
+                                      { workspace_id: workspace[:id], object_type: "event",
+                                        object_id: event_id, deleted_at: Time.now },
+                                      { workspace_id: workspace[:id], object_type: "chore_assignment",
+                                        object_id: assignment_id, deleted_at: Time.now }
+                                    ]
+                                   )
 
     result = described_class.call(workspace_id: workspace[:id], since: since)
 
     expect(result[:syncType]).to eq("partial")
     expect(result[:deleted]).to include(hash_including(objectType: "event", id: event_id))
+    expect(result[:deleted]).to include(hash_including(objectType: "choreAssignment", id: assignment_id))
   end
 
   it "forces a full sync when since is older than retention period" do
@@ -109,7 +116,7 @@ RSpec.describe Sync::WorkspaceSync do
 
     expect(result[:syncType]).to eq("partial")
     expect(result[:objects].map { |o| o[:id] }).to include(event[:id].to_s)
-    expect(result[:deleted]).to include(hash_including(objectType: "task_list"))
+    expect(result[:deleted]).to include(hash_including(objectType: "taskList"))
   end
 
   # Behavioral guard for the registry-driven dispatch: every type in
