@@ -212,6 +212,15 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
     )
   }
 
+  async function reassignStale(rosterId: string) {
+    await mutate('Failed to reassign chores', (commandQueue) =>
+      commandQueue.enqueue<PoolApiResponse>(
+        'POST',
+        `/chore-rosters/${rosterId}/reassign-stale`
+      )
+    )
+  }
+
   async function clearUnpinned(rosterId: string) {
     await mutate('Failed to clear assignments', (commandQueue) =>
       commandQueue.enqueue<PoolApiResponse>(
@@ -238,6 +247,7 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
     updateAssignment,
     deleteAssignment,
     autofill,
+    reassignStale,
     clearUnpinned,
     $reset,
   }

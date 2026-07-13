@@ -32,12 +32,11 @@ import type {
 } from '@/types/pool'
 import { can } from '@/composables/usePermission'
 import {
-  detectAttendanceDrift,
   refillableAssignments,
   shouldSuggestAutofill,
+  staleAssignmentIds,
 } from '@/utils/chores'
 import { enumerateDates, eventHasDates } from '@/utils/event'
-import { getMemberNameFromMap } from '@/utils/member'
 import { zonedDateString } from '@/utils/timezone'
 
 const props = withDefaults(
@@ -206,13 +205,14 @@ const suggestAutofill = computed(
     )
 )
 
-const drift = computed(() => {
+// Chores whose holder isn't attending that day. Computed over the refillable
+// set — a chore that already started today is history, so its holder having
+// left isn't actionable. Flags chips (pinned included) via the grid/day list.
+const staleIds = computed(() => {
   if (!event.value?.startDate || !event.value?.endDate || eventOver.value) {
-    return { staleAssignmentIds: new Set<string>(), idleUserIds: [] }
+    return new Set<string>()
   }
-  // Drift only over what a re-fill can still change — a chore that already
-  // started today is history, so its holder having left isn't actionable.
-  return detectAttendanceDrift(
+  return staleAssignmentIds(
     refillable.value,
     rsvps.value,
     { startDate: event.value.startDate, endDate: event.value.endDate },
@@ -220,36 +220,16 @@ const drift = computed(() => {
   )
 })
 
-// One sentence per drift kind, joined for the nudge card.
-const driftMessage = computed(() => {
-  const parts: string[] = []
-  const stale = drift.value.staleAssignmentIds.size
-  if (stale > 0) {
-    parts.push(
-      stale === 1
-        ? '1 upcoming chore belongs to someone who isn’t there that day'
-        : `${stale} upcoming chores belong to people who aren’t there that day`
-    )
-  }
-  const idle = drift.value.idleUserIds.map((id) =>
-    getMemberNameFromMap(id, memberMap.value)
-  )
-  if (idle.length > 0) {
-    const names = new Intl.ListFormat('en', {
-      style: 'long',
-      type: 'conjunction',
-    }).format(idle)
-    parts.push(
-      idle.length === 1
-        ? `${names} has no upcoming chores`
-        : `${names} have no upcoming chores`
-    )
-  }
-  return parts.join(', and ')
-})
+// What the nudge's reassign button will actually move: stale and unpinned.
+// A hand-pinned person stays put even when stale — their chip's warning icon
+// carries that signal — so the card only appears when the button can act.
+const staleUnpinnedCount = computed(
+  () =>
+    refillable.value.filter((a) => !a.pinned && staleIds.value.has(a.id)).length
+)
 
-const showDriftNudge = computed(
-  () => !suggestAutofill.value && driftMessage.value !== ''
+const showStaleNudge = computed(
+  () => !suggestAutofill.value && staleUnpinnedCount.value > 0
 )
 
 const confirmDeleteChoreName = computed(() => {
@@ -432,6 +412,24 @@ async function handleNudgeAutofill() {
   }
 }
 
+const reassignRunning = ref(false)
+
+// The stale nudge's button: bounded to exactly the flagged chores, so it runs
+// without a confirm — unlike a re-fill, it can't move anyone else's plans.
+async function handleReassignStale() {
+  if (!roster.value) return
+  if (!userIsAttending.value) {
+    showRsvpDialog.value = true
+    return
+  }
+  reassignRunning.value = true
+  try {
+    await choreRostersStore.reassignStale(roster.value.id)
+  } finally {
+    reassignRunning.value = false
+  }
+}
+
 function handleDeleteRoster() {
   if (!userIsAttending.value) {
     showRsvpDialog.value = true
@@ -561,23 +559,32 @@ onMounted(async () => {
           </div>
         </BaseCard>
 
-        <BaseCard v-if="showDriftNudge" variant="action" class="mb-4 p-4">
+        <BaseCard v-if="showStaleNudge" variant="action" class="mb-4 p-4">
           <div
             class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
           >
             <p class="text-ink text-sm">
-              Attendance has changed: {{ driftMessage }}. Re-filling
-              redistributes the remaining days; past days and pinned assignments
-              stay put.
+              {{
+                staleUnpinnedCount === 1
+                  ? '1 upcoming chore belongs to someone who isn’t there that day.'
+                  : `${staleUnpinnedCount} upcoming chores belong to people who aren’t there that day.`
+              }}
+              Reassigning hands just
+              {{ staleUnpinnedCount === 1 ? 'it' : 'them' }}
+              to someone who is — everything else stays put.
             </p>
             <AppButton
               variant="secondary"
               class="shrink-0"
-              :loading="autofillRunning"
-              loading-label="Re-filling..."
-              @click="handleNudgeAutofill"
+              :loading="reassignRunning"
+              loading-label="Reassigning..."
+              @click="handleReassignStale"
             >
-              Re-fill remaining days
+              {{
+                staleUnpinnedCount === 1
+                  ? 'Reassign 1 chore'
+                  : `Reassign ${staleUnpinnedCount} chores`
+              }}
             </AppButton>
           </div>
         </BaseCard>
@@ -592,7 +599,7 @@ onMounted(async () => {
           :roster-id="roster.id"
           :current-user-id="currentUserId"
           :today="today"
-          :stale-assignment-ids="drift.staleAssignmentIds"
+          :stale-assignment-ids="staleIds"
           @assign="openAssign"
           @edit-assignment="openEditAssignment"
           @edit-chore-time="openEditChoreTime"
@@ -607,7 +614,7 @@ onMounted(async () => {
           :current-user-id="currentUserId"
           :scroll-to-today="scrollToToday"
           :today="today"
-          :stale-assignment-ids="drift.staleAssignmentIds"
+          :stale-assignment-ids="staleIds"
           @assign="openAssign"
           @edit-assignment="openEditAssignment"
         />
@@ -767,9 +774,18 @@ onMounted(async () => {
       @close="confirmAutofill = false"
     >
       <p class="text-ink-muted text-sm">
-        This will clear upcoming non-pinned assignments and redistribute what's
-        still ahead fairly among attendees. Days already past, chores that have
-        already started today, and pinned assignments stay as they are.
+        <template v-if="upcomingUnpinnedCount > 0">
+          This will reassign
+          {{ upcomingUnpinnedCount }} upcoming assignment{{
+            upcomingUnpinnedCount === 1 ? '' : 's'
+          }}
+          and redistribute what's still ahead fairly among attendees.
+        </template>
+        <template v-else>
+          This will fill the open slots fairly among attendees.
+        </template>
+        Days already past, chores that have already started today, and pinned
+        assignments stay as they are.
       </p>
       <div class="mt-6 flex justify-end gap-3">
         <TextButton variant="secondary" @click="confirmAutofill = false">
