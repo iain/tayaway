@@ -706,6 +706,53 @@ describe('commandQueue store', () => {
       expect(pool.get('event', 'evt-1')?.name).toBe('Deleted offline')
     })
 
+    // Multi-object flows (add date range = temp object + pending update on
+    // the poll) link an array of refs: all roll back, but it counts as ONE
+    // user change in the toast.
+    it('rolls back every ref of a composite linkage and counts one change', async () => {
+      const store = useCommandQueueStore()
+      const pool = useObjectPoolStore()
+      pool.set(makeEvent({ id: 'evt-temp' }), {
+        scope: Scope.workspace('ws-1'),
+        isTemp: true,
+      })
+      pool.importObjects([makeEvent({ name: 'Original' })], {
+        scope: Scope.workspace('ws-1'),
+      })
+      const pendingId = pool.addPending('event', 'evt-1', { name: 'Pending' })
+      vi.mocked(getPendingCommands).mockResolvedValueOnce([
+        {
+          id: 'cmd-a',
+          method: 'POST' as const,
+          path: '/api/events',
+          body: {},
+          createdAt: 1,
+          optimistic: [
+            {
+              kind: 'create' as const,
+              objectType: 'event' as const,
+              objectId: 'evt-temp',
+            },
+            {
+              kind: 'update' as const,
+              objectType: 'event' as const,
+              objectId: 'evt-1',
+              pendingId,
+            },
+          ],
+        },
+      ])
+      mockedApi.post.mockRejectedValueOnce({ status: 422, message: 'nope' })
+
+      await store.processQueue()
+
+      expect(pool.get('event', 'evt-temp')).toBeUndefined()
+      expect(pool.hasPending('event', 'evt-1')).toBe(false)
+      expect(notificationMocks.showError).toHaveBeenCalledExactlyOnceWith(
+        "Your offline event change couldn't be saved and was undone."
+      )
+    })
+
     it('shows one combined toast, without claiming unlinked changes were undone', async () => {
       const store = useCommandQueueStore()
       vi.mocked(getPendingCommands).mockResolvedValueOnce([

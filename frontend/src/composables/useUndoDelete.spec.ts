@@ -122,9 +122,20 @@ describe('useUndoDelete', () => {
     // Advance past undo window
     await vi.advanceTimersByTimeAsync(5000)
 
+    // The rollback linkage rides along so a permanently-failed replay
+    // restores the removed objects instead of stranding the deletion.
     expect(enqueueMock).toHaveBeenCalledWith(
       'DELETE',
-      '/task-lists/list-1/items/item-1'
+      '/task-lists/list-1/items/item-1',
+      undefined,
+      {
+        kind: 'destroy',
+        removed: [
+          expect.objectContaining({
+            object: expect.objectContaining({ id: 'item-1' }),
+          }),
+        ],
+      }
     )
   })
 

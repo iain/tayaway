@@ -32,6 +32,8 @@ function okResponse<T>(data: T): ApiResponse<T> {
 let enqueueImpl: () => Promise<ApiResponse<unknown>> = async () =>
   okResponse({ objects: [] })
 
+const enqueueMock = vi.fn().mockImplementation(() => enqueueImpl())
+
 vi.mock('@/stores/commandQueue', async () => {
   const actual = await vi.importActual<typeof import('@/stores/commandQueue')>(
     '@/stores/commandQueue'
@@ -39,7 +41,7 @@ vi.mock('@/stores/commandQueue', async () => {
   return {
     ...actual,
     useCommandQueueStore: () => ({
-      enqueue: vi.fn().mockImplementation(() => enqueueImpl()),
+      enqueue: enqueueMock,
     }),
   }
 })
@@ -426,6 +428,38 @@ describe('taskItems store', () => {
 
       expect(store.loading).toBe(false)
       expect(store.error).toBeNull()
+    })
+  })
+
+  describe('rollback linkage', () => {
+    it('links clearCompleted to the removed items for restore', async () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects(
+        [
+          makeTaskItem({
+            id: 'item-1',
+            completedAt: '2026-01-05T10:00:00.000Z',
+          }),
+        ],
+        { scope: Scope.workspace('test') }
+      )
+      const store = useTaskItemsStore()
+
+      await store.clearCompleted('list-1', ['item-1'])
+
+      expect(enqueueMock).toHaveBeenCalledWith(
+        'POST',
+        '/task-lists/list-1/clear-completed',
+        {},
+        {
+          kind: 'destroy',
+          removed: [
+            expect.objectContaining({
+              object: expect.objectContaining({ id: 'item-1' }),
+            }),
+          ],
+        }
+      )
     })
   })
 })

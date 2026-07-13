@@ -93,6 +93,23 @@ function labelForRef(ref: OptimisticRef): string | null {
   return type ? humanObjectType(type) : null
 }
 
+// A command's rollback refs as an array (composite linkages already are one).
+function optimisticRefs(
+  optimistic: OptimisticRef | OptimisticRef[] | undefined
+): OptimisticRef[] {
+  if (optimistic === undefined) return []
+  return Array.isArray(optimistic) ? optimistic : [optimistic]
+}
+
+// Human label for a failed command: the first labelable of its refs.
+function labelForRefs(refs: OptimisticRef[]): string | null {
+  for (const ref of refs) {
+    const label = labelForRef(ref)
+    if (label) return label
+  }
+  return null
+}
+
 // Only claim "undone" for changes that actually had a rollback linkage —
 // commands enqueued outside useMutation manage their own optimistic state
 // and nothing here reconciles them.
@@ -180,8 +197,10 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
     // commands are still waiting to replay.
     const pool = useObjectPoolStore()
     for (const command of commands) {
-      if (command.optimistic?.kind === 'create') {
-        pool.markTemp(command.optimistic.objectId)
+      for (const ref of optimisticRefs(command.optimistic)) {
+        if (ref.kind === 'create') {
+          pool.markTemp(ref.objectId)
+        }
       }
     }
 
@@ -203,7 +222,7 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
     method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     path: string,
     body?: unknown,
-    optimistic?: OptimisticRef
+    optimistic?: OptimisticRef | OptimisticRef[]
   ): Promise<ApiResponse<T>> {
     const workspaceId = useWorkspaceStore().currentWorkspaceId ?? null
     // The rollback linkage is written atomically with the row — a linkage
@@ -332,19 +351,20 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
               break
             }
             // Permanent server rejection — undo whatever optimistic state
-            // the original commands registered, drop them, and record each
-            // rolled-back change (not each coalesced group) for the
-            // combined toast below.
-            const refs = command.originalIds
-              .map((id) => commandsById.get(id)?.optimistic)
-              .filter((ref): ref is OptimisticRef => ref !== undefined)
-            if (refs.length > 0) {
-              for (const ref of refs) {
-                rollbackOptimistic(ref)
-                failedRollbacks.push(labelForRef(ref))
+            // the original commands registered and record the failures for
+            // the combined toast below. Counted per original command (one
+            // user change), not per coalesced group and not per ref — a
+            // composite linkage still rolls back all of its refs.
+            for (const id of command.originalIds) {
+              const refs = optimisticRefs(commandsById.get(id)?.optimistic)
+              if (refs.length > 0) {
+                for (const ref of refs) {
+                  rollbackOptimistic(ref)
+                }
+                failedRollbacks.push(labelForRefs(refs))
+              } else {
+                unlinkedFailures++
               }
-            } else {
-              unlinkedFailures++
             }
             try {
               for (const id of command.originalIds) {

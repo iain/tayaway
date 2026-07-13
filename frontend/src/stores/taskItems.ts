@@ -132,7 +132,8 @@ export const useTaskItemsStore = defineStore('taskItems', () => {
       await commandQueue.enqueue(
         'POST',
         `/task-lists/${taskListId}/clear-completed`,
-        {}
+        {},
+        { kind: 'destroy', removed: saved }
       )
     } catch (e) {
       if (e instanceof CommandQueuedError) {

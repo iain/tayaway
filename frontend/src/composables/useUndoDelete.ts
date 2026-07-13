@@ -41,12 +41,17 @@ export function useUndoDelete() {
       duration: UNDO_WINDOW_MS,
     })
 
-    // 4. After undo window, fire the actual API delete
+    // 4. After undo window, fire the actual API delete. The destroy ref
+    // rides along so a permanently-failed replay restores the objects
+    // instead of stranding the local deletion.
     setTimeout(async () => {
       if (undone) return
       try {
         const commandQueue = useCommandQueueStore()
-        await commandQueue.enqueue('DELETE', options.apiPath)
+        await commandQueue.enqueue('DELETE', options.apiPath, undefined, {
+          kind: 'destroy',
+          removed: removedObjects,
+        })
       } catch (e) {
         if (e instanceof CommandQueuedError) return
         pool.restore(removedObjects)

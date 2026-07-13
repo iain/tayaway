@@ -47,6 +47,8 @@ function okResponse<T>(data: T): ApiResponse<T> {
 let enqueueImpl: () => Promise<ApiResponse<unknown>> = async () =>
   okResponse({ objects: [] })
 
+const enqueueMock = vi.fn().mockImplementation(() => enqueueImpl())
+
 vi.mock('@/stores/commandQueue', async () => {
   const actual = await vi.importActual<typeof import('@/stores/commandQueue')>(
     '@/stores/commandQueue'
@@ -54,7 +56,7 @@ vi.mock('@/stores/commandQueue', async () => {
   return {
     ...actual,
     useCommandQueueStore: () => ({
-      enqueue: vi.fn().mockImplementation(() => enqueueImpl()),
+      enqueue: enqueueMock,
     }),
   }
 })
@@ -359,6 +361,68 @@ describe('datePolls store', () => {
 
       expect(store.loading).toBe(false)
       expect(store.error).toBeNull()
+    })
+  })
+
+  // The composite optimistic state (temp object + pending update on the
+  // poll) rides into enqueue as an array of rollback refs, so a
+  // permanently-failed replay undoes both.
+  describe('rollback linkage', () => {
+    it('links addDateRange as create + poll update', async () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects([makeDatePoll({ dateRangeIds: [] })], {
+        scope: Scope.workspace('test'),
+      })
+      const store = useDatePollsStore()
+
+      await store.addDateRange('evt-1', '2026-06-01', '2026-06-07')
+
+      expect(enqueueMock).toHaveBeenCalledWith(
+        'POST',
+        '/events/evt-1/poll/date-ranges',
+        expect.anything(),
+        [
+          expect.objectContaining({ kind: 'create', objectType: 'dateRange' }),
+          expect.objectContaining({
+            kind: 'update',
+            objectType: 'datePoll',
+            objectId: 'poll-1',
+            pendingId: expect.any(String),
+          }),
+        ]
+      )
+    })
+
+    it('links removeDateRange as destroy + poll update', async () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects(
+        [makeDatePoll({ dateRangeIds: ['dr-1'] }), makeDateRange()],
+        { scope: Scope.workspace('test') }
+      )
+      const store = useDatePollsStore()
+
+      await store.removeDateRange('evt-1', 'dr-1')
+
+      expect(enqueueMock).toHaveBeenCalledWith(
+        'DELETE',
+        '/events/evt-1/poll/date-ranges/dr-1',
+        undefined,
+        [
+          expect.objectContaining({
+            kind: 'destroy',
+            removed: [
+              expect.objectContaining({
+                object: expect.objectContaining({ id: 'dr-1' }),
+              }),
+            ],
+          }),
+          expect.objectContaining({
+            kind: 'update',
+            objectType: 'datePoll',
+            pendingId: expect.any(String),
+          }),
+        ]
+      )
     })
   })
 })
