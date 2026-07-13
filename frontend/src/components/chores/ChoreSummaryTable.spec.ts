@@ -36,11 +36,18 @@ function mountTable(headingLevel?: 2 | 3) {
       members: [
         makeMember({ id: 'mem-1', userId: 'user-1', name: 'Alice' }),
         makeMember({ id: 'mem-2', userId: 'user-2', name: 'Bob' }),
+        makeMember({ id: 'mem-3', userId: 'user-3', name: 'Carol' }),
       ],
       rsvps: [
-        // Alice is only around one day; Bob stays the whole event.
+        // Alice is only around one day; Bob stays the whole event; Carol is
+        // there for two days but holds no chores at all.
         makeRsvp({ id: 'r1', userId: 'user-1', attendance: ['2026-03-10'] }),
         makeRsvp({ id: 'r2', userId: 'user-2' }),
+        makeRsvp({
+          id: 'r3',
+          userId: 'user-3',
+          attendance: ['2026-03-11', '2026-03-12'],
+        }),
       ],
       event: makeEvent({ startDate: '2026-03-10', endDate: '2026-03-12' }),
       ...(headingLevel !== undefined ? { headingLevel } : {}),
@@ -49,17 +56,24 @@ function mountTable(headingLevel?: 2 | 3) {
 }
 
 describe('ChoreSummaryTable', () => {
-  it('orders rows by load, heaviest first', () => {
+  it('orders rows by load, heaviest first, including chore-less attendees', () => {
     const names = mountTable()
       .findAll('tbody th')
       .map((cell) => cell.text())
-    expect(names).toEqual(['Bob', 'Alice'])
+    expect(names).toEqual(['Bob', 'Alice', 'Carol'])
   })
 
   it('shows how many days each person is there, so uneven totals read as fair', () => {
     const rows = mountTable().findAll('tbody tr')
-    const daysThere = rows.map((row) => row.findAll('td').at(-1)!.text())
-    expect(daysThere).toEqual(['3', '1']) // Bob all 3 days, Alice just 1
+    const daysThere = rows.map((row) => row.findAll('td').at(-2)!.text())
+    expect(daysThere).toEqual(['3', '1', '2'])
+  })
+
+  it('shows each person’s chores per day there — the rate auto-fill balances on', () => {
+    const rows = mountTable().findAll('tbody tr')
+    const perDay = rows.map((row) => row.findAll('td').at(-1)!.text())
+    // Bob 2 chores / 3 days, Alice 1/1, Carol 0/2.
+    expect(perDay).toEqual(['0.7', '1.0', '0.0'])
   })
 
   it('renders the Workload heading as an h2 by default', () => {

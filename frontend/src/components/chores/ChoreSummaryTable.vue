@@ -30,6 +30,8 @@ interface SummaryRow {
   counts: Map<string, number>
   total: number
   daysThere: number
+  /** total ÷ daysThere, formatted; "—" for someone with no attended days. */
+  perDay: string
 }
 
 const rows = computed<SummaryRow[]>(() => {
@@ -62,17 +64,25 @@ const rows = computed<SummaryRow[]>(() => {
     }
   }
 
+  // Attendees without a single chore still get a row — their 0.0/day IS the
+  // fairness signal (this table replaced the "X has no upcoming chores" nudge).
+  for (const userId of daysByUser.keys()) {
+    if (!byUser.has(userId)) byUser.set(userId, new Map())
+  }
+
   const result: SummaryRow[] = []
   for (const [userId, counts] of byUser) {
     const member = memberMap.get(userId)
     let total = 0
     for (const c of counts.values()) total += c
+    const daysThere = daysByUser.get(userId) ?? 0
     result.push({
       userId,
       name: member?.name ?? 'Unknown',
       counts,
       total,
-      daysThere: daysByUser.get(userId) ?? 0,
+      daysThere,
+      perDay: daysThere > 0 ? (total / daysThere).toFixed(1) : '—',
     })
   }
 
@@ -111,6 +121,9 @@ const rows = computed<SummaryRow[]>(() => {
             <th scope="col" class="pt-3 pr-4 pb-2 text-right whitespace-nowrap">
               Days there
             </th>
+            <th scope="col" class="pt-3 pr-4 pb-2 text-right whitespace-nowrap">
+              Per day
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -138,6 +151,9 @@ const rows = computed<SummaryRow[]>(() => {
             </td>
             <td class="text-ink-muted py-2 pr-4 text-right tabular-nums">
               {{ row.daysThere }}
+            </td>
+            <td class="py-2 pr-4 text-right tabular-nums">
+              {{ row.perDay }}
             </td>
           </tr>
         </tbody>

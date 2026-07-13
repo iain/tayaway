@@ -56,25 +56,15 @@ export function attendingUserIdsOn(
   return userIds
 }
 
-export interface AttendanceDrift {
-  /** Today-onward assignments whose assignee isn't attending that day. */
-  staleAssignmentIds: Set<string>
-  /** Attendees with remaining days but no upcoming assignment anywhere. */
-  idleUserIds: string[]
-}
-
 /**
- * How far the roster has drifted from who is actually around: people who left
- * but still hold upcoming slots, and people who arrived (or extended) with
- * nothing to do. Both resolve with one re-run of auto-fill, which only touches
- * today onward — the page uses this to nudge exactly then.
+ * The upcoming assignments whose holder isn't attending that day — chores
+ * that won't get done unless someone else takes them over. These flag their
+ * chips and feed the reassign nudge.
  *
- * Days before `today` are history and never drift. `rsvps` must be the
- * attending ones only. Idle attendees are only reported while the roster has
- * upcoming assignments at all — an empty or wound-down roster is the plain
- * auto-fill nudge's territory, not drift.
+ * Days before `today` are history and never stale. `rsvps` must be the
+ * attending ones only.
  */
-export function detectAttendanceDrift(
+export function staleAssignmentIds(
   assignments: ReadonlyArray<
     Pick<PoolChoreAssignment, 'id' | 'userId' | 'date'>
   >,
@@ -83,7 +73,7 @@ export function detectAttendanceDrift(
   >,
   event: { startDate: string; endDate: string },
   today: string
-): AttendanceDrift {
+): Set<string> {
   const attendedByUser = new Map<string, string[]>()
   for (const rsvp of rsvps) {
     attendedByUser.set(
@@ -92,25 +82,14 @@ export function detectAttendanceDrift(
     )
   }
 
-  const staleAssignmentIds = new Set<string>()
-  const upcomingAssignees = new Set<string>()
+  const stale = new Set<string>()
   for (const a of assignments) {
     if (a.date < today) continue
-    upcomingAssignees.add(a.userId)
     if (!attendedByUser.get(a.userId)?.includes(a.date)) {
-      staleAssignmentIds.add(a.id)
+      stale.add(a.id)
     }
   }
-
-  const idleUserIds: string[] = []
-  if (upcomingAssignees.size > 0) {
-    for (const [userId, dates] of attendedByUser) {
-      if (upcomingAssignees.has(userId)) continue
-      if (dates.some((d) => d >= today)) idleUserIds.push(userId)
-    }
-  }
-
-  return { staleAssignmentIds, idleUserIds }
+  return stale
 }
 
 export function shouldSuggestAutofill(

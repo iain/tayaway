@@ -308,6 +308,26 @@ RSpec.describe "Chore rosters endpoints" do
     end
   end
 
+  describe "POST /api/chore-rosters/:id/reassign-stale" do
+    it "hands a stale assignment to an attendee" do
+      roster = TestFactories.chore_roster(event: event, user: user)
+      chore = TestFactories.chore(chore_roster: roster)
+      # `user` never RSVPed, so their future slot is stale; the attendee
+      # takes it over. Future-dated for the same timezone reason as below.
+      attendee = TestFactories.user
+      TestFactories.workspace_membership(workspace: workspace, user: attendee)
+      TestFactories.rsvp(event: event, user: attendee, attending: true, start_date: nil, end_date: nil)
+      stale = TestFactories.chore_assignment(chore: chore, user: user, date: Date.today + 2, pinned: false)
+
+      post "/api/chore-rosters/#{roster[:id]}/reassign-stale",
+           {}.to_json,
+           auth_headers.merge("CONTENT_TYPE" => "application/json")
+
+      expect(last_response.status).to eq(200)
+      expect(DB[:chore_assignments].where(id: stale[:id]).first[:user_id]).to eq(attendee[:id])
+    end
+  end
+
   describe "POST /api/chore-rosters/:id/clear-unpinned" do
     it "clears non-pinned assignments" do
       roster = TestFactories.chore_roster(event: event, user: user)

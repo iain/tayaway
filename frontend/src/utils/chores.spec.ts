@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
-  detectAttendanceDrift,
   refillableAssignments,
   shouldSuggestAutofill,
+  staleAssignmentIds,
 } from './chores'
 import { makeChore, makeChoreAssignment, makeRsvp } from '@/test/factories'
 
@@ -85,7 +85,7 @@ describe('shouldSuggestAutofill', () => {
   })
 })
 
-describe('detectAttendanceDrift', () => {
+describe('staleAssignmentIds', () => {
   // Four-day event, viewed on day three.
   const event = { startDate: '2026-03-01', endDate: '2026-03-04' }
   const TODAY = '2026-03-03'
@@ -106,9 +106,9 @@ describe('detectAttendanceDrift', () => {
       }),
     ]
 
-    const drift = detectAttendanceDrift(assignments, rsvps, event, TODAY)
-    expect(drift.staleAssignmentIds).toEqual(new Set(['a-future']))
-    expect(drift.idleUserIds).toEqual([])
+    expect(staleAssignmentIds(assignments, rsvps, event, TODAY)).toEqual(
+      new Set(['a-future'])
+    )
   })
 
   it('flags upcoming assignments held by someone with no attending RSVP at all', () => {
@@ -120,41 +120,8 @@ describe('detectAttendanceDrift', () => {
       }),
     ]
 
-    const drift = detectAttendanceDrift(assignments, [], event, TODAY)
-    expect(drift.staleAssignmentIds).toEqual(new Set(['a1']))
-  })
-
-  it('reports attendees with remaining days but no upcoming chores while others carry slots', () => {
-    const rsvps = [
-      makeRsvp({ id: 'r1', userId: 'user-1' }),
-      // user-2 joined for the tail end of the event and has nothing to do.
-      makeRsvp({
-        id: 'r2',
-        userId: 'user-2',
-        attendance: ['2026-03-03', '2026-03-04'],
-      }),
-    ]
-    const assignments = [
-      makeChoreAssignment({ id: 'a1', userId: 'user-1', date: '2026-03-03' }),
-    ]
-
-    const drift = detectAttendanceDrift(assignments, rsvps, event, TODAY)
-    expect(drift.staleAssignmentIds).toEqual(new Set())
-    expect(drift.idleUserIds).toEqual(['user-2'])
-  })
-
-  it('reports nothing for an empty or fully past roster — that is the auto-fill nudge’s job', () => {
-    const rsvps = [
-      makeRsvp({ id: 'r1', userId: 'user-1' }),
-      makeRsvp({ id: 'r2', userId: 'user-2' }),
-    ]
-    // Only past assignments: nobody is "idle", nothing is stale.
-    const assignments = [
-      makeChoreAssignment({ id: 'a1', userId: 'user-1', date: '2026-03-01' }),
-    ]
-
-    const drift = detectAttendanceDrift(assignments, rsvps, event, TODAY)
-    expect(drift.staleAssignmentIds).toEqual(new Set())
-    expect(drift.idleUserIds).toEqual([])
+    expect(staleAssignmentIds(assignments, [], event, TODAY)).toEqual(
+      new Set(['a1'])
+    )
   })
 })

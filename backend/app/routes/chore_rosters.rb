@@ -64,6 +64,18 @@ class App
         end
       end
 
+      # POST /api/chore-rosters/:id/reassign-stale
+      r.on "reassign-stale" do
+        r.post do
+          result = ChoreRosters::ReassignStale.call(
+            roster_id: roster.id,
+            workspace_id: workspace_id,
+            membership: current_membership
+          )
+          handle_result(result)
+        end
+      end
+
       # POST /api/chore-rosters/:id/clear-unpinned
       r.on "clear-unpinned" do
         r.post do
