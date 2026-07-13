@@ -113,10 +113,18 @@ function handleDownloadIcs(): void {
       <!-- Event has dates: show RSVP section -->
       <template v-else-if="eventHasDates(event)">
         <RsvpSection :event="event" :current-user-id="currentUserId" />
-        <TextButton class="mt-4" @click="handleDownloadIcs">
-          <ArrowDownTrayIcon class="size-4" />
-          Add to calendar
-        </TextButton>
+        <div class="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+          <TextButton @click="handleDownloadIcs">
+            <ArrowDownTrayIcon class="size-4" />
+            Add to calendar
+          </TextButton>
+          <router-link
+            :to="`/events/${event.id}/days`"
+            class="text-sm text-cyan-700 underline hover:text-cyan-800 dark:text-cyan-400 dark:hover:text-cyan-300"
+          >
+            See who's there each day
+          </router-link>
+        </div>
       </template>
 
       <!-- No dates yet: show empty state with inline date form -->

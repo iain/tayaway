@@ -165,6 +165,7 @@ const eventDetailRoutes = new Set([
   'event-planning-vote',
   'event-planning-date-ranges',
   'event-rsvp',
+  'event-days',
   'event-expenses',
   'event-chores',
 ])
@@ -191,6 +192,7 @@ const routeTitleMap: Record<string, string> = {
   'event-planning-vote': 'Vote',
   'event-planning-date-ranges': 'Date Ranges',
   'event-rsvp': 'RSVP',
+  'event-days': 'Days',
   'event-expenses': 'Expenses',
   'event-chores': 'Chores',
   chores: 'Chores',

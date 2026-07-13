@@ -8,6 +8,7 @@ import {
   HandThumbUpIcon,
   PlusIcon,
   UserGroupIcon,
+  UsersIcon,
   ViewColumnsIcon,
 } from '@heroicons/vue/24/outline'
 import { useObjectPoolStore } from '@/stores/objectPool'
@@ -27,6 +28,7 @@ const eventDetailRoutes = new Set([
   'event-planning-vote',
   'event-planning-date-ranges',
   'event-rsvp',
+  'event-days',
   'event-expenses',
   'event-chores',
 ])
@@ -82,6 +84,15 @@ export function useEventContextCommands() {
         name: 'Go to RSVP',
         icon: UserGroupIcon,
         href: `/events/${eventId}/rsvp`,
+      })
+    }
+
+    if (routeName !== 'event-days') {
+      actions.push({
+        id: 'ctx-event-days',
+        name: 'Go to Days',
+        icon: UsersIcon,
+        href: `/events/${eventId}/days`,
       })
     }
 
