@@ -113,6 +113,34 @@ export async function createBareEvent(
   return event!.id
 }
 
+/** An event with explicit dates, with the creator RSVP'd as attending.
+ *  Unlike `createResolvedEvent` (always upcoming), the window is the caller's
+ *  — use `offsetDate(-1)` / `offsetDate(1)` for an event under way today. */
+export async function createDatedEvent(
+  request: APIRequestContext,
+  name: string,
+  startDate: string,
+  endDate: string
+): Promise<string> {
+  const response = await request.post(`${API_BASE}/api/events`, {
+    data: {
+      name,
+      description: 'Dated test event',
+      start_date: startDate,
+      end_date: endDate,
+    },
+  })
+  const body = await response.json()
+  const event = getObjectByType(body.objects, 'event')
+  const eventId = event!.id
+
+  await request.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
+    data: { attending: true },
+  })
+
+  return eventId
+}
+
 export interface DateRangeInput {
   start_date: string
   end_date: string

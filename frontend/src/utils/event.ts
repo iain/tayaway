@@ -1,3 +1,5 @@
+import { localIsoDate } from './date'
+
 interface EventLike {
   startDate: string | null
   endDate: string | null
@@ -95,7 +97,7 @@ export function eventIsPlanning(event: EventLike | null | undefined): boolean {
 
 export function eventIsCurrent(
   event: EventLike | null | undefined,
-  today = new Date().toISOString().slice(0, 10)
+  today = localIsoDate()
 ): boolean {
   return (
     event != null &&
@@ -108,14 +110,14 @@ export function eventIsCurrent(
 
 export function eventIsUpcoming(
   event: EventLike | null | undefined,
-  today = new Date().toISOString().slice(0, 10)
+  today = localIsoDate()
 ): boolean {
   return event != null && event.startDate != null && event.startDate > today
 }
 
 export function eventIsPast(
   event: EventLike | null | undefined,
-  today = new Date().toISOString().slice(0, 10)
+  today = localIsoDate()
 ): boolean {
   return (
     event != null &&

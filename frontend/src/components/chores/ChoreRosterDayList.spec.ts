@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ChoreRosterDayList from './ChoreRosterDayList.vue'
 import { makeChore, makeChoreAssignment, makeMember } from '@/test/factories'
@@ -119,5 +119,35 @@ describe('ChoreRosterDayList', () => {
     const events = list.emitted('editAssignment')
     expect(events).toHaveLength(1)
     expect((events![0]![0] as { id: string }).id).toBe('a1')
+  })
+
+  // jsdom implements no scrollIntoView at all — hence the optional call in the
+  // component — so the spy has to define it rather than wrap it.
+  describe('scrollToToday', () => {
+    afterEach(() => {
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
+    })
+
+    function spyOnScroll() {
+      const scrollIntoView = vi.fn()
+      Element.prototype.scrollIntoView = scrollIntoView
+      return scrollIntoView
+    }
+
+    it("lands on today's row when the list is the whole page", () => {
+      const scrollIntoView = spyOnScroll()
+      mountList()
+
+      expect(scrollIntoView).toHaveBeenCalledOnce()
+    })
+
+    // Several lists mount together on /chores; each would fight for the scroll
+    // position and the last to mount would win, dumping the user mid-list.
+    it('leaves the scroll alone when it is one section among several', () => {
+      const scrollIntoView = spyOnScroll()
+      mountList({ scrollToToday: false })
+
+      expect(scrollIntoView).not.toHaveBeenCalled()
+    })
   })
 })
