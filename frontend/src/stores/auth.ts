@@ -7,6 +7,7 @@ import { useWebSocketStore } from './websocket'
 import { useMutation, type CommandEnqueuer } from '@/composables/useMutation'
 
 import { teardownSession } from '@/api/teardownSession'
+import { poolPersistence } from '@/api/poolPersistence'
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
 import type {
   AuthUser,
@@ -35,7 +36,15 @@ function maskIban(iban: string): string {
 const AUTH_USER_KEY = 'tayaway_auth_user'
 const AUTH_USER_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 
+// Who the persisted client state (pool cache, cursors, command queue)
+// belongs to. Unlike AUTH_USER_KEY this has no TTL: IndexedDB survives the
+// auth cache expiring, so the marker must too — it's how completeLogin
+// detects that a new login would inherit another user's state. Cleared by
+// teardownSession's localStorage.clear() together with the state itself.
+const LAST_USER_ID_KEY = 'tayaway_last_user_id'
+
 function cacheUser(u: AuthUser): void {
+  localStorage.setItem(LAST_USER_ID_KEY, u.id)
   // Omit iban + iban_holder_name before caching — sensitive payment data
   // should not persist in localStorage.
   const entry = {
@@ -226,8 +235,27 @@ export const useAuthStore = defineStore('auth', () => {
   async function completeLogin(): Promise<AuthUser> {
     const meResponse = await rawApi.get<MeResponse>('/auth/me')
     const verifiedUser = mapMeResponseToAuthUser(meResponse.data)
+
+    // Logging in as a different user than the one whose client state is
+    // live (or still persisted from an earlier session) must not inherit
+    // that state: pool objects carry per-user permission stamps, and the
+    // strictly-newer updatedAt merge never refreshes a permission-only
+    // difference — the stale stamps would stick forever. The old user's
+    // queued offline mutations must not replay under the new session
+    // either. Tear everything down before adopting the new identity.
+    const previousUserId =
+      user.value?.id ?? localStorage.getItem(LAST_USER_ID_KEY)
+    if (previousUserId !== null && previousUserId !== verifiedUser.id) {
+      await teardownSession()
+    }
+
     user.value = verifiedUser
     cacheUser(verifiedUser)
+
+    // No-op when already persisting. Covers the cold login (App.vue's boot
+    // path only starts persistence when a session exists at page load) and
+    // the restart after a user-switch teardown.
+    poolPersistence.startPersisting()
 
     const ws = useWebSocketStore()
     ws.connect()
