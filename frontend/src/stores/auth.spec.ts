@@ -2,10 +2,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
 const mockStopPersisting = vi.fn()
+const mockStartPersisting = vi.fn()
 vi.mock('@/api/poolPersistence', () => ({
   poolPersistence: {
     loadFromCache: vi.fn(),
-    startPersisting: vi.fn(),
+    startPersisting: mockStartPersisting,
     stopPersisting: mockStopPersisting,
   },
 }))
@@ -448,5 +449,90 @@ describe('auth store – initialize() with cached user (background validation)',
 
     expect(store.user).toMatchObject({ id: 'user-1' })
     expect(mockRouterPush).not.toHaveBeenCalled()
+  })
+})
+
+describe('auth store – completeLogin() user switch', () => {
+  // Key must match the constant in auth.ts
+  const LAST_USER_ID_KEY = 'tayaway_last_user_id'
+
+  beforeEach(() => {
+    vi.resetModules()
+    setActivePinia(createPinia())
+    vi.stubGlobal('fetch', vi.fn())
+    localStorage.clear()
+    mockStopPersisting.mockClear()
+    mockStartPersisting.mockClear()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  /** Answers POST /auth/verify with 200 and GET /auth/me with `me`. */
+  function stubLoginFetch(me: Record<string, unknown>) {
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      const body = url.includes('/auth/me') ? me : {}
+      return { ok: true, status: 200, json: async () => body } as Response
+    })
+  }
+
+  const ME_USER_2 = {
+    user_id: 'user-2',
+    email: 'other@example.com',
+    name: 'Other User',
+  }
+
+  it('tears down the previous user state when a different user logs in', async () => {
+    stubLoginFetch(ME_USER_2)
+    const { useAuthStore } = await import('./auth')
+    const store = useAuthStore()
+    store.user = { ...CACHED_USER, ibanHolderName: null, timezone: null }
+
+    await store.verifyToken('tok')
+
+    expect(mockStopPersisting).toHaveBeenCalledOnce()
+    expect(store.user).toMatchObject({ id: 'user-2' })
+  })
+
+  it('keeps client state when the same user re-authenticates', async () => {
+    stubLoginFetch({
+      user_id: 'user-1',
+      email: 'user@example.com',
+      name: 'Test User',
+    })
+    const { useAuthStore } = await import('./auth')
+    const store = useAuthStore()
+    store.user = { ...CACHED_USER, ibanHolderName: null, timezone: null }
+
+    await store.verifyToken('tok')
+
+    expect(mockStopPersisting).not.toHaveBeenCalled()
+  })
+
+  it('tears down when a previous session left state behind but the auth cache expired', async () => {
+    // The 24h auth-user cache is gone, but IndexedDB and the last-user
+    // marker survive a TTL expiry — the marker must trigger the teardown.
+    localStorage.setItem(LAST_USER_ID_KEY, 'user-1')
+    stubLoginFetch(ME_USER_2)
+    const { useAuthStore } = await import('./auth')
+    const store = useAuthStore()
+
+    await store.verifyToken('tok')
+
+    expect(mockStopPersisting).toHaveBeenCalledOnce()
+  })
+
+  it('starts pool persistence and records the user id on login', async () => {
+    stubLoginFetch(ME_USER_2)
+    const { useAuthStore } = await import('./auth')
+    const store = useAuthStore()
+
+    await store.verifyToken('tok')
+
+    expect(mockStartPersisting).toHaveBeenCalled()
+    expect(localStorage.getItem(LAST_USER_ID_KEY)).toBe('user-2')
+    expect(mockStopPersisting).not.toHaveBeenCalled()
   })
 })
