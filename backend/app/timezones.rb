@@ -34,11 +34,18 @@ module Timezones
       name.nil? || name.strip.empty? || valid?(name.strip)
     end
 
+    # The current wall-clock time in `zone` — "now" as someone at the event
+    # experiences it, for fences finer than a day (e.g. whether a timed chore
+    # has already started today).
+    def now(zone)
+      TZInfo::Timezone.get(zone).to_local(Time.now)
+    end
+
     # The current civil date in `zone` — "today" as someone at the event
     # experiences it, which is what date fences (e.g. the chore roster's
     # past/upcoming split) must be reckoned against.
     def today(zone)
-      TZInfo::Timezone.get(zone).to_local(Time.now).to_date
+      now(zone).to_date
     end
 
     # Resolve a wall-clock time in `zone` to an absolute UTC Time.

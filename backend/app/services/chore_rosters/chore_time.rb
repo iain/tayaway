@@ -18,6 +18,17 @@ module ChoreRosters
           Failure(ServiceError.validation("Time must be a 24-hour time like 09:30"))
         end
       end
+
+      # The chores whose wall-clock time has already arrived today in `zone`.
+      # Today's occurrence of these is history — whoever is on it did (or is
+      # doing) the chore — so autofill and clear-unpinned leave those rows
+      # alone, exactly like a past day. Untimed chores never match: with no
+      # moment to compare, they stay rewritable until the day itself is over.
+      def started_today(chores, zone)
+        now = Timezones.now(zone)
+        now_minutes = (now.hour * 60) + now.min
+        chores.select { |c| c.time && ((c.time.hour * 60) + c.time.min) <= now_minutes }
+      end
     end
   end
 end

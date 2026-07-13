@@ -59,6 +59,26 @@ RSpec.describe ChoreRosters::ClearUnpinned do
     expect(DB[:chore_assignments].where(id: past[:id]).count).to eq(1)
   end
 
+  it "keeps today's row for a timed chore that has already started" do
+    allow(Timezones).to receive_messages(now: Time.new(2026, 3, 3, 16, 0, 0), today: Date.new(2026, 3, 3))
+    workspace = TestFactories.workspace
+    user = TestFactories.user
+    event = TestFactories.event(workspace: workspace, user: user)
+    roster = TestFactories.chore_roster(event: event, user: user)
+    morning = TestFactories.chore(chore_roster: roster, time: "10:00")
+    evening = TestFactories.chore(chore_roster: roster, time: "17:00")
+
+    done = TestFactories.chore_assignment(chore: morning, user: user, date: Date.new(2026, 3, 3), pinned: false)
+    ahead = TestFactories.chore_assignment(chore: evening, user: user, date: Date.new(2026, 3, 3), pinned: false)
+    tomorrow = TestFactories.chore_assignment(chore: morning, user: user, date: Date.new(2026, 3, 4), pinned: false)
+
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(workspace, user))
+
+    expect(result.success?).to be true
+    expect(result.value![:deleted].map { |d| d[:id] }).to contain_exactly(ahead[:id], tomorrow[:id])
+    expect(DB[:chore_assignments].where(id: done[:id]).count).to eq(1)
+  end
+
   it "does nothing when no non-pinned assignments exist" do
     workspace = TestFactories.workspace
     user = TestFactories.user

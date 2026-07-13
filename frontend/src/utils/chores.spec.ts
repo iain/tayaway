@@ -1,6 +1,66 @@
 import { describe, it, expect } from 'vitest'
-import { detectAttendanceDrift, shouldSuggestAutofill } from './chores'
+import {
+  detectAttendanceDrift,
+  refillableAssignments,
+  shouldSuggestAutofill,
+} from './chores'
 import { makeChore, makeChoreAssignment, makeRsvp } from '@/test/factories'
+
+describe('refillableAssignments', () => {
+  // Four-day event in Amsterdam, viewed on day three at 16:00 local (CET, +1).
+  const ZONE = 'Europe/Amsterdam'
+  const TODAY = '2026-03-03'
+  const NOW_MS = Date.UTC(2026, 2, 3, 15, 0) // 16:00 in Amsterdam
+
+  const chores = [
+    makeChore({ id: 'morning', time: '10:00' }),
+    makeChore({ id: 'evening', time: '17:00' }),
+    makeChore({ id: 'untimed', time: null }),
+  ]
+
+  it('mirrors the server fence: today onward, minus today’s already-started timed chores', () => {
+    const assignments = [
+      makeChoreAssignment({
+        id: 'past-day',
+        choreId: 'evening',
+        date: '2026-03-02',
+      }),
+      makeChoreAssignment({
+        id: 'done-today',
+        choreId: 'morning',
+        date: TODAY,
+      }),
+      makeChoreAssignment({
+        id: 'ahead-today',
+        choreId: 'evening',
+        date: TODAY,
+      }),
+      makeChoreAssignment({
+        id: 'untimed-today',
+        choreId: 'untimed',
+        date: TODAY,
+      }),
+      makeChoreAssignment({
+        id: 'tomorrow',
+        choreId: 'morning',
+        date: '2026-03-04',
+      }),
+    ]
+
+    const refillable = refillableAssignments(
+      assignments,
+      chores,
+      TODAY,
+      ZONE,
+      NOW_MS
+    )
+    expect(refillable.map((a) => a.id)).toEqual([
+      'ahead-today',
+      'untimed-today',
+      'tomorrow',
+    ])
+  })
+})
 
 describe('shouldSuggestAutofill', () => {
   it('suggests while the roster is less than half full', () => {
