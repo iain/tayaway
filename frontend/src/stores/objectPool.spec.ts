@@ -827,6 +827,25 @@ describe('objectPool store', () => {
     })
   })
 
+  describe('pending-destroy suppression', () => {
+    // A queued offline destroy already removed the object; imports (full
+    // syncs, broadcasts) must not resurrect it until the replay resolves.
+    it('suppresses imports and replace re-inserts while marked', async () => {
+      const pool = useObjectPoolStore()
+      pool.markPendingDestroy(['evt-1'])
+
+      pool.importObjects([makeEvent()], { scope: Scope.workspace('A') })
+      expect(pool.get('event', 'evt-1')).toBeUndefined()
+
+      await pool.replaceScope(Scope.workspace('A'), [makeEvent()])
+      expect(pool.get('event', 'evt-1')).toBeUndefined()
+
+      pool.clearPendingDestroy(['evt-1'])
+      pool.importObjects([makeEvent()], { scope: Scope.workspace('A') })
+      expect(pool.get('event', 'evt-1')).toBeDefined()
+    })
+  })
+
   describe('restore', () => {
     // A queued delete can sit for hours (or across restarts) before its
     // replay is rejected; meanwhile the server may have re-delivered a newer
