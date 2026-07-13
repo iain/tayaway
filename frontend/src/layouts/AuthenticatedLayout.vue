@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watchEffect } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter, useRoute } from 'vue-router'
 import {
@@ -65,6 +65,22 @@ const { pendingCount, isProcessing, retryScheduled } =
   storeToRefs(commandQueueStore)
 
 const showConnectionBadge = computed(() => wsState.value !== 'authenticated')
+
+// Escape hatch: never trap the user on the full-page loader. If neither a
+// sync nor cached data arrives in time (cold cache + workspace sync failing
+// server-side), fall through to the app shell — skeletons and the
+// connection badge communicate the state better than an eternal spinner.
+const LOADER_TIMEOUT_MS = 15_000
+const loaderTimedOut = ref(false)
+let loaderTimer: ReturnType<typeof setTimeout> | null = null
+onMounted(() => {
+  loaderTimer = setTimeout(() => {
+    loaderTimedOut.value = true
+  }, LOADER_TIMEOUT_MS)
+})
+onBeforeUnmount(() => {
+  if (loaderTimer !== null) clearTimeout(loaderTimer)
+})
 
 // Surface queued offline work whenever it exists: socket down, replay in
 // progress, or a backoff retry armed (fetch failed while the socket stayed
@@ -213,7 +229,7 @@ async function handleSignOut() {
 <template>
   <!-- Loading screen while waiting for initial sync -->
   <div
-    v-if="!hasSynced && !hasCachedData && !connectionFailed"
+    v-if="!hasSynced && !hasCachedData && !connectionFailed && !loaderTimedOut"
     class="bg-surface-page flex min-h-screen flex-col items-center justify-center"
   >
     <div class="text-center">
