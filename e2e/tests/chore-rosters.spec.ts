@@ -440,10 +440,12 @@ test.describe('Chore Rosters Feature', () => {
       await setupAuthenticatedPage(page, sessionToken)
       await page.goto(`/events/${eventId}/expenses`)
 
-      await expect(
-        page.getByRole('link', { name: 'Chores', exact: true })
-      ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
-      await page.getByRole('link', { name: 'Chores', exact: true }).click()
+      const choresTab = page
+        .getByTestId('event-tabs')
+        .getByRole('link', { name: 'Chores', exact: true })
+
+      await expect(choresTab).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
+      await choresTab.click()
 
       await expect(page).toHaveURL(`/events/${eventId}/chores`)
     })
@@ -966,8 +968,7 @@ test.describe('Chore Rosters Feature', () => {
       )
 
       const workloadHeaders = page
-        .locator('h2', { hasText: 'Workload' })
-        .locator('../..')
+        .locator('[data-testid="chore-summary-table"]')
         .locator('thead th')
       const gridHeaders = page.locator('.chore-col')
 

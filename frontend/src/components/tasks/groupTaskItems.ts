@@ -51,6 +51,13 @@ export function groupTaskItems(
   }
   // Serializer timestamps share one ISO-8601 format, so lexicographic order
   // is chronological order — no need to re-parse inside the comparator.
-  history.sort((a, b) => (a.completedAt! < b.completedAt! ? 1 : -1))
+  // Ties (a bulk sync stamping several completions alike) break by id so
+  // every client renders the same order.
+  history.sort((a, b) => {
+    if (a.completedAt !== b.completedAt) {
+      return a.completedAt! < b.completedAt! ? 1 : -1
+    }
+    return a.id < b.id ? -1 : 1
+  })
   return { current: sortTaskItems(current, heldIds), history }
 }

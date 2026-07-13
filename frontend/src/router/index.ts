@@ -21,6 +21,7 @@ const EventPlanningDateRangesPage = () =>
 const EventRsvpPage = () => import('@/pages/EventRsvpPage.vue')
 const MembersPage = () => import('@/pages/MembersPage.vue')
 const TasksPage = () => import('@/pages/TasksPage.vue')
+const ChoresPage = () => import('@/pages/ChoresPage.vue')
 const EventExpensesPage = () => import('@/pages/EventExpensesPage.vue')
 const EventChoresPage = () => import('@/pages/EventChoresPage.vue')
 const SettleUpPage = () => import('@/pages/SettleUpPage.vue')
@@ -123,6 +124,11 @@ const router = createRouter({
           path: 'tasks',
           name: 'tasks',
           component: TasksPage,
+        },
+        {
+          path: 'chores',
+          name: 'chores',
+          component: ChoresPage,
         },
         {
           path: 'settle-up',

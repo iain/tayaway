@@ -9,18 +9,27 @@ import { formatDayHeader } from '@/utils/date'
 // question a phone gets opened to answer mid-event. Today is emphasized and
 // scrolled to on open. Chore-level settings (time, order, delete) don't live
 // here because chores repeat under every day; they move to the manage sheet.
-const props = defineProps<{
-  chores: PoolChore[]
-  assignments: PoolChoreAssignment[]
-  dates: string[]
-  members: PoolMember[]
-  currentUserId: string | null
-  // The event-zone date (see zonedDateString) — the same "today" the backend
-  // fences autofill on, so the emphasized row, the muted past, and what a
-  // re-fill would actually touch all agree, traveller or not.
-  today: string
-  staleAssignmentIds?: Set<string>
-}>()
+const props = withDefaults(
+  defineProps<{
+    chores: PoolChore[]
+    assignments: PoolChoreAssignment[]
+    dates: string[]
+    members: PoolMember[]
+    currentUserId: string | null
+    // The event-zone date (see zonedDateString) — the same "today" the backend
+    // fences autofill on, so the emphasized row, the muted past, and what a
+    // re-fill would actually touch all agree, traveller or not.
+    today: string
+    staleAssignmentIds?: Set<string>
+    // Land on today's row on mount. Only right when the day list is the whole
+    // page (the single-event /events/:id/chores view) — with several sections
+    // mounted at once (/chores), each would fight for the scroll position and
+    // the last one to mount wins, dumping the user mid-list past every
+    // heading that says which event they're looking at.
+    scrollToToday?: boolean
+  }>(),
+  { staleAssignmentIds: undefined, scrollToToday: true }
+)
 
 const emit = defineEmits<{
   assign: [choreId: string, date: string, anchorEl: HTMLElement]
@@ -68,6 +77,7 @@ const rootEl = ref<HTMLElement | null>(null)
 // Land the user on today, the row they almost always came to check. Guarded so
 // it degrades to a no-op under jsdom and honors reduced-motion.
 onMounted(() => {
+  if (!props.scrollToToday) return
   const target = rootEl.value?.querySelector<HTMLElement>(
     `[data-date="${props.today}"]`
   )

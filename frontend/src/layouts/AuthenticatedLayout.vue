@@ -149,6 +149,7 @@ const { open: openCommandPalette } = useCommandPalette()
 const navigation = [
   { name: 'Dashboard', href: '/', routeName: 'home' },
   { name: 'Events', href: '/events', routeName: 'events' },
+  { name: 'Chores', href: '/chores', routeName: 'chores' },
   { name: 'Tasks', href: '/tasks', routeName: 'tasks' },
   { name: 'Settle up', href: '/settle-up', routeName: 'settle-up' },
   { name: 'Members', href: '/members', routeName: 'members' },
@@ -192,6 +193,7 @@ const routeTitleMap: Record<string, string> = {
   'event-rsvp': 'RSVP',
   'event-expenses': 'Expenses',
   'event-chores': 'Chores',
+  chores: 'Chores',
   tasks: 'Tasks',
   members: 'Members',
 }
@@ -342,7 +344,10 @@ async function handleSignOut() {
               </div>
             </div>
             <div class="hidden md:block">
-              <div class="ml-10 flex items-baseline space-x-4">
+              <div
+                class="ml-10 flex items-baseline space-x-4"
+                data-testid="main-nav"
+              >
                 <router-link
                   v-for="item in navigation"
                   :key="item.name"

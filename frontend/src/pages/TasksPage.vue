@@ -21,6 +21,7 @@ import AppButton from '@/components/common/AppButton.vue'
 import AlertBox from '@/components/common/AlertBox.vue'
 import TaskListCard from '@/components/tasks/TaskListCard.vue'
 import { groupTaskItems } from '@/components/tasks/groupTaskItems'
+import { sortTaskLists } from '@/components/tasks/sortTaskLists'
 import { useTaskActions } from '@/composables/useTaskActions'
 import { useMinuteTicker } from '@/composables/useMinuteTicker'
 import { useTaskListPrefs } from '@/composables/useTaskListPrefs'
@@ -52,10 +53,11 @@ const formError = ref<string | null>(null)
 const taskListsLocal = ref<PoolTaskList[]>([])
 
 watchEffect(() => {
-  taskListsLocal.value = pool
-    .getAll('taskList')
-    .filter((tl) => tl.workspaceId === currentWorkspaceId.value)
-    .sort((a, b) => a.position - b.position)
+  taskListsLocal.value = sortTaskLists(
+    pool
+      .getAll('taskList')
+      .filter((tl) => tl.workspaceId === currentWorkspaceId.value)
+  )
 })
 
 // Keyboard navigation

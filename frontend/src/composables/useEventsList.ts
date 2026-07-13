@@ -1,13 +1,18 @@
-import { computed } from 'vue'
+import { computed, type Ref } from 'vue'
 import { useObjectPoolStore } from '@/stores'
 import type { ObjectTypeMap } from '@/types/pool'
+import { localIsoDate } from '@/utils/date'
 import { useNow } from './useNow'
 
-export function useEventsList() {
+// `now` is injectable for testing; in the app it's the shared midnight ticker,
+// so the current/upcoming split stays correct in a tab left open overnight.
+export function useEventsList(now: Ref<Date> = useNow().now) {
   const pool = useObjectPoolStore()
-  const { now } = useNow()
 
-  const today = computed(() => now.value.toISOString().slice(0, 10))
+  // Local calendar day, not the UTC one — an event that ended local-yesterday
+  // must fall out of "current", and one starting local-today must appear, for
+  // users far from UTC. Matches the day strings events carry.
+  const today = computed(() => localIsoDate(now.value))
 
   // Single pass: categorize all events at once instead of four separate filters
   const categorized = computed(() => {

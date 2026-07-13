@@ -113,6 +113,13 @@ const quickActions = computed<NavAction[]>(() => [
   },
   {
     type: 'action',
+    id: 'chores',
+    name: 'Chores',
+    icon: ClipboardDocumentListIcon,
+    href: '/chores',
+  },
+  {
+    type: 'action',
     id: 'new-event',
     name: 'New event',
     icon: PlusIcon,

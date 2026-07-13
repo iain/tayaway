@@ -10,7 +10,7 @@ class TaskList < Data.define(:id, :workspace_id, :user_id, :name, :position, :cr
     end
 
     def for_workspace(workspace_id)
-      dataset.where(workspace_id: workspace_id).order(:position).all
+      dataset.where(workspace_id: workspace_id).order(:position, :created_at, :name, :id).all
     end
 
     def changed_since(workspace_id, since)

@@ -12,13 +12,17 @@ import type {
 } from '@/types/pool'
 import { attendedDates } from '@/utils/event'
 
-const props = defineProps<{
-  chores: PoolChore[]
-  assignments: PoolChoreAssignment[]
-  members: PoolMember[]
-  rsvps: PoolRsvp[]
-  event: PoolEvent
-}>()
+const props = withDefaults(
+  defineProps<{
+    chores: PoolChore[]
+    assignments: PoolChoreAssignment[]
+    members: PoolMember[]
+    rsvps: PoolRsvp[]
+    event: PoolEvent
+    headingLevel?: 2 | 3
+  }>(),
+  { headingLevel: 2 }
+)
 
 interface SummaryRow {
   userId: string
@@ -78,8 +82,12 @@ const rows = computed<SummaryRow[]>(() => {
 </script>
 
 <template>
-  <div class="mt-8">
-    <SectionHeading :icon="ChartBarIcon" title="Workload" />
+  <div class="mt-8" data-testid="chore-summary-table">
+    <SectionHeading
+      :icon="ChartBarIcon"
+      title="Workload"
+      :heading-level="headingLevel"
+    />
 
     <BaseCard class="overflow-x-auto">
       <table class="min-w-full text-sm">
