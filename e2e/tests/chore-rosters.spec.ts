@@ -709,7 +709,7 @@ test.describe('Chore Rosters Feature', () => {
       // Click the toolbar Auto-fill — should show confirmation
       await page.getByRole('button', { name: 'Auto-fill', exact: true }).click()
       await expect(
-        page.getByText('clear non-pinned assignments from today onward', {
+        page.getByText('clear upcoming non-pinned assignments', {
           exact: false,
         })
       ).toBeVisible()
