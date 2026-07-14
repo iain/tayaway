@@ -56,6 +56,7 @@ function mkEvent(): PoolEvent {
     userId: 'user-1',
     datePollId: null,
     rsvpIds: [],
+    attendanceIds: [],
   }
 }
 

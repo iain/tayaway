@@ -25,6 +25,7 @@ function makeEvent(
     userId: 'user-1',
     datePollId: null,
     rsvpIds: [],
+    attendanceIds: [],
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,
@@ -149,6 +150,26 @@ describe('useMutation', () => {
 
       expect(result).toEqual({ queued: true })
       expect(pool.get('event', 'temp-1')).toBeDefined()
+    })
+
+    it('inserts every temp object and rolls them all back on server error when given an array', async () => {
+      const pool = useObjectPoolStore()
+      const { create } = useMutation()
+      const temps = [
+        makeEvent({ id: 'temp-1', name: 'One' }),
+        makeEvent({ id: 'temp-2', name: 'Two' }),
+      ]
+
+      await expect(
+        create('fail', temps, async () => {
+          expect(pool.get('event', 'temp-1')).toBeDefined()
+          expect(pool.get('event', 'temp-2')).toBeDefined()
+          throw new Error('Server error')
+        })
+      ).rejects.toThrow('Server error')
+
+      expect(pool.get('event', 'temp-1')).toBeUndefined()
+      expect(pool.get('event', 'temp-2')).toBeUndefined()
     })
 
     it('removes temp object on server error', async () => {
@@ -276,6 +297,26 @@ describe('useMutation', () => {
         '/api/events',
         { name: 'X' },
         { kind: 'create', objectType: 'event', objectId: 'temp-1' }
+      )
+    })
+
+    it('threads one create linkage per temp object when given an array', async () => {
+      enqueueMock.mockRejectedValueOnce(new CommandQueuedError())
+      const { create } = useMutation()
+      const temps = [makeEvent({ id: 'temp-1' }), makeEvent({ id: 'temp-2' })]
+
+      await create('fail', temps, (q) =>
+        q.enqueue('POST', '/api/events', { name: 'X' })
+      )
+
+      expect(enqueueMock).toHaveBeenCalledWith(
+        'POST',
+        '/api/events',
+        { name: 'X' },
+        [
+          { kind: 'create', objectType: 'event', objectId: 'temp-1' },
+          { kind: 'create', objectType: 'event', objectId: 'temp-2' },
+        ]
       )
     })
 

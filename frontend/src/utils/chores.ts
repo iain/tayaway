@@ -1,6 +1,30 @@
-import type { PoolChore, PoolChoreAssignment, PoolRsvp } from '@/types/pool'
-import { attendedDates } from '@/utils/event'
+import type {
+  PoolAttendance,
+  PoolChore,
+  PoolChoreAssignment,
+} from '@/types/pool'
+import { attendanceDates } from '@/utils/event'
 import { wallClockToEpoch } from '@/utils/timezone'
+
+type AttendanceLike = Pick<
+  PoolAttendance,
+  'userId' | 'guestId' | 'status' | 'days'
+>
+
+// Going member rows only — guests can't hold chore assignments until
+// assignments reference attendances (doc/attendances.md, later phase).
+function memberDates(
+  attendances: readonly AttendanceLike[],
+  event: { startDate: string; endDate: string }
+): Map<string, string[]> {
+  const byUser = new Map<string, string[]>()
+  for (const attendance of attendances) {
+    if (!attendance.userId) continue
+    const dates = attendanceDates(attendance, event.startDate, event.endDate)
+    if (dates.length > 0) byUser.set(attendance.userId, dates)
+  }
+  return byUser
+}
 
 /**
  * The subset of `assignments` a re-fill or clear-upcoming can actually touch:
@@ -34,23 +58,23 @@ export function refillableAssignments<
  * dismissal state.
  */
 /**
- * The user ids attending on one specific day, per their attending RSVPs —
- * the eligibility set for assigning (or reassigning) that day's chores.
- * Mirrors the backend autofill's availability map for a single date.
+ * The user ids attending on one specific day, per the going member
+ * attendances — the eligibility set for assigning (or reassigning) that
+ * day's chores. Mirrors the backend autofill's availability map for a
+ * single date.
  */
 export function attendingUserIdsOn(
   date: string,
-  rsvps: ReadonlyArray<
-    Pick<PoolRsvp, 'userId' | 'attendance' | 'startDate' | 'endDate'>
-  >,
+  attendances: readonly AttendanceLike[],
   event: { startDate: string | null; endDate: string | null }
 ): Set<string> {
   const userIds = new Set<string>()
   if (event.startDate && event.endDate) {
-    for (const rsvp of rsvps) {
-      if (attendedDates(rsvp, event.startDate, event.endDate).includes(date)) {
-        userIds.add(rsvp.userId)
-      }
+    for (const [userId, dates] of memberDates(attendances, {
+      startDate: event.startDate,
+      endDate: event.endDate,
+    })) {
+      if (dates.includes(date)) userIds.add(userId)
     }
   }
   return userIds
@@ -61,26 +85,17 @@ export function attendingUserIdsOn(
  * that won't get done unless someone else takes them over. These flag their
  * chips and feed the reassign nudge.
  *
- * Days before `today` are history and never stale. `rsvps` must be the
- * attending ones only.
+ * Days before `today` are history and never stale.
  */
 export function staleAssignmentIds(
   assignments: ReadonlyArray<
     Pick<PoolChoreAssignment, 'id' | 'userId' | 'date'>
   >,
-  rsvps: ReadonlyArray<
-    Pick<PoolRsvp, 'userId' | 'attendance' | 'startDate' | 'endDate'>
-  >,
+  attendances: readonly AttendanceLike[],
   event: { startDate: string; endDate: string },
   today: string
 ): Set<string> {
-  const attendedByUser = new Map<string, string[]>()
-  for (const rsvp of rsvps) {
-    attendedByUser.set(
-      rsvp.userId,
-      attendedDates(rsvp, event.startDate, event.endDate)
-    )
-  }
+  const attendedByUser = memberDates(attendances, event)
 
   const stale = new Set<string>()
   for (const a of assignments) {

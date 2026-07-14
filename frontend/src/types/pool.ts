@@ -28,6 +28,8 @@ interface PoolObjectBase<T extends string> {
 
 export type DatePollStatus = 'open' | 'expired' | 'resolved'
 
+export type AttendanceStatus = 'pending' | 'going' | 'declined'
+
 export const OBJECT_TYPES = [
   'member',
   'event',
@@ -35,6 +37,8 @@ export const OBJECT_TYPES = [
   'dateRange',
   'vote',
   'rsvp',
+  'attendance',
+  'guest',
   'workspace',
   'taskList',
   'taskItem',
@@ -78,7 +82,9 @@ export interface ObjectTypeMap {
     workspaceId: string
     userId: string
     datePollId: string | null
+    // rsvpIds stays alongside until stale clients drain (phase 7).
     rsvpIds: string[]
+    attendanceIds: string[]
     createdAt: string
   }
   datePoll: PoolObjectBase<'datePoll'> & {
@@ -113,6 +119,29 @@ export interface ObjectTypeMap {
     attendance: AttendanceEntry[] | null
     startDate: string | null
     endDate: string | null
+    createdAt: string
+  }
+  // One row per person per event; replaces rsvp during the staged migration
+  // (doc/attendances.md). Exactly one of userId/guestId is set.
+  attendance: PoolObjectBase<'attendance'> & {
+    eventId: string
+    userId: string | null
+    guestId: string | null
+    // The member who brings (and is billed for) a guest; null on member rows.
+    hostUserId: string | null
+    status: AttendanceStatus
+    // Flat ISO day set; null means "whole event". Only meaningful when going.
+    days: string[] | null
+    createdByUserId: string | null
+    createdAt: string
+  }
+  // Workspace-level identity for a non-member brought along by a member.
+  guest: PoolObjectBase<'guest'> & {
+    workspaceId: string
+    name: string
+    // Synthesized by the plus-ones backfill; hidden from pickers until renamed.
+    placeholder: boolean
+    createdByUserId: string | null
     createdAt: string
   }
   workspace: PoolObjectBase<'workspace'> & {
@@ -236,6 +265,8 @@ export type PoolDatePoll = ObjectTypeMap['datePoll']
 export type PoolDateRange = ObjectTypeMap['dateRange']
 export type PoolVote = ObjectTypeMap['vote']
 export type PoolRsvp = ObjectTypeMap['rsvp']
+export type PoolAttendance = ObjectTypeMap['attendance']
+export type PoolGuest = ObjectTypeMap['guest']
 export type PoolWorkspace = ObjectTypeMap['workspace']
 export type PoolTaskList = ObjectTypeMap['taskList']
 export type PoolTaskItem = ObjectTypeMap['taskItem']

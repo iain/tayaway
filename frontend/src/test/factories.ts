@@ -27,6 +27,7 @@ export function makeEvent(
     userId: 'user-1',
     datePollId: null,
     rsvpIds: [],
+    attendanceIds: [],
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,
@@ -134,6 +135,43 @@ export function makeRsvp(
     attendance: null,
     startDate: null,
     endDate: null,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    ...overrides,
+  }
+}
+
+// `createdByUserId` defaults to `null` here too, for the same reason as
+// makeRsvp above.
+export function makeAttendance(
+  overrides: Partial<ObjectTypeMap['attendance']> = {}
+): ObjectTypeMap['attendance'] {
+  return {
+    id: 'att-1',
+    objectType: 'attendance',
+    eventId: 'evt-1',
+    userId: 'user-1',
+    guestId: null,
+    hostUserId: null,
+    status: 'going',
+    days: null,
+    createdByUserId: null,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    ...overrides,
+  }
+}
+
+export function makeGuest(
+  overrides: Partial<ObjectTypeMap['guest']> = {}
+): ObjectTypeMap['guest'] {
+  return {
+    id: 'guest-1',
+    objectType: 'guest',
+    workspaceId: 'ws-1',
+    name: 'Emma',
+    placeholder: false,
+    createdByUserId: null,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,

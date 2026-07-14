@@ -5,48 +5,41 @@ import {
   UserIcon,
   UserPlusIcon,
   CalendarDaysIcon,
-  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  XMarkIcon,
 } from '@heroicons/vue/24/outline'
-import { useRsvpsStore } from '@/stores/rsvps'
+import { useAttendancesStore } from '@/stores/attendances'
+import { useGuestsStore } from '@/stores/guests'
 import RsvpActionsMenu from '@/components/events/RsvpActionsMenu.vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
-import type { HydratedEvent } from '@/composables/useHydratedEvent'
+import type {
+  HydratedAttendance,
+  HydratedEvent,
+} from '@/composables/useHydratedEvent'
 import { useCalendar } from '@/composables/useCalendar'
 import BaseCard from '@/components/common/BaseCard.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
-import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import AppButton from '@/components/common/AppButton.vue'
+import AppInput from '@/components/common/AppInput.vue'
 import TextButton from '@/components/common/TextButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import CalendarMonth from '@/components/calendar/CalendarMonth.vue'
-import {
-  attendedDates,
-  attendedDays,
-  enumerateDates,
-  type AttendanceEntry,
-} from '@/utils/event'
-import { formatGuestCount } from '@/utils/format'
-
-// Mirrors backend ValidationLimits::PLUS_ONES_PER_DAY_MAX.
-const PLUS_ONES_MAX = 20
+import { attendanceDates, enumerateDates } from '@/utils/event'
 
 const props = defineProps<{
   event: HydratedEvent
   currentUserId: string | null
 }>()
 
-const rsvpsStore = useRsvpsStore()
+const attendancesStore = useAttendancesStore()
+const guestsStore = useGuestsStore()
 const pool = useObjectPoolStore()
 const { formatDateDisplay } = useCalendar()
 
-function filedByLabel(rsvp: {
-  userId: string
-  createdByUserId: string | null
-}) {
-  const filer = rsvp.createdByUserId
-  if (filer == null || filer === rsvp.userId) return null
+function filedByLabel(attendance: HydratedAttendance) {
+  const filer = attendance.createdByUserId
+  if (filer == null || filer === attendance.userId) return null
   const m = pool.findBy('member', 'userId', filer)
   return m?.name || m?.email || 'Unknown'
 }
@@ -56,42 +49,38 @@ function memberName(userId: string): string {
   return m?.name || m?.email || 'Unknown'
 }
 
-const showDayPicker = ref(false)
-// Source of truth while the picker is open: selected day → guest count for that
-// day. The calendar's selected-day set is just the keys.
-const dayGuests = ref<Map<string, number>>(new Map())
-const selectedDays = computed(() => [...dayGuests.value.keys()].sort())
-// The per-day guest steppers stay collapsed by default — bringing a +1 is the
-// exception — and auto-expand when the RSVP already has guests.
-const showGuests = ref(false)
-// Subject of the day picker. `null` means current user (the existing self-RSVP
-// flow); set to another user id when an admin edits someone else's attendance.
-const dayPickerUserId = ref<string | null>(null)
-// Whose decline got blocked by existing expenses. `null` when nobody is
-// blocked (modal closed). The discriminated union prevents a member named
-// "self" from colliding with the self-decline sentinel.
-type DeclineBlocked = { type: 'self' } | { type: 'other'; name: string }
-const declineBlocked = ref<DeclineBlocked | null>(null)
+// --- Attendance rows, resolved via the hydrated attendee ---
 
-// Calendar navigation — start on the month of the event start date
-const calYear = ref(new Date().getFullYear())
-const calMonth = ref(new Date().getMonth())
-
-const currentUserRsvp = computed(() => {
-  if (!props.currentUserId) return undefined
-  return props.event.rsvps.find((r) => r.userId === props.currentUserId)
-})
-
-const attending = computed(() => props.event.rsvps.filter((r) => r.attending))
-
-const notAttending = computed(() =>
-  props.event.rsvps.filter((r) => !r.attending)
+const memberRows = computed(() =>
+  props.event.attendances.filter((a) => !a.attendee.isGuest)
+)
+const guestRows = computed(() =>
+  props.event.attendances.filter((a) => a.attendee.isGuest)
 )
 
+const going = computed(() =>
+  memberRows.value.filter((a) => a.status === 'going')
+)
+const goingGuests = computed(() =>
+  guestRows.value.filter((a) => a.status === 'going')
+)
+const declined = computed(() =>
+  memberRows.value.filter((a) => a.status === 'declined')
+)
+
+// "No response" has two forms (doc/attendances.md): no row at all, or a row
+// reverted to pending by a date reset. Both land here.
 const noResponse = computed(() => {
   if (!props.event.workspace) return []
-  const rsvpUserIds = new Set(props.event.rsvps.map((r) => r.userId))
-  return props.event.workspace.members.filter((m) => !rsvpUserIds.has(m.userId))
+  const answered = new Set(
+    memberRows.value.filter((a) => a.status !== 'pending').map((a) => a.userId)
+  )
+  return props.event.workspace.members.filter((m) => !answered.has(m.userId))
+})
+
+const currentUserAttendance = computed(() => {
+  if (!props.currentUserId) return undefined
+  return memberRows.value.find((a) => a.userId === props.currentUserId)
 })
 
 const eventDays = computed(() =>
@@ -100,65 +89,32 @@ const eventDays = computed(() =>
     : []
 )
 
-type AttendanceLike = {
-  attendance: AttendanceEntry[] | null
-  startDate: string | null
-  endDate: string | null
-}
-
-// The concrete set of ISO days an RSVP covers, resolved against the event.
-function daysForRsvp(rsvp: AttendanceLike): string[] {
+function daysFor(attendance: HydratedAttendance): string[] {
   if (!props.event.startDate || !props.event.endDate) return []
-  return attendedDates(rsvp, props.event.startDate, props.event.endDate)
+  return attendanceDates(attendance, props.event.startDate, props.event.endDate)
 }
 
-// Total guests ("+1"s) across all the RSVP's attended days.
-function guestCountFor(rsvp: AttendanceLike): number {
-  if (!props.event.startDate || !props.event.endDate) return 0
-  return attendedDays(rsvp, props.event.startDate, props.event.endDate).reduce(
-    (sum, d) => sum + d.plusOnes,
-    0
+function isPartialDays(attendance: HydratedAttendance): boolean {
+  return (
+    attendance.days != null &&
+    daysFor(attendance).length < eventDays.value.length
   )
 }
 
-// True when the RSVP covers a subset of the event (come-and-go or legacy range)
-// rather than the whole event.
-function isPartialRsvp(rsvp: {
-  attendance: AttendanceEntry[] | null
-  startDate: string | null
-}): boolean {
-  return rsvp.attendance != null || rsvp.startDate != null
-}
-
-// True when the day set is a real subset of the event — used for the "(partial)"
-// label, which a whole-event-with-guests RSVP should not get.
-function isPartialDays(rsvp: AttendanceLike): boolean {
-  return daysForRsvp(rsvp).length < eventDays.value.length
-}
-
-function attendanceSummary(rsvp: AttendanceLike): string {
-  return daysForRsvp(rsvp)
+function attendanceSummary(attendance: HydratedAttendance): string {
+  return daysFor(attendance)
     .map((d) => formatDateDisplay(d))
     .join(', ')
 }
 
-function guestSummary(rsvp: AttendanceLike): string {
-  return formatGuestCount(guestCountFor(rsvp))
-}
+// --- Attend / decline ---
 
-// Guests brought by everyone currently marked attending — folded into the
-// headcount summary.
-const totalAttendingGuests = computed(() =>
-  attending.value.reduce((sum, rsvp) => sum + guestCountFor(rsvp), 0)
-)
-
-async function handleAttend(): Promise<void> {
-  try {
-    await rsvpsStore.submitRsvp(props.event.id, true)
-  } catch {
-    // Error handled by store
-  }
-}
+// Whose decline got blocked, and by what. The discriminated union prevents a
+// member named "self" from colliding with the self-decline sentinel.
+type DeclineBlocked =
+  | { type: 'self'; reason: 'expenses' | 'guests' }
+  | { type: 'other'; name: string; reason: 'expenses' | 'guests' }
+const declineBlocked = ref<DeclineBlocked | null>(null)
 
 function userHasExpensesFor(userId: string): boolean {
   return pool
@@ -166,21 +122,43 @@ function userHasExpensesFor(userId: string): boolean {
     .some((e) => e.eventId === props.event.id && e.userId === userId)
 }
 
-async function handleDecline(): Promise<void> {
-  if (props.currentUserId == null) return
-  await setRsvpFor(props.currentUserId, false)
+function userHostsGoingGuests(userId: string): boolean {
+  return goingGuests.value.some((a) => a.hostUserId === userId)
 }
 
-async function setRsvpFor(userId: string, attending: boolean): Promise<void> {
-  if (!attending && userHasExpensesFor(userId)) {
-    declineBlocked.value =
-      userId === props.currentUserId
-        ? { type: 'self' }
-        : { type: 'other', name: memberName(userId) }
-    return
+async function handleAttend(): Promise<void> {
+  try {
+    await attendancesStore.submitMemberAttendance(props.event.id, 'going')
+  } catch {
+    // Error handled by store
+  }
+}
+
+async function handleDecline(): Promise<void> {
+  if (props.currentUserId == null) return
+  await setStatusFor(props.currentUserId, 'declined')
+}
+
+async function setStatusFor(
+  userId: string,
+  status: 'going' | 'declined'
+): Promise<void> {
+  if (status === 'declined') {
+    const reason = userHasExpensesFor(userId)
+      ? ('expenses' as const)
+      : userHostsGoingGuests(userId)
+        ? ('guests' as const)
+        : null
+    if (reason) {
+      declineBlocked.value =
+        userId === props.currentUserId
+          ? { type: 'self', reason }
+          : { type: 'other', name: memberName(userId), reason }
+      return
+    }
   }
   try {
-    await rsvpsStore.submitRsvp(props.event.id, attending, {
+    await attendancesStore.submitMemberAttendance(props.event.id, status, {
       onBehalfOfUserId: userId === props.currentUserId ? undefined : userId,
     })
   } catch {
@@ -188,11 +166,12 @@ async function setRsvpFor(userId: string, attending: boolean): Promise<void> {
   }
 }
 
-function findRsvpFor(userId: string) {
-  return props.event.rsvps.find((r) => r.userId === userId)
-}
-
-type RsvpActionKind = 'attend' | 'decline' | 'set-dates' | 'change-dates'
+type RsvpActionKind =
+  | 'attend'
+  | 'decline'
+  | 'set-dates'
+  | 'change-dates'
+  | 'rename'
 
 interface RsvpAction {
   kind: RsvpActionKind
@@ -200,22 +179,16 @@ interface RsvpAction {
   danger?: boolean
 }
 
-function actionsFor(
-  rsvp: {
-    attending: boolean
-    attendance: AttendanceEntry[] | null
-    startDate: string | null
-  } | null
-): RsvpAction[] {
-  if (rsvp == null) {
+function actionsFor(attendance: HydratedAttendance | null): RsvpAction[] {
+  if (attendance == null || attendance.status === 'pending') {
     return [
       { kind: 'attend', label: 'Mark as attending' },
       { kind: 'decline', label: 'Mark as not attending', danger: true },
     ]
   }
-  if (rsvp.attending) {
+  if (attendance.status === 'going') {
     return [
-      isPartialRsvp(rsvp)
+      attendance.days != null
         ? { kind: 'change-dates', label: 'Change days' }
         : { kind: 'set-dates', label: 'Choose days' },
       { kind: 'decline', label: 'Mark as not attending', danger: true },
@@ -225,26 +198,25 @@ function actionsFor(
 }
 
 function handlePick(userId: string, kind: RsvpActionKind): void {
-  if (kind === 'attend') setRsvpFor(userId, true)
-  else if (kind === 'decline') setRsvpFor(userId, false)
+  if (kind === 'attend') setStatusFor(userId, 'going')
+  else if (kind === 'decline') setStatusFor(userId, 'declined')
   else openDayPicker(userId)
 }
 
-function openDayPicker(forUserId?: string): void {
-  const targetUserId = forUserId ?? props.currentUserId ?? null
-  dayPickerUserId.value =
-    targetUserId === props.currentUserId ? null : targetUserId
-  const rsvp = targetUserId == null ? undefined : findRsvpFor(targetUserId)
-  // Preset to their current days and guest counts; a whole-event or new RSVP
-  // starts with every day selected and no guests.
-  const preset =
-    rsvp && props.event.startDate && props.event.endDate
-      ? attendedDays(rsvp, props.event.startDate, props.event.endDate)
-      : eventDays.value.map((date) => ({ date, plusOnes: 0 }))
-  dayGuests.value = new Map(preset.map((d) => [d.date, d.plusOnes]))
-  showGuests.value = preset.some((d) => d.plusOnes > 0)
+// --- Member day picker (self and on-behalf flows) ---
 
-  // Navigate to the month of the event start
+const showDayPicker = ref(false)
+const selectedDaySet = ref<Set<string>>(new Set())
+const selectedDays = computed(() => [...selectedDaySet.value].sort())
+// Subject of the day picker. `null` means current user; set to another user
+// id when a member edits someone else's attendance.
+const dayPickerUserId = ref<string | null>(null)
+
+// Calendar navigation — start on the month of the event start date
+const calYear = ref(new Date().getFullYear())
+const calMonth = ref(new Date().getMonth())
+
+function navigateToEventStart(): void {
   if (props.event.startDate) {
     const [y, m] = props.event.startDate.split('-').map(Number) as [
       number,
@@ -253,66 +225,47 @@ function openDayPicker(forUserId?: string): void {
     calYear.value = y
     calMonth.value = m - 1
   }
+}
+
+function findAttendanceFor(userId: string) {
+  return memberRows.value.find((a) => a.userId === userId)
+}
+
+function openDayPicker(forUserId?: string): void {
+  const targetUserId = forUserId ?? props.currentUserId ?? null
+  dayPickerUserId.value =
+    targetUserId === props.currentUserId ? null : targetUserId
+  const attendance =
+    targetUserId == null ? undefined : findAttendanceFor(targetUserId)
+  // Preset to their current days; a whole-event or new attendance starts
+  // with every day selected.
+  const preset =
+    attendance && attendance.status === 'going'
+      ? daysFor(attendance)
+      : eventDays.value
+  selectedDaySet.value = new Set(preset)
+  navigateToEventStart()
   showDayPicker.value = true
 }
 
 function toggleDay(dateString: string): void {
-  const next = new Map(dayGuests.value)
+  const next = new Set(selectedDaySet.value)
   if (next.has(dateString)) next.delete(dateString)
-  else next.set(dateString, 0)
-  dayGuests.value = next
+  else next.add(dateString)
+  selectedDaySet.value = next
 }
 
-// Shift-click range: add every day between the two clicks (inclusive), keeping
-// any guest counts already set. Days are still stored individually.
+// Shift-click range: add every day between the two clicks (inclusive).
 function selectDayRange(from: string, to: string): void {
   const [start, end] = from <= to ? [from, to] : [to, from]
-  const next = new Map(dayGuests.value)
-  for (const d of enumerateDates(start, end)) if (!next.has(d)) next.set(d, 0)
-  dayGuests.value = next
+  const next = new Set(selectedDaySet.value)
+  for (const d of enumerateDates(start, end)) next.add(d)
+  selectedDaySet.value = next
 }
 
 function selectWholeEvent(): void {
-  const next = new Map(dayGuests.value)
-  for (const d of eventDays.value) if (!next.has(d)) next.set(d, 0)
-  dayGuests.value = next
+  selectedDaySet.value = new Set(eventDays.value)
 }
-
-const clampGuests = (n: number): number =>
-  Math.max(0, Math.min(PLUS_ONES_MAX, n))
-
-function setDayGuests(date: string, count: number): void {
-  if (!dayGuests.value.has(date)) return
-  const next = new Map(dayGuests.value)
-  next.set(date, clampGuests(count))
-  dayGuests.value = next
-}
-
-function adjustDayGuests(date: string, delta: number): void {
-  setDayGuests(date, (dayGuests.value.get(date) ?? 0) + delta)
-}
-
-// Quick-set: nudge the guest count on every selected day at once.
-function adjustAllGuests(delta: number): void {
-  const next = new Map<string, number>()
-  for (const [date, count] of dayGuests.value) {
-    next.set(date, clampGuests(count + delta))
-  }
-  dayGuests.value = next
-}
-
-// Rows for the per-day guest steppers, in date order.
-const guestRows = computed(() =>
-  selectedDays.value.map((date) => ({
-    date,
-    label: formatDateDisplay(date),
-    guests: dayGuests.value.get(date) ?? 0,
-  }))
-)
-
-const totalPickerGuests = computed(() =>
-  [...dayGuests.value.values()].reduce((sum, n) => sum + n, 0)
-)
 
 function navigatePrev(): void {
   if (calMonth.value === 0) {
@@ -333,14 +286,14 @@ function navigateNext(): void {
 }
 
 const daySelectionText = computed(() => {
-  const n = selectedDays.value.length
+  const n = selectedDaySet.value.size
   const total = eventDays.value.length
   if (n === 0) return 'Pick at least one day'
   if (n === total) return `Whole event (${total} days)`
   return `${n} of ${total} days`
 })
 
-const canSaveDays = computed(() => selectedDays.value.length > 0)
+const canSaveDays = computed(() => selectedDaySet.value.size > 0)
 
 const dayPickerTitle = computed(() =>
   dayPickerUserId.value == null
@@ -351,20 +304,12 @@ const dayPickerTitle = computed(() =>
 async function handleSaveDays(): Promise<void> {
   const days = selectedDays.value
   if (days.length === 0) return
-  // Selecting every day with no guests is just "the whole event" — send null so
-  // it's stored canonically, matching the server's normalization. A guest on
-  // any day keeps the day set materialized (null can't carry guest counts).
-  const isWholeEvent =
-    days.length === eventDays.value.length && totalPickerGuests.value === 0
-  const attendance: AttendanceEntry[] | null = isWholeEvent
-    ? null
-    : days.map((date) => {
-        const guests = dayGuests.value.get(date) ?? 0
-        return guests > 0 ? { date, plusOnes: guests } : date
-      })
+  // Selecting every day is just "the whole event" — send null so it's
+  // stored canonically, matching the server's normalization.
+  const isWholeEvent = days.length === eventDays.value.length
   try {
-    await rsvpsStore.submitRsvp(props.event.id, true, {
-      attendance,
+    await attendancesStore.submitMemberAttendance(props.event.id, 'going', {
+      days: isWholeEvent ? null : days,
       onBehalfOfUserId: dayPickerUserId.value ?? undefined,
     })
     showDayPicker.value = false
@@ -372,12 +317,171 @@ async function handleSaveDays(): Promise<void> {
     // Error handled by store
   }
 }
+
+// --- Guests: add / change days / rename / remove ---
+
+interface GuestModalState {
+  /** Set when changing days of an existing attendance row. */
+  attendanceId: string | null
+  /** Existing workspace guest, either picked or behind attendanceId. */
+  guestId: string | null
+  name: string
+  days: Set<string>
+}
+const guestModal = ref<GuestModalState | null>(null)
+
+// Existing guests to offer before creating a new one: the workspace's
+// guests minus anyone already going on this event. Placeholders stay hidden
+// until renamed (doc/attendances.md).
+const pickableGuests = computed(() => {
+  const goingGuestIds = new Set(goingGuests.value.map((a) => a.guestId))
+  return pool
+    .getAll('guest')
+    .filter(
+      (g) =>
+        g.workspaceId === props.event.workspaceId &&
+        !g.placeholder &&
+        !goingGuestIds.has(g.id)
+    )
+    .sort((a, b) => a.name.localeCompare(b.name))
+})
+
+function openAddGuest(): void {
+  guestModal.value = {
+    attendanceId: null,
+    guestId: null,
+    name: '',
+    days: new Set(eventDays.value),
+  }
+  navigateToEventStart()
+}
+
+function openGuestDays(attendance: HydratedAttendance): void {
+  guestModal.value = {
+    attendanceId: attendance.id,
+    guestId: attendance.guestId,
+    name: attendance.attendee.name,
+    days: new Set(daysFor(attendance)),
+  }
+  navigateToEventStart()
+}
+
+function pickExistingGuest(guestId: string, name: string): void {
+  if (!guestModal.value) return
+  guestModal.value = { ...guestModal.value, guestId, name }
+}
+
+function toggleGuestDay(dateString: string): void {
+  if (!guestModal.value) return
+  const next = new Set(guestModal.value.days)
+  if (next.has(dateString)) next.delete(dateString)
+  else next.add(dateString)
+  guestModal.value = { ...guestModal.value, days: next }
+}
+
+function selectGuestDayRange(from: string, to: string): void {
+  if (!guestModal.value) return
+  const [start, end] = from <= to ? [from, to] : [to, from]
+  const next = new Set(guestModal.value.days)
+  for (const d of enumerateDates(start, end)) next.add(d)
+  guestModal.value = { ...guestModal.value, days: next }
+}
+
+const guestModalTitle = computed(() =>
+  guestModal.value?.attendanceId
+    ? `Days for ${guestModal.value.name}`
+    : 'Add a guest'
+)
+
+const canSaveGuest = computed(() => {
+  const modal = guestModal.value
+  if (!modal) return false
+  if (modal.days.size === 0) return false
+  return modal.guestId != null || modal.name.trim().length > 0
+})
+
+async function handleSaveGuest(): Promise<void> {
+  const modal = guestModal.value
+  if (!modal || !canSaveGuest.value) return
+  const sorted = [...modal.days].sort()
+  const days = sorted.length === eventDays.value.length ? null : sorted
+  try {
+    await attendancesStore.upsertGuestAttendance(
+      props.event.id,
+      props.event.workspaceId,
+      modal.guestId
+        ? { guestId: modal.guestId, days }
+        : { name: modal.name.trim(), days }
+    )
+    guestModal.value = null
+  } catch {
+    // Error handled by store
+  }
+}
+
+async function handleRemoveGuest(
+  attendance: HydratedAttendance
+): Promise<void> {
+  try {
+    await attendancesStore.removeGuest(props.event.id, attendance.id)
+  } catch {
+    // Error handled by store
+  }
+}
+
+const renameModal = ref<{ guestId: string; name: string } | null>(null)
+
+function openRenameGuest(attendance: HydratedAttendance): void {
+  if (!attendance.guestId) return
+  renameModal.value = {
+    guestId: attendance.guestId,
+    name: attendance.attendee.name,
+  }
+}
+
+async function handleRenameGuest(): Promise<void> {
+  const modal = renameModal.value
+  if (!modal || modal.name.trim().length === 0) return
+  try {
+    await guestsStore.renameGuest(
+      props.event.workspaceId,
+      modal.guestId,
+      modal.name.trim()
+    )
+    renameModal.value = null
+  } catch {
+    // Error handled by store
+  }
+}
+
+function handleGuestPick(
+  attendance: HydratedAttendance,
+  kind: RsvpActionKind
+): void {
+  if (kind === 'change-dates' || kind === 'set-dates') openGuestDays(attendance)
+  else if (kind === 'rename') openRenameGuest(attendance)
+  else if (kind === 'decline') handleRemoveGuest(attendance)
+}
+
+function guestActions(attendance: HydratedAttendance): RsvpAction[] {
+  return [
+    attendance.days != null
+      ? { kind: 'change-dates', label: 'Change days' }
+      : { kind: 'set-dates', label: 'Choose days' },
+    { kind: 'rename', label: 'Rename guest' },
+  ]
+}
+
+function guestOfLabel(attendance: HydratedAttendance): string {
+  const host = attendance.attendee.hostMember
+  return `guest of ${host?.name || host?.email || 'Unknown'}`
+}
 </script>
 
 <template>
   <section data-testid="rsvp-section">
     <BaseCard padded>
-      <!-- Current user RSVP toggle -->
+      <!-- Current user response toggle -->
       <div class="mb-6">
         <p class="text-ink mb-2 text-sm font-medium">Your response</p>
 
@@ -385,10 +489,12 @@ async function handleSaveDays(): Promise<void> {
           <button
             type="button"
             data-testid="rsvp-attend"
-            :aria-pressed="currentUserRsvp?.attending ? 'true' : 'false'"
+            :aria-pressed="
+              currentUserAttendance?.status === 'going' ? 'true' : 'false'
+            "
             class="focus-visible:outline-focus inline-flex cursor-pointer items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
             :class="
-              currentUserRsvp?.attending
+              currentUserAttendance?.status === 'going'
                 ? 'bg-green-600 text-white'
                 : 'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-btn-secondary-fill-hover'
             "
@@ -401,11 +507,11 @@ async function handleSaveDays(): Promise<void> {
             type="button"
             data-testid="rsvp-decline"
             :aria-pressed="
-              currentUserRsvp && !currentUserRsvp.attending ? 'true' : 'false'
+              currentUserAttendance?.status === 'declined' ? 'true' : 'false'
             "
             class="focus-visible:outline-focus inline-flex cursor-pointer items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
             :class="
-              currentUserRsvp && !currentUserRsvp.attending
+              currentUserAttendance?.status === 'declined'
                 ? 'bg-red-600 text-white'
                 : 'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-btn-secondary-fill-hover'
             "
@@ -416,53 +522,42 @@ async function handleSaveDays(): Promise<void> {
           </button>
         </div>
 
-        <!-- Partial attendance -->
-        <div v-if="currentUserRsvp?.attending" class="mt-4">
+        <!-- Partial attendance + guest entry points -->
+        <div v-if="currentUserAttendance?.status === 'going'" class="mt-4">
           <div
-            v-if="currentUserRsvp.attendance && isPartialDays(currentUserRsvp)"
+            v-if="isPartialDays(currentUserAttendance)"
             class="text-ink-muted mb-2 flex items-start gap-1.5 text-sm"
             data-testid="rsvp-attendance-days"
           >
             <CalendarDaysIcon class="mt-0.5 size-4 shrink-0" />
             <span>
-              {{ attendanceSummary(currentUserRsvp) }}
+              {{ attendanceSummary(currentUserAttendance) }}
               <span class="text-ink-muted">(partial)</span>
             </span>
           </div>
-          <div
-            v-else-if="
-              !currentUserRsvp.attendance &&
-              currentUserRsvp.startDate &&
-              currentUserRsvp.endDate
-            "
-            class="text-ink-muted mb-2 flex items-center gap-1.5 text-sm"
-          >
-            <CalendarDaysIcon class="size-4 shrink-0" />
-            <DateRangeDisplay
-              :start-date="currentUserRsvp.startDate"
-              :end-date="currentUserRsvp.endDate"
-            />
-            <span class="text-ink-muted">(partial)</span>
+          <div class="flex items-center gap-4">
+            <TextButton
+              v-if="!showDayPicker"
+              data-testid="rsvp-change-dates"
+              @click="openDayPicker()"
+            >
+              {{
+                currentUserAttendance.days != null
+                  ? 'Change days'
+                  : 'Choose days'
+              }}
+            </TextButton>
+            <TextButton data-testid="rsvp-add-guest" @click="openAddGuest">
+              <span class="inline-flex items-center gap-1">
+                <UserPlusIcon class="size-4" aria-hidden="true" />
+                Add a guest
+              </span>
+            </TextButton>
           </div>
-          <div
-            v-if="guestCountFor(currentUserRsvp) > 0"
-            class="text-ink-muted mb-2 flex items-center gap-1.5 text-sm"
-            data-testid="rsvp-attendance-guests"
-          >
-            <UserPlusIcon class="size-4 shrink-0" />
-            <span>{{ guestSummary(currentUserRsvp) }}</span>
-          </div>
-          <TextButton
-            v-if="!showDayPicker"
-            data-testid="rsvp-change-dates"
-            @click="openDayPicker"
-          >
-            {{ isPartialRsvp(currentUserRsvp) ? 'Change days' : 'Choose days' }}
-          </TextButton>
         </div>
       </div>
 
-      <!-- Day picker modal — shared by self-RSVP and on-behalf flows -->
+      <!-- Day picker modal — shared by self and on-behalf flows -->
       <BaseModal
         :open="showDayPicker"
         :title="dayPickerTitle"
@@ -496,94 +591,6 @@ async function handleSaveDays(): Promise<void> {
           @select-range="selectDayRange"
         />
 
-        <!-- Per-day guests — collapsed by default, since a +1 is the exception -->
-        <div v-if="selectedDays.length > 0" class="mt-5">
-          <button
-            type="button"
-            data-testid="rsvp-toggle-guests"
-            :aria-expanded="showGuests"
-            class="text-ink hover:text-ink focus-visible:outline-focus flex w-full cursor-pointer items-center justify-between rounded text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2"
-            @click="showGuests = !showGuests"
-          >
-            <span>
-              Guests
-              <span v-if="totalPickerGuests > 0" class="text-ink-muted">
-                (+{{ totalPickerGuests }})
-              </span>
-            </span>
-            <ChevronDownIcon
-              class="size-4 transition-transform"
-              :class="showGuests ? 'rotate-180' : ''"
-            />
-          </button>
-        </div>
-
-        <div v-if="showGuests && selectedDays.length > 0" class="mt-3">
-          <div class="mb-2 flex items-center justify-end">
-            <div class="flex items-center gap-1">
-              <button
-                type="button"
-                data-testid="rsvp-guests-all-decrement"
-                class="bg-btn-secondary-fill text-btn-secondary-ink hover:bg-btn-secondary-fill-hover focus-visible:outline-focus flex size-8 cursor-pointer items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
-                aria-label="Fewer guests on all days"
-                @click="adjustAllGuests(-1)"
-              >
-                −
-              </button>
-              <span class="text-ink-muted px-1 text-xs">all days</span>
-              <button
-                type="button"
-                data-testid="rsvp-guests-all-increment"
-                class="bg-btn-secondary-fill text-btn-secondary-ink hover:bg-btn-secondary-fill-hover focus-visible:outline-focus flex size-8 cursor-pointer items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
-                aria-label="More guests on all days"
-                @click="adjustAllGuests(1)"
-              >
-                +
-              </button>
-            </div>
-          </div>
-          <ul class="divide-line-faint max-h-44 divide-y overflow-y-auto">
-            <li
-              v-for="row in guestRows"
-              :key="row.date"
-              class="flex items-center justify-between py-1.5 text-sm"
-            >
-              <span class="text-ink-muted">{{ row.label }}</span>
-              <div
-                class="flex items-center gap-1"
-                :data-testid="`rsvp-day-guests-${row.date}`"
-              >
-                <button
-                  type="button"
-                  :data-testid="`rsvp-guest-decrement-${row.date}`"
-                  class="bg-btn-secondary-fill text-btn-secondary-ink enabled:hover:bg-btn-secondary-fill-hover focus-visible:outline-focus flex size-8 cursor-pointer items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
-                  :disabled="row.guests === 0"
-                  :aria-label="`Fewer guests on ${row.label}`"
-                  @click="adjustDayGuests(row.date, -1)"
-                >
-                  −
-                </button>
-                <span
-                  class="text-ink min-w-[2.25rem] text-center font-mono tabular-nums"
-                  :data-testid="`rsvp-guest-count-${row.date}`"
-                >
-                  +{{ row.guests }}
-                </span>
-                <button
-                  type="button"
-                  :data-testid="`rsvp-guest-increment-${row.date}`"
-                  class="bg-btn-secondary-fill text-btn-secondary-ink enabled:hover:bg-btn-secondary-fill-hover focus-visible:outline-focus flex size-8 cursor-pointer items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
-                  :disabled="row.guests >= PLUS_ONES_MAX"
-                  :aria-label="`More guests on ${row.label}`"
-                  @click="adjustDayGuests(row.date, 1)"
-                >
-                  +
-                </button>
-              </div>
-            </li>
-          </ul>
-        </div>
-
         <div class="mt-6 flex items-center justify-between">
           <div>
             <TextButton variant="secondary" @click="selectWholeEvent">
@@ -601,17 +608,143 @@ async function handleSaveDays(): Promise<void> {
         </div>
       </BaseModal>
 
+      <!-- Guest modal — add a new/existing guest, or change a guest's days -->
+      <BaseModal
+        :open="guestModal !== null"
+        :title="guestModalTitle"
+        size="sm"
+        @close="guestModal = null"
+      >
+        <template v-if="guestModal">
+          <template v-if="guestModal.attendanceId === null">
+            <div v-if="pickableGuests.length > 0" class="mb-4">
+              <p class="text-ink-muted mb-2 text-sm">
+                Someone who's been along before?
+              </p>
+              <ul
+                class="flex flex-wrap gap-2"
+                data-testid="guest-picker-existing"
+              >
+                <li v-for="guest in pickableGuests" :key="guest.id">
+                  <button
+                    type="button"
+                    class="focus-visible:outline-focus cursor-pointer rounded-full px-3 py-1 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+                    :class="
+                      guestModal.guestId === guest.id
+                        ? 'bg-green-600 text-white'
+                        : 'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-btn-secondary-fill-hover'
+                    "
+                    @click="pickExistingGuest(guest.id, guest.name)"
+                  >
+                    {{ guest.name }}
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <div v-if="guestModal.guestId === null" class="mb-4">
+              <label
+                class="text-ink mb-1 block text-sm font-medium"
+                for="guest-name"
+              >
+                {{ pickableGuests.length > 0 ? 'Or add someone new' : 'Name' }}
+              </label>
+              <AppInput
+                id="guest-name"
+                data-testid="guest-name-input"
+                :model-value="guestModal.name"
+                placeholder="Guest's name"
+                @update:model-value="
+                  guestModal = { ...guestModal, name: $event as string }
+                "
+              />
+            </div>
+          </template>
+
+          <div class="text-ink-muted mb-4 text-sm">
+            Which days
+            {{ guestModal.name ? `is ${guestModal.name}` : 'are they' }}
+            coming along?
+          </div>
+
+          <div class="mb-4 flex items-center justify-between">
+            <IconButton label="Previous month" @click="navigatePrev">
+              <ChevronLeftIcon class="size-5" />
+            </IconButton>
+            <IconButton label="Next month" @click="navigateNext">
+              <ChevronRightIcon class="size-5" />
+            </IconButton>
+          </div>
+
+          <CalendarMonth
+            :year="calYear"
+            :month="calMonth"
+            :selected-start="null"
+            :selected-end="null"
+            :hover-date="null"
+            :selected-dates="[...guestModal.days].sort()"
+            :min-date="event.startDate ?? undefined"
+            :max-date="event.endDate ?? undefined"
+            @select="toggleGuestDay"
+            @select-range="selectGuestDayRange"
+          />
+
+          <div class="mt-6 flex items-center justify-end gap-3">
+            <TextButton variant="secondary" @click="guestModal = null">
+              Cancel
+            </TextButton>
+            <AppButton
+              data-testid="guest-save"
+              :disabled="!canSaveGuest"
+              @click="handleSaveGuest"
+            >
+              Save
+            </AppButton>
+          </div>
+        </template>
+      </BaseModal>
+
+      <!-- Rename guest modal -->
+      <BaseModal
+        :open="renameModal !== null"
+        title="Rename guest"
+        size="sm"
+        @close="renameModal = null"
+      >
+        <template v-if="renameModal">
+          <AppInput
+            data-testid="guest-rename-input"
+            :model-value="renameModal.name"
+            @update:model-value="
+              renameModal = { ...renameModal, name: $event as string }
+            "
+          />
+          <div class="mt-6 flex items-center justify-end gap-3">
+            <TextButton variant="secondary" @click="renameModal = null">
+              Cancel
+            </TextButton>
+            <AppButton
+              data-testid="guest-rename-save"
+              :disabled="renameModal.name.trim().length === 0"
+              @click="handleRenameGuest"
+            >
+              Save
+            </AppButton>
+          </div>
+        </template>
+      </BaseModal>
+
       <!-- Attendee lists -->
       <div class="space-y-4">
         <!-- Attending -->
-        <div v-if="attending.length > 0">
+        <div v-if="going.length > 0 || goingGuests.length > 0">
           <h3 class="text-state-success-ink mb-2 text-sm font-medium">
-            Attending ({{ attending.length }})
+            Attending ({{ going.length + goingGuests.length }})
           </h3>
           <ul class="space-y-2">
             <li
-              v-for="rsvp in attending"
-              :key="rsvp.id"
+              v-for="attendance in going"
+              :key="attendance.id"
               class="bg-state-success-fill flex items-center gap-3 rounded-md px-3 py-2"
             >
               <div
@@ -621,63 +754,87 @@ async function handleSaveDays(): Promise<void> {
               </div>
               <div class="min-w-0 flex-1">
                 <span class="text-ink">
-                  {{ rsvp.member?.name || rsvp.member?.email || 'Unknown' }}
+                  {{ attendance.attendee.name }}
                   <span
-                    v-if="rsvp.userId === currentUserId"
+                    v-if="attendance.userId === currentUserId"
                     class="text-state-success-ink text-sm"
                   >
                     (you)
                   </span>
                   <span
-                    v-if="filedByLabel(rsvp)"
+                    v-if="filedByLabel(attendance)"
                     class="text-ink-muted text-sm"
                     data-testid="rsvp-filed-by"
                   >
-                    (RSVP'd by {{ filedByLabel(rsvp) }})
+                    (RSVP'd by {{ filedByLabel(attendance) }})
                   </span>
                 </span>
                 <p
-                  v-if="rsvp.attendance && isPartialDays(rsvp)"
+                  v-if="isPartialDays(attendance)"
                   class="text-ink-muted text-xs"
                 >
-                  {{ attendanceSummary(rsvp) }}
-                </p>
-                <p
-                  v-else-if="!rsvp.attendance && rsvp.startDate && rsvp.endDate"
-                  class="text-ink-muted text-xs"
-                >
-                  <DateRangeDisplay
-                    :start-date="rsvp.startDate"
-                    :end-date="rsvp.endDate"
-                  />
-                </p>
-                <p
-                  v-if="guestCountFor(rsvp) > 0"
-                  class="text-ink-muted text-xs"
-                  data-testid="rsvp-attendee-guests"
-                >
-                  {{ guestSummary(rsvp) }}
+                  {{ attendanceSummary(attendance) }}
                 </p>
               </div>
               <RsvpActionsMenu
-                v-if="rsvp.userId !== currentUserId"
-                :menu-label="`Manage RSVP for ${rsvp.member?.name ?? 'member'}`"
-                :actions="actionsFor(rsvp)"
-                @pick="handlePick(rsvp.userId, $event)"
+                v-if="attendance.userId !== currentUserId"
+                :menu-label="`Manage RSVP for ${attendance.attendee.name}`"
+                :actions="actionsFor(attendance)"
+                @pick="handlePick(attendance.userId!, $event)"
               />
+            </li>
+
+            <!-- Going guests ride the attending list, attributed to their host -->
+            <li
+              v-for="attendance in goingGuests"
+              :key="attendance.id"
+              data-testid="attendance-guest-row"
+              class="bg-state-success-fill flex items-center gap-3 rounded-md px-3 py-2"
+            >
+              <div
+                class="flex size-8 items-center justify-center rounded-full bg-green-200 dark:bg-green-800"
+              >
+                <UserPlusIcon class="text-state-success-ink size-4" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <span class="text-ink">
+                  {{ attendance.attendee.name }}
+                  <span class="text-ink-muted text-sm">
+                    ({{ guestOfLabel(attendance) }})
+                  </span>
+                </span>
+                <p
+                  v-if="isPartialDays(attendance)"
+                  class="text-ink-muted text-xs"
+                >
+                  {{ attendanceSummary(attendance) }}
+                </p>
+              </div>
+              <RsvpActionsMenu
+                :menu-label="`Manage guest ${attendance.attendee.name}`"
+                :actions="guestActions(attendance)"
+                @pick="handleGuestPick(attendance, $event)"
+              />
+              <IconButton
+                data-testid="guest-remove"
+                :label="`Remove ${attendance.attendee.name} from this event`"
+                @click="handleRemoveGuest(attendance)"
+              >
+                <XMarkIcon class="size-5" />
+              </IconButton>
             </li>
           </ul>
         </div>
 
         <!-- Not attending -->
-        <div v-if="notAttending.length > 0">
+        <div v-if="declined.length > 0">
           <h3 class="text-state-danger-ink mb-2 text-sm font-medium">
-            Not Attending ({{ notAttending.length }})
+            Not Attending ({{ declined.length }})
           </h3>
           <ul class="space-y-2">
             <li
-              v-for="rsvp in notAttending"
-              :key="rsvp.id"
+              v-for="attendance in declined"
+              :key="attendance.id"
               class="bg-state-danger-fill flex items-center gap-3 rounded-md px-3 py-2"
             >
               <div
@@ -686,26 +843,26 @@ async function handleSaveDays(): Promise<void> {
                 <XCircleIcon class="text-state-danger-ink size-4" />
               </div>
               <span class="text-ink min-w-0 flex-1">
-                {{ rsvp.member?.name || rsvp.member?.email || 'Unknown' }}
+                {{ attendance.attendee.name }}
                 <span
-                  v-if="rsvp.userId === currentUserId"
+                  v-if="attendance.userId === currentUserId"
                   class="text-state-danger-ink text-sm"
                 >
                   (you)
                 </span>
                 <span
-                  v-if="filedByLabel(rsvp)"
+                  v-if="filedByLabel(attendance)"
                   class="text-ink-muted text-sm"
                   data-testid="rsvp-filed-by"
                 >
-                  (RSVP'd by {{ filedByLabel(rsvp) }})
+                  (RSVP'd by {{ filedByLabel(attendance) }})
                 </span>
               </span>
               <RsvpActionsMenu
-                v-if="rsvp.userId !== currentUserId"
-                :menu-label="`Manage RSVP for ${rsvp.member?.name ?? 'member'}`"
-                :actions="actionsFor(rsvp)"
-                @pick="handlePick(rsvp.userId, $event)"
+                v-if="attendance.userId !== currentUserId"
+                :menu-label="`Manage RSVP for ${attendance.attendee.name}`"
+                :actions="actionsFor(attendance)"
+                @pick="handlePick(attendance.userId!, $event)"
               />
             </li>
           </ul>
@@ -739,7 +896,7 @@ async function handleSaveDays(): Promise<void> {
               <RsvpActionsMenu
                 v-if="member.userId !== currentUserId"
                 :menu-label="`Manage RSVP for ${member.name ?? 'member'}`"
-                :actions="actionsFor(null)"
+                :actions="actionsFor(findAttendanceFor(member.userId) ?? null)"
                 @pick="handlePick(member.userId, $event)"
               />
             </li>
@@ -747,10 +904,11 @@ async function handleSaveDays(): Promise<void> {
         </div>
 
         <!-- Summary -->
-        <p v-if="event.rsvps.length > 0" class="text-ink-muted text-sm">
-          {{ attending.length }} attending<span v-if="totalAttendingGuests > 0">
-            ({{ formatGuestCount(totalAttendingGuests) }})</span
-          >, {{ notAttending.length }} not attending, {{ noResponse.length }}
+        <p v-if="event.attendances.length > 0" class="text-ink-muted text-sm">
+          {{ going.length }} attending<span v-if="goingGuests.length > 0">
+            (+{{ goingGuests.length }}
+            {{ goingGuests.length === 1 ? 'guest' : 'guests' }})</span
+          >, {{ declined.length }} not attending, {{ noResponse.length }}
           pending
         </p>
       </div>
@@ -762,13 +920,36 @@ async function handleSaveDays(): Promise<void> {
         @close="declineBlocked = null"
       >
         <p class="text-ink-muted text-sm">
-          <template v-if="declineBlocked?.type === 'self'">
+          <template
+            v-if="
+              declineBlocked?.type === 'self' &&
+              declineBlocked.reason === 'expenses'
+            "
+          >
             You have expenses on this event. Delete your expenses before
             changing your RSVP to not attending.
           </template>
-          <template v-else-if="declineBlocked?.type === 'other'">
+          <template
+            v-else-if="
+              declineBlocked?.type === 'self' &&
+              declineBlocked.reason === 'guests'
+            "
+          >
+            You have guests going on this event. Remove your guests first, then
+            decline.
+          </template>
+          <template
+            v-else-if="
+              declineBlocked?.type === 'other' &&
+              declineBlocked.reason === 'expenses'
+            "
+          >
             {{ declineBlocked.name }} has expenses on this event. Delete those
             expenses before marking them as not attending.
+          </template>
+          <template v-else-if="declineBlocked?.type === 'other'">
+            {{ declineBlocked.name }} has guests going on this event. Remove
+            their guests first, then mark them as not attending.
           </template>
         </p>
         <div class="mt-6 flex justify-end gap-3">
@@ -776,6 +957,7 @@ async function handleSaveDays(): Promise<void> {
             Cancel
           </TextButton>
           <AppButton
+            v-if="declineBlocked?.reason === 'expenses'"
             :to="`/events/${event.id}/expenses`"
             autofocus
             @click="declineBlocked = null"

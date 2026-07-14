@@ -30,6 +30,21 @@ export function enumerateDates(startDate: string, endDate: string): string[] {
 }
 
 /**
+ * The concrete ISO days an attendance row covers, resolved against its
+ * event: the explicit `days` set when present, otherwise the whole event.
+ * Non-going rows cover nothing — days carry meaning only when going
+ * (doc/attendances.md).
+ */
+export function attendanceDates(
+  attendance: { status: string; days: string[] | null },
+  eventStartDate: string,
+  eventEndDate: string
+): string[] {
+  if (attendance.status !== 'going') return []
+  return attendance.days ?? enumerateDates(eventStartDate, eventEndDate)
+}
+
+/**
  * A raw attendance day as it arrives over the wire (or from the IndexedDB
  * cache): a bare ISO date string for a guest-free day, or an object carrying
  * that day's `plusOnes` guest count. Both shapes coexist — old clients and

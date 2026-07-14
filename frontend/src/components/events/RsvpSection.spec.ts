@@ -90,6 +90,7 @@ function mkEvent(rsvps: HydratedRsvp[]): HydratedEvent {
     userId: 'user-alice',
     datePollId: null,
     rsvpIds: rsvps.map((r) => r.id),
+    attendanceIds: [],
     workspace: undefined,
     member: undefined,
     datePoll: null,
