@@ -38,6 +38,7 @@ module Rsvps
             .bind { |event| Subjects.validate(event: event, user_id: user_id) }
             .bind { |event| validate_event_has_dates(event) }
             .bind { |event| validate_no_expenses_when_declining(event, user_id, attending) }
+            .bind { |event| validate_no_going_guests_when_declining(event, user_id, attending) }
             .bind { |event| resolve_attendance(event, attending, attendance, start_date, end_date) }
             .bind { |event, resolved| upsert_rsvp(event, user_id, attending, resolved, resolved_rsvp_id, membership.user_id) }
         end
@@ -75,6 +76,18 @@ module Rsvps
       def validate_no_expenses_when_declining(event, user_id, attending)
         if !attending && DB[:expenses].where(event_id: event.id, user_id: user_id).count > 0
           return Failure(ServiceError.forbidden("You cannot decline while you have expenses on this event"))
+        end
+
+        Success(event)
+      end
+
+      # Same guard Attendances::Upsert applies: a member's guests must not
+      # keep billing a host who isn't coming. Enforced here too so a decline
+      # through the legacy rsvp path can't sidestep it while both write
+      # paths coexist.
+      def validate_no_going_guests_when_declining(event, user_id, attending)
+        if !attending && DB[:attendances].where(event_id: event.id, host_user_id: user_id, status: "going").exclude(guest_id: nil).count > 0
+          return Failure(ServiceError.forbidden("You cannot decline while you have guests going on this event"))
         end
 
         Success(event)
@@ -221,9 +234,28 @@ module Rsvps
                 .first
 
           Broadcaster.object_changed("rsvp", row[:id])
+
+          # Phase-2 dual-write (doc/attendances.md): member rows mirror into
+          # attendances so later phases can move readers without divergence.
+          Attendances::MirrorMemberRow.call(
+            event: event,
+            user_id: user_id,
+            attending: attending,
+            dates: mirror_dates(resolved),
+            created_by_user_id: actor_user_id,
+            now: now
+          )
         end
 
         Success({ rsvp_id: row[:id], created: row[:created] })
+      end
+
+      def mirror_dates(resolved)
+        if resolved[:attendance]
+          resolved[:attendance].map { |day| day[:date] }
+        elsif resolved[:start_date] && resolved[:end_date]
+          (resolved[:start_date]..resolved[:end_date]).to_a
+        end
       end
     end
   end

@@ -52,9 +52,21 @@ module Rsvps
           DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "rsvp", object_id: rsvp_id)
           DB[:rsvps].where(id: rsvp_id).delete
           Broadcaster.object_deleted("rsvp", rsvp_id, topics: [Topic.workspace(workspace_id)])
+          revert_mirrored_attendance(rsvp)
         end
 
         Success({ deleted: [{ objectType: "rsvp", id: rsvp_id.to_s }] })
+      end
+
+      # Phase-2 dual-write (doc/attendances.md): deleting an rsvp means "no
+      # response", so the mirrored member attendance reverts to pending
+      # rather than being deleted — attendance rows are long-lived by design.
+      def revert_mirrored_attendance(rsvp)
+        mirrored_id = DB[:attendances].where(event_id: rsvp.event_id, user_id: rsvp.user_id).get(:id)
+        if mirrored_id
+          DB[:attendances].where(id: mirrored_id).update(status: "pending", days: nil, updated_at: Time.now)
+          Broadcaster.object_changed("attendance", mirrored_id)
+        end
       end
     end
   end

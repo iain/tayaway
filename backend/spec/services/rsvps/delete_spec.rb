@@ -60,4 +60,19 @@ RSpec.describe Rsvps::Delete do
     expect(result.value![:deleted]).to eq([{ objectType: "rsvp", id: rsvp_id }])
     expect(DB[:rsvps].where(id: rsvp_id).count).to eq(0)
   end
+
+  it "reverts the mirrored member attendance to pending (dual-write, doc/attendances.md phase 2)" do
+    user = TestFactories.user
+    event = TestFactories.event(workspace: workspace, user: user)
+    DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
+    rsvp = TestFactories.rsvp(event: event, user: user)
+    mirrored = TestFactories.attendance(event: event, user: user, status: "going", days: [Date.today])
+
+    result = described_class.call(event_id: event[:id], rsvp_id: rsvp[:id], membership: membership_for(user))
+
+    expect(result.success?).to be true
+    row = DB[:attendances].where(id: mirrored[:id]).first
+    expect(row[:status]).to eq("pending")
+    expect(row[:days]).to be_nil
+  end
 end
