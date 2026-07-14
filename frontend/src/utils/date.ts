@@ -161,7 +161,8 @@ export function formatUpcomingBirthday(
 
   const diffDays = next.diff(today, 'days').days
   if (diffDays === 0) return 'Today'
+  if (diffDays === 1) return 'Tomorrow'
   if (diffDays > 7) return formatBirthday(birthday, locale)
 
-  return next.toRelativeCalendar({ base: today }) ?? next.toFormat('cccc')
+  return next.toFormat('cccc')
 }
