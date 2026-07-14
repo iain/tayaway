@@ -1060,6 +1060,39 @@ describe('useWebSocketStore — pong timeout', () => {
     expect(lastSocket.send).not.toHaveBeenCalled()
   })
 
+  it('reconnects immediately when the tab becomes visible while disconnected', async () => {
+    // A tab whose socket died in the background used to sit out the rest of
+    // the reconnect backoff (up to ~30s) after resume, showing stale data.
+    // Visibility is a user-is-back signal — reconnect right away.
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+    await store.connect()
+    lastSocket.onopen!(new Event('open'))
+    lastSocket.onmessage!({
+      data: JSON.stringify({
+        type: 'authenticated',
+        userId: 'u1',
+        workspaceIds: ['ws-1'],
+      }),
+    } as MessageEvent)
+    await vi.advanceTimersByTimeAsync(0)
+
+    // The socket dies while backgrounded — a backoff reconnect is pending
+    const firstSocket = lastSocket
+    firstSocket.onclose!({ code: 1006, reason: '' } as CloseEvent)
+
+    document.dispatchEvent(new Event('visibilitychange'))
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(lastSocket).not.toBe(firstSocket)
+
+    // The pending backoff timer was cancelled along the way: when it would
+    // have fired, no third socket appears
+    const secondSocket = lastSocket
+    await vi.advanceTimersByTimeAsync(2_500)
+    expect(lastSocket).toBe(secondSocket)
+  })
+
   it('does not force a reconnect when a pong arrives before the timeout', async () => {
     const { useWebSocketStore } = await import('./websocket')
     const store = useWebSocketStore()
