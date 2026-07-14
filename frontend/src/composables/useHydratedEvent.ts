@@ -56,6 +56,9 @@ export type HydratedRsvp = PoolRsvp & {
 export interface HydratedAttendee {
   name: string
   isGuest: boolean
+  /** The account holder this row's shares bill to: the member themselves,
+   *  or the guest's host. */
+  billingUserId: string | null
   /** Member rows: the member behind the row. */
   member: PoolMember | undefined
   /** Guest rows: the guest behind the row. */
@@ -297,6 +300,7 @@ function hydrateAttendances(
           attendee: {
             name: guest?.name ?? 'Unknown guest',
             isGuest: true,
+            billingUserId: attendance.hostUserId,
             member: undefined,
             guest,
             hostMember,
@@ -311,6 +315,7 @@ function hydrateAttendances(
         attendee: {
           name: member?.name || member?.email || 'Unknown',
           isGuest: false,
+          billingUserId: attendance.userId,
           member,
           guest: undefined,
           hostMember: undefined,

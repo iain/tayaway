@@ -126,8 +126,8 @@ RSpec.describe DatePolls::Reopen do
     event = TestFactories.event(workspace: workspace, user: user)
     TestFactories.date_poll(event: event, closed_at: Time.now)
     DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 3)
-    TestFactories.rsvp(event: event, user: user, attending: true)
-    member_row = TestFactories.attendance(event: event, user: user, status: "going", days: [Date.today])
+    TestFactories.rsvp(event: event, user: user, attending: true, attendance: [Date.today])
+    member_row = DB[:attendances].where(event_id: event[:id], user_id: user[:id]).first
     guest = TestFactories.guest(workspace: workspace)
     guest_row = TestFactories.attendance(event: event, guest: guest, host: user, status: "going")
 

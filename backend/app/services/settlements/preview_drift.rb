@@ -21,12 +21,12 @@ module Settlements
           return Success(empty_preview(tip))
         end
 
-        current_rsvps = Rsvp.for_event(event.id).select(&:attending)
-        if current_rsvps.empty?
+        current_attendances = Attendance.for_event(event.id).select(&:going?)
+        if current_attendances.empty?
           return Success(empty_preview(tip))
         end
 
-        current_snapshot = BalanceMath.snapshot_rsvps(current_rsvps, event)
+        current_snapshot = BalanceMath.snapshot_attendances(current_attendances, event)
 
         all_expenses = unsettled + settled
         expense_ids = all_expenses.map { |e| e[:id].to_s }

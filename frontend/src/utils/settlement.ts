@@ -1,4 +1,4 @@
-import { attendedDays, type AttendanceEntry } from '@/utils/event'
+import { attendanceDates } from '@/utils/event'
 
 export interface PreviewTransfer {
   fromUserId: string
@@ -14,11 +14,16 @@ interface ExpenseLike {
   participantIds?: string[]
 }
 
-interface RsvpLike {
-  userId: string
-  attendance?: AttendanceEntry[] | null
-  startDate: string | null
-  endDate: string | null
+/**
+ * A going attendance resolved to the user its share bills to — members bill
+ * themselves, guests bill their host. Callers build these from hydrated
+ * attendees (the single reader of the user/guest union) rather than
+ * branching on guestId here.
+ */
+interface AttendanceShareLike {
+  status: string
+  days: string[] | null
+  billingUserId: string | null
 }
 
 /**
@@ -36,7 +41,7 @@ type ParticipantResolver = (
  */
 export function computeBalances(
   expenses: ExpenseLike[],
-  rsvps: RsvpLike[],
+  attendances: AttendanceShareLike[],
   eventStartDate: string,
   eventEndDate: string,
   resolveParticipant?: ParticipantResolver
@@ -44,10 +49,16 @@ export function computeBalances(
   const shareByUser = new Map<string, number>()
   const paidByUser = new Map<string, number>()
 
-  const rsvpDaySets = rsvps.map((rsvp) => ({
-    userId: rsvp.userId,
-    days: attendedDays(rsvp, eventStartDate, eventEndDate),
-  }))
+  const daySets = attendances.flatMap((attendance) =>
+    attendance.billingUserId
+      ? [
+          {
+            userId: attendance.billingUserId,
+            days: attendanceDates(attendance, eventStartDate, eventEndDate),
+          },
+        ]
+      : []
+  )
 
   for (const expense of expenses) {
     if (expense.userId) {
@@ -77,16 +88,16 @@ export function computeBalances(
       }
     }
 
-    // RSVP overlap logic (default path). Each attendee's share is proportional
-    // to their head-days within the expense's own window: one attended day is
-    // worth `1 + plusOnes` heads (the attendee plus any guests they bring that
-    // day, absorbed by their host).
+    // Attendance overlap logic (default path). Each entry's share is
+    // proportional to its head-days within the expense's own window — one
+    // head per attended day, guests being their own entries billed to their
+    // host. Mirrors backend Settlements::BalanceMath.
     const overlaps: { userId: string; heads: number }[] = []
 
-    for (const rd of rsvpDaySets) {
-      const heads = rd.days
-        .filter((d) => d.date >= expense.startDate && d.date <= expense.endDate)
-        .reduce((sum, d) => sum + 1 + d.plusOnes, 0)
+    for (const rd of daySets) {
+      const heads = rd.days.filter(
+        (d) => d >= expense.startDate && d <= expense.endDate
+      ).length
       if (heads > 0) {
         overlaps.push({ userId: rd.userId, heads })
       }

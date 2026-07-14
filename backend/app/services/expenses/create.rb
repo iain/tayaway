@@ -79,9 +79,9 @@ module Expenses
       end
 
       def validate_rsvp(valid, event_id, subject_user_id)
-        rsvp = Rsvp.find_by_event_and_user(event_id, subject_user_id)
+        attendance = Attendance.find_by_event_and_user(event_id, subject_user_id)
 
-        if rsvp.nil? || !rsvp.attending
+        if attendance.nil? || !attendance.going?
           return Failure(ServiceError.forbidden("User must RSVP as attending before expenses can be added"))
         end
 

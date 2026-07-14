@@ -87,6 +87,7 @@ function mkAttendance(
     attendee: {
       name: member.name!,
       isGuest: false,
+      billingUserId: 'user-alice',
       member,
       guest: undefined,
       hostMember: undefined,
@@ -111,6 +112,7 @@ function mkGuestAttendance(
     attendee: {
       name: 'Emma',
       isGuest: true,
+      billingUserId: 'user-alice',
       member: undefined,
       guest: {
         ...BASE,
@@ -273,6 +275,7 @@ describe('RsvpSection on-behalf actions', () => {
       attendee: {
         name: 'Bob',
         isGuest: false,
+        billingUserId: 'user-bob',
         member: mkMember(),
         guest: undefined,
         hostMember: undefined,
@@ -297,6 +300,7 @@ describe('RsvpSection on-behalf actions', () => {
       attendee: {
         name: 'Bob',
         isGuest: false,
+        billingUserId: 'user-bob',
         member: mkMember(),
         guest: undefined,
         hostMember: undefined,
@@ -429,6 +433,7 @@ describe('RsvpSection pending rows', () => {
       attendee: {
         name: 'Bob',
         isGuest: false,
+        billingUserId: 'user-bob',
         member: mkMember(),
         guest: undefined,
         hostMember: undefined,

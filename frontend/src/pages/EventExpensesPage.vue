@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useObjectPoolStore } from '@/stores/objectPool'
+import { useHydratedEvent } from '@/composables/useHydratedEvent'
 import { api } from '@/api/client'
 import ExpenseRow from '@/components/expenses/ExpenseRow.vue'
 import LedgerAmount from '@/components/common/LedgerAmount.vue'
@@ -61,7 +62,8 @@ function closeModal() {
 
 const eventId = computed(() => route.params.id as string)
 
-const event = computed(() => pool.get('event', eventId.value))
+// Hydrated so SettlementSection gets attendances with resolved attendees.
+const { event } = useHydratedEvent(eventId)
 
 const expenses = computed(() =>
   pool

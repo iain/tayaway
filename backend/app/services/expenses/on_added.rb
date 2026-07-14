@@ -11,9 +11,9 @@ module Expenses
           event = Event.find(event_id)
           return unless event
 
-          recipient_ids = Rsvp.for_event(event_id)
-                              .select(&:attending)
-                              .map { |r| r.user_id.to_s } - [actor_user_id.to_s]
+          recipient_ids = Attendance.for_event(event_id)
+                                    .select { |a| a.going? && !a.guest? }
+                                    .map { |a| a.user_id.to_s } - [actor_user_id.to_s]
           return if recipient_ids.empty?
 
           users = User.for_ids(recipient_ids)

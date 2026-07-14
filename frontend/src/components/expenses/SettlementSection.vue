@@ -33,11 +33,8 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import EpcQrModal from '@/components/expenses/EpcQrModal.vue'
 import SettlementMath from '@/components/expenses/SettlementMath.vue'
-import type {
-  PoolEvent,
-  PoolSettlement,
-  PoolSettlementTransfer,
-} from '@/types/pool'
+import type { PoolSettlement, PoolSettlementTransfer } from '@/types/pool'
+import type { HydratedEvent } from '@/composables/useHydratedEvent'
 import {
   can,
   permissionUx,
@@ -45,7 +42,7 @@ import {
 } from '@/composables/usePermission'
 
 const props = defineProps<{
-  event: PoolEvent
+  event: HydratedEvent
   currentUserId: string | null
 }>()
 
@@ -119,12 +116,21 @@ const resolveParticipant = (pid: string) => {
 // what has already been settled (sum of prior transfers) and what fair shares
 // would be right now for every expense in the event. When there's no tip,
 // this is just the first-settlement balance over unsettled expenses.
+// Going attendances resolved to their billing users via the hydrated
+// attendee — the settlement math never looks inside the user/guest union.
+const billableAttendances = computed(() =>
+  props.event.attendances
+    .filter((a) => a.status === 'going')
+    .map((a) => ({
+      status: a.status,
+      days: a.days,
+      billingUserId: a.attendee.billingUserId,
+    }))
+)
+
 const previewBalances = computed((): Map<string, number> => {
   if (!props.event.startDate || !props.event.endDate) return new Map()
-  const attendingRsvps = pool
-    .getAll('rsvp')
-    .filter((r) => r.eventId === props.event.id && r.attending)
-  if (attendingRsvps.length === 0) return new Map()
+  if (billableAttendances.value.length === 0) return new Map()
 
   if (hasTip.value) {
     const allExpenses = pool
@@ -133,7 +139,7 @@ const previewBalances = computed((): Map<string, number> => {
     if (allExpenses.length === 0) return new Map()
     const currentBalances = computeBalances(
       allExpenses,
-      attendingRsvps,
+      billableAttendances.value,
       props.event.startDate,
       props.event.endDate,
       resolveParticipant
@@ -147,7 +153,7 @@ const previewBalances = computed((): Map<string, number> => {
   if (unsettledExpenses.length === 0) return new Map()
   return computeBalances(
     unsettledExpenses,
-    attendingRsvps,
+    billableAttendances.value,
     props.event.startDate,
     props.event.endDate,
     resolveParticipant
@@ -167,17 +173,14 @@ const previewTransfers = computed((): PreviewTransfer[] => {
 const hasDrift = computed(() => {
   if (!hasTip.value) return false
   if (!props.event.startDate || !props.event.endDate) return false
-  const attendingRsvps = pool
-    .getAll('rsvp')
-    .filter((r) => r.eventId === props.event.id && r.attending)
-  if (attendingRsvps.length === 0) return false
+  if (billableAttendances.value.length === 0) return false
   const allExpenses = pool
     .getAll('expense')
     .filter((e) => e.eventId === props.event.id)
   if (allExpenses.length === 0) return false
   const currentBalances = computeBalances(
     allExpenses,
-    attendingRsvps,
+    billableAttendances.value,
     props.event.startDate,
     props.event.endDate,
     resolveParticipant

@@ -33,9 +33,11 @@ module Events
         event_id = event.id
         workspace_id = event.workspace_id
 
-        # Capture the recipient set before the row is gone — RSVPs are
+        # Capture the recipient set before the row is gone — attendances are
         # cascade-deleted, and we'd lose the lookup target if we waited.
-        attending_user_ids = Rsvp.for_event(event_id).select(&:attending).map { |r| r.user_id.to_s }
+        attending_user_ids = Attendance.for_event(event_id)
+                                       .select { |a| a.going? && !a.guest? }
+                                       .map { |a| a.user_id.to_s }
 
         DB.transaction do
           DB[:deleted_items].insert(workspace_id: workspace_id, object_type: "event", object_id: event_id)

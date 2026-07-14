@@ -6,8 +6,10 @@ import {
   createResolvedEvent,
   getObjectsByType,
   getWorkspaceId,
+  addMemberToWorkspace,
   PAGE_LOAD_TIMEOUT,
   newApiContext,
+  RESOLVED_EVENT_START,
   RESOLVED_EVENT_END,
 } from '../helpers'
 
@@ -156,6 +158,65 @@ test.describe('Named guests', () => {
       'guest'
     ) as Array<{ name: string }>
     expect(guests.some((g) => g.name === 'Milo')).toBe(true)
+  })
+
+  test("a hosted guest's days shift the settlement onto the host", async ({
+    playwright,
+  }) => {
+    // Alice (creator, auto-RSVPed for the whole 7-day event) brings Emma for
+    // the whole event. Bob attends alone and pays €210 for the house.
+    // Head-days: Alice 7 + Emma 7 (billed to Alice) = 14, Bob 7, total 21 —
+    // Alice's share is 14/21·210 = €140, not the €105 a guest-blind split
+    // would give. This restores the coverage the plus-ones stepper e2e
+    // carried before named guests replaced it.
+    const { eventId } = await createResolvedEvent(apiContext, 'Guest settle')
+    const meResp = await apiContext.get(`${API_BASE}/api/auth/me`)
+    const aliceId = (await meResp.json()).user_id as string
+
+    await apiContext.post(`${API_BASE}/api/events/${eventId}/attendances`, {
+      data: {
+        id: crypto.randomUUID(),
+        status: 'going',
+        guest: { id: crypto.randomUUID(), name: 'Settle Emma' },
+      },
+    })
+
+    const bobEmail = 'e2e-guests-settle-bob@example.com'
+    const bobContext = await newApiContext(playwright)
+    const { userId: bobId } = await getTestSession(
+      bobContext,
+      bobEmail,
+      'Guest Settle Bob'
+    )
+    const workspaceId = await getWorkspaceId(apiContext)
+    await addMemberToWorkspace(apiContext, workspaceId, bobEmail)
+    await bobContext.post(`${API_BASE}/api/events/${eventId}/attendances`, {
+      data: { id: crypto.randomUUID(), status: 'going' },
+    })
+    const expenseResp = await bobContext.post(`${API_BASE}/api/expenses`, {
+      data: {
+        event_id: eventId,
+        description: 'Group house',
+        amount: 210,
+        start_date: RESOLVED_EVENT_START,
+        end_date: RESOLVED_EVENT_END,
+      },
+    })
+    expect(expenseResp.status()).toBe(201)
+    await bobContext.dispose()
+
+    const settleResp = await apiContext.post(`${API_BASE}/api/settlements`, {
+      data: { event_id: eventId },
+    })
+    expect(settleResp.status()).toBe(201)
+    const transfers = getObjectsByType(
+      (await settleResp.json()).objects,
+      'settlementTransfer'
+    ) as Array<{ fromUserId: string; toUserId: string; amount: number }>
+    expect(transfers.length).toBe(1)
+    expect(transfers[0]!.fromUserId).toBe(aliceId)
+    expect(transfers[0]!.toUserId).toBe(bobId)
+    expect(transfers[0]!.amount).toBeCloseTo(140, 2)
   })
 
   test('re-adding a removed guest from the picker revives the same attendance row', async ({

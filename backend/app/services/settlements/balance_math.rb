@@ -13,17 +13,24 @@ module Settlements
 
     module_function
 
-    # Resolve each RSVP to concrete effective dates. The settlement stores this
-    # as an audit snapshot of who was attending when the settlement locked in;
-    # the math itself always uses the *current* snapshot so that drift since the
-    # last settlement is absorbed into the next top-up naturally.
-    def snapshot_rsvps(rsvps, event)
-      rsvps.map do |rsvp|
+    # Resolve each going attendance to its concrete days, attendee identity
+    # (audit: who was counted), and billing user (math: who pays). The
+    # settlement stores this as an audit snapshot of who was attending when
+    # the settlement locked in; the math itself always uses the *current*
+    # snapshot so that drift since the last settlement is absorbed into the
+    # next top-up naturally. Shares accrue per attendance — each attended
+    # day is one head, guests being their own entries billed to their host
+    # (doc/attendances.md).
+    def snapshot_attendances(attendances, event)
+      attendances.map do |attendance|
+        attendee = attendance.attendee
         {
-          "user_id" => rsvp.user_id.to_s,
-          "days" => rsvp.effective_attendance(event).map do |day|
-            { "date" => day[:date].to_s, "plus_ones" => day[:plus_ones] }
-          end
+          "attendance_id" => attendance.id.to_s,
+          "user_id" => attendee.user_id&.to_s,
+          "guest_id" => attendee.guest_id&.to_s,
+          "display_name" => attendee.display_name,
+          "billing_user_id" => attendee.billing_user_id.to_s,
+          "days" => attendance.effective_days(event).map(&:to_s)
         }
       end
     end
@@ -43,12 +50,16 @@ module Settlements
       share_by_user = Hash.new(0.0)
       paid_by_user = Hash.new(0.0)
 
-      # Parse each attendee's day set once up front — accumulate_shares runs per
-      # expense and would otherwise re-parse the same strings on every pass. Each
-      # day resolves to a head count (`1 + plus_ones`); guests are extra heads
-      # absorbed by their host.
+      # Parse each entry's day set once up front — accumulate_shares runs per
+      # expense and would otherwise re-parse the same strings on every pass.
+      # Current snapshots carry one entry per attendance billing its
+      # billing_user_id one head per day; legacy shapes fall back to user_id
+      # and may weight days with plus_ones.
       parsed_snapshot = current_snapshot.map do |rd|
-        { "user_id" => rd["user_id"], "days" => parse_snapshot_days(rd) }
+        {
+          "user_id" => rd["billing_user_id"] || rd["user_id"],
+          "days" => parse_snapshot_days(rd)
+        }
       end
 
       expenses.each do |expense|
@@ -100,13 +111,13 @@ module Settlements
       expense_start = expense[:start_date]
       expense_end = expense[:end_date]
 
-      # Each attendee's share is proportional to their head-days that fall within
-      # the expense's own date window. A head-day is one attended day weighted by
-      # `1 + plus_ones` — the attendee plus any guests they bring that day
-      # (parsed once in compute_balances; whole-event RSVPs are expanded to the
-      # full event span, guest-free, upstream in snapshot_rsvps). So both "come
-      # and go" partial attendance and per-day plus-ones fall out of the same
-      # proportional math.
+      # Each entry's share is proportional to its head-days that fall within
+      # the expense's own date window — one head per attended day, accrued to
+      # the entry's billing user (parsed once in compute_balances; whole-event
+      # attendances are expanded to the full event span upstream in
+      # snapshot_attendances). "Come and go" partial attendance and hosted
+      # guests fall out of the same proportional math, guests as their own
+      # entries billing their host.
       overlaps = []
       rsvp_snapshot.each do |rd|
         heads = rd["days"].sum { |day| day[:date] >= expense_start && day[:date] <= expense_end ? day[:heads] : 0 }
@@ -125,11 +136,16 @@ module Settlements
     end
 
     # Normalize a snapshot entry's day set into `[{ date: Date, heads: Integer }]`.
-    # Accepts the current `days` shape (`[{date, plus_ones}]`) and the legacy flat
-    # `dates` shape (`[iso_string]`), which carries exactly one head per day.
+    # Accepts the current flat `days` shape (`[iso_string]`, one head per day —
+    # guests are separate entries), the earlier `days` object shape
+    # (`[{date, plus_ones}]`, guests as per-day weights), and the oldest flat
+    # `dates` shape (`[iso_string]`).
     def parse_snapshot_days(entry)
-      if entry["days"]
-        entry["days"].map { |day| { date: date_from(day["date"]), heads: 1 + day["plus_ones"].to_i } }
+      days = entry["days"]
+      if days && days.first.is_a?(Hash)
+        days.map { |day| { date: date_from(day["date"]), heads: 1 + day["plus_ones"].to_i } }
+      elsif days
+        days.map { |value| { date: date_from(value), heads: 1 } }
       else
         Array(entry["dates"]).map { |value| { date: date_from(value), heads: 1 } }
       end

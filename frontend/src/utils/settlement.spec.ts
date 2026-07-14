@@ -7,6 +7,14 @@ import {
   minimizeTransfers,
 } from './settlement'
 
+// A going attendance billing `billingUserId`; days null = whole event.
+// Guests appear as their own entries billing their host.
+const going = (billingUserId: string, days: string[] | null = null) => ({
+  status: 'going',
+  days,
+  billingUserId,
+})
+
 describe('computeBalances', () => {
   const eventStart = '2026-07-01'
   const eventEnd = '2026-07-07'
@@ -20,9 +28,14 @@ describe('computeBalances', () => {
         amount: 100,
       },
     ]
-    const rsvps = [{ userId: 'alice', startDate: null, endDate: null }]
+    const attendances = [going('alice')]
 
-    const balances = computeBalances(expenses, rsvps, eventStart, eventEnd)
+    const balances = computeBalances(
+      expenses,
+      attendances,
+      eventStart,
+      eventEnd
+    )
     expect(balances.size).toBe(0)
   })
 
@@ -35,12 +48,14 @@ describe('computeBalances', () => {
         amount: 100,
       },
     ]
-    const rsvps = [
-      { userId: 'alice', startDate: null, endDate: null },
-      { userId: 'bob', startDate: null, endDate: null },
-    ]
+    const attendances = [going('alice'), going('bob')]
 
-    const balances = computeBalances(expenses, rsvps, eventStart, eventEnd)
+    const balances = computeBalances(
+      expenses,
+      attendances,
+      eventStart,
+      eventEnd
+    )
     // Alice paid 100, share is 50 → balance = 50 - 100 = -50 (owed)
     expect(balances.get('alice')).toBe(-50)
     // Bob paid 0, share is 50 → balance = 50 - 0 = 50 (owes)
@@ -54,12 +69,12 @@ describe('computeBalances', () => {
     const expenses = [
       { userId: 'alice', startDate: start, endDate: end, amount: 60 },
     ]
-    const rsvps = [
-      { userId: 'alice', startDate: start, endDate: end }, // 4 days
-      { userId: 'bob', startDate: start, endDate: '2026-07-02' }, // 2 days
+    const attendances = [
+      going('alice'), // whole event, 4 days
+      going('bob', ['2026-07-01', '2026-07-02']), // 2 days
     ]
 
-    const balances = computeBalances(expenses, rsvps, start, end)
+    const balances = computeBalances(expenses, attendances, start, end)
     // Total overlap days: 4 + 2 = 6
     // Alice share: 4/6 * 60 = 40, paid 60 → balance = -20 (owed)
     expect(balances.get('alice')).toBe(-20)
@@ -76,51 +91,39 @@ describe('computeBalances', () => {
     const expenses = [
       { userId: 'alice', startDate: start, endDate: end, amount: 60 },
     ]
-    const rsvps = [
-      { userId: 'alice', attendance: null, startDate: null, endDate: null },
-      {
-        userId: 'bob',
-        attendance: ['2026-07-01', '2026-07-03'],
-        startDate: '2026-07-01',
-        endDate: '2026-07-03',
-      },
+    const attendances = [
+      going('alice'),
+      going('bob', ['2026-07-01', '2026-07-03']),
     ]
 
-    const balances = computeBalances(expenses, rsvps, start, end)
+    const balances = computeBalances(expenses, attendances, start, end)
     // Total attended days in window: 4 + 2 = 6.
     // Alice 4/6·60 = 40, paid 60 → -20. Bob 2/6·60 = 20 → owes 20.
     expect(balances.get('alice')).toBe(-20)
     expect(balances.get('bob')).toBe(20)
   })
 
-  it('counts a per-day +1 as an extra head absorbed by the host', () => {
-    // Event Jul 1-2. Bob pays €210. Alice attends both days with a +1 each day;
-    // Bob attends both days alone. Head-days: Alice 4, Bob 2, total 6.
+  it("bills a hosted guest's days to the host", () => {
+    // Event Jul 1-2. Bob pays €210. Alice attends both days and brings a
+    // guest both days; Bob attends alone. Head-days billed: Alice 4, Bob 2.
     const start = '2026-07-01'
     const end = '2026-07-02'
     const expenses = [
       { userId: 'bob', startDate: start, endDate: end, amount: 210 },
     ]
-    const rsvps = [
-      {
-        userId: 'alice',
-        attendance: [
-          { date: '2026-07-01', plusOnes: 1 },
-          { date: '2026-07-02', plusOnes: 1 },
-        ],
-        startDate: start,
-        endDate: end,
-      },
-      { userId: 'bob', attendance: null, startDate: null, endDate: null },
+    const attendances = [
+      going('alice'),
+      going('alice'), // Alice's guest — own entry, billing Alice
+      going('bob'),
     ]
 
-    const balances = computeBalances(expenses, rsvps, start, end)
+    const balances = computeBalances(expenses, attendances, start, end)
     // Alice 4/6·210 = 140 owed; Bob 2/6·210 = 70 − 210 paid = −140.
     expect(balances.get('alice')).toBe(140)
     expect(balances.get('bob')).toBe(-140)
   })
 
-  it('ignores a +1 on a day outside the expense window', () => {
+  it("ignores a guest's days outside the expense window", () => {
     // Expense covers Jul 1 only. Alice's guest lands on Jul 2, so day 1 is a
     // plain 1-for-1 split between Alice and Bob.
     const start = '2026-07-01'
@@ -128,27 +131,18 @@ describe('computeBalances', () => {
     const expenses = [
       { userId: 'bob', startDate: start, endDate: start, amount: 100 },
     ]
-    const rsvps = [
-      {
-        userId: 'alice',
-        attendance: ['2026-07-01', { date: '2026-07-02', plusOnes: 5 }],
-        startDate: start,
-        endDate: end,
-      },
-      {
-        userId: 'bob',
-        attendance: ['2026-07-01'],
-        startDate: start,
-        endDate: start,
-      },
+    const attendances = [
+      going('alice', ['2026-07-01', '2026-07-02']),
+      going('alice', ['2026-07-02']), // Alice's guest, day 2 only
+      going('bob', ['2026-07-01']),
     ]
 
-    const balances = computeBalances(expenses, rsvps, start, end)
+    const balances = computeBalances(expenses, attendances, start, end)
     expect(balances.get('alice')).toBe(50)
     expect(balances.get('bob')).toBe(-50)
   })
 
-  it('ignores expenses with no RSVP overlap', () => {
+  it('ignores expenses with no attendance overlap', () => {
     const expenses = [
       {
         userId: 'alice',
@@ -157,12 +151,17 @@ describe('computeBalances', () => {
         amount: 100,
       },
     ]
-    const rsvps = [
-      { userId: 'alice', startDate: eventStart, endDate: '2026-07-03' },
-      { userId: 'bob', startDate: eventStart, endDate: '2026-07-03' },
+    const attendances = [
+      going('alice', ['2026-07-01', '2026-07-02', '2026-07-03']),
+      going('bob', ['2026-07-01', '2026-07-02', '2026-07-03']),
     ]
 
-    const balances = computeBalances(expenses, rsvps, eventStart, eventEnd)
+    const balances = computeBalances(
+      expenses,
+      attendances,
+      eventStart,
+      eventEnd
+    )
     // No overlap with expense dates → alice paid 100 but has 0 share
     // Only paid_by_user is populated, so alice balance = 0 - 100 = -100
     expect(balances.get('alice')).toBe(-100)
@@ -174,12 +173,14 @@ describe('computeBalances', () => {
       { userId: 'alice', startDate: eventStart, endDate: eventEnd, amount: 60 },
       { userId: 'bob', startDate: eventStart, endDate: eventEnd, amount: 40 },
     ]
-    const rsvps = [
-      { userId: 'alice', startDate: null, endDate: null },
-      { userId: 'bob', startDate: null, endDate: null },
-    ]
+    const attendances = [going('alice'), going('bob')]
 
-    const balances = computeBalances(expenses, rsvps, eventStart, eventEnd)
+    const balances = computeBalances(
+      expenses,
+      attendances,
+      eventStart,
+      eventEnd
+    )
     // Alice: share 50 (half of 100), paid 60 → -10 (owed)
     expect(balances.get('alice')).toBe(-10)
     // Bob: share 50, paid 40 → 10 (owes)
@@ -195,13 +196,15 @@ describe('computeBalances', () => {
         amount: 10.0,
       },
     ]
-    const rsvps = [
-      { userId: 'alice', startDate: null, endDate: null },
-      { userId: 'bob', startDate: null, endDate: null },
-    ]
+    const attendances = [going('alice'), going('bob')]
 
     // Alice share 5, paid 10 → -5; Bob share 5, paid 0 → 5
-    const balances = computeBalances(expenses, rsvps, eventStart, eventEnd)
+    const balances = computeBalances(
+      expenses,
+      attendances,
+      eventStart,
+      eventEnd
+    )
     expect(balances.size).toBe(2)
     // Both are well above 0.005 threshold
     expect(balances.get('alice')).toBe(-5)
@@ -228,15 +231,11 @@ describe('computeBalances', () => {
           participantIds: ['p-bob', 'p-carol'],
         },
       ]
-      const rsvps = [
-        { userId: 'alice', startDate: null, endDate: null },
-        { userId: 'bob', startDate: null, endDate: null },
-        { userId: 'carol', startDate: null, endDate: null },
-      ]
+      const attendances = [going('alice'), going('bob'), going('carol')]
 
       const balances = computeBalances(
         expenses,
-        rsvps,
+        attendances,
         eventStart,
         eventEnd,
         resolver
@@ -257,14 +256,11 @@ describe('computeBalances', () => {
           participantIds: ['p-bob'],
         },
       ]
-      const rsvps = [
-        { userId: 'alice', startDate: null, endDate: null },
-        { userId: 'bob', startDate: null, endDate: null },
-      ]
+      const attendances = [going('alice'), going('bob')]
 
       const balances = computeBalances(
         expenses,
-        rsvps,
+        attendances,
         eventStart,
         eventEnd,
         resolver
@@ -276,7 +272,7 @@ describe('computeBalances', () => {
 
     it('handles mixed expenses: some with participants, some without', () => {
       const expenses = [
-        // No participants → RSVP overlap split
+        // No participants → attendance overlap split
         {
           userId: 'alice',
           startDate: eventStart,
@@ -292,15 +288,11 @@ describe('computeBalances', () => {
           participantIds: ['p-alice', 'p-bob'],
         },
       ]
-      const rsvps = [
-        { userId: 'alice', startDate: null, endDate: null },
-        { userId: 'bob', startDate: null, endDate: null },
-        { userId: 'carol', startDate: null, endDate: null },
-      ]
+      const attendances = [going('alice'), going('bob'), going('carol')]
 
       const balances = computeBalances(
         expenses,
-        rsvps,
+        attendances,
         eventStart,
         eventEnd,
         resolver
@@ -333,14 +325,11 @@ describe('computeBalances', () => {
           participantIds: ['p-alice', 'p-bob'],
         },
       ]
-      const rsvps = [
-        { userId: 'alice', startDate: null, endDate: null },
-        { userId: 'bob', startDate: null, endDate: null },
-      ]
+      const attendances = [going('alice'), going('bob')]
 
       const balances = computeBalances(
         expenses,
-        rsvps,
+        attendances,
         eventStart,
         eventEnd,
         factorResolver
@@ -351,7 +340,7 @@ describe('computeBalances', () => {
       expect(balances.get('bob')).toBe(20)
     })
 
-    it('falls back to RSVP overlap when no resolver provided', () => {
+    it('falls back to attendance overlap when no resolver provided', () => {
       const expenses = [
         {
           userId: 'alice',
@@ -361,13 +350,15 @@ describe('computeBalances', () => {
           participantIds: ['p-bob'],
         },
       ]
-      const rsvps = [
-        { userId: 'alice', startDate: null, endDate: null },
-        { userId: 'bob', startDate: null, endDate: null },
-      ]
+      const attendances = [going('alice'), going('bob')]
 
-      // Without resolver, participantIds are ignored → normal RSVP split
-      const balances = computeBalances(expenses, rsvps, eventStart, eventEnd)
+      // Without resolver, participantIds are ignored → normal attendance split
+      const balances = computeBalances(
+        expenses,
+        attendances,
+        eventStart,
+        eventEnd
+      )
       expect(balances.get('alice')).toBe(-50)
       expect(balances.get('bob')).toBe(50)
     })
@@ -495,12 +486,8 @@ describe('deriveBalancesFromTransfers', () => {
       { userId: 'alice', startDate: start, endDate: end, amount: 60 },
       { userId: 'bob', startDate: start, endDate: end, amount: 60 },
     ]
-    const rsvps = [
-      { userId: 'alice', startDate: null, endDate: null },
-      { userId: 'bob', startDate: null, endDate: null },
-      { userId: 'carol', startDate: null, endDate: null },
-    ]
-    const original = computeBalances(expenses, rsvps, start, end)
+    const attendances = [going('alice'), going('bob'), going('carol')]
+    const original = computeBalances(expenses, attendances, start, end)
     const transfers = minimizeTransfers(original)
     const derived = deriveBalancesFromTransfers(transfers)
 
