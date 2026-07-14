@@ -84,10 +84,26 @@ module Events
         end
       end
 
+      # A real date change resets the answers: every attendance (member and
+      # guest alike) reverts to pending with days cleared — the roster
+      # survives, people re-confirm for the new window (doc/attendances.md,
+      # phase 6). Setting dates for the first time is not a change.
+      def dates_changed?(event, dates)
+        return false if dates.nil?
+        return false if event.start_date.nil? || event.end_date.nil?
+
+        dates != [event.start_date, event.end_date]
+      end
+
       def update_event(event:, membership:, name:, description:, dates:, location_name:, latitude:, longitude:, timezone:)
         event_id = event.id
         workspace_id = event.workspace_id
         before = event
+        reset = dates_changed?(event, dates)
+        # Resolved before the revert: the change notice goes to the people
+        # who had answered, not to the freshly pending roster.
+        recipient_ids = reset ? going_member_ids(event_id) : nil
+        deleted_rsvp_ids = []
 
         DB.transaction do
           update_data = {
@@ -128,12 +144,19 @@ module Events
           DB[:events].where(id: event_id).update(update_data)
 
           Broadcaster.object_changed("event", event_id)
+
+          deleted_rsvp_ids = reset_answers(event_id, workspace_id, membership) if reset
         end
 
         APP_LOGGER.info { "[Events::Update] Event #{event_id} updated in workspace #{workspace_id}" }
 
         after = Event.find(event_id)
-        Events::OnDetailsChanged.call(before: before, after: after, actor_user_id: membership.user_id) if after
+        if after
+          Events::OnDetailsChanged.call(
+            before: before, after: after, actor_user_id: membership.user_id,
+            recipient_user_ids: recipient_ids
+          )
+        end
 
         # A changed zone moves every chore reminder for this event. Isolated
         # like other notification work so a scheduling hiccup can't undo the
@@ -146,7 +169,40 @@ module Events
 
         pool = PoolSerializer.new(membership: membership)
         pool.add(:event, [after]) if after
-        Success({ objects: pool.to_a })
+        pool.add(:attendance, Attendance.for_event(event_id)) if reset
+        Success({
+          objects: pool.to_a,
+          deleted: deleted_rsvp_ids.map { |rid| { objectType: "rsvp", id: rid } }
+        }
+               )
+      end
+
+      def going_member_ids(event_id)
+        Attendance.for_event(event_id)
+                  .select { |a| a.going? && !a.guest? }
+                  .map { |a| a.user_id.to_s }
+      end
+
+      # Keep the people, clear the answers: attendances revert to pending
+      # (per-row broadcasts — the pool never prunes or rewrites children on
+      # parent updates); legacy rsvp rows are deleted for stale clients,
+      # whose "no response" is row absence, with tombstones per row.
+      def reset_answers(event_id, workspace_id, membership)
+        attendance_ids = Attendance.ids_for_event(event_id)
+        if attendance_ids.any?
+          DB[:attendances].where(id: attendance_ids).update(status: "pending", days: nil, updated_at: Time.now)
+          attendance_ids.each { |aid| Broadcaster.object_changed("attendance", aid) }
+        end
+
+        rsvp_ids = Rsvp.ids_for_event(event_id)
+        if rsvp_ids.any?
+          DeletedItems.bulk_insert(workspace_id, "rsvp", rsvp_ids, deleted_by: membership.user_id)
+          rsvp_ids.each do |rid|
+            Broadcaster.object_deleted("rsvp", rid, topics: [Topic.workspace(workspace_id)])
+          end
+          DB[:rsvps].where(event_id: event_id).delete
+        end
+        rsvp_ids.map(&:to_s)
       end
     end
   end

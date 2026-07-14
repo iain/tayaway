@@ -2,6 +2,7 @@ import { test, expect, APIRequestContext } from '@playwright/test'
 import {
   API_BASE,
   getObjectByType,
+  getObjectsByType,
   getTestSession,
   setupAuthenticatedPage,
   createBareEvent,
@@ -111,6 +112,66 @@ test.describe('Event Edit', () => {
       const event = getObjectByType(body.objects, 'event')
       expect(event?.startDate).toBeNull()
       expect(event?.endDate).toBeNull()
+    })
+
+    test('changing dates resets the answers server-side, keeping the roster', async () => {
+      // Creator answers with a day set and brings a guest; then the dates
+      // move. Everyone stays on the list but reverts to pending with days
+      // cleared (doc/attendances.md phase 6) — legacy rsvp rows are deleted
+      // for stale clients.
+      const createResponse = await apiContext.post(`${API_BASE}/api/events`, {
+        data: {
+          name: 'Reset Dates',
+          start_date: offsetDate(30),
+          end_date: offsetDate(35),
+        },
+      })
+      const eventId = getObjectByType(
+        (await createResponse.json()).objects,
+        'event'
+      )!.id
+      await apiContext.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
+        data: { attending: true, attendance: [offsetDate(30), offsetDate(31)] },
+      })
+      await apiContext.post(`${API_BASE}/api/events/${eventId}/attendances`, {
+        data: {
+          id: crypto.randomUUID(),
+          status: 'going',
+          guest: { id: crypto.randomUUID(), name: 'Reset Guest' },
+        },
+      })
+
+      const response = await apiContext.put(
+        `${API_BASE}/api/events/${eventId}`,
+        {
+          data: {
+            name: 'Reset Dates',
+            start_date: offsetDate(40),
+            end_date: offsetDate(45),
+          },
+        }
+      )
+      expect(response.ok()).toBeTruthy()
+      const body = await response.json()
+      expect(body.deleted.length).toBe(1)
+      expect(body.deleted[0].objectType).toBe('rsvp')
+
+      const attendancesResp = await apiContext.get(
+        `${API_BASE}/api/events/${eventId}/attendances`
+      )
+      const attendances = getObjectsByType(
+        (await attendancesResp.json()).objects,
+        'attendance'
+      ) as Array<{ status: string; days: string[] | null }>
+      expect(attendances.length).toBe(2)
+      for (const attendance of attendances) {
+        expect(attendance.status).toBe('pending')
+        expect(attendance.days).toBeNull()
+      }
+      const rsvpsResp = await apiContext.get(
+        `${API_BASE}/api/events/${eventId}/rsvps`
+      )
+      expect(getObjectsByType((await rsvpsResp.json()).objects, 'rsvp').length).toBe(0)
     })
   })
 

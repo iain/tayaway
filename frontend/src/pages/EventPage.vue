@@ -27,8 +27,6 @@ import TimezoneSelect from '@/components/form/TimezoneSelect.vue'
 import { useEventsStore, useWorkspaceStore } from '@/stores'
 import { timezoneForCoordinates, effectiveEventZone } from '@/utils/geoTimezone'
 import type { UpdateEventRequest } from '@/types'
-import { useRsvpsStore } from '@/stores/rsvps'
-import { useAttendancesStore } from '@/stores/attendances'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useCalendar } from '@/composables/useCalendar'
 import { generateIcs, downloadIcs } from '@/utils/ics'
@@ -56,9 +54,6 @@ const mapsUrl = computed(() => {
     return null
   return `https://maps.google.com/?q=${event.value.latitude},${event.value.longitude}`
 })
-
-const rsvpsStore = useRsvpsStore()
-const attendancesStore = useAttendancesStore()
 
 type EditField = 'name' | 'description' | 'dates' | 'location' | 'timezone'
 const editField = ref<EditField | null>(null)
@@ -296,11 +291,6 @@ async function commitEdit(): Promise<void> {
     longitude: event.value.longitude ?? undefined,
   }
 
-  const resetRsvps =
-    editField.value === 'dates' &&
-    datesActuallyChanged.value &&
-    eventRsvps.value.length > 0
-
   switch (editField.value) {
     case 'name':
       if (!editName.value.trim()) return
@@ -331,33 +321,13 @@ async function commitEdit(): Promise<void> {
       break
   }
 
+  // A date change resets the answers server-side (Events::Update,
+  // doc/attendances.md phase 6): attendances revert to pending
+  // transactionally and broadcast per row — the modal above is only the
+  // user's confirmation.
   await eventsStore.updateEvent(eventId.value, data)
   showRsvpWarning.value = false
   editField.value = null
-
-  // Reset the answers after dates change: attendance rows revert to
-  // pending (the roster survives; doc/attendances.md), and legacy rsvp
-  // rows are deleted for stale clients — their dual-write mirror lands on
-  // the same pending state. Best effort until the server owns this flow
-  // (phase 6).
-  if (resetRsvps) {
-    for (const attendance of eventAttendances.value) {
-      if (attendance.status === 'pending') continue
-      try {
-        await attendancesStore.resetToPending(eventId.value, attendance)
-      } catch {
-        // Best effort — some may fail
-      }
-    }
-    const rsvpIds = eventRsvps.value.map((r) => ({ id: r.id }))
-    for (const { id } of rsvpIds) {
-      try {
-        await rsvpsStore.deleteRsvp(eventId.value, id)
-      } catch {
-        // Best effort — some may fail
-      }
-    }
-  }
 }
 
 function handleDownloadIcs(): void {
