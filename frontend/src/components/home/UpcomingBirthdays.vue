@@ -8,9 +8,6 @@ import AppAvatar from '@/components/common/AppAvatar.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import type { PoolMember } from '@/types/pool'
 
-// Callers (HomePage's `upcomingBirthdays`) already filter to members with a
-// birthday set, so `member.birthday` is always present here — no need for a
-// per-row ternary/empty-string fallback that implied it might not be.
 defineProps<{
   members: PoolMember[]
 }>()
@@ -23,25 +20,27 @@ const { locale } = useLocale()
     <SectionHeading :icon="CakeIcon" title="Upcoming birthdays" />
 
     <ul class="space-y-3">
-      <BaseCard
-        v-for="member in members"
-        :key="member.id"
-        as="li"
-        class="overflow-hidden"
-      >
-        <div class="flex items-center gap-4 px-4 py-4 sm:px-6">
-          <AppAvatar :initials="getInitials(member)" />
-          <div class="min-w-0 flex-1">
-            <h3 class="text-ink truncate text-base font-semibold">
-              {{ member.name || member.email }}
-            </h3>
-            <div class="text-ink-muted mt-0.5 flex items-center gap-1 text-sm">
-              <CakeIcon class="size-4" />
-              {{ formatUpcomingBirthday(member.birthday!, locale) }}
+      <!-- Explicit birthday check in the loop itself, rather than relying on
+           the caller to have pre-filtered `members` — keeps this component
+           safe to reuse even if a future caller passes an unfiltered list. -->
+      <template v-for="member in members" :key="member.id">
+        <BaseCard v-if="member.birthday" as="li" class="overflow-hidden">
+          <div class="flex items-center gap-4 px-4 py-4 sm:px-6">
+            <AppAvatar :initials="getInitials(member)" />
+            <div class="min-w-0 flex-1">
+              <h3 class="text-ink truncate text-base font-semibold">
+                {{ member.name || member.email }}
+              </h3>
+              <div
+                class="text-ink-muted mt-0.5 flex items-center gap-1 text-sm"
+              >
+                <CakeIcon class="size-4" />
+                {{ formatUpcomingBirthday(member.birthday, locale) }}
+              </div>
             </div>
           </div>
-        </div>
-      </BaseCard>
+        </BaseCard>
+      </template>
     </ul>
   </section>
 </template>
