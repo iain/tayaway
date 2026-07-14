@@ -14,6 +14,7 @@ class EventSerializer
       event_ids = events.map { |e| e.id.to_s }
       polls_by_event = DatePoll.for_event_ids(event_ids)
       rsvp_ids_by_event = Rsvp.ids_for_event_ids(event_ids)
+      attendance_ids_by_event = Attendance.ids_for_event_ids(event_ids)
 
       events.map do |event|
         date_poll = polls_by_event[event.id.to_s]
@@ -32,6 +33,8 @@ class EventSerializer
           userId: event.user_id.to_s,
           datePollId: date_poll&.id&.to_s,
           rsvpIds: rsvp_ids_by_event[event.id.to_s] || [],
+          # rsvpIds stays alongside until stale clients drain (phase 7).
+          attendanceIds: attendance_ids_by_event[event.id.to_s] || [],
           createdAt: event.created_at.iso8601(3),
           updatedAt: event.updated_at.iso8601(3)
         }
