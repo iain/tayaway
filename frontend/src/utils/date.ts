@@ -148,8 +148,13 @@ export function getMonthName(month: number, locale?: string): string {
  * viewer's own language and format rather than one fixed locale for
  * everyone.
  */
-export function formatUpcomingBirthday(birthday: string, locale?: string): string {
-  const today = DateTime.local().startOf('day').setLocale(locale ?? 'en-US')
+export function formatUpcomingBirthday(
+  birthday: string,
+  locale?: string
+): string {
+  const today = DateTime.local()
+    .startOf('day')
+    .setLocale(locale ?? 'en-US')
   const stored = parseDate(birthday)
   let next = today.set({ month: stored.month, day: stored.day })
   if (next < today) next = next.plus({ years: 1 })
