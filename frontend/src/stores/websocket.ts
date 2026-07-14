@@ -124,8 +124,17 @@ export const useWebSocketStore = defineStore('websocket', () => {
   // Armed after each ping; cleared on the corresponding pong. If it fires,
   // the connection is half-open (server dead, TCP RST lost, mobile tower
   // handoff, etc.) and we force a reconnect.
+  //
+  // The watchdog must stay strictly shorter than the ping interval:
+  // sendPingWithWatchdog re-arms the watchdog on every ping, so an interval
+  // at or below the watchdog would keep deferring detection forever. The
+  // interval only runs while the tab is visible (background JS is frozen or
+  // throttled on mobile) and must stay well under the server's 90s idle
+  // prune — 10s leaves one dropped ping of slack. Worst-case detection of a
+  // silently dead socket is interval + watchdog = 15s.
   let pongTimeout: ReturnType<typeof setTimeout> | null = null
-  const PONG_TIMEOUT_MS = 10000
+  const PING_INTERVAL_MS = 10_000
+  const PONG_TIMEOUT_MS = 5_000
   let reconnectAttempts = 0
   const gitSha = ref<string | null>(null)
 
@@ -347,7 +356,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     pingInterval = setInterval(() => {
       sendPingWithWatchdog()
       requestOverdueReconciliation()
-    }, 30000)
+    }, PING_INTERVAL_MS)
 
     // Process any queued commands on reconnect
     import('./commandQueue').then(({ useCommandQueueStore }) => {
@@ -585,7 +594,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
   // A tab that was frozen or throttled in the background may resume on a
   // socket the server has already pruned (or that died without an onclose).
-  // Probe liveness immediately instead of waiting up to 30s for the next
+  // Probe liveness immediately instead of waiting up to 10s for the next
   // interval tick — the pong watchdog (or the server closing an
   // unregistered connection) then forces a reconnect within seconds.
   //
