@@ -588,11 +588,19 @@ export const useWebSocketStore = defineStore('websocket', () => {
   // Probe liveness immediately instead of waiting up to 30s for the next
   // interval tick — the pong watchdog (or the server closing an
   // unregistered connection) then forces a reconnect within seconds.
+  //
+  // If the close was already noticed while backgrounded, don't sit out the
+  // rest of the reconnect backoff — the user is looking at the app again,
+  // reconnect now. A 'connecting' attempt is left alone: forcing a second
+  // connect mid-ticket-fetch would race two sockets.
   const onVisibilityChange = (): void => {
     if (document.visibilityState !== 'visible') return
-    if (state.value !== 'authenticated') return
-    sendPingWithWatchdog()
-    requestVisibilityReconciliation()
+    if (state.value === 'authenticated') {
+      sendPingWithWatchdog()
+      requestVisibilityReconciliation()
+    } else if (state.value === 'disconnected') {
+      reconnect()
+    }
   }
 
   function disconnect(): void {
