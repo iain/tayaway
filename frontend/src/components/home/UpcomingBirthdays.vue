@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { CakeIcon } from '@heroicons/vue/24/outline'
 import { formatUpcomingBirthday } from '@/utils/date'
+import { useLocale } from '@/composables/useLocale'
 import { getInitials } from '@/utils/member'
 import BaseCard from '@/components/common/BaseCard.vue'
 import AppAvatar from '@/components/common/AppAvatar.vue'
@@ -10,6 +11,8 @@ import type { PoolMember } from '@/types/pool'
 defineProps<{
   members: PoolMember[]
 }>()
+
+const { locale } = useLocale()
 </script>
 
 <template>
@@ -31,7 +34,11 @@ defineProps<{
             </h3>
             <div class="text-ink-muted mt-0.5 flex items-center gap-1 text-sm">
               <CakeIcon class="size-4" />
-              {{ member.birthday ? formatUpcomingBirthday(member.birthday) : '' }}
+              {{
+                member.birthday
+                  ? formatUpcomingBirthday(member.birthday, locale)
+                  : ''
+              }}
             </div>
           </div>
         </div>

@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon'
 
-function parseDate(dateString: string): DateTime {
-  return DateTime.fromISO(dateString)
+function parseDate(dateString: string, locale?: string): DateTime {
+  return DateTime.fromISO(dateString, { locale })
 }
 
 /**
@@ -23,25 +23,34 @@ export function addDays(dateString: string, days: number): string {
   return parseDate(dateString).plus({ days }).toISODate()!
 }
 
-/** "Mon, Jan 1, 2024" — full display date (weekday + month + day + year) */
-export function formatDateDisplay(dateString: string): string {
-  return parseDate(dateString).toFormat('ccc, LLL d, yyyy')
+/**
+ * "Mon, Jan 1, 2024" — full display date (weekday + month + day + year).
+ * Pass `useLocale().value` from a Vue component so this honors the user's
+ * chosen date/time format instead of always rendering the same locale for
+ * everyone.
+ */
+export function formatDateDisplay(dateString: string, locale?: string): string {
+  return parseDate(dateString, locale).toFormat('ccc, LLL d, yyyy')
 }
 
 /** "Sat, Mar 10" — weekday + date, the chore-roster day label */
-export function formatDayHeader(dateString: string): string {
-  return parseDate(dateString).toFormat('ccc d LLL')
+export function formatDayHeader(dateString: string, locale?: string): string {
+  return parseDate(dateString, locale).toFormat('ccc d LLL')
 }
 
 /** "Jan 1, 2024" — date without weekday */
-export function formatDateShort(dateString: string): string {
-  return parseDate(dateString).toFormat('LLL d, yyyy')
+export function formatDateShort(dateString: string, locale?: string): string {
+  return parseDate(dateString, locale).toFormat('LLL d, yyyy')
 }
 
 /** "Jan 1 – 5, 2024" or "Jan 1, 2024 – Feb 3, 2024" — smart date range */
-export function formatDateRange(startDate: string, endDate: string): string {
-  const start = parseDate(startDate)
-  const end = parseDate(endDate)
+export function formatDateRange(
+  startDate: string,
+  endDate: string,
+  locale?: string
+): string {
+  const start = parseDate(startDate, locale)
+  const end = parseDate(endDate, locale)
 
   if (start.year === end.year) {
     if (start.month === end.month) {
@@ -53,9 +62,9 @@ export function formatDateRange(startDate: string, endDate: string): string {
   return `${start.toFormat('LLL d, yyyy')} \u2013 ${end.toFormat('LLL d, yyyy')}`
 }
 
-/** Localized birthday display (e.g. "27/02/2024") */
-export function formatBirthday(dateString: string): string {
-  return parseDate(dateString).toFormat('dd/LL/yyyy')
+/** Localized birthday display (e.g. "27/02/2024" or "02/27/2024") */
+export function formatBirthday(dateString: string, locale?: string): string {
+  return parseDate(dateString, locale).toLocaleString(DateTime.DATE_SHORT)
 }
 
 /**
@@ -73,7 +82,9 @@ export function formatDateTime(isoString: string, locale?: string): string {
  * "in 5m", "in 3d", or a fallback short date for anything older than four
  * weeks. The Tayaway time voice — always compact units (`m`/`h`/`d`/`w`),
  * never long forms, anchored to a verb by the caller ("Sent 3h ago" rather
- * than "Sent three hours ago").
+ * than "Sent three hours ago"). The compact units themselves aren't
+ * localized (that's the app's fixed voice), but the date fallback honors
+ * the passed locale.
  *
  * Accepts an optional `now` so consumers with a reactive clock (the shared
  * minute ticker behind `useRelativeTime`) can pass it in and have the
@@ -82,9 +93,10 @@ export function formatDateTime(isoString: string, locale?: string): string {
  */
 export function formatRelativeDate(
   isoString: string,
-  now: number = Date.now()
+  now: number = Date.now(),
+  locale?: string
 ): string {
-  const date = DateTime.fromISO(isoString)
+  const date = DateTime.fromISO(isoString, { locale })
   const nowDt = DateTime.fromMillis(now)
   const diffMs = nowDt.diff(date).milliseconds
   const absMs = Math.abs(diffMs)
@@ -108,8 +120,8 @@ export function formatRelativeDate(
 }
 
 /** "Past deadline", "Due today", "Due tomorrow", "Due in 3 days", or short date */
-export function formatDeadline(deadline: string): string {
-  const date = DateTime.fromISO(deadline)
+export function formatDeadline(deadline: string, locale?: string): string {
+  const date = DateTime.fromISO(deadline, { locale })
   const now = DateTime.local()
   const diffDays = Math.ceil(date.diff(now, 'days').days)
 
@@ -122,8 +134,8 @@ export function formatDeadline(deadline: string): string {
 }
 
 /** Localized month name (e.g. "January") */
-export function getMonthName(month: number): string {
-  return DateTime.local(2024, month + 1, 1).toFormat('LLLL')
+export function getMonthName(month: number, locale?: string): string {
+  return DateTime.local(2024, month + 1, 1, { locale }).toFormat('LLLL')
 }
 
 /**
@@ -131,17 +143,20 @@ export function getMonthName(month: number): string {
  * weekday name ("Tuesday") within the next week, or a plain formatted date
  * further out. `birthday` is a "YYYY-MM-DD" string where only month/day are
  * used — all comparisons run in local calendar days via Luxon, so no
- * timezone or time-of-day can shift the result by a day.
+ * timezone or time-of-day can shift the result by a day. Pass
+ * `useLocale().value` so the weekday name and fallback date render in the
+ * viewer's own language and format rather than one fixed locale for
+ * everyone.
  */
-export function formatUpcomingBirthday(birthday: string): string {
-  const today = DateTime.local().startOf('day')
+export function formatUpcomingBirthday(birthday: string, locale?: string): string {
+  const today = DateTime.local().startOf('day').setLocale(locale ?? 'en-US')
   const stored = parseDate(birthday)
   let next = today.set({ month: stored.month, day: stored.day })
   if (next < today) next = next.plus({ years: 1 })
 
   const diffDays = next.diff(today, 'days').days
   if (diffDays === 0) return 'Today'
-  if (diffDays > 7) return formatBirthday(birthday)
+  if (diffDays > 7) return formatBirthday(birthday, locale)
 
   return next.toRelativeCalendar({ base: today }) ?? next.toFormat('cccc')
 }
