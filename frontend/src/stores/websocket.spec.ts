@@ -667,7 +667,12 @@ describe('useWebSocketStore — reconciliation cursor', () => {
     await vi.advanceTimersByTimeAsync(0)
     lastSocket.send.mockClear()
 
-    await vi.advanceTimersByTimeAsync(30_000)
+    // Answer each tick's ping so the pong watchdog doesn't reconnect out
+    // from under the healthy pinned-tab scenario this test describes.
+    await vi.advanceTimersByTimeAsync(10_000)
+    lastSocket.onmessage!({
+      data: JSON.stringify({ type: 'pong' }),
+    } as MessageEvent)
 
     const requests = lastSocket.send.mock.calls
       .map((call) => JSON.parse(call[0] as string))
@@ -677,7 +682,10 @@ describe('useWebSocketStore — reconciliation cursor', () => {
 
     // Later ticks are throttled — no request spam while the sync is pending
     lastSocket.send.mockClear()
-    await vi.advanceTimersByTimeAsync(30_000)
+    await vi.advanceTimersByTimeAsync(10_000)
+    lastSocket.onmessage!({
+      data: JSON.stringify({ type: 'pong' }),
+    } as MessageEvent)
     const repeat = lastSocket.send.mock.calls
       .map((call) => JSON.parse(call[0] as string))
       .filter((m: { type: string }) => m.type === 'switch_workspace')
@@ -1010,11 +1018,11 @@ describe('useWebSocketStore — pong timeout', () => {
     const firstSocket = lastSocket
     const closeSpy = vi.spyOn(firstSocket, 'close')
 
-    // Advance 30s → ping fires and arms pong timeout
-    await vi.advanceTimersByTimeAsync(30_000)
-    // Advance 10s more → pong timeout fires, which calls reconnect()
-    // reconnect() closes the old socket and opens a new one
+    // Advance 10s → ping fires and arms pong timeout
     await vi.advanceTimersByTimeAsync(10_000)
+    // Advance 5s more → pong timeout fires, which calls reconnect()
+    // reconnect() closes the old socket and opens a new one
+    await vi.advanceTimersByTimeAsync(5_000)
 
     expect(closeSpy).toHaveBeenCalled()
   })
@@ -1044,7 +1052,7 @@ describe('useWebSocketStore — pong timeout', () => {
     )
 
     // No pong within the watchdog window → reconnect closes the socket
-    await vi.advanceTimersByTimeAsync(10_000)
+    await vi.advanceTimersByTimeAsync(5_000)
     expect(firstSocket.close).toHaveBeenCalled()
   })
 
@@ -1110,14 +1118,16 @@ describe('useWebSocketStore — pong timeout', () => {
     const firstSocket = lastSocket
     const closeSpy = vi.spyOn(firstSocket, 'close')
 
-    // Advance 30s → ping fires and arms pong timeout
-    await vi.advanceTimersByTimeAsync(30_000)
+    // Advance 10s → ping fires and arms pong timeout
+    await vi.advanceTimersByTimeAsync(10_000)
     // Server replies within the timeout window
     lastSocket.onmessage!({
       data: JSON.stringify({ type: 'pong' }),
     } as MessageEvent)
-    // Advance past where the timeout would have fired
-    await vi.advanceTimersByTimeAsync(15_000)
+    // Advance past where the timeout would have fired — but short of the
+    // next ping tick, whose (unanswered, the mock never pongs) watchdog
+    // would legitimately reconnect
+    await vi.advanceTimersByTimeAsync(8_000)
 
     expect(closeSpy).not.toHaveBeenCalled()
   })
