@@ -75,6 +75,17 @@ module DatePolls
               DB[:rsvps].insert(id: rsvp_id, event_id: event.id, user_id: uid, attending: true, created_at: now, updated_at: now)
               Broadcaster.object_changed("rsvp", rsvp_id)
             end
+            # Phase-2 dual-write (doc/attendances.md): every rsvp write path
+            # must mirror, or attendance-based readers (chore autofill) see
+            # auto-RSVPed voters as absent.
+            Attendances::MirrorMemberRow.call(
+              event: event,
+              user_id: uid,
+              attending: true,
+              dates: nil,
+              created_by_user_id: nil,
+              now: now
+            )
           end
 
           Broadcaster.object_changed("date_poll", poll.id)
