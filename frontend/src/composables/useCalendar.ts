@@ -9,10 +9,13 @@ import {
   formatDateDisplay as _formatDateDisplay,
   getMonthName as _getMonthName,
 } from '@/utils/date'
+import { useLocale } from './useLocale'
 
 export { formatDateDisplay, getMonthName } from '@/utils/date'
 
 export function useCalendar() {
+  const { locale } = useLocale()
+
   function getDaysInMonth(year: number, month: number): CalendarDay[] {
     const days: CalendarDay[] = []
     const firstDay = new Date(year, month, 1)
@@ -104,6 +107,18 @@ export function useCalendar() {
     return formatDate(date)
   }
 
+  // Locale-bound wrappers so calendar consumers automatically pick up the
+  // viewer's own date/time format instead of one fixed locale for everyone.
+  // The unbound `formatDateDisplay`/`getMonthName` re-exports above remain
+  // for one-shot, non-reactive callers that pass their own locale explicitly.
+  function formatDateDisplay(dateString: string): string {
+    return _formatDateDisplay(dateString, locale.value)
+  }
+
+  function getMonthName(month: number): string {
+    return _getMonthName(month, locale.value)
+  }
+
   return {
     getDaysInMonth,
     formatDate,
@@ -112,7 +127,7 @@ export function useCalendar() {
     isDateInHoverRange,
     getNextMonday,
     addDays,
-    getMonthName: _getMonthName,
-    formatDateDisplay: _formatDateDisplay,
+    getMonthName,
+    formatDateDisplay,
   }
 }

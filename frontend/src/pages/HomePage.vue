@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { DateTime } from 'luxon'
 import { CheckCircleIcon } from '@heroicons/vue/24/solid'
 import { HomeIcon } from '@heroicons/vue/24/outline'
 import { usePollsNeedingAttention } from '@/composables/usePollsNeedingAttention'
@@ -28,6 +29,11 @@ import PollsNeedingAttention from '@/components/home/PollsNeedingAttention.vue'
 import UpcomingEventsSection from '@/components/home/UpcomingEventsSection.vue'
 import WelcomeSection from '@/components/home/WelcomeSection.vue'
 import CreateEventWizard from '@/components/events/CreateEventWizard.vue'
+
+// How far ahead the "Upcoming birthdays" section looks. Pulled out as a
+// named constant (rather than a bare `7` in the filter below) so the window
+// is self-documenting and only needs changing in one place.
+const UPCOMING_BIRTHDAY_WINDOW_DAYS = 7
 
 const pool = useObjectPoolStore()
 const authStore = useAuthStore()
@@ -129,49 +135,41 @@ const pastEventsWithOpenExpenses = computed(() =>
 
 const { members } = storeToRefs(useMembersStore())
 
-function birthdayMonthDay(member: PoolMember): [number, number] | null {
+// Days from today (local calendar day, Luxon) to a member's next birthday
+// occurrence, or null if they have no birthday set. Using Luxon here keeps
+// the comparison in whole calendar days regardless of current time-of-day.
+//
+// Guards a real edge case: a Feb 29 birthday, set onto a non-leap `today`,
+// overflows (Luxon rolls Feb 29 -> Mar 1 for a non-leap year) rather than
+// producing an invalid DateTime. We treat that overflowed date as "today's
+// Feb 29 people celebrate on Mar 1 this year" and still roll to next year
+// if that's already passed — same rule as every other birthday.
+function daysUntilBirthday(member: PoolMember, today: DateTime): number | null {
   if (!member.birthday) return null
-  const [, month, day] = member.birthday.split('-')
-  return [Number(month), Number(day)]
+  const stored = DateTime.fromISO(member.birthday)
+  let next = today.set({ month: stored.month, day: stored.day })
+  if (!next.isValid) return null
+  if (next < today) next = next.plus({ years: 1 })
+  return Math.round(next.diff(today, 'days').days)
 }
 
-const todayBirthdays = computed(() => {
-  const today = new Date()
-  const m = today.getMonth() + 1
-  const d = today.getDate()
-  return members.value.filter((member) => {
-    const md = birthdayMonthDay(member)
-    return md && md[0] === m && md[1] === d
-  })
-})
+const today = computed(() => DateTime.local().startOf('day'))
 
-const upcomingBirthdays = computed(() => {
-  const today = new Date()
-  const todayM = today.getMonth() + 1
-  const todayD = today.getDate()
+const todayBirthdays = computed(() =>
+  members.value.filter((member) => daysUntilBirthday(member, today.value) === 0)
+)
 
-  return members.value
+const upcomingBirthdays = computed(() =>
+  members.value
     .filter((member) => {
-      const md = birthdayMonthDay(member)
-      if (!md) return false
-      // Exclude today's birthdays
-      if (md[0] === todayM && md[1] === todayD) return false
-      // Check if birthday falls within the next 7 days
-      for (let i = 1; i <= 7; i++) {
-        const future = new Date(today)
-        future.setDate(future.getDate() + i)
-        if (md[0] === future.getMonth() + 1 && md[1] === future.getDate()) {
-          return true
-        }
-      }
-      return false
+      const days = daysUntilBirthday(member, today.value)
+      return days !== null && days > 0 && days <= UPCOMING_BIRTHDAY_WINDOW_DAYS
     })
-    .sort((a, b) => {
-      const amd = birthdayMonthDay(a)!
-      const bmd = birthdayMonthDay(b)!
-      return amd[0] - bmd[0] || amd[1] - bmd[1]
-    })
-})
+    .sort(
+      (a, b) =>
+        daysUntilBirthday(a, today.value)! - daysUntilBirthday(b, today.value)!
+    )
+)
 
 const hasBirthdays = computed(
   () => todayBirthdays.value.length > 0 || upcomingBirthdays.value.length > 0
