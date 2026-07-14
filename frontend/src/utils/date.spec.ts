@@ -203,26 +203,24 @@ describe('formatUpcomingBirthday', () => {
     expect(formatUpcomingBirthday('1990-07-15')).toBe('Tomorrow')
   })
 
-  // Regression test for the reported bug: a birthday on July 21st was
-  // showing as "Tuesday" — the weekday seven days too early — because the
-  // old implementation compared against a `Date` that still carried the
-  // current time-of-day instead of a clean calendar day. July 21, 2026 is
-  // actually a Tuesday, so from July 14, 2026 (also a Tuesday) it must be
-  // labeled with the correct upcoming weekday, not shifted by a week.
-  it('labels a birthday exactly 7 days out with its own correct weekday', () => {
+  // A birthday exactly 7 days out always falls on today's weekday, so a
+  // bare weekday name ("Tuesday", when today is also Tuesday) reads as
+  // today. Prefix it to disambiguate. Pin "now" late in the day to keep
+  // covering the original off-by-one, where time-of-day leaked into the
+  // date arithmetic.
+  it('labels a birthday exactly 7 days out as "Next <weekday>"', () => {
     vi.useFakeTimers()
-    // Pin "now" to a time late in the day, which is what triggered the
-    // original off-by-one: a naive `new Date()` carries hours/minutes that
-    // can push date arithmetic across a boundary.
     vi.setSystemTime(new Date('2026-07-14T23:45:00'))
-    expect(formatUpcomingBirthday('1990-07-21')).toBe('Tuesday')
+    expect(formatUpcomingBirthday('1990-07-21')).toBe('Next Tuesday')
   })
 
-  it('returns a weekday name for birthdays 2-7 days out', () => {
+  it('returns a weekday name for birthdays 2-6 days out', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-07-14T09:00:00'))
     // 2026-07-16 is a Thursday
     expect(formatUpcomingBirthday('1985-07-16')).toBe('Thursday')
+    // 2026-07-20 is a Monday — the far edge of the bare-weekday window
+    expect(formatUpcomingBirthday('1985-07-20')).toBe('Monday')
   })
 
   it('falls back to a formatted date for birthdays more than 7 days out', () => {
