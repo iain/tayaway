@@ -129,51 +129,36 @@ const pastEventsWithOpenExpenses = computed(() =>
 
 const { members } = storeToRefs(useMembersStore())
 
-function birthdayMonthDay(member: PoolMember): [number, number] | null {
+// Days from today (local calendar day, Luxon) to a member's next birthday
+// occurrence, or null if they have no birthday set. Using Luxon here keeps
+// the comparison in whole calendar days regardless of current time-of-day.
+function daysUntilBirthday(member: PoolMember, today: DateTime): number | null {
   if (!member.birthday) return null
-  const [, month, day] = member.birthday.split('-')
-  return [Number(month), Number(day)]
+  const stored = DateTime.fromISO(member.birthday)
+  let next = today.set({ month: stored.month, day: stored.day })
+  if (next < today) next = next.plus({ years: 1 })
+  return Math.round(next.diff(today, 'days').days)
 }
 
-// Anchor to the start of today in local time so all birthday comparisons are
-// pure calendar math, unaffected by the current time-of-day (this is what
-// previously caused upcoming birthdays to show the wrong weekday).
 const today = computed(() => DateTime.local().startOf('day'))
 
-const todayBirthdays = computed(() => {
-  const m = today.value.month
-  const d = today.value.day
-  return members.value.filter((member) => {
-    const md = birthdayMonthDay(member)
-    return md && md[0] === m && md[1] === d
-  })
-})
+const todayBirthdays = computed(() =>
+  members.value.filter(
+    (member) => daysUntilBirthday(member, today.value) === 0
+  )
+)
 
-const upcomingBirthdays = computed(() => {
-  const todayM = today.value.month
-  const todayD = today.value.day
-
-  return members.value
+const upcomingBirthdays = computed(() =>
+  members.value
     .filter((member) => {
-      const md = birthdayMonthDay(member)
-      if (!md) return false
-      // Exclude today's birthdays
-      if (md[0] === todayM && md[1] === todayD) return false
-      // Check if birthday falls within the next 7 days
-      for (let i = 1; i <= 7; i++) {
-        const future = today.value.plus({ days: i })
-        if (md[0] === future.month && md[1] === future.day) {
-          return true
-        }
-      }
-      return false
+      const days = daysUntilBirthday(member, today.value)
+      return days !== null && days > 0 && days <= 7
     })
-    .sort((a, b) => {
-      const amd = birthdayMonthDay(a)!
-      const bmd = birthdayMonthDay(b)!
-      return amd[0] - bmd[0] || amd[1] - bmd[1]
-    })
-})
+    .sort(
+      (a, b) =>
+        daysUntilBirthday(a, today.value)! - daysUntilBirthday(b, today.value)!
+    )
+)
 
 const hasBirthdays = computed(
   () => todayBirthdays.value.length > 0 || upcomingBirthdays.value.length > 0

@@ -1,24 +1,16 @@
-function parseDate(dateString: string): Date {
-  const [year, month, day] = dateString.split('-').map(Number) as [
-    number,
-    number,
-    number,
-  ]
-  return new Date(year, month - 1, day)
+import { DateTime } from 'luxon'
+
+function parseDate(dateString: string): DateTime {
+  return DateTime.fromISO(dateString)
 }
 
 /**
  * A Date's calendar day as "YYYY-MM-DD", read from its LOCAL parts — the day
- * the user is actually living in. Not `toISOString().slice(0, 10)`, which is
- * the UTC day and lands on the wrong side of midnight for anyone far from UTC
- * (e.g. UTC+12 late in the evening). The single home for "today" everywhere
+ * the user is actually living in. The single home for "today" everywhere
  * events and chore rosters classify against the current day.
  */
 export function localIsoDate(date: Date = new Date()): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  return DateTime.fromJSDate(date).toISODate()!
 }
 
 /**
@@ -28,69 +20,42 @@ export function localIsoDate(date: Date = new Date()): string {
  * timezone-aware chore reckoning alike).
  */
 export function addDays(dateString: string, days: number): string {
-  const date = parseDate(dateString)
-  date.setDate(date.getDate() + days)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  return parseDate(dateString).plus({ days }).toISODate()!
 }
 
 /** "Mon, Jan 1, 2024" — full display date (weekday + month + day + year) */
 export function formatDateDisplay(dateString: string): string {
-  const date = parseDate(dateString)
-  return date.toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
+  return parseDate(dateString).toFormat('ccc, LLL d, yyyy')
 }
 
 /** "Sat, Mar 10" — weekday + date, the chore-roster day label */
 export function formatDayHeader(dateString: string): string {
-  const date = parseDate(dateString)
-  return date.toLocaleDateString(undefined, {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  })
+  return parseDate(dateString).toFormat('ccc d LLL')
 }
 
 /** "Jan 1, 2024" — date without weekday */
 export function formatDateShort(dateString: string): string {
-  const date = parseDate(dateString)
-  return date.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
+  return parseDate(dateString).toFormat('LLL d, yyyy')
 }
 
 /** "Jan 1 – 5, 2024" or "Jan 1, 2024 – Feb 3, 2024" — smart date range */
 export function formatDateRange(startDate: string, endDate: string): string {
   const start = parseDate(startDate)
   const end = parseDate(endDate)
-  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
 
-  if (start.getFullYear() === end.getFullYear()) {
-    if (start.getMonth() === end.getMonth()) {
-      return `${start.toLocaleDateString(undefined, opts)} \u2013 ${end.getDate()}, ${end.getFullYear()}`
+  if (start.year === end.year) {
+    if (start.month === end.month) {
+      return `${start.toFormat('LLL d')} \u2013 ${end.toFormat('d, yyyy')}`
     }
-    return `${start.toLocaleDateString(undefined, opts)} \u2013 ${end.toLocaleDateString(undefined, opts)}, ${end.getFullYear()}`
+    return `${start.toFormat('LLL d')} \u2013 ${end.toFormat('LLL d, yyyy')}`
   }
 
-  return `${start.toLocaleDateString(undefined, { ...opts, year: 'numeric' })} \u2013 ${end.toLocaleDateString(undefined, { ...opts, year: 'numeric' })}`
+  return `${start.toFormat('LLL d, yyyy')} \u2013 ${end.toFormat('LLL d, yyyy')}`
 }
 
 /** Localized birthday display (e.g. "27/02/2024") */
 export function formatBirthday(dateString: string): string {
-  const date = parseDate(dateString)
-  return date.toLocaleDateString(undefined, {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
+  return parseDate(dateString).toFormat('dd/LL/yyyy')
 }
 
 /**
@@ -100,12 +65,7 @@ export function formatBirthday(dateString: string): string {
  * a future user-chosen locale propagates here too.
  */
 export function formatDateTime(isoString: string, locale?: string): string {
-  return new Date(isoString).toLocaleDateString(locale, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return DateTime.fromISO(isoString, { locale }).toFormat('LLL d, HH:mm')
 }
 
 /**
@@ -124,8 +84,9 @@ export function formatRelativeDate(
   isoString: string,
   now: number = Date.now()
 ): string {
-  const date = new Date(isoString)
-  const diffMs = now - date.getTime()
+  const date = DateTime.fromISO(isoString)
+  const nowDt = DateTime.fromMillis(now)
+  const diffMs = nowDt.diff(date).milliseconds
   const absMs = Math.abs(diffMs)
   const isPast = diffMs >= 0
 
@@ -141,37 +102,46 @@ export function formatRelativeDate(
   else if (diffHours < 24) unit = `${diffHours}h`
   else if (diffDays < 7) unit = `${diffDays}d`
   else if (diffWeeks < 4) unit = `${diffWeeks}w`
-  else
-    return date.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
+  else return date.toFormat('LLL d, yyyy')
 
   return isPast ? `${unit} ago` : `in ${unit}`
 }
 
 /** "Past deadline", "Due today", "Due tomorrow", "Due in 3 days", or short date */
 export function formatDeadline(deadline: string): string {
-  const date = new Date(deadline)
-  const now = new Date()
-  const diffMs = date.getTime() - now.getTime()
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+  const date = DateTime.fromISO(deadline)
+  const now = DateTime.local()
+  const diffDays = Math.ceil(date.diff(now, 'days').days)
 
   if (diffDays < 0) return 'Past deadline'
   if (diffDays === 0) return 'Due today'
   if (diffDays === 1) return 'Due tomorrow'
   if (diffDays <= 7) return `Due in ${diffDays} days`
 
-  return date.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
+  return date.toFormat('LLL d, yyyy')
 }
 
 /** Localized month name (e.g. "January") */
 export function getMonthName(month: number): string {
-  const date = new Date(2024, month, 1)
-  return date.toLocaleDateString(undefined, { month: 'long' })
+  return DateTime.local(2024, month + 1, 1).toFormat('LLLL')
+}
+
+/**
+ * Human label for a birthday's next occurrence: "Today", "Tomorrow", a
+ * weekday name ("Tuesday") within the next week, or a plain formatted date
+ * further out. `birthday` is a "YYYY-MM-DD" string where only month/day are
+ * used — all comparisons run in local calendar days via Luxon, so no
+ * timezone or time-of-day can shift the result by a day.
+ */
+export function formatUpcomingBirthday(birthday: string): string {
+  const today = DateTime.local().startOf('day')
+  const stored = parseDate(birthday)
+  let next = today.set({ month: stored.month, day: stored.day })
+  if (next < today) next = next.plus({ years: 1 })
+
+  const diffDays = next.diff(today, 'days').days
+  if (diffDays === 0) return 'Today'
+  if (diffDays > 7) return formatBirthday(birthday)
+
+  return next.toRelativeCalendar({ base: today }) ?? next.toFormat('cccc')
 }
