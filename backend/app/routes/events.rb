@@ -233,6 +233,56 @@ class App
         end
       end
 
+      # /api/events/:id/attendances routes
+      r.on "attendances" do
+        # GET /api/events/:id/attendances - Get all attendances for an event
+        r.is do
+          r.get do
+            attendances = Attendance.for_event(event.id)
+            pool = PoolSerializer.new(membership: current_membership)
+            pool.add(:attendance, attendances)
+
+            response.status = 200
+            { objects: pool.to_a }
+          end
+
+          # POST /api/events/:id/attendances - Create or update an attendance.
+          # The subject defaults to the actor unless a member or guest subject
+          # is given explicitly; `guest` may be an inline `{ id, name }`
+          # payload that creates the guest in the same transaction.
+          r.post do
+            guest_subject = r.params["guest_id"] || r.params["guest"]
+            result = Attendances::Upsert.call(
+              event_id: event.id,
+              membership: current_membership,
+              attendance_id: r.params["id"],
+              status: r.params["status"],
+              user_id: r.params["user_id"] || (guest_subject ? nil : current_membership.user_id),
+              guest_id: r.params["guest_id"],
+              guest: r.params["guest"],
+              days: r.params["days"],
+              host_user_id: r.params["host_user_id"]
+            )
+
+            result.either(
+              ->(value) {
+                attendance = Attendance.find(value[:attendance_id])
+                pool = PoolSerializer.new(membership: current_membership)
+                pool.add(:attendance, [attendance])
+                pool.add(:guest, [Guest.find(value[:guest_id])]) if value[:guest_id]
+
+                response.status = value[:created] ? 201 : 200
+                { objects: pool.to_a }
+              },
+              ->(error) {
+                response.status = error.http_status
+                error.to_api_hash
+              }
+            )
+          end
+        end
+      end
+
       # /api/events/:id/votes routes
       r.on "votes" do
         # GET /api/events/:id/votes - Get all votes for an event
