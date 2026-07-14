@@ -61,6 +61,17 @@ module DatePolls
           DB[:rsvps].where(event_id: event.id).delete
           deleted_rsvp_ids = rsvp_ids.map(&:to_s)
 
+          # Phase-2 dual-write (doc/attendances.md): on the attendance side
+          # a reopen keeps the people and clears the answers — every row
+          # (member and guest alike) reverts to pending. Phase 6 makes this
+          # the only behaviour; for now the rsvp rows above are still
+          # deleted for old readers.
+          attendance_ids = Attendance.ids_for_event(event.id)
+          if attendance_ids.any?
+            DB[:attendances].where(id: attendance_ids).update(status: "pending", days: nil, updated_at: Time.now)
+            attendance_ids.each { |aid| Broadcaster.object_changed("attendance", aid) }
+          end
+
           DB[:date_polls].where(id: poll.id).update(
             deadline: deadline,
             selected_date_range_id: nil,
