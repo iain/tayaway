@@ -50,11 +50,13 @@ module ChoreRosters
           return Failure(ServiceError.validation("The event is over, so there are no days left to fill"))
         end
 
-        # Build availability map from attending RSVPs. Past days stay in the
-        # map: they feed available_days below, so someone who already left
-        # still gets their whole stay counted when balancing what remains.
-        rsvps = Rsvp.for_event(event.id).select(&:attending)
-        availability = build_availability(dates, rsvps, event)
+        # Build availability from going member attendances (doc/attendances.md
+        # phase 3; guest rows join in once assignments reference attendances).
+        # Past days stay in the map: they feed available_days below, so someone
+        # who already left still gets their whole stay counted when balancing
+        # what remains.
+        attendances = Attendance.for_event(event.id).select { |a| a.going? && !a.guest? }
+        availability = build_availability(dates, attendances, event)
 
         chores = Chore.for_roster(roster.id)
         started_today_chore_ids = ChoreTime.started_today(chores, event.timezone).map(&:id)
@@ -231,14 +233,14 @@ module ChoreRosters
         end
       end
 
-      def build_availability(dates, rsvps, event)
+      def build_availability(dates, attendances, event)
         availability = {}
         dates.each { |d| availability[d] = Set.new }
 
-        rsvps.each do |rsvp|
-          attended = rsvp.effective_dates(event).to_set
+        attendances.each do |attendance|
+          attended = attendance.effective_days(event).to_set
           dates.each do |d|
-            availability[d] << rsvp.user_id.to_s if attended.include?(d)
+            availability[d] << attendance.user_id.to_s if attended.include?(d)
           end
         end
 

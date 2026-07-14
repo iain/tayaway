@@ -24,14 +24,15 @@ RSpec.describe ChoreRosters::ReassignStale do
     WorkspaceMembership.find(row[:id])
   end
 
-  define_method(:create_rsvp) do |user, start_date: nil, end_date: nil|
-    TestFactories.rsvp(event: event, user: user, attending: true, start_date: start_date, end_date: end_date)
+  define_method(:create_attendance) do |user, start_date: nil, end_date: nil|
+    days = start_date && end_date ? (start_date..end_date).to_a : nil
+    TestFactories.attendance(event: event, user: user, status: "going", days: days)
   end
 
   it "hands a stale assignment to an attendee, keeping the row in place" do
     # Alice left after day 1 but still holds day 3; Bob is around all event.
-    create_rsvp(user_a, start_date: event_start, end_date: event_start)
-    create_rsvp(user_b)
+    create_attendance(user_a, start_date: event_start, end_date: event_start)
+    create_attendance(user_b)
     chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
     stale = TestFactories.chore_assignment(chore: chore, user: user_a, date: Date.new(2026, 3, 3), pinned: false)
 
@@ -45,8 +46,8 @@ RSpec.describe ChoreRosters::ReassignStale do
 
   it "leaves pinned rows, past days, and today's started chores alone" do
     allow(Timezones).to receive_messages(today: Date.new(2026, 3, 2), now: Time.new(2026, 3, 2, 16, 0, 0))
-    create_rsvp(user_a, start_date: event_start, end_date: event_start)
-    create_rsvp(user_b)
+    create_attendance(user_a, start_date: event_start, end_date: event_start)
+    create_attendance(user_b)
     untimed = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
     morning = TestFactories.chore(chore_roster: roster, name: "Groceries", people_per_day: 1, time: "10:00")
 
@@ -64,9 +65,9 @@ RSpec.describe ChoreRosters::ReassignStale do
 
   it "spreads several stale slots across attendees by load" do
     # Alice holds both remaining days but left; Bob and Charlie are around.
-    create_rsvp(user_a, start_date: event_start, end_date: event_start)
-    create_rsvp(user_b)
-    create_rsvp(user_c)
+    create_attendance(user_a, start_date: event_start, end_date: event_start)
+    create_attendance(user_b)
+    create_attendance(user_c)
     chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
     TestFactories.chore_assignment(chore: chore, user: user_a, date: Date.new(2026, 3, 3), pinned: false)
     TestFactories.chore_assignment(chore: chore, user: user_a, date: Date.new(2026, 3, 4), pinned: false)
@@ -79,7 +80,7 @@ RSpec.describe ChoreRosters::ReassignStale do
   end
 
   it "leaves a stale row in place when nobody is attending that day" do
-    create_rsvp(user_a, start_date: event_start, end_date: event_start)
+    create_attendance(user_a, start_date: event_start, end_date: event_start)
     chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
     orphan = TestFactories.chore_assignment(chore: chore, user: user_a, date: Date.new(2026, 3, 3), pinned: false)
 
@@ -90,8 +91,8 @@ RSpec.describe ChoreRosters::ReassignStale do
   end
 
   it "broadcasts an update per reassigned row and succeeds as a no-op when nothing is stale" do
-    create_rsvp(user_a, start_date: event_start, end_date: event_start)
-    create_rsvp(user_b)
+    create_attendance(user_a, start_date: event_start, end_date: event_start)
+    create_attendance(user_b)
     chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
     stale = TestFactories.chore_assignment(chore: chore, user: user_a, date: Date.new(2026, 3, 3), pinned: false)
 
