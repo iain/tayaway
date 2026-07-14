@@ -64,7 +64,11 @@ export function formatDateRange(
 
 /** Localized birthday display (e.g. "27/02/2024" or "02/27/2024") */
 export function formatBirthday(dateString: string, locale?: string): string {
-  return parseDate(dateString, locale).toLocaleString(DateTime.DATE_SHORT)
+  return parseDate(dateString, locale).toLocaleString({
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
 }
 
 /**
