@@ -22,6 +22,7 @@ import UpcomingBirthdays from '@/components/home/UpcomingBirthdays.vue'
 import OpenSettlementsSection from '@/components/home/OpenSettlementsSection.vue'
 import HappeningNowSection from '@/components/home/HappeningNowSection.vue'
 import UpcomingChoresSection from '@/components/home/UpcomingChoresSection.vue'
+import ChorePushBanner from '@/components/home/ChorePushBanner.vue'
 import PastEventsOpenExpenses from '@/components/home/PastEventsOpenExpenses.vue'
 import PollsNeedingAttention from '@/components/home/PollsNeedingAttention.vue'
 import UpcomingEventsSection from '@/components/home/UpcomingEventsSection.vue'
@@ -237,11 +238,13 @@ const allCaughtUp = computed(
         :event-ids-needing-rsvp="eventIdsNeedingRsvp"
       />
 
-      <UpcomingChoresSection
-        v-if="upcomingChores.length > 0"
-        :chores="visibleChores"
-        :hidden-count="choresHiddenCount"
-      />
+      <template v-if="upcomingChores.length > 0">
+        <ChorePushBanner />
+        <UpcomingChoresSection
+          :chores="visibleChores"
+          :hidden-count="choresHiddenCount"
+        />
+      </template>
 
       <UpcomingEventsSection
         v-if="upcomingEvents.length > 0"
