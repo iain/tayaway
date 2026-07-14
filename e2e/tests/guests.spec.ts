@@ -53,10 +53,14 @@ test.describe('Named guests', () => {
     })
 
     // Open the add-guest modal, name the guest, and drop the last day so the
-    // guest gets an explicit day set.
+    // guest gets an explicit day set. The calendar click is scoped to the
+    // guest dialog — the member day picker renders its own calendar.
     await page.getByTestId('rsvp-add-guest').click()
     await page.getByTestId('guest-name-input').fill('Emma')
-    await page.getByTestId(`calendar-day-${RESOLVED_EVENT_END}`).click()
+    await page
+      .getByRole('dialog', { name: 'Add a guest' })
+      .getByTestId(`calendar-day-${RESOLVED_EVENT_END}`)
+      .click()
 
     const [postResponse] = await Promise.all([
       page.waitForResponse(

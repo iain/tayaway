@@ -8,16 +8,16 @@ import type {
   PoolChoreAssignment,
   PoolEvent,
   PoolMember,
-  PoolRsvp,
+  PoolAttendance,
 } from '@/types/pool'
-import { attendedDates } from '@/utils/event'
+import { attendanceDates } from '@/utils/event'
 
 const props = withDefaults(
   defineProps<{
     chores: PoolChore[]
     assignments: PoolChoreAssignment[]
     members: PoolMember[]
-    rsvps: PoolRsvp[]
+    attendances: PoolAttendance[]
     event: PoolEvent
     headingLevel?: 2 | 3
   }>(),
@@ -56,11 +56,14 @@ const rows = computed<SummaryRow[]>(() => {
   // exactly this number.
   const daysByUser = new Map<string, number>()
   if (props.event.startDate && props.event.endDate) {
-    for (const rsvp of props.rsvps) {
-      daysByUser.set(
-        rsvp.userId,
-        attendedDates(rsvp, props.event.startDate, props.event.endDate).length
+    for (const attendance of props.attendances) {
+      if (!attendance.userId) continue
+      const days = attendanceDates(
+        attendance,
+        props.event.startDate,
+        props.event.endDate
       )
+      if (days.length > 0) daysByUser.set(attendance.userId, days.length)
     }
   }
 

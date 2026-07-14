@@ -4,7 +4,11 @@ import {
   shouldSuggestAutofill,
   staleAssignmentIds,
 } from './chores'
-import { makeChore, makeChoreAssignment, makeRsvp } from '@/test/factories'
+import {
+  makeAttendance,
+  makeChore,
+  makeChoreAssignment,
+} from '@/test/factories'
 
 describe('refillableAssignments', () => {
   // Four-day event in Amsterdam, viewed on day three at 16:00 local (CET, +1).
@@ -92,7 +96,9 @@ describe('staleAssignmentIds', () => {
 
   it('flags upcoming assignments held by someone not attending that day, ignoring past days', () => {
     // user-1 left after the first day, yet still holds slots on days 2 and 3.
-    const rsvps = [makeRsvp({ userId: 'user-1', attendance: ['2026-03-01'] })]
+    const attendances = [
+      makeAttendance({ userId: 'user-1', days: ['2026-03-01'] }),
+    ]
     const assignments = [
       makeChoreAssignment({
         id: 'a-past',
@@ -106,7 +112,7 @@ describe('staleAssignmentIds', () => {
       }),
     ]
 
-    expect(staleAssignmentIds(assignments, rsvps, event, TODAY)).toEqual(
+    expect(staleAssignmentIds(assignments, attendances, event, TODAY)).toEqual(
       new Set(['a-future'])
     )
   })

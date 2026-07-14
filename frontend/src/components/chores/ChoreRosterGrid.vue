@@ -11,7 +11,7 @@ import type {
   PoolChore,
   PoolChoreAssignment,
   PoolMember,
-  PoolRsvp,
+  PoolAttendance,
 } from '@/types/pool'
 
 const props = defineProps<{
@@ -19,7 +19,7 @@ const props = defineProps<{
   assignments: PoolChoreAssignment[]
   dates: string[]
   members: PoolMember[]
-  rsvps: PoolRsvp[]
+  attendances: PoolAttendance[]
   rosterId: string
   currentUserId: string | null
   // The event-zone date — the same "today" the backend fences autofill on,

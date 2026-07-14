@@ -6,7 +6,7 @@ import AnchoredPopover from '@/components/common/AnchoredPopover.vue'
 import type {
   PoolChore,
   PoolMember,
-  PoolRsvp,
+  PoolAttendance,
   PoolChoreAssignment,
   PoolEvent,
 } from '@/types/pool'
@@ -19,7 +19,7 @@ const props = defineProps<{
   anchorEl: HTMLElement
   rosterId: string
   members: PoolMember[]
-  rsvps: PoolRsvp[]
+  attendances: PoolAttendance[]
   assignments: PoolChoreAssignment[]
   event: PoolEvent
   currentUserId: string | null
@@ -38,7 +38,7 @@ const choreRostersStore = useChoreRostersStore()
 const attendingMembers = computed(() => {
   const attendingUserIds = attendingUserIdsOn(
     props.date,
-    props.rsvps,
+    props.attendances,
     props.event
   )
 

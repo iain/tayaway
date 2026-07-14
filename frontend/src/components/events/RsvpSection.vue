@@ -21,7 +21,6 @@ import { useCalendar } from '@/composables/useCalendar'
 import BaseCard from '@/components/common/BaseCard.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import AppButton from '@/components/common/AppButton.vue'
-import AppInput from '@/components/common/AppInput.vue'
 import TextButton from '@/components/common/TextButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import CalendarMonth from '@/components/calendar/CalendarMonth.vue'
@@ -564,48 +563,52 @@ function guestOfLabel(attendance: HydratedAttendance): string {
         size="sm"
         @close="showDayPicker = false"
       >
-        <div class="text-ink-muted mb-4 text-sm">
-          Tap the days you'll be here, or shift-click for a range.
-          {{ daySelectionText }}.
-        </div>
-
-        <div class="mb-4 flex items-center justify-between">
-          <IconButton label="Previous month" @click="navigatePrev">
-            <ChevronLeftIcon class="size-5" />
-          </IconButton>
-          <IconButton label="Next month" @click="navigateNext">
-            <ChevronRightIcon class="size-5" />
-          </IconButton>
-        </div>
-
-        <CalendarMonth
-          :year="calYear"
-          :month="calMonth"
-          :selected-start="null"
-          :selected-end="null"
-          :hover-date="null"
-          :selected-dates="selectedDays"
-          :min-date="event.startDate ?? undefined"
-          :max-date="event.endDate ?? undefined"
-          @select="toggleDay"
-          @select-range="selectDayRange"
-        />
-
-        <div class="mt-6 flex items-center justify-between">
-          <div>
-            <TextButton variant="secondary" @click="selectWholeEvent">
-              Whole event
-            </TextButton>
+        <!-- v-if so the closed picker doesn't keep a second calendar in the
+             DOM competing with the guest modal's. -->
+        <template v-if="showDayPicker">
+          <div class="text-ink-muted mb-4 text-sm">
+            Tap the days you'll be here, or shift-click for a range.
+            {{ daySelectionText }}.
           </div>
-          <div class="flex items-center gap-3">
-            <TextButton variant="secondary" @click="showDayPicker = false">
-              Cancel
-            </TextButton>
-            <AppButton :disabled="!canSaveDays" @click="handleSaveDays">
-              Save
-            </AppButton>
+
+          <div class="mb-4 flex items-center justify-between">
+            <IconButton label="Previous month" @click="navigatePrev">
+              <ChevronLeftIcon class="size-5" />
+            </IconButton>
+            <IconButton label="Next month" @click="navigateNext">
+              <ChevronRightIcon class="size-5" />
+            </IconButton>
           </div>
-        </div>
+
+          <CalendarMonth
+            :year="calYear"
+            :month="calMonth"
+            :selected-start="null"
+            :selected-end="null"
+            :hover-date="null"
+            :selected-dates="selectedDays"
+            :min-date="event.startDate ?? undefined"
+            :max-date="event.endDate ?? undefined"
+            @select="toggleDay"
+            @select-range="selectDayRange"
+          />
+
+          <div class="mt-6 flex items-center justify-between">
+            <div>
+              <TextButton variant="secondary" @click="selectWholeEvent">
+                Whole event
+              </TextButton>
+            </div>
+            <div class="flex items-center gap-3">
+              <TextButton variant="secondary" @click="showDayPicker = false">
+                Cancel
+              </TextButton>
+              <AppButton :disabled="!canSaveDays" @click="handleSaveDays">
+                Save
+              </AppButton>
+            </div>
+          </div>
+        </template>
       </BaseModal>
 
       <!-- Guest modal — add a new/existing guest, or change a guest's days -->
@@ -649,13 +652,19 @@ function guestOfLabel(attendance: HydratedAttendance): string {
               >
                 {{ pickableGuests.length > 0 ? 'Or add someone new' : 'Name' }}
               </label>
-              <AppInput
+              <input
                 id="guest-name"
                 data-testid="guest-name-input"
-                :model-value="guestModal.name"
+                type="text"
+                :value="guestModal.name"
                 placeholder="Guest's name"
-                @update:model-value="
-                  guestModal = { ...guestModal, name: $event as string }
+                maxlength="255"
+                class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus w-full rounded-md px-3 py-2 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
+                @input="
+                  guestModal = {
+                    ...guestModal,
+                    name: ($event.target as HTMLInputElement).value,
+                  }
                 "
               />
             </div>
@@ -712,11 +721,18 @@ function guestOfLabel(attendance: HydratedAttendance): string {
         @close="renameModal = null"
       >
         <template v-if="renameModal">
-          <AppInput
+          <input
             data-testid="guest-rename-input"
-            :model-value="renameModal.name"
-            @update:model-value="
-              renameModal = { ...renameModal, name: $event as string }
+            type="text"
+            aria-label="Guest name"
+            :value="renameModal.name"
+            maxlength="255"
+            class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus w-full rounded-md px-3 py-2 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
+            @input="
+              renameModal = {
+                ...renameModal,
+                name: ($event.target as HTMLInputElement).value,
+              }
             "
           />
           <div class="mt-6 flex items-center justify-end gap-3">

@@ -6,10 +6,14 @@ import {
   makeChore,
   makeEvent,
   makeMember,
-  makeRsvp,
+  makeAttendance,
   makeChoreAssignment,
 } from '@/test/factories'
-import type { PoolChore, PoolChoreAssignment, PoolRsvp } from '@/types/pool'
+import type {
+  PoolChore,
+  PoolChoreAssignment,
+  PoolAttendance,
+} from '@/types/pool'
 
 const createAssignmentSpy = vi
   .fn()
@@ -33,12 +37,12 @@ describe('AssignMemberPopover', () => {
   function mountPopover({
     chore = makeChore(),
     assignments = [],
-    rsvps,
+    attendances,
     currentUserId = null,
   }: {
     chore?: PoolChore
     assignments?: PoolChoreAssignment[]
-    rsvps?: PoolRsvp[]
+    attendances?: PoolAttendance[]
     currentUserId?: string | null
   } = {}) {
     return mount(AssignMemberPopover, {
@@ -51,9 +55,9 @@ describe('AssignMemberPopover', () => {
           makeMember({ id: 'mem-1', userId: 'user-1', name: 'Alice' }),
           makeMember({ id: 'mem-2', userId: 'user-2', name: 'Bob' }),
         ],
-        rsvps: rsvps ?? [
-          makeRsvp({ id: 'rsvp-1', userId: 'user-1' }),
-          makeRsvp({ id: 'rsvp-2', userId: 'user-2' }),
+        attendances: attendances ?? [
+          makeAttendance({ id: 'att-user-1', userId: 'user-1' }),
+          makeAttendance({ id: 'att-user-2', userId: 'user-2' }),
         ],
         assignments,
         event: makeEvent({ startDate: '2026-03-10', endDate: '2026-03-12' }),
@@ -117,13 +121,13 @@ describe('AssignMemberPopover', () => {
 
   it('does not offer members who are away on this date', () => {
     const wrapper = mountPopover({
-      rsvps: [
-        makeRsvp({ id: 'rsvp-1', userId: 'user-1' }),
+      attendances: [
+        makeAttendance({ id: 'att-user-1', userId: 'user-1' }),
         // Come-and-go: Bob attends the event but not this day
-        makeRsvp({
-          id: 'rsvp-2',
+        makeAttendance({
+          id: 'att-2',
           userId: 'user-2',
-          attendance: ['2026-03-11', '2026-03-12'],
+          days: ['2026-03-11', '2026-03-12'],
         }),
       ],
     })

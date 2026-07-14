@@ -7,7 +7,7 @@ import type {
   PoolChoreAssignment,
   PoolEvent,
   PoolMember,
-  PoolRsvp,
+  PoolAttendance,
 } from '@/types/pool'
 import { getMemberNameFromMap } from '@/utils/member'
 import { attendingUserIdsOn } from '@/utils/chores'
@@ -21,7 +21,7 @@ const props = defineProps<{
   rosterId: string
   memberMap: Map<string, PoolMember>
   assignments: PoolChoreAssignment[]
-  rsvps: PoolRsvp[]
+  attendances: PoolAttendance[]
   event: PoolEvent
 }>()
 
@@ -39,7 +39,7 @@ const showReassign = ref(false)
 const reassignCandidates = computed(() => {
   const attending = attendingUserIdsOn(
     props.assignment.date,
-    props.rsvps,
+    props.attendances,
     props.event
   )
   const slotMates = new Set(

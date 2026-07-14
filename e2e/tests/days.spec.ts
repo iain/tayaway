@@ -79,14 +79,19 @@ test.describe('Days page', () => {
     const d = (offset: number) => isoAddDays(RESOLVED_EVENT_START, offset)
     const workspaceId = await getWorkspaceId(apiContext)
 
-    // Bob comes and goes: day 1 with a +1 guest, day 2 without.
+    // Bob comes and goes: days 1 and 2, bringing a named guest on day 1.
     const bobContext = await newApiContext(playwright)
     await getTestSession(bobContext, BOB_EMAIL, 'Days Bob')
     await addMemberToWorkspace(apiContext, workspaceId, BOB_EMAIL)
-    await bobContext.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
+    await bobContext.post(`${API_BASE}/api/events/${eventId}/attendances`, {
+      data: { id: crypto.randomUUID(), status: 'going', days: [d(1), d(2)] },
+    })
+    await bobContext.post(`${API_BASE}/api/events/${eventId}/attendances`, {
       data: {
-        attending: true,
-        attendance: [{ date: d(1), plusOnes: 1 }, d(2)],
+        id: crypto.randomUUID(),
+        status: 'going',
+        days: [d(1)],
+        guest: { id: crypto.randomUUID(), name: "Bob's +1" },
       },
     })
     await bobContext.dispose()

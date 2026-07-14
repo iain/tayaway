@@ -202,6 +202,14 @@ module Rsvps
         end_date = resolved[:end_date]
         attendance_json = attendance ? Sequel.pg_jsonb(attendance.map { |day| Rsvp.wire_attendance_day(day) }) : nil
 
+        if attendance&.any? { |day| day[:plus_ones].positive? }
+          # A legacy client still sending plusOnes counts: named guests
+          # replaced them (doc/attendances.md phase 4), so the attendance
+          # mirror drops the counts. Logged to spot stragglers before the
+          # rsvp path retires.
+          APP_LOGGER.warn { "[Rsvps::Upsert] plusOnes in legacy rsvp write on event #{event.id} — ignored by the attendance mirror" }
+        end
+
         row = nil
         DB.transaction do
           now = Time.now
