@@ -8,6 +8,9 @@ import AppAvatar from '@/components/common/AppAvatar.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import type { PoolMember } from '@/types/pool'
 
+// Callers (HomePage's `upcomingBirthdays`) already filter to members with a
+// birthday set, so `member.birthday` is always present here — no need for a
+// per-row ternary/empty-string fallback that implied it might not be.
 defineProps<{
   members: PoolMember[]
 }>()
@@ -34,11 +37,7 @@ const { locale } = useLocale()
             </h3>
             <div class="text-ink-muted mt-0.5 flex items-center gap-1 text-sm">
               <CakeIcon class="size-4" />
-              {{
-                member.birthday
-                  ? formatUpcomingBirthday(member.birthday, locale)
-                  : ''
-              }}
+              {{ formatUpcomingBirthday(member.birthday!, locale) }}
             </div>
           </div>
         </div>

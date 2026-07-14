@@ -29,6 +29,11 @@ import UpcomingEventsSection from '@/components/home/UpcomingEventsSection.vue'
 import WelcomeSection from '@/components/home/WelcomeSection.vue'
 import CreateEventWizard from '@/components/events/CreateEventWizard.vue'
 
+// How far ahead the "Upcoming birthdays" section looks. Pulled out as a
+// named constant (rather than a bare `7` in the filter below) so the window
+// is self-documenting and only needs changing in one place.
+const UPCOMING_BIRTHDAY_WINDOW_DAYS = 7
+
 const pool = useObjectPoolStore()
 const authStore = useAuthStore()
 const workspaceStore = useWorkspaceStore()
@@ -132,10 +137,17 @@ const { members } = storeToRefs(useMembersStore())
 // Days from today (local calendar day, Luxon) to a member's next birthday
 // occurrence, or null if they have no birthday set. Using Luxon here keeps
 // the comparison in whole calendar days regardless of current time-of-day.
+//
+// Guards a real edge case: a Feb 29 birthday, set onto a non-leap `today`,
+// overflows (Luxon rolls Feb 29 -> Mar 1 for a non-leap year) rather than
+// producing an invalid DateTime. We treat that overflowed date as "today's
+// Feb 29 people celebrate on Mar 1 this year" and still roll to next year
+// if that's already passed — same rule as every other birthday.
 function daysUntilBirthday(member: PoolMember, today: DateTime): number | null {
   if (!member.birthday) return null
   const stored = DateTime.fromISO(member.birthday)
   let next = today.set({ month: stored.month, day: stored.day })
+  if (!next.isValid) return null
   if (next < today) next = next.plus({ years: 1 })
   return Math.round(next.diff(today, 'days').days)
 }
@@ -152,7 +164,9 @@ const upcomingBirthdays = computed(() =>
   members.value
     .filter((member) => {
       const days = daysUntilBirthday(member, today.value)
-      return days !== null && days > 0 && days <= 7
+      return (
+        days !== null && days > 0 && days <= UPCOMING_BIRTHDAY_WINDOW_DAYS
+      )
     })
     .sort(
       (a, b) =>
