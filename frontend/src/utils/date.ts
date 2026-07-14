@@ -167,6 +167,11 @@ export function formatUpcomingBirthday(
   if (diffDays === 0) return 'Today'
   if (diffDays === 1) return 'Tomorrow'
   if (diffDays > 7) return formatBirthday(birthday, locale)
+  if (diffDays === 7) {
+    // Seven days out lands on today's weekday, so a bare weekday name
+    // would read as today.
+    return `Next ${next.toFormat('cccc')}`
+  }
 
   return next.toFormat('cccc')
 }
