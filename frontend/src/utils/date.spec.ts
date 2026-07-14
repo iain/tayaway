@@ -215,9 +215,7 @@ describe('formatUpcomingBirthday', () => {
     // original off-by-one: a naive `new Date()` carries hours/minutes that
     // can push date arithmetic across a boundary.
     vi.setSystemTime(new Date('2026-07-14T23:45:00'))
-    const result = formatUpcomingBirthday('1990-07-21')
-    expect(result).toBe('Tuesday')
-    expect(result).not.toBe('Tuesday'.replace('Tuesday', 'Tuesday')) // sanity noop, real assertion above
+    expect(formatUpcomingBirthday('1990-07-21')).toBe('Tuesday')
   })
 
   it('returns a weekday name for birthdays 2-7 days out', () => {
