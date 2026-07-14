@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { DateTime } from 'luxon'
 import { CakeIcon } from '@heroicons/vue/24/outline'
 import { formatBirthday } from '@/utils/date'
 import { getInitials } from '@/utils/member'
@@ -13,19 +14,21 @@ defineProps<{
 
 function formatBirthdayDate(member: PoolMember): string {
   if (!member.birthday) return ''
-  const today = new Date()
-  const [, month, day] = member.birthday.split('-')
+  // Anchor to the start of today in local time so the comparison is pure
+  // calendar math, unaffected by the current time-of-day.
+  const today = DateTime.local().startOf('day')
+  const [, monthStr, dayStr] = member.birthday.split('-')
+  const month = Number(monthStr)
+  const day = Number(dayStr)
+
   for (let i = 1; i <= 7; i++) {
-    const future = new Date(today)
-    future.setDate(future.getDate() + i)
-    if (
-      Number(month) === future.getMonth() + 1 &&
-      Number(day) === future.getDate()
-    ) {
-      if (i === 1) return 'Tomorrow'
-      return future.toLocaleDateString(undefined, {
-        weekday: 'long',
-      })
+    const future = today.plus({ days: i })
+    if (future.month === month && future.day === day) {
+      if (i === 1) {
+        // toRelativeCalendar gives us the localized "tomorrow" label.
+        return future.toRelativeCalendar({ base: today }) ?? 'Tomorrow'
+      }
+      return future.toFormat('cccc')
     }
   }
   return formatBirthday(member.birthday)

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { DateTime } from 'luxon'
 import { CheckCircleIcon } from '@heroicons/vue/24/solid'
 import { HomeIcon } from '@heroicons/vue/24/outline'
 import { usePollsNeedingAttention } from '@/composables/usePollsNeedingAttention'
@@ -134,10 +135,14 @@ function birthdayMonthDay(member: PoolMember): [number, number] | null {
   return [Number(month), Number(day)]
 }
 
+// Anchor to the start of today in local time so all birthday comparisons are
+// pure calendar math, unaffected by the current time-of-day (this is what
+// previously caused upcoming birthdays to show the wrong weekday).
+const today = computed(() => DateTime.local().startOf('day'))
+
 const todayBirthdays = computed(() => {
-  const today = new Date()
-  const m = today.getMonth() + 1
-  const d = today.getDate()
+  const m = today.value.month
+  const d = today.value.day
   return members.value.filter((member) => {
     const md = birthdayMonthDay(member)
     return md && md[0] === m && md[1] === d
@@ -145,9 +150,8 @@ const todayBirthdays = computed(() => {
 })
 
 const upcomingBirthdays = computed(() => {
-  const today = new Date()
-  const todayM = today.getMonth() + 1
-  const todayD = today.getDate()
+  const todayM = today.value.month
+  const todayD = today.value.day
 
   return members.value
     .filter((member) => {
@@ -157,9 +161,8 @@ const upcomingBirthdays = computed(() => {
       if (md[0] === todayM && md[1] === todayD) return false
       // Check if birthday falls within the next 7 days
       for (let i = 1; i <= 7; i++) {
-        const future = new Date(today)
-        future.setDate(future.getDate() + i)
-        if (md[0] === future.getMonth() + 1 && md[1] === future.getDate()) {
+        const future = today.value.plus({ days: i })
+        if (md[0] === future.month && md[1] === future.day) {
           return true
         }
       }
