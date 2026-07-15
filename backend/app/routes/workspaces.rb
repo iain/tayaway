@@ -43,6 +43,80 @@ class App
         end
       end
 
+      # /api/workspaces/:id/guests routes
+      r.on "guests" do
+        r.is do
+          # GET /api/workspaces/:id/guests - List the workspace's guests
+          r.get do
+            pool = PoolSerializer.new(membership: membership)
+            pool.add(:guest, Guest.for_workspace(workspace.id))
+
+            response.status = 200
+            { objects: pool.to_a }
+          end
+
+          # POST /api/workspaces/:id/guests - Create a guest
+          r.post do
+            result = Guests::Create.call(
+              workspace_id: workspace.id,
+              membership: membership,
+              name: r.params["name"]&.strip,
+              guest_id: r.params["id"]
+            )
+
+            result.either(
+              ->(value) {
+                pool = PoolSerializer.new(membership: membership)
+                pool.add(:guest, [Guest.find(value[:guest_id])])
+
+                response.status = value[:created] ? 201 : 200
+                { objects: pool.to_a }
+              },
+              ->(error) {
+                response.status = error.http_status
+                error.to_api_hash
+              }
+            )
+          end
+        end
+
+        r.on String do |guest_id|
+          # PUT /api/workspaces/:id/guests/:guest_id - Rename a guest
+          r.put do
+            result = Guests::Rename.call(
+              workspace_id: workspace.id,
+              membership: membership,
+              guest_id: guest_id,
+              name: r.params["name"]&.strip
+            )
+
+            result.either(
+              ->(value) {
+                pool = PoolSerializer.new(membership: membership)
+                pool.add(:guest, [Guest.find(value[:guest_id])])
+
+                response.status = 200
+                { objects: pool.to_a }
+              },
+              ->(error) {
+                response.status = error.http_status
+                error.to_api_hash
+              }
+            )
+          end
+
+          # DELETE /api/workspaces/:id/guests/:guest_id - Delete a guest
+          r.delete do
+            result = Guests::Delete.call(
+              workspace_id: workspace.id,
+              membership: membership,
+              guest_id: guest_id
+            )
+            handle_result(result)
+          end
+        end
+      end
+
       # GET /api/workspaces/:id/audit-log - Owner-only audit trail page.
       # Deliberately not pool-shaped: audit rows never sync to clients.
       r.get "audit-log" do

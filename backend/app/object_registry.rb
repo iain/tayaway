@@ -102,6 +102,13 @@ module ObjectRegistry
                 [Topic.workspace(ws_id)]
               }
     ),
+    Entry.new(key: "attendance", model: "Attendance", client_type: "attendance", tracks_user: true, policy: "AttendancePolicy", serializer_class: AttendanceSerializer,
+              topics: ->(attendance) {
+                ws_id = DB[:events].where(id: attendance.event_id).get(:workspace_id)
+                [Topic.workspace(ws_id)]
+              }
+    ),
+    Entry.new(key: "guest", model: "Guest", client_type: "guest", tracks_user: false, policy: "GuestPolicy", serializer_class: GuestSerializer),
     Entry.new(key: "task_list", model: "TaskList", client_type: "taskList", tracks_user: true, policy: "TaskListPolicy", serializer_class: TaskListSerializer),
     Entry.new(key: "task_item", model: "TaskItem", client_type: "taskItem", tracks_user: true, policy: "TaskItemPolicy", serializer_class: TaskItemSerializer,
               topics: ->(item) {

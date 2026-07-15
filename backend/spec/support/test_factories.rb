@@ -123,6 +123,42 @@ module TestFactories
       DB[:rsvps].where(id: id).first
     end
 
+    def guest(workspace: nil, name: nil, placeholder: false, created_by: nil, id: SecureRandom.uuid)
+      workspace ||= self.workspace
+      name ||= "Guest #{next_sequence(:guest)}"
+      now = Time.now
+      DB[:guests].insert(
+        id: id,
+        workspace_id: workspace[:id],
+        name: name,
+        placeholder: placeholder,
+        created_by_user_id: created_by&.[](:id),
+        created_at: now,
+        updated_at: now
+      )
+      DB[:guests].where(id: id).first
+    end
+
+    def attendance(event: nil, user: nil, guest: nil, host: nil, status: "going", days: nil, created_by: nil, id: SecureRandom.uuid)
+      event ||= self.event
+      user ||= self.user if guest.nil?
+      host ||= self.user if guest
+      now = Time.now
+      DB[:attendances].insert(
+        id: id,
+        event_id: event[:id],
+        user_id: user&.[](:id),
+        guest_id: guest&.[](:id),
+        host_user_id: host&.[](:id),
+        status: status,
+        days: days && Sequel.pg_jsonb(days.map { |d| d.is_a?(Date) ? d.iso8601 : d }),
+        created_by_user_id: created_by&.[](:id),
+        created_at: now,
+        updated_at: now
+      )
+      DB[:attendances].where(id: id).first
+    end
+
     def task_list(workspace: nil, user: nil, name: nil, id: SecureRandom.uuid)
       workspace ||= self.workspace
       user ||= self.user

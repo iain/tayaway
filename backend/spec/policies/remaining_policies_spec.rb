@@ -121,7 +121,7 @@ RSpec.describe "Remaining policies" do
     end
 
     it "has correct ACTIONS" do
-      expect(described_class::ACTIONS).to contain_exactly(:create_event, :create_task_list, :invite, :manage_members, :view_audit_log)
+      expect(described_class::ACTIONS).to contain_exactly(:create_event, :create_task_list, :create_guest, :invite, :manage_members, :view_audit_log)
     end
   end
 
