@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { nowIso } from '@/utils/date'
 import { ref, computed } from 'vue'
 import { rawApi } from '@/api/client'
 import { useNotificationsStore } from '@/stores/notifications'
@@ -93,7 +94,7 @@ export const useInboxStore = defineStore('inbox', () => {
     const previous = target
     // No scope arg — the pool keeps the notification in whatever scope it's
     // already in (personal, from the handshake).
-    pool().set({ ...target, readAt: new Date().toISOString() })
+    pool().set({ ...target, readAt: nowIso() })
 
     try {
       await rawApi.put(`/notifications/${id}/read`, {}, { silent: true })
@@ -108,7 +109,7 @@ export const useInboxStore = defineStore('inbox', () => {
       .filter((n) => n.readAt === null)
     if (before.length === 0) return
 
-    const now = new Date().toISOString()
+    const now = nowIso()
     for (const n of before) {
       pool().set({ ...n, readAt: now })
     }

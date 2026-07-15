@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { nowIso } from '@/utils/date'
 import { useMutation } from '@/composables/useMutation'
 import { useObjectPoolStore } from './objectPool'
 import { useCommandQueueStore, CommandQueuedError } from './commandQueue'
@@ -27,7 +28,7 @@ export const useDatePollsStore = defineStore('datePolls', () => {
       {
         status: 'resolved',
         selectedDateRangeId,
-        closedAt: new Date().toISOString(),
+        closedAt: nowIso(),
       },
       (commandQueue) =>
         commandQueue.enqueue<PoolApiResponse>(
@@ -73,7 +74,7 @@ export const useDatePollsStore = defineStore('datePolls', () => {
     if (!poll) throw new Error('Poll not found')
 
     const dateRangeId = crypto.randomUUID()
-    const now = new Date().toISOString()
+    const now = nowIso()
     const tempDateRange: PoolDateRange = {
       id: dateRangeId,
       objectType: 'dateRange',

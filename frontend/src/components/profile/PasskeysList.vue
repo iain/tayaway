@@ -3,6 +3,8 @@ import { ref, nextTick, onMounted, onUnmounted } from 'vue'
 import { PencilIcon, TrashIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores'
+import { useLocale } from '@/composables/useLocale'
+import { formatDateShort } from '@/utils/date'
 import type { Passkey } from '@/types'
 import AppButton from '@/components/common/AppButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
@@ -14,6 +16,7 @@ const UNDO_DELAY_MS = 4000
 
 const authStore = useAuthStore()
 const notifications = useNotificationsStore()
+const { locale } = useLocale()
 
 const passkeys = ref<Passkey[]>([])
 const loading = ref(true)
@@ -197,11 +200,7 @@ async function executeDelete(id: string) {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
+  return formatDateShort(iso, locale.value)
 }
 
 onMounted(fetchPasskeys)

@@ -1,7 +1,24 @@
-import { DateTime } from 'luxon'
+import { DateTime, Duration } from 'luxon'
+
+// How far ahead the dashboard looks for "upcoming" birthdays — the horizon over
+// which a birthday counts as "loading". Shared so the classification window
+// (HomePage) and the countdown's loading-progress denominator stay in lockstep;
+// widen it in one place and both follow.
+export const UPCOMING_BIRTHDAY_WINDOW_DAYS = 7
 
 function parseDate(dateString: string, locale?: string): DateTime {
   return DateTime.fromISO(dateString, { locale })
+}
+
+/**
+ * The current instant as an ISO-8601 UTC string with milliseconds
+ * ("2026-07-15T10:10:34.123Z") — byte-identical to `new Date().toISOString()`.
+ * The single home for the "now" timestamps stores stamp optimistically onto
+ * records (paidAt, readAt, updatedAt, …) before the server confirms.
+ */
+export function nowIso(): string {
+  // A live clock is always a valid DateTime, so toISO() never returns null.
+  return DateTime.utc().toISO()!
 }
 
 /**
@@ -174,4 +191,84 @@ export function formatUpcomingBirthday(
   }
 
   return next.toFormat('cccc')
+}
+
+/**
+ * Next occurrence of a birthday (only the month/day of `birthday` matter) on
+ * or after `today`, or null if the date can't be parsed or applied. Guards the
+ * Feb-29-on-a-non-leap-year overflow (Luxon rolls Feb 29 → Mar 1). The single
+ * home for the "when is their next birthday" rolling rule, shared by the
+ * countdown and the days-until reckoning.
+ */
+function nextBirthdayOccurrence(
+  birthday: string,
+  today: DateTime
+): DateTime | null {
+  const stored = parseDate(birthday)
+  if (!stored.isValid) return null
+  const next = today.set({ month: stored.month, day: stored.day })
+  if (!next.isValid) return null
+  return next < today ? next.plus({ years: 1 }) : next
+}
+
+/**
+ * Whole calendar days from today (local) to a member's next birthday, or null
+ * if `birthday` is absent/unparseable. Comparison runs in whole calendar days
+ * regardless of time-of-day. `now` defaults to the current clock; pass one in
+ * to pin it (tests, or to share a single "now" across a batch).
+ */
+export function daysUntilBirthday(
+  birthday: string | null,
+  now: number = Date.now()
+): number | null {
+  if (!birthday) return null
+  const today = DateTime.fromMillis(now).startOf('day')
+  const next = nextBirthdayOccurrence(birthday, today)
+  return next ? Math.round(next.diff(today, 'days').days) : null
+}
+
+export interface BirthdayCountdown {
+  /** Preformatted remaining time, e.g. "5d 02h 29m 15s" or "02h 29m 15s". */
+  text: string
+  /** Loading progress toward the birthday, 0–100 (whole percent). */
+  percent: number
+}
+
+/**
+ * Live countdown from `now` (epoch ms) to a birthday's next arrival at local
+ * midnight, returned as display-ready primitives so callers never touch Luxon:
+ * a preformatted `text` and a 0–100 `percent` of the way through the upcoming
+ * window. Returns null when `birthday` is unparseable (see
+ * `nextBirthdayOccurrence`). Clamps at zero rather than going negative, so the
+ * final tick before midnight reads all-zeroes and the bar sits at 100% until
+ * the dashboard reclassifies the person into today's celebrations.
+ */
+export function getBirthdayCountdown(
+  birthday: string,
+  now: number
+): BirthdayCountdown | null {
+  const current = DateTime.fromMillis(now)
+  const target = nextBirthdayOccurrence(birthday, current.startOf('day'))
+  if (!target) return null
+
+  const elapsed = target.diff(current, ['days', 'hours', 'minutes', 'seconds'])
+  const remaining = elapsed.toMillis() > 0 ? elapsed : Duration.fromMillis(0)
+
+  // Luxon floors the fractional second for us. A single-letter token is
+  // unpadded, a doubled one zero-pads: we leave the largest shown unit unpadded
+  // (no leading zero on the number you read first) and zero-pad the smaller
+  // units so their width stays stable as they tick — a digital-timer look. The
+  // days segment is dropped under a day so it never reads "0d".
+  const text =
+    remaining.as('days') >= 1
+      ? remaining.toFormat("d'd' hh'h' mm'm' ss's'")
+      : remaining.toFormat("h'h' mm'm' ss's'")
+
+  const windowSeconds = Duration.fromObject({
+    days: UPCOMING_BIRTHDAY_WINDOW_DAYS,
+  }).as('seconds')
+  const loaded = 1 - remaining.as('seconds') / windowSeconds
+  const percent = Math.min(100, Math.max(0, Math.round(loaded * 100)))
+
+  return { text, percent }
 }

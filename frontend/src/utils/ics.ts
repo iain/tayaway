@@ -1,3 +1,5 @@
+import { nowIso } from '@/utils/date'
+
 export interface IcsEventData {
   uid: string
   summary: string
@@ -56,7 +58,7 @@ export function generateIcs(event: IcsEventData): string {
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',
     `UID:${event.uid}@tayaway`,
-    `DTSTAMP:${formatDtstamp(new Date().toISOString())}`,
+    `DTSTAMP:${formatDtstamp(nowIso())}`,
     `CREATED:${formatDtstamp(event.createdAt)}`,
     `SUMMARY:${escapeText(event.summary)}`,
   ]

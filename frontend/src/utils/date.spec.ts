@@ -9,7 +9,10 @@ import {
   formatRelativeDate,
   formatDeadline,
   formatUpcomingBirthday,
+  daysUntilBirthday,
+  getBirthdayCountdown,
   getMonthName,
+  nowIso,
 } from './date'
 
 describe('addDays', () => {
@@ -236,5 +239,71 @@ describe('formatUpcomingBirthday', () => {
     // Jan 1 has already passed for this year, so it resolves ~5.5 months out
     const result = formatUpcomingBirthday('1990-01-01')
     expect(result).toBe(formatBirthday('1990-01-01'))
+  })
+})
+
+describe('nowIso', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('returns the current instant as a UTC ISO string, matching Date', () => {
+    vi.useFakeTimers()
+    const instant = new Date('2026-07-15T10:10:34.123Z')
+    vi.setSystemTime(instant)
+    expect(nowIso()).toBe('2026-07-15T10:10:34.123Z')
+    expect(nowIso()).toBe(instant.toISOString())
+  })
+})
+
+describe('daysUntilBirthday', () => {
+  const now = new Date('2026-07-14T21:30:45').getTime()
+
+  it('returns 0 for a birthday today and 1 for tomorrow', () => {
+    expect(daysUntilBirthday('1990-07-14', now)).toBe(0)
+    expect(daysUntilBirthday('1990-07-15', now)).toBe(1)
+  })
+
+  it('rolls over to next year when this year’s birthday has passed', () => {
+    expect(daysUntilBirthday('1990-01-01', now)).toBeGreaterThan(100)
+  })
+
+  it('returns null for a missing or unparseable birthday', () => {
+    expect(daysUntilBirthday(null, now)).toBeNull()
+    expect(daysUntilBirthday('not-a-date', now)).toBeNull()
+  })
+})
+
+describe('getBirthdayCountdown', () => {
+  // 2026-07-14T21:30:45 local → 2h 29m 15s until 2026-07-15 midnight.
+  const now = new Date('2026-07-14T21:30:45').getTime()
+
+  it('formats the time to midnight, dropping the days segment under a day', () => {
+    // Largest shown unit (hours) is unpadded; minutes/seconds zero-pad.
+    expect(getBirthdayCountdown('1990-07-15', now)?.text).toBe('2h 29m 15s')
+  })
+
+  it('includes a days segment for birthdays further out', () => {
+    // 2026-07-20 midnight is 5 days + 2h 29m 15s away. Days lead unpadded;
+    // the now-interior hours zero-pad.
+    expect(getBirthdayCountdown('1985-07-20', now)?.text).toBe('5d 02h 29m 15s')
+  })
+
+  it('reports loading progress through the 7-day window as a percentage', () => {
+    // ~2.5h into a 7-day window ≈ 99% loaded; 5 days out ≈ 27%.
+    expect(getBirthdayCountdown('1990-07-15', now)?.percent).toBe(99)
+    expect(getBirthdayCountdown('1985-07-20', now)?.percent).toBe(27)
+  })
+
+  it('clamps at zero instead of going negative once midnight passes', () => {
+    // Birthday is "today" (already past its midnight), so the raw diff is
+    // negative — it reads all-zeroes and 100% rather than a negative timer.
+    const countdown = getBirthdayCountdown('1990-07-14', now)
+    expect(countdown?.text).toBe('0h 00m 00s')
+    expect(countdown?.percent).toBe(100)
+  })
+
+  it('returns null for an unparseable birthday', () => {
+    expect(getBirthdayCountdown('not-a-date', now)).toBeNull()
   })
 })
