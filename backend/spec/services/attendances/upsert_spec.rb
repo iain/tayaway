@@ -256,6 +256,27 @@ RSpec.describe Attendances::Upsert do
       expect(result.failure.message).to eq("Host is not a member of this workspace")
     end
 
+    it "blocks a going guest whose host is marked as not attending" do
+      set_event_dates
+      guest_row = TestFactories.guest(workspace: workspace)
+      TestFactories.attendance(event: event, user: user, status: "declined")
+
+      blocked = upsert(guest_id: guest_row[:id])
+      expect(blocked.failure.message).to eq("The host is marked as not attending this event")
+      expect(blocked.failure.http_status).to eq(403)
+
+      # Only the going transition is guarded: parking or removing the guest
+      # row still works under a declined host (date resets, guest removal).
+      TestFactories.attendance(event: event, guest: guest_row, host: user)
+      parked = upsert(guest_id: guest_row[:id], status: "pending")
+      expect(parked.success?).to be true
+
+      # A host who is pending (or has no row yet) is undecided, not absent.
+      DB[:attendances].where(event_id: event[:id], user_id: user[:id]).update(status: "pending")
+      allowed = upsert(guest_id: guest_row[:id])
+      expect(allowed.success?).to be true
+    end
+
     it "re-adds a removed guest by flipping the same row back to going" do
       set_event_dates
       guest_row = TestFactories.guest(workspace: workspace)
