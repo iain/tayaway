@@ -1,4 +1,4 @@
-import { DateTime, Duration } from 'luxon'
+import { DateTime, Duration, Info, Interval } from 'luxon'
 
 // How far ahead the dashboard looks for "upcoming" birthdays — the horizon over
 // which a birthday counts as "loading". Shared so the classification window
@@ -47,17 +47,23 @@ export function addDays(dateString: string, days: number): string {
  * everyone.
  */
 export function formatDateDisplay(dateString: string, locale?: string): string {
-  return parseDate(dateString, locale).toFormat('ccc, LLL d, yyyy')
+  return parseDate(dateString, locale).toLocaleString(
+    DateTime.DATE_MED_WITH_WEEKDAY
+  )
 }
 
 /** "Sat, Mar 10" — weekday + date, the chore-roster day label */
 export function formatDayHeader(dateString: string, locale?: string): string {
-  return parseDate(dateString, locale).toFormat('ccc d LLL')
+  return parseDate(dateString, locale).toLocaleString({
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  })
 }
 
 /** "Jan 1, 2024" — date without weekday */
 export function formatDateShort(dateString: string, locale?: string): string {
-  return parseDate(dateString, locale).toFormat('LLL d, yyyy')
+  return parseDate(dateString, locale).toLocaleString(DateTime.DATE_MED)
 }
 
 /** "Jan 1 – 5, 2024" or "Jan 1, 2024 – Feb 3, 2024" — smart date range */
@@ -66,17 +72,10 @@ export function formatDateRange(
   endDate: string,
   locale?: string
 ): string {
-  const start = parseDate(startDate, locale)
-  const end = parseDate(endDate, locale)
-
-  if (start.year === end.year) {
-    if (start.month === end.month) {
-      return `${start.toFormat('LLL d')} \u2013 ${end.toFormat('d, yyyy')}`
-    }
-    return `${start.toFormat('LLL d')} \u2013 ${end.toFormat('LLL d, yyyy')}`
-  }
-
-  return `${start.toFormat('LLL d, yyyy')} \u2013 ${end.toFormat('LLL d, yyyy')}`
+  return Interval.fromDateTimes(
+    parseDate(startDate, locale),
+    parseDate(endDate, locale)
+  ).toLocaleString(DateTime.DATE_MED)
 }
 
 /** Localized birthday display (e.g. "27/02/2024" or "02/27/2024") */
@@ -95,7 +94,13 @@ export function formatBirthday(dateString: string, locale?: string): string {
  * a future user-chosen locale propagates here too.
  */
 export function formatDateTime(isoString: string, locale?: string): string {
-  return DateTime.fromISO(isoString, { locale }).toFormat('LLL d, HH:mm')
+  return DateTime.fromISO(isoString, { locale }).toLocaleString({
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  })
 }
 
 /**
@@ -118,24 +123,23 @@ export function formatRelativeDate(
   locale?: string
 ): string {
   const date = DateTime.fromISO(isoString, { locale })
-  const nowDt = DateTime.fromMillis(now)
-  const diffMs = nowDt.diff(date).milliseconds
-  const absMs = Math.abs(diffMs)
+  const diffMs = DateTime.fromMillis(now).diff(date).toMillis()
   const isPast = diffMs >= 0
+  const elapsed = Duration.fromMillis(Math.abs(diffMs))
 
-  const diffMinutes = Math.floor(absMs / 60_000)
-  const diffHours = Math.floor(absMs / 3_600_000)
-  const diffDays = Math.floor(absMs / 86_400_000)
-  const diffWeeks = Math.floor(absMs / (7 * 86_400_000))
+  const minutes = Math.floor(elapsed.as('minutes'))
+  const hours = Math.floor(elapsed.as('hours'))
+  const days = Math.floor(elapsed.as('days'))
+  const weeks = Math.floor(elapsed.as('weeks'))
 
-  if (diffMinutes < 1) return 'just now'
+  if (minutes < 1) return 'just now'
 
   let unit: string
-  if (diffMinutes < 60) unit = `${diffMinutes}m`
-  else if (diffHours < 24) unit = `${diffHours}h`
-  else if (diffDays < 7) unit = `${diffDays}d`
-  else if (diffWeeks < 4) unit = `${diffWeeks}w`
-  else return date.toFormat('LLL d, yyyy')
+  if (minutes < 60) unit = `${minutes}m`
+  else if (hours < 24) unit = `${hours}h`
+  else if (days < 7) unit = `${days}d`
+  else if (weeks < 4) unit = `${weeks}w`
+  else return date.toLocaleString(DateTime.DATE_MED)
 
   return isPast ? `${unit} ago` : `in ${unit}`
 }
@@ -151,12 +155,12 @@ export function formatDeadline(deadline: string, locale?: string): string {
   if (diffDays === 1) return 'Due tomorrow'
   if (diffDays <= 7) return `Due in ${diffDays} days`
 
-  return date.toFormat('LLL d, yyyy')
+  return date.toLocaleString(DateTime.DATE_MED)
 }
 
 /** Localized month name (e.g. "January") */
 export function getMonthName(month: number, locale?: string): string {
-  return DateTime.local(2024, month + 1, 1, { locale }).toFormat('LLLL')
+  return Info.months('long', { locale })[month]
 }
 
 /**
@@ -176,21 +180,20 @@ export function formatUpcomingBirthday(
   const today = DateTime.local()
     .startOf('day')
     .setLocale(locale ?? 'en-US')
-  const stored = parseDate(birthday)
-  let next = today.set({ month: stored.month, day: stored.day })
-  if (next < today) next = next.plus({ years: 1 })
+  const next = nextBirthdayOccurrence(birthday, today)
+  if (!next) return formatBirthday(birthday, locale)
 
-  const diffDays = next.diff(today, 'days').days
+  const diffDays = Math.round(next.diff(today, 'days').days)
   if (diffDays === 0) return 'Today'
   if (diffDays === 1) return 'Tomorrow'
   if (diffDays > 7) return formatBirthday(birthday, locale)
   if (diffDays === 7) {
     // Seven days out lands on today's weekday, so a bare weekday name
     // would read as today.
-    return `Next ${next.toFormat('cccc')}`
+    return `Next ${next.toLocaleString({ weekday: 'long' })}`
   }
 
-  return next.toFormat('cccc')
+  return next.toLocaleString({ weekday: 'long' })
 }
 
 /**
