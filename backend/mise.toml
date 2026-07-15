@@ -82,6 +82,10 @@ description = "Drop the development database"
 confirm = "Drop the development database. Continue?"
 run = "bundle exec rake db:drop"
 
+[tasks."attendances:backfill"]
+description = "Backfill attendances and placeholder guests from rsvps (idempotent; doc/attendances.md)"
+run = "bundle exec rake attendances:backfill"
+
 [tasks."db:migrate"]
 description = "Run database migrations"
 run = "bundle exec rake db:migrate"

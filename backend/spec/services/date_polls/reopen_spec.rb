@@ -120,4 +120,28 @@ RSpec.describe DatePolls::Reopen do
     expect(DB[:rsvps].where(event_id: event[:id]).count).to eq(0)
     expect(result.value![:deleted]).to include({ objectType: "rsvp", id: rsvp[:id] })
   end
+
+  it "reverts the event's attendances to pending (dual-write, doc/attendances.md phase 2)" do
+    user = TestFactories.user
+    event = TestFactories.event(workspace: workspace, user: user)
+    TestFactories.date_poll(event: event, closed_at: Time.now)
+    DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 3)
+    TestFactories.rsvp(event: event, user: user, attending: true)
+    member_row = TestFactories.attendance(event: event, user: user, status: "going", days: [Date.today])
+    guest = TestFactories.guest(workspace: workspace)
+    guest_row = TestFactories.attendance(event: event, guest: guest, host: user, status: "going")
+
+    result = described_class.call(
+      event_id: event[:id],
+      membership: membership_for(user),
+      deadline: (Time.now + 86_400).iso8601
+    )
+
+    expect(result.success?).to be true
+    [member_row, guest_row].each do |row|
+      reverted = DB[:attendances].where(id: row[:id]).first
+      expect(reverted[:status]).to eq("pending")
+      expect(reverted[:days]).to be_nil
+    end
+  end
 end

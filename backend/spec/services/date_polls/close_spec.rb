@@ -128,6 +128,56 @@ RSpec.describe DatePolls::Close do
     expect(rsvp_objects.length).to eq(2)
   end
 
+  it "mirrors auto-RSVPs into member attendances (dual-write, doc/attendances.md phase 2)" do
+    owner = TestFactories.user
+    voter = TestFactories.user
+    event = TestFactories.event(workspace: workspace, user: owner)
+    date_poll = TestFactories.date_poll(event: event)
+    date_range = TestFactories.date_range(date_poll: date_poll)
+    TestFactories.vote(user: voter, date_range: date_range, response: "yes")
+    # A pre-existing declined mirror must flip back to going with the rsvp.
+    declined_mirror = TestFactories.attendance(event: event, user: voter, status: "declined")
+
+    result = described_class.call(
+      event_id: event[:id],
+      membership: membership_for(owner),
+      selected_date_range_id: date_range[:id]
+    )
+
+    expect(result.success?).to be true
+    row = DB[:attendances].where(id: declined_mirror[:id]).first
+    expect(row[:status]).to eq("going")
+    expect(row[:days]).to be_nil
+    expect(DB[:attendances].where(event_id: event[:id]).count).to eq(1)
+  end
+
+  it "keeps an existing rsvp's day set on the attendance mirror" do
+    owner = TestFactories.user
+    voter = TestFactories.user
+    event = TestFactories.event(workspace: workspace, user: owner)
+    # Polls can run on already-dated events, so the voter may have answered
+    # with a partial day set before the poll closed. Close keeps that day
+    # set on the rsvp — the mirror must carry the same days instead of
+    # widening to whole-event.
+    DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
+    date_poll = TestFactories.date_poll(event: event)
+    date_range = TestFactories.date_range(date_poll: date_poll)
+    picked = [Date.today + 1, Date.today + 2].map(&:iso8601)
+    TestFactories.rsvp(event: event, user: voter, attendance: picked)
+    TestFactories.vote(user: voter, date_range: date_range, response: "yes")
+
+    result = described_class.call(
+      event_id: event[:id],
+      membership: membership_for(owner),
+      selected_date_range_id: date_range[:id]
+    )
+
+    expect(result.success?).to be true
+    row = DB[:attendances].where(event_id: event[:id], user_id: voter[:id]).first
+    expect(row[:status]).to eq("going")
+    expect(row[:days].to_a).to eq(picked)
+  end
+
   it "does not raise a unique constraint violation when a yes-voter already has an RSVP" do
     owner = TestFactories.user
     voter = TestFactories.user

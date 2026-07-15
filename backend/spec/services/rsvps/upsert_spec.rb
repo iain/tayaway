@@ -411,4 +411,80 @@ RSpec.describe Rsvps::Upsert do
     expect(rsvp.attending).to be false
     expect(rsvp.attendance).to be_nil
   end
+
+  describe "attendance dual-write (doc/attendances.md phase 2)" do
+    before { DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 3) }
+
+    def mirror
+      Attendance.find_by_event_and_user(event[:id], user[:id])
+    end
+
+    it "mirrors a day-set rsvp into a going member attendance, dropping plus-ones" do
+      membership = membership_for(user)
+      attendance = [Date.today.iso8601, { "date" => (Date.today + 1).iso8601, "plusOnes" => 2 }]
+
+      described_class.call(
+        event_id: event[:id], membership: membership, user_id: user[:id],
+        attending: true, attendance: attendance, rsvp_id: SecureRandom.uuid
+      )
+
+      expect(mirror.status).to eq("going")
+      expect(mirror.days).to eq([Date.today, Date.today + 1])
+      expect(mirror.created_by_user_id.to_s).to eq(user[:id])
+    end
+
+    it "mirrors whole-event and legacy-range rsvps" do
+      membership = membership_for(user)
+      described_class.call(
+        event_id: event[:id], membership: membership, user_id: user[:id],
+        attending: true, rsvp_id: SecureRandom.uuid
+      )
+      expect(mirror.days).to be_nil
+
+      described_class.call(
+        event_id: event[:id], membership: membership, user_id: user[:id],
+        attending: true, start_date: (Date.today + 1).iso8601, end_date: (Date.today + 2).iso8601,
+        rsvp_id: SecureRandom.uuid
+      )
+      expect(mirror.days).to eq([Date.today + 1, Date.today + 2])
+    end
+
+    it "updates the same mirrored row on decline" do
+      membership = membership_for(user)
+      described_class.call(
+        event_id: event[:id], membership: membership, user_id: user[:id],
+        attending: true, rsvp_id: SecureRandom.uuid
+      )
+      mirrored_id = mirror.id.to_s
+
+      described_class.call(
+        event_id: event[:id], membership: membership, user_id: user[:id],
+        attending: false, rsvp_id: SecureRandom.uuid
+      )
+
+      expect(mirror.id.to_s).to eq(mirrored_id)
+      expect(mirror.status).to eq("declined")
+      expect(mirror.days).to be_nil
+      expect(DB[:attendances].count).to eq(1)
+    end
+
+    it "blocks declining while the member hosts going guest attendances" do
+      membership = membership_for(user)
+      described_class.call(
+        event_id: event[:id], membership: membership, user_id: user[:id],
+        attending: true, rsvp_id: SecureRandom.uuid
+      )
+      guest_row = TestFactories.guest(workspace: workspace)
+      TestFactories.attendance(event: event, guest: guest_row, host: user, status: "going")
+
+      result = described_class.call(
+        event_id: event[:id], membership: membership, user_id: user[:id],
+        attending: false, rsvp_id: SecureRandom.uuid
+      )
+
+      expect(result.failure?).to be true
+      expect(result.failure.message).to eq("You cannot decline while you have guests going on this event")
+      expect(mirror.status).to eq("going")
+    end
+  end
 end
