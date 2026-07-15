@@ -112,7 +112,7 @@ RSpec.describe Settlements::Create do
       )
 
       expect(result.failure?).to be true
-      expect(result.failure.message).to eq("No attending RSVPs found for this event")
+      expect(result.failure.message).to eq("No one is marked as going on this event")
     end
   end
 

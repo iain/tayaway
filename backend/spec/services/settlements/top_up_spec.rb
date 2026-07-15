@@ -565,6 +565,7 @@ RSpec.describe "Settlement chain" do
       DB[:settlement_transfers].where(id: prior_transfer_id).update(paid_at: Time.now)
 
       DB[:rsvps].where(id: bob_rsvp[:id]).update(attending: false)
+      DB[:attendances].where(event_id: event[:id], user_id: bob[:id]).update(status: "declined", days: nil)
 
       top_up = create_call
       expect(top_up.success?).to be true
@@ -585,6 +586,7 @@ RSpec.describe "Settlement chain" do
       prior_transfer_id = transfers_from(first).first[:id]
 
       DB[:rsvps].where(id: bob_rsvp[:id]).update(attending: false)
+      DB[:attendances].where(event_id: event[:id], user_id: bob[:id]).update(status: "declined", days: nil)
 
       top_up = create_call
       expect(top_up.success?).to be true
@@ -602,6 +604,7 @@ RSpec.describe "Settlement chain" do
 
       DB[:rsvps].where(event_id: event[:id]).update(attending: false)
       DB[:rsvps].where(id: bob_rsvp[:id]).update(attending: false)
+      DB[:attendances].where(event_id: event[:id]).update(status: "declined", days: nil)
 
       insert_expense(user: alice, amount: 30)
       result = create_call
@@ -673,6 +676,7 @@ RSpec.describe "Settlement chain" do
       create_call
 
       DB[:rsvps].where(id: [alice_rsvp[:id], bob_rsvp[:id]]).update(attending: false)
+      DB[:attendances].where(event_id: event[:id]).update(status: "declined", days: nil)
 
       result = create_call
       expect(result.failure?).to be true

@@ -23,16 +23,13 @@ RSpec.describe "Settlements endpoints" do
     other_user = TestFactories.user
     TestFactories.workspace_membership(workspace: workspace, user: other_user)
 
-    # Both users RSVP as attending
-    now = Time.now
-    DB[:rsvps].insert(id: SecureRandom.uuid, event_id: event[:id], user_id: user[:id],
-                      attending: true, created_at: now, updated_at: now
-    )
-    DB[:rsvps].insert(id: SecureRandom.uuid, event_id: event[:id], user_id: other_user[:id],
-                      attending: true, created_at: now, updated_at: now
-    )
+    # Both users RSVP as attending (the factory mirrors into attendances,
+    # matching the phase-2 dual-write invariant)
+    TestFactories.rsvp(event: event, user: user, attending: true)
+    TestFactories.rsvp(event: event, user: other_user, attending: true)
 
     # user paid an expense
+    now = Time.now
     expense_id = SecureRandom.uuid
     DB[:expenses].insert(
       id: expense_id,

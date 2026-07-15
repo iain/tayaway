@@ -65,13 +65,12 @@ RSpec.describe Rsvps::Delete do
     user = TestFactories.user
     event = TestFactories.event(workspace: workspace, user: user)
     DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
-    rsvp = TestFactories.rsvp(event: event, user: user)
-    mirrored = TestFactories.attendance(event: event, user: user, status: "going", days: [Date.today])
+    rsvp = TestFactories.rsvp(event: event, user: user, attendance: [Date.today])
 
     result = described_class.call(event_id: event[:id], rsvp_id: rsvp[:id], membership: membership_for(user))
 
     expect(result.success?).to be true
-    row = DB[:attendances].where(id: mirrored[:id]).first
+    row = DB[:attendances].where(event_id: event[:id], user_id: user[:id]).first
     expect(row[:status]).to eq("pending")
     expect(row[:days]).to be_nil
   end

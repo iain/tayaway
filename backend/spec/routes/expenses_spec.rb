@@ -95,10 +95,8 @@ RSpec.describe "Expenses endpoints" do
 
     it "creates an expense" do
       # Expense creation requires an attending RSVP
-      now = Time.now
-      DB[:rsvps].insert(id: SecureRandom.uuid, event_id: event[:id], user_id: user[:id],
-                        attending: true, created_at: now, updated_at: now
-      )
+      Time.now
+      TestFactories.rsvp(event: event, user: user, attending: true)
 
       post "/api/expenses",
            { event_id: event[:id], description: "Groceries", amount: 75.50,

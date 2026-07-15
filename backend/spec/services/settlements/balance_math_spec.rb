@@ -119,5 +119,59 @@ RSpec.describe Settlements::BalanceMath do
       expect(balances["bob"]).to eq(33.33)
       expect(balances["alice"]).to eq(-33.33)
     end
+
+    it "bills a guest attendance's days to its billing user (the host)" do
+      def attendance_entry(billing_user_id, dates, guest_id: nil)
+        {
+          "billing_user_id" => billing_user_id,
+          "guest_id" => guest_id,
+          "days" => dates.map(&:to_s)
+        }
+      end
+
+      # Alice brings Emma for all three days; Bob pays €90 for the event.
+      # Head-days: Alice 3 + Emma 3 (billed to Alice) = 6, Bob 3, total 9.
+      expense = { id: "e1", user_id: "bob", amount: 90.0, start_date: d, end_date: d + 2 }
+      snap = [
+        attendance_entry("alice", [d, d + 1, d + 2]),
+        attendance_entry("alice", [d, d + 1, d + 2], guest_id: "guest-emma"),
+        attendance_entry("bob", [d, d + 1, d + 2])
+      ]
+
+      balances = described_class.compute_balances(
+        expenses: [expense], current_snapshot: snap, participants_by_expense: {}
+      )
+
+      expect(balances["alice"]).to eq(60.0)
+      expect(balances["bob"]).to eq(-60.0)
+    end
+  end
+
+  describe ".snapshot_attendances" do
+    it "resolves member and guest rows to effective days and billing users" do
+      workspace = TestFactories.workspace
+      alice = TestFactories.user(name: "Alice")
+      event_row = TestFactories.event(workspace: workspace, user: alice)
+      DB[:events].where(id: event_row[:id]).update(start_date: Date.new(2026, 3, 1), end_date: Date.new(2026, 3, 3))
+      event = Event.find(event_row[:id])
+      member_row = TestFactories.attendance(event: event_row, user: alice)
+      guest = TestFactories.guest(workspace: workspace, name: "Emma")
+      guest_row = TestFactories.attendance(
+        event: event_row, guest: guest, host: alice, days: [Date.new(2026, 3, 2)]
+      )
+
+      snapshot = described_class.snapshot_attendances(
+        [Attendance.find(member_row[:id]), Attendance.find(guest_row[:id])], event
+      )
+
+      member_entry, guest_entry = snapshot
+      expect(member_entry["billing_user_id"]).to eq(alice[:id])
+      expect(member_entry["guest_id"]).to be_nil
+      expect(member_entry["days"]).to eq(%w[2026-03-01 2026-03-02 2026-03-03])
+      expect(guest_entry["billing_user_id"]).to eq(alice[:id])
+      expect(guest_entry["guest_id"]).to eq(guest[:id])
+      expect(guest_entry["display_name"]).to eq("Emma")
+      expect(guest_entry["days"]).to eq(%w[2026-03-02])
+    end
   end
 end

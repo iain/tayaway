@@ -12,8 +12,8 @@ module Events
           change_summary = summarize_changes(before, after)
           return unless change_summary
 
-          attending_rsvps = Rsvp.for_event(after.id).select(&:attending)
-          recipient_ids = attending_rsvps.map { |r| r.user_id.to_s } - [actor_user_id.to_s]
+          going = Attendance.for_event(after.id).select { |a| a.going? && !a.guest? }
+          recipient_ids = going.map { |a| a.user_id.to_s } - [actor_user_id.to_s]
           return if recipient_ids.empty?
 
           event_url = APP_CONFIG.frontend_url.path("/events/#{after.id}")

@@ -84,14 +84,15 @@ class Settlement < Data.define(:id, :event_id, :user_id, :previous_settlement_id
           raise "Unexpected rsvp_snapshot type: #{value.class}"
         end
 
-      rsvps = parsed["rsvps"]
-      raise "rsvp_snapshot missing 'rsvps' array" unless rsvps.is_a?(Array)
-      # Snapshots have carried three shapes over time; accept all so historical
-      # settlements stay readable: the current `days` day set (each entry an
-      # object with per-day `plus_ones`), the earlier flat `dates` array, and
-      # the oldest single start_date/end_date range.
-      rsvps.each do |entry|
-        has_user = entry.is_a?(Hash) && !entry["user_id"].nil?
+      entries = parsed["attendances"] || parsed["rsvps"]
+      raise "rsvp_snapshot missing 'attendances' or 'rsvps' array" unless entries.is_a?(Array)
+      # Snapshots have carried four shapes over time; accept all so historical
+      # settlements stay readable: the current per-attendance form (flat `days`
+      # billing a `billing_user_id`; guests are their own entries), the rsvp
+      # `days` day set (each entry an object with per-day `plus_ones`), the
+      # earlier flat `dates` array, and the oldest start_date/end_date range.
+      entries.each do |entry|
+        has_user = entry.is_a?(Hash) && (!entry["user_id"].nil? || !entry["billing_user_id"].nil?)
         has_days = entry.is_a?(Hash) && entry["days"].is_a?(Array)
         has_dates = entry.is_a?(Hash) && entry["dates"].is_a?(Array)
         has_range = entry.is_a?(Hash) && !entry["start_date"].nil? && !entry["end_date"].nil?

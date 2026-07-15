@@ -3,17 +3,19 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import SettlementSection from './SettlementSection.vue'
 import type {
-  PoolEvent,
+  HydratedAttendance,
+  HydratedEvent,
+} from '@/composables/useHydratedEvent'
+import type {
   PoolExpense,
   PoolMember,
-  PoolRsvp,
   PoolSettlement,
   PoolSettlementTransfer,
   PoolExpenseParticipant,
 } from '@/types/pool'
 
 let mockMembers: PoolMember[] = []
-let mockRsvps: PoolRsvp[] = []
+let mockAttendances: HydratedAttendance[] = []
 let mockExpenses: PoolExpense[] = []
 let mockSettlements: PoolSettlement[] = []
 let mockTransfers: PoolSettlementTransfer[] = []
@@ -23,7 +25,6 @@ vi.mock('@/stores/objectPool', () => ({
   useObjectPoolStore: () => ({
     getAll: (type: string) => {
       if (type === 'member') return mockMembers
-      if (type === 'rsvp') return mockRsvps
       if (type === 'expense') return mockExpenses
       if (type === 'settlement') return mockSettlements
       if (type === 'settlementTransfer') return mockTransfers
@@ -37,8 +38,7 @@ vi.mock('@/stores/objectPool', () => ({
       return undefined
     },
     findBy: (type: string, field: string, value: unknown) => {
-      const list =
-        type === 'member' ? mockMembers : type === 'rsvp' ? mockRsvps : []
+      const list = type === 'member' ? mockMembers : []
       return list.find(
         (o) => (o as unknown as Record<string, unknown>)[field] === value
       )
@@ -59,7 +59,7 @@ const BASE = {
   createdAt: '2026-01-01T00:00:00.000Z',
 }
 
-function mkEvent(overrides: Partial<PoolEvent> = {}): PoolEvent {
+function mkEvent(overrides: Partial<HydratedEvent> = {}): HydratedEvent {
   return {
     ...BASE,
     id: 'event-1',
@@ -77,6 +77,13 @@ function mkEvent(overrides: Partial<PoolEvent> = {}): PoolEvent {
     datePollId: null,
     rsvpIds: [],
     attendanceIds: [],
+    workspace: undefined,
+    member: undefined,
+    datePoll: null,
+    rsvps: [],
+    get attendances() {
+      return mockAttendances
+    },
     ...overrides,
   }
 }
@@ -100,18 +107,27 @@ function mkMember(overrides: Partial<PoolMember> = {}): PoolMember {
   }
 }
 
-function mkRsvp(overrides: Partial<PoolRsvp>): PoolRsvp {
+function mkAttendance(
+  overrides: Partial<HydratedAttendance> & { userId: string }
+): HydratedAttendance {
   return {
     ...BASE,
-    id: 'rsvp-x',
-    objectType: 'rsvp',
+    id: `att-${overrides.userId}`,
+    objectType: 'attendance',
     eventId: 'event-1',
-    userId: 'user-x',
+    guestId: null,
+    hostUserId: null,
+    status: 'going',
+    days: null,
     createdByUserId: null,
-    attending: true,
-    attendance: null,
-    startDate: null,
-    endDate: null,
+    attendee: {
+      name: overrides.userId,
+      isGuest: false,
+      billingUserId: overrides.userId,
+      member: undefined,
+      guest: undefined,
+      hostMember: undefined,
+    },
     ...overrides,
   }
 }
@@ -166,7 +182,7 @@ function mkTransfer(
   }
 }
 
-function mountSection(event: PoolEvent = mkEvent()) {
+function mountSection(event: HydratedEvent = mkEvent()) {
   return mount(SettlementSection, {
     props: { event, currentUserId: 'user-test' },
     global: {
@@ -188,7 +204,7 @@ describe('SettlementSection drift detection', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     mockMembers = []
-    mockRsvps = []
+    mockAttendances = []
     mockExpenses = []
     mockSettlements = []
     mockTransfers = []
@@ -214,10 +230,10 @@ describe('SettlementSection drift detection', () => {
         name: 'Bob',
       }),
     ]
-    mockRsvps = [
-      mkRsvp({ id: 'rsvp-test', userId: 'user-test' }),
-      mkRsvp({ id: 'rsvp-alice', userId: 'user-alice' }),
-      mkRsvp({ id: 'rsvp-bob', userId: 'user-bob' }),
+    mockAttendances = [
+      mkAttendance({ userId: 'user-test' }),
+      mkAttendance({ userId: 'user-alice' }),
+      mkAttendance({ userId: 'user-bob' }),
     ]
     mockExpenses = [mkExpense({ amount: 200 })]
     mockSettlements = [mkSettlement({})]
@@ -251,9 +267,9 @@ describe('SettlementSection drift detection', () => {
         name: 'Alice',
       }),
     ]
-    mockRsvps = [
-      mkRsvp({ id: 'rsvp-test', userId: 'user-test' }),
-      mkRsvp({ id: 'rsvp-alice', userId: 'user-alice' }),
+    mockAttendances = [
+      mkAttendance({ userId: 'user-test' }),
+      mkAttendance({ userId: 'user-alice' }),
     ]
     mockExpenses = [mkExpense({ amount: 200 })]
     mockSettlements = [mkSettlement({})]
@@ -307,11 +323,11 @@ describe('SettlementSection drift detection', () => {
         name: 'Charlie',
       }),
     ]
-    mockRsvps = [
-      mkRsvp({ id: 'rsvp-test', userId: 'user-test' }),
-      mkRsvp({ id: 'rsvp-alice', userId: 'user-alice' }),
-      mkRsvp({ id: 'rsvp-bob', userId: 'user-bob' }),
-      mkRsvp({ id: 'rsvp-charlie', userId: 'user-charlie' }),
+    mockAttendances = [
+      mkAttendance({ userId: 'user-test' }),
+      mkAttendance({ userId: 'user-alice' }),
+      mkAttendance({ userId: 'user-bob' }),
+      mkAttendance({ userId: 'user-charlie' }),
     ]
     mockExpenses = [
       mkExpense({

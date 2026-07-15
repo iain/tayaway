@@ -68,11 +68,11 @@ module Settlements
             raise Sequel::Rollback
           end
 
-          current_rsvps = Rsvp.for_event(event.id).select(&:attending)
-          if current_rsvps.empty?
+          current_attendances = Attendance.for_event(event.id).select(&:going?)
+          if current_attendances.empty?
             message =
               if tip.nil?
-                "No attending RSVPs found for this event"
+                "No one is marked as going on this event"
               elsif !unsettled.empty?
                 "No one is currently attending — can't split the new expenses"
               else
@@ -82,7 +82,7 @@ module Settlements
             raise Sequel::Rollback
           end
 
-          current_snapshot = BalanceMath.snapshot_rsvps(current_rsvps, event)
+          current_snapshot = BalanceMath.snapshot_attendances(current_attendances, event)
 
           all_expenses = unsettled + settled
           expense_ids = all_expenses.map { |e| e[:id].to_s }
@@ -141,7 +141,7 @@ module Settlements
             event_id: event.id,
             user_id: membership.user_id,
             previous_settlement_id: tip&.id,
-            rsvp_snapshot: Sequel.pg_jsonb({ "rsvps" => current_snapshot }),
+            rsvp_snapshot: Sequel.pg_jsonb({ "attendances" => current_snapshot }),
             created_at: now,
             updated_at: now
           )
