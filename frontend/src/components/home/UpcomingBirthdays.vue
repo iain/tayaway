@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CakeIcon } from '@heroicons/vue/24/outline'
+import { GiftIcon } from '@heroicons/vue/24/outline'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import BirthdayCountdownCard from '@/components/home/BirthdayCountdownCard.vue'
 import type { PoolMember } from '@/types/pool'
@@ -11,7 +11,7 @@ defineProps<{
 
 <template>
   <section>
-    <SectionHeading :icon="CakeIcon" title="Upcoming birthdays" />
+    <SectionHeading :icon="GiftIcon" title="Upcoming birthdays" />
 
     <ul class="space-y-3">
       <!-- Each card guards its own birthday internally (renders nothing without
