@@ -392,7 +392,7 @@ describe('monthGridDays', () => {
     // The grid opens on the Monday on/before Jan 1 — 2025-12-29.
     expect(days[0].dateString).toBe('2025-12-29')
     expect(days[0].isCurrentMonth).toBe(false)
-    expect(days[0].date.getDate()).toBe(29)
+    expect(days[0].dayOfMonth).toBe(29)
     // Every in-month day is flagged; January has 31.
     expect(days.filter((d) => d.isCurrentMonth)).toHaveLength(31)
     expect(

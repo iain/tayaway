@@ -227,8 +227,8 @@ export function getMonthName(month: number, locale?: string): string {
 
 /** One cell of a month-picker grid. */
 export interface CalendarDay {
-  /** Local midnight of the day, for display (`.getDate()`). */
-  date: Date
+  /** The day-of-month number (1–31), for display. */
+  dayOfMonth: number
   /** False for the leading/trailing days that spill in from adjacent months. */
   isCurrentMonth: boolean
   /** The day as "YYYY-MM-DD", the key everything else compares against. */
@@ -247,7 +247,7 @@ export function monthGridDays(year: number, month: number): CalendarDay[] {
   return Array.from({ length: 42 }, (_, i) => {
     const day = gridStart.plus({ days: i })
     return {
-      date: day.toJSDate(),
+      dayOfMonth: day.day,
       isCurrentMonth: day.month === month + 1,
       dateString: day.toISODate()!,
     }
