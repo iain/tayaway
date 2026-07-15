@@ -294,11 +294,8 @@ RSpec.describe "Chore rosters endpoints" do
       roster = TestFactories.chore_roster(event: event, user: user)
       TestFactories.chore(chore_roster: roster)
 
-      # Add an attending RSVP so autofill has people to assign to
-      now = Time.now
-      DB[:rsvps].insert(id: SecureRandom.uuid, event_id: event[:id], user_id: user[:id],
-                        attending: true, created_at: now, updated_at: now
-      )
+      # Add a going attendance so autofill has people to assign to
+      TestFactories.attendance(event: event, user: user)
 
       post "/api/chore-rosters/#{roster[:id]}/autofill",
            {}.to_json,
@@ -312,11 +309,11 @@ RSpec.describe "Chore rosters endpoints" do
     it "hands a stale assignment to an attendee" do
       roster = TestFactories.chore_roster(event: event, user: user)
       chore = TestFactories.chore(chore_roster: roster)
-      # `user` never RSVPed, so their future slot is stale; the attendee
+      # `user` has no attendance, so their future slot is stale; the attendee
       # takes it over. Future-dated for the same timezone reason as below.
       attendee = TestFactories.user
       TestFactories.workspace_membership(workspace: workspace, user: attendee)
-      TestFactories.rsvp(event: event, user: attendee, attending: true, start_date: nil, end_date: nil)
+      TestFactories.attendance(event: event, user: attendee)
       stale = TestFactories.chore_assignment(chore: chore, user: user, date: Date.today + 2, pinned: false)
 
       post "/api/chore-rosters/#{roster[:id]}/reassign-stale",

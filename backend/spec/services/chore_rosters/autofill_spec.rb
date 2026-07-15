@@ -26,8 +26,9 @@ RSpec.describe ChoreRosters::Autofill do
     WorkspaceMembership.find(row[:id])
   end
 
-  define_method(:create_rsvp) do |user, start_date: nil, end_date: nil|
-    TestFactories.rsvp(event: event, user: user, attending: true, start_date: start_date, end_date: end_date)
+  define_method(:create_attendance) do |user, start_date: nil, end_date: nil|
+    days = start_date && end_date ? (start_date..end_date).to_a : nil
+    TestFactories.attendance(event: event, user: user, status: "going", days: days)
   end
 
   define_method(:non_pinned_assignments) do
@@ -47,9 +48,22 @@ RSpec.describe ChoreRosters::Autofill do
       .all
   end
 
-  it "fills slots based on RSVP availability" do
-    create_rsvp(user_a)
-    create_rsvp(user_b)
+  it "ignores guest attendances and non-going member rows" do
+    create_attendance(user_a)
+    TestFactories.attendance(event: event, user: user_b, status: "declined")
+    guest = TestFactories.guest(workspace: workspace)
+    TestFactories.attendance(event: event, guest: guest, host: user_a, status: "going")
+    TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
+
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
+
+    expect(result.success?).to be true
+    expect(non_pinned_assignments.map { |a| a[:user_id] }.uniq).to eq([user_a[:id]])
+  end
+
+  it "fills slots based on attendance availability" do
+    create_attendance(user_a)
+    create_attendance(user_b)
     chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
 
     result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
@@ -73,7 +87,7 @@ RSpec.describe ChoreRosters::Autofill do
     DB[:events].where(id: future[:id]).update(start_date: Date.new(2099, 5, 1), end_date: Date.new(2099, 5, 2))
     future = DB[:events].where(id: future[:id]).first
     future_roster = TestFactories.chore_roster(event: future, user: user_a)
-    TestFactories.rsvp(event: future, user: user_a, attending: true, start_date: nil, end_date: nil)
+    TestFactories.attendance(event: future, user: user_a, status: "going")
     TestFactories.chore(chore_roster: future_roster, name: "Cooking", people_per_day: 1, time: "08:00")
 
     result = described_class.call(roster_id: future_roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
@@ -87,8 +101,8 @@ RSpec.describe ChoreRosters::Autofill do
   end
 
   it "preserves pinned assignments" do
-    create_rsvp(user_a)
-    create_rsvp(user_b)
+    create_attendance(user_a)
+    create_attendance(user_b)
     chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
 
     # Pin Alice to day 1
@@ -112,8 +126,8 @@ RSpec.describe ChoreRosters::Autofill do
   end
 
   it "respects one-chore-per-day rule when possible" do
-    create_rsvp(user_a)
-    create_rsvp(user_b)
+    create_attendance(user_a)
+    create_attendance(user_b)
     TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
     TestFactories.chore(chore_roster: roster, name: "Washing", people_per_day: 1)
 
@@ -129,7 +143,7 @@ RSpec.describe ChoreRosters::Autofill do
   end
 
   it "relaxes one-per-day when not enough people" do
-    create_rsvp(user_a)
+    create_attendance(user_a)
     # Only one person for 2 chores
     TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
     TestFactories.chore(chore_roster: roster, name: "Washing", people_per_day: 1)
@@ -145,8 +159,8 @@ RSpec.describe ChoreRosters::Autofill do
 
   it "distributes fairly based on available days" do
     # Alice available all 3 days, Bob only day 1
-    create_rsvp(user_a)
-    create_rsvp(user_b, start_date: event_start, end_date: event_start)
+    create_attendance(user_a)
+    create_attendance(user_b, start_date: event_start, end_date: event_start)
     chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
 
     result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
@@ -164,8 +178,8 @@ RSpec.describe ChoreRosters::Autofill do
   end
 
   it "deletes non-pinned assignments before re-filling" do
-    create_rsvp(user_a)
-    create_rsvp(user_b)
+    create_attendance(user_a)
+    create_attendance(user_b)
     TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
 
     # First autofill
@@ -183,7 +197,7 @@ RSpec.describe ChoreRosters::Autofill do
   end
 
   it "broadcasts a deletion per removed assignment so connected clients drop the stale rows" do
-    create_rsvp(user_a)
+    create_attendance(user_a)
     chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
     stale = TestFactories.chore_assignment(chore: chore, user: user_a, date: event_start, pinned: false)
 
@@ -198,8 +212,8 @@ RSpec.describe ChoreRosters::Autofill do
 
   it "handles partial RSVP date ranges" do
     # Alice only available days 1–2, Charlie only day 3
-    create_rsvp(user_a, start_date: event_start, end_date: event_start + 1)
-    create_rsvp(user_c, start_date: event_end, end_date: event_end)
+    create_attendance(user_a, start_date: event_start, end_date: event_start + 1)
+    create_attendance(user_c, start_date: event_end, end_date: event_end)
     chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
 
     result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
@@ -222,7 +236,7 @@ RSpec.describe ChoreRosters::Autofill do
   end
 
   it "succeeds with no chores (nothing to fill)" do
-    create_rsvp(user_a)
+    create_attendance(user_a)
 
     result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
 
@@ -234,8 +248,8 @@ RSpec.describe ChoreRosters::Autofill do
     # 6 days so patterns emerge
     DB[:events].where(id: event[:id]).update(end_date: event_start + 5)
 
-    create_rsvp(user_a)
-    create_rsvp(user_b)
+    create_attendance(user_a)
+    create_attendance(user_b)
     TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
     TestFactories.chore(chore_roster: roster, name: "Cleaning", people_per_day: 1)
 
@@ -256,9 +270,9 @@ RSpec.describe ChoreRosters::Autofill do
   it "does not pile extra chores onto someone already pinned to their fair share" do
     # 6-day event, three people all available every day.
     DB[:events].where(id: event[:id]).update(end_date: event_start + 5)
-    create_rsvp(user_a) # the "chef"
-    create_rsvp(user_b)
-    create_rsvp(user_c)
+    create_attendance(user_a) # the "chef"
+    create_attendance(user_b)
+    create_attendance(user_c)
 
     koken = TestFactories.chore(chore_roster: roster, name: "Koken", people_per_day: 1)
     TestFactories.chore(chore_roster: roster, name: "Schoonmaak", people_per_day: 1)
@@ -287,8 +301,8 @@ RSpec.describe ChoreRosters::Autofill do
     before { allow(Timezones).to receive(:today).and_return(Date.new(2026, 3, 3)) }
 
     it "leaves days before today untouched and refills only from today onward" do
-      create_rsvp(user_a)
-      create_rsvp(user_b)
+      create_attendance(user_a)
+      create_attendance(user_b)
       chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
 
       past1 = TestFactories.chore_assignment(chore: chore, user: user_a, date: Date.new(2026, 3, 1), pinned: false)
@@ -308,8 +322,8 @@ RSpec.describe ChoreRosters::Autofill do
 
     it "leaves a timed chore already started today as the record of who did it" do
       allow(Timezones).to receive(:now).and_return(Time.new(2026, 3, 3, 16, 0, 0))
-      create_rsvp(user_a)
-      create_rsvp(user_b)
+      create_attendance(user_a)
+      create_attendance(user_b)
       morning = TestFactories.chore(chore_roster: roster, name: "Groceries", people_per_day: 1, time: "10:00")
       done = TestFactories.chore_assignment(chore: morning, user: user_a, date: Date.new(2026, 3, 3), pinned: false)
 
@@ -325,8 +339,8 @@ RSpec.describe ChoreRosters::Autofill do
 
     it "still refills a timed chore that has not started yet today" do
       allow(Timezones).to receive(:now).and_return(Time.new(2026, 3, 3, 16, 0, 0))
-      create_rsvp(user_a)
-      create_rsvp(user_b)
+      create_attendance(user_a)
+      create_attendance(user_b)
       dinner = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1, time: "17:00")
       stale = TestFactories.chore_assignment(chore: dinner, user: user_a, date: Date.new(2026, 3, 3), pinned: false)
 
@@ -341,8 +355,8 @@ RSpec.describe ChoreRosters::Autofill do
     it "counts past work when balancing the remaining days" do
       # Alice covered the two days already gone; both are around all four days.
       # The two remaining days should both fall to Bob (Alice 2/4 vs Bob 0/4).
-      create_rsvp(user_a)
-      create_rsvp(user_b)
+      create_attendance(user_a)
+      create_attendance(user_b)
       chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
       TestFactories.chore_assignment(chore: chore, user: user_a, date: Date.new(2026, 3, 1), pinned: false)
       TestFactories.chore_assignment(chore: chore, user: user_a, date: Date.new(2026, 3, 2), pinned: false)
@@ -356,7 +370,7 @@ RSpec.describe ChoreRosters::Autofill do
 
     it "fails when the event is already over, leaving the roster untouched" do
       allow(Timezones).to receive(:today).and_return(Date.new(2026, 3, 10))
-      create_rsvp(user_a)
+      create_attendance(user_a)
       chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
       done = TestFactories.chore_assignment(chore: chore, user: user_a, date: Date.new(2026, 3, 2), pinned: false)
 
@@ -369,7 +383,7 @@ RSpec.describe ChoreRosters::Autofill do
   end
 
   it "keeps pinned-only state when all assignments are pinned" do
-    create_rsvp(user_a)
+    create_attendance(user_a)
     chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
 
     # Pin all 3 days

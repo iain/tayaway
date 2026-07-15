@@ -44,8 +44,10 @@ module ChoreRosters
         chores = Chore.for_roster(roster.id)
         started_today_chore_ids = ChoreTime.started_today(chores, event.timezone).map { |c| c.id.to_s }
 
-        rsvps = Rsvp.for_event(event.id).select(&:attending)
-        availability = build_availability(event, rsvps)
+        # Going member attendances only (doc/attendances.md phase 3) — same
+        # availability source as Autofill.
+        attendances = Attendance.for_event(event.id).select { |a| a.going? && !a.guest? }
+        availability = build_availability(event, attendances)
         available_days = Hash.new(0)
         availability.each_value do |user_ids|
           user_ids.each { |uid| available_days[uid] += 1 }
@@ -127,11 +129,11 @@ module ChoreRosters
         end
       end
 
-      def build_availability(event, rsvps)
+      def build_availability(event, attendances)
         availability = Hash.new { |h, k| h[k] = Set.new }
-        rsvps.each do |rsvp|
-          rsvp.effective_dates(event).each do |date|
-            availability[date] << rsvp.user_id.to_s
+        attendances.each do |attendance|
+          attendance.effective_days(event).each do |date|
+            availability[date] << attendance.user_id.to_s
           end
         end
         availability
