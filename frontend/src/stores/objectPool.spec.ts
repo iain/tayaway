@@ -105,6 +105,35 @@ describe('objectPool store', () => {
       })
     })
 
+    it('lets the server confirmation upgrade a temp create whose clock ran ahead', () => {
+      const pool = useObjectPoolStore()
+      // Optimistic create: the temp copy carries no permissions and is stamped
+      // with the browser clock (nowIso()). When the browser runs ahead of the
+      // server, the temp's updatedAt is LATER than the server's authoritative
+      // copy. The server confirmation carries the viewer permissions, so it
+      // must win despite being "older" — otherwise the permissionless temp
+      // shadows it and permission-gated UI (edit/delete buttons) stays hidden.
+      const tempExpense = makeExpense({
+        id: 'exp-boodschappen',
+        updatedAt: '2026-07-15T13:25:12.000Z', // browser clock, ahead of server
+      })
+      pool.set(tempExpense, {
+        scope: Scope.workspace('ws-1'),
+        isTemp: true,
+      })
+
+      const confirmed = makeExpense({
+        id: 'exp-boodschappen',
+        updatedAt: '2026-07-15T13:25:08.029Z', // server clock, behind browser
+        permissions: { edit: { allowed: true }, delete: { allowed: true } },
+      })
+      pool.importObjects([confirmed], { scope: Scope.workspace('ws-1') })
+
+      expect(
+        pool.get('expense', 'exp-boodschappen')?.permissions?.edit
+      ).toEqual({ allowed: true })
+    })
+
     it('imports multiple objects of different types', () => {
       const pool = useObjectPoolStore()
       const event = makeEvent()

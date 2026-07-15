@@ -973,6 +973,86 @@ test.describe('Expenses Feature', () => {
     })
   })
 
+  // Regression: optimistic creates stamp the temp expense with the browser
+  // clock (nowIso()). When the browser runs ahead of the server, the temp's
+  // updatedAt is LATER than the server's confirming copy, so the pool's
+  // newer-wins merge used to drop the permissioned confirmation — leaving the
+  // permissionless temp in place and hiding the edit/delete buttons on the
+  // user's OWN freshly-created expense (while others' stayed editable).
+  test.describe('Own expense affordances under clock skew', () => {
+    const SKEW_EMAIL = 'e2e-expense-clock-skew@example.com'
+    const SKEW_NAME = 'Clock Skew User'
+
+    test('keeps edit/delete on a freshly-created expense when the browser clock runs ahead', async ({
+      page,
+      playwright,
+    }) => {
+      const apiContext = await newApiContext(playwright)
+      const { token } = await getTestSession(apiContext, SKEW_EMAIL, SKEW_NAME)
+      const { eventId } = await createResolvedEvent(apiContext, 'Clock Skew Event')
+      await apiContext.dispose()
+
+      // Run the browser one hour ahead of the server so the optimistic
+      // create's client timestamp outranks the server's confirmation.
+      await page.addInitScript(() => {
+        const OFFSET = 60 * 60 * 1000
+        const RealDate = Date
+        const realNow = RealDate.now.bind(RealDate)
+        class SkewedDate extends RealDate {
+          constructor(...args: ConstructorParameters<typeof Date>) {
+            if (args.length === 0) {
+              super(realNow() + OFFSET)
+            } else {
+              super(...args)
+            }
+          }
+          static now() {
+            return realNow() + OFFSET
+          }
+        }
+        window.Date = SkewedDate as DateConstructor
+      })
+
+      await setupAuthenticatedPage(page, token)
+      await page.goto(`/events/${eventId}/expenses`)
+
+      const description = 'Boodschappen'
+      await expect(
+        page.getByRole('button', { name: 'Add expense' })
+      ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
+      await page.getByRole('button', { name: 'Add expense' }).click()
+
+      // Step 1: Details
+      await page.getByTestId('expense-description-input').fill(description)
+      await page.getByTestId('expense-amount-input').fill('12.30')
+      await page.getByTestId('submit-button').click()
+
+      // Step 2: Date (defaults to the event window)
+      await page.getByTestId('submit-button').click()
+
+      // Step 3: People (default "Everyone") — wait for the server to confirm
+      const [createResponse] = await Promise.all([
+        page.waitForResponse(
+          (resp) =>
+            resp.url().includes('/api/expenses') &&
+            resp.request().method() === 'POST'
+        ),
+        page.getByTestId('submit-button').click(),
+      ])
+      expect(createResponse.status()).toBe(201)
+
+      const row = page
+        .getByTestId('expense-row')
+        .filter({ hasText: description })
+      await expect(row).toBeVisible()
+
+      // The server confirmation carries edit/delete permissions; both
+      // affordances must survive the merge and stay visible on my own expense.
+      await expect(row.getByTestId('edit-expense')).toBeVisible()
+      await expect(row.getByTestId('delete-expense')).toBeVisible()
+    })
+  })
+
   test.describe('Expense Participant Selection', () => {
     const PARTICIPANT_EMAIL = 'e2e-expense-participants@example.com'
     const PARTICIPANT_NAME = 'E2E Expense Participants'

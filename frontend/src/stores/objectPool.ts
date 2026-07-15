@@ -19,22 +19,28 @@ function isNewer(a: string, b: string): boolean {
   return a > b
 }
 
-// A copy carrying viewer-scoped `permissions` is strictly more complete than
-// one without, even at the same version. The personal and workspace syncs
-// serialize the same workspace/member row without and with permissions
-// respectively (permissions depend on the viewer's membership, which only the
-// workspace-scoped path attaches), and both share the row's updatedAt. Without
-// this, whichever copy lands first wins the tie and the permissioned one can be
-// dropped — hiding permission-gated UI like the Invite Members button.
+// A copy carrying viewer-scoped `permissions` is strictly more authoritative
+// than one without: only the workspace-scoped serialization path attaches
+// permissions, so a permissioned copy always comes from an authoritative
+// server delivery. A permissionless copy must therefore never win over a
+// permissioned one — not even when its `updatedAt` looks newer. Two paths
+// produce exactly that:
+//   - Personal vs workspace sync serialize the same workspace/member row —
+//     one without permissions, one with — sharing the row's updatedAt. The
+//     permissioned copy must not lose the tie (Invite Members button, etc.).
+//   - An optimistic create stamps its temp copy with the browser clock
+//     (nowIso()). When the browser runs ahead of the server, that temp
+//     outranks the server's confirming copy on updatedAt, so the confirmation
+//     would be dropped and the permissionless temp sticks — hiding the
+//     edit/delete buttons on the user's own freshly-created object.
+// We deliberately don't require equal updatedAt: the confirming copy can be
+// older, and permissions are viewer metadata, not object data, so upgrading
+// them never loses a genuine update.
 function upgradesPermissions(
   incoming: PoolObject,
   existing: PoolObject
 ): boolean {
-  return (
-    incoming.updatedAt === existing.updatedAt &&
-    incoming.permissions != null &&
-    existing.permissions == null
-  )
+  return incoming.permissions != null && existing.permissions == null
 }
 
 // Maximum objects inserted per synchronous chunk in replaceScope().
