@@ -2,6 +2,7 @@
 import { ref, nextTick } from 'vue'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import type { ActionMenuAction } from '@/components/common/ActionMenu.vue'
+import HoverTooltip from '@/components/common/HoverTooltip.vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useLocale } from '@/composables/useLocale'
 import { getMemberName } from '@/utils/member'
@@ -29,6 +30,7 @@ const { locale } = useLocale()
 const isEditing = ref(false)
 const editValue = ref('')
 const editInput = ref<HTMLInputElement | null>(null)
+const rowEl = ref<HTMLElement | null>(null)
 
 const menuActions: ActionMenuAction[] = [
   {
@@ -40,10 +42,11 @@ const menuActions: ActionMenuAction[] = [
 ]
 
 // Who added it and when, plus the completion moment for checked items —
-// surfaced in the overflow menu so the row itself stays a clean tap target.
-// A getter (not a computed bound into the row) so the member lookup and
-// date formatting only run once the menu is opened, not on every row render.
-function menuMeta(): string[] {
+// surfaced both in the overflow menu (the tap/keyboard path) and in the hover
+// tooltip, from this one function so the two can't drift. A getter (not a
+// computed bound into the row) so the member lookup and date formatting only
+// run once the menu or tooltip actually opens, not on every row render.
+function metaLines(): string[] {
   const lines = [
     `Added by ${getMemberName(props.item.userId, pool)}`,
     `Added ${formatDateTime(props.item.createdAt, locale.value)}`,
@@ -82,6 +85,7 @@ function cancelEdit(): void {
 
 <template>
   <li
+    ref="rowEl"
     class="-mx-2 flex min-h-[44px] items-center gap-2 rounded px-2 py-1.5 sm:gap-3"
     :class="highlighted ? 'bg-surface-sunken' : ''"
     :data-item-id="item.id"
@@ -153,9 +157,15 @@ function cancelEdit(): void {
       :label="`Options for ${item.content}`"
       :title="item.content"
       :actions="menuActions"
-      :meta="menuMeta"
+      :meta="metaLines"
       trigger-testid="item-menu-button"
       @trigger-mousedown="cancelEdit"
     />
+
+    <HoverTooltip v-if="rowEl" :anchor-el="rowEl">
+      <p v-for="line in metaLines()" :key="line" class="text-ink-muted">
+        {{ line }}
+      </p>
+    </HoverTooltip>
   </li>
 </template>

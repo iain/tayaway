@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { SHOW_DELAY_MS } from '@/components/common/HoverTooltip.vue'
 import { createPinia, setActivePinia } from 'pinia'
 import TaskItemRow from './TaskItemRow.vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
@@ -202,6 +203,69 @@ describe('TaskItemRow', () => {
       const meta = wrapper.get('[data-testid="action-menu-meta"]').text()
       expect(meta).toContain('Added by Unknown')
       expect(meta).toMatch(/Completed .*Jul/)
+    })
+  })
+
+  describe('metadata hover tooltip', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.stubGlobal(
+        'matchMedia',
+        vi.fn().mockImplementation((query: string) => ({
+          matches: query === '(hover: hover)',
+          media: query,
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        }))
+      )
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+      vi.unstubAllGlobals()
+    })
+
+    async function hoverRow(wrapper: ReturnType<typeof mountRow>) {
+      // The tooltip mounts once the row's template ref resolves, a tick after
+      // the row itself.
+      await wrapper.vm.$nextTick()
+      wrapper
+        .get('[data-testid="task-item-row"]')
+        .element.dispatchEvent(new MouseEvent('mouseenter'))
+      vi.advanceTimersByTime(SHOW_DELAY_MS)
+      await wrapper.vm.$nextTick()
+      return document.body.querySelector('[role="tooltip"]')
+    }
+
+    it('shows who added the item and when on row hover', async () => {
+      seedPool(
+        useObjectPoolStore(),
+        makeMember({ userId: 'user-1', name: 'Alice' })
+      )
+      const wrapper = mountRow(
+        mkItem({ createdAt: '2026-07-10T09:30:00.000Z' })
+      )
+
+      const tooltip = await hoverRow(wrapper)
+      expect(tooltip).not.toBeNull()
+      expect(tooltip!.textContent).toContain('Added by Alice')
+      expect(tooltip!.textContent).toMatch(/Added .*Jul/)
+      expect(tooltip!.textContent).not.toContain('Completed')
+      wrapper.unmount()
+    })
+
+    it('includes the completion moment for completed items', async () => {
+      const wrapper = mountRow(
+        mkItem({ completedAt: '2026-07-11T14:05:00.000Z' })
+      )
+
+      const tooltip = await hoverRow(wrapper)
+      expect(tooltip!.textContent).toMatch(/Completed .*Jul/)
+      wrapper.unmount()
     })
   })
 
