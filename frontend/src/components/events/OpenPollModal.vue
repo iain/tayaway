@@ -2,6 +2,8 @@
 import { ref, watch, computed } from 'vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import FormActions from '@/components/form/FormActions.vue'
+import { datetimeLocalToIso, isFutureIso } from '@/utils/date'
+import { defaultPollDeadline } from '@/utils/poll'
 
 const props = defineProps<{
   open: boolean
@@ -22,16 +24,7 @@ watch(
   () => props.open,
   (isOpen) => {
     if (isOpen) {
-      const defaultDate = new Date()
-      defaultDate.setDate(defaultDate.getDate() + 7)
-      defaultDate.setHours(23, 59, 0, 0)
-      // Format for datetime-local input
-      const year = defaultDate.getFullYear()
-      const month = String(defaultDate.getMonth() + 1).padStart(2, '0')
-      const day = String(defaultDate.getDate()).padStart(2, '0')
-      const hours = String(defaultDate.getHours()).padStart(2, '0')
-      const minutes = String(defaultDate.getMinutes()).padStart(2, '0')
-      deadline.value = `${year}-${month}-${day}T${hours}:${minutes}`
+      deadline.value = defaultPollDeadline()
     }
   },
   { immediate: true }
@@ -39,12 +32,12 @@ watch(
 
 const canConfirm = computed(() => {
   if (!deadline.value) return false
-  return new Date(deadline.value) > new Date()
+  return isFutureIso(deadline.value)
 })
 
 function handleConfirm(): void {
   if (!canConfirm.value) return
-  emit('confirm', new Date(deadline.value).toISOString())
+  emit('confirm', datetimeLocalToIso(deadline.value))
 }
 
 function handleClose(): void {

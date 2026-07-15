@@ -12,6 +12,7 @@ import { useDatePollsStore } from '@/stores/datePolls'
 import { useHydratedEvent } from '@/composables/useHydratedEvent'
 import { isPollActive, isPollResolved } from '@/utils/poll'
 import { eventHasDates } from '@/utils/event'
+import { localIsoDate } from '@/utils/date'
 import DatePollSection from '@/components/events/DatePollSection.vue'
 import AwaitingVotesSection from '@/components/events/AwaitingVotesSection.vue'
 import OpenPollModal from '@/components/events/OpenPollModal.vue'
@@ -38,7 +39,7 @@ const canCreatePoll = computed(() =>
 
 const eventHasStarted = computed(() => {
   const sd = event.value?.startDate
-  return !!sd && sd < new Date().toISOString().slice(0, 10)
+  return !!sd && sd < localIsoDate()
 })
 
 const canOpenOrReopenPoll = computed(() => {

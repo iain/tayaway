@@ -6,6 +6,7 @@ import { Bars3Icon, ClockIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import IconButton from '@/components/common/IconButton.vue'
 import ChoreCell from '@/components/chores/ChoreCell.vue'
 import { positionBetween, positionForReorder } from '@/utils/position'
+import { formatWeekdayDay } from '@/utils/date'
 import { useChoreRostersStore } from '@/stores/choreRosters'
 import type {
   PoolChore,
@@ -101,13 +102,6 @@ const assignmentMap = computed(() => {
   }
   return map
 })
-
-function formatDayHeader(dateStr: string): string {
-  const d = new Date(dateStr + 'T12:00:00')
-  const day = d.toLocaleDateString(undefined, { weekday: 'short' })
-  const num = d.getDate()
-  return `${day} ${num}`
-}
 
 function getAssignments(choreId: string, date: string): PoolChoreAssignment[] {
   return assignmentMap.value.get(`${choreId}-${date}`) ?? []
@@ -232,7 +226,7 @@ function onHandleKeydown(event: KeyboardEvent, chore: PoolChore) {
             class="text-ink bg-surface-page sticky left-0 z-10 px-3 py-2 text-left text-sm whitespace-nowrap"
             :class="date === today ? 'font-semibold' : 'font-medium'"
           >
-            {{ formatDayHeader(date) }}
+            {{ formatWeekdayDay(date) }}
             <span
               v-if="date === today"
               class="bg-ink text-surface ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium"

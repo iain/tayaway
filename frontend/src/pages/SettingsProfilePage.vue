@@ -3,7 +3,7 @@ import { computed, ref, nextTick, useTemplateRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { UserIcon, XCircleIcon } from '@heroicons/vue/24/outline'
-import { formatBirthday } from '@/utils/date'
+import { formatBirthday, localIsoDate } from '@/utils/date'
 import BaseCard from '@/components/common/BaseCard.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import DefinitionRow from '@/components/common/DefinitionRow.vue'
@@ -54,7 +54,7 @@ const timezoneDisplay = computed(() =>
 
 // The native picker honours `max` and disables future dates; the backend
 // enforces the same in update_profile so the keyboard-typed path is covered too.
-const todayIso = computed(() => new Date().toISOString().slice(0, 10))
+const todayIso = computed(() => localIsoDate())
 
 const nameInputRef = useTemplateRef<HTMLInputElement>('nameInputRef')
 const phoneInputRef = useTemplateRef<HTMLInputElement>('phoneInputRef')

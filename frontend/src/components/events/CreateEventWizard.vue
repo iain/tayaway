@@ -24,6 +24,7 @@ import {
   useWorkspaceStore,
 } from '@/stores'
 import { useCalendar } from '@/composables/useCalendar'
+import { localIsoDate } from '@/utils/date'
 import { timezoneForCoordinates, effectiveEventZone } from '@/utils/geoTimezone'
 
 const props = defineProps<{
@@ -120,13 +121,7 @@ const canSubmit = computed(() => {
   return true
 })
 
-const todayString = computed(() => {
-  const d = new Date()
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-})
+const todayString = computed(() => localIsoDate())
 
 // Calendar navigation
 function navigatePrev(): void {
