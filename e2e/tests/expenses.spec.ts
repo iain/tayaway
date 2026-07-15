@@ -993,24 +993,14 @@ test.describe('Expenses Feature', () => {
       await apiContext.dispose()
 
       // Run the browser one hour ahead of the server so the optimistic
-      // create's client timestamp outranks the server's confirmation.
+      // create's client timestamp (nowIso() → Date.now()) outranks the
+      // server's confirmation. Only Date.now is shifted — leaving the Date
+      // constructor untouched keeps new Date(str) parsing and Date()-as-string
+      // intact, so nothing unrelated breaks under the skew.
       await page.addInitScript(() => {
         const OFFSET = 60 * 60 * 1000
-        const RealDate = Date
-        const realNow = RealDate.now.bind(RealDate)
-        class SkewedDate extends RealDate {
-          constructor(...args: ConstructorParameters<typeof Date>) {
-            if (args.length === 0) {
-              super(realNow() + OFFSET)
-            } else {
-              super(...args)
-            }
-          }
-          static now() {
-            return realNow() + OFFSET
-          }
-        }
-        window.Date = SkewedDate as DateConstructor
+        const realNow = Date.now.bind(Date)
+        Date.now = () => realNow() + OFFSET
       })
 
       await setupAuthenticatedPage(page, token)

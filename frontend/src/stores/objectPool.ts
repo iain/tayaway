@@ -19,28 +19,30 @@ function isNewer(a: string, b: string): boolean {
   return a > b
 }
 
-// A copy carrying viewer-scoped `permissions` is strictly more authoritative
-// than one without: only the workspace-scoped serialization path attaches
-// permissions, so a permissioned copy always comes from an authoritative
-// server delivery. A permissionless copy must therefore never win over a
-// permissioned one — not even when its `updatedAt` looks newer. Two paths
-// produce exactly that:
-//   - Personal vs workspace sync serialize the same workspace/member row —
-//     one without permissions, one with — sharing the row's updatedAt. The
-//     permissioned copy must not lose the tie (Invite Members button, etc.).
-//   - An optimistic create stamps its temp copy with the browser clock
-//     (nowIso()). When the browser runs ahead of the server, that temp
-//     outranks the server's confirming copy on updatedAt, so the confirmation
-//     would be dropped and the permissionless temp sticks — hiding the
-//     edit/delete buttons on the user's own freshly-created object.
-// We deliberately don't require equal updatedAt: the confirming copy can be
-// older, and permissions are viewer metadata, not object data, so upgrading
-// them never loses a genuine update.
+// A copy carrying viewer-scoped `permissions` is strictly more complete than
+// one without, at the same version. The personal and workspace syncs serialize
+// the same workspace/member row without and with permissions respectively
+// (permissions depend on the viewer's membership, which only the workspace-
+// scoped path attaches), and both share the row's updatedAt. Without this,
+// whichever copy lands first wins the tie and the permissioned one can be
+// dropped — hiding permission-gated UI like the Invite Members button.
+//
+// The equal-updatedAt guard is load-bearing: because the merge replaces the
+// whole object, an *older* permissioned copy must never win over a *newer*
+// permissionless one, or the newer field data would revert too. The one place
+// a confirmation legitimately arrives older than what it replaces — an
+// optimistic create whose temp was stamped with a browser clock running ahead
+// of the server — is handled separately by the temp-confirmation path in
+// importObjects, which knows the temp's data was never authoritative.
 function upgradesPermissions(
   incoming: PoolObject,
   existing: PoolObject
 ): boolean {
-  return incoming.permissions != null && existing.permissions == null
+  return (
+    incoming.updatedAt === existing.updatedAt &&
+    incoming.permissions != null &&
+    existing.permissions == null
+  )
 }
 
 // Maximum objects inserted per synchronous chunk in replaceScope().
@@ -519,18 +521,25 @@ export const useObjectPoolStore = defineStore('objectPool', () => {
       // Server has confirmed this object — it's no longer an unconfirmed
       // temp object. Cache hydration re-imports (startup, workspace
       // switch-back) are not confirmations and keep the mark.
-      if (!opts?.fromCache && tempObjectIds.has(obj.id)) {
+      const confirmsTemp = !opts?.fromCache && tempObjectIds.has(obj.id)
+      if (confirmsTemp) {
         tempObjectIds.delete(obj.id)
       }
 
       addObjectScope(obj.id, scope)
 
       // Update pool object if newer, doesn't exist, or the incoming copy adds
-      // permissions the existing same-version copy lacks (see upgradesPermissions)
+      // permissions the existing same-version copy lacks (see
+      // upgradesPermissions). `confirmsTemp` is the authoritative confirmation
+      // of an optimistic create: the temp copy carried the browser clock in
+      // updatedAt, which can run ahead of the server, so the confirmation must
+      // replace it even when it looks older — the temp's data was never
+      // authoritative, and dropping it is how the server's permissions land.
       if (
         !existing ||
         isNewer(obj.updatedAt, existing.updatedAt) ||
-        upgradesPermissions(obj, existing)
+        upgradesPermissions(obj, existing) ||
+        confirmsTemp
       ) {
         // Update reverse index: remove old FK entry (if any), add new one
         if (existing) reverseIndexRemove(cascadeIndex, existing)
