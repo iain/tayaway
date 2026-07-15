@@ -370,6 +370,45 @@ describe('RsvpSection guests', () => {
     })
   })
 
+  it('lists a pending guest under No Response so their host can re-confirm', () => {
+    const wrapper = mountSection([
+      mkAttendance(),
+      mkGuestAttendance({ status: 'pending' }),
+    ])
+
+    expect(wrapper.find('[data-testid="attendance-guest-row"]').exists()).toBe(
+      false
+    )
+    expect(wrapper.text()).toContain('No Response (1)')
+    const row = wrapper.find('[data-testid="pending-guest-row"]')
+    expect(row.exists()).toBe(true)
+    expect(row.text()).toContain('Emma')
+    expect(row.text()).toContain('guest of Alice')
+  })
+
+  it("re-confirms a pending guest's days from the No Response row", async () => {
+    const wrapper = mountSection([
+      mkAttendance(),
+      mkGuestAttendance({ status: 'pending' }),
+    ])
+
+    await wrapper.find('[data-testid="rsvp-other-menu"]').trigger('click')
+    await wrapper.vm.$nextTick()
+    const item = wrapper
+      .findAll('[role="menuitem"]')
+      .find((b) => b.text() === 'Choose days')
+    expect(item, 'menu item "Choose days" should exist').toBeDefined()
+    await item!.trigger('click')
+    await wrapper.find('[data-testid="guest-save"]').trigger('click')
+
+    // A pending row has no days, so the picker presets the whole event,
+    // which saves as the canonical null.
+    expect(upsertGuestAttendanceSpy).toHaveBeenCalledWith('event-1', 'ws-1', {
+      guestId: 'guest-emma',
+      days: null,
+    })
+  })
+
   it('offers existing non-placeholder guests in the picker', async () => {
     mockGuests = [
       {

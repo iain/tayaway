@@ -63,6 +63,12 @@ const going = computed(() =>
 const goingGuests = computed(() =>
   guestRows.value.filter((a) => a.status === 'going')
 )
+// A date reset parks guest rows at pending too. Members reappear under "No
+// Response" on their own; guests would silently vanish from the section
+// unless listed there as well, with their host left to remember them.
+const pendingGuests = computed(() =>
+  guestRows.value.filter((a) => a.status === 'pending')
+)
 const declined = computed(() =>
   memberRows.value.filter((a) => a.status === 'declined')
 )
@@ -330,17 +336,20 @@ interface GuestModalState {
 const guestModal = ref<GuestModalState | null>(null)
 
 // Existing guests to offer before creating a new one: the workspace's
-// guests minus anyone already going on this event. Placeholders stay hidden
-// until renamed (doc/attendances.md).
+// guests minus anyone already on this event (going, or pending in the No
+// Response list where they're re-confirmed instead). Placeholders stay
+// hidden until renamed (doc/attendances.md).
 const pickableGuests = computed(() => {
-  const goingGuestIds = new Set(goingGuests.value.map((a) => a.guestId))
+  const activeGuestIds = new Set(
+    guestRows.value.filter((a) => a.status !== 'declined').map((a) => a.guestId)
+  )
   return pool
     .getAll('guest')
     .filter(
       (g) =>
         g.workspaceId === props.event.workspaceId &&
         !g.placeholder &&
-        !goingGuestIds.has(g.id)
+        !activeGuestIds.has(g.id)
     )
     .sort((a, b) => a.name.localeCompare(b.name))
 })
@@ -356,11 +365,14 @@ function openAddGuest(): void {
 }
 
 function openGuestDays(attendance: HydratedAttendance): void {
+  // A non-going row covers no days, so re-confirming a pending guest
+  // starts from the whole event, like a fresh add.
+  const current = daysFor(attendance)
   guestModal.value = {
     attendanceId: attendance.id,
     guestId: attendance.guestId,
     name: attendance.attendee.name,
-    days: new Set(daysFor(attendance)),
+    days: new Set(current.length > 0 ? current : eventDays.value),
   }
   navigateToEventStart()
 }
@@ -885,9 +897,9 @@ function guestOfLabel(attendance: HydratedAttendance): string {
         </div>
 
         <!-- No response -->
-        <div v-if="noResponse.length > 0">
+        <div v-if="noResponse.length > 0 || pendingGuests.length > 0">
           <h3 class="text-ink-muted mb-2 text-sm font-medium">
-            No Response ({{ noResponse.length }})
+            No Response ({{ noResponse.length + pendingGuests.length }})
           </h3>
           <ul class="space-y-2">
             <li
@@ -916,6 +928,39 @@ function guestOfLabel(attendance: HydratedAttendance): string {
                 @pick="handlePick(member.userId, $event)"
               />
             </li>
+
+            <!-- Guests parked at pending by a date reset, waiting for their
+                 host to re-confirm their days (or remove them) -->
+            <li
+              v-for="attendance in pendingGuests"
+              :key="attendance.id"
+              data-testid="pending-guest-row"
+              class="bg-surface-sunken flex items-center gap-3 rounded-md px-3 py-2"
+            >
+              <div
+                class="bg-line flex size-8 items-center justify-center rounded-full"
+              >
+                <UserPlusIcon class="text-ink-muted size-4" />
+              </div>
+              <span class="text-ink min-w-0 flex-1">
+                {{ attendance.attendee.name }}
+                <span class="text-ink-muted text-sm">
+                  ({{ guestOfLabel(attendance) }})
+                </span>
+              </span>
+              <RsvpActionsMenu
+                :menu-label="`Manage guest ${attendance.attendee.name}`"
+                :actions="guestActions(attendance)"
+                @pick="handleGuestPick(attendance, $event)"
+              />
+              <IconButton
+                data-testid="guest-remove"
+                :label="`Remove ${attendance.attendee.name} from this event`"
+                @click="handleRemoveGuest(attendance)"
+              >
+                <XMarkIcon class="size-5" />
+              </IconButton>
+            </li>
           </ul>
         </div>
 
@@ -924,8 +969,8 @@ function guestOfLabel(attendance: HydratedAttendance): string {
           {{ going.length }} attending<span v-if="goingGuests.length > 0">
             (+{{ goingGuests.length }}
             {{ goingGuests.length === 1 ? 'guest' : 'guests' }})</span
-          >, {{ declined.length }} not attending, {{ noResponse.length }}
-          pending
+          >, {{ declined.length }} not attending,
+          {{ noResponse.length + pendingGuests.length }} pending
         </p>
       </div>
 
