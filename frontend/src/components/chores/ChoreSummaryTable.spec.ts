@@ -5,7 +5,7 @@ import {
   makeChore,
   makeEvent,
   makeMember,
-  makeRsvp,
+  makeAttendance,
   makeChoreAssignment,
 } from '@/test/factories'
 
@@ -38,15 +38,15 @@ function mountTable(headingLevel?: 2 | 3) {
         makeMember({ id: 'mem-2', userId: 'user-2', name: 'Bob' }),
         makeMember({ id: 'mem-3', userId: 'user-3', name: 'Carol' }),
       ],
-      rsvps: [
+      attendances: [
         // Alice is only around one day; Bob stays the whole event; Carol is
         // there for two days but holds no chores at all.
-        makeRsvp({ id: 'r1', userId: 'user-1', attendance: ['2026-03-10'] }),
-        makeRsvp({ id: 'r2', userId: 'user-2' }),
-        makeRsvp({
-          id: 'r3',
+        makeAttendance({ id: 'att-1', userId: 'user-1', days: ['2026-03-10'] }),
+        makeAttendance({ id: 'att-user-2', userId: 'user-2' }),
+        makeAttendance({
+          id: 'att-3',
           userId: 'user-3',
-          attendance: ['2026-03-11', '2026-03-12'],
+          days: ['2026-03-11', '2026-03-12'],
         }),
       ],
       event: makeEvent({ startDate: '2026-03-10', endDate: '2026-03-12' }),

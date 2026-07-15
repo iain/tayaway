@@ -28,6 +28,7 @@ import { useEventsStore, useWorkspaceStore } from '@/stores'
 import { timezoneForCoordinates, effectiveEventZone } from '@/utils/geoTimezone'
 import type { UpdateEventRequest } from '@/types'
 import { useRsvpsStore } from '@/stores/rsvps'
+import { useAttendancesStore } from '@/stores/attendances'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useCalendar } from '@/composables/useCalendar'
 import { generateIcs, downloadIcs } from '@/utils/ics'
@@ -57,6 +58,7 @@ const mapsUrl = computed(() => {
 })
 
 const rsvpsStore = useRsvpsStore()
+const attendancesStore = useAttendancesStore()
 
 type EditField = 'name' | 'description' | 'dates' | 'location' | 'timezone'
 const editField = ref<EditField | null>(null)
@@ -66,6 +68,19 @@ const showRsvpWarning = ref(false)
 const eventRsvps = computed(() =>
   pool.getAll('rsvp').filter((r) => r.eventId === eventId.value)
 )
+
+const eventAttendances = computed(() =>
+  pool.getAll('attendance').filter((a) => a.eventId === eventId.value)
+)
+
+// Rows a date change would reset: any answered attendance (member or
+// guest). Legacy rsvp rows from stale clients count too.
+const answeredCount = computed(() => {
+  const answered = eventAttendances.value.filter((a) => a.status !== 'pending')
+  const mirrored = new Set(answered.map((a) => a.userId))
+  const legacyOnly = eventRsvps.value.filter((r) => !mirrored.has(r.userId))
+  return answered.length + legacyOnly.length
+})
 
 const datesActuallyChanged = computed(() => {
   if (!event.value) return false
@@ -259,7 +274,7 @@ async function saveEdit(): Promise<void> {
   if (
     editField.value === 'dates' &&
     datesActuallyChanged.value &&
-    eventRsvps.value.length > 0
+    answeredCount.value > 0
   ) {
     showRsvpWarning.value = true
     return
@@ -320,8 +335,20 @@ async function commitEdit(): Promise<void> {
   showRsvpWarning.value = false
   editField.value = null
 
-  // Delete all RSVPs after dates change
+  // Reset the answers after dates change: attendance rows revert to
+  // pending (the roster survives; doc/attendances.md), and legacy rsvp
+  // rows are deleted for stale clients — their dual-write mirror lands on
+  // the same pending state. Best effort until the server owns this flow
+  // (phase 6).
   if (resetRsvps) {
+    for (const attendance of eventAttendances.value) {
+      if (attendance.status === 'pending') continue
+      try {
+        await attendancesStore.resetToPending(eventId.value, attendance)
+      } catch {
+        // Best effort — some may fail
+      }
+    }
     const rsvpIds = eventRsvps.value.map((r) => ({ id: r.id }))
     for (const { id } of rsvpIds) {
       try {
@@ -705,17 +732,17 @@ function handleDownloadIcs(): void {
       @close="showRsvpWarning = false"
     >
       <p class="text-ink-muted text-sm">
-        {{ eventRsvps.length }}
-        {{ eventRsvps.length === 1 ? 'member has' : 'members have' }} already
-        RSVPed. Changing the dates will reset all RSVPs so members can
-        re-confirm for the new dates.
+        {{ answeredCount }}
+        {{ answeredCount === 1 ? 'person has' : 'people have' }} already
+        responded. Changing the dates keeps everyone on the list but clears
+        their day picks, so they can re-confirm for the new dates.
       </p>
       <div class="mt-6 flex justify-end gap-3">
         <TextButton variant="secondary" @click="showRsvpWarning = false">
           Cancel
         </TextButton>
         <AppButton :loading="loading" @click="commitEdit">
-          Change dates &amp; reset RSVPs
+          Change dates &amp; reset responses
         </AppButton>
       </div>
     </BaseModal>

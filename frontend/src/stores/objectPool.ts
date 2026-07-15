@@ -148,10 +148,12 @@ const CASCADE_RULES: Partial<
   event: [
     { childType: 'datePoll', foreignKey: 'eventId' },
     { childType: 'rsvp', foreignKey: 'eventId' },
+    { childType: 'attendance', foreignKey: 'eventId' },
     { childType: 'expense', foreignKey: 'eventId' },
     { childType: 'settlement', foreignKey: 'eventId' },
     { childType: 'choreRoster', foreignKey: 'eventId' },
   ],
+  workspace: [{ childType: 'guest', foreignKey: 'workspaceId' }],
   datePoll: [{ childType: 'dateRange', foreignKey: 'datePollId' }],
   dateRange: [{ childType: 'vote', foreignKey: 'dateRangeId' }],
   settlement: [{ childType: 'settlementTransfer', foreignKey: 'settlementId' }],

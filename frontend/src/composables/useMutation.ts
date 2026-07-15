@@ -22,7 +22,7 @@ export interface CommandEnqueuer {
 
 function withOptimistic(
   queue: ReturnType<typeof useCommandQueueStore>,
-  optimistic: OptimisticRef
+  optimistic: OptimisticRef | OptimisticRef[]
 ): CommandEnqueuer {
   return {
     enqueue: (method, path, body) =>
@@ -69,32 +69,44 @@ export function useMutation() {
    * On success: server response auto-imports via client interceptor, replacing temp.
    * On queued: keeps optimistic state.
    * On error: removes the temp object and rethrows.
+   *
+   * Accepts an array when one command creates several objects at once (an
+   * attendance plus its inline guest) — all temps are inserted before the
+   * call and all roll back together on a hard error.
    */
   async function create<T>(
     errorMessage: string,
-    tempObject: ObjectTypeMap[ObjectType],
+    tempObject: ObjectTypeMap[ObjectType] | ObjectTypeMap[ObjectType][],
     fn: (commandQueue: CommandEnqueuer) => Promise<ApiResponse<T>>
   ): Promise<MutationResult<T>> {
     const pool = useObjectPoolStore()
-    pool.set(tempObject, { isTemp: true })
+    const temps = Array.isArray(tempObject) ? tempObject : [tempObject]
+    for (const temp of temps) {
+      pool.set(temp, { isTemp: true })
+    }
 
     loading.value = true
     error.value = null
     try {
       const commandQueue = useCommandQueueStore()
-      const response = await fn(
-        withOptimistic(commandQueue, {
+      const refs = temps.map(
+        (temp): OptimisticRef => ({
           kind: 'create',
-          objectType: tempObject.objectType,
-          objectId: tempObject.id,
+          objectType: temp.objectType,
+          objectId: temp.id,
         })
+      )
+      const response = await fn(
+        withOptimistic(commandQueue, refs.length === 1 ? refs[0]! : refs)
       )
       return { queued: false, data: response.data }
     } catch (e) {
       if (e instanceof CommandQueuedError) {
         return { queued: true }
       }
-      pool.cascadeRemove(tempObject.objectType, tempObject.id)
+      for (const temp of temps) {
+        pool.cascadeRemove(temp.objectType, temp.id)
+      }
       error.value = errorMessage
       throw e
     } finally {

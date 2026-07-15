@@ -23,12 +23,14 @@ export function useEventsNeedingRsvp() {
     const userId = currentUserId.value
     if (!userId) return []
 
-    // Build set of eventIds the user has RSVPed to — O(1) lookup per event
-    const rsvpedEventIds = new Set(
+    // Build set of eventIds the user has answered — O(1) lookup per event.
+    // "No response" now has two forms (doc/attendances.md): no attendance
+    // row at all, or a row reverted to pending by a date reset.
+    const answeredEventIds = new Set(
       pool
-        .getAll('rsvp')
-        .filter((r) => r.userId === userId)
-        .map((r) => r.eventId)
+        .getAll('attendance')
+        .filter((a) => a.userId === userId && a.status !== 'pending')
+        .map((a) => a.eventId)
     )
 
     const items: RsvpEventItem[] = []
@@ -37,7 +39,7 @@ export function useEventsNeedingRsvp() {
     for (const event of pool.getAll('event')) {
       if (!event.startDate || !event.endDate) continue
       if (new Date(event.endDate) < currentNow) continue
-      if (rsvpedEventIds.has(event.id)) continue
+      if (answeredEventIds.has(event.id)) continue
 
       items.push({
         eventId: event.id,

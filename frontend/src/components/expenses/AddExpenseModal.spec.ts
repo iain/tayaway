@@ -75,6 +75,7 @@ function mkEvent(overrides: Partial<PoolEvent> = {}): PoolEvent {
     userId: 'user-1',
     datePollId: null,
     rsvpIds: [],
+    attendanceIds: [],
     ...overrides,
   }
 }

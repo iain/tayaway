@@ -78,12 +78,13 @@ const transfersYouOwe = computed(() =>
   myUnpaidTransfers.value.filter((t) => t.fromUserId === currentUserId.value)
 )
 
-// Precompute attendee counts by event ID — O(rsvps) instead of O(events * rsvps)
+// Precompute attendee counts by event ID — O(attendances) instead of
+// O(events * attendances). Going guests count too: they eat and sleep.
 const attendeeCountByEvent = computed<Map<string, number>>(() => {
   const counts = new Map<string, number>()
-  for (const r of pool.getAll('rsvp')) {
-    if (r.attending) {
-      counts.set(r.eventId, (counts.get(r.eventId) ?? 0) + 1)
+  for (const a of pool.getAll('attendance')) {
+    if (a.status === 'going') {
+      counts.set(a.eventId, (counts.get(a.eventId) ?? 0) + 1)
     }
   }
   return counts

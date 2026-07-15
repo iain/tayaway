@@ -5,10 +5,10 @@ import EditAssignmentPopover from './EditAssignmentPopover.vue'
 import {
   makeEvent,
   makeMember,
-  makeRsvp,
+  makeAttendance,
   makeChoreAssignment,
 } from '@/test/factories'
-import type { PoolMember, PoolRsvp } from '@/types/pool'
+import type { PoolMember, PoolAttendance } from '@/types/pool'
 
 const updateAssignmentSpy = vi.fn().mockResolvedValue(undefined)
 const deleteAssignmentSpy = vi.fn().mockResolvedValue(undefined)
@@ -39,7 +39,9 @@ describe('EditAssignmentPopover reassign', () => {
     date: '2026-03-10',
   })
 
-  function mountPopover({ rsvps }: { rsvps?: PoolRsvp[] } = {}) {
+  function mountPopover({
+    attendances,
+  }: { attendances?: PoolAttendance[] } = {}) {
     return mount(EditAssignmentPopover, {
       props: {
         assignment,
@@ -56,10 +58,10 @@ describe('EditAssignmentPopover reassign', () => {
             date: '2026-03-10',
           }),
         ],
-        rsvps: rsvps ?? [
-          makeRsvp({ id: 'r1', userId: 'user-1' }),
-          makeRsvp({ id: 'r2', userId: 'user-2' }),
-          makeRsvp({ id: 'r3', userId: 'user-3' }),
+        attendances: attendances ?? [
+          makeAttendance({ id: 'att-user-1', userId: 'user-1' }),
+          makeAttendance({ id: 'att-user-2', userId: 'user-2' }),
+          makeAttendance({ id: 'att-user-3', userId: 'user-3' }),
         ],
         event: makeEvent({ startDate: '2026-03-10', endDate: '2026-03-12' }),
       },
@@ -85,15 +87,15 @@ describe('EditAssignmentPopover reassign', () => {
 
   it('does not offer someone who is away that day', async () => {
     const wrapper = mountPopover({
-      rsvps: [
-        makeRsvp({ id: 'r1', userId: 'user-1' }),
+      attendances: [
+        makeAttendance({ id: 'att-user-1', userId: 'user-1' }),
         // Come-and-go: Bob is at the event, but not on this day.
-        makeRsvp({
-          id: 'r2',
+        makeAttendance({
+          id: 'att-2',
           userId: 'user-2',
-          attendance: ['2026-03-11', '2026-03-12'],
+          days: ['2026-03-11', '2026-03-12'],
         }),
-        makeRsvp({ id: 'r3', userId: 'user-3' }),
+        makeAttendance({ id: 'att-user-3', userId: 'user-3' }),
       ],
     })
     await wrapper.get('button[aria-label="Reassign"]').trigger('click')

@@ -64,6 +64,10 @@ const MODAL_REASONS: Record<string, string> = {
     'This is a revert entry. To change your mind, file a fresh expense instead.',
   not_tip: 'Only the most recent settlement can be deleted.',
   superseded: 'This transfer was rolled into a follow-up settlement.',
+  has_going_guests:
+    'You have guests going on this event. Remove your guests first, then decline.',
+  has_attendances:
+    'This guest is on the list for one or more events, so their history stays. Rename them instead.',
 }
 
 export function permissionUx(

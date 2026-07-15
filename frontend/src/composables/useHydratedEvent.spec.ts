@@ -12,6 +12,8 @@ import {
   makeDateRange,
   makeVote,
   makeRsvp,
+  makeAttendance,
+  makeGuest,
 } from '@/test/factories'
 
 describe('useHydratedEvent', () => {
@@ -462,6 +464,74 @@ describe('useHydratedEvent', () => {
 
       expect(event.value!.rsvps).toHaveLength(1)
       expect(event.value!.rsvps[0]!.id).toBe('rsvp-1')
+    })
+  })
+
+  // The hydrated attendee is the single frontend reader of the
+  // userId XOR guestId union (doc/attendances.md) — everything downstream
+  // consumes what these examples pin.
+  describe('attendance hydration', () => {
+    it('resolves a member row to the member behind it', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects(
+        [
+          makeEvent({ id: 'evt-1' }),
+          makeMember({ id: 'mem-1', userId: 'user-1', name: 'Alice' }),
+          makeAttendance({ id: 'att-1', eventId: 'evt-1', userId: 'user-1' }),
+        ],
+        { scope: Scope.workspace('test') }
+      )
+
+      const { event } = useHydratedEvent('evt-1')
+
+      const attendance = event.value!.attendances[0]!
+      expect(attendance.attendee.isGuest).toBe(false)
+      expect(attendance.attendee.name).toBe('Alice')
+      expect(attendance.attendee.member?.id).toBe('mem-1')
+      expect(attendance.attendee.hostMember).toBeUndefined()
+    })
+
+    it('resolves a guest row to the guest and their hosting member', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects(
+        [
+          makeEvent({ id: 'evt-1' }),
+          makeMember({ id: 'mem-1', userId: 'user-1', name: 'Alice' }),
+          makeGuest({ id: 'guest-1', name: 'Emma' }),
+          makeAttendance({
+            id: 'att-1',
+            eventId: 'evt-1',
+            userId: null,
+            guestId: 'guest-1',
+            hostUserId: 'user-1',
+          }),
+        ],
+        { scope: Scope.workspace('test') }
+      )
+
+      const { event } = useHydratedEvent('evt-1')
+
+      const attendance = event.value!.attendances[0]!
+      expect(attendance.attendee.isGuest).toBe(true)
+      expect(attendance.attendee.name).toBe('Emma')
+      expect(attendance.attendee.guest?.id).toBe('guest-1')
+      expect(attendance.attendee.hostMember?.name).toBe('Alice')
+    })
+
+    it('only includes attendances for the specific event', () => {
+      const pool = useObjectPoolStore()
+      pool.importObjects(
+        [
+          makeEvent({ id: 'evt-1' }),
+          makeAttendance({ id: 'att-1', eventId: 'evt-1' }),
+          makeAttendance({ id: 'att-2', eventId: 'evt-other' }),
+        ],
+        { scope: Scope.workspace('test') }
+      )
+
+      const { event } = useHydratedEvent('evt-1')
+
+      expect(event.value!.attendances.map((a) => a.id)).toEqual(['att-1'])
     })
   })
 

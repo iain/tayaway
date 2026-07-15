@@ -50,7 +50,10 @@ interface PoolCacheDB {
 // shipped snake_case objectTypes: the client dropped those deletions, and
 // the tombstones are now behind every cursor, so only a wipe → full sync
 // removes the zombie rows.
-const CACHE_VERSION = 17
+// Bumped to 18 when `attendance` and `guest` pool types replaced the rsvp
+// write path (doc/attendances.md phase 4); old caches lack both types and
+// events lack attendanceIds.
+const CACHE_VERSION = 18
 
 const CACHE_VERSION_META_KEY = 'cacheVersion'
 const SYNCED_AT_META_PREFIX = 'syncedAt:'

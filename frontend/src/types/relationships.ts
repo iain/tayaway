@@ -54,6 +54,17 @@ export const relationshipSchema: RelationshipSchema = {
     event: { type: 'belongsTo', foreignKey: 'eventId', targetType: 'event' },
     member: { type: 'belongsTo', foreignKey: 'userId', targetType: 'member' },
   },
+  attendance: {
+    event: { type: 'belongsTo', foreignKey: 'eventId', targetType: 'event' },
+    guest: { type: 'belongsTo', foreignKey: 'guestId', targetType: 'guest' },
+  },
+  guest: {
+    workspace: {
+      type: 'belongsTo',
+      foreignKey: 'workspaceId',
+      targetType: 'workspace',
+    },
+  },
   workspace: {},
   taskList: {
     workspace: {

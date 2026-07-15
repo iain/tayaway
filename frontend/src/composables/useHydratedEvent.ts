@@ -1,9 +1,11 @@
 import { computed, type ComputedRef } from 'vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import type {
+  PoolAttendance,
   PoolDatePoll,
   PoolDateRange,
   PoolEvent,
+  PoolGuest,
   PoolMember,
   PoolRsvp,
   PoolVote,
@@ -45,11 +47,33 @@ export type HydratedRsvp = PoolRsvp & {
   member: PoolMember | undefined
 }
 
+/**
+ * The person behind an attendance row, resolved from the pool. This is the
+ * single frontend reader of the userId XOR guestId union (doc/attendances.md
+ * containment contract) — components consume resolved attendees and never
+ * branch on guestId themselves.
+ */
+export interface HydratedAttendee {
+  name: string
+  isGuest: boolean
+  /** Member rows: the member behind the row. */
+  member: PoolMember | undefined
+  /** Guest rows: the guest behind the row. */
+  guest: PoolGuest | undefined
+  /** Guest rows: the member who brings (and is billed for) them. */
+  hostMember: PoolMember | undefined
+}
+
+export type HydratedAttendance = PoolAttendance & {
+  attendee: HydratedAttendee
+}
+
 export type HydratedEvent = PoolEvent & {
   workspace: HydratedWorkspace | undefined
   member: PoolMember | undefined
   datePoll: HydratedDatePoll | null
   rsvps: HydratedRsvp[]
+  attendances: HydratedAttendance[]
 }
 
 /**
@@ -82,6 +106,8 @@ export function useHydratedEvent(eventId: ComputedRef<string> | string): {
     void tv.get('member')
     void tv.get('workspace')
     void tv.get('rsvp')
+    void tv.get('attendance')
+    void tv.get('guest')
 
     const poolEvent = pool.get('event', resolvedId.value)
     if (!poolEvent) return undefined
@@ -145,6 +171,7 @@ function hydrateEvent(poolEvent: PoolEvent, pool: Pool): HydratedEvent {
   }
   const workspace = hydrateWorkspace(poolEvent.workspaceId, pool)
   const rsvps = hydrateRsvps(poolEvent.id, pool, memberIndex)
+  const attendances = hydrateAttendances(poolEvent.id, pool, memberIndex)
 
   return {
     ...poolEvent,
@@ -152,6 +179,7 @@ function hydrateEvent(poolEvent: PoolEvent, pool: Pool): HydratedEvent {
     member,
     datePoll,
     rsvps,
+    attendances,
   }
 }
 
@@ -244,6 +272,51 @@ function hydrateRsvps(
       ...rsvp,
       member: memberIndex.get(rsvp.userId),
     }))
+}
+
+/**
+ * Hydrate attendances for an event, resolving each row to its attendee —
+ * see the HydratedAttendee containment note above.
+ */
+function hydrateAttendances(
+  eventId: string,
+  pool: Pool,
+  memberIndex: Map<string, PoolMember>
+): HydratedAttendance[] {
+  return pool
+    .getAll('attendance')
+    .filter((a) => a.eventId === eventId)
+    .map((attendance) => {
+      if (attendance.guestId) {
+        const guest = pool.get('guest', attendance.guestId)
+        const hostMember = attendance.hostUserId
+          ? memberIndex.get(attendance.hostUserId)
+          : undefined
+        return {
+          ...attendance,
+          attendee: {
+            name: guest?.name ?? 'Unknown guest',
+            isGuest: true,
+            member: undefined,
+            guest,
+            hostMember,
+          },
+        }
+      }
+      const member = attendance.userId
+        ? memberIndex.get(attendance.userId)
+        : undefined
+      return {
+        ...attendance,
+        attendee: {
+          name: member?.name || member?.email || 'Unknown',
+          isGuest: false,
+          member,
+          guest: undefined,
+          hostMember: undefined,
+        },
+      }
+    })
 }
 
 /**

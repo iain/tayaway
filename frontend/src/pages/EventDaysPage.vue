@@ -32,7 +32,7 @@ const { currentUserId } = storeToRefs(authStore)
 const pool = useObjectPoolStore()
 
 const days = computed(() =>
-  event.value ? daySummaries(event.value.rsvps, event.value) : []
+  event.value ? daySummaries(event.value.attendances, event.value) : []
 )
 
 const anyoneComing = computed(() => days.value.some((d) => d.headcount > 0))
@@ -69,7 +69,11 @@ function names(userIds: string[]): string {
 // until they do.
 const pendingCount = computed(() => {
   if (!event.value?.workspace) return 0
-  const respondedIds = new Set(event.value.rsvps.map((r) => r.userId))
+  const respondedIds = new Set(
+    event.value.attendances
+      .filter((a) => a.userId && a.status !== 'pending')
+      .map((a) => a.userId)
+  )
   return event.value.workspace.members.filter(
     (m) => !respondedIds.has(m.userId)
   ).length
@@ -133,7 +137,7 @@ onMounted(() => {
 
 onMounted(async () => {
   const fetches: Promise<unknown>[] = [
-    api.get<PoolApiResponse>(`/events/${eventId.value}/rsvps`),
+    api.get<PoolApiResponse>(`/events/${eventId.value}/attendances`),
   ]
   const existingRoster = pool
     .getAll('choreRoster')

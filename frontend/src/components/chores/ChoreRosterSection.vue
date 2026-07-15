@@ -87,10 +87,8 @@ const assignments = computed(() => {
   return pool.getAll('choreAssignment').filter((a) => choreIds.has(a.choreId))
 })
 
-const rsvps = computed(() => {
-  return pool
-    .getAll('rsvp')
-    .filter((r) => r.eventId === props.eventId && r.attending)
+const attendances = computed(() => {
+  return pool.getAll('attendance').filter((a) => a.eventId === props.eventId)
 })
 
 const members = computed(() => {
@@ -99,7 +97,9 @@ const members = computed(() => {
 
 const userIsAttending = computed(() => {
   if (!currentUserId.value) return false
-  return rsvps.value.some((r) => r.userId === currentUserId.value)
+  return attendances.value.some(
+    (a) => a.userId === currentUserId.value && a.status === 'going'
+  )
 })
 
 const eventDates = computed(() => {
@@ -214,7 +214,7 @@ const staleIds = computed(() => {
   }
   return staleAssignmentIds(
     refillable.value,
-    rsvps.value,
+    attendances.value,
     { startDate: event.value.startDate, endDate: event.value.endDate },
     today.value
   )
@@ -468,7 +468,7 @@ async function handleDeleteRosterConfirm() {
 
 onMounted(async () => {
   const fetches: Promise<unknown>[] = [
-    api.get<PoolApiResponse>(`/events/${props.eventId}/rsvps`),
+    api.get<PoolApiResponse>(`/events/${props.eventId}/attendances`),
   ]
 
   // Try to load existing roster
@@ -595,7 +595,7 @@ onMounted(async () => {
           :assignments="assignments"
           :dates="eventDates"
           :members="members"
-          :rsvps="rsvps"
+          :attendances="attendances"
           :roster-id="roster.id"
           :current-user-id="currentUserId"
           :today="today"
@@ -625,7 +625,7 @@ onMounted(async () => {
           :assignments="assignments"
           :members="members"
           :heading-level="subheadingLevel"
-          :rsvps="rsvps"
+          :attendances="attendances"
           :event="event"
         />
       </div>
@@ -711,7 +711,7 @@ onMounted(async () => {
         :anchor-el="assignPopover.anchorEl"
         :roster-id="roster.id"
         :members="members"
-        :rsvps="rsvps"
+        :attendances="attendances"
         :assignments="assignments"
         :event="event"
         :current-user-id="currentUserId"
@@ -725,7 +725,7 @@ onMounted(async () => {
         :roster-id="roster.id"
         :member-map="memberMap"
         :assignments="assignments"
-        :rsvps="rsvps"
+        :attendances="attendances"
         :event="event"
         @close="closeEditAssignment"
       />
