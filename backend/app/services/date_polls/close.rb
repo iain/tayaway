@@ -64,6 +64,10 @@ module DatePolls
                           .where(date_range_id: selected_date_range_id, response: "yes")
                           .select_map(:user_id)
 
+          # The mirror normalizes day sets against the event's window, which
+          # the update above just moved to the winning range.
+          updated_event = event.with(start_date: date_range.start_date, end_date: date_range.end_date)
+
           now = Time.now
           yes_voter_ids.each do |uid|
             existing = DB[:rsvps].where(event_id: event.id, user_id: uid).first
@@ -77,12 +81,14 @@ module DatePolls
             end
             # Phase-2 dual-write (doc/attendances.md): every rsvp write path
             # must mirror, or attendance-based readers (chore autofill) see
-            # auto-RSVPed voters as absent.
+            # auto-RSVPed voters as absent. An existing rsvp keeps its day
+            # set above, so the mirror must carry the same days — a nil here
+            # would silently widen a partial-day answer to whole-event.
             Attendances::MirrorMemberRow.call(
-              event: event,
+              event: updated_event,
               user_id: uid,
               attending: true,
-              dates: nil,
+              dates: existing && mirror_dates(existing),
               created_by_user_id: nil,
               now: now
             )
@@ -100,6 +106,18 @@ module DatePolls
         pool.add(:date_poll, [DatePoll.find(poll.id)])
         pool.add(:rsvp, Rsvp.for_event(event.id))
         Success({ objects: pool.to_a })
+      end
+
+      # The concrete day list an existing rsvp row carries: its attendance
+      # day set when present, otherwise the legacy contiguous range — the
+      # same resolution the backfill converter uses.
+      def mirror_dates(row)
+        rsvp = Rsvp.find(row[:id])
+        if rsvp.attendance
+          rsvp.attendance.map { |day| day[:date] }
+        elsif rsvp.start_date && rsvp.end_date
+          (rsvp.start_date..rsvp.end_date).to_a
+        end
       end
     end
   end
