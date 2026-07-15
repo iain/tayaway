@@ -1,4 +1,4 @@
-import { nowIso } from '@/utils/date'
+import { addDays, nowIso } from '@/utils/date'
 
 export interface IcsEventData {
   uid: string
@@ -35,14 +35,8 @@ function formatDate(isoDate: string): string {
 }
 
 // DTEND for all-day events is exclusive, so add one day.
-// Use UTC to avoid timezone-induced date shifts.
 function formatDateExclusive(isoDate: string): string {
-  const parts = isoDate.split('-')
-  const year = parseInt(parts[0]!, 10)
-  const month = parseInt(parts[1]!, 10)
-  const day = parseInt(parts[2]!, 10)
-  const next = new Date(Date.UTC(year, month - 1, day + 1))
-  return next.toISOString().slice(0, 10).replace(/-/g, '')
+  return formatDate(addDays(isoDate, 1))
 }
 
 function formatDtstamp(isoString: string): string {

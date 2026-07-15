@@ -41,6 +41,51 @@ export function addDays(dateString: string, days: number): string {
 }
 
 /**
+ * Whole days from `startDate` to `endDate` (both "YYYY-MM-DD") — e.g. the number
+ * of nights in a stay. UTC-anchored so the count stays exact and integral across
+ * DST transitions.
+ */
+export function daysBetween(startDate: string, endDate: string): number {
+  const start = DateTime.fromISO(startDate, { zone: 'utc' })
+  const end = DateTime.fromISO(endDate, { zone: 'utc' })
+  return end.diff(start, 'days').days
+}
+
+/**
+ * Milliseconds from `now` (epoch ms) until the next local midnight — the delay a
+ * reactive "today" clock waits before rolling over. Defaults to the current
+ * clock.
+ */
+export function msUntilNextLocalMidnight(now: number = Date.now()): number {
+  return (
+    DateTime.fromMillis(now).plus({ days: 1 }).startOf('day').toMillis() - now
+  )
+}
+
+/** Whether the instant `iso` lies strictly before `now` (epoch ms). */
+export function isPastIso(iso: string, now: number = Date.now()): boolean {
+  return DateTime.fromISO(iso).toMillis() < now
+}
+
+/** Whether the instant `iso` lies strictly after `now` (epoch ms). */
+export function isFutureIso(iso: string, now: number = Date.now()): boolean {
+  return DateTime.fromISO(iso).toMillis() > now
+}
+
+/** Add `hours` to an ISO timestamp, returning a UTC ISO-8601 string. */
+export function addHours(iso: string, hours: number): string {
+  return DateTime.fromISO(iso).plus({ hours }).toUTC().toISO()!
+}
+
+/**
+ * The instant behind a `<input type="datetime-local">` value ("YYYY-MM-DDTHH:mm",
+ * read in the local zone) as a UTC ISO-8601 string ready to send to the server.
+ */
+export function datetimeLocalToIso(value: string): string {
+  return DateTime.fromISO(value).toUTC().toISO()!
+}
+
+/**
  * "Mon, Jan 1, 2024" — full display date (weekday + month + day + year).
  * Pass `useLocale().value` from a Vue component so this honors the user's
  * chosen date/time format instead of always rendering the same locale for
@@ -64,6 +109,15 @@ export function formatDayHeader(dateString: string, locale?: string): string {
 /** "Jan 1, 2024" — date without weekday */
 export function formatDateShort(dateString: string, locale?: string): string {
   return parseDate(dateString, locale).toLocaleString(DateTime.DATE_MED)
+}
+
+/**
+ * "Mon 10" — short weekday + day-of-month, the compact chore-grid column header
+ * (the month lives in the surrounding grid, so it's dropped here).
+ */
+export function formatWeekdayDay(dateString: string, locale?: string): string {
+  const day = parseDate(dateString, locale)
+  return `${day.toLocaleString({ weekday: 'short' })} ${day.day}`
 }
 
 /** "Jan 1 – 5, 2024" or "Jan 1, 2024 – Feb 3, 2024" — smart date range */
@@ -100,6 +154,14 @@ export function formatDateTime(isoString: string, locale?: string): string {
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',
+  })
+}
+
+/** "2:30 PM" / "14:30" — clock time only, in the viewer's locale. */
+export function formatClockTime(isoString: string, locale?: string): string {
+  return DateTime.fromISO(isoString, { locale }).toLocaleString({
+    hour: '2-digit',
+    minute: '2-digit',
   })
 }
 
@@ -161,6 +223,46 @@ export function formatDeadline(deadline: string, locale?: string): string {
 /** Localized month name (e.g. "January") */
 export function getMonthName(month: number, locale?: string): string {
   return Info.months('long', { locale })[month]
+}
+
+/** One cell of a month-picker grid. */
+export interface CalendarDay {
+  /** Local midnight of the day, for display (`.getDate()`). */
+  date: Date
+  /** False for the leading/trailing days that spill in from adjacent months. */
+  isCurrentMonth: boolean
+  /** The day as "YYYY-MM-DD", the key everything else compares against. */
+  dateString: string
+}
+
+/**
+ * A fixed 6×7 month grid (42 cells) for a date picker, weeks starting Monday,
+ * padded with the spill-over days of the adjacent months. `month` is 0-based to
+ * match `Date`/`getMonth`. All days are local calendar days.
+ */
+export function monthGridDays(year: number, month: number): CalendarDay[] {
+  const first = DateTime.local(year, month + 1, 1)
+  // weekday is 1 (Mon) … 7 (Sun), so `weekday - 1` backs up to the Monday.
+  const gridStart = first.minus({ days: first.weekday - 1 })
+  return Array.from({ length: 42 }, (_, i) => {
+    const day = gridStart.plus({ days: i })
+    return {
+      date: day.toJSDate(),
+      isCurrentMonth: day.month === month + 1,
+      dateString: day.toISODate()!,
+    }
+  })
+}
+
+/**
+ * The Monday that opens the week after the one containing the day *after*
+ * `dateString` — the next fresh roster week. When that day is itself a Monday,
+ * it jumps a full week rather than returning the same day.
+ */
+export function nextMondayAfter(dateString: string): string {
+  const dayAfter = parseDate(dateString).plus({ days: 1 })
+  // 8 - weekday lands on the following Monday (and on Monday input yields 7).
+  return dayAfter.plus({ days: 8 - dayAfter.weekday }).toISODate()!
 }
 
 /**
