@@ -5,8 +5,6 @@
 // 2. Add the interface to ObjectTypeMap
 // That's it! PoolObject and ObjectType are derived automatically.
 
-import type { AttendanceEntry } from '@/utils/event'
-
 export type VoteResponse = 'yes' | 'no' | 'preferably_not'
 
 export interface Permission {
@@ -36,7 +34,6 @@ export const OBJECT_TYPES = [
   'datePoll',
   'dateRange',
   'vote',
-  'rsvp',
   'attendance',
   'guest',
   'workspace',
@@ -82,8 +79,6 @@ export interface ObjectTypeMap {
     workspaceId: string
     userId: string
     datePollId: string | null
-    // rsvpIds stays alongside until stale clients drain (phase 7).
-    rsvpIds: string[]
     attendanceIds: string[]
     createdAt: string
   }
@@ -108,21 +103,8 @@ export interface ObjectTypeMap {
     comment: string | null
     createdAt: string
   }
-  rsvp: PoolObjectBase<'rsvp'> & {
-    eventId: string
-    userId: string
-    createdByUserId: string | null
-    attending: boolean
-    // Explicit "come and go" day set. null means "whole event"; startDate/endDate
-    // carry the contiguous hull for legacy readers. Each entry is a bare ISO date
-    // string (guest-free day) or `{ date, plusOnes }` when guests come that day.
-    attendance: AttendanceEntry[] | null
-    startDate: string | null
-    endDate: string | null
-    createdAt: string
-  }
-  // One row per person per event; replaces rsvp during the staged migration
-  // (doc/attendances.md). Exactly one of userId/guestId is set.
+  // One row per person per event (doc/attendances.md). Exactly one of
+  // userId/guestId is set.
   attendance: PoolObjectBase<'attendance'> & {
     eventId: string
     userId: string | null
@@ -264,7 +246,6 @@ export type PoolEvent = ObjectTypeMap['event']
 export type PoolDatePoll = ObjectTypeMap['datePoll']
 export type PoolDateRange = ObjectTypeMap['dateRange']
 export type PoolVote = ObjectTypeMap['vote']
-export type PoolRsvp = ObjectTypeMap['rsvp']
 export type PoolAttendance = ObjectTypeMap['attendance']
 export type PoolGuest = ObjectTypeMap['guest']
 export type PoolWorkspace = ObjectTypeMap['workspace']

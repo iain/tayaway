@@ -189,8 +189,7 @@ module Attendances
       end
 
       # Days carry meaning only when going; otherwise they are stored NULL.
-      # A full-coverage or empty day set normalizes to NULL ("whole event"),
-      # mirroring Rsvps::Upsert.
+      # A full-coverage or empty day set normalizes to NULL ("whole event").
       def resolve_days(ctx, status, days)
         if status != "going" || days.nil?
           Success(ctx.merge(days: nil))
@@ -271,7 +270,7 @@ module Attendances
 
       # `created_by_user_id` is intentionally absent from both conflict
       # updates so the original filer sticks even if a different actor later
-      # edits (same as Rsvps::Upsert).
+      # edits.
       def upsert_member_row(ctx, status, days_json, attendance_id, actor_user_id, now)
         DB[:attendances]
           .returning(:id, Sequel.lit("(xmax = 0) AS created"))

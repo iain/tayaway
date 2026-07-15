@@ -481,8 +481,8 @@ test.describe('Expenses Feature', () => {
 
       await addMemberToWorkspace(apiContextA, workspace.id, SPLIT_USER_B_EMAIL)
 
-      await apiContextB.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
-        data: { attending: true },
+      await apiContextB.post(`${API_BASE}/api/events/${eventId}/attendances`, {
+        data: { status: 'going' },
       })
 
       // User A pays €100 — both attend 6 nights, expense covers full event
@@ -548,8 +548,8 @@ test.describe('Expenses Feature', () => {
       const workspace = getObjectByType(wsBody.objects, 'workspace')!
       await addMemberToWorkspace(apiContextA, workspace.id, SPLIT_USER_B_EMAIL)
 
-      await apiContextB.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
-        data: { attending: true },
+      await apiContextB.post(`${API_BASE}/api/events/${eventId}/attendances`, {
+        data: { status: 'going' },
       })
 
       // A pays €30. Split specifically among A (factor 1) and B (factor 2):
@@ -620,12 +620,11 @@ test.describe('Expenses Feature', () => {
 
       await addMemberToWorkspace(apiContextA, workspace.id, SPLIT_USER_B_EMAIL)
 
-      // User B RSVPs with partial dates: only days 5–7
-      await apiContextB.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
+      // User B attends partial dates: only days 5–7
+      await apiContextB.post(`${API_BASE}/api/events/${eventId}/attendances`, {
         data: {
-          attending: true,
-          start_date: offsetDate(18),
-          end_date: offsetDate(20),
+          status: 'going',
+          days: [offsetDate(18), offsetDate(19), offsetDate(20)],
         },
       })
 
@@ -726,8 +725,8 @@ test.describe('Expenses Feature', () => {
         apiContext,
         'RSVP Dialog Test'
       )
-      await apiContext.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
-        data: { attending: false },
+      await apiContext.post(`${API_BASE}/api/events/${eventId}/attendances`, {
+        data: { status: 'declined' },
       })
       await apiContext.dispose()
 
@@ -1081,8 +1080,8 @@ test.describe('Expenses Feature', () => {
       await addMemberToWorkspace(apiContext, workspaceId, SECOND_EMAIL)
 
       // RSVP the second user as attending
-      await secondContext.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
-        data: { attending: true },
+      await secondContext.post(`${API_BASE}/api/events/${eventId}/attendances`, {
+        data: { status: 'going' },
       })
     })
 

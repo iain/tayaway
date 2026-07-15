@@ -312,9 +312,12 @@ called out below rather than engineered away.
    clear-not-delete semantics (all rows → `pending`, per-row broadcasts,
    recipients resolved before the revert).
 7. **Retire rsvps.** Stop dual-writing, drop `rsvp` from
-   the pool and registry, then two-deploy drop of the `rsvps` table (which
-   also retires the legacy `start_date`/`end_date` hull columns left over
-   from the come-and-go migration, PR #527).
+   the pool and registry, remove the rsvp endpoints, model, services, and
+   readers (all code-side, done once stale clients drained). The `rsvps`
+   table and its rows stay frozen in place as history; dropping the table
+   (which also retires the legacy `start_date`/`end_date` hull columns left
+   over from the come-and-go migration, PR #527) is a separate two-deploy
+   follow-up.
 8. **Later, on demand:** `chore_assignments` → `attendance_id`
    (backfill by joining `(event_id, user_id)`, unique constraint becomes
    `(chore_id, attendance_id, date)`, two-deploy drop of `user_id`);

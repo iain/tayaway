@@ -96,7 +96,7 @@ RSpec.describe "Expenses endpoints" do
     it "creates an expense" do
       # Expense creation requires an attending RSVP
       Time.now
-      TestFactories.rsvp(event: event, user: user, attending: true)
+      TestFactories.attendance(event: event, user: user)
 
       post "/api/expenses",
            { event_id: event[:id], description: "Groceries", amount: 75.50,

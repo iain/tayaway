@@ -75,8 +75,8 @@ RSpec.describe Settlements::Create do
       event = set_event_dates(event, Date.new(2026, 1, 1), Date.new(2026, 1, 7))
 
       insert_expense(event: event, user: alice, amount: 100, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 7))
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
 
       # First settlement consumes all expenses
       first_result = described_class.call(
@@ -128,8 +128,8 @@ RSpec.describe Settlements::Create do
       insert_expense(event: event, user: alice, amount: 100.00, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 7))
 
       # Both attend the full trip (no RSVP-specific dates)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
 
       result = described_class.call(
         event_id: event[:id],
@@ -156,9 +156,9 @@ RSpec.describe Settlements::Create do
       # Alice pays 90; each person owes 30, so Bob and Carol each owe Alice 30
       insert_expense(event: event, user: alice, amount: 90.00, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 3))
 
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
+      TestFactories.attendance(event: event, user: carol)
 
       result = described_class.call(
         event_id: event[:id],
@@ -186,7 +186,7 @@ RSpec.describe Settlements::Create do
     # Alice's share: 70 * 7/10 = 49; Bob's share: 70 * 3/10 = 21
     # Alice paid 70, so: Alice balance = 49 - 70 = -21 (owed), Bob balance = 21 - 0 = +21 (owes)
     # Bob must pay Alice 21
-    it "pro-rates expense to RSVP overlap days" do
+    it "pro-rates expense to attendance overlap days" do
       alice = TestFactories.user(name: "Alice")
       bob = TestFactories.user(name: "Bob")
       event = TestFactories.event(workspace: workspace, user: creator)
@@ -195,8 +195,8 @@ RSpec.describe Settlements::Create do
       insert_expense(event: event, user: alice, amount: 70.00, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 7))
 
       # Alice attends full trip; Bob only arrives Jan 1-3
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 3))
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob, days: (Date.new(2026, 1, 1)..Date.new(2026, 1, 3)).to_a)
 
       result = described_class.call(
         event_id: event[:id],
@@ -222,8 +222,8 @@ RSpec.describe Settlements::Create do
       # Expense covers Jan 1-5; Bob only attends Jan 6-10 — no overlap
       insert_expense(event: event, user: alice, amount: 100.00, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 5))
 
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true, start_date: Date.new(2026, 1, 6), end_date: Date.new(2026, 1, 10))
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob, days: (Date.new(2026, 1, 6)..Date.new(2026, 1, 10)).to_a)
 
       result = described_class.call(
         event_id: event[:id],
@@ -259,9 +259,9 @@ RSpec.describe Settlements::Create do
       # Result: Alice→Carol 30, Bob→Carol 30 (2 transfers, which is minimal)
       insert_expense(event: event, user: carol, amount: 60.00, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 3))
 
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
+      TestFactories.attendance(event: event, user: carol)
 
       result = described_class.call(
         event_id: event[:id],
@@ -290,10 +290,10 @@ RSpec.describe Settlements::Create do
       # Bob, Carol, Dave each owe Alice 30
       insert_expense(event: event, user: alice, amount: 120.00, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 4))
 
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
-      TestFactories.rsvp(event: event, user: carol, attending: true)
-      TestFactories.rsvp(event: event, user: dave, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
+      TestFactories.attendance(event: event, user: carol)
+      TestFactories.attendance(event: event, user: dave)
 
       result = described_class.call(
         event_id: event[:id],
@@ -327,8 +327,8 @@ RSpec.describe Settlements::Create do
       # Use 0.009 expense → each person owes 0.0045 → rounds to 0.0 → no transfer
       insert_expense(event: event, user: alice, amount: 0.009, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 3))
 
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
 
       result = described_class.call(
         event_id: event[:id],
@@ -354,8 +354,8 @@ RSpec.describe Settlements::Create do
       # 0.01 >= 0.005 threshold → transfer is included
       insert_expense(event: event, user: alice, amount: 0.02, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 3))
 
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
 
       result = described_class.call(
         event_id: event[:id],
@@ -379,8 +379,8 @@ RSpec.describe Settlements::Create do
       insert_expense(event: event, user: alice, amount: 60.00, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 4))
       insert_expense(event: event, user: bob, amount: 60.00, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 4))
 
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
 
       result = described_class.call(
         event_id: event[:id],
@@ -403,9 +403,9 @@ RSpec.describe Settlements::Create do
       # 100 / 3 = 33.333... Each of Bob and Carol owes Alice 33.33
       insert_expense(event: event, user: alice, amount: 100.00, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 3))
 
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
+      TestFactories.attendance(event: event, user: carol)
 
       result = described_class.call(
         event_id: event[:id],
@@ -444,9 +444,9 @@ RSpec.describe Settlements::Create do
       insert_participant(expense_id: expense_id, user: bob)
       insert_participant(expense_id: expense_id, user: carol)
 
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
+      TestFactories.attendance(event: event, user: carol)
 
       result = described_class.call(
         event_id: event[:id],
@@ -475,8 +475,8 @@ RSpec.describe Settlements::Create do
       expense_id = insert_expense(event: event, user: alice, amount: 30.00, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 3))
       insert_participant(expense_id: expense_id, user: bob)
 
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
 
       result = described_class.call(
         event_id: event[:id],
@@ -508,9 +508,9 @@ RSpec.describe Settlements::Create do
       insert_participant(expense_id: expense2_id, user: alice)
       insert_participant(expense_id: expense2_id, user: bob)
 
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
+      TestFactories.attendance(event: event, user: carol)
 
       result = described_class.call(
         event_id: event[:id],
@@ -542,8 +542,8 @@ RSpec.describe Settlements::Create do
       expense_id = insert_expense(event: event, user: alice, amount: 50.00, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 3))
       insert_participant(expense_id: expense_id, user: bob)
 
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
 
       result = described_class.call(
         event_id: event[:id],
@@ -570,8 +570,8 @@ RSpec.describe Settlements::Create do
       insert_participant(expense_id: expense_id, user: alice, factor: 1)
       insert_participant(expense_id: expense_id, user: bob, factor: 2)
 
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
 
       result = described_class.call(
         event_id: event[:id],
@@ -597,8 +597,8 @@ RSpec.describe Settlements::Create do
 
       insert_expense(event: event, user: alice, amount: 100.00, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 4))
 
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
 
       result = described_class.call(
         event_id: event[:id],
@@ -619,8 +619,8 @@ RSpec.describe Settlements::Create do
 
       insert_expense(event: event, user: alice, amount: 80.00, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 4))
 
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
 
       result = described_class.call(
         event_id: event[:id],
@@ -640,8 +640,8 @@ RSpec.describe Settlements::Create do
       event = TestFactories.event(workspace: workspace, user: creator)
       event = set_event_dates(event, Date.new(2026, 1, 1), Date.new(2026, 1, 4))
 
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
 
       # First settlement
       insert_expense(event: event, user: alice, amount: 50.00, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 1, 4))

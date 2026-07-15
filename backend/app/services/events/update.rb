@@ -103,7 +103,6 @@ module Events
         # Resolved before the revert: the change notice goes to the people
         # who had answered, not to the freshly pending roster.
         recipient_ids = reset ? going_member_ids(event_id) : nil
-        deleted_rsvp_ids = []
 
         DB.transaction do
           update_data = {
@@ -145,7 +144,7 @@ module Events
 
           Broadcaster.object_changed("event", event_id)
 
-          deleted_rsvp_ids = reset_answers(event_id, workspace_id, membership) if reset
+          reset_answers(event_id) if reset
         end
 
         APP_LOGGER.info { "[Events::Update] Event #{event_id} updated in workspace #{workspace_id}" }
@@ -170,11 +169,7 @@ module Events
         pool = PoolSerializer.new(membership: membership)
         pool.add(:event, [after]) if after
         pool.add(:attendance, Attendance.for_event(event_id)) if reset
-        Success({
-          objects: pool.to_a,
-          deleted: deleted_rsvp_ids.map { |rid| { objectType: "rsvp", id: rid } }
-        }
-               )
+        Success({ objects: pool.to_a })
       end
 
       def going_member_ids(event_id)
@@ -185,24 +180,13 @@ module Events
 
       # Keep the people, clear the answers: attendances revert to pending
       # (per-row broadcasts — the pool never prunes or rewrites children on
-      # parent updates); legacy rsvp rows are deleted for stale clients,
-      # whose "no response" is row absence, with tombstones per row.
-      def reset_answers(event_id, workspace_id, membership)
+      # parent updates).
+      def reset_answers(event_id)
         attendance_ids = Attendance.ids_for_event(event_id)
         if attendance_ids.any?
           DB[:attendances].where(id: attendance_ids).update(status: "pending", days: nil, updated_at: Time.now)
           attendance_ids.each { |aid| Broadcaster.object_changed("attendance", aid) }
         end
-
-        rsvp_ids = Rsvp.ids_for_event(event_id)
-        if rsvp_ids.any?
-          DeletedItems.bulk_insert(workspace_id, "rsvp", rsvp_ids, deleted_by: membership.user_id)
-          rsvp_ids.each do |rid|
-            Broadcaster.object_deleted("rsvp", rid, topics: [Topic.workspace(workspace_id)])
-          end
-          DB[:rsvps].where(event_id: event_id).delete
-        end
-        rsvp_ids.map(&:to_s)
       end
     end
   end

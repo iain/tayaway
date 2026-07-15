@@ -49,23 +49,9 @@ module DatePolls
       end
 
       def reopen_poll(event, poll, deadline, membership)
-        deleted_rsvp_ids = []
-
         DB.transaction do
-          # Delete all RSVPs for this event
-          rsvp_ids = Rsvp.ids_for_event(event.id)
-          DeletedItems.bulk_insert(event.workspace_id, "rsvp", rsvp_ids, deleted_by: membership.user_id)
-          rsvp_ids.each do |rid|
-            Broadcaster.object_deleted("rsvp", rid, topics: [Topic.workspace(event.workspace_id)])
-          end
-          DB[:rsvps].where(event_id: event.id).delete
-          deleted_rsvp_ids = rsvp_ids.map(&:to_s)
-
-          # Phase-2 dual-write (doc/attendances.md): on the attendance side
-          # a reopen keeps the people and clears the answers — every row
-          # (member and guest alike) reverts to pending. Phase 6 makes this
-          # the only behaviour; for now the rsvp rows above are still
-          # deleted for old readers.
+          # A reopen keeps the people and clears the answers — every row
+          # (member and guest alike) reverts to pending (doc/attendances.md).
           attendance_ids = Attendance.ids_for_event(event.id)
           if attendance_ids.any?
             DB[:attendances].where(id: attendance_ids).update(status: "pending", days: nil, updated_at: Time.now)
@@ -93,8 +79,7 @@ module DatePolls
         pool.add(:event, [Event.find(event.id)])
         pool.add(:date_poll, [DatePoll.find(poll.id)])
 
-        deleted = deleted_rsvp_ids.map { |rid| { objectType: "rsvp", id: rid } }
-        Success({ objects: pool.to_a, deleted: deleted })
+        Success({ objects: pool.to_a })
       end
     end
   end

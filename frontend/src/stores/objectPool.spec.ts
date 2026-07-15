@@ -5,11 +5,11 @@ import { watchEffect } from 'vue'
 import { useObjectPoolStore } from './objectPool'
 import {
   makeEvent,
+  makeAttendance,
   makeTaskItem,
   makeDatePoll,
   makeDateRange,
   makeVote,
-  makeRsvp,
   makeExpense,
   makeExpenseParticipant,
   makeSettlement,
@@ -1151,13 +1151,13 @@ describe('objectPool store', () => {
       expect(pool.scopesOf(ownMember.id)).toEqual([])
     })
 
-    it('removes event and its rsvps', () => {
+    it('removes event and its attendances', () => {
       const pool = useObjectPoolStore()
       pool.importObjects(
         [
           makeEvent(),
-          makeRsvp({ id: 'r1', eventId: 'evt-1' }),
-          makeRsvp({ id: 'r2', eventId: 'evt-1' }),
+          makeAttendance({ id: 'r1', eventId: 'evt-1' }),
+          makeAttendance({ id: 'r2', eventId: 'evt-1', userId: 'user-2' }),
         ],
         { scope: Scope.workspace('test') }
       )
@@ -1165,8 +1165,8 @@ describe('objectPool store', () => {
       pool.cascadeRemove('event', 'evt-1')
 
       expect(pool.get('event', 'evt-1')).toBeUndefined()
-      expect(pool.get('rsvp', 'r1')).toBeUndefined()
-      expect(pool.get('rsvp', 'r2')).toBeUndefined()
+      expect(pool.get('attendance', 'r1')).toBeUndefined()
+      expect(pool.get('attendance', 'r2')).toBeUndefined()
     })
 
     it('removes event and its expenses with their participants', () => {
@@ -1311,8 +1311,8 @@ describe('objectPool store', () => {
         [
           makeEvent({ id: 'evt-1' }),
           makeEvent({ id: 'evt-2' }),
-          makeRsvp({ id: 'r1', eventId: 'evt-1' }),
-          makeRsvp({ id: 'r2', eventId: 'evt-2' }),
+          makeAttendance({ id: 'r1', eventId: 'evt-1' }),
+          makeAttendance({ id: 'r2', eventId: 'evt-2' }),
           makeExpense({ id: 'e1', eventId: 'evt-1' }),
           makeExpense({ id: 'e2', eventId: 'evt-2' }),
         ],
@@ -1322,9 +1322,9 @@ describe('objectPool store', () => {
       pool.cascadeRemove('event', 'evt-1')
 
       expect(pool.get('event', 'evt-2')).toBeDefined()
-      expect(pool.get('rsvp', 'r2')).toBeDefined()
+      expect(pool.get('attendance', 'r2')).toBeDefined()
       expect(pool.get('expense', 'e2')).toBeDefined()
-      expect(pool.get('rsvp', 'r1')).toBeUndefined()
+      expect(pool.get('attendance', 'r1')).toBeUndefined()
       expect(pool.get('expense', 'e1')).toBeUndefined()
     })
 
@@ -1338,7 +1338,7 @@ describe('objectPool store', () => {
           makeDateRange(),
           makeVote(),
           // RSVP
-          makeRsvp(),
+          makeAttendance(),
           // Expense chain
           makeExpense(),
           makeExpenseParticipant(),
@@ -1360,7 +1360,7 @@ describe('objectPool store', () => {
         'datePoll',
         'dateRange',
         'vote',
-        'rsvp',
+        'attendance',
         'expense',
         'expenseParticipant',
         'settlement',
@@ -1379,38 +1379,38 @@ describe('objectPool store', () => {
       pool.importObjects(
         [
           makeEvent(),
-          makeRsvp({ id: 'r1', eventId: 'evt-1' }),
-          makeRsvp({ id: 'r2', eventId: 'evt-1' }),
+          makeAttendance({ id: 'r1', eventId: 'evt-1' }),
+          makeAttendance({ id: 'r2', eventId: 'evt-1' }),
         ],
         { scope: Scope.workspace('test') }
       )
 
       // Remove one child and re-add it
-      pool.remove('rsvp', 'r1')
-      pool.importObjects([makeRsvp({ id: 'r1', eventId: 'evt-1' })], {
+      pool.remove('attendance', 'r1')
+      pool.importObjects([makeAttendance({ id: 'r1', eventId: 'evt-1' })], {
         scope: Scope.workspace('test'),
       })
 
       pool.cascadeRemove('event', 'evt-1')
 
-      expect(pool.get('rsvp', 'r1')).toBeUndefined()
-      expect(pool.get('rsvp', 'r2')).toBeUndefined()
+      expect(pool.get('attendance', 'r1')).toBeUndefined()
+      expect(pool.get('attendance', 'r2')).toBeUndefined()
     })
 
     it('keeps reverse index consistent after set so children added via set are cascaded', () => {
       const pool = useObjectPoolStore()
       pool.importObjects([makeEvent()], { scope: Scope.workspace('test') })
-      pool.set(makeRsvp({ id: 'r1', eventId: 'evt-1' }), {
+      pool.set(makeAttendance({ id: 'r1', eventId: 'evt-1' }), {
         scope: Scope.workspace('test'),
       })
-      pool.set(makeRsvp({ id: 'r2', eventId: 'evt-1' }), {
+      pool.set(makeAttendance({ id: 'r2', eventId: 'evt-1' }), {
         scope: Scope.workspace('test'),
       })
 
       pool.cascadeRemove('event', 'evt-1')
 
-      expect(pool.get('rsvp', 'r1')).toBeUndefined()
-      expect(pool.get('rsvp', 'r2')).toBeUndefined()
+      expect(pool.get('attendance', 'r1')).toBeUndefined()
+      expect(pool.get('attendance', 'r2')).toBeUndefined()
     })
 
     it('rebuilds reverse index correctly after replaceObjects', async () => {
@@ -1419,7 +1419,7 @@ describe('objectPool store', () => {
       pool.importObjects(
         [
           makeEvent({ id: 'evt-old' }),
-          makeRsvp({ id: 'r-old', eventId: 'evt-old' }),
+          makeAttendance({ id: 'r-old', eventId: 'evt-old' }),
         ],
         { scope: Scope.workspace('test') }
       )
@@ -1427,23 +1427,23 @@ describe('objectPool store', () => {
       // Replace with a different set
       await pool.replaceScope(Scope.workspace('test'), [
         makeEvent({ id: 'evt-1' }),
-        makeRsvp({ id: 'r1', eventId: 'evt-1' }),
-        makeRsvp({ id: 'r2', eventId: 'evt-1' }),
+        makeAttendance({ id: 'r1', eventId: 'evt-1' }),
+        makeAttendance({ id: 'r2', eventId: 'evt-1' }),
       ])
 
       pool.cascadeRemove('event', 'evt-1')
 
-      expect(pool.get('rsvp', 'r1')).toBeUndefined()
-      expect(pool.get('rsvp', 'r2')).toBeUndefined()
+      expect(pool.get('attendance', 'r1')).toBeUndefined()
+      expect(pool.get('attendance', 'r2')).toBeUndefined()
       // Old objects should be gone from the replace
-      expect(pool.get('rsvp', 'r-old')).toBeUndefined()
+      expect(pool.get('attendance', 'r-old')).toBeUndefined()
     })
 
     it('handles large numbers of children with O(1) index — all children removed', () => {
       const pool = useObjectPoolStore()
       const childCount = 200
       const children = Array.from({ length: childCount }, (_, i) =>
-        makeRsvp({ id: `r${i}`, eventId: 'evt-1' })
+        makeAttendance({ id: `r${i}`, eventId: 'evt-1' })
       )
       pool.importObjects([makeEvent(), ...children], {
         scope: Scope.workspace('test'),
@@ -1451,7 +1451,7 @@ describe('objectPool store', () => {
 
       pool.cascadeRemove('event', 'evt-1')
 
-      expect(pool.getAll('rsvp')).toHaveLength(0)
+      expect(pool.getAll('attendance')).toHaveLength(0)
     })
   })
 

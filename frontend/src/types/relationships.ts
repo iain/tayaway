@@ -50,10 +50,6 @@ export const relationshipSchema: RelationshipSchema = {
     },
     member: { type: 'belongsTo', foreignKey: 'userId', targetType: 'member' },
   },
-  rsvp: {
-    event: { type: 'belongsTo', foreignKey: 'eventId', targetType: 'event' },
-    member: { type: 'belongsTo', foreignKey: 'userId', targetType: 'member' },
-  },
   attendance: {
     event: { type: 'belongsTo', foreignKey: 'eventId', targetType: 'event' },
     guest: { type: 'belongsTo', foreignKey: 'guestId', targetType: 'guest' },

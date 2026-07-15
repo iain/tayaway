@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useAuthStore } from '@/stores/auth'
-import { makeEvent, makeRsvp } from '@/test/factories'
+import { makeEvent, makeAttendance } from '@/test/factories'
 import { useUpcomingEvents } from './useUpcomingEvents'
 
 const TODAY = new Date('2026-06-02T12:00:00Z')
@@ -105,7 +105,7 @@ describe('useUpcomingEvents', () => {
           startDate: '2026-07-01',
           endDate: '2026-07-02',
         }),
-        makeRsvp({ id: 'r1', eventId: 'responded', userId: 'user-1' }),
+        makeAttendance({ id: 'r1', eventId: 'responded', userId: 'user-1' }),
       ],
       { scope: Scope.workspace('test') }
     )
@@ -117,7 +117,7 @@ describe('useUpcomingEvents', () => {
     expect(byId.get('no-response')!.needsRsvp).toBe(true)
   })
 
-  it('counts attending RSVPs per event', () => {
+  it('counts going attendances per event', () => {
     const pool = useObjectPoolStore()
     signIn('user-1')
     pool.importObjects(
@@ -127,23 +127,21 @@ describe('useUpcomingEvents', () => {
           startDate: '2026-06-10',
           endDate: '2026-06-12',
         }),
-        makeRsvp({
+        makeAttendance({
           id: 'r1',
           eventId: 'trip',
           userId: 'user-1',
-          attending: true,
         }),
-        makeRsvp({
+        makeAttendance({
           id: 'r2',
           eventId: 'trip',
           userId: 'user-2',
-          attending: true,
         }),
-        makeRsvp({
+        makeAttendance({
           id: 'r3',
           eventId: 'trip',
           userId: 'user-3',
-          attending: false,
+          status: 'declined',
         }),
       ],
       { scope: Scope.workspace('test') }

@@ -2,7 +2,7 @@
 
 module Notifications
   module Kinds
-    # Sent to attending RSVP'd members when an event is deleted. Email is
+    # Sent to going members when an event is deleted. Email is
     # on by default here (unlike `event_created`) because cancellation is
     # higher-stakes — a date that quietly disappeared from the pool while
     # someone wasn't looking is exactly the kind of thing an inbox alert

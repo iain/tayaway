@@ -26,7 +26,6 @@ export function makeEvent(
     workspaceId: 'ws-1',
     userId: 'user-1',
     datePollId: null,
-    rsvpIds: [],
     attendanceIds: [],
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
@@ -113,28 +112,6 @@ export function makeVote(
     userId: 'user-1',
     response: 'yes',
     comment: null,
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-    ...overrides,
-  }
-}
-
-// `createdByUserId` defaults to `null` (legacy / unknown actor) so tests
-// don't accidentally render the "filed by X" badge. Tests that exercise
-// on-behalf-of behaviour pass an explicit value via overrides.
-export function makeRsvp(
-  overrides: Partial<ObjectTypeMap['rsvp']> = {}
-): ObjectTypeMap['rsvp'] {
-  return {
-    id: 'rsvp-1',
-    objectType: 'rsvp',
-    eventId: 'evt-1',
-    userId: 'user-1',
-    createdByUserId: null,
-    attending: true,
-    attendance: null,
-    startDate: null,
-    endDate: null,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,

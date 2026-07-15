@@ -60,22 +60,14 @@ const editField = ref<EditField | null>(null)
 const datesBlockedOpen = ref(false)
 const showRsvpWarning = ref(false)
 
-const eventRsvps = computed(() =>
-  pool.getAll('rsvp').filter((r) => r.eventId === eventId.value)
-)
-
 const eventAttendances = computed(() =>
   pool.getAll('attendance').filter((a) => a.eventId === eventId.value)
 )
 
-// Rows a date change would reset: any answered attendance (member or
-// guest). Legacy rsvp rows from stale clients count too.
-const answeredCount = computed(() => {
-  const answered = eventAttendances.value.filter((a) => a.status !== 'pending')
-  const mirrored = new Set(answered.map((a) => a.userId))
-  const legacyOnly = eventRsvps.value.filter((r) => !mirrored.has(r.userId))
-  return answered.length + legacyOnly.length
-})
+// Rows a date change would reset: any answered attendance (member or guest).
+const answeredCount = computed(
+  () => eventAttendances.value.filter((a) => a.status !== 'pending').length
+)
 
 const datesActuallyChanged = computed(() => {
   if (!event.value) return false
@@ -109,7 +101,7 @@ const hasChoreRoster = computed(() =>
 
 const deleteSummary = computed(() => {
   const parts: string[] = []
-  const rsvpCount = eventRsvps.value.length
+  const rsvpCount = answeredCount.value
   const voteCount = eventVoteCount.value
   if (rsvpCount > 0)
     parts.push(`${rsvpCount} ${rsvpCount === 1 ? 'RSVP' : 'RSVPs'}`)

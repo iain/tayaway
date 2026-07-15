@@ -105,54 +105,6 @@ module TestFactories
       DB[:votes].where(id: id).first
     end
 
-    def rsvp(event: nil, user: nil, attending: true, attendance: nil, start_date: nil, end_date: nil, id: SecureRandom.uuid)
-      event ||= self.event
-      user ||= self.user
-      now = Time.now
-      DB[:rsvps].insert(
-        id: id,
-        event_id: event[:id],
-        user_id: user[:id],
-        attending: attending,
-        attendance: attendance && Sequel.pg_jsonb(attendance.map { |d| d.is_a?(Date) ? d.iso8601 : d }),
-        start_date: start_date,
-        end_date: end_date,
-        created_at: now,
-        updated_at: now
-      )
-
-      # Every production rsvp row has a dual-written attendance mirror
-      # (doc/attendances.md phase 2), so fixtures carry one too — attendance
-      # readers (chores, settlement) see the same people the rsvp describes.
-      mirror_days =
-        if attendance
-          attendance.map { |d| entry_date(d) }
-        elsif start_date && end_date
-          (start_date..end_date).map(&:iso8601)
-        end
-      DB[:attendances]
-        .insert_conflict(
-          target: %i[event_id user_id],
-          conflict_where: Sequel.lit("user_id IS NOT NULL"),
-          update: {
-            status: Sequel[:excluded][:status],
-            days: Sequel[:excluded][:days],
-            updated_at: Sequel[:excluded][:updated_at]
-          }
-        )
-        .insert(
-          id: SecureRandom.uuid,
-          event_id: event[:id],
-          user_id: user[:id],
-          status: attending ? "going" : "declined",
-          days: attending && mirror_days ? Sequel.pg_jsonb(mirror_days) : nil,
-          created_at: now,
-          updated_at: now
-        )
-
-      DB[:rsvps].where(id: id).first
-    end
-
     def guest(workspace: nil, name: nil, placeholder: false, created_by: nil, id: SecureRandom.uuid)
       workspace ||= self.workspace
       name ||= "Guest #{next_sequence(:guest)}"
@@ -443,19 +395,6 @@ module TestFactories
     end
 
     private
-
-    # An rsvp attendance entry is a Date, an ISO string, or a
-    # `{ "date" =>, "plusOnes" => }` hash; the attendance mirror keeps only
-    # the date (named guests replaced counts).
-    def entry_date(entry)
-      if entry.is_a?(Hash)
-        (entry["date"] || entry[:date]).to_s
-      elsif entry.is_a?(Date)
-        entry.iso8601
-      else
-        entry.to_s
-      end
-    end
 
     def next_sequence(name)
       @sequences ||= {}

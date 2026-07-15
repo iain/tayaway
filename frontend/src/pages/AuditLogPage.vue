@@ -117,7 +117,6 @@ const SUBJECT_POOL_TYPE: Record<string, ObjectType> = {
   date_poll: 'datePoll',
   date_range: 'dateRange',
   expense: 'expense',
-  rsvp: 'rsvp',
   settlement: 'settlement',
   settlement_transfer: 'settlementTransfer',
   task_item: 'taskItem',

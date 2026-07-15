@@ -59,39 +59,20 @@ module DatePolls
             end_date: date_range.end_date
           )
 
-          # Auto-RSVP "yes" voters on the winning date range as attending
+          # Mark "yes" voters on the winning range as going. An existing row
+          # keeps its day set — overwriting with nil here would silently
+          # widen a partial-day answer to whole-event — but re-normalized
+          # against the event's window, which the update above just moved to
+          # the winning range.
           yes_voter_ids = DB[:votes]
                           .where(date_range_id: selected_date_range_id, response: "yes")
                           .select_map(:user_id)
 
-          # The mirror normalizes day sets against the event's window, which
-          # the update above just moved to the winning range.
           updated_event = event.with(start_date: date_range.start_date, end_date: date_range.end_date)
 
           now = Time.now
           yes_voter_ids.each do |uid|
-            existing = DB[:rsvps].where(event_id: event.id, user_id: uid).first
-            if existing
-              DB[:rsvps].where(id: existing[:id]).update(attending: true, updated_at: now)
-              Broadcaster.object_changed("rsvp", existing[:id])
-            else
-              rsvp_id = SecureRandom.uuid
-              DB[:rsvps].insert(id: rsvp_id, event_id: event.id, user_id: uid, attending: true, created_at: now, updated_at: now)
-              Broadcaster.object_changed("rsvp", rsvp_id)
-            end
-            # Phase-2 dual-write (doc/attendances.md): every rsvp write path
-            # must mirror, or attendance-based readers (chore autofill) see
-            # auto-RSVPed voters as absent. An existing rsvp keeps its day
-            # set above, so the mirror must carry the same days — a nil here
-            # would silently widen a partial-day answer to whole-event.
-            Attendances::MirrorMemberRow.call(
-              event: updated_event,
-              user_id: uid,
-              attending: true,
-              dates: existing && mirror_dates(existing),
-              created_by_user_id: nil,
-              now: now
-            )
+            mark_voter_going(updated_event, uid, now)
           end
 
           Broadcaster.object_changed("date_poll", poll.id)
@@ -104,20 +85,43 @@ module DatePolls
         pool = PoolSerializer.new(membership: membership)
         pool.add(:event, [Event.find(event.id)])
         pool.add(:date_poll, [DatePoll.find(poll.id)])
-        pool.add(:rsvp, Rsvp.for_event(event.id))
+        pool.add(:attendance, Attendance.for_event(event.id))
         Success({ objects: pool.to_a })
       end
 
-      # The concrete day list an existing rsvp row carries: its attendance
-      # day set when present, otherwise the legacy contiguous range — the
-      # same resolution the backfill converter uses.
-      def mirror_dates(row)
-        rsvp = Rsvp.find(row[:id])
-        if rsvp.attendance
-          rsvp.attendance.map { |day| day[:date] }
-        elsif rsvp.start_date && rsvp.end_date
-          (rsvp.start_date..rsvp.end_date).to_a
-        end
+      # Server-initiated going transition for a yes voter: upsert their
+      # member attendance row, carrying an existing row's day set forward
+      # (normalized against the new event window).
+      def mark_voter_going(event, user_id, now)
+        existing = DB[:attendances].where(event_id: event.id, user_id: user_id).first
+        days = existing && existing[:days] && existing[:days].map { |d| Date.parse(d) }
+        days = Attendances.normalize_days(event, days)
+
+        row = DB[:attendances]
+              .returning(:id)
+              .insert_conflict(
+                target: %i[event_id user_id],
+                conflict_where: Sequel.lit("user_id IS NOT NULL"),
+                update: {
+                  status: Sequel[:excluded][:status],
+                  days: Sequel[:excluded][:days],
+                  updated_at: Sequel[:excluded][:updated_at]
+                }
+              )
+              .insert(
+                id: SecureRandom.uuid,
+                event_id: event.id,
+                user_id: user_id,
+                guest_id: nil,
+                host_user_id: nil,
+                status: "going",
+                days: days && Sequel.pg_jsonb(days.map(&:iso8601)),
+                created_by_user_id: nil,
+                created_at: now,
+                updated_at: now
+              )
+              .first
+        Broadcaster.object_changed("attendance", row[:id])
       end
     end
   end

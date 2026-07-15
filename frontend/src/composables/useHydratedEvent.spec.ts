@@ -11,7 +11,6 @@ import {
   makeDatePoll,
   makeDateRange,
   makeVote,
-  makeRsvp,
   makeAttendance,
   makeGuest,
 } from '@/test/factories'
@@ -397,76 +396,6 @@ describe('useHydratedEvent', () => {
     })
   })
 
-  describe('RSVP hydration', () => {
-    it('hydrates RSVPs for the event', () => {
-      const pool = useObjectPoolStore()
-      pool.importObjects(
-        [
-          makeEvent({ rsvpIds: ['rsvp-1', 'rsvp-2'] }),
-          makeRsvp({ id: 'rsvp-1', userId: 'user-1', attending: true }),
-          makeRsvp({ id: 'rsvp-2', userId: 'user-2', attending: false }),
-          makeMember({ id: 'mem-1', userId: 'user-1', name: 'Alice' }),
-          makeMember({ id: 'mem-2', userId: 'user-2', name: 'Bob' }),
-        ],
-        { scope: Scope.workspace('test') }
-      )
-
-      const { event } = useHydratedEvent('evt-1')
-
-      expect(event.value!.rsvps).toHaveLength(2)
-      expect(event.value!.rsvps[0]!.attending).toBe(true)
-      expect(event.value!.rsvps[0]!.member).toBeDefined()
-      expect(event.value!.rsvps[0]!.member!.name).toBe('Alice')
-      expect(event.value!.rsvps[1]!.attending).toBe(false)
-      expect(event.value!.rsvps[1]!.member!.name).toBe('Bob')
-    })
-
-    it('includes RSVP date range fields', () => {
-      const pool = useObjectPoolStore()
-      pool.importObjects(
-        [
-          makeEvent({ rsvpIds: ['rsvp-1'] }),
-          makeRsvp({
-            startDate: '2026-03-01',
-            endDate: '2026-03-05',
-          }),
-        ],
-        { scope: Scope.workspace('test') }
-      )
-
-      const { event } = useHydratedEvent('evt-1')
-
-      expect(event.value!.rsvps[0]!.startDate).toBe('2026-03-01')
-      expect(event.value!.rsvps[0]!.endDate).toBe('2026-03-05')
-    })
-
-    it('returns empty rsvps array when no RSVPs exist', () => {
-      const pool = useObjectPoolStore()
-      pool.importObjects([makeEvent()], { scope: Scope.workspace('test') })
-
-      const { event } = useHydratedEvent('evt-1')
-
-      expect(event.value!.rsvps).toEqual([])
-    })
-
-    it('only includes RSVPs for the specific event', () => {
-      const pool = useObjectPoolStore()
-      pool.importObjects(
-        [
-          makeEvent({ id: 'evt-1', rsvpIds: ['rsvp-1'] }),
-          makeRsvp({ id: 'rsvp-1', eventId: 'evt-1' }),
-          makeRsvp({ id: 'rsvp-2', eventId: 'evt-other' }),
-        ],
-        { scope: Scope.workspace('test') }
-      )
-
-      const { event } = useHydratedEvent('evt-1')
-
-      expect(event.value!.rsvps).toHaveLength(1)
-      expect(event.value!.rsvps[0]!.id).toBe('rsvp-1')
-    })
-  })
-
   // The hydrated attendee is the single frontend reader of the
   // userId XOR guestId union (doc/attendances.md) — everything downstream
   // consumes what these examples pin.
@@ -619,13 +548,13 @@ describe('useHydratedEvent', () => {
       expect(ranges[2]!.votes[1]!.member!.name).toBe('Bob')
     })
 
-    it('resolves the same member on both votes and RSVPs without redundant pool scans', () => {
+    it('resolves the same member on both votes and attendances without redundant pool scans', () => {
       // Verifies that the shared memberIndex built once is used for both vote
-      // and RSVP member resolution — not rebuilt or re-scanned per lookup.
+      // and attendee member resolution — not rebuilt or re-scanned per lookup.
       const pool = useObjectPoolStore()
       pool.importObjects(
         [
-          makeEvent({ datePollId: 'poll-1', rsvpIds: ['rsvp-1', 'rsvp-2'] }),
+          makeEvent({ datePollId: 'poll-1' }),
           makeDatePoll({ dateRangeIds: ['dr-1'] }),
           makeDateRange(),
           makeVote({
@@ -640,8 +569,8 @@ describe('useHydratedEvent', () => {
             userId: 'user-2',
             response: 'yes',
           }),
-          makeRsvp({ id: 'rsvp-1', userId: 'user-1', attending: true }),
-          makeRsvp({ id: 'rsvp-2', userId: 'user-2', attending: true }),
+          makeAttendance({ id: 'att-1', userId: 'user-1' }),
+          makeAttendance({ id: 'att-2', userId: 'user-2' }),
           makeMember({ id: 'mem-1', userId: 'user-1', name: 'Alice' }),
           makeMember({ id: 'mem-2', userId: 'user-2', name: 'Bob' }),
         ],
@@ -657,9 +586,9 @@ describe('useHydratedEvent', () => {
       expect(event.value!.datePoll!.dateRanges[0]!.votes[1]!.member!.name).toBe(
         'Bob'
       )
-      // Both RSVP members — same index, same members
-      expect(event.value!.rsvps[0]!.member!.name).toBe('Alice')
-      expect(event.value!.rsvps[1]!.member!.name).toBe('Bob')
+      // Both attendee members — same index, same members
+      expect(event.value!.attendances[0]!.attendee.name).toBe('Alice')
+      expect(event.value!.attendances[1]!.attendee.name).toBe('Bob')
     })
   })
 

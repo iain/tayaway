@@ -76,9 +76,6 @@ function rollbackOptimistic(ref: OptimisticRef): void {
 }
 
 function humanObjectType(type: string): string {
-  if (type === 'rsvp') {
-    return 'RSVP'
-  }
   // camelCase → spaced lowercase: taskItem → "task item"
   return type
     .replace(/([A-Z])/g, ' $1')

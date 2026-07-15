@@ -17,7 +17,7 @@ RSpec.describe "Idempotency-Key handling" do
   before do
     TestFactories.workspace_membership(workspace: workspace, user: user)
     Time.now
-    TestFactories.rsvp(event: event, user: user, attending: true)
+    TestFactories.attendance(event: event, user: user)
   end
 
   def post_expense(key:, description: "Groceries", amount: 75.50, user_headers: headers)
@@ -72,7 +72,7 @@ RSpec.describe "Idempotency-Key handling" do
     other_user = TestFactories.user
     TestFactories.workspace_membership(workspace: workspace, user: other_user)
     Time.now
-    TestFactories.rsvp(event: event, user: other_user, attending: true)
+    TestFactories.attendance(event: event, user: other_user)
     other_session = TestFactories.session(user: other_user)
     other_headers = {
       "HTTP_COOKIE" => "session_token=#{other_session[:token]}",

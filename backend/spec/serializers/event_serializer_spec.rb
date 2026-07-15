@@ -34,20 +34,17 @@ RSpec.describe EventSerializer do
       expect(result[:createdAt]).to match(/\A\d{4}-\d{2}-\d{2}T.*\.\d{3}/)
       expect(result[:updatedAt]).to match(/\A\d{4}-\d{2}-\d{2}T.*\.\d{3}/)
       expect(result[:datePollId]).to be_nil
-      expect(result[:rsvpIds]).to eq([])
       expect(result[:attendanceIds]).to eq([])
     end
 
-    it "includes datePollId and rsvpIds when present" do
+    it "includes datePollId when present" do
       event_row = TestFactories.event(workspace: workspace, user: user)
       event = Event.find(event_row[:id])
       poll = TestFactories.date_poll(event: event_row)
-      rsvp = TestFactories.rsvp(event: event_row, user: user)
 
       result = described_class.serialize_batch([event], pool: nil).first
 
       expect(result[:datePollId]).to eq(poll[:id].to_s)
-      expect(result[:rsvpIds]).to include(rsvp[:id].to_s)
     end
 
     it "includes attendanceIds for member and guest rows alike" do
@@ -61,7 +58,7 @@ RSpec.describe EventSerializer do
       expect(result[:attendanceIds]).to contain_exactly(member_row[:id], guest_row[:id])
     end
 
-    it "batches date poll and rsvp lookups across multiple events" do
+    it "batches date poll and attendance lookups across multiple events" do
       event1_row = TestFactories.event(workspace: workspace, user: user)
       event2_row = TestFactories.event(workspace: workspace, user: user)
       event1 = Event.find(event1_row[:id])

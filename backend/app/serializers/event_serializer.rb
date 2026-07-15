@@ -2,7 +2,8 @@
 
 # Serializes Event model instances into pool object hashes.
 #
-# Owns both the field mapping AND the related-object lookups (date_poll, rsvps)
+# Owns both the field mapping AND the related-object lookups (date_poll,
+# attendances)
 # AND the policy-context prefetch (has_expenses). This is the single source of
 # truth for event serialization — called by PoolSerializer at sync time and by
 # Websocket::ConnectionManager at broadcast time (via PermissionAttacher).
@@ -13,7 +14,6 @@ class EventSerializer
 
       event_ids = events.map { |e| e.id.to_s }
       polls_by_event = DatePoll.for_event_ids(event_ids)
-      rsvp_ids_by_event = Rsvp.ids_for_event_ids(event_ids)
       attendance_ids_by_event = Attendance.ids_for_event_ids(event_ids)
 
       events.map do |event|
@@ -32,8 +32,6 @@ class EventSerializer
           workspaceId: event.workspace_id.to_s,
           userId: event.user_id.to_s,
           datePollId: date_poll&.id&.to_s,
-          rsvpIds: rsvp_ids_by_event[event.id.to_s] || [],
-          # rsvpIds stays alongside until stale clients drain (phase 7).
           attendanceIds: attendance_ids_by_event[event.id.to_s] || [],
           createdAt: event.created_at.iso8601(3),
           updatedAt: event.updated_at.iso8601(3)

@@ -31,8 +31,8 @@ async function settleSingleExpenseEvent(opts: {
 }): Promise<{ eventId: string; transferIds: string[] }> {
   const { eventId } = await createResolvedEvent(opts.alice, opts.name)
   await addMemberToWorkspace(opts.alice, opts.workspaceId, opts.bobEmail)
-  await opts.bob.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
-    data: { attending: true },
+  await opts.bob.post(`${API_BASE}/api/events/${eventId}/attendances`, {
+    data: { status: 'going' },
   })
 
   const payerCtx = opts.payer === 'alice' ? opts.alice : opts.bob

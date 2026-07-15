@@ -112,7 +112,7 @@ RSpec.describe Expenses::Create do
         start_date: Date.parse("2026-01-10"),
         end_date: Date.parse("2026-01-20")
       )
-      TestFactories.rsvp(event: event, user: user, attending: true)
+      TestFactories.attendance(event: event, user: user)
 
       result = described_class.call(**valid_params, start_date: "2026-01-05", end_date: "2026-01-15")
 
@@ -126,7 +126,7 @@ RSpec.describe Expenses::Create do
         start_date: Date.parse("2026-01-10"),
         end_date: Date.parse("2026-01-20")
       )
-      TestFactories.rsvp(event: event, user: user, attending: true)
+      TestFactories.attendance(event: event, user: user)
 
       result = described_class.call(**valid_params, start_date: "2026-01-15", end_date: "2026-01-25")
 
@@ -145,7 +145,7 @@ RSpec.describe Expenses::Create do
   end
 
   it "fails when user has RSVP with attending: false" do
-    TestFactories.rsvp(event: event, user: user, attending: false)
+    TestFactories.attendance(event: event, user: user, status: "declined")
 
     result = described_class.call(**valid_params)
 
@@ -154,7 +154,7 @@ RSpec.describe Expenses::Create do
   end
 
   it "succeeds when user has RSVP with attending: true" do
-    TestFactories.rsvp(event: event, user: user, attending: true)
+    TestFactories.attendance(event: event, user: user)
 
     result = described_class.call(**valid_params)
 
@@ -194,7 +194,7 @@ RSpec.describe Expenses::Create do
     let(:bob) { TestFactories.user(name: "Bob") }
 
     before do
-      TestFactories.rsvp(event: event, user: user, attending: true)
+      TestFactories.attendance(event: event, user: user)
     end
 
     it "creates expense_participants when participant_ids provided" do
@@ -370,7 +370,7 @@ RSpec.describe Expenses::Create do
     end
 
     it "lets a workspace member file an expense on behalf of another member" do
-      TestFactories.rsvp(event: event, user: other_user, attending: true)
+      TestFactories.attendance(event: event, user: other_user)
       other_membership # ensure created
 
       result = described_class.call(**valid_params, user_id: other_user[:id])
@@ -382,7 +382,7 @@ RSpec.describe Expenses::Create do
 
     it "rejects when the subject is not a workspace member" do
       stranger = TestFactories.user
-      TestFactories.rsvp(event: event, user: user, attending: true)
+      TestFactories.attendance(event: event, user: user)
 
       result = described_class.call(**valid_params, user_id: stranger[:id])
 
@@ -391,7 +391,7 @@ RSpec.describe Expenses::Create do
     end
 
     it "checks the subject's RSVP, not the actor's" do
-      TestFactories.rsvp(event: event, user: user, attending: true) # actor is attending
+      TestFactories.attendance(event: event, user: user) # actor is attending
       other_membership # subject is a workspace member but has not RSVP'd
 
       result = described_class.call(**valid_params, user_id: other_user[:id])
@@ -402,7 +402,7 @@ RSpec.describe Expenses::Create do
   end
 
   it "returns the existing expense when the client-provided id already exists" do
-    TestFactories.rsvp(event: event, user: user, attending: true)
+    TestFactories.attendance(event: event, user: user)
     client_id = SecureRandom.uuid
     now = Time.now
 

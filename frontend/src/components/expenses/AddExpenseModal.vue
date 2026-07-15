@@ -9,6 +9,7 @@ import { useExpensesStore } from '@/stores/expenses'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useAuthStore } from '@/stores/auth'
 import { localIsoDate } from '@/utils/date'
+import { attendanceDates } from '@/utils/event'
 import type { PoolEvent, PoolExpense } from '@/types/pool'
 
 const props = defineProps<{
@@ -52,16 +53,19 @@ const singleDate = ref(true)
 const submitting = ref(false)
 const payerUserId = ref('')
 
-// Workspace members with an attending RSVP — the only valid payers for an
-// expense (the backend rejects non-attending subjects).
+// Workspace members marked going — the only valid payers for an expense
+// (the backend rejects non-going subjects). Guest rows are excluded:
+// guests don't pay, their shares bill to their host.
 const payerOptions = computed(() => {
   return pool
-    .getAll('rsvp')
-    .filter((r) => r.eventId === props.event.id && r.attending)
-    .map((r) => {
-      const m = pool.findBy('member', 'userId', r.userId)
+    .getAll('attendance')
+    .filter(
+      (a) => a.eventId === props.event.id && a.status === 'going' && a.userId
+    )
+    .map((a) => {
+      const m = pool.findBy('member', 'userId', a.userId!)
       return {
-        value: r.userId,
+        value: a.userId!,
         label: m?.name || m?.email || 'Unknown',
       }
     })
@@ -179,20 +183,28 @@ watch(
 
         if (eventHasDates.value) {
           const userId = authStore.currentUserId
-          const rsvp = userId
+          const attendance = userId
             ? pool
-                .getAll('rsvp')
+                .getAll('attendance')
                 .find(
-                  (r) =>
-                    r.eventId === props.event.id &&
-                    r.userId === userId &&
-                    r.attending
+                  (a) =>
+                    a.eventId === props.event.id &&
+                    a.userId === userId &&
+                    a.status === 'going'
                 )
             : null
 
-          // Determine the effective date range (RSVP dates or event dates)
-          const rangeStart = rsvp?.startDate ?? props.event.startDate!
-          const rangeEnd = rsvp?.endDate ?? props.event.endDate!
+          // Effective date range: the actor's attended days, else event dates
+          const attendedRange =
+            attendance &&
+            attendanceDates(
+              attendance,
+              props.event.startDate!,
+              props.event.endDate!
+            )
+          const rangeStart = attendedRange?.[0] ?? props.event.startDate!
+          const rangeEnd =
+            attendedRange?.[attendedRange.length - 1] ?? props.event.endDate!
 
           // If today falls within the range, default to today (most likely adding a recent expense)
           const today = localIsoDate()

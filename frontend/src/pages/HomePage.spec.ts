@@ -5,19 +5,19 @@ import { useObjectPoolStore } from '@/stores/objectPool'
 import type { ObjectTypeMap } from '@/types/pool'
 
 // Helpers to build minimal pool objects
-function makeRsvp(
-  overrides: Partial<ObjectTypeMap['rsvp']> = {}
-): ObjectTypeMap['rsvp'] {
+function makeAttendance(
+  overrides: Partial<ObjectTypeMap['attendance']> = {}
+): ObjectTypeMap['attendance'] {
   return {
-    id: 'rsvp-1',
-    objectType: 'rsvp',
+    id: 'att-1',
+    objectType: 'attendance',
     eventId: 'evt-1',
     userId: 'user-1',
+    guestId: null,
+    hostUserId: null,
+    status: 'going',
+    days: null,
     createdByUserId: null,
-    attending: true,
-    attendance: null,
-    startDate: null,
-    endDate: null,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,
@@ -91,23 +91,28 @@ describe('HomePage computed maps', () => {
   })
 
   describe('attendeeCountByEvent', () => {
-    it('counts attending RSVPs per event, excluding non-attending', () => {
+    it('counts going attendances per event, excluding declined', () => {
       const pool = useObjectPoolStore()
       pool.importObjects(
         [
-          makeRsvp({ id: 'r1', eventId: 'evt-1', attending: true }),
-          makeRsvp({ id: 'r2', eventId: 'evt-1', attending: true }),
-          makeRsvp({ id: 'r3', eventId: 'evt-1', attending: false }),
-          makeRsvp({ id: 'r4', eventId: 'evt-2', attending: true }),
+          makeAttendance({ id: 'r1', eventId: 'evt-1' }),
+          makeAttendance({ id: 'r2', eventId: 'evt-1', userId: 'user-2' }),
+          makeAttendance({
+            id: 'r3',
+            eventId: 'evt-1',
+            userId: 'user-3',
+            status: 'declined',
+          }),
+          makeAttendance({ id: 'r4', eventId: 'evt-2' }),
         ],
         { scope: Scope.workspace('test') }
       )
 
       // Replicate the HomePage attendeeCountByEvent logic
       const counts = new Map<string, number>()
-      for (const r of pool.getAll('rsvp')) {
-        if (r.attending) {
-          counts.set(r.eventId, (counts.get(r.eventId) ?? 0) + 1)
+      for (const a of pool.getAll('attendance')) {
+        if (a.status === 'going') {
+          counts.set(a.eventId, (counts.get(a.eventId) ?? 0) + 1)
         }
       }
 

@@ -64,8 +64,8 @@ RSpec.describe "Settlement chain" do
     # Bob → Alice 30, Carol → Alice 30.
     it "supersedes the unpaid prior transfer and issues a fresh fair set" do
       insert_expense(user: alice, amount: 90)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
 
       first = create_call
       expect(first.success?).to be true
@@ -73,7 +73,7 @@ RSpec.describe "Settlement chain" do
       expect(first_settlement[:previousSettlementId]).to be_nil
       prior_transfer_id = transfers_from(first).first[:id]
 
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: carol)
 
       top_up = create_call
       expect(top_up.success?).to be true
@@ -102,8 +102,8 @@ RSpec.describe "Settlement chain" do
     # each, Alice has 10 extra outlay, Bob has 10 under — Bob → Alice 10.
     it "supersedes the prior unpaid transfer and issues a single fresh transfer" do
       insert_expense(user: alice, amount: 60)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
 
       expect(create_call.success?).to be true
 
@@ -123,8 +123,8 @@ RSpec.describe "Settlement chain" do
   describe "top-up when nothing has changed" do
     it "refuses with a specific up-to-date message" do
       insert_expense(user: alice, amount: 20)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
 
       expect(create_call.success?).to be true
 
@@ -144,9 +144,9 @@ RSpec.describe "Settlement chain" do
     # click. Reproduces the rounding-crumb scenario with a 220 expense split
     # 1 / 1.5 / 1 across three participants.
     it "refuses even when factor-weighted rounding leaves sub-cent residuals" do
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
+      TestFactories.attendance(event: event, user: carol)
 
       expense_id = insert_expense(user: carol, amount: 220)
       DB[:expense_participants].where(expense_id: expense_id).delete
@@ -171,16 +171,16 @@ RSpec.describe "Settlement chain" do
     # each, so Bob, Carol, and Dave each owe Alice 22.5.
     it "each top-up supersedes the previous and reissues a fresh fair set" do
       insert_expense(user: alice, amount: 90)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
 
       create_call
 
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: carol)
       create_call
 
       dave = TestFactories.user(name: "Dave")
-      TestFactories.rsvp(event: event, user: dave, attending: true)
+      TestFactories.attendance(event: event, user: dave)
       third = create_call
 
       expect(third.success?).to be true
@@ -198,13 +198,13 @@ RSpec.describe "Settlement chain" do
   describe "mid-chain delete" do
     it "refuses to delete a settlement that has a successor" do
       insert_expense(user: alice, amount: 20)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
 
       first = create_call
       first_id = settlements_from(first).first[:id]
 
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: carol)
       create_call
 
       result = Settlements::Delete.call(
@@ -220,12 +220,12 @@ RSpec.describe "Settlement chain" do
 
     it "lets the tip of the chain be deleted" do
       insert_expense(user: alice, amount: 20)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
 
       create_call
 
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: carol)
       second = create_call
       second_id = settlements_from(second).first[:id]
 
@@ -242,12 +242,12 @@ RSpec.describe "Settlement chain" do
     # again, otherwise the user loses track of debts they still owe.
     it "restores predecessor's superseded transfers when the tip is deleted" do
       insert_expense(user: alice, amount: 60)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
       first = create_call
       prior_transfer_id = transfers_from(first).first[:id]
 
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: carol)
       second = create_call
       second_id = settlements_from(second).first[:id]
       expect(SettlementTransfer.find(prior_transfer_id).superseded_at).not_to be_nil
@@ -263,17 +263,17 @@ RSpec.describe "Settlement chain" do
     # settlement 1) must remain superseded even when settlement 3 is deleted.
     it "leaves earlier-chain supersessions intact when only the tip is deleted" do
       insert_expense(user: alice, amount: 60)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
       first = create_call
       settlement1_transfer = transfers_from(first).first[:id]
 
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: carol)
       second = create_call
       settlement2_transfer_ids = transfers_from(second).map { |t| t[:id] }
 
       dave = TestFactories.user(name: "Dave")
-      TestFactories.rsvp(event: event, user: dave, attending: true)
+      TestFactories.attendance(event: event, user: dave)
       third = create_call
       third_id = settlements_from(third).first[:id]
 
@@ -294,12 +294,12 @@ RSpec.describe "Settlement chain" do
 
     it "re-broadcasts the predecessor settlement so its delete permission refreshes" do
       insert_expense(user: alice, amount: 60)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
       first = create_call
       first_id = settlements_from(first).first[:id]
 
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: carol)
       second = create_call
       second_id = settlements_from(second).first[:id]
 
@@ -317,8 +317,8 @@ RSpec.describe "Settlement chain" do
   describe "PreviewDrift" do
     it "reports no tip when the event has never been settled" do
       insert_expense(user: alice, amount: 30)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
 
       result = Settlements::PreviewDrift.call(event_id: event[:id])
       expect(result.success?).to be true
@@ -330,8 +330,8 @@ RSpec.describe "Settlement chain" do
 
     it "returns no transfers when the chain is up to date" do
       insert_expense(user: alice, amount: 30)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
       create_call
 
       result = Settlements::PreviewDrift.call(event_id: event[:id])
@@ -344,11 +344,11 @@ RSpec.describe "Settlement chain" do
 
     it "surfaces drift when a late RSVP changes the fair share" do
       insert_expense(user: alice, amount: 90)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
       create_call
 
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: carol)
 
       result = Settlements::PreviewDrift.call(event_id: event[:id])
       expect(result.success?).to be true
@@ -365,13 +365,13 @@ RSpec.describe "Settlement chain" do
   describe "concurrency" do
     it "picks up a newly-inserted tip rather than branching off a stale one" do
       insert_expense(user: alice, amount: 20)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
       first = create_call
       tip_id = settlements_from(first).first[:id]
 
       # Simulate a competing top-up that already committed.
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: carol)
       DB[:settlements].insert(
         id: SecureRandom.uuid,
         event_id: event[:id],
@@ -390,11 +390,11 @@ RSpec.describe "Settlement chain" do
 
     it "surfaces the race failure when successor? flips mid-transaction" do
       insert_expense(user: alice, amount: 20)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
       create_call
 
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: carol)
 
       allow(Settlement).to receive(:successor?).and_return(true)
 
@@ -405,8 +405,8 @@ RSpec.describe "Settlement chain" do
 
     it "blocks a direct insert that would fork the chain via the unique index" do
       insert_expense(user: alice, amount: 20)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
       first = create_call
       tip_id = settlements_from(first).first[:id]
 
@@ -441,8 +441,8 @@ RSpec.describe "Settlement chain" do
     it "supersedes the stale transfer and issues no refund when nothing was paid" do
       alice_membership = TestFactories.workspace_membership(workspace: workspace, user: alice)
       alice_membership = WorkspaceMembership.find(alice_membership[:id])
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
       expense_id = insert_expense(user: alice, amount: 90)
       first = create_call
       prior_transfer_id = transfers_from(first).first[:id]
@@ -462,8 +462,8 @@ RSpec.describe "Settlement chain" do
     it "issues a refund transfer when the prior transfer was paid" do
       alice_membership = TestFactories.workspace_membership(workspace: workspace, user: alice)
       alice_membership = WorkspaceMembership.find(alice_membership[:id])
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
       expense_id = insert_expense(user: alice, amount: 90)
       first = create_call
       prior_transfer_id = transfers_from(first).first[:id]
@@ -487,8 +487,8 @@ RSpec.describe "Settlement chain" do
     it "fully undoes a factor-weighted expense even if RSVPs churn" do
       alice_membership = TestFactories.workspace_membership(workspace: workspace, user: alice)
       alice_membership = WorkspaceMembership.find(alice_membership[:id])
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
 
       expense_id = insert_expense(user: alice, amount: 60)
       DB[:expense_participants].where(expense_id: expense_id).delete
@@ -499,7 +499,7 @@ RSpec.describe "Settlement chain" do
       prior_transfer_id = transfers_from(first).first[:id]
       DB[:settlement_transfers].where(id: prior_transfer_id).update(paid_at: Time.now)
 
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: carol)
 
       Expenses::Revert.call(expense_id: expense_id, membership: alice_membership, workspace_id: workspace[:id])
 
@@ -523,20 +523,19 @@ RSpec.describe "Settlement chain" do
     # Bob then shortens his RSVP to Jan 1-2 (two days instead of three).
     # Alice reverts the original. The top-up should transfer exactly 45
     # back from Alice to Bob, so the two settlements net to zero movement.
-    it "fully undoes the original even when an RSVP range has shifted" do
+    it "fully undoes the original even when an attendance day set has shifted" do
       alice_membership = TestFactories.workspace_membership(workspace: workspace, user: alice)
       alice_membership = WorkspaceMembership.find(alice_membership[:id])
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      bob_rsvp = TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      bob_attendance = TestFactories.attendance(event: event, user: bob)
       expense_id = insert_expense(user: alice, amount: 90)
 
       first = create_call
       prior_transfer_id = transfers_from(first).first[:id]
       DB[:settlement_transfers].where(id: prior_transfer_id).update(paid_at: Time.now)
 
-      DB[:rsvps].where(id: bob_rsvp[:id]).update(
-        start_date: Date.new(2026, 1, 1),
-        end_date: Date.new(2026, 1, 2)
+      DB[:attendances].where(id: bob_attendance[:id]).update(
+        days: Sequel.pg_jsonb([Date.new(2026, 1, 1), Date.new(2026, 1, 2)].map(&:iso8601))
       )
 
       Expenses::Revert.call(expense_id: expense_id, membership: alice_membership, workspace_id: workspace[:id])
@@ -558,13 +557,12 @@ RSpec.describe "Settlement chain" do
     # paid, which is only meaningful once the prior transfer was paid.
     it "refunds a user who un-RSVPs after settling and paying" do
       insert_expense(user: alice, amount: 90)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      bob_rsvp = TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
       first = create_call
       prior_transfer_id = transfers_from(first).first[:id]
       DB[:settlement_transfers].where(id: prior_transfer_id).update(paid_at: Time.now)
 
-      DB[:rsvps].where(id: bob_rsvp[:id]).update(attending: false)
       DB[:attendances].where(event_id: event[:id], user_id: bob[:id]).update(status: "declined", days: nil)
 
       top_up = create_call
@@ -580,12 +578,11 @@ RSpec.describe "Settlement chain" do
     # supersedes the stale 45 — no refund needed because no money moved.
     it "supersedes the stale transfer with no refund when it was never paid" do
       insert_expense(user: alice, amount: 90)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      bob_rsvp = TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
       first = create_call
       prior_transfer_id = transfers_from(first).first[:id]
 
-      DB[:rsvps].where(id: bob_rsvp[:id]).update(attending: false)
       DB[:attendances].where(event_id: event[:id], user_id: bob[:id]).update(status: "declined", days: nil)
 
       top_up = create_call
@@ -598,12 +595,10 @@ RSpec.describe "Settlement chain" do
   describe "empty attending RSVPs on top-up with new expenses" do
     it "fails with an explicit message rather than the generic 'up to date'" do
       insert_expense(user: alice, amount: 60)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      bob_rsvp = TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
       create_call
 
-      DB[:rsvps].where(event_id: event[:id]).update(attending: false)
-      DB[:rsvps].where(id: bob_rsvp[:id]).update(attending: false)
       DB[:attendances].where(event_id: event[:id]).update(status: "declined", days: nil)
 
       insert_expense(user: alice, amount: 30)
@@ -622,7 +617,7 @@ RSpec.describe "Settlement chain" do
     it "keeps per-user net movements within one cent of the fair share" do
       users = [alice, bob, carol, TestFactories.user(name: "Dave"), TestFactories.user(name: "Eve"),
                TestFactories.user(name: "Faye"), TestFactories.user(name: "Gil")]
-      users.each { |u| TestFactories.rsvp(event: event, user: u, attending: true) }
+      users.each { |u| TestFactories.attendance(event: event, user: u) }
 
       insert_expense(user: alice, amount: 99.99)
       create_call
@@ -671,11 +666,10 @@ RSpec.describe "Settlement chain" do
     # snapshot would emit phantom reversal transfers. Refuse instead.
     it "refuses rather than emitting phantom reversal transfers" do
       insert_expense(user: alice, amount: 60)
-      alice_rsvp = TestFactories.rsvp(event: event, user: alice, attending: true)
-      bob_rsvp = TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
       create_call
 
-      DB[:rsvps].where(id: [alice_rsvp[:id], bob_rsvp[:id]]).update(attending: false)
       DB[:attendances].where(event_id: event[:id]).update(status: "declined", days: nil)
 
       result = create_call
@@ -692,11 +686,11 @@ RSpec.describe "Settlement chain" do
     # fresh fair share.
     it "issues fair-share transfers into Alice and nobody pays Bob" do
       insert_expense(user: alice, amount: 100)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
       create_call
 
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: carol)
 
       top_up = create_call
       expect(top_up.success?).to be true
@@ -715,11 +709,11 @@ RSpec.describe "Settlement chain" do
     # must agree, or users act on stale numbers.
     it "emits the same transfer set that a subsequent Create would produce" do
       insert_expense(user: alice, amount: 90)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
       create_call
 
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: carol)
       insert_expense(user: bob, amount: 30)
 
       preview = Settlements::PreviewDrift.call(event_id: event[:id]).value!
@@ -736,16 +730,16 @@ RSpec.describe "Settlement chain" do
 
     it "agrees with Create when the prior chain mixes paid and unpaid transfers" do
       insert_expense(user: alice, amount: 120)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
+      TestFactories.attendance(event: event, user: carol)
       first = create_call
       first_transfers = transfers_from(first)
       # Mark one paid, leave the other unpaid.
       DB[:settlement_transfers].where(id: first_transfers.first[:id]).update(paid_at: Time.now)
 
       dave = TestFactories.user(name: "Dave")
-      TestFactories.rsvp(event: event, user: dave, attending: true)
+      TestFactories.attendance(event: event, user: dave)
 
       preview = Settlements::PreviewDrift.call(event_id: event[:id]).value!
       actual = transfers_from(create_call)
@@ -766,9 +760,9 @@ RSpec.describe "Settlement chain" do
     # superseded. Both outcomes have to hold simultaneously.
     it "supersedes the unpaid transfer and keeps the paid one active" do
       insert_expense(user: alice, amount: 120)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
+      TestFactories.attendance(event: event, user: carol)
       first = create_call
       transfers = transfers_from(first)
       paid_id = transfers.first[:id]
@@ -776,7 +770,7 @@ RSpec.describe "Settlement chain" do
       DB[:settlement_transfers].where(id: paid_id).update(paid_at: Time.now)
 
       dave = TestFactories.user(name: "Dave")
-      TestFactories.rsvp(event: event, user: dave, attending: true)
+      TestFactories.attendance(event: event, user: dave)
 
       top_up = create_call
       expect(top_up.success?).to be true
@@ -792,18 +786,18 @@ RSpec.describe "Settlement chain" do
     # scope to just the tip would silently break accounting.
     it "keeps paid earlier transfers active and supersedes unpaid ones in the current tip" do
       insert_expense(user: alice, amount: 60)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
       first = create_call
       paid_early = transfers_from(first).first[:id]
       DB[:settlement_transfers].where(id: paid_early).update(paid_at: Time.now)
 
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: carol)
       second = create_call
       unpaid_later = transfers_from(second).map { |t| t[:id] }
 
       dave = TestFactories.user(name: "Dave")
-      TestFactories.rsvp(event: event, user: dave, attending: true)
+      TestFactories.attendance(event: event, user: dave)
       third = create_call
       expect(third.success?).to be true
 
@@ -821,8 +815,8 @@ RSpec.describe "Settlement chain" do
     it "proceeds when residual is zero but unsettled expenses remain" do
       insert_expense(user: alice, amount: 50)
       insert_expense(user: bob, amount: 50)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
 
       result = create_call
       expect(result.success?).to be true
@@ -836,15 +830,15 @@ RSpec.describe "Settlement chain" do
   describe "mid-chain delete on a longer chain" do
     it "refuses to delete the middle settlement of a length-3 chain" do
       insert_expense(user: alice, amount: 90)
-      TestFactories.rsvp(event: event, user: alice, attending: true)
-      TestFactories.rsvp(event: event, user: bob, attending: true)
+      TestFactories.attendance(event: event, user: alice)
+      TestFactories.attendance(event: event, user: bob)
       first_id = settlements_from(create_call).first[:id]
 
-      TestFactories.rsvp(event: event, user: carol, attending: true)
+      TestFactories.attendance(event: event, user: carol)
       middle_id = settlements_from(create_call).first[:id]
 
       dave = TestFactories.user(name: "Dave")
-      TestFactories.rsvp(event: event, user: dave, attending: true)
+      TestFactories.attendance(event: event, user: dave)
       create_call
 
       expect(

@@ -98,7 +98,7 @@ RSpec.describe DatePolls::Close do
     expect(db_poll[:selected_date_range_id]).to eq(date_range[:id])
   end
 
-  it "auto-RSVPs yes-voters on the winning date range" do
+  it "marks yes-voters on the winning date range as going" do
     owner = TestFactories.user
     voter1 = TestFactories.user
     voter2 = TestFactories.user
@@ -118,25 +118,25 @@ RSpec.describe DatePolls::Close do
     )
 
     expect(result.success?).to be true
-    rsvps = DB[:rsvps].where(event_id: event[:id]).all
-    expect(rsvps.length).to eq(2)
-    expect(rsvps.map { |r| r[:user_id] }).to contain_exactly(voter1[:id], voter3[:id])
-    expect(rsvps.all? { |r| r[:attending] == true }).to be true
+    rows = DB[:attendances].where(event_id: event[:id]).all
+    expect(rows.length).to eq(2)
+    expect(rows.map { |r| r[:user_id] }).to contain_exactly(voter1[:id], voter3[:id])
+    expect(rows.all? { |r| r[:status] == "going" }).to be true
 
-    # RSVP objects should be in the response
-    rsvp_objects = result.value![:objects].select { |o| o[:objectType] == "rsvp" }
-    expect(rsvp_objects.length).to eq(2)
+    attendance_objects = result.value![:objects].select { |o| o[:objectType] == "attendance" }
+    expect(attendance_objects.length).to eq(2)
   end
 
-  it "mirrors auto-RSVPs into member attendances (dual-write, doc/attendances.md phase 2)" do
+  it "flips a pre-existing declined attendance back to going without duplicating the row" do
     owner = TestFactories.user
     voter = TestFactories.user
     event = TestFactories.event(workspace: workspace, user: owner)
     date_poll = TestFactories.date_poll(event: event)
     date_range = TestFactories.date_range(date_poll: date_poll)
     TestFactories.vote(user: voter, date_range: date_range, response: "yes")
-    # A pre-existing declined mirror must flip back to going with the rsvp.
-    declined_mirror = TestFactories.attendance(event: event, user: voter, status: "declined")
+    # The voter answered "not going" before the poll closed; their yes vote
+    # on the winning range flips the same row back to going.
+    declined_row = TestFactories.attendance(event: event, user: voter, status: "declined")
 
     result = described_class.call(
       event_id: event[:id],
@@ -145,25 +145,24 @@ RSpec.describe DatePolls::Close do
     )
 
     expect(result.success?).to be true
-    row = DB[:attendances].where(id: declined_mirror[:id]).first
+    row = DB[:attendances].where(id: declined_row[:id]).first
     expect(row[:status]).to eq("going")
     expect(row[:days]).to be_nil
     expect(DB[:attendances].where(event_id: event[:id]).count).to eq(1)
   end
 
-  it "keeps an existing rsvp's day set on the attendance mirror" do
+  it "keeps an existing attendance's day set" do
     owner = TestFactories.user
     voter = TestFactories.user
     event = TestFactories.event(workspace: workspace, user: owner)
     # Polls can run on already-dated events, so the voter may have answered
-    # with a partial day set before the poll closed. Close keeps that day
-    # set on the rsvp — the mirror must carry the same days instead of
-    # widening to whole-event.
+    # with a partial day set before the poll closed. Close must keep that
+    # day set instead of widening to whole-event.
     DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 7)
     date_poll = TestFactories.date_poll(event: event)
     date_range = TestFactories.date_range(date_poll: date_poll)
     picked = [Date.today + 1, Date.today + 2].map(&:iso8601)
-    TestFactories.rsvp(event: event, user: voter, attendance: picked)
+    TestFactories.attendance(event: event, user: voter, days: picked)
     TestFactories.vote(user: voter, date_range: date_range, response: "yes")
 
     result = described_class.call(
@@ -176,31 +175,6 @@ RSpec.describe DatePolls::Close do
     row = DB[:attendances].where(event_id: event[:id], user_id: voter[:id]).first
     expect(row[:status]).to eq("going")
     expect(row[:days].to_a).to eq(picked)
-  end
-
-  it "does not raise a unique constraint violation when a yes-voter already has an RSVP" do
-    owner = TestFactories.user
-    voter = TestFactories.user
-    event = TestFactories.event(workspace: workspace, user: owner)
-    date_poll = TestFactories.date_poll(event: event)
-    date_range = TestFactories.date_range(date_poll: date_poll)
-
-    TestFactories.vote(user: voter, date_range: date_range, response: "yes")
-    # Voter already has a pre-existing RSVP (e.g. set manually before the poll closed)
-    TestFactories.rsvp(event: event, user: voter, attending: false)
-
-    result = described_class.call(
-      event_id: event[:id],
-      membership: membership_for(owner),
-      selected_date_range_id: date_range[:id]
-    )
-
-    expect(result.success?).to be true
-    rsvps = DB[:rsvps].where(event_id: event[:id], user_id: voter[:id]).all
-    # No duplicate RSVP should have been created
-    expect(rsvps.length).to eq(1)
-    # Existing RSVP should be updated to attending: true
-    expect(rsvps.first[:attending]).to be true
   end
 
   describe "poll closed emails" do

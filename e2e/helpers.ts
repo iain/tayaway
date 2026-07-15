@@ -134,8 +134,8 @@ export async function createDatedEvent(
   const event = getObjectByType(body.objects, 'event')
   const eventId = event!.id
 
-  await request.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
-    data: { attending: true },
+  await request.post(`${API_BASE}/api/events/${eventId}/attendances`, {
+    data: { status: 'going' },
   })
 
   return eventId

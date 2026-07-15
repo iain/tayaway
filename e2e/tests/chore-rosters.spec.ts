@@ -1049,8 +1049,8 @@ test.describe('Chore Rosters Feature', () => {
       const rosterId = await createRoster(ctx, eventId)
       await addChore(ctx, rosterId, 'Cooking')
 
-      await ctx.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
-        data: { attending: false },
+      await ctx.post(`${API_BASE}/api/events/${eventId}/attendances`, {
+        data: { status: 'declined' },
       })
       await ctx.dispose()
 

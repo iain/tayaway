@@ -145,12 +145,10 @@ function mkEvent(attendances: HydratedAttendance[]): HydratedEvent {
     workspaceId: 'ws-1',
     userId: 'user-alice',
     datePollId: null,
-    rsvpIds: [],
     attendanceIds: attendances.map((a) => a.id),
     workspace: undefined,
     member: undefined,
     datePoll: null,
-    rsvps: [],
     attendances,
   }
 }

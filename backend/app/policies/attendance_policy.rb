@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Maximally open, matching the RSVP policy: any workspace member may create
+# Maximally open: any workspace member may create
 # or edit any attendance. The decline blockers are invariants with a path
 # forward (settle the expenses, remove your guests) → MODAL in
 # usePermission.ts. Guest rows always allow decline — removing a guest *is*
