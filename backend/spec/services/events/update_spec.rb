@@ -266,4 +266,69 @@ RSpec.describe Events::Update do
     expect(updated_event[:latitude]).to be_nil
     expect(updated_event[:longitude]).to be_nil
   end
+
+  describe "date-change reset (doc/attendances.md phase 6)" do
+    def update_dates(event, membership, start_date, end_date)
+      described_class.call(
+        event_id: event[:id], membership: membership,
+        name: "Trip", description: nil,
+        start_date: start_date.iso8601, end_date: end_date.iso8601
+      )
+    end
+
+    it "keeps the people and clears the answers when dates change" do
+      owner = TestFactories.user
+      membership = membership_for(owner)
+      event = TestFactories.event(workspace: workspace, user: owner)
+      DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 3)
+      rsvp = TestFactories.rsvp(event: event, user: owner, attendance: [Date.today])
+      guest = TestFactories.guest(workspace: workspace)
+      guest_row = TestFactories.attendance(event: event, guest: guest, host: owner, days: [Date.today])
+
+      result = update_dates(event, membership, Date.today + 10, Date.today + 13)
+
+      expect(result.success?).to be true
+      rows = DB[:attendances].where(event_id: event[:id]).all
+      expect(rows.length).to eq(2)
+      expect(rows.map { |r| r[:status] }).to all(eq("pending"))
+      expect(rows.map { |r| r[:days] }).to all(be_nil)
+      expect(rows.map { |r| r[:id] }).to include(guest_row[:id])
+      # Legacy rsvp rows are deleted for stale clients (row absence is their
+      # "no response"), with tombstones so their pools drop the rows too.
+      expect(DB[:rsvps].where(id: rsvp[:id]).count).to eq(0)
+      expect(DB[:deleted_items].where(object_type: "rsvp", object_id: rsvp[:id]).count).to eq(1)
+      expect(result.value![:deleted]).to include({ objectType: "rsvp", id: rsvp[:id] })
+    end
+
+    it "notifies the people who had answered, resolved before the revert" do
+      owner = TestFactories.user
+      attendee = TestFactories.user
+      membership = membership_for(owner)
+      membership_for(attendee)
+      event = TestFactories.event(workspace: workspace, user: owner)
+      DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 3)
+      TestFactories.rsvp(event: event, user: attendee, attending: true)
+
+      update_dates(event, membership, Date.today + 10, Date.today + 13)
+
+      expect(DB[:notifications].where(user_id: attendee[:id], kind: "event_details_changed").count).to eq(1)
+      expect(DB[:attendances].where(event_id: event[:id], user_id: attendee[:id]).get(:status)).to eq("pending")
+    end
+
+    it "does not reset when dates are set for the first time or unchanged" do
+      owner = TestFactories.user
+      membership = membership_for(owner)
+      event = TestFactories.event(workspace: workspace, user: owner)
+
+      first_set = update_dates(event, membership, Date.today, Date.today + 3)
+      expect(first_set.success?).to be true
+
+      TestFactories.rsvp(event: event, user: owner, attending: true)
+      unchanged = update_dates(event, membership, Date.today, Date.today + 3)
+
+      expect(unchanged.success?).to be true
+      expect(DB[:attendances].where(event_id: event[:id]).get(:status)).to eq("going")
+      expect(DB[:rsvps].where(event_id: event[:id]).count).to eq(1)
+    end
+  end
 end
