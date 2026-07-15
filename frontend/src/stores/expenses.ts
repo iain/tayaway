@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { nowIso } from '@/utils/date'
 import { useMutation } from '@/composables/useMutation'
 import { useAuthStore } from './auth'
 import { useObjectPoolStore } from './objectPool'
@@ -26,7 +27,7 @@ export const useExpensesStore = defineStore('expenses', () => {
     onBehalfOfUserId?: string
   ) {
     const expenseId = crypto.randomUUID()
-    const now = new Date().toISOString()
+    const now = nowIso()
     const pool = useObjectPoolStore()
     const actorUserId = useAuthStore().currentUserId ?? null
     const subjectUserId = onBehalfOfUserId ?? actorUserId

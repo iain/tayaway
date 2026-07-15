@@ -28,7 +28,13 @@ import TimeAnchor from '@/components/common/TimeAnchor.vue'
 import AlertBox from '@/components/common/AlertBox.vue'
 import type { PoolMember, PoolWorkspaceInvite } from '@/types/pool'
 import { can } from '@/composables/usePermission'
-import { formatBirthday } from '@/utils/date'
+import {
+  formatBirthday,
+  isPastIso,
+  addHours,
+  formatClockTime,
+  daysUntilBirthday,
+} from '@/utils/date'
 import { generateVCard, downloadVCard } from '@/utils/vcard'
 import { getInitials } from '@/utils/member'
 
@@ -112,27 +118,27 @@ async function handleCancelInvite(id: string): Promise<void> {
   }
 }
 
+// Reminders are gated behind a 24h cooldown from the last send (or the invite's
+// creation, if none was sent yet).
+const REMIND_COOLDOWN_HOURS = 24
+
 function isExpired(invite: PoolWorkspaceInvite): boolean {
-  return new Date(invite.expiresAt) < new Date()
+  return isPastIso(invite.expiresAt)
+}
+
+function remindCooldownUntil(invite: PoolWorkspaceInvite): string {
+  return addHours(
+    invite.lastRemindedAt ?? invite.createdAt,
+    REMIND_COOLDOWN_HOURS
+  )
 }
 
 function canRemind(invite: PoolWorkspaceInvite): boolean {
-  const lastSentAt = invite.lastRemindedAt ?? invite.createdAt
-  const cooldownUntil = new Date(
-    new Date(lastSentAt).getTime() + 24 * 60 * 60 * 1000
-  )
-  return new Date() >= cooldownUntil
+  return isPastIso(remindCooldownUntil(invite))
 }
 
 function remindAvailableAt(invite: PoolWorkspaceInvite): string {
-  const lastSentAt = invite.lastRemindedAt ?? invite.createdAt
-  const cooldownUntil = new Date(
-    new Date(lastSentAt).getTime() + 24 * 60 * 60 * 1000
-  )
-  return cooldownUntil.toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return formatClockTime(remindCooldownUntil(invite))
 }
 
 async function handleRemind(id: string): Promise<void> {
@@ -161,12 +167,7 @@ function invitedByName(invite: PoolWorkspaceInvite): string | null {
 }
 
 function isBirthday(member: PoolMember): boolean {
-  if (!member.birthday) return false
-  const today = new Date()
-  const [, month, day] = member.birthday.split('-')
-  return (
-    today.getMonth() + 1 === Number(month) && today.getDate() === Number(day)
-  )
+  return daysUntilBirthday(member.birthday) === 0
 }
 
 function handleDownloadVCard(member: PoolMember): void {

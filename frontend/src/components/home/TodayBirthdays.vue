@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CakeIcon } from '@heroicons/vue/24/outline'
+import { GiftIcon } from '@heroicons/vue/24/outline'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import type { PoolMember } from '@/types/pool'
 
@@ -10,7 +10,7 @@ defineProps<{
 
 <template>
   <section>
-    <SectionHeading :icon="CakeIcon" title="Happy Birthday!" />
+    <SectionHeading :icon="GiftIcon" title="Happy Birthday!" />
 
     <ul class="space-y-3">
       <li
@@ -20,7 +20,7 @@ defineProps<{
       >
         <div class="flex items-center gap-4 px-4 py-4 sm:px-6">
           <div
-            class="flex size-10 shrink-0 animate-bounce items-center justify-center rounded-full bg-amber-300 text-lg ring-4 ring-amber-400/50 dark:bg-amber-500 dark:ring-amber-500/50"
+            class="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-300 text-lg ring-4 ring-amber-400/50 dark:bg-amber-500 dark:ring-amber-500/50"
           >
             🎂
           </div>

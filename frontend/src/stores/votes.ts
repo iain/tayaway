@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { nowIso } from '@/utils/date'
 import { useMutation } from '@/composables/useMutation'
 import { useAuthStore } from './auth'
 import { useObjectPoolStore } from './objectPool'
@@ -43,7 +44,7 @@ export const useVotesStore = defineStore('votes', () => {
       return { voteId: existingVote.id, queued: result.queued }
     } else {
       const voteId = crypto.randomUUID()
-      const now = new Date().toISOString()
+      const now = nowIso()
       const tempVote: PoolVote = {
         id: voteId,
         objectType: 'vote',

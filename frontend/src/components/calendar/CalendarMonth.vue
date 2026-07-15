@@ -245,7 +245,7 @@ function handleMouseLeave(): void {
         @mouseenter="handleMouseEnter(day, $event)"
         @mouseleave="handleMouseLeave"
       >
-        {{ day.date.getDate() }}
+        {{ day.dayOfMonth }}
       </button>
     </div>
   </div>

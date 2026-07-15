@@ -66,12 +66,20 @@ jobs:
           install: true
           cache: true
 
+      # Fork PRs run with a read-only GITHUB_TOKEN that cannot write packages,
+      # so the push steps below are skipped there — the job still validates
+      # the lockfile via MISE_LOCKED above. If a fork PR changes mise.lock,
+      # a maintainer must publish the new tag (workflow_dispatch on a base-repo
+      # branch with the same lockfile) or images.yml times out waiting for it.
+
       # `mise oci push` shells out to skopeo or crane; neither is on
       # ubuntu-latest runners by default.
       - name: Install skopeo
+        if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
         run: sudo apt-get update && sudo apt-get install -y skopeo
 
       - name: Log in to GHCR
+        if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
         env:
           GHCR_USER: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -80,6 +88,7 @@ jobs:
       # Content-addressed push. If the tag already exists, skopeo verifies
       # the blobs and exits without re-uploading.
       - name: Build and push toolchain image
+        if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
         env:
           MISE_EXPERIMENTAL: "1"
           OWNER: ${{ github.repository_owner }}

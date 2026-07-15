@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { nowIso } from '@/utils/date'
 import { useMutation } from '@/composables/useMutation'
 import { useObjectPoolStore } from './objectPool'
 import { useAuthStore } from './auth'
@@ -29,7 +30,7 @@ export const useSettlementsStore = defineStore('settlements', () => {
       'Failed to update transfer',
       'settlementTransfer',
       transferId,
-      { paidAt: paid ? new Date().toISOString() : null },
+      { paidAt: paid ? nowIso() : null },
       (commandQueue) =>
         commandQueue.enqueue<PoolApiResponse>(
           'PUT',
@@ -55,7 +56,7 @@ export const useSettlementsStore = defineStore('settlements', () => {
   }) {
     const pool = useObjectPoolStore()
     const auth = useAuthStore()
-    const optimisticPaidAt = new Date().toISOString()
+    const optimisticPaidAt = nowIso()
     // Stamp paidByUserId optimistically so the row jumps straight into
     // "Recently settled" with the right "Marked by you" attribution; the
     // server is still authoritative once the response lands.
