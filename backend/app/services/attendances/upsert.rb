@@ -44,6 +44,7 @@ module Attendances
             .bind { |event| validate_event_has_dates(event) }
             .bind { |event| resolve_subject(event, user_id, guest_id, guest) }
             .bind { |ctx| resolve_host(ctx, host_user_id, membership) }
+            .bind { |ctx| validate_host_attending(ctx, status) }
             .bind { |ctx| validate_member_decline(ctx, status) }
             .bind { |ctx| resolve_days(ctx, status, days) }
             .bind { |ctx| upsert_attendance(ctx, status, resolved_id, membership.user_id) }
@@ -152,6 +153,21 @@ module Attendances
           Success(ctx.merge(host: host_user_id, host_explicit: true))
         else
           Failure(ServiceError.validation("Host is not a member of this workspace"))
+        end
+      end
+
+      # The decline guard below refuses to strand going guests on an absent
+      # host; this is the same invariant from the other direction — a guest
+      # cannot be marked going under a host who has already declined. Pending
+      # (or unanswered) hosts don't block: undecided is not absent, and a date
+      # reset parks everyone at pending. Nor do non-going guest transitions —
+      # parking or removing a guest must always work.
+      def validate_host_attending(ctx, status)
+        if ctx[:subject][:kind] == :guest && status == "going" &&
+           DB[:attendances].where(event_id: ctx[:event].id, user_id: ctx[:host], status: "declined").count > 0
+          Failure(ServiceError.forbidden("The host is marked as not attending this event"))
+        else
+          Success(ctx)
         end
       end
 
