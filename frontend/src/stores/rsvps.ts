@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { nowIso } from '@/utils/date'
 import { useMutation } from '@/composables/useMutation'
 import { useAuthStore } from './auth'
 import { useObjectPoolStore } from './objectPool'
@@ -66,7 +67,7 @@ export const useRsvpsStore = defineStore('rsvps', () => {
       return { rsvpId: existingRsvp.id, queued: result.queued }
     } else {
       const rsvpId = crypto.randomUUID()
-      const now = new Date().toISOString()
+      const now = nowIso()
       const tempRsvp: PoolRsvp = {
         id: rsvpId,
         objectType: 'rsvp',

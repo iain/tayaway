@@ -16,7 +16,7 @@ import {
 } from '@/stores'
 import PageHeader from '@/components/common/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
-import type { PoolMember } from '@/types/pool'
+import { daysUntilBirthday, UPCOMING_BIRTHDAY_WINDOW_DAYS } from '@/utils/date'
 import TodayBirthdays from '@/components/home/TodayBirthdays.vue'
 import UpcomingBirthdays from '@/components/home/UpcomingBirthdays.vue'
 import OpenSettlementsSection from '@/components/home/OpenSettlementsSection.vue'
@@ -130,49 +130,20 @@ const pastEventsWithOpenExpenses = computed(() =>
 
 const { members } = storeToRefs(useMembersStore())
 
-function birthdayMonthDay(member: PoolMember): [number, number] | null {
-  if (!member.birthday) return null
-  const [, month, day] = member.birthday.split('-')
-  return [Number(month), Number(day)]
-}
+const todayBirthdays = computed(() =>
+  members.value.filter((member) => daysUntilBirthday(member.birthday) === 0)
+)
 
-const todayBirthdays = computed(() => {
-  const today = new Date()
-  const m = today.getMonth() + 1
-  const d = today.getDate()
-  return members.value.filter((member) => {
-    const md = birthdayMonthDay(member)
-    return md && md[0] === m && md[1] === d
-  })
-})
-
-const upcomingBirthdays = computed(() => {
-  const today = new Date()
-  const todayM = today.getMonth() + 1
-  const todayD = today.getDate()
-
-  return members.value
+const upcomingBirthdays = computed(() =>
+  members.value
     .filter((member) => {
-      const md = birthdayMonthDay(member)
-      if (!md) return false
-      // Exclude today's birthdays
-      if (md[0] === todayM && md[1] === todayD) return false
-      // Check if birthday falls within the next 7 days
-      for (let i = 1; i <= 7; i++) {
-        const future = new Date(today)
-        future.setDate(future.getDate() + i)
-        if (md[0] === future.getMonth() + 1 && md[1] === future.getDate()) {
-          return true
-        }
-      }
-      return false
+      const days = daysUntilBirthday(member.birthday)
+      return days !== null && days > 0 && days <= UPCOMING_BIRTHDAY_WINDOW_DAYS
     })
-    .sort((a, b) => {
-      const amd = birthdayMonthDay(a)!
-      const bmd = birthdayMonthDay(b)!
-      return amd[0] - bmd[0] || amd[1] - bmd[1]
-    })
-})
+    .sort(
+      (a, b) => daysUntilBirthday(a.birthday)! - daysUntilBirthday(b.birthday)!
+    )
+)
 
 const hasBirthdays = computed(
   () => todayBirthdays.value.length > 0 || upcomingBirthdays.value.length > 0

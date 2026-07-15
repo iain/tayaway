@@ -1,4 +1,5 @@
 import { ref, onUnmounted } from 'vue'
+import { msUntilNextLocalMidnight } from '@/utils/date'
 
 /**
  * Returns a reactive `now` ref that updates at midnight (local time).
@@ -13,15 +14,10 @@ export function useNow() {
   let timer: ReturnType<typeof setTimeout>
 
   function scheduleNextMidnight() {
-    const n = new Date()
-    const msUntilMidnight =
-      new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1).getTime() -
-      n.getTime()
-
     timer = setTimeout(() => {
       now.value = new Date()
       scheduleNextMidnight()
-    }, msUntilMidnight)
+    }, msUntilNextLocalMidnight())
   }
 
   scheduleNextMidnight()

@@ -8,6 +8,7 @@ import WizardStepPeople from '@/components/expenses/WizardStepPeople.vue'
 import { useExpensesStore } from '@/stores/expenses'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useAuthStore } from '@/stores/auth'
+import { localIsoDate } from '@/utils/date'
 import type { PoolEvent, PoolExpense } from '@/types/pool'
 
 const props = defineProps<{
@@ -194,7 +195,7 @@ watch(
           const rangeEnd = rsvp?.endDate ?? props.event.endDate!
 
           // If today falls within the range, default to today (most likely adding a recent expense)
-          const today = new Date().toISOString().slice(0, 10)
+          const today = localIsoDate()
           if (today >= rangeStart && today <= rangeEnd) {
             startDate.value = today
             endDate.value = today
@@ -205,7 +206,7 @@ watch(
             singleDate.value = rangeStart === rangeEnd
           }
         } else {
-          const today = new Date().toISOString().slice(0, 10)
+          const today = localIsoDate()
           startDate.value = today
           endDate.value = today
         }

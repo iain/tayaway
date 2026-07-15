@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { nowIso } from '@/utils/date'
 import { useMutation } from '@/composables/useMutation'
 import { useObjectPoolStore } from './objectPool'
 import { useCommandQueueStore, CommandQueuedError } from './commandQueue'
@@ -11,7 +12,7 @@ export const useTaskItemsStore = defineStore('taskItems', () => {
 
   async function addItem(taskListId: string, content: string) {
     const itemId = crypto.randomUUID()
-    const now = new Date().toISOString()
+    const now = nowIso()
     const tempItem: PoolTaskItem = {
       id: itemId,
       objectType: 'taskItem',
@@ -50,9 +51,7 @@ export const useTaskItemsStore = defineStore('taskItems', () => {
       poolChanges.content = changes.content
     }
     if (changes.completed !== undefined) {
-      poolChanges.completedAt = changes.completed
-        ? new Date().toISOString()
-        : null
+      poolChanges.completedAt = changes.completed ? nowIso() : null
     }
 
     await update(
