@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon'
 import type { DatePollStatus } from '@/types/pool'
 
 interface PollLike {
@@ -29,17 +30,28 @@ export function canClosePoll(
   return isPollActive(poll) && dateRangeCount > 0
 }
 
-export function formatPollDeadline(deadline: string): string {
-  const now = new Date()
-  const diff = new Date(deadline).getTime() - now.getTime()
+export function formatPollDeadline(
+  deadline: string,
+  now: number = Date.now()
+): string {
+  const remaining = DateTime.fromISO(deadline).diff(DateTime.fromMillis(now))
 
-  if (diff <= 0) return 'Deadline passed'
+  if (remaining.toMillis() <= 0) return 'Deadline passed'
 
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const { days, hours, minutes } = remaining.shiftTo('days', 'hours', 'minutes')
 
-  if (days > 0) return `${days}d ${hours}h remaining`
-  if (hours > 0) return `${hours}h remaining`
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-  return `${minutes}m remaining`
+  if (days > 0) return `${days}d ${Math.floor(hours)}h remaining`
+  if (hours >= 1) return `${Math.floor(hours)}h remaining`
+  return `${Math.floor(minutes)}m remaining`
+}
+
+/**
+ * The default poll deadline the "open poll" form pre-fills: a week out at 23:59
+ * local, formatted for an `<input type="datetime-local">` ("YYYY-MM-DDTHH:mm").
+ */
+export function defaultPollDeadline(now: number = Date.now()): string {
+  return DateTime.fromMillis(now)
+    .plus({ days: 7 })
+    .set({ hour: 23, minute: 59, second: 0, millisecond: 0 })
+    .toFormat("yyyy-MM-dd'T'HH:mm")
 }

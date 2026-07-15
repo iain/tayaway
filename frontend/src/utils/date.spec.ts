@@ -1,6 +1,16 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import {
   addDays,
+  daysBetween,
+  msUntilNextLocalMidnight,
+  isPastIso,
+  isFutureIso,
+  addHours,
+  datetimeLocalToIso,
+  formatWeekdayDay,
+  formatClockTime,
+  monthGridDays,
+  nextMondayAfter,
   formatDateDisplay,
   formatDateShort,
   formatDateRange,
@@ -305,5 +315,104 @@ describe('getBirthdayCountdown', () => {
 
   it('returns null for an unparseable birthday', () => {
     expect(getBirthdayCountdown('not-a-date', now)).toBeNull()
+  })
+})
+
+describe('daysBetween', () => {
+  it('counts whole days between two dates', () => {
+    expect(daysBetween('2026-07-01', '2026-07-04')).toBe(3)
+    expect(daysBetween('2026-07-01', '2026-07-01')).toBe(0)
+  })
+
+  it('stays exact across a DST transition (UTC-anchored)', () => {
+    // Europe springs forward on 2026-03-29; UTC anchoring keeps the count whole.
+    expect(daysBetween('2026-03-28', '2026-03-30')).toBe(2)
+  })
+})
+
+describe('msUntilNextLocalMidnight', () => {
+  it('counts the ms remaining until the next local midnight', () => {
+    const now = new Date(2026, 6, 14, 21, 30, 0) // local 2026-07-14 21:30
+    const midnight = new Date(2026, 6, 15, 0, 0, 0)
+    expect(msUntilNextLocalMidnight(now.getTime())).toBe(
+      midnight.getTime() - now.getTime()
+    )
+  })
+})
+
+describe('isPastIso / isFutureIso', () => {
+  const now = Date.UTC(2026, 6, 15, 12, 0)
+
+  it('classifies instants relative to now', () => {
+    expect(isPastIso('2026-07-15T11:00:00Z', now)).toBe(true)
+    expect(isPastIso('2026-07-15T13:00:00Z', now)).toBe(false)
+    expect(isFutureIso('2026-07-15T13:00:00Z', now)).toBe(true)
+    expect(isFutureIso('2026-07-15T11:00:00Z', now)).toBe(false)
+  })
+})
+
+describe('addHours', () => {
+  it('adds hours and returns a UTC ISO string', () => {
+    expect(addHours('2026-07-15T10:00:00Z', 24)).toBe(
+      '2026-07-16T10:00:00.000Z'
+    )
+    expect(addHours('2026-07-15T10:00:00Z', -2)).toBe(
+      '2026-07-15T08:00:00.000Z'
+    )
+  })
+})
+
+describe('datetimeLocalToIso', () => {
+  it('converts a local datetime-local value to a UTC ISO instant', () => {
+    const iso = datetimeLocalToIso('2026-07-15T12:00')
+    expect(iso.endsWith('Z')).toBe(true)
+    expect(new Date(iso).getTime()).toBe(new Date('2026-07-15T12:00').getTime())
+  })
+})
+
+describe('formatWeekdayDay', () => {
+  it('renders short weekday and day-of-month', () => {
+    // 2024-03-10 is a Sunday.
+    expect(formatWeekdayDay('2024-03-10', 'en-US')).toBe('Sun 10')
+  })
+})
+
+describe('formatClockTime', () => {
+  it('renders a clock time', () => {
+    expect(formatClockTime('2026-07-15T14:05:00Z', 'en-US')).toMatch(
+      /\d{1,2}:\d{2}/
+    )
+  })
+})
+
+describe('monthGridDays', () => {
+  it('builds a Monday-first 42-cell grid padded from adjacent months', () => {
+    const days = monthGridDays(2026, 0) // January 2026; Jan 1 is a Thursday
+    expect(days).toHaveLength(42)
+    // The grid opens on the Monday on/before Jan 1 — 2025-12-29.
+    expect(days[0].dateString).toBe('2025-12-29')
+    expect(days[0].isCurrentMonth).toBe(false)
+    expect(days[0].dayOfMonth).toBe(29)
+    // Every in-month day is flagged; January has 31.
+    expect(days.filter((d) => d.isCurrentMonth)).toHaveLength(31)
+    expect(
+      days.some((d) => d.dateString === '2026-01-01' && d.isCurrentMonth)
+    ).toBe(true)
+    expect(
+      days.some((d) => d.dateString === '2026-01-31' && d.isCurrentMonth)
+    ).toBe(true)
+  })
+})
+
+describe('nextMondayAfter', () => {
+  it('returns the Monday that opens the following week', () => {
+    // 2026-07-14 is a Tuesday; 2026-07-13 a Monday.
+    expect(nextMondayAfter('2026-07-14')).toBe('2026-07-20')
+    expect(nextMondayAfter('2026-07-13')).toBe('2026-07-20')
+  })
+
+  it('jumps a full week when the day after is itself a Monday', () => {
+    // 2026-07-19 is a Sunday; the day after is Monday 07-20 → skip to 07-27.
+    expect(nextMondayAfter('2026-07-19')).toBe('2026-07-27')
   })
 })

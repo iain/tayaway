@@ -1,4 +1,4 @@
-import { localIsoDate } from './date'
+import { addDays, daysBetween, localIsoDate } from './date'
 
 interface EventLike {
   startDate: string | null
@@ -6,9 +6,7 @@ interface EventLike {
 }
 
 export function countNights(startDate: string, endDate: string): number {
-  return (
-    (new Date(endDate).getTime() - new Date(startDate).getTime()) / 86_400_000
-  )
+  return daysBetween(startDate, endDate)
 }
 
 export function countDays(startDate: string, endDate: string): number {
@@ -17,14 +15,12 @@ export function countDays(startDate: string, endDate: string): number {
 
 /**
  * Expand an inclusive ISO date range into the list of YYYY-MM-DD strings it
- * covers. Anchored to UTC midnight so day stepping is DST-proof.
+ * covers. Steps by whole calendar days, so it's DST-proof.
  */
 export function enumerateDates(startDate: string, endDate: string): string[] {
   const dates: string[] = []
-  const start = new Date(`${startDate}T00:00:00Z`).getTime()
-  const end = new Date(`${endDate}T00:00:00Z`).getTime()
-  for (let t = start; t <= end; t += 86_400_000) {
-    dates.push(new Date(t).toISOString().slice(0, 10))
+  for (let date = startDate; date <= endDate; date = addDays(date, 1)) {
+    dates.push(date)
   }
   return dates
 }
