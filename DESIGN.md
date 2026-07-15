@@ -444,6 +444,22 @@ On focus, the error field gets the system-wide rose 2px outset focus ring on top
 - **Don't** use bouncy or elastic motion. Ease-out only — the modal's `cubic-bezier(0.25, 1, 0.5, 1)` is the canonical curve.
 - **Don't** animate CSS layout properties. Transform and opacity only, with `will-change` reserved for known-hot interactions.
 
+### The Birthday Exception
+
+<a id="birthday-exception"></a>
+Tayaway's birthday moments are a **sanctioned joy zone** — a birthday is a genuine moment, and the system's own principle is that _delight is saved for moments, not pages_ (see the product register). The zone is scoped to three surfaces and no others: **`TodayBirthdays.vue`** (the "it's today" greeting), **`BirthdayCountdownCard.vue`** (the upcoming-birthday countdown — deliberately the calmest of the three: a plain avatar, a muted status line, and one amber countdown), and the birthday indicator in **`MembersPage.vue`**. Inside these, the following are **permitted**, overriding the matching bans above:
+
+- **Gradient text** (`background-clip: text` over a gradient) on the `TodayBirthdays` greeting — overrides "Don't use gradient text".
+- **Off-palette color** (pink, violet, blue alongside amber) in the celebratory gradients and the countdown progress bar — overrides the Two-Hue Restraint and the No-Decoration Rule.
+- **Celebratory motion** — `TodayBirthdays`' animated gradient background, the countdown bar's sheen, and `MembersPage`'s floating cakes and bouncing-cake avatar — overrides both "Don't decorate" and "Don't use bouncy or elastic motion".
+
+**The guardrails that still apply inside the exception** (a joy zone, not a free-for-all):
+
+- **Reduced motion is non-negotiable.** Every decorative animation collapses under `prefers-reduced-motion`, and the informational countdown keeps ticking without motion. This is the one rule the exception does _not_ relax.
+- **The reduced-motion / static state must clear contrast.** When an animated gradient falls back to a solid color, that solid must hit WCAG AA (≥4.5:1 body / ≥3:1 large) — the fun is in the motion, not in unreadable text.
+- **Meaning never lives in the decoration.** The per-second ticking is `aria-hidden`; screen readers get a calm "Tomorrow" / weekday label. Color is never the sole carrier of state here either.
+- **It does not spread.** This exception is scoped to the three named surfaces. Gradient text, off-palette celebration, or bouncy motion anywhere else in the app is still a violation. If a fourth birthday surface appears, add it here by name.
+
 ## 8. Using the system in code
 
 The design system lives in three places: `frontend/src/style.css` (the Tailwind `@theme` tokens), `frontend/src/components/common/` and `frontend/src/components/form/` (the primitives), and `/design` (the gallery — every primitive in every state, light and dark).

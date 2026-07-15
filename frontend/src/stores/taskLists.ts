@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { nowIso } from '@/utils/date'
 import { useMutation } from '@/composables/useMutation'
 import { useAuthStore } from './auth'
 import { useWorkspaceStore } from './workspace'
@@ -10,7 +11,7 @@ export const useTaskListsStore = defineStore('taskLists', () => {
 
   async function createTaskList(name: string) {
     const listId = crypto.randomUUID()
-    const now = new Date().toISOString()
+    const now = nowIso()
     const workspaceId = useWorkspaceStore().currentWorkspaceId!
     const tempList: PoolTaskList = {
       id: listId,

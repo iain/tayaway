@@ -4,6 +4,8 @@ import { rawApi } from '@/api/client'
 import TimeAnchor from '@/components/common/TimeAnchor.vue'
 import type { Session, SessionsResponse } from '@/types'
 import { useNotificationsStore } from '@/stores'
+import { useLocale } from '@/composables/useLocale'
+import { formatDateShort } from '@/utils/date'
 import BaseCard from '@/components/common/BaseCard.vue'
 import AppBadge from '@/components/common/AppBadge.vue'
 import TextButton from '@/components/common/TextButton.vue'
@@ -13,6 +15,7 @@ defineProps<{
 }>()
 
 const notifications = useNotificationsStore()
+const { locale } = useLocale()
 const sessions = ref<Session[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -101,11 +104,7 @@ async function endAllOtherSessions() {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
+  return formatDateShort(iso, locale.value)
 }
 
 function sessionContext(session: Session): string {

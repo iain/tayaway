@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { nowIso } from '@/utils/date'
 import { useMutation } from '@/composables/useMutation'
 import { useAuthStore } from './auth'
 import { useWorkspaceStore } from './workspace'
@@ -11,7 +12,7 @@ export const useEventsStore = defineStore('events', () => {
 
   async function createEvent(data: CreateEventRequest) {
     const eventId = crypto.randomUUID()
-    const now = new Date().toISOString()
+    const now = nowIso()
     const tempEvent: PoolEvent = {
       id: eventId,
       objectType: 'event',

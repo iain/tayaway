@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { nowIso } from '@/utils/date'
 import { useMutation } from '@/composables/useMutation'
 import { useAuthStore } from './auth'
 import type {
@@ -13,7 +14,7 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
 
   async function createRoster(eventId: string) {
     const rosterId = crypto.randomUUID()
-    const now = new Date().toISOString()
+    const now = nowIso()
     const tempRoster: PoolChoreRoster = {
       id: rosterId,
       objectType: 'choreRoster',
@@ -43,7 +44,7 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
     time: string | null = null
   ) {
     const choreId = crypto.randomUUID()
-    const now = new Date().toISOString()
+    const now = nowIso()
     const tempChore: PoolChore = {
       id: choreId,
       objectType: 'chore',
@@ -125,7 +126,7 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
     date: string
   ) {
     const assignmentId = crypto.randomUUID()
-    const now = new Date().toISOString()
+    const now = nowIso()
     const tempAssignment: PoolChoreAssignment = {
       id: assignmentId,
       objectType: 'choreAssignment',
