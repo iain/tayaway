@@ -255,22 +255,35 @@ function formatDays(days: number): string {
               data-testid="split-guest-row"
               class="text-ink-muted"
             >
-              <td class="max-w-[8rem] truncate py-2 pr-4 pl-8 sm:max-w-none">
-                {{ guest.name }}
-                <span class="text-ink-faint text-xs">
-                  (guest of {{ row.name }})
-                </span>
+              <td class="max-w-[8rem] py-2 pr-4 pl-8 sm:max-w-none">
+                <div class="truncate">
+                  {{ guest.name }}
+                  <span class="text-meta text-ink-faint">
+                    (guest of {{ row.name }})
+                  </span>
+                </div>
+                <!-- The Days and Fair share columns hide below sm; keep the
+                     guest's numbers readable on a phone. -->
+                <p class="text-meta text-ink-faint whitespace-nowrap sm:hidden">
+                  {{ formatDays(guest.days) }} ·
+                  <LedgerAmount :amount="guest.share" />
+                </p>
               </td>
               <td class="hidden py-2 pr-4 sm:table-cell">
                 {{ formatDays(guest.days) }}
               </td>
-              <td class="text-ink-faint py-2 pr-4 text-right">—</td>
+              <td class="text-ink-faint py-2 pr-4 text-right">
+                <span aria-hidden="true">—</span>
+                <span class="sr-only">billed to {{ row.name }}</span>
+              </td>
               <td
                 class="hidden py-2 pr-4 text-right whitespace-nowrap sm:table-cell"
               >
                 <LedgerAmount :amount="guest.share" />
               </td>
-              <td class="text-ink-faint py-2 pr-4 text-right">—</td>
+              <td class="text-ink-faint py-2 pr-4 text-right">
+                <span aria-hidden="true">—</span>
+              </td>
             </tr>
           </template>
         </tbody>

@@ -458,8 +458,11 @@ describe('ExpenseSplit', () => {
       expect(guestRow.text()).toContain('Emma')
       expect(guestRow.text()).toContain('guest of Alice')
       expect(guestRow.text()).toContain('2 days')
-      // Paid and balance stay on the host's row — those cells are em-dashed.
+      // Paid and balance stay on the host's row — those cells are em-dashed
+      // visually, with the billing relationship spelled out for screen
+      // readers.
       expect(guestRow.text().match(/—/g)?.length).toBe(2)
+      expect(guestRow.text()).toContain('billed to Alice')
 
       // The mislabeled guest-day counter is gone; the total is head-days.
       expect(wrapper.text()).not.toContain('+1 guest')
