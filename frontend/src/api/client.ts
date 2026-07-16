@@ -3,6 +3,8 @@ import { processPoolResponse } from '@/api/processPoolResponse'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { Scope } from '@/api/scope'
 import { handleSessionExpired } from '@/api/sessionExpired'
+import { handleUpdateRequired } from '@/api/updateRequired'
+import { PROTOCOL_VERSION } from '@/api/protocolVersion'
 
 export interface ApiResponse<T> {
   data: T
@@ -116,6 +118,8 @@ class RawApiClient {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'X-CSRF-Protection': '1',
+      // The server 426s versions below its minimum; see protocolVersion.ts.
+      'X-Client-Version': String(PROTOCOL_VERSION),
     }
     if (options?.idempotencyKey) {
       headers['Idempotency-Key'] = options.idempotencyKey
@@ -141,6 +145,13 @@ class RawApiClient {
         !AUTH_PATHS.some((p) => path.startsWith(p))
       ) {
         handleSessionExpired()
+      }
+
+      // 426: the server no longer supports this client's protocol version.
+      // Switch into the blocking update-required flow, which force-applies
+      // the pending service worker update and reloads.
+      if (response.status === 426) {
+        void handleUpdateRequired()
       }
 
       let serverMessage: string | undefined
@@ -169,9 +180,10 @@ class RawApiClient {
 
       // A 404 on DELETE means the object is already gone server-side — the
       // command queue treats that as success, so a "not found" toast here
-      // would contradict the outcome the user sees.
+      // would contradict the outcome the user sees. A 426 stays quiet too:
+      // the update-required overlay is the messaging.
       const alreadyDeleted = method === 'DELETE' && response.status === 404
-      if (!options?.silent && !alreadyDeleted) {
+      if (!options?.silent && !alreadyDeleted && response.status !== 426) {
         const notificationsStore = useNotificationsStore()
         notificationsStore.showError(
           serverMessage || getErrorMessage(response.status)

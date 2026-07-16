@@ -86,6 +86,8 @@ class App < Roda
   CSRF_HEADER = "HTTP_X_CSRF_PROTECTION"
   CSRF_MUTATING_METHODS = %w[POST PUT PATCH DELETE].freeze
 
+  CLIENT_VERSION_HEADER = "HTTP_X_CLIENT_VERSION"
+
   REQUEST_ID_HEADER = "HTTP_X_REQUEST_ID"
   # Cap and character class are deliberately tight: the request id ends up
   # in log lines, audit rows, and (potentially) external systems, so we
@@ -111,6 +113,25 @@ class App < Roda
         "#{request.request_method} #{request.path_info} from #{request.ip}"
     end
     request.halt [403, { "Content-Type" => "application/json" }, ['{"error":"Forbidden"}']]
+  end
+
+  # Reject API requests from clients older than the protocol minimum with
+  # 426 Upgrade Required. The client intercepts the status globally and
+  # force-applies its pending service worker update (see
+  # frontend/src/api/updateRequired.ts). Applies to every /api path — the
+  # gate must fire before auth so even a login-screen client updates first.
+  def verify_client_version!
+    return if ClientProtocol.supported?(request.env[CLIENT_VERSION_HEADER])
+
+    APP_LOGGER.warn do
+      "[Protocol] Outdated client (#{request.env[CLIENT_VERSION_HEADER].inspect} < " \
+        "#{ClientProtocol::MIN_SUPPORTED_VERSION}): #{request.request_method} #{request.path_info} from #{request.ip}"
+    end
+    body = {
+      error: "Client update required",
+      minSupportedVersion: ClientProtocol::MIN_SUPPORTED_VERSION
+    }
+    request.halt [426, { "Content-Type" => "application/json" }, [body.to_json]]
   end
 
   def require_auth
@@ -160,6 +181,8 @@ class App < Roda
     response.headers["X-Request-ID"] = request_id
 
     RequestContext.with(request_id: request_id) do
+      verify_client_version! if r.path_info.start_with?("/api")
+
       r.hash_routes
 
       if STATIC_DIR.directory?

@@ -26,7 +26,25 @@ class App
     user_id = result.value![:user_id]
     session_id = result.value![:session_id]
 
+    client_version = r.params["v"]
+
     r.websocket do |connection|
+      # Protocol version gate. Mostly belt-and-braces — an outdated client
+      # normally gets its 426 fetching the ws-ticket — but this catches the
+      # race where a ticket minted just before a deploy is redeemed just
+      # after. A typed message (not a bare close code) because the client
+      # treats unexplained closes as reconnectable network failures.
+      unless ClientProtocol.supported?(client_version)
+        connection.write(
+          {
+            type: "update_required",
+            minSupportedVersion: ClientProtocol::MIN_SUPPORTED_VERSION
+          }.to_json
+        )
+        connection.close
+        next
+      end
+
       connection_id = Websocket::ConnectionManager.instance.register(connection, user_id, session_id)
 
       # Fetch every workspace the user belongs to AND every membership in one

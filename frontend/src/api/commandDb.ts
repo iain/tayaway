@@ -39,6 +39,11 @@ export interface StoredCommand {
   // object flows (add date range = temp object + pending update on the
   // poll) link an array; all of it rolls back as one user change.
   optimistic?: OptimisticRef | OptimisticRef[]
+  // The PROTOCOL_VERSION of the build that enqueued this command. A forced
+  // update can leave rows written by an older build for the new build to
+  // replay; this stamp is what a future migration keys off to translate or
+  // drop them. Absent on rows from before the field existed.
+  protocolVersion?: number
 }
 
 interface CommandQueueDB {

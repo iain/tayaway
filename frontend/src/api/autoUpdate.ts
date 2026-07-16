@@ -35,6 +35,10 @@ const NON_TEXT_INPUT_TYPES = new Set([
 let pendingApply: ApplyUpdate | null = null
 let armed = false
 let lastActivityAt = 0
+// Set when the server rejected this client as too old (updateRequired.ts):
+// there is no "quiet moment" to wait for anymore — apply the pending update
+// immediately, or the next one the instant it arrives.
+let forceRequested = false
 
 function applyNow(targetUrl?: string): void {
   const apply = pendingApply
@@ -91,10 +95,19 @@ export function applyPendingUpdate(targetUrl: string): void {
   applyNow(targetUrl)
 }
 
+/** Stop waiting for quiet moments: apply the pending update now, or — when
+ * the new SW hasn't been found yet — the moment scheduleAutoUpdate gets it. */
+export function forceUpdateNow(): void {
+  forceRequested = true
+  if (pendingApply) {
+    applyNow()
+  }
+}
+
 export function scheduleAutoUpdate(apply: ApplyUpdate): void {
   pendingApply = apply
 
-  if (document.visibilityState === 'hidden') {
+  if (forceRequested || document.visibilityState === 'hidden') {
     applyNow()
     return
   }

@@ -55,6 +55,14 @@ vi.mock('@/composables/useMutation', () => ({
   })),
 }))
 
+const updateRequiredMocks = vi.hoisted(() => ({
+  handleUpdateRequired: vi.fn(),
+}))
+
+vi.mock('@/api/updateRequired', () => ({
+  handleUpdateRequired: updateRequiredMocks.handleUpdateRequired,
+}))
+
 // Cache key and TTL must match the constants in auth.ts
 const AUTH_USER_KEY = 'tayaway_auth_user'
 const AUTH_USER_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
@@ -189,6 +197,65 @@ describe('auth store – initialize() error handling', () => {
     await store.initialize()
 
     expect(store.initialized).toBe(true)
+  })
+})
+
+describe('auth store – protocol version gate', () => {
+  beforeEach(() => {
+    vi.resetModules()
+    setActivePinia(createPinia())
+    vi.stubGlobal('fetch', vi.fn())
+    localStorage.clear()
+    updateRequiredMocks.handleUpdateRequired.mockReset()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  // fetchMe uses a bare fetch (custom timeout + tri-state result), so it
+  // must carry the version header itself — rawApi's plumbing doesn't apply.
+  it('sends X-Client-Version on the /auth/me probe', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => CACHED_USER,
+    } as unknown as Response)
+
+    const { useAuthStore } = await import('./auth')
+    await useAuthStore().initialize()
+
+    const { PROTOCOL_VERSION } = await import('@/api/protocolVersion')
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/auth/me',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'X-Client-Version': String(PROTOCOL_VERSION),
+        }),
+      })
+    )
+  })
+
+  it('switches into the update-required flow on 426 and keeps the cached session', async () => {
+    seedCache()
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 426,
+      json: async () => ({ error: 'Client update required' }),
+    } as unknown as Response)
+
+    const { useAuthStore } = await import('./auth')
+    const store = useAuthStore()
+    await store.initialize()
+    // initialize() returned after the cache hit; let the background
+    // validation settle before asserting on its outcome.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(updateRequiredMocks.handleUpdateRequired).toHaveBeenCalledOnce()
+    // Not logged out — the session is stale, not invalid; the overlay and
+    // reload take it from here.
+    expect(store.user).toMatchObject({ id: 'user-1' })
+    expect(localStorage.getItem(AUTH_USER_KEY)).not.toBeNull()
   })
 })
 

@@ -8,6 +8,8 @@ import { useMutation, type CommandEnqueuer } from '@/composables/useMutation'
 
 import { teardownSession } from '@/api/teardownSession'
 import { poolPersistence } from '@/api/poolPersistence'
+import { handleUpdateRequired } from '@/api/updateRequired'
+import { PROTOCOL_VERSION } from '@/api/protocolVersion'
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
 import type {
   AuthUser,
@@ -121,6 +123,9 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await fetch('/api/auth/me', {
         signal: AbortSignal.timeout(5000),
+        // This probe deliberately bypasses rawApi (custom timeout, tri-state
+        // result), so it must carry the protocol version header itself.
+        headers: { 'X-Client-Version': String(PROTOCOL_VERSION) },
       })
 
       if (response.ok) {
@@ -130,6 +135,11 @@ export const useAuthStore = defineStore('auth', () => {
         return true
       } else if (response.status === 401 || response.status === 403) {
         return false
+      } else if (response.status === 426) {
+        // Outdated client — the update-required flow takes over. The session
+        // is stale, not invalid: keep it, the forced update reloads shortly.
+        void handleUpdateRequired()
+        return null
       } else {
         // Server unavailable (5xx) — treat as unreachable
         return null

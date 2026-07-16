@@ -7,6 +7,11 @@ vi.mock('@/api/sessionExpired', () => ({
   handleSessionExpired: mockHandleSessionExpired,
 }))
 
+const mockHandleUpdateRequired = vi.fn()
+vi.mock('@/api/updateRequired', () => ({
+  handleUpdateRequired: mockHandleUpdateRequired,
+}))
+
 // Shared so tests can assert on toast behaviour across calls
 const mockShowError = vi.fn()
 vi.mock('@/stores', () => ({
@@ -140,6 +145,29 @@ describe('ApiClient console logging', () => {
   })
 })
 
+describe('client protocol version header', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('sends X-Client-Version with the protocol version on every request', async () => {
+    const { PROTOCOL_VERSION } = await import('./protocolVersion')
+    mockFetchResponse(200, { objects: [] })
+
+    await rawApi.get('/events')
+
+    const init = vi.mocked(fetch).mock.calls[0]![1] as RequestInit
+    expect(init.headers).toMatchObject({
+      'X-Client-Version': String(PROTOCOL_VERSION),
+    })
+  })
+})
+
 describe('ApiClient 401 interceptor', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -183,6 +211,43 @@ describe('ApiClient 401 interceptor', () => {
 
     await expect(rawApi.get('/events')).rejects.toMatchObject({ status: 403 })
     expect(mockHandleSessionExpired).not.toHaveBeenCalled()
+  })
+})
+
+describe('ApiClient 426 interceptor', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockHandleUpdateRequired.mockReset()
+    mockShowError.mockClear()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('switches into the update-required flow on 426', async () => {
+    mockFetchResponse(426, { error: 'Client update required' }, false)
+
+    await expect(rawApi.get('/events')).rejects.toMatchObject({ status: 426 })
+    expect(mockHandleUpdateRequired).toHaveBeenCalledOnce()
+  })
+
+  it('does not toast a 426 — the blocking overlay is the messaging', async () => {
+    mockFetchResponse(426, { error: 'Client update required' }, false)
+
+    await expect(rawApi.post('/events', {})).rejects.toMatchObject({
+      status: 426,
+    })
+    expect(mockShowError).not.toHaveBeenCalled()
+  })
+
+  it('does not trigger the update-required flow on other errors', async () => {
+    mockFetchResponse(500, { error: 'Internal Server Error' }, false)
+
+    await expect(rawApi.get('/events')).rejects.toMatchObject({ status: 500 })
+    expect(mockHandleUpdateRequired).not.toHaveBeenCalled()
   })
 })
 

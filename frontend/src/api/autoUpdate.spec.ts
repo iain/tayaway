@@ -156,6 +156,29 @@ describe('scheduleAutoUpdate', () => {
     expect(apply).toHaveBeenCalledOnce()
   })
 
+  it('forceUpdateNow applies a pending update immediately', async () => {
+    const apply = vi.fn()
+    const { scheduleAutoUpdate, forceUpdateNow, hasPendingUpdate } =
+      await importModule()
+    scheduleAutoUpdate(apply)
+    expect(apply).not.toHaveBeenCalled()
+
+    forceUpdateNow()
+
+    expect(apply).toHaveBeenCalledExactlyOnceWith(undefined)
+    expect(hasPendingUpdate()).toBe(false)
+  })
+
+  it('forceUpdateNow makes an update that arrives later apply immediately', async () => {
+    const apply = vi.fn()
+    const { scheduleAutoUpdate, forceUpdateNow } = await importModule()
+
+    forceUpdateNow() // nothing pending yet — arms the force flag
+
+    scheduleAutoUpdate(apply) // tab visible, no quiet moment
+    expect(apply).toHaveBeenCalledExactlyOnceWith(undefined)
+  })
+
   it('a second scheduled update replaces the first and applies once', async () => {
     const first = vi.fn()
     const second = vi.fn()
