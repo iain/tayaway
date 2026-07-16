@@ -77,13 +77,15 @@ const total = computed(() =>
 )
 
 const hasAttendees = computed(() =>
-  pool.getAll('rsvp').some((r) => r.eventId === eventId.value && r.attending)
+  pool
+    .getAll('attendance')
+    .some((a) => a.eventId === eventId.value && a.status === 'going')
 )
 
 onMounted(async () => {
   await Promise.all([
     api.get<PoolApiResponse>(`/expenses?event_id=${eventId.value}`),
-    api.get<PoolApiResponse>(`/events/${eventId.value}/rsvps`),
+    api.get<PoolApiResponse>(`/events/${eventId.value}/attendances`),
     api.get<PoolApiResponse>(`/settlements?event_id=${eventId.value}`),
   ])
 })

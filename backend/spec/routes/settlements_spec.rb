@@ -25,8 +25,8 @@ RSpec.describe "Settlements endpoints" do
 
     # Both users RSVP as attending (the factory mirrors into attendances,
     # matching the phase-2 dual-write invariant)
-    TestFactories.rsvp(event: event, user: user, attending: true)
-    TestFactories.rsvp(event: event, user: other_user, attending: true)
+    TestFactories.attendance(event: event, user: user)
+    TestFactories.attendance(event: event, user: other_user)
 
     # user paid an expense
     now = Time.now

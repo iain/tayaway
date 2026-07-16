@@ -7,7 +7,6 @@ import type {
   PoolEvent,
   PoolGuest,
   PoolMember,
-  PoolRsvp,
   PoolVote,
   PoolWorkspace,
 } from '@/types/pool'
@@ -43,10 +42,6 @@ export type HydratedWorkspace = PoolWorkspace & {
   members: HydratedMember[]
 }
 
-export type HydratedRsvp = PoolRsvp & {
-  member: PoolMember | undefined
-}
-
 /**
  * The person behind an attendance row, resolved from the pool. This is the
  * single frontend reader of the userId XOR guestId union (doc/attendances.md
@@ -75,7 +70,6 @@ export type HydratedEvent = PoolEvent & {
   workspace: HydratedWorkspace | undefined
   member: PoolMember | undefined
   datePoll: HydratedDatePoll | null
-  rsvps: HydratedRsvp[]
   attendances: HydratedAttendance[]
 }
 
@@ -108,7 +102,6 @@ export function useHydratedEvent(eventId: ComputedRef<string> | string): {
     void tv.get('vote')
     void tv.get('member')
     void tv.get('workspace')
-    void tv.get('rsvp')
     void tv.get('attendance')
     void tv.get('guest')
 
@@ -173,7 +166,6 @@ function hydrateEvent(poolEvent: PoolEvent, pool: Pool): HydratedEvent {
     )
   }
   const workspace = hydrateWorkspace(poolEvent.workspaceId, pool)
-  const rsvps = hydrateRsvps(poolEvent.id, pool, memberIndex)
   const attendances = hydrateAttendances(poolEvent.id, pool, memberIndex)
 
   return {
@@ -181,7 +173,6 @@ function hydrateEvent(poolEvent: PoolEvent, pool: Pool): HydratedEvent {
     workspace,
     member,
     datePoll,
-    rsvps,
     attendances,
   }
 }
@@ -258,23 +249,6 @@ function hydrateDateRange(
     votes,
     voteSummary,
   }
-}
-
-/**
- * Hydrate RSVPs for an event. Uses pre-built member index.
- */
-function hydrateRsvps(
-  eventId: string,
-  pool: Pool,
-  memberIndex: Map<string, PoolMember>
-): HydratedRsvp[] {
-  return pool
-    .getAll('rsvp')
-    .filter((r) => r.eventId === eventId)
-    .map((rsvp) => ({
-      ...rsvp,
-      member: memberIndex.get(rsvp.userId),
-    }))
 }
 
 /**

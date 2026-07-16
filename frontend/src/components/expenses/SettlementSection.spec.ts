@@ -75,12 +75,10 @@ function mkEvent(overrides: Partial<HydratedEvent> = {}): HydratedEvent {
     workspaceId: 'ws-1',
     userId: 'user-test',
     datePollId: null,
-    rsvpIds: [],
     attendanceIds: [],
     workspace: undefined,
     member: undefined,
     datePoll: null,
-    rsvps: [],
     get attendances() {
       return mockAttendances
     },
@@ -211,7 +209,7 @@ describe('SettlementSection drift detection', () => {
     mockParticipants = []
   })
 
-  it('flags drift when an unaccounted RSVP changes the fair share', () => {
+  it('flags drift when an unaccounted attendance changes the fair share', () => {
     // Same setup as the no-drift case, but Bob attends too. The single Alice
     // → Test User €100 transfer no longer covers Bob's share, so the banner
     // should appear.

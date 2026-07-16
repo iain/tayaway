@@ -18,19 +18,19 @@ vi.mock('vue-router', () => ({
   }),
 }))
 
-function makeRsvp(
-  overrides: Partial<ObjectTypeMap['rsvp']> = {}
-): ObjectTypeMap['rsvp'] {
+function makeAttendance(
+  overrides: Partial<ObjectTypeMap['attendance']> = {}
+): ObjectTypeMap['attendance'] {
   return {
-    id: 'rsvp-1',
-    objectType: 'rsvp',
+    id: 'att-1',
+    objectType: 'attendance',
     eventId: 'evt-1',
     userId: 'user-1',
+    guestId: null,
+    hostUserId: null,
+    status: 'going',
+    days: null,
     createdByUserId: null,
-    attending: true,
-    attendance: null,
-    startDate: null,
-    endDate: null,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,
@@ -122,42 +122,44 @@ describe('attendeeCountByEvent aggregation', () => {
     setActivePinia(createPinia())
   })
 
-  it('counts attending rsvps per event, ignoring non-attending', () => {
+  it('counts going attendances per event, ignoring declined', () => {
     const pool = useObjectPoolStore()
     pool.importObjects(
       [
-        makeRsvp({ id: 'r1', eventId: 'evt-1', userId: 'u1', attending: true }),
-        makeRsvp({ id: 'r2', eventId: 'evt-1', userId: 'u2', attending: true }),
-        makeRsvp({
+        makeAttendance({ id: 'r1', eventId: 'evt-1', userId: 'u1' }),
+        makeAttendance({ id: 'r2', eventId: 'evt-1', userId: 'u2' }),
+        makeAttendance({
           id: 'r3',
           eventId: 'evt-1',
           userId: 'u3',
-          attending: false,
+          status: 'declined',
         }),
-        makeRsvp({ id: 'r4', eventId: 'evt-2', userId: 'u1', attending: true }),
+        makeAttendance({ id: 'r4', eventId: 'evt-2', userId: 'u1' }),
       ],
       { scope: Scope.workspace('test') }
     )
 
     const counts = new Map<string, number>()
-    for (const r of pool.getAll('rsvp')) {
-      if (r.attending) counts.set(r.eventId, (counts.get(r.eventId) ?? 0) + 1)
+    for (const a of pool.getAll('attendance')) {
+      if (a.status === 'going')
+        counts.set(a.eventId, (counts.get(a.eventId) ?? 0) + 1)
     }
 
     expect(counts.get('evt-1')).toBe(2)
     expect(counts.get('evt-2')).toBe(1)
   })
 
-  it('returns no entry for events with only non-attending rsvps', () => {
+  it('returns no entry for events with only declined attendances', () => {
     const pool = useObjectPoolStore()
     pool.importObjects(
-      [makeRsvp({ id: 'r1', eventId: 'evt-1', attending: false })],
+      [makeAttendance({ id: 'r1', eventId: 'evt-1', status: 'declined' })],
       { scope: Scope.workspace('test') }
     )
 
     const counts = new Map<string, number>()
-    for (const r of pool.getAll('rsvp')) {
-      if (r.attending) counts.set(r.eventId, (counts.get(r.eventId) ?? 0) + 1)
+    for (const a of pool.getAll('attendance')) {
+      if (a.status === 'going')
+        counts.set(a.eventId, (counts.get(a.eventId) ?? 0) + 1)
     }
 
     expect(counts.get('evt-1')).toBeUndefined()

@@ -96,12 +96,6 @@ module ObjectRegistry
                 [Topic.workspace(ws_id)]
               }
     ),
-    Entry.new(key: "rsvp", model: "Rsvp", client_type: "rsvp", tracks_user: true, policy: "RsvpPolicy", serializer_class: RsvpSerializer,
-              topics: ->(rsvp) {
-                ws_id = DB[:events].where(id: rsvp.event_id).get(:workspace_id)
-                [Topic.workspace(ws_id)]
-              }
-    ),
     Entry.new(key: "attendance", model: "Attendance", client_type: "attendance", tracks_user: true, policy: "AttendancePolicy", serializer_class: AttendanceSerializer,
               topics: ->(attendance) {
                 ws_id = DB[:events].where(id: attendance.event_id).get(:workspace_id)

@@ -23,15 +23,17 @@ export function useUpcomingEvents() {
   const items = computed<UpcomingEventItem[]>(() => {
     const userId = currentUserId.value
 
-    // Single pass over RSVPs: attending counts per event + this user's responses
+    // Single pass over attendances: going heads (members and guests) per
+    // event + this user's answers. A row parked at pending by a date reset
+    // counts as unanswered (doc/attendances.md).
     const attendeeCount = new Map<string, number>()
-    const rsvpedByUser = new Set<string>()
-    for (const r of pool.getAll('rsvp')) {
-      if (r.attending) {
-        attendeeCount.set(r.eventId, (attendeeCount.get(r.eventId) ?? 0) + 1)
+    const answeredByUser = new Set<string>()
+    for (const a of pool.getAll('attendance')) {
+      if (a.status === 'going') {
+        attendeeCount.set(a.eventId, (attendeeCount.get(a.eventId) ?? 0) + 1)
       }
-      if (userId && r.userId === userId) {
-        rsvpedByUser.add(r.eventId)
+      if (userId && a.userId === userId && a.status !== 'pending') {
+        answeredByUser.add(a.eventId)
       }
     }
 
@@ -41,7 +43,7 @@ export function useUpcomingEvents() {
       startDate: event.startDate!,
       endDate: event.endDate!,
       attendeeCount: attendeeCount.get(event.id) ?? 0,
-      needsRsvp: userId != null && !rsvpedByUser.has(event.id),
+      needsRsvp: userId != null && !answeredByUser.has(event.id),
     }))
   })
 

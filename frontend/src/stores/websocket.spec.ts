@@ -4,7 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useObjectPoolStore } from './objectPool'
 import {
   makeEvent,
-  makeRsvp,
+  makeAttendance,
   makeExpense,
   makeSettlement,
   makeSettlementTransfer,
@@ -294,16 +294,16 @@ describe('websocket store — cascade delete', () => {
     vi.resetModules()
   })
 
-  it('deleting an event cascades to rsvp', () => {
+  it('deleting an event cascades to attendance', () => {
     const pool = useObjectPoolStore()
-    pool.importObjects([makeEvent(), makeRsvp()], {
+    pool.importObjects([makeEvent(), makeAttendance()], {
       scope: Scope.workspace('test'),
     })
 
     sendDeleteBroadcast('event', 'evt-1')
 
     expect(pool.get('event', 'evt-1')).toBeUndefined()
-    expect(pool.get('rsvp', 'rsvp-1')).toBeUndefined()
+    expect(pool.get('attendance', 'att-1')).toBeUndefined()
   })
 
   it('deleting an event cascades to expense', () => {
@@ -391,8 +391,8 @@ describe('websocket store — cascade delete', () => {
       [
         makeEvent({ id: 'evt-1' }),
         makeEvent({ id: 'evt-2' }),
-        makeRsvp({ id: 'rsvp-1', eventId: 'evt-1' }),
-        makeRsvp({ id: 'rsvp-2', eventId: 'evt-2' }),
+        makeAttendance({ id: 'att-1', eventId: 'evt-1' }),
+        makeAttendance({ id: 'att-2', eventId: 'evt-2' }),
       ],
       { scope: Scope.workspace('test') }
     )
@@ -400,9 +400,9 @@ describe('websocket store — cascade delete', () => {
     sendDeleteBroadcast('event', 'evt-1')
 
     expect(pool.get('event', 'evt-1')).toBeUndefined()
-    expect(pool.get('rsvp', 'rsvp-1')).toBeUndefined()
+    expect(pool.get('attendance', 'att-1')).toBeUndefined()
     expect(pool.get('event', 'evt-2')).toBeDefined()
-    expect(pool.get('rsvp', 'rsvp-2')).toBeDefined()
+    expect(pool.get('attendance', 'att-2')).toBeDefined()
   })
 
   it('handles cascade delete when there are no children', () => {

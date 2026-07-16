@@ -15,8 +15,8 @@ RSpec.describe Expenses::OnAdded do
     end
 
     it "notifies attending RSVPs except the actor" do
-      TestFactories.rsvp(event: event_row, user: actor, attending: true)
-      TestFactories.rsvp(event: event_row, user: attendee, attending: true)
+      TestFactories.attendance(event: event_row, user: actor)
+      TestFactories.attendance(event: event_row, user: attendee)
 
       described_class.call(
         event_id: event_row[:id],
@@ -31,7 +31,7 @@ RSpec.describe Expenses::OnAdded do
     end
 
     it "is silent when only the actor is attending" do
-      TestFactories.rsvp(event: event_row, user: actor, attending: true)
+      TestFactories.attendance(event: event_row, user: actor)
 
       described_class.call(
         event_id: event_row[:id],

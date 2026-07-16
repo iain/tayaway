@@ -4,20 +4,20 @@ import { createPinia, setActivePinia } from 'pinia'
 import AddExpenseModal from './AddExpenseModal.vue'
 import type {
   PoolEvent,
-  PoolRsvp,
+  PoolAttendance,
   PoolMember,
   PoolExpense,
   PoolExpenseParticipant,
 } from '@/types/pool'
 
-let mockRsvps: PoolRsvp[] = []
+let mockAttendances: PoolAttendance[] = []
 let mockMembers: PoolMember[] = []
 let mockParticipants: PoolExpenseParticipant[] = []
 
 vi.mock('@/stores/objectPool', () => ({
   useObjectPoolStore: () => ({
     getAll: (type: string) => {
-      if (type === 'rsvp') return mockRsvps
+      if (type === 'attendance') return mockAttendances
       return []
     },
     get: (type: string, id: string) => {
@@ -74,7 +74,6 @@ function mkEvent(overrides: Partial<PoolEvent> = {}): PoolEvent {
     workspaceId: 'ws-1',
     userId: 'user-1',
     datePollId: null,
-    rsvpIds: [],
     attendanceIds: [],
     ...overrides,
   }
@@ -140,7 +139,7 @@ async function mountModalOpened(
 describe('AddExpenseModal wizard', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    mockRsvps = []
+    mockAttendances = []
     mockMembers = []
     mockParticipants = []
     createExpenseSpy.mockClear()
@@ -229,18 +228,18 @@ describe('AddExpenseModal wizard', () => {
   })
 
   it('navigates to step 3 and shows people toggle', async () => {
-    mockRsvps = [
+    mockAttendances = [
       {
         ...BASE,
-        id: 'rsvp-1',
-        objectType: 'rsvp',
+        id: 'att-1',
+        objectType: 'attendance',
         eventId: 'event-1',
         userId: 'user-1',
+        guestId: null,
+        hostUserId: null,
+        status: 'going',
+        days: null,
         createdByUserId: null,
-        attending: true,
-        attendance: null,
-        startDate: null,
-        endDate: null,
       },
     ]
     mockMembers = [mkMember()]
@@ -264,18 +263,18 @@ describe('AddExpenseModal wizard', () => {
   })
 
   it('defaults to "Everyone" mode on step 3', async () => {
-    mockRsvps = [
+    mockAttendances = [
       {
         ...BASE,
-        id: 'rsvp-1',
-        objectType: 'rsvp',
+        id: 'att-1',
+        objectType: 'attendance',
         eventId: 'event-1',
         userId: 'user-1',
+        guestId: null,
+        hostUserId: null,
+        status: 'going',
+        days: null,
         createdByUserId: null,
-        attending: true,
-        attendance: null,
-        startDate: null,
-        endDate: null,
       },
     ]
     mockMembers = [mkMember()]
@@ -297,30 +296,30 @@ describe('AddExpenseModal wizard', () => {
   })
 
   it('shows member checkboxes when switching to specific people mode', async () => {
-    mockRsvps = [
+    mockAttendances = [
       {
         ...BASE,
-        id: 'rsvp-1',
-        objectType: 'rsvp',
+        id: 'att-1',
+        objectType: 'attendance',
         eventId: 'event-1',
         userId: 'user-1',
+        guestId: null,
+        hostUserId: null,
+        status: 'going',
+        days: null,
         createdByUserId: null,
-        attending: true,
-        attendance: null,
-        startDate: null,
-        endDate: null,
       },
       {
         ...BASE,
-        id: 'rsvp-2',
-        objectType: 'rsvp',
+        id: 'att-2',
+        objectType: 'attendance',
         eventId: 'event-1',
         userId: 'user-2',
+        guestId: null,
+        hostUserId: null,
+        status: 'going',
+        days: null,
         createdByUserId: null,
-        attending: true,
-        attendance: null,
-        startDate: null,
-        endDate: null,
       },
     ]
     mockMembers = [
@@ -388,30 +387,30 @@ describe('AddExpenseModal wizard', () => {
   })
 
   it('submits participants with factors set via the stepper', async () => {
-    mockRsvps = [
+    mockAttendances = [
       {
         ...BASE,
-        id: 'rsvp-1',
-        objectType: 'rsvp',
+        id: 'att-1',
+        objectType: 'attendance',
         eventId: 'event-1',
         userId: 'alice',
+        guestId: null,
+        hostUserId: null,
+        status: 'going',
+        days: null,
         createdByUserId: null,
-        attending: true,
-        attendance: null,
-        startDate: null,
-        endDate: null,
       },
       {
         ...BASE,
-        id: 'rsvp-2',
-        objectType: 'rsvp',
+        id: 'att-2',
+        objectType: 'attendance',
         eventId: 'event-1',
         userId: 'bob',
+        guestId: null,
+        hostUserId: null,
+        status: 'going',
+        days: null,
         createdByUserId: null,
-        attending: true,
-        attendance: null,
-        startDate: null,
-        endDate: null,
       },
     ]
     mockMembers = [
@@ -464,18 +463,18 @@ describe('AddExpenseModal wizard', () => {
   })
 
   it('disables the decrement button at ½ and the increment button at 9½', async () => {
-    mockRsvps = [
+    mockAttendances = [
       {
         ...BASE,
-        id: 'rsvp-1',
-        objectType: 'rsvp',
+        id: 'att-1',
+        objectType: 'attendance',
         eventId: 'event-1',
         userId: 'alice',
+        guestId: null,
+        hostUserId: null,
+        status: 'going',
+        days: null,
         createdByUserId: null,
-        attending: true,
-        attendance: null,
-        startDate: null,
-        endDate: null,
       },
     ]
     mockMembers = [mkMember({ id: 'm-alice', userId: 'alice', name: 'Alice' })]

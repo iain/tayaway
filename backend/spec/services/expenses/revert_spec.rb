@@ -21,8 +21,8 @@ RSpec.describe Expenses::Revert do
   end
 
   def create_and_settle_expense(amount: 30)
-    TestFactories.rsvp(event: event, user: creator, attending: true) unless Rsvp.find_by_event_and_user(event[:id], creator[:id])
-    TestFactories.rsvp(event: event, user: other, attending: true) unless Rsvp.find_by_event_and_user(event[:id], other[:id])
+    TestFactories.attendance(event: event, user: creator) unless Attendance.find_by_event_and_user(event[:id], creator[:id])
+    TestFactories.attendance(event: event, user: other) unless Attendance.find_by_event_and_user(event[:id], other[:id])
     expense_id = Expenses::Create.call(
       event_id: event[:id],
       membership: membership,
@@ -41,9 +41,9 @@ RSpec.describe Expenses::Revert do
   it "reverts after a 3-attendee settlement (regression for e2e chain flow)" do
     third = TestFactories.user
     TestFactories.workspace_membership(workspace: workspace, user: third)
-    TestFactories.rsvp(event: event, user: creator, attending: true)
-    TestFactories.rsvp(event: event, user: other, attending: true)
-    TestFactories.rsvp(event: event, user: third, attending: true)
+    TestFactories.attendance(event: event, user: creator)
+    TestFactories.attendance(event: event, user: other)
+    TestFactories.attendance(event: event, user: third)
     expense_id = Expenses::Create.call(
       event_id: event[:id],
       membership: membership,
@@ -126,7 +126,7 @@ RSpec.describe Expenses::Revert do
     # `other` files an expense for `creator` — `other` is the actor (creator
     # of the row), `creator` is the subject (whose expense it is).
     membership # ensure creator's workspace membership exists
-    TestFactories.rsvp(event: event, user: creator, attending: true)
+    TestFactories.attendance(event: event, user: creator)
     expense_id = Expenses::Create.call(
       event_id: event[:id],
       membership: other_membership,
@@ -149,7 +149,7 @@ RSpec.describe Expenses::Revert do
   end
 
   it "refuses to revert an unsettled expense — edit or delete it instead" do
-    TestFactories.rsvp(event: event, user: creator, attending: true)
+    TestFactories.attendance(event: event, user: creator)
     unsettled_id = Expenses::Create.call(
       event_id: event[:id],
       membership: membership,

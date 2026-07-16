@@ -11,9 +11,10 @@ import IconButton from '@/components/common/IconButton.vue'
 import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useExpensesStore } from '@/stores/expenses'
-import { attendedDays } from '@/utils/event'
+import { attendanceDates } from '@/utils/event'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
-import type { PoolExpense, PoolEvent } from '@/types/pool'
+import type { PoolExpense } from '@/types/pool'
+import type { HydratedEvent } from '@/composables/useHydratedEvent'
 import BaseCard from '@/components/common/BaseCard.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import AppButton from '@/components/common/AppButton.vue'
@@ -22,7 +23,7 @@ import { useUndoDelete } from '@/composables/useUndoDelete'
 
 const props = defineProps<{
   expense: PoolExpense
-  event: PoolEvent
+  event: HydratedEvent
   currentUserId: string | null
 }>()
 
@@ -135,62 +136,49 @@ const payers = computed((): ExpensePayer[] => {
     })
   }
 
-  // Default: RSVP overlap logic
-  const attendingRsvps = pool
-    .getAll('rsvp')
-    .filter((r) => r.eventId === props.event.id && r.attending)
-
-  if (
-    attendingRsvps.length === 0 ||
-    !props.event.startDate ||
-    !props.event.endDate
-  )
+  // Default: attendance overlap logic. Count each going person's attended
+  // days inside the expense window, so come-and-go gaps aren't billed
+  // (matches ExpenseSplit / settlement). Every member or guest is one head
+  // per day; guest head-days bill to their host's row.
+  const going = props.event.attendances.filter((a) => a.status === 'going')
+  if (going.length === 0 || !props.event.startDate || !props.event.endDate)
     return []
 
-  const withOverlap = attendingRsvps
-    .map((rsvp) => {
-      // Count the attendee's actual attended days inside the expense window,
-      // so come-and-go gaps aren't billed (matches ExpenseSplit / settlement).
-      // A day is worth `1 + plusOnes` heads; guests ride on their host's share.
-      const inWindow = attendedDays(
-        rsvp,
-        props.event.startDate!,
-        props.event.endDate!
-      ).filter(
-        (d) =>
-          d.date >= props.expense.startDate && d.date <= props.expense.endDate
-      )
-      if (inWindow.length === 0) return null
+  const byBillingUser = new Map<
+    string,
+    { overlapDays: number; guests: number }
+  >()
+  for (const attendance of going) {
+    const billing = attendance.attendee.billingUserId
+    if (!billing) continue
+    const inWindow = attendanceDates(
+      attendance,
+      props.event.startDate,
+      props.event.endDate
+    ).filter((d) => d >= props.expense.startDate && d <= props.expense.endDate)
+    if (inWindow.length === 0) continue
 
-      const m = pool.findBy('member', 'userId', rsvp.userId)
-      const guests = inWindow.reduce((sum, d) => sum + d.plusOnes, 0)
-      return {
-        name: m?.name ?? m?.email ?? 'Unknown',
-        overlapDays: inWindow.length,
-        guests,
-        heads: inWindow.length + guests,
-      }
-    })
-    .filter(
-      (
-        p
-      ): p is {
-        name: string
-        overlapDays: number
-        guests: number
-        heads: number
-      } => p !== null
-    )
+    const acc = byBillingUser.get(billing) ?? { overlapDays: 0, guests: 0 }
+    if (attendance.attendee.isGuest) acc.guests += inWindow.length
+    else acc.overlapDays += inWindow.length
+    byBillingUser.set(billing, acc)
+  }
 
-  const totalHeads = withOverlap.reduce((sum, p) => sum + p.heads, 0)
+  const totalHeads = [...byBillingUser.values()].reduce(
+    (sum, p) => sum + p.overlapDays + p.guests,
+    0
+  )
   if (totalHeads === 0) return []
 
-  return withOverlap.map(({ name, overlapDays, guests, heads }) => ({
-    name,
-    overlapDays,
-    guests,
-    share: (heads / totalHeads) * props.expense.amount,
-  }))
+  return [...byBillingUser].map(([userId, { overlapDays, guests }]) => {
+    const m = pool.findBy('member', 'userId', userId)
+    return {
+      name: m?.name ?? m?.email ?? 'Unknown',
+      overlapDays,
+      guests,
+      share: ((overlapDays + guests) / totalHeads) * props.expense.amount,
+    }
+  })
 })
 
 function toggleExpand() {

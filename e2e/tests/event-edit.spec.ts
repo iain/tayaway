@@ -130,8 +130,11 @@ test.describe('Event Edit', () => {
         (await createResponse.json()).objects,
         'event'
       )!.id
-      await apiContext.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
-        data: { attending: true, attendance: [offsetDate(30), offsetDate(31)] },
+      await apiContext.post(`${API_BASE}/api/events/${eventId}/attendances`, {
+        data: {
+          status: 'going',
+          days: [offsetDate(30), offsetDate(31)],
+        },
       })
       await apiContext.post(`${API_BASE}/api/events/${eventId}/attendances`, {
         data: {
@@ -152,9 +155,6 @@ test.describe('Event Edit', () => {
         }
       )
       expect(response.ok()).toBeTruthy()
-      const body = await response.json()
-      expect(body.deleted.length).toBe(1)
-      expect(body.deleted[0].objectType).toBe('rsvp')
 
       const attendancesResp = await apiContext.get(
         `${API_BASE}/api/events/${eventId}/attendances`
@@ -168,10 +168,6 @@ test.describe('Event Edit', () => {
         expect(attendance.status).toBe('pending')
         expect(attendance.days).toBeNull()
       }
-      const rsvpsResp = await apiContext.get(
-        `${API_BASE}/api/events/${eventId}/rsvps`
-      )
-      expect(getObjectsByType((await rsvpsResp.json()).objects, 'rsvp').length).toBe(0)
     })
   })
 

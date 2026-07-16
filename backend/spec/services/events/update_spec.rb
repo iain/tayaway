@@ -281,7 +281,7 @@ RSpec.describe Events::Update do
       membership = membership_for(owner)
       event = TestFactories.event(workspace: workspace, user: owner)
       DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 3)
-      rsvp = TestFactories.rsvp(event: event, user: owner, attendance: [Date.today])
+      TestFactories.attendance(event: event, user: owner, days: [Date.today])
       guest = TestFactories.guest(workspace: workspace)
       guest_row = TestFactories.attendance(event: event, guest: guest, host: owner, days: [Date.today])
 
@@ -293,11 +293,6 @@ RSpec.describe Events::Update do
       expect(rows.map { |r| r[:status] }).to all(eq("pending"))
       expect(rows.map { |r| r[:days] }).to all(be_nil)
       expect(rows.map { |r| r[:id] }).to include(guest_row[:id])
-      # Legacy rsvp rows are deleted for stale clients (row absence is their
-      # "no response"), with tombstones so their pools drop the rows too.
-      expect(DB[:rsvps].where(id: rsvp[:id]).count).to eq(0)
-      expect(DB[:deleted_items].where(object_type: "rsvp", object_id: rsvp[:id]).count).to eq(1)
-      expect(result.value![:deleted]).to include({ objectType: "rsvp", id: rsvp[:id] })
     end
 
     it "notifies the people who had answered, resolved before the revert" do
@@ -307,7 +302,7 @@ RSpec.describe Events::Update do
       membership_for(attendee)
       event = TestFactories.event(workspace: workspace, user: owner)
       DB[:events].where(id: event[:id]).update(start_date: Date.today, end_date: Date.today + 3)
-      TestFactories.rsvp(event: event, user: attendee, attending: true)
+      TestFactories.attendance(event: event, user: attendee)
 
       update_dates(event, membership, Date.today + 10, Date.today + 13)
 
@@ -323,12 +318,11 @@ RSpec.describe Events::Update do
       first_set = update_dates(event, membership, Date.today, Date.today + 3)
       expect(first_set.success?).to be true
 
-      TestFactories.rsvp(event: event, user: owner, attending: true)
+      TestFactories.attendance(event: event, user: owner)
       unchanged = update_dates(event, membership, Date.today, Date.today + 3)
 
       expect(unchanged.success?).to be true
       expect(DB[:attendances].where(event_id: event[:id]).get(:status)).to eq("going")
-      expect(DB[:rsvps].where(event_id: event[:id]).count).to eq(1)
     end
   end
 end

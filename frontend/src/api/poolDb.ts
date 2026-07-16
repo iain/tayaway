@@ -53,7 +53,9 @@ interface PoolCacheDB {
 // Bumped to 18 when `attendance` and `guest` pool types replaced the rsvp
 // write path (doc/attendances.md phase 4); old caches lack both types and
 // events lack attendanceIds.
-const CACHE_VERSION = 18
+// Bumped to 19 when rsvps were retired (doc/attendances.md phase 7): purges
+// cached rsvp objects, which no longer exist as a pool type.
+const CACHE_VERSION = 19
 
 const CACHE_VERSION_META_KEY = 'cacheVersion'
 const SYNCED_AT_META_PREFIX = 'syncedAt:'

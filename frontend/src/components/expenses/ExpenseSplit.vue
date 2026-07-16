@@ -2,15 +2,15 @@
 import { computed } from 'vue'
 import { CalculatorIcon } from '@heroicons/vue/24/outline'
 import { useObjectPoolStore } from '@/stores/objectPool'
-import { attendedDays } from '@/utils/event'
+import { attendanceDates } from '@/utils/event'
 import { formatGuestCount } from '@/utils/format'
 import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
-import type { PoolEvent } from '@/types/pool'
+import type { HydratedEvent } from '@/composables/useHydratedEvent'
 
 const props = defineProps<{
-  event: PoolEvent
+  event: HydratedEvent
   total: number
 }>()
 
@@ -29,11 +29,8 @@ interface SplitRow {
 const rows = computed((): SplitRow[] => {
   if (!props.event.startDate || !props.event.endDate) return []
 
-  const attendingRsvps = pool
-    .getAll('rsvp')
-    .filter((r) => r.eventId === props.event.id && r.attending)
-
-  if (attendingRsvps.length === 0) return []
+  const going = props.event.attendances.filter((a) => a.status === 'going')
+  if (going.length === 0) return []
 
   const expenses = pool
     .getAll('expense')
@@ -42,21 +39,24 @@ const rows = computed((): SplitRow[] => {
   // Per-expense splitting: compute each person's share across all expenses
   const shareByUser = new Map<string, number>()
 
-  // Pre-compute each RSVP's attended day set. `days` is their total attended
-  // days (the Days column) and `guests` their total plus-ones across the event;
-  // per-expense overlap is counted in head-days below.
-  const rsvpDaySets = attendingRsvps.map((rsvp) => {
-    const days = attendedDays(
-      rsvp,
-      props.event.startDate!,
-      props.event.endDate!
-    )
-    return {
-      rsvp,
-      days,
-      dayCount: days.length,
-      guests: days.reduce((sum, d) => sum + d.plusOnes, 0),
-    }
+  // Pre-compute each attendance's day set, resolved to the user its share
+  // bills to (members bill themselves, guests their host — the hydrated
+  // attendee is the sanctioned union reader). `ownDays` feeds the Days
+  // column, guest rows feed the Guests column of their host's row.
+  const daySets = going.flatMap((attendance) => {
+    const billing = attendance.attendee.billingUserId
+    if (!billing) return []
+    return [
+      {
+        billingUserId: billing,
+        isGuest: attendance.attendee.isGuest,
+        days: attendanceDates(
+          attendance,
+          props.event.startDate!,
+          props.event.endDate!
+        ),
+      },
+    ]
   })
 
   // For each expense, compute overlap and distribute cost
@@ -78,38 +78,50 @@ const rows = computed((): SplitRow[] => {
       continue
     }
 
-    // Default: proportional to head-days within the expense window, where a day
-    // is worth `1 + plusOnes` heads (the attendee plus their guests).
-    const overlaps: { userId: string; heads: number }[] = []
-
-    for (const { rsvp, days } of rsvpDaySets) {
-      const heads = days
-        .filter((d) => d.date >= expense.startDate && d.date <= expense.endDate)
-        .reduce((sum, d) => sum + 1 + d.plusOnes, 0)
+    // Default: proportional to head-days within the expense window — every
+    // going person (member or guest) is one head per attended day, billed
+    // to their billing user.
+    const headsByUser = new Map<string, number>()
+    for (const { billingUserId, days } of daySets) {
+      const heads = days.filter(
+        (d) => d >= expense.startDate && d <= expense.endDate
+      ).length
       if (heads > 0) {
-        overlaps.push({ userId: rsvp.userId, heads })
+        headsByUser.set(
+          billingUserId,
+          (headsByUser.get(billingUserId) ?? 0) + heads
+        )
       }
     }
 
-    const totalHeads = overlaps.reduce((sum, o) => sum + o.heads, 0)
+    const totalHeads = [...headsByUser.values()].reduce((s, h) => s + h, 0)
     if (totalHeads === 0) continue
 
-    for (const { userId, heads } of overlaps) {
+    for (const [userId, heads] of headsByUser) {
       const share = (heads / totalHeads) * expense.amount
       shareByUser.set(userId, (shareByUser.get(userId) ?? 0) + share)
     }
   }
 
-  return rsvpDaySets.map(({ rsvp, dayCount, guests }) => {
-    const member = pool.findBy('member', 'userId', rsvp.userId)
-    const share = shareByUser.get(rsvp.userId) ?? 0
+  // One row per billing user: their own attended days plus guest head-days.
+  const rowByUser = new Map<string, { days: number; guests: number }>()
+  for (const { billingUserId, isGuest, days } of daySets) {
+    const acc = rowByUser.get(billingUserId) ?? { days: 0, guests: 0 }
+    if (isGuest) acc.guests += days.length
+    else acc.days += days.length
+    rowByUser.set(billingUserId, acc)
+  }
+
+  return [...rowByUser].map(([userId, { days, guests }]) => {
+    const member = pool.findBy('member', 'userId', userId)
+    const share = shareByUser.get(userId) ?? 0
     const paid = expenses
-      .filter((e) => e.userId === rsvp.userId)
+      .filter((e) => e.userId === userId)
       .reduce((sum, e) => sum + e.amount, 0)
     return {
-      userId: rsvp.userId,
+      userId,
       name: member?.name ?? member?.email ?? 'Unknown',
-      days: dayCount,
+      days,
       guests,
       share,
       paid,

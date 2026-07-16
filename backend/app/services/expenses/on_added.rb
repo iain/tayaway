@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module Expenses
-  # Fans an expense_added notification out to attending RSVPs except the
-  # actor. The handler does its own RSVP/user lookups so the caller only
+  # Fans an expense_added notification out to going members except the
+  # actor. The handler does its own attendance/user lookups so the caller only
   # needs to hand over the freshly-created expense and the actor.
   module OnAdded
     class << self

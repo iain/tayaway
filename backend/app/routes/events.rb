@@ -181,58 +181,6 @@ class App
         end
       end
 
-      # /api/events/:id/rsvps routes
-      r.on "rsvps" do
-        # GET /api/events/:id/rsvps - Get all RSVPs for an event
-        r.is do
-          r.get do
-            rsvps = Rsvp.for_event(event.id)
-            pool = PoolSerializer.new(membership: current_membership)
-            pool.add(:rsvp, rsvps)
-
-            response.status = 200
-            { objects: pool.to_a }
-          end
-
-          # POST /api/events/:id/rsvps - Create or update RSVP
-          r.post do
-            result = Rsvps::Upsert.call(
-              event_id: event.id,
-              membership: current_membership,
-              user_id: r.params["user_id"] || current_membership.user_id,
-              attending: r.params["attending"],
-              attendance: r.params["attendance"],
-              start_date: r.params["start_date"]&.strip,
-              end_date: r.params["end_date"]&.strip,
-              rsvp_id: r.params["id"]
-            )
-
-            result.either(
-              ->(value) {
-                rsvp = Rsvp.find(value[:rsvp_id])
-                pool = PoolSerializer.new(membership: current_membership)
-                pool.add(:rsvp, [rsvp])
-
-                response.status = value[:created] ? 201 : 200
-                { objects: pool.to_a }
-              },
-              ->(error) {
-                response.status = error.http_status
-                error.to_api_hash
-              }
-            )
-          end
-        end
-
-        # DELETE /api/events/:id/rsvps/:rsvp_id - Remove RSVP
-        r.on String do |rsvp_id|
-          r.delete do
-            result = Rsvps::Delete.call(event_id: event.id, rsvp_id: rsvp_id, membership: current_membership)
-            handle_result(result)
-          end
-        end
-      end
-
       # /api/events/:id/attendances routes
       r.on "attendances" do
         # GET /api/events/:id/attendances - Get all attendances for an event

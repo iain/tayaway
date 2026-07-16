@@ -54,8 +54,8 @@ test.describe('Homepage upcoming chores', () => {
       .id
 
     // RSVP attending so the user can hold a chore assignment.
-    await apiContext.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
-      data: { attending: true },
+    await apiContext.post(`${API_BASE}/api/events/${eventId}/attendances`, {
+      data: { status: 'going' },
     })
 
     const rosterResp = await apiContext.post(`${API_BASE}/api/chore-rosters`, {

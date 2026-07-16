@@ -197,12 +197,3 @@ namespace :config do
     puts "Wrote backend/.env.example"
   end
 end
-
-namespace :attendances do
-  desc "Backfill attendances and placeholder guests from rsvps (idempotent; doc/attendances.md)"
-  task :backfill do
-    require_relative "config/environment"
-    stats = Attendances::Backfill.call
-    puts stats.empty? ? "nothing to convert" : stats.map { |k, v| "#{k}=#{v}" }.join(" ")
-  end
-end

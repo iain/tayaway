@@ -344,7 +344,7 @@ RSpec.describe Expenses::Update do
     let(:user_membership) { membership_for(user) }
 
     let(:expense_id) do
-      TestFactories.rsvp(event: event, user: user, attending: true)
+      TestFactories.attendance(event: event, user: user)
       created = Expenses::Create.call(
         event_id: event[:id],
         membership: user_membership,

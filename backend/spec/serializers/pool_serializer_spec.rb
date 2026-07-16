@@ -13,7 +13,7 @@ RSpec.describe PoolSerializer do
       event1 = TestFactories.event(workspace: workspace, user: user, name: "Event 1")
       event2 = TestFactories.event(workspace: workspace, user: user, name: "Event 2")
       poll = TestFactories.date_poll(event: event1)
-      rsvp = TestFactories.rsvp(event: event1, user: user)
+      attendance = TestFactories.attendance(event: event1, user: user)
 
       pool = described_class.new(workspace_id: workspace[:id])
       events = Event.for_workspace(workspace[:id])
@@ -28,10 +28,10 @@ RSpec.describe PoolSerializer do
       event2_obj = objects.find { |o| o[:objectType] == "event" && o[:id] == event2[:id].to_s }
 
       expect(event1_obj[:datePollId]).to eq(poll[:id].to_s)
-      expect(event1_obj[:rsvpIds]).to include(rsvp[:id].to_s)
+      expect(event1_obj[:attendanceIds]).to include(attendance[:id].to_s)
 
       expect(event2_obj[:datePollId]).to be_nil
-      expect(event2_obj[:rsvpIds]).to eq([])
+      expect(event2_obj[:attendanceIds]).to eq([])
     end
 
     it "skips events already in the pool" do

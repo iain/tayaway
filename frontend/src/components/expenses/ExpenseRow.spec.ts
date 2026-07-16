@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import ExpenseRow from './ExpenseRow.vue'
-import type { PoolEvent, PoolExpense, PoolMember } from '@/types/pool'
+import type { PoolExpense, PoolMember } from '@/types/pool'
+import type { HydratedEvent } from '@/composables/useHydratedEvent'
 
 let mockMembers: PoolMember[] = []
 
@@ -39,7 +40,7 @@ const BASE = {
   createdAt: '2026-01-01T00:00:00.000Z',
 }
 
-function mkEvent(): PoolEvent {
+function mkEvent(): HydratedEvent {
   return {
     ...BASE,
     id: 'event-1',
@@ -55,8 +56,11 @@ function mkEvent(): PoolEvent {
     workspaceId: 'ws-1',
     userId: 'user-1',
     datePollId: null,
-    rsvpIds: [],
     attendanceIds: [],
+    workspace: undefined,
+    member: undefined,
+    datePoll: null,
+    attendances: [],
   }
 }
 

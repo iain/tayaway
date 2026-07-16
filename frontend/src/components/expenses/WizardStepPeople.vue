@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useObjectPoolStore } from '@/stores/objectPool'
-import { attendedDates } from '@/utils/event'
+import { attendanceDates } from '@/utils/event'
 import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import type { PoolEvent, PoolMember } from '@/types/pool'
 
@@ -42,24 +42,28 @@ const overlappingMembers = computed((): SelectableMember[] => {
   const eventEnd = props.event.endDate
   if (!eventStart || !eventEnd) return []
 
-  const attendingRsvps = pool
-    .getAll('rsvp')
-    .filter((r) => r.eventId === props.event.id && r.attending)
+  // Going member rows only — expense participants are users; guests bill
+  // their host through the default head-day split instead.
+  const goingMembers = pool
+    .getAll('attendance')
+    .filter(
+      (a) => a.eventId === props.event.id && a.status === 'going' && a.userId
+    )
 
-  return attendingRsvps
-    .map((rsvp) => {
-      const attended = attendedDates(rsvp, eventStart, eventEnd)
+  return goingMembers
+    .map((attendance) => {
+      const attended = attendanceDates(attendance, eventStart, eventEnd)
       const overlaps = attended.some(
         (d) => d >= props.startDate && d <= props.endDate
       )
       if (!overlaps) return null
 
-      const member = pool.findBy('member', 'userId', rsvp.userId)
+      const member = pool.findBy('member', 'userId', attendance.userId!)
       if (!member) return null
 
       return {
         member,
-        userId: rsvp.userId,
+        userId: attendance.userId!,
         name: member.name ?? member.email,
       }
     })

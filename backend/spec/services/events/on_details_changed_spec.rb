@@ -24,7 +24,7 @@ RSpec.describe Events::OnDetailsChanged do
     it "notifies attending users when dates move" do
       before_event = stored_event(start_date: Date.new(2026, 3, 1))
       after_event = before_event.with(start_date: Date.new(2026, 4, 1), end_date: Date.new(2026, 4, 1))
-      TestFactories.rsvp(event: { id: before_event.id }, user: attendee, attending: true)
+      TestFactories.attendance(event: { id: before_event.id }, user: attendee)
 
       described_class.call(before: before_event, after: after_event, actor_user_id: owner[:id])
 
@@ -36,7 +36,7 @@ RSpec.describe Events::OnDetailsChanged do
     it "is silent when only the name changed" do
       before_event = stored_event(start_date: Date.new(2026, 3, 1))
       after_event = before_event.with(name: "Renamed")
-      TestFactories.rsvp(event: { id: before_event.id }, user: attendee, attending: true)
+      TestFactories.attendance(event: { id: before_event.id }, user: attendee)
 
       described_class.call(before: before_event, after: after_event, actor_user_id: owner[:id])
 
@@ -50,7 +50,7 @@ RSpec.describe Events::OnDetailsChanged do
         end_date: Date.new(2026, 4, 1),
         location_name: "New Place"
       )
-      TestFactories.rsvp(event: { id: before_event.id }, user: attendee, attending: true)
+      TestFactories.attendance(event: { id: before_event.id }, user: attendee)
 
       described_class.call(before: before_event, after: after_event, actor_user_id: owner[:id])
 

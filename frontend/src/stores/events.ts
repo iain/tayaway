@@ -33,7 +33,6 @@ export const useEventsStore = defineStore('events', () => {
       workspaceId: useWorkspaceStore().currentWorkspaceId!,
       userId: useAuthStore().currentUserId!,
       datePollId: null,
-      rsvpIds: [],
       attendanceIds: [],
       createdAt: now,
       updatedAt: now,

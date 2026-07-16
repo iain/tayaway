@@ -148,8 +148,8 @@ test.describe('Settlements Feature', () => {
       await addMemberToWorkspace(apiContext, workspace.id, userBEmail)
 
       // User B RSVPs as attending
-      await userBContext.post(`${API_BASE}/api/events/${eid}/rsvps`, {
-        data: { attending: true },
+      await userBContext.post(`${API_BASE}/api/events/${eid}/attendances`, {
+        data: { status: 'going' },
       })
 
       // User A adds an expense
@@ -326,12 +326,8 @@ test.describe('Settlements Feature', () => {
       const bobEmail = `e2e-math-bob-${Date.now()}@example.com`
       await getTestSession(bobContext, bobEmail, 'Math Bob')
       await addMemberToWorkspace(apiContext, workspaceId, bobEmail)
-      await bobContext.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
-        data: {
-          attending: true,
-          start_date: DEFAULT_START,
-          end_date: DEFAULT_END,
-        },
+      await bobContext.post(`${API_BASE}/api/events/${eventId}/attendances`, {
+        data: { status: 'going' },
       })
 
       // Alice pays €50 groceries for the whole trip → Bob will owe €25.
@@ -434,11 +430,10 @@ test.describe('Settlements Feature', () => {
         workspaceId,
         'e2e-mixed-settle-bob@example.com'
       )
-      await bobContext.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
+      await bobContext.post(`${API_BASE}/api/events/${eventId}/attendances`, {
         data: {
-          attending: true,
-          start_date: offsetDate(14),
-          end_date: offsetDate(17),
+          status: 'going',
+          days: [offsetDate(14), offsetDate(15), offsetDate(16), offsetDate(17)],
         },
       })
 
@@ -453,11 +448,16 @@ test.describe('Settlements Feature', () => {
         workspaceId,
         'e2e-mixed-settle-carol@example.com'
       )
-      await carolContext.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
+      await carolContext.post(`${API_BASE}/api/events/${eventId}/attendances`, {
         data: {
-          attending: true,
-          start_date: offsetDate(16),
-          end_date: offsetDate(20),
+          status: 'going',
+          days: [
+            offsetDate(16),
+            offsetDate(17),
+            offsetDate(18),
+            offsetDate(19),
+            offsetDate(20),
+          ],
         },
       })
 
@@ -584,8 +584,8 @@ test.describe('Settlements Feature', () => {
         workspaceId,
         'e2e-chain-bob@example.com'
       )
-      await bobContext.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
-        data: { attending: true },
+      await bobContext.post(`${API_BASE}/api/events/${eventId}/attendances`, {
+        data: { status: 'going' },
       })
 
       const carolContext = await newApiContext(playwright)
@@ -599,8 +599,8 @@ test.describe('Settlements Feature', () => {
         workspaceId,
         'e2e-chain-carol@example.com'
       )
-      await carolContext.post(`${API_BASE}/api/events/${eventId}/rsvps`, {
-        data: { attending: true },
+      await carolContext.post(`${API_BASE}/api/events/${eventId}/attendances`, {
+        data: { status: 'going' },
       })
 
       // Alice pays 90; RSVP-overlap split between A/B/C = 30 each.

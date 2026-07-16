@@ -371,13 +371,13 @@ test.describe('RSVP Feature', () => {
         { data: { selected_date_range_id: dateRangeId } }
       )
       const closeBody = await closeResponse.json()
-      const rsvps = getObjectsByType(closeBody.objects, 'rsvp')
+      const attendances = getObjectsByType(closeBody.objects, 'attendance')
 
-      expect(rsvps.length).toBe(1)
-      expect(rsvps[0]!.attending).toBe(true)
+      expect(attendances.length).toBe(1)
+      expect(attendances[0]!.status).toBe('going')
     })
 
-    test('poll reopen deletes RSVPs', async () => {
+    test('poll reopen reverts attendances to pending', async () => {
       const { eventId, dateRangeId } = await createEventWithPoll(apiContext)
 
       // Vote + close
@@ -388,35 +388,35 @@ test.describe('RSVP Feature', () => {
         data: { selected_date_range_id: dateRangeId },
       })
 
-      // Verify RSVP exists
-      const rsvpResponse = await apiContext.get(
-        `${API_BASE}/api/events/${eventId}/rsvps`
+      // Close marked the yes-voter as going
+      const attendanceResponse = await apiContext.get(
+        `${API_BASE}/api/events/${eventId}/attendances`
       )
-      const rsvpBody = await rsvpResponse.json()
-      const rsvpsBefore = getObjectsByType(rsvpBody.objects, 'rsvp')
-      expect(rsvpsBefore.length).toBe(1)
+      const before = getObjectsByType(
+        (await attendanceResponse.json()).objects,
+        'attendance'
+      )
+      expect(before.length).toBe(1)
+      expect(before[0]!.status).toBe('going')
 
       // Reopen poll
       const deadline = new Date(
         Date.now() + 7 * 24 * 60 * 60 * 1000
       ).toISOString()
-      const reopenResponse = await apiContext.post(
-        `${API_BASE}/api/events/${eventId}/poll/reopen`,
-        { data: { deadline } }
-      )
-      const reopenBody = await reopenResponse.json()
+      await apiContext.post(`${API_BASE}/api/events/${eventId}/poll/reopen`, {
+        data: { deadline },
+      })
 
-      // RSVPs should be in deleted list
-      expect(reopenBody.deleted.length).toBeGreaterThan(0)
-      expect(reopenBody.deleted[0].objectType).toBe('rsvp')
-
-      // Verify no RSVPs remain
-      const rsvpResponse2 = await apiContext.get(
-        `${API_BASE}/api/events/${eventId}/rsvps`
+      // The roster survives; the answer resets to pending
+      const attendanceResponse2 = await apiContext.get(
+        `${API_BASE}/api/events/${eventId}/attendances`
       )
-      const rsvpBody2 = await rsvpResponse2.json()
-      const rsvpsAfter = getObjectsByType(rsvpBody2.objects, 'rsvp')
-      expect(rsvpsAfter.length).toBe(0)
+      const after = getObjectsByType(
+        (await attendanceResponse2.json()).objects,
+        'attendance'
+      )
+      expect(after.length).toBe(1)
+      expect(after[0]!.status).toBe('pending')
     })
   })
 

@@ -147,7 +147,6 @@ const CASCADE_RULES: Partial<
 > = {
   event: [
     { childType: 'datePoll', foreignKey: 'eventId' },
-    { childType: 'rsvp', foreignKey: 'eventId' },
     { childType: 'attendance', foreignKey: 'eventId' },
     { childType: 'expense', foreignKey: 'eventId' },
     { childType: 'settlement', foreignKey: 'eventId' },
