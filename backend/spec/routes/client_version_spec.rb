@@ -7,7 +7,7 @@ RSpec.describe "Client protocol version gate" do
     before { stub_const("ClientProtocol::MIN_SUPPORTED_VERSION", 3) }
 
     it "returns 426 with the minimum version for an older client" do
-      get "/api/health", {}, { "HTTP_X_CLIENT_VERSION" => "2" }
+      get "/api/auth/me", {}, { "HTTP_X_CLIENT_VERSION" => "2" }
 
       expect(last_response.status).to eq(426)
       expect(JSON.parse(last_response.body)).to eq(
@@ -17,7 +17,7 @@ RSpec.describe "Client protocol version gate" do
     end
 
     it "returns 426 for a client that sends no version header" do
-      get "/api/health"
+      get "/api/auth/me"
 
       expect(last_response.status).to eq(426)
     end
@@ -30,16 +30,17 @@ RSpec.describe "Client protocol version gate" do
       expect(last_response.status).to eq(426)
     end
 
+    # 401, not 426: the gate passed and normal routing (auth) took over
     it "allows a client at exactly the minimum" do
-      get "/api/health", {}, { "HTTP_X_CLIENT_VERSION" => "3" }
+      get "/api/auth/me", {}, { "HTTP_X_CLIENT_VERSION" => "3" }
 
-      expect(last_response.status).to eq(200)
+      expect(last_response.status).to eq(401)
     end
 
     it "allows a newer client" do
-      get "/api/health", {}, { "HTTP_X_CLIENT_VERSION" => "4" }
+      get "/api/auth/me", {}, { "HTTP_X_CLIENT_VERSION" => "4" }
 
-      expect(last_response.status).to eq(200)
+      expect(last_response.status).to eq(401)
     end
 
     it "does not gate non-API paths" do
@@ -47,13 +48,19 @@ RSpec.describe "Client protocol version gate" do
 
       expect(last_response.status).to eq(200)
     end
+
+    it "does not gate /api/health — external monitors poll it without the header" do
+      get "/api/health"
+
+      expect(last_response.status).to eq(200)
+    end
   end
 
   describe "with the shipped minimum of 0" do
     it "allows requests without a version header" do
-      get "/api/health"
+      get "/api/auth/me"
 
-      expect(last_response.status).to eq(200)
+      expect(last_response.status).to eq(401)
     end
   end
 

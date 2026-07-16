@@ -121,7 +121,8 @@ class App < Roda
   # Reject API requests from clients older than the protocol minimum with
   # 426 Upgrade Required. The client intercepts the status globally and
   # force-applies its pending service worker update (see
-  # frontend/src/api/updateRequired.ts). Applies to every /api path — the
+  # frontend/src/api/updateRequired.ts). Applies to every /api path except
+  # /api/health (polled by external monitors that send no header) — the
   # gate must fire before auth so even a login-screen client updates first.
   def verify_client_version!
     return if ClientProtocol.supported?(request.env[CLIENT_VERSION_HEADER])
@@ -184,7 +185,10 @@ class App < Roda
     response.headers["X-Request-ID"] = request_id
 
     RequestContext.with(request_id: request_id) do
-      verify_client_version! if r.path_info.start_with?("/api")
+      # /api/health is exempt: external monitors poll it without the header.
+      if r.path_info.start_with?("/api") && r.path_info != "/api/health"
+        verify_client_version!
+      end
 
       r.hash_routes
 

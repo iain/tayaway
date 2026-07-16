@@ -27,7 +27,8 @@ comparison note in `protocolVersion.ts`).
 - The backend checks the header for all `/api` paths before routing
   (`verify_client_version!` in `app.rb`) and answers **426 Upgrade
   Required** with `{ error, minSupportedVersion }` when the client is below
-  the minimum. The WS route answers an `update_required` message and closes
+  the minimum. `/api/health` is exempt — external monitors poll it without
+  the header (the deploy scripts use the root `/health`). The WS route answers an `update_required` message and closes
   (`routes/ws.rb`) — that path only fires in the narrow race where a ticket
   minted before a deploy is redeemed after it, since the ticket fetch itself
   is an API request.
