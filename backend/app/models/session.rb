@@ -70,10 +70,13 @@ class Session < Data.define(:id, :user_id, :token, :expires_at, :last_active_at,
     # Telemetry for the protocol version gate: remember the newest protocol
     # version this session's client has advertised, so raising
     # ClientProtocol::MIN_SUPPORTED_VERSION is a query over active sessions
-    # instead of a guess (see doc/protocol-versioning.md). Writes only on
-    # change — one UPDATE per client update per session, not per request.
+    # instead of a guess (see doc/protocol-versioning.md). Monotonic — an
+    # installed PWA and a stale, not-yet-reloaded tab share the session
+    # cookie but can run different bundles, and only the newest matters —
+    # which also means one UPDATE per client update per session, not one per
+    # request as the tabs alternate.
     def record_client_version(session, version)
-      return if session.last_seen_client_version == version
+      return if session.last_seen_client_version && session.last_seen_client_version >= version
 
       # Like touch_activity: updates only the DB row; the in-memory struct
       # stays stale, which is fine — it is not reused after this.

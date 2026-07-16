@@ -86,5 +86,14 @@ RSpec.describe "Client protocol version gate" do
 
       expect(recorded_version).to eq(8)
     end
+
+    it "does not regress when a stale tab reports an older version" do
+      # An installed PWA and a not-yet-reloaded tab share the session cookie
+      # but can run different bundles; the newest advertised version wins.
+      get "/api/auth/me", {}, auth_cookie.merge("HTTP_X_CLIENT_VERSION" => "8")
+      get "/api/auth/me", {}, auth_cookie.merge("HTTP_X_CLIENT_VERSION" => "7")
+
+      expect(recorded_version).to eq(8)
+    end
   end
 end
