@@ -15,6 +15,7 @@ function makeAssignment(
     id: 'assign-1',
     objectType: 'choreAssignment',
     choreId: 'chore-1',
+    attendanceId: 'att-1',
     userId: 'user-1',
     date: '2026-03-10',
     pinned: true,
@@ -119,6 +120,75 @@ describe('choreRosters store — updateAssignment', () => {
 
     expect(pool.get('choreAssignment', 'assign-1')?.note).toBe('offline note')
     expect(pool.hasPending('choreAssignment', 'assign-1')).toBe(true)
+  })
+})
+
+describe('choreRosters store — createAssignment', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    enqueueImpl = async () => okResponse({})
+  })
+
+  it('sends attendance_id and seeds the optimistic row with both ids', async () => {
+    const pool = useObjectPoolStore()
+    const store = useChoreRostersStore()
+
+    let body: Record<string, unknown> | undefined
+    let optimistic: ObjectTypeMap['choreAssignment'] | undefined
+    enqueueImpl = async (...args: unknown[]) => {
+      body = args[2] as Record<string, unknown>
+      optimistic = pool.get('choreAssignment', body.id as string)
+      return okResponse({})
+    }
+
+    await store.createAssignment(
+      'roster-1',
+      'chore-1',
+      { attendanceId: 'att-2', userId: 'user-2' },
+      '2026-03-11'
+    )
+
+    expect(body).toMatchObject({
+      chore_id: 'chore-1',
+      attendance_id: 'att-2',
+      date: '2026-03-11',
+    })
+    expect(body).not.toHaveProperty('user_id')
+    expect(optimistic).toMatchObject({
+      attendanceId: 'att-2',
+      userId: 'user-2',
+    })
+  })
+})
+
+describe('choreRosters store — reassign via updateAssignment', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    enqueueImpl = async () => okResponse({})
+  })
+
+  it('sends attendance_id only, applying both ids optimistically', async () => {
+    const pool = useObjectPoolStore()
+    pool.importObjects([makeAssignment()], {
+      scope: Scope.workspace('test'),
+    })
+    const store = useChoreRostersStore()
+
+    let body: Record<string, unknown> | undefined
+    let during: ObjectTypeMap['choreAssignment'] | undefined
+    enqueueImpl = async (...args: unknown[]) => {
+      body = args[2] as Record<string, unknown>
+      during = pool.get('choreAssignment', 'assign-1')
+      return okResponse({})
+    }
+
+    await store.updateAssignment('roster-1', 'assign-1', {
+      attendanceId: 'att-2',
+      userId: 'user-2',
+    })
+
+    expect(body).toEqual({ attendance_id: 'att-2' })
+    expect(during).toMatchObject({ attendanceId: 'att-2', userId: 'user-2' })
   })
 })
 

@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ChoreRosterDayList from './ChoreRosterDayList.vue'
-import { makeChore, makeChoreAssignment, makeMember } from '@/test/factories'
+import {
+  makeChore,
+  makeChoreAssignment,
+  makeHydratedAttendance,
+  makeMember,
+} from '@/test/factories'
 
 // "Today" is a prop (the event-zone date), so the fixture needs no real clock.
 const TODAY = '2026-06-16'
@@ -23,6 +28,12 @@ function mountList(overrides = {}) {
       assignments: [],
       dates: [NOT_TODAY, TODAY],
       members: [makeMember({ userId: 'user-1', name: 'Alice' })],
+      attendances: [
+        makeHydratedAttendance(
+          { id: 'att-user-1', userId: 'user-1' },
+          { member: makeMember({ userId: 'user-1', name: 'Alice' }) }
+        ),
+      ],
       currentUserId: null,
       today: TODAY,
       ...overrides,

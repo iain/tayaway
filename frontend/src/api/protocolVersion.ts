@@ -14,5 +14,8 @@
  *
  * Bump log:
  * - 1: versioning introduced; servers treat versionless clients as 0.
+ * - 2: choreAssignment gained attendanceId and its userId became nullable —
+ *   guest holders (userId: null) arrive once the server allows them; older
+ *   clients render those as "?" and key their rosters off userId.
  */
-export const PROTOCOL_VERSION = 1
+export const PROTOCOL_VERSION = 2

@@ -55,7 +55,9 @@ interface PoolCacheDB {
 // events lack attendanceIds.
 // Bumped to 19 when rsvps were retired (doc/attendances.md phase 7): purges
 // cached rsvp objects, which no longer exist as a pool type.
-const CACHE_VERSION = 19
+// Bumped to 20 when choreAssignments gained attendanceId (doc/attendances.md
+// phase 8); cached rows lack the field the roster is now keyed on.
+const CACHE_VERSION = 20
 
 const CACHE_VERSION_META_KEY = 'cacheVersion'
 const SYNCED_AT_META_PREFIX = 'syncedAt:'

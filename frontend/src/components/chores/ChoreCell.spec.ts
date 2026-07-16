@@ -1,11 +1,34 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ChoreCell from './ChoreCell.vue'
-import { makeMember, makeChoreAssignment } from '@/test/factories'
+import {
+  makeGuest,
+  makeHydratedAttendance,
+  makeMember,
+  makeChoreAssignment,
+} from '@/test/factories'
 import type { PoolMember } from '@/types/pool'
+import type { HydratedAttendance } from '@/composables/useHydratedEvent'
 
 const memberMap = new Map<string, PoolMember>([
   ['user-1', makeMember({ userId: 'user-1', name: 'Alice' })],
+])
+
+const attendanceMap = new Map<string, HydratedAttendance>([
+  [
+    'att-1',
+    makeHydratedAttendance(
+      { id: 'att-1', userId: 'user-1' },
+      { member: makeMember({ userId: 'user-1', name: 'Alice' }) }
+    ),
+  ],
+  [
+    'att-g',
+    makeHydratedAttendance(
+      { id: 'att-g', userId: null, guestId: 'guest-1', hostUserId: 'user-1' },
+      { guest: makeGuest({ id: 'guest-1', name: 'Emma' }) }
+    ),
+  ],
 ])
 
 function mountCell(
@@ -15,8 +38,15 @@ function mountCell(
 ) {
   return mount(ChoreCell, {
     props: {
-      assignments: [makeChoreAssignment({ userId: 'user-1', ...assignment })],
+      assignments: [
+        makeChoreAssignment({
+          attendanceId: 'att-1',
+          userId: 'user-1',
+          ...assignment,
+        }),
+      ],
       peoplePerDay: 1,
+      attendanceMap,
       memberMap,
       currentUserId,
       staleAssignmentIds,
@@ -60,6 +90,20 @@ describe('ChoreCell assignment chip', () => {
 
   it('leaves chips alone when the stale set names another assignment', () => {
     const chip = mountCell({ id: 'a1' }, null, new Set(['other'])).get('button')
+    expect(chip.attributes('aria-label')).toBe('Alice')
+  })
+
+  it("names a guest holder's chip after the guest", () => {
+    const chip = mountCell({ attendanceId: 'att-g', userId: null }).get(
+      'button'
+    )
+    expect(chip.attributes('aria-label')).toBe('Emma')
+  })
+
+  it('falls back to the mirrored userId on a legacy row without a link', () => {
+    const chip = mountCell({ attendanceId: null, userId: 'user-1' }).get(
+      'button'
+    )
     expect(chip.attributes('aria-label')).toBe('Alice')
   })
 })

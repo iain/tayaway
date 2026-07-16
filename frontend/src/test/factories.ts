@@ -1,4 +1,5 @@
 import type { ObjectTypeMap } from '@/types/pool'
+import type { HydratedAttendance } from '@/composables/useHydratedEvent'
 import type { useObjectPoolStore } from '@/stores/objectPool'
 import { Scope } from '@/api/scope'
 
@@ -136,6 +137,51 @@ export function makeAttendance(
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,
+  }
+}
+
+// An attendance with its resolved attendee, the shape the hydration
+// composable produces. Pass the member or guest behind the row; a member
+// default is derived from the attendance's userId.
+export function makeHydratedAttendance(
+  overrides: Partial<ObjectTypeMap['attendance']> = {},
+  person: {
+    member?: ObjectTypeMap['member']
+    guest?: ObjectTypeMap['guest']
+  } = {}
+): HydratedAttendance {
+  const attendance = makeAttendance(overrides)
+  if (person.guest) {
+    return {
+      ...attendance,
+      attendee: {
+        name: person.guest.name,
+        isGuest: true,
+        billingUserId: attendance.hostUserId,
+        member: undefined,
+        guest: person.guest,
+        hostMember: undefined,
+      },
+    }
+  }
+  const member =
+    person.member ??
+    (attendance.userId
+      ? makeMember({
+          id: `mem-${attendance.userId}`,
+          userId: attendance.userId,
+        })
+      : undefined)
+  return {
+    ...attendance,
+    attendee: {
+      name: member?.name || member?.email || 'Unknown',
+      isGuest: false,
+      billingUserId: attendance.userId,
+      member,
+      guest: undefined,
+      hostMember: undefined,
+    },
   }
 }
 
@@ -300,6 +346,7 @@ export function makeChoreAssignment(
     id: 'assign-1',
     objectType: 'choreAssignment',
     choreId: 'chore-1',
+    attendanceId: null,
     userId: 'user-1',
     date: '2026-03-10',
     pinned: false,

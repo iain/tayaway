@@ -7,12 +7,15 @@ import {
 } from '@heroicons/vue/24/solid'
 import PushPinIcon from '@/components/icons/PushPinIcon.vue'
 import type { PoolChoreAssignment, PoolMember } from '@/types/pool'
-import { getMemberNameFromMap } from '@/utils/member'
+import type { HydratedAttendance } from '@/composables/useHydratedEvent'
+import { assignmentPerson } from '@/utils/chores'
 
 const props = withDefaults(
   defineProps<{
     assignments: PoolChoreAssignment[]
     peoplePerDay: number
+    attendanceMap: Map<string, HydratedAttendance>
+    // Legacy fallback for rows written before the attendance link existed.
     memberMap: Map<string, PoolMember>
     currentUserId: string | null
     // `stack` is the desktop grid cell: chips stacked and centered in a narrow
@@ -50,8 +53,16 @@ const addSizeClass = computed(() =>
   props.orientation === 'row' ? 'size-11' : 'size-11 sm:size-5'
 )
 
+function personName(a: PoolChoreAssignment): string {
+  return assignmentPerson(a, props.attendanceMap, props.memberMap).name
+}
+
 function isCurrentUser(a: PoolChoreAssignment): boolean {
-  return props.currentUserId !== null && a.userId === props.currentUserId
+  return (
+    props.currentUserId !== null &&
+    assignmentPerson(a, props.attendanceMap, props.memberMap).userId ===
+      props.currentUserId
+  )
 }
 
 function isStale(a: PoolChoreAssignment): boolean {
@@ -59,7 +70,7 @@ function isStale(a: PoolChoreAssignment): boolean {
 }
 
 function chipTitle(a: PoolChoreAssignment): string {
-  const name = getMemberNameFromMap(a.userId, props.memberMap)
+  const name = personName(a)
   const base = a.note ? `${name}: ${a.note}` : name
   return isStale(a) ? `${base} — not attending this day` : base
 }
@@ -70,7 +81,7 @@ function chipTitle(a: PoolChoreAssignment): string {
 // "you" is likewise dual-coded — the amber fill that marks your own chips is
 // invisible to a screen reader without it.
 function chipLabel(a: PoolChoreAssignment): string {
-  const parts = [getMemberNameFromMap(a.userId, props.memberMap)]
+  const parts = [personName(a)]
   if (isCurrentUser(a)) parts.push('you')
   if (a.pinned) parts.push('pinned')
   if (a.note) parts.push(`note: ${a.note}`)
@@ -109,9 +120,7 @@ function handleAddClick(event: MouseEvent) {
         v-if="a.pinned"
         class="size-3 shrink-0 text-amber-600 dark:text-amber-400"
       />
-      <span class="truncate">{{
-        getMemberNameFromMap(a.userId, memberMap)
-      }}</span>
+      <span class="truncate">{{ personName(a) }}</span>
       <ChatBubbleLeftIcon
         v-if="a.note"
         aria-hidden="true"

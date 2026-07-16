@@ -8,19 +8,15 @@ import ChoreCell from '@/components/chores/ChoreCell.vue'
 import { positionBetween, positionForReorder } from '@/utils/position'
 import { formatWeekdayDay } from '@/utils/date'
 import { useChoreRostersStore } from '@/stores/choreRosters'
-import type {
-  PoolChore,
-  PoolChoreAssignment,
-  PoolMember,
-  PoolAttendance,
-} from '@/types/pool'
+import type { PoolChore, PoolChoreAssignment, PoolMember } from '@/types/pool'
+import type { HydratedAttendance } from '@/composables/useHydratedEvent'
 
 const props = defineProps<{
   chores: PoolChore[]
   assignments: PoolChoreAssignment[]
   dates: string[]
   members: PoolMember[]
-  attendances: PoolAttendance[]
+  attendances: HydratedAttendance[]
   rosterId: string
   currentUserId: string | null
   // The event-zone date — the same "today" the backend fences autofill on,
@@ -43,6 +39,12 @@ const memberMap = computed(() => {
   for (const m of props.members) {
     map.set(m.userId, m)
   }
+  return map
+})
+
+const attendanceMap = computed(() => {
+  const map = new Map<string, HydratedAttendance>()
+  for (const a of props.attendances) map.set(a.id, a)
   return map
 })
 
@@ -242,6 +244,7 @@ function onHandleKeydown(event: KeyboardEvent, chore: PoolChore) {
             <ChoreCell
               :assignments="getAssignments(chore.id, date)"
               :people-per-day="chore.peoplePerDay"
+              :attendance-map="attendanceMap"
               :member-map="memberMap"
               :current-user-id="currentUserId"
               :stale-assignment-ids="staleAssignmentIds"

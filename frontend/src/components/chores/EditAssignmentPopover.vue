@@ -3,14 +3,13 @@ import { computed, ref } from 'vue'
 import { useChoreRostersStore } from '@/stores/choreRosters'
 import PushPinIcon from '@/components/icons/PushPinIcon.vue'
 import AnchoredPopover from '@/components/common/AnchoredPopover.vue'
-import type {
-  PoolChoreAssignment,
-  PoolEvent,
-  PoolMember,
-  PoolAttendance,
-} from '@/types/pool'
-import { getMemberNameFromMap } from '@/utils/member'
-import { attendingUserIdsOn } from '@/utils/chores'
+import type { PoolChoreAssignment, PoolEvent, PoolMember } from '@/types/pool'
+import type { HydratedAttendance } from '@/composables/useHydratedEvent'
+import {
+  assignableAttendancesOn,
+  assignmentPerson,
+  holderAttendanceId,
+} from '@/utils/chores'
 import { TEXT_LIMITS } from '@/constants/limits'
 import TextButton from '@/components/common/TextButton.vue'
 import AppButton from '@/components/common/AppButton.vue'
@@ -19,9 +18,11 @@ const props = defineProps<{
   assignment: PoolChoreAssignment
   anchorEl: HTMLElement
   rosterId: string
+  attendanceMap: Map<string, HydratedAttendance>
+  // Legacy fallback for rows written before the attendance link existed.
   memberMap: Map<string, PoolMember>
   assignments: PoolChoreAssignment[]
-  attendances: PoolAttendance[]
+  attendances: HydratedAttendance[]
   event: PoolEvent
 }>()
 
@@ -33,15 +34,20 @@ const choreRostersStore = useChoreRostersStore()
 const note = ref(props.assignment.note ?? '')
 const showReassign = ref(false)
 
+const holderName = computed(
+  () =>
+    assignmentPerson(props.assignment, props.attendanceMap, props.memberMap)
+      .name
+)
+
 // Who could take this slot over: attending that day, not the current holder,
 // not already on this same chore-day. Reassigning (rather than remove +
 // re-add) keeps the note and pin intact.
 const reassignCandidates = computed(() => {
-  const attending = attendingUserIdsOn(
-    props.assignment.date,
-    props.attendances,
-    props.event
-  )
+  const byUser = new Map<string, string>()
+  for (const a of props.attendances) {
+    if (a.userId) byUser.set(a.userId, a.id)
+  }
   const slotMates = new Set(
     props.assignments
       .filter(
@@ -49,19 +55,26 @@ const reassignCandidates = computed(() => {
           a.choreId === props.assignment.choreId &&
           a.date === props.assignment.date
       )
-      .map((a) => a.userId)
+      .map((a) => holderAttendanceId(a, byUser))
   )
 
-  return [...props.memberMap.values()]
-    .filter((m) => attending.has(m.userId) && !slotMates.has(m.userId))
-    .sort((a, b) => (a.name ?? a.email).localeCompare(b.name ?? b.email))
+  return assignableAttendancesOn(
+    props.assignment.date,
+    props.attendances,
+    props.event
+  )
+    .filter((a) => !slotMates.has(a.id))
+    .sort((a, b) => a.attendee.name.localeCompare(b.attendee.name))
 })
 
-async function handleReassign(userId: string) {
+async function handleReassign(attendance: HydratedAttendance) {
   await choreRostersStore.updateAssignment(
     props.rosterId,
     props.assignment.id,
-    { userId }
+    {
+      attendanceId: attendance.id,
+      userId: attendance.attendee.member?.userId ?? null,
+    }
   )
   emit('close')
 }
@@ -100,12 +113,12 @@ async function handleRemove() {
 <template>
   <AnchoredPopover
     :anchor-el="anchorEl"
-    :aria-label="`Edit ${getMemberNameFromMap(assignment.userId, memberMap)}'s assignment`"
+    :aria-label="`Edit ${holderName}'s assignment`"
     @close="emit('close')"
   >
     <div class="mb-2 flex items-center justify-between">
       <p class="text-ink-muted text-xs font-medium">
-        {{ getMemberNameFromMap(assignment.userId, memberMap) }}
+        {{ holderName }}
       </p>
       <button
         type="button"
@@ -144,14 +157,14 @@ async function handleRemove() {
 
     <div v-if="showReassign" class="mb-3 max-h-40 overflow-y-auto">
       <button
-        v-for="member in reassignCandidates"
-        :key="member.id"
+        v-for="attendance in reassignCandidates"
+        :key="attendance.id"
         type="button"
-        :aria-label="`Reassign to ${getMemberNameFromMap(member.userId, memberMap)}`"
+        :aria-label="`Reassign to ${attendance.attendee.name}`"
         class="text-ink focus-visible:outline-focus hover:bg-surface-sunken block w-full cursor-pointer rounded-md px-2 py-1.5 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
-        @click="handleReassign(member.userId)"
+        @click="handleReassign(attendance)"
       >
-        {{ getMemberNameFromMap(member.userId, memberMap) }}
+        {{ attendance.attendee.name }}
       </button>
       <p
         v-if="reassignCandidates.length === 0"
