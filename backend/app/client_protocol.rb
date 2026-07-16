@@ -24,11 +24,16 @@ module ClientProtocol
   MIN_SUPPORTED_VERSION = 0
 
   class << self
-    # Whether a client-reported protocol version (raw header/param value —
-    # possibly nil, garbage, or a repeated query param) meets the minimum.
+    # A client-reported protocol version (raw header/param value — possibly
+    # nil, garbage, or a repeated query param) as an integer; anything
+    # unparseable counts as 0, the pre-versioning client.
+    def parse(raw_version)
+      Integer(raw_version.to_s, 10, exception: false) || 0
+    end
+
+    # Whether a client-reported protocol version meets the minimum.
     def supported?(raw_version)
-      version = Integer(raw_version.to_s, 10, exception: false) || 0
-      version >= MIN_SUPPORTED_VERSION
+      parse(raw_version) >= MIN_SUPPORTED_VERSION
     end
   end
 end

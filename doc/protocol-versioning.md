@@ -48,9 +48,19 @@ comparison note in `protocolVersion.ts`).
 1. **Deploy N** — ship the new behavior *alongside* the old (the same
    additive discipline as `doc/database-migrations.md`), and bump
    `PROTOCOL_VERSION` in the same deploy.
-2. **Wait** — until the fleet has updated past N. Server logs tag rejected
-   requests with `[Protocol]`; client versions arrive on every request if
-   you need to check adoption.
+2. **Wait** — until the fleet has updated past N. Every authenticated
+   request records its client's version on the session
+   (`sessions.last_seen_client_version`; 0 = pre-versioning client, NULL =
+   no request since the column shipped), so adoption is a query:
+
+   ```sql
+   SELECT last_seen_client_version, count(*)
+   FROM sessions
+   WHERE expires_at > now()
+   GROUP BY 1 ORDER BY 1;
+   ```
+
+   Rejected requests also show up in server logs tagged `[Protocol]`.
 3. **Deploy M** — remove the old behavior and raise
    `MIN_SUPPORTED_VERSION` to N in the same deploy. Stragglers get the
    update-required flow instead of broken requests.

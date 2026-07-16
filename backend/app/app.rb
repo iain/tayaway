@@ -64,7 +64,10 @@ class App < Roda
 
     token = request.cookies[COOKIE_NAME]
     session = token ? Session.find_valid(token) : nil
-    Session.touch_activity(session) if session
+    if session
+      Session.touch_activity(session)
+      Session.record_client_version(session, ClientProtocol.parse(request.env[CLIENT_VERSION_HEADER]))
+    end
     @_current_session = session
   end
 
