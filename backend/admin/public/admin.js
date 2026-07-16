@@ -47,7 +47,13 @@ if (signin) {
 const logout = document.getElementById("logout");
 if (logout) {
   logout.addEventListener("click", async () => {
-    await postJson("/logout");
-    window.location.href = "/login";
+    // Redirect even if the request fails (e.g. the session already expired,
+    // making /logout a 401) — /login is the right place either way, and it
+    // bounces straight back to the dashboard if we somehow are still signed in.
+    try {
+      await postJson("/logout");
+    } finally {
+      window.location.href = "/login";
+    }
   });
 }
