@@ -122,10 +122,16 @@ ca.pem → no vhost, no `ADMIN_EMAILS` → login always 403, no migration →
 mise run admin:dev        # admin site on http://localhost:9393
 ```
 
-`.env.development` allowlists `test@example.com` (the seeded user) and adds
-the localhost origin for WebAuthn. Register a passkey for the test user in
-the SPA first (dev-login → profile → passkeys), then sign in at :9393 with
-it. No mTLS locally — that layer exists only at the production edge.
+`.env.development` is gitignored, so add the admin keys to your local copy:
+
+```sh
+ADMIN_EMAILS=test@example.com                # the seeded user
+WEBAUTHN_EXTRA_ORIGINS=http://localhost:9393 # passkey ceremony on the admin port
+```
+
+Register a passkey for the test user in the SPA first (dev-login → profile
+→ passkeys), then sign in at :9393 with it. No mTLS locally — that layer
+exists only at the production edge.
 
 Specs live in `spec/admin/` (request specs against `AdminApp`) and
 `spec/services/admin/`.
