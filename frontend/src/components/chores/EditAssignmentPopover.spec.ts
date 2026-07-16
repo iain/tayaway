@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import EditAssignmentPopover from './EditAssignmentPopover.vue'
 import {
   makeEvent,
+  makeGuest,
   makeMember,
   makeHydratedAttendance,
   makeChoreAssignment,
@@ -119,6 +120,33 @@ describe('EditAssignmentPopover reassign', () => {
 
     expect(wrapper.findAll('button[aria-label^="Reassign to"]')).toHaveLength(0)
     expect(wrapper.text()).toContain('No one else is around that day')
+  })
+
+  it('offers a going guest as a takeover candidate, sending their attendance', async () => {
+    const wrapper = mountPopover({
+      attendances: [
+        att('att-user-1', alice),
+        makeHydratedAttendance(
+          {
+            id: 'att-g',
+            userId: null,
+            guestId: 'guest-1',
+            hostUserId: 'user-2',
+          },
+          { guest: makeGuest({ id: 'guest-1', name: 'Emma' }) }
+        ),
+        att('att-user-3', cara),
+      ],
+    })
+    await wrapper.get('button[aria-label="Reassign"]').trigger('click')
+
+    await wrapper
+      .get('button[aria-label="Reassign to Emma (guest)"]')
+      .trigger('click')
+    expect(updateAssignmentSpy).toHaveBeenCalledWith('roster-1', 'a1', {
+      attendanceId: 'att-g',
+      userId: null,
+    })
   })
 
   it('excludes a legacy slot-mate row without an attendance link', async () => {

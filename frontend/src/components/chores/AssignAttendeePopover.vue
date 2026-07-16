@@ -26,15 +26,19 @@ const emit = defineEmits<{
 const choreRostersStore = useChoreRostersStore()
 
 // Attendances covering this date (so come-and-go gap days aren't offered —
-// matches the backend autofill availability). The viewer sorts first:
-// claiming a slot yourself is the most common assignment by far.
+// matches the backend autofill availability). The viewer sorts first
+// (claiming a slot yourself is the most common assignment by far), then
+// members, then guests — the same ordering as the day view.
 const candidates = computed(() => {
   return assignableAttendancesOn(props.date, props.attendances, props.event)
     .slice()
     .sort((a, b) => {
       if (isCurrentUser(a)) return -1
       if (isCurrentUser(b)) return 1
-      return a.attendee.name.localeCompare(b.attendee.name)
+      return (
+        Number(a.attendee.isGuest) - Number(b.attendee.isGuest) ||
+        a.attendee.name.localeCompare(b.attendee.name)
+      )
     })
 })
 
@@ -46,7 +50,9 @@ function isCurrentUser(attendance: HydratedAttendance): boolean {
 }
 
 function displayName(attendance: HydratedAttendance): string {
-  return isCurrentUser(attendance) ? 'You' : attendance.attendee.name
+  if (isCurrentUser(attendance)) return 'You'
+  if (attendance.attendee.isGuest) return `${attendance.attendee.name} (guest)`
+  return attendance.attendee.name
 }
 
 // This slot's assignments keyed by attendance, so a row can flip between
@@ -96,7 +102,7 @@ async function handleToggle(attendance: HydratedAttendance) {
 <template>
   <AnchoredPopover
     :anchor-el="anchorEl"
-    aria-label="Assign member"
+    aria-label="Assign someone"
     @close="emit('close')"
   >
     <div class="mb-2">

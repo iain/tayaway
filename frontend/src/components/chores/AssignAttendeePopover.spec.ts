@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import AssignMemberPopover from './AssignMemberPopover.vue'
+import AssignAttendeePopover from './AssignAttendeePopover.vue'
 import {
   makeChore,
   makeEvent,
+  makeGuest,
   makeMember,
   makeHydratedAttendance,
   makeChoreAssignment,
@@ -24,7 +25,7 @@ vi.mock('@/stores/choreRosters', () => ({
   }),
 }))
 
-describe('AssignMemberPopover', () => {
+describe('AssignAttendeePopover', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     createAssignmentSpy.mockClear()
@@ -45,7 +46,7 @@ describe('AssignMemberPopover', () => {
     attendances?: HydratedAttendance[]
     currentUserId?: string | null
   } = {}) {
-    return mount(AssignMemberPopover, {
+    return mount(AssignAttendeePopover, {
       props: {
         chore,
         date: '2026-03-10',
@@ -143,6 +144,46 @@ describe('AssignMemberPopover', () => {
       .findAll('button[aria-label^="Assign"]')
       .map((b) => b.attributes('aria-label'))
     expect(labels).toEqual(['Assign You', 'Assign Alice'])
+  })
+
+  it('offers going guests after the members, marked as guests', async () => {
+    const wrapper = mountPopover({
+      currentUserId: 'user-1',
+      attendances: [
+        makeHydratedAttendance(
+          {
+            id: 'att-g',
+            userId: null,
+            guestId: 'guest-1',
+            hostUserId: 'user-1',
+          },
+          { guest: makeGuest({ id: 'guest-1', name: 'Emma' }) }
+        ),
+        makeHydratedAttendance(
+          { id: 'att-user-1', userId: 'user-1' },
+          { member: alice }
+        ),
+        makeHydratedAttendance(
+          { id: 'att-user-2', userId: 'user-2' },
+          { member: bob }
+        ),
+      ],
+    })
+
+    const labels = wrapper
+      .findAll('button[aria-label^="Assign"]')
+      .map((b) => b.attributes('aria-label'))
+    expect(labels).toEqual(['Assign You', 'Assign Bob', 'Assign Emma (guest)'])
+
+    await wrapper
+      .get('button[aria-label="Assign Emma (guest)"]')
+      .trigger('click')
+    expect(createAssignmentSpy).toHaveBeenCalledWith(
+      'roster-1',
+      'chore-1',
+      { attendanceId: 'att-g', userId: null },
+      '2026-03-10'
+    )
   })
 
   it('does not offer attendees who are away on this date', () => {

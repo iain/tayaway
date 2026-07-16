@@ -118,10 +118,9 @@ export function assignmentPerson(
 
 /**
  * The attendances that can take a chore on one specific day: going, covering
- * that date — the eligibility set for assigning (or reassigning) that day's
- * chores, mirroring the backend autofill's availability map for a single
- * date. Members only until the server accepts guest holders (the follow-up
- * deploy of doc/attendances.md phase 8).
+ * that date — members and guests alike — the eligibility set for assigning
+ * (or reassigning) that day's chores, mirroring the backend autofill's
+ * availability map for a single date.
  */
 export function assignableAttendancesOn(
   date: string,
@@ -131,8 +130,8 @@ export function assignableAttendancesOn(
   if (!event.startDate || !event.endDate) return []
   const start = event.startDate
   const end = event.endDate
-  return attendances.filter(
-    (a) => !a.attendee.isGuest && attendanceDates(a, start, end).includes(date)
+  return attendances.filter((a) =>
+    attendanceDates(a, start, end).includes(date)
   )
 }
 

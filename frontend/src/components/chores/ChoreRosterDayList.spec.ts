@@ -105,7 +105,7 @@ describe('ChoreRosterDayList', () => {
   it('emits assign with the chore id and date of the tapped slot', async () => {
     const list = mountList()
     const slot = list.get(`[data-date="${TODAY}"] [data-chore-id="wash"]`)
-    await slot.get('button[title="Assign member"]').trigger('click')
+    await slot.get('button[title="Assign someone"]').trigger('click')
 
     const events = list.emitted('assign')
     expect(events).toHaveLength(1)
