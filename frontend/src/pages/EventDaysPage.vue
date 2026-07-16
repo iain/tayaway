@@ -31,7 +31,6 @@ import type {
   PoolChoreAssignment,
   PoolMember,
 } from '@/types/pool'
-import type { HydratedAttendance } from '@/composables/useHydratedEvent'
 
 const route = useRoute()
 const eventId = computed(() => route.params.id as string)
@@ -56,24 +55,6 @@ const { now } = useMinuteTicker()
 const today = computed(() =>
   event.value ? zonedDateString(now.value, event.value.timezone) : ''
 )
-
-const memberMap = computed(() => {
-  const map = new Map<string, string>()
-  for (const m of pool.getAll('member')) {
-    map.set(m.userId, m.name || m.email || 'Unknown')
-  }
-  return map
-})
-
-function names(userIds: string[]): string {
-  return userIds
-    .map((id) => {
-      const name = memberMap.value.get(id) ?? 'Unknown'
-      return id === currentUserId.value ? `${name} (you)` : name
-    })
-    .sort((a, b) => a.localeCompare(b))
-    .join(', ')
-}
 
 // Day lists name guests like anyone else — members first, then guests.
 function attendeeLabel(attendance: HydratedAttendance): string {
@@ -149,7 +130,7 @@ const memberByUserId = computed(() => {
 })
 
 // Duty holders resolve through their attendance's attendee, so guest
-// assignments show the guest's name; "(you)" mirrors names() below.
+// assignments show the guest's name; "(you)" mirrors attendeeLabel above.
 function dutyNames(assignments: PoolChoreAssignment[]): string {
   return assignments
     .map((a) => {
