@@ -208,7 +208,7 @@ module TestFactories
       DB[:chores].where(id: id).first
     end
 
-    def chore_assignment(chore: nil, user: nil, date: Date.today, pinned: false, note: nil, id: SecureRandom.uuid)
+    def chore_assignment(chore: nil, user: nil, attendance: nil, date: Date.today, pinned: false, note: nil, id: SecureRandom.uuid)
       chore ||= self.chore
       user ||= self.user
       now = Time.now
@@ -216,6 +216,7 @@ module TestFactories
         id: id,
         chore_id: chore[:id],
         user_id: user[:id],
+        attendance_id: attendance&.[](:id),
         date: date,
         pinned: pinned,
         note: note,

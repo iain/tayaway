@@ -23,7 +23,8 @@ RSpec.describe ChoreAssignmentSerializer do
       event = TestFactories.event(workspace: workspace, user: user)
       roster = TestFactories.chore_roster(event: event, user: user)
       chore = TestFactories.chore(chore_roster: roster, name: "Wash up")
-      assignment = TestFactories.chore_assignment(chore: chore, user: user, date: Date.today, pinned: true, note: "dish soap")
+      attendance = TestFactories.attendance(event: event, user: user)
+      assignment = TestFactories.chore_assignment(chore: chore, user: user, attendance: attendance, date: Date.today, pinned: true, note: "dish soap")
       assignment_model = ChoreAssignment.find(assignment[:id])
 
       result = described_class.serialize_batch([assignment_model], pool: nil).first
@@ -32,9 +33,22 @@ RSpec.describe ChoreAssignmentSerializer do
       expect(result[:objectType]).to eq("choreAssignment")
       expect(result[:choreId]).to eq(chore[:id].to_s)
       expect(result[:userId]).to eq(user[:id].to_s)
+      expect(result[:attendanceId]).to eq(attendance[:id].to_s)
       expect(result[:date]).to eq(Date.today.iso8601)
       expect(result[:pinned]).to be true
       expect(result[:note]).to eq("dish soap")
+    end
+
+    it "serializes a null attendanceId on a row the backfill has not reached" do
+      event = TestFactories.event(workspace: workspace, user: user)
+      roster = TestFactories.chore_roster(event: event, user: user)
+      chore = TestFactories.chore(chore_roster: roster)
+      assignment = TestFactories.chore_assignment(chore: chore, user: user)
+
+      result = described_class.serialize_batch([ChoreAssignment.find(assignment[:id])], pool: nil).first
+
+      expect(result).to have_key(:attendanceId)
+      expect(result[:attendanceId]).to be_nil
     end
   end
 end

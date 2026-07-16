@@ -57,6 +57,9 @@ module ChoreRosters
         # what remains.
         attendances = Attendance.for_event(event.id).select { |a| a.going? && !a.guest? }
         availability = build_availability(dates, attendances, event)
+        # Every new row records the attendance behind its holder alongside
+        # user_id (doc/attendances.md phase 8 dual-write).
+        attendance_id_by_user = attendances.to_h { |a| [a.user_id.to_s, a.id.to_s] }
 
         chores = Chore.for_roster(roster.id)
         started_today_chore_ids = ChoreTime.started_today(chores, event.timezone).map(&:id)
@@ -176,6 +179,7 @@ module ChoreRosters
                   id: SecureRandom.uuid,
                   chore_id: chore.id,
                   user_id: chosen,
+                  attendance_id: attendance_id_by_user.fetch(chosen),
                   date: date,
                   pinned: false,
                   note: nil,

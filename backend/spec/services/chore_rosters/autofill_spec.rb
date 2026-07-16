@@ -61,6 +61,21 @@ RSpec.describe ChoreRosters::Autofill do
     expect(non_pinned_assignments.map { |a| a[:user_id] }.uniq).to eq([user_a[:id]])
   end
 
+  it "links every filled slot to the holder's attendance row" do
+    attendance_a = create_attendance(user_a)
+    attendance_b = create_attendance(user_b)
+    TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 2)
+
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
+
+    expect(result.success?).to be true
+    attendance_by_user = { user_a[:id] => attendance_a[:id], user_b[:id] => attendance_b[:id] }
+    expect(non_pinned_assignments).not_to be_empty
+    non_pinned_assignments.each do |a|
+      expect(a[:attendance_id]).to eq(attendance_by_user.fetch(a[:user_id]))
+    end
+  end
+
   it "fills slots based on attendance availability" do
     create_attendance(user_a)
     create_attendance(user_b)
