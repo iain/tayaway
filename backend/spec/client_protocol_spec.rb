@@ -32,9 +32,9 @@ RSpec.describe ClientProtocol do
   end
 
   describe "MIN_SUPPORTED_VERSION" do
-    it "is 0 so pre-versioning clients (no header) remain supported" do
-      expect(ClientProtocol::MIN_SUPPORTED_VERSION).to eq(0)
-      expect(described_class.supported?(nil)).to be true
+    it "is 2 — clients that cannot render guest chore holders get the update flow" do
+      expect(ClientProtocol::MIN_SUPPORTED_VERSION).to eq(2)
+      expect(described_class.supported?(nil)).to be false
     end
   end
 end

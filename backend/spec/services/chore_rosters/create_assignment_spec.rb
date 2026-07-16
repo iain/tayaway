@@ -123,7 +123,7 @@ RSpec.describe ChoreRosters::CreateAssignment do
       expect(result.failure.message).to eq("Attendance not found on this event")
     end
 
-    it "rejects a guest attendance" do
+    it "assigns a guest attendance, with no mirrored userId" do
       guest = TestFactories.guest(workspace: workspace)
       attendance = TestFactories.attendance(event: event, guest: guest, host: user)
 
@@ -136,7 +136,10 @@ RSpec.describe ChoreRosters::CreateAssignment do
         date: "2026-03-02"
       )
 
-      expect(result.failure.message).to eq("Guests cannot be assigned chores yet")
+      expect(result.success?).to be true
+      assignment = result.value![:objects].find { |o| o[:objectType] == "choreAssignment" }
+      expect(assignment[:attendanceId]).to eq(attendance[:id].to_s)
+      expect(assignment[:userId]).to be_nil
     end
 
     it "requires attendance_id or user_id, but not both" do
