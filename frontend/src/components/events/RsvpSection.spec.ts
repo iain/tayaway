@@ -349,10 +349,18 @@ describe('RsvpSection guests', () => {
     expect(row.text()).toContain('guest of Alice')
   })
 
-  it('removes a guest via the row button — a decline, not a delete', async () => {
+  it('removes a guest via their menu — a decline, not a delete', async () => {
     const wrapper = mountSection([mkAttendance(), mkGuestAttendance()])
 
-    await wrapper.find('[data-testid="guest-remove"]').trigger('click')
+    // The remove action lives in the guest's dropdown, not a separate button.
+    expect(wrapper.find('[data-testid="guest-remove"]').exists()).toBe(false)
+    await wrapper.find('[data-testid="rsvp-other-menu"]').trigger('click')
+    await wrapper.vm.$nextTick()
+    const item = wrapper
+      .findAll('[role="menuitem"]')
+      .find((b) => b.text() === 'Remove from event')
+    expect(item, 'menu item "Remove from event" should exist').toBeDefined()
+    await item!.trigger('click')
 
     expect(removeGuestSpy).toHaveBeenCalledWith('event-1', 'att-guest')
   })

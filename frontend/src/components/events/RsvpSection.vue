@@ -7,7 +7,6 @@ import {
   CalendarDaysIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  XMarkIcon,
 } from '@heroicons/vue/24/outline'
 import { useAttendancesStore } from '@/stores/attendances'
 import { useGuestsStore } from '@/stores/guests'
@@ -515,6 +514,7 @@ function guestActions(attendance: HydratedAttendance): RsvpAction[] {
       ? { kind: 'change-dates', label: 'Change days' }
       : { kind: 'set-dates', label: 'Choose days' },
     { kind: 'rename', label: 'Rename guest' },
+    { kind: 'decline', label: 'Remove from event', danger: true },
   ]
 }
 
@@ -917,13 +917,6 @@ function guestOfLabel(attendance: HydratedAttendance): string {
                 :actions="guestActions(attendance)"
                 @pick="handleGuestPick(attendance, $event)"
               />
-              <IconButton
-                data-testid="guest-remove"
-                :label="`Remove ${attendance.attendee.name} from this event`"
-                @click="handleRemoveGuest(attendance)"
-              >
-                <XMarkIcon class="size-5" />
-              </IconButton>
             </li>
           </ul>
         </div>
@@ -1027,13 +1020,6 @@ function guestOfLabel(attendance: HydratedAttendance): string {
                 :actions="guestActions(attendance)"
                 @pick="handleGuestPick(attendance, $event)"
               />
-              <IconButton
-                data-testid="guest-remove"
-                :label="`Remove ${attendance.attendee.name} from this event`"
-                @click="handleRemoveGuest(attendance)"
-              >
-                <XMarkIcon class="size-5" />
-              </IconButton>
             </li>
           </ul>
         </div>
