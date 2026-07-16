@@ -12,6 +12,7 @@ import {
   type OptimisticRef,
 } from '@/api/commandDb'
 import { coalesceCommands, getResourceKey } from '@/api/coalesceCommands'
+import { PROTOCOL_VERSION } from '@/api/protocolVersion'
 import { useWebSocketStore } from './websocket'
 import { useWorkspaceStore } from './workspace'
 import { useObjectPoolStore } from './objectPool'
@@ -57,6 +58,20 @@ function isAuthError(e: unknown): boolean {
     e !== null &&
     'status' in e &&
     (e as { status: number }).status === 401
+  )
+}
+
+// 426: the server no longer supports this client's protocol version. The
+// API client already switched into the update-required flow (blocking
+// overlay + forced SW update + reload); commands stay queued untouched so
+// initialize() re-drains them on the new version. No self-retry either —
+// it would keep 426ing until the reload anyway.
+function isUpdateRequiredError(e: unknown): boolean {
+  return (
+    typeof e === 'object' &&
+    e !== null &&
+    'status' in e &&
+    (e as { status: number }).status === 426
   )
 }
 
@@ -256,6 +271,9 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
       body,
       workspaceId,
       optimistic,
+      // Stamped so a future build replaying this row after a forced update
+      // knows which protocol version wrote it (see StoredCommand).
+      protocolVersion: PROTOCOL_VERSION,
     })
     pendingCount.value++
 
@@ -311,6 +329,10 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
         await handleAuthError()
         throw new CommandQueuedError()
       }
+      if (isUpdateRequiredError(e)) {
+        // Kept queued for replay after the forced update's reload
+        throw new CommandQueuedError()
+      }
       // Server error — remove from queue and rethrow; the caller rolls the
       // optimistic state back, so the destroy suppression lifts too
       clearPendingDestroysFor(optimistic)
@@ -362,6 +384,9 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
     // After a 401 the session is being torn down — arming a retry would
     // just hammer the API with commands that keep 401ing.
     let authFailed = false
+    // After a 426 the app is about to reload into the new version — a retry
+    // would keep 426ing until then.
+    let updateRequiredFailed = false
     // Only arm the self-retry when this drain actually hit a retryable
     // failure; rows left behind for other reasons (in-flight direct
     // requests) don't need one.
@@ -414,6 +439,12 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
               // Session expired — keep commands, redirect to login
               authFailed = true
               await handleAuthError()
+              break
+            }
+            if (isUpdateRequiredError(e)) {
+              // Client too old — keep every row untouched; the forced
+              // update reloads the app and re-drains on the new version
+              updateRequiredFailed = true
               break
             }
             if (isRetryableError(e)) {
@@ -471,7 +502,7 @@ export const useCommandQueueStore = defineStore('commandQueue', () => {
       if (pendingCount.value === 0) {
         // Fully drained — disarm any pending retry and reset the backoff
         clearRetry()
-      } else if (!authFailed && sawRetryableFailure) {
+      } else if (!authFailed && !updateRequiredFailed && sawRetryableFailure) {
         // A retryable failure left commands behind — make sure a retry is
         // armed; a no-op when the socket is down, since the reconnect
         // trigger covers that case.

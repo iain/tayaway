@@ -92,6 +92,8 @@ For big new features, drive development with a failing Playwright test that capt
 
 Migrations run **before** the app restarts during deploy — old code is still serving traffic. All migrations must be **additive**. Destructive changes (drop column/table, rename, add NOT NULL) require a two-deploy pattern. See `doc/database-migrations.md` for details.
 
+The same additive discipline applies to the client↔server API: deployed PWA clients keep running cached bundles after a deploy. Breaking API changes ship behind the protocol version gate (`PROTOCOL_VERSION` / `ClientProtocol::MIN_SUPPORTED_VERSION`) — see `doc/protocol-versioning.md` before removing or reshaping anything a client calls.
+
 ## Commits and PRs
 
 This repo uses **Conventional Commits**: the subject starts with a type — `feat:`, `fix:`, `docs:`, `perf:`, `refactor:`, `chore:`, `ci:`, etc. — optionally scoped (`feat(dashboard): …`), with a trailing `!` or a `BREAKING CHANGE:` footer for breaking changes. This **overrides the global "no conventional-commit prefixes" preference** for this repo, because `CHANGELOG.md` is generated from commit history by git-cliff (`mise run changelog`; grouping and skip rules live in `cliff.toml`). The rest of the global commit conventions still hold — imperative subject, a body only to explain *why*, no trailers.

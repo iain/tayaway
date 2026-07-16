@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Read-only session model.
-class Session < Data.define(:id, :user_id, :token, :expires_at, :last_active_at, :created_at, :ip_address, :city, :country, :browser_name, :os_name)
+class Session < Data.define(:id, :user_id, :token, :expires_at, :last_active_at, :created_at, :ip_address, :city, :country, :browser_name, :os_name, :last_seen_client_version)
   EXPIRY_DAYS = 30
   EXPIRY_SECONDS = EXPIRY_DAYS * 24 * 60 * 60
   INACTIVITY_SECONDS = 7 * 24 * 60 * 60 # 7 days
@@ -67,6 +67,28 @@ class Session < Data.define(:id, :user_id, :token, :expires_at, :last_active_at,
         .reject(&:inactive?)
     end
 
+    # Telemetry for the protocol version gate: remember the newest protocol
+    # version this session's client has advertised, so raising
+    # ClientProtocol::MIN_SUPPORTED_VERSION is a query over active sessions
+    # instead of a guess (see doc/protocol-versioning.md). Monotonic — an
+    # installed PWA and a stale, not-yet-reloaded tab share the session
+    # cookie but can run different bundles, and only the newest matters —
+    # which also means one UPDATE per client update per session, not one per
+    # request as the tabs alternate.
+    def record_client_version(session, version)
+      return if session.last_seen_client_version && session.last_seen_client_version >= version
+
+      # Like touch_activity: updates only the DB row; the in-memory struct
+      # stays stale, which is fine — it is not reused after this.
+      DB.transaction(savepoint: true) do
+        DB[:sessions].where(id: session.id.to_s).update(last_seen_client_version: version)
+      end
+    rescue Sequel::DatabaseError
+      # Silently ignore — the session may reference a deleted user (race
+      # condition). The savepoint ensures the outer transaction survives.
+      nil
+    end
+
     def touch_activity(session)
       return unless session.activity_update_needed?
 
@@ -99,7 +121,8 @@ class Session < Data.define(:id, :user_id, :token, :expires_at, :last_active_at,
         city: row[:city],
         country: row[:country],
         browser_name: row[:browser_name],
-        os_name: row[:os_name]
+        os_name: row[:os_name],
+        last_seen_client_version: row[:last_seen_client_version]
       )
     end
   end

@@ -2,6 +2,7 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { rawApi } from '@/api/client'
 import { checkForServiceWorkerUpdate } from '@/api/swUpdate'
+import { PROTOCOL_VERSION } from '@/api/protocolVersion'
 import { useObjectPoolStore } from './objectPool'
 import { useWorkspaceStore, WORKSPACE_ID_STORAGE_KEY } from './workspace'
 import { Scope } from '@/api/scope'
@@ -181,7 +182,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
     }
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
-    let url = `${protocol}//${host}/ws?ticket=${encodeURIComponent(data.ticket)}`
+    // `v` advertises the protocol version; a server that no longer supports
+    // it answers with an update_required message instead of syncing.
+    let url = `${protocol}//${host}/ws?ticket=${encodeURIComponent(data.ticket)}&v=${PROTOCOL_VERSION}`
 
     // Include current workspace so the server can sync it immediately.
     // The cursor comes from reconcileCursor: partial while the last full
@@ -295,6 +298,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
       case 'session_revoked':
         handleSessionRevoked()
         break
+      case 'update_required':
+        handleUpdateRequiredMessage()
+        break
       case 'error':
         console.warn('[WebSocket] Server error:', message.message)
         break
@@ -318,6 +324,12 @@ export const useWebSocketStore = defineStore('websocket', () => {
       // finishes installing.
       void checkForServiceWorkerUpdate()
     }
+  }
+
+  async function handleUpdateRequiredMessage(): Promise<void> {
+    console.warn('[WebSocket] Server requires a newer client — updating')
+    const { handleUpdateRequired } = await import('@/api/updateRequired')
+    await handleUpdateRequired()
   }
 
   async function handleSessionRevoked(): Promise<void> {

@@ -88,6 +88,14 @@ vi.mock('@/api/swUpdate', () => ({
   checkForServiceWorkerUpdate: registerSWMocks.checkForServiceWorkerUpdate,
 }))
 
+const updateRequiredMocks = vi.hoisted(() => ({
+  handleUpdateRequired: vi.fn(),
+}))
+
+vi.mock('@/api/updateRequired', () => ({
+  handleUpdateRequired: updateRequiredMocks.handleUpdateRequired,
+}))
+
 vi.mock('@/router', () => ({
   default: { push: vi.fn() },
 }))
@@ -979,6 +987,48 @@ describe('useWebSocketStore — gitSha triggers SW update on version change', ()
     await new Promise((resolve) => setTimeout(resolve, 0))
 
     expect(registerSWMocks.checkForServiceWorkerUpdate).not.toHaveBeenCalled()
+  })
+})
+
+// ---- protocol version gate --------------------------------------------------
+
+describe('useWebSocketStore — protocol version gate', () => {
+  beforeEach(() => {
+    installWebSocketMock()
+    setActivePinia(createPinia())
+    vi.spyOn(console, 'info').mockImplementation(() => {})
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    updateRequiredMocks.handleUpdateRequired.mockReset()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+    vi.resetModules()
+  })
+
+  it('advertises the protocol version on the connect URL', async () => {
+    const { PROTOCOL_VERSION } = await import('@/api/protocolVersion')
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+    await store.connect()
+
+    expect(lastSocket.url).toContain(`&v=${PROTOCOL_VERSION}`)
+  })
+
+  it('hands update_required messages to the update-required flow', async () => {
+    const { useWebSocketStore } = await import('./websocket')
+    const store = useWebSocketStore()
+    await store.connect()
+    lastSocket.onopen!(new Event('open'))
+
+    lastSocket.onmessage!({
+      data: JSON.stringify({ type: 'update_required', minSupportedVersion: 2 }),
+    } as MessageEvent)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(updateRequiredMocks.handleUpdateRequired).toHaveBeenCalledOnce()
   })
 })
 

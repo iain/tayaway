@@ -185,7 +185,20 @@ describe('commandQueue store', () => {
         path: '/api/events/1',
         body: { name: 'Updated' },
         workspaceId: null,
+        protocolVersion: expect.any(Number),
       })
+    })
+
+    it('stamps the command with the protocol version that wrote it', async () => {
+      const store = useCommandQueueStore()
+      mockedApi.post.mockResolvedValueOnce(okResponse(null))
+
+      await store.enqueue('POST', '/api/events', { name: 'X' })
+
+      const { PROTOCOL_VERSION } = await import('@/api/protocolVersion')
+      expect(addCommand).toHaveBeenCalledWith(
+        expect.objectContaining({ protocolVersion: PROTOCOL_VERSION })
+      )
     })
 
     it('tags the enqueued command with the workspace it was issued in', async () => {
@@ -326,6 +339,23 @@ describe('commandQueue store', () => {
       ).rejects.toThrow(CommandQueuedError)
 
       // Command stays in db — preserved for replay after re-auth
+      expect(removeCommand).not.toHaveBeenCalled()
+      expect(store.pendingCount).toBe(1)
+    })
+
+    it('keeps command in db and throws CommandQueuedError on 426', async () => {
+      const store = useCommandQueueStore()
+      mockedApi.post.mockRejectedValueOnce({
+        status: 426,
+        message: 'Client update required',
+      })
+
+      await expect(
+        store.enqueue('POST', '/api/events', { name: 'Test' })
+      ).rejects.toThrow(CommandQueuedError)
+
+      // Command stays in db — the forced update reloads the app and
+      // initialize() re-drains it on the new version
       expect(removeCommand).not.toHaveBeenCalled()
       expect(store.pendingCount).toBe(1)
     })
@@ -622,6 +652,40 @@ describe('commandQueue store', () => {
 
       // Command not removed from db — kept for retry after re-auth
       expect(store.pendingCount).toBe(1)
+    })
+
+    it('stops on 426 and keeps commands for replay after the forced update', async () => {
+      const store = useCommandQueueStore()
+      store.pendingCount = 2
+
+      const commands = [
+        {
+          id: 'cmd-a',
+          method: 'POST' as const,
+          path: '/api/events',
+          body: {},
+          createdAt: 1,
+        },
+        {
+          id: 'cmd-b',
+          method: 'PUT' as const,
+          path: '/api/events/1',
+          body: {},
+          createdAt: 2,
+        },
+      ]
+      vi.mocked(getPendingCommands).mockResolvedValueOnce(commands)
+      mockedApi.post.mockRejectedValueOnce({ status: 426 })
+      // processQueue always resyncs count from IndexedDB at the end
+      vi.mocked(dbCount).mockResolvedValueOnce(2)
+
+      await store.processQueue()
+
+      // Second command was never attempted; nothing removed or rolled back
+      expect(mockedApi.put).not.toHaveBeenCalled()
+      expect(removeCommand).not.toHaveBeenCalled()
+      expect(store.pendingCount).toBe(2)
+      expect(notificationMocks.showError).not.toHaveBeenCalled()
     })
   })
 
@@ -1156,6 +1220,20 @@ describe('commandQueue store', () => {
       const store = useCommandQueueStore()
 
       mockedApi.post.mockRejectedValueOnce({ status: 401 })
+      await expect(store.enqueue('POST', '/api/events', {})).rejects.toThrow(
+        CommandQueuedError
+      )
+
+      expect(store.retryScheduled).toBe(false)
+      expect(vi.getTimerCount()).toBe(0)
+    })
+
+    it('does not schedule a retry after a 426 — the forced update reload replays', async () => {
+      vi.useFakeTimers()
+      websocketMocks.state = 'authenticated'
+      const store = useCommandQueueStore()
+
+      mockedApi.post.mockRejectedValueOnce({ status: 426 })
       await expect(store.enqueue('POST', '/api/events', {})).rejects.toThrow(
         CommandQueuedError
       )

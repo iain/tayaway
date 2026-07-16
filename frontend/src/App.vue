@@ -5,7 +5,9 @@ import { RouterView } from 'vue-router'
 import { useAuthStore, useCommandQueueStore } from '@/stores'
 import { useWebSocketStore } from '@/stores/websocket'
 import { poolPersistence } from '@/api/poolPersistence'
+import { updateRequired } from '@/api/updateRequired'
 import ToastContainer from '@/components/common/ToastContainer.vue'
+import UpdateRequiredOverlay from '@/components/common/UpdateRequiredOverlay.vue'
 
 const authStore = useAuthStore()
 const commandQueueStore = useCommandQueueStore()
@@ -55,4 +57,5 @@ onMounted(async () => {
     <p class="text-ink-placeholder mt-3 text-sm">Loading...</p>
   </div>
   <ToastContainer />
+  <UpdateRequiredOverlay v-if="updateRequired" />
 </template>

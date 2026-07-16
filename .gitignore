@@ -60,6 +60,9 @@ backend/vendor/bundle/
 # Claude Code
 .claude/worktrees/
 .claude/settings.local.json
+# Impeccable design-skill detector config; the hook itself is installed at
+# user level (~/.claude/skills) via the gitignored settings.local.json.
+.impeccable/
 .worktrees/
 doc/superpowers/
 .superpowers/
