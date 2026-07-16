@@ -15,12 +15,14 @@ const props = defineProps<{
 
 const pool = useObjectPoolStore()
 
-/** A named guest itemized under their host's row: presence only — their
- *  share is billed to the host, so the money columns stay on that row. */
+/** A named guest itemized under their host's row, carrying their own
+ *  fair-share slice. It is billed to the host — Paid and Balance stay on
+ *  the host's row. */
 interface GuestSplitRow {
   attendanceId: string
   name: string
   days: number
+  share: number
 }
 
 interface SplitRow {
@@ -28,6 +30,8 @@ interface SplitRow {
   name: string
   days: number
   guests: GuestSplitRow[]
+  /** The member's own slice; their guests' slices sit on the guest rows.
+   *  The balance nets the whole group (own + guests) against paid. */
   share: number
   paid: number
   balance: number
@@ -43,8 +47,11 @@ const rows = computed((): SplitRow[] => {
     .getAll('expense')
     .filter((e) => e.eventId === props.event.id)
 
-  // Per-expense splitting: compute each person's share across all expenses
-  const shareByUser = new Map<string, number>()
+  // Per-expense splitting. Head-day slices accrue per attendance so each
+  // person — guest or member — shows their own slice; explicit-participant
+  // slices are member-keyed (guests can't be participants yet).
+  const shareByAttendance = new Map<string, number>()
+  const participantShareByUser = new Map<string, number>()
 
   // Pre-compute each attendance's day set, resolved to the user its share
   // bills to (members bill themselves, guests their host — the hydrated
@@ -81,40 +88,46 @@ const rows = computed((): SplitRow[] => {
       if (participants.length > 0 && totalFactor > 0) {
         for (const p of participants) {
           const share = (p.factor / totalFactor) * expense.amount
-          shareByUser.set(p.userId, (shareByUser.get(p.userId) ?? 0) + share)
+          participantShareByUser.set(
+            p.userId,
+            (participantShareByUser.get(p.userId) ?? 0) + share
+          )
         }
       }
       continue
     }
 
     // Default: proportional to head-days within the expense window — every
-    // going person (member or guest) is one head per attended day, billed
-    // to their billing user.
-    const headsByUser = new Map<string, number>()
-    for (const { billingUserId, days } of daySets) {
+    // going person (member or guest) is one head per attended day.
+    const headsByAttendance = new Map<string, number>()
+    for (const { attendanceId, days } of daySets) {
       const heads = days.filter(
         (d) => d >= expense.startDate && d <= expense.endDate
       ).length
-      if (heads > 0) {
-        headsByUser.set(
-          billingUserId,
-          (headsByUser.get(billingUserId) ?? 0) + heads
-        )
-      }
+      if (heads > 0) headsByAttendance.set(attendanceId, heads)
     }
 
-    const totalHeads = [...headsByUser.values()].reduce((s, h) => s + h, 0)
+    const totalHeads = [...headsByAttendance.values()].reduce(
+      (s, h) => s + h,
+      0
+    )
     if (totalHeads === 0) continue
 
-    for (const [userId, heads] of headsByUser) {
+    for (const [attendanceId, heads] of headsByAttendance) {
       const share = (heads / totalHeads) * expense.amount
-      shareByUser.set(userId, (shareByUser.get(userId) ?? 0) + share)
+      shareByAttendance.set(
+        attendanceId,
+        (shareByAttendance.get(attendanceId) ?? 0) + share
+      )
     }
   }
 
-  // One row per billing user, carrying their own attended days and their
-  // named guests for itemization.
-  const rowByUser = new Map<string, { days: number; guests: GuestSplitRow[] }>()
+  // One row per billing user, carrying their own attended days and share
+  // plus their named guests for itemization.
+  const rowByUser = new Map<
+    string,
+    { days: number; ownShare: number; guests: GuestSplitRow[] }
+  >()
   for (const {
     attendanceId,
     attendeeName,
@@ -122,18 +135,30 @@ const rows = computed((): SplitRow[] => {
     isGuest,
     days,
   } of daySets) {
-    const acc = rowByUser.get(billingUserId) ?? { days: 0, guests: [] }
+    const acc = rowByUser.get(billingUserId) ?? {
+      days: 0,
+      ownShare: 0,
+      guests: [],
+    }
+    const share = shareByAttendance.get(attendanceId) ?? 0
     if (isGuest) {
-      acc.guests.push({ attendanceId, name: attendeeName, days: days.length })
+      acc.guests.push({
+        attendanceId,
+        name: attendeeName,
+        days: days.length,
+        share,
+      })
     } else {
       acc.days += days.length
+      acc.ownShare += share
     }
     rowByUser.set(billingUserId, acc)
   }
 
-  return [...rowByUser].map(([userId, { days, guests }]) => {
+  return [...rowByUser].map(([userId, { days, ownShare, guests }]) => {
     const member = pool.findBy('member', 'userId', userId)
-    const share = shareByUser.get(userId) ?? 0
+    const share = ownShare + (participantShareByUser.get(userId) ?? 0)
+    const groupShare = share + guests.reduce((s, g) => s + g.share, 0)
     const paid = expenses
       .filter((e) => e.userId === userId)
       .reduce((sum, e) => sum + e.amount, 0)
@@ -144,7 +169,7 @@ const rows = computed((): SplitRow[] => {
       guests,
       share,
       paid,
-      balance: share - paid,
+      balance: groupShare - paid,
     }
   })
 })
@@ -241,9 +266,9 @@ function formatDays(days: number): string {
               </td>
               <td class="text-ink-faint py-2 pr-4 text-right">—</td>
               <td
-                class="text-ink-faint hidden py-2 pr-4 text-right sm:table-cell"
+                class="hidden py-2 pr-4 text-right whitespace-nowrap sm:table-cell"
               >
-                —
+                <LedgerAmount :amount="guest.share" />
               </td>
               <td class="text-ink-faint py-2 pr-4 text-right">—</td>
             </tr>
