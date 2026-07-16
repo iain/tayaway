@@ -132,8 +132,8 @@ function handleAddClick(event: MouseEvent) {
       type="button"
       class="text-ink-muted focus-visible:outline-focus hover:bg-surface-sunken hover:text-ink inline-flex items-center justify-center rounded transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
       :class="addSizeClass"
-      title="Assign member"
-      aria-label="Assign member"
+      title="Assign someone"
+      aria-label="Assign someone"
       @click="handleAddClick"
     >
       <PlusIcon class="size-3.5" />

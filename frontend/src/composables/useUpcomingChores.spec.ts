@@ -10,6 +10,7 @@ import {
   makeChoreRoster,
   makeChore,
   makeChoreAssignment,
+  makeGuest,
 } from '@/test/factories'
 import type { PoolObject } from '@/types/pool'
 import { useUpcomingChores, MAX_VISIBLE_CHORES } from './useUpcomingChores'
@@ -150,6 +151,72 @@ describe('useUpcomingChores', () => {
     const { upcomingChores } = useUpcomingChores(nowUtc())
 
     expect(upcomingChores.value).toHaveLength(1)
+  })
+
+  it("lists a hosted guest's chore on the host's list, named after the guest", () => {
+    const [event, roster, chore] = choreChain({
+      assignmentId: 'a1',
+      date: TODAY,
+    })
+    seed([
+      event!,
+      roster!,
+      chore!,
+      makeGuest({ id: 'guest-1', name: 'Emma' }),
+      makeAttendance({
+        id: 'att-g',
+        eventId: 'evt-1',
+        userId: null,
+        guestId: 'guest-1',
+        hostUserId: 'user-1',
+      }),
+      makeChoreAssignment({
+        id: 'a1',
+        choreId: 'chore-a1',
+        attendanceId: 'att-g',
+        userId: null,
+        date: TODAY,
+      }),
+    ])
+
+    const { upcomingChores } = useUpcomingChores(nowUtc())
+
+    expect(upcomingChores.value).toHaveLength(1)
+    expect(upcomingChores.value[0]).toMatchObject({
+      assignmentId: 'a1',
+      guestName: 'Emma',
+    })
+  })
+
+  it("leaves another host's guest chores off the list", () => {
+    const [event, roster, chore] = choreChain({
+      assignmentId: 'a1',
+      date: TODAY,
+    })
+    seed([
+      event!,
+      roster!,
+      chore!,
+      makeGuest({ id: 'guest-1', name: 'Emma' }),
+      makeAttendance({
+        id: 'att-g',
+        eventId: 'evt-1',
+        userId: null,
+        guestId: 'guest-1',
+        hostUserId: 'user-2',
+      }),
+      makeChoreAssignment({
+        id: 'a1',
+        choreId: 'chore-a1',
+        attendanceId: 'att-g',
+        userId: null,
+        date: TODAY,
+      }),
+    ])
+
+    const { upcomingChores } = useUpcomingChores(nowUtc())
+
+    expect(upcomingChores.value).toHaveLength(0)
   })
 
   it("excludes another member's chore even when the mirrored userId is stale", () => {
