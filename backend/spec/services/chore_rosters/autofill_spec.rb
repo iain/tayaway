@@ -48,17 +48,36 @@ RSpec.describe ChoreRosters::Autofill do
       .all
   end
 
-  it "ignores guest attendances and non-going member rows" do
+  it "ignores non-going rows, member and guest alike" do
     create_attendance(user_a)
     TestFactories.attendance(event: event, user: user_b, status: "declined")
     guest = TestFactories.guest(workspace: workspace)
-    TestFactories.attendance(event: event, guest: guest, host: user_a, status: "going")
+    TestFactories.attendance(event: event, guest: guest, host: user_a, status: "declined")
     TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
 
     result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
 
     expect(result.success?).to be true
     expect(non_pinned_assignments.map { |a| a[:user_id] }.uniq).to eq([user_a[:id]])
+  end
+
+  it "shares slots with going guests, writing no mirrored userId on their rows" do
+    member_attendance = create_attendance(user_a)
+    guest = TestFactories.guest(workspace: workspace, name: "Emma")
+    guest_attendance = TestFactories.attendance(event: event, guest: guest, host: user_a, status: "going")
+    TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
+
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
+
+    expect(result.success?).to be true
+    # 3 days, 1 slot/day, 2 attendees: fairness splits the days between them.
+    by_attendance = non_pinned_assignments.group_by { |a| a[:attendance_id] }
+    expect(by_attendance.keys).to contain_exactly(member_attendance[:id], guest_attendance[:id])
+
+    guest_rows = by_attendance.fetch(guest_attendance[:id])
+    expect(guest_rows.map { |a| a[:user_id] }.uniq).to eq([nil])
+    member_rows = by_attendance.fetch(member_attendance[:id])
+    expect(member_rows.map { |a| a[:user_id] }.uniq).to eq([user_a[:id]])
   end
 
   it "links every filled slot to the holder's attendance row" do

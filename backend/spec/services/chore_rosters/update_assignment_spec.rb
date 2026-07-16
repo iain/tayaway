@@ -70,7 +70,7 @@ RSpec.describe ChoreRosters::UpdateAssignment do
     expect(updated[:userId]).to eq(other_user[:id].to_s)
   end
 
-  it "rejects reassigning to a guest attendance" do
+  it "reassigns to a guest attendance, clearing the mirrored userId" do
     guest = TestFactories.guest(workspace: workspace)
     attendance = TestFactories.attendance(event: event, guest: guest, host: user)
 
@@ -82,7 +82,10 @@ RSpec.describe ChoreRosters::UpdateAssignment do
       attendance_id: attendance[:id].to_s
     )
 
-    expect(result.failure.message).to eq("Guests cannot be assigned chores yet")
+    expect(result.success?).to be true
+    updated = result.value![:objects].find { |o| o[:objectType] == "choreAssignment" }
+    expect(updated[:attendanceId]).to eq(attendance[:id].to_s)
+    expect(updated[:userId]).to be_nil
   end
 
   it "rejects reassigning to an attendance from another event" do

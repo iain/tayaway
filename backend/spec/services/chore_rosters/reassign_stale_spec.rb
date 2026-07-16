@@ -44,6 +44,21 @@ RSpec.describe ChoreRosters::ReassignStale do
     expect(row[:pinned]).to be false
   end
 
+  it "hands a stale assignment to a going guest when they carry the least load" do
+    create_attendance(user_a, start_date: event_start, end_date: event_start)
+    guest = TestFactories.guest(workspace: workspace, name: "Emma")
+    guest_attendance = TestFactories.attendance(event: event, guest: guest, host: user_a, status: "going")
+    chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
+    stale = TestFactories.chore_assignment(chore: chore, user: user_a, date: Date.new(2026, 3, 3), pinned: false)
+
+    result = described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_a))
+    expect(result.success?).to be true
+
+    row = DB[:chore_assignments].where(id: stale[:id]).first
+    expect(row[:attendance_id]).to eq(guest_attendance[:id])
+    expect(row[:user_id]).to be_nil
+  end
+
   it "points the reassigned row at the replacement's attendance" do
     create_attendance(user_a, start_date: event_start, end_date: event_start)
     attendance_b = create_attendance(user_b)
