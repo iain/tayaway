@@ -251,7 +251,7 @@ describe('assignableAttendancesOn', () => {
   const event = { startDate: '2026-03-01', endDate: '2026-03-04' }
   const member = makeMember({ userId: 'user-1', name: 'Alice' })
 
-  it('offers going members covering the date, not guests or absentees', () => {
+  it('offers going attendees covering the date, guests included, not absentees', () => {
     const there = makeHydratedAttendance(
       { id: 'att-1', userId: 'user-1' },
       { member }
@@ -284,7 +284,7 @@ describe('assignableAttendancesOn', () => {
       event
     )
 
-    expect(result.map((a) => a.id)).toEqual(['att-1'])
+    expect(result.map((a) => a.id)).toEqual(['att-1', 'att-g'])
   })
 
   it('offers nobody when the event has no dates', () => {

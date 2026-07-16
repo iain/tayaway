@@ -18,6 +18,9 @@ export interface UpcomingChoreItem {
   timezone: string
   day: 'today' | 'tomorrow'
   note: string | null
+  // Set when the chore belongs to a guest the user hosts — their reminders
+  // land on the host, so the host's list carries them too.
+  guestName: string | null
 }
 
 /**
@@ -34,10 +37,11 @@ const DONE_GRACE_MS = 60 * 60 * 1000
 
 /**
  * The current user's chores due today or tomorrow, across every event — what
- * the homepage surfaces during an event. "Today"/"tomorrow" and the done-window
- * are reckoned in each event's own zone, so a traveller (or a chore in another
- * region) is bucketed by the event's local day, not the device's. Each item
- * links back to its event's roster.
+ * the homepage surfaces during an event — plus those of any guests they
+ * host, named as such. "Today"/"tomorrow" and the done-window are reckoned
+ * in each event's own zone, so a traveller (or a chore in another region) is
+ * bucketed by the event's local day, not the device's. Each item links back
+ * to its event's roster.
  *
  * `now` is injectable for testing; in the app it's the shared minute ticker so
  * a timed chore drops off live, roughly an hour after it was due.
@@ -58,19 +62,34 @@ export function useUpcomingChores(now: Ref<number> = useMinuteTicker().now) {
     const eventsById = new Map(pool.getAll('event').map((e) => [e.id, e]))
 
     // Assignments are keyed by the attendance behind the holder; collect the
-    // user's member attendance rows across events. Legacy rows without the
-    // link still match on their mirrored userId.
-    const myAttendanceIds = new Set(
-      pool
-        .getAll('attendance')
-        .filter((a) => a.userId === userId)
-        .map((a) => a.id)
-    )
-    const isMine = (a: {
+    // user's member attendance rows across events, plus the guests they host
+    // (whose reminders land on the host). Legacy rows without the link still
+    // match on their mirrored userId.
+    const myAttendanceIds = new Set<string>()
+    const hostedGuestNameByAttendance = new Map<string, string>()
+    for (const attendance of pool.getAll('attendance')) {
+      if (attendance.userId === userId) {
+        myAttendanceIds.add(attendance.id)
+      } else if (attendance.guestId && attendance.hostUserId === userId) {
+        const guest = pool.get('guest', attendance.guestId)
+        hostedGuestNameByAttendance.set(
+          attendance.id,
+          guest?.name ?? 'your guest'
+        )
+      }
+    }
+    // Whose list this row belongs on: `mine`, `guest` (hosted), or neither.
+    const claim = (a: {
       attendanceId: string | null
       userId: string | null
-    }) =>
-      a.attendanceId ? myAttendanceIds.has(a.attendanceId) : a.userId === userId
+    }): { guestName: string | null } | null => {
+      if (a.attendanceId) {
+        if (myAttendanceIds.has(a.attendanceId)) return { guestName: null }
+        const guestName = hostedGuestNameByAttendance.get(a.attendanceId)
+        return guestName ? { guestName } : null
+      }
+      return a.userId === userId ? { guestName: null } : null
+    }
 
     // "today"/"tomorrow" depend on the event's zone; memoise per zone.
     const windowByZone = new Map<string, { today: string; tomorrow: string }>()
@@ -86,7 +105,8 @@ export function useUpcomingChores(now: Ref<number> = useMinuteTicker().now) {
 
     const rows: { item: UpcomingChoreItem; sort: number }[] = []
     for (const a of pool.getAll('choreAssignment')) {
-      if (!isMine(a)) continue
+      const claimed = claim(a)
+      if (!claimed) continue
 
       const chore = choresById.get(a.choreId)
       if (!chore) continue
@@ -116,6 +136,7 @@ export function useUpcomingChores(now: Ref<number> = useMinuteTicker().now) {
           timezone: zone,
           day: a.date === today ? 'today' : 'tomorrow',
           note: a.note,
+          guestName: claimed.guestName,
         },
         sort: wallClockToEpoch(a.date, chore.time, zone),
       })

@@ -17,7 +17,7 @@ RSpec.describe "Client protocol version gate" do
     end
 
     it "returns 426 for a client that sends no version header" do
-      get "/api/auth/me"
+      get "/api/auth/me", {}, { "HTTP_X_CLIENT_VERSION" => nil }
 
       expect(last_response.status).to eq(426)
     end
@@ -56,15 +56,19 @@ RSpec.describe "Client protocol version gate" do
     end
   end
 
-  describe "with the shipped minimum of 0" do
-    it "allows requests without a version header" do
-      get "/api/auth/me"
+  describe "with the shipped minimum of 2" do
+    it "gates pre-versioning clients, which send no header" do
+      get "/api/auth/me", {}, { "HTTP_X_CLIENT_VERSION" => nil }
 
-      expect(last_response.status).to eq(401)
+      expect(last_response.status).to eq(426)
     end
   end
 
   describe "recording the client version on the session" do
+    # Recording happens after the gate; pin the minimum to 0 so the
+    # pre-versioning (headerless → 0) recording path stays testable.
+    before { stub_const("ClientProtocol::MIN_SUPPORTED_VERSION", 0) }
+
     let(:user) { TestFactories.user }
     let(:session) { TestFactories.session(user: user) }
     let(:auth_cookie) { { "HTTP_COOKIE" => "session_token=#{session[:token]}" } }
@@ -81,7 +85,7 @@ RSpec.describe "Client protocol version gate" do
     end
 
     it "records 0 for an authenticated request without a version header" do
-      get "/api/auth/me", {}, auth_cookie
+      get "/api/auth/me", {}, auth_cookie.merge("HTTP_X_CLIENT_VERSION" => nil)
 
       expect(last_response.status).to eq(200)
       expect(recorded_version).to eq(0)

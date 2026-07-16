@@ -44,24 +44,27 @@ module ChoreRosters
         chores = Chore.for_roster(roster.id)
         started_today_chore_ids = ChoreTime.started_today(chores, event.timezone).map { |c| c.id.to_s }
 
-        # Going member attendances only (doc/attendances.md phase 3) — same
-        # availability source as Autofill.
-        attendances = Attendance.for_event(event.id).select { |a| a.going? && !a.guest? }
+        # Going attendances — members and guests alike, keyed by attendance
+        # id (doc/attendances.md phase 8) — same availability source as
+        # Autofill.
+        attendances = Attendance.for_event(event.id).select(&:going?)
         availability = build_availability(event, attendances)
-        # Handovers rewrite the attendance reference alongside user_id
-        # (doc/attendances.md phase 8 dual-write).
-        attendance_id_by_user = attendances.to_h { |a| [a.user_id.to_s, a.id.to_s] }
+        attendance_by_id = attendances.to_h { |a| [a.id.to_s, a] }
+        # Legacy rows without the attendance link resolve through their
+        # mirrored user_id; gone once user_id retires.
+        attendance_id_by_user = attendances.reject(&:guest?).to_h { |a| [a.user_id.to_s, a.id.to_s] }
         available_days = Hash.new(0)
-        availability.each_value do |user_ids|
-          user_ids.each { |uid| available_days[uid] += 1 }
+        availability.each_value do |attendance_ids|
+          attendance_ids.each { |aid| available_days[aid] += 1 }
         end
 
         all = ChoreAssignment.for_roster(roster.id)
         stale = all.select do |a|
+          key = holder_key(a, attendance_id_by_user)
           !a.pinned &&
             a.date >= today &&
             !(a.date == today && started_today_chore_ids.include?(a.chore_id.to_s)) &&
-            !(availability[a.date] || Set.new).include?(a.user_id.to_s)
+            !(key && (availability[a.date] || Set.new).include?(key))
         end.sort_by(&:date)
 
         # Load and occupancy from the full roster, minus the stale rows being
@@ -74,10 +77,13 @@ module ChoreRosters
         day_assignments = Hash.new { |h, k| h[k] = Set.new }
         chore_day_assignments = Hash.new { |h, k| h[k] = Set.new }
         kept.each do |a|
-          load_count[a.user_id.to_s] += 1
-          chore_load[[a.user_id.to_s, a.chore_id.to_s]] += 1
-          day_assignments[a.date] << a.user_id.to_s
-          chore_day_assignments[[a.chore_id.to_s, a.date]] << a.user_id.to_s
+          key = holder_key(a, attendance_id_by_user)
+          next unless key
+
+          load_count[key] += 1
+          chore_load[[key, a.chore_id.to_s]] += 1
+          day_assignments[a.date] << key
+          chore_day_assignments[[a.chore_id.to_s, a.date]] << key
         end
 
         reassigned = []
@@ -90,8 +96,9 @@ module ChoreRosters
             next unless chosen
 
             DB[:chore_assignments].where(id: assignment.id).update(
-              user_id: chosen,
-              attendance_id: attendance_id_by_user.fetch(chosen)
+              # Mirrored member column for old clients; nil on guest rows.
+              user_id: attendance_by_id.fetch(chosen).user_id&.to_s,
+              attendance_id: chosen
             )
             Broadcaster.object_changed("chore_assignment", assignment.id)
             reassigned << assignment.id
@@ -115,22 +122,22 @@ module ChoreRosters
         available = availability[assignment.date] || Set.new
         chore_id = assignment.chore_id.to_s
 
-        eligible = available.reject do |uid|
-          chore_day_assignments[[chore_id, assignment.date]].include?(uid) ||
-            day_assignments[assignment.date].include?(uid)
+        eligible = available.reject do |aid|
+          chore_day_assignments[[chore_id, assignment.date]].include?(aid) ||
+            day_assignments[assignment.date].include?(aid)
         end
         if eligible.empty?
-          eligible = available.reject do |uid|
-            chore_day_assignments[[chore_id, assignment.date]].include?(uid)
+          eligible = available.reject do |aid|
+            chore_day_assignments[[chore_id, assignment.date]].include?(aid)
           end
         end
 
-        eligible.min_by do |uid|
-          user_available = available_days[uid].zero? ? 1 : available_days[uid]
+        eligible.min_by do |aid|
+          attendee_available = available_days[aid].zero? ? 1 : available_days[aid]
           [
-            load_count[uid].to_f / user_available,
-            chore_load[[uid, chore_id]],
-            user_available
+            load_count[aid].to_f / attendee_available,
+            chore_load[[aid, chore_id]],
+            attendee_available
           ]
         end
       end
@@ -139,10 +146,16 @@ module ChoreRosters
         availability = Hash.new { |h, k| h[k] = Set.new }
         attendances.each do |attendance|
           attendance.effective_days(event).each do |date|
-            availability[date] << attendance.user_id.to_s
+            availability[date] << attendance.id.to_s
           end
         end
         availability
+      end
+
+      # The attendance id behind an assignment's holder; legacy rows without
+      # the link resolve through their mirrored user_id.
+      def holder_key(assignment, attendance_id_by_user)
+        assignment.attendance_id&.to_s || attendance_id_by_user[assignment.user_id&.to_s]
       end
     end
   end

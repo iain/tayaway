@@ -621,7 +621,7 @@ test.describe('Chore Rosters Feature', () => {
       })
 
       // Click a "+" button on the first empty slot
-      await page.getByTitle('Assign member').first().click()
+      await page.getByTitle('Assign someone').first().click()
 
       // Popover header names the chore being assigned
       await expect(
@@ -642,6 +642,55 @@ test.describe('Chore Rosters Feature', () => {
       // Hand-picked assignments are pinned so autofill won't move them
       await expect(
         page.locator('button[aria-label*="pinned"]').first()
+      ).toBeVisible()
+    })
+
+    test('a going guest can be assigned a chore from the popover', async ({
+      page,
+    }) => {
+      const { eventId } = await createResolvedEvent(
+        apiContext,
+        `Guest Chores ${uid}`
+      )
+      const rosterId = await createRoster(apiContext, eventId)
+      await addChore(apiContext, rosterId, 'Dishes')
+
+      // Bring a guest along, going for the whole event.
+      const guestResp = await apiContext.post(
+        `${API_BASE}/api/events/${eventId}/attendances`,
+        { data: { status: 'going', guest: { name: `Emma ${uid}` } } }
+      )
+      expect(guestResp.ok()).toBeTruthy()
+
+      await setupAuthenticatedPage(page, sessionToken)
+      await page.goto(`/events/${eventId}/chores`)
+      await expect(page.getByText('Dishes')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+
+      await page.getByTitle('Assign someone').first().click()
+
+      // Guests list after the members, marked as guests.
+      const [assignResp] = await Promise.all([
+        page.waitForResponse(
+          (resp) =>
+            resp.url().includes('/assignments') &&
+            resp.request().method() === 'POST'
+        ),
+        page
+          .getByRole('button', { name: `Assign Emma ${uid} (guest)` })
+          .click(),
+      ])
+      expect(assignResp.status()).toBe(201)
+
+      // The stored row references the guest's attendance, with no user
+      // behind it, and the chip is named after the guest.
+      const body = await assignResp.json()
+      const assignment = getObjectByType(body.objects, 'choreAssignment')
+      expect(assignment!.userId).toBeNull()
+      expect(assignment!.attendanceId).not.toBeNull()
+      await expect(
+        page.getByRole('button', { name: `Emma ${uid}`, exact: false }).first()
       ).toBeVisible()
     })
 
