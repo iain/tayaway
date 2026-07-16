@@ -3,7 +3,6 @@ import { computed } from 'vue'
 import { CalculatorIcon } from '@heroicons/vue/24/outline'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { attendanceDates } from '@/utils/event'
-import { formatGuestCount } from '@/utils/format'
 import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
@@ -16,11 +15,19 @@ const props = defineProps<{
 
 const pool = useObjectPoolStore()
 
+/** A named guest itemized under their host's row: presence only — their
+ *  share is billed to the host, so the money columns stay on that row. */
+interface GuestSplitRow {
+  attendanceId: string
+  name: string
+  days: number
+}
+
 interface SplitRow {
   userId: string
   name: string
   days: number
-  guests: number
+  guests: GuestSplitRow[]
   share: number
   paid: number
   balance: number
@@ -41,13 +48,15 @@ const rows = computed((): SplitRow[] => {
 
   // Pre-compute each attendance's day set, resolved to the user its share
   // bills to (members bill themselves, guests their host — the hydrated
-  // attendee is the sanctioned union reader). `ownDays` feeds the Days
-  // column, guest rows feed the Guests column of their host's row.
+  // attendee is the sanctioned union reader). Member days feed the host
+  // row's Days column; guest rows are itemized beneath it by name.
   const daySets = going.flatMap((attendance) => {
     const billing = attendance.attendee.billingUserId
     if (!billing) return []
     return [
       {
+        attendanceId: attendance.id,
+        attendeeName: attendance.attendee.name,
         billingUserId: billing,
         isGuest: attendance.attendee.isGuest,
         days: attendanceDates(
@@ -103,12 +112,22 @@ const rows = computed((): SplitRow[] => {
     }
   }
 
-  // One row per billing user: their own attended days plus guest head-days.
-  const rowByUser = new Map<string, { days: number; guests: number }>()
-  for (const { billingUserId, isGuest, days } of daySets) {
-    const acc = rowByUser.get(billingUserId) ?? { days: 0, guests: 0 }
-    if (isGuest) acc.guests += days.length
-    else acc.days += days.length
+  // One row per billing user, carrying their own attended days and their
+  // named guests for itemization.
+  const rowByUser = new Map<string, { days: number; guests: GuestSplitRow[] }>()
+  for (const {
+    attendanceId,
+    attendeeName,
+    billingUserId,
+    isGuest,
+    days,
+  } of daySets) {
+    const acc = rowByUser.get(billingUserId) ?? { days: 0, guests: [] }
+    if (isGuest) {
+      acc.guests.push({ attendanceId, name: attendeeName, days: days.length })
+    } else {
+      acc.days += days.length
+    }
     rowByUser.set(billingUserId, acc)
   }
 
@@ -130,9 +149,13 @@ const rows = computed((): SplitRow[] => {
   })
 })
 
-const totalDays = computed(() => rows.value.reduce((sum, r) => sum + r.days, 0))
-const totalGuests = computed(() =>
-  rows.value.reduce((sum, r) => sum + r.guests, 0)
+// Head-days across everyone, member or guest — the denominator the
+// proportional split divides by.
+const totalDays = computed(() =>
+  rows.value.reduce(
+    (sum, r) => sum + r.days + r.guests.reduce((s, g) => s + g.days, 0),
+    0
+  )
 )
 
 function formatDays(days: number): string {
@@ -164,52 +187,73 @@ function formatDays(days: number): string {
           </tr>
         </thead>
         <tbody class="divide-line-faint divide-y">
-          <tr v-for="row in rows" :key="row.userId" class="text-ink">
-            <td
-              class="max-w-[8rem] truncate py-2 pr-4 pl-4 font-medium sm:max-w-none"
+          <template v-for="row in rows" :key="row.userId">
+            <tr class="text-ink">
+              <td
+                class="max-w-[8rem] truncate py-2 pr-4 pl-4 font-medium sm:max-w-none"
+              >
+                {{ row.name }}
+              </td>
+              <td class="text-ink-muted hidden py-2 pr-4 sm:table-cell">
+                {{ formatDays(row.days) }}
+              </td>
+              <td class="text-ink-muted py-2 pr-4 text-right whitespace-nowrap">
+                <LedgerAmount :amount="row.paid" />
+              </td>
+              <td
+                class="hidden py-2 pr-4 text-right whitespace-nowrap sm:table-cell"
+              >
+                <LedgerAmount :amount="row.share" />
+              </td>
+              <td
+                class="py-2 pr-4 text-right font-semibold whitespace-nowrap"
+                :class="{
+                  'text-ink-faint': Math.abs(row.balance) <= 0.005,
+                }"
+              >
+                <template v-if="row.balance > 0.005"
+                  ><span class="sr-only sm:not-sr-only sm:inline">owes </span
+                  ><LedgerAmount :amount="row.balance"
+                /></template>
+                <template v-else-if="row.balance < -0.005"
+                  ><span class="sr-only sm:not-sr-only sm:inline">is owed </span
+                  ><LedgerAmount :amount="Math.abs(row.balance)"
+                /></template>
+                <template v-else>even</template>
+              </td>
+            </tr>
+            <!-- Named guests, itemized under their host; their share is
+                 already inside the host's money columns above. -->
+            <tr
+              v-for="guest in row.guests"
+              :key="guest.attendanceId"
+              data-testid="split-guest-row"
+              class="text-ink-muted"
             >
-              {{ row.name }}
-            </td>
-            <td class="text-ink-muted hidden py-2 pr-4 sm:table-cell">
-              {{ formatDays(row.days) }}
-              <span v-if="row.guests > 0" class="text-ink-faint">
-                · {{ formatGuestCount(row.guests) }}
-              </span>
-            </td>
-            <td class="text-ink-muted py-2 pr-4 text-right whitespace-nowrap">
-              <LedgerAmount :amount="row.paid" />
-            </td>
-            <td
-              class="hidden py-2 pr-4 text-right whitespace-nowrap sm:table-cell"
-            >
-              <LedgerAmount :amount="row.share" />
-            </td>
-            <td
-              class="py-2 pr-4 text-right font-semibold whitespace-nowrap"
-              :class="{
-                'text-ink-faint': Math.abs(row.balance) <= 0.005,
-              }"
-            >
-              <template v-if="row.balance > 0.005"
-                ><span class="sr-only sm:not-sr-only sm:inline">owes </span
-                ><LedgerAmount :amount="row.balance"
-              /></template>
-              <template v-else-if="row.balance < -0.005"
-                ><span class="sr-only sm:not-sr-only sm:inline">is owed </span
-                ><LedgerAmount :amount="Math.abs(row.balance)"
-              /></template>
-              <template v-else>even</template>
-            </td>
-          </tr>
+              <td class="max-w-[8rem] truncate py-2 pr-4 pl-8 sm:max-w-none">
+                {{ guest.name }}
+                <span class="text-ink-faint text-xs">
+                  (guest of {{ row.name }})
+                </span>
+              </td>
+              <td class="hidden py-2 pr-4 sm:table-cell">
+                {{ formatDays(guest.days) }}
+              </td>
+              <td class="text-ink-faint py-2 pr-4 text-right">—</td>
+              <td
+                class="text-ink-faint hidden py-2 pr-4 text-right sm:table-cell"
+              >
+                —
+              </td>
+              <td class="text-ink-faint py-2 pr-4 text-right">—</td>
+            </tr>
+          </template>
         </tbody>
         <tfoot>
           <tr class="border-line text-ink border-t font-semibold">
             <td class="pt-2 pr-4 pb-3 pl-4">Total</td>
             <td class="text-ink-muted hidden pt-2 pr-4 pb-3 sm:table-cell">
               {{ formatDays(totalDays) }}
-              <span v-if="totalGuests > 0" class="text-ink-faint">
-                · {{ formatGuestCount(totalGuests) }}
-              </span>
             </td>
             <td class="text-ink-muted pt-2 pr-4 pb-3 text-right">
               <LedgerAmount :amount="total" />

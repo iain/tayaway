@@ -423,6 +423,51 @@ describe('ExpenseSplit', () => {
     })
   })
 
+  describe('guest itemization', () => {
+    it('itemizes a guest as their own row under the host, with days but no money', () => {
+      // Event Jul 1–4 = 4 days. Alice full, her guest Emma 2 days, Bob full.
+      const ev = mkEvent({ startDate: '2026-07-01', endDate: '2026-07-04' })
+      mockAttendances = [
+        mkAttendance({ id: 'att-1', userId: 'member-1' }),
+        mkAttendance({ id: 'att-2', userId: 'member-2' }),
+        mkAttendance({
+          id: 'att-3',
+          userId: null,
+          guestId: 'guest-1',
+          hostUserId: 'member-1',
+          days: ['2026-07-01', '2026-07-02'],
+          attendee: {
+            name: 'Emma',
+            isGuest: true,
+            billingUserId: 'member-1',
+            member: undefined,
+            guest: undefined,
+            hostMember: undefined,
+          },
+        }),
+      ]
+      mockMembers = [
+        mkMember({ id: 'member-1', name: 'Alice' }),
+        mkMember({ id: 'member-2', userId: 'member-2', name: 'Bob' }),
+      ]
+      mockExpenses = []
+      const wrapper = mountSplit(ev, 0)
+
+      const guestRow = wrapper.find('[data-testid="split-guest-row"]')
+      expect(guestRow.exists()).toBe(true)
+      expect(guestRow.text()).toContain('Emma')
+      expect(guestRow.text()).toContain('guest of Alice')
+      expect(guestRow.text()).toContain('2 days')
+      // Money stays on the host's row — the guest's cells are em-dashed.
+      expect(guestRow.text().match(/—/g)?.length).toBe(3)
+
+      // The mislabeled guest-day counter is gone; the total is head-days.
+      expect(wrapper.text()).not.toContain('+1 guest')
+      expect(wrapper.text()).not.toContain('+2 guests')
+      expect(wrapper.text()).toContain('10 days')
+    })
+  })
+
   describe('totals row', () => {
     it('shows summed days across all attendees', () => {
       // Two full attendees on a 4-day event (Jul 1–4) → 8 total days
