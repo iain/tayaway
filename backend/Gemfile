@@ -8,6 +8,10 @@ gem "rack-attack"
 gem "roda", "~> 3.106"
 gem "roda-websockets"
 
+# Server-rendered templates for the admin site (Roda render plugin)
+gem "erubi"
+gem "tilt"
+
 # Database
 gem "pg"
 gem "sequel"

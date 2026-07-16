@@ -75,6 +75,7 @@ GEM
       dry-core (~> 1.1)
       zeitwerk (~> 2.6)
     erb (6.0.4)
+    erubi (1.13.1)
     falcon (0.55.5)
       async
       async-container (~> 0.20)
@@ -263,6 +264,7 @@ GEM
     string-format (0.2.0)
     stringio (3.2.0)
     thor (1.5.0)
+    tilt (2.8.0)
     timeout (0.6.1)
     tpm-key_attestation (0.14.1)
       bindata (~> 2.4)
@@ -306,6 +308,7 @@ DEPENDENCIES
   concurrent-ruby-ext
   database_cleaner-sequel
   dry-monads
+  erubi
   falcon
   fido_metadata
   irb
@@ -332,6 +335,7 @@ DEPENDENCIES
   rubocop-sequel
   sequel
   sequel_pg
+  tilt
   tzinfo
   tzinfo-data
   web-push (~> 3.1)

@@ -34,6 +34,12 @@ APP_CONFIG = Config.define do |c|
              description: "Max notifications included in the WS handshake personal-sync payload"
   c.optional :webauthn_extra_origins, type: :csv, default: [],
              description: "Extra WebAuthn origins (CSV)"
+  c.optional :admin_emails, type: :csv, default: [],
+             description: "Emails allowed to sign in to the admin site (CSV) — empty keeps admin login disabled"
+  c.optional :admin_database_url, secret: true,
+             description: "Postgres URL for admin dashboard reads (read-only role) — falls back to DATABASE_URL"
+  c.optional :admin_falcon_url, type: :url, default: "http://localhost:9393",
+             description: "Admin Falcon bind URL"
   c.optional :git_sha,
              description: "Build SHA — env (set at image build) or git rev-parse"
 
