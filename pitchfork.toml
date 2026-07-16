@@ -21,3 +21,12 @@ depends = ["backend"]
 port = 5173
 ready_port = 5173
 env = { FRONTEND_HOST = "127.0.0.1" }
+
+# The operator-only admin site (doc/admin.md). `mise run dev` (start -l)
+# brings it up alongside backend + frontend; `pitchfork start admin` starts
+# just this one.
+[daemons.admin]
+run = "mise run admin:dev"
+dir = "backend"
+port = 9393
+ready_port = 9393
