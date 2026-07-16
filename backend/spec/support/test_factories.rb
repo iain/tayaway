@@ -276,6 +276,18 @@ module TestFactories
       DB[:sessions].where(id: id).first.merge(token: token)
     end
 
+    def admin_session(user: nil, token: SecureRandom.hex(32), expires_at: Time.now + AdminSession::EXPIRY_SECONDS, id: SecureRandom.uuid)
+      user ||= self.user
+      DB[:admin_sessions].insert(
+        id: id,
+        user_id: user[:id],
+        token: Auth::Token.digest(token),
+        expires_at: expires_at,
+        created_at: Time.now
+      )
+      DB[:admin_sessions].where(id: id).first.merge(token: token)
+    end
+
     class TokenResult
       attr_reader :token
 
