@@ -45,6 +45,15 @@ run = 'MISE_ENV=e2e mise exec -- bundle exec falcon-host falcon.rb'
 
 # dev:reset lives in backend/.mise/tasks/dev/reset.
 
+[tasks."admin:dev"]
+description = "Start the admin site dev server on :9393"
+run = "bundle exec falcon-host admin/falcon.rb"
+
+[tasks."admin:serve"]
+description = "Start the admin falcon-host in the current mise env — used by the admin quadlet"
+# `exec` for the same reason as `serve` below: the quadlet is Notify=true.
+run = "exec bundle exec falcon-host admin/falcon.rb"
+
 [tasks.serve]
 description = "Start falcon-host in the current mise env — used by the production systemd unit"
 # `exec` so the shell replaces itself with falcon-host: the systemd unit
