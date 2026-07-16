@@ -33,8 +33,19 @@ RSpec.configure do |config|
   config.order = :random
   Kernel.srand config.seed
 
+  # Rack::Test requests advertise a supported protocol version by default,
+  # like any real client build — otherwise every route spec would trip the
+  # 426 gate now that MIN_SUPPORTED_VERSION has moved past 0. A spec that
+  # needs a versionless request (the gate specs) passes the env key
+  # explicitly with a nil value: `get "/x", {}, { "HTTP_X_CLIENT_VERSION" => nil }`.
   define_method(:app) do
-    App.freeze.app
+    inner = App.freeze.app
+    lambda do |env|
+      unless env.key?("HTTP_X_CLIENT_VERSION")
+        env["HTTP_X_CLIENT_VERSION"] = ClientProtocol::MIN_SUPPORTED_VERSION.to_s
+      end
+      inner.call(env)
+    end
   end
 
   config.before(:suite) do

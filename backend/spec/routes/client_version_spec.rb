@@ -17,8 +17,7 @@ RSpec.describe "Client protocol version gate" do
     end
 
     it "returns 426 for a client that sends no version header" do
-      header "X-Client-Version", nil
-      get "/api/auth/me"
+      get "/api/auth/me", {}, { "HTTP_X_CLIENT_VERSION" => nil }
 
       expect(last_response.status).to eq(426)
     end
@@ -59,8 +58,7 @@ RSpec.describe "Client protocol version gate" do
 
   describe "with the shipped minimum of 2" do
     it "gates pre-versioning clients, which send no header" do
-      header "X-Client-Version", nil
-      get "/api/auth/me"
+      get "/api/auth/me", {}, { "HTTP_X_CLIENT_VERSION" => nil }
 
       expect(last_response.status).to eq(426)
     end
@@ -87,8 +85,7 @@ RSpec.describe "Client protocol version gate" do
     end
 
     it "records 0 for an authenticated request without a version header" do
-      header "X-Client-Version", nil
-      get "/api/auth/me", {}, auth_cookie
+      get "/api/auth/me", {}, auth_cookie.merge("HTTP_X_CLIENT_VERSION" => nil)
 
       expect(last_response.status).to eq(200)
       expect(recorded_version).to eq(0)
