@@ -48,6 +48,9 @@ module ChoreRosters
         # availability source as Autofill.
         attendances = Attendance.for_event(event.id).select { |a| a.going? && !a.guest? }
         availability = build_availability(event, attendances)
+        # Handovers rewrite the attendance reference alongside user_id
+        # (doc/attendances.md phase 8 dual-write).
+        attendance_id_by_user = attendances.to_h { |a| [a.user_id.to_s, a.id.to_s] }
         available_days = Hash.new(0)
         availability.each_value do |user_ids|
           user_ids.each { |uid| available_days[uid] += 1 }
@@ -86,7 +89,10 @@ module ChoreRosters
             )
             next unless chosen
 
-            DB[:chore_assignments].where(id: assignment.id).update(user_id: chosen)
+            DB[:chore_assignments].where(id: assignment.id).update(
+              user_id: chosen,
+              attendance_id: attendance_id_by_user.fetch(chosen)
+            )
             Broadcaster.object_changed("chore_assignment", assignment.id)
             reassigned << assignment.id
 

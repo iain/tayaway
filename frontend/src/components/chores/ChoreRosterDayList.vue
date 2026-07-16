@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import ChoreCell from '@/components/chores/ChoreCell.vue'
 import type { PoolChore, PoolChoreAssignment, PoolMember } from '@/types/pool'
+import type { HydratedAttendance } from '@/composables/useHydratedEvent'
 import { formatDayHeader } from '@/utils/date'
 
 // The mobile face of the chore roster. Where the desktop grid is a dates x
@@ -15,6 +16,7 @@ const props = withDefaults(
     assignments: PoolChoreAssignment[]
     dates: string[]
     members: PoolMember[]
+    attendances: HydratedAttendance[]
     currentUserId: string | null
     // The event-zone date (see zonedDateString) — the same "today" the backend
     // fences autofill on, so the emphasized row, the muted past, and what a
@@ -43,6 +45,12 @@ const sortedChores = computed(() =>
 const memberMap = computed(() => {
   const map = new Map<string, PoolMember>()
   for (const m of props.members) map.set(m.userId, m)
+  return map
+})
+
+const attendanceMap = computed(() => {
+  const map = new Map<string, HydratedAttendance>()
+  for (const a of props.attendances) map.set(a.id, a)
   return map
 })
 
@@ -140,6 +148,7 @@ onMounted(() => {
             orientation="row"
             :assignments="assignmentsFor(chore.id, date)"
             :people-per-day="chore.peoplePerDay"
+            :attendance-map="attendanceMap"
             :member-map="memberMap"
             :current-user-id="currentUserId"
             :stale-assignment-ids="staleAssignmentIds"

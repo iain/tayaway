@@ -107,6 +107,7 @@ class App
               membership: current_membership,
               note: r.params["note"]&.strip,
               user_id: r.params["user_id"],
+              attendance_id: r.params["attendance_id"],
               pinned: pinned
             )
             handle_result(result)
@@ -132,6 +133,7 @@ class App
             membership: current_membership,
             chore_id: r.params["chore_id"],
             user_id: r.params["user_id"],
+            attendance_id: r.params["attendance_id"],
             date: r.params["date"],
             note: r.params["note"]&.strip,
             id: r.params["id"]

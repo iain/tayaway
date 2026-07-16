@@ -4,10 +4,15 @@ import ChoreSummaryTable from './ChoreSummaryTable.vue'
 import {
   makeChore,
   makeEvent,
+  makeGuest,
+  makeHydratedAttendance,
   makeMember,
-  makeAttendance,
   makeChoreAssignment,
 } from '@/test/factories'
+
+const alice = makeMember({ id: 'mem-1', userId: 'user-1', name: 'Alice' })
+const bob = makeMember({ id: 'mem-2', userId: 'user-2', name: 'Bob' })
+const carol = makeMember({ id: 'mem-3', userId: 'user-3', name: 'Carol' })
 
 function mountTable(headingLevel?: 2 | 3) {
   return mount(ChoreSummaryTable, {
@@ -17,37 +22,42 @@ function mountTable(headingLevel?: 2 | 3) {
         makeChoreAssignment({
           id: 'a1',
           choreId: 'cook',
+          attendanceId: 'att-1',
           userId: 'user-1',
           date: '2026-03-10',
         }),
         makeChoreAssignment({
           id: 'a2',
           choreId: 'cook',
+          attendanceId: 'att-user-2',
           userId: 'user-2',
           date: '2026-03-11',
         }),
+        // A legacy row without the attendance link still counts toward Bob.
         makeChoreAssignment({
           id: 'a3',
           choreId: 'cook',
+          attendanceId: null,
           userId: 'user-2',
           date: '2026-03-12',
         }),
       ],
-      members: [
-        makeMember({ id: 'mem-1', userId: 'user-1', name: 'Alice' }),
-        makeMember({ id: 'mem-2', userId: 'user-2', name: 'Bob' }),
-        makeMember({ id: 'mem-3', userId: 'user-3', name: 'Carol' }),
-      ],
+      members: [alice, bob, carol],
       attendances: [
         // Alice is only around one day; Bob stays the whole event; Carol is
         // there for two days but holds no chores at all.
-        makeAttendance({ id: 'att-1', userId: 'user-1', days: ['2026-03-10'] }),
-        makeAttendance({ id: 'att-user-2', userId: 'user-2' }),
-        makeAttendance({
-          id: 'att-3',
-          userId: 'user-3',
-          days: ['2026-03-11', '2026-03-12'],
-        }),
+        makeHydratedAttendance(
+          { id: 'att-1', userId: 'user-1', days: ['2026-03-10'] },
+          { member: alice }
+        ),
+        makeHydratedAttendance(
+          { id: 'att-user-2', userId: 'user-2' },
+          { member: bob }
+        ),
+        makeHydratedAttendance(
+          { id: 'att-3', userId: 'user-3', days: ['2026-03-11', '2026-03-12'] },
+          { member: carol }
+        ),
       ],
       event: makeEvent({ startDate: '2026-03-10', endDate: '2026-03-12' }),
       ...(headingLevel !== undefined ? { headingLevel } : {}),
@@ -74,6 +84,43 @@ describe('ChoreSummaryTable', () => {
     const perDay = rows.map((row) => row.findAll('td').at(-1)!.text())
     // Bob 2 chores / 3 days, Alice 1/1, Carol 0/2.
     expect(perDay).toEqual(['0.7', '1.0', '0.0'])
+  })
+
+  it('gives a going guest their own row', () => {
+    const wrapper = mount(ChoreSummaryTable, {
+      props: {
+        chores: [makeChore({ id: 'cook', name: 'Cooking' })],
+        assignments: [
+          makeChoreAssignment({
+            id: 'a1',
+            choreId: 'cook',
+            attendanceId: 'att-g',
+            userId: null,
+            date: '2026-03-10',
+          }),
+        ],
+        members: [alice],
+        attendances: [
+          makeHydratedAttendance(
+            { id: 'att-1', userId: 'user-1' },
+            { member: alice }
+          ),
+          makeHydratedAttendance(
+            {
+              id: 'att-g',
+              userId: null,
+              guestId: 'guest-1',
+              hostUserId: 'user-1',
+            },
+            { guest: makeGuest({ id: 'guest-1', name: 'Emma' }) }
+          ),
+        ],
+        event: makeEvent({ startDate: '2026-03-10', endDate: '2026-03-12' }),
+      },
+    })
+
+    const names = wrapper.findAll('tbody th').map((cell) => cell.text())
+    expect(names).toEqual(['Emma', 'Alice'])
   })
 
   it('renders the Workload heading as an h2 by default', () => {

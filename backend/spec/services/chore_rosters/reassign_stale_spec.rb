@@ -44,6 +44,18 @@ RSpec.describe ChoreRosters::ReassignStale do
     expect(row[:pinned]).to be false
   end
 
+  it "points the reassigned row at the replacement's attendance" do
+    create_attendance(user_a, start_date: event_start, end_date: event_start)
+    attendance_b = create_attendance(user_b)
+    chore = TestFactories.chore(chore_roster: roster, name: "Cooking", people_per_day: 1)
+    stale = TestFactories.chore_assignment(chore: chore, user: user_a, date: Date.new(2026, 3, 3), pinned: false)
+
+    described_class.call(roster_id: roster[:id], workspace_id: workspace[:id], membership: membership_for(user_b))
+
+    row = DB[:chore_assignments].where(id: stale[:id]).first
+    expect(row[:attendance_id]).to eq(attendance_b[:id])
+  end
+
   it "leaves pinned rows, past days, and today's started chores alone" do
     allow(Timezones).to receive_messages(today: Date.new(2026, 3, 2), now: Time.new(2026, 3, 2, 16, 0, 0))
     create_attendance(user_a, start_date: event_start, end_date: event_start)

@@ -6,14 +6,11 @@ import {
   makeChore,
   makeEvent,
   makeMember,
-  makeAttendance,
+  makeHydratedAttendance,
   makeChoreAssignment,
 } from '@/test/factories'
-import type {
-  PoolChore,
-  PoolChoreAssignment,
-  PoolAttendance,
-} from '@/types/pool'
+import type { PoolChore, PoolChoreAssignment } from '@/types/pool'
+import type { HydratedAttendance } from '@/composables/useHydratedEvent'
 
 const createAssignmentSpy = vi
   .fn()
@@ -34,6 +31,9 @@ describe('AssignMemberPopover', () => {
     deleteAssignmentSpy.mockClear()
   })
 
+  const alice = makeMember({ id: 'mem-1', userId: 'user-1', name: 'Alice' })
+  const bob = makeMember({ id: 'mem-2', userId: 'user-2', name: 'Bob' })
+
   function mountPopover({
     chore = makeChore(),
     assignments = [],
@@ -42,7 +42,7 @@ describe('AssignMemberPopover', () => {
   }: {
     chore?: PoolChore
     assignments?: PoolChoreAssignment[]
-    attendances?: PoolAttendance[]
+    attendances?: HydratedAttendance[]
     currentUserId?: string | null
   } = {}) {
     return mount(AssignMemberPopover, {
@@ -51,13 +51,15 @@ describe('AssignMemberPopover', () => {
         date: '2026-03-10',
         anchorEl: document.createElement('div'),
         rosterId: 'roster-1',
-        members: [
-          makeMember({ id: 'mem-1', userId: 'user-1', name: 'Alice' }),
-          makeMember({ id: 'mem-2', userId: 'user-2', name: 'Bob' }),
-        ],
         attendances: attendances ?? [
-          makeAttendance({ id: 'att-user-1', userId: 'user-1' }),
-          makeAttendance({ id: 'att-user-2', userId: 'user-2' }),
+          makeHydratedAttendance(
+            { id: 'att-user-1', userId: 'user-1' },
+            { member: alice }
+          ),
+          makeHydratedAttendance(
+            { id: 'att-user-2', userId: 'user-2' },
+            { member: bob }
+          ),
         ],
         assignments,
         event: makeEvent({ startDate: '2026-03-10', endDate: '2026-03-12' }),
@@ -66,7 +68,7 @@ describe('AssignMemberPopover', () => {
     })
   }
 
-  it('assigns on tap, without a note, and stays open while spots remain', async () => {
+  it('assigns the attendance on tap, without a note, and stays open while spots remain', async () => {
     const wrapper = mountPopover({ chore: makeChore({ peoplePerDay: 2 }) })
 
     expect(wrapper.find('input').exists()).toBe(false)
@@ -76,7 +78,7 @@ describe('AssignMemberPopover', () => {
     expect(createAssignmentSpy).toHaveBeenCalledWith(
       'roster-1',
       'chore-1',
-      'user-2',
+      { attendanceId: 'att-user-2', userId: 'user-2' },
       '2026-03-10'
     )
     expect(wrapper.emitted('close')).toBeUndefined()
@@ -85,7 +87,9 @@ describe('AssignMemberPopover', () => {
   it('closes after the last spot fills', async () => {
     const wrapper = mountPopover({
       chore: makeChore({ peoplePerDay: 2 }),
-      assignments: [makeChoreAssignment({ userId: 'user-1' })],
+      assignments: [
+        makeChoreAssignment({ attendanceId: 'att-user-1', userId: 'user-1' }),
+      ],
     })
 
     await wrapper.get('button[aria-label="Assign Bob"]').trigger('click')
@@ -98,7 +102,11 @@ describe('AssignMemberPopover', () => {
     const wrapper = mountPopover({
       chore: makeChore({ peoplePerDay: 2 }),
       assignments: [
-        makeChoreAssignment({ id: 'assign-alice', userId: 'user-1' }),
+        makeChoreAssignment({
+          id: 'assign-alice',
+          attendanceId: 'att-user-1',
+          userId: 'user-1',
+        }),
       ],
     })
 
@@ -107,6 +115,24 @@ describe('AssignMemberPopover', () => {
     expect(deleteAssignmentSpy).toHaveBeenCalledWith('roster-1', 'assign-alice')
     expect(createAssignmentSpy).not.toHaveBeenCalled()
     expect(wrapper.emitted('close')).toBeUndefined()
+  })
+
+  it('shows the check on a legacy assignment without an attendance link', () => {
+    // Rows written before the link resolve through their mirrored userId.
+    const wrapper = mountPopover({
+      chore: makeChore({ peoplePerDay: 2 }),
+      assignments: [
+        makeChoreAssignment({
+          id: 'assign-legacy',
+          attendanceId: null,
+          userId: 'user-1',
+        }),
+      ],
+    })
+
+    expect(wrapper.find('button[aria-label="Remove Alice"]').exists()).toBe(
+      true
+    )
   })
 
   it('puts the current user first, labeled "You"', () => {
@@ -119,16 +145,22 @@ describe('AssignMemberPopover', () => {
     expect(labels).toEqual(['Assign You', 'Assign Alice'])
   })
 
-  it('does not offer members who are away on this date', () => {
+  it('does not offer attendees who are away on this date', () => {
     const wrapper = mountPopover({
       attendances: [
-        makeAttendance({ id: 'att-user-1', userId: 'user-1' }),
+        makeHydratedAttendance(
+          { id: 'att-user-1', userId: 'user-1' },
+          { member: alice }
+        ),
         // Come-and-go: Bob attends the event but not this day
-        makeAttendance({
-          id: 'att-2',
-          userId: 'user-2',
-          days: ['2026-03-11', '2026-03-12'],
-        }),
+        makeHydratedAttendance(
+          {
+            id: 'att-2',
+            userId: 'user-2',
+            days: ['2026-03-11', '2026-03-12'],
+          },
+          { member: bob }
+        ),
       ],
     })
 

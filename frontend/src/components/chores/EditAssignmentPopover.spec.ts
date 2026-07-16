@@ -5,10 +5,11 @@ import EditAssignmentPopover from './EditAssignmentPopover.vue'
 import {
   makeEvent,
   makeMember,
-  makeAttendance,
+  makeHydratedAttendance,
   makeChoreAssignment,
 } from '@/test/factories'
-import type { PoolMember, PoolAttendance } from '@/types/pool'
+import type { PoolMember } from '@/types/pool'
+import type { HydratedAttendance } from '@/composables/useHydratedEvent'
 
 const updateAssignmentSpy = vi.fn().mockResolvedValue(undefined)
 const deleteAssignmentSpy = vi.fn().mockResolvedValue(undefined)
@@ -20,11 +21,26 @@ vi.mock('@/stores/choreRosters', () => ({
   }),
 }))
 
+const alice = makeMember({ id: 'mem-1', userId: 'user-1', name: 'Alice' })
+const bob = makeMember({ id: 'mem-2', userId: 'user-2', name: 'Bob' })
+const cara = makeMember({ id: 'mem-3', userId: 'user-3', name: 'Cara' })
+
 const memberMap = new Map<string, PoolMember>([
-  ['user-1', makeMember({ id: 'mem-1', userId: 'user-1', name: 'Alice' })],
-  ['user-2', makeMember({ id: 'mem-2', userId: 'user-2', name: 'Bob' })],
-  ['user-3', makeMember({ id: 'mem-3', userId: 'user-3', name: 'Cara' })],
+  ['user-1', alice],
+  ['user-2', bob],
+  ['user-3', cara],
 ])
+
+function att(
+  id: string,
+  member: PoolMember,
+  overrides: { days?: string[] } = {}
+): HydratedAttendance {
+  return makeHydratedAttendance(
+    { id, userId: member.userId, ...overrides },
+    { member }
+  )
+}
 
 describe('EditAssignmentPopover reassign', () => {
   beforeEach(() => {
@@ -35,18 +51,25 @@ describe('EditAssignmentPopover reassign', () => {
   const assignment = makeChoreAssignment({
     id: 'a1',
     choreId: 'chore-1',
+    attendanceId: 'att-user-1',
     userId: 'user-1',
     date: '2026-03-10',
   })
 
   function mountPopover({
     attendances,
-  }: { attendances?: PoolAttendance[] } = {}) {
+  }: { attendances?: HydratedAttendance[] } = {}) {
+    const resolved = attendances ?? [
+      att('att-user-1', alice),
+      att('att-user-2', bob),
+      att('att-user-3', cara),
+    ]
     return mount(EditAssignmentPopover, {
       props: {
         assignment,
         anchorEl: document.createElement('div'),
         rosterId: 'roster-1',
+        attendanceMap: new Map(resolved.map((a) => [a.id, a])),
         memberMap,
         assignments: [
           assignment,
@@ -54,15 +77,12 @@ describe('EditAssignmentPopover reassign', () => {
           makeChoreAssignment({
             id: 'a2',
             choreId: 'chore-1',
+            attendanceId: 'att-user-3',
             userId: 'user-3',
             date: '2026-03-10',
           }),
         ],
-        attendances: attendances ?? [
-          makeAttendance({ id: 'att-user-1', userId: 'user-1' }),
-          makeAttendance({ id: 'att-user-2', userId: 'user-2' }),
-          makeAttendance({ id: 'att-user-3', userId: 'user-3' }),
-        ],
+        attendances: resolved,
         event: makeEvent({ startDate: '2026-03-10', endDate: '2026-03-12' }),
       },
     })
@@ -80,6 +100,7 @@ describe('EditAssignmentPopover reassign', () => {
 
     await wrapper.get('button[aria-label="Reassign to Bob"]').trigger('click')
     expect(updateAssignmentSpy).toHaveBeenCalledWith('roster-1', 'a1', {
+      attendanceId: 'att-user-2',
       userId: 'user-2',
     })
     expect(wrapper.emitted('close')).toBeTruthy()
@@ -88,19 +109,48 @@ describe('EditAssignmentPopover reassign', () => {
   it('does not offer someone who is away that day', async () => {
     const wrapper = mountPopover({
       attendances: [
-        makeAttendance({ id: 'att-user-1', userId: 'user-1' }),
+        att('att-user-1', alice),
         // Come-and-go: Bob is at the event, but not on this day.
-        makeAttendance({
-          id: 'att-2',
-          userId: 'user-2',
-          days: ['2026-03-11', '2026-03-12'],
-        }),
-        makeAttendance({ id: 'att-user-3', userId: 'user-3' }),
+        att('att-2', bob, { days: ['2026-03-11', '2026-03-12'] }),
+        att('att-user-3', cara),
       ],
     })
     await wrapper.get('button[aria-label="Reassign"]').trigger('click')
 
     expect(wrapper.findAll('button[aria-label^="Reassign to"]')).toHaveLength(0)
     expect(wrapper.text()).toContain('No one else is around that day')
+  })
+
+  it('excludes a legacy slot-mate row without an attendance link', async () => {
+    const wrapper = mount(EditAssignmentPopover, {
+      props: {
+        assignment,
+        anchorEl: document.createElement('div'),
+        rosterId: 'roster-1',
+        attendanceMap: new Map(
+          [att('att-user-1', alice), att('att-user-2', bob)].map((a) => [
+            a.id,
+            a,
+          ])
+        ),
+        memberMap,
+        assignments: [
+          assignment,
+          // Bob shares the slot through a legacy row: no attendanceId.
+          makeChoreAssignment({
+            id: 'a2',
+            choreId: 'chore-1',
+            attendanceId: null,
+            userId: 'user-2',
+            date: '2026-03-10',
+          }),
+        ],
+        attendances: [att('att-user-1', alice), att('att-user-2', bob)],
+        event: makeEvent({ startDate: '2026-03-10', endDate: '2026-03-12' }),
+      },
+    })
+    await wrapper.get('button[aria-label="Reassign"]').trigger('click')
+
+    expect(wrapper.findAll('button[aria-label^="Reassign to"]')).toHaveLength(0)
   })
 })

@@ -57,6 +57,21 @@ export function useUpcomingChores(now: Ref<number> = useMinuteTicker().now) {
     )
     const eventsById = new Map(pool.getAll('event').map((e) => [e.id, e]))
 
+    // Assignments are keyed by the attendance behind the holder; collect the
+    // user's member attendance rows across events. Legacy rows without the
+    // link still match on their mirrored userId.
+    const myAttendanceIds = new Set(
+      pool
+        .getAll('attendance')
+        .filter((a) => a.userId === userId)
+        .map((a) => a.id)
+    )
+    const isMine = (a: {
+      attendanceId: string | null
+      userId: string | null
+    }) =>
+      a.attendanceId ? myAttendanceIds.has(a.attendanceId) : a.userId === userId
+
     // "today"/"tomorrow" depend on the event's zone; memoise per zone.
     const windowByZone = new Map<string, { today: string; tomorrow: string }>()
     const windowFor = (zone: string) => {
@@ -71,7 +86,7 @@ export function useUpcomingChores(now: Ref<number> = useMinuteTicker().now) {
 
     const rows: { item: UpcomingChoreItem; sort: number }[] = []
     for (const a of pool.getAll('choreAssignment')) {
-      if (a.userId !== userId) continue
+      if (!isMine(a)) continue
 
       const chore = choresById.get(a.choreId)
       if (!chore) continue

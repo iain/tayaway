@@ -1,12 +1,15 @@
 # frozen_string_literal: true
 
 module ChoreRosters
-  # Service to pin an assignment (always pinned=true).
+  # Service to pin an assignment (always pinned=true). The assignee arrives
+  # as an attendance_id, or as a legacy user_id (stale clients and queued
+  # offline commands) that is resolved to the member's attendance row —
+  # synthesizing a pending one when they haven't answered yet.
   module CreateAssignment
     class << self
       include LengthValidation
 
-      def call(roster_id:, workspace_id:, membership:, chore_id:, user_id:, date:, note: nil, id: nil)
+      def call(roster_id:, workspace_id:, membership:, chore_id:, date:, user_id: nil, attendance_id: nil, note: nil, id: nil)
         Auditable.around(
           service: "ChoreRosters::CreateAssignment",
           actor: membership,
@@ -14,31 +17,40 @@ module ChoreRosters
           subject_id: id
         ) do
           Success()
-            .bind { validate(chore_id, user_id, date) }
+            .bind { validate(chore_id, user_id, attendance_id, date) }
             .bind { |valid| validate_length(note, max: ValidationLimits::MEDIUM_TEXT, field: "Note").fmap { valid } }
             .bind { |valid| enforce_policy(roster_id, membership, valid) }
             .bind { |valid| validate_chore_belongs(valid, roster_id) }
             .bind { |valid| validate_date_in_range(valid, roster_id) }
+            .bind { |valid| resolve_attendance(valid, roster_id, membership) }
             .bind { |valid| create_assignment(valid, workspace_id, note, id, membership) }
         end
       end
 
       private
 
-      def validate(chore_id, user_id, date)
+      def validate(chore_id, user_id, attendance_id, date)
         if chore_id.nil? || chore_id.empty?
           return Failure(ServiceError.validation("chore_id is required"))
         end
 
-        if user_id.nil? || user_id.empty?
-          return Failure(ServiceError.validation("user_id is required"))
+        if given?(attendance_id) && given?(user_id)
+          return Failure(ServiceError.validation("attendance_id and user_id are mutually exclusive"))
+        end
+
+        if !given?(attendance_id) && !given?(user_id)
+          return Failure(ServiceError.validation("attendance_id or user_id is required"))
         end
 
         if date.nil? || date.empty?
           return Failure(ServiceError.validation("date is required"))
         end
 
-        Success({ chore_id: chore_id, user_id: user_id, date: Date.parse(date) })
+        Success({ chore_id: chore_id, user_id: user_id, attendance_id: attendance_id, date: Date.parse(date) })
+      end
+
+      def given?(value)
+        !(value.nil? || value.to_s.empty?)
       end
 
       def enforce_policy(roster_id, membership, valid)
@@ -71,7 +83,39 @@ module ChoreRosters
           end
         end
 
-        Success(valid)
+        Success(valid.merge(event: event))
+      end
+
+      def resolve_attendance(valid, _roster_id, membership)
+        if valid[:attendance_id]
+          Success()
+            .bind { Attendance.find_result(valid[:attendance_id]) }
+            .bind { |attendance| validate_attendance_on_event(attendance, valid[:event]) }
+            .bind { |attendance| validate_member_attendance(attendance) }
+            .fmap { |attendance| valid.merge(attendance: attendance) }
+        else
+          Attendances::EnsureMemberRow
+            .call(event: valid[:event], user_id: valid[:user_id], created_by_user_id: membership.user_id)
+            .fmap { |attendance| valid.merge(attendance: attendance) }
+        end
+      end
+
+      def validate_attendance_on_event(attendance, event)
+        if attendance.event_id.to_s == event.id.to_s
+          Success(attendance)
+        else
+          Failure(ServiceError.not_found("Attendance not found on this event"))
+        end
+      end
+
+      # Lifted in the follow-up deploy, once stale clients that can't render
+      # a guest assignment are behind the protocol gate.
+      def validate_member_attendance(attendance)
+        if attendance.guest?
+          Failure(ServiceError.validation("Guests cannot be assigned chores yet"))
+        else
+          Success(attendance)
+        end
       end
 
       def create_assignment(valid, workspace_id, note, id, membership)
@@ -86,13 +130,15 @@ module ChoreRosters
         end
 
         assignment_id = id || SecureRandom.uuid
+        attendance = valid[:attendance]
         now = Time.now
 
         DB.transaction do
           DB[:chore_assignments].insert(
             id: assignment_id,
             chore_id: valid[:chore_id],
-            user_id: valid[:user_id],
+            user_id: attendance.user_id&.to_s,
+            attendance_id: attendance.id.to_s,
             date: valid[:date],
             pinned: true,
             note: note,

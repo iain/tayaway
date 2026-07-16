@@ -30,6 +30,10 @@ import type {
   PoolChoreAssignment,
   PoolMember,
 } from '@/types/pool'
+import {
+  useHydratedAttendances,
+  type HydratedAttendance,
+} from '@/composables/useHydratedEvent'
 import { can } from '@/composables/usePermission'
 import {
   refillableAssignments,
@@ -87,8 +91,14 @@ const assignments = computed(() => {
   return pool.getAll('choreAssignment').filter((a) => choreIds.has(a.choreId))
 })
 
-const attendances = computed(() => {
-  return pool.getAll('attendance').filter((a) => a.eventId === props.eventId)
+// Attendances with resolved attendees — the roster is keyed off attendance
+// ids, and every name shown comes from the attendee (containment contract).
+const attendances = useHydratedAttendances(computed(() => props.eventId))
+
+const attendanceMap = computed(() => {
+  const map = new Map<string, HydratedAttendance>()
+  for (const a of attendances.value) map.set(a.id, a)
+  return map
 })
 
 const members = computed(() => {
@@ -611,6 +621,7 @@ onMounted(async () => {
           :assignments="assignments"
           :dates="eventDates"
           :members="members"
+          :attendances="attendances"
           :current-user-id="currentUserId"
           :scroll-to-today="scrollToToday"
           :today="today"
@@ -710,7 +721,6 @@ onMounted(async () => {
         :date="assignPopover.date"
         :anchor-el="assignPopover.anchorEl"
         :roster-id="roster.id"
-        :members="members"
         :attendances="attendances"
         :assignments="assignments"
         :event="event"
@@ -723,6 +733,7 @@ onMounted(async () => {
         :assignment="editPopover.assignment"
         :anchor-el="editPopover.anchorEl"
         :roster-id="roster.id"
+        :attendance-map="attendanceMap"
         :member-map="memberMap"
         :assignments="assignments"
         :attendances="attendances"
