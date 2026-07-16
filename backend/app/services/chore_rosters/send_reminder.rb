@@ -25,6 +25,7 @@ module ChoreRosters
           .bind { ChoreAssignment.find_result(chore_assignment_id) }
           .bind { |assignment| current_chore(assignment, expected_time) }
           .bind { |ctx| add_event(ctx) }
+          .bind { |ctx| resolve_recipient(ctx) }
           .bind { |ctx| ensure_member(ctx) }
           .bind { |ctx| deliver(ctx) }
       end
@@ -50,12 +51,29 @@ module ChoreRosters
                    .fmap { |event| ctx.merge(event: event) }
       end
 
+      # Who gets nudged: the member holder themselves, or — for a guest
+      # holder, who has no account to notify — the host who brought them;
+      # the notification then names the guest. Legacy rows without an
+      # attendance link still resolve through their mirrored user_id.
+      def resolve_recipient(ctx)
+        assignment = ctx[:assignment]
+        attendance = assignment.attendance_id && Attendance.find(assignment.attendance_id)
+        if attendance&.guest?
+          guest = Guest.find(attendance.guest_id)
+          Success(ctx.merge(recipient_user_id: attendance.host_user_id.to_s, assignee_name: guest&.name))
+        elsif assignment.user_id
+          Success(ctx.merge(recipient_user_id: assignment.user_id.to_s, assignee_name: nil))
+        else
+          Failure(:no_recipient)
+        end
+      end
+
       # Don't nag someone who has since left the workspace — an assignment
-      # row can outlive its assignee's membership (a pinned one survives
+      # row can outlive its holder's membership (a pinned one survives
       # member removal), and a reminder to a non-member is just noise.
       def ensure_member(ctx)
         member = WorkspaceMembership.find_by_workspace_and_user(
-          ctx[:event].workspace_id, ctx[:assignment].user_id
+          ctx[:event].workspace_id, ctx[:recipient_user_id]
         )
         if member
           Success(ctx)
@@ -65,16 +83,17 @@ module ChoreRosters
       end
 
       def deliver(ctx)
-        assignment, chore, event = ctx.values_at(:assignment, :chore, :event)
+        chore, event = ctx.values_at(:chore, :event)
         Notifications::Safely.deliver(context: "ChoreRosters::SendReminder") do
           Notifications::Dispatch.call(
             kind: :chore_reminder,
-            user_id: assignment.user_id.to_s,
+            user_id: ctx[:recipient_user_id],
             workspace_id: event.workspace_id.to_s,
             data: {
               chore_name: chore.name,
               event_name: event.name,
-              event_url: APP_CONFIG.frontend_url.path("/events/#{event.id}/chores")
+              event_url: APP_CONFIG.frontend_url.path("/events/#{event.id}/chores"),
+              assignee_name: ctx[:assignee_name]
             }
           )
         end

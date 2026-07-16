@@ -39,6 +39,31 @@ RSpec.describe ChoreRosters::SendReminder do
       expect(DB[:notifications].where(user_id: stranger[:id]).count).to eq(0)
     end
 
+    it "delivers a guest's reminder to their host, named after the guest" do
+      guest = TestFactories.guest(workspace: workspace, name: "Emma")
+      guest_attendance = TestFactories.attendance(event: event, guest: guest, host: user)
+      a = TestFactories.chore_assignment(chore: chore, attendance: guest_attendance, date: Date.new(2026, 7, 1))
+
+      described_class.call(chore_assignment_id: a[:id])
+
+      row = DB[:notifications].where(user_id: user[:id]).first
+      expect(row).not_to be_nil
+      expect(row[:kind]).to eq("chore_reminder")
+      expect(row[:data]["body"]).to include("Emma")
+      expect(row[:data]["body"]).to include("Cooking")
+    end
+
+    it "no-ops when a guest's host is no longer a workspace member" do
+      outside_host = TestFactories.user
+      guest = TestFactories.guest(workspace: workspace, name: "Emma")
+      guest_attendance = TestFactories.attendance(event: event, guest: guest, host: outside_host)
+      a = TestFactories.chore_assignment(chore: chore, attendance: guest_attendance, date: Date.new(2026, 7, 1))
+
+      described_class.call(chore_assignment_id: a[:id])
+
+      expect(DB[:notifications].count).to eq(0)
+    end
+
     it "no-ops when the chore has no time" do
       timeless = TestFactories.chore(chore_roster: roster, name: "Dishes")
       a = TestFactories.chore_assignment(chore: timeless, user: user, date: Date.new(2026, 7, 1))
