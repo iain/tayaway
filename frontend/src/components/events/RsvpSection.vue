@@ -22,6 +22,8 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import TextButton from '@/components/common/TextButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
+import FormInput from '@/components/form/FormInput.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
 import CalendarMonth from '@/components/calendar/CalendarMonth.vue'
 import { attendanceDates, enumerateDates } from '@/utils/event'
 
@@ -362,6 +364,26 @@ function hostOptionLabel(option: {
   return notes.length > 0 ? `${option.name} (${notes.join(', ')})` : option.name
 }
 
+// FormSelect options: decliners stay listed but unpickable; an unpicked
+// host (declined actor) leads with a disabled placeholder.
+const hostSelectOptions = computed(() => {
+  const options = hostOptions.value.map((option) => ({
+    value: option.userId,
+    label: hostOptionLabel(option),
+    disabled: option.declined,
+  }))
+  if (guestModal.value?.hostUserId === '') {
+    options.unshift({ value: '', label: 'Pick a member', disabled: true })
+  }
+  return options
+})
+
+const hostSelectLabel = computed(() =>
+  guestModal.value?.name
+    ? `Whose guest is ${guestModal.value.name}?`
+    : 'Whose guest are they?'
+)
+
 // Existing guests to offer before creating a new one: the workspace's
 // guests minus anyone already on this event (going, or pending in the No
 // Response list where they're re-confirmed instead). Placeholders stay
@@ -698,62 +720,33 @@ function guestOfLabel(attendance: HydratedAttendance): string {
             </div>
 
             <div v-if="guestModal.guestId === null" class="mb-4">
-              <label
-                class="text-ink mb-1 block text-sm font-medium"
-                for="guest-name"
-              >
-                {{ pickableGuests.length > 0 ? 'Or add someone new' : 'Name' }}
-              </label>
-              <input
+              <FormInput
                 id="guest-name"
                 data-testid="guest-name-input"
-                type="text"
-                :value="guestModal.name"
+                :label="
+                  pickableGuests.length > 0 ? 'Or add someone new' : 'Name'
+                "
+                :model-value="guestModal.name"
                 placeholder="Guest's name"
-                maxlength="255"
-                class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus w-full rounded-md px-3 py-2 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
-                @input="
-                  guestModal = {
-                    ...guestModal,
-                    name: ($event.target as HTMLInputElement).value,
-                  }
+                :maxlength="255"
+                @update:model-value="
+                  guestModal = { ...guestModal, name: $event }
                 "
               />
             </div>
           </template>
 
           <div v-if="hostOptions.length > 0" class="mb-4">
-            <label
-              class="text-ink mb-1 block text-sm font-medium"
-              for="guest-host"
-            >
-              Whose guest
-              {{ guestModal.name ? `is ${guestModal.name}` : 'are they' }}?
-            </label>
-            <select
+            <FormSelect
               id="guest-host"
               data-testid="guest-host-select"
-              :value="guestModal.hostUserId"
-              class="bg-surface-sunken text-ink outline-line focus:outline-focus *:bg-surface w-full rounded-md px-3 py-2 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
-              @change="
-                guestModal = {
-                  ...guestModal,
-                  hostUserId: ($event.target as HTMLSelectElement).value,
-                }
+              :label="hostSelectLabel"
+              :model-value="guestModal.hostUserId"
+              :options="hostSelectOptions"
+              @update:model-value="
+                guestModal = { ...guestModal, hostUserId: $event }
               "
-            >
-              <option v-if="guestModal.hostUserId === ''" value="" disabled>
-                Pick a member
-              </option>
-              <option
-                v-for="option in hostOptions"
-                :key="option.userId"
-                :value="option.userId"
-                :disabled="option.declined"
-              >
-                {{ hostOptionLabel(option) }}
-              </option>
-            </select>
+            />
           </div>
 
           <div class="text-ink-muted mb-4 text-sm">
@@ -807,19 +800,13 @@ function guestOfLabel(attendance: HydratedAttendance): string {
         @close="renameModal = null"
       >
         <template v-if="renameModal">
-          <input
+          <FormInput
+            id="guest-rename"
             data-testid="guest-rename-input"
-            type="text"
-            aria-label="Guest name"
-            :value="renameModal.name"
-            maxlength="255"
-            class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus w-full rounded-md px-3 py-2 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
-            @input="
-              renameModal = {
-                ...renameModal,
-                name: ($event.target as HTMLInputElement).value,
-              }
-            "
+            label="Name"
+            :model-value="renameModal.name"
+            :maxlength="255"
+            @update:model-value="renameModal = { ...renameModal, name: $event }"
           />
           <div class="mt-6 flex items-center justify-end gap-3">
             <TextButton variant="secondary" @click="renameModal = null">
