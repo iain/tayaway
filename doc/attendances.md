@@ -133,7 +133,7 @@ attendance row is the join point that resolves presence into a billable user.
 
 | Table | End state | Why |
 |---|---|---|
-| `chore_assignments` | → `attendance_id` (later phase) | Doing a chore is presence; unlocks guests doing chores |
+| `chore_assignments` | → `attendance_id` (done; `user_id` mirror drops later) | Doing a chore is presence; unlocks guests doing chores |
 | `expense_participants` | → `attendance_id` (later phase) | Participation is consumption, i.e. presence; enables guest participants |
 | `expenses` (payer) | stays `user_id` | Paying is money; guests have no account or IBAN |
 | `settlement_transfers` | stays `user_id` | Money movement between account holders |
@@ -318,8 +318,10 @@ called out below rather than engineered away.
    (which also retires the legacy `start_date`/`end_date` hull columns left
    over from the come-and-go migration, PR #527) is a separate two-deploy
    follow-up.
-8. **Later, on demand:** `chore_assignments` → `attendance_id`
-   (backfill by joining `(event_id, user_id)`, unique constraint becomes
-   `(chore_id, attendance_id, date)`, two-deploy drop of `user_id`);
+8. **Later, on demand:** `chore_assignments` → `attendance_id` — **done**
+   (migrations 052/053: backfill by joining `(event_id, user_id)`, partial
+   unique on `(chore_id, attendance_id, date)`, guest holders enabled behind
+   `MIN_SUPPORTED_VERSION` 2). Remaining: the two-deploy drop of the
+   `user_id` mirror column once pre-2 clients drain, and
    `expense_participants` → `attendance_id` when guest participation is
    wanted.
