@@ -55,6 +55,26 @@ resource "ovh_domain_zone_record" "www_aaaa" {
   target    = var.vps_ipv6
 }
 
+# ── admin.tayaway.nl → our box ────────────────────────────────────────────────
+# The operator-only admin site (doc/admin.md). Same box; the edge Caddy
+# serves it with mandatory client-cert auth, so a public DNS record exposes
+# nothing — handshakes without the operator cert fail before HTTP.
+resource "ovh_domain_zone_record" "admin_a" {
+  zone      = var.domain
+  subdomain = "admin"
+  fieldtype = "A"
+  ttl       = 0
+  target    = var.vps_ipv4
+}
+
+resource "ovh_domain_zone_record" "admin_aaaa" {
+  zone      = var.domain
+  subdomain = "admin"
+  fieldtype = "AAAA"
+  ttl       = 0
+  target    = var.vps_ipv6
+}
+
 # ── OVH-hosted email ──────────────────────────────────────────────────────────
 # MX + SPF + DKIM selectors + DMARC + autodiscover SRV for the OVH mailbox on
 # tayaway.nl. Adopted so the mail config is reviewable and rebuildable; the

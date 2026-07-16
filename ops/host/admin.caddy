@@ -1,0 +1,28 @@
+# Operator-only admin site (doc/admin.md). mTLS at the edge: without a client
+# certificate signed by the operator CA the TLS handshake fails outright, so
+# the app behind it is unreachable — and effectively invisible — to anyone
+# without the cert. App-level passkey auth sits behind this as a second layer.
+#
+# provision.sh installs this to /etc/tayaway/caddy-admin/ ONLY when ca.pem is
+# already present there (a site block pointing at a missing trust_pool file
+# would fail the whole edge config load). The edge container mounts that dir
+# at /etc/caddy/admin, which the baked Caddyfile imports.
+admin.tayaway.nl {
+	tls {
+		client_auth {
+			mode require_and_verify
+			trust_pool file /etc/caddy/admin/ca.pem
+		}
+	}
+
+	log {
+		output stdout
+		format json
+	}
+
+	# Security headers beyond HSTS come from the admin app itself — setting
+	# them here too would emit duplicates.
+	header Strict-Transport-Security "max-age=63072000"
+
+	reverse_proxy admin:9393
+}

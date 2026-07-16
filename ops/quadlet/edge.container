@@ -30,6 +30,10 @@ Volume=tayaway-caddy.volume:/data
 # ops/co-hosting.md). The baked Caddyfile imports /etc/caddy/sites/*.caddy;
 # read-only so a tenant can't rewrite the edge's own config.
 Volume=/etc/caddy/sites:/etc/caddy/sites:ro
+# Admin vhost + client CA (doc/admin.md), installed by provision.sh. The
+# baked Caddyfile imports /etc/caddy/admin/*.caddy — a no-op until the CA
+# and site block are in place.
+Volume=/etc/tayaway/caddy-admin:/etc/caddy/admin:ro
 Environment=SITE_ADDRESS=https://tayaway.nl
 # Serve www.tayaway.nl too (LE cert + 301 to the apex). Needs the www DNS
 # records pointing here first, which ops/dns.tf manages.
