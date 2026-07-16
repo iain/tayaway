@@ -214,7 +214,12 @@ export interface ObjectTypeMap {
   }
   choreAssignment: PoolObjectBase<'choreAssignment'> & {
     choreId: string
-    userId: string
+    // The attendance row behind the holder (doc/attendances.md phase 8).
+    // Null only on legacy rows written before the link existed.
+    attendanceId: string | null
+    // The member behind the holder, mirrored from the attendance for old
+    // clients; null once guest attendances can hold chores.
+    userId: string | null
     date: string
     pinned: boolean
     note: string | null

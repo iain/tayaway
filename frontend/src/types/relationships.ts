@@ -134,6 +134,11 @@ export const relationshipSchema: RelationshipSchema = {
       foreignKey: 'userId',
       targetType: 'member',
     },
+    attendance: {
+      type: 'belongsTo',
+      foreignKey: 'attendanceId',
+      targetType: 'attendance',
+    },
   },
   expenseParticipant: {
     expense: {

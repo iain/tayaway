@@ -278,6 +278,50 @@ function hydrateRsvps(
 }
 
 /**
+ * Resolve one attendance row to its hydrated attendee — the single frontend
+ * reader of the userId XOR guestId union (see the HydratedAttendee
+ * containment note above). Exported for consumers that join attendances
+ * outside a full event hydration (the chore roster, the days page).
+ */
+export function hydrateAttendee(
+  attendance: PoolAttendance,
+  memberIndex: Map<string, PoolMember>,
+  pool: Pool
+): HydratedAttendance {
+  if (attendance.guestId) {
+    const guest = pool.get('guest', attendance.guestId)
+    const hostMember = attendance.hostUserId
+      ? memberIndex.get(attendance.hostUserId)
+      : undefined
+    return {
+      ...attendance,
+      attendee: {
+        name: guest?.name ?? 'Unknown guest',
+        isGuest: true,
+        billingUserId: attendance.hostUserId,
+        member: undefined,
+        guest,
+        hostMember,
+      },
+    }
+  }
+  const member = attendance.userId
+    ? memberIndex.get(attendance.userId)
+    : undefined
+  return {
+    ...attendance,
+    attendee: {
+      name: member?.name || member?.email || 'Unknown',
+      isGuest: false,
+      billingUserId: attendance.userId,
+      member,
+      guest: undefined,
+      hostMember: undefined,
+    },
+  }
+}
+
+/**
  * Hydrate attendances for an event, resolving each row to its attendee —
  * see the HydratedAttendee containment note above.
  */
@@ -289,39 +333,27 @@ function hydrateAttendances(
   return pool
     .getAll('attendance')
     .filter((a) => a.eventId === eventId)
-    .map((attendance) => {
-      if (attendance.guestId) {
-        const guest = pool.get('guest', attendance.guestId)
-        const hostMember = attendance.hostUserId
-          ? memberIndex.get(attendance.hostUserId)
-          : undefined
-        return {
-          ...attendance,
-          attendee: {
-            name: guest?.name ?? 'Unknown guest',
-            isGuest: true,
-            billingUserId: attendance.hostUserId,
-            member: undefined,
-            guest,
-            hostMember,
-          },
-        }
-      }
-      const member = attendance.userId
-        ? memberIndex.get(attendance.userId)
-        : undefined
-      return {
-        ...attendance,
-        attendee: {
-          name: member?.name || member?.email || 'Unknown',
-          isGuest: false,
-          billingUserId: attendance.userId,
-          member,
-          guest: undefined,
-          hostMember: undefined,
-        },
-      }
-    })
+    .map((attendance) => hydrateAttendee(attendance, memberIndex, pool))
+}
+
+/**
+ * One event's attendances with resolved attendees, without the full event
+ * hydration — for views that only join people (chore roster, days page).
+ */
+export function useHydratedAttendances(
+  eventId: ComputedRef<string> | string
+): ComputedRef<HydratedAttendance[]> {
+  const pool = useObjectPoolStore()
+
+  return computed(() => {
+    const tv = pool.typeVersions
+    void tv.get('attendance')
+    void tv.get('guest')
+    void tv.get('member')
+
+    const id = typeof eventId === 'string' ? eventId : eventId.value
+    return hydrateAttendances(id, pool, buildMemberIndex(pool))
+  })
 }
 
 /**

@@ -2,28 +2,51 @@ import type {
   PoolAttendance,
   PoolChore,
   PoolChoreAssignment,
+  PoolMember,
 } from '@/types/pool'
+import type { HydratedAttendance } from '@/composables/useHydratedEvent'
 import { attendanceDates } from '@/utils/event'
 import { wallClockToEpoch } from '@/utils/timezone'
 
-type AttendanceLike = Pick<
-  PoolAttendance,
-  'userId' | 'guestId' | 'status' | 'days'
->
+type AttendanceLike = Pick<PoolAttendance, 'id' | 'userId' | 'status' | 'days'>
 
-// Going member rows only — guests can't hold chore assignments until
-// assignments reference attendances (doc/attendances.md, later phase).
-function memberDates(
+type AssignmentHolder = Pick<PoolChoreAssignment, 'attendanceId' | 'userId'>
+
+// Attended dates per going attendance — member and guest rows alike, since
+// assignments are keyed by the attendance behind the holder.
+function attendedDates(
   attendances: readonly AttendanceLike[],
   event: { startDate: string; endDate: string }
 ): Map<string, string[]> {
-  const byUser = new Map<string, string[]>()
+  const byAttendance = new Map<string, string[]>()
   for (const attendance of attendances) {
-    if (!attendance.userId) continue
     const dates = attendanceDates(attendance, event.startDate, event.endDate)
-    if (dates.length > 0) byUser.set(attendance.userId, dates)
+    if (dates.length > 0) byAttendance.set(attendance.id, dates)
+  }
+  return byAttendance
+}
+
+// Legacy rows predating the attendance link resolve their holder through the
+// mirrored userId; gone once those rows are backfilled and user_id retires.
+function attendanceIdByUser(
+  attendances: readonly AttendanceLike[]
+): Map<string, string> {
+  const byUser = new Map<string, string>()
+  for (const attendance of attendances) {
+    if (attendance.userId) byUser.set(attendance.userId, attendance.id)
   }
   return byUser
+}
+
+/** The attendance id behind an assignment's holder, via the legacy-userId
+ *  fallback when the row predates the attendance link. */
+export function holderAttendanceId(
+  assignment: AssignmentHolder,
+  byUser: Map<string, string>
+): string | null {
+  if (assignment.attendanceId) return assignment.attendanceId
+  if (assignment.userId) return byUser.get(assignment.userId) ?? null
+  return null
 }
 
 /**
@@ -52,57 +75,93 @@ export function refillableAssignments<
 }
 
 /**
- * Whether the chores page should nudge the user toward auto-fill: the roster
- * has seats and fewer than half of them are filled. Fills in either direction
- * (auto-fill or by hand) make the nudge disappear on its own, so it needs no
- * dismissal state.
+ * The person behind one chore assignment, resolved through its attendance's
+ * attendee. Legacy rows without an attendance link fall back to the mirrored
+ * userId and the member map.
  */
-/**
- * The user ids attending on one specific day, per the going member
- * attendances — the eligibility set for assigning (or reassigning) that
- * day's chores. Mirrors the backend autofill's availability map for a
- * single date.
- */
-export function attendingUserIdsOn(
-  date: string,
-  attendances: readonly AttendanceLike[],
-  event: { startDate: string | null; endDate: string | null }
-): Set<string> {
-  const userIds = new Set<string>()
-  if (event.startDate && event.endDate) {
-    for (const [userId, dates] of memberDates(attendances, {
-      startDate: event.startDate,
-      endDate: event.endDate,
-    })) {
-      if (dates.includes(date)) userIds.add(userId)
+export interface AssignmentPerson {
+  name: string
+  isGuest: boolean
+  /** Member holders: their userId, for "is this me" emphasis. Null for
+   *  guests and unresolvable rows. */
+  userId: string | null
+}
+
+export function assignmentPerson(
+  assignment: AssignmentHolder,
+  attendanceById: Map<string, HydratedAttendance>,
+  memberByUserId: Map<string, PoolMember>
+): AssignmentPerson {
+  const attendance = assignment.attendanceId
+    ? attendanceById.get(assignment.attendanceId)
+    : undefined
+  if (attendance) {
+    return {
+      name: attendance.attendee.name,
+      isGuest: attendance.attendee.isGuest,
+      userId: attendance.attendee.member?.userId ?? null,
     }
   }
-  return userIds
+
+  const member = assignment.userId
+    ? memberByUserId.get(assignment.userId)
+    : undefined
+  if (member) {
+    return {
+      name: member.name ?? member.email.split('@')[0] ?? member.email,
+      isGuest: false,
+      userId: assignment.userId,
+    }
+  }
+  return { name: '?', isGuest: false, userId: assignment.userId }
+}
+
+/**
+ * The attendances that can take a chore on one specific day: going, covering
+ * that date — the eligibility set for assigning (or reassigning) that day's
+ * chores, mirroring the backend autofill's availability map for a single
+ * date. Members only until the server accepts guest holders (the follow-up
+ * deploy of doc/attendances.md phase 8).
+ */
+export function assignableAttendancesOn(
+  date: string,
+  attendances: readonly HydratedAttendance[],
+  event: { startDate: string | null; endDate: string | null }
+): HydratedAttendance[] {
+  if (!event.startDate || !event.endDate) return []
+  const start = event.startDate
+  const end = event.endDate
+  return attendances.filter(
+    (a) => !a.attendee.isGuest && attendanceDates(a, start, end).includes(date)
+  )
 }
 
 /**
  * The upcoming assignments whose holder isn't attending that day — chores
  * that won't get done unless someone else takes them over. These flag their
- * chips and feed the reassign nudge.
+ * chips and feed the reassign nudge. An assignment is stale iff its
+ * attendance's days no longer cover its date.
  *
  * Days before `today` are history and never stale.
  */
 export function staleAssignmentIds(
   assignments: ReadonlyArray<
-    Pick<PoolChoreAssignment, 'id' | 'userId' | 'date'>
+    Pick<PoolChoreAssignment, 'id' | 'attendanceId' | 'userId' | 'date'>
   >,
   attendances: readonly AttendanceLike[],
   event: { startDate: string; endDate: string },
   today: string
 ): Set<string> {
-  const attendedByUser = memberDates(attendances, event)
+  const dates = attendedDates(attendances, event)
+  const byUser = attendanceIdByUser(attendances)
 
   const stale = new Set<string>()
   for (const a of assignments) {
     if (a.date < today) continue
-    if (!attendedByUser.get(a.userId)?.includes(a.date)) {
-      stale.add(a.id)
-    }
+    const attendanceId = holderAttendanceId(a, byUser)
+    const covered =
+      attendanceId !== null && dates.get(attendanceId)?.includes(a.date)
+    if (!covered) stale.add(a.id)
   }
   return stale
 }

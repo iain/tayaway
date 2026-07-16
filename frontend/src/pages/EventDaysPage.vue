@@ -21,7 +21,14 @@ import { eventHasDates } from '@/utils/event'
 import { isPollActive } from '@/utils/poll'
 import { formatDayHeader } from '@/utils/date'
 import { zonedDateString } from '@/utils/timezone'
-import type { PoolApiResponse, PoolChore } from '@/types/pool'
+import { assignmentPerson } from '@/utils/chores'
+import type {
+  PoolApiResponse,
+  PoolChore,
+  PoolChoreAssignment,
+  PoolMember,
+} from '@/types/pool'
+import type { HydratedAttendance } from '@/composables/useHydratedEvent'
 
 const route = useRoute()
 const eventId = computed(() => route.params.id as string)
@@ -94,22 +101,52 @@ const chores = computed(() => {
 
 const assigneesByChoreDate = computed(() => {
   const choreIds = new Set(chores.value.map((c) => c.id))
-  const map = new Map<string, string[]>()
+  const map = new Map<string, PoolChoreAssignment[]>()
   for (const a of pool.getAll('choreAssignment')) {
     if (!choreIds.has(a.choreId)) continue
     const key = `${a.choreId}|${a.date}`
     const list = map.get(key)
-    if (list) list.push(a.userId)
-    else map.set(key, [a.userId])
+    if (list) list.push(a)
+    else map.set(key, [a])
   }
   return map
 })
 
+const attendanceById = computed(() => {
+  const map = new Map<string, HydratedAttendance>()
+  for (const a of event.value?.attendances ?? []) map.set(a.id, a)
+  return map
+})
+
+const memberByUserId = computed(() => {
+  const map = new Map<string, PoolMember>()
+  for (const m of pool.getAll('member')) map.set(m.userId, m)
+  return map
+})
+
+// Duty holders resolve through their attendance's attendee, so guest
+// assignments show the guest's name; "(you)" mirrors names() below.
+function dutyNames(assignments: PoolChoreAssignment[]): string {
+  return assignments
+    .map((a) => {
+      const person = assignmentPerson(
+        a,
+        attendanceById.value,
+        memberByUserId.value
+      )
+      return person.userId === currentUserId.value
+        ? `${person.name} (you)`
+        : person.name
+    })
+    .sort((a, b) => a.localeCompare(b))
+    .join(', ')
+}
+
 function dutiesFor(date: string): { chore: PoolChore; names: string }[] {
   const duties: { chore: PoolChore; names: string }[] = []
   for (const chore of chores.value) {
-    const userIds = assigneesByChoreDate.value.get(`${chore.id}|${date}`)
-    if (userIds) duties.push({ chore, names: names(userIds) })
+    const assignments = assigneesByChoreDate.value.get(`${chore.id}|${date}`)
+    if (assignments) duties.push({ chore, names: dutyNames(assignments) })
   }
   return duties
 }

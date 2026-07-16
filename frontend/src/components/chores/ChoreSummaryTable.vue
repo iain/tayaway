@@ -8,16 +8,18 @@ import type {
   PoolChoreAssignment,
   PoolEvent,
   PoolMember,
-  PoolAttendance,
 } from '@/types/pool'
+import type { HydratedAttendance } from '@/composables/useHydratedEvent'
+import { assignmentPerson, holderAttendanceId } from '@/utils/chores'
 import { attendanceDates } from '@/utils/event'
 
 const props = withDefaults(
   defineProps<{
     chores: PoolChore[]
     assignments: PoolChoreAssignment[]
+    // Legacy fallback for rows written before the attendance link existed.
     members: PoolMember[]
-    attendances: PoolAttendance[]
+    attendances: HydratedAttendance[]
     event: PoolEvent
     headingLevel?: 2 | 3
   }>(),
@@ -25,7 +27,7 @@ const props = withDefaults(
 )
 
 interface SummaryRow {
-  userId: string
+  key: string
   name: string
   counts: Map<string, number>
   total: number
@@ -35,53 +37,70 @@ interface SummaryRow {
 }
 
 const rows = computed<SummaryRow[]>(() => {
-  const byUser = new Map<string, Map<string, number>>()
-
-  for (const a of props.assignments) {
-    let choreMap = byUser.get(a.userId)
-    if (!choreMap) {
-      choreMap = new Map()
-      byUser.set(a.userId, choreMap)
-    }
-    choreMap.set(a.choreId, (choreMap.get(a.choreId) ?? 0) + 1)
+  const attendanceById = new Map<string, HydratedAttendance>()
+  const byUser = new Map<string, string>()
+  for (const a of props.attendances) {
+    attendanceById.set(a.id, a)
+    if (a.userId) byUser.set(a.userId, a.id)
   }
-
   const memberMap = new Map<string, PoolMember>()
   for (const m of props.members) {
     memberMap.set(m.userId, m)
   }
 
-  // Days attended per user, so a light total next to a short stay reads as
-  // fair rather than as someone shirking — auto-fill balances load against
+  // One row per attendee, keyed by their attendance; legacy assignments that
+  // resolve to nobody share a per-user bucket so their work still shows.
+  const rowKey = (a: PoolChoreAssignment) =>
+    holderAttendanceId(a, byUser) ?? `user:${a.userId}`
+
+  const countsByKey = new Map<string, Map<string, number>>()
+  for (const a of props.assignments) {
+    const key = rowKey(a)
+    let choreMap = countsByKey.get(key)
+    if (!choreMap) {
+      choreMap = new Map()
+      countsByKey.set(key, choreMap)
+    }
+    choreMap.set(a.choreId, (choreMap.get(a.choreId) ?? 0) + 1)
+  }
+
+  // Days attended per attendee, so a light total next to a short stay reads
+  // as fair rather than as someone shirking — auto-fill balances load against
   // exactly this number.
-  const daysByUser = new Map<string, number>()
+  const daysByKey = new Map<string, number>()
   if (props.event.startDate && props.event.endDate) {
     for (const attendance of props.attendances) {
-      if (!attendance.userId) continue
       const days = attendanceDates(
         attendance,
         props.event.startDate,
         props.event.endDate
       )
-      if (days.length > 0) daysByUser.set(attendance.userId, days.length)
+      if (days.length > 0) daysByKey.set(attendance.id, days.length)
     }
   }
 
   // Attendees without a single chore still get a row — their 0.0/day IS the
   // fairness signal (this table replaced the "X has no upcoming chores" nudge).
-  for (const userId of daysByUser.keys()) {
-    if (!byUser.has(userId)) byUser.set(userId, new Map())
+  for (const key of daysByKey.keys()) {
+    if (!countsByKey.has(key)) countsByKey.set(key, new Map())
   }
 
   const result: SummaryRow[] = []
-  for (const [userId, counts] of byUser) {
-    const member = memberMap.get(userId)
+  for (const [key, counts] of countsByKey) {
+    const attendance = attendanceById.get(key)
+    const name = attendance
+      ? attendance.attendee.name
+      : assignmentPerson(
+          { attendanceId: null, userId: key.replace(/^user:/, '') },
+          attendanceById,
+          memberMap
+        ).name
     let total = 0
     for (const c of counts.values()) total += c
-    const daysThere = daysByUser.get(userId) ?? 0
+    const daysThere = daysByKey.get(key) ?? 0
     result.push({
-      userId,
-      name: member?.name ?? 'Unknown',
+      key,
+      name,
       counts,
       total,
       daysThere,
@@ -132,7 +151,7 @@ const rows = computed<SummaryRow[]>(() => {
         <tbody>
           <tr
             v-for="(row, i) in rows"
-            :key="row.userId"
+            :key="row.key"
             class="text-ink"
             :class="i % 2 === 0 ? 'bg-surface-sunken' : ''"
           >

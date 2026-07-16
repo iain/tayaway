@@ -5,6 +5,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useAuthStore } from '@/stores/auth'
 import {
+  makeAttendance,
   makeEvent,
   makeChoreRoster,
   makeChore,
@@ -119,6 +120,59 @@ describe('useUpcomingChores', () => {
 
   it('excludes chores assigned to other people', () => {
     seed(choreChain({ assignmentId: 'a1', date: TODAY, userId: 'user-2' }))
+
+    const { upcomingChores } = useUpcomingChores(nowUtc())
+
+    expect(upcomingChores.value).toHaveLength(0)
+  })
+
+  it('matches my chores through the attendance behind the assignment', () => {
+    // The assignment carries no userId (a guest-era row shape); it is mine
+    // because its attendance is my member row on the event.
+    const [event, roster, chore] = choreChain({
+      assignmentId: 'a1',
+      date: TODAY,
+    })
+    seed([
+      event!,
+      roster!,
+      chore!,
+      makeAttendance({ id: 'att-mine', eventId: 'evt-1', userId: 'user-1' }),
+      makeChoreAssignment({
+        id: 'a1',
+        choreId: 'chore-a1',
+        attendanceId: 'att-mine',
+        userId: null,
+        date: TODAY,
+      }),
+    ])
+
+    const { upcomingChores } = useUpcomingChores(nowUtc())
+
+    expect(upcomingChores.value).toHaveLength(1)
+  })
+
+  it("excludes another member's chore even when the mirrored userId is stale", () => {
+    const [event, roster, chore] = choreChain({
+      assignmentId: 'a1',
+      date: TODAY,
+    })
+    seed([
+      event!,
+      roster!,
+      chore!,
+      makeAttendance({ id: 'att-mine', eventId: 'evt-1', userId: 'user-1' }),
+      makeAttendance({ id: 'att-other', eventId: 'evt-1', userId: 'user-2' }),
+      // Mirrored userId says me, but the attendance link says user-2: the
+      // link wins, the row is theirs.
+      makeChoreAssignment({
+        id: 'a1',
+        choreId: 'chore-a1',
+        attendanceId: 'att-other',
+        userId: 'user-1',
+        date: TODAY,
+      }),
+    ])
 
     const { upcomingChores } = useUpcomingChores(nowUtc())
 

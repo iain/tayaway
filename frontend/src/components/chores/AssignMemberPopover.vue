@@ -3,14 +3,9 @@ import { computed } from 'vue'
 import { CheckIcon } from '@heroicons/vue/20/solid'
 import { useChoreRostersStore } from '@/stores/choreRosters'
 import AnchoredPopover from '@/components/common/AnchoredPopover.vue'
-import type {
-  PoolChore,
-  PoolMember,
-  PoolAttendance,
-  PoolChoreAssignment,
-  PoolEvent,
-} from '@/types/pool'
-import { attendingUserIdsOn } from '@/utils/chores'
+import type { PoolChore, PoolChoreAssignment, PoolEvent } from '@/types/pool'
+import type { HydratedAttendance } from '@/composables/useHydratedEvent'
+import { assignableAttendancesOn, holderAttendanceId } from '@/utils/chores'
 import { formatDayHeader } from '@/utils/date'
 
 const props = defineProps<{
@@ -18,8 +13,7 @@ const props = defineProps<{
   date: string
   anchorEl: HTMLElement
   rosterId: string
-  members: PoolMember[]
-  attendances: PoolAttendance[]
+  attendances: HydratedAttendance[]
   assignments: PoolChoreAssignment[]
   event: PoolEvent
   currentUserId: string | null
@@ -31,42 +25,43 @@ const emit = defineEmits<{
 
 const choreRostersStore = useChoreRostersStore()
 
-// Members attending on this date (attending RSVP covering this date, so
-// come-and-go gap days aren't offered — matches the backend autofill
-// availability). The viewer sorts first: claiming a slot yourself is the
-// most common assignment by far.
-const attendingMembers = computed(() => {
-  const attendingUserIds = attendingUserIdsOn(
-    props.date,
-    props.attendances,
-    props.event
-  )
-
-  return props.members
-    .filter((m) => attendingUserIds.has(m.userId))
+// Attendances covering this date (so come-and-go gap days aren't offered —
+// matches the backend autofill availability). The viewer sorts first:
+// claiming a slot yourself is the most common assignment by far.
+const candidates = computed(() => {
+  return assignableAttendancesOn(props.date, props.attendances, props.event)
+    .slice()
     .sort((a, b) => {
-      if (a.userId === props.currentUserId) return -1
-      if (b.userId === props.currentUserId) return 1
-      const nameA = a.name ?? a.email
-      const nameB = b.name ?? b.email
-      return nameA.localeCompare(nameB)
+      if (isCurrentUser(a)) return -1
+      if (isCurrentUser(b)) return 1
+      return a.attendee.name.localeCompare(b.attendee.name)
     })
 })
 
-function getMemberDisplayName(member: PoolMember): string {
-  if (member.userId === props.currentUserId) {
-    return 'You'
-  }
-  return member.name ?? member.email.split('@')[0] ?? member.email
+function isCurrentUser(attendance: HydratedAttendance): boolean {
+  return (
+    props.currentUserId !== null &&
+    attendance.attendee.member?.userId === props.currentUserId
+  )
 }
 
-// This slot's assignments keyed by user, so a member row can flip between
-// "assign" and "remove" and show its check.
+function displayName(attendance: HydratedAttendance): string {
+  return isCurrentUser(attendance) ? 'You' : attendance.attendee.name
+}
+
+// This slot's assignments keyed by attendance, so a row can flip between
+// "assign" and "remove" and show its check. Legacy rows without the link
+// resolve through their mirrored userId.
 const slotAssignments = computed(() => {
+  const byUser = new Map<string, string>()
+  for (const a of props.attendances) {
+    if (a.userId) byUser.set(a.userId, a.id)
+  }
   const map = new Map<string, PoolChoreAssignment>()
   for (const a of props.assignments) {
     if (a.choreId === props.chore.id && a.date === props.date) {
-      map.set(a.userId, a)
+      const attendanceId = holderAttendanceId(a, byUser)
+      if (attendanceId) map.set(attendanceId, a)
     }
   }
   return map
@@ -76,8 +71,8 @@ const spotsLeft = computed(
   () => props.chore.peoplePerDay - slotAssignments.value.size
 )
 
-async function handleToggle(userId: string) {
-  const existing = slotAssignments.value.get(userId)
+async function handleToggle(attendance: HydratedAttendance) {
+  const existing = slotAssignments.value.get(attendance.id)
   if (existing) {
     await choreRostersStore.deleteAssignment(props.rosterId, existing.id)
   } else if (spotsLeft.value > 0) {
@@ -85,7 +80,10 @@ async function handleToggle(userId: string) {
     await choreRostersStore.createAssignment(
       props.rosterId,
       props.chore.id,
-      userId,
+      {
+        attendanceId: attendance.id,
+        userId: attendance.attendee.member?.userId ?? null,
+      },
       props.date
     )
     if (wasLastSpot) {
@@ -114,27 +112,27 @@ async function handleToggle(userId: string) {
 
     <div class="max-h-56 overflow-y-auto">
       <button
-        v-for="member in attendingMembers"
-        :key="member.id"
+        v-for="attendance in candidates"
+        :key="attendance.id"
         type="button"
         class="text-ink focus-visible:outline-focus hover:bg-surface-sunken flex w-full cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
-        :aria-label="`${slotAssignments.has(member.userId) ? 'Remove' : 'Assign'} ${getMemberDisplayName(member)}`"
-        @click="handleToggle(member.userId)"
+        :aria-label="`${slotAssignments.has(attendance.id) ? 'Remove' : 'Assign'} ${displayName(attendance)}`"
+        @click="handleToggle(attendance)"
       >
         <span
           class="truncate"
-          :class="member.userId === currentUserId ? 'font-medium' : ''"
+          :class="isCurrentUser(attendance) ? 'font-medium' : ''"
         >
-          {{ getMemberDisplayName(member) }}
+          {{ displayName(attendance) }}
         </span>
         <CheckIcon
-          v-if="slotAssignments.has(member.userId)"
+          v-if="slotAssignments.has(attendance.id)"
           class="text-state-success-ink size-4 shrink-0"
           aria-hidden="true"
         />
       </button>
       <p
-        v-if="attendingMembers.length === 0"
+        v-if="candidates.length === 0"
         class="text-ink-muted py-2 text-center text-xs"
       >
         No one is attending this day

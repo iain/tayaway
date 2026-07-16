@@ -122,7 +122,9 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
   async function createAssignment(
     rosterId: string,
     choreId: string,
-    userId: string,
+    // The attendance behind the holder is what the server keys on; userId
+    // rides along so the optimistic chip renders before the response lands.
+    holder: { attendanceId: string; userId: string | null },
     date: string
   ) {
     const assignmentId = crypto.randomUUID()
@@ -131,7 +133,8 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
       id: assignmentId,
       objectType: 'choreAssignment',
       choreId,
-      userId,
+      attendanceId: holder.attendanceId,
+      userId: holder.userId,
       date,
       pinned: true,
       note: null,
@@ -148,7 +151,7 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
           `/chore-rosters/${rosterId}/assignments`,
           {
             chore_id: choreId,
-            user_id: userId,
+            attendance_id: holder.attendanceId,
             date,
             id: assignmentId,
           }
@@ -160,11 +163,19 @@ export const useChoreRostersStore = defineStore('choreRosters', () => {
   async function updateAssignment(
     rosterId: string,
     assignmentId: string,
-    changes: { note?: string; userId?: string; pinned?: boolean }
+    changes: {
+      note?: string
+      pinned?: boolean
+      attendanceId?: string
+      // Optimistic-only mirror of the attendance's member; not sent — the
+      // server derives it from attendance_id.
+      userId?: string | null
+    }
   ) {
     const apiChanges: Record<string, unknown> = {}
     if (changes.note !== undefined) apiChanges.note = changes.note
-    if (changes.userId !== undefined) apiChanges.user_id = changes.userId
+    if (changes.attendanceId !== undefined)
+      apiChanges.attendance_id = changes.attendanceId
     if (changes.pinned !== undefined) apiChanges.pinned = changes.pinned
 
     await update(
