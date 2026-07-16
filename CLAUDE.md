@@ -32,6 +32,7 @@ Run `mise tasks ls --all` for the full task surface.
 - **Serializers** (`app/serializers/`): `PoolSerializer` normalizes all objects into a flat pool format `{ objects: [{ id, objectType, ...fields }] }`
 - **WebSocket** (`app/websocket/`): PostgreSQL NOTIFY → per-worker Listener fiber → broadcasts serialized objects to connected clients
 - **Object Registry** (`app/object_registry.rb`): Central registry mapping object types to their models/serializers
+- **Admin site** (`admin/`): Operator-only maintenance dashboard — separate Roda app and process, mTLS at the edge. See `doc/admin.md`
 
 ### Frontend (`frontend/`)
 
