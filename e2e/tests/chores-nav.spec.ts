@@ -125,7 +125,7 @@ test.describe('Chores in the main navigation', () => {
       `[data-testid="chore-roster-section"][data-event-id="${firstId}"]`
     )
 
-    await secondSection.getByTitle('Assign member').first().click()
+    await secondSection.getByTitle('Assign someone').first().click()
     await expect(
       secondSection.locator('.fixed.z-50').getByText('Shopping')
     ).toBeVisible()

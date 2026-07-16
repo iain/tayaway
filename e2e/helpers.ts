@@ -1,4 +1,5 @@
 import { Page, APIRequestContext } from '@playwright/test'
+import { PROTOCOL_VERSION } from '../frontend/src/api/protocolVersion'
 
 export const API_BASE = 'http://localhost:9293'
 
@@ -12,6 +13,9 @@ export async function newApiContext(
   return playwright.request.newContext({
     extraHTTPHeaders: {
       'X-CSRF-Protection': '1',
+      // Pass the protocol version gate like any real client build
+      // (doc/protocol-versioning.md).
+      'X-Client-Version': String(PROTOCOL_VERSION),
       ...((extraHTTPHeaders as Record<string, string>) ?? {}),
     },
     ...rest,

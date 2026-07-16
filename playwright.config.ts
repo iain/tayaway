@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { PROTOCOL_VERSION } from './frontend/src/api/protocolVersion'
 
 // When PLAYWRIGHT_BASE_URL is set we're testing a deployed stack (the edge
 // container on new.tayaway.nl, or the containerised-e2e CI stack) rather than
@@ -47,6 +48,9 @@ export default defineConfig({
     trace: 'on-first-retry',
     extraHTTPHeaders: {
       'X-CSRF-Protection': '1',
+      // Raw `request` fixture calls must pass the protocol version gate,
+      // like any real client build (doc/protocol-versioning.md).
+      'X-Client-Version': String(PROTOCOL_VERSION),
     },
   },
   projects: [
