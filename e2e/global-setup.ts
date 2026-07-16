@@ -1,4 +1,5 @@
 import type { FullConfig } from '@playwright/test'
+import { PROTOCOL_VERSION } from '../frontend/src/api/protocolVersion'
 
 const API_BASE = 'http://localhost:9293'
 const MAX_ATTEMPTS = 5
@@ -9,6 +10,9 @@ async function globalSetup(_config: FullConfig) {
     try {
       response = await fetch(`${API_BASE}/api/test/reset`, {
         method: 'POST',
+        // The reset endpoint sits behind the protocol version gate like the
+        // rest of /api (doc/protocol-versioning.md).
+        headers: { 'X-Client-Version': String(PROTOCOL_VERSION) },
       })
     } catch {
       if (attempt < MAX_ATTEMPTS - 1) {
