@@ -6,6 +6,11 @@ import { makeAttendance } from '@/test/factories'
 // whole event, and non-going rows are never counted.
 const EVENT = { startDate: '2026-08-01', endDate: '2026-08-03' }
 
+/** The person behind each returned attendance, for terse assertions. */
+function who(list: { userId: string | null; guestId: string | null }[]) {
+  return list.map((a) => a.userId ?? a.guestId)
+}
+
 describe('daySummaries', () => {
   it('counts whole-event attendances on every day, arriving on the first and departing on the last', () => {
     const attendances = [
@@ -21,12 +26,15 @@ describe('daySummaries', () => {
       '2026-08-03',
     ])
     for (const day of days) {
-      expect(day.userIds).toEqual(['alice', 'bob'])
-      expect(day.guests).toBe(0)
+      expect(who(day.present)).toEqual(['alice', 'bob'])
       expect(day.headcount).toBe(2)
     }
-    expect(days.map((d) => d.arrivals)).toEqual([['alice', 'bob'], [], []])
-    expect(days.map((d) => d.departures)).toEqual([[], [], ['alice', 'bob']])
+    expect(days.map((d) => who(d.arrivals))).toEqual([['alice', 'bob'], [], []])
+    expect(days.map((d) => who(d.departures))).toEqual([
+      [],
+      [],
+      ['alice', 'bob'],
+    ])
   })
 
   it('resolves day sets, guest rows, decliners, and pending rows per day', () => {
@@ -42,7 +50,8 @@ describe('daySummaries', () => {
         userId: 'bob',
         days: ['2026-08-02', '2026-08-03'],
       }),
-      // A going guest on the last day only.
+      // A going guest on the last day only — an attendee like any other:
+      // present, arriving, and departing by identity, not a counter.
       makeAttendance({
         id: 'att-3',
         userId: null,
@@ -57,20 +66,37 @@ describe('daySummaries', () => {
 
     const days = daySummaries(attendances, EVENT)
 
-    expect(days.map((d) => d.userIds)).toEqual([
+    expect(days.map((d) => who(d.present))).toEqual([
       ['alice'],
       ['bob'],
-      ['alice', 'bob'],
+      ['alice', 'bob', 'guest-1'],
     ])
-    expect(days.map((d) => d.guests)).toEqual([0, 0, 1])
     expect(days.map((d) => d.headcount)).toEqual([1, 1, 3])
-    // Alice leaves after day one and comes back for day three.
-    expect(days.map((d) => d.arrivals)).toEqual([['alice'], ['bob'], ['alice']])
-    expect(days.map((d) => d.departures)).toEqual([
+    // Alice leaves after day one and comes back for day three; the guest
+    // arrives on the last day alongside her.
+    expect(days.map((d) => who(d.arrivals))).toEqual([
+      ['alice'],
+      ['bob'],
+      ['alice', 'guest-1'],
+    ])
+    expect(days.map((d) => who(d.departures))).toEqual([
       ['alice'],
       [],
-      ['alice', 'bob'],
+      ['alice', 'bob', 'guest-1'],
     ])
+  })
+
+  it('hands back the attendance objects themselves so callers can resolve attendees', () => {
+    const guest = makeAttendance({
+      id: 'att-g',
+      userId: null,
+      guestId: 'guest-1',
+      hostUserId: 'alice',
+    })
+
+    const days = daySummaries([guest], EVENT)
+
+    expect(days[0]!.present).toEqual([guest])
   })
 
   it('returns no days while the event has no dates', () => {

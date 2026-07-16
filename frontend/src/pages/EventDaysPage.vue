@@ -10,7 +10,10 @@ import {
   UsersIcon,
 } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
-import { useHydratedEvent } from '@/composables/useHydratedEvent'
+import {
+  useHydratedEvent,
+  type HydratedAttendance,
+} from '@/composables/useHydratedEvent'
 import { useMinuteTicker } from '@/composables/useMinuteTicker'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { api } from '@/api/client'
@@ -65,6 +68,27 @@ function names(userIds: string[]): string {
     .join(', ')
 }
 
+// Day lists name guests like anyone else — members first, then guests.
+function attendeeLabel(attendance: HydratedAttendance): string {
+  const name = attendance.attendee.name
+  if (attendance.userId && attendance.userId === currentUserId.value) {
+    return `${name} (you)`
+  }
+  if (attendance.attendee.isGuest) return `${name} (guest)`
+  return name
+}
+
+function attendeeNames(list: readonly HydratedAttendance[]): string {
+  return [...list]
+    .sort(
+      (a, b) =>
+        Number(a.attendee.isGuest) - Number(b.attendee.isGuest) ||
+        a.attendee.name.localeCompare(b.attendee.name)
+    )
+    .map(attendeeLabel)
+    .join(', ')
+}
+
 // Members who haven't responded at all — every count below is a lower bound
 // until they do.
 const pendingCount = computed(() => {
@@ -115,11 +139,12 @@ function dutiesFor(date: string): { chore: PoolChore; names: string }[] {
 }
 
 function headcountMeta(day: {
-  userIds: string[]
-  guests: number
+  present: HydratedAttendance[]
+  headcount: number
 }): string | null {
-  if (day.guests === 0) return null
-  return `${day.userIds.length} + ${day.guests} guest${day.guests === 1 ? '' : 's'}`
+  const guests = day.present.filter((a) => a.attendee.isGuest).length
+  if (guests === 0) return null
+  return `${day.headcount - guests} + ${guests} guest${guests === 1 ? '' : 's'}`
 }
 
 // Land the user on today mid-event — the day they came to check. Guarded so
@@ -275,12 +300,14 @@ onMounted(async () => {
                 </div>
 
                 <p
-                  v-if="day.userIds.length === 0"
+                  v-if="day.present.length === 0"
                   class="text-ink-muted text-sm italic"
                 >
                   No one yet
                 </p>
-                <p v-else class="text-ink text-sm">{{ names(day.userIds) }}</p>
+                <p v-else class="text-ink text-sm">
+                  {{ attendeeNames(day.present) }}
+                </p>
 
                 <p
                   v-if="i > 0 && day.arrivals.length > 0"
@@ -291,7 +318,7 @@ onMounted(async () => {
                     class="mt-0.5 size-4 shrink-0"
                     aria-hidden="true"
                   />
-                  <span>Arriving: {{ names(day.arrivals) }}</span>
+                  <span>Arriving: {{ attendeeNames(day.arrivals) }}</span>
                 </p>
                 <p
                   v-if="i < days.length - 1 && day.departures.length > 0"
@@ -302,7 +329,7 @@ onMounted(async () => {
                     class="mt-0.5 size-4 shrink-0"
                     aria-hidden="true"
                   />
-                  <span>Last day for {{ names(day.departures) }}</span>
+                  <span>Last day for {{ attendeeNames(day.departures) }}</span>
                 </p>
 
                 <ul v-if="dutiesFor(day.date).length > 0" class="space-y-1">
