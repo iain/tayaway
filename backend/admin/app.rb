@@ -92,6 +92,22 @@ class AdminApp < Roda
     @_current_admin = session ? User.find(session.user_id) : nil
   end
 
+  # View helpers. All timestamps on the dashboard are UTC — one timezone
+  # for ops means no DST head-scratchers when correlating with journald.
+  def utc(time)
+    time&.getutc&.strftime("%Y-%m-%d %H:%M")
+  end
+
+  def truncate(str, length = 200)
+    if str.nil?
+      ""
+    elsif str.length > length
+      "#{str[0, length]}…"
+    else
+      str
+    end
+  end
+
   route do |r|
     verify_csrf_header!
 
@@ -139,6 +155,11 @@ class AdminApp < Roda
 
     r.root do
       if current_admin
+        @jobs = Admin::Stats.jobs
+        @users = Admin::Stats.users
+        @versions = Admin::Stats.client_versions
+        @audit_outcome = Admin::Stats::AUDIT_OUTCOMES.include?(r.params["outcome"]) ? r.params["outcome"] : nil
+        @audit = Admin::Stats.audit(outcome: @audit_outcome)
         view "dashboard"
       else
         r.redirect "/login"

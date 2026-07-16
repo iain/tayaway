@@ -6,5 +6,108 @@
   </div>
 </header>
 <main class="dashboard">
+  <section class="panel">
+    <h2>Jobs</h2>
+    <div class="stats">
+      <div class="stat"><div class="value"><%= @jobs[:due] %></div><div class="label">due</div></div>
+      <div class="stat"><div class="value"><%= @jobs[:scheduled] %></div><div class="label">scheduled</div></div>
+      <div class="stat"><div class="value<%= @jobs[:retrying].zero? ? "" : " warn" %>"><%= @jobs[:retrying] %></div><div class="label">retrying</div></div>
+      <div class="stat"><div class="value<%= @jobs[:dead].zero? ? " ok" : " bad" %>"><%= @jobs[:dead] %></div><div class="label">dead</div></div>
+    </div>
+    <% if @jobs[:dead_jobs].any? %>
+      <table>
+        <thead>
+          <tr><th>Job</th><th>Last error</th><th class="num">Attempts</th><th>Dead at (UTC)</th></tr>
+        </thead>
+        <tbody>
+          <% @jobs[:dead_jobs].each do |job| %>
+            <tr>
+              <td class="mono"><%= job[:job_class] %><br><span class="muted"><%= job[:args].to_json %></span></td>
+              <td class="mono bad"><%= truncate(job[:last_error]) %></td>
+              <td class="num"><%= job[:attempts] %></td>
+              <td><%= utc(job[:dead_at]) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <p class="empty">No dead jobs.</p>
+    <% end %>
+  </section>
+
+  <section class="panel">
+    <h2>Users</h2>
+    <div class="stats">
+      <div class="stat"><div class="value"><%= @users[:total] %></div><div class="label">users</div></div>
+      <div class="stat"><div class="value"><%= @users[:new_last_7d] %></div><div class="label">new (7d)</div></div>
+      <div class="stat"><div class="value"><%= @users[:new_last_30d] %></div><div class="label">new (30d)</div></div>
+      <div class="stat"><div class="value"><%= @users[:active_sessions] %></div><div class="label">active sessions</div></div>
+      <div class="stat"><div class="value"><%= @users[:active_users_7d] %></div><div class="label">active users (7d)</div></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Client versions</h2>
+    <p class="muted">Min supported: v<%= @versions[:min_supported] %> · active sessions by newest advertised version</p>
+    <% if @versions[:buckets].any? %>
+      <table>
+        <thead>
+          <tr><th>Version</th><th class="num">Sessions</th><th class="num">Users</th></tr>
+        </thead>
+        <tbody>
+          <% @versions[:buckets].each do |bucket| %>
+            <tr>
+              <% if bucket[:version].nil? %>
+                <td class="muted">no request yet</td>
+              <% elsif bucket[:version].zero? %>
+                <td class="warn">0 (pre-versioning client)</td>
+              <% else %>
+                <td class="<%= bucket[:version] < @versions[:min_supported] ? "bad" : "ok" %>">v<%= bucket[:version] %></td>
+              <% end %>
+              <td class="num"><%= bucket[:sessions] %></td>
+              <td class="num"><%= bucket[:users] %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <p class="empty">No active sessions.</p>
+    <% end %>
+  </section>
+
+  <section class="panel wide">
+    <h2>Audit log</h2>
+    <p class="filters">
+      <% [nil, *Admin::Stats::AUDIT_OUTCOMES].each do |outcome| %>
+        <% label = outcome || "all" %>
+        <% if outcome == @audit_outcome %>
+          <strong><%= label %></strong>
+        <% else %>
+          <a href="/<%= outcome ? "?outcome=#{outcome}" : "" %>"><%= label %></a>
+        <% end %>
+      <% end %>
+    </p>
+    <% if @audit.any? %>
+      <table>
+        <thead>
+          <tr><th>Time (UTC)</th><th>Service</th><th>Actor</th><th>Subject</th><th>Outcome</th><th>Error</th></tr>
+        </thead>
+        <tbody>
+          <% @audit.each do |entry| %>
+            <tr>
+              <td><%= utc(entry[:created_at]) %></td>
+              <td class="mono"><%= entry[:service] %></td>
+              <td><%= entry[:actor_email] || entry[:actor_kind] %></td>
+              <td class="mono"><%= [entry[:subject_type], entry[:subject_id]].compact.join(" ") %></td>
+              <td class="<%= { "success" => "ok", "denied" => "warn", "error" => "bad" }.fetch(entry[:outcome], "") %>"><%= entry[:outcome] %></td>
+              <td class="mono"><%= [entry[:error_code], truncate(entry[:error_message], 120)].compact.reject(&:empty?).join(": ") %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <p class="empty">No audit entries.</p>
+    <% end %>
+  </section>
 </main>
 <script src="/admin.js"></script>

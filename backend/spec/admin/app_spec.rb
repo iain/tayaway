@@ -55,6 +55,52 @@ RSpec.describe "AdminApp" do
     end
   end
 
+  describe "GET / panels" do
+    def insert_dead_job(job_class: "Dead::Job", last_error: "boom")
+      DB[:async_jobs].insert(
+        job_class: job_class,
+        args: Sequel.pg_jsonb({}),
+        scheduled_at: Time.now,
+        attempts: 5,
+        dead_at: Time.now,
+        last_error: last_error
+      )
+    end
+
+    it "renders the four panels with data" do
+      insert_dead_job
+      TestFactories.audit_log_entry(service: "Events::Update", outcome: "denied", error_code: "forbidden")
+
+      get "/", {}, admin_cookie
+
+      body = last_response.body
+      expect(body).to include("Dead::Job")
+      expect(body).to include("boom")
+      expect(body).to include("Events::Update")
+      expect(body).to include("denied")
+      expect(body).to include("Min supported")
+    end
+
+    it "escapes HTML coming from job errors" do
+      insert_dead_job(last_error: "<script>alert(1)</script>")
+
+      get "/", {}, admin_cookie
+
+      expect(last_response.body).not_to include("<script>alert(1)</script>")
+      expect(last_response.body).to include("&lt;script&gt;")
+    end
+
+    it "filters the audit panel by outcome" do
+      TestFactories.audit_log_entry(service: "Events::Create", outcome: "success")
+      TestFactories.audit_log_entry(service: "Members::Remove", outcome: "denied")
+
+      get "/", { "outcome" => "denied" }, admin_cookie
+
+      expect(last_response.body).to include("Members::Remove")
+      expect(last_response.body).not_to include("Events::Create")
+    end
+  end
+
   describe "GET /login" do
     it "renders the login page" do
       get "/login"
