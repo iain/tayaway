@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
-# Read-only ChoreAssignment model.
-class ChoreAssignment < Data.define(:id, :chore_id, :user_id, :date, :pinned, :note, :created_at, :updated_at)
+# Read-only ChoreAssignment model. The holder is the person behind
+# attendance_id (doc/attendances.md); user_id mirrors the attendance's user
+# for old clients until the column drops, and may be nil on legacy rows the
+# backfill has not reached.
+class ChoreAssignment < Data.define(:id, :chore_id, :user_id, :attendance_id, :date, :pinned, :note, :created_at, :updated_at)
   class << self
     include Findable
 
@@ -52,7 +55,8 @@ class ChoreAssignment < Data.define(:id, :chore_id, :user_id, :date, :pinned, :n
       new(
         id: UUID.new(row[:id]),
         chore_id: UUID.new(row[:chore_id]),
-        user_id: UUID.new(row[:user_id]),
+        user_id: row[:user_id] ? UUID.new(row[:user_id]) : nil,
+        attendance_id: row[:attendance_id] ? UUID.new(row[:attendance_id]) : nil,
         date: row[:date],
         pinned: row[:pinned],
         note: row[:note],

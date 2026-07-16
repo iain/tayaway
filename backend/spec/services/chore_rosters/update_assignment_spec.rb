@@ -34,7 +34,10 @@ RSpec.describe ChoreRosters::UpdateAssignment do
     expect(updated[:note]).to eq("Pizza night")
   end
 
-  it "reassigns to a different user" do
+  it "reassigns to a different user, keeping both columns in step" do
+    membership_for(other_user)
+    attendance = TestFactories.attendance(event: event, user: other_user)
+
     result = described_class.call(
       assignment_id: assignment[:id],
       roster_id: roster[:id],
@@ -46,6 +49,67 @@ RSpec.describe ChoreRosters::UpdateAssignment do
     expect(result.success?).to be true
     updated = result.value![:objects].find { |o| o[:objectType] == "choreAssignment" }
     expect(updated[:userId]).to eq(other_user[:id].to_s)
+    expect(updated[:attendanceId]).to eq(attendance[:id].to_s)
+  end
+
+  it "reassigns via attendance_id, mirroring the member's user_id" do
+    membership_for(other_user)
+    attendance = TestFactories.attendance(event: event, user: other_user)
+
+    result = described_class.call(
+      assignment_id: assignment[:id],
+      roster_id: roster[:id],
+      workspace_id: workspace[:id],
+      membership: membership_for(user),
+      attendance_id: attendance[:id].to_s
+    )
+
+    expect(result.success?).to be true
+    updated = result.value![:objects].find { |o| o[:objectType] == "choreAssignment" }
+    expect(updated[:attendanceId]).to eq(attendance[:id].to_s)
+    expect(updated[:userId]).to eq(other_user[:id].to_s)
+  end
+
+  it "rejects reassigning to a guest attendance" do
+    guest = TestFactories.guest(workspace: workspace)
+    attendance = TestFactories.attendance(event: event, guest: guest, host: user)
+
+    result = described_class.call(
+      assignment_id: assignment[:id],
+      roster_id: roster[:id],
+      workspace_id: workspace[:id],
+      membership: membership_for(user),
+      attendance_id: attendance[:id].to_s
+    )
+
+    expect(result.failure.message).to eq("Guests cannot be assigned chores yet")
+  end
+
+  it "rejects reassigning to an attendance from another event" do
+    other_event = TestFactories.event(workspace: workspace, user: user)
+    attendance = TestFactories.attendance(event: other_event, user: user)
+
+    result = described_class.call(
+      assignment_id: assignment[:id],
+      roster_id: roster[:id],
+      workspace_id: workspace[:id],
+      membership: membership_for(user),
+      attendance_id: attendance[:id].to_s
+    )
+
+    expect(result.failure.message).to eq("Attendance not found on this event")
+  end
+
+  it "rejects reassigning to a non-member (user_id path)" do
+    result = described_class.call(
+      assignment_id: assignment[:id],
+      roster_id: roster[:id],
+      workspace_id: workspace[:id],
+      membership: membership_for(user),
+      user_id: other_user[:id].to_s
+    )
+
+    expect(result.failure.message).to eq("User is not a member of this workspace")
   end
 
   it "returns the parent chore in response" do
