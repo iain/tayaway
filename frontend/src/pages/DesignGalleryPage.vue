@@ -660,6 +660,11 @@ function openModal(size: ModalSize): void {
                         { value: 'day', label: 'Day trip' },
                         { value: 'weekend', label: 'Weekend' },
                         { value: 'week', label: 'Week or longer' },
+                        {
+                          value: 'month',
+                          label: 'A month (not bookable yet)',
+                          disabled: true,
+                        },
                       ]"
                     />
                     <FormCheckbox

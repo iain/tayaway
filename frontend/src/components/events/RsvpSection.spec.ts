@@ -153,6 +153,28 @@ function mkEvent(attendances: HydratedAttendance[]): HydratedEvent {
   }
 }
 
+function mkWorkspace(
+  members: Array<{ userId: string; name: string }>
+): NonNullable<HydratedEvent['workspace']> {
+  return {
+    ...BASE,
+    id: 'ws-1',
+    objectType: 'workspace' as const,
+    name: 'Test',
+    timezone: 'Europe/Amsterdam',
+    memberIds: members.map((m) => `member-${m.userId}`),
+    members: members.map((m) => ({
+      ...BASE,
+      id: `member-${m.userId}`,
+      objectType: 'member' as const,
+      userId: m.userId,
+      email: `${m.userId}@example.com`,
+      name: m.name,
+      role: 'member' as const,
+    })),
+  }
+}
+
 function mountSection(
   attendances: HydratedAttendance[],
   workspace?: HydratedEvent['workspace']
@@ -327,10 +349,18 @@ describe('RsvpSection guests', () => {
     expect(row.text()).toContain('guest of Alice')
   })
 
-  it('removes a guest via the row button — a decline, not a delete', async () => {
+  it('removes a guest via their menu — a decline, not a delete', async () => {
     const wrapper = mountSection([mkAttendance(), mkGuestAttendance()])
 
-    await wrapper.find('[data-testid="guest-remove"]').trigger('click')
+    // The remove action lives in the guest's dropdown, not a separate button.
+    expect(wrapper.find('[data-testid="guest-remove"]').exists()).toBe(false)
+    await wrapper.find('[data-testid="rsvp-other-menu"]').trigger('click')
+    await wrapper.vm.$nextTick()
+    const item = wrapper
+      .findAll('[role="menuitem"]')
+      .find((b) => b.text() === 'Remove from event')
+    expect(item, 'menu item "Remove from event" should exist').toBeDefined()
+    await item!.trigger('click')
 
     expect(removeGuestSpy).toHaveBeenCalledWith('event-1', 'att-guest')
   })
@@ -359,7 +389,7 @@ describe('RsvpSection guests', () => {
     )
   })
 
-  it('creates a new named guest from the add-guest modal', async () => {
+  it('creates a new named guest from the add-guest modal, hosted by the actor by default', async () => {
     const wrapper = mountSection([mkAttendance()])
 
     await wrapper.find('[data-testid="rsvp-add-guest"]').trigger('click')
@@ -369,6 +399,106 @@ describe('RsvpSection guests', () => {
     expect(upsertGuestAttendanceSpy).toHaveBeenCalledWith('event-1', 'ws-1', {
       name: 'Milo',
       days: null,
+      hostUserId: 'user-alice',
+    })
+  })
+
+  it('creates a guest for another member via the host picker', async () => {
+    const workspace = mkWorkspace([
+      { userId: 'user-alice', name: 'Alice' },
+      { userId: 'user-bob', name: 'Bob' },
+    ])
+    const wrapper = mountSection([mkAttendance()], workspace)
+
+    await wrapper.find('[data-testid="rsvp-add-guest"]').trigger('click')
+    await wrapper.find('[data-testid="guest-name-input"]').setValue('Milo')
+    await wrapper.find('[data-testid="guest-host-select"]').setValue('user-bob')
+    await wrapper.find('[data-testid="guest-save"]').trigger('click')
+
+    expect(upsertGuestAttendanceSpy).toHaveBeenCalledWith('event-1', 'ws-1', {
+      name: 'Milo',
+      days: null,
+      hostUserId: 'user-bob',
+    })
+  })
+
+  it("moves an existing guest to another host from the guest's edit modal", async () => {
+    const workspace = mkWorkspace([
+      { userId: 'user-alice', name: 'Alice' },
+      { userId: 'user-bob', name: 'Bob' },
+    ])
+    const wrapper = mountSection(
+      [mkAttendance(), mkGuestAttendance()],
+      workspace
+    )
+
+    await wrapper.find('[data-testid="rsvp-other-menu"]').trigger('click')
+    await wrapper.vm.$nextTick()
+    const item = wrapper
+      .findAll('[role="menuitem"]')
+      .find((b) => b.text() === 'Choose days')
+    expect(item, 'menu item "Choose days" should exist').toBeDefined()
+    await item!.trigger('click')
+
+    const select = wrapper.find('[data-testid="guest-host-select"]')
+    expect((select.element as HTMLSelectElement).value).toBe('user-alice')
+    await select.setValue('user-bob')
+    await wrapper.find('[data-testid="guest-save"]').trigger('click')
+
+    expect(upsertGuestAttendanceSpy).toHaveBeenCalledWith('event-1', 'ws-1', {
+      guestId: 'guest-emma',
+      days: null,
+      hostUserId: 'user-bob',
+    })
+  })
+
+  it('disables declined members as hosts and makes a declined actor pick one', async () => {
+    const workspace = mkWorkspace([
+      { userId: 'user-alice', name: 'Alice' },
+      { userId: 'user-bob', name: 'Bob' },
+    ])
+    const wrapper = mountSection(
+      [mkAttendance({ status: 'declined' })],
+      workspace
+    )
+
+    await wrapper.find('[data-testid="rsvp-add-guest"]').trigger('click')
+    await wrapper.find('[data-testid="guest-name-input"]').setValue('Milo')
+
+    // The declined actor is no valid default — nothing preselected, their
+    // option disabled, and saving blocked until an attending host is picked.
+    const select = wrapper.find('[data-testid="guest-host-select"]')
+    expect((select.element as HTMLSelectElement).value).toBe('')
+    expect(
+      select.find('option[value="user-alice"]').attributes('disabled')
+    ).toBeDefined()
+
+    await wrapper.find('[data-testid="guest-save"]').trigger('click')
+    expect(upsertGuestAttendanceSpy).not.toHaveBeenCalled()
+
+    await select.setValue('user-bob')
+    await wrapper.find('[data-testid="guest-save"]').trigger('click')
+    expect(upsertGuestAttendanceSpy).toHaveBeenCalledWith('event-1', 'ws-1', {
+      name: 'Milo',
+      days: null,
+      hostUserId: 'user-bob',
+    })
+  })
+
+  it('offers adding a guest before the actor has answered themselves', async () => {
+    const wrapper = mountSection([])
+
+    const button = wrapper.find('[data-testid="rsvp-add-guest"]')
+    expect(button.exists()).toBe(true)
+
+    await button.trigger('click')
+    await wrapper.find('[data-testid="guest-name-input"]').setValue('Milo')
+    await wrapper.find('[data-testid="guest-save"]').trigger('click')
+
+    expect(upsertGuestAttendanceSpy).toHaveBeenCalledWith('event-1', 'ws-1', {
+      name: 'Milo',
+      days: null,
+      hostUserId: 'user-alice',
     })
   })
 
@@ -404,10 +534,12 @@ describe('RsvpSection guests', () => {
     await wrapper.find('[data-testid="guest-save"]').trigger('click')
 
     // A pending row has no days, so the picker presets the whole event,
-    // which saves as the canonical null.
+    // which saves as the canonical null. The host rides along explicitly —
+    // what the modal shows is what gets stored.
     expect(upsertGuestAttendanceSpy).toHaveBeenCalledWith('event-1', 'ws-1', {
       guestId: 'guest-emma',
       days: null,
+      hostUserId: 'user-alice',
     })
   })
 

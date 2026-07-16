@@ -1107,10 +1107,10 @@ test.describe('Expenses Feature', () => {
         .fill('Lunch (filed for Bob)')
       await page.getByTestId('expense-amount-input').fill('17.50')
 
-      // Pick the second user as payer
+      // Pick the second user as payer. FormSelect forwards the testid onto
+      // the <select> itself.
       await page
         .getByTestId('expense-payer-select')
-        .locator('select')
         .selectOption({ label: SECOND_NAME })
 
       await page.getByTestId('submit-button').click()

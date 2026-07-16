@@ -423,6 +423,103 @@ describe('ExpenseSplit', () => {
     })
   })
 
+  describe('guest itemization', () => {
+    it('itemizes a guest as their own row under the host, with days but no money', () => {
+      // Event Jul 1–4 = 4 days. Alice full, her guest Emma 2 days, Bob full.
+      const ev = mkEvent({ startDate: '2026-07-01', endDate: '2026-07-04' })
+      mockAttendances = [
+        mkAttendance({ id: 'att-1', userId: 'member-1' }),
+        mkAttendance({ id: 'att-2', userId: 'member-2' }),
+        mkAttendance({
+          id: 'att-3',
+          userId: null,
+          guestId: 'guest-1',
+          hostUserId: 'member-1',
+          days: ['2026-07-01', '2026-07-02'],
+          attendee: {
+            name: 'Emma',
+            isGuest: true,
+            billingUserId: 'member-1',
+            member: undefined,
+            guest: undefined,
+            hostMember: undefined,
+          },
+        }),
+      ]
+      mockMembers = [
+        mkMember({ id: 'member-1', name: 'Alice' }),
+        mkMember({ id: 'member-2', userId: 'member-2', name: 'Bob' }),
+      ]
+      mockExpenses = []
+      const wrapper = mountSplit(ev, 0)
+
+      const guestRow = wrapper.find('[data-testid="split-guest-row"]')
+      expect(guestRow.exists()).toBe(true)
+      expect(guestRow.text()).toContain('Emma')
+      expect(guestRow.text()).toContain('guest of Alice')
+      expect(guestRow.text()).toContain('2 days')
+      // Paid and balance stay on the host's row — those cells are em-dashed
+      // visually, with the billing relationship spelled out for screen
+      // readers.
+      expect(guestRow.text().match(/—/g)?.length).toBe(2)
+      expect(guestRow.text()).toContain('billed to Alice')
+
+      // The mislabeled guest-day counter is gone; the total is head-days.
+      expect(wrapper.text()).not.toContain('+1 guest')
+      expect(wrapper.text()).not.toContain('+2 guests')
+      expect(wrapper.text()).toContain('10 days')
+    })
+
+    it('splits the fair share per person, the guest carrying their own slice', () => {
+      // Event Jul 1–2 = 2 days, everyone whole-event: Alice + her guest
+      // Milo + Bob = 6 head-days. €60 expense → €20 per person.
+      const ev = mkEvent({ startDate: '2026-07-01', endDate: '2026-07-02' })
+      mockAttendances = [
+        mkAttendance({ id: 'att-1', userId: 'member-1' }),
+        mkAttendance({ id: 'att-2', userId: 'member-2' }),
+        mkAttendance({
+          id: 'att-3',
+          userId: null,
+          guestId: 'guest-1',
+          hostUserId: 'member-1',
+          attendee: {
+            name: 'Milo',
+            isGuest: true,
+            billingUserId: 'member-1',
+            member: undefined,
+            guest: undefined,
+            hostMember: undefined,
+          },
+        }),
+      ]
+      mockMembers = [
+        mkMember({ id: 'member-1', name: 'Alice' }),
+        mkMember({ id: 'member-2', userId: 'member-2', name: 'Bob' }),
+      ]
+      mockExpenses = [
+        mkExpense({
+          userId: 'member-1',
+          amount: 60,
+          startDate: ev.startDate!,
+          endDate: ev.endDate!,
+        }),
+      ]
+      const wrapper = mountSplit(ev, 60)
+
+      // The guest's slice sits in their own Fair share cell...
+      const guestShareCell = wrapper
+        .find('[data-testid="split-guest-row"]')
+        .findAll('td')[3]!
+      expect(guestShareCell.text()).toBe('€20.00')
+
+      // ...and Alice's row shows only her own €20 slice, while her balance
+      // still carries the guest: paid €60 against €40 group share.
+      const aliceCells = wrapper.findAll('tbody tr')[0]!.findAll('td')
+      expect(aliceCells[3]!.text()).toBe('€20.00')
+      expect(aliceCells[4]!.text()).toContain('is owed €20.00')
+    })
+  })
+
   describe('totals row', () => {
     it('shows summed days across all attendees', () => {
       // Two full attendees on a 4-day event (Jul 1–4) → 8 total days

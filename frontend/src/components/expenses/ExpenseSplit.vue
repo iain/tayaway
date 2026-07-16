@@ -3,7 +3,6 @@ import { computed } from 'vue'
 import { CalculatorIcon } from '@heroicons/vue/24/outline'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { attendanceDates } from '@/utils/event'
-import { formatGuestCount } from '@/utils/format'
 import LedgerAmount from '@/components/common/LedgerAmount.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
@@ -16,11 +15,23 @@ const props = defineProps<{
 
 const pool = useObjectPoolStore()
 
+/** A named guest itemized under their host's row, carrying their own
+ *  fair-share slice. It is billed to the host — Paid and Balance stay on
+ *  the host's row. */
+interface GuestSplitRow {
+  attendanceId: string
+  name: string
+  days: number
+  share: number
+}
+
 interface SplitRow {
   userId: string
   name: string
   days: number
-  guests: number
+  guests: GuestSplitRow[]
+  /** The member's own slice; their guests' slices sit on the guest rows.
+   *  The balance nets the whole group (own + guests) against paid. */
   share: number
   paid: number
   balance: number
@@ -36,18 +47,23 @@ const rows = computed((): SplitRow[] => {
     .getAll('expense')
     .filter((e) => e.eventId === props.event.id)
 
-  // Per-expense splitting: compute each person's share across all expenses
-  const shareByUser = new Map<string, number>()
+  // Per-expense splitting. Head-day slices accrue per attendance so each
+  // person — guest or member — shows their own slice; explicit-participant
+  // slices are member-keyed (guests can't be participants yet).
+  const shareByAttendance = new Map<string, number>()
+  const participantShareByUser = new Map<string, number>()
 
   // Pre-compute each attendance's day set, resolved to the user its share
   // bills to (members bill themselves, guests their host — the hydrated
-  // attendee is the sanctioned union reader). `ownDays` feeds the Days
-  // column, guest rows feed the Guests column of their host's row.
+  // attendee is the sanctioned union reader). Member days feed the host
+  // row's Days column; guest rows are itemized beneath it by name.
   const daySets = going.flatMap((attendance) => {
     const billing = attendance.attendee.billingUserId
     if (!billing) return []
     return [
       {
+        attendanceId: attendance.id,
+        attendeeName: attendance.attendee.name,
         billingUserId: billing,
         isGuest: attendance.attendee.isGuest,
         days: attendanceDates(
@@ -72,49 +88,77 @@ const rows = computed((): SplitRow[] => {
       if (participants.length > 0 && totalFactor > 0) {
         for (const p of participants) {
           const share = (p.factor / totalFactor) * expense.amount
-          shareByUser.set(p.userId, (shareByUser.get(p.userId) ?? 0) + share)
+          participantShareByUser.set(
+            p.userId,
+            (participantShareByUser.get(p.userId) ?? 0) + share
+          )
         }
       }
       continue
     }
 
     // Default: proportional to head-days within the expense window — every
-    // going person (member or guest) is one head per attended day, billed
-    // to their billing user.
-    const headsByUser = new Map<string, number>()
-    for (const { billingUserId, days } of daySets) {
+    // going person (member or guest) is one head per attended day.
+    const headsByAttendance = new Map<string, number>()
+    for (const { attendanceId, days } of daySets) {
       const heads = days.filter(
         (d) => d >= expense.startDate && d <= expense.endDate
       ).length
-      if (heads > 0) {
-        headsByUser.set(
-          billingUserId,
-          (headsByUser.get(billingUserId) ?? 0) + heads
-        )
-      }
+      if (heads > 0) headsByAttendance.set(attendanceId, heads)
     }
 
-    const totalHeads = [...headsByUser.values()].reduce((s, h) => s + h, 0)
+    const totalHeads = [...headsByAttendance.values()].reduce(
+      (s, h) => s + h,
+      0
+    )
     if (totalHeads === 0) continue
 
-    for (const [userId, heads] of headsByUser) {
+    for (const [attendanceId, heads] of headsByAttendance) {
       const share = (heads / totalHeads) * expense.amount
-      shareByUser.set(userId, (shareByUser.get(userId) ?? 0) + share)
+      shareByAttendance.set(
+        attendanceId,
+        (shareByAttendance.get(attendanceId) ?? 0) + share
+      )
     }
   }
 
-  // One row per billing user: their own attended days plus guest head-days.
-  const rowByUser = new Map<string, { days: number; guests: number }>()
-  for (const { billingUserId, isGuest, days } of daySets) {
-    const acc = rowByUser.get(billingUserId) ?? { days: 0, guests: 0 }
-    if (isGuest) acc.guests += days.length
-    else acc.days += days.length
+  // One row per billing user, carrying their own attended days and share
+  // plus their named guests for itemization.
+  const rowByUser = new Map<
+    string,
+    { days: number; ownShare: number; guests: GuestSplitRow[] }
+  >()
+  for (const {
+    attendanceId,
+    attendeeName,
+    billingUserId,
+    isGuest,
+    days,
+  } of daySets) {
+    const acc = rowByUser.get(billingUserId) ?? {
+      days: 0,
+      ownShare: 0,
+      guests: [],
+    }
+    const share = shareByAttendance.get(attendanceId) ?? 0
+    if (isGuest) {
+      acc.guests.push({
+        attendanceId,
+        name: attendeeName,
+        days: days.length,
+        share,
+      })
+    } else {
+      acc.days += days.length
+      acc.ownShare += share
+    }
     rowByUser.set(billingUserId, acc)
   }
 
-  return [...rowByUser].map(([userId, { days, guests }]) => {
+  return [...rowByUser].map(([userId, { days, ownShare, guests }]) => {
     const member = pool.findBy('member', 'userId', userId)
-    const share = shareByUser.get(userId) ?? 0
+    const share = ownShare + (participantShareByUser.get(userId) ?? 0)
+    const groupShare = share + guests.reduce((s, g) => s + g.share, 0)
     const paid = expenses
       .filter((e) => e.userId === userId)
       .reduce((sum, e) => sum + e.amount, 0)
@@ -125,14 +169,18 @@ const rows = computed((): SplitRow[] => {
       guests,
       share,
       paid,
-      balance: share - paid,
+      balance: groupShare - paid,
     }
   })
 })
 
-const totalDays = computed(() => rows.value.reduce((sum, r) => sum + r.days, 0))
-const totalGuests = computed(() =>
-  rows.value.reduce((sum, r) => sum + r.guests, 0)
+// Head-days across everyone, member or guest — the denominator the
+// proportional split divides by.
+const totalDays = computed(() =>
+  rows.value.reduce(
+    (sum, r) => sum + r.days + r.guests.reduce((s, g) => s + g.days, 0),
+    0
+  )
 )
 
 function formatDays(days: number): string {
@@ -164,52 +212,86 @@ function formatDays(days: number): string {
           </tr>
         </thead>
         <tbody class="divide-line-faint divide-y">
-          <tr v-for="row in rows" :key="row.userId" class="text-ink">
-            <td
-              class="max-w-[8rem] truncate py-2 pr-4 pl-4 font-medium sm:max-w-none"
+          <template v-for="row in rows" :key="row.userId">
+            <tr class="text-ink">
+              <td
+                class="max-w-[8rem] truncate py-2 pr-4 pl-4 font-medium sm:max-w-none"
+              >
+                {{ row.name }}
+              </td>
+              <td class="text-ink-muted hidden py-2 pr-4 sm:table-cell">
+                {{ formatDays(row.days) }}
+              </td>
+              <td class="text-ink-muted py-2 pr-4 text-right whitespace-nowrap">
+                <LedgerAmount :amount="row.paid" />
+              </td>
+              <td
+                class="hidden py-2 pr-4 text-right whitespace-nowrap sm:table-cell"
+              >
+                <LedgerAmount :amount="row.share" />
+              </td>
+              <td
+                class="py-2 pr-4 text-right font-semibold whitespace-nowrap"
+                :class="{
+                  'text-ink-faint': Math.abs(row.balance) <= 0.005,
+                }"
+              >
+                <template v-if="row.balance > 0.005"
+                  ><span class="sr-only sm:not-sr-only sm:inline">owes </span
+                  ><LedgerAmount :amount="row.balance"
+                /></template>
+                <template v-else-if="row.balance < -0.005"
+                  ><span class="sr-only sm:not-sr-only sm:inline">is owed </span
+                  ><LedgerAmount :amount="Math.abs(row.balance)"
+                /></template>
+                <template v-else>even</template>
+              </td>
+            </tr>
+            <!-- Named guests, itemized under their host; their share is
+                 already inside the host's money columns above. -->
+            <tr
+              v-for="guest in row.guests"
+              :key="guest.attendanceId"
+              data-testid="split-guest-row"
+              class="text-ink-muted"
             >
-              {{ row.name }}
-            </td>
-            <td class="text-ink-muted hidden py-2 pr-4 sm:table-cell">
-              {{ formatDays(row.days) }}
-              <span v-if="row.guests > 0" class="text-ink-faint">
-                · {{ formatGuestCount(row.guests) }}
-              </span>
-            </td>
-            <td class="text-ink-muted py-2 pr-4 text-right whitespace-nowrap">
-              <LedgerAmount :amount="row.paid" />
-            </td>
-            <td
-              class="hidden py-2 pr-4 text-right whitespace-nowrap sm:table-cell"
-            >
-              <LedgerAmount :amount="row.share" />
-            </td>
-            <td
-              class="py-2 pr-4 text-right font-semibold whitespace-nowrap"
-              :class="{
-                'text-ink-faint': Math.abs(row.balance) <= 0.005,
-              }"
-            >
-              <template v-if="row.balance > 0.005"
-                ><span class="sr-only sm:not-sr-only sm:inline">owes </span
-                ><LedgerAmount :amount="row.balance"
-              /></template>
-              <template v-else-if="row.balance < -0.005"
-                ><span class="sr-only sm:not-sr-only sm:inline">is owed </span
-                ><LedgerAmount :amount="Math.abs(row.balance)"
-              /></template>
-              <template v-else>even</template>
-            </td>
-          </tr>
+              <td class="max-w-[8rem] py-2 pr-4 pl-8 sm:max-w-none">
+                <div class="truncate">
+                  {{ guest.name }}
+                  <span class="text-meta text-ink-faint">
+                    (guest of {{ row.name }})
+                  </span>
+                </div>
+                <!-- The Days and Fair share columns hide below sm; keep the
+                     guest's numbers readable on a phone. -->
+                <p class="text-meta text-ink-faint whitespace-nowrap sm:hidden">
+                  {{ formatDays(guest.days) }} ·
+                  <LedgerAmount :amount="guest.share" />
+                </p>
+              </td>
+              <td class="hidden py-2 pr-4 sm:table-cell">
+                {{ formatDays(guest.days) }}
+              </td>
+              <td class="text-ink-faint py-2 pr-4 text-right">
+                <span aria-hidden="true">—</span>
+                <span class="sr-only">billed to {{ row.name }}</span>
+              </td>
+              <td
+                class="hidden py-2 pr-4 text-right whitespace-nowrap sm:table-cell"
+              >
+                <LedgerAmount :amount="guest.share" />
+              </td>
+              <td class="text-ink-faint py-2 pr-4 text-right">
+                <span aria-hidden="true">—</span>
+              </td>
+            </tr>
+          </template>
         </tbody>
         <tfoot>
           <tr class="border-line text-ink border-t font-semibold">
             <td class="pt-2 pr-4 pb-3 pl-4">Total</td>
             <td class="text-ink-muted hidden pt-2 pr-4 pb-3 sm:table-cell">
               {{ formatDays(totalDays) }}
-              <span v-if="totalGuests > 0" class="text-ink-faint">
-                · {{ formatGuestCount(totalGuests) }}
-              </span>
             </td>
             <td class="text-ink-muted pt-2 pr-4 pb-3 text-right">
               <LedgerAmount :amount="total" />

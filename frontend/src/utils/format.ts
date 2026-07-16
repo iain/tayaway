@@ -14,8 +14,3 @@ export function formatAmount(amount: number, locale: string = 'en-US'): string {
     currency: 'EUR',
   }).format(amount)
 }
-
-/** The shared "+N guest" / "+N guests" label for a plus-ones count. */
-export function formatGuestCount(guests: number): string {
-  return `+${guests} guest${guests === 1 ? '' : 's'}`
-}

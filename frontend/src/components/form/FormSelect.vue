@@ -1,13 +1,17 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, useAttrs } from 'vue'
 import { ChevronDownIcon } from '@heroicons/vue/16/solid'
 import { ExclamationCircleIcon } from '@heroicons/vue/20/solid'
+
+defineOptions({
+  inheritAttrs: false,
+})
 
 const props = defineProps<{
   id: string
   label: string
   modelValue: string
-  options: { value: string; label: string }[]
+  options: { value: string; label: string; disabled?: boolean }[]
   required?: boolean
   disabled?: boolean
   autocomplete?: string
@@ -17,6 +21,8 @@ const props = defineProps<{
 defineEmits<{
   'update:modelValue': [value: string]
 }>()
+
+const attrs = useAttrs()
 
 const hasError = computed(() => Boolean(props.error))
 const errorId = computed(() => `${props.id}-error`)
@@ -42,6 +48,7 @@ const shell = computed(() =>
         :autocomplete="autocomplete"
         :aria-invalid="hasError || undefined"
         :aria-describedby="hasError ? errorId : undefined"
+        v-bind="attrs"
         class="text-ink *:bg-surface col-start-1 row-start-1 w-full appearance-none rounded-md py-1.5 pl-3 text-base disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm/6"
         :class="[shell, hasError ? 'pr-16' : 'pr-8']"
         @change="
@@ -52,6 +59,7 @@ const shell = computed(() =>
           v-for="option in options"
           :key="option.value"
           :value="option.value"
+          :disabled="option.disabled"
         >
           {{ option.label }}
         </option>

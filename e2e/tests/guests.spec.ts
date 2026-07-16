@@ -130,11 +130,12 @@ test.describe('Named guests', () => {
       'true'
     )
 
-    // Remove the guest — same verb as declining them.
+    // Remove the guest via their dropdown menu — same verb as declining them.
     const guestRow = page
       .getByTestId('attendance-guest-row')
       .filter({ hasText: 'Milo' })
-    await guestRow.getByTestId('guest-remove').click()
+    await guestRow.getByRole('button', { name: 'Manage guest Milo' }).click()
+    await page.getByRole('menuitem', { name: 'Remove from event' }).click()
     await expect(guestRow).not.toBeVisible()
 
     // Now the decline goes through.

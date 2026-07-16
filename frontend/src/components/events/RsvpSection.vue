@@ -7,7 +7,6 @@ import {
   CalendarDaysIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  XMarkIcon,
 } from '@heroicons/vue/24/outline'
 import { useAttendancesStore } from '@/stores/attendances'
 import { useGuestsStore } from '@/stores/guests'
@@ -23,6 +22,8 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import TextButton from '@/components/common/TextButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
+import FormInput from '@/components/form/FormInput.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
 import CalendarMonth from '@/components/calendar/CalendarMonth.vue'
 import { attendanceDates, enumerateDates } from '@/utils/event'
 
@@ -331,9 +332,57 @@ interface GuestModalState {
   /** Existing workspace guest, either picked or behind attendanceId. */
   guestId: string | null
   name: string
+  /** The member hosting (and billed for) the guest; '' = not picked yet. */
+  hostUserId: string
   days: Set<string>
 }
 const guestModal = ref<GuestModalState | null>(null)
+
+// Hosts to offer: every workspace member, with decliners kept visible but
+// unpickable — the server refuses a going guest under an absent host.
+const hostOptions = computed(() =>
+  (props.event.workspace?.members ?? [])
+    .map((m) => ({
+      userId: m.userId,
+      name: m.name || m.email || 'Unknown',
+      declined: memberRows.value.some(
+        (a) => a.userId === m.userId && a.status === 'declined'
+      ),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+)
+
+function hostOptionLabel(option: {
+  userId: string
+  name: string
+  declined: boolean
+}): string {
+  const notes = [
+    ...(option.userId === props.currentUserId ? ['you'] : []),
+    ...(option.declined ? ['not attending'] : []),
+  ]
+  return notes.length > 0 ? `${option.name} (${notes.join(', ')})` : option.name
+}
+
+// FormSelect options: decliners stay listed but unpickable; an unpicked
+// host (declined actor) leads with a disabled placeholder.
+const hostSelectOptions = computed(() => {
+  const options = hostOptions.value.map((option) => ({
+    value: option.userId,
+    label: hostOptionLabel(option),
+    disabled: option.declined,
+  }))
+  if (guestModal.value?.hostUserId === '') {
+    options.unshift({ value: '', label: 'Pick a member', disabled: true })
+  }
+  return options
+})
+
+const hostSelectLabel = computed(() =>
+  guestModal.value?.name
+    ? `Whose guest is ${guestModal.value.name}?`
+    : 'Whose guest are they?'
+)
 
 // Existing guests to offer before creating a new one: the workspace's
 // guests minus anyone already on this event (going, or pending in the No
@@ -355,10 +404,14 @@ const pickableGuests = computed(() => {
 })
 
 function openAddGuest(): void {
+  // A declined actor can't host — leave the host unpicked so they must
+  // choose an attending member instead of hitting the server guard.
+  const actorDeclined = currentUserAttendance.value?.status === 'declined'
   guestModal.value = {
     attendanceId: null,
     guestId: null,
     name: '',
+    hostUserId: actorDeclined ? '' : (props.currentUserId ?? ''),
     days: new Set(eventDays.value),
   }
   navigateToEventStart()
@@ -372,6 +425,7 @@ function openGuestDays(attendance: HydratedAttendance): void {
     attendanceId: attendance.id,
     guestId: attendance.guestId,
     name: attendance.attendee.name,
+    hostUserId: attendance.hostUserId ?? '',
     days: new Set(current.length > 0 ? current : eventDays.value),
   }
   navigateToEventStart()
@@ -407,7 +461,7 @@ const guestModalTitle = computed(() =>
 const canSaveGuest = computed(() => {
   const modal = guestModal.value
   if (!modal) return false
-  if (modal.days.size === 0) return false
+  if (modal.days.size === 0 || modal.hostUserId === '') return false
   return modal.guestId != null || modal.name.trim().length > 0
 })
 
@@ -417,12 +471,14 @@ async function handleSaveGuest(): Promise<void> {
   const sorted = [...modal.days].sort()
   const days = sorted.length === eventDays.value.length ? null : sorted
   try {
+    // The host always rides along explicitly: what the modal shows is what
+    // gets stored, including moving a guest to another host on edit.
     await attendancesStore.upsertGuestAttendance(
       props.event.id,
       props.event.workspaceId,
       modal.guestId
-        ? { guestId: modal.guestId, days }
-        : { name: modal.name.trim(), days }
+        ? { guestId: modal.guestId, days, hostUserId: modal.hostUserId }
+        : { name: modal.name.trim(), days, hostUserId: modal.hostUserId }
     )
     guestModal.value = null
   } catch {
@@ -480,6 +536,7 @@ function guestActions(attendance: HydratedAttendance): RsvpAction[] {
       ? { kind: 'change-dates', label: 'Change days' }
       : { kind: 'set-dates', label: 'Choose days' },
     { kind: 'rename', label: 'Rename guest' },
+    { kind: 'decline', label: 'Remove from event', danger: true },
   ]
 }
 
@@ -533,10 +590,15 @@ function guestOfLabel(attendance: HydratedAttendance): string {
           </button>
         </div>
 
-        <!-- Partial attendance + guest entry points -->
-        <div v-if="currentUserAttendance?.status === 'going'" class="mt-4">
+        <!-- Partial attendance + guest entry points. Adding a guest doesn't
+             require having answered yourself — the host picker in the modal
+             covers filing a guest for someone else. -->
+        <div class="mt-4">
           <div
-            v-if="isPartialDays(currentUserAttendance)"
+            v-if="
+              currentUserAttendance?.status === 'going' &&
+              isPartialDays(currentUserAttendance)
+            "
             class="text-ink-muted mb-2 flex items-start gap-1.5 text-sm"
             data-testid="rsvp-attendance-days"
           >
@@ -548,12 +610,12 @@ function guestOfLabel(attendance: HydratedAttendance): string {
           </div>
           <div class="flex items-center gap-4">
             <TextButton
-              v-if="!showDayPicker"
+              v-if="currentUserAttendance?.status === 'going' && !showDayPicker"
               data-testid="rsvp-change-dates"
               @click="openDayPicker()"
             >
               {{
-                currentUserAttendance.days != null
+                currentUserAttendance?.days != null
                   ? 'Change days'
                   : 'Choose days'
               }}
@@ -658,29 +720,34 @@ function guestOfLabel(attendance: HydratedAttendance): string {
             </div>
 
             <div v-if="guestModal.guestId === null" class="mb-4">
-              <label
-                class="text-ink mb-1 block text-sm font-medium"
-                for="guest-name"
-              >
-                {{ pickableGuests.length > 0 ? 'Or add someone new' : 'Name' }}
-              </label>
-              <input
+              <FormInput
                 id="guest-name"
                 data-testid="guest-name-input"
-                type="text"
-                :value="guestModal.name"
+                :label="
+                  pickableGuests.length > 0 ? 'Or add someone new' : 'Name'
+                "
+                :model-value="guestModal.name"
                 placeholder="Guest's name"
-                maxlength="255"
-                class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus w-full rounded-md px-3 py-2 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
-                @input="
-                  guestModal = {
-                    ...guestModal,
-                    name: ($event.target as HTMLInputElement).value,
-                  }
+                :maxlength="255"
+                @update:model-value="
+                  guestModal = { ...guestModal, name: $event }
                 "
               />
             </div>
           </template>
+
+          <div v-if="hostOptions.length > 0" class="mb-4">
+            <FormSelect
+              id="guest-host"
+              data-testid="guest-host-select"
+              :label="hostSelectLabel"
+              :model-value="guestModal.hostUserId"
+              :options="hostSelectOptions"
+              @update:model-value="
+                guestModal = { ...guestModal, hostUserId: $event }
+              "
+            />
+          </div>
 
           <div class="text-ink-muted mb-4 text-sm">
             Which days
@@ -733,19 +800,13 @@ function guestOfLabel(attendance: HydratedAttendance): string {
         @close="renameModal = null"
       >
         <template v-if="renameModal">
-          <input
+          <FormInput
+            id="guest-rename"
             data-testid="guest-rename-input"
-            type="text"
-            aria-label="Guest name"
-            :value="renameModal.name"
-            maxlength="255"
-            class="bg-surface-sunken text-ink outline-line placeholder:text-ink-placeholder focus:outline-focus w-full rounded-md px-3 py-2 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
-            @input="
-              renameModal = {
-                ...renameModal,
-                name: ($event.target as HTMLInputElement).value,
-              }
-            "
+            label="Name"
+            :model-value="renameModal.name"
+            :maxlength="255"
+            @update:model-value="renameModal = { ...renameModal, name: $event }"
           />
           <div class="mt-6 flex items-center justify-end gap-3">
             <TextButton variant="secondary" @click="renameModal = null">
@@ -843,13 +904,6 @@ function guestOfLabel(attendance: HydratedAttendance): string {
                 :actions="guestActions(attendance)"
                 @pick="handleGuestPick(attendance, $event)"
               />
-              <IconButton
-                data-testid="guest-remove"
-                :label="`Remove ${attendance.attendee.name} from this event`"
-                @click="handleRemoveGuest(attendance)"
-              >
-                <XMarkIcon class="size-5" />
-              </IconButton>
             </li>
           </ul>
         </div>
@@ -953,13 +1007,6 @@ function guestOfLabel(attendance: HydratedAttendance): string {
                 :actions="guestActions(attendance)"
                 @pick="handleGuestPick(attendance, $event)"
               />
-              <IconButton
-                data-testid="guest-remove"
-                :label="`Remove ${attendance.attendee.name} from this event`"
-                @click="handleRemoveGuest(attendance)"
-              >
-                <XMarkIcon class="size-5" />
-              </IconButton>
             </li>
           </ul>
         </div>

@@ -1,73 +1,54 @@
 import type { PoolAttendance } from '@/types/pool'
 import { attendanceDates, enumerateDates } from './event'
 
-/** One event day joined with everyone present on it. */
-export interface DaySummary {
-  date: string
-  /** Going members present this day, in attendance order. */
-  userIds: string[]
-  /** Going guests present this day. */
-  guests: number
-  /** Members plus guests — the number to cook and shop for. */
-  headcount: number
-  /** Members present this day but not the day before (first day: everyone). */
-  arrivals: string[]
-  /** Members present this day but not the day after (last day: everyone). */
-  departures: string[]
-}
+type AttendanceLike = Pick<PoolAttendance, 'status' | 'days'>
 
-type AttendanceLike = Pick<
-  PoolAttendance,
-  'userId' | 'guestId' | 'status' | 'days'
->
+/** One event day joined with everyone present on it. */
+export interface DaySummary<T> {
+  date: string
+  /** Going attendances present this day — members and guests alike. */
+  present: T[]
+  /** Everyone present — the number to cook and shop for. */
+  headcount: number
+  /** Present this day but not the day before (first day: everyone). */
+  arrivals: T[]
+  /** Present this day but not the day after (last day: everyone). */
+  departures: T[]
+}
 
 /**
  * Join every event day with who is there, resolved from the going
  * attendances (explicit day set → whole event). Arrivals and departures are
- * day-over-day set differences over member rows, so a come-and-go stay that
- * leaves and returns shows up in both lists more than once. Guest rows count
- * into `guests`/`headcount` for the day.
+ * day-over-day set differences, so a come-and-go stay that leaves and
+ * returns shows up in both lists more than once. Rows pass through as given
+ * — callers resolve them to attendees (names, member/guest) themselves.
  */
-export function daySummaries(
-  attendances: readonly AttendanceLike[],
+export function daySummaries<T extends AttendanceLike>(
+  attendances: readonly T[],
   event: { startDate: string | null; endDate: string | null }
-): DaySummary[] {
+): DaySummary<T>[] {
   if (!event.startDate || !event.endDate) return []
 
-  const memberDays = new Map<string, Set<string>>()
-  const guestCountByDay = new Map<string, number>()
-  for (const attendance of attendances) {
-    const days = attendanceDates(attendance, event.startDate, event.endDate)
-    if (attendance.userId) {
-      memberDays.set(attendance.userId, new Set(days))
-    } else {
-      for (const day of days) {
-        guestCountByDay.set(day, (guestCountByDay.get(day) ?? 0) + 1)
-      }
-    }
-  }
+  const coverage = attendances.map((attendance) => ({
+    attendance,
+    days: new Set(
+      attendanceDates(attendance, event.startDate!, event.endDate!)
+    ),
+  }))
 
   const dates = enumerateDates(event.startDate, event.endDate)
   return dates.map((date, i) => {
-    const userIds: string[] = []
-    const arrivals: string[] = []
-    const departures: string[] = []
-    for (const [userId, days] of memberDays) {
+    const present: T[] = []
+    const arrivals: T[] = []
+    const departures: T[] = []
+    for (const { attendance, days } of coverage) {
       if (!days.has(date)) continue
-      userIds.push(userId)
-      if (i === 0 || !days.has(dates[i - 1]!)) arrivals.push(userId)
+      present.push(attendance)
+      if (i === 0 || !days.has(dates[i - 1]!)) arrivals.push(attendance)
       if (i === dates.length - 1 || !days.has(dates[i + 1]!)) {
-        departures.push(userId)
+        departures.push(attendance)
       }
     }
-    const guests = guestCountByDay.get(date) ?? 0
-    return {
-      date,
-      userIds,
-      guests,
-      headcount: userIds.length + guests,
-      arrivals,
-      departures,
-    }
+    return { date, present, headcount: present.length, arrivals, departures }
   })
 }
