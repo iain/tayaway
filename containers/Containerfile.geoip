@@ -2,7 +2,7 @@
 # that the web container mounts read-only at /app/backend/data. Pairs with a
 # monthly geoip.timer so refreshes are decoupled from app deploys; the web
 # stat()s the file per-lookup and picks up new versions without restarting.
-FROM alpine:3.20
+FROM alpine:3.24
 
 # apk upgrade pulls alpine security fixes for base packages the image scan
 # gates on; then add the runtime deps the loader needs.
