@@ -20,7 +20,7 @@ OnFailure=notify@%n.service
 
 [Container]
 ContainerName=edge
-Image=ghcr.io/iain/tayaway-edge:e70495c3637da5b0a33a88e6079e03e30ad23bea
+Image=ghcr.io/iain/tayaway-edge:5ef5762f7b91d3ee0830b8ed6c75525c53865e5d
 Network=tayaway.network
 PublishPort=80:80
 PublishPort=443:443

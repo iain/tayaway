@@ -17,7 +17,7 @@ OnFailure=notify@%n.service
 
 [Container]
 ContainerName=migrate
-Image=ghcr.io/iain/tayaway-backend:e70495c3637da5b0a33a88e6079e03e30ad23bea
+Image=ghcr.io/iain/tayaway-backend:5ef5762f7b91d3ee0830b8ed6c75525c53865e5d
 Network=tayaway.network
 Volume=/etc/tayaway/env/.env.production:/app/backend/.env.production:ro
 Volume=/etc/tayaway/env/.env.production.yaml:/app/backend/.env.production.yaml:ro
