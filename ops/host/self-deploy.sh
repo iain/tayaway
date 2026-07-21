@@ -37,6 +37,7 @@ export REGISTRY_AUTH_FILE="$STATE_DIR/ghcr-auth.json"
 # lifecycle, exactly as in ops/deploy.sh.
 FILES=(
   "$QUADLET_DIR/web.container"
+  "$QUADLET_DIR/admin.container"
   "$QUADLET_DIR/migrate.container"
   "$QUADLET_DIR/edge.container"
   "$QUADLET_DIR/geoip.container"
@@ -57,7 +58,7 @@ clear_baks() { for f in "${FILES[@]}"; do rm -f "$f.bak"; done; }
 # then lands mid-boot and kills it (exit 1 → OnFailure page) before it recovers.
 # One transaction coalesces it into a single web restart. See ops/deploy.sh.
 restart_stack() {
-  systemctl restart migrate.service web.service edge.service
+  systemctl restart migrate.service web.service admin.service edge.service
 }
 
 # Hit /health through the edge exactly as an external client would, but pinned

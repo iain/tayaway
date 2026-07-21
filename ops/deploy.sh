@@ -61,6 +61,7 @@ QUADLET_DIR="$OPS_DIR/quadlet"
 # Files that pin the app SHA. db.container is intentionally excluded.
 SHA_FILES=(
   "$QUADLET_DIR/web.container"
+  "$QUADLET_DIR/admin.container"
   "$QUADLET_DIR/migrate.container"
   "$QUADLET_DIR/edge.container"
   "$QUADLET_DIR/geoip.container"
@@ -106,7 +107,7 @@ sync_quadlets() {
 # Restart=on-failure brings it back ~100ms later — a ~50/50 spurious failure.
 # One transaction merges both into a single web restart, so there's no overlap.
 restart_stack() {
-  ssh_run 'sudo systemctl restart migrate.service web.service edge.service'
+  ssh_run 'sudo systemctl restart migrate.service web.service admin.service edge.service'
 }
 
 # Poll /health from here (exercises the real DNS → Caddy → web → db path, not

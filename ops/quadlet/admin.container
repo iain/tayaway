@@ -1,0 +1,49 @@
+# Admin site backend (doc/admin.md). Same image as web, different command:
+# a single falcon-host web service (no jobs worker) serving the operator-only
+# dashboard on :9393. No PublishPort — it is reachable only through the
+# edge's mTLS-gated admin vhost on the podman network.
+#
+# Hardening mirrors web.container: read-only rootfs with /tmp on tmpfs, all
+# capabilities dropped, StartLimit so a crash loop gives up and pages.
+[Unit]
+Description=Tayaway admin site
+Requires=db.service migrate.service
+After=db.service migrate.service
+# StartLimit* are [Unit] keys — systemd ignores them in [Service].
+StartLimitBurst=3
+StartLimitIntervalSec=60
+# Page on failure once the crash loop gives up (pairs with StartLimitBurst).
+OnFailure=notify@%n.service
+
+[Container]
+ContainerName=admin
+Image=ghcr.io/iain/tayaway-backend:e70495c3637da5b0a33a88e6079e03e30ad23bea
+Exec=bundle exec falcon-host admin/falcon.rb
+Network=tayaway.network
+Volume=/etc/tayaway/env/.env.production:/app/backend/.env.production:ro
+Volume=/etc/tayaway/env/.env.production.yaml:/app/backend/.env.production.yaml:ro
+Volume=/etc/tayaway/age.key:/etc/tayaway/age.key:ro
+# The admin's own passkey/session store (SQLite) — the one writable mount
+# on this otherwise read-only container.
+Volume=tayaway-admin.volume:/var/lib/tayaway-admin
+Environment=MISE_SOPS_AGE_KEY_FILE=/etc/tayaway/age.key
+Environment=MISE_CACHE_DIR=/tmp/mise-cache
+# See web.container for why HOME points at the tmpfs.
+Environment=HOME=/tmp
+Environment=ADMIN_FALCON_URL=http://0.0.0.0:9393
+Environment=ADMIN_ORIGIN=https://admin.tayaway.nl
+Environment=ADMIN_STATE_PATH=/var/lib/tayaway-admin/state.db
+Notify=true
+ReadOnly=true
+Tmpfs=/tmp
+# See web.container for why NoNewPrivileges is deliberately absent
+# (AppArmor denies falcon-host signalling its own forked workers).
+DropCapability=all
+PodmanArgs=--stop-timeout=15
+Pull=missing
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

@@ -20,6 +20,12 @@
 # before reloading.
 import /etc/caddy/sites/*.caddy
 
+# The operator-only admin vhost (mTLS, see doc/admin.md). Same no-op-glob
+# mechanism as the tenant sites, but first-party: provision.sh installs
+# ops/host/admin.caddy + the client CA into the mounted dir only when both
+# are present, so a half-configured admin setup can't take the edge down.
+import /etc/caddy/admin/*.caddy
+
 # www → apex redirect. In production WWW_SITE_ADDRESS is https://www.tayaway.nl,
 # so Caddy provisions an LE cert for www and 301s every request to the apex
 # (canonical host). Unset locally / in e2e, it falls back to a localhost label

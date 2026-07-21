@@ -385,6 +385,21 @@ for f in /tmp/tayaway-host/*; do
     *.tmpfiles)        install -m 0644 -o root -g root "$f" "/etc/tmpfiles.d/${base%.tmpfiles}.conf" ;;
   esac
 done
+# Admin vhost (doc/admin.md): the edge mounts /etc/tayaway/caddy-admin at
+# /etc/caddy/admin and imports *.caddy from it. Install the site block only
+# when the operator CA is already in place — admin.caddy references ca.pem
+# as its trust_pool, and a dangling reference fails the WHOLE edge config
+# load, taking the main site down with it. Removing the block when the CA
+# is absent keeps the pair atomic in both directions.
+install -d -m 0755 -o root -g root /etc/tayaway/caddy-admin
+if [ -f /etc/tayaway/caddy-admin/ca.pem ]; then
+  install -m 0644 -o root -g root /tmp/tayaway-host/admin.caddy /etc/tayaway/caddy-admin/admin.caddy
+  echo "  admin vhost installed (ca.pem present)"
+else
+  rm -f /etc/tayaway/caddy-admin/admin.caddy
+  echo "  ⚠ admin vhost NOT installed — /etc/tayaway/caddy-admin/ca.pem missing."
+  echo "    Mint the operator CA and copy ca.pem there (doc/admin.md), then re-provision."
+fi
 systemd-tmpfiles --create /etc/tmpfiles.d/tayaway.conf
 systemctl daemon-reload
 # Timers' target .service units are quadlet-generated; they only need to

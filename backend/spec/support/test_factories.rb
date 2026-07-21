@@ -277,6 +277,28 @@ module TestFactories
       DB[:sessions].where(id: id).first.merge(token: token)
     end
 
+    def admin_credential(nickname: "Test Key", external_id: SecureRandom.hex(16))
+      id = Admin::State.db[:admin_credentials].insert(
+        external_id: external_id,
+        public_key: "test-public-key",
+        sign_count: 0,
+        nickname: nickname,
+        created_at: Time.now
+      )
+      Admin::State.db[:admin_credentials].where(id: id).first
+    end
+
+    def admin_session(credential_id: nil, token: SecureRandom.hex(32), expires_at: Time.now + AdminSession::EXPIRY_SECONDS)
+      credential_id ||= admin_credential[:id]
+      id = Admin::State.db[:admin_sessions].insert(
+        credential_id: credential_id,
+        token: Auth::Token.digest(token),
+        expires_at: expires_at,
+        created_at: Time.now
+      )
+      Admin::State.db[:admin_sessions].where(id: id).first.merge(token: token)
+    end
+
     class TokenResult
       attr_reader :token
 

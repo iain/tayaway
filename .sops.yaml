@@ -15,6 +15,14 @@
 # GitHub runner — it's not a workflow-discipline rule, it's a
 # recipient-list one.
 creation_rules:
+  # Operator CA for the admin mTLS vhost (doc/admin.md). Operator-only on
+  # purpose: neither CI nor the box ever needs the CA private key — the box
+  # gets only ca.pem. Losing the laptop key = mint a new CA and re-provision,
+  # which is the documented device-loss recovery anyway.
+  - path_regex: ops/admin-ca/secrets\.yaml$
+    key_groups:
+      - age:
+          - age14mluckpnn92uzc8u8gsjl8kn8yns38lpzfaawc8wyr9a7czsvycq972xr7
   - path_regex: ops/secrets\.yaml$
     key_groups:
       - age:

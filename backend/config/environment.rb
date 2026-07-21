@@ -117,3 +117,4 @@ if APP_CONFIG.e2e?
 end
 
 require_relative "../app/app"
+require_relative "../admin/app"

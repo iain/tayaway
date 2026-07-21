@@ -8,10 +8,17 @@ gem "rack-attack"
 gem "roda", "~> 3.106"
 gem "roda-websockets"
 
+# Server-rendered templates for the admin site (Roda render plugin)
+gem "erubi"
+gem "tilt"
+
 # Database
 gem "pg"
 gem "sequel"
 gem "sequel_pg", require: "sequel"
+# Admin site credential/session store (doc/admin.md) — deliberately not Postgres,
+# so operator login survives main-DB incidents.
+gem "sqlite3"
 
 # JSON
 gem "json"
