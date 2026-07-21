@@ -64,8 +64,18 @@ const reassignCandidates = computed(() => {
     props.event
   )
     .filter((a) => !slotMates.has(a.id))
-    .sort((a, b) => a.attendee.name.localeCompare(b.attendee.name))
+    .sort(
+      (a, b) =>
+        Number(a.attendee.isGuest) - Number(b.attendee.isGuest) ||
+        a.attendee.name.localeCompare(b.attendee.name)
+    )
 })
+
+function candidateLabel(attendance: HydratedAttendance): string {
+  return attendance.attendee.isGuest
+    ? `${attendance.attendee.name} (guest)`
+    : attendance.attendee.name
+}
 
 async function handleReassign(attendance: HydratedAttendance) {
   await choreRostersStore.updateAssignment(
@@ -160,11 +170,11 @@ async function handleRemove() {
         v-for="attendance in reassignCandidates"
         :key="attendance.id"
         type="button"
-        :aria-label="`Reassign to ${attendance.attendee.name}`"
+        :aria-label="`Reassign to ${candidateLabel(attendance)}`"
         class="text-ink focus-visible:outline-focus hover:bg-surface-sunken block w-full cursor-pointer rounded-md px-2 py-1.5 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
         @click="handleReassign(attendance)"
       >
-        {{ attendance.attendee.name }}
+        {{ candidateLabel(attendance) }}
       </button>
       <p
         v-if="reassignCandidates.length === 0"

@@ -11,7 +11,7 @@ import ChoreSummaryTable from '@/components/chores/ChoreSummaryTable.vue'
 import ChoreRosterToolbar from '@/components/chores/ChoreRosterToolbar.vue'
 import ChoreRosterHeader from '@/components/chores/ChoreRosterHeader.vue'
 import ManageChoresSheet from '@/components/chores/ManageChoresSheet.vue'
-import AssignMemberPopover from '@/components/chores/AssignMemberPopover.vue'
+import AssignAttendeePopover from '@/components/chores/AssignAttendeePopover.vue'
 import EditAssignmentPopover from '@/components/chores/EditAssignmentPopover.vue'
 import EditChoreTimePopover from '@/components/chores/EditChoreTimePopover.vue'
 import AppButton from '@/components/common/AppButton.vue'
@@ -715,7 +715,7 @@ onMounted(async () => {
         </form>
       </div>
 
-      <AssignMemberPopover
+      <AssignAttendeePopover
         v-if="assignPopover && assignPopoverChore"
         :chore="assignPopoverChore"
         :date="assignPopover.date"

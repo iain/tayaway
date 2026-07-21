@@ -47,7 +47,13 @@ function dayLabel(item: UpcomingChoreItem): string {
         >
           <div class="min-w-0 flex-1">
             <h3 class="text-ink truncate text-base font-semibold">
-              {{ item.choreName }}
+              {{ item.choreName
+              }}<span
+                v-if="item.guestName"
+                class="text-ink-muted text-sm font-normal"
+              >
+                · for {{ item.guestName }}</span
+              >
             </h3>
             <div
               class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"

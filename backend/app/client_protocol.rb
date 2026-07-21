@@ -21,7 +21,10 @@ module ClientProtocol
   # Raise log:
   # - 0: initial value — clients that predate versioning send no header and
   #   count as version 0, so they remain supported until this first moves.
-  MIN_SUPPORTED_VERSION = 0
+  # - 2: guest attendances can hold chore assignments; choreAssignment.userId
+  #   is null for them on the wire. Pre-2 clients key their rosters off
+  #   userId and would render "?" chips — they get the update flow instead.
+  MIN_SUPPORTED_VERSION = 2
 
   class << self
     # A client-reported protocol version (raw header/param value — possibly

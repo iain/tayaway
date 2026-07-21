@@ -74,7 +74,6 @@ module ChoreRosters
           Success()
             .bind { Attendance.find_result(attendance_id) }
             .bind { |attendance| validate_attendance_on_event(attendance, event) }
-            .bind { |attendance| validate_member_attendance(attendance) }
         else
           Attendances::EnsureMemberRow.call(event: event, user_id: user_id, created_by_user_id: membership.user_id)
         end
@@ -85,16 +84,6 @@ module ChoreRosters
           Success(attendance)
         else
           Failure(ServiceError.not_found("Attendance not found on this event"))
-        end
-      end
-
-      # Lifted in the follow-up deploy, once stale clients that can't render
-      # a guest assignment are behind the protocol gate.
-      def validate_member_attendance(attendance)
-        if attendance.guest?
-          Failure(ServiceError.validation("Guests cannot be assigned chores yet"))
-        else
-          Success(attendance)
         end
       end
 

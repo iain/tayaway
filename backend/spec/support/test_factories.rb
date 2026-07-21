@@ -210,12 +210,13 @@ module TestFactories
 
     def chore_assignment(chore: nil, user: nil, attendance: nil, date: Date.today, pinned: false, note: nil, id: SecureRandom.uuid)
       chore ||= self.chore
-      user ||= self.user
+      # A guest attendance's row has no mirrored user; member rows default one.
+      user ||= self.user if attendance.nil? || attendance[:user_id]
       now = Time.now
       DB[:chore_assignments].insert(
         id: id,
         chore_id: chore[:id],
-        user_id: user[:id],
+        user_id: user&.[](:id),
         attendance_id: attendance&.[](:id),
         date: date,
         pinned: pinned,
