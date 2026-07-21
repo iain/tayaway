@@ -12,7 +12,10 @@ port = 9292
 # 9292 (i.e. after `dev`'s db:seed + boot), which is what makes the frontend's
 # `depends = ["backend"]` ordering meaningful.
 ready_port = 9292
-env = { FRONTEND_URL = "https://tayaway.localhost" }
+# LANG: without a UTF-8 locale Ruby's default external encoding is US-ASCII,
+# and Rack::Builder.load_file crashes on any non-ASCII byte in a rackup file.
+# Daemons don't inherit the interactive shell's locale (e.g. MCP-started).
+env = { FRONTEND_URL = "https://tayaway.localhost", LANG = "en_US.UTF-8" }
 
 [daemons.frontend]
 run = "mise run dev"
@@ -30,3 +33,5 @@ run = "mise run admin:dev"
 dir = "backend"
 port = 9393
 ready_port = 9393
+# See the backend daemon's LANG note.
+env = { LANG = "en_US.UTF-8" }

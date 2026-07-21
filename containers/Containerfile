@@ -111,12 +111,16 @@ COPY backend/ ./
 # vendor/bundle, so those don't need separate vars. Env vars (not
 # .bundle/config) keep the runtime knobs explicit and independent of any
 # state from the gem-build stage.
+# LANG: bookworm-slim ships no default locale, leaving Ruby's default external
+# encoding at US-ASCII — Rack::Builder.load_file then crashes on any non-ASCII
+# byte in a rackup file (bit the admin site's config.ru).
 ENV MISE_ENV=production \
     RACK_ENV=production \
     FALCON_URL=http://0.0.0.0:9292 \
     MISE_TRUSTED_CONFIG_PATHS=/app \
     BUNDLE_DEPLOYMENT=true \
-    BUNDLE_WITHOUT=development:test
+    BUNDLE_WITHOUT=development:test \
+    LANG=C.UTF-8
 
 # The container has no .git and the podman deploy writes no REVISION file, so
 # the git_sha fallback chain in config/environment.rb would resolve to empty.
