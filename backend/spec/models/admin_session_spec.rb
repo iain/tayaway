@@ -5,13 +5,13 @@ require "spec_helper"
 RSpec.describe AdminSession do
   describe ".find_valid" do
     it "returns the session matching the plaintext token" do
-      user = TestFactories.user
-      row = TestFactories.admin_session(user: user)
+      credential = TestFactories.admin_credential
+      row = TestFactories.admin_session(credential_id: credential[:id])
 
       session = described_class.find_valid(row[:token])
 
       expect(session).not_to be_nil
-      expect(session.user_id.to_s).to eq(user[:id])
+      expect(session.credential_id).to eq(credential[:id])
     end
 
     it "returns nil for an expired session" do

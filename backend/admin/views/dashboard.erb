@@ -1,7 +1,8 @@
 <header class="topbar">
   <h1>Tayaway admin</h1>
   <div class="session">
-    <span><%= current_admin.email %></span>
+    <span><%= current_admin_credential[:nickname] %></span>
+    <a href="/enroll">Add passkey</a>
     <button id="logout" type="button">Sign out</button>
   </div>
 </header>

@@ -16,6 +16,9 @@ gem "tilt"
 gem "pg"
 gem "sequel"
 gem "sequel_pg", require: "sequel"
+# Admin site credential/session store (doc/admin.md) — deliberately not Postgres,
+# so operator login survives main-DB incidents.
+gem "sqlite3"
 
 # JSON
 gem "json"

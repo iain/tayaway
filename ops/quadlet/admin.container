@@ -23,11 +23,16 @@ Network=tayaway.network
 Volume=/etc/tayaway/env/.env.production:/app/backend/.env.production:ro
 Volume=/etc/tayaway/env/.env.production.yaml:/app/backend/.env.production.yaml:ro
 Volume=/etc/tayaway/age.key:/etc/tayaway/age.key:ro
+# The admin's own passkey/session store (SQLite) — the one writable mount
+# on this otherwise read-only container.
+Volume=tayaway-admin.volume:/var/lib/tayaway-admin
 Environment=MISE_SOPS_AGE_KEY_FILE=/etc/tayaway/age.key
 Environment=MISE_CACHE_DIR=/tmp/mise-cache
 # See web.container for why HOME points at the tmpfs.
 Environment=HOME=/tmp
 Environment=ADMIN_FALCON_URL=http://0.0.0.0:9393
+Environment=ADMIN_ORIGIN=https://admin.tayaway.nl
+Environment=ADMIN_STATE_PATH=/var/lib/tayaway-admin/state.db
 Notify=true
 ReadOnly=true
 Tmpfs=/tmp

@@ -19,6 +19,10 @@ follow-up.
   `audit_log_entries`, `users`, and `sessions` (including
   `last_seen_client_version` — see doc/protocol-versioning.md) and returns
   plain hashes to the templates.
+- **Own auth store.** Passkey credentials and admin sessions live in a
+  SQLite file (`Admin::State`, migrations in `db/admin_migrations/`,
+  applied at boot), not in Postgres — see "Security layers" for why. The
+  main DB connection is only ever read from.
 
 ## Security layers
 
@@ -26,23 +30,37 @@ follow-up.
 | --- | --- |
 | mTLS at the edge | Everyone without the operator client cert — the TLS handshake fails before HTTP, so scanners see nothing |
 | Separate process/vhost | Main-app vulnerabilities leaking into admin surfaces |
-| Passkey login + `ADMIN_EMAILS` allowlist | A stolen or borrowed device that has the client cert installed |
+| Admin-local passkey login | A stolen or borrowed device that has the client cert installed |
 | `admin_sessions` (12 h TTL, digested tokens, `__Host-` cookie, SameSite=Strict) | Session theft/fixation, cross-site request forgery (plus the `X-CSRF-Protection` header on every mutation) |
 | Read-only DB role (`ADMIN_DATABASE_URL`) | Injection or logic bugs in dashboard queries — the role physically cannot write |
 
-Login reuses the main app's WebAuthn credentials: the RP ID is the apex
-(`tayaway.nl`), which the registrable-suffix rule makes valid on
-`admin.tayaway.nl`, so the existing passkey works — no separate
-registration. `WEBAUTHN_EXTRA_ORIGINS` must include the admin origin.
-`ADMIN_EMAILS` is authorization, not authentication: an email on the list
-still needs that user's passkey and the client cert.
+Admin auth is fully self-contained: passkeys and sessions live in the
+admin's own SQLite store (`Admin::State`, `ADMIN_STATE_PATH`), never in
+the main database. The RP ID is the admin host itself (`ADMIN_ORIGIN`),
+not the apex — admin passkeys are separate credentials from main-app
+passkeys, enrolled on the admin site. Two things follow:
+
+- **Operator login survives main-DB incidents.** Restoring a backup,
+  debugging auth corruption, or a wiped database cannot lock you out of
+  the dashboard — which is exactly when you need it.
+- **Main-app compromise cannot mint admin access.** A bug that lets an
+  attacker register a main-app passkey gains nothing here.
+
+Enrollment is the authorization gate (there is no email allowlist):
+registration is open only while the credential store is empty — i.e.
+first boot, still behind mTLS — and afterwards only from a signed-in
+admin session (dashboard → "Add passkey"). The empty-store check re-runs
+inside the insert transaction, so two racing first-boot tabs cannot both
+enroll. Losing every enrolled device = delete the SQLite file on the
+admin volume and enroll again; the store holds only auth material, so
+there is nothing to back up.
 
 ## Configuration
 
 | Var | Where | Purpose |
 | --- | --- | --- |
-| `ADMIN_EMAILS` | `.env.production` (non-secret) | CSV allowlist; empty disables admin login entirely |
-| `WEBAUTHN_EXTRA_ORIGINS` | `.env.production` | Must include `https://admin.tayaway.nl` |
+| `ADMIN_ORIGIN` | quadlet | Origin the operator's browser uses (`https://admin.tayaway.nl`) — WebAuthn RP ID is its host |
+| `ADMIN_STATE_PATH` | quadlet | SQLite file for admin credentials/sessions, on the `tayaway-admin` volume |
 | `ADMIN_DATABASE_URL` | `.env.production.yaml` (sops) | Read-only role for dashboard queries; falls back to `DATABASE_URL` when unset |
 | `ADMIN_FALCON_URL` | quadlet | Bind URL; `http://0.0.0.0:9393` in the container |
 
@@ -92,8 +110,8 @@ Then add `ADMIN_DATABASE_URL=postgres://tayaway_admin_ro:<pw>@db:5432/tayaway_pr
 to `.env.production.yaml` (sops). Note the fallback: while unset, dashboards
 run on the main (writable) role — functional, just without this layer.
 
-Auth flows (login/logout) intentionally use the main `DB` connection — they
-must write `admin_sessions` and bump passkey sign counts.
+Auth flows never touch the main database: credentials, sessions, and
+sign-count bumps all live in the admin's own SQLite store.
 
 ## Rollout checklist (first deploy)
 
@@ -103,18 +121,20 @@ must write `admin_sessions` and bump passkey sign counts.
    `scp ca.pem tayaway@tayaway.nl:/tmp/ && ssh … 'sudo install -m 0644 -o root -g root /tmp/ca.pem /etc/tayaway/caddy-admin/ca.pem && rm /tmp/ca.pem'`
    (create the dir first if provision hasn't run yet).
 4. Create the read-only role + add `ADMIN_DATABASE_URL` to the sops env.
-5. Verify `ADMIN_EMAILS` in `backend/.env.production` matches your account
-   email, then re-run provision (`mise run vm:provision …`) — syncs the
-   admin quadlet, installs `admin.caddy` (now that ca.pem exists), and
-   updates self-deploy.
-6. Deploy (`mise run deploy …`) — migrates `admin_sessions`, starts the
-   admin container, restarts the edge.
-7. Check: `https://admin.tayaway.nl` without the cert must fail the TLS
-   handshake; with it, the login page appears and your passkey signs in.
+5. Re-run provision (`mise run vm:provision …`) — syncs the admin quadlet
+   and its state volume, installs `admin.caddy` (now that ca.pem exists),
+   and updates self-deploy.
+6. Deploy (`mise run deploy …`) — starts the admin container (the SQLite
+   store migrates itself at boot), restarts the edge.
+7. First visit: `https://admin.tayaway.nl` without the client cert must
+   fail the TLS handshake; with it, you land on `/enroll` — enroll this
+   device's passkey (the store is empty, so enrollment is open behind the
+   mTLS gate), then sign in with it. Add further devices from the
+   dashboard's "Add passkey" while signed in.
 
 Until every step is done the site fails closed: no DNS → unreachable, no
-ca.pem → no vhost, no `ADMIN_EMAILS` → login always 403, no migration →
-500s behind the mTLS gate.
+ca.pem → no vhost, and enrollment shuts the moment the first credential
+exists.
 
 ## Development
 
@@ -122,16 +142,13 @@ ca.pem → no vhost, no `ADMIN_EMAILS` → login always 403, no migration →
 mise run admin:dev        # admin site on http://localhost:9393
 ```
 
-`.env.development` is gitignored, so add the admin keys to your local copy:
-
-```sh
-ADMIN_EMAILS=test@example.com                # the seeded user
-WEBAUTHN_EXTRA_ORIGINS=http://localhost:9393 # passkey ceremony on the admin port
-```
-
-Register a passkey for the test user in the SPA first (dev-login → profile
-→ passkeys), then sign in at :9393 with it. No mTLS locally — that layer
-exists only at the production edge.
+No configuration needed: `ADMIN_ORIGIN` defaults to
+`http://localhost:9393` (localhost is a WebAuthn secure-context
+exception, so plain http works) and the store defaults to
+`tmp/admin_state.development.db`. First visit redirects to `/enroll` —
+enroll a passkey right there; it is independent of any main-app passkey.
+No mTLS locally — that layer exists only at the production edge. To
+start over, delete the `tmp/admin_state.development.db*` files.
 
 Specs live in `spec/admin/` (request specs against `AdminApp`) and
 `spec/services/admin/`.

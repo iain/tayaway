@@ -48,9 +48,14 @@ RSpec.configure do |config|
     end
   end
 
+  # Scope the cleaner to the Postgres DB explicitly: with a bare
+  # DatabaseCleaner[:sequel] it manages every Sequel::DATABASES entry, and
+  # the admin store's lazily-connected SQLite DB appearing mid-suite
+  # desyncs its per-database transaction bookkeeping. The admin store is
+  # wiped separately (spec/support/admin_state.rb).
   config.before(:suite) do
-    DatabaseCleaner[:sequel].strategy = :transaction
-    DatabaseCleaner[:sequel].clean_with(:truncation)
+    DatabaseCleaner[:sequel, db: DB].strategy = :transaction
+    DatabaseCleaner[:sequel, db: DB].clean_with(:truncation)
   end
 
   config.before do
@@ -59,7 +64,7 @@ RSpec.configure do |config|
   end
 
   config.around do |example|
-    DatabaseCleaner[:sequel].cleaning do
+    DatabaseCleaner[:sequel, db: DB].cleaning do
       example.run
     end
   end

@@ -44,6 +44,31 @@ if (signin) {
   });
 }
 
+const enroll = document.getElementById("enroll");
+if (enroll) {
+  const errorEl = document.getElementById("error");
+  enroll.addEventListener("click", async () => {
+    errorEl.hidden = true;
+    try {
+      const begin = await postJson("/enroll/begin");
+      const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(begin.options);
+      const credential = await navigator.credentials.create({ publicKey });
+      await postJson("/enroll/complete", {
+        challengeToken: begin.challengeToken,
+        credential: credential.toJSON(),
+        nickname: document.getElementById("nickname").value,
+      });
+      // First boot lands on /login to sign in with the fresh passkey; an
+      // already-signed-in operator adding a device bounces straight back
+      // to the dashboard from there.
+      window.location.href = "/login";
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.hidden = false;
+    }
+  });
+}
+
 const logout = document.getElementById("logout");
 if (logout) {
   logout.addEventListener("click", async () => {

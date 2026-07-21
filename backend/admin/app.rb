@@ -85,11 +85,19 @@ class AdminApp < Roda
     @_current_admin_session = token ? AdminSession.find_valid(token) : nil
   end
 
-  def current_admin
-    return @_current_admin if defined?(@_current_admin)
+  # The device (admin credential) behind the current session — the closest
+  # thing the admin site has to a "current user": there is exactly one
+  # operator, only their devices are distinguishable.
+  def current_admin_credential
+    return @_current_admin_credential if defined?(@_current_admin_credential)
 
     session = current_admin_session
-    @_current_admin = session ? User.find(session.user_id) : nil
+    @_current_admin_credential =
+      session ? Admin::State.db[:admin_credentials].where(id: session.credential_id).first : nil
+  end
+
+  def enrollment_open?
+    !current_admin_session.nil? || Admin::State.db[:admin_credentials].empty?
   end
 
   # View helpers. All timestamps on the dashboard are UTC — one timezone
@@ -116,8 +124,10 @@ class AdminApp < Roda
     r.on "login" do
       r.is do
         r.get do
-          if current_admin
+          if current_admin_session
             r.redirect "/"
+          elsif Admin::State.db[:admin_credentials].empty?
+            r.redirect "/enroll"
           else
             view "login"
           end
@@ -125,7 +135,7 @@ class AdminApp < Roda
       end
 
       r.post "begin" do
-        handle_result(Auth::Passkeys::BeginAuthentication.call)
+        handle_result(Admin::BeginLogin.call)
       end
 
       r.post "complete" do
@@ -142,25 +152,53 @@ class AdminApp < Roda
       end
     end
 
+    r.on "enroll" do
+      r.is do
+        r.get do
+          if enrollment_open?
+            view "enroll"
+          else
+            r.redirect "/login"
+          end
+        end
+      end
+
+      r.post "begin" do
+        handle_result(Admin::BeginEnrollment.call(authenticated: !current_admin_session.nil?))
+      end
+
+      r.post "complete" do
+        handle_result(Admin::CompleteEnrollment.call(
+                        challenge_token: r.params["challengeToken"],
+                        credential: r.params["credential"],
+                        nickname: r.params["nickname"],
+                        authenticated: !current_admin_session.nil?
+                      )
+                     )
+      end
+    end
+
     r.post "logout" do
       session = current_admin_session
       unless session
         request.halt [401, { "Content-Type" => "application/json" }, ['{"error":"Authorization required"}']]
       end
 
-      DB[:admin_sessions].where(id: session.id.to_s).delete
+      Admin::State.db[:admin_sessions].where(id: session.id).delete
       clear_admin_cookie
       { message: "Logged out" }
     end
 
     r.root do
-      if current_admin
+      if current_admin_session
         @jobs = Admin::Stats.jobs
         @users = Admin::Stats.users
         @versions = Admin::Stats.client_versions
         @audit_outcome = Admin::Stats::AUDIT_OUTCOMES.include?(r.params["outcome"]) ? r.params["outcome"] : nil
         @audit = Admin::Stats.audit(outcome: @audit_outcome)
         view "dashboard"
+      elsif Admin::State.db[:admin_credentials].empty?
+        r.redirect "/enroll"
       else
         r.redirect "/login"
       end

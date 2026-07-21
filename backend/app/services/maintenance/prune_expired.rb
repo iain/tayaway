@@ -48,7 +48,6 @@ module Maintenance
           # references a pruned session — order doesn't matter.
           ws_tickets: delete_consumed_or_expired(:ws_tickets, :used_at, now),
           sessions: DB[:sessions].where { expires_at <= now }.delete,
-          admin_sessions: DB[:admin_sessions].where { expires_at <= now }.delete,
           login_link_tokens: delete_consumed_or_expired(:login_link_tokens, :used_at, now),
           email_change_tokens: delete_consumed_or_expired(:email_change_tokens, :used_at, now),
           workspace_invites: delete_consumed_or_expired(:workspace_invites, :accepted_at, now),

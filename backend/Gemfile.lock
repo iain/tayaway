@@ -261,6 +261,12 @@ GEM
     sequel_pg (1.19.0)
       pg (>= 0.18.0, != 1.2.0)
       sequel (>= 4.38.0)
+    sqlite3 (2.9.5-aarch64-linux-gnu)
+    sqlite3 (2.9.5-aarch64-linux-musl)
+    sqlite3 (2.9.5-arm64-darwin)
+    sqlite3 (2.9.5-x86_64-darwin)
+    sqlite3 (2.9.5-x86_64-linux-gnu)
+    sqlite3 (2.9.5-x86_64-linux-musl)
     string-format (0.2.0)
     stringio (3.2.0)
     thor (1.5.0)
@@ -335,6 +341,7 @@ DEPENDENCIES
   rubocop-sequel
   sequel
   sequel_pg
+  sqlite3
   tilt
   tzinfo
   tzinfo-data

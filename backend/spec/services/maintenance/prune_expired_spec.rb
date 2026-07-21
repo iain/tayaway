@@ -14,15 +14,6 @@ RSpec.describe Maintenance::PruneExpired do
       expect(DB[:sessions].where(id: dead[:id]).count).to eq(0)
     end
 
-    it "deletes expired admin_sessions and keeps live ones" do
-      live = TestFactories.admin_session(expires_at: Time.now + 3600)
-      TestFactories.admin_session(expires_at: Time.now - 1)
-
-      described_class.call
-
-      expect(DB[:admin_sessions].select_map(:id)).to eq([live[:id]])
-    end
-
     it "deletes ws_tickets that are expired or already used, keeping live unused ones" do
       TestFactories.ws_ticket(expires_at: Time.now + 60, used_at: nil, id: "11111111-1111-1111-1111-111111111111")
       TestFactories.ws_ticket(expires_at: Time.now - 1,  used_at: nil, id: "22222222-2222-2222-2222-222222222222")

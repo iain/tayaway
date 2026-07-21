@@ -8,30 +8,36 @@ RSpec.describe "AdminApp" do
     AdminApp.freeze.app
   end
 
-  let(:user) { TestFactories.user(email: "iain@example.com") }
   let(:csrf_header) { { "HTTP_X_CSRF_PROTECTION" => "1" } }
   let(:json_headers) { csrf_header.merge("CONTENT_TYPE" => "application/json") }
-  let(:fake_client) { WebAuthn::FakeClient.new("http://localhost:5173") }
+  let(:fake_client) { WebAuthn::FakeClient.new("http://localhost:9393") }
 
-  def admin_cookie(for_user = user)
-    row = TestFactories.admin_session(user: for_user)
+  def admin_cookie(credential_id: nil)
+    row = TestFactories.admin_session(credential_id: credential_id)
     { "HTTP_COOKIE" => "admin_session=#{row[:token]}" }
   end
 
-  define_method(:register_passkey) do
-    begin_result = Auth::Passkeys::BeginRegistration.call(user_id: user[:id])
-    options = begin_result.value!
-    credential = fake_client.create(challenge: options[:options][:challenge])
-    Auth::Passkeys::CompleteRegistration.call(
-      user_id: user[:id],
-      challenge_token: options[:challengeToken],
-      credential: credential,
-      name: "Test Key"
-    )
+  define_method(:enroll_via_routes) do |nickname: "MacBook", headers: json_headers|
+    post "/enroll/begin", nil, headers
+    begin_body = JSON.parse(last_response.body)
+    credential = fake_client.create(challenge: begin_body["options"]["challenge"])
+
+    post "/enroll/complete",
+         { challengeToken: begin_body["challengeToken"], credential: credential, nickname: nickname }.to_json,
+         headers
   end
 
   describe "GET /" do
-    it "redirects to /login without a session" do
+    it "redirects to /enroll when no passkey is enrolled yet" do
+      get "/"
+
+      expect(last_response.status).to eq(302)
+      expect(last_response.headers["Location"]).to end_with("/enroll")
+    end
+
+    it "redirects to /login without a session once enrolled" do
+      TestFactories.admin_credential
+
       get "/"
 
       expect(last_response.status).to eq(302)
@@ -39,19 +45,22 @@ RSpec.describe "AdminApp" do
     end
 
     it "redirects to /login with an expired session" do
-      row = TestFactories.admin_session(user: user, expires_at: Time.now - 60)
+      credential = TestFactories.admin_credential
+      row = TestFactories.admin_session(credential_id: credential[:id], expires_at: Time.now - 60)
 
       get "/", {}, { "HTTP_COOKIE" => "admin_session=#{row[:token]}" }
 
       expect(last_response.status).to eq(302)
     end
 
-    it "renders the dashboard with a valid admin session" do
-      get "/", {}, admin_cookie
+    it "renders the dashboard, naming the signed-in device, with a valid session" do
+      credential = TestFactories.admin_credential(nickname: "Operator MacBook")
+
+      get "/", {}, admin_cookie(credential_id: credential[:id])
 
       expect(last_response.status).to eq(200)
       expect(last_response.body).to include("Tayaway admin")
-      expect(last_response.body).to include("iain@example.com")
+      expect(last_response.body).to include("Operator MacBook")
     end
   end
 
@@ -101,54 +110,79 @@ RSpec.describe "AdminApp" do
     end
   end
 
-  describe "GET /login" do
-    it "renders the login page" do
-      get "/login"
+  describe "GET /enroll" do
+    it "renders the enrollment page while the store is empty" do
+      get "/enroll"
 
       expect(last_response.status).to eq(200)
       expect(last_response.body).to include("passkey")
     end
 
-    it "redirects to the dashboard when already signed in" do
-      get "/login", {}, admin_cookie
+    it "redirects to /login once enrolled and signed out" do
+      TestFactories.admin_credential
+
+      get "/enroll"
 
       expect(last_response.status).to eq(302)
-      expect(last_response.headers["Location"]).to end_with("/")
+      expect(last_response.headers["Location"]).to end_with("/login")
+    end
+
+    it "renders for a signed-in operator adding a device" do
+      credential = TestFactories.admin_credential
+
+      get "/enroll", {}, admin_cookie(credential_id: credential[:id])
+
+      expect(last_response.status).to eq(200)
     end
   end
 
-  describe "POST /login/begin" do
-    it "returns WebAuthn request options" do
-      post "/login/begin", nil, json_headers
+  describe "POST /enroll" do
+    it "enrolls the first passkey and login works with it" do
+      enroll_via_routes(nickname: "MacBook")
 
       expect(last_response.status).to eq(200)
-      body = JSON.parse(last_response.body)
-      expect(body["options"]).to include("challenge")
-      expect(body["challengeToken"]).to be_a(String)
+      expect(Admin::State.db[:admin_credentials].first[:nickname]).to eq("MacBook")
+
+      post "/login/begin", nil, json_headers
+      begin_body = JSON.parse(last_response.body)
+      assertion = fake_client.get(challenge: begin_body["options"]["challenge"])
+      post "/login/complete",
+           { challengeToken: begin_body["challengeToken"], credential: assertion }.to_json,
+           json_headers
+
+      expect(last_response.status).to eq(200)
+      expect(last_response.headers["Set-Cookie"]).to include("admin_session=")
     end
 
-    it "rejects a request without the CSRF header" do
-      post "/login/begin", nil, { "CONTENT_TYPE" => "application/json" }
+    it "returns 403 for unauthenticated enrollment once a credential exists" do
+      TestFactories.admin_credential
+
+      post "/enroll/begin", nil, json_headers
 
       expect(last_response.status).to eq(403)
+    end
+
+    it "allows a signed-in operator to enroll another device" do
+      credential = TestFactories.admin_credential
+      headers = json_headers.merge(admin_cookie(credential_id: credential[:id]))
+
+      enroll_via_routes(nickname: "Phone", headers: headers)
+
+      expect(last_response.status).to eq(200)
+      expect(Admin::State.db[:admin_credentials].count).to eq(2)
     end
   end
 
   describe "POST /login/complete" do
-    def complete_login
+    it "sets a strict admin session cookie" do
+      enroll_via_routes
+
       post "/login/begin", nil, json_headers
       begin_body = JSON.parse(last_response.body)
       assertion = fake_client.get(challenge: begin_body["options"]["challenge"])
-
       post "/login/complete",
            { challengeToken: begin_body["challengeToken"], credential: assertion }.to_json,
            json_headers
-    end
-
-    it "sets a strict admin session cookie for an allowlisted user" do
-      register_passkey
-
-      APP_CONFIG.with(admin_emails: ["iain@example.com"]) { complete_login }
 
       expect(last_response.status).to eq(200)
       cookie = last_response.headers["Set-Cookie"]
@@ -161,13 +195,10 @@ RSpec.describe "AdminApp" do
       expect(last_response.status).to eq(200)
     end
 
-    it "returns 403 and no cookie for a user not on the allowlist" do
-      register_passkey
-
-      APP_CONFIG.with(admin_emails: ["someone-else@example.com"]) { complete_login }
+    it "rejects a request without the CSRF header" do
+      post "/login/begin", nil, { "CONTENT_TYPE" => "application/json" }
 
       expect(last_response.status).to eq(403)
-      expect(last_response.headers["Set-Cookie"].to_s).not_to include("admin_session=")
     end
   end
 
@@ -178,7 +209,7 @@ RSpec.describe "AdminApp" do
       post "/logout", nil, cookie.merge(csrf_header)
 
       expect(last_response.status).to eq(200)
-      expect(DB[:admin_sessions].count).to eq(0)
+      expect(Admin::State.db[:admin_sessions].count).to eq(0)
     end
 
     it "requires a session" do
@@ -193,7 +224,7 @@ RSpec.describe "AdminApp" do
       post "/logout", nil, cookie
 
       expect(last_response.status).to eq(403)
-      expect(DB[:admin_sessions].count).to eq(1)
+      expect(Admin::State.db[:admin_sessions].count).to eq(1)
     end
   end
 
