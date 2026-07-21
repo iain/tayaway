@@ -57,9 +57,11 @@ Run `mise tasks ls --all` for the full task surface.
 ### Running tests
 
 ```
-cd backend && bundle exec rspec spec/path/to/spec.rb
+mise run '//backend:test' spec/path/to/spec.rb
 cd frontend && aube exec vitest run src/path/to/file.spec.ts
 ```
+
+Backend specs must go through the mise task — it re-enters mise with `MISE_ENV=test` so `.env.test` (and the `tayaway_test` database) get loaded. A bare `bundle exec rspec` inherits the development `DATABASE_URL` from the shell; `spec_helper.rb` aborts in that case before DatabaseCleaner can truncate the wrong database.
 
 **Typecheck note:** use `mise run typecheck` (or `aube exec vue-tsc -b`). `vue-tsc --noEmit` is **not** equivalent — it can pass while project-references mode finds real errors, particularly in `*.spec.ts` files with their own factories.
 

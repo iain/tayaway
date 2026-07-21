@@ -9,6 +9,9 @@ module Warning
 end
 
 require_relative "../config/environment"
+require_relative "support/test_database_guard"
+TestDatabaseGuard.enforce!(DB.opts[:database])
+
 require "rack/test"
 require "database_cleaner/sequel"
 require_relative "support/test_factories"
