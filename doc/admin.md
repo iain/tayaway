@@ -67,10 +67,14 @@ there is nothing to back up.
 ## Operator CA and client cert
 
 The edge requires a client certificate signed by a tiny personal CA
-(`require_and_verify` in `ops/host/admin.caddy`). Mint it once, locally:
+(`require_and_verify` in `ops/host/admin.caddy`). The minted CA lives in
+the repo: `ops/admin-ca/ca.pem` (public, plain) and
+`ops/admin-ca/secrets.yaml` (sops, operator-recipient only — holds
+`ca_key`, `client_key`, `client_pem`; see `.sops.yaml`). Plaintext key
+files in that directory are gitignored. To mint from scratch:
 
 ```sh
-# CA (10 years). Keep ca.key offline/sops-encrypted — it can mint admin access.
+# CA (10 years). ca.key goes into secrets.yaml (sops) — it can mint admin access.
 openssl ecparam -genkey -name prime256v1 -out ca.key
 openssl req -x509 -new -key ca.key -sha256 -days 3650 \
   -subj "/CN=Tayaway admin CA" -out ca.pem
@@ -94,11 +98,11 @@ the old cert stops working at the next edge restart.
 
 ## Read-only DB role
 
-On the box (`sudo podman exec -it db psql -U tayaway tayaway_production`):
+On the box (`sudo podman exec -it db psql -U tayaway tayaway`):
 
 ```sql
 CREATE ROLE tayaway_admin_ro LOGIN PASSWORD '<generate>';
-GRANT CONNECT ON DATABASE tayaway_production TO tayaway_admin_ro;
+GRANT CONNECT ON DATABASE tayaway TO tayaway_admin_ro;
 GRANT USAGE ON SCHEMA public TO tayaway_admin_ro;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO tayaway_admin_ro;
 -- Future tables created by migrations (which run as tayaway) inherit SELECT:
@@ -106,7 +110,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE tayaway IN SCHEMA public
   GRANT SELECT ON TABLES TO tayaway_admin_ro;
 ```
 
-Then add `ADMIN_DATABASE_URL=postgres://tayaway_admin_ro:<pw>@db:5432/tayaway_production`
+Then add `ADMIN_DATABASE_URL=postgres://tayaway_admin_ro:<pw>@db:5432/tayaway`
 to `.env.production.yaml` (sops). Note the fallback: while unset, dashboards
 run on the main (writable) role — functional, just without this layer.
 
