@@ -159,7 +159,6 @@ const navigation = computed(() => {
   const items = [
     { name: 'Dashboard', href: '/', routeName: 'home' },
     { name: 'Events', href: '/events', routeName: 'events' },
-    { name: 'Chores', href: '/chores', routeName: 'chores' },
     { name: 'Tasks', href: '/tasks', routeName: 'tasks' },
     { name: 'Settle up', href: '/settle-up', routeName: 'settle-up' },
     { name: 'Members', href: '/members', routeName: 'members' },
@@ -211,9 +210,26 @@ watch(
   { immediate: true }
 )
 
+// Pages where naming a focused event adds nothing: the events list is where
+// you go to *choose* one, so a bar pinning one competes with the list right
+// below it, and settings is account-level work with no event context at all.
+const focusBarSuppressedRoutes = new Set(['events', 'events-new'])
+
 // The bar follows the URL when there is one, and the focused event otherwise,
 // so chores/settle-up/dashboard all say which event they're about.
-const subheaderEvent = computed(() => currentEvent.value ?? focusedEvent.value)
+const subheaderEvent = computed(() => {
+  const name = route.name as string
+  if (currentEvent.value) {
+    return currentEvent.value
+  } else if (
+    focusBarSuppressedRoutes.has(name) ||
+    name?.startsWith('settings')
+  ) {
+    return null
+  } else {
+    return focusedEvent.value
+  }
+})
 
 const routeTitleMap: Record<string, string> = {
   home: 'Dashboard',
