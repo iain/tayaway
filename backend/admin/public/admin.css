@@ -1,248 +1,64 @@
-:root {
-  --bg: #f6f7f9;
-  --panel: #ffffff;
-  --text: #1c2430;
-  --muted: #64748b;
-  --border: #dbe1e8;
-  --accent: #0f6b54;
-  --danger: #b3323b;
-  --warn: #9a6700;
-}
+/* Everything Pico has an element for is Pico's — type, color, spacing, tables,
+   cards, nav, forms. This file is only the few admin-specific pieces it has no
+   opinion about, and it borrows Pico's own custom properties so they follow
+   light/dark with the rest of the page. */
 
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font: 1rem/1.5 ui-sans-serif, system-ui, sans-serif;
-}
-
-h1 {
-  font-size: 1.125rem;
-  margin: 0;
-}
-
-h2 {
-  font-size: 0.875rem;
-  margin: 0 0 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-}
-
-button {
-  font: inherit;
-  padding: 0.4rem 0.9rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--panel);
-  color: var(--text);
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.login {
-  max-width: 22rem;
-  margin: 18vh auto 0;
-  padding: 2rem;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  text-align: center;
-}
-
-.login button {
-  width: 100%;
-  padding: 0.6rem;
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-}
-
-.login button:hover {
-  filter: brightness(1.1);
-  color: #fff;
-}
-
-.error {
-  color: var(--danger);
-}
-
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem 1.25rem;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
-}
-
-.topbar nav {
-  display: flex;
-  gap: 1rem;
-  margin-right: auto;
-  padding-left: 1.5rem;
-  font-size: 0.875rem;
-}
-
-.topbar .session {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: var(--muted);
-}
-
-.dashboard {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr));
-  gap: 1rem;
-  padding: 1.25rem;
-  align-items: start;
-}
-
-.panel {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 1rem 1.25rem;
-  overflow-x: auto;
-}
-
-.panel.wide {
-  grid-column: 1 / -1;
-}
-
+/* Dashboard counters. */
 .stats {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.5rem;
-  margin-bottom: 0.5rem;
+  gap: var(--pico-spacing);
 }
 
 a.stat {
-  color: inherit;
   text-decoration: none;
-}
-
-a.stat:hover .label {
-  color: var(--accent);
-  text-decoration: underline;
 }
 
 .stat .value {
-  font-size: 1.875rem;
+  font-size: 2rem;
   font-weight: 600;
+  line-height: 1.2;
 }
 
 .stat .label {
-  color: var(--muted);
+  color: var(--pico-muted-color);
   font-size: 0.875rem;
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-}
-
-th,
-td {
-  text-align: left;
-  padding: 0.35rem 0.6rem 0.35rem 0;
-  border-bottom: 1px solid var(--border);
-  vertical-align: top;
-}
-
-th {
-  color: var(--muted);
-  font-weight: 500;
-}
-
-tr:last-child td {
-  border-bottom: none;
-}
-
-td.num,
-th.num {
-  text-align: right;
-}
-
+/* Status colors. Pico ships semantic tokens for inserted/deleted and muted
+   text; there is no warning token, so that one pair is spelled out. */
 .ok {
-  color: var(--accent);
-}
-
-.warn {
-  color: var(--warn);
+  color: var(--pico-ins-color);
 }
 
 .bad {
-  color: var(--danger);
+  color: var(--pico-del-color);
 }
 
 .muted {
-  color: var(--muted);
+  color: var(--pico-muted-color);
 }
 
-.mono {
-  font-family: ui-monospace, monospace;
-  font-size: 0.875rem;
-  word-break: break-all;
+.warn {
+  color: light-dark(#8a6d00, #d8b23a);
 }
 
 .empty {
-  color: var(--muted);
+  color: var(--pico-muted-color);
   font-style: italic;
 }
 
-h1 a {
-  color: inherit;
-  text-decoration: none;
+/* Identifiers, payloads and errors read as data, not prose. Pico's `code`
+   styling adds a background chip that is too loud inside dense tables. */
+.mono {
+  font-family: var(--pico-font-family-monospace);
+  /* `break-word` rather than `break-all`/`anywhere`: a ULID or JSON blob still
+     breaks when it genuinely doesn't fit, but this leaves min-content sizing
+     alone, so table columns stay wide enough to keep `Attendances::Create` and
+     error prose on their word boundaries. */
+  overflow-wrap: break-word;
 }
 
-h3 {
-  font-size: 0.875rem;
-  margin: 1.25rem 0 0.5rem;
-  color: var(--muted);
-}
-
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin: 0 0 0.75rem;
-  font-size: 0.875rem;
-}
-
-.detail {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 0.25rem 1rem;
-  margin: 0;
-  font-size: 0.875rem;
-}
-
-.detail dt {
-  color: var(--muted);
-}
-
-.detail dd {
-  margin: 0;
-}
-
-pre {
-  margin: 0;
-  padding: 0.75rem;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  overflow-x: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
+.num {
+  text-align: right;
 }

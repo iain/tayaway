@@ -1,9 +1,13 @@
 <%== render("topbar") %>
-<main class="dashboard">
-  <section class="panel wide">
-    <h2>Job</h2>
-    <p class="filters"><a href="/jobs?state=<%= @job[:dead_at] ? "dead" : "due" %>">← All jobs</a></p>
-    <dl class="detail">
+<main>
+  <h1>Job</h1>
+  <nav>
+    <ul>
+      <li><a href="/jobs?state=<%= @job[:dead_at] ? "dead" : "due" %>">← All jobs</a></li>
+    </ul>
+  </nav>
+  <article>
+    <dl>
       <dt>Class</dt><dd class="mono"><%= @job[:job_class] %></dd>
       <dt>ID</dt><dd class="mono"><%= @job[:id] %></dd>
       <dt>Attempts</dt><dd class="<%= @job[:attempts].zero? ? "" : "warn" %>"><%= @job[:attempts] %> of <%= Jobs::Worker::MAX_ATTEMPTS %></dd>
@@ -13,13 +17,13 @@
       <dt>Dead (UTC)</dt><dd class="bad"><%= utc(@job[:dead_at]) || "—" %></dd>
     </dl>
     <h3>Arguments</h3>
-    <pre class="mono"><%= pretty_json(@job[:args]) %></pre>
+    <pre><%= pretty_json(@job[:args]) %></pre>
     <h3>Last error</h3>
     <% if @job[:last_error] %>
-      <pre class="mono bad"><%= @job[:last_error] %></pre>
+      <pre class="bad"><%= @job[:last_error] %></pre>
     <% else %>
       <p class="empty">None.</p>
     <% end %>
-  </section>
+  </article>
 </main>
 <script src="/admin.js"></script>

@@ -1,17 +1,19 @@
 <%== render("topbar") %>
-<main class="dashboard">
-  <section class="panel wide">
-    <h2>Jobs</h2>
-    <p class="filters">
+<main>
+  <h1>Jobs</h1>
+  <nav>
+    <ul>
       <% Admin::Stats::JOB_STATES.each do |state| %>
         <% label = "#{state} (#{@counts[state.to_sym]})" %>
         <% if state == @state %>
-          <strong><%= label %></strong>
+          <li><strong><%= label %></strong></li>
         <% else %>
-          <a href="/jobs?state=<%= state %>"><%= label %></a>
+          <li><a href="/jobs?state=<%= state %>"><%= label %></a></li>
         <% end %>
       <% end %>
-    </p>
+    </ul>
+  </nav>
+  <article>
     <% if @job_rows.any? %>
       <table>
         <thead>
@@ -44,6 +46,6 @@
     <% else %>
       <p class="empty">No <%= @state %> jobs.</p>
     <% end %>
-  </section>
+  </article>
 </main>
 <script src="/admin.js"></script>
