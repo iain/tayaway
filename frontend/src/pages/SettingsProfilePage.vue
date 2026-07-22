@@ -427,8 +427,8 @@ async function clearAddress(): Promise<void> {
             <div :aria-busy="savingFields.has('timezone')">
               <TimezoneSelect
                 id="profile-timezone"
-                v-model="editTimezone"
                 ref="timezoneRef"
+                v-model="editTimezone"
                 label="Time zone"
                 auto-label="Automatic (follow this device)"
                 hide-label
