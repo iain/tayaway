@@ -3,11 +3,7 @@ import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue'
 import { EllipsisVerticalIcon } from '@heroicons/vue/24/outline'
 
 type RsvpActionKind =
-  | 'attend'
-  | 'decline'
-  | 'set-dates'
-  | 'change-dates'
-  | 'rename'
+  'attend' | 'decline' | 'set-dates' | 'change-dates' | 'rename'
 
 interface RsvpAction {
   kind: RsvpActionKind

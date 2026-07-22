@@ -10,10 +10,7 @@ import type { PoolObject } from '@/types/pool'
 import type { DeletedObject } from '@/types/poolUpdate'
 
 type ConnectionState =
-  | 'disconnected'
-  | 'connecting'
-  | 'connected'
-  | 'authenticated'
+  'disconnected' | 'connecting' | 'connected' | 'authenticated'
 
 interface BroadcastMessage {
   type: 'broadcast'
