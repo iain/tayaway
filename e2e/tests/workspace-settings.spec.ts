@@ -27,6 +27,11 @@ const USER_NAME = 'E2E WS Settings User'
 const ALPHA_NAME = `Alpha-${RUN_TAG}`
 const BETA_NAME = `Beta-${RUN_TAG}`
 const BETA_RENAMED = `Beta-Renamed-${RUN_TAG}`
+// The zone the browser runs in, and the one we move Beta to. Stored zones
+// read as their friendly label in the UI, so assert on that.
+const CREATOR_ZONE = 'Europe/Lisbon'
+const CREATOR_ZONE_LABEL = 'Lisbon · Europe'
+const NEW_ZONE_LABEL = 'Auckland · Pacific'
 
 const OTHER_OWNER_EMAIL = `e2e-ws-settings-other-${RUN_TAG}@example.com`
 const OTHER_OWNER_NAME = 'E2E WS Settings Other Owner'
@@ -51,6 +56,9 @@ async function switchToWorkspace(
 
 test.describe('Workspace settings', () => {
   test.describe.configure({ mode: 'serial' })
+  // Pinned so "a new workspace inherits the creator's zone" is a real
+  // assertion rather than whatever the machine running the suite is set to.
+  test.use({ timezoneId: CREATOR_ZONE })
 
   let apiContext: APIRequestContext
   let sessionToken: string
@@ -88,11 +96,12 @@ test.describe('Workspace settings', () => {
     // the header switcher stays unmounted.
     await expect(page.getByTestId('workspace-switcher-trigger')).toHaveCount(0)
 
-    // Create Beta.
+    // Create Beta. Name is the only thing asked for — the zone follows the
+    // creator's device and is editable afterwards.
     await page.getByTestId('settings-new-workspace').click()
     const dialog = page.getByRole('dialog')
     await dialog.getByLabel('Name').fill(BETA_NAME)
-    await dialog.getByLabel('Timezone').selectOption('Europe/Lisbon')
+    await expect(dialog.getByLabel('Time zone')).toHaveCount(0)
     await dialog.getByRole('button', { name: 'Create' }).click()
 
     // Creating a workspace drops you into it: a group of its own in the
@@ -112,17 +121,31 @@ test.describe('Workspace settings', () => {
       page.getByTestId('workspace-switcher-trigger').first()
     ).toBeVisible()
 
-    // Rename Beta and change its zone from its own settings section.
+    // Its settings open on the creator's zone, unasked.
     await settingsGroup(page, workspaceBeta!)
       .getByRole('link', { name: 'General' })
       .click()
     await expect(page).toHaveURL(`/settings/workspaces/${workspaceBeta}/general`)
-    // Scoped to the form: the (closed) new-workspace dialog stays mounted and
-    // has a Timezone field of its own.
-    const form = page.getByTestId('workspace-general-form')
-    await form.getByLabel('Workspace name').fill(BETA_RENAMED)
-    await form.getByLabel('Timezone').selectOption('Pacific/Auckland')
-    await form.getByRole('button', { name: 'Save' }).click()
+    const general = page.getByTestId('workspace-general')
+    await expect(general).toContainText(CREATOR_ZONE_LABEL)
+
+    // Rename it, one field at a time — the values read as text until clicked,
+    // like the rest of settings.
+    await page.getByTestId('edit-workspace-name-button').click()
+    await page.getByLabel('Workspace name').fill(BETA_RENAMED)
+    await page.getByTestId('save-workspace-name').click()
+
+    // And re-zone it by searching, not by scrolling a 450-entry list. Driven
+    // entirely from the keyboard: the editor opens focused, the first Enter
+    // takes the highlighted match, the second saves.
+    await page.getByTestId('edit-workspace-timezone-button').click()
+    const zoneInput = page.getByRole('combobox', { name: 'Time zone' })
+    await expect(zoneInput).toBeFocused()
+    await zoneInput.fill('Auckland')
+    await zoneInput.press('Enter')
+    await expect(zoneInput).toHaveValue(NEW_ZONE_LABEL)
+    await zoneInput.press('Enter')
+    await expect(general).toContainText(NEW_ZONE_LABEL)
 
     // The rename lands everywhere the name is rendered — sidebar group and
     // header both read from the pool.
@@ -140,13 +163,13 @@ test.describe('Workspace settings', () => {
     await expect(settingsGroup(page, workspaceAlpha)).toBeVisible()
     await expect(settingsGroup(page, workspaceBeta!)).toContainText(BETA_RENAMED)
 
-    // Alpha's own section shows Alpha's values, not the ones we just typed
-    // into Beta's form.
+    // Alpha's own section shows Alpha's values, not the ones we just saved
+    // against Beta.
     await settingsGroup(page, workspaceAlpha)
       .getByRole('link', { name: 'General' })
       .click()
-    await expect(form.getByLabel('Workspace name')).toHaveValue(ALPHA_NAME)
-    await expect(form.getByLabel('Timezone')).toHaveValue('Europe/Amsterdam')
+    await expect(general).toContainText(ALPHA_NAME)
+    await expect(general).not.toContainText(NEW_ZONE_LABEL)
 
     // Switch back to Beta: the edits survived the round trip without a
     // reload.
@@ -157,8 +180,8 @@ test.describe('Workspace settings', () => {
     await settingsGroup(page, workspaceBeta!)
       .getByRole('link', { name: 'General' })
       .click()
-    await expect(form.getByLabel('Workspace name')).toHaveValue(BETA_RENAMED)
-    await expect(form.getByLabel('Timezone')).toHaveValue('Pacific/Auckland')
+    await expect(general).toContainText(BETA_RENAMED)
+    await expect(general).toContainText(NEW_ZONE_LABEL)
   })
 
   test('a workspace you are only a member of gets no settings group', async ({

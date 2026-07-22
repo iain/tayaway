@@ -3,25 +3,25 @@ import { ref } from 'vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import FormInput from '@/components/form/FormInput.vue'
 import FormActions from '@/components/form/FormActions.vue'
-import TimezoneSelect from '@/components/form/TimezoneSelect.vue'
 import { useWorkspaceStore } from '@/stores/workspace'
+import { deviceTimezone } from '@/utils/timezone'
+import { TEXT_LIMITS } from '@/constants/limits'
 
 defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: []; created: [workspaceId: string] }>()
 
 const workspaceStore = useWorkspaceStore()
 
-function deviceZone(): string {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone
-}
-
 const name = ref('')
-const timezone = ref(deviceZone())
 const creating = ref(false)
 const createError = ref<string | null>(null)
 
 // The layout mounts this only while open, so each open starts from the
 // initial state above — no reset needed on the way in or out.
+//
+// Only the name is asked for. The zone starts as the creator's own, which is
+// right nearly always and is a click away in the workspace's settings when
+// it isn't — not worth a second field in the way of getting started.
 async function submit(): Promise<void> {
   if (creating.value || name.value.trim().length === 0) return
   creating.value = true
@@ -29,7 +29,7 @@ async function submit(): Promise<void> {
   try {
     const { workspaceId } = await workspaceStore.createWorkspace(
       name.value.trim(),
-      timezone.value
+      deviceTimezone()
     )
     emit('created', workspaceId)
     emit('close')
@@ -42,24 +42,21 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <BaseModal :open="open" title="New workspace" @close="emit('close')">
+  <BaseModal
+    :open="open"
+    title="New workspace"
+    size="sm"
+    @close="emit('close')"
+  >
     <form @submit.prevent="submit">
-      <div class="flex flex-col gap-4">
-        <FormInput
-          id="new-workspace-name"
-          v-model="name"
-          label="Name"
-          placeholder="Household, Ski trip crew, …"
-          :maxlength="255"
-          required
-        />
-        <TimezoneSelect
-          id="new-workspace-timezone"
-          v-model="timezone"
-          label="Timezone"
-          :auto-label="null"
-        />
-      </div>
+      <FormInput
+        id="new-workspace-name"
+        v-model="name"
+        label="Name"
+        placeholder="Household, Ski trip crew, …"
+        :maxlength="TEXT_LIMITS.name"
+        required
+      />
 
       <p
         v-if="createError"
