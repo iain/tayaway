@@ -65,48 +65,107 @@ RSpec.describe "AdminApp" do
   end
 
   describe "GET / panels" do
-    def insert_dead_job(job_class: "Dead::Job", last_error: "boom")
+    it "renders the stat panels, leaving the detail listings to their own pages" do
       DB[:async_jobs].insert(
-        job_class: job_class,
+        job_class: "Dead::Job",
         args: Sequel.pg_jsonb({}),
         scheduled_at: Time.now,
         attempts: 5,
         dead_at: Time.now,
-        last_error: last_error
+        last_error: "boom"
       )
-    end
-
-    it "renders the four panels with data" do
-      insert_dead_job
       TestFactories.audit_log_entry(service: "Events::Update", outcome: "denied", error_code: "forbidden")
 
       get "/", {}, admin_cookie
 
       body = last_response.body
-      expect(body).to include("Dead::Job")
-      expect(body).to include("boom")
-      expect(body).to include("Events::Update")
-      expect(body).to include("denied")
       expect(body).to include("Min supported")
+      expect(body).to include("dead")
+      expect(body).not_to include("Dead::Job")
+      expect(body).not_to include("Events::Update")
+    end
+  end
+
+  describe "GET /audit" do
+    it "redirects to /login without a session" do
+      get "/audit"
+
+      expect(last_response.status).to eq(302)
     end
 
-    it "escapes HTML coming from job errors" do
-      insert_dead_job(last_error: "<script>alert(1)</script>")
+    it "lists entries and filters by outcome" do
+      TestFactories.audit_log_entry(service: "Events::Create", outcome: "success")
+      TestFactories.audit_log_entry(service: "Members::Remove", outcome: "denied")
 
-      get "/", {}, admin_cookie
+      get "/audit", {}, admin_cookie
+      expect(last_response.body).to include("Events::Create")
+      expect(last_response.body).to include("Members::Remove")
 
+      get "/audit", { "outcome" => "denied" }, admin_cookie
+      expect(last_response.body).to include("Members::Remove")
+      expect(last_response.body).not_to include("Events::Create")
+    end
+  end
+
+  describe "GET /jobs" do
+    def insert_job(job_class: "Some::Job", scheduled_at: Time.now - 60, attempts: 0, dead_at: nil, last_error: nil)
+      DB[:async_jobs].returning(:id).insert(
+        job_class: job_class,
+        args: Sequel.pg_jsonb({ "email" => "a@b.c" }),
+        scheduled_at: scheduled_at,
+        attempts: attempts,
+        dead_at: dead_at,
+        last_error: last_error
+      ).first[:id]
+    end
+
+    it "redirects to /login without a session" do
+      get "/jobs"
+
+      expect(last_response.status).to eq(302)
+    end
+
+    it "lists due jobs by default and filters by state" do
+      insert_job(job_class: "Due::Job")
+      insert_job(job_class: "Dead::Job", dead_at: Time.now, attempts: 5, last_error: "<script>alert(1)</script>")
+
+      get "/jobs", {}, admin_cookie
+      expect(last_response.body).to include("Due::Job")
+      expect(last_response.body).not_to include("Dead::Job")
+
+      get "/jobs", { "state" => "dead" }, admin_cookie
+      expect(last_response.body).to include("Dead::Job")
+      expect(last_response.body).not_to include("Due::Job")
+      expect(last_response.body).not_to include("<script>alert(1)</script>")
+    end
+
+    it "falls back to due for an unknown state" do
+      insert_job(job_class: "Due::Job")
+
+      get "/jobs", { "state" => "bogus" }, admin_cookie
+
+      expect(last_response.status).to eq(200)
+      expect(last_response.body).to include("Due::Job")
+    end
+
+    it "shows a job's details, escaping its error" do
+      id = insert_job(job_class: "Detail::Job", attempts: 3, last_error: "<script>alert(1)</script>")
+
+      get "/jobs/#{id}", {}, admin_cookie
+
+      expect(last_response.status).to eq(200)
+      expect(last_response.body).to include("Detail::Job")
+      expect(last_response.body).to include("a@b.c")
       expect(last_response.body).not_to include("<script>alert(1)</script>")
       expect(last_response.body).to include("&lt;script&gt;")
     end
 
-    it "filters the audit panel by outcome" do
-      TestFactories.audit_log_entry(service: "Events::Create", outcome: "success")
-      TestFactories.audit_log_entry(service: "Members::Remove", outcome: "denied")
+    it "returns 404 for an unknown or malformed job id" do
+      get "/jobs/#{SecureRandom.uuid}", {}, admin_cookie
+      expect(last_response.status).to eq(404)
 
-      get "/", { "outcome" => "denied" }, admin_cookie
-
-      expect(last_response.body).to include("Members::Remove")
-      expect(last_response.body).not_to include("Events::Create")
+      get "/jobs/not-a-uuid", {}, admin_cookie
+      expect(last_response.status).to eq(404)
     end
   end
 
