@@ -100,6 +100,7 @@ test.describe('Workspace settings', () => {
     // creator's device and is editable afterwards.
     await page.getByTestId('settings-new-workspace').click()
     const dialog = page.getByRole('dialog')
+    await expect(dialog.getByLabel('Name')).toBeFocused()
     await dialog.getByLabel('Name').fill(BETA_NAME)
     await expect(dialog.getByLabel('Time zone')).toHaveCount(0)
     await dialog.getByRole('button', { name: 'Create' }).click()

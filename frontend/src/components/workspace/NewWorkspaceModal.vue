@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { nextTick, onMounted, ref, useTemplateRef } from 'vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import FormInput from '@/components/form/FormInput.vue'
 import FormActions from '@/components/form/FormActions.vue'
@@ -15,6 +15,18 @@ const workspaceStore = useWorkspaceStore()
 const name = ref('')
 const creating = ref(false)
 const createError = ref<string | null>(null)
+
+// Opening the dialog puts focus on its close button (that's what showModal
+// does with the first focusable element), so claim it back for the field
+// they came here to fill in. After a tick: BaseModal calls showModal from
+// its own onMounted.
+const nameInputRef =
+  useTemplateRef<InstanceType<typeof FormInput>>('nameInputRef')
+
+onMounted(async () => {
+  await nextTick()
+  nameInputRef.value?.focus()
+})
 
 // The layout mounts this only while open, so each open starts from the
 // initial state above — no reset needed on the way in or out.
@@ -51,6 +63,7 @@ async function submit(): Promise<void> {
     <form @submit.prevent="submit">
       <FormInput
         id="new-workspace-name"
+        ref="nameInputRef"
         v-model="name"
         label="Name"
         placeholder="Household, Ski trip crew, …"
