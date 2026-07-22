@@ -1,7 +1,27 @@
-/* Everything Pico has an element for is Pico's — type, color, spacing, tables,
-   cards, nav, forms. This file is only the few admin-specific pieces it has no
-   opinion about, and it borrows Pico's own custom properties so they follow
-   light/dark with the rest of the page. */
+/* Everything Pico has an element for is Pico's — type, spacing, tables, cards,
+   nav, forms. This file is only the few admin-specific pieces it has no opinion
+   about, plus the handful of places its dark theme doesn't survive contact with
+   an operator dashboard. */
+
+:root {
+  /* Status colors. Pico's --pico-ins-color / --pico-del-color are tuned for
+     inline <ins>/<del> diff text and turn pastel in dark mode — the wrong
+     weight for "this job is dead". Spelled out per mode so a dead job reads as
+     urgent on both grounds, and so `warn` (which Pico has no token for at all)
+     sits on the same footing as its neighbours instead of being a one-off. */
+  --admin-ok: light-dark(#0f6b54, #3fb950);
+  --admin-warn: light-dark(#8a6d00, #e3b341);
+  --admin-bad: light-dark(#b3323b, #ff7b72);
+}
+
+/* Pico's dark theme sets --pico-card-border-color to the card's own background
+   and leans entirely on a drop shadow for separation — but that shadow is black
+   at 1.6–6% alpha, which is invisible against a near-black page, and card and
+   page backgrounds differ by 5/255. The result is that every panel dissolves.
+   Give cards a real edge; in light mode this is the same hairline as the tables. */
+article {
+  border: var(--pico-border-width) solid var(--pico-form-element-border-color);
+}
 
 /* Dashboard counters. */
 .stats {
@@ -10,8 +30,17 @@
   gap: var(--pico-spacing);
 }
 
+/* The counters are data, not links to be read as links — inheriting keeps the
+   job tiles the same weight as the user tiles beside them, instead of splitting
+   the row into link-blue and body-grey. The label carries the affordance. */
 a.stat {
+  color: inherit;
   text-decoration: none;
+}
+
+a.stat:hover .label {
+  color: var(--pico-primary);
+  text-decoration: underline;
 }
 
 .stat .value {
@@ -25,22 +54,20 @@ a.stat {
   font-size: 0.875rem;
 }
 
-/* Status colors. Pico ships semantic tokens for inserted/deleted and muted
-   text; there is no warning token, so that one pair is spelled out. */
 .ok {
-  color: var(--pico-ins-color);
+  color: var(--admin-ok);
+}
+
+.warn {
+  color: var(--admin-warn);
 }
 
 .bad {
-  color: var(--pico-del-color);
+  color: var(--admin-bad);
 }
 
 .muted {
   color: var(--pico-muted-color);
-}
-
-.warn {
-  color: light-dark(#8a6d00, #d8b23a);
 }
 
 .empty {
@@ -61,4 +88,12 @@ a.stat {
 
 .num {
   text-align: right;
+}
+
+/* Login and enroll are a single card, not a dashboard: without this they
+   stretch to the full 1200px container, which in dark mode reads as a slab
+   across the top of an otherwise empty near-black page. */
+.signin {
+  max-width: 24rem;
+  margin-top: 12vh;
 }
