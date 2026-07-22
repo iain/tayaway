@@ -5,12 +5,7 @@ import type { RouteLocationRaw } from 'vue-router'
 const props = withDefaults(
   defineProps<{
     variant?:
-      | 'primary'
-      | 'secondary'
-      | 'amber'
-      | 'inflow'
-      | 'outflow'
-      | 'danger'
+      'primary' | 'secondary' | 'amber' | 'inflow' | 'outflow' | 'danger'
     size?: 'sm' | 'md' | 'lg'
     disabled?: boolean
     loading?: boolean

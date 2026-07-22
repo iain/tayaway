@@ -129,8 +129,7 @@ function subjectName(entry: AuditLogEntry): string | null {
   const poolType = SUBJECT_POOL_TYPE[entry.subjectType]
   if (!poolType) return null
   const obj = pool.get(poolType, entry.subjectId) as
-    | { name?: string; description?: string }
-    | undefined
+    { name?: string; description?: string } | undefined
   return obj?.name ?? null
 }
 
@@ -364,8 +363,7 @@ function formatParams(entry: AuditLogEntry): string {
                 <pre
                   class="text-ink bg-surface border-line mt-1 overflow-x-auto rounded-md border px-3 py-2 font-mono text-xs"
                   data-testid="audit-log-params"
-                  >{{ formatParams(entry) }}</pre
-                >
+                  >{{ formatParams(entry) }}</pre>
               </div>
             </div>
           </li>

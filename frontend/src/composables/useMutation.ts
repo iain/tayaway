@@ -89,13 +89,11 @@ export function useMutation() {
     error.value = null
     try {
       const commandQueue = useCommandQueueStore()
-      const refs = temps.map(
-        (temp): OptimisticRef => ({
-          kind: 'create',
-          objectType: temp.objectType,
-          objectId: temp.id,
-        })
-      )
+      const refs = temps.map((temp): OptimisticRef => ({
+        kind: 'create',
+        objectType: temp.objectType,
+        objectId: temp.id,
+      }))
       const response = await fn(
         withOptimistic(commandQueue, refs.length === 1 ? refs[0]! : refs)
       )

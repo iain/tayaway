@@ -173,11 +173,7 @@ async function setStatusFor(
 }
 
 type RsvpActionKind =
-  | 'attend'
-  | 'decline'
-  | 'set-dates'
-  | 'change-dates'
-  | 'rename'
+  'attend' | 'decline' | 'set-dates' | 'change-dates' | 'rename'
 
 interface RsvpAction {
   kind: RsvpActionKind
