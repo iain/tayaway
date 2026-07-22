@@ -50,7 +50,7 @@ pitchfork = "latest"
 # must match that schema, so bump both together (in lockstep — currently
 # 1.48.0). hk embeds its own pkl evaluator (pklr) since 1.47, so no separate
 # pkl CLI tool is needed to parse hk.pkl.
-hk = "1.48.0"
+hk = "1.52.0"
 aube = "latest"
 taplo = "latest"
 shellcheck = "latest"
