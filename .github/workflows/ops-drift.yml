@@ -65,7 +65,7 @@ jobs:
       CI_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Without this, missing SOPS_AGE_KEY surfaces deep inside mise as
       # "failed to decrypt", which is opaque and red-Xs any PR opened
