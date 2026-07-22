@@ -347,7 +347,7 @@ async function handleSignOut() {
                 {{ currentWorkspace?.name ?? 'Tayaway' }}
               </router-link>
               <!-- Multiple workspaces: name links to dashboard, chevron opens dropdown -->
-              <div v-else class="relative flex items-center gap-0.5">
+              <div v-else class="relative flex items-center gap-2">
                 <router-link
                   to="/"
                   data-testid="current-workspace-name"
@@ -356,10 +356,13 @@ async function handleSignOut() {
                   {{ currentWorkspace?.name ?? 'Tayaway' }}
                 </router-link>
                 <Menu as="div" class="relative">
+                  <!-- Same 28px-visual / 44px-target treatment as the event
+                       switcher below it, and a real focus ring: this button
+                       used to clear its outline without offering one back. -->
                   <MenuButton
                     data-testid="workspace-switcher-trigger"
                     aria-label="Switch workspace"
-                    class="text-nav-text hover:text-nav-text-muted-hover flex items-center focus:outline-hidden"
+                    class="text-nav-text hover:bg-nav-hover relative flex size-7 shrink-0 items-center justify-center rounded-md transition-colors after:absolute after:-inset-2 after:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                   >
                     <ChevronDownIcon class="size-5" aria-hidden="true" />
                   </MenuButton>

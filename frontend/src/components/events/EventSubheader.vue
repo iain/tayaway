@@ -72,7 +72,11 @@ function tabClass(active: boolean): string {
           <p class="text-ink-muted text-xs font-medium tracking-wide uppercase">
             Event
           </p>
-          <div class="flex items-center gap-0.5">
+          <!-- Positioned here rather than on the Menu so the dropdown hangs
+               off the row's left edge: anchored to the trigger it would start
+               wherever the (truncated, variable-length) name happens to end,
+               and run off a narrow screen. -->
+          <div class="relative flex items-center gap-2">
             <router-link
               :to="`/events/${eventId}`"
               data-testid="event-name"
@@ -82,11 +86,21 @@ function tabClass(active: boolean): string {
             </router-link>
             <!-- Escape hatch for when the derived focus guesses wrong (two
                  overlapping trips, or planning next summer during this one). -->
-            <Menu v-if="otherEvents.length > 0" as="div" class="relative">
+            <Menu v-if="otherEvents.length > 0" as="div">
+              <!-- The chevron reads as a 28px control but takes pointer input
+                   across 44px (`after` inset, no layout cost): WCAG 2.5.8 asks
+                   for 24, touch asks for more, and the bar is on every page so
+                   it can't afford to grow. Its neighbours above and below are
+                   plain text, so the overspill catches nothing else.
+
+                   The label names the action and nothing else. Folding the
+                   event name in makes the button answer to that name, for
+                   role-name queries and AT users alike, when the name belongs
+                   to the link beside it and reading order already supplies it. -->
               <MenuButton
                 data-testid="focus-switcher-trigger"
                 aria-label="Switch event"
-                class="text-ink-muted hover:text-ink focus-visible:outline-focus flex items-center rounded focus-visible:outline-2 focus-visible:outline-offset-2"
+                class="text-ink-muted hover:bg-surface-page hover:text-ink focus-visible:outline-focus relative flex size-7 shrink-0 items-center justify-center rounded-md transition-colors after:absolute after:-inset-2 after:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2"
               >
                 <ChevronDownIcon class="size-5" aria-hidden="true" />
               </MenuButton>
@@ -99,7 +113,7 @@ function tabClass(active: boolean): string {
                 leave-to-class="transform opacity-0 scale-95"
               >
                 <MenuItems
-                  class="bg-surface ring-ring-hairline absolute left-0 z-20 mt-2 w-64 origin-top-left rounded-md py-1 shadow-lg ring-1 focus:outline-hidden"
+                  class="bg-surface ring-ring-hairline absolute top-full left-0 z-20 mt-2 w-64 max-w-[calc(100vw-2rem)] origin-top-left rounded-md py-1 shadow-lg ring-1 focus:outline-hidden"
                 >
                   <MenuItem
                     v-for="other in otherEvents"
