@@ -86,6 +86,18 @@ RSpec.describe "AdminApp" do
     end
   end
 
+  describe "static assets" do
+    # The stylesheets have stable, undigested filenames. Without an explicit
+    # revalidation header the browser caches them off Last-Modified alone, and
+    # a restyle renders as the old CSS over the new markup.
+    it "serves the stylesheet with a revalidation header" do
+      get "/admin.css"
+
+      expect(last_response.status).to eq(200)
+      expect(last_response.headers["Cache-Control"]).to eq("no-cache")
+    end
+  end
+
   describe "GET /audit" do
     it "redirects to /login without a session" do
       get "/audit"

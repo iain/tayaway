@@ -1,17 +1,19 @@
 <%== render("topbar") %>
-<main class="dashboard">
-  <section class="panel wide">
-    <h2>Audit log</h2>
-    <p class="filters">
+<main>
+  <h1>Audit log</h1>
+  <nav>
+    <ul>
       <% [nil, *Admin::Stats::AUDIT_OUTCOMES].each do |outcome| %>
         <% label = outcome || "all" %>
         <% if outcome == @audit_outcome %>
-          <strong><%= label %></strong>
+          <li><strong><%= label %></strong></li>
         <% else %>
-          <a href="/audit<%= outcome ? "?outcome=#{outcome}" : "" %>"><%= label %></a>
+          <li><a href="/audit<%= outcome ? "?outcome=#{outcome}" : "" %>"><%= label %></a></li>
         <% end %>
       <% end %>
-    </p>
+    </ul>
+  </nav>
+  <article>
     <% if @audit.any? %>
       <table>
         <thead>
@@ -33,6 +35,6 @@
     <% else %>
       <p class="empty">No audit entries.</p>
     <% end %>
-  </section>
+  </article>
 </main>
 <script src="/admin.js"></script>

@@ -1,13 +1,17 @@
-<header class="topbar">
-  <h1><a href="/">Tayaway admin</a></h1>
+<header>
   <nav>
-    <a href="/">Dashboard</a>
-    <a href="/jobs">Jobs</a>
-    <a href="/audit">Audit log</a>
+    <ul>
+      <li><strong><a href="/">Tayaway admin</a></strong></li>
+    </ul>
+    <ul>
+      <li><a href="/">Dashboard</a></li>
+      <li><a href="/jobs">Jobs</a></li>
+      <li><a href="/audit">Audit log</a></li>
+    </ul>
+    <ul>
+      <li class="muted"><%= current_admin_credential[:nickname] %></li>
+      <li><a href="/enroll">Add passkey</a></li>
+      <li><button id="logout" type="button">Sign out</button></li>
+    </ul>
   </nav>
-  <div class="session">
-    <span><%= current_admin_credential[:nickname] %></span>
-    <a href="/enroll">Add passkey</a>
-    <button id="logout" type="button">Sign out</button>
-  </div>
 </header>

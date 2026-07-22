@@ -13,8 +13,21 @@ follow-up.
   different command). It is never routed from the main app, so a main-app
   auth or routing bug can't expose an admin endpoint — and vice versa.
 - **Server-rendered.** ERB via Roda's render plugin (escape-by-default),
-  one static CSS file, one small vanilla JS file for the passkey ceremony
+  two static CSS files, one small vanilla JS file for the passkey ceremony
   and logout. No SPA, no build step, no service worker.
+- **Styled by Pico.** `public/pico.classless.min.css` is the vendored
+  class-less build of [Pico](https://picocss.com) (v2.1.1 — the version is
+  in the file's banner comment; upgrade by re-downloading it, there is no
+  package manager here on purpose). It styles bare semantic elements, so
+  the templates are plain HTML — `<article>` is a card, `<nav><ul><li>` is
+  the topbar and the filter rows — and it brings dark mode, form controls
+  and focus rings along for free. `public/admin.css` is deliberately tiny
+  on top: only the dashboard stat tiles and a few status-color utilities,
+  written against Pico's own `--pico-*` custom properties so they follow
+  light/dark with everything else. Reach for a `--pico-*` override before
+  writing a new rule, and keep it that way — it is what makes the admin
+  site cheap to maintain. It shares nothing with the main frontend's
+  Tailwind/DESIGN.json system, which would drag a build step in with it.
 - **Pages.** `/` is the dashboard and holds counters only — jobs by
   state, users, client versions — with the listings on their own pages
   behind the topbar nav. `/jobs?state=due|scheduled|retrying|dead` lists

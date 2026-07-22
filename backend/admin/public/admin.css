@@ -1,248 +1,110 @@
+/* Everything Pico has an element for is Pico's — type, spacing, tables, cards,
+   nav, forms. This file is only the few admin-specific pieces it has no opinion
+   about, plus the handful of places its dark theme doesn't survive contact with
+   an operator dashboard. */
+
 :root {
-  --bg: #f6f7f9;
-  --panel: #ffffff;
-  --text: #1c2430;
-  --muted: #64748b;
-  --border: #dbe1e8;
-  --accent: #0f6b54;
-  --danger: #b3323b;
-  --warn: #9a6700;
+  /* Pico scales the root font up with the viewport — 100% through 131.25%, so a
+     desktop window lands on 20px. That suits the prose-width pages Pico is
+     built around, but this is an operator dashboard read at a glance, and it
+     put the admin site a size above the main app. Pinning to 100% holds it at
+     the browser default 16px, matching the frontend's --text-body of 1rem. */
+  --pico-font-size: 100%;
+
+  /* Status colors. Pico's --pico-ins-color / --pico-del-color are tuned for
+     inline <ins>/<del> diff text and turn pastel in dark mode — the wrong
+     weight for "this job is dead". Spelled out per mode so a dead job reads as
+     urgent on both grounds, and so `warn` (which Pico has no token for at all)
+     sits on the same footing as its neighbours instead of being a one-off. */
+  --admin-ok: light-dark(#0f6b54, #3fb950);
+  --admin-warn: light-dark(#8a6d00, #e3b341);
+  --admin-bad: light-dark(#b3323b, #ff7b72);
 }
 
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font: 1rem/1.5 ui-sans-serif, system-ui, sans-serif;
-}
-
-h1 {
-  font-size: 1.125rem;
-  margin: 0;
-}
-
-h2 {
-  font-size: 0.875rem;
-  margin: 0 0 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-}
-
-button {
-  font: inherit;
-  padding: 0.4rem 0.9rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--panel);
-  color: var(--text);
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.login {
-  max-width: 22rem;
-  margin: 18vh auto 0;
-  padding: 2rem;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  text-align: center;
-}
-
-.login button {
-  width: 100%;
-  padding: 0.6rem;
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-}
-
-.login button:hover {
-  filter: brightness(1.1);
-  color: #fff;
-}
-
-.error {
-  color: var(--danger);
-}
-
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem 1.25rem;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
-}
-
-.topbar nav {
-  display: flex;
-  gap: 1rem;
-  margin-right: auto;
-  padding-left: 1.5rem;
-  font-size: 0.875rem;
-}
-
-.topbar .session {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: var(--muted);
-}
-
-.dashboard {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr));
-  gap: 1rem;
-  padding: 1.25rem;
-  align-items: start;
-}
-
-.panel {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 1rem 1.25rem;
+/* Pico's dark theme sets --pico-card-border-color to the card's own background
+   and leans entirely on a drop shadow for separation — but that shadow is black
+   at 1.6–6% alpha, which is invisible against a near-black page, and card and
+   page backgrounds differ by 5/255. The result is that every panel dissolves.
+   Give cards a real edge; in light mode this is the same hairline as the tables. */
+article {
+  border: var(--pico-border-width) solid var(--pico-form-element-border-color);
+  /* A serialised job payload is one unbreakable token, so a wide jobs or audit
+     table can exceed the container no matter how the columns are squeezed. Let
+     it scroll inside its own card rather than pushing the page sideways. */
   overflow-x: auto;
 }
 
-.panel.wide {
-  grid-column: 1 / -1;
-}
-
+/* Dashboard counters. */
 .stats {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.5rem;
-  margin-bottom: 0.5rem;
+  gap: var(--pico-spacing);
 }
 
+/* The counters are data, not links to be read as links — inheriting keeps the
+   job tiles the same weight as the user tiles beside them, instead of splitting
+   the row into link-blue and body-grey. The label carries the affordance. */
 a.stat {
   color: inherit;
   text-decoration: none;
 }
 
 a.stat:hover .label {
-  color: var(--accent);
+  color: var(--pico-primary);
   text-decoration: underline;
 }
 
 .stat .value {
-  font-size: 1.875rem;
+  font-size: 2rem;
   font-weight: 600;
+  line-height: 1.2;
 }
 
 .stat .label {
-  color: var(--muted);
+  color: var(--pico-muted-color);
   font-size: 0.875rem;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-}
-
-th,
-td {
-  text-align: left;
-  padding: 0.35rem 0.6rem 0.35rem 0;
-  border-bottom: 1px solid var(--border);
-  vertical-align: top;
-}
-
-th {
-  color: var(--muted);
-  font-weight: 500;
-}
-
-tr:last-child td {
-  border-bottom: none;
-}
-
-td.num,
-th.num {
-  text-align: right;
 }
 
 .ok {
-  color: var(--accent);
+  color: var(--admin-ok);
 }
 
 .warn {
-  color: var(--warn);
+  color: var(--admin-warn);
 }
 
 .bad {
-  color: var(--danger);
+  color: var(--admin-bad);
 }
 
 .muted {
-  color: var(--muted);
-}
-
-.mono {
-  font-family: ui-monospace, monospace;
-  font-size: 0.875rem;
-  word-break: break-all;
+  color: var(--pico-muted-color);
 }
 
 .empty {
-  color: var(--muted);
+  color: var(--pico-muted-color);
   font-style: italic;
 }
 
-h1 a {
-  color: inherit;
-  text-decoration: none;
+/* Identifiers, payloads and errors read as data, not prose. Pico's `code`
+   styling adds a background chip that is too loud inside dense tables. */
+.mono {
+  font-family: var(--pico-font-family-monospace);
+  /* `break-word` rather than `break-all`/`anywhere`: a ULID or JSON blob still
+     breaks when it genuinely doesn't fit, but this leaves min-content sizing
+     alone, so table columns stay wide enough to keep `Attendances::Create` and
+     error prose on their word boundaries. */
+  overflow-wrap: break-word;
 }
 
-h3 {
-  font-size: 0.875rem;
-  margin: 1.25rem 0 0.5rem;
-  color: var(--muted);
+.num {
+  text-align: right;
 }
 
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin: 0 0 0.75rem;
-  font-size: 0.875rem;
-}
-
-.detail {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 0.25rem 1rem;
-  margin: 0;
-  font-size: 0.875rem;
-}
-
-.detail dt {
-  color: var(--muted);
-}
-
-.detail dd {
-  margin: 0;
-}
-
-pre {
-  margin: 0;
-  padding: 0.75rem;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  overflow-x: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
+/* Login and enroll are a single card, not a dashboard: without this they
+   stretch to the full 1200px container, which in dark mode reads as a slab
+   across the top of an otherwise empty near-black page. */
+.signin {
+  max-width: 24rem;
+  margin-top: 12vh;
 }

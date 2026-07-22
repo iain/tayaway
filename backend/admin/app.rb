@@ -16,7 +16,15 @@ class AdminApp < Roda
   plugin :json_parser
   plugin :cookies
   plugin :render, views: File.expand_path("views", __dir__), escape: true
-  plugin :public, root: File.expand_path("public", __dir__)
+  # The stylesheets have stable, undigested filenames, and `default_headers`
+  # doesn't reach these responses — Rack::Files builds its own. Without an
+  # explicit header the browser caches admin.css off its Last-Modified alone and
+  # never revalidates, so a restyle renders as the old CSS over the new markup
+  # until someone thinks to hard-reload. `no-cache` still permits caching; it
+  # just forces the conditional request that Last-Modified answers with a 304.
+  plugin :public,
+         root: File.expand_path("public", __dir__),
+         headers: { "Cache-Control" => "no-cache" }
   # The admin site serves no third-party content and is never embedded;
   # lock the CSP down to same-origin scripts/styles and fetch calls.
   plugin :default_headers,
@@ -24,7 +32,10 @@ class AdminApp < Roda
                                       "connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
          "X-Content-Type-Options" => "nosniff",
          "X-Frame-Options" => "DENY",
-         "Referrer-Policy" => "no-referrer"
+         "Referrer-Policy" => "no-referrer",
+         # Dashboard pages are per-session operator data; don't let them sit in
+         # a disk cache either.
+         "Cache-Control" => "no-cache"
   plugin :error_handler do |e|
     unless APP_CONFIG.test?
       APP_LOGGER.error { "[AdminApp] #{e.class}: #{e.message}\n#{e.backtrace&.first(10)&.join("\n")}" }

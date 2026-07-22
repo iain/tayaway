@@ -1,6 +1,7 @@
 <%== render("topbar") %>
-<main class="dashboard">
-  <section class="panel">
+<main>
+  <h1>Dashboard</h1>
+  <article>
     <h2>Jobs</h2>
     <div class="stats">
       <a class="stat" href="/jobs?state=due"><div class="value"><%= @jobs[:due] %></div><div class="label">due</div></a>
@@ -8,9 +9,9 @@
       <a class="stat" href="/jobs?state=retrying"><div class="value<%= @jobs[:retrying].zero? ? "" : " warn" %>"><%= @jobs[:retrying] %></div><div class="label">retrying</div></a>
       <a class="stat" href="/jobs?state=dead"><div class="value<%= @jobs[:dead].zero? ? " ok" : " bad" %>"><%= @jobs[:dead] %></div><div class="label">dead</div></a>
     </div>
-  </section>
+  </article>
 
-  <section class="panel">
+  <article>
     <h2>Users</h2>
     <div class="stats">
       <div class="stat"><div class="value"><%= @users[:total] %></div><div class="label">users</div></div>
@@ -19,9 +20,9 @@
       <div class="stat"><div class="value"><%= @users[:active_sessions] %></div><div class="label">active sessions</div></div>
       <div class="stat"><div class="value"><%= @users[:active_users_7d] %></div><div class="label">active users (7d)</div></div>
     </div>
-  </section>
+  </article>
 
-  <section class="panel">
+  <article>
     <h2>Client versions</h2>
     <p class="muted">Min supported: v<%= @versions[:min_supported] %> · active sessions by newest advertised version</p>
     <% if @versions[:buckets].any? %>
@@ -48,6 +49,6 @@
     <% else %>
       <p class="empty">No active sessions.</p>
     <% end %>
-  </section>
+  </article>
 </main>
 <script src="/admin.js"></script>
