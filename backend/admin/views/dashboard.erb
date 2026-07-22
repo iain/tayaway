@@ -8,25 +8,6 @@
       <a class="stat" href="/jobs?state=retrying"><div class="value<%= @jobs[:retrying].zero? ? "" : " warn" %>"><%= @jobs[:retrying] %></div><div class="label">retrying</div></a>
       <a class="stat" href="/jobs?state=dead"><div class="value<%= @jobs[:dead].zero? ? " ok" : " bad" %>"><%= @jobs[:dead] %></div><div class="label">dead</div></a>
     </div>
-    <% if @jobs[:dead_jobs].any? %>
-      <table>
-        <thead>
-          <tr><th>Job</th><th>Last error</th><th class="num">Attempts</th><th>Dead at (UTC)</th></tr>
-        </thead>
-        <tbody>
-          <% @jobs[:dead_jobs].each do |job| %>
-            <tr>
-              <td class="mono"><a href="/jobs/<%= job[:id] %>"><%= job[:job_class] %></a><br><span class="muted"><%= job[:args].to_json %></span></td>
-              <td class="mono bad"><%= truncate(job[:last_error]) %></td>
-              <td class="num"><%= job[:attempts] %></td>
-              <td><%= utc(job[:dead_at]) %></td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    <% else %>
-      <p class="empty">No dead jobs.</p>
-    <% end %>
   </section>
 
   <section class="panel">
@@ -66,41 +47,6 @@
       </table>
     <% else %>
       <p class="empty">No active sessions.</p>
-    <% end %>
-  </section>
-
-  <section class="panel wide">
-    <h2>Audit log</h2>
-    <p class="filters">
-      <% [nil, *Admin::Stats::AUDIT_OUTCOMES].each do |outcome| %>
-        <% label = outcome || "all" %>
-        <% if outcome == @audit_outcome %>
-          <strong><%= label %></strong>
-        <% else %>
-          <a href="/<%= outcome ? "?outcome=#{outcome}" : "" %>"><%= label %></a>
-        <% end %>
-      <% end %>
-    </p>
-    <% if @audit.any? %>
-      <table>
-        <thead>
-          <tr><th>Time (UTC)</th><th>Service</th><th>Actor</th><th>Subject</th><th>Outcome</th><th>Error</th></tr>
-        </thead>
-        <tbody>
-          <% @audit.each do |entry| %>
-            <tr>
-              <td><%= utc(entry[:created_at]) %></td>
-              <td class="mono"><%= entry[:service] %></td>
-              <td><%= entry[:actor_email] || entry[:actor_kind] %></td>
-              <td class="mono"><%= [entry[:subject_type], entry[:subject_id]].compact.join(" ") %></td>
-              <td class="<%= { "success" => "ok", "denied" => "warn", "error" => "bad" }.fetch(entry[:outcome], "") %>"><%= entry[:outcome] %></td>
-              <td class="mono"><%= [entry[:error_code], truncate(entry[:error_message], 120)].compact.reject(&:empty?).join(": ") %></td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    <% else %>
-      <p class="empty">No audit entries.</p>
     <% end %>
   </section>
 </main>

@@ -15,12 +15,14 @@ follow-up.
 - **Server-rendered.** ERB via Roda's render plugin (escape-by-default),
   one static CSS file, one small vanilla JS file for the passkey ceremony
   and logout. No SPA, no build step, no service worker.
-- **Pages.** `/` is the dashboard (job counters, users, client versions,
-  audit log). `/jobs?state=due|scheduled|retrying|dead` lists the rows
-  behind each counter — the states overlap exactly as the counters do, so
-  a retrying job also shows up under due or scheduled depending on where
-  its backoff landed. `/jobs/:id` is the full row for one job: payload,
-  attempts against the retry budget, and the untruncated last error.
+- **Pages.** `/` is the dashboard and holds counters only — jobs by
+  state, users, client versions — with the listings on their own pages
+  behind the topbar nav. `/jobs?state=due|scheduled|retrying|dead` lists
+  the rows behind each job counter; the states overlap exactly as the
+  counters do, so a retrying job also shows up under due or scheduled
+  depending on where its backoff landed. `/jobs/:id` is the full row for
+  one job: payload, attempts against the retry budget, and the
+  untruncated last error. `/audit?outcome=` is the audit log.
 - **Read models only.** `Admin::Stats` queries `async_jobs`,
   `audit_log_entries`, `users`, and `sessions` (including
   `last_seen_client_version` — see doc/protocol-versioning.md) and returns

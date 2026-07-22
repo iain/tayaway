@@ -5,7 +5,6 @@ module Admin
   # plain hashes for the ERB templates — no writes, no models, and in
   # production they run on the read-only AdminDb connection.
   module Stats
-    DEAD_JOBS_LIMIT = 20
     JOB_LIST_LIMIT = 100
     # The four buckets the dashboard counts. They deliberately overlap the
     # way the counters do: a retrying job is also due or scheduled,
@@ -23,12 +22,7 @@ module Admin
           due: base.where(dead_at: nil).where(Sequel[:scheduled_at] <= now).count,
           scheduled: base.where(dead_at: nil).where(Sequel[:scheduled_at] > now).count,
           retrying: base.where(dead_at: nil).where { attempts > 0 }.count,
-          dead: base.exclude(dead_at: nil).count,
-          dead_jobs: base.exclude(dead_at: nil)
-                         .order(Sequel.desc(:dead_at))
-                         .limit(DEAD_JOBS_LIMIT)
-                         .select(:id, :job_class, :args, :attempts, :last_error, :dead_at)
-                         .all
+          dead: base.exclude(dead_at: nil).count
         }
       end
 

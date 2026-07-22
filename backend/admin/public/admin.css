@@ -84,6 +84,14 @@ button:hover {
   border-bottom: 1px solid var(--border);
 }
 
+.topbar nav {
+  display: flex;
+  gap: 1rem;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  font-size: 0.875rem;
+}
+
 .topbar .session {
   display: flex;
   align-items: center;

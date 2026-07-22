@@ -28,15 +28,6 @@ RSpec.describe Admin::Stats do
       expect(stats[:retrying]).to eq(1)
       expect(stats[:dead]).to eq(1)
     end
-
-    it "lists dead jobs newest first" do
-      insert_job(dead_at: Time.now - 3600, job_class: "Old::Job")
-      insert_job(dead_at: Time.now, job_class: "New::Job")
-
-      dead = described_class.jobs[:dead_jobs]
-
-      expect(dead.map { |j| j[:job_class] }).to eq(["New::Job", "Old::Job"])
-    end
   end
 
   describe ".job_list" do

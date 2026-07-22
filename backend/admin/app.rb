@@ -216,13 +216,23 @@ class AdminApp < Roda
       end
     end
 
+    r.on "audit" do
+      if current_admin_session
+        r.get true do
+          @audit_outcome = Admin::Stats::AUDIT_OUTCOMES.include?(r.params["outcome"]) ? r.params["outcome"] : nil
+          @audit = Admin::Stats.audit(outcome: @audit_outcome)
+          view "audit"
+        end
+      else
+        r.redirect "/"
+      end
+    end
+
     r.root do
       if current_admin_session
         @jobs = Admin::Stats.jobs
         @users = Admin::Stats.users
         @versions = Admin::Stats.client_versions
-        @audit_outcome = Admin::Stats::AUDIT_OUTCOMES.include?(r.params["outcome"]) ? r.params["outcome"] : nil
-        @audit = Admin::Stats.audit(outcome: @audit_outcome)
         view "dashboard"
       elsif Admin::State.db[:admin_credentials].empty?
         r.redirect "/enroll"
