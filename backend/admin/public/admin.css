@@ -4,6 +4,13 @@
    an operator dashboard. */
 
 :root {
+  /* Pico scales the root font up with the viewport — 100% through 131.25%, so a
+     desktop window lands on 20px. That suits the prose-width pages Pico is
+     built around, but this is an operator dashboard read at a glance, and it
+     put the admin site a size above the main app. Pinning to 100% holds it at
+     the browser default 16px, matching the frontend's --text-body of 1rem. */
+  --pico-font-size: 100%;
+
   /* Status colors. Pico's --pico-ins-color / --pico-del-color are tuned for
      inline <ins>/<del> diff text and turn pastel in dark mode — the wrong
      weight for "this job is dead". Spelled out per mode so a dead job reads as
@@ -21,6 +28,10 @@
    Give cards a real edge; in light mode this is the same hairline as the tables. */
 article {
   border: var(--pico-border-width) solid var(--pico-form-element-border-color);
+  /* A serialised job payload is one unbreakable token, so a wide jobs or audit
+     table can exceed the container no matter how the columns are squeezed. Let
+     it scroll inside its own card rather than pushing the page sideways. */
+  overflow-x: auto;
 }
 
 /* Dashboard counters. */
