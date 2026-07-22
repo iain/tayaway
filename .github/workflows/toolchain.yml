@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Compute the tag before any `mise install`. `mise install` can rewrite
       # mise.lock lazily on first install for a platform, which would change

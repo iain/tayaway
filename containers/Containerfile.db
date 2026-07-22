@@ -12,7 +12,7 @@ ARG WALG_VERSION=v3.0.8
 # wal-g links libsodium and brotli via cgo, so the build needs their -dev
 # headers + a C toolchain + cmake (brotli is built from a vendored checkout
 # by `make deps`). USE_LIBSODIUM flips on the libsodium build tag + link.
-FROM docker.io/library/golang:1.25-bookworm AS walg-build
+FROM docker.io/library/golang:1.26-bookworm AS walg-build
 ARG WALG_VERSION
 RUN apt-get update && apt-get install -y --no-install-recommends \
       git make cmake gcc libc6-dev pkg-config libsodium-dev ca-certificates \

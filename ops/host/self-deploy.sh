@@ -68,7 +68,10 @@ restart_stack() {
 # not about cert chain edge cases during a renewal.
 smoke_test() {
   local site deadline code
-  site=$(grep -oP 'SITE_ADDRESS=https?://\K[^/ ]+' "$QUADLET_DIR/edge.container")
+  # Anchored: an unanchored SITE_ADDRESS also matches WWW_SITE_ADDRESS (#503),
+  # yielding two hosts and a mangled curl URL — every deploy then "fails
+  # verification" after the full window and rolls back (2026-07-21 outage).
+  site=$(grep -oP '^Environment=SITE_ADDRESS=https?://\K[^/ ]+' "$QUADLET_DIR/edge.container")
   deadline=$(($(date +%s) + 45))
   while [ "$(date +%s)" -lt "$deadline" ]; do
     code=$(curl -fsS -k -o /dev/null -w '%{http_code}' -m 10 \

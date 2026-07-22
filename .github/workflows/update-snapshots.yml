@@ -30,7 +30,7 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # Need the branch's full history so the bot push fast-forwards instead
           # of clobbering, and a token that can push back (default token's
@@ -42,7 +42,7 @@ jobs:
         run: sudo apt-get install -y libmaxminddb-dev
 
       - name: Cache frontend node_modules
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             node_modules
@@ -51,7 +51,7 @@ jobs:
           restore-keys: node-${{ runner.os }}-
 
       - name: Cache Playwright browsers
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('aube-lock.yaml') }}

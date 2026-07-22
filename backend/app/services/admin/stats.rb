@@ -5,7 +5,12 @@ module Admin
   # plain hashes for the ERB templates — no writes, no models, and in
   # production they run on the read-only AdminDb connection.
   module Stats
-    DEAD_JOBS_LIMIT = 20
+    JOB_LIST_LIMIT = 100
+    # The four buckets the dashboard counts. They deliberately overlap the
+    # way the counters do: a retrying job is also due or scheduled,
+    # depending on where its backoff put `scheduled_at`.
+    JOB_STATES = %w[due scheduled retrying dead].freeze
+    UUID = /\A\h{8}-\h{4}-\h{4}-\h{4}-\h{12}\z/
     AUDIT_LIMIT = 50
     AUDIT_OUTCOMES = %w[success denied error].freeze
 
@@ -17,13 +22,36 @@ module Admin
           due: base.where(dead_at: nil).where(Sequel[:scheduled_at] <= now).count,
           scheduled: base.where(dead_at: nil).where(Sequel[:scheduled_at] > now).count,
           retrying: base.where(dead_at: nil).where { attempts > 0 }.count,
-          dead: base.exclude(dead_at: nil).count,
-          dead_jobs: base.exclude(dead_at: nil)
-                         .order(Sequel.desc(:dead_at))
-                         .limit(DEAD_JOBS_LIMIT)
-                         .select(:id, :job_class, :args, :attempts, :last_error, :dead_at)
-                         .all
+          dead: base.exclude(dead_at: nil).count
         }
+      end
+
+      # Rows behind one of the dashboard's job counters. Dead jobs read
+      # newest-first (most recent failure is the interesting one); the live
+      # states read by scheduled_at ascending, which is claim order.
+      def job_list(state:)
+        base = db[:async_jobs]
+        now = Time.now
+        ds =
+          if state == "dead"
+            base.exclude(dead_at: nil).order(Sequel.desc(:dead_at))
+          elsif state == "scheduled"
+            base.where(dead_at: nil).where(Sequel[:scheduled_at] > now).order(:scheduled_at)
+          elsif state == "retrying"
+            base.where(dead_at: nil).where { attempts > 0 }.order(:scheduled_at)
+          else
+            base.where(dead_at: nil).where(Sequel[:scheduled_at] <= now).order(:scheduled_at)
+          end
+
+        ds.limit(JOB_LIST_LIMIT).all
+      end
+
+      # nil for an unknown id, and for a malformed one — the id comes
+      # straight off the URL, and Postgres raises on a non-uuid literal.
+      def job(id)
+        if id.to_s.match?(UUID)
+          db[:async_jobs].where(id: id).first
+        end
       end
 
       def users

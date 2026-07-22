@@ -17,7 +17,7 @@ OnFailure=notify@%n.service
 
 [Container]
 ContainerName=admin
-Image=ghcr.io/iain/tayaway-backend:e70495c3637da5b0a33a88e6079e03e30ad23bea
+Image=ghcr.io/iain/tayaway-backend:4c29c7d738859ba9bf65c27af0ae5a36d39ce64b
 Exec=bundle exec falcon-host admin/falcon.rb
 Network=tayaway.network
 Volume=/etc/tayaway/env/.env.production:/app/backend/.env.production:ro
