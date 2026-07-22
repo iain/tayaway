@@ -10,7 +10,7 @@ import {
   PAGE_LOAD_TIMEOUT,
 } from '../helpers'
 
-/** Each test gets its own user: /chores shows every current event in the
+/** Each test gets its own user: focus is derived from every event in the
  *  workspace, and the suite runs fullyParallel. */
 async function freshUser(
   playwright: { request: { newContext: (options?: object) => Promise<APIRequestContext> } },
@@ -37,8 +37,8 @@ async function seedRoster(
   })
 }
 
-test.describe('Chores in the main navigation', () => {
-  test('nav item opens the roster of the event under way', async ({
+test.describe('Current event focus', () => {
+  test('names the focused event everywhere, and /chores hands off to it', async ({
     page,
     playwright,
   }) => {
@@ -49,8 +49,8 @@ test.describe('Chores in the main navigation', () => {
     const uid = Date.now()
     const { ctx, token } = await freshUser(
       playwright,
-      `e2e-chores-nav-current-${uid}@example.com`,
-      'Chores Nav Current'
+      `e2e-focus-current-${uid}@example.com`,
+      'Focus Current'
     )
     const eventId = await createDatedEvent(
       ctx,
@@ -64,27 +64,30 @@ test.describe('Chores in the main navigation', () => {
     await setupAuthenticatedPage(page, token)
     await page.goto('/')
 
-    await page
-      .getByTestId('main-nav')
-      .getByRole('link', { name: 'Chores', exact: true })
-      .click()
+    // The bar names the focused event on workspace pages too, not just while
+    // you happen to be inside the event.
+    await expect(page.getByTestId('event-name')).toHaveText(
+      `Alpine Week ${uid}`,
+      { timeout: PAGE_LOAD_TIMEOUT }
+    )
 
-    await expect(page).toHaveURL('/chores')
-    await expect(page.getByText(`Alpine Week ${uid}`)).toBeVisible({
-      timeout: PAGE_LOAD_TIMEOUT,
-    })
+    // The old standalone chores page is now just a bookmark: it hands off to
+    // the focused event's own tab.
+    await page.goto('/chores')
+
+    await expect(page).toHaveURL(`/events/${eventId}/chores`)
     await expect(page.getByText('Cooking')).toBeVisible()
   })
 
-  test('shows a roster for each event under way', async ({
+  test('shows the focused event only, and follows the switcher', async ({
     page,
     playwright,
   }) => {
     const uid = Date.now()
     const { ctx, token } = await freshUser(
       playwright,
-      `e2e-chores-nav-overlap-${uid}@example.com`,
-      'Chores Nav Overlap'
+      `e2e-focus-overlap-${uid}@example.com`,
+      'Focus Overlap'
     )
     const firstId = await createDatedEvent(
       ctx,
@@ -105,51 +108,28 @@ test.describe('Chores in the main navigation', () => {
     await setupAuthenticatedPage(page, token)
     await page.goto('/chores')
 
-    await expect(page.getByText(`Beach House ${uid}`)).toBeVisible({
+    // One roster, not a stack of them: focus lands on the event ending
+    // soonest, and the subheader says which one you're looking at.
+    await expect(page).toHaveURL(`/events/${firstId}/chores`, {
       timeout: PAGE_LOAD_TIMEOUT,
     })
-    await expect(page.getByText(`City Break ${uid}`)).toBeVisible()
+    await expect(page.getByTestId('chore-roster-section')).toHaveCount(1)
     await expect(page.getByText('Washing up')).toBeVisible()
+    await expect(page.getByTestId('event-name')).toHaveText(
+      `Beach House ${uid}`
+    )
+
+    // The switcher is how you reach the overlapping trip — and the page
+    // follows focus without going through the events list.
+    await page.getByTestId('focus-switcher-trigger').click()
+    await page
+      .locator(`[data-testid="focus-switcher-option"][data-event-id="${secondId}"]`)
+      .click()
+
+    await expect(page).toHaveURL(`/events/${secondId}/chores`)
+    await expect(page.getByTestId('event-name')).toHaveText(`City Break ${uid}`)
     await expect(page.getByText('Shopping')).toBeVisible()
-
-    // One roster section per event under way, not a single merged view.
-    await expect(page.getByTestId('chore-roster-section')).toHaveCount(2)
-
-    // Exercise a mutation in the SECOND section specifically — the section
-    // that's most at risk of popover mis-anchoring or an optimistic update
-    // landing in the wrong roster when two sections are mounted side by side.
-    const secondSection = page.locator(
-      `[data-testid="chore-roster-section"][data-event-id="${secondId}"]`
-    )
-    const firstSection = page.locator(
-      `[data-testid="chore-roster-section"][data-event-id="${firstId}"]`
-    )
-
-    await secondSection.getByTitle('Assign someone').first().click()
-    await expect(
-      secondSection.locator('.fixed.z-50').getByText('Shopping')
-    ).toBeVisible()
-
-    const [assignResp] = await Promise.all([
-      page.waitForResponse(
-        (resp) =>
-          resp.url().includes('/assignments') &&
-          resp.request().method() === 'POST'
-      ),
-      secondSection
-        .getByRole('button', { name: 'Assign You', exact: true })
-        .click(),
-    ])
-    expect(assignResp.status()).toBe(201)
-
-    // The assignment shows up in the second section's roster...
-    await expect(
-      secondSection.getByRole('button', { name: /pinned/i }).first()
-    ).toBeVisible()
-    // ...and does not leak into the first event's roster.
-    await expect(
-      firstSection.getByRole('button', { name: /pinned/i })
-    ).toHaveCount(0)
+    await expect(page.getByTestId('chore-roster-section')).toHaveCount(1)
   })
 
   test('falls back to the next upcoming event when none is under way', async ({
@@ -159,8 +139,8 @@ test.describe('Chores in the main navigation', () => {
     const uid = Date.now()
     const { ctx, token } = await freshUser(
       playwright,
-      `e2e-chores-nav-upcoming-${uid}@example.com`,
-      'Chores Nav Upcoming'
+      `e2e-focus-upcoming-${uid}@example.com`,
+      'Focus Upcoming'
     )
     const soonId = await createDatedEvent(
       ctx,
@@ -194,8 +174,8 @@ test.describe('Chores in the main navigation', () => {
     const uid = Date.now()
     const { ctx, token } = await freshUser(
       playwright,
-      `e2e-chores-nav-empty-${uid}@example.com`,
-      'Chores Nav Empty'
+      `e2e-focus-empty-${uid}@example.com`,
+      'Focus Empty'
     )
     await ctx.dispose()
 

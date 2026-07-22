@@ -1,8 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
+import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { useObjectPoolStore } from '@/stores/objectPool'
+import { useWorkspaceStore } from '@/stores/workspace'
 import { makeEvent, seedPool } from '@/test/factories'
+import { useFocusedEvent } from '@/composables/useFocusedEvent'
 import ChoresPage from './ChoresPage.vue'
 
 /** ISO date `days` from today — the page reads the real clock. */
@@ -10,25 +12,22 @@ function offsetDate(days: number): string {
   return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10)
 }
 
+const replace = vi.fn()
+vi.mock('vue-router', () => ({
+  useRouter: () => ({ replace }),
+}))
+
+// The redirect watcher stays live for as long as the component is mounted,
+// and the pin it watches is module-level — a page left mounted by an earlier
+// test would keep firing `replace` during the next one.
+enableAutoUnmount(afterEach)
+
 let pool: ReturnType<typeof useObjectPoolStore>
 
 function mountPage() {
   return mount(ChoresPage, {
     global: {
-      stubs: {
-        ChoreRosterSection: {
-          name: 'ChoreRosterSection',
-          props: [
-            'eventId',
-            'title',
-            'subtitle',
-            'headingStyle',
-            'scrollToToday',
-          ],
-          template: '<div class="roster-section">{{ title }}</div>',
-        },
-        AppButton: { template: '<button><slot /></button>' },
-      },
+      stubs: { AppButton: { template: '<button><slot /></button>' } },
     },
   })
 }
@@ -36,10 +35,17 @@ function mountPage() {
 describe('ChoresPage', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    localStorage.clear()
+    replace.mockClear()
     pool = useObjectPoolStore()
+    useWorkspaceStore().currentWorkspaceId = 'ws-1'
+    useFocusedEvent().unpinEvent()
   })
 
-  it('renders a roster section for the event under way', () => {
+  // /chores is a legacy entry point — it kept its own copy of the roster back
+  // when the nav had a Chores item. There's one chores surface now, so the
+  // URL just hands off to the focused event's tab rather than duplicating it.
+  it('redirects to the focused event chores tab', () => {
     seedPool(
       pool,
       makeEvent({
@@ -50,49 +56,36 @@ describe('ChoresPage', () => {
       })
     )
 
-    const wrapper = mountPage()
-    const sections = wrapper.findAllComponents({ name: 'ChoreRosterSection' })
+    mountPage()
 
-    expect(sections).toHaveLength(1)
-    expect(sections[0]!.props('eventId')).toBe('evt-now')
-    expect(sections[0]!.props('title')).toBe('Alpine Week')
-    expect(sections[0]!.props('headingStyle')).toBe('section')
-    // A lone section is effectively the whole page, so it should scroll to today.
-    expect(sections[0]!.props('scrollToToday')).toBe(true)
+    expect(replace).toHaveBeenCalledWith('/events/evt-now/chores')
   })
 
-  it('renders one section per overlapping event', () => {
+  it('follows the pin rather than the calendar', () => {
     seedPool(
       pool,
       makeEvent({
-        id: 'evt-a',
-        name: 'Beach House',
-        startDate: offsetDate(-2),
-        endDate: offsetDate(2),
+        id: 'evt-now',
+        startDate: offsetDate(-1),
+        endDate: offsetDate(1),
       }),
       makeEvent({
-        id: 'evt-b',
-        name: 'City Break',
-        startDate: offsetDate(-1),
-        endDate: offsetDate(3),
+        id: 'evt-later',
+        startDate: offsetDate(30),
+        endDate: offsetDate(33),
       })
     )
+    useFocusedEvent().pinEvent('evt-later')
 
-    const wrapper = mountPage()
-    const sections = wrapper.findAllComponents({ name: 'ChoreRosterSection' })
+    mountPage()
 
-    expect(sections).toHaveLength(2)
-    // With multiple sections mounted, none should scroll — they'd fight over it.
-    expect(sections[0]!.props('scrollToToday')).toBe(false)
-    expect(sections[1]!.props('scrollToToday')).toBe(false)
+    expect(replace).toHaveBeenCalledWith('/events/evt-later/chores')
   })
 
-  it('shows the empty state when there is no active event', () => {
+  it('shows the empty state when no event holds focus', () => {
     const wrapper = mountPage()
 
-    expect(
-      wrapper.findAllComponents({ name: 'ChoreRosterSection' })
-    ).toHaveLength(0)
+    expect(replace).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('No active event')
   })
 })

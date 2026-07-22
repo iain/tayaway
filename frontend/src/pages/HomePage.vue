@@ -6,6 +6,7 @@ import { usePollsNeedingAttention } from '@/composables/usePollsNeedingAttention
 import { useEventsNeedingRsvp } from '@/composables/useEventsNeedingRsvp'
 import { useUpcomingEvents } from '@/composables/useUpcomingEvents'
 import { useUpcomingChores } from '@/composables/useUpcomingChores'
+import { useOpenExpenses } from '@/composables/useOpenExpenses'
 import { useEventsList } from '@/composables/useEventsList'
 import { storeToRefs } from 'pinia'
 import {
@@ -41,6 +42,13 @@ const {
   hiddenCount: choresHiddenCount,
 } = useUpcomingChores()
 const { currentEvents, pastEvents, hasEvents } = useEventsList()
+// Shared with `useFocusedEvent`: an event with money still in flight is one
+// the group isn't done with, on the dashboard and for focus decay alike.
+const {
+  unsettledExpenseCountByEvent,
+  unpaidTransferCountByEvent,
+  hasOpenExpenses,
+} = useOpenExpenses()
 
 // Set of event ids the current user still owes an RSVP — surfaced as a badge
 // on both happening-now and upcoming event cards.
@@ -90,42 +98,8 @@ const attendeeCountByEvent = computed<Map<string, number>>(() => {
   return counts
 })
 
-// Precompute unsettled expense counts by event ID — O(expenses) instead of O(events * expenses)
-const unsettledExpenseCountByEvent = computed<Map<string, number>>(() => {
-  const counts = new Map<string, number>()
-  for (const e of pool.getAll('expense')) {
-    if (!e.settlementId) {
-      counts.set(e.eventId, (counts.get(e.eventId) ?? 0) + 1)
-    }
-  }
-  return counts
-})
-
-// Precompute unpaid transfer counts by event ID — O(settlements + transfers) instead of O(events * (settlements + transfers))
-const unpaidTransferCountByEvent = computed<Map<string, number>>(() => {
-  // Build a map from settlementId -> eventId in one pass
-  const eventBySettlement = new Map<string, string>()
-  for (const s of pool.getAll('settlement')) {
-    eventBySettlement.set(s.id, s.eventId)
-  }
-  const counts = new Map<string, number>()
-  for (const t of pool.getAll('settlementTransfer')) {
-    if (!t.paidAt && !t.supersededAt) {
-      const eventId = eventBySettlement.get(t.settlementId)
-      if (eventId) {
-        counts.set(eventId, (counts.get(eventId) ?? 0) + 1)
-      }
-    }
-  }
-  return counts
-})
-
 const pastEventsWithOpenExpenses = computed(() =>
-  pastEvents.value.filter(
-    (e) =>
-      (unsettledExpenseCountByEvent.value.get(e.id) ?? 0) > 0 ||
-      (unpaidTransferCountByEvent.value.get(e.id) ?? 0) > 0
-  )
+  pastEvents.value.filter((e) => hasOpenExpenses(e.id))
 )
 
 const { members } = storeToRefs(useMembersStore())

@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue'
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+  watchEffect,
+} from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter, useRoute } from 'vue-router'
 import {
@@ -44,6 +51,7 @@ import UnreadDot from '@/components/common/UnreadDot.vue'
 import EventSubheader from '@/components/events/EventSubheader.vue'
 import { useCommandPalette } from '@/composables/useCommandPalette'
 import { useEventContextCommands } from '@/composables/useEventContextCommands'
+import { useFocusedEvent } from '@/composables/useFocusedEvent'
 import { can } from '@/composables/usePermission'
 
 useEventContextCommands()
@@ -151,7 +159,6 @@ const navigation = computed(() => {
   const items = [
     { name: 'Dashboard', href: '/', routeName: 'home' },
     { name: 'Events', href: '/events', routeName: 'events' },
-    { name: 'Chores', href: '/chores', routeName: 'chores' },
     { name: 'Tasks', href: '/tasks', routeName: 'tasks' },
     { name: 'Settle up', href: '/settle-up', routeName: 'settle-up' },
     { name: 'Members', href: '/members', routeName: 'members' },
@@ -183,12 +190,46 @@ const eventDetailRoutes = new Set([
 
 const currentEvent = computed(() => {
   const name = route.name as string
-  const id = route.params.id as string | undefined
+  const id = route.params?.id as string | undefined
   if (!id || !eventDetailRoutes.has(name)) return null
   return objectPoolStore.get('event', id) ?? null
 })
 
 const currentEventName = computed(() => currentEvent.value?.name ?? null)
+
+// Opening an event is itself the act of focusing it — nobody should have to
+// "enter event mode" explicitly. A peek at a long-finished event still pins,
+// but `useFocusedEvent` refuses to honour a pin that has decayed, so the peek
+// doesn't stick.
+const { focusedEvent, pinEvent } = useFocusedEvent()
+watch(
+  currentEvent,
+  (event) => {
+    if (event) pinEvent(event.id)
+  },
+  { immediate: true }
+)
+
+// Pages where naming a focused event adds nothing: the events list is where
+// you go to *choose* one, so a bar pinning one competes with the list right
+// below it, and settings is account-level work with no event context at all.
+const focusBarSuppressedRoutes = new Set(['events', 'events-new'])
+
+// The bar follows the URL when there is one, and the focused event otherwise,
+// so chores/settle-up/dashboard all say which event they're about.
+const subheaderEvent = computed(() => {
+  const name = route.name as string
+  if (currentEvent.value) {
+    return currentEvent.value
+  } else if (
+    focusBarSuppressedRoutes.has(name) ||
+    name?.startsWith('settings')
+  ) {
+    return null
+  } else {
+    return focusedEvent.value
+  }
+})
 
 const routeTitleMap: Record<string, string> = {
   home: 'Dashboard',
@@ -306,7 +347,7 @@ async function handleSignOut() {
                 {{ currentWorkspace?.name ?? 'Tayaway' }}
               </router-link>
               <!-- Multiple workspaces: name links to dashboard, chevron opens dropdown -->
-              <div v-else class="relative flex items-center gap-0.5">
+              <div v-else class="relative flex items-center gap-2">
                 <router-link
                   to="/"
                   data-testid="current-workspace-name"
@@ -315,10 +356,13 @@ async function handleSignOut() {
                   {{ currentWorkspace?.name ?? 'Tayaway' }}
                 </router-link>
                 <Menu as="div" class="relative">
+                  <!-- Same 28px-visual / 44px-target treatment as the event
+                       switcher below it, and a real focus ring: this button
+                       used to clear its outline without offering one back. -->
                   <MenuButton
                     data-testid="workspace-switcher-trigger"
                     aria-label="Switch workspace"
-                    class="text-nav-text hover:text-nav-text-muted-hover flex items-center focus:outline-hidden"
+                    class="text-nav-text hover:bg-nav-hover relative flex size-7 shrink-0 items-center justify-center rounded-md transition-colors after:absolute after:-inset-2 after:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                   >
                     <ChevronDownIcon class="size-5" aria-hidden="true" />
                   </MenuButton>
@@ -639,7 +683,7 @@ async function handleSignOut() {
     </header>
 
     <!-- Event subheader -->
-    <EventSubheader v-if="currentEvent" :event="currentEvent" />
+    <EventSubheader v-if="subheaderEvent" :event="subheaderEvent" />
 
     <main>
       <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
