@@ -1,0 +1,49 @@
+<%== render("topbar") %>
+<main class="dashboard">
+  <section class="panel wide">
+    <h2>Jobs</h2>
+    <p class="filters">
+      <% Admin::Stats::JOB_STATES.each do |state| %>
+        <% label = "#{state} (#{@counts[state.to_sym]})" %>
+        <% if state == @state %>
+          <strong><%= label %></strong>
+        <% else %>
+          <a href="/jobs?state=<%= state %>"><%= label %></a>
+        <% end %>
+      <% end %>
+    </p>
+    <% if @job_rows.any? %>
+      <table>
+        <thead>
+          <tr>
+            <th>Job</th>
+            <th>Scheduled (UTC)</th>
+            <th class="num">Attempts</th>
+            <th>Last error</th>
+            <th><%= @state == "dead" ? "Dead at (UTC)" : "Locked at (UTC)" %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @job_rows.each do |job| %>
+            <tr>
+              <td class="mono">
+                <a href="/jobs/<%= job[:id] %>"><%= job[:job_class] %></a>
+                <br><span class="muted"><%= truncate(job[:args].to_json, 80) %></span>
+              </td>
+              <td><%= utc(job[:scheduled_at]) %></td>
+              <td class="num<%= job[:attempts].zero? ? "" : " warn" %>"><%= job[:attempts] %></td>
+              <td class="mono bad"><%= truncate(job[:last_error], 120) %></td>
+              <td><%= utc(@state == "dead" ? job[:dead_at] : job[:locked_at]) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+      <% if @job_rows.length == Admin::Stats::JOB_LIST_LIMIT %>
+        <p class="muted">Showing the first <%= Admin::Stats::JOB_LIST_LIMIT %> jobs.</p>
+      <% end %>
+    <% else %>
+      <p class="empty">No <%= @state %> jobs.</p>
+    <% end %>
+  </section>
+</main>
+<script src="/admin.js"></script>

@@ -1,19 +1,12 @@
-<header class="topbar">
-  <h1>Tayaway admin</h1>
-  <div class="session">
-    <span><%= current_admin_credential[:nickname] %></span>
-    <a href="/enroll">Add passkey</a>
-    <button id="logout" type="button">Sign out</button>
-  </div>
-</header>
+<%== render("topbar") %>
 <main class="dashboard">
   <section class="panel">
     <h2>Jobs</h2>
     <div class="stats">
-      <div class="stat"><div class="value"><%= @jobs[:due] %></div><div class="label">due</div></div>
-      <div class="stat"><div class="value"><%= @jobs[:scheduled] %></div><div class="label">scheduled</div></div>
-      <div class="stat"><div class="value<%= @jobs[:retrying].zero? ? "" : " warn" %>"><%= @jobs[:retrying] %></div><div class="label">retrying</div></div>
-      <div class="stat"><div class="value<%= @jobs[:dead].zero? ? " ok" : " bad" %>"><%= @jobs[:dead] %></div><div class="label">dead</div></div>
+      <a class="stat" href="/jobs?state=due"><div class="value"><%= @jobs[:due] %></div><div class="label">due</div></a>
+      <a class="stat" href="/jobs?state=scheduled"><div class="value"><%= @jobs[:scheduled] %></div><div class="label">scheduled</div></a>
+      <a class="stat" href="/jobs?state=retrying"><div class="value<%= @jobs[:retrying].zero? ? "" : " warn" %>"><%= @jobs[:retrying] %></div><div class="label">retrying</div></a>
+      <a class="stat" href="/jobs?state=dead"><div class="value<%= @jobs[:dead].zero? ? " ok" : " bad" %>"><%= @jobs[:dead] %></div><div class="label">dead</div></a>
     </div>
     <% if @jobs[:dead_jobs].any? %>
       <table>
@@ -23,7 +16,7 @@
         <tbody>
           <% @jobs[:dead_jobs].each do |job| %>
             <tr>
-              <td class="mono"><%= job[:job_class] %><br><span class="muted"><%= job[:args].to_json %></span></td>
+              <td class="mono"><a href="/jobs/<%= job[:id] %>"><%= job[:job_class] %></a><br><span class="muted"><%= job[:args].to_json %></span></td>
               <td class="mono bad"><%= truncate(job[:last_error]) %></td>
               <td class="num"><%= job[:attempts] %></td>
               <td><%= utc(job[:dead_at]) %></td>

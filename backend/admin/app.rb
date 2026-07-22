@@ -106,6 +106,10 @@ class AdminApp < Roda
     time&.getutc&.strftime("%Y-%m-%d %H:%M")
   end
 
+  def pretty_json(value)
+    JSON.pretty_generate(value)
+  end
+
   def truncate(str, length = 200)
     if str.nil?
       ""
@@ -187,6 +191,29 @@ class AdminApp < Roda
       Admin::State.db[:admin_sessions].where(id: session.id).delete
       clear_admin_cookie
       { message: "Logged out" }
+    end
+
+    r.on "jobs" do
+      if current_admin_session
+        r.get String do |id|
+          @job = Admin::Stats.job(id)
+          if @job
+            view "job"
+          else
+            response.status = 404
+            view "not_found"
+          end
+        end
+
+        r.get true do
+          @state = Admin::Stats::JOB_STATES.include?(r.params["state"]) ? r.params["state"] : "due"
+          @counts = Admin::Stats.jobs
+          @job_rows = Admin::Stats.job_list(state: @state)
+          view "jobs"
+        end
+      else
+        r.redirect "/"
+      end
     end
 
     r.root do

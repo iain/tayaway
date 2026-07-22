@@ -39,6 +39,57 @@ RSpec.describe Admin::Stats do
     end
   end
 
+  describe ".job_list" do
+    it "selects the rows behind each dashboard counter" do
+      insert_job(scheduled_at: Time.now - 60, job_class: "Due::Job")
+      insert_job(scheduled_at: Time.now + 3600, job_class: "Scheduled::Job")
+      insert_job(scheduled_at: Time.now + 60, attempts: 2, last_error: "boom", job_class: "Retrying::Job")
+      insert_job(dead_at: Time.now, attempts: 5, last_error: "dead boom", job_class: "Dead::Job")
+
+      by_state = Admin::Stats::JOB_STATES.to_h { |state| [state, described_class.job_list(state: state)] }
+
+      expect(by_state["due"].map { |j| j[:job_class] }).to eq(["Due::Job"])
+      expect(by_state["scheduled"].map { |j| j[:job_class] }).to contain_exactly("Scheduled::Job", "Retrying::Job")
+      expect(by_state["retrying"].map { |j| j[:job_class] }).to eq(["Retrying::Job"])
+      expect(by_state["dead"].map { |j| j[:job_class] }).to eq(["Dead::Job"])
+    end
+
+    it "orders due jobs oldest first and dead jobs newest first" do
+      insert_job(scheduled_at: Time.now - 60, job_class: "Newer::Job")
+      insert_job(scheduled_at: Time.now - 3600, job_class: "Older::Job")
+      insert_job(dead_at: Time.now - 3600, job_class: "OldDead::Job")
+      insert_job(dead_at: Time.now, job_class: "NewDead::Job")
+
+      expect(described_class.job_list(state: "due").map { |j| j[:job_class] })
+        .to eq(["Older::Job", "Newer::Job"])
+      expect(described_class.job_list(state: "dead").map { |j| j[:job_class] })
+        .to eq(["NewDead::Job", "OldDead::Job"])
+    end
+  end
+
+  describe ".job" do
+    it "returns the full row for a single job" do
+      id = DB[:async_jobs].returning(:id).insert(
+        job_class: "Detail::Job",
+        args: Sequel.pg_jsonb({ "email" => "a@b.c" }),
+        scheduled_at: Time.now,
+        attempts: 1,
+        last_error: "boom"
+      ).first[:id]
+
+      job = described_class.job(id)
+
+      expect(job[:job_class]).to eq("Detail::Job")
+      expect(job[:args]).to eq({ "email" => "a@b.c" })
+      expect(job[:last_error]).to eq("boom")
+    end
+
+    it "returns nil for an unknown or malformed id" do
+      expect(described_class.job(SecureRandom.uuid)).to be_nil
+      expect(described_class.job("not-a-uuid")).to be_nil
+    end
+  end
+
   describe ".users" do
     it "counts users, signups, and active sessions" do
       old_user = TestFactories.user
