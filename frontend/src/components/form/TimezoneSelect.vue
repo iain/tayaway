@@ -6,11 +6,15 @@ import FormSelect from '@/components/form/FormSelect.vue'
 // (value ""). Used for the event zone (auto = derive from location) and the
 // user's display zone (auto = follow this device). The effective zone is shown
 // as a hint while "auto" is selected, so the implicit choice stays visible.
+//
+// `autoLabel: null` drops the auto option for the zones that are always
+// explicit — a workspace's own zone is what everything else falls back to,
+// so there is nothing behind it to defer to.
 const props = defineProps<{
   id: string
   label: string
   modelValue: string // "" = auto/default
-  autoLabel: string
+  autoLabel: string | null
   disabled?: boolean
   effectiveZone?: string | null
 }>()
@@ -25,7 +29,7 @@ function supportedZones(): string[] {
 }
 
 const options = computed(() => [
-  { value: '', label: props.autoLabel },
+  ...(props.autoLabel === null ? [] : [{ value: '', label: props.autoLabel }]),
   ...supportedZones().map((z) => ({ value: z, label: z })),
 ])
 </script>

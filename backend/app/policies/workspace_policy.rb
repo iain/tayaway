@@ -3,7 +3,7 @@
 class WorkspacePolicy
   include Policy
 
-  ACTIONS = %i[create_event create_task_list create_guest invite manage_members view_audit_log].freeze
+  ACTIONS = %i[create_event create_task_list create_guest invite manage_members edit view_audit_log].freeze
 
   def initialize(_workspace, membership:, **)
     @admin_or_owner = %w[admin owner].include?(membership.role)
@@ -31,6 +31,16 @@ class WorkspacePolicy
   end
 
   def manage_members
+    if @admin_or_owner
+      Success()
+    else
+      Failure(:not_admin_or_owner)
+    end
+  end
+
+  # The workspace's own settings — name, timezone. Same bar as managing
+  # members: whoever runs the group can configure it.
+  def edit
     if @admin_or_owner
       Success()
     else

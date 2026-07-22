@@ -117,9 +117,12 @@ test.describe('Workspace settings', () => {
       .getByRole('link', { name: 'General' })
       .click()
     await expect(page).toHaveURL(`/settings/workspaces/${workspaceBeta}/general`)
-    await page.getByLabel('Workspace name').fill(BETA_RENAMED)
-    await page.getByLabel('Timezone').selectOption('Pacific/Auckland')
-    await page.getByRole('button', { name: 'Save' }).click()
+    // Scoped to the form: the (closed) new-workspace dialog stays mounted and
+    // has a Timezone field of its own.
+    const form = page.getByTestId('workspace-general-form')
+    await form.getByLabel('Workspace name').fill(BETA_RENAMED)
+    await form.getByLabel('Timezone').selectOption('Pacific/Auckland')
+    await form.getByRole('button', { name: 'Save' }).click()
 
     // The rename lands everywhere the name is rendered — sidebar group and
     // header both read from the pool.
@@ -142,8 +145,8 @@ test.describe('Workspace settings', () => {
     await settingsGroup(page, workspaceAlpha)
       .getByRole('link', { name: 'General' })
       .click()
-    await expect(page.getByLabel('Workspace name')).toHaveValue(ALPHA_NAME)
-    await expect(page.getByLabel('Timezone')).toHaveValue('Europe/Amsterdam')
+    await expect(form.getByLabel('Workspace name')).toHaveValue(ALPHA_NAME)
+    await expect(form.getByLabel('Timezone')).toHaveValue('Europe/Amsterdam')
 
     // Switch back to Beta: the edits survived the round trip without a
     // reload.
@@ -154,8 +157,8 @@ test.describe('Workspace settings', () => {
     await settingsGroup(page, workspaceBeta!)
       .getByRole('link', { name: 'General' })
       .click()
-    await expect(page.getByLabel('Workspace name')).toHaveValue(BETA_RENAMED)
-    await expect(page.getByLabel('Timezone')).toHaveValue('Pacific/Auckland')
+    await expect(form.getByLabel('Workspace name')).toHaveValue(BETA_RENAMED)
+    await expect(form.getByLabel('Timezone')).toHaveValue('Pacific/Auckland')
   })
 
   test('a workspace you are only a member of gets no settings group', async ({

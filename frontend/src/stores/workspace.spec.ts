@@ -139,3 +139,64 @@ describe('workspace store — removed from current workspace', () => {
     expect(localStorage.getItem('current_workspace_id')).toBeNull()
   })
 })
+
+describe('workspace store — administeredWorkspaces', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+    vi.mocked(poolDb.loadObjectsByType).mockReset().mockResolvedValue([])
+  })
+
+  function workspace(id: string, name: string): PoolObject {
+    return {
+      id,
+      objectType: 'workspace',
+      name,
+      timezone: 'Europe/Amsterdam',
+      memberIds: [],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    } as unknown as PoolObject
+  }
+
+  function membership(workspaceId: string, role: string): PoolObject {
+    return {
+      id: `m-${workspaceId}`,
+      objectType: 'member',
+      workspaceId,
+      userId: 'user-1',
+      email: 'user@example.com',
+      name: 'User One',
+      role,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    } as unknown as PoolObject
+  }
+
+  // The settings sidebar can't read this off `workspace.permissions`: the
+  // personal sync serializes workspaces with no viewer, so only the active
+  // workspace ever carries them. Our own membership rows do arrive for every
+  // workspace, and they carry the role.
+  it('lists every workspace we own or administer, not just the active one', () => {
+    const pool = useObjectPoolStore()
+    pool.importObjects(
+      [
+        workspace('ws-owned', 'Owned'),
+        workspace('ws-admin', 'Administered'),
+        workspace('ws-member', 'Just a member'),
+        membership('ws-owned', 'owner'),
+        membership('ws-admin', 'admin'),
+        membership('ws-member', 'member'),
+      ],
+      { scope: Scope.personal() }
+    )
+
+    const store = useWorkspaceStore()
+    store.initialize(['ws-member'])
+
+    expect(store.administeredWorkspaces.map((w) => w.id)).toEqual([
+      'ws-owned',
+      'ws-admin',
+    ])
+  })
+})

@@ -1,10 +1,17 @@
 import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { useObjectPoolStore } from './objectPool'
-import type { PoolWorkspace, PoolObject } from '@/types/pool'
+import { useAuthStore } from './auth'
+import { useMutation } from '@/composables/useMutation'
+import { nowIso } from '@/utils/date'
+import type { PoolApiResponse, PoolWorkspace, PoolObject } from '@/types/pool'
 import { OBJECT_TYPES } from '@/types/pool'
 import { loadObjectsByType } from '@/api/poolDb'
 import { Scope } from '@/api/scope'
+
+// Roles that may configure a workspace. Mirrors WorkspacePolicy#edit — the
+// same bar as managing members.
+const ADMIN_ROLES = ['admin', 'owner']
 
 // Exported so other modules (poolPersistence cold-start, websocket
 // reconnect URL) can read the same key without hardcoding the string.
@@ -27,6 +34,25 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   const otherWorkspaces = computed<PoolWorkspace[]>(() => {
     return allWorkspaces.value.filter((w) => w.id !== currentWorkspaceId.value)
+  })
+
+  // The workspaces this user administers, in the same order as the selector.
+  //
+  // Deliberately derived from our own membership rows rather than from
+  // `workspace.permissions`: the personal sync serializes workspaces without
+  // a viewer, so only the *active* workspace carries permissions. Membership
+  // rows for every workspace do arrive on the personal channel, and they
+  // carry the role.
+  const administeredWorkspaces = computed<PoolWorkspace[]>(() => {
+    const userId = useAuthStore().currentUserId
+    if (!userId) return []
+    const adminIds = new Set(
+      pool
+        .getAll('member')
+        .filter((m) => m.userId === userId && ADMIN_ROLES.includes(m.role))
+        .map((m) => m.workspaceId)
+    )
+    return allWorkspaces.value.filter((w) => adminIds.has(w.id))
   })
 
   function initialize(workspaceIds: string[]): void {
@@ -120,9 +146,73 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     { flush: 'sync', immediate: true }
   )
 
+  const { loading, error, create, update } = useMutation()
+
+  // Creates a workspace and moves into it. The server makes the caller its
+  // owner, so the membership comes back with the workspace and the new
+  // group is administrable straight away.
+  async function createWorkspace(
+    name: string,
+    timezone: string
+  ): Promise<{ workspaceId: string; queued: boolean }> {
+    const workspaceId = crypto.randomUUID()
+    const now = nowIso()
+    const tempWorkspace: PoolWorkspace = {
+      id: workspaceId,
+      objectType: 'workspace',
+      name,
+      timezone,
+      memberIds: [],
+      createdAt: now,
+      updatedAt: now,
+    }
+
+    const result = await create(
+      'Failed to create workspace',
+      tempWorkspace,
+      (commandQueue) =>
+        commandQueue.enqueue<PoolApiResponse>('POST', '/workspaces', {
+          id: workspaceId,
+          name,
+          timezone,
+        })
+    )
+
+    if (!result.queued) {
+      // The command queue tags mutation responses with the scope the command
+      // was enqueued in — the workspace we're still in. Add the personal
+      // scope, which is where cross-workspace rows live, so switching away
+      // from the old workspace doesn't clear the one we just made.
+      pool.importObjects(result.data.objects ?? [], { scope: Scope.personal() })
+      await switchWorkspace(workspaceId)
+    }
+
+    return { workspaceId, queued: result.queued }
+  }
+
+  async function updateWorkspace(
+    id: string,
+    changes: { name?: string; timezone?: string }
+  ): Promise<void> {
+    await update(
+      'Failed to update workspace',
+      'workspace',
+      id,
+      changes,
+      (commandQueue) =>
+        commandQueue.enqueue<PoolApiResponse>(
+          'PATCH',
+          `/workspaces/${id}`,
+          changes
+        )
+    )
+  }
+
   function $reset(): void {
     currentWorkspaceId.value = null
     localStorage.removeItem(STORAGE_KEY)
+    loading.value = false
+    error.value = null
   }
 
   return {
@@ -130,8 +220,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     currentWorkspace,
     allWorkspaces,
     otherWorkspaces,
+    administeredWorkspaces,
+    loading,
+    error,
     initialize,
     switchWorkspace,
+    createWorkspace,
+    updateWorkspace,
     $reset,
   }
 })
