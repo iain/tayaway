@@ -76,7 +76,7 @@ test.describe('Chores in the main navigation', () => {
     await expect(page.getByText('Cooking')).toBeVisible()
   })
 
-  test('shows a roster for each event under way', async ({
+  test('shows the focused event only, and follows the switcher', async ({
     page,
     playwright,
   }) => {
@@ -105,51 +105,31 @@ test.describe('Chores in the main navigation', () => {
     await setupAuthenticatedPage(page, token)
     await page.goto('/chores')
 
-    await expect(page.getByText(`Beach House ${uid}`)).toBeVisible({
+    // One roster, not a stack of them: focus lands on the event ending
+    // soonest, and the subheader says which one you're looking at.
+    await expect(page.getByTestId('chore-roster-section')).toHaveCount(1, {
       timeout: PAGE_LOAD_TIMEOUT,
     })
-    await expect(page.getByText(`City Break ${uid}`)).toBeVisible()
     await expect(page.getByText('Washing up')).toBeVisible()
+    await expect(page.getByTestId('event-name')).toHaveText(
+      `Beach House ${uid}`
+    )
+
+    // The switcher is how you reach the overlapping trip — and the page
+    // follows focus without going through the events list.
+    await page.getByTestId('focus-switcher-trigger').click()
+    await page
+      .locator(`[data-testid="focus-switcher-option"][data-event-id="${secondId}"]`)
+      .click()
+
+    await expect(page.getByTestId('event-name')).toHaveText(`City Break ${uid}`)
     await expect(page.getByText('Shopping')).toBeVisible()
-
-    // One roster section per event under way, not a single merged view.
-    await expect(page.getByTestId('chore-roster-section')).toHaveCount(2)
-
-    // Exercise a mutation in the SECOND section specifically — the section
-    // that's most at risk of popover mis-anchoring or an optimistic update
-    // landing in the wrong roster when two sections are mounted side by side.
-    const secondSection = page.locator(
-      `[data-testid="chore-roster-section"][data-event-id="${secondId}"]`
-    )
-    const firstSection = page.locator(
-      `[data-testid="chore-roster-section"][data-event-id="${firstId}"]`
-    )
-
-    await secondSection.getByTitle('Assign someone').first().click()
     await expect(
-      secondSection.locator('.fixed.z-50').getByText('Shopping')
+      page.locator(
+        `[data-testid="chore-roster-section"][data-event-id="${secondId}"]`
+      )
     ).toBeVisible()
-
-    const [assignResp] = await Promise.all([
-      page.waitForResponse(
-        (resp) =>
-          resp.url().includes('/assignments') &&
-          resp.request().method() === 'POST'
-      ),
-      secondSection
-        .getByRole('button', { name: 'Assign You', exact: true })
-        .click(),
-    ])
-    expect(assignResp.status()).toBe(201)
-
-    // The assignment shows up in the second section's roster...
-    await expect(
-      secondSection.getByRole('button', { name: /pinned/i }).first()
-    ).toBeVisible()
-    // ...and does not leak into the first event's roster.
-    await expect(
-      firstSection.getByRole('button', { name: /pinned/i })
-    ).toHaveCount(0)
+    await expect(page.getByTestId('chore-roster-section')).toHaveCount(1)
   })
 
   test('falls back to the next upcoming event when none is under way', async ({

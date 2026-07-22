@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue'
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+  watchEffect,
+} from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter, useRoute } from 'vue-router'
 import {
@@ -44,6 +51,7 @@ import UnreadDot from '@/components/common/UnreadDot.vue'
 import EventSubheader from '@/components/events/EventSubheader.vue'
 import { useCommandPalette } from '@/composables/useCommandPalette'
 import { useEventContextCommands } from '@/composables/useEventContextCommands'
+import { useFocusedEvent } from '@/composables/useFocusedEvent'
 import { can } from '@/composables/usePermission'
 
 useEventContextCommands()
@@ -183,12 +191,29 @@ const eventDetailRoutes = new Set([
 
 const currentEvent = computed(() => {
   const name = route.name as string
-  const id = route.params.id as string | undefined
+  const id = route.params?.id as string | undefined
   if (!id || !eventDetailRoutes.has(name)) return null
   return objectPoolStore.get('event', id) ?? null
 })
 
 const currentEventName = computed(() => currentEvent.value?.name ?? null)
+
+// Opening an event is itself the act of focusing it — nobody should have to
+// "enter event mode" explicitly. A peek at a long-finished event still pins,
+// but `useFocusedEvent` refuses to honour a pin that has decayed, so the peek
+// doesn't stick.
+const { focusedEvent, pinEvent } = useFocusedEvent()
+watch(
+  currentEvent,
+  (event) => {
+    if (event) pinEvent(event.id)
+  },
+  { immediate: true }
+)
+
+// The bar follows the URL when there is one, and the focused event otherwise,
+// so chores/settle-up/dashboard all say which event they're about.
+const subheaderEvent = computed(() => currentEvent.value ?? focusedEvent.value)
 
 const routeTitleMap: Record<string, string> = {
   home: 'Dashboard',
@@ -639,7 +664,7 @@ async function handleSignOut() {
     </header>
 
     <!-- Event subheader -->
-    <EventSubheader v-if="currentEvent" :event="currentEvent" />
+    <EventSubheader v-if="subheaderEvent" :event="subheaderEvent" />
 
     <main>
       <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">

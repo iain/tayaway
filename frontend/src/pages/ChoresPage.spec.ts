@@ -61,7 +61,7 @@ describe('ChoresPage', () => {
     expect(sections[0]!.props('scrollToToday')).toBe(true)
   })
 
-  it('renders one section per overlapping event', () => {
+  it('shows only the focused event when two events overlap', () => {
     seedPool(
       pool,
       makeEvent({
@@ -81,10 +81,10 @@ describe('ChoresPage', () => {
     const wrapper = mountPage()
     const sections = wrapper.findAllComponents({ name: 'ChoreRosterSection' })
 
-    expect(sections).toHaveLength(2)
-    // With multiple sections mounted, none should scroll — they'd fight over it.
-    expect(sections[0]!.props('scrollToToday')).toBe(false)
-    expect(sections[1]!.props('scrollToToday')).toBe(false)
+    // One roster, not a stack of them: the subheader names which event this
+    // is, and its switcher is how you get to the other one.
+    expect(sections).toHaveLength(1)
+    expect(sections[0]!.props('eventId')).toBe('evt-a')
   })
 
   it('shows the empty state when there is no active event', () => {
