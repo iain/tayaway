@@ -23,6 +23,20 @@ them — it never computes permissions from user IDs.
 5. **Frontend** reads permissions with `can(obj.permissions, 'action')` and
    `permissionUx(obj.permissions, 'action')` — never checks user IDs directly.
 
+### The one exception: cross-workspace UI
+
+`permissions` are computed for *one* viewer membership, so they only exist on
+objects delivered in a workspace context. `Sync::PersonalSync` serializes the
+user's whole workspace list with no membership — one payload can't carry a
+different viewer per row — so every workspace except the active one arrives
+without `permissions`.
+
+UI that spans workspaces (the settings sidebar's per-workspace groups) therefore
+derives the role from the user's own `member` rows, which the personal sync does
+deliver for every workspace, and mirrors the policy's rule in
+`workspaceStore.administeredWorkspaces`. Anything scoped to the *current*
+workspace has real permissions and must use `can()` as usual.
+
 ## Adding a new policy action
 
 1. Add the action symbol to the policy's `ACTIONS` array

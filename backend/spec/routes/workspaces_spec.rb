@@ -6,6 +6,8 @@ RSpec.describe "Workspaces endpoints" do
   let(:user) { TestFactories.user }
   let(:session) { TestFactories.session(user: user) }
   let(:auth_cookie) { { "HTTP_COOKIE" => "session_token=#{session[:token]}" } }
+  let(:csrf_header) { { "HTTP_X_CSRF_PROTECTION" => "1" } }
+  let(:auth_headers) { auth_cookie.merge(csrf_header) }
   let(:workspace) { TestFactories.workspace }
 
   before { TestFactories.workspace_membership(workspace: workspace, user: user) }
@@ -35,6 +37,67 @@ RSpec.describe "Workspaces endpoints" do
       body = JSON.parse(last_response.body)
       ids = body["objects"].select { |o| o["objectType"] == "workspace" }.map { |o| o["id"] }
       expect(ids).not_to include(other_workspace[:id])
+    end
+  end
+
+  describe "POST /api/workspaces" do
+    it "returns 401 without auth" do
+      post "/api/workspaces", { "name" => "Beta" }, csrf_header
+
+      expect(last_response.status).to eq(401)
+    end
+
+    it "creates a workspace owned by the caller and returns it pool-shaped" do
+      post "/api/workspaces", { "name" => "Beta", "timezone" => "Europe/Lisbon" }, auth_headers
+
+      expect(last_response.status).to eq(201)
+      body = JSON.parse(last_response.body)
+      ws = body["objects"].find { |o| o["objectType"] == "workspace" }
+      expect(ws["name"]).to eq("Beta")
+      expect(ws["timezone"]).to eq("Europe/Lisbon")
+      # The membership rides along so the client can tell straight away that
+      # it owns the new workspace, without waiting for the sync.
+      member = body["objects"].find { |o| o["objectType"] == "member" && o["workspaceId"] == ws["id"] }
+      expect(member["role"]).to eq("owner")
+      expect(member["userId"]).to eq(user[:id])
+    end
+
+    it "rejects an invalid name" do
+      post "/api/workspaces", { "name" => " " }, auth_headers
+
+      expect(last_response.status).to eq(400)
+    end
+  end
+
+  describe "PATCH /api/workspaces/:id" do
+    let(:admin) { TestFactories.user }
+    let(:admin_session) { TestFactories.session(user: admin) }
+    let(:admin_headers) { { "HTTP_COOKIE" => "session_token=#{admin_session[:token]}" }.merge(csrf_header) }
+
+    before { TestFactories.workspace_membership(workspace: workspace, user: admin, role: "admin") }
+
+    it "renames the workspace for an admin" do
+      patch "/api/workspaces/#{workspace[:id]}", { "name" => "Renamed" }, admin_headers
+
+      expect(last_response.status).to eq(200)
+      body = JSON.parse(last_response.body)
+      ws = body["objects"].find { |o| o["objectType"] == "workspace" }
+      expect(ws["name"]).to eq("Renamed")
+    end
+
+    it "returns 403 for a plain member" do
+      patch "/api/workspaces/#{workspace[:id]}", { "name" => "Renamed" }, auth_headers
+
+      expect(last_response.status).to eq(403)
+      expect(DB[:workspaces].where(id: workspace[:id]).get(:name)).to eq(workspace[:name])
+    end
+
+    it "returns 403 when not a member at all" do
+      other_workspace = TestFactories.workspace
+
+      patch "/api/workspaces/#{other_workspace[:id]}", { "name" => "Renamed" }, auth_headers
+
+      expect(last_response.status).to eq(403)
     end
   end
 

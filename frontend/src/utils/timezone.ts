@@ -10,6 +10,18 @@ export function deviceTimezone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone
 }
 
+/**
+ * An IANA id as a person would read it: "America/New_York" → "New York ·
+ * America". Shared by the picker and by every row that displays a stored
+ * zone, so what you pick is what you see afterwards.
+ */
+export function formatZoneName(zone: string): string {
+  const cut = zone.lastIndexOf('/')
+  const city = (cut === -1 ? zone : zone.slice(cut + 1)).replace(/_/g, ' ')
+  const region = cut === -1 ? '' : zone.slice(0, cut).replace(/_/g, ' ')
+  return region ? `${city} · ${region}` : city
+}
+
 /** "YYYY-MM-DD" civil date in `zone` at the given instant. */
 export function zonedDateString(epochMs: number, zone: string): string {
   return DateTime.fromMillis(epochMs, { zone }).toISODate()!

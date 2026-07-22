@@ -18,6 +18,34 @@ class App
         response.status = 200
         { objects: pool.to_a }
       end
+
+      # POST /api/workspaces - Create a workspace with the caller as owner.
+      # Unlike every other workspace route there's no membership to check
+      # first: the service creates the one that authorizes everything after.
+      r.post do
+        result = Workspaces::Create.call(
+          user_id: user.id.to_s,
+          name: r.params["name"]&.strip,
+          timezone: r.params["timezone"],
+          id: r.params["id"]
+        )
+
+        result.either(
+          ->(value) {
+            membership = WorkspaceMembership.find(value[:membership_id])
+            pool = PoolSerializer.new(membership: membership)
+            pool.add(:workspace, [Workspace.find(value[:workspace_id])])
+            pool.add(:member, [membership])
+
+            response.status = value[:created] ? 201 : 200
+            { objects: pool.to_a }
+          },
+          ->(error) {
+            response.status = error.http_status
+            error.to_api_hash
+          }
+        )
+      end
     end
 
     # /api/workspaces/:id routes
@@ -40,6 +68,30 @@ class App
 
           response.status = 200
           { objects: pool.to_a }
+        end
+
+        # PATCH /api/workspaces/:id - Rename / re-zone the workspace
+        r.patch do
+          result = Workspaces::Update.call(
+            workspace_id: workspace.id,
+            membership: membership,
+            name: r.params["name"]&.strip,
+            timezone: r.params["timezone"]
+          )
+
+          result.either(
+            ->(_value) {
+              pool = PoolSerializer.new(membership: membership)
+              pool.add(:workspace, [Workspace.find(workspace.id)])
+
+              response.status = 200
+              { objects: pool.to_a }
+            },
+            ->(error) {
+              response.status = error.http_status
+              error.to_api_hash
+            }
+          )
         end
       end
 

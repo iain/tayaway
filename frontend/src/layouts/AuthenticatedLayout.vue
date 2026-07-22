@@ -300,6 +300,7 @@ async function handleSignOut() {
               <router-link
                 v-if="otherWorkspaces.length === 0"
                 to="/"
+                data-testid="current-workspace-name"
                 class="text-nav-text rounded text-xl font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
                 {{ currentWorkspace?.name ?? 'Tayaway' }}
@@ -308,6 +309,7 @@ async function handleSignOut() {
               <div v-else class="relative flex items-center gap-0.5">
                 <router-link
                   to="/"
+                  data-testid="current-workspace-name"
                   class="text-nav-text rounded text-xl font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                 >
                   {{ currentWorkspace?.name ?? 'Tayaway' }}

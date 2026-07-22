@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import {
   UserIcon,
   KeyIcon,
@@ -9,18 +10,29 @@ import {
   ChevronRightIcon,
   ChevronLeftIcon,
   Cog6ToothIcon,
+  PlusIcon,
 } from '@heroicons/vue/24/outline'
 import type { FunctionalComponent } from 'vue'
 import PageHeader from '@/components/common/PageHeader.vue'
+import NewWorkspaceModal from '@/components/workspace/NewWorkspaceModal.vue'
+import { useWorkspaceStore } from '@/stores/workspace'
 
 interface SettingsSection {
   name: string
   label: string
   to: string
   icon: FunctionalComponent
+  workspaceId?: string
 }
 
-const sections: SettingsSection[] = [
+interface SettingsGroup {
+  key: string
+  label: string
+  sections: SettingsSection[]
+  workspaceId?: string
+}
+
+const personalSections: SettingsSection[] = [
   {
     name: 'settings-profile',
     label: 'Profile',
@@ -49,10 +61,44 @@ const sections: SettingsSection[] = [
 
 const route = useRoute()
 const router = useRouter()
+const workspaceStore = useWorkspaceStore()
+const { administeredWorkspaces } = storeToRefs(workspaceStore)
+
+// Personal settings first, then one group per workspace you administer —
+// every one of them, not just the active workspace. Settings is where you
+// go to sort out a workspace you're not currently looking at.
+const groups = computed<SettingsGroup[]>(() => [
+  { key: 'personal', label: 'Personal', sections: personalSections },
+  ...administeredWorkspaces.value.map((workspace) => ({
+    key: `workspace-${workspace.id}`,
+    label: workspace.name,
+    workspaceId: workspace.id,
+    sections: [
+      {
+        name: 'settings-workspace-general',
+        label: 'General',
+        to: `/settings/workspaces/${workspace.id}/general`,
+        icon: Cog6ToothIcon,
+        workspaceId: workspace.id,
+      },
+    ],
+  })),
+])
+
+// Workspace sections all share one route name, so the active one is the
+// section whose workspace id matches the route too.
+function isActive(section: SettingsSection): boolean {
+  if (route.name !== section.name) return false
+  return (
+    section.workspaceId === undefined || route.params.id === section.workspaceId
+  )
+}
 
 const currentSection = computed(() =>
-  sections.find((s) => s.name === route.name)
+  groups.value.flatMap((group) => group.sections).find(isActive)
 )
+
+const newWorkspaceOpen = ref(false)
 
 // Desktop expects a section to be selected; mobile uses /settings as a menu page.
 const DESKTOP_QUERY = '(min-width: 1024px)'
@@ -76,6 +122,10 @@ onUnmounted(() => {
 })
 
 watch(() => route.name, redirectIfDesktopIndex)
+
+function onWorkspaceCreated(workspaceId: string): void {
+  router.push(`/settings/workspaces/${workspaceId}/general`)
+}
 </script>
 
 <template>
@@ -97,31 +147,55 @@ watch(() => route.name, redirectIfDesktopIndex)
       <aside
         :class="['mb-6 lg:mb-0', currentSection ? 'hidden lg:block' : 'block']"
       >
-        <nav class="flex flex-col gap-0.5" aria-label="Settings sections">
-          <RouterLink
-            v-for="section in sections"
-            :key="section.name"
-            :to="section.to"
-            :aria-current="route.name === section.name ? 'page' : undefined"
-            class="group flex items-center gap-3 rounded-md px-3 py-3 text-base font-medium transition-colors lg:py-2 lg:text-sm"
-            active-class="bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"
-            :class="
-              route.name === section.name
-                ? ''
-                : 'text-ink hover:bg-surface-sunken'
-            "
+        <nav class="flex flex-col gap-6" aria-label="Settings sections">
+          <div
+            v-for="group in groups"
+            :key="group.key"
+            data-testid="settings-nav-group"
+            :data-group="group.workspaceId ? 'workspace' : group.key"
+            :data-workspace-id="group.workspaceId"
           >
-            <component
-              :is="section.icon"
-              class="size-5 shrink-0"
-              aria-hidden="true"
-            />
-            <span class="flex-1">{{ section.label }}</span>
-            <ChevronRightIcon
-              class="text-ink-muted size-4 lg:hidden"
-              aria-hidden="true"
-            />
-          </RouterLink>
+            <h2
+              class="text-ink-muted mb-1 px-3 text-xs font-semibold tracking-wide uppercase"
+            >
+              {{ group.label }}
+            </h2>
+            <div class="flex flex-col gap-0.5">
+              <RouterLink
+                v-for="section in group.sections"
+                :key="section.to"
+                :to="section.to"
+                :aria-current="isActive(section) ? 'page' : undefined"
+                class="group flex items-center gap-3 rounded-md px-3 py-3 text-base font-medium transition-colors lg:py-2 lg:text-sm"
+                :class="
+                  isActive(section)
+                    ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'
+                    : 'text-ink hover:bg-surface-sunken'
+                "
+              >
+                <component
+                  :is="section.icon"
+                  class="size-5 shrink-0"
+                  aria-hidden="true"
+                />
+                <span class="flex-1">{{ section.label }}</span>
+                <ChevronRightIcon
+                  class="text-ink-muted size-4 lg:hidden"
+                  aria-hidden="true"
+                />
+              </RouterLink>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            data-testid="settings-new-workspace"
+            class="text-ink hover:bg-surface-sunken flex items-center gap-3 rounded-md px-3 py-3 text-base font-medium transition-colors lg:py-2 lg:text-sm"
+            @click="newWorkspaceOpen = true"
+          >
+            <PlusIcon class="size-5 shrink-0" aria-hidden="true" />
+            <span class="flex-1 text-left">New workspace</span>
+          </button>
         </nav>
       </aside>
 
@@ -130,5 +204,17 @@ watch(() => route.name, redirectIfDesktopIndex)
         <RouterView />
       </div>
     </div>
+
+    <!-- Mounted only while open. Pages elsewhere keep their modals mounted
+         with :open, but this one lives in the layout: a closed dialog still
+         contributes its fields to the DOM, and a permanent second "Name"
+         input across every settings page is a trap for both assistive tech
+         and tests. -->
+    <NewWorkspaceModal
+      v-if="newWorkspaceOpen"
+      open
+      @close="newWorkspaceOpen = false"
+      @created="onWorkspaceCreated"
+    />
   </div>
 </template>

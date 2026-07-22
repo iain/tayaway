@@ -12,7 +12,7 @@ import IconButton from '@/components/common/IconButton.vue'
 import TextButton from '@/components/common/TextButton.vue'
 import LocationInput from '@/components/form/LocationInput.vue'
 import TimezoneSelect from '@/components/form/TimezoneSelect.vue'
-import { deviceTimezone } from '@/utils/timezone'
+import { deviceTimezone, formatZoneName } from '@/utils/timezone'
 import { TEXT_LIMITS } from '@/constants/limits'
 
 type ProfileField = 'name' | 'phone' | 'birthday' | 'address' | 'timezone'
@@ -49,7 +49,9 @@ const editTimezone = ref('')
 // How the display zone reads when no explicit preference is set.
 const deviceZone = computed(() => deviceTimezone())
 const timezoneDisplay = computed(() =>
-  user.value?.timezone ? user.value.timezone : `Automatic (${deviceZone.value})`
+  user.value?.timezone
+    ? formatZoneName(user.value.timezone)
+    : `Automatic (${formatZoneName(deviceZone.value)})`
 )
 
 // The native picker honours `max` and disables future dates; the backend
@@ -61,6 +63,8 @@ const phoneInputRef = useTemplateRef<HTMLInputElement>('phoneInputRef')
 const birthdayInputRef = useTemplateRef<HTMLInputElement>('birthdayInputRef')
 const locationRef =
   useTemplateRef<InstanceType<typeof LocationInput>>('locationRef')
+const timezoneRef =
+  useTemplateRef<InstanceType<typeof TimezoneSelect>>('timezoneRef')
 
 async function openField(field: ProfileField): Promise<void> {
   if (editingFields.value.has(field)) return
@@ -98,6 +102,9 @@ async function openField(field: ProfileField): Promise<void> {
       break
     case 'address':
       locationRef.value?.focus()
+      break
+    case 'timezone':
+      timezoneRef.value?.focus()
       break
   }
 }
@@ -420,9 +427,11 @@ async function clearAddress(): Promise<void> {
             <div :aria-busy="savingFields.has('timezone')">
               <TimezoneSelect
                 id="profile-timezone"
+                ref="timezoneRef"
                 v-model="editTimezone"
                 label="Time zone"
                 auto-label="Automatic (follow this device)"
+                hide-label
                 :effective-zone="deviceZone"
                 :disabled="savingFields.has('timezone')"
               />
