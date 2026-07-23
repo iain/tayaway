@@ -108,12 +108,15 @@ const workspaceSwitchActions = computed<NavAction[]>(() =>
 
 // One per workspace you administer, like the settings sidebar — that page is
 // where you go to sort out a workspace, including one you aren't currently in,
-// so a single "Workspace settings" entry would have to guess which.
+// so a single entry would have to guess which. Named "Workspace settings: X"
+// rather than "X settings" because the sidebar's grouping is what tells the
+// two apart, and a flat list has no grouping: a workspace called Personal
+// would otherwise read as the personal settings section.
 const workspaceSettingsActions = computed<NavAction[]>(() =>
   workspaceStore.administeredWorkspaces.map((ws) => ({
     type: 'action' as const,
     id: `settings-workspace-${ws.id}`,
-    name: `${ws.name} settings`,
+    name: `Workspace settings: ${ws.name}`,
     icon: Cog6ToothIcon,
     href: `/settings/workspaces/${ws.id}/general`,
   }))
