@@ -7,15 +7,18 @@ import {
   ArrowRightOnRectangleIcon,
   ArrowsRightLeftIcon,
   BanknotesIcon,
+  BellIcon,
   CalendarDaysIcon,
   CheckCircleIcon,
   ClipboardDocumentListIcon,
   ClipboardIcon,
+  Cog6ToothIcon,
   DocumentMagnifyingGlassIcon,
   HomeIcon,
   KeyIcon,
   MoonIcon,
   PlusIcon,
+  ScaleIcon,
   SignalIcon,
   SunIcon,
   UserCircleIcon,
@@ -103,6 +106,19 @@ const workspaceSwitchActions = computed<NavAction[]>(() =>
   }))
 )
 
+// One per workspace you administer, like the settings sidebar — that page is
+// where you go to sort out a workspace, including one you aren't currently in,
+// so a single "Workspace settings" entry would have to guess which.
+const workspaceSettingsActions = computed<NavAction[]>(() =>
+  workspaceStore.administeredWorkspaces.map((ws) => ({
+    type: 'action' as const,
+    id: `settings-workspace-${ws.id}`,
+    name: `${ws.name} settings`,
+    icon: Cog6ToothIcon,
+    href: `/settings/workspaces/${ws.id}/general`,
+  }))
+)
+
 const quickActions = computed<NavAction[]>(() => [
   ...workspaceSwitchActions.value,
   { type: 'action', id: 'home', name: 'Dashboard', icon: HomeIcon, href: '/' },
@@ -133,6 +149,13 @@ const quickActions = computed<NavAction[]>(() => [
     name: 'Tasks',
     icon: ClipboardDocumentListIcon,
     href: '/tasks',
+  },
+  {
+    type: 'action',
+    id: 'settle-up',
+    name: 'Settle up',
+    icon: ScaleIcon,
+    href: '/settle-up',
   },
   {
     type: 'action',
@@ -182,6 +205,14 @@ const quickActions = computed<NavAction[]>(() => [
     icon: BanknotesIcon,
     href: '/settings/payment',
   },
+  {
+    type: 'action',
+    id: 'settings-notifications',
+    name: 'Notifications',
+    icon: BellIcon,
+    href: '/settings/notifications',
+  },
+  ...workspaceSettingsActions.value,
   {
     type: 'action',
     id: 'new-task-list',
