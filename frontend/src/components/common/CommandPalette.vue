@@ -11,7 +11,6 @@ import {
   CheckCircleIcon,
   ClipboardDocumentListIcon,
   ClipboardIcon,
-  DocumentMagnifyingGlassIcon,
   HomeIcon,
   KeyIcon,
   MoonIcon,
@@ -42,7 +41,6 @@ import {
 import { useDarkMode } from '@/composables/useDarkMode'
 import { useTaskActions } from '@/composables/useTaskActions'
 import { useCommandPalette } from '@/composables/useCommandPalette'
-import { can } from '@/composables/usePermission'
 
 interface NavAction {
   type: 'action'
@@ -141,19 +139,6 @@ const quickActions = computed<NavAction[]>(() => [
     icon: UserGroupIcon,
     href: '/members',
   },
-  // Owner-only, like the nav item — the palette must not advertise a page
-  // the backend would refuse.
-  ...(can(workspaceStore.currentWorkspace?.permissions, 'view_audit_log')
-    ? [
-        {
-          type: 'action' as const,
-          id: 'audit-log',
-          name: 'Audit log',
-          icon: DocumentMagnifyingGlassIcon,
-          href: '/audit-log',
-        },
-      ]
-    : []),
   {
     type: 'action',
     id: 'settings',
