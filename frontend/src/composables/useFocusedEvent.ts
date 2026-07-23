@@ -107,7 +107,12 @@ export function useFocusedEvent(now: Ref<Date> = useNow().now) {
   })
 
   const focusedEvent = computed<ObjectTypeMap['event'] | null>(() => {
-    if (pinnedEvent.value) {
+    if (!workspace.currentWorkspaceId) {
+      // Both overrides are keyed by workspace, derivation is keyed by nothing
+      // — so answering before the workspace is known would answer from
+      // derivation alone and quietly undo an unfocus at boot.
+      return null
+    } else if (pinnedEvent.value) {
       return pinnedEvent.value
     } else if (derivedEvent.value?.id === dismissedEventId.value) {
       return null
