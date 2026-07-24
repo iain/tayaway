@@ -1,7 +1,14 @@
-# Fail fast on older mise binaries — the `monorepo_root` key (and several of
-# the settings below) didn't exist before this release. Bumped from 2026.5.5
-# when monorepo mode shed its `experimental_` prefix.
-min_version = "2026.6.11"
+# Fail fast on older mise binaries. Bumped from 2026.6.11 (the floor for
+# `monorepo_root` shedding its `experimental_` prefix) for `mise lock --bump`,
+# which landed in 2026.7.12 and is what tools-lock.yml uses to advance the
+# fuzzy version selectors in mise.lock.
+#
+# 2026.7.13 additionally fixes a false "provenance regression" error when
+# bumping a locked `github:` tool to a version already installed on disk —
+# tools-lock.yml's exact path. It isn't the floor because Homebrew lags a day
+# or two behind and this would lock everyone out meanwhile; CI is unaffected
+# either way, since mise-action installs the latest release.
+min_version = "2026.7.12"
 
 # Marks this file as the root of a mise monorepo. Subproject mise.toml files
 # (listed below under [monorepo]) get their own tools, env, and tasks, and
@@ -284,6 +291,13 @@ description = "Bump every config_root's tool versions to the latest available"
 # bumps every subproject's pins. setup:deps fires via the postinstall hook
 # after the install, reinstalling gems/node_modules against the new Rubies/
 # Nodes.
+#
+# This rewrites the pins in mise.toml, which most of ours aren't: `latest` for
+# the lint/ops tools and bare majors for node and ruby stay exactly as written.
+# To move what those resolve to, run `mise lock --bump` — it advances the
+# lockfile only, leaves exact pins (hk) alone, and never edits config. No task
+# wraps it: it's a mise command already, and tools-lock.yml (which does it
+# weekly and opens a PR) runs under MISE_SAFE=1, where tasks are refused.
 shell = "bash -c"
 run = """
 for dir in . backend frontend; do

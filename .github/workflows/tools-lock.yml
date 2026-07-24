@@ -1,0 +1,103 @@
+# Keeps mise.lock's resolved tool versions current.
+#
+# Most of our [tools] pins are fuzzy — `latest` for the lint/ops tools, majors
+# for node and ruby — so nothing in mise.toml changes when those tools release.
+# What moves is the resolved version + checksum in mise.lock, and only when
+# something re-resolves them. Dependabot covers gems, npm, actions and base
+# images, but has no concept of a mise lockfile; this is that gap.
+#
+# `mise lock --bump` re-resolves fuzzy selectors against the newest remote
+# versions and writes only the lockfile — config files are never touched, and
+# exact pins (hk) stay put. Nothing is installed, so this is a metadata-only
+# job. Silent when already current.
+#
+# Merging the PR moves the toolchain tag too (it hashes the tracked mise.lock),
+# so toolchain.yml republishes the image and images.yml picks it up.
+#
+# MISE_SAFE=1 makes mise refuse to execute anything the repo controls —
+# templates, hooks, tasks, plugin scripts — and ignore project [env]/[settings].
+# Version resolution and lockfile bumping still work, and a config loaded that
+# way needs no trust record. The [settings] we lose are all restatements of
+# mise's own defaults (github_attestations and slsa are on by default), so the
+# bumped lockfile still records verified provenance.
+name: Bump tool lockfile
+
+on:
+  schedule:
+    - cron: "0 8 * * 1" # Mondays 08:00 UTC (after ops-drift 06:00, reconcile 07:00)
+  workflow_dispatch:
+
+# Only the latest matters; a queued older run would just reopen the same PR.
+concurrency:
+  group: tools-lock
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      # install: false — we want the mise binary, not the toolchain. `lock
+      # --bump` resolves versions over HTTP and installs nothing.
+      - uses: jdx/mise-action@v4
+        with:
+          install: false
+          cache: false
+
+      - name: Bump fuzzy selectors in mise.lock
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MISE_SAFE: "1"
+        run: |
+          set -euo pipefail
+
+          # --json reports version moves on stdout while the bump is applied.
+          mise lock --bump --json > /tmp/bump.json
+
+          if git diff --quiet; then
+            echo "Lockfile already current — nothing to bump."
+            exit 0
+          fi
+
+          # Entries appear only for version changes; a run that merely refreshes
+          # a checksum or URL still rewrites the file but emits an empty array.
+          if [ "$(jq 'length' /tmp/bump.json)" -gt 0 ]; then
+            jq -r '.[] | "- `\(.name)` (\(.backend)): \(.old_versions | join(", ")) → \(.new_versions | join(", "))"' \
+              /tmp/bump.json > /tmp/summary.md
+          else
+            echo "- checksum/URL refresh only — no version changes" > /tmp/summary.md
+          fi
+          cat /tmp/summary.md
+
+          {
+            cat /tmp/summary.md
+            echo
+            echo "Resolved by \`mise lock --bump\` under \`MISE_SAFE=1\`; \`mise.toml\` is untouched."
+            echo "Merging this moves the toolchain tag, so toolchain.yml republishes the image."
+            echo
+            echo "> [!IMPORTANT]"
+            echo "> GitHub does not run checks on a \`GITHUB_TOKEN\`-authored PR, and this one"
+            echo "> changes the toolchain every image build depends on. Push an empty commit"
+            echo "> (or close and reopen the PR) to trigger CI before merging."
+          } > /tmp/body.md
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git switch -C ci/tools-lock
+          git commit -aqm "chore(deps): bump resolved tool versions in mise.lock"
+          git push -f origin ci/tools-lock
+
+          # Force-push updates an existing PR; only create one if absent.
+          if ! gh pr view ci/tools-lock >/dev/null 2>&1; then
+            gh pr create --base main --head ci/tools-lock \
+              --title "chore(deps): bump resolved tool versions in mise.lock" \
+              --body-file /tmp/body.md
+          else
+            gh pr edit ci/tools-lock --body-file /tmp/body.md
+          fi

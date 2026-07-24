@@ -72,8 +72,8 @@ jobs:
       # a maintainer must publish the new tag (workflow_dispatch on a base-repo
       # branch with the same lockfile) or images.yml times out waiting for it.
 
-      # `mise oci push` shells out to skopeo or crane; neither is on
-      # ubuntu-latest runners by default.
+      # skopeo isn't on ubuntu-latest runners by default. It does the upload
+      # rather than `mise oci push` — see the build/push steps below for why.
       - name: Install skopeo
         if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
         run: sudo apt-get update && sudo apt-get install -y skopeo
@@ -85,12 +85,30 @@ jobs:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: echo "$GHCR_TOKEN" | skopeo login ghcr.io -u "$GHCR_USER" --password-stdin
 
-      # Content-addressed push. If the tag already exists, skopeo verifies
-      # the blobs and exits without re-uploading.
-      - name: Build and push toolchain image
+      # Two steps rather than one `mise oci push`, deliberately. Since mise
+      # 2026.7.12 that command always uses mise's own registry client, which
+      # uploads blobs over 64 MiB in chunks that GHCR rejects with "416 Range
+      # Not Satisfiable" — our ruby layer is ~146 MiB, so the push dies on it
+      # every time. The `--tool` flag that used to force skopeo was removed in
+      # the same release, leaving build-then-copy as the documented escape
+      # hatch. Collapse this back into `mise oci push` once mise's client can
+      # talk to GHCR.
+      - name: Build toolchain image
         if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
         env:
           MISE_EXPERIMENTAL: "1"
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: mise oci build -o ./mise-oci -t "$TAG"
+
+      # `-t` above records $TAG as the layout's org.opencontainers.image.ref.name,
+      # which is how skopeo's oci: transport picks the manifest out of index.json.
+      # Content-addressed: blobs GHCR already has are skipped, so re-pushing an
+      # existing tag moves no bytes. No --all — the layout holds a single
+      # linux-x64 manifest, and plain copy keeps the destination a bare manifest
+      # rather than wrapping it in an index.
+      - name: Push toolchain image
+        if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+        env:
           OWNER: ${{ github.repository_owner }}
           TAG: ${{ steps.tag.outputs.tag }}
-        run: mise oci push "ghcr.io/${OWNER}/tayaway-toolchain:${TAG}"
+        run: skopeo copy "oci:./mise-oci:${TAG}" "docker://ghcr.io/${OWNER}/tayaway-toolchain:${TAG}"
