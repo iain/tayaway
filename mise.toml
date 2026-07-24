@@ -1,7 +1,15 @@
-# Fail fast on older mise binaries — the `monorepo_root` key (and several of
-# the settings below) didn't exist before this release. Bumped from 2026.5.5
-# when monorepo mode shed its `experimental_` prefix.
-min_version = "2026.6.11"
+# Fail fast on older mise binaries. Bumped from 2026.6.11 (the floor for
+# `monorepo_root` shedding its `experimental_` prefix) because CI now needs two
+# things that landed in 2026.7.12: the built-in OCI registry client, so
+# toolchain.yml pushes without apt-installing skopeo, and `mise lock --bump`,
+# which tools-lock.yml uses to advance fuzzy selectors in mise.lock.
+#
+# 2026.7.13 additionally fixes a false "provenance regression" error when
+# bumping a locked `github:` tool to a version already installed on disk —
+# tools-lock.yml's exact path. It isn't the floor because Homebrew lags a day
+# or two behind and this would lock everyone out meanwhile; CI is unaffected
+# either way, since mise-action installs the latest release.
+min_version = "2026.7.12"
 
 # Marks this file as the root of a mise monorepo. Subproject mise.toml files
 # (listed below under [monorepo]) get their own tools, env, and tasks, and
@@ -291,6 +299,22 @@ for dir in . backend frontend; do
   (cd "$dir" && mise upgrade --bump)
 done
 """
+
+[tasks."tools:lock"]
+description = "Re-resolve fuzzy version selectors (latest, lts, \"26\") in mise.lock against the newest releases"
+# The complement to tools:upgrade. Most of our pins are fuzzy — `latest` for
+# the linting/ops tools, majors for node and ruby — so `upgrade --bump`, which
+# rewrites mise.toml, has nothing to say about them. What actually moves is the
+# resolved version in mise.lock, and that's what `lock --bump` advances. Exact
+# pins (hk) stay put; config files are never modified.
+#
+# Merging the result also moves the toolchain tag (it's a hash of the tracked
+# mise.lock), so toolchain.yml republishes the image on the way in.
+#
+# tools-lock.yml runs this same command weekly and opens a PR — it invokes
+# `mise lock --bump` directly rather than this task, because it runs under
+# MISE_SAFE=1, which refuses to execute tasks at all.
+run = "mise lock --bump"
 
 [tasks."setup:hooks"]
 description = "Install git hooks for this repo (fallback for devs without `hk install --global`)"
