@@ -14,6 +14,16 @@ class AdminSession < Data.define(:id, :credential_id, :token, :expires_at, :crea
         .first
     end
 
+    # Every session still good for a request. Expired rows are only swept on
+    # login (see Admin::CompleteLogin), so the filter — not the table — is
+    # what "signed in right now" means.
+    def active
+      dataset
+        .where(Sequel[:expires_at] > Time.now)
+        .order(Sequel.desc(:created_at), Sequel.desc(:id))
+        .all
+    end
+
     private
 
     def dataset

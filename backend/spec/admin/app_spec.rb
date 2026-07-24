@@ -53,14 +53,33 @@ RSpec.describe "AdminApp" do
       expect(last_response.status).to eq(302)
     end
 
-    it "renders the dashboard, naming the signed-in device, with a valid session" do
-      credential = TestFactories.admin_credential(nickname: "Operator MacBook")
-
-      get "/", {}, admin_cookie(credential_id: credential[:id])
+    it "renders the dashboard with a valid session" do
+      get "/", {}, admin_cookie
 
       expect(last_response.status).to eq(200)
       expect(last_response.body).to include("Tayaway admin")
-      expect(last_response.body).to include("Operator MacBook")
+    end
+  end
+
+  describe "GET /security" do
+    it "redirects to /login without a session" do
+      get "/security"
+
+      expect(last_response.status).to eq(302)
+    end
+
+    it "lists every passkey and active session, marking the ones in use" do
+      credential = TestFactories.admin_credential(nickname: "Operator MacBook")
+      TestFactories.admin_credential(nickname: "Backup Phone")
+
+      get "/security", {}, admin_cookie(credential_id: credential[:id])
+
+      expect(last_response.status).to eq(200)
+      body = last_response.body
+      expect(body).to include("Operator MacBook")
+      expect(body).to include("Backup Phone")
+      expect(body).to include("This device")
+      expect(body).to include("Current session")
     end
   end
 

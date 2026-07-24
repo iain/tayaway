@@ -1,0 +1,61 @@
+<%== render("topbar") %>
+<main>
+  <h1>Security</h1>
+  <article>
+    <h2>Passkeys</h2>
+    <p class="muted">Every credential that can sign in to this site. Losing all of them means deleting the admin state file and enrolling again.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Device</th>
+          <th>Enrolled (UTC)</th>
+          <th>Last used (UTC)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @passkeys.each do |passkey| %>
+          <tr>
+            <td>
+              <%= passkey.nickname %>
+              <% if current_admin_credential&.id == passkey.id %>
+                <span class="muted">· This device</span>
+              <% end %>
+            </td>
+            <td><%= utc(passkey.created_at) %></td>
+            <td><%= passkey.last_used_at ? utc(passkey.last_used_at) : "never" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+    <p><a href="/enroll" role="button">Add passkey</a></p>
+  </article>
+
+  <article>
+    <h2>Sessions</h2>
+    <p class="muted">Signed-in browsers. Sessions last <%= AdminSession::EXPIRY_SECONDS / 3600 %> hours and are swept on the next login.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Device</th>
+          <th>Signed in (UTC)</th>
+          <th>Expires (UTC)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @sessions.each do |session| %>
+          <tr>
+            <td>
+              <%= @passkeys.find { |passkey| passkey.id == session.credential_id }&.nickname %>
+              <% if current_admin_session&.id == session.id %>
+                <span class="muted">· Current session</span>
+              <% end %>
+            </td>
+            <td><%= utc(session.created_at) %></td>
+            <td><%= utc(session.expires_at) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </article>
+</main>
+<script src="/admin.js"></script>

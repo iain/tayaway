@@ -24,4 +24,15 @@ RSpec.describe AdminSession do
       expect(described_class.find_valid("nonexistent")).to be_nil
     end
   end
+
+  describe ".active" do
+    it "returns unexpired sessions, newest first, and skips expired ones" do
+      credential = TestFactories.admin_credential
+      TestFactories.admin_session(credential_id: credential[:id], expires_at: Time.now - 60)
+      older = TestFactories.admin_session(credential_id: credential[:id])
+      newer = TestFactories.admin_session(credential_id: credential[:id])
+
+      expect(described_class.active.map(&:id)).to eq([newer[:id], older[:id]])
+    end
+  end
 end

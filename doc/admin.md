@@ -35,7 +35,10 @@ follow-up.
   counters do, so a retrying job also shows up under due or scheduled
   depending on where its backoff landed. `/jobs/:id` is the full row for
   one job: payload, attempts against the retry budget, and the
-  untruncated last error. `/audit?outcome=` is the audit log.
+  untruncated last error. `/audit?outcome=` is the audit log. `/security`
+  lists the enrolled passkeys and the live admin sessions, marking the
+  device and session you are on, and is where "Add passkey" lives — the
+  topbar itself is only nav plus sign-out.
 - **Read models only.** `Admin::Stats` queries `async_jobs`,
   `audit_log_entries`, `users`, and `sessions` (including
   `last_seen_client_version` — see doc/protocol-versioning.md) and returns
@@ -70,7 +73,7 @@ passkeys, enrolled on the admin site. Two things follow:
 Enrollment is the authorization gate (there is no email allowlist):
 registration is open only while the credential store is empty — i.e.
 first boot, still behind mTLS — and afterwards only from a signed-in
-admin session (dashboard → "Add passkey"). The empty-store check re-runs
+admin session (Security → "Add passkey"). The empty-store check re-runs
 inside the insert transaction, so two racing first-boot tabs cannot both
 enroll. Losing every enrolled device = delete the SQLite file on the
 admin volume and enroll again; the store holds only auth material, so
@@ -154,8 +157,8 @@ sign-count bumps all live in the admin's own SQLite store.
 7. First visit: `https://admin.tayaway.nl` without the client cert must
    fail the TLS handshake; with it, you land on `/enroll` — enroll this
    device's passkey (the store is empty, so enrollment is open behind the
-   mTLS gate), then sign in with it. Add further devices from the
-   dashboard's "Add passkey" while signed in.
+   mTLS gate), then sign in with it. Add further devices from `/security`
+   while signed in.
 
 Until every step is done the site fails closed: no DNS → unreachable, no
 ca.pem → no vhost, and enrollment shuts the moment the first credential
