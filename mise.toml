@@ -291,6 +291,13 @@ description = "Bump every config_root's tool versions to the latest available"
 # bumps every subproject's pins. setup:deps fires via the postinstall hook
 # after the install, reinstalling gems/node_modules against the new Rubies/
 # Nodes.
+#
+# This rewrites the pins in mise.toml, which most of ours aren't: `latest` for
+# the lint/ops tools and bare majors for node and ruby stay exactly as written.
+# To move what those resolve to, run `mise lock --bump` — it advances the
+# lockfile only, leaves exact pins (hk) alone, and never edits config. No task
+# wraps it: it's a mise command already, and tools-lock.yml (which does it
+# weekly and opens a PR) runs under MISE_SAFE=1, where tasks are refused.
 shell = "bash -c"
 run = """
 for dir in . backend frontend; do
@@ -298,22 +305,6 @@ for dir in . backend frontend; do
   (cd "$dir" && mise upgrade --bump)
 done
 """
-
-[tasks."tools:lock"]
-description = "Re-resolve fuzzy version selectors (latest, lts, \"26\") in mise.lock against the newest releases"
-# The complement to tools:upgrade. Most of our pins are fuzzy — `latest` for
-# the linting/ops tools, majors for node and ruby — so `upgrade --bump`, which
-# rewrites mise.toml, has nothing to say about them. What actually moves is the
-# resolved version in mise.lock, and that's what `lock --bump` advances. Exact
-# pins (hk) stay put; config files are never modified.
-#
-# Merging the result also moves the toolchain tag (it's a hash of the tracked
-# mise.lock), so toolchain.yml republishes the image on the way in.
-#
-# tools-lock.yml runs this same command weekly and opens a PR — it invokes
-# `mise lock --bump` directly rather than this task, because it runs under
-# MISE_SAFE=1, which refuses to execute tasks at all.
-run = "mise lock --bump"
 
 [tasks."setup:hooks"]
 description = "Install git hooks for this repo (fallback for devs without `hk install --global`)"
