@@ -42,8 +42,7 @@ export function useEventContextCommands() {
   const { setContext } = useCommandPalette()
   const { triggerAdd: triggerAddDateRange } = useDateRangeActions()
   const { triggerAdd: triggerAddExpense } = useExpenseActions()
-  const { focusedEvent, focusCandidates, pinEvent, unfocusEvent } =
-    useFocusedEvent()
+  const { focusedEvent, unfocusEvent } = useFocusedEvent()
 
   // The same event the subheader names: the URL's when you're inside one, the
   // focused one otherwise. Without the fallback the palette went silent about
@@ -194,31 +193,17 @@ export function useEventContextCommands() {
       })
     }
 
-    return actions
-  })
-
-  // Moving focus was previously only possible through the chevron in the event
-  // bar, or as a side effect of navigating into an event — so from a workspace
-  // page you had to leave where you were to change what the page was about.
-  // These do it in place, the way switching workspace already does.
-  const focusActions = computed<ContextAction[]>(() => {
-    const actions: ContextAction[] = focusCandidates.value
-      .filter((candidate) => candidate.id !== focusedEvent.value?.id)
-      .map((candidate) => ({
-        id: `focus-${candidate.id}`,
-        name: `Focus ${candidate.name}`,
-        icon: CalendarDaysIcon,
-        run: () => pinEvent(candidate.id),
-      }))
-
-    if (focusedEvent.value) {
-      actions.push({
-        id: 'unfocus-event',
-        name: `Unfocus ${focusedEvent.value.name}`,
-        icon: EyeSlashIcon,
-        run: unfocusEvent,
-      })
-    }
+    // Putting the event away is the one thing here with no other route to it:
+    // going *to* an event is what focuses it, and the palette already does
+    // that by name under Events, so there is deliberately no command for it
+    // in the app's own "focus" vocabulary. Named for what the user sees
+    // happen rather than for the state it clears.
+    actions.push({
+      id: 'ctx-event-unfocus',
+      name: `Stop showing ${event.name}`,
+      icon: EyeSlashIcon,
+      run: unfocusEvent,
+    })
 
     return actions
   })
@@ -228,11 +213,9 @@ export function useEventContextCommands() {
       label: contextEvent.value?.name ?? 'Event',
       actions: contextActions.value,
     })
-    setContext('focus', { label: 'Focus', actions: focusActions.value })
   })
 
   onUnmounted(() => {
     setContext('event', null)
-    setContext('focus', null)
   })
 }

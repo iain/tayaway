@@ -207,28 +207,30 @@ test.describe('Current event focus', () => {
     )
 
     await openPalette(page)
-    await page.getByPlaceholder('Search...').fill('Unfocus')
+    await page.getByPlaceholder('Search...').fill('Stop showing')
     await page
       .getByRole('dialog')
-      .getByText(`Unfocus Alpine Week ${uid}`)
+      .getByText(`Stop showing Alpine Week ${uid}`)
       .click()
 
-    // Gone from the chrome, and genuinely unfocused rather than merely
-    // hidden: /chores has nothing left to hand off to.
+    // Gone from the chrome, and genuinely put away rather than merely hidden:
+    // /chores has nothing left to hand off to.
     await expect(page.getByTestId('event-name')).toHaveCount(0)
     await page.goto('/chores')
     await expect(page.getByText('No active event')).toBeVisible({
       timeout: PAGE_LOAD_TIMEOUT,
     })
 
-    // And back again, without going through the events list — the page the
-    // user is already on picks up the new focus.
+    // And back again the way the user would put it back: going to the event
+    // is what makes the app about it again — there is no separate command.
     await openPalette(page)
-    await page.getByPlaceholder('Search...').fill('Focus Alpine')
-    await page.getByRole('dialog').getByText(`Focus Alpine Week ${uid}`).click()
+    await page.getByPlaceholder('Search...').fill(`Alpine Week ${uid}`)
+    await page.getByRole('dialog').getByText(`Alpine Week ${uid}`).click()
 
-    await expect(page).toHaveURL(`/events/${eventId}/chores`)
-    await expect(page.getByText('Cooking')).toBeVisible()
+    await expect(page).toHaveURL(`/events/${eventId}`)
+    await expect(page.getByTestId('event-name')).toHaveText(
+      `Alpine Week ${uid}`
+    )
   })
 
   test('shows the empty state when there is no active event', async ({
