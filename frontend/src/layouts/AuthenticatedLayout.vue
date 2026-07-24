@@ -441,13 +441,15 @@ async function handleSignOut() {
               <button
                 type="button"
                 data-testid="navbar-search"
-                class="bg-nav text-nav-text-muted hover:text-nav-text relative flex items-center gap-1.5 rounded-full p-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                class="bg-nav text-nav-text-muted hover:bg-nav-hover hover:text-nav-text relative flex items-center gap-1.5 rounded-md px-2 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                 @click="openCommandPalette"
               >
                 <span class="sr-only">Search</span>
                 <MagnifyingGlassIcon class="size-6" aria-hidden="true" />
+                <!-- Inherits the button's text colour so the hint lights up
+                     with the icon rather than staying muted behind it. -->
                 <kbd
-                  class="border-nav-active text-nav-text-muted hidden rounded border px-1.5 py-0.5 font-sans text-xs lg:inline"
+                  class="border-nav-active hidden rounded border px-1.5 py-0.5 font-sans text-xs lg:inline"
                   aria-hidden="true"
                 >
                   {{ searchShortcut }}
