@@ -8,10 +8,10 @@ import {
   XMarkIcon,
   ArrowPathIcon,
 } from '@heroicons/vue/24/outline'
-import { ChevronDownIcon } from '@heroicons/vue/16/solid'
 import { useMembersStore, useNotificationsStore } from '@/stores'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import InviteMemberModal from '@/components/members/InviteMemberModal.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -58,10 +58,12 @@ function canChangeRole(member: PoolMember): boolean {
   return can(member.permissions, 'change_role')
 }
 
-function availableRolesFor(member: PoolMember): string[] {
+function roleOptionsFor(
+  member: PoolMember
+): { value: string; label: string }[] {
   const perm = member.permissions?.availableRoles
-  if (Array.isArray(perm)) return perm
-  return []
+  const roles = Array.isArray(perm) ? perm : []
+  return roles.map((role) => ({ value: role, label: role }))
 }
 
 async function handleRoleChange(
@@ -207,7 +209,7 @@ function invitedByName(invite: PoolWorkspaceInvite): string | null {
         >
           Pending Invitations
         </h3>
-        <ul class="divide-line divide-y">
+        <ul>
           <BaseCard
             v-for="invite in pendingInvites"
             :key="invite.id"
@@ -312,32 +314,20 @@ function invitedByName(invite: PoolWorkspaceInvite): string | null {
               </p>
               <p class="text-ink-muted truncate text-sm">{{ member.email }}</p>
             </div>
-            <!-- Same shell as FormSelect, minus its stacked label: in a
-                 settings row the person's name is the label. -->
-            <div v-if="canChangeRole(member)" class="grid shrink-0 grid-cols-1">
-              <select
-                :aria-label="`Role for ${member.name || member.email}`"
+            <!-- The person's name is the row's label, so the select's own
+                 label is for assistive tech only. -->
+            <!-- The wrapper owns the row layout; FormSelect fills it. Its own
+                 class would land on the inner <select> (inheritAttrs is off),
+                 so width and shrink live out here. -->
+            <div v-if="canChangeRole(member)" class="w-32 shrink-0">
+              <FormSelect
+                :id="`member-role-${member.id}`"
+                :label="`Role for ${member.name || member.email}`"
+                hide-label
                 data-testid="member-role-select"
-                :value="member.role"
-                class="bg-surface-sunken outline-line focus:outline-focus text-ink *:bg-surface col-start-1 row-start-1 cursor-pointer appearance-none rounded-md py-1 pr-8 pl-3 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
-                @change="
-                  handleRoleChange(
-                    member,
-                    ($event.target as HTMLSelectElement).value
-                  )
-                "
-              >
-                <option
-                  v-for="role in availableRolesFor(member)"
-                  :key="role"
-                  :value="role"
-                >
-                  {{ role }}
-                </option>
-              </select>
-              <ChevronDownIcon
-                class="text-ink-muted pointer-events-none col-start-1 row-start-1 mr-2 size-4 self-center justify-self-end"
-                aria-hidden="true"
+                :model-value="member.role"
+                :options="roleOptionsFor(member)"
+                @update:model-value="handleRoleChange(member, $event)"
               />
             </div>
             <!-- Roles you can't change read as plain text, not as a control

@@ -65,7 +65,7 @@ function handleDownloadVCard(member: PoolMember): void {
         v-if="manageMembersLink"
         :to="manageMembersLink"
         data-testid="manage-members-link"
-        class="text-ink hover:bg-btn-secondary-fill focus-visible:outline-focus inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+        class="text-ink hover:bg-btn-secondary-fill focus-visible:outline-focus inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 sm:min-h-0"
       >
         <Cog6ToothIcon class="size-4" />
         Manage members
@@ -76,7 +76,7 @@ function handleDownloadVCard(member: PoolMember): void {
       v-if="members.length === 0"
       :icon="UserIcon"
       heading="No members yet"
-      description="Invite your friends so they can vote on dates, RSVP, and split costs."
+      description="People you add to this workspace will show up here."
     />
 
     <div
