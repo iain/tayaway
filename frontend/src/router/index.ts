@@ -11,6 +11,8 @@ const SettingsLoginPage = () => import('@/pages/SettingsLoginPage.vue')
 const SettingsPaymentPage = () => import('@/pages/SettingsPaymentPage.vue')
 const SettingsNotificationsPage = () =>
   import('@/pages/SettingsNotificationsPage.vue')
+const SettingsAppearancePage = () =>
+  import('@/pages/SettingsAppearancePage.vue')
 const SettingsWorkspaceGeneralPage = () =>
   import('@/pages/SettingsWorkspaceGeneralPage.vue')
 const EventsPage = () => import('@/pages/EventsPage.vue')
@@ -75,6 +77,11 @@ const router = createRouter({
               path: 'notifications',
               name: 'settings-notifications',
               component: SettingsNotificationsPage,
+            },
+            {
+              path: 'appearance',
+              name: 'settings-appearance',
+              component: SettingsAppearancePage,
             },
             {
               path: 'workspaces/:id/general',

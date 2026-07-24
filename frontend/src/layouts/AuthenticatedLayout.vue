@@ -21,8 +21,6 @@ import {
 import {
   Bars3Icon,
   XMarkIcon,
-  SunIcon,
-  MoonIcon,
   ChevronDownIcon,
   MagnifyingGlassIcon,
   XCircleIcon,
@@ -35,7 +33,6 @@ import {
 } from '@/stores'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useInboxStore } from '@/stores/inbox'
-import { useDarkMode } from '@/composables/useDarkMode'
 import { useMinuteTicker } from '@/composables/useMinuteTicker'
 import {
   getStaleness,
@@ -151,8 +148,13 @@ const warningBannerDays = computed(() => {
   return staleDays(since, now.value)
 })
 
-const { isDark, toggle: toggleDarkMode } = useDarkMode()
 const { open: openCommandPalette } = useCommandPalette()
+
+// The palette answers to both Cmd+K and Ctrl+K; the hint shows whichever one
+// this keyboard actually has.
+const searchShortcut = /Mac|iPhone|iPad/.test(navigator.userAgent)
+  ? '⌘K'
+  : 'Ctrl K'
 
 const navigation = [
   { name: 'Dashboard', href: '/', routeName: 'home' },
@@ -323,23 +325,27 @@ async function handleSignOut() {
     >
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="flex h-16 items-center justify-between">
-          <div class="flex items-center">
-            <div class="shrink-0">
+          <div class="flex min-w-0 items-center">
+            <!-- Shrinkable, not shrink-0: a long workspace name used to push
+                 the whole bar wider than the viewport in the band just above
+                 the md breakpoint (768px is iPad portrait). The name yields
+                 first; the nav items and right rail keep their width. -->
+            <div class="min-w-0">
               <!-- Single workspace: just show name -->
               <router-link
                 v-if="otherWorkspaces.length === 0"
                 to="/"
                 data-testid="current-workspace-name"
-                class="text-nav-text rounded text-xl font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                class="text-nav-text block truncate rounded text-xl font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
                 {{ currentWorkspace?.name ?? 'Tayaway' }}
               </router-link>
               <!-- Multiple workspaces: name links to dashboard, chevron opens dropdown -->
-              <div v-else class="relative flex items-center gap-2">
+              <div v-else class="relative flex min-w-0 items-center gap-2">
                 <router-link
                   to="/"
                   data-testid="current-workspace-name"
-                  class="text-nav-text rounded text-xl font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  class="text-nav-text block truncate rounded text-xl font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                 >
                   {{ currentWorkspace?.name ?? 'Tayaway' }}
                 </router-link>
@@ -393,7 +399,7 @@ async function handleSignOut() {
             </div>
             <div class="hidden md:block">
               <div
-                class="ml-10 flex items-baseline space-x-4"
+                class="ml-4 flex items-baseline space-x-2 lg:ml-10 lg:space-x-4"
                 data-testid="main-nav"
               >
                 <router-link
@@ -404,7 +410,7 @@ async function handleSignOut() {
                     isActive(item.routeName)
                       ? 'bg-nav-active text-nav-text shadow-[inset_0_1px_2px_rgba(0,0,0,0.15)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)]'
                       : 'text-nav-text hover:bg-nav-hover',
-                    'rounded-md px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white',
+                    'rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white',
                   ]"
                   :aria-current="isActive(item.routeName) ? 'page' : undefined"
                 >
@@ -435,15 +441,24 @@ async function handleSignOut() {
                 Offline
               </button>
 
-              <!-- Dark mode toggle -->
+              <!-- Search / command palette -->
               <button
                 type="button"
-                class="bg-nav text-nav-text-muted hover:text-nav-text relative rounded-full p-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                @click="toggleDarkMode"
+                data-testid="navbar-search"
+                aria-keyshortcuts="Meta+K Control+K"
+                class="bg-nav text-nav-text-muted hover:bg-nav-hover hover:text-nav-text relative flex items-center gap-1.5 rounded-md px-2 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                @click="openCommandPalette"
               >
-                <span class="sr-only">Toggle dark mode</span>
-                <SunIcon v-if="isDark" class="size-6" aria-hidden="true" />
-                <MoonIcon v-else class="size-6" aria-hidden="true" />
+                <span class="sr-only">Search</span>
+                <MagnifyingGlassIcon class="size-6" aria-hidden="true" />
+                <!-- Inherits the button's text colour so the hint lights up
+                     with the icon rather than staying muted behind it. -->
+                <kbd
+                  class="border-nav-line hidden rounded border px-1.5 py-0.5 font-sans text-xs lg:inline"
+                  aria-hidden="true"
+                >
+                  {{ searchShortcut }}
+                </kbd>
               </button>
 
               <!-- Notifications inbox -->
@@ -520,7 +535,19 @@ async function handleSignOut() {
               </Menu>
             </div>
           </div>
-          <div class="-mr-2 flex md:hidden">
+          <div class="-mr-2 flex items-center gap-1 md:hidden">
+            <!-- Search / command palette -->
+            <button
+              type="button"
+              data-testid="navbar-search-mobile"
+              aria-keyshortcuts="Meta+K Control+K"
+              class="bg-nav text-nav-text-muted hover:bg-nav-hover hover:text-nav-text relative inline-flex items-center justify-center rounded-md p-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              @click="openCommandPalette"
+            >
+              <span class="sr-only">Search</span>
+              <MagnifyingGlassIcon class="size-6" aria-hidden="true" />
+            </button>
+
             <!-- Mobile menu button -->
             <DisclosureButton
               class="group bg-nav text-nav-text-muted hover:bg-nav-hover hover:text-nav-text relative inline-flex items-center justify-center rounded-md p-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
@@ -582,19 +609,6 @@ async function handleSignOut() {
           >
             {{ item.name }}
           </router-link>
-          <button
-            type="button"
-            class="text-nav-text hover:bg-nav-hover flex w-full items-center gap-2 rounded-md px-3 py-2 text-base font-medium"
-            @click="
-              () => {
-                close()
-                openCommandPalette()
-              }
-            "
-          >
-            <MagnifyingGlassIcon class="size-5" aria-hidden="true" />
-            Search
-          </button>
         </div>
         <div class="border-nav-active border-t pt-4 pb-3">
           <div class="flex items-center px-5">
@@ -625,16 +639,6 @@ async function handleSignOut() {
             >
               <span class="inline-block size-2 rounded-full bg-gray-300" />
               Offline
-            </button>
-            <button
-              type="button"
-              class="bg-nav text-nav-text-muted hover:text-nav-text shrink-0 rounded-full p-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              :class="!showConnectionBadge ? 'relative ml-auto' : 'ml-2'"
-              @click="toggleDarkMode"
-            >
-              <span class="sr-only">Toggle dark mode</span>
-              <SunIcon v-if="isDark" class="size-6" aria-hidden="true" />
-              <MoonIcon v-else class="size-6" aria-hidden="true" />
             </button>
           </div>
           <div class="mt-3 space-y-1 px-2">

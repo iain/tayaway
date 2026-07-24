@@ -13,6 +13,7 @@ import {
   ClipboardDocumentListIcon,
   ClipboardIcon,
   Cog6ToothIcon,
+  ComputerDesktopIcon,
   HomeIcon,
   KeyIcon,
   MoonIcon,
@@ -20,6 +21,7 @@ import {
   ScaleIcon,
   SignalIcon,
   SunIcon,
+  SwatchIcon,
   UserCircleIcon,
   UserGroupIcon,
   UserIcon,
@@ -80,7 +82,18 @@ const pool = useObjectPoolStore()
 const authStore = useAuthStore()
 const wsStore = useWebSocketStore()
 const workspaceStore = useWorkspaceStore()
-const { isDark, toggle: toggleDarkMode } = useDarkMode()
+const { nextPreference, cycle: cycleTheme } = useDarkMode()
+
+// The command names the state it moves to, so the palette can't quietly pin
+// an "Automatic" user to light or dark the way a two-state toggle did.
+const themeCommand = computed(
+  () =>
+    ({
+      light: { name: 'Switch to light mode', icon: SunIcon },
+      dark: { name: 'Switch to dark mode', icon: MoonIcon },
+      system: { name: 'Switch to automatic theme', icon: ComputerDesktopIcon },
+    })[nextPreference.value]
+)
 const { triggerNewList } = useTaskActions()
 const { isOpen: open, contextGroups } = useCommandPalette()
 
@@ -200,6 +213,13 @@ const quickActions = computed<NavAction[]>(() => [
     icon: BellIcon,
     href: '/settings/notifications',
   },
+  {
+    type: 'action',
+    id: 'settings-appearance',
+    name: 'Appearance',
+    icon: SwatchIcon,
+    href: '/settings/appearance',
+  },
   ...workspaceSettingsActions.value,
   {
     type: 'action',
@@ -216,9 +236,9 @@ const quickActions = computed<NavAction[]>(() => [
   {
     type: 'action',
     id: 'dark-mode',
-    name: isDark.value ? 'Switch to light mode' : 'Switch to dark mode',
-    icon: isDark.value ? SunIcon : MoonIcon,
-    run: toggleDarkMode,
+    name: themeCommand.value.name,
+    icon: themeCommand.value.icon,
+    run: cycleTheme,
   },
   ...(wsStore.gitSha
     ? [

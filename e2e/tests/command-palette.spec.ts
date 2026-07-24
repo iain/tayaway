@@ -72,6 +72,35 @@ test.describe('Command Palette', () => {
       await expect(page.getByPlaceholder('Search...')).not.toBeVisible()
     })
 
+    test('opens from the navbar search button', async ({ page }) => {
+      await setupAuthenticatedPage(page, sessionToken)
+      await page.goto('/')
+
+      await expect(page.getByTestId('page-title')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+
+      await page.getByTestId('navbar-search').click()
+      await expect(page.getByPlaceholder('Search...')).toBeVisible()
+    })
+
+    // On mobile the shortcut isn't reachable at all, so the icon in the bar is
+    // the only way in — it must not be buried behind the hamburger.
+    test('opens from the mobile navbar without opening the menu', async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      await setupAuthenticatedPage(page, sessionToken)
+      await page.goto('/')
+
+      await expect(page.getByTestId('page-title')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+
+      await page.getByTestId('navbar-search-mobile').click()
+      await expect(page.getByPlaceholder('Search...')).toBeVisible()
+    })
+
     test('search filters Navigation items', async ({ page }) => {
       await setupAuthenticatedPage(page, sessionToken)
       await page.goto('/')

@@ -7,6 +7,7 @@ import {
   KeyIcon,
   BanknotesIcon,
   BellIcon,
+  SwatchIcon,
   ChevronRightIcon,
   ChevronLeftIcon,
   Cog6ToothIcon,
@@ -56,6 +57,12 @@ const personalSections: SettingsSection[] = [
     label: 'Notifications',
     to: '/settings/notifications',
     icon: BellIcon,
+  },
+  {
+    name: 'settings-appearance',
+    label: 'Appearance',
+    to: '/settings/appearance',
+    icon: SwatchIcon,
   },
 ]
 
