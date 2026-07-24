@@ -103,8 +103,7 @@ class AdminApp < Roda
     return @_current_admin_credential if defined?(@_current_admin_credential)
 
     session = current_admin_session
-    @_current_admin_credential =
-      session ? Admin::State.db[:admin_credentials].where(id: session.credential_id).first : nil
+    @_current_admin_credential = session ? AdminCredential.find(session.credential_id) : nil
   end
 
   def enrollment_open?
@@ -221,6 +220,18 @@ class AdminApp < Roda
           @counts = Admin::Stats.jobs
           @job_rows = Admin::Stats.job_list(state: @state)
           view "jobs"
+        end
+      else
+        r.redirect "/"
+      end
+    end
+
+    r.on "security" do
+      if current_admin_session
+        r.get true do
+          @passkeys = AdminCredential.all
+          @sessions = AdminSession.active
+          view "security"
         end
       else
         r.redirect "/"
