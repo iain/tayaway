@@ -8,6 +8,7 @@ import {
   XMarkIcon,
   ArrowPathIcon,
 } from '@heroicons/vue/24/outline'
+import { ChevronDownIcon } from '@heroicons/vue/16/solid'
 import { useMembersStore, useNotificationsStore } from '@/stores'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import InviteMemberModal from '@/components/members/InviteMemberModal.vue'
@@ -310,47 +311,43 @@ function invitedByName(invite: PoolWorkspaceInvite): string | null {
               </p>
               <p class="text-ink-muted truncate text-sm">{{ member.email }}</p>
             </div>
-            <select
-              v-if="canChangeRole(member)"
-              data-testid="member-role-select"
-              :value="member.role"
-              class="focus-visible:outline-focus inline-flex shrink-0 cursor-pointer items-center rounded-full border-0 px-2 py-0.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2"
-              :class="{
-                'bg-btn-outflow-fill text-btn-outflow-ink':
-                  member.role === 'owner',
-                'bg-state-info-fill text-state-info-ink':
-                  member.role === 'admin',
-                'bg-state-neutral-fill text-state-neutral-ink':
-                  member.role === 'member',
-              }"
-              @change="
-                handleRoleChange(
-                  member,
-                  ($event.target as HTMLSelectElement).value
-                )
-              "
-            >
-              <option
-                v-for="role in availableRolesFor(member)"
-                :key="role"
-                :value="role"
+            <!-- Same shell as FormSelect, minus its stacked label: in a
+                 settings row the person's name is the label. -->
+            <div v-if="canChangeRole(member)" class="grid shrink-0 grid-cols-1">
+              <select
+                :aria-label="`Role for ${member.name || member.email}`"
+                data-testid="member-role-select"
+                :value="member.role"
+                class="bg-surface-sunken outline-line focus:outline-focus text-ink *:bg-surface col-start-1 row-start-1 cursor-pointer appearance-none rounded-md py-1 pr-8 pl-3 text-sm outline-1 -outline-offset-1 focus:outline-2 focus:outline-offset-2"
+                @change="
+                  handleRoleChange(
+                    member,
+                    ($event.target as HTMLSelectElement).value
+                  )
+                "
               >
-                {{ role }}
-              </option>
-            </select>
-            <AppBadge
+                <option
+                  v-for="role in availableRolesFor(member)"
+                  :key="role"
+                  :value="role"
+                >
+                  {{ role }}
+                </option>
+              </select>
+              <ChevronDownIcon
+                class="text-ink-muted pointer-events-none col-start-1 row-start-1 mr-2 size-4 self-center justify-self-end"
+                aria-hidden="true"
+              />
+            </div>
+            <!-- Roles you can't change read as plain text, not as a control
+                 you're forbidden to touch. -->
+            <span
               v-else-if="member.role"
               data-testid="member-role"
-              :variant="
-                member.role === 'owner'
-                  ? 'pending'
-                  : member.role === 'admin'
-                    ? 'info'
-                    : 'neutral'
-              "
+              class="text-ink-muted shrink-0 px-3 py-1 text-sm"
             >
               {{ member.role }}
-            </AppBadge>
+            </span>
           </li>
         </ul>
       </BaseCard>
