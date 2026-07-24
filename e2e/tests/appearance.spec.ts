@@ -55,4 +55,24 @@ test.describe('Appearance settings', () => {
     await page.getByRole('radio', { name: 'Automatic' }).check()
     await expect.poll(isDark(page)).toBe(false)
   })
+
+  // The radio is a 16px dot and its label is a 24px line — too small to hit
+  // reliably on a phone. Each row bleeds 8px above and below into a ~40px
+  // target, so a tap that lands in the gap still counts.
+  test('selects a theme from the padding above the label text', async ({
+    page,
+  }) => {
+    await setupAuthenticatedPage(page, sessionToken)
+    await page.goto('/settings/appearance')
+
+    const label = page.locator('label[for="theme-dark"]')
+    await expect(label).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
+
+    const box = (await label.boundingBox())!
+    // 6px above the label's top edge: outside the text, inside the target.
+    await page.mouse.click(box.x + box.width / 2, box.y - 6)
+
+    await expect(page.getByRole('radio', { name: 'Dark' })).toBeChecked()
+    await expect.poll(isDark(page)).toBe(true)
+  })
 })
