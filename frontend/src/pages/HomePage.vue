@@ -18,6 +18,7 @@ import {
 import PageHeader from '@/components/common/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { daysUntilBirthday, UPCOMING_BIRTHDAY_WINDOW_DAYS } from '@/utils/date'
+import { can } from '@/composables/usePermission'
 import TodayBirthdays from '@/components/home/TodayBirthdays.vue'
 import UpcomingBirthdays from '@/components/home/UpcomingBirthdays.vue'
 import OpenSettlementsSection from '@/components/home/OpenSettlementsSection.vue'
@@ -104,6 +105,14 @@ const pastEventsWithOpenExpenses = computed(() =>
 
 const { members } = storeToRefs(useMembersStore())
 
+// Inviting lives in the workspace's settings, so the welcome nudge points
+// there — but only for the people who may actually invite.
+const manageMembersLink = computed(() =>
+  can(workspaceStore.currentWorkspace?.permissions, 'manage_members')
+    ? `/settings/workspaces/${workspaceStore.currentWorkspaceId}/members`
+    : null
+)
+
 const todayBirthdays = computed(() =>
   members.value.filter((member) => daysUntilBirthday(member.birthday) === 0)
 )
@@ -148,6 +157,7 @@ const allCaughtUp = computed(
       :user-name="user?.name ?? null"
       :member-count="members.length"
       :has-events="hasEvents"
+      :manage-members-link="manageMembersLink"
       @create-event="showEventModal = true"
     />
 

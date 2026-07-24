@@ -8,6 +8,25 @@ class App
   hash_branch("api", "members") do |r|
     require_auth
 
+    # GET /api/members?workspace_id=X - List the workspace's memberships.
+    # The workspace channel already carries these for whichever workspace a
+    # client is subscribed to; this is for the ones it isn't — settings
+    # administers every workspace you own, not just the active one.
+    r.is do
+      r.get do
+        workspace_id = r.params["workspace_id"]
+
+        unless workspace_id && member_of_workspace?(workspace_id)
+          response.status = 403
+          next { error: "Access denied" }
+        end
+
+        pool = PoolSerializer.new(membership: current_membership)
+        pool.add(:member, WorkspaceMembership.for_workspace(workspace_id))
+        { objects: pool.to_a }
+      end
+    end
+
     # PUT /api/members/:id - Update member role
     r.on String do |id|
       r.put do

@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import {
   UserIcon,
+  UsersIcon,
   KeyIcon,
   BanknotesIcon,
   BellIcon,
@@ -86,6 +87,13 @@ const groups = computed<SettingsGroup[]>(() => [
         label: 'General',
         to: `/settings/workspaces/${workspace.id}/general`,
         icon: Cog6ToothIcon,
+        workspaceId: workspace.id,
+      },
+      {
+        name: 'settings-workspace-members',
+        label: 'Members',
+        to: `/settings/workspaces/${workspace.id}/members`,
+        icon: UsersIcon,
         workspaceId: workspace.id,
       },
     ],

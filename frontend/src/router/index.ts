@@ -15,6 +15,8 @@ const SettingsAppearancePage = () =>
   import('@/pages/SettingsAppearancePage.vue')
 const SettingsWorkspaceGeneralPage = () =>
   import('@/pages/SettingsWorkspaceGeneralPage.vue')
+const SettingsWorkspaceMembersPage = () =>
+  import('@/pages/SettingsWorkspaceMembersPage.vue')
 const EventsPage = () => import('@/pages/EventsPage.vue')
 const EventCreatePage = () => import('@/pages/EventCreatePage.vue')
 const EventPage = () => import('@/pages/EventPage.vue')
@@ -87,6 +89,11 @@ const router = createRouter({
               path: 'workspaces/:id/general',
               name: 'settings-workspace-general',
               component: SettingsWorkspaceGeneralPage,
+            },
+            {
+              path: 'workspaces/:id/members',
+              name: 'settings-workspace-members',
+              component: SettingsWorkspaceMembersPage,
             },
           ],
         },

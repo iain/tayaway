@@ -133,9 +133,15 @@ test.describe('Member Role Management', () => {
     })
   })
 
+  // The members page is the friendly directory: who's here, how to reach
+  // them. Everything that *changes* the roster — roles, invitations — lives
+  // in the workspace's settings, behind the same admin/owner bar the API
+  // enforces. Admins get a link across; everyone else sees a page with no
+  // controls on it at all.
   test.describe('Members UI - Role management', () => {
     let ownerToken: string
     let ownerContext: APIRequestContext
+    let memberToken: string
     let workspaceId: string
 
     test.beforeAll(async ({ playwright }) => {
@@ -150,8 +156,20 @@ test.describe('Member Role Management', () => {
 
       // Ensure another member exists so the role dropdown appears
       const uiMemberContext = await newApiContext(playwright)
-      await getTestSession(uiMemberContext, MEMBER_EMAIL, MEMBER_NAME)
-      await addMemberToWorkspace(ownerContext, workspaceId, MEMBER_EMAIL)
+      const memberSession = await getTestSession(
+        uiMemberContext,
+        MEMBER_EMAIL,
+        MEMBER_NAME
+      )
+      memberToken = memberSession.token
+      const uiMemberId = await addMemberToWorkspace(
+        ownerContext,
+        workspaceId,
+        MEMBER_EMAIL
+      )
+      await ownerContext.put(`${API_BASE}/api/members/${uiMemberId}`, {
+        data: { role: 'member' },
+      })
       await uiMemberContext.dispose()
     })
 
@@ -211,11 +229,33 @@ test.describe('Member Role Management', () => {
       expect(download.suggestedFilename()).toMatch(/\.vcf$/)
     })
 
-    test('owner can change member role via dropdown', async ({ page }) => {
+    test('the members page is read-only, and points admins at settings', async ({
+      page,
+    }) => {
       await setupAuthenticatedPage(page, ownerToken)
       await page.goto('/members')
 
       await expect(page.getByTestId('members-list')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+
+      // Roles are shown as badges here, never as editors.
+      await expect(page.getByTestId('member-role-select')).toHaveCount(0)
+      await expect(page.getByTestId('member-role').first()).toBeVisible()
+      await expect(page.getByTestId('invite-member-button')).toHaveCount(0)
+
+      // The one admin affordance left is the way across.
+      await page.getByTestId('manage-members-link').click()
+      await expect(page).toHaveURL(`/settings/workspaces/${workspaceId}/members`)
+    })
+
+    test('owner can change member role from workspace settings', async ({
+      page,
+    }) => {
+      await setupAuthenticatedPage(page, ownerToken)
+      await page.goto(`/settings/workspaces/${workspaceId}/members`)
+
+      await expect(page.getByTestId('workspace-members')).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
@@ -239,6 +279,47 @@ test.describe('Member Role Management', () => {
 
       // The select should now show the new role
       await expect(roleSelect).toHaveValue(newRole)
+
+      // Restore, so the ordering of tests in this file doesn't matter.
+      await Promise.all([
+        page.waitForResponse(
+          (resp) =>
+            resp.url().includes('/api/members/') &&
+            resp.request().method() === 'PUT'
+        ),
+        roleSelect.selectOption(currentRole),
+      ])
+    })
+
+    test('a plain member gets the directory and no way into settings', async ({
+      page,
+    }) => {
+      await setupAuthenticatedPage(page, memberToken)
+      // Every test user owns a workspace of their own, and that's the one
+      // they'd otherwise land on — where they are the owner. Pin the shared
+      // one, which is the workspace they're merely a member of.
+      await page.addInitScript((id) => {
+        localStorage.setItem('current_workspace_id', id)
+      }, workspaceId)
+      await page.goto('/members')
+
+      await expect(page.getByTestId('members-list')).toBeVisible({
+        timeout: PAGE_LOAD_TIMEOUT,
+      })
+      await expect(page.getByTestId('manage-members-link')).toHaveCount(0)
+      await expect(page.getByTestId('member-role-select')).toHaveCount(0)
+
+      // Settings lists no group for a workspace you don't administer, so
+      // there is no Members section to reach either.
+      await page.goto('/settings')
+      await expect(
+        page.locator('[data-testid="settings-nav-group"][data-group="personal"]')
+      ).toBeVisible({ timeout: PAGE_LOAD_TIMEOUT })
+      await expect(
+        page.locator(
+          `[data-testid="settings-nav-group"][data-workspace-id="${workspaceId}"]`
+        )
+      ).toHaveCount(0)
     })
   })
 })

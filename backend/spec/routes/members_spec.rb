@@ -12,6 +12,44 @@ RSpec.describe "Members endpoints" do
 
   before { TestFactories.workspace_membership(workspace: workspace, user: owner, role: "owner") }
 
+  # The workspace channel already ships every membership, but only for the
+  # workspace a client is subscribed to. Settings reaches any workspace you
+  # administer, so it needs a way to ask for one by id.
+  describe "GET /api/members" do
+    it "returns 401 without auth" do
+      get "/api/members?workspace_id=#{workspace[:id]}"
+
+      expect(last_response.status).to eq(401)
+    end
+
+    it "returns 403 without a workspace id" do
+      get "/api/members", {}, auth_headers
+
+      expect(last_response.status).to eq(403)
+    end
+
+    it "returns 403 for a workspace the caller is not a member of" do
+      other_workspace = TestFactories.workspace
+
+      get "/api/members?workspace_id=#{other_workspace[:id]}", {}, auth_headers
+
+      expect(last_response.status).to eq(403)
+    end
+
+    it "returns every membership in the workspace, with permissions attached" do
+      target_user = TestFactories.user
+      TestFactories.workspace_membership(workspace: workspace, user: target_user, role: "member")
+
+      get "/api/members?workspace_id=#{workspace[:id]}", {}, auth_headers
+
+      expect(last_response.status).to eq(200)
+      body = JSON.parse(last_response.body)
+      members = body["objects"].select { |o| o["objectType"] == "member" }
+      expect(members.map { |m| m["userId"] }).to contain_exactly(owner[:id], target_user[:id])
+      expect(members.find { |m| m["userId"] == target_user[:id] }["permissions"]).to include("change_role")
+    end
+  end
+
   describe "PUT /api/members/:id" do
     it "returns 401 without auth" do
       put "/api/members/#{SecureRandom.uuid}"

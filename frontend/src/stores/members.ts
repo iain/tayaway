@@ -15,11 +15,16 @@ interface UpdateRoleResponse {
 }
 
 export const useMembersStore = defineStore('members', () => {
+  // Every read and write below takes the workspace it applies to. The
+  // directory works off the active one, but settings administers any
+  // workspace you own — including ones no client is subscribed to.
+  function activeWorkspaceId(): string | null {
+    return useWorkspaceStore().currentWorkspaceId
+  }
+
   // Members are derived directly from the pool — no cross-referencing needed
-  const members = computed((): PoolMember[] => {
+  function membersIn(workspaceId: string | null): PoolMember[] {
     const pool = useObjectPoolStore()
-    const workspaceStore = useWorkspaceStore()
-    const workspaceId = workspaceStore.currentWorkspaceId
 
     return pool
       .getAll('member')
@@ -29,13 +34,11 @@ export const useMembersStore = defineStore('members', () => {
         const nameB = b.name || b.email
         return nameA.localeCompare(nameB)
       })
-  })
+  }
 
-  // Pending invites derived from pool, filtered to current workspace + non-accepted
-  const pendingInvites = computed((): PoolWorkspaceInvite[] => {
+  // Pending invites derived from pool, filtered to workspace + non-accepted
+  function pendingInvitesIn(workspaceId: string | null): PoolWorkspaceInvite[] {
     const pool = useObjectPoolStore()
-    const workspaceStore = useWorkspaceStore()
-    const workspaceId = workspaceStore.currentWorkspaceId
 
     return pool
       .getAll('workspaceInvite')
@@ -44,10 +47,27 @@ export const useMembersStore = defineStore('members', () => {
         (a, b) =>
           new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       )
-  })
+  }
 
-  async function fetchInvites() {
-    const workspaceId = useWorkspaceStore().currentWorkspaceId
+  const members = computed((): PoolMember[] => membersIn(activeWorkspaceId()))
+
+  const pendingInvites = computed((): PoolWorkspaceInvite[] =>
+    pendingInvitesIn(activeWorkspaceId())
+  )
+
+  // The workspace channel already carries the roster for the workspace a
+  // client is subscribed to; this fills in the ones it isn't.
+  async function fetchMembers(workspaceId = activeWorkspaceId()) {
+    if (!workspaceId) return
+
+    try {
+      await api.get(`/members?workspace_id=${workspaceId}`)
+    } catch (err) {
+      console.warn('Failed to fetch members', err)
+    }
+  }
+
+  async function fetchInvites(workspaceId = activeWorkspaceId()) {
     if (!workspaceId) return
 
     try {
@@ -61,9 +81,12 @@ export const useMembersStore = defineStore('members', () => {
     }
   }
 
-  async function createInvite(email: string, name?: string) {
+  async function createInvite(
+    email: string,
+    name?: string,
+    workspaceId = activeWorkspaceId()
+  ) {
     const { mutate } = useMutation()
-    const workspaceId = useWorkspaceStore().currentWorkspaceId!
     await mutate('Failed to send invite', (commandQueue) =>
       commandQueue.enqueue('POST', '/invites', {
         email,
@@ -73,9 +96,8 @@ export const useMembersStore = defineStore('members', () => {
     )
   }
 
-  async function cancelInvite(id: string) {
+  async function cancelInvite(id: string, workspaceId = activeWorkspaceId()) {
     const { destroy } = useMutation()
-    const workspaceId = useWorkspaceStore().currentWorkspaceId!
     await destroy(
       'Failed to cancel invite',
       'workspaceInvite',
@@ -88,9 +110,8 @@ export const useMembersStore = defineStore('members', () => {
     )
   }
 
-  async function sendReminder(id: string) {
+  async function sendReminder(id: string, workspaceId = activeWorkspaceId()) {
     const { mutate } = useMutation()
-    const workspaceId = useWorkspaceStore().currentWorkspaceId!
     await mutate('Failed to send reminder', (commandQueue) =>
       commandQueue.enqueue(
         'POST',
@@ -122,6 +143,9 @@ export const useMembersStore = defineStore('members', () => {
   return {
     members,
     pendingInvites,
+    membersIn,
+    pendingInvitesIn,
+    fetchMembers,
     fetchInvites,
     createInvite,
     cancelInvite,

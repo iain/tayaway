@@ -164,7 +164,7 @@ test.describe('Workspace Invites Feature', () => {
       page,
     }) => {
       await setupAuthenticatedPage(page, sessionToken)
-      await page.goto('/members')
+      await page.goto(`/settings/workspaces/${workspaceId}/members`)
 
       // Wait for page to load
       await expect(page.getByTestId('invite-member-button')).toBeVisible({
@@ -215,7 +215,7 @@ test.describe('Workspace Invites Feature', () => {
       })
 
       await setupAuthenticatedPage(page, sessionToken)
-      await page.goto('/members')
+      await page.goto(`/settings/workspaces/${workspaceId}/members`)
 
       // Wait for pending invites section
       await expect(page.getByTestId('pending-invites-section')).toBeVisible({

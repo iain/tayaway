@@ -1,170 +1,43 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import {
   UserIcon,
   UsersIcon,
-  PlusIcon,
   EnvelopeIcon,
   PhoneIcon,
   CakeIcon,
-  XMarkIcon,
   IdentificationIcon,
-  ArrowPathIcon,
+  Cog6ToothIcon,
 } from '@heroicons/vue/24/outline'
-import { useMembersStore, useNotificationsStore } from '@/stores'
+import { useMembersStore } from '@/stores'
 import { useAuthStore } from '@/stores/auth'
-import { useObjectPoolStore } from '@/stores/objectPool'
 import { useWorkspaceStore } from '@/stores/workspace'
-import InviteMemberModal from '@/components/members/InviteMemberModal.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
-import AppButton from '@/components/common/AppButton.vue'
-import IconButton from '@/components/common/IconButton.vue'
 import AppBadge from '@/components/common/AppBadge.vue'
 import AppAvatar from '@/components/common/AppAvatar.vue'
-import TimeAnchor from '@/components/common/TimeAnchor.vue'
-import AlertBox from '@/components/common/AlertBox.vue'
-import type { PoolMember, PoolWorkspaceInvite } from '@/types/pool'
+import type { PoolMember } from '@/types/pool'
 import { can } from '@/composables/usePermission'
-import {
-  formatBirthday,
-  isPastIso,
-  addHours,
-  formatClockTime,
-  daysUntilBirthday,
-} from '@/utils/date'
+import { formatBirthday, daysUntilBirthday } from '@/utils/date'
 import { generateVCard, downloadVCard } from '@/utils/vcard'
 import { getInitials } from '@/utils/member'
 
 const membersStore = useMembersStore()
-const { members, pendingInvites } = storeToRefs(membersStore)
+const { members } = storeToRefs(membersStore)
 const authStore = useAuthStore()
-const pool = useObjectPoolStore()
 const workspaceStore = useWorkspaceStore()
 
-const canInvite = computed(() =>
-  can(workspaceStore.currentWorkspace?.permissions, 'invite')
+// This page is the directory — who's here and how to reach them. Inviting,
+// chasing invitations and changing roles all sit behind the admin bar, so
+// they live in the workspace's settings; admins get a link across rather
+// than a second copy of the controls.
+const manageMembersLink = computed(() =>
+  can(workspaceStore.currentWorkspace?.permissions, 'manage_members')
+    ? `/settings/workspaces/${workspaceStore.currentWorkspaceId}/members`
+    : null
 )
-
-const isModalOpen = ref(false)
-const isSubmitting = ref(false)
-const remindingInviteId = ref<string | null>(null)
-const formError = ref<string | null>(null)
-const roleError = ref<string | null>(null)
-
-function canChangeRole(member: PoolMember): boolean {
-  return can(member.permissions, 'change_role')
-}
-
-function availableRolesFor(member: PoolMember): string[] {
-  const perm = member.permissions?.availableRoles
-  if (Array.isArray(perm)) return perm
-  return []
-}
-
-async function handleRoleChange(
-  member: PoolMember,
-  newRole: string
-): Promise<void> {
-  if (newRole === member.role) return
-  roleError.value = null
-  try {
-    await membersStore.updateMemberRole(member.id, newRole)
-  } catch {
-    roleError.value = 'Failed to update role'
-  }
-}
-
-function openModal(): void {
-  formError.value = null
-  isModalOpen.value = true
-}
-
-function closeModal(): void {
-  isModalOpen.value = false
-}
-
-async function handleSave(name: string, email: string): Promise<void> {
-  formError.value = null
-  isSubmitting.value = true
-
-  try {
-    await membersStore.createInvite(email, name || undefined)
-    isModalOpen.value = false
-    const notifications = useNotificationsStore()
-    notifications.showInfo('Invitation email sent')
-  } catch {
-    formError.value =
-      'Could not send invitation. This email may already be a member or have a pending invite.'
-  } finally {
-    isSubmitting.value = false
-  }
-}
-
-const cancellingInviteId = ref<string | null>(null)
-
-async function handleCancelInvite(id: string): Promise<void> {
-  if (cancellingInviteId.value === id) return
-  cancellingInviteId.value = id
-  try {
-    await membersStore.cancelInvite(id)
-  } catch {
-    const notifications = useNotificationsStore()
-    notifications.showError('Could not cancel invitation. Please try again.')
-  } finally {
-    cancellingInviteId.value = null
-  }
-}
-
-// Reminders are gated behind a 24h cooldown from the last send (or the invite's
-// creation, if none was sent yet).
-const REMIND_COOLDOWN_HOURS = 24
-
-function isExpired(invite: PoolWorkspaceInvite): boolean {
-  return isPastIso(invite.expiresAt)
-}
-
-function remindCooldownUntil(invite: PoolWorkspaceInvite): string {
-  return addHours(
-    invite.lastRemindedAt ?? invite.createdAt,
-    REMIND_COOLDOWN_HOURS
-  )
-}
-
-function canRemind(invite: PoolWorkspaceInvite): boolean {
-  return isPastIso(remindCooldownUntil(invite))
-}
-
-function remindAvailableAt(invite: PoolWorkspaceInvite): string {
-  return formatClockTime(remindCooldownUntil(invite))
-}
-
-async function handleRemind(id: string): Promise<void> {
-  remindingInviteId.value = id
-  try {
-    await membersStore.sendReminder(id)
-    const notifications = useNotificationsStore()
-    notifications.showInfo('Reminder email sent')
-  } catch (err) {
-    const notifications = useNotificationsStore()
-    const apiErr = err as { message?: string }
-    notifications.showError(apiErr.message || 'Failed to send reminder')
-  } finally {
-    remindingInviteId.value = null
-  }
-}
-
-function inviteExpiryVerb(invite: PoolWorkspaceInvite): 'Expired' | 'Expires' {
-  return new Date(invite.expiresAt) < new Date() ? 'Expired' : 'Expires'
-}
-
-function invitedByName(invite: PoolWorkspaceInvite): string | null {
-  if (!invite.invitedBy) return null
-  const member = pool.findBy('member', 'userId', invite.invitedBy)
-  return member ? (member.name ?? member.email) : null
-}
 
 function isBirthday(member: PoolMember): boolean {
   return daysUntilBirthday(member.birthday) === 0
@@ -183,141 +56,28 @@ function handleDownloadVCard(member: PoolMember): void {
   const filename = `${member.name || member.email}.vcf`
   downloadVCard(filename, content)
 }
-
-onMounted(() => {
-  membersStore.fetchInvites()
-})
 </script>
 
 <template>
   <div>
     <PageHeader title="Members" :icon="UsersIcon" data-testid="page-title">
-      <AppButton
-        v-if="canInvite"
-        data-testid="invite-member-button"
-        @click="openModal"
+      <RouterLink
+        v-if="manageMembersLink"
+        :to="manageMembersLink"
+        data-testid="manage-members-link"
+        class="text-ink hover:bg-btn-secondary-fill focus-visible:outline-focus inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 sm:min-h-0"
       >
-        <PlusIcon class="size-5" />
-        Invite Member
-      </AppButton>
+        <Cog6ToothIcon class="size-4" />
+        Manage members
+      </RouterLink>
     </PageHeader>
-
-    <AlertBox v-if="formError" class="mb-4">
-      {{ formError }}
-    </AlertBox>
-
-    <AlertBox v-if="roleError" class="mb-4">
-      {{ roleError }}
-    </AlertBox>
-
-    <!-- Pending + Expired Invites Section -->
-    <div
-      v-if="pendingInvites.length > 0"
-      class="mb-6"
-      data-testid="pending-invites-section"
-    >
-      <h2
-        class="text-ink-muted mb-3 text-sm font-semibold tracking-wide uppercase"
-      >
-        Pending Invitations
-      </h2>
-      <ul class="divide-line divide-y">
-        <BaseCard
-          v-for="invite in pendingInvites"
-          :key="invite.id"
-          as="li"
-          class="mb-2 overflow-hidden"
-        >
-          <div class="px-4 py-3 sm:px-6">
-            <div class="flex items-center justify-between">
-              <div class="flex min-w-0 items-center">
-                <EnvelopeIcon class="text-ink-muted mr-3 size-8 shrink-0" />
-                <div class="min-w-0 flex-1">
-                  <p
-                    class="text-ink truncate text-sm font-medium"
-                    data-testid="invite-email"
-                    :title="
-                      invite.name
-                        ? `${invite.name} (${invite.email})`
-                        : invite.email
-                    "
-                  >
-                    {{
-                      invite.name
-                        ? `${invite.name} (${invite.email})`
-                        : invite.email
-                    }}
-                  </p>
-                  <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <AppBadge v-if="isExpired(invite)" variant="danger">
-                      Expired
-                    </AppBadge>
-                    <AppBadge v-else variant="warning"> Pending </AppBadge>
-                    <span class="text-ink-muted text-xs">
-                      <TimeAnchor :at="invite.createdAt">Sent</TimeAnchor>
-                      <template v-if="invitedByName(invite)">
-                        by {{ invitedByName(invite) }}
-                      </template>
-                      ·
-                      <TimeAnchor :at="invite.expiresAt">
-                        {{ inviteExpiryVerb(invite) }}
-                      </TimeAnchor>
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div
-                v-if="can(invite.permissions, 'remind')"
-                class="flex items-center gap-1"
-              >
-                <IconButton
-                  :label="
-                    isExpired(invite) ? 'Resend invitation' : 'Send reminder'
-                  "
-                  :disabled="
-                    !canRemind(invite) || remindingInviteId === invite.id
-                  "
-                  :title="
-                    !canRemind(invite)
-                      ? `Available at ${remindAvailableAt(invite)}`
-                      : isExpired(invite)
-                        ? 'Resend invitation'
-                        : 'Send reminder'
-                  "
-                  data-testid="remind-invite-button"
-                  @click="handleRemind(invite.id)"
-                >
-                  <ArrowPathIcon
-                    class="size-5"
-                    :class="{ 'animate-spin': remindingInviteId === invite.id }"
-                  />
-                </IconButton>
-                <IconButton
-                  label="Cancel invitation"
-                  :disabled="cancellingInviteId === invite.id"
-                  data-testid="cancel-invite-button"
-                  @click="handleCancelInvite(invite.id)"
-                >
-                  <XMarkIcon class="size-5" />
-                </IconButton>
-              </div>
-            </div>
-          </div>
-        </BaseCard>
-      </ul>
-    </div>
 
     <EmptyState
       v-if="members.length === 0"
       :icon="UserIcon"
       heading="No members yet"
-      description="Invite your friends so they can vote on dates, RSVP, and split costs."
-    >
-      <AppButton @click="openModal">
-        <PlusIcon class="size-5" />
-        Invite Member
-      </AppButton>
-    </EmptyState>
+      description="People you add to this workspace will show up here."
+    />
 
     <div
       v-else
@@ -367,36 +127,8 @@ onMounted(() => {
               >
                 {{ member.name || 'No name' }}
               </h2>
-              <select
-                v-if="canChangeRole(member)"
-                data-testid="member-role-select"
-                :value="member.role"
-                class="focus-visible:outline-focus inline-flex shrink-0 cursor-pointer items-center rounded-full border-0 px-2 py-0.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2"
-                :class="{
-                  'bg-btn-outflow-fill text-btn-outflow-ink':
-                    member.role === 'owner',
-                  'bg-state-info-fill text-state-info-ink':
-                    member.role === 'admin',
-                  'bg-state-neutral-fill text-state-neutral-ink':
-                    member.role === 'member',
-                }"
-                @change="
-                  handleRoleChange(
-                    member,
-                    ($event.target as HTMLSelectElement).value
-                  )
-                "
-              >
-                <option
-                  v-for="role in availableRolesFor(member)"
-                  :key="role"
-                  :value="role"
-                >
-                  {{ role }}
-                </option>
-              </select>
               <AppBadge
-                v-else-if="member.role"
+                v-if="member.role"
                 data-testid="member-role"
                 :variant="
                   member.role === 'owner'
@@ -460,13 +192,6 @@ onMounted(() => {
         </div>
       </BaseCard>
     </div>
-
-    <InviteMemberModal
-      :open="isModalOpen"
-      :loading="isSubmitting"
-      @close="closeModal"
-      @save="handleSave"
-    />
   </div>
 </template>
 

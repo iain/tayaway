@@ -7,16 +7,27 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = defineProps<{
-  id: string
-  label: string
-  modelValue: string
-  options: { value: string; label: string; disabled?: boolean }[]
-  required?: boolean
-  disabled?: boolean
-  autocomplete?: string
-  error?: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    id: string
+    label: string
+    modelValue: string
+    options: { value: string; label: string; disabled?: boolean }[]
+    required?: boolean
+    disabled?: boolean
+    autocomplete?: string
+    error?: string
+    // Renders the label to assistive tech only. For rows where a visible
+    // label would be redundant (a settings row already labelled by the
+    // person's name), the same way TimezoneSelect handles it.
+    hideLabel?: boolean
+  }>(),
+  {
+    hideLabel: false,
+    autocomplete: undefined,
+    error: undefined,
+  }
+)
 
 defineEmits<{
   'update:modelValue': [value: string]
@@ -36,10 +47,13 @@ const shell = computed(() =>
 
 <template>
   <div>
-    <label :for="id" class="text-label text-ink block">
+    <label
+      :for="id"
+      :class="hideLabel ? 'sr-only' : 'text-label text-ink block'"
+    >
       {{ label }}
     </label>
-    <div class="mt-2 grid grid-cols-1">
+    <div :class="['grid grid-cols-1', hideLabel ? '' : 'mt-2']">
       <select
         :id="id"
         :value="modelValue"
@@ -49,7 +63,7 @@ const shell = computed(() =>
         :aria-invalid="hasError || undefined"
         :aria-describedby="hasError ? errorId : undefined"
         v-bind="attrs"
-        class="text-ink *:bg-surface col-start-1 row-start-1 w-full appearance-none rounded-md py-1.5 pl-3 text-base disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm/6"
+        class="text-ink *:bg-surface col-start-1 row-start-1 w-full cursor-pointer appearance-none rounded-md py-1.5 pl-3 text-base disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm/6"
         :class="[shell, hasError ? 'pr-16' : 'pr-8']"
         @change="
           $emit('update:modelValue', ($event.target as HTMLSelectElement).value)
