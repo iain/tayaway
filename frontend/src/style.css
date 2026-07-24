@@ -282,6 +282,177 @@
   color-scheme: dark;
 }
 
+/* Nested-island fix for the /design gallery's side-by-side light/dark columns.
+ *
+ * The dual-mode tokens above live on `:root` (via @theme) and pick their half
+ * with `light-dark()`, which resolves at *used-value* time against each
+ * element's own color-scheme — so a `.light` island nested inside the globally
+ * `.dark` app flips back to light. That works with native `light-dark()`, i.e.
+ * in the dev server. The *production build* is another story: Lightning CSS
+ * (Tailwind's minifier) polyfills every `light-dark()` into the switch-var form
+ * `var(--lightningcss-light, LIGHT) var(--lightningcss-dark, DARK)`, toggled by
+ * color-scheme. Those are ordinary custom properties, so a token declared on
+ * `:root` has its switch-vars substituted at :root (= <html>, whose scheme is
+ * the global theme) and then *inherits that already-resolved value* into the
+ * islands — the island's own color-scheme never gets a vote. Result: both
+ * columns collapse to the global theme in prod, in every browser. (The app's
+ * own theming is unaffected — its tokens are only ever used under <html>'s
+ * scheme, which is exactly what :root resolves them to.)
+ *
+ * Re-declaring the dual-mode tokens on the island itself forces each token to
+ * be recomputed there, where the switch-vars carry the island's color-scheme.
+ * Correct under native `light-dark()` too (still resolved per element). Scoped
+ * to `[data-mode]` (only the gallery's side-by-side islands carry it) so the
+ * global theme is untouched.
+ *
+ * Keep this list in lockstep with the dual-mode tokens in @theme above. */
+[data-mode] {
+  --color-surface: light-dark(var(--color-white), var(--color-stone-800));
+  --color-surface-page: light-dark(
+    var(--color-gray-100),
+    var(--color-stone-900)
+  );
+  --color-surface-sunken: light-dark(
+    var(--color-gray-100),
+    rgb(255 255 255 / 0.05)
+  );
+  --color-surface-action: light-dark(
+    color-mix(in oklab, var(--color-amber-50) 60%, transparent),
+    color-mix(in oklab, var(--color-amber-950) 20%, transparent)
+  );
+  --color-surface-urgent: light-dark(
+    var(--color-red-50),
+    color-mix(in oklab, var(--color-red-950) 30%, transparent)
+  );
+  --color-ink: light-dark(var(--color-gray-900), var(--color-white));
+  --color-ink-muted: light-dark(var(--color-gray-600), var(--color-stone-400));
+  --color-ink-faint: light-dark(var(--color-gray-600), var(--color-stone-400));
+  --color-ink-placeholder: light-dark(
+    var(--color-gray-500),
+    var(--color-stone-400)
+  );
+  --color-line: light-dark(var(--color-gray-300), rgb(255 255 255 / 0.1));
+  --color-line-faint: light-dark(
+    var(--color-gray-100),
+    rgb(255 255 255 / 0.08)
+  );
+  --color-ring-hairline: light-dark(rgb(0 0 0 / 0.05), rgb(255 255 255 / 0.06));
+  --color-ring-hover: light-dark(rgb(0 0 0 / 0.18), rgb(255 255 255 / 0.22));
+  --color-ring-action: light-dark(
+    color-mix(in oklab, var(--color-amber-300) 50%, transparent),
+    color-mix(in oklab, var(--color-amber-700) 40%, transparent)
+  );
+  --color-ring-urgent: light-dark(
+    color-mix(in oklab, var(--color-red-300) 60%, transparent),
+    color-mix(in oklab, var(--color-red-800) 50%, transparent)
+  );
+  --color-focus: light-dark(var(--color-rose-500), var(--color-rose-500));
+  --color-state-success-fill: light-dark(
+    var(--color-green-200),
+    var(--color-green-900)
+  );
+  --color-state-success-ink: light-dark(
+    var(--color-green-700),
+    var(--color-green-300)
+  );
+  --color-state-danger-fill: light-dark(
+    var(--color-red-100),
+    color-mix(in oklab, var(--color-red-900) 30%, transparent)
+  );
+  --color-state-danger-ink: light-dark(
+    var(--color-red-800),
+    var(--color-red-400)
+  );
+  --color-state-danger-outline: light-dark(
+    var(--color-red-700),
+    var(--color-red-400)
+  );
+  --color-state-warning-fill: light-dark(
+    var(--color-yellow-200),
+    color-mix(in oklab, var(--color-yellow-900) 30%, transparent)
+  );
+  --color-state-warning-ink: light-dark(
+    var(--color-yellow-900),
+    var(--color-yellow-300)
+  );
+  --color-state-pending-fill: light-dark(
+    var(--color-orange-200),
+    color-mix(in oklab, var(--color-orange-900) 30%, transparent)
+  );
+  --color-state-pending-ink: light-dark(
+    var(--color-orange-800),
+    var(--color-orange-300)
+  );
+  --color-state-info-fill: light-dark(
+    var(--color-blue-100),
+    color-mix(in oklab, var(--color-blue-900) 30%, transparent)
+  );
+  --color-state-info-ink: light-dark(
+    var(--color-blue-800),
+    var(--color-blue-400)
+  );
+  --color-state-neutral-fill: light-dark(
+    var(--color-gray-100),
+    var(--color-stone-700)
+  );
+  --color-state-neutral-ink: light-dark(
+    var(--color-gray-600),
+    var(--color-stone-300)
+  );
+  --color-btn-secondary-fill: light-dark(
+    var(--color-gray-100),
+    var(--color-stone-700)
+  );
+  --color-btn-secondary-fill-hover: light-dark(
+    var(--color-gray-200),
+    var(--color-stone-600)
+  );
+  --color-btn-secondary-ink: light-dark(
+    var(--color-gray-700),
+    var(--color-stone-300)
+  );
+  --color-btn-inflow-fill: light-dark(
+    var(--color-cyan-100),
+    color-mix(in oklab, var(--color-cyan-900) 30%, transparent)
+  );
+  --color-btn-inflow-fill-hover: light-dark(
+    var(--color-cyan-200),
+    color-mix(in oklab, var(--color-cyan-900) 50%, transparent)
+  );
+  --color-btn-inflow-ink: light-dark(
+    var(--color-cyan-800),
+    var(--color-cyan-300)
+  );
+  --color-btn-outflow-fill: light-dark(
+    var(--color-amber-200),
+    color-mix(in oklab, var(--color-amber-900) 50%, transparent)
+  );
+  --color-btn-outflow-fill-hover: light-dark(
+    var(--color-amber-300),
+    color-mix(in oklab, var(--color-amber-900) 70%, transparent)
+  );
+  --color-btn-outflow-ink: light-dark(
+    var(--color-amber-900),
+    var(--color-amber-200)
+  );
+  --color-avatar-default-fill: light-dark(
+    var(--color-rose-100),
+    color-mix(in oklab, var(--color-rose-900) 30%, transparent)
+  );
+  --color-avatar-default-ink: light-dark(
+    var(--color-rose-700),
+    var(--color-rose-400)
+  );
+  --color-avatar-pending-fill: light-dark(
+    var(--color-amber-300),
+    var(--color-amber-500)
+  );
+  --color-avatar-pending-ink: light-dark(
+    var(--color-amber-900),
+    var(--color-amber-950)
+  );
+}
+
 /* Eyebrow tier — small uppercase labels used to announce a region inside a
  * card or section (column titles in the gallery, group labels in the TOC,
  * "Tiers" / "Anchored to a verb" callouts on TimeAnchor demos). Bundles the
