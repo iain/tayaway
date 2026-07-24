@@ -170,6 +170,7 @@ function invitedByName(invite: PoolWorkspaceInvite): string | null {
     <SectionHeading :icon="UsersIcon" title="Members">
       <AppButton
         v-if="workspace"
+        variant="secondary"
         size="sm"
         data-testid="invite-member-button"
         @click="openModal"
