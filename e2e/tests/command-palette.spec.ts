@@ -56,9 +56,6 @@ test.describe('Command Palette', () => {
       // Shows standard nav items
       await expect(dialog.getByText('Dashboard')).toBeVisible()
       await expect(dialog.getByText('Events')).toBeVisible()
-
-      // No event context group on non-event pages
-      await expect(dialog.getByText('Go to Planning')).not.toBeVisible()
     })
 
     test('closes with Escape', async ({ page }) => {
@@ -88,8 +85,9 @@ test.describe('Command Palette', () => {
 
       const dialog = page.getByRole('dialog')
 
-      // Filtered result shows matching item
-      await expect(dialog.getByText('Settings')).toBeVisible()
+      // Filtered result shows matching item. Exact: "settings" also matches
+      // the per-workspace settings entries.
+      await expect(dialog.getByText('Settings', { exact: true })).toBeVisible()
 
       // Non-matching items are hidden
       await expect(dialog.getByText('Dashboard')).not.toBeVisible()
@@ -106,7 +104,10 @@ test.describe('Command Palette', () => {
       await openPalette(page)
       await page.getByPlaceholder('Search...').fill('settings')
 
-      await page.getByRole('dialog').getByText('Settings').click()
+      await page
+        .getByRole('dialog')
+        .getByText('Settings', { exact: true })
+        .click()
       await expect(page.getByPlaceholder('Search...')).not.toBeVisible()
       await expect(page).toHaveURL('/settings/profile')
     })
@@ -264,7 +265,11 @@ test.describe('Command Palette', () => {
       await expect(page).toHaveURL(`/events/${eventId}/rsvp`)
     })
 
-    test('context commands disappear when navigating away from event', async ({
+    // Leaving an event no longer leaves event mode: the subheader keeps
+    // naming the focused event on workspace pages, so the palette has to
+    // agree with it rather than going silent about the event the chrome is
+    // still pointing at.
+    test('context commands follow the focused event onto workspace pages', async ({
       page,
     }) => {
       const eventId = await createBareEvent(
@@ -287,17 +292,17 @@ test.describe('Command Palette', () => {
       await page.keyboard.press('Escape')
       await expect(page.getByPlaceholder('Search...')).not.toBeVisible()
 
-      // Navigate to dashboard
+      // Navigate to dashboard — opening the event focused it, so it stays
+      // the event both the bar and the palette are about.
       await page.goto('/')
       await expect(page.getByTestId('page-title')).toBeVisible({
         timeout: PAGE_LOAD_TIMEOUT,
       })
 
-      // Open palette again — context commands should be gone
       await openPalette(page)
       await expect(
         page.getByRole('dialog').getByText('Go to Planning')
-      ).not.toBeVisible()
+      ).toBeVisible()
       await expect(
         page.getByRole('dialog').getByText('Navigation', { exact: true })
       ).toBeVisible()

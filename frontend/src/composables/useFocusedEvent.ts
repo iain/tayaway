@@ -12,14 +12,16 @@ import { useOpenExpenses } from './useOpenExpenses'
 // — one abandoned event would otherwise hold it for good.
 export const FOCUS_MAX_DAYS_AFTER_END = 30
 
-// Which event each workspace is pinned to. A personal, per-device UI state —
-// it lives in localStorage rather than the shared pool, so putting your own
-// attention on next summer's trip never moves anyone else's.
-const STORAGE_KEY = 'tayaway:focused-event'
+// Which event each workspace is pinned to, and which one it has been told to
+// stop showing. Personal, per-device UI state — it lives in localStorage
+// rather than the shared pool, so putting your own attention on next summer's
+// trip never moves anyone else's.
+const PINNED_KEY = 'tayaway:focused-event'
+const DISMISSED_KEY = 'tayaway:unfocused-event'
 
-function load(): Record<string, string> {
+function load(key: string): Record<string, string> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(key)
     if (raw) {
       const parsed: unknown = JSON.parse(raw)
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
@@ -32,15 +34,22 @@ function load(): Record<string, string> {
   return {}
 }
 
-function save(value: Record<string, string>): void {
+function save(key: string, value: Record<string, string>): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
+    localStorage.setItem(key, JSON.stringify(value))
   } catch {
     // Best effort — private mode or a full quota only loses stickiness.
   }
 }
 
-const pinnedByWorkspace = ref<Record<string, string>>(load())
+const pinnedByWorkspace = ref<Record<string, string>>(load(PINNED_KEY))
+
+// Dismissal names the event it silenced rather than being a bare flag, so it
+// expires on its own: "not this one, thanks", not "never again". Once the
+// dismissed event stops being the one derivation would pick — it ended, or a
+// nearer one came along — the bar comes back without the user remembering to
+// undo anything.
+const dismissedByWorkspace = ref<Record<string, string>>(load(DISMISSED_KEY))
 
 /**
  * The event the app is currently "in the mode of" — the one whose chores,
@@ -91,9 +100,26 @@ export function useFocusedEvent(now: Ref<Date> = useNow().now) {
     () => currentEvents.value[0] ?? upcomingEvents.value[0] ?? null
   )
 
-  const focusedEvent = computed<ObjectTypeMap['event'] | null>(
-    () => pinnedEvent.value ?? derivedEvent.value
-  )
+  const dismissedEventId = computed<string | null>(() => {
+    const workspaceId = workspace.currentWorkspaceId
+    if (!workspaceId) return null
+    return dismissedByWorkspace.value[workspaceId] ?? null
+  })
+
+  const focusedEvent = computed<ObjectTypeMap['event'] | null>(() => {
+    if (!workspace.currentWorkspaceId) {
+      // Both overrides are keyed by workspace, derivation is keyed by nothing
+      // — so answering before the workspace is known would answer from
+      // derivation alone and quietly undo an unfocus at boot.
+      return null
+    } else if (pinnedEvent.value) {
+      return pinnedEvent.value
+    } else if (derivedEvent.value?.id === dismissedEventId.value) {
+      return null
+    } else {
+      return derivedEvent.value
+    }
+  })
 
   // What the switcher offers: everything still live enough to be worth
   // working in, in the order the group is likely to want it. Events too far
@@ -106,6 +132,17 @@ export function useFocusedEvent(now: Ref<Date> = useNow().now) {
     ...planningEvents.value,
   ])
 
+  function forget(
+    store: Ref<Record<string, string>>,
+    key: string,
+    workspaceId: string
+  ): void {
+    const rest = { ...store.value }
+    delete rest[workspaceId]
+    store.value = rest
+    save(key, rest)
+  }
+
   function pinEvent(eventId: string): void {
     const workspaceId = workspace.currentWorkspaceId
     if (!workspaceId) return
@@ -113,17 +150,46 @@ export function useFocusedEvent(now: Ref<Date> = useNow().now) {
       ...pinnedByWorkspace.value,
       [workspaceId]: eventId,
     }
-    save(pinnedByWorkspace.value)
+    save(PINNED_KEY, pinnedByWorkspace.value)
+    // Choosing an event is the answer to having dismissed one.
+    forget(dismissedByWorkspace, DISMISSED_KEY, workspaceId)
   }
 
-  function unpinEvent(): void {
+  /**
+   * Put the app out of event mode: no bar, no event-scoped pages guessing.
+   * Dismissing what *derivation* would land on rather than what is currently
+   * focused is what makes this immediate — dropping a pin alone would just
+   * hand focus to the next candidate, which is not what "unfocus" promises.
+   */
+  function unfocusEvent(): void {
     const workspaceId = workspace.currentWorkspaceId
     if (!workspaceId) return
-    const rest = { ...pinnedByWorkspace.value }
-    delete rest[workspaceId]
-    pinnedByWorkspace.value = rest
-    save(pinnedByWorkspace.value)
+    forget(pinnedByWorkspace, PINNED_KEY, workspaceId)
+    const derived = derivedEvent.value
+    if (derived) {
+      dismissedByWorkspace.value = {
+        ...dismissedByWorkspace.value,
+        [workspaceId]: derived.id,
+      }
+      save(DISMISSED_KEY, dismissedByWorkspace.value)
+    } else {
+      forget(dismissedByWorkspace, DISMISSED_KEY, workspaceId)
+    }
   }
 
-  return { focusedEvent, focusCandidates, pinEvent, unpinEvent }
+  /** Back to pure derivation, as if the user had never chosen anything. */
+  function resetFocus(): void {
+    const workspaceId = workspace.currentWorkspaceId
+    if (!workspaceId) return
+    forget(pinnedByWorkspace, PINNED_KEY, workspaceId)
+    forget(dismissedByWorkspace, DISMISSED_KEY, workspaceId)
+  }
+
+  return {
+    focusedEvent,
+    focusCandidates,
+    pinEvent,
+    unfocusEvent,
+    resetFocus,
+  }
 }

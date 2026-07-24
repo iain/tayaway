@@ -1,4 +1,4 @@
-import { test, expect, APIRequestContext } from '@playwright/test'
+import { test, expect, APIRequestContext, Page } from '@playwright/test'
 import {
   API_BASE,
   getObjectByType,
@@ -20,6 +20,15 @@ async function freshUser(
   const ctx = await newApiContext(playwright)
   const { token } = await getTestSession(ctx, email, name)
   return { ctx, token }
+}
+
+/** Open the command palette via keyboard and wait for the search input. */
+async function openPalette(page: Page): Promise<void> {
+  // Click body first: with focus outside the page content the browser may
+  // swallow Ctrl+K for its own address bar.
+  await page.locator('body').click()
+  await page.keyboard.press('Control+k')
+  await expect(page.getByPlaceholder('Search...')).toBeVisible()
 }
 
 async function seedRoster(
@@ -165,6 +174,111 @@ test.describe('Current event focus', () => {
     })
     await expect(page.getByText('Packing')).toBeVisible()
     await expect(page.getByText(`Far Future ${uid}`)).toBeHidden()
+  })
+
+  // Focus is otherwise inescapable: derivation always picks something, so
+  // without an explicit "none" the bar can be pointed elsewhere but never put
+  // away. The palette is where that lives, alongside switching workspace.
+  test('unfocuses from the command palette, and picks the event back up', async ({
+    page,
+    playwright,
+  }) => {
+    const uid = Date.now()
+    const { ctx, token } = await freshUser(
+      playwright,
+      `e2e-focus-unfocus-${uid}@example.com`,
+      'Focus Unfocus'
+    )
+    const eventId = await createDatedEvent(
+      ctx,
+      `Alpine Week ${uid}`,
+      offsetDate(-1),
+      offsetDate(1)
+    )
+    await seedRoster(ctx, eventId, 'Cooking')
+    await ctx.dispose()
+
+    await setupAuthenticatedPage(page, token)
+    await page.goto('/')
+
+    await expect(page.getByTestId('event-name')).toHaveText(
+      `Alpine Week ${uid}`,
+      { timeout: PAGE_LOAD_TIMEOUT }
+    )
+
+    await openPalette(page)
+    await page.getByPlaceholder('Search...').fill('Stop showing')
+    await page
+      .getByRole('dialog')
+      .getByText(`Stop showing Alpine Week ${uid}`)
+      .click()
+
+    // Gone from the chrome, and genuinely put away rather than merely hidden:
+    // /chores has nothing left to hand off to.
+    await expect(page.getByTestId('event-name')).toHaveCount(0)
+    await page.goto('/chores')
+    await expect(page.getByText('No active event')).toBeVisible({
+      timeout: PAGE_LOAD_TIMEOUT,
+    })
+
+    // And back again the way the user would put it back: going to the event
+    // is what makes the app about it again — there is no separate command.
+    await openPalette(page)
+    await page.getByPlaceholder('Search...').fill(`Alpine Week ${uid}`)
+    await page.getByRole('dialog').getByText(`Alpine Week ${uid}`).click()
+
+    await expect(page).toHaveURL(`/events/${eventId}`)
+    await expect(page.getByTestId('event-name')).toHaveText(
+      `Alpine Week ${uid}`
+    )
+  })
+
+  // Inside the event the subheader comes from the URL, so clearing focus on
+  // its own would leave the screen unchanged and look like nothing happened.
+  test('leaves the event for the events list when told to stop showing it', async ({
+    page,
+    playwright,
+  }) => {
+    const uid = Date.now()
+    const { ctx, token } = await freshUser(
+      playwright,
+      `e2e-focus-leave-${uid}@example.com`,
+      'Focus Leave'
+    )
+    const eventId = await createDatedEvent(
+      ctx,
+      `Ardennes Cabin ${uid}`,
+      offsetDate(-1),
+      offsetDate(1)
+    )
+    await ctx.dispose()
+
+    await setupAuthenticatedPage(page, token)
+    await page.goto(`/events/${eventId}/expenses`)
+
+    await expect(page.getByTestId('event-name')).toHaveText(
+      `Ardennes Cabin ${uid}`,
+      { timeout: PAGE_LOAD_TIMEOUT }
+    )
+
+    await openPalette(page)
+    await page.getByPlaceholder('Search...').fill('Stop showing')
+    await page
+      .getByRole('dialog')
+      .getByText(`Stop showing Ardennes Cabin ${uid}`)
+      .click()
+
+    // The events list carries `event-name` on every row, so the subheader's
+    // own tabs are what says whether the bar is there.
+    await expect(page).toHaveURL('/events')
+    await expect(page.getByTestId('event-tabs')).toHaveCount(0)
+
+    // And it stayed put, rather than the bar coming back on the next page.
+    await page.goto('/')
+    await expect(page.getByTestId('page-title')).toBeVisible({
+      timeout: PAGE_LOAD_TIMEOUT,
+    })
+    await expect(page.getByTestId('event-tabs')).toHaveCount(0)
   })
 
   test('shows the empty state when there is no active event', async ({

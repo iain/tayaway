@@ -39,7 +39,7 @@ describe('ChoresPage', () => {
     replace.mockClear()
     pool = useObjectPoolStore()
     useWorkspaceStore().currentWorkspaceId = 'ws-1'
-    useFocusedEvent().unpinEvent()
+    useFocusedEvent().resetFocus()
   })
 
   // /chores is a legacy entry point — it kept its own copy of the roster back

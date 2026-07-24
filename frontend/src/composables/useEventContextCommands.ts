@@ -5,6 +5,7 @@ import {
   CalendarDaysIcon,
   ClipboardDocumentListIcon,
   CurrencyEuroIcon,
+  EyeSlashIcon,
   HandThumbUpIcon,
   PlusIcon,
   UserGroupIcon,
@@ -18,6 +19,7 @@ import {
 } from '@/composables/useCommandPalette'
 import { useDateRangeActions } from '@/composables/useDateRangeActions'
 import { useExpenseActions } from '@/composables/useExpenseActions'
+import { useFocusedEvent } from '@/composables/useFocusedEvent'
 import { isPollActive } from '@/utils/poll'
 import { eventHasDates } from '@/utils/event'
 import { generateIcs, downloadIcs } from '@/utils/ics'
@@ -40,15 +42,30 @@ export function useEventContextCommands() {
   const { setContext } = useCommandPalette()
   const { triggerAdd: triggerAddDateRange } = useDateRangeActions()
   const { triggerAdd: triggerAddExpense } = useExpenseActions()
+  const { focusedEvent, unfocusEvent } = useFocusedEvent()
+
+  // The same event the subheader names: the URL's when you're inside one, the
+  // focused one otherwise. Without the fallback the palette went silent about
+  // the event on exactly the workspace pages the bar had started announcing it
+  // on — the chrome claiming a context the palette denied. No route
+  // suppression here: the bar hides itself on /events because it competes with
+  // the list underneath, which a search surface never does.
+  const contextEvent = computed(() => {
+    const routeName = route.name as string
+    const eventId = route.params?.id as string | undefined
+    if (eventId && eventDetailRoutes.has(routeName)) {
+      return pool.get('event', eventId) ?? null
+    } else {
+      return focusedEvent.value
+    }
+  })
 
   const contextActions = computed<ContextAction[]>(() => {
     const routeName = route.name as string
-    const eventId = route.params?.id as string | undefined
-    if (!eventId || !eventDetailRoutes.has(routeName)) return []
-
-    const event = pool.get('event', eventId)
+    const event = contextEvent.value
     if (!event) return []
 
+    const eventId = event.id
     const poll = event.datePollId
       ? pool.get('datePoll', event.datePollId)
       : null
@@ -176,20 +193,37 @@ export function useEventContextCommands() {
       })
     }
 
+    // Putting the event away is the one thing here with no other route to it:
+    // going *to* an event is what focuses it, and the palette already does
+    // that by name under Events, so there is deliberately no command for it
+    // in the app's own "focus" vocabulary. Named for what the user sees
+    // happen rather than for the state it clears.
+    //
+    // Inside the event it also has to leave: the subheader there comes from
+    // the URL rather than from focus, so clearing focus alone would change
+    // nothing on screen and only show its hand a page later. The events list
+    // is where it lands because that is the one page the bar is suppressed on
+    // — the app's own answer to "not in any event".
+    actions.push({
+      id: 'ctx-event-unfocus',
+      name: `Stop showing ${event.name}`,
+      icon: EyeSlashIcon,
+      run: async () => {
+        unfocusEvent()
+        if (eventDetailRoutes.has(routeName)) {
+          await router.push('/events')
+        }
+      },
+    })
+
     return actions
   })
 
   watchEffect(() => {
-    const actions = contextActions.value
-    if (actions.length > 0) {
-      const event = pool.get('event', route.params.id as string)
-      setContext('event', {
-        label: event?.name ?? 'Event',
-        actions,
-      })
-    } else {
-      setContext('event', null)
-    }
+    setContext('event', {
+      label: contextEvent.value?.name ?? 'Event',
+      actions: contextActions.value,
+    })
   })
 
   onUnmounted(() => {

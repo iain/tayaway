@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { ref } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useWorkspaceStore } from '@/stores/workspace'
@@ -16,7 +17,7 @@ describe('useFocusedEvent', () => {
     useWorkspaceStore().currentWorkspaceId = 'ws-1'
     // The pin is module-level state that outlives the Pinia instance, so it
     // resets through the public API rather than by reloading the module.
-    useFocusedEvent().unpinEvent()
+    useFocusedEvent().resetFocus()
   })
 
   afterEach(() => {
@@ -183,6 +184,78 @@ describe('useFocusedEvent', () => {
     )
 
     expect(useFocusedEvent().focusedEvent.value?.id).toBe('next-summer')
+  })
+
+  it('clears focus entirely when the user unfocuses', () => {
+    const pool = useObjectPoolStore()
+    seedPool(
+      pool,
+      makeEvent({
+        id: 'under-way',
+        startDate: '2026-06-01',
+        endDate: '2026-06-04',
+      }),
+      makeEvent({
+        id: 'next-summer',
+        startDate: '2026-08-01',
+        endDate: '2026-08-10',
+      })
+    )
+
+    const { focusedEvent, unfocusEvent } = useFocusedEvent()
+    unfocusEvent()
+
+    expect(focusedEvent.value).toBeNull()
+  })
+
+  // The reason unfocusing records *which* event it silenced: it expires on
+  // its own rather than leaving the workspace permanently quiet.
+  it('takes focus back up once the dismissed event is no longer the one derived', () => {
+    const pool = useObjectPoolStore()
+    seedPool(
+      pool,
+      makeEvent({
+        id: 'under-way',
+        startDate: '2026-06-01',
+        endDate: '2026-06-04',
+      }),
+      makeEvent({
+        id: 'next-summer',
+        startDate: '2026-08-01',
+        endDate: '2026-08-10',
+      })
+    )
+
+    const now = ref(TODAY)
+    const { focusedEvent, unfocusEvent } = useFocusedEvent(now)
+    unfocusEvent()
+
+    now.value = new Date('2026-06-05T12:00:00Z')
+
+    expect(focusedEvent.value?.id).toBe('next-summer')
+  })
+
+  // The pool can hydrate from the cache before the workspace store knows
+  // which workspace we are in. Derivation reads the whole pool and would
+  // answer during that window, undoing an unfocus that is keyed by workspace
+  // and so still invisible — and a `watchEffect` acting on focus (the /chores
+  // hand-off) only has to see that once to navigate.
+  it('answers with nothing until the workspace is known', () => {
+    const pool = useObjectPoolStore()
+    seedPool(
+      pool,
+      makeEvent({
+        id: 'under-way',
+        startDate: '2026-06-01',
+        endDate: '2026-06-04',
+      })
+    )
+
+    const { focusedEvent, unfocusEvent } = useFocusedEvent()
+    unfocusEvent()
+    useWorkspaceStore().currentWorkspaceId = null
+
+    expect(focusedEvent.value).toBeNull()
   })
 
   it('does not carry a pin across into another workspace', () => {
