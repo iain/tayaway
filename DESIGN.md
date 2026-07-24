@@ -293,6 +293,13 @@ Hover always moves the element one step toward higher contrast against its own i
 
 See [the Press-Don't-Lift Rule](#press-dont-lift-rule). Active states press in (`active:scale-[0.99]` + `active:brightness-95` light / `brightness-110` dark on cards; inset shadow on nav). They never translate or pop out.
 
+### Target size
+
+Small controls carry a hit area larger than their paint. The technique is a transparent pseudo-element that bleeds past the visible edge — `after:absolute after:-inset-2 after:content-['']` on a `relative` element — so a 16–28px glyph answers to a ~40px touch without the layout growing around it. Used by the navbar workspace switcher, the event switcher, and the radio rows in `FormRadioGroup`.
+
+<a id="paint-small-hit-big-rule"></a>
+**The Paint-Small-Hit-Big Rule.** A control's visual weight and its tap target are separate decisions. Quiet chrome stays visually quiet; nothing goes below ~40px of hit area. Reach for the pseudo-element bleed rather than padding the element until the layout shifts around it.
+
 ### Error
 
 Error is a persistent state of a form field — not an interaction state. It lives in different visual channels from focus so that the two can coexist without collapsing into "another red ring".
@@ -369,10 +376,13 @@ On focus, the error field gets the system-wide rose 2px outset focus ring on top
 ### Top navigation (`AuthenticatedLayout`)
 
 - **Style:** `sticky top-0 z-40`, `bg-nav` (CRT Amber Bright `#f59e0b` light / CRT Amber Deep `#b45309` dark), `h-16` (64px), max-width `7xl` (1280px) with `px-4 sm:px-6 lg:px-8` padding.
-- **Brand:** Workspace name as `text-xl font-bold`. With multiple workspaces, a chevron opens a HeadlessUI Menu for switching.
+- **Brand:** Workspace name as `text-xl font-bold`, truncating when space runs short. With multiple workspaces, a chevron opens a HeadlessUI Menu for switching. The name is the only element in the bar that yields width — the nav items and the right rail keep theirs.
 - **Items:** Five primary nav items (Dashboard, Events, Tasks, Settle up, Members), `text-sm font-medium`. Active item carries `bg-nav-active` plus an inset shadow (`inset 0 1px 2px rgba(0,0,0,0.15)`).
-- **Right rail:** Stale-cache hint, connection badge ("Offline" pill on `bg-gray-900/40`), dark-mode toggle, profile avatar.
-- **Mobile:** HeadlessUI `Disclosure` collapses to a hamburger; expanded panel mirrors desktop nav.
+- **Right rail:** Stale-cache hint, connection badge ("Offline" pill on `bg-gray-900/40`), search, notification bell, profile avatar.
+- **Search:** A magnifier that opens the command palette, in the bar at every breakpoint — the palette's `Cmd/Ctrl+K` is unreachable on touch, so the icon is the only way in there. From `lg` up it carries a `kbd` keycap hinting the shortcut, edged in `border-nav-line`. The button advertises the binding to assistive tech with `aria-keyshortcuts`.
+- **Mobile:** HeadlessUI `Disclosure` collapses to a hamburger, with search sitting beside it in the bar; the expanded panel mirrors desktop nav.
+
+Theme is deliberately *not* in this bar. It's a set-once preference and lives in `Settings → Appearance` (light / dark / automatic), with a `Switch to …` command in the palette that cycles all three states.
 
 ### Page header (`PageHeader`)
 
@@ -482,6 +492,7 @@ The design system lives in three places: `frontend/src/style.css` (the Tailwind 
 | Hairline edge / outline            | `outline-line` / `border-line` / `ring-ring-hairline`                           |
 | Faint internal divider             | `border-line-faint` / `divide-line-faint`                                       |
 | Top-nav surfaces                   | `bg-nav` / `bg-nav-active` / `bg-nav-hover` / `text-nav-text`                   |
+| Hairline edge on the nav bar       | `border-nav-line`                                                              |
 | Focus indicator (system-wide)      | `focus-visible:outline-focus`                                                   |
 | Form-control error outline         | `outline-state-danger-outline` (one step deeper than `-ink`)                    |
 | Badge / state tints                | `bg-state-{success,danger,warning,pending,info,neutral}-fill` + matching `-ink` |
