@@ -233,6 +233,54 @@ test.describe('Current event focus', () => {
     )
   })
 
+  // Inside the event the subheader comes from the URL, so clearing focus on
+  // its own would leave the screen unchanged and look like nothing happened.
+  test('leaves the event for the events list when told to stop showing it', async ({
+    page,
+    playwright,
+  }) => {
+    const uid = Date.now()
+    const { ctx, token } = await freshUser(
+      playwright,
+      `e2e-focus-leave-${uid}@example.com`,
+      'Focus Leave'
+    )
+    const eventId = await createDatedEvent(
+      ctx,
+      `Ardennes Cabin ${uid}`,
+      offsetDate(-1),
+      offsetDate(1)
+    )
+    await ctx.dispose()
+
+    await setupAuthenticatedPage(page, token)
+    await page.goto(`/events/${eventId}/expenses`)
+
+    await expect(page.getByTestId('event-name')).toHaveText(
+      `Ardennes Cabin ${uid}`,
+      { timeout: PAGE_LOAD_TIMEOUT }
+    )
+
+    await openPalette(page)
+    await page.getByPlaceholder('Search...').fill('Stop showing')
+    await page
+      .getByRole('dialog')
+      .getByText(`Stop showing Ardennes Cabin ${uid}`)
+      .click()
+
+    // The events list carries `event-name` on every row, so the subheader's
+    // own tabs are what says whether the bar is there.
+    await expect(page).toHaveURL('/events')
+    await expect(page.getByTestId('event-tabs')).toHaveCount(0)
+
+    // And it stayed put, rather than the bar coming back on the next page.
+    await page.goto('/')
+    await expect(page.getByTestId('page-title')).toBeVisible({
+      timeout: PAGE_LOAD_TIMEOUT,
+    })
+    await expect(page.getByTestId('event-tabs')).toHaveCount(0)
+  })
+
   test('shows the empty state when there is no active event', async ({
     page,
     playwright,

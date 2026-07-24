@@ -198,11 +198,22 @@ export function useEventContextCommands() {
     // that by name under Events, so there is deliberately no command for it
     // in the app's own "focus" vocabulary. Named for what the user sees
     // happen rather than for the state it clears.
+    //
+    // Inside the event it also has to leave: the subheader there comes from
+    // the URL rather than from focus, so clearing focus alone would change
+    // nothing on screen and only show its hand a page later. The events list
+    // is where it lands because that is the one page the bar is suppressed on
+    // — the app's own answer to "not in any event".
     actions.push({
       id: 'ctx-event-unfocus',
       name: `Stop showing ${event.name}`,
       icon: EyeSlashIcon,
-      run: unfocusEvent,
+      run: async () => {
+        unfocusEvent()
+        if (eventDetailRoutes.has(routeName)) {
+          await router.push('/events')
+        }
+      },
     })
 
     return actions
