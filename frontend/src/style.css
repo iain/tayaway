@@ -66,6 +66,11 @@
      than the pure-black `nav-text`. */
   --color-nav-text-muted: var(--color-amber-950);
   --color-nav-text-muted-hover: var(--color-black);
+  /* Hairline edge for chrome drawn *on* the bar — today the ⌘K keycap on the
+     search button. `nav-active` is a background role and reads at 1.4:1 here,
+     which is an edge nobody can see; `amber-800` clears the 3:1 non-text
+     threshold on both the resting bar and the lighter hover fill. */
+  --color-nav-line: var(--color-amber-800);
 
   /* Every chromatic and neutral value below resolves through a spectral ramp
      (see spectral-ramps.css). Translucent washes use `color-mix(… transparent)`

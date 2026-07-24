@@ -325,23 +325,27 @@ async function handleSignOut() {
     >
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="flex h-16 items-center justify-between">
-          <div class="flex items-center">
-            <div class="shrink-0">
+          <div class="flex min-w-0 items-center">
+            <!-- Shrinkable, not shrink-0: a long workspace name used to push
+                 the whole bar wider than the viewport in the band just above
+                 the md breakpoint (768px is iPad portrait). The name yields
+                 first; the nav items and right rail keep their width. -->
+            <div class="min-w-0">
               <!-- Single workspace: just show name -->
               <router-link
                 v-if="otherWorkspaces.length === 0"
                 to="/"
                 data-testid="current-workspace-name"
-                class="text-nav-text rounded text-xl font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                class="text-nav-text block truncate rounded text-xl font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
                 {{ currentWorkspace?.name ?? 'Tayaway' }}
               </router-link>
               <!-- Multiple workspaces: name links to dashboard, chevron opens dropdown -->
-              <div v-else class="relative flex items-center gap-2">
+              <div v-else class="relative flex min-w-0 items-center gap-2">
                 <router-link
                   to="/"
                   data-testid="current-workspace-name"
-                  class="text-nav-text rounded text-xl font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  class="text-nav-text block truncate rounded text-xl font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                 >
                   {{ currentWorkspace?.name ?? 'Tayaway' }}
                 </router-link>
@@ -395,7 +399,7 @@ async function handleSignOut() {
             </div>
             <div class="hidden md:block">
               <div
-                class="ml-10 flex items-baseline space-x-4"
+                class="ml-4 flex items-baseline space-x-2 lg:ml-10 lg:space-x-4"
                 data-testid="main-nav"
               >
                 <router-link
@@ -406,7 +410,7 @@ async function handleSignOut() {
                     isActive(item.routeName)
                       ? 'bg-nav-active text-nav-text shadow-[inset_0_1px_2px_rgba(0,0,0,0.15)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)]'
                       : 'text-nav-text hover:bg-nav-hover',
-                    'rounded-md px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white',
+                    'rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white',
                   ]"
                   :aria-current="isActive(item.routeName) ? 'page' : undefined"
                 >
@@ -441,6 +445,7 @@ async function handleSignOut() {
               <button
                 type="button"
                 data-testid="navbar-search"
+                aria-keyshortcuts="Meta+K Control+K"
                 class="bg-nav text-nav-text-muted hover:bg-nav-hover hover:text-nav-text relative flex items-center gap-1.5 rounded-md px-2 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                 @click="openCommandPalette"
               >
@@ -449,7 +454,7 @@ async function handleSignOut() {
                 <!-- Inherits the button's text colour so the hint lights up
                      with the icon rather than staying muted behind it. -->
                 <kbd
-                  class="border-nav-active hidden rounded border px-1.5 py-0.5 font-sans text-xs lg:inline"
+                  class="border-nav-line hidden rounded border px-1.5 py-0.5 font-sans text-xs lg:inline"
                   aria-hidden="true"
                 >
                   {{ searchShortcut }}
@@ -535,6 +540,7 @@ async function handleSignOut() {
             <button
               type="button"
               data-testid="navbar-search-mobile"
+              aria-keyshortcuts="Meta+K Control+K"
               class="bg-nav text-nav-text-muted hover:bg-nav-hover hover:text-nav-text relative inline-flex items-center justify-center rounded-md p-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               @click="openCommandPalette"
             >
