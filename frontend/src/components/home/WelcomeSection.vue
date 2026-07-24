@@ -14,6 +14,9 @@ const props = defineProps<{
   userName: string | null
   memberCount: number
   hasEvents: boolean
+  // Where inviting actually happens, when this viewer may invite. Null sends
+  // them to the directory instead, which is all they can do there.
+  manageMembersLink: string | null
 }>()
 
 const emit = defineEmits<{
@@ -27,8 +30,19 @@ const greeting = computed(() => {
   return name ? `Welcome, ${name}` : 'Welcome to Tayaway'
 })
 
+// Don't promise an invitation to someone who can't send one.
+const inviteLabel = computed(() => {
+  if (!props.manageMembersLink) {
+    return `${props.memberCount} members`
+  } else if (props.memberCount <= 1) {
+    return 'Invite your group'
+  } else {
+    return `${props.memberCount} members — invite more`
+  }
+})
+
 function navigateToMembers(): void {
-  router.push('/members')
+  router.push(props.manageMembersLink ?? '/members')
 }
 
 function navigateToTasks(): void {
@@ -65,11 +79,7 @@ function navigateToTasks(): void {
       >
         <UserGroupIcon class="size-4 shrink-0" />
         <span>
-          {{
-            memberCount <= 1
-              ? 'Invite your group'
-              : `${memberCount} members — invite more`
-          }}
+          {{ inviteLabel }}
         </span>
         <ArrowRightIcon
           class="size-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
