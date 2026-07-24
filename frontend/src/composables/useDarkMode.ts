@@ -1,6 +1,6 @@
 import { ref, watch } from 'vue'
 
-type DarkModePreference = 'light' | 'dark' | 'system'
+export type DarkModePreference = 'light' | 'dark' | 'system'
 
 const STORAGE_KEY = 'dark_mode'
 

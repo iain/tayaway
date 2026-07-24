@@ -31,6 +31,7 @@ defineEmits<{
           :id="option.id"
           :name="name"
           type="radio"
+          :value="option.id"
           :checked="modelValue === option.id"
           :disabled="disabled"
           class="bg-surface-sunken border-line focus-visible:outline-focus relative size-4 appearance-none rounded-full border before:absolute before:inset-1 before:rounded-full before:bg-white not-checked:before:hidden checked:border-rose-500 checked:bg-rose-500 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 forced-colors:appearance-auto forced-colors:before:hidden"

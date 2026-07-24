@@ -20,6 +20,7 @@ import {
   ScaleIcon,
   SignalIcon,
   SunIcon,
+  SwatchIcon,
   UserCircleIcon,
   UserGroupIcon,
   UserIcon,
@@ -199,6 +200,13 @@ const quickActions = computed<NavAction[]>(() => [
     name: 'Notifications',
     icon: BellIcon,
     href: '/settings/notifications',
+  },
+  {
+    type: 'action',
+    id: 'settings-appearance',
+    name: 'Appearance',
+    icon: SwatchIcon,
+    href: '/settings/appearance',
   },
   ...workspaceSettingsActions.value,
   {
