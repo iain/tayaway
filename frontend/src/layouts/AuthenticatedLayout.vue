@@ -21,8 +21,6 @@ import {
 import {
   Bars3Icon,
   XMarkIcon,
-  SunIcon,
-  MoonIcon,
   ChevronDownIcon,
   MagnifyingGlassIcon,
   XCircleIcon,
@@ -35,7 +33,6 @@ import {
 } from '@/stores'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useInboxStore } from '@/stores/inbox'
-import { useDarkMode } from '@/composables/useDarkMode'
 import { useMinuteTicker } from '@/composables/useMinuteTicker'
 import {
   getStaleness,
@@ -151,8 +148,13 @@ const warningBannerDays = computed(() => {
   return staleDays(since, now.value)
 })
 
-const { isDark, toggle: toggleDarkMode } = useDarkMode()
 const { open: openCommandPalette } = useCommandPalette()
+
+// The palette answers to both Cmd+K and Ctrl+K; the hint shows whichever one
+// this keyboard actually has.
+const searchShortcut = /Mac|iPhone|iPad/.test(navigator.userAgent)
+  ? '⌘K'
+  : 'Ctrl K'
 
 const navigation = [
   { name: 'Dashboard', href: '/', routeName: 'home' },
@@ -435,15 +437,21 @@ async function handleSignOut() {
                 Offline
               </button>
 
-              <!-- Dark mode toggle -->
+              <!-- Search / command palette -->
               <button
                 type="button"
-                class="bg-nav text-nav-text-muted hover:text-nav-text relative rounded-full p-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                @click="toggleDarkMode"
+                data-testid="navbar-search"
+                class="bg-nav text-nav-text-muted hover:text-nav-text relative flex items-center gap-1.5 rounded-full p-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                @click="openCommandPalette"
               >
-                <span class="sr-only">Toggle dark mode</span>
-                <SunIcon v-if="isDark" class="size-6" aria-hidden="true" />
-                <MoonIcon v-else class="size-6" aria-hidden="true" />
+                <span class="sr-only">Search</span>
+                <MagnifyingGlassIcon class="size-6" aria-hidden="true" />
+                <kbd
+                  class="border-nav-active text-nav-text-muted hidden rounded border px-1.5 py-0.5 font-sans text-xs lg:inline"
+                  aria-hidden="true"
+                >
+                  {{ searchShortcut }}
+                </kbd>
               </button>
 
               <!-- Notifications inbox -->
@@ -520,7 +528,18 @@ async function handleSignOut() {
               </Menu>
             </div>
           </div>
-          <div class="-mr-2 flex md:hidden">
+          <div class="-mr-2 flex items-center gap-1 md:hidden">
+            <!-- Search / command palette -->
+            <button
+              type="button"
+              data-testid="navbar-search-mobile"
+              class="bg-nav text-nav-text-muted hover:bg-nav-hover hover:text-nav-text relative inline-flex items-center justify-center rounded-md p-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              @click="openCommandPalette"
+            >
+              <span class="sr-only">Search</span>
+              <MagnifyingGlassIcon class="size-6" aria-hidden="true" />
+            </button>
+
             <!-- Mobile menu button -->
             <DisclosureButton
               class="group bg-nav text-nav-text-muted hover:bg-nav-hover hover:text-nav-text relative inline-flex items-center justify-center rounded-md p-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
@@ -582,19 +601,6 @@ async function handleSignOut() {
           >
             {{ item.name }}
           </router-link>
-          <button
-            type="button"
-            class="text-nav-text hover:bg-nav-hover flex w-full items-center gap-2 rounded-md px-3 py-2 text-base font-medium"
-            @click="
-              () => {
-                close()
-                openCommandPalette()
-              }
-            "
-          >
-            <MagnifyingGlassIcon class="size-5" aria-hidden="true" />
-            Search
-          </button>
         </div>
         <div class="border-nav-active border-t pt-4 pb-3">
           <div class="flex items-center px-5">
@@ -625,16 +631,6 @@ async function handleSignOut() {
             >
               <span class="inline-block size-2 rounded-full bg-gray-300" />
               Offline
-            </button>
-            <button
-              type="button"
-              class="bg-nav text-nav-text-muted hover:text-nav-text shrink-0 rounded-full p-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              :class="!showConnectionBadge ? 'relative ml-auto' : 'ml-2'"
-              @click="toggleDarkMode"
-            >
-              <span class="sr-only">Toggle dark mode</span>
-              <SunIcon v-if="isDark" class="size-6" aria-hidden="true" />
-              <MoonIcon v-else class="size-6" aria-hidden="true" />
             </button>
           </div>
           <div class="mt-3 space-y-1 px-2">
