@@ -1,8 +1,7 @@
 # Fail fast on older mise binaries. Bumped from 2026.6.11 (the floor for
-# `monorepo_root` shedding its `experimental_` prefix) because CI now needs two
-# things that landed in 2026.7.12: the built-in OCI registry client, so
-# toolchain.yml pushes without apt-installing skopeo, and `mise lock --bump`,
-# which tools-lock.yml uses to advance fuzzy selectors in mise.lock.
+# `monorepo_root` shedding its `experimental_` prefix) for `mise lock --bump`,
+# which landed in 2026.7.12 and is what tools-lock.yml uses to advance the
+# fuzzy version selectors in mise.lock.
 #
 # 2026.7.13 additionally fixes a false "provenance regression" error when
 # bumping a locked `github:` tool to a version already installed on disk —
