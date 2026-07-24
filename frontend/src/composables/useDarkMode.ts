@@ -1,4 +1,4 @@
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 export type DarkModePreference = 'light' | 'dark' | 'system'
 
@@ -64,9 +64,20 @@ watch(preference, (newPref) => {
   updateDarkClass(isDark.value)
 })
 
+// Light → dark → automatic → light. A two-state toggle can only ever write
+// 'light' or 'dark', which strands anyone on 'system' with no way back except
+// the settings page; cycling keeps every state reachable from the keyboard.
+const CYCLE: Record<DarkModePreference, DarkModePreference> = {
+  light: 'dark',
+  dark: 'system',
+  system: 'light',
+}
+
 export function useDarkMode() {
-  function toggle(): void {
-    preference.value = isDark.value ? 'light' : 'dark'
+  const nextPreference = computed(() => CYCLE[preference.value])
+
+  function cycle(): void {
+    preference.value = nextPreference.value
   }
 
   function setPreference(pref: DarkModePreference): void {
@@ -75,8 +86,9 @@ export function useDarkMode() {
 
   return {
     preference,
+    nextPreference,
     isDark,
-    toggle,
+    cycle,
     setPreference,
   }
 }
