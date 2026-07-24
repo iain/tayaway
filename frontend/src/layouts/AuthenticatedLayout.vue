@@ -52,7 +52,6 @@ import EventSubheader from '@/components/events/EventSubheader.vue'
 import { useCommandPalette } from '@/composables/useCommandPalette'
 import { useEventContextCommands } from '@/composables/useEventContextCommands'
 import { useFocusedEvent } from '@/composables/useFocusedEvent'
-import { can } from '@/composables/usePermission'
 
 useEventContextCommands()
 
@@ -155,23 +154,13 @@ const warningBannerDays = computed(() => {
 const { isDark, toggle: toggleDarkMode } = useDarkMode()
 const { open: openCommandPalette } = useCommandPalette()
 
-const navigation = computed(() => {
-  const items = [
-    { name: 'Dashboard', href: '/', routeName: 'home' },
-    { name: 'Events', href: '/events', routeName: 'events' },
-    { name: 'Tasks', href: '/tasks', routeName: 'tasks' },
-    { name: 'Settle up', href: '/settle-up', routeName: 'settle-up' },
-    { name: 'Members', href: '/members', routeName: 'members' },
-  ]
-  if (can(currentWorkspace.value?.permissions, 'view_audit_log')) {
-    items.push({
-      name: 'Audit log',
-      href: '/audit-log',
-      routeName: 'audit-log',
-    })
-  }
-  return items
-})
+const navigation = [
+  { name: 'Dashboard', href: '/', routeName: 'home' },
+  { name: 'Events', href: '/events', routeName: 'events' },
+  { name: 'Tasks', href: '/tasks', routeName: 'tasks' },
+  { name: 'Settle up', href: '/settle-up', routeName: 'settle-up' },
+  { name: 'Members', href: '/members', routeName: 'members' },
+]
 
 const userNavigation = [{ name: 'Settings', href: '/settings' }]
 
@@ -250,7 +239,6 @@ const routeTitleMap: Record<string, string> = {
   chores: 'Chores',
   tasks: 'Tasks',
   members: 'Members',
-  'audit-log': 'Audit log',
 }
 
 watchEffect(() => {
