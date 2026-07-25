@@ -51,30 +51,65 @@ import /etc/caddy/admin/*.caddy
 		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Permissions-Policy "camera=(), microphone=(), geolocation=(self)"
-		# Names the group that the CSP's `report-to` directive points at.
-		# Relative URLs are resolved against the document (Reporting API
-		# spec), so this stays environment-agnostic — and the endpoint is
-		# same-origin, which the spec's potentially-trustworthy check needs.
-		Reporting-Endpoints `csp="/api/csp-report"`
-		# Enforcing, not Report-Only: violations are blocked, and reported
-		# (issues #315/#317). Both reporting directives are set on purpose —
-		# `report-uri` is deprecated but is what Firefox and Safari still
-		# implement, `report-to` is what Chrome honours. They post different
-		# payload shapes to the same endpoint; CspReports::Record normalises
-		# both, and the admin dashboard's CSP page lists what came in.
+		# Severs window.opener between this origin and any popup it opens,
+		# and puts the app in its own browsing-context group — the standard
+		# mitigation for cross-window scripting and Spectre-style probing.
+		# Safe here: the one popup we open already passes `noopener`, and
+		# nothing embeds us (frame-ancestors 'none'). Deliberately *not*
+		# paired with COEP, which would require CORP headers on the
+		# OpenStreetMap tiles and Photon responses we don't control.
+		Cross-Origin-Opener-Policy "same-origin"
+		# Names the groups the CSPs' `report-to` directives point at. Relative
+		# URLs are resolved against the document (Reporting API spec), so this
+		# stays environment-agnostic — and the endpoint is same-origin, which
+		# the spec's potentially-trustworthy check needs. The two groups differ
+		# only in the ?d= hint, which tells the endpoint which policy is
+		# talking when the report itself doesn't say.
+		Reporting-Endpoints `csp="/api/csp-report", csp-candidate="/api/csp-report?d=report"`
+		# The enforced policy (issues #315/#317). Both reporting directives are
+		# set on purpose — `report-uri` is deprecated but is what Firefox and
+		# Safari still implement, `report-to` is what Chrome honours. They post
+		# different payload shapes to the same endpoint; CspReports::Record
+		# normalises both, and the admin dashboard's CSP page lists what came
+		# in.
 		#
-		# `style-src 'unsafe-inline'` is still required: Vue's `:style`
-		# bindings go through the CSSOM (which CSP doesn't police), but the
-		# templates also carry static `style=` attributes — the birthday
-		# animation delays in MembersPage.vue, for one — and those are
-		# inline styles. Dropping it means moving those into stylesheets
-		# first. `script-src` deliberately has no such escape hatch.
+		# `base-uri 'none'` (not 'self'): the app has no <base> element, so
+		# nothing legitimate sets one, and 'none' stops an injected <base>
+		# from re-pointing every relative URL on the page. `frame-src 'none'`
+		# likewise — there are no iframes, and without it the directive would
+		# fall back to default-src 'self' and permit one.
+		#
+		# `style-src 'unsafe-inline'` is the last loosening left, and it is
+		# now believed unnecessary — the static `style=` attributes it existed
+		# for are gone (MembersPage.vue's birthday delays moved to CSS), and
+		# Vue's `:style` bindings go through the CSSOM, which CSP doesn't
+		# police. Belief isn't evidence, so it stays here while the Report-Only
+		# policy below tests its removal against real traffic. Promote by
+		# deleting `'unsafe-inline'` from this line once the admin CSP page
+		# shows no `report`-disposition style-src violations for a week or two.
+		# `script-src` has never had such an escape hatch and must not grow one.
 		#
 		# EXTRA_CONNECT_SRC lets staging / preview environments append their
 		# own backend origin to connect-src (e.g. " wss://staging.tayaway.nl"
 		# — note the leading space) without forking this config. Empty when
 		# unset, so production's CSP matches the legacy nginx one.
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' wss://tayaway.nl https://photon.komoot.io{$EXTRA_CONNECT_SRC}; img-src 'self' data: blob: https://*.tile.openstreetmap.org; font-src 'self'; object-src 'none'; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests; report-uri /api/csp-report; report-to csp"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' wss://tayaway.nl https://photon.komoot.io{$EXTRA_CONNECT_SRC}; img-src 'self' data: blob: https://*.tile.openstreetmap.org; font-src 'self'; object-src 'none'; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'self'; frame-src 'none'; frame-ancestors 'none'; upgrade-insecure-requests; report-uri /api/csp-report; report-to csp"
+		# The candidate policy, reported but never blocking. This is the only
+		# way to test a *tightening*: the enforced policy above can't report
+		# on what it permits, so a violation here is the evidence that the
+		# corresponding directive can't be tightened yet. Two steps ahead of
+		# production, and they land in the admin page's `report` bucket:
+		#
+		#   style-src without 'unsafe-inline'      — see above
+		#   require-trusted-types-for 'script'     — kills the DOM-XSS sinks
+		#     (innerHTML and friends) outright. The usual blocker is absent:
+		#     there is no v-html anywhere in the frontend. Vue's own runtime
+		#     may still trip it, which is exactly what this measures.
+		#
+		# When both stay quiet, fold them into the enforced policy and drop
+		# this header. Keep the two policies otherwise identical, or the
+		# reports stop being a clean A/B.
+		Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' wss://tayaway.nl https://photon.komoot.io{$EXTRA_CONNECT_SRC}; img-src 'self' data: blob: https://*.tile.openstreetmap.org; font-src 'self'; object-src 'none'; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'self'; frame-src 'none'; frame-ancestors 'none'; require-trusted-types-for 'script'; report-uri /api/csp-report?d=report; report-to csp-candidate"
 	}
 
 	# WebSocket upgrade. reverse_proxy auto-detects the Upgrade header; we

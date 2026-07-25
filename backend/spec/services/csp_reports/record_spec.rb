@@ -92,6 +92,32 @@ RSpec.describe CspReports::Record do
     expect(DB[:csp_reports]).to be_empty
   end
 
+  # A second, tighter policy runs alongside the enforced one in Report-Only
+  # mode, and posts to the same endpoint with ?d=report. Browsers that omit
+  # `disposition` from the payload would otherwise land in the enforce bucket
+  # and read as "this is being blocked today", which is the opposite of true.
+  it "falls back to the endpoint's disposition hint when the payload omits one" do
+    described_class.call(body: csp_report_body("disposition" => nil), disposition: "report")
+
+    expect(DB[:csp_reports].first[:disposition]).to eq("report")
+  end
+
+  it "prefers the disposition the browser reported over the hint" do
+    described_class.call(body: csp_report_body("disposition" => "enforce"), disposition: "report")
+
+    expect(DB[:csp_reports].first[:disposition]).to eq("enforce")
+  end
+
+  # Otherwise one violation on a per-event page is one row per event — noisy
+  # to read, and enough distinct keys to crowd out the row cap.
+  it "collapses record ids in the page path so a violation is one row" do
+    described_class.call(body: csp_report_body("document-uri" => "https://tayaway.nl/events/7f3c9b12-4a1e-4d55-8f2b-1c0a9e6b2d34/days"))
+    described_class.call(body: csp_report_body("document-uri" => "https://tayaway.nl/events/0c1d2e3f-4a5b-6c7d-8e9f-0a1b2c3d4e5f/days"))
+
+    expect(DB[:csp_reports].map { |r| r[:document_uri] }).to eq(["/events/:id/days"])
+    expect(DB[:csp_reports].first[:count]).to eq(2)
+  end
+
   it "keeps inline and eval keywords as-is" do
     described_class.call(body: csp_report_body("blocked-uri" => "inline"))
 
