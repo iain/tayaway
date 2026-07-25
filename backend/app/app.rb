@@ -118,12 +118,17 @@ class App < Roda
     request.halt [403, { "Content-Type" => "application/json" }, ['{"error":"Forbidden"}']]
   end
 
+  # /api paths that no versioned client build calls, so the gate below would
+  # only ever reject something that legitimately sends no header: external
+  # monitors polling health, and browsers posting CSP violation reports.
+  VERSION_EXEMPT_PATHS = %w[/api/health /api/csp-report].freeze
+
   # Reject API requests from clients older than the protocol minimum with
   # 426 Upgrade Required. The client intercepts the status globally and
   # force-applies its pending service worker update (see
   # frontend/src/api/updateRequired.ts). Applies to every /api path except
-  # /api/health (polled by external monitors that send no header) — the
-  # gate must fire before auth so even a login-screen client updates first.
+  # VERSION_EXEMPT_PATHS — the gate must fire before auth so even a
+  # login-screen client updates first.
   def verify_client_version!
     return if ClientProtocol.supported?(request.env[CLIENT_VERSION_HEADER])
 
@@ -185,8 +190,7 @@ class App < Roda
     response.headers["X-Request-ID"] = request_id
 
     RequestContext.with(request_id: request_id) do
-      # /api/health is exempt: external monitors poll it without the header.
-      if r.path_info.start_with?("/api") && r.path_info != "/api/health"
+      if r.path_info.start_with?("/api") && !VERSION_EXEMPT_PATHS.include?(r.path_info)
         verify_client_version!
       end
 

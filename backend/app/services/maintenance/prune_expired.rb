@@ -29,6 +29,11 @@ module Maintenance
     # that bounds the table.
     IDEMPOTENCY_TTL = 24 * 60 * 60
 
+    # How long a violation stays on the admin CSP page after its last hit.
+    # Long enough that a weekly glance still sees everything, short enough
+    # that a violation fixed by a deploy stops nagging on its own.
+    CSP_REPORT_TTL = 30 * 24 * 60 * 60
+
     class << self
       # Deletes dead rows across the target tables and returns a
       # `{ table => rows_deleted }` hash for the caller to log. Each predicate
@@ -56,7 +61,10 @@ module Maintenance
           # RETENTION_PERIOD — a `since` older than that forces a full sync
           # that ignores deleted_items entirely. Tie the window to that
           # constant so this stays correct if the sync horizon ever moves.
-          deleted_items: DB[:deleted_items].where { deleted_at < now - Sync::WorkspaceSync::RETENTION_PERIOD }.delete
+          deleted_items: DB[:deleted_items].where { deleted_at < now - Sync::WorkspaceSync::RETENTION_PERIOD }.delete,
+          # Aggregate rows, so this expires a *violation*, not a report: one
+          # that has kept firing keeps its whole history.
+          csp_reports: DB[:csp_reports].where { last_seen_at < now - CSP_REPORT_TTL }.delete
         }
       end
 

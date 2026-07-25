@@ -122,6 +122,46 @@ RSpec.describe Admin::Stats do
     end
   end
 
+  describe ".csp_reports" do
+    def insert_csp_report(blocked_uri:, directive: "script-src", disposition: "enforce", count: 1, last_seen_at: Time.now)
+      DB[:csp_reports].insert(
+        disposition: disposition,
+        directive: directive,
+        blocked_uri: blocked_uri,
+        document_uri: "/",
+        count: count,
+        first_seen_at: last_seen_at,
+        last_seen_at: last_seen_at,
+        sample: Sequel.pg_jsonb({ "sourceFile" => "/assets/index.js" })
+      )
+    end
+
+    it "returns violations most recently seen first" do
+      insert_csp_report(blocked_uri: "https://old.example", last_seen_at: Time.now - 3600)
+      insert_csp_report(blocked_uri: "https://new.example")
+
+      rows = described_class.csp_reports
+
+      expect(rows.map { |r| r[:blocked_uri] }).to eq(["https://new.example", "https://old.example"])
+    end
+
+    it "filters by disposition" do
+      insert_csp_report(blocked_uri: "https://blocked.example", disposition: "enforce")
+      insert_csp_report(blocked_uri: "https://would-block.example", disposition: "report")
+
+      rows = described_class.csp_reports(disposition: "report")
+
+      expect(rows.map { |r| r[:blocked_uri] }).to eq(["https://would-block.example"])
+    end
+
+    it "summarises distinct violations and total hits" do
+      insert_csp_report(blocked_uri: "https://a.example", count: 3)
+      insert_csp_report(blocked_uri: "https://b.example", count: 4, last_seen_at: Time.now - (10 * 86_400))
+
+      expect(described_class.csp_summary).to include(violations: 2, hits: 7, hits_last_7d: 3)
+    end
+  end
+
   describe ".audit" do
     it "returns recent entries newest first with actor emails" do
       actor = TestFactories.user(email: "actor@example.com")

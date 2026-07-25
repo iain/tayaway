@@ -23,6 +23,14 @@
   </article>
 
   <article>
+    <h2>CSP violations</h2>
+    <div class="stats">
+      <a class="stat" href="/csp"><div class="value<%= @csp_summary[:violations].zero? ? " ok" : " warn" %>"><%= @csp_summary[:violations] %></div><div class="label">distinct</div></a>
+      <a class="stat" href="/csp"><div class="value"><%= @csp_summary[:hits_last_7d] %></div><div class="label">reports (7d)</div></a>
+    </div>
+  </article>
+
+  <article>
     <h2>Client versions</h2>
     <p class="muted">Min supported: v<%= @versions[:min_supported] %> · active sessions by newest advertised version</p>
     <% if @versions[:buckets].any? %>
