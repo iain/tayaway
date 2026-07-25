@@ -83,39 +83,61 @@ there is nothing to back up.
 
 ## CSP violations
 
-The edge serves an **enforcing** `Content-Security-Policy` (not
-Report-Only) with both reporting directives pointed at the main app:
-`report-uri /api/csp-report` for Firefox/Safari and `report-to csp` —
-plus the `Reporting-Endpoints` header naming that group — for Chrome. The
+The edge serves **two** policies. The enforcing
+`Content-Security-Policy` is the one that blocks; alongside it rides a
+`Content-Security-Policy-Report-Only` **candidate** that is one or two
+tightenings ahead and blocks nothing. Both point at the main app:
+`report-uri /api/csp-report` for Firefox/Safari and `report-to` — plus
+the `Reporting-Endpoints` header naming the group — for Chrome. The
 endpoint (`App`'s `/api/csp-report` hash_path → `CspReports::Record`) is
 public and unauthenticated, because browsers post reports with no cookie,
 no CSRF header and no `X-Client-Version`; it is throttled to 20/min per IP
 and exempt from the protocol-version gate for the same reason.
 
+The candidate exists because **an enforced policy cannot report on what it
+permits**. Reports from it can tell you a directive is too strict; nothing
+in them can tell you a directive could be stricter. So every tightening is
+staged: put it in the Report-Only policy first, watch the `report` bucket,
+and promote it into the enforced policy only once it stays empty. The
+candidate reports to `?d=report` so a browser that omits `disposition`
+from its payload still lands in the right bucket.
+
 Reports are aggregated into `csp_reports`, one row per distinct
 `(disposition, directive, blocked_uri, document_uri)` with a count, a
 first/last-seen stamp and a sample of the latest hit. Nothing is stored
 verbatim — blocked URLs collapse to an origin, document URLs to a path
-(query strings can carry invite tokens), free text is truncated — and the
-key space is capped, since every value arrives from an unauthenticated
-POST. Browser-extension schemes are dropped on ingest: they are the
-biggest source of false positives and there is nothing to fix in
-response. Rows expire 30 days after their last hit
-(`Maintenance::PruneExpired`).
+with record ids folded to `:id` (query strings can carry invite tokens),
+free text is truncated — and the key space is capped, since every value
+arrives from an unauthenticated POST. Browser-extension schemes are
+dropped on ingest: they are the biggest source of false positives and
+there is nothing to fix in response. Rows expire 30 days after their last
+hit (`Maintenance::PruneExpired`).
 
-The page answers one question: *is the policy breaking anything of ours?*
-A violation with `disposition: enforce` means the browser **blocked** it —
-either an attack the policy stopped, or a real feature that needs the
-policy widened. Reading the list, then either fixing the code or adding
-the origin to the directive in `containers/Caddyfile`, is the whole loop.
+Which bucket a row is in decides what it means, and they read in opposite
+directions:
 
-Tightening from here means dropping `style-src 'unsafe-inline'`, which is
-still required: Vue's `:style` bindings go through the CSSOM (which CSP
-doesn't police), but the templates carry static `style=` attributes too
-(`MembersPage.vue`'s birthday animation delays), and those are inline
-styles. Moving them into stylesheets first is the prerequisite; a quiet
-CSP page afterwards is the confirmation. `script-src` has no such escape
-hatch and should never grow one.
+- **`enforce`** — the browser **blocked** this. Either an attack the
+  policy stopped, or one of ours that needs the policy widened. Fix the
+  code, or add the origin to the directive in `containers/Caddyfile`.
+- **`report`** — the candidate policy **would have** blocked it. This is
+  the tightening that isn't ready. Fix the cause, or drop that directive
+  from the candidate and note why.
+
+Two tightenings are in flight in the candidate policy:
+
+- **`style-src` without `'unsafe-inline'`.** The static `style=`
+  attributes it existed for are gone; `:style` bindings and Leaflet both
+  go through the CSSOM, which CSP doesn't police. Expected to stay quiet.
+- **`require-trusted-types-for 'script'`.** Closes the DOM-XSS sinks
+  outright, and nothing in the frontend uses `v-html`. Expected to
+  report: Leaflet assigns `innerHTML` at module load (its `inlineSvg`
+  feature detection, no `try`/`catch`), so enforcing this today would
+  reject `StaticMap`'s dynamic import and the event map would never
+  appear. Promoting it needs a Trusted Types policy shim first.
+
+Promote each by editing the enforced policy line once its bucket has
+stayed quiet for a week or two. `script-src` has never had an
+`'unsafe-inline'` escape hatch and must not grow one.
 
 ## Configuration
 

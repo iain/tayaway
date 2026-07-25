@@ -58,16 +58,25 @@ module CspReports
 
     DISPOSITIONS = %w[enforce report].freeze
 
+    # Every id in a client-side route is a UUID (see the frontend router), so
+    # this is the whole of the app's path cardinality.
+    UUID_SEGMENT = /\h{8}-\h{4}-\h{4}-\h{4}-\h{12}/
+
     MAX_PATH_LENGTH = 200
     MAX_SAMPLE_TEXT_LENGTH = 200
 
     class << self
       # `body` is the raw request body; nothing upstream has parsed it, since
       # the report content types are not the JSON one Roda's parser handles.
-      def call(body:, user_agent: nil, now: Time.now)
+      #
+      # `disposition` is the endpoint's hint (see the route's ?d= param): the
+      # policy that sent the browser here, used only when the report itself
+      # doesn't say. It decides which bucket a violation lands in, nothing
+      # more, so a forged one costs a mislabelled row and no more than that.
+      def call(body:, user_agent: nil, disposition: nil, now: Time.now)
         Success()
           .bind { parse(body) }
-          .bind { |payloads| Success(payloads.first(MAX_REPORTS_PER_REQUEST).filter_map { |p| normalize(p, user_agent) }) }
+          .bind { |payloads| Success(payloads.first(MAX_REPORTS_PER_REQUEST).filter_map { |p| normalize(p, user_agent, disposition) }) }
           .bind { |violations| Success(violations.count { |violation| store(violation, now) }) }
       end
 
@@ -100,14 +109,14 @@ module CspReports
 
       # nil for anything we won't store: an unknown directive, extension
       # noise, a report missing the fields that identify the violation.
-      def normalize(payload, user_agent)
+      def normalize(payload, user_agent, hinted_disposition)
         raw_directive = field(payload, "effectiveDirective", "effective-directive", "violatedDirective", "violated-directive")
         directive = normalize_directive(raw_directive)
         blocked_uri = normalize_blocked_uri(field(payload, "blockedURL", "blocked-uri"))
         return nil if directive.nil? || blocked_uri.nil?
 
         {
-          disposition: normalize_disposition(payload["disposition"]),
+          disposition: normalize_disposition(payload["disposition"], hinted_disposition),
           directive: directive,
           blocked_uri: blocked_uri,
           document_uri: normalize_document_uri(field(payload, "documentURL", "document-uri")),
@@ -128,8 +137,11 @@ module CspReports
         name if DIRECTIVES.include?(name)
       end
 
-      def normalize_disposition(raw)
-        DISPOSITIONS.include?(raw.to_s) ? raw.to_s : "enforce"
+      # The browser's own word first, the endpoint hint second, "enforce"
+      # last — a report that says nothing at all is far more likely to have
+      # come from the enforced policy than the Report-Only one.
+      def normalize_disposition(raw, hinted)
+        [raw.to_s, hinted.to_s].find { |value| DISPOSITIONS.include?(value) } || "enforce"
       end
 
       # Collapses to an origin, which is all the policy actually judged —
@@ -166,9 +178,12 @@ module CspReports
 
       # Path only: the query string can carry invite tokens and other
       # personal data, and this table is read by an operator, not the user.
+      # Record ids collapse to :id — a violation on a per-event page is one
+      # bug, not one per event, and the aggregate has to key off the route
+      # rather than the instance for that to hold.
       def normalize_document_uri(raw)
         uri = URI.parse(raw.to_s.strip)
-        path = uri.path.to_s
+        path = uri.path.to_s.gsub(UUID_SEGMENT, ":id")
         path.empty? ? "/" : truncate(path, MAX_PATH_LENGTH)
       rescue URI::InvalidURIError
         "unknown"

@@ -45,16 +45,38 @@ test.describe('edge stack smoke', () => {
 
   test('enforces the CSP and wires up violation reporting', async ({ request }) => {
     const h = (await request.get('/')).headers()
-    // The policy has to arrive on the enforcing header — a Report-Only one
-    // logs violations and blocks nothing (issue #317).
-    expect(h['content-security-policy-report-only']).toBeUndefined()
+    // The real policy must arrive on the *enforcing* header — a Report-Only
+    // one logs violations and blocks nothing (issue #317).
     const csp = h['content-security-policy'] ?? ''
-    expect(csp).toContain('default-src')
+    expect(csp).toContain("default-src 'self'")
+    expect(csp).toContain("script-src 'self'")
+    expect(csp).toContain("object-src 'none'")
+    expect(csp).toContain("base-uri 'none'")
+    expect(csp).toContain("frame-ancestors 'none'")
     // Both reporting directives: Firefox/Safari read report-uri, Chrome reads
     // report-to plus the Reporting-Endpoints group it names.
     expect(csp).toContain('report-uri /api/csp-report')
     expect(csp).toContain('report-to csp')
     expect(h['reporting-endpoints']).toContain('csp="/api/csp-report"')
+  })
+
+  test('trials the tighter policy in Report-Only alongside it', async ({ request }) => {
+    const h = (await request.get('/')).headers()
+    // The candidate policy is how a *tightening* gets evidence: the enforced
+    // policy can't report on what it permits. It must stay strictly tighter
+    // than the enforced one, and must report to the ?d=report endpoint so its
+    // violations don't read as blocked-in-production.
+    const candidate = h['content-security-policy-report-only'] ?? ''
+    expect(candidate).toContain("style-src 'self'")
+    expect(candidate).not.toContain("'unsafe-inline'")
+    expect(candidate).toContain("require-trusted-types-for 'script'")
+    expect(candidate).toContain('report-uri /api/csp-report?d=report')
+    expect(h['reporting-endpoints']).toContain('csp-candidate="/api/csp-report?d=report"')
+  })
+
+  test('isolates the browsing context from popups and embedders', async ({ request }) => {
+    const h = (await request.get('/')).headers()
+    expect(h['cross-origin-opener-policy']).toBe('same-origin')
   })
 
   test('accepts violation reports at the endpoint the policy points at', async ({ request }) => {

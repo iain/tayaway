@@ -102,11 +102,15 @@ function handleDownloadVCard(member: PoolMember): void {
             v-if="isBirthday(member)"
             class="pointer-events-none absolute inset-x-0 top-0 flex justify-between px-3 pt-1 text-xl"
           >
-            <span class="birthday-float" style="animation-delay: 0s">🎉</span>
-            <span class="birthday-float" style="animation-delay: 0.4s">🎈</span>
-            <span class="birthday-float" style="animation-delay: 0.8s">🎊</span>
-            <span class="birthday-float" style="animation-delay: 0.2s">🥳</span>
-            <span class="birthday-float" style="animation-delay: 0.6s">🎂</span>
+            <!-- The bob is staggered per emoji from CSS, not a style
+                 attribute: these were the last inline styles in the app, and
+                 the CSP can only drop style-src 'unsafe-inline' without
+                 them. -->
+            <span class="birthday-float">🎉</span>
+            <span class="birthday-float">🎈</span>
+            <span class="birthday-float">🎊</span>
+            <span class="birthday-float">🥳</span>
+            <span class="birthday-float">🎂</span>
           </div>
           <AppAvatar
             v-if="!isBirthday(member)"
@@ -240,6 +244,25 @@ function handleDownloadVCard(member: PoolMember): void {
 
 .birthday-float {
   animation: birthday-bob 2s ease-in-out infinite;
+}
+
+/* Deliberately not in source order — the row reads better when neighbouring
+   emoji aren't in step, and this is the same stagger the inline
+   animation-delay attributes used to carry. */
+.birthday-float:nth-child(2) {
+  animation-delay: 0.4s;
+}
+
+.birthday-float:nth-child(3) {
+  animation-delay: 0.8s;
+}
+
+.birthday-float:nth-child(4) {
+  animation-delay: 0.2s;
+}
+
+.birthday-float:nth-child(5) {
+  animation-delay: 0.6s;
 }
 
 @keyframes birthday-bob {

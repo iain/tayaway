@@ -15,10 +15,20 @@ class App
   # a violation into silence. See CspReports::Record for what gets stored.
   hash_path "/api/csp-report" do |r|
     r.post do
+      # `r.GET` rather than `r.params`: params would merge in POST, and
+      # Roda's json_parser reads (and under Rack 3 does not rewind) the body
+      # to build it — leaving nothing for the read below. `d` says which
+      # policy sent the browser here; the Report-Only candidate posts to
+      # ?d=report so its violations don't read as blocked-in-production.
+      disposition = r.GET["d"]
       # Read the body directly: the report content types (application/csp-report,
       # application/reports+json) are not what Roda's json_parser handles, and
       # the payload is a fixed browser-generated shape, not user params.
-      result = CspReports::Record.call(body: r.body.read, user_agent: r.env["HTTP_USER_AGENT"])
+      result = CspReports::Record.call(
+        body: r.body.read,
+        user_agent: r.env["HTTP_USER_AGENT"],
+        disposition: disposition
+      )
       if result.success?
         response.status = 204
         nil

@@ -35,6 +35,20 @@ RSpec.describe "CSP report endpoint" do
     expect(DB[:csp_reports].first).to include(directive: "img-src")
   end
 
+  # The Report-Only candidate policy posts here with ?d=report so its
+  # violations don't read as "blocked in production today".
+  it "labels reports from the Report-Only endpoint" do
+    # No `disposition` in the payload — the case the query param exists for.
+    silent = { "csp-report" => { "document-uri" => "https://tayaway.nl/",
+                                 "effective-directive" => "style-src",
+                                 "blocked-uri" => "inline" } }.to_json
+
+    post "/api/csp-report?d=report", silent, { "CONTENT_TYPE" => "application/csp-report" }
+
+    expect(last_response.status).to eq(204)
+    expect(DB[:csp_reports].first[:disposition]).to eq("report")
+  end
+
   it "rejects a malformed report" do
     post "/api/csp-report", "not json", { "CONTENT_TYPE" => "application/csp-report" }
 
