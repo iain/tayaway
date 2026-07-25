@@ -100,11 +100,19 @@ import /etc/caddy/admin/*.caddy
 		# corresponding directive can't be tightened yet. Two steps ahead of
 		# production, and they land in the admin page's `report` bucket:
 		#
-		#   style-src without 'unsafe-inline'      — see above
+		#   style-src without 'unsafe-inline'      — see above. Leaflet is the
+		#     one library that styles heavily, and it does all of it through
+		#     the CSSOM (no setAttribute('style'), no cssText), so the map is
+		#     not what this is waiting on.
 		#   require-trusted-types-for 'script'     — kills the DOM-XSS sinks
-		#     (innerHTML and friends) outright. The usual blocker is absent:
-		#     there is no v-html anywhere in the frontend. Vue's own runtime
-		#     may still trip it, which is exactly what this measures.
+		#     (innerHTML and friends) outright. No v-html anywhere in the
+		#     frontend, but expect this one to report: Leaflet's inlineSvg
+		#     feature detection assigns innerHTML at module load with no
+		#     try/catch, so enforcing this today would reject StaticMap's
+		#     dynamic import and the event map would simply never appear.
+		#     Promoting it needs a Trusted Types policy shim first — the
+		#     reports are here to confirm the shape of the problem, and to
+		#     catch whatever else in Vue's runtime trips it.
 		#
 		# When both stay quiet, fold them into the enforced policy and drop
 		# this header. Keep the two policies otherwise identical, or the

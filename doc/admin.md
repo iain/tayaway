@@ -123,13 +123,20 @@ directions:
   the tightening that isn't ready. Fix the cause, or drop that directive
   from the candidate and note why.
 
-Two tightenings are in flight in the candidate policy: `style-src`
-without `'unsafe-inline'` (the static `style=` attributes it existed for
-are gone — `:style` bindings go through the CSSOM, which CSP doesn't
-police) and `require-trusted-types-for 'script'`, which closes the DOM-XSS
-sinks outright and is plausible here because nothing in the frontend uses
-`v-html`. Promote each by editing the enforced policy line once its bucket
-has stayed quiet for a week or two. `script-src` has never had an
+Two tightenings are in flight in the candidate policy:
+
+- **`style-src` without `'unsafe-inline'`.** The static `style=`
+  attributes it existed for are gone; `:style` bindings and Leaflet both
+  go through the CSSOM, which CSP doesn't police. Expected to stay quiet.
+- **`require-trusted-types-for 'script'`.** Closes the DOM-XSS sinks
+  outright, and nothing in the frontend uses `v-html`. Expected to
+  report: Leaflet assigns `innerHTML` at module load (its `inlineSvg`
+  feature detection, no `try`/`catch`), so enforcing this today would
+  reject `StaticMap`'s dynamic import and the event map would never
+  appear. Promoting it needs a Trusted Types policy shim first.
+
+Promote each by editing the enforced policy line once its bucket has
+stayed quiet for a week or two. `script-src` has never had an
 `'unsafe-inline'` escape hatch and must not grow one.
 
 ## Configuration
