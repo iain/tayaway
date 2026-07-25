@@ -238,6 +238,19 @@ class AdminApp < Roda
       end
     end
 
+    r.on "csp" do
+      if current_admin_session
+        r.get true do
+          @csp_disposition = Admin::Stats::CSP_DISPOSITIONS.include?(r.params["disposition"]) ? r.params["disposition"] : nil
+          @csp_summary = Admin::Stats.csp_summary
+          @csp_reports = Admin::Stats.csp_reports(disposition: @csp_disposition)
+          view "csp"
+        end
+      else
+        r.redirect "/"
+      end
+    end
+
     r.on "audit" do
       if current_admin_session
         r.get true do
@@ -255,6 +268,7 @@ class AdminApp < Roda
         @jobs = Admin::Stats.jobs
         @users = Admin::Stats.users
         @versions = Admin::Stats.client_versions
+        @csp_summary = Admin::Stats.csp_summary
         view "dashboard"
       elsif Admin::State.db[:admin_credentials].empty?
         r.redirect "/enroll"

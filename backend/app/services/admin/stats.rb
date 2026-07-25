@@ -13,6 +13,10 @@ module Admin
     UUID = /\A\h{8}-\h{4}-\h{4}-\h{4}-\h{12}\z/
     AUDIT_LIMIT = 50
     AUDIT_OUTCOMES = %w[success denied error].freeze
+    # CspReports::Record caps the table well below this, so the limit only
+    # bounds the page, never hides a violation in practice.
+    CSP_REPORT_LIMIT = 200
+    CSP_DISPOSITIONS = %w[enforce report].freeze
 
     class << self
       def jobs
@@ -83,6 +87,28 @@ module Admin
                   .map { |row| { version: row[:last_seen_client_version], sessions: row[:sessions], users: row[:users] } }
 
         { min_supported: ClientProtocol::MIN_SUPPORTED_VERSION, buckets: buckets }
+      end
+
+      # Aggregated CSP violations (issue #315), most recently seen first —
+      # the order that answers "is anything still breaking?". Rows are
+      # written by CspReports::Record from the public report endpoint.
+      def csp_reports(disposition: nil)
+        ds = db[:csp_reports]
+             .order(Sequel.desc(:last_seen_at))
+             .limit(CSP_REPORT_LIMIT)
+        ds = ds.where(disposition: disposition) if CSP_DISPOSITIONS.include?(disposition)
+        ds.all
+      end
+
+      # The headline the enforce decision hangs on: how many distinct
+      # violations exist at all, and how much of the traffic is recent.
+      def csp_summary
+        base = db[:csp_reports]
+        {
+          violations: base.count,
+          hits: base.sum(:count).to_i,
+          hits_last_7d: base.where(Sequel[:last_seen_at] > Time.now - (7 * 86_400)).sum(:count).to_i
+        }
       end
 
       def audit(outcome: nil)

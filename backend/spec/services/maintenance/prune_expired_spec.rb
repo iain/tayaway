@@ -74,6 +74,16 @@ RSpec.describe Maintenance::PruneExpired do
       expect(DB[:deleted_items].where(id: old).count).to eq(0)
     end
 
+    it "deletes csp_reports not seen within the retention window" do
+      recent = insert_csp_report("https://recent.example", last_seen_at: Time.now - 3600)
+      stale = insert_csp_report("https://stale.example", last_seen_at: Time.now - described_class::CSP_REPORT_TTL - 3600)
+
+      described_class.call
+
+      expect(DB[:csp_reports].select_map(:id)).to eq([recent])
+      expect(DB[:csp_reports].where(id: stale).count).to eq(0)
+    end
+
     it "returns the number of rows deleted per table" do
       TestFactories.session(expires_at: Time.now - 1)
       TestFactories.session(expires_at: Time.now - 1)
@@ -173,6 +183,20 @@ RSpec.describe Maintenance::PruneExpired do
       object_type: "event",
       object_id: SecureRandom.uuid,
       deleted_at: deleted_at
+    )
+    id
+  end
+
+  def insert_csp_report(blocked_uri, last_seen_at:)
+    id = SecureRandom.uuid
+    DB[:csp_reports].insert(
+      id: id,
+      disposition: "enforce",
+      directive: "script-src",
+      blocked_uri: blocked_uri,
+      document_uri: "/",
+      first_seen_at: last_seen_at,
+      last_seen_at: last_seen_at
     )
     id
   end

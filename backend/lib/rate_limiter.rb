@@ -119,6 +119,13 @@ module RateLimiter
         req.ip if req.post? && req.path.start_with?("/api/auth/passkeys/register")
       end
 
+      # CSP violation reports are unauthenticated by design (browsers send
+      # them without cookies). A real browser posts a handful per page load
+      # at worst — anything beyond that is a script pointed at the endpoint.
+      Rack::Attack.throttle("csp-report", limit: 20, period: 60) do |req|
+        req.ip if req.post? && req.path == "/api/csp-report"
+      end
+
     end
 
     Rack::Attack.throttled_responder = lambda do |req|

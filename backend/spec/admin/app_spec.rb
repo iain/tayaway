@@ -100,6 +100,7 @@ RSpec.describe "AdminApp" do
       body = last_response.body
       expect(body).to include("Min supported")
       expect(body).to include("dead")
+      expect(body).to include("CSP violations")
       expect(body).not_to include("Dead::Job")
       expect(body).not_to include("Events::Update")
     end
@@ -135,6 +136,47 @@ RSpec.describe "AdminApp" do
       get "/audit", { "outcome" => "denied" }, admin_cookie
       expect(last_response.body).to include("Members::Remove")
       expect(last_response.body).not_to include("Events::Create")
+    end
+  end
+
+  describe "GET /csp" do
+    def insert_csp_report(blocked_uri:, disposition: "enforce")
+      DB[:csp_reports].insert(
+        disposition: disposition,
+        directive: "script-src",
+        blocked_uri: blocked_uri,
+        document_uri: "/events/abc",
+        sample: Sequel.pg_jsonb({ "sourceFile" => "<script>alert(1)</script>" })
+      )
+    end
+
+    it "redirects to /login without a session" do
+      get "/csp"
+
+      expect(last_response.status).to eq(302)
+    end
+
+    it "lists violations and filters by disposition" do
+      insert_csp_report(blocked_uri: "https://blocked.example")
+      insert_csp_report(blocked_uri: "https://would-block.example", disposition: "report")
+
+      get "/csp", {}, admin_cookie
+      expect(last_response.body).to include("https://blocked.example")
+      expect(last_response.body).to include("https://would-block.example")
+
+      get "/csp", { "disposition" => "report" }, admin_cookie
+      expect(last_response.body).to include("https://would-block.example")
+      expect(last_response.body).not_to include("https://blocked.example")
+    end
+
+    # Every field on this page came from an unauthenticated POST.
+    it "escapes report fields" do
+      insert_csp_report(blocked_uri: "https://evil.example/<img src=x>")
+
+      get "/csp", {}, admin_cookie
+
+      expect(last_response.body).not_to include("<script>alert(1)</script>")
+      expect(last_response.body).not_to include("<img src=x>")
     end
   end
 

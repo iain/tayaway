@@ -43,6 +43,31 @@ test.describe('edge stack smoke', () => {
     expect(csp).toContain('https://*.tile.openstreetmap.org')
   })
 
+  test('enforces the CSP and wires up violation reporting', async ({ request }) => {
+    const h = (await request.get('/')).headers()
+    // The policy has to arrive on the enforcing header — a Report-Only one
+    // logs violations and blocks nothing (issue #317).
+    expect(h['content-security-policy-report-only']).toBeUndefined()
+    const csp = h['content-security-policy'] ?? ''
+    expect(csp).toContain('default-src')
+    // Both reporting directives: Firefox/Safari read report-uri, Chrome reads
+    // report-to plus the Reporting-Endpoints group it names.
+    expect(csp).toContain('report-uri /api/csp-report')
+    expect(csp).toContain('report-to csp')
+    expect(h['reporting-endpoints']).toContain('csp="/api/csp-report"')
+  })
+
+  test('accepts violation reports at the endpoint the policy points at', async ({ request }) => {
+    // A malformed body rather than a synthetic violation: this proves the
+    // endpoint is routed and parsing bodies without writing a fake row into
+    // the production reports table.
+    const res = await request.post('/api/csp-report', {
+      headers: { 'content-type': 'application/csp-report' },
+      data: 'not json',
+    })
+    expect(res.status()).toBe(400)
+  })
+
   test('serves hashed assets immutably', async ({ request }) => {
     const html = await (await request.get('/')).text()
     const asset = html.match(/\/assets\/[^"']+\.(?:js|css)/)?.[0]

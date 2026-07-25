@@ -1,7 +1,8 @@
 # Admin site
 
-The operator-only maintenance site: job overviews, audit log, user counts,
-and client protocol-version stats, at `https://admin.tayaway.nl`. One user
+The operator-only maintenance site: job overviews, audit log, CSP
+violations, user counts, and client protocol-version stats, at
+`https://admin.tayaway.nl`. One user
 (the operator), read-only dashboards; break-glass actions are a planned
 follow-up.
 
@@ -35,14 +36,15 @@ follow-up.
   counters do, so a retrying job also shows up under due or scheduled
   depending on where its backoff landed. `/jobs/:id` is the full row for
   one job: payload, attempts against the retry budget, and the
-  untruncated last error. `/audit?outcome=` is the audit log. `/security`
-  lists the enrolled passkeys and the live admin sessions, marking the
-  device and session you are on, and is where "Add passkey" lives — the
-  topbar itself is only nav plus sign-out.
+  untruncated last error. `/audit?outcome=` is the audit log.
+  `/csp?disposition=` lists Content-Security-Policy violations (below).
+  `/security` lists the enrolled passkeys and the live admin sessions,
+  marking the device and session you are on, and is where "Add passkey"
+  lives — the topbar itself is only nav plus sign-out.
 - **Read models only.** `Admin::Stats` queries `async_jobs`,
-  `audit_log_entries`, `users`, and `sessions` (including
-  `last_seen_client_version` — see doc/protocol-versioning.md) and returns
-  plain hashes to the templates.
+  `audit_log_entries`, `users`, `sessions` (including
+  `last_seen_client_version` — see doc/protocol-versioning.md) and
+  `csp_reports`, and returns plain hashes to the templates.
 - **Own auth store.** Passkey credentials and admin sessions live in a
   SQLite file (`Admin::State`, migrations in `db/admin_migrations/`,
   applied at boot), not in Postgres — see "Security layers" for why. The
@@ -78,6 +80,42 @@ inside the insert transaction, so two racing first-boot tabs cannot both
 enroll. Losing every enrolled device = delete the SQLite file on the
 admin volume and enroll again; the store holds only auth material, so
 there is nothing to back up.
+
+## CSP violations
+
+The edge serves an **enforcing** `Content-Security-Policy` (not
+Report-Only) with both reporting directives pointed at the main app:
+`report-uri /api/csp-report` for Firefox/Safari and `report-to csp` —
+plus the `Reporting-Endpoints` header naming that group — for Chrome. The
+endpoint (`App`'s `/api/csp-report` hash_path → `CspReports::Record`) is
+public and unauthenticated, because browsers post reports with no cookie,
+no CSRF header and no `X-Client-Version`; it is throttled to 20/min per IP
+and exempt from the protocol-version gate for the same reason.
+
+Reports are aggregated into `csp_reports`, one row per distinct
+`(disposition, directive, blocked_uri, document_uri)` with a count, a
+first/last-seen stamp and a sample of the latest hit. Nothing is stored
+verbatim — blocked URLs collapse to an origin, document URLs to a path
+(query strings can carry invite tokens), free text is truncated — and the
+key space is capped, since every value arrives from an unauthenticated
+POST. Browser-extension schemes are dropped on ingest: they are the
+biggest source of false positives and there is nothing to fix in
+response. Rows expire 30 days after their last hit
+(`Maintenance::PruneExpired`).
+
+The page answers one question: *is the policy breaking anything of ours?*
+A violation with `disposition: enforce` means the browser **blocked** it —
+either an attack the policy stopped, or a real feature that needs the
+policy widened. Reading the list, then either fixing the code or adding
+the origin to the directive in `containers/Caddyfile`, is the whole loop.
+
+Tightening from here means dropping `style-src 'unsafe-inline'`, which is
+still required: Vue's `:style` bindings go through the CSSOM (which CSP
+doesn't police), but the templates carry static `style=` attributes too
+(`MembersPage.vue`'s birthday animation delays), and those are inline
+styles. Moving them into stylesheets first is the prerequisite; a quiet
+CSP page afterwards is the confirmation. `script-src` has no such escape
+hatch and should never grow one.
 
 ## Configuration
 

@@ -51,11 +51,30 @@ import /etc/caddy/admin/*.caddy
 		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Permissions-Policy "camera=(), microphone=(), geolocation=(self)"
+		# Names the group that the CSP's `report-to` directive points at.
+		# Relative URLs are resolved against the document (Reporting API
+		# spec), so this stays environment-agnostic — and the endpoint is
+		# same-origin, which the spec's potentially-trustworthy check needs.
+		Reporting-Endpoints `csp="/api/csp-report"`
+		# Enforcing, not Report-Only: violations are blocked, and reported
+		# (issues #315/#317). Both reporting directives are set on purpose —
+		# `report-uri` is deprecated but is what Firefox and Safari still
+		# implement, `report-to` is what Chrome honours. They post different
+		# payload shapes to the same endpoint; CspReports::Record normalises
+		# both, and the admin dashboard's CSP page lists what came in.
+		#
+		# `style-src 'unsafe-inline'` is still required: Vue's `:style`
+		# bindings go through the CSSOM (which CSP doesn't police), but the
+		# templates also carry static `style=` attributes — the birthday
+		# animation delays in MembersPage.vue, for one — and those are
+		# inline styles. Dropping it means moving those into stylesheets
+		# first. `script-src` deliberately has no such escape hatch.
+		#
 		# EXTRA_CONNECT_SRC lets staging / preview environments append their
 		# own backend origin to connect-src (e.g. " wss://staging.tayaway.nl"
 		# — note the leading space) without forking this config. Empty when
 		# unset, so production's CSP matches the legacy nginx one.
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' wss://tayaway.nl https://photon.komoot.io{$EXTRA_CONNECT_SRC}; img-src 'self' data: blob: https://*.tile.openstreetmap.org; font-src 'self'; object-src 'none'; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' wss://tayaway.nl https://photon.komoot.io{$EXTRA_CONNECT_SRC}; img-src 'self' data: blob: https://*.tile.openstreetmap.org; font-src 'self'; object-src 'none'; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests; report-uri /api/csp-report; report-to csp"
 	}
 
 	# WebSocket upgrade. reverse_proxy auto-detects the Upgrade header; we

@@ -1,0 +1,62 @@
+<%== render("topbar") %>
+<main>
+  <h1>CSP violations</h1>
+  <p class="muted">
+    Reported by browsers to <span class="mono">/api/csp-report</span>, aggregated per
+    violation. <span class="mono">enforce</span> means the policy blocked it;
+    <span class="mono">report</span> means a Report-Only policy would have. Extension
+    noise is dropped on ingest, so anything listed here is worth a look. Rows expire
+    30 days after their last hit.
+  </p>
+  <article>
+    <div class="stats">
+      <div class="stat"><div class="value<%= @csp_summary[:violations].zero? ? " ok" : " warn" %>"><%= @csp_summary[:violations] %></div><div class="label">distinct violations</div></div>
+      <div class="stat"><div class="value"><%= @csp_summary[:hits] %></div><div class="label">reports</div></div>
+      <div class="stat"><div class="value"><%= @csp_summary[:hits_last_7d] %></div><div class="label">reports (7d)</div></div>
+    </div>
+  </article>
+  <nav>
+    <ul>
+      <% [nil, *Admin::Stats::CSP_DISPOSITIONS].each do |disposition| %>
+        <% label = disposition || "all" %>
+        <% if disposition == @csp_disposition %>
+          <li><strong><%= label %></strong></li>
+        <% else %>
+          <li><a href="/csp<%= disposition ? "?disposition=#{disposition}" : "" %>"><%= label %></a></li>
+        <% end %>
+      <% end %>
+    </ul>
+  </nav>
+  <article>
+    <% if @csp_reports.any? %>
+      <table>
+        <thead>
+          <tr>
+            <th>Last seen (UTC)</th><th>Disposition</th><th>Directive</th><th class="num">Count</th>
+            <th>Blocked</th><th>Page</th><th>Source</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @csp_reports.each do |report| %>
+            <% sample = report[:sample].to_h %>
+            <tr>
+              <td><%= utc(report[:last_seen_at]) %></td>
+              <td class="<%= report[:disposition] == "enforce" ? "bad" : "warn" %>"><%= report[:disposition] %></td>
+              <td class="mono"><%= report[:directive] %></td>
+              <td class="num"><%= report[:count] %></td>
+              <td class="mono"><%= truncate(report[:blocked_uri], 80) %></td>
+              <td class="mono"><%= truncate(report[:document_uri], 60) %></td>
+              <td class="mono muted">
+                <%= truncate(sample["sourceFile"], 60) %><%= sample["lineNumber"] ? ":#{sample['lineNumber']}" : "" %>
+                <%= truncate(sample["scriptSample"], 60) %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <p class="empty">No violations reported<%= @csp_disposition ? " with this disposition" : "" %>.</p>
+    <% end %>
+  </article>
+</main>
+<script src="/admin.js"></script>
