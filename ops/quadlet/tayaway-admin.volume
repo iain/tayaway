@@ -1,9 +1,0 @@
-# Admin site state: the SQLite file holding the operator's passkey
-# credentials and admin sessions (doc/admin.md). Deliberately outside the
-# main Postgres database. Losing it costs nothing but a re-enrollment —
-# no backup needed.
-[Unit]
-Description=Tayaway admin state volume
-
-[Volume]
-Label=app=tayaway

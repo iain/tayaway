@@ -10,9 +10,10 @@ follow-up.
 
 - **Separate process, separate vhost.** `backend/admin/` is a second Roda
   app (`AdminApp`) booted by `admin/falcon.rb` on :9393, running as its own
-  quadlet container (`ops/quadlet/admin.container`, same backend image,
-  different command). It is never routed from the main app, so a main-app
-  auth or routing bug can't expose an admin endpoint — and vice versa.
+  quadlet container (`vps/quadlet/admin.container` in the private infra repo,
+  same backend image, different command). It is never routed from the main
+  app, so a main-app auth or routing bug can't expose an admin endpoint —
+  and vice versa.
 - **Server-rendered.** ERB via Roda's render plugin (escape-by-default),
   two static CSS files, one small vanilla JS file for the passkey ceremony
   and logout. No SPA, no build step, no service worker.
@@ -151,11 +152,11 @@ stayed quiet for a week or two. `script-src` has never had an
 ## Operator CA and client cert
 
 The edge requires a client certificate signed by a tiny personal CA
-(`require_and_verify` in `ops/host/admin.caddy`). The minted CA lives in
-the repo: `ops/admin-ca/ca.pem` (public, plain) and
-`ops/admin-ca/secrets.yaml` (sops, operator-recipient only — holds
-`ca_key`, `client_key`, `client_pem`; see `.sops.yaml`). Plaintext key
-files in that directory are gitignored. To mint from scratch:
+(`require_and_verify` in `vps/host/admin.caddy`, private infra repo). The
+minted CA lives there too: `vps/admin-ca/ca.pem` (public, plain) and
+`vps/admin-ca/secrets.yaml` (sops, operator-recipient only — holds
+`ca_key`, `client_key`, `client_pem`; see that repo's `.sops.yaml`).
+Plaintext key files in that directory are gitignored. To mint from scratch:
 
 ```sh
 # CA (10 years). ca.key goes into secrets.yaml (sops) — it can mint admin access.
@@ -203,7 +204,7 @@ sign-count bumps all live in the admin's own SQLite store.
 
 ## Rollout checklist (first deploy)
 
-1. `tofu apply` in `ops/` — creates the `admin` A/AAAA records.
+1. `tofu apply` in `vps/` (private infra repo) — creates the `admin` A/AAAA records.
 2. Mint the CA + client cert (above); import the `.p12` on your devices.
 3. Copy the CA to the box:
    `scp ca.pem tayaway@tayaway.nl:/tmp/ && ssh … 'sudo install -m 0644 -o root -g root /tmp/ca.pem /etc/tayaway/caddy-admin/ca.pem && rm /tmp/ca.pem'`

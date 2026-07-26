@@ -4,7 +4,7 @@
 #
 # Never touched (exclude-tags): :main, the moving pointer the box's pull-based
 # self-deploy follows, and :buildcache, the registry layer cache. keep-n-tagged
-# leaves a generous run of recent SHAs so ops/host/self-deploy.sh always has a
+# leaves a generous run of recent SHAs so the box's self-deploy.sh always has a
 # rollback target. The toolchain package has neither :main nor :buildcache, so
 # the same excludes are simply no-ops there.
 #

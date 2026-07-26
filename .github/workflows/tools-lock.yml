@@ -24,7 +24,7 @@ name: Bump tool lockfile
 
 on:
   schedule:
-    - cron: "0 8 * * 1" # Mondays 08:00 UTC (after ops-drift 06:00, reconcile 07:00)
+    - cron: "0 8 * * 1" # Mondays 08:00 UTC
   workflow_dispatch:
 
 # Only the latest matters; a queued older run would just reopen the same PR.

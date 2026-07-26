@@ -61,8 +61,7 @@ tayaway/
 │       └── websocket/     Listener, ConnectionManager, MessageHandler
 │
 ├── e2e/                   Playwright end-to-end tests
-├── doc/                   Architecture docs (backend-sync, offline-support, authorization, falcon-architecture, database-migrations, connectivity-guidelines)
-└── ops/                   Deployment recipe — OpenTofu, Quadlet units, provisioning, runbook
+└── doc/                   Architecture docs (backend-sync, offline-support, authorization, falcon-architecture, database-migrations, connectivity-guidelines)
 ```
 
 ### Real-Time Sync
@@ -96,4 +95,4 @@ Users belong to workspaces through memberships (owner/admin/member roles). All d
 
 ### Deployment
 
-Production runs as podman Quadlet containers supervised by systemd on a single OVH VPS: Falcon (`web`), PostgreSQL (`db`), and a Caddy `edge` that serves the built frontend and reverse-proxies API/WebSocket requests. Images are built by CI and tagged by git SHA; the box pulls and self-deploys the `main` tag with a health gate and auto-rollback. The full recipe — OpenTofu for cloud state, Quadlet units, provisioning, and the cutover runbook — lives in [`ops/`](ops/).
+Production runs as podman Quadlet containers supervised by systemd on a single OVH VPS: Falcon (`web`), PostgreSQL (`db`), and a Caddy `edge` that serves the built frontend and reverse-proxies API/WebSocket requests. Images are built by CI and tagged by git SHA; the box pulls and self-deploys the `main` tag with a health gate and auto-rollback. The deployment recipe — OpenTofu for cloud state, Quadlet units, provisioning, and the cutover runbook — lives in a private infra repo, not here (this repo's job ends at publishing an image).

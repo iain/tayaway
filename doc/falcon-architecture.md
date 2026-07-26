@@ -171,7 +171,8 @@ SIGHUP.
 ## Deployment
 
 In production Falcon runs as the `web` Quadlet container
-(`ops/quadlet/web.container`) supervised by systemd: `falcon-host` is
+(`vps/quadlet/web.container` in the private infra repo) supervised by
+systemd: `falcon-host` is
 pid 1 in the container, and `Notify=true` makes podman wait for its
 `sd_notify READY=1` before the unit reports started — so a restart
 doesn't complete until workers accept connections. `Restart=on-failure`

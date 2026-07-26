@@ -1,7 +1,0 @@
-# Plaintext key material never lands in git — the canonical copies live
-# in secrets.yaml (sops). Regenerate plaintext via: sops decrypt secrets.yaml
-*.key
-*.csr
-*.srl
-*.p12
-client.pem

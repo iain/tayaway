@@ -1,9 +1,0 @@
-# Templated failure-notifier. Pulled in by `OnFailure=notify@%n.service` on
-# the long-running units, so %i is the failed unit's name (e.g. web.service).
-# Not enabled directly — it only ever runs as an OnFailure dependency.
-[Unit]
-Description=ntfy alert for failed unit %i
-
-[Service]
-Type=oneshot
-ExecStart=/usr/local/bin/tayaway-notify %i
